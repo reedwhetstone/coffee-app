@@ -42,6 +42,7 @@
 		"@inlang/paraglide-sveltekit": "^0.11.1",
 		"@tailwindcss/container-queries": "^0.1.1",
 		"@tailwindcss/forms": "^0.5.9",
-		"@tailwindcss/typography": "^0.5.15"
+		"@tailwindcss/typography": "^0.5.15",
+		"postgres": "^3.4.5"
 	}
 }
