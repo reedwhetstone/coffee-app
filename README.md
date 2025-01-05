@@ -2,41 +2,14 @@
 
 ## Stack
 
-- Playwright to webcrawl the data from sweet maria's
-- Sveltekit
-- Postgres.js
+- Playwright to webcrawl data - https://playwright.dev/docs/intro
+- Sveltekit @sveltejs/kit@2.15.1 - https://svelte.dev/docs/kit/introduction
+- MySQL - https://dev.mysql.com/doc/
 - Node
 - Express
 - TypeScript, JS
 - TailwindCSS
-- Vite - just for dev env?
-
-## Sweet maria's property path for the coffee bean data:
-
-https://www.sweetmarias.com/ethiopia-dry-process-hambela-goro-7627.html
-
-#product-attribute-specs-table
-
-**property path:**
-parentElement.offsetParent.id
-**string:**
-product-attribute-specs-table
-**property path:**
-parentElement.offsetParent.innerText
-**string:**
-Region Kebele Goro Badessa, Woreda Hambela Wamena
-Processing Dry Process (Natural)
-Drying Method Raised Bed Sun-Dried
-Arrival date July 2023 Arrival
-Lot size 160
-Bag size 60 KG
-Packaging GrainPro Liner
-Farm Gate Yes
-Cultivar Detail Heirloom Varietals
-Grade Grade 1
-Appearance .6 d/300gr, 14-17 Screen
-Roast Recommendations City to Full City
-Type Farm Gate
+- Vite
 
 # sv
 
