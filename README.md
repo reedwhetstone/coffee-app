@@ -2,9 +2,9 @@
 
 ## Stack
 
-- Scrapy to webcrawl the data from sweet maria's.. Playwright is already installed but people keep recomending scrapy.
+- Playwright to webcrawl the data from sweet maria's
 - Sveltekit
-- PostgreSQL
+- Postgres.js
 - Node
 - Express
 - TypeScript, JS
@@ -12,6 +12,10 @@
 - Vite - just for dev env?
 
 ## Sweet maria's property path for the coffee bean data:
+
+https://www.sweetmarias.com/ethiopia-dry-process-hambela-goro-7627.html
+
+#product-attribute-specs-table
 
 **property path:**
 parentElement.offsetParent.id
