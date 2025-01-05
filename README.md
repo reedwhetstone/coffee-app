@@ -1,3 +1,39 @@
+# Notes
+
+## Stack
+
+- Scrapy to webcrawl the data from sweet maria's.. Playwright is already installed but people keep recomending scrapy.
+- Sveltekit
+- PostgreSQL
+- Node
+- Express
+- TypeScript, JS
+- TailwindCSS
+- Vite - just for dev env?
+
+## Sweet maria's property path for the coffee bean data:
+
+**property path:**
+parentElement.offsetParent.id
+**string:**
+product-attribute-specs-table
+**property path:**
+parentElement.offsetParent.innerText
+**string:**
+Region Kebele Goro Badessa, Woreda Hambela Wamena
+Processing Dry Process (Natural)
+Drying Method Raised Bed Sun-Dried
+Arrival date July 2023 Arrival
+Lot size 160
+Bag size 60 KG
+Packaging GrainPro Liner
+Farm Gate Yes
+Cultivar Detail Heirloom Varietals
+Grade Grade 1
+Appearance .6 d/300gr, 14-17 Screen
+Roast Recommendations City to Full City
+Type Farm Gate
+
 # sv
 
 Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
