@@ -1,5 +1,6 @@
 <script lang="ts">
 	export let selectedBean: any;
+	export let closeProfile: () => void;
 
 	// Function to handle editing
 	function editBean() {
@@ -11,12 +12,14 @@
 	async function deleteBean() {
 		if (confirm('Are you sure you want to delete this bean?')) {
 			try {
-				const response = await fetch(`/api/beans/${selectedBean.id}`, {
+				const response = await fetch(`/api/data?id=${selectedBean.id}`, {
 					method: 'DELETE'
 				});
+
 				if (response.ok) {
-					// Dispatch an event to parent to handle deletion
 					dispatch('delete', selectedBean.id);
+				} else {
+					alert(`Failed to delete bean: ${data.error}`);
 				}
 			} catch (error) {
 				console.error('Error deleting bean:', error);

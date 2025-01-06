@@ -39,25 +39,25 @@
 	import BeanProfile from './BeanProfile.svelte';
 
 	let isFormVisible = false;
-	let selectedBean: (typeof data.data)[0] | null = null;
+	let selectedBean: any = null;
 
 	// Initialize selectedBean with the first bean (ID 1)
 	$: selectedBean = data.data.find((bean) => bean.id === 1) || data.data[0];
 
 	// Function to handle bean deletion
 	async function deleteBean(id: number) {
-		if (confirm('Are you sure you want to delete this bean?')) {
-			try {
-				const response = await fetch(`/api/beans/${id}`, {
-					method: 'DELETE'
-				});
-				if (response.ok) {
-					// Refresh the data or remove from local state
-					data.data = data.data.filter((bean) => bean.id !== id);
-				}
-			} catch (error) {
-				console.error('Error deleting bean:', error);
+		try {
+			const response = await fetch(`/api/data?id=${id}`, {
+				method: 'DELETE'
+			});
+			if (response.ok) {
+				// Update local state
+				data.data = data.data.filter((bean) => bean.id !== id);
+				// Clear selected bean since it's been deleted
+				selectedBean = null;
 			}
+		} catch (error) {
+			console.error('Error deleting bean:', error);
 		}
 	}
 
@@ -105,6 +105,19 @@
 
 		return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
 	});
+
+	async function handleFormSubmit(newBean: any) {
+		// Refresh the data
+		const response = await fetch('/api/data');
+		data = await response.json();
+
+		// Set the newly created bean as selected and ensure it triggers the profile update
+		selectedBean = null; // Force a re-render by clearing first
+		setTimeout(() => {
+			// Use setTimeout to ensure the DOM updates
+			selectedBean = newBean;
+		}, 0);
+	}
 </script>
 
 <div class="m-4">
@@ -122,7 +135,7 @@
 	<!-- Bean Profile Section -->
 	{#if selectedBean}
 		<div class="mb-4">
-			<BeanProfile {selectedBean} />
+			<BeanProfile {selectedBean} on:delete={({ detail }) => deleteBean(detail)} />
 		</div>
 	{/if}
 
@@ -130,14 +143,7 @@
 	{#if isFormVisible}
 		<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
 			<div class="w-full max-w-2xl rounded-lg bg-gray-800 p-6">
-				<BeanForm
-					bean={selectedBean}
-					onClose={() => (isFormVisible = false)}
-					onSubmit={(updatedBean) => {
-						isFormVisible = false;
-						// Refresh data after submission
-					}}
-				/>
+				<BeanForm bean={null} onClose={() => (isFormVisible = false)} onSubmit={handleFormSubmit} />
 			</div>
 		</div>
 	{/if}

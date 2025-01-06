@@ -7,30 +7,37 @@
 		name: '',
 		rank: 0,
 		notes: '',
-		link: '',
+		purchase_date: '',
 		purchased_qty_lbs: 0,
 		bean_cost: 0,
 		tax_ship_cost: 0,
+		link: '',
 		...bean
 	};
 
 	async function handleSubmit() {
-		const endpoint = bean ? `/api/beans/${bean.id}` : '/api/beans';
-		const method = bean ? 'PUT' : 'POST';
-
 		try {
-			const response = await fetch(endpoint, {
-				method,
+			const response = await fetch('/api/data', {
+				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify(formData)
 			});
 
-			if (response.ok) {
-				const result = await response.json();
-				onSubmit(result);
+			if (!response.ok) {
+				throw new Error('Failed to create bean');
 			}
+
+			const result = await response.json();
+
+			const updatedResponse = await fetch('/api/data');
+			const updatedData = await updatedResponse.json();
+
+			const newBean = updatedData.data.find((b) => b.name === formData.name);
+
+			onSubmit(newBean);
+			onClose();
 		} catch (error) {
 			console.error('Error submitting form:', error);
 		}
@@ -57,13 +64,74 @@
 			<label class="block text-sm font-medium text-gray-300">Rank</label>
 			<input
 				type="number"
+				min="0"
+				max="5"
 				bind:value={formData.rank}
 				class="mt-1 block w-full rounded bg-gray-700 text-white"
 				required
 			/>
 		</div>
 
-		<!-- Add similar input fields for notes, link, purchased_qty_lbs, bean_cost, tax_ship_cost -->
+		<div>
+			<label class="block text-sm font-medium text-gray-300">Purchase Date</label>
+			<input
+				type="date"
+				bind:value={formData.purchase_date}
+				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				required
+			/>
+		</div>
+
+		<div>
+			<label class="block text-sm font-medium text-gray-300">Purchased Quantity (lbs)</label>
+			<input
+				type="number"
+				step="0.01"
+				bind:value={formData.purchased_qty_lbs}
+				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				required
+			/>
+		</div>
+
+		<div>
+			<label class="block text-sm font-medium text-gray-300">Bean Cost</label>
+			<input
+				type="number"
+				step="0.01"
+				bind:value={formData.bean_cost}
+				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				required
+			/>
+		</div>
+
+		<div>
+			<label class="block text-sm font-medium text-gray-300">Tax & Shipping Cost</label>
+			<input
+				type="number"
+				step="0.01"
+				bind:value={formData.tax_ship_cost}
+				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				required
+			/>
+		</div>
+
+		<div class="col-span-2">
+			<label class="block text-sm font-medium text-gray-300">Link</label>
+			<input
+				type="url"
+				bind:value={formData.link}
+				class="mt-1 block w-full rounded bg-gray-700 text-white"
+			/>
+		</div>
+
+		<div class="col-span-2">
+			<label class="block text-sm font-medium text-gray-300">Notes</label>
+			<textarea
+				bind:value={formData.notes}
+				rows="3"
+				class="mt-1 block w-full rounded bg-gray-700 text-white"
+			></textarea>
+		</div>
 	</div>
 
 	<div class="mt-4 flex justify-end space-x-2">
