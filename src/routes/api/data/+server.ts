@@ -8,7 +8,7 @@ export async function GET() {
 	}
 
 	try {
-		const [rows] = await dbConn.query('SELECT * FROM test_table');
+		const [rows] = await dbConn.query('SELECT * FROM green_coffee_inv');
 		return json({ data: rows });
 	} catch (error) {
 		console.error('Error querying database:', error);
