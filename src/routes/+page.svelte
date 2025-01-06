@@ -71,6 +71,40 @@
 	function selectBean(bean: (typeof data.data)[0]) {
 		selectedBean = bean;
 	}
+
+	// Add these new variables for sorting
+	let sortField: string | null = null;
+	let sortDirection: 'asc' | 'desc' | null = null;
+
+	// Sorting function
+	function toggleSort(field: string) {
+		if (sortField === field) {
+			// Cycle through: asc -> desc -> null
+			if (sortDirection === 'asc') sortDirection = 'desc';
+			else if (sortDirection === 'desc') {
+				sortField = null;
+				sortDirection = null;
+			}
+		} else {
+			// New field selected, start with ascending
+			sortField = field;
+			sortDirection = 'asc';
+		}
+	}
+
+	// Computed sorted data
+	$: sortedData = [...data.data].sort((a, b) => {
+		if (!sortField || !sortDirection) return 0;
+
+		const aVal = a[sortField as keyof typeof a];
+		const bVal = b[sortField as keyof typeof b];
+
+		if (typeof aVal === 'string' && typeof bVal === 'string') {
+			return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+		}
+
+		return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
+	});
 </script>
 
 <div class="m-4">
@@ -121,14 +155,30 @@
 				<thead class="bg-gray-700 text-xs uppercase text-gray-400">
 					<tr>
 						{#each Object.keys(data.data[0] || {}) as header}
-							<th class="px-6 py-3">
-								{header.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+							<th
+								class="group cursor-pointer px-6 py-3 hover:bg-gray-600"
+								on:click={() => toggleSort(header)}
+							>
+								<div class="flex items-center gap-2">
+									{header.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+
+									<!-- Sort indicators -->
+									{#if sortField === header}
+										{#if sortDirection === 'asc'}
+											<span>↑</span>
+										{:else if sortDirection === 'desc'}
+											<span>↓</span>
+										{/if}
+									{:else}
+										<span class="opacity-0 group-hover:opacity-50">↕</span>
+									{/if}
+								</div>
 							</th>
 						{/each}
 					</tr>
 				</thead>
 				<tbody>
-					{#each data.data as bean}
+					{#each sortedData as bean}
 						<tr
 							class="cursor-pointer border-b border-gray-700 bg-gray-800 transition-colors hover:bg-gray-700 {selectedBean?.id ===
 							bean.id
