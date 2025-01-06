@@ -3,43 +3,51 @@
 	export let onClose: () => void;
 	export let onSubmit: (bean: any) => void;
 
-	let formData = {
-		name: '',
-		rank: 0,
-		notes: '',
-		purchase_date: '',
-		purchased_qty_lbs: 0,
-		bean_cost: 0,
-		tax_ship_cost: 0,
-		link: '',
-		...bean
-	};
+	let formData = bean
+		? { ...bean }
+		: {
+				name: '',
+				rank: null,
+				notes: '',
+				purchase_date: '',
+				purchased_qty_lbs: 0,
+				bean_cost: 0,
+				tax_ship_cost: 0,
+				link: '',
+				last_updated: new Date().toISOString()
+			};
 
 	async function handleSubmit() {
 		try {
+			// Convert empty strings to null and ensure last_updated is current
+			const cleanedBean = Object.fromEntries(
+				Object.entries(formData).map(([key, value]) => [
+					key,
+					value === '' || value === undefined ? null : value
+				])
+			);
+
+			// Update last_updated timestamp
+			cleanedBean.last_updated = new Date().toISOString();
+
 			const response = await fetch('/api/data', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(formData)
+				body: JSON.stringify(cleanedBean)
 			});
 
-			if (!response.ok) {
-				throw new Error('Failed to create bean');
+			if (response.ok) {
+				const newBean = await response.json();
+				onSubmit(newBean);
+				onClose();
+			} else {
+				const data = await response.json();
+				alert(`Failed to create bean: ${data.error}`);
 			}
-
-			const result = await response.json();
-
-			const updatedResponse = await fetch('/api/data');
-			const updatedData = await updatedResponse.json();
-
-			const newBean = updatedData.data.find((b) => b.name === formData.name);
-
-			onSubmit(newBean);
-			onClose();
 		} catch (error) {
-			console.error('Error submitting form:', error);
+			console.error('Error creating bean:', error);
 		}
 	}
 </script>
@@ -51,8 +59,9 @@
 
 	<div class="grid grid-cols-2 gap-4">
 		<div>
-			<label class="block text-sm font-medium text-gray-300">Name</label>
+			<label for="name" class="block text-sm font-medium text-gray-300">Name</label>
 			<input
+				id="name"
 				type="text"
 				bind:value={formData.name}
 				class="mt-1 block w-full rounded bg-gray-700 text-white"

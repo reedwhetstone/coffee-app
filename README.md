@@ -1,13 +1,14 @@
 # Notes
 
-- The main page now has an "Add New Bean" button and Edit/Delete buttons for each row
-- The form appears in a modal overlay
-- The BeanForm component handles both creation and editing
-- The BeanProfile component shows all details for a selected bean
+CoffeeApp is an all in one coffee management system.
 
-You'll need to:
+- Manage coffee inventory
+- Track coffee roasting
+- Track coffee sales
+- Track coffee consumption
 
-- Create API endpoints for CRUD operations (/api/beans)
+# Todo:
+
 - Add proper type definitions
 - Implement proper error handling
 - Add loading states

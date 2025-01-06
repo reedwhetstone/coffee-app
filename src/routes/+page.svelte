@@ -41,8 +41,10 @@
 	let isFormVisible = false;
 	let selectedBean: any = null;
 
-	// Initialize selectedBean with the first bean (ID 1)
-	$: selectedBean = data.data.find((bean) => bean.id === 1) || data.data[0];
+	// Initialize selectedBean with the newest bean by purchase date
+	$: selectedBean = [...data.data].sort(
+		(a, b) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime()
+	)[0];
 
 	// Function to handle bean deletion
 	async function deleteBean(id: number) {
@@ -73,8 +75,8 @@
 	}
 
 	// Add these new variables for sorting
-	let sortField: string | null = null;
-	let sortDirection: 'asc' | 'desc' | null = null;
+	let sortField: string | null = 'purchase_date';
+	let sortDirection: 'asc' | 'desc' | null = 'desc';
 
 	// Sorting function
 	function toggleSort(field: string) {
@@ -118,6 +120,14 @@
 			selectedBean = newBean;
 		}, 0);
 	}
+
+	// Update this function to properly handle the bean update
+	async function handleBeanUpdate(updatedBean: any) {
+		// Update the local data array
+		data.data = data.data.map((bean) => (bean.id === updatedBean.id ? updatedBean : bean));
+		// Update selectedBean to trigger UI refresh
+		selectedBean = updatedBean;
+	}
 </script>
 
 <div class="m-4">
@@ -135,7 +145,11 @@
 	<!-- Bean Profile Section -->
 	{#if selectedBean}
 		<div class="mb-4">
-			<BeanProfile {selectedBean} on:delete={({ detail }) => deleteBean(detail)} />
+			<BeanProfile
+				{selectedBean}
+				on:delete={({ detail }) => deleteBean(detail)}
+				on:update={({ detail }) => handleBeanUpdate(detail)}
+			/>
 		</div>
 	{/if}
 
@@ -157,50 +171,52 @@
 
 		<!-- Table with a reactive class binding -->
 		{#if data.data.length > 0}
-			<table class:hidden={isHidden} class="table-auto rounded">
-				<thead class="bg-gray-700 text-xs uppercase text-gray-400">
-					<tr>
-						{#each Object.keys(data.data[0] || {}) as header}
-							<th
-								class="group cursor-pointer px-6 py-3 hover:bg-gray-600"
-								on:click={() => toggleSort(header)}
-							>
-								<div class="flex items-center gap-2">
-									{header.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+			<div class="overflow-hidden overflow-x-auto rounded-lg">
+				<table class:hidden={isHidden} class="table-auto bg-gray-800">
+					<thead class="bg-gray-700 text-xs uppercase text-gray-400">
+						<tr>
+							{#each Object.keys(data.data[0] || {}) as header}
+								<th
+									class="group cursor-pointer px-6 py-3 hover:bg-gray-600"
+									on:click={() => toggleSort(header)}
+								>
+									<div class="flex items-center gap-2">
+										{header.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
 
-									<!-- Sort indicators -->
-									{#if sortField === header}
-										{#if sortDirection === 'asc'}
-											<span>↑</span>
-										{:else if sortDirection === 'desc'}
-											<span>↓</span>
+										<!-- Sort indicators -->
+										{#if sortField === header}
+											{#if sortDirection === 'asc'}
+												<span>↑</span>
+											{:else if sortDirection === 'desc'}
+												<span>↓</span>
+											{/if}
+										{:else}
+											<span class="opacity-0 group-hover:opacity-50">↕</span>
 										{/if}
-									{:else}
-										<span class="opacity-0 group-hover:opacity-50">↕</span>
-									{/if}
-								</div>
-							</th>
-						{/each}
-					</tr>
-				</thead>
-				<tbody>
-					{#each sortedData as bean}
-						<tr
-							class="cursor-pointer border-b border-gray-700 bg-gray-800 transition-colors hover:bg-gray-700 {selectedBean?.id ===
-							bean.id
-								? 'bg-gray-700'
-								: ''}"
-							on:click={() => selectBean(bean)}
-						>
-							{#each Object.values(bean) as value}
-								<td class="whitespace-nowrap text-balance px-6 py-4 text-xs text-white">
-									{value}
-								</td>
+									</div>
+								</th>
 							{/each}
 						</tr>
-					{/each}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						{#each sortedData as bean}
+							<tr
+								class="cursor-pointer border-b border-gray-700 bg-gray-800 transition-colors hover:bg-gray-700 {selectedBean?.id ===
+								bean.id
+									? 'bg-gray-700'
+									: ''}"
+								on:click={() => selectBean(bean)}
+							>
+								{#each Object.values(bean) as value}
+									<td class="whitespace-nowrap text-balance px-6 py-4 text-xs text-white">
+										{value}
+									</td>
+								{/each}
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		{:else}
 			<p class="text-white">No data available</p>
 		{/if}

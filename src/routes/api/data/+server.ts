@@ -1,6 +1,7 @@
 // src/routes/api/data/+server.ts
 import { json } from '@sveltejs/kit';
 import { dbConn } from '$lib/server/db';
+import type { ResultSetHeader } from 'mysql2';
 
 export async function GET() {
 	if (!dbConn) {
@@ -33,8 +34,9 @@ export async function POST({ request }) {
 				purchased_qty_lbs, 
 				bean_cost, 
 				tax_ship_cost, 
-				link
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+				link,
+				last_updated
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`;
 
 		const values = [
@@ -45,11 +47,16 @@ export async function POST({ request }) {
 			bean.purchased_qty_lbs,
 			bean.bean_cost,
 			bean.tax_ship_cost,
-			bean.link
+			bean.link,
+			bean.last_updated
 		];
 
-		const [result] = await dbConn.execute(query, values);
-		return json({ success: true, data: result });
+		const [result] = (await dbConn.execute(query, values)) as [ResultSetHeader, any];
+
+		const [newBean] = await dbConn.query('SELECT * FROM green_coffee_inv WHERE id = ?', [
+			result.insertId
+		]);
+		return json(newBean[0]);
 	} catch (error) {
 		console.error('Error creating bean:', error);
 		return json({ success: false, error: 'Failed to create bean' }, { status: 500 });
@@ -73,5 +80,29 @@ export async function DELETE({ url }) {
 	} catch (error) {
 		console.error('Error deleting bean:', error);
 		return json({ success: false, error: 'Failed to delete bean' }, { status: 500 });
+	}
+}
+
+export async function PUT({ url, request }) {
+	try {
+		const id = url.searchParams.get('id');
+		const updates = await request.json();
+		const { id: _, ...updateData } = updates;
+
+		await dbConn.query('UPDATE green_coffee_inv SET ? WHERE id = ?', [updateData, id]);
+
+		// Fetch and return the updated bean
+		const [updatedBean] = await dbConn.query('SELECT * FROM green_coffee_inv WHERE id = ?', [id]);
+
+		return new Response(JSON.stringify(updatedBean[0]), {
+			status: 200,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	} catch (error) {
+		console.error('Error updating bean:', error);
+		return new Response(JSON.stringify({ error: 'Failed to update bean' }), {
+			status: 500,
+			headers: { 'Content-Type': 'application/json' }
+		});
 	}
 }
