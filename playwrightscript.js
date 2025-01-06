@@ -55,7 +55,7 @@ async function updateDatabase() {
 
 		// Get all beans with links from the database
 		const [beans] = await connection.execute(
-			'SELECT id, link FROM `green_coffee_inv` WHERE link IS NOT NULL AND link != ""'
+			'SELECT id, link FROM `green_coffee_inv` WHERE link IS NOT NULL AND link != "" AND score_value IS NULL'
 		);
 
 		console.log(`Found ${beans.length} beans to update`);
