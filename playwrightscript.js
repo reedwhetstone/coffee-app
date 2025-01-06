@@ -1,52 +1,129 @@
 import { chromium } from 'playwright';
+import dotenv from 'dotenv';
+import { initializeConnection } from './scriptDb.js';
 
-(async () => {
-	const browser = await chromium.launch({ headless: false }); // Launch browser in non-headless mode for debugging
+// Load environment variables
+dotenv.config();
+
+async function scrapeUrl(url) {
+	const browser = await chromium.launch({ headless: false });
 	const context = await browser.newContext();
 	const page = await context.newPage();
 
-	// Navigate to the URL
-	await page.goto('https://www.sweetmarias.com/ethiopia-dry-process-hambela-goro-7627.html', {
-		timeout: 60000
-	});
+	try {
+		await page.goto(url, { timeout: 60000 });
+		await page.waitForTimeout(200);
 
-	// Wait for a specific amount of time after the page load (e.g., 1 second)
-	await page.waitForTimeout(200); // Wait for N seconds
+		await page.click('#tab-label-product\\.info\\.specs-title');
+		await page.waitForSelector('#product-attribute-specs-table', { visible: true });
 
-	// Click the tab to reveal the hidden content
-	await page.click('#tab-label-product\\.info\\.specs-title');
+		const results = await page.evaluate(() => {
+			const rows = document.querySelectorAll('#product-attribute-specs-table tbody tr');
+			const data = {};
 
-	// Wait for the table to become visible
-	await page.waitForSelector('#product-attribute-specs-table', { visible: true });
-
-	// Extract all the texts from the table rows (assuming rows are in <th> and <td> elements)
-	const results = await page.evaluate(() => {
-		const rows = document.querySelectorAll('#product-attribute-specs-table tbody tr'); // Get all rows
-		const data = [];
-
-		// Loop through all rows
-		rows.forEach((row) => {
-			const headerCells = row.querySelectorAll('th'); // Get all header cells (first column)
-			const dataCells = row.querySelectorAll('td'); // Get all data cells (second column onward)
-			const rowData = [];
-
-			// Extract text from each header cell (th) and data cell (td)
-			headerCells.forEach((cell) => {
-				rowData.push(cell.innerText.trim()); // Store the trimmed text from th
+			rows.forEach((row) => {
+				const header = row.querySelector('th')?.innerText.trim();
+				const value = row.querySelector('td')?.innerText.trim();
+				if (header && value) {
+					data[header] = value;
+				}
 			});
 
-			dataCells.forEach((cell) => {
-				rowData.push(cell.innerText.trim()); // Store the trimmed text from td
-			});
-
-			data.push(rowData); // Push row data into the results array
+			return data;
 		});
 
-		return data; // Return the entire table data as a 2D array
-	});
+		await browser.close();
+		return results;
+	} catch (error) {
+		console.error(`Error scraping ${url}:`, error);
+		await browser.close();
+		return null;
+	}
+}
 
-	// Log the extracted text from all rows
-	console.log('Extracted Table Data:', results);
+async function updateDatabase() {
+	try {
+		// Initialize the database connection
+		const connection = await initializeConnection();
 
-	await browser.close(); // Close the browser
-})();
+		// Get all beans with links from the database
+		const [beans] = await connection.execute(
+			'SELECT id, link FROM `green_coffee_inv` WHERE link IS NOT NULL AND link != ""'
+		);
+
+		console.log(`Found ${beans.length} beans to update`);
+
+		// Process each bean
+		for (const bean of beans) {
+			console.log(`Processing bean ID ${bean.id} with link: ${bean.link}`);
+
+			const scrapedData = await scrapeUrl(bean.link);
+
+			if (scrapedData) {
+				// Map the scraped data to your database columns
+				const updates = {
+					region: scrapedData['Region'] || null,
+					processing: scrapedData['Processing'] || null,
+					drying_method: scrapedData['Drying Method'] || null,
+					arrival_date: scrapedData['Arrival date'] || null,
+					lot_size: scrapedData['Lot size'] || null,
+					bag_size: scrapedData['Bag size'] || null,
+					packaging: scrapedData['Packaging'] || null,
+					farm_gate: scrapedData['Farm Gate'] === 'Yes' ? 1 : 0,
+					cultivar_detail: scrapedData['Cultivar Detail'] || null,
+					grade: scrapedData['Grade'] || null,
+					appearance: scrapedData['Appearance'] || null,
+					roast_recs: scrapedData['Roast Recommendations'] || null,
+					type: scrapedData['Type'] || null,
+					last_updated: new Date()
+				};
+
+				// Update the database using prepared statement
+				await connection.execute(
+					`UPDATE \`green_coffee_inv\` SET 
+					region = ?, 
+					processing = ?,
+					drying_method = ?,
+					arrival_date = ?,
+					lot_size = ?,
+					bag_size = ?,
+					packaging = ?,
+					farm_gate = ?,
+					cultivar_detail = ?,
+					grade = ?,
+					appearance = ?,
+					roast_recs = ?,
+					type = ?,
+					last_updated = ?
+					WHERE id = ?`,
+					[
+						updates.region,
+						updates.processing,
+						updates.drying_method,
+						updates.arrival_date,
+						updates.lot_size,
+						updates.bag_size,
+						updates.packaging,
+						updates.farm_gate,
+						updates.cultivar_detail,
+						updates.grade,
+						updates.appearance,
+						updates.roast_recs,
+						updates.type,
+						updates.last_updated,
+						bean.id
+					]
+				);
+
+				console.log(`Successfully updated bean ID ${bean.id}`);
+			}
+		}
+
+		console.log('Database update complete');
+	} catch (error) {
+		console.error('Error updating database:', error);
+	}
+}
+
+// Run the script
+updateDatabase().catch(console.error);

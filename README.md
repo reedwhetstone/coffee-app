@@ -1,5 +1,19 @@
 # Notes
 
+- The main page now has an "Add New Bean" button and Edit/Delete buttons for each row
+- The form appears in a modal overlay
+- The BeanForm component handles both creation and editing
+- The BeanProfile component shows all details for a selected bean
+
+You'll need to:
+
+- Create API endpoints for CRUD operations (/api/beans)
+- Add proper type definitions
+- Implement proper error handling
+- Add loading states
+- Add form validation
+- Style components to match your design system
+
 ## Stack
 
 - Playwright to webcrawl data - https://playwright.dev/docs/intro
