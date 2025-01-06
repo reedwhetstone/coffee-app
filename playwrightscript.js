@@ -14,6 +14,12 @@ async function scrapeUrl(url) {
 		await page.goto(url, { timeout: 60000 });
 		await page.waitForTimeout(200);
 
+		// Add score value extraction
+		const scoreValue = await page.evaluate(() => {
+			const scoreElement = document.querySelector('div.score-value');
+			return scoreElement ? parseInt(scoreElement.innerText, 10) : null;
+		});
+
 		await page.click('#tab-label-product\\.info\\.specs-title');
 		await page.waitForSelector('#product-attribute-specs-table', { visible: true });
 
@@ -33,7 +39,7 @@ async function scrapeUrl(url) {
 		});
 
 		await browser.close();
-		return results;
+		return { ...results, scoreValue };
 	} catch (error) {
 		console.error(`Error scraping ${url}:`, error);
 		await browser.close();
@@ -42,9 +48,10 @@ async function scrapeUrl(url) {
 }
 
 async function updateDatabase() {
+	let connection;
 	try {
 		// Initialize the database connection
-		const connection = await initializeConnection();
+		connection = await initializeConnection();
 
 		// Get all beans with links from the database
 		const [beans] = await connection.execute(
@@ -94,6 +101,7 @@ async function updateDatabase() {
 					appearance = ?,
 					roast_recs = ?,
 					type = ?,
+					score_value = ?,
 					last_updated = ?
 					WHERE id = ?`,
 					[
@@ -110,6 +118,7 @@ async function updateDatabase() {
 						updates.appearance,
 						updates.roast_recs,
 						updates.type,
+						scrapedData.scoreValue,
 						updates.last_updated,
 						bean.id
 					]
@@ -120,10 +129,19 @@ async function updateDatabase() {
 		}
 
 		console.log('Database update complete');
+		process.exit(0); // Clean exit with success code
 	} catch (error) {
 		console.error('Error updating database:', error);
+		process.exit(1); // Exit with error code
+	} finally {
+		if (connection) {
+			await connection.end(); // Close database connection
+		}
 	}
 }
 
 // Run the script
-updateDatabase().catch(console.error);
+updateDatabase().catch((error) => {
+	console.error('Fatal error:', error);
+	process.exit(1);
+});
