@@ -70,8 +70,9 @@
 		</div>
 
 		<div>
-			<label class="block text-sm font-medium text-gray-300">Rank</label>
+			<label for="rank" class="block text-sm font-medium text-gray-300">Rank</label>
 			<input
+				id="rank"
 				type="number"
 				min="0"
 				max="10"
@@ -82,8 +83,11 @@
 		</div>
 
 		<div>
-			<label class="block text-sm font-medium text-gray-300">Purchase Date</label>
+			<label for="purchase_date" class="block text-sm font-medium text-gray-300"
+				>Purchase Date</label
+			>
 			<input
+				id="purchase_date"
 				type="date"
 				bind:value={formData.purchase_date}
 				class="mt-1 block w-full rounded bg-gray-700 text-white"
@@ -92,8 +96,11 @@
 		</div>
 
 		<div>
-			<label class="block text-sm font-medium text-gray-300">Purchased Quantity (lbs)</label>
+			<label for="purchased_qty" class="block text-sm font-medium text-gray-300"
+				>Purchased Quantity (lbs)</label
+			>
 			<input
+				id="purchased_qty"
 				type="number"
 				step="0.01"
 				bind:value={formData.purchased_qty_lbs}
@@ -103,8 +110,9 @@
 		</div>
 
 		<div>
-			<label class="block text-sm font-medium text-gray-300">Bean Cost</label>
+			<label for="bean_cost" class="block text-sm font-medium text-gray-300">Bean Cost</label>
 			<input
+				id="bean_cost"
 				type="number"
 				step="0.01"
 				bind:value={formData.bean_cost}
@@ -114,8 +122,11 @@
 		</div>
 
 		<div>
-			<label class="block text-sm font-medium text-gray-300">Tax & Shipping Cost</label>
+			<label for="tax_ship_cost" class="block text-sm font-medium text-gray-300"
+				>Tax & Shipping Cost</label
+			>
 			<input
+				id="tax_ship_cost"
 				type="number"
 				step="0.01"
 				bind:value={formData.tax_ship_cost}
@@ -125,8 +136,9 @@
 		</div>
 
 		<div class="col-span-2">
-			<label class="block text-sm font-medium text-gray-300">Link</label>
+			<label for="link" class="block text-sm font-medium text-gray-300">Link</label>
 			<input
+				id="link"
 				type="url"
 				bind:value={formData.link}
 				class="mt-1 block w-full rounded bg-gray-700 text-white"
@@ -134,8 +146,9 @@
 		</div>
 
 		<div class="col-span-2">
-			<label class="block text-sm font-medium text-gray-300">Notes</label>
+			<label for="notes" class="block text-sm font-medium text-gray-300">Notes</label>
 			<textarea
+				id="notes"
 				bind:value={formData.notes}
 				rows="3"
 				class="mt-1 block w-full rounded bg-gray-700 text-white"

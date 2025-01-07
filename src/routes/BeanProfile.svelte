@@ -1,5 +1,7 @@
 <script lang="ts">
 	export let selectedBean: any;
+	export let onUpdate: (bean: any) => void;
+	export let onDelete: (id: string) => void;
 
 	let isEditing = false;
 	let editedBean = { ...selectedBean }; // Create a copy for editing
@@ -39,7 +41,7 @@
 				const updatedBean = await response.json();
 				selectedBean = updatedBean;
 				isEditing = false;
-				dispatch('update', updatedBean);
+				onUpdate(updatedBean);
 			} else {
 				const data = await response.json();
 				alert(`Failed to update bean: ${data.error}`);
@@ -58,18 +60,15 @@
 				});
 
 				if (response.ok) {
-					dispatch('delete', selectedBean.id);
+					onDelete(selectedBean.id);
 				} else {
-					alert(`Failed to delete bean: ${data.error}`);
+					alert(`Failed to delete bean: ${selectedBean.id}`);
 				}
 			} catch (error) {
 				console.error('Error deleting bean:', error);
 			}
 		}
 	}
-
-	import { createEventDispatcher } from 'svelte';
-	const dispatch = createEventDispatcher();
 </script>
 
 <div class="rounded-lg bg-gray-800 p-6">
