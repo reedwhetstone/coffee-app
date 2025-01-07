@@ -76,16 +76,19 @@
 	<div class="mb-4 flex items-center justify-between">
 		<h2 class="text-xl font-bold text-white">{selectedBean.name}</h2>
 		<div class="space-x-2">
+			<button class="rounded border-2 border-gray-500 px-3 py-1 text-gray-500 hover:bg-gray-600"
+				>Roast Sessions</button
+			>
 			<button
 				class="rounded {isEditing
-					? 'bg-green-600 hover:bg-green-700'
-					: 'bg-blue-600 hover:bg-blue-700'} px-3 py-1 text-white"
+					? 'border-2 border-green-800 hover:bg-green-900'
+					: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-gray-500"
 				on:click={toggleEdit}
 			>
 				{isEditing ? 'Save' : 'Edit'}
 			</button>
 			<button
-				class="rounded bg-red-600 px-3 py-1 text-white hover:bg-red-700"
+				class="rounded border-2 border-red-800 px-3 py-1 text-gray-500 hover:bg-red-900"
 				on:click={deleteBean}
 			>
 				Delete
@@ -95,16 +98,59 @@
 
 	<div class="grid grid-cols-2 gap-4">
 		{#each Object.entries(selectedBean) as [key, value]}
-			<div class="rounded bg-gray-700 p-2">
+			<div class="rounded bg-gray-700 p-2 {key === 'notes' ? 'col-span-2' : ''}">
 				<span class="font-medium text-gray-400">{key.replace(/_/g, ' ').toUpperCase()}:</span>
 				{#if isEditing && key !== 'id' && key !== 'last_updated'}
-					<input
-						type={typeof value === 'number' ? 'number' : 'text'}
-						class="ml-2 rounded bg-gray-600 px-2 py-1 text-white"
-						bind:value={editedBean[key]}
-					/>
+					{#if key === 'notes'}
+						<textarea
+							class="ml-2 w-full rounded bg-gray-600 px-2 py-1 text-white"
+							rows="4"
+							bind:value={editedBean[key]}
+						></textarea>
+					{:else if key === 'rank'}
+						<input
+							type="number"
+							min="1"
+							max="10"
+							step="1"
+							class="ml-2 rounded bg-gray-600 px-2 py-1 text-white"
+							bind:value={editedBean[key]}
+						/>
+					{:else if key === 'link'}
+						<input
+							type="url"
+							class="ml-2 rounded bg-gray-600 px-2 py-1 text-white"
+							bind:value={editedBean[key]}
+						/>
+					{:else if key === 'bean_cost' || key === 'tax_ship_cost'}
+						<input
+							type="number"
+							step="0.01"
+							min="0"
+							class="ml-2 rounded bg-gray-600 px-2 py-1 text-white"
+							bind:value={editedBean[key]}
+						/>
+					{:else}
+						<input
+							type={typeof value === 'number' ? 'number' : 'text'}
+							class="ml-2 rounded bg-gray-600 px-2 py-1 text-white"
+							bind:value={editedBean[key]}
+						/>
+					{/if}
 				{:else}
-					<span class="ml-2 text-white">{value}</span>
+					<span class="ml-2 text-white {key === 'notes' ? 'block whitespace-pre-wrap' : ''}">
+						{#if key === 'bean_cost' || key === 'tax_ship_cost'}
+							${typeof value === 'number' ? value.toFixed(2) : value}
+						{:else if key === 'link'}
+							{#if value && typeof value === 'string'}
+								<a href={value} target="_blank" class="text-blue-400 hover:underline">{value}</a>
+							{/if}
+						{:else if key === 'rank'}
+							{typeof value === 'number' ? Math.round(value) : value}
+						{:else}
+							{value}
+						{/if}
+					</span>
 				{/if}
 			</div>
 		{/each}

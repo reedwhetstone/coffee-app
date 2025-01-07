@@ -1,8 +1,12 @@
-<script>
+<script lang="ts">
 	import { page } from '$app/state'; // Modern usage
 	import { afterNavigate } from '$app/navigation'; // For handling navigation events
+	import { navbarActions } from '$lib/stores/navbarStore';
 
 	let routeId = page.route.id;
+
+	// Add these props
+	export let onAddNewBean: () => void;
 
 	// Update `routeId` after each navigation
 	afterNavigate(() => {
@@ -12,6 +16,13 @@
 
 <nav class="border-sky-800 bg-white dark:bg-gray-800">
 	<div class="mx-auto flex max-w-screen-xl flex-wrap items-center justify-between p-4">
+		<button
+			class="rounded border-2 border-green-800 px-3 py-1 text-gray-500 hover:bg-green-900"
+			on:click={() => $navbarActions.onAddNewBean()}
+		>
+			Add New Bean
+		</button>
+
 		<button
 			data-collapse-toggle="navbar-default"
 			type="button"

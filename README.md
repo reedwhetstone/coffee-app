@@ -15,6 +15,9 @@ CoffeeApp is an all in one coffee management system.
 - Add form validation
 - Style components to match your design system
 
+- reference openroast - https://github.com/Roastero/Openroast
+- reference artisan - https://github.com/artisan-roaster-scope/artisan
+
 ## Stack
 
 - Playwright to webcrawl data - https://playwright.dev/docs/intro
@@ -25,6 +28,7 @@ CoffeeApp is an all in one coffee management system.
 - TypeScript, JS
 - TailwindCSS
 - Vite
+- D3.js for charts
 
 # sv
 

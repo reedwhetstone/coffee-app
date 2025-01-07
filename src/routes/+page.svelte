@@ -41,11 +41,6 @@
 	let isFormVisible = false;
 	let selectedBean: any = null;
 
-	// Initialize selectedBean with the newest bean by purchase date
-	$: selectedBean = [...data.data].sort(
-		(a, b) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime()
-	)[0];
-
 	// Function to handle bean deletion
 	async function deleteBean(id: number) {
 		try {
@@ -128,20 +123,39 @@
 		// Update selectedBean to trigger UI refresh
 		selectedBean = updatedBean;
 	}
+
+	// Initialize selectedBean with the newest bean by purchase date
+	import { onMount } from 'svelte';
+	import { navbarActions } from '$lib/stores/navbarStore';
+
+	onMount(() => {
+		if (!selectedBean) {
+			selectedBean = [...data.data].sort(
+				(a, b) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime()
+			)[0];
+		}
+	});
+
+	function handleAddNewBean() {
+		selectedBean = null;
+		isFormVisible = true;
+	}
+
+	onMount(() => {
+		navbarActions.set({
+			onAddNewBean: handleAddNewBean
+		});
+
+		return () => {
+			// Reset when component is destroyed
+			navbarActions.set({
+				onAddNewBean: () => {}
+			});
+		};
+	});
 </script>
 
 <div class="m-4">
-	<!-- Add New Bean Button -->
-	<button
-		class="mb-4 rounded bg-green-600 p-2 text-white hover:bg-green-700"
-		on:click={() => {
-			selectedBean = null;
-			isFormVisible = true;
-		}}
-	>
-		Add New Bean
-	</button>
-
 	<!-- Bean Profile Section -->
 	{#if selectedBean}
 		<div class="mb-4">

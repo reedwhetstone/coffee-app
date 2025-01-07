@@ -74,7 +74,7 @@
 			<input
 				type="number"
 				min="0"
-				max="5"
+				max="10"
 				bind:value={formData.rank}
 				class="mt-1 block w-full rounded bg-gray-700 text-white"
 				required
