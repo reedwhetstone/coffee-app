@@ -14,6 +14,8 @@ CoffeeApp is an all in one coffee management system.
 - Add loading states
 - Add form validation
 - Style components to match your design system
+- add a login system
+- import more data for beans - long descriptions, farm details, tasting notes, images, etc.
 
 - reference openroast - https://github.com/Roastero/Openroast
 - reference artisan - https://github.com/artisan-roaster-scope/artisan

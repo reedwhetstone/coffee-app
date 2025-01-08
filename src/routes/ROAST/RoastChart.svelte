@@ -40,7 +40,10 @@
 			.ticks(12)
 			.tickFormat((d) => `${d}m`);
 
-		const yAxisFan = d3.axisLeft(yScaleFan).ticks(11);
+		const yAxisFan = d3
+			.axisLeft(yScaleFan)
+			.ticks(11)
+			.tickFormat((d) => (10 - Number(d)).toString());
 
 		const yAxisHeat = d3.axisRight(yScaleHeat).ticks(11);
 
@@ -52,31 +55,31 @@
 		svg.append('g').attr('transform', `translate(${width},0)`).call(yAxisHeat);
 
 		// Add axis labels
-		svg
-			.append('text')
-			.attr('transform', 'rotate(-90)')
-			.attr('y', -margin.left + 20)
-			.attr('x', -height / 2)
-			.attr('text-anchor', 'middle')
-			.attr('class', 'text-sm font-medium text-zinc-300')
-			.text('Fan Setting');
+		// svg
+		// 		.append('text')
+		// 		.attr('transform', 'rotate(-90)')
+		// 		.attr('y', -margin.left + 20)
+		// 		.attr('x', -height / 2)
+		// 		.attr('text-anchor', 'middle')
+		// 		.attr('class', 'text-sm font-medium text-zinc-300')
+		// 		.text('Fan Setting');
 
-		svg
-			.append('text')
-			.attr('transform', 'rotate(90)')
-			.attr('y', -width - margin.right + 20)
-			.attr('x', height / 2)
-			.attr('text-anchor', 'middle')
-			.attr('class', 'text-sm font-medium text-zinc-300')
-			.text('Heat Setting');
+		// 	svg
+		// 		.append('text')
+		// 		.attr('transform', 'rotate(90)')
+		// 		.attr('y', -width - margin.right + 20)
+		// 		.attr('x', height / 2)
+		// 		.attr('text-anchor', 'middle')
+		// 		.attr('class', 'text-sm font-medium text-zinc-300')
+		// 		.text('Heat Setting');
 
-		svg
-			.append('text')
-			.attr('x', width / 2)
-			.attr('y', height + margin.bottom)
-			.attr('text-anchor', 'middle')
-			.attr('class', 'text-sm font-medium text-zinc-300')
-			.text('Time (minutes)');
+		// svg
+		// 	.append('text')
+		// 	.attr('x', width / 2)
+		// 	.attr('y', height + margin.bottom)
+		// 	.attr('text-anchor', 'middle')
+		// 	.attr('class', 'text-sm font-medium text-zinc-300')
+		// 	.text('Time (minutes)');
 	});
 </script>
 

@@ -76,22 +76,11 @@
 		<h2 class="text-xl font-bold text-zinc-300">{selectedBean.name}</h2>
 		<div class="space-x-2">
 			<button class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
+				>New Roast</button
+			>
+			<button class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
 				>Roast Sessions</button
 			>
-			<button
-				class="rounded {isEditing
-					? 'border-2 border-green-800 hover:bg-green-900'
-					: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-zinc-500"
-				on:click={toggleEdit}
-			>
-				{isEditing ? 'Save' : 'Edit'}
-			</button>
-			<button
-				class="rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900"
-				on:click={deleteBean}
-			>
-				Delete
-			</button>
 		</div>
 	</div>
 
@@ -153,5 +142,21 @@
 				{/if}
 			</div>
 		{/each}
+	</div>
+	<div class="mb-4 flex justify-end space-x-2">
+		<button
+			class="rounded {isEditing
+				? 'border-2 border-green-800 hover:bg-green-900'
+				: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-zinc-500"
+			on:click={toggleEdit}
+		>
+			{isEditing ? 'Save' : 'Edit'}
+		</button>
+		<button
+			class="rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900"
+			on:click={deleteBean}
+		>
+			Delete
+		</button>
 	</div>
 </div>
