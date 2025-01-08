@@ -1,8 +1,8 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 
-	let chartContainer;
+	let chartContainer: HTMLDivElement;
 
 	onMount(() => {
 		const margin = { top: 20, right: 60, bottom: 30, left: 60 };
@@ -58,6 +58,7 @@
 			.attr('y', -margin.left + 20)
 			.attr('x', -height / 2)
 			.attr('text-anchor', 'middle')
+			.attr('class', 'text-sm font-medium text-zinc-300')
 			.text('Fan Setting');
 
 		svg
@@ -66,6 +67,7 @@
 			.attr('y', -width - margin.right + 20)
 			.attr('x', height / 2)
 			.attr('text-anchor', 'middle')
+			.attr('class', 'text-sm font-medium text-zinc-300')
 			.text('Heat Setting');
 
 		svg
@@ -73,15 +75,9 @@
 			.attr('x', width / 2)
 			.attr('y', height + margin.bottom)
 			.attr('text-anchor', 'middle')
+			.attr('class', 'text-sm font-medium text-zinc-300')
 			.text('Time (minutes)');
 	});
 </script>
 
-<div bind:this={chartContainer} class="chart"></div>
-
-<style>
-	.chart {
-		width: 100%;
-		height: 100%;
-	}
-</style>
+<div bind:this={chartContainer} class="h-full w-full text-zinc-400"></div>

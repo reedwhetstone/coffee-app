@@ -53,50 +53,50 @@
 </script>
 
 <form on:submit|preventDefault={handleSubmit} class="space-y-4">
-	<h2 class="mb-4 text-xl font-bold text-white">
+	<h2 class="mb-4 text-xl font-bold text-zinc-300">
 		{bean ? 'Edit Bean' : 'Add New Bean'}
 	</h2>
 
 	<div class="grid grid-cols-2 gap-4">
 		<div>
-			<label for="name" class="block text-sm font-medium text-gray-300">Name</label>
+			<label for="name" class="block text-sm font-medium text-zinc-300">Name</label>
 			<input
 				id="name"
 				type="text"
 				bind:value={formData.name}
-				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="rank" class="block text-sm font-medium text-gray-300">Rank</label>
+			<label for="rank" class="block text-sm font-medium text-zinc-300">Rank</label>
 			<input
 				id="rank"
 				type="number"
 				min="0"
 				max="10"
 				bind:value={formData.rank}
-				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="purchase_date" class="block text-sm font-medium text-gray-300"
+			<label for="purchase_date" class="block text-sm font-medium text-zinc-300"
 				>Purchase Date</label
 			>
 			<input
 				id="purchase_date"
 				type="date"
 				bind:value={formData.purchase_date}
-				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="purchased_qty" class="block text-sm font-medium text-gray-300"
+			<label for="purchased_qty" class="block text-sm font-medium text-zinc-300"
 				>Purchased Quantity (lbs)</label
 			>
 			<input
@@ -104,25 +104,25 @@
 				type="number"
 				step="0.01"
 				bind:value={formData.purchased_qty_lbs}
-				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="bean_cost" class="block text-sm font-medium text-gray-300">Bean Cost</label>
+			<label for="bean_cost" class="block text-sm font-medium text-zinc-300">Bean Cost</label>
 			<input
 				id="bean_cost"
 				type="number"
 				step="0.01"
 				bind:value={formData.bean_cost}
-				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="tax_ship_cost" class="block text-sm font-medium text-gray-300"
+			<label for="tax_ship_cost" class="block text-sm font-medium text-zinc-300"
 				>Tax & Shipping Cost</label
 			>
 			<input
@@ -130,37 +130,37 @@
 				type="number"
 				step="0.01"
 				bind:value={formData.tax_ship_cost}
-				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
 			/>
 		</div>
 
 		<div class="col-span-2">
-			<label for="link" class="block text-sm font-medium text-gray-300">Link</label>
+			<label for="link" class="block text-sm font-medium text-zinc-300">Link</label>
 			<input
 				id="link"
 				type="url"
 				bind:value={formData.link}
-				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 			/>
 		</div>
 
 		<div class="col-span-2">
-			<label for="notes" class="block text-sm font-medium text-gray-300">Notes</label>
+			<label for="notes" class="block text-sm font-medium text-zinc-300">Notes</label>
 			<textarea
 				id="notes"
 				bind:value={formData.notes}
 				rows="3"
-				class="mt-1 block w-full rounded bg-gray-700 text-white"
+				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 			></textarea>
 		</div>
 	</div>
 
 	<div class="mt-4 flex justify-end space-x-2">
-		<button type="button" class="rounded bg-gray-600 px-4 py-2 text-white" on:click={onClose}>
+		<button type="button" class="rounded bg-zinc-600 px-4 py-2 text-zinc-300" on:click={onClose}>
 			Cancel
 		</button>
-		<button type="submit" class="rounded bg-green-600 px-4 py-2 text-white">
+		<button type="submit" class="rounded bg-green-600 px-4 py-2 text-zinc-300">
 			{bean ? 'Update' : 'Create'}
 		</button>
 	</div>

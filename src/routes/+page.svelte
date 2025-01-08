@@ -161,16 +161,16 @@
 		<div class="mb-4">
 			<BeanProfile
 				{selectedBean}
-				on:delete={({ detail }) => deleteBean(detail)}
-				on:update={({ detail }) => handleBeanUpdate(detail)}
+				onUpdate={(bean) => handleBeanUpdate(bean)}
+				onDelete={(id) => deleteBean(id)}
 			/>
 		</div>
 	{/if}
 
 	<!-- Form Modal -->
 	{#if isFormVisible}
-		<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-			<div class="w-full max-w-2xl rounded-lg bg-gray-800 p-6">
+		<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75">
+			<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-6">
 				<BeanForm bean={null} onClose={() => (isFormVisible = false)} onSubmit={handleFormSubmit} />
 			</div>
 		</div>
@@ -179,19 +179,19 @@
 	<!-- Existing table code -->
 	<div id="green-coffee-inv-table" class="overflow-x-auto">
 		<!-- Button to toggle visibility -->
-		<button class="m-2 rounded bg-gray-700 p-2 text-white" on:click={toggleTable}>
+		<button class="m-2 rounded bg-zinc-700 p-2 text-zinc-300" on:click={toggleTable}>
 			{isHidden ? 'Show Table' : 'Hide Table'}
 		</button>
 
 		<!-- Table with a reactive class binding -->
 		{#if data.data.length > 0}
 			<div class="overflow-hidden overflow-x-auto rounded-lg">
-				<table class:hidden={isHidden} class="table-auto bg-gray-800">
-					<thead class="bg-gray-700 text-xs uppercase text-gray-400">
+				<table class:hidden={isHidden} class="table-auto bg-zinc-800">
+					<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
 						<tr>
 							{#each Object.keys(data.data[0] || {}) as header}
 								<th
-									class="group cursor-pointer px-6 py-3 hover:bg-gray-600"
+									class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
 									on:click={() => toggleSort(header)}
 								>
 									<div class="flex items-center gap-2">
@@ -215,14 +215,14 @@
 					<tbody>
 						{#each sortedData as bean}
 							<tr
-								class="cursor-pointer border-b border-gray-700 bg-gray-800 transition-colors hover:bg-gray-700 {selectedBean?.id ===
+								class="cursor-pointer border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700 {selectedBean?.id ===
 								bean.id
-									? 'bg-gray-700'
+									? 'bg-zinc-700'
 									: ''}"
 								on:click={() => selectBean(bean)}
 							>
 								{#each Object.values(bean) as value}
-									<td class="whitespace-nowrap text-balance px-6 py-4 text-xs text-white">
+									<td class="whitespace-nowrap text-balance px-6 py-4 text-xs text-zinc-300">
 										{value}
 									</td>
 								{/each}
@@ -232,7 +232,7 @@
 				</table>
 			</div>
 		{:else}
-			<p class="text-white">No data available</p>
+			<p class="text-zinc-300">No data available</p>
 		{/if}
 	</div>
 </div>
