@@ -1,12 +1,12 @@
 <script lang="ts">
+	import { startTime, accumulatedTime, roastData, roastEvents } from './stores';
+
 	export let isRoasting = false;
 	export let isPaused = false;
 
 	let seconds = 0;
 	let milliseconds = 0;
 	let timerInterval: ReturnType<typeof setInterval> | null = null;
-	let startTime: number | null = null;
-	let accumulatedTime = 0;
 
 	let pressTimer: ReturnType<typeof setTimeout> | null = null;
 	let isLongPressing = false;
@@ -16,30 +16,29 @@
 	function toggleTimer() {
 		if (!isRoasting) {
 			// Initial start
-			startTime = performance.now();
+			$startTime = performance.now();
+			$accumulatedTime = 0;
 			timerInterval = setInterval(() => {
-				const elapsed = performance.now() - startTime! + accumulatedTime;
+				const elapsed = performance.now() - $startTime! + $accumulatedTime;
 				seconds = Math.floor(elapsed / 1000);
 				milliseconds = elapsed % 1000;
 			}, 1);
 			isRoasting = true;
+		} else if (!isPaused) {
+			// Pausing
+			clearInterval(timerInterval);
+			timerInterval = null;
+			$accumulatedTime += performance.now() - $startTime!;
+			isPaused = true;
 		} else {
-			if (timerInterval) {
-				// Pausing
-				clearInterval(timerInterval);
-				timerInterval = null;
-				accumulatedTime += performance.now() - startTime!;
-				isPaused = true;
-			} else {
-				// Resuming
-				startTime = performance.now();
-				timerInterval = setInterval(() => {
-					const elapsed = performance.now() - startTime! + accumulatedTime;
-					seconds = Math.floor(elapsed / 1000);
-					milliseconds = elapsed % 1000;
-				}, 1);
-				isPaused = false;
-			}
+			// Resuming
+			$startTime = performance.now();
+			timerInterval = setInterval(() => {
+				const elapsed = performance.now() - $startTime! + $accumulatedTime;
+				seconds = Math.floor(elapsed / 1000);
+				milliseconds = elapsed % 1000;
+			}, 1);
+			isPaused = false;
 		}
 	}
 
@@ -50,8 +49,10 @@
 		seconds = 0;
 		milliseconds = 0;
 		timerInterval = null;
-		startTime = null;
-		accumulatedTime = 0;
+		$startTime = null;
+		$accumulatedTime = 0;
+		$roastData = [];
+		$roastEvents = [];
 		isRoasting = false;
 		isPaused = false;
 	}
