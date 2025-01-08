@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	export let selectedBean: any;
 	export let onUpdate: (bean: any) => void;
 	export let onDelete: (id: number) => void;
@@ -75,8 +76,13 @@
 	<div class="mb-4 flex items-center justify-between">
 		<h2 class="text-xl font-bold text-zinc-300">{selectedBean.name}</h2>
 		<div class="space-x-2">
-			<button class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
-				>New Roast</button
+			<button
+				class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
+				on:click={() => {
+					goto(`/ROAST?beanId=${selectedBean.id}`, {
+						state: { selectedBean }
+					});
+				}}>New Roast</button
 			>
 			<button class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
 				>Roast Sessions</button

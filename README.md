@@ -17,6 +17,12 @@ CoffeeApp is an all in one coffee management system.
 - add a login system
 - import more data for beans - long descriptions, farm details, tasting notes, images, etc.
 
+## Roast Session Page:
+
+- batch_name selection - new batch or a dropdown selection of existing batches
+- roast_profiles.coffee_name = green_coffee_inv.name
+- save roast session
+
 - reference openroast - https://github.com/Roastero/Openroast
 - reference artisan - https://github.com/artisan-roaster-scope/artisan
 
