@@ -3,13 +3,22 @@ import { json } from '@sveltejs/kit';
 import { dbConn } from '$lib/server/db';
 import type { ResultSetHeader } from 'mysql2';
 
-export async function GET() {
+export async function GET({ url }) {
 	if (!dbConn) {
 		throw new Error('Database connection is not established yet.');
 	}
 
 	try {
-		const [rows] = await dbConn.query('SELECT * FROM green_coffee_inv');
+		const id = url.searchParams.get('id');
+		let query = 'SELECT * FROM green_coffee_inv';
+		let values = [];
+
+		if (id) {
+			query += ' WHERE id = ?';
+			values.push(id);
+		}
+
+		const [rows] = await dbConn.query(query, values);
 		return json({ data: rows });
 	} catch (error) {
 		console.error('Error querying database:', error);
@@ -75,10 +84,39 @@ export async function DELETE({ url }) {
 	}
 
 	try {
-		const [result] = await dbConn.execute('DELETE FROM green_coffee_inv WHERE id = ?', [id]);
-		return json({ success: true, data: result });
+		// Start a transaction
+		await dbConn.beginTransaction();
+
+		try {
+			// First, get all roast_ids associated with this coffee
+			const [roastProfiles] = await dbConn.query(
+				'SELECT roast_id FROM roast_profiles WHERE coffee_id = ?',
+				[id]
+			);
+
+			// Delete associated profile logs
+			if (roastProfiles.length > 0) {
+				const roastIds = roastProfiles.map((profile: any) => profile.roast_id);
+				await dbConn.query('DELETE FROM profile_log WHERE roast_id IN (?)', [roastIds]);
+			}
+
+			// Delete roast profiles
+			await dbConn.query('DELETE FROM roast_profiles WHERE coffee_id = ?', [id]);
+
+			// Finally, delete the coffee
+			await dbConn.query('DELETE FROM green_coffee_inv WHERE id = ?', [id]);
+
+			// Commit the transaction
+			await dbConn.commit();
+
+			return json({ success: true });
+		} catch (error) {
+			// If anything fails, roll back the transaction
+			await dbConn.rollback();
+			throw error;
+		}
 	} catch (error) {
-		console.error('Error deleting bean:', error);
+		console.error('Error deleting bean and associated data:', error);
 		return json({ success: false, error: 'Failed to delete bean' }, { status: 500 });
 	}
 }

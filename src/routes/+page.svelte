@@ -26,14 +26,6 @@
 		}[];
 	};
 
-	// Reactive variable to control the visibility of the table
-	let isHidden = true;
-
-	// Function to toggle the visibility
-	const toggleTable = () => {
-		isHidden = !isHidden;
-	};
-
 	// Add these new imports
 	import BeanForm from './BeanForm.svelte';
 	import BeanProfile from './BeanProfile.svelte';
@@ -67,6 +59,8 @@
 	// Function to handle row selection
 	function selectBean(bean: (typeof data.data)[0]) {
 		selectedBean = bean;
+		// Smooth scroll to top
+		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
 	// Add these new variables for sorting
@@ -178,15 +172,10 @@
 
 	<!-- Existing table code -->
 	<div id="green-coffee-inv-table" class="overflow-x-auto">
-		<!-- Button to toggle visibility -->
-		<button class="m-2 rounded bg-zinc-700 p-2 text-zinc-300" on:click={toggleTable}>
-			{isHidden ? 'Show Table' : 'Hide Table'}
-		</button>
-
 		<!-- Table with a reactive class binding -->
 		{#if data.data.length > 0}
 			<div class="overflow-hidden overflow-x-auto rounded-lg">
-				<table class:hidden={isHidden} class="table-auto bg-zinc-800">
+				<table class="table-auto bg-zinc-800">
 					<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
 						<tr>
 							{#each Object.keys(data.data[0] || {}) as header}

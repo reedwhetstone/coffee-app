@@ -1,27 +1,54 @@
 <script lang="ts">
-	import { page } from '$app/state'; // Modern usage
-	import { afterNavigate } from '$app/navigation'; // For handling navigation events
+	import { page } from '$app/stores';
+	import { afterNavigate } from '$app/navigation';
 	import { navbarActions } from '$lib/stores/navbarStore';
+	import { goto } from '$app/navigation';
 
-	let routeId = page.route.id;
-
-	// Remove the unused prop
-	// export let onAddNewBean: () => void;
+	let routeId = $page.route.id;
 
 	// Update `routeId` after each navigation
 	afterNavigate(() => {
-		routeId = page.route.id;
+		routeId = $page.route.id;
 	});
+
+	// Function to handle Add New Bean click
+	function handleAddNewBean() {
+		goto('/').then(() => {
+			$navbarActions.onAddNewBean();
+		});
+	}
 </script>
 
 <nav class="border-sky-800 bg-zinc-300 dark:bg-zinc-800">
 	<div class="mx-auto flex max-w-screen-xl flex-wrap items-center justify-between p-4">
-		<button
-			class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
-			on:click={() => $navbarActions.onAddNewBean()}
-		>
-			Add New Bean
-		</button>
+		<!-- Left side buttons group -->
+		<div class="flex space-x-2">
+			<button
+				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+				on:click={handleAddNewBean}
+			>
+				Add New Bean
+			</button>
+
+			<button
+				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+				on:click={() => {
+					if (routeId === '/ROAST') {
+						// If already on ROAST page, just show the form
+						$navbarActions.onShowRoastForm();
+					} else {
+						// Otherwise, navigate with state
+						goto('/ROAST', {
+							state: {
+								showRoastForm: true
+							}
+						});
+					}
+				}}
+			>
+				New Roast
+			</button>
+		</div>
 
 		<button
 			data-collapse-toggle="navbar-default"

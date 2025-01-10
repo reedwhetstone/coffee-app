@@ -32,44 +32,51 @@ export async function POST({ request }) {
 	}
 
 	try {
-		const log = await request.json();
+		const logs = await request.json();
+		const results = [];
 
-		const query = `
-            INSERT INTO profile_log (
-                roast_id,
-                fan_setting,
-                heat_setting,
-                start,
-                maillard,
-                fc_start,
-                fc_rolling,
-                fc_end,
-                sc_start,
-                end,
-                time
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+		// Ensure logs is an array
+		const logsArray = Array.isArray(logs) ? logs : [logs];
 
-		const values = [
-			log.roast_id,
-			log.fan_setting,
-			log.heat_setting,
-			log.start,
-			log.maillard,
-			log.fc_start,
-			log.fc_rolling,
-			log.fc_end,
-			log.sc_start,
-			log.end,
-			log.time
-		];
+		for (const log of logsArray) {
+			const query = `
+				INSERT INTO profile_log (
+					roast_id,
+					fan_setting,
+					heat_setting,
+					start,
+					maillard,
+					fc_start,
+					fc_rolling,
+					fc_end,
+					sc_start,
+					end,
+					time
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`;
 
-		const [result] = (await dbConn.execute(query, values)) as [ResultSetHeader, any];
+			const values = [
+				log.roast_id,
+				log.fan_setting,
+				log.heat_setting,
+				log.start,
+				log.maillard,
+				log.fc_start,
+				log.fc_rolling,
+				log.fc_end,
+				log.sc_start,
+				log.end,
+				log.time
+			];
 
-		const [newLog] = await dbConn.query('SELECT * FROM profile_log WHERE log_id = ?', [
-			result.insertId
-		]);
-		return json(newLog[0]);
+			const [result] = (await dbConn.execute(query, values)) as [ResultSetHeader, any];
+			const [newLog] = (await dbConn.query('SELECT * FROM profile_log WHERE log_id = ?', [
+				result.insertId
+			])) as [any[], any];
+			results.push(newLog[0]);
+		}
+
+		return json(results);
 	} catch (error) {
 		console.error('Error creating profile log:', error);
 		return json({ success: false, error: 'Failed to create profile log' }, { status: 500 });
@@ -81,22 +88,25 @@ export async function DELETE({ url }) {
 		throw new Error('Database connection is not established yet.');
 	}
 
-	const id = url.searchParams.get('id');
-
-	if (!id) {
-		return json({ success: false, error: 'No ID provided' }, { status: 400 });
+	const roastId = url.searchParams.get('roast_id');
+	if (!roastId) {
+		return json({ success: false, error: 'No roast_id provided' }, { status: 400 });
 	}
 
 	try {
-		const [result] = await dbConn.execute('DELETE FROM profile_log WHERE log_id = ?', [id]);
-		return json({ success: true, data: result });
+		await dbConn.query('DELETE FROM profile_log WHERE roast_id = ?', [roastId]);
+		return json({ success: true });
 	} catch (error) {
-		console.error('Error deleting profile log:', error);
-		return json({ success: false, error: 'Failed to delete profile log' }, { status: 500 });
+		console.error('Error deleting profile logs:', error);
+		return json({ success: false, error: 'Failed to delete profile logs' }, { status: 500 });
 	}
 }
 
 export async function PUT({ url, request }) {
+	if (!dbConn) {
+		throw new Error('Database connection is not established yet.');
+	}
+
 	try {
 		const id = url.searchParams.get('id');
 		const updates = await request.json();
@@ -104,7 +114,9 @@ export async function PUT({ url, request }) {
 
 		await dbConn.query('UPDATE profile_log SET ? WHERE log_id = ?', [updateData, id]);
 
-		const [updatedLog] = await dbConn.query('SELECT * FROM profile_log WHERE log_id = ?', [id]);
+		const [updatedLog] = (await dbConn.query('SELECT * FROM profile_log WHERE log_id = ?', [
+			id
+		])) as [any[], any];
 
 		return new Response(JSON.stringify(updatedLog[0]), {
 			status: 200,

@@ -79,14 +79,16 @@
 			<button
 				class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
 				on:click={() => {
-					goto(`/ROAST?beanId=${selectedBean.id}`, {
-						state: { selectedBean }
+					goto(`/ROAST`, {
+						state: {
+							selectedBean,
+							showRoastForm: true
+						}
 					});
-				}}>New Roast</button
+				}}
 			>
-			<button class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
-				>Roast Sessions</button
-			>
+				New Roast
+			</button>
 		</div>
 	</div>
 

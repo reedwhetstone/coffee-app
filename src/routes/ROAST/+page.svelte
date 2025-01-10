@@ -1,17 +1,192 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	// Component imports
+	import { onMount } from 'svelte';
 	import RoastChart from './RoastChart.svelte';
 	import RoastTimer from './RoastTimer.svelte';
-	import { roastData, roastEvents, startTime, accumulatedTime } from './stores';
+	import RoastProfileForm from './RoastProfileForm.svelte';
+	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
+	import { page } from '$app/stores';
+	import { roastData, roastEvents, startTime, accumulatedTime, profileLogs } from './stores';
+	import { navbarActions } from '$lib/stores/navbarStore';
+	import { get } from 'svelte/store';
 
-	let selectedBean = ($page.state as any)?.selectedBean || {};
+	type ProfileLogEntry = {
+		fan_setting: number;
+		heat_setting: number;
+		start: boolean;
+		maillard: boolean;
+		fc_start: boolean;
+		fc_rolling: boolean;
+		fc_end: boolean;
+		sc_start: boolean;
+		end: boolean;
+		time: number;
+	};
+
+	// Roast profile state management
+	let currentRoastProfile: any = null;
+
+	// Main state variables
+	let selectedBean = currentRoastProfile
+		? {
+				id: currentRoastProfile.coffee_id,
+				name: currentRoastProfile.coffee_name
+			}
+		: ($page.state as any)?.selectedBean || {};
 	let isRoasting = false;
 	let isPaused = false;
 	let fanValue = 10;
 	let heatValue = 0;
 	let selectedEvent: string | null = null;
+	let isFormVisible = ($page.state as any)?.showRoastForm || false;
 
-	// Update handlers for heat and fan changes
+	// Roast profile state management
+	let allRoastProfiles: any[] = [];
+	let sortField: string | null = 'roast_date';
+	let sortDirection: 'asc' | 'desc' | null = 'desc';
+
+	// Profile grouping and sorting state
+	let groupedProfiles: Record<string, any[]> = {};
+	let sortedBatchNames: string[] = [];
+	let sortedGroupedProfiles: Record<string, any[]> = {};
+	let expandedBatches: Set<string> = new Set();
+	let currentProfileIndex = 0;
+
+	// Fetches all roast profiles from the API and sets the current profile
+	async function loadRoastProfiles() {
+		try {
+			const response = await fetch('/api/roast-profiles');
+			if (response.ok) {
+				const data = await response.json();
+				allRoastProfiles = data.data;
+				console.log('Fetched Roast Profiles:', allRoastProfiles); // Debugging line
+
+				// Only set currentRoastProfile if we have a selectedBean
+				if (selectedBean?.id) {
+					currentRoastProfile = allRoastProfiles
+						.filter((profile: any) => profile.coffee_id === selectedBean.id)
+						.sort(
+							(a: any, b: any) =>
+								new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime()
+						)[0];
+				}
+			}
+		} catch (error) {
+			console.error('Error loading roast profiles:', error);
+		}
+	}
+
+	onMount(() => {
+		loadRoastProfiles();
+
+		navbarActions.set({
+			...get(navbarActions),
+			onShowRoastForm: () => (isFormVisible = true)
+		});
+
+		return () => {
+			navbarActions.set({
+				...get(navbarActions),
+				onShowRoastForm: () => {}
+			});
+		};
+	});
+
+	// Reactive statement to handle profile grouping and sorting
+	$: {
+		// Group profiles by batch_name
+		groupedProfiles = allRoastProfiles.reduce((groups: Record<string, any[]>, profile) => {
+			const batchName = profile.batch_name || 'No Batch';
+			if (!groups[batchName]) {
+				groups[batchName] = [];
+			}
+			groups[batchName].push(profile);
+			return groups;
+		}, {});
+
+		// Sort batch names by most recent roast date
+		sortedBatchNames = Object.keys(groupedProfiles).sort((a, b) => {
+			const latestA = Math.max(...groupedProfiles[a].map((p) => new Date(p.roast_date).getTime()));
+			const latestB = Math.max(...groupedProfiles[b].map((p) => new Date(p.roast_date).getTime()));
+			return sortDirection === 'asc' ? latestA - latestB : latestB - latestA;
+		});
+
+		// Sort profiles within each batch group
+		sortedGroupedProfiles = {};
+		sortedBatchNames.forEach((batch) => {
+			sortedGroupedProfiles[batch] = [...groupedProfiles[batch]].sort((a, b) => {
+				if (!sortField || sortField === 'batch_name') return 0;
+
+				const aVal = a[sortField];
+				const bVal = b[sortField];
+
+				if (sortField === 'roast_date' || sortField === 'last_updated') {
+					return sortDirection === 'asc'
+						? new Date(aVal).getTime() - new Date(bVal).getTime()
+						: new Date(bVal).getTime() - new Date(aVal).getTime();
+				}
+
+				if (typeof aVal === 'string' && typeof bVal === 'string') {
+					return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+				}
+
+				return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
+			});
+		});
+	}
+
+	// Form submission handler for new roast profiles
+	async function handleFormSubmit(profileData: any) {
+		try {
+			// Create a roast profile for each bean in the batch
+			const profiles = await Promise.all(
+				profileData.batch_beans.map(async (bean: any) => {
+					const response = await fetch('/api/roast-profiles', {
+						method: 'POST', // Always use POST for new profiles
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({
+							batch_name: profileData.batch_name,
+							coffee_id: bean.coffee_id,
+							coffee_name: bean.coffee_name,
+							roast_date: profileData.roast_date,
+							last_updated: new Date().toISOString(),
+							oz_in: bean.oz_in,
+							oz_out: bean.oz_out,
+							roast_notes: profileData.roast_notes,
+							roast_targets: profileData.roast_targets
+						})
+					});
+
+					if (!response.ok) {
+						const error = await response.json();
+						throw new Error(error.error || 'Failed to create roast profile');
+					}
+
+					return response.json();
+				})
+			);
+
+			if (profiles && profiles.length > 0) {
+				currentRoastProfile = profiles[0];
+				selectedBean = {
+					id: profiles[0].coffee_id,
+					name: profiles[0].coffee_name
+				};
+
+				isFormVisible = false;
+				await loadRoastProfiles();
+			} else {
+				throw new Error('No profiles were created');
+			}
+		} catch (error) {
+			console.error('Error creating roast profiles:', error);
+			alert(error.message || 'Failed to create roast profiles');
+		}
+	}
+
+	// Heat control handler - updates heat value and logs to roast data
 	function updateHeat(value: number) {
 		heatValue = value;
 		if ($startTime === null) return;
@@ -30,6 +205,7 @@
 		];
 	}
 
+	// Fan control handler - updates fan value and logs to roast data
 	function updateFan(value: number) {
 		fanValue = value;
 		if ($startTime === null) return;
@@ -48,6 +224,7 @@
 		];
 	}
 
+	// Event logger for roast milestones (First Crack, etc.)
 	function logEvent(event: string) {
 		if ($startTime === null) return;
 		selectedEvent = event;
@@ -55,6 +232,7 @@
 			? $accumulatedTime
 			: performance.now() - $startTime + $accumulatedTime;
 
+		// Add to roastEvents for chart display
 		$roastEvents = [
 			...$roastEvents,
 			{
@@ -62,20 +240,303 @@
 				name: event
 			}
 		];
+
+		// Create profile log entry
+		const logEntry: ProfileLogEntry = {
+			fan_setting: fanValue,
+			heat_setting: heatValue,
+			start: false,
+			maillard: event === 'Maillard',
+			fc_start: event === 'FC Start',
+			fc_rolling: event === 'FC Rolling',
+			fc_end: event === 'FC End',
+			sc_start: event === 'SC Start',
+			end: event === 'Drop',
+			time: currentTime
+		};
+
+		$profileLogs = [...$profileLogs, logEntry];
+	}
+
+	// Profile management handlers
+	async function handleProfileUpdate(updatedProfile: any) {
+		try {
+			await loadRoastProfiles(); // Refresh the profiles list first
+			const profile = allRoastProfiles.find((p) => p.roast_id === updatedProfile.roast_id);
+			if (profile) {
+				await selectProfile(profile);
+			} else {
+				throw new Error('Updated profile not found');
+			}
+		} catch (error) {
+			console.error('Error updating profile:', error);
+			alert('Failed to update roast profile');
+		}
+	}
+
+	async function handleProfileDelete(id: number) {
+		currentRoastProfile = null;
+		await loadRoastProfiles();
+	}
+
+	// Table sorting handler
+	function toggleSort(field: string) {
+		if (sortField === field) {
+			if (sortDirection === 'asc') sortDirection = 'desc';
+			else if (sortDirection === 'desc') {
+				sortField = null;
+				sortDirection = null;
+			}
+		} else {
+			sortField = field;
+			sortDirection = 'asc';
+		}
+	}
+
+	// Profile selection handler with smooth scroll
+	async function selectProfile(profile: any) {
+		try {
+			// Make a copy of the profile to avoid reference issues
+			currentRoastProfile = { ...profile };
+			selectedBean = {
+				id: profile.coffee_id,
+				name: profile.coffee_name
+			};
+
+			// Find the index of the selected profile in its batch
+			const batchProfiles = groupedProfiles[profile.batch_name] || [];
+			currentProfileIndex = batchProfiles.findIndex((p) => p.roast_id === profile.roast_id);
+
+			// Reset roasting state
+			isRoasting = false;
+			isPaused = false;
+
+			// Fetch and load profile log data
+			const response = await fetch(`/api/profile-log?roast_id=${profile.roast_id}`);
+			if (!response.ok) {
+				throw new Error('Failed to fetch profile log data');
+			}
+
+			const data = await response.json();
+
+			// Add flag to indicate if profile has log data
+			currentRoastProfile.has_log_data = data.data.length > 0;
+
+			if (currentRoastProfile.has_log_data) {
+				// Convert profile log entries to roast data points
+				$roastData = data.data.map((log: any) => ({
+					time: log.time,
+					heat: log.heat_setting,
+					fan: log.fan_setting
+				}));
+
+				// Convert profile log entries to roast events
+				$roastEvents = data.data
+					.filter(
+						(log: any) =>
+							log.start ||
+							log.maillard ||
+							log.fc_start ||
+							log.fc_rolling ||
+							log.fc_end ||
+							log.sc_start ||
+							log.end
+					)
+					.map((log: any) => ({
+						time: log.time,
+						name: log.start
+							? 'Start'
+							: log.maillard
+								? 'Maillard'
+								: log.fc_start
+									? 'FC Start'
+									: log.fc_rolling
+										? 'FC Rolling'
+										: log.fc_end
+											? 'FC End'
+											: log.sc_start
+												? 'SC Start'
+												: 'Drop'
+					}));
+
+				// Set initial fan and heat values from the first log entry if available
+				if (data.data.length > 0) {
+					fanValue = data.data[0].fan_setting;
+					heatValue = data.data[0].heat_setting;
+				}
+			} else {
+				// Clear all data for new roast
+				$roastData = [];
+				$roastEvents = [];
+				$profileLogs = [];
+				$startTime = null;
+				$accumulatedTime = 0;
+
+				// Reset fan and heat to default values
+				fanValue = 10;
+				heatValue = 0;
+			}
+
+			// Smooth scroll to top
+			window.scrollTo({ top: 0, behavior: 'smooth' });
+		} catch (error) {
+			console.error('Error selecting profile:', error);
+			alert('Failed to load profile data');
+		}
+	}
+
+	// Batch expansion toggle for table groups
+	function toggleBatch(batchName: string) {
+		if (expandedBatches.has(batchName)) {
+			expandedBatches.delete(batchName);
+		} else {
+			expandedBatches.add(batchName);
+		}
+		expandedBatches = expandedBatches; // trigger reactivity
+	}
+
+	// Add saveRoastProfile function
+	async function saveRoastProfile() {
+		try {
+			if (!selectedBean?.id) {
+				throw new Error(
+					'No coffee selected. Please select a coffee before saving the roast profile.'
+				);
+			}
+
+			let profileResponse;
+			let profile;
+
+			if (currentRoastProfile?.roast_id) {
+				// Update existing profile
+				profileResponse = await fetch(`/api/roast-profiles?id=${currentRoastProfile.roast_id}`, {
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						...currentRoastProfile,
+						last_updated: new Date().toISOString()
+					})
+				});
+
+				if (!profileResponse.ok) {
+					const errorData = await profileResponse.json();
+					throw new Error(errorData.error || 'Failed to update roast profile');
+				}
+				profile = await profileResponse.json();
+			} else {
+				// Create new profile
+				profileResponse = await fetch('/api/roast-profiles', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						batch_name: `${selectedBean.name} - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+						coffee_id: selectedBean.id,
+						coffee_name: selectedBean.name,
+						roast_date: new Date().toISOString(),
+						last_updated: new Date().toISOString(),
+						oz_in: null,
+						oz_out: null,
+						roast_notes: null,
+						roast_targets: null
+					})
+				});
+
+				if (!profileResponse.ok) {
+					const errorData = await profileResponse.json();
+					throw new Error(errorData.error || 'Failed to save roast profile');
+				}
+				profile = await profileResponse.json();
+			}
+
+			// Delete existing log entries if updating
+			if (currentRoastProfile?.roast_id) {
+				await fetch(`/api/profile-log?roast_id=${currentRoastProfile.roast_id}`, {
+					method: 'DELETE'
+				});
+			}
+
+			// Save new log entries
+			const logEntries = $profileLogs.map((entry) => ({
+				...entry,
+				roast_id: profile.roast_id
+			}));
+
+			const logResponse = await fetch('/api/profile-log', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(logEntries)
+			});
+
+			if (!logResponse.ok) {
+				const errorData = await logResponse.json();
+				throw new Error(errorData.error || 'Failed to save profile logs');
+			}
+
+			// Reset stores
+			$roastData = [];
+			$roastEvents = [];
+			$profileLogs = [];
+			$startTime = null;
+			$accumulatedTime = 0;
+
+			await loadRoastProfiles();
+			alert('Roast profile saved successfully!');
+		} catch (error) {
+			console.error('Error saving roast profile:', error);
+			alert(error.message || 'Failed to save roast profile');
+		}
+	}
+
+	function showRoastForm() {
+		isFormVisible = true;
+	}
+
+	function hideRoastForm() {
+		isFormVisible = false;
 	}
 </script>
 
-<div class="m-8 rounded-lg bg-zinc-800 p-8">
-	<div class="flex justify-between">
+<!-- Modal for adding new roast profiles -->
+{#if isFormVisible}
+	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75">
+		<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-6">
+			<RoastProfileForm {selectedBean} onClose={hideRoastForm} onSubmit={handleFormSubmit} />
+		</div>
+	</div>
+{/if}
+
+<!-- Current roast profile display -->
+{#if currentRoastProfile}
+	<RoastProfileDisplay
+		profile={currentRoastProfile}
+		profiles={currentRoastProfile ? groupedProfiles[currentRoastProfile.batch_name] || [] : []}
+		currentIndex={currentProfileIndex}
+		onUpdate={handleProfileUpdate}
+		onDelete={handleProfileDelete}
+	/>
+{/if}
+
+<!-- Main roasting interface -->
+<div class="z-0 m-8 rounded-lg bg-zinc-800 p-8">
+	<!-- Roast session header -->
+	<div class="mb-3 flex justify-between">
 		<h1 class="text-2xl font-bold text-zinc-500">Roast Session: {selectedBean.name}</h1>
 	</div>
-	<!-- turning point and first crack -->
+
+	<!-- Roast milestone timestamps -->
 	<div class="flex justify-end space-x-4">
-		<div class=" text-2xl font-bold text-zinc-500">TP:00:00</div>
-		<div class=" text-2xl font-bold text-zinc-500">FC:00:00</div>
+		<div class="text-2xl font-bold text-zinc-500">TP: --:--</div>
+		<div class="text-2xl font-bold text-zinc-500">FC: --:--</div>
 	</div>
-	<!-- fanButtons, chart, heatButtons  -->
-	<div class=" flex h-[500px] w-full justify-center">
+
+	<!-- Main roasting controls: fan, chart, and heat -->
+	<div class="flex h-[500px] w-full justify-center">
 		<!-- Fan buttons -->
 		<div class="my-5 flex flex-col justify-between">
 			{#each Array(11) as _, i}
@@ -98,7 +559,7 @@
 
 		<!-- Chart -->
 		<div class="flex-1">
-			<RoastChart {isPaused} {fanValue} {heatValue} />
+			<RoastChart {isPaused} {currentRoastProfile} />
 		</div>
 
 		<!-- Heat buttons -->
@@ -122,10 +583,11 @@
 		</div>
 	</div>
 
-	<div class="flex flex-wrap items-center justify-center gap-4">
-		<RoastTimer bind:isRoasting bind:isPaused />
+	<!-- Roast event controls and timer -->
+	<div class="z-0 flex flex-wrap items-center justify-center gap-4">
+		<RoastTimer bind:isRoasting bind:isPaused {fanValue} {heatValue} {currentRoastProfile} />
 
-		{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start'] as event}
+		{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event}
 			<label
 				class="flex items-center rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
 				class:bg-green-900={selectedEvent === event}
@@ -146,9 +608,71 @@
 			</label>
 		{/each}
 	</div>
+
+	<!-- Save roast button -->
 	<div class="flex justify-end">
-		<button class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600">
+		<button
+			class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
+			on:click={saveRoastProfile}
+			disabled={!isRoasting && $profileLogs.length === 0}
+		>
 			Save Roast
 		</button>
 	</div>
 </div>
+
+<!-- Roast history table -->
+<div class="roast-history-table m-8 overflow-hidden overflow-x-auto rounded-lg">
+	<table class="w-full table-auto bg-zinc-800">
+		<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
+			<tr>
+				<th class="px-6 py-3">Batch</th>
+				<th class="px-6 py-3">Roast Date</th>
+				<th class="px-6 py-3">Details</th>
+			</tr>
+		</thead>
+		<tbody>
+			{#each sortedBatchNames as batchName}
+				<!-- Batch Group Header -->
+				<tr
+					class="cursor-pointer bg-zinc-700 hover:bg-zinc-600"
+					on:click={() => toggleBatch(batchName)}
+				>
+					<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
+						{expandedBatches.has(batchName) ? '▼' : '▶'}
+						{batchName}
+					</td>
+					<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
+						{new Date(sortedGroupedProfiles[batchName][0].roast_date).toLocaleDateString()}
+					</td>
+					<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
+						{sortedGroupedProfiles[batchName].length} roasts
+					</td>
+				</tr>
+				<!-- Profiles Under the Current Batch -->
+				{#if expandedBatches.has(batchName)}
+					{#each sortedGroupedProfiles[batchName] as profile}
+						<tr
+							class="cursor-pointer border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700 {currentRoastProfile?.id ===
+							profile.id
+								? 'bg-zinc-700'
+								: ''}"
+							on:click={() => selectProfile(profile)}
+						>
+							<td class="px-6 py-4 pl-12 text-xs text-zinc-300">{profile.coffee_name}</td>
+							<td class="px-6 py-4 text-xs text-zinc-300">
+								{new Date(profile.roast_date).toLocaleTimeString()}
+							</td>
+							<td class="px-6 py-4 text-xs text-zinc-300">{profile.notes}</td>
+						</tr>
+					{/each}
+				{/if}
+			{/each}
+		</tbody>
+	</table>
+</div>
+
+<!-- Move modal to the end of the file and keep it simple -->
+{#if isFormVisible}
+	<RoastProfileForm {selectedBean} onClose={hideRoastForm} onSubmit={handleFormSubmit} />
+{/if}

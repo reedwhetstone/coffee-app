@@ -1,8 +1,11 @@
 <script lang="ts">
-	import { startTime, accumulatedTime, roastData, roastEvents } from './stores';
+	import { startTime, accumulatedTime, roastData, roastEvents, profileLogs } from './stores';
 
 	export let isRoasting = false;
 	export let isPaused = false;
+	export let fanValue: number;
+	export let heatValue: number;
+	export let currentRoastProfile: any | null = null;
 
 	let seconds = 0;
 	let milliseconds = 0;
@@ -12,12 +15,32 @@
 	let isLongPressing = false;
 	const LONG_PRESS_DURATION = 1000;
 
+	// Add reactive statement to handle profile changes
+	$: if (currentRoastProfile) {
+		resetTimer();
+	}
+
 	// Timer function
 	function toggleTimer() {
 		if (!isRoasting) {
 			// Initial start
 			$startTime = performance.now();
 			$accumulatedTime = 0;
+			// Log initial start event
+			$profileLogs = [
+				{
+					fan_setting: fanValue,
+					heat_setting: heatValue,
+					start: true,
+					maillard: false,
+					fc_start: false,
+					fc_rolling: false,
+					fc_end: false,
+					sc_start: false,
+					end: false,
+					time: 0
+				}
+			];
 			timerInterval = setInterval(() => {
 				const elapsed = performance.now() - $startTime! + $accumulatedTime;
 				seconds = Math.floor(elapsed / 1000);
@@ -53,6 +76,7 @@
 		$accumulatedTime = 0;
 		$roastData = [];
 		$roastEvents = [];
+		$profileLogs = [];
 		isRoasting = false;
 		isPaused = false;
 	}
