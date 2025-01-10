@@ -95,9 +95,19 @@
 
 <!-- Modal with improved overlay -->
 <div class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
-	<div class="fixed inset-0 bg-black/50" on:click={onClose}></div>
+	<button
+		type="button"
+		class="fixed inset-0 bg-black/50"
+		on:click={onClose}
+		on:keydown={(e) => e.key === 'Escape' && onClose()}
+		aria-label="Close modal"
+	></button>
 	<div class="flex min-h-screen items-center justify-center p-4">
-		<div class="relative w-full max-w-2xl rounded-lg bg-zinc-800 p-4" on:click|stopPropagation>
+		<div
+			class="relative w-full max-w-2xl rounded-lg bg-zinc-800 p-4"
+			role="dialog"
+			aria-modal="true"
+		>
 			<!-- Fixed Header -->
 			<div class="border-b border-zinc-700 p-4">
 				<label for="batch_name" class="block text-lg font-medium text-zinc-300">Batch Name</label>

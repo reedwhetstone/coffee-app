@@ -159,7 +159,12 @@
 	}
 
 	// Update chart when roastData changes
-	$: if (svg && xScale && yScaleFan && yScaleHeat) {
+	$: if (
+		svg !== undefined &&
+		xScale !== undefined &&
+		yScaleFan !== undefined &&
+		yScaleHeat !== undefined
+	) {
 		updateChart($roastData);
 	}
 

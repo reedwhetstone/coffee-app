@@ -49,7 +49,9 @@
 			isRoasting = true;
 		} else if (!isPaused) {
 			// Pausing
-			clearInterval(timerInterval);
+			if (timerInterval) {
+				clearInterval(timerInterval);
+			}
 			timerInterval = null;
 			$accumulatedTime += performance.now() - $startTime!;
 			isPaused = true;
