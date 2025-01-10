@@ -28,7 +28,7 @@
 
 	// Add these new imports
 	import BeanForm from './BeanForm.svelte';
-	import BeanProfile from '../BeanProfile.svelte';
+	import BeanProfile from './BeanProfile.svelte';
 
 	let isFormVisible = false;
 	let selectedBean: any = null;
