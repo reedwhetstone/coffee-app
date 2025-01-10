@@ -260,7 +260,8 @@
 			fc_rolling: event === 'FC Rolling',
 			fc_end: event === 'FC End',
 			sc_start: event === 'SC Start',
-			end: event === 'Drop',
+			drop: event === 'Drop',
+			end: false,
 			time: currentTime
 		};
 
@@ -334,7 +335,7 @@
 			if (currentRoastProfile.has_log_data) {
 				// Convert profile log entries to roast data points
 				$roastData = data.data.map((log: any) => ({
-					time: log.time,
+					time: mysqlTimeToMs(log.time),
 					heat: log.heat_setting,
 					fan: log.fan_setting
 				}));
@@ -352,7 +353,7 @@
 							log.end
 					)
 					.map((log: any) => ({
-						time: log.time,
+						time: mysqlTimeToMs(log.time),
 						name: log.start
 							? 'Start'
 							: log.maillard

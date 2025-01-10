@@ -9,6 +9,8 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
+- chart is being clustered at rerender
+- drop is still being logged in the last event with end.
 - PURCHASED in navbar in blue when selected is broken - probably due to changing the folder structure of the (home) page
 - TP, FC, DROP times in roast profile
 - color shading phases on the chart
