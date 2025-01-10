@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { dbConn } from '$lib/server/db';
-import type { ResultSetHeader } from 'mysql2';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 export async function GET() {
 	if (!dbConn) {
@@ -82,9 +82,9 @@ export async function POST({ request }) {
 		];
 
 		const [result] = (await dbConn.execute(query, values)) as [ResultSetHeader, any];
-		const [newRoast] = await dbConn.query('SELECT * FROM roast_profiles WHERE roast_id = ?', [
+		const [newRoast] = (await dbConn.query('SELECT * FROM roast_profiles WHERE roast_id = ?', [
 			result.insertId
-		]);
+		])) as [RowDataPacket[], any];
 
 		return json(newRoast[0]);
 	} catch (error) {

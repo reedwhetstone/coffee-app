@@ -1,7 +1,7 @@
 // src/routes/api/data/+server.ts
 import { json } from '@sveltejs/kit';
 import { dbConn } from '$lib/server/db';
-import type { ResultSetHeader } from 'mysql2';
+import type { ResultSetHeader, RowDataPacket, QueryResult } from 'mysql2';
 
 export async function GET({ url }) {
 	if (!dbConn) {
@@ -62,9 +62,9 @@ export async function POST({ request }) {
 
 		const [result] = (await dbConn.execute(query, values)) as [ResultSetHeader, any];
 
-		const [newBean] = await dbConn.query('SELECT * FROM green_coffee_inv WHERE id = ?', [
+		const [newBean] = (await dbConn.query('SELECT * FROM green_coffee_inv WHERE id = ?', [
 			result.insertId
-		]);
+		])) as [RowDataPacket[], any];
 		return json(newBean[0]);
 	} catch (error) {
 		console.error('Error creating bean:', error);
@@ -89,14 +89,14 @@ export async function DELETE({ url }) {
 
 		try {
 			// First, get all roast_ids associated with this coffee
-			const [roastProfiles] = await dbConn.query(
+			const [roastProfiles] = (await dbConn.query(
 				'SELECT roast_id FROM roast_profiles WHERE coffee_id = ?',
 				[id]
-			);
+			)) as [RowDataPacket[], any];
 
 			// Delete associated profile logs
-			if (roastProfiles.length > 0) {
-				const roastIds = roastProfiles.map((profile: any) => profile.roast_id);
+			if ((roastProfiles as RowDataPacket[]).length > 0) {
+				const roastIds = (roastProfiles as RowDataPacket[]).map((profile: any) => profile.roast_id);
 				await dbConn.query('DELETE FROM profile_log WHERE roast_id IN (?)', [roastIds]);
 			}
 
@@ -122,6 +122,13 @@ export async function DELETE({ url }) {
 }
 
 export async function PUT({ url, request }) {
+	if (!dbConn) {
+		return new Response(JSON.stringify({ error: 'Database connection is not established' }), {
+			status: 500,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	}
+
 	try {
 		const id = url.searchParams.get('id');
 		const updates = await request.json();
@@ -130,7 +137,9 @@ export async function PUT({ url, request }) {
 		await dbConn.query('UPDATE green_coffee_inv SET ? WHERE id = ?', [updateData, id]);
 
 		// Fetch and return the updated bean
-		const [updatedBean] = await dbConn.query('SELECT * FROM green_coffee_inv WHERE id = ?', [id]);
+		const [updatedBean] = (await dbConn.query('SELECT * FROM green_coffee_inv WHERE id = ?', [
+			id
+		])) as [RowDataPacket[], any];
 
 		return new Response(JSON.stringify(updatedBean[0]), {
 			status: 200,

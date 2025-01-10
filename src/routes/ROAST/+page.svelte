@@ -180,9 +180,9 @@
 			} else {
 				throw new Error('No profiles were created');
 			}
-		} catch (error) {
+		} catch (error: unknown) {
 			console.error('Error creating roast profiles:', error);
-			alert(error.message || 'Failed to create roast profiles');
+			alert(error instanceof Error ? error.message : 'Failed to create roast profiles');
 		}
 	}
 
@@ -487,9 +487,9 @@
 
 			await loadRoastProfiles();
 			alert('Roast profile saved successfully!');
-		} catch (error) {
+		} catch (error: unknown) {
 			console.error('Error saving roast profile:', error);
-			alert(error.message || 'Failed to save roast profile');
+			alert(error instanceof Error ? error.message : 'Failed to save roast profile');
 		}
 	}
 

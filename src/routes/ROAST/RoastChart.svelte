@@ -19,7 +19,6 @@
 	let height: number;
 	let width: number;
 
-	export let isPaused = false;
 	export let currentRoastProfile: any | null = null;
 
 	// Remove the unused exports and track current values from roastData
@@ -63,8 +62,8 @@
 		const timeInMinutes = maxTime / (1000 * 60);
 		xScale.domain([0, Math.max(10, Math.ceil(timeInMinutes))]);
 
-		// Update axes
-		svg.select('.x-axis').call(d3.axisBottom(xScale));
+		// Update axes with type assertion
+		svg.select('.x-axis').call(d3.axisBottom(xScale) as any);
 
 		// Add heat line
 		svg

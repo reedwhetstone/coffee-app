@@ -2,8 +2,8 @@ import { writable } from 'svelte/store';
 
 export interface RoastPoint {
 	time: number;
-	heat?: number;
-	fan?: number;
+	heat: number;
+	fan: number;
 }
 
 export interface RoastEvent {
