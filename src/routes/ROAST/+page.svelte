@@ -524,21 +524,23 @@
 {/if}
 
 <!-- Main roasting interface -->
-<div class="z-0 m-8 rounded-lg bg-zinc-800 p-8">
-	<RoastChartInterface
-		{isPaused}
-		{currentRoastProfile}
-		{fanValue}
-		{heatValue}
-		{isRoasting}
-		{selectedEvent}
-		{updateFan}
-		{updateHeat}
-		{saveRoastProfile}
-		{logEvent}
-		{selectedBean}
-	/>
-</div>
+{#if currentRoastProfile}
+	<div class="z-0 m-8 rounded-lg bg-zinc-800 p-8">
+		<RoastChartInterface
+			{isPaused}
+			{currentRoastProfile}
+			{fanValue}
+			{heatValue}
+			{isRoasting}
+			{selectedEvent}
+			{updateFan}
+			{updateHeat}
+			{saveRoastProfile}
+			{logEvent}
+			{selectedBean}
+		/>
+	</div>
+{/if}
 
 <!-- Replace the old table with this component -->
 <RoastHistoryTable

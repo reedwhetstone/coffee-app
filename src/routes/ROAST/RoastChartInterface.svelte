@@ -26,6 +26,7 @@
 	let seconds = 0;
 	let milliseconds = 0;
 	let timerInterval: ReturnType<typeof setInterval> | null = null;
+	let dataLoggingInterval: ReturnType<typeof setInterval> | null = null;
 
 	let pressTimer: ReturnType<typeof setTimeout> | null = null;
 	let isLongPressing = false;
@@ -68,18 +69,34 @@
 					time: 0
 				}
 			];
+
+			// Start the timer
 			timerInterval = setInterval(() => {
 				const elapsed = performance.now() - $startTime! + $accumulatedTime;
 				seconds = Math.floor(elapsed / 1000);
 				milliseconds = elapsed % 1000;
 			}, 1);
+
+			// Start continuous data logging
+			dataLoggingInterval = setInterval(() => {
+				const currentTime = performance.now() - $startTime! + $accumulatedTime;
+				$roastData = [
+					...$roastData,
+					{
+						time: currentTime,
+						heat: heatValue,
+						fan: fanValue
+					}
+				];
+			}, 1000); // Log data every second
+
 			isRoasting = true;
 		} else if (!isPaused) {
 			// Pausing
-			if (timerInterval) {
-				clearInterval(timerInterval);
-			}
+			if (timerInterval) clearInterval(timerInterval);
+			if (dataLoggingInterval) clearInterval(dataLoggingInterval);
 			timerInterval = null;
+			dataLoggingInterval = null;
 			$accumulatedTime += performance.now() - $startTime!;
 			isPaused = true;
 		} else {
@@ -90,17 +107,31 @@
 				seconds = Math.floor(elapsed / 1000);
 				milliseconds = elapsed % 1000;
 			}, 1);
+
+			// Resume data logging
+			dataLoggingInterval = setInterval(() => {
+				const currentTime = performance.now() - $startTime! + $accumulatedTime;
+				$roastData = [
+					...$roastData,
+					{
+						time: currentTime,
+						heat: heatValue,
+						fan: fanValue
+					}
+				];
+			}, 1000);
+
 			isPaused = false;
 		}
 	}
 
 	function resetTimer() {
-		if (timerInterval) {
-			clearInterval(timerInterval);
-		}
+		if (timerInterval) clearInterval(timerInterval);
+		if (dataLoggingInterval) clearInterval(dataLoggingInterval);
 		seconds = 0;
 		milliseconds = 0;
 		timerInterval = null;
+		dataLoggingInterval = null;
 		$startTime = null;
 		$accumulatedTime = 0;
 		$roastData = [];
@@ -146,12 +177,23 @@
 		svg.selectAll('.fan-label').remove();
 		svg.selectAll('.event-marker').remove();
 		svg.selectAll('.event-label').remove();
-		svg.select('.time-tracker').style('display', 'none');
 
 		// Update x-axis scale based on data duration
 		const maxTime = Math.max(...data.map((d) => d.time));
 		const timeInMinutes = maxTime / (1000 * 60);
 		xScale.domain([0, Math.max(10, Math.ceil(timeInMinutes))]);
+
+		// Update time tracker position
+		if (isRoasting && !isPaused) {
+			const currentTime = (performance.now() - $startTime! + $accumulatedTime) / (1000 * 60);
+			svg
+				.select('.time-tracker')
+				.style('display', 'block')
+				.attr('x1', xScale(currentTime))
+				.attr('x2', xScale(currentTime));
+		} else {
+			svg.select('.time-tracker').style('display', 'none');
+		}
 
 		// Update axes with type assertion
 		svg.select('.x-axis').call(d3.axisBottom(xScale) as any);
@@ -206,16 +248,18 @@
 			.attr('font-size', '12px')
 			.text((d) => d.fan);
 
-		// Update event markers
+		// Update event markers - Create separate groups for each event
 		const eventGroups = svg
 			.selectAll('.event-group')
 			.data($roastEvents)
-			.enter()
-			.append('g')
+			.join('g')
 			.attr('class', 'event-group');
 
+		// Add or update event lines
 		eventGroups
-			.append('line')
+			.selectAll('.event-marker')
+			.data((d) => [d])
+			.join('line')
 			.attr('class', 'event-marker')
 			.attr('x1', (d) => xScale(d.time / (1000 * 60)))
 			.attr('x2', (d) => xScale(d.time / (1000 * 60)))
@@ -225,8 +269,11 @@
 			.attr('stroke-width', 1)
 			.attr('stroke-dasharray', '4,4');
 
+		// Add or update event labels
 		eventGroups
-			.append('text')
+			.selectAll('.event-label')
+			.data((d) => [d])
+			.join('text')
 			.attr('class', 'event-label')
 			.attr('x', (d) => xScale(d.time / (1000 * 60)))
 			.attr('y', 10)
