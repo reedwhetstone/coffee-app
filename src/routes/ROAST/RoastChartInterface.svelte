@@ -438,10 +438,12 @@
 					}
 					isLongPressing = false;
 				}}
-				class:border-red-800={isRoasting}
-				class:hover:bg-red-900={isRoasting}
+				class:border-red-800={isRoasting && !isPaused}
+				class:hover:bg-red-900={isRoasting && !isPaused}
+				class:border-orange-800={isRoasting && isPaused}
+				class:hover:bg-orange-900={isRoasting && isPaused}
 			>
-				{isRoasting ? (isPaused ? 'Resume' : 'Pause') : 'Start'}
+				{isRoasting ? (isPaused ? 'Resume' : 'Stop') : 'Start'}
 			</button>
 		</div>
 
