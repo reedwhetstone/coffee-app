@@ -2,7 +2,6 @@
 	// Component imports
 	import { onMount } from 'svelte';
 	// import RoastChart from './RoastChart.svelte';
-	import RoastTimer from './RoastTimer.svelte';
 	import RoastProfileForm from './RoastProfileForm.svelte';
 	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
 	import { page } from '$app/stores';
