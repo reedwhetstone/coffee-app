@@ -43,9 +43,11 @@
 	let currentFanValue = 10;
 	let currentHeatValue = 0;
 
-	// Add reactive statement to handle profile changes
+	// Handle profile changes
 	$: if (currentRoastProfile) {
-		resetTimer();
+		if (!currentRoastProfile.has_log_data) {
+			resetTimer();
+		}
 	}
 
 	// Timer function
@@ -168,7 +170,7 @@
 		.curve(curveStepAfter);
 
 	function updateChart(data: RoastPoint[]) {
-		if (!svg || !xScale || !yScaleFan || !yScaleHeat || isPaused) return;
+		if (!svg || !xScale || !yScaleFan || !yScaleHeat) return;
 
 		// Clear existing elements
 		svg.selectAll('.heat-line').remove();
@@ -284,25 +286,12 @@
 			.attr('transform', (d) => `rotate(-90, ${xScale(d.time / (1000 * 60))}, 10)`);
 	}
 
-	// Handle profile changes
-	$: if (currentRoastProfile) {
-		if (!currentRoastProfile.has_log_data) {
-			$roastData = [];
-			$roastEvents = [];
-			$profileLogs = [];
-			$startTime = null;
-			$accumulatedTime = 0;
-		}
-		updateChart($roastData);
-	}
-
 	// Update chart when roastData changes
 	$: if (
 		svg !== undefined &&
 		xScale !== undefined &&
 		yScaleFan !== undefined &&
-		yScaleHeat !== undefined &&
-		!isPaused
+		yScaleHeat !== undefined
 	) {
 		updateChart($roastData);
 	}
