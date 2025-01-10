@@ -479,14 +479,15 @@
 				throw new Error(errorData.error || 'Failed to save profile logs');
 			}
 
-			// Reset stores
-			$roastData = [];
-			$roastEvents = [];
-			$profileLogs = [];
-			$startTime = null;
-			$accumulatedTime = 0;
-
+			// Instead of clearing stores immediately, wait until we've reloaded the profile
 			await loadRoastProfiles();
+
+			// Find and load the newly saved/updated profile
+			const savedProfile = allRoastProfiles.find((p) => p.roast_id === profile.roast_id);
+			if (savedProfile) {
+				await selectProfile(savedProfile);
+			}
+
 			alert('Roast profile saved successfully!');
 		} catch (error: unknown) {
 			console.error('Error saving roast profile:', error);
