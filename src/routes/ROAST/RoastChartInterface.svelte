@@ -419,6 +419,32 @@
 
 		return $profileLogs;
 	}
+
+	// Add this function to handle settings changes
+	function handleSettingsChange() {
+		if ($startTime === null) return;
+
+		const currentTime = isPaused
+			? $accumulatedTime
+			: performance.now() - $startTime + $accumulatedTime;
+
+		// Create profile log entry for settings change
+		const logEntry: ProfileLogEntry = {
+			fan_setting: fanValue,
+			heat_setting: heatValue,
+			start: false,
+			maillard: false,
+			fc_start: false,
+			fc_rolling: false,
+			fc_end: false,
+			sc_start: false,
+			drop: false,
+			end: false,
+			time: currentTime
+		};
+
+		$profileLogs = [...$profileLogs, logEntry];
+	}
 </script>
 
 <div>
@@ -446,7 +472,10 @@
 						type="radio"
 						name="fanSetting"
 						value={i}
-						on:change={() => updateFan(i)}
+						on:change={() => {
+							updateFan(i);
+							handleSettingsChange();
+						}}
 						checked={fanValue === i}
 						class="hidden"
 					/>
@@ -469,7 +498,10 @@
 						type="radio"
 						name="heatSetting"
 						{value}
-						on:change={() => updateHeat(value)}
+						on:change={() => {
+							updateHeat(value);
+							handleSettingsChange();
+						}}
 						checked={heatValue === value}
 						class="hidden"
 					/>
