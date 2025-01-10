@@ -9,6 +9,7 @@
 	import { roastData, roastEvents, startTime, accumulatedTime, profileLogs } from './stores';
 	import { navbarActions } from '$lib/stores/navbarStore';
 	import { get } from 'svelte/store';
+	import RoastHistoryTable from './RoastHistoryTable.svelte';
 
 	type ProfileLogEntry = {
 		fan_setting: number;
@@ -621,56 +622,15 @@
 	</div>
 </div>
 
-<!-- Roast history table -->
-<div class="roast-history-table m-8 overflow-hidden overflow-x-auto rounded-lg">
-	<table class="w-full table-auto bg-zinc-800">
-		<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
-			<tr>
-				<th class="px-6 py-3">Batch</th>
-				<th class="px-6 py-3">Roast Date</th>
-				<th class="px-6 py-3">Details</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each sortedBatchNames as batchName}
-				<!-- Batch Group Header -->
-				<tr
-					class="cursor-pointer bg-zinc-700 hover:bg-zinc-600"
-					on:click={() => toggleBatch(batchName)}
-				>
-					<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
-						{expandedBatches.has(batchName) ? '▼' : '▶'}
-						{batchName}
-					</td>
-					<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
-						{new Date(sortedGroupedProfiles[batchName][0].roast_date).toLocaleDateString()}
-					</td>
-					<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
-						{sortedGroupedProfiles[batchName].length} roasts
-					</td>
-				</tr>
-				<!-- Profiles Under the Current Batch -->
-				{#if expandedBatches.has(batchName)}
-					{#each sortedGroupedProfiles[batchName] as profile}
-						<tr
-							class="cursor-pointer border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700 {currentRoastProfile?.id ===
-							profile.id
-								? 'bg-zinc-700'
-								: ''}"
-							on:click={() => selectProfile(profile)}
-						>
-							<td class="px-6 py-4 pl-12 text-xs text-zinc-300">{profile.coffee_name}</td>
-							<td class="px-6 py-4 text-xs text-zinc-300">
-								{new Date(profile.roast_date).toLocaleTimeString()}
-							</td>
-							<td class="px-6 py-4 text-xs text-zinc-300">{profile.notes}</td>
-						</tr>
-					{/each}
-				{/if}
-			{/each}
-		</tbody>
-	</table>
-</div>
+<!-- Replace the old table with this component -->
+<RoastHistoryTable
+	{sortedBatchNames}
+	{sortedGroupedProfiles}
+	{expandedBatches}
+	{currentRoastProfile}
+	onToggleBatch={toggleBatch}
+	onSelectProfile={selectProfile}
+/>
 
 <!-- Move modal to the end of the file and keep it simple -->
 {#if isFormVisible}
