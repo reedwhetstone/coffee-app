@@ -20,6 +20,7 @@
 	let width: number;
 
 	export let currentRoastProfile: any | null = null;
+	export let isPaused = false;
 
 	// Remove the unused exports and track current values from roastData
 	let currentFanValue = 10;
@@ -46,7 +47,7 @@
 		.curve(curveStepAfter);
 
 	function updateChart(data: RoastPoint[]) {
-		if (!svg || !xScale || !yScaleFan || !yScaleHeat) return;
+		if (!svg || !xScale || !yScaleFan || !yScaleHeat || isPaused) return;
 
 		// Clear existing elements
 		svg.selectAll('.heat-line').remove();
@@ -163,7 +164,8 @@
 		svg !== undefined &&
 		xScale !== undefined &&
 		yScaleFan !== undefined &&
-		yScaleHeat !== undefined
+		yScaleHeat !== undefined &&
+		!isPaused
 	) {
 		updateChart($roastData);
 	}
