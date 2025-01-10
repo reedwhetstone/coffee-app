@@ -413,6 +413,13 @@
 				);
 			}
 
+			if (isRoasting && !isPaused) {
+				throw new Error('Please stop the roast before saving.');
+			}
+
+			// Prepare the logs with end time before saving
+			const preparedLogs = prepareProfileLogsForSave();
+
 			let profileResponse;
 			let profile;
 
@@ -468,11 +475,11 @@
 				});
 			}
 
-			// Save new log entries
-			const logEntries = $profileLogs.map((entry) => ({
+			// Save new log entries with prepared logs
+			const logEntries = preparedLogs.map((entry) => ({
 				...entry,
 				roast_id: profile.roast_id,
-				time: msToMySQLTime(entry.time) // Convert milliseconds to MySQL TIME format
+				time: msToMySQLTime(entry.time)
 			}));
 
 			const logResponse = await fetch('/api/profile-log', {
@@ -488,10 +495,8 @@
 				throw new Error(errorData.error || 'Failed to save profile logs');
 			}
 
-			// Instead of clearing stores immediately, wait until we've reloaded the profile
+			// Reload profiles and select the saved one
 			await loadRoastProfiles();
-
-			// Find and load the newly saved/updated profile
 			const savedProfile = allRoastProfiles.find((p) => p.roast_id === profile.roast_id);
 			if (savedProfile) {
 				await selectProfile(savedProfile);
@@ -510,6 +515,38 @@
 
 	function hideRoastForm() {
 		isFormVisible = false;
+	}
+
+	function prepareProfileLogsForSave() {
+		if ($profileLogs.length === 0) return $profileLogs;
+
+		const lastTime = $roastData[$roastData.length - 1]?.time || 0;
+
+		// Update the last log entry or create a new one with end=true
+		const lastLog = $profileLogs[$profileLogs.length - 1];
+		if (lastLog && lastLog.drop) {
+			lastLog.end = true;
+			lastLog.time = lastTime;
+		} else {
+			$profileLogs = [
+				...$profileLogs,
+				{
+					fan_setting: fanValue,
+					heat_setting: heatValue,
+					start: false,
+					maillard: false,
+					fc_start: false,
+					fc_rolling: false,
+					fc_end: false,
+					sc_start: false,
+					drop: false,
+					end: true,
+					time: lastTime
+				}
+			];
+		}
+
+		return $profileLogs;
 	}
 </script>
 

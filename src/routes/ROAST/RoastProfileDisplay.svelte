@@ -92,6 +92,8 @@
 	async function deleteBatch() {
 		if (confirm('Are you sure you want to delete all profiles in this batch?')) {
 			try {
+				const formattedDate = profile.roast_date.split('T')[0];
+
 				const response = await fetch(`/api/roast-profiles`, {
 					method: 'DELETE',
 					headers: {
@@ -99,7 +101,7 @@
 					},
 					body: JSON.stringify({
 						batch_name: profile.batch_name,
-						roast_date: profile.roast_date
+						roast_date: formattedDate
 					})
 				});
 
@@ -107,10 +109,12 @@
 					const deletedIds = await response.json();
 					profiles.forEach((profile) => onDelete(profile.roast_id));
 				} else {
-					alert(`Failed to delete batch profiles`);
+					const errorData = await response.json();
+					alert(`Failed to delete batch profiles: ${errorData.error || 'Unknown error'}`);
 				}
 			} catch (error) {
 				console.error('Error deleting batch profiles:', error);
+				alert('Failed to delete batch profiles. See console for details.');
 			}
 		}
 	}

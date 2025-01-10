@@ -9,17 +9,18 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
+- PURCHASED in navbar in blue when selected is broken - probably due to changing the folder structure of the (home) page
 - TP, FC, DROP times in roast profile
+- color shading phases on the chart
 - add the profile_log.drop column to the roast input data
 - adjust the save functionality so that it looks for the time @ Stop and logs the data at that time into the profile_log.end column.
-- roast_date not rendering the correct date in the roast profile table
-- need to fix the date & time entries int the database to require actual dates from the app.
 - move the green coffee inv table to a separate component.
+- import more data for beans - long descriptions, farm details, tasting notes, images, etc.
+
 - Add loading states
 - Add form validation
 - Style components to match your design system
 - add a login system
-- import more data for beans - long descriptions, farm details, tasting notes, images, etc.
 
 # Consider:
 

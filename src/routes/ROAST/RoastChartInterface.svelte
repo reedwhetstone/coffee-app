@@ -7,7 +7,8 @@
 		startTime,
 		accumulatedTime,
 		profileLogs,
-		type RoastPoint
+		type RoastPoint,
+		type ProfileLogEntry
 	} from './stores';
 	import { curveStepAfter } from 'd3-shape';
 
@@ -20,7 +21,6 @@
 	export let updateFan: (value: number) => void;
 	export let updateHeat: (value: number) => void;
 	export let saveRoastProfile: () => void;
-	export let logEvent: (event: string) => void;
 	export let selectedBean: { name: string };
 
 	let seconds = 0;
@@ -67,6 +67,7 @@
 					fc_rolling: false,
 					fc_end: false,
 					sc_start: false,
+					drop: false,
 					end: false,
 					time: 0
 				}
@@ -337,6 +338,87 @@
 		// Initial chart update
 		updateChart($roastData);
 	});
+
+	function handleEventLog(event: string) {
+		if ($startTime === null) return;
+		selectedEvent = event;
+		const currentTime = isPaused
+			? $accumulatedTime
+			: performance.now() - $startTime + $accumulatedTime;
+
+		// Add to roastEvents for chart display
+		$roastEvents = [
+			...$roastEvents,
+			{
+				time: currentTime,
+				name: event
+			}
+		];
+
+		// Create profile log entry
+		const logEntry: ProfileLogEntry = {
+			fan_setting: fanValue,
+			heat_setting: heatValue,
+			start: false,
+			maillard: event === 'Maillard',
+			fc_start: event === 'FC Start',
+			fc_rolling: event === 'FC Rolling',
+			fc_end: event === 'FC End',
+			sc_start: event === 'SC Start',
+			drop: event === 'Drop',
+			end: false,
+			time: currentTime
+		};
+
+		$profileLogs = [...$profileLogs, logEntry];
+	}
+
+	function prepareProfileLogsForSave() {
+		if ($profileLogs.length === 0) return $profileLogs;
+
+		const lastTime = $roastData[$roastData.length - 1]?.time || 0;
+
+		// Update the last log entry or create a new one with end=true
+		const lastLog = $profileLogs[$profileLogs.length - 1];
+		if (lastLog && lastLog.drop) {
+			// Create a new final entry instead of modifying the drop entry
+			$profileLogs = [
+				...$profileLogs,
+				{
+					fan_setting: fanValue,
+					heat_setting: heatValue,
+					start: false,
+					maillard: false,
+					fc_start: false,
+					fc_rolling: false,
+					fc_end: false,
+					sc_start: false,
+					drop: false,
+					end: true,
+					time: lastTime
+				}
+			];
+		} else {
+			$profileLogs = [
+				...$profileLogs,
+				{
+					fan_setting: fanValue,
+					heat_setting: heatValue,
+					start: false,
+					maillard: false,
+					fc_start: false,
+					fc_rolling: false,
+					fc_end: false,
+					sc_start: false,
+					drop: false,
+					end: true,
+					time: lastTime
+				}
+			];
+		}
+
+		return $profileLogs;
+	}
 </script>
 
 <div>
@@ -459,7 +541,7 @@
 					type="radio"
 					name="roastEvent"
 					value={event}
-					on:change={() => logEvent(event)}
+					on:change={() => handleEventLog(event)}
 					checked={selectedEvent === event}
 					class="hidden"
 					disabled={!isRoasting}

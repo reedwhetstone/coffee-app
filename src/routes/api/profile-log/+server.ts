@@ -50,25 +50,28 @@ export async function POST({ request }) {
 					fc_rolling,
 					fc_end,
 					sc_start,
-					end,
-					time
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					\`drop\`,
+					\`end\`,
+					\`time\`
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`;
 
 			// Ensure time is in the correct format
-			const timeValue = log.time.includes(':') ? log.time : '00:00:00';
+			const timeValue = log.time?.includes(':') ? log.time : '00:00:00';
 
+			// Convert undefined/null boolean values to false
 			const values = [
-				log.roast_id,
-				log.fan_setting,
-				log.heat_setting,
-				log.start,
-				log.maillard,
-				log.fc_start,
-				log.fc_rolling,
-				log.fc_end,
-				log.sc_start,
-				log.end,
+				log.roast_id || null,
+				log.fan_setting || 0,
+				log.heat_setting || 0,
+				log.start || false,
+				log.maillard || false,
+				log.fc_start || false,
+				log.fc_rolling || false,
+				log.fc_end || false,
+				log.sc_start || false,
+				log.drop || false,
+				log.end || false,
 				timeValue
 			];
 

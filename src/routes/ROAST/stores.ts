@@ -21,6 +21,7 @@ export interface ProfileLogEntry {
 	fc_rolling: boolean;
 	fc_end: boolean;
 	sc_start: boolean;
+	drop: boolean;
 	end: boolean;
 	time: number;
 }
