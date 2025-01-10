@@ -47,8 +47,12 @@ export async function POST({ request }) {
 			batch_name: data.batch_name || `${coffeeExists[0].name} - ${new Date().toLocaleDateString()}`,
 			coffee_id: data.coffee_id,
 			coffee_name: data.coffee_name || coffeeExists[0].name,
-			roast_date: data.roast_date || new Date().toISOString(),
-			last_updated: data.last_updated || new Date().toISOString(),
+			roast_date: data.roast_date
+				? new Date(data.roast_date).toISOString().slice(0, 19).replace('T', ' ')
+				: new Date().toISOString().slice(0, 19).replace('T', ' '),
+			last_updated: data.last_updated
+				? new Date(data.last_updated).toISOString().slice(0, 19).replace('T', ' ')
+				: new Date().toISOString().slice(0, 19).replace('T', ' '),
 			oz_in: data.oz_in || null,
 			oz_out: data.oz_out || null,
 			roast_notes: data.roast_notes || null,
@@ -93,27 +97,63 @@ export async function POST({ request }) {
 	}
 }
 
-export async function DELETE({ url }) {
+export async function DELETE({ url, request }) {
 	if (!dbConn) {
 		throw new Error('Database connection is not established yet.');
 	}
 
+	// Handle single profile deletion
 	const id = url.searchParams.get('id');
+	if (id) {
+		if (!id) {
+			return json({ success: false, error: 'No ID provided' }, { status: 400 });
+		}
 
-	if (!id) {
-		return json({ success: false, error: 'No ID provided' }, { status: 400 });
+		try {
+			// Start a transaction
+			await dbConn.beginTransaction();
+
+			try {
+				// First delete associated profile logs
+				await dbConn.query('DELETE FROM profile_log WHERE roast_id = ?', [id]);
+
+				// Then delete the roast profile
+				await dbConn.query('DELETE FROM roast_profiles WHERE roast_id = ?', [id]);
+
+				// Commit the transaction
+				await dbConn.commit();
+
+				return json({ success: true });
+			} catch (error) {
+				// If anything fails, roll back the transaction
+				await dbConn.rollback();
+				throw error;
+			}
+		} catch (error) {
+			console.error('Error deleting roast profile and associated data:', error);
+			return json({ success: false, error: 'Failed to delete roast profile' }, { status: 500 });
+		}
 	}
 
+	// Handle batch deletion
 	try {
+		const { batch_name, roast_date } = await request.json();
+
 		// Start a transaction
 		await dbConn.beginTransaction();
 
 		try {
-			// First delete associated profile logs
-			await dbConn.query('DELETE FROM profile_log WHERE roast_id = ?', [id]);
+			// First delete associated profile logs for all matching profiles
+			await dbConn.query(
+				'DELETE pl FROM profile_log pl INNER JOIN roast_profiles rp ON pl.roast_id = rp.roast_id WHERE rp.batch_name = ? AND rp.roast_date = ?',
+				[batch_name, roast_date]
+			);
 
-			// Then delete the roast profile
-			await dbConn.query('DELETE FROM roast_profiles WHERE roast_id = ?', [id]);
+			// Then delete the roast profiles
+			const [result] = await dbConn.query(
+				'DELETE FROM roast_profiles WHERE batch_name = ? AND roast_date = ?',
+				[batch_name, roast_date]
+			);
 
 			// Commit the transaction
 			await dbConn.commit();
@@ -125,8 +165,8 @@ export async function DELETE({ url }) {
 			throw error;
 		}
 	} catch (error) {
-		console.error('Error deleting roast profile and associated data:', error);
-		return json({ success: false, error: 'Failed to delete roast profile' }, { status: 500 });
+		console.error('Error deleting batch profiles:', error);
+		return json({ success: false, error: 'Failed to delete batch profiles' }, { status: 500 });
 	}
 }
 
@@ -141,6 +181,20 @@ export async function PUT({ url, request }) {
 
 		// Remove properties that don't exist in the database
 		const { roast_id: _, has_log_data: __, ...updateData } = updates;
+
+		// Format dates for MySQL
+		if (updateData.roast_date) {
+			updateData.roast_date = new Date(updateData.roast_date)
+				.toISOString()
+				.slice(0, 19)
+				.replace('T', ' ');
+		}
+		if (updateData.last_updated) {
+			updateData.last_updated = new Date(updateData.last_updated)
+				.toISOString()
+				.slice(0, 19)
+				.replace('T', ' ');
+		}
 
 		await dbConn.query('UPDATE roast_profiles SET ? WHERE roast_id = ?', [updateData, id]);
 

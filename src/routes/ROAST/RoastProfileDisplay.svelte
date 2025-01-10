@@ -89,15 +89,49 @@
 		onUpdate(profile);
 	}
 
+	async function deleteBatch() {
+		if (confirm('Are you sure you want to delete all profiles in this batch?')) {
+			try {
+				const response = await fetch(`/api/roast-profiles`, {
+					method: 'DELETE',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						batch_name: profile.batch_name,
+						roast_date: profile.roast_date
+					})
+				});
+
+				if (response.ok) {
+					const deletedIds = await response.json();
+					profiles.forEach((profile) => onDelete(profile.roast_id));
+				} else {
+					alert(`Failed to delete batch profiles`);
+				}
+			} catch (error) {
+				console.error('Error deleting batch profiles:', error);
+			}
+		}
+	}
+
 	$: slideDirection = currentIndex > previousIndex ? -1 : 1;
 </script>
 
 <div class="mx-8 mt-8 rounded-lg bg-zinc-800 p-6">
 	<div class="mb-4">
-		<div class="flex items-center justify-center">
-			<h1 class="text-2xl font-bold text-zinc-400">
-				{profile.batch_name}
-			</h1>
+		<div class="flex items-center justify-between">
+			<div class="flex-1 text-center">
+				<h1 class="text-2xl font-bold text-zinc-400">
+					{profile.batch_name}
+				</h1>
+			</div>
+			<button
+				class="rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900"
+				on:click={deleteBatch}
+			>
+				Delete Batch
+			</button>
 		</div>
 		<div class="flex items-center justify-center">
 			<h3 class="text-l font-bold text-zinc-500">

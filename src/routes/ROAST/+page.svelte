@@ -5,7 +5,15 @@
 	import RoastProfileForm from './RoastProfileForm.svelte';
 	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
 	import { page } from '$app/stores';
-	import { roastData, roastEvents, startTime, accumulatedTime, profileLogs } from './stores';
+	import {
+		roastData,
+		roastEvents,
+		startTime,
+		accumulatedTime,
+		profileLogs,
+		msToMySQLTime,
+		mysqlTimeToMs
+	} from './stores';
 	import { navbarActions } from '$lib/stores/navbarStore';
 	import { get } from 'svelte/store';
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
@@ -463,7 +471,8 @@
 			// Save new log entries
 			const logEntries = $profileLogs.map((entry) => ({
 				...entry,
-				roast_id: profile.roast_id
+				roast_id: profile.roast_id,
+				time: msToMySQLTime(entry.time) // Convert milliseconds to MySQL TIME format
 			}));
 
 			const logResponse = await fetch('/api/profile-log', {

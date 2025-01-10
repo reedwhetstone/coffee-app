@@ -55,6 +55,9 @@ export async function POST({ request }) {
 				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`;
 
+			// Ensure time is in the correct format
+			const timeValue = log.time.includes(':') ? log.time : '00:00:00';
+
 			const values = [
 				log.roast_id,
 				log.fan_setting,
@@ -66,7 +69,7 @@ export async function POST({ request }) {
 				log.fc_end,
 				log.sc_start,
 				log.end,
-				log.time
+				timeValue
 			];
 
 			const [result] = (await dbConn.execute(query, values)) as [ResultSetHeader, any];
