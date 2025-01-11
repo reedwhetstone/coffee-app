@@ -176,6 +176,24 @@
 	function updateChart(data: RoastPoint[]) {
 		if (!svg || !xScale || !yScaleFan || !yScaleHeat) return;
 
+		// Sort data by time first
+		const sortedData = [...data].sort((a, b) => a.time - b.time);
+
+		// Process sorted data to fill NULL values
+		let lastHeat = 0;
+		let lastFan = 0;
+		const processedData = sortedData.map((point) => {
+			// Update last known values within the map function
+			if (point.heat !== null) lastHeat = point.heat;
+			if (point.fan !== null) lastFan = point.fan;
+
+			return {
+				time: point.time,
+				heat: point.heat ?? lastHeat,
+				fan: point.fan ?? lastFan
+			};
+		});
+
 		// Clear existing elements
 		svg.selectAll('.heat-line').remove();
 		svg.selectAll('.fan-line').remove();
@@ -208,7 +226,7 @@
 		svg
 			.append('path')
 			.attr('class', 'heat-line')
-			.datum(data)
+			.datum(processedData)
 			.attr('fill', 'none')
 			.attr('stroke', '#b45309')
 			.attr('stroke-width', 2)
@@ -218,14 +236,16 @@
 		svg
 			.append('path')
 			.attr('class', 'fan-line')
-			.datum(data)
+			.datum(processedData)
 			.attr('fill', 'none')
 			.attr('stroke', '#3730a3')
 			.attr('stroke-width', 2)
 			.attr('d', fanLine);
 
 		// Add heat value labels
-		const heatChanges = data.filter((d, i) => i === 0 || d.heat !== data[i - 1].heat);
+		const heatChanges = processedData.filter(
+			(d, i) => i === 0 || d.heat !== processedData[i - 1].heat
+		);
 		svg
 			.selectAll('.heat-label')
 			.data(heatChanges)
@@ -240,7 +260,9 @@
 			.text((d) => d.heat);
 
 		// Add fan value labels
-		const fanChanges = data.filter((d, i) => i === 0 || d.fan !== data[i - 1].fan);
+		const fanChanges = processedData.filter(
+			(d, i) => i === 0 || d.fan !== processedData[i - 1].fan
+		);
 		svg
 			.selectAll('.fan-label')
 			.data(fanChanges)

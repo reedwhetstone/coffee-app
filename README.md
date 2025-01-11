@@ -9,6 +9,8 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
+- sales page
+- search tool
 - PURCHASED in navbar in blue when selected is broken - probably due to changing the folder structure of the (home) page
 - TP, FC, DROP times in roast profile
 - color shading phases on the chart
