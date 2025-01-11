@@ -350,6 +350,7 @@
 							log.fc_rolling ||
 							log.fc_end ||
 							log.sc_start ||
+							log.drop ||
 							log.end
 					)
 					.map((log: any) => ({
@@ -366,7 +367,9 @@
 											? 'FC End'
 											: log.sc_start
 												? 'SC Start'
-												: 'Drop'
+												: log.drop
+													? 'Drop'
+													: 'End'
 					}));
 
 				// Set initial fan and heat values from the first log entry if available

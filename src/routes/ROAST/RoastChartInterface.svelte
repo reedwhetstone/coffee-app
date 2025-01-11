@@ -251,10 +251,22 @@
 			.attr('font-size', '12px')
 			.text((d) => d.fan);
 
+		// Create combined events array that includes both roastEvents and end events
+		const eventData = $roastEvents.map((event) => ({
+			time: event.time,
+			name: event.name
+		}));
+
+		// Sort events by time to ensure proper ordering
+		eventData.sort((a, b) => a.time - b.time);
+
+		// Keep all events (no filtering for duplicates)
+		const uniqueEventData = eventData;
+
 		// Update event markers - Create separate groups for each event
 		const eventGroups = svg
 			.selectAll('.event-group')
-			.data($roastEvents)
+			.data(uniqueEventData)
 			.join('g')
 			.attr('class', 'event-group');
 
