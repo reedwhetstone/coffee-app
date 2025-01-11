@@ -22,6 +22,7 @@
 	export let updateHeat: (value: number) => void;
 	export let saveRoastProfile: () => void;
 	export let selectedBean: { name: string };
+	export let logEvent: (event: string) => void;
 
 	let seconds = 0;
 	let milliseconds = 0;
@@ -354,6 +355,7 @@
 	function handleEventLog(event: string) {
 		if ($startTime === null) return;
 		selectedEvent = event;
+		logEvent(event);
 		const currentTime = isPaused
 			? $accumulatedTime
 			: performance.now() - $startTime + $accumulatedTime;

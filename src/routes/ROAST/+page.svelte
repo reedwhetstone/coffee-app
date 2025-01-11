@@ -29,6 +29,7 @@
 		fc_end: boolean;
 		sc_start: boolean;
 		end: boolean;
+		drop: boolean;
 		time: number;
 	};
 
