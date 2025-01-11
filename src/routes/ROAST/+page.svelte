@@ -553,6 +553,18 @@
 
 		return $profileLogs;
 	}
+
+	async function handleClearRoastData(roastId: number) {
+		try {
+			await fetch(`/api/profile-log?roast_id=${currentRoastProfile.roast_id}`, {
+				method: 'DELETE'
+			});
+			await selectProfile(currentRoastProfile); // Reload the profile
+		} catch (error) {
+			console.error('Error clearing roast data:', error);
+			alert('Failed to clear roast data');
+		}
+	}
 </script>
 
 <!-- Modal for adding new roast profiles -->
@@ -590,6 +602,8 @@
 			{saveRoastProfile}
 			{logEvent}
 			{selectedBean}
+			hasLogData={currentRoastProfile?.has_log_data ?? false}
+			clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
 		/>
 	</div>
 {/if}
