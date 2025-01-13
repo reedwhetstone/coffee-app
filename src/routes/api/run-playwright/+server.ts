@@ -1,6 +1,14 @@
 import { json } from '@sveltejs/kit';
 import { updateDatabase } from '../../SWEET/playwrightscript';
 
+// Initialize processHandler if it doesn't exist
+if (!global.processHandler) {
+	global.processHandler = {
+		sendLog: (message: string) => console.log(message),
+		addProcess: () => {}
+	};
+}
+
 export async function POST() {
 	const sendLog = (message: string) => {
 		global.processHandler.sendLog(message);

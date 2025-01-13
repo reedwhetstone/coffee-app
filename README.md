@@ -10,6 +10,9 @@ CoffeeApp is an all in one coffee management system.
 # Todo:
 
 - sales page
+- get #product-price-27637 > span "price per lb bean" into the coffee_catalog table
+- get all coffee data for coffee_catalog table - farm notes, tasting notes, etc.
+- restructure the green_coffee_inv table to pull coffee data from the coffee_catalog table
 - heat setting should end at drop - setting 0
   take rounding out of the oz in oz out display on the roast profile - 8.50 & 8.59. Currently is rounding into the table!!!!
 - need roast id on the roast profile page
