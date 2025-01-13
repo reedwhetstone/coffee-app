@@ -13,7 +13,7 @@ interface ScrapedData {
 	[key: string]: any; // This allows for dynamic string keys
 }
 
-async function collectProductUrls() {
+async function collectInitUrlsData() {
 	const browser = await chromium.launch({ headless: false });
 	const context = await browser.newContext();
 	const page = await context.newPage();
@@ -103,7 +103,7 @@ async function updateDatabase() {
 		connection = await initializeConnection();
 
 		// Collect all product URLs
-		const allProductUrls = await collectProductUrls();
+		const allProductUrls = await collectInitUrlsData();
 		console.log(`Found ${allProductUrls.length} total products`);
 
 		// Filter out existing URLs
@@ -111,7 +111,7 @@ async function updateDatabase() {
 		console.log(`Found ${newUrls.length} new products to process`);
 
 		// Take only first 10 URLs for testing
-		const urlsToProcess = newUrls.slice(0, 10);
+		const urlsToProcess = newUrls.slice(0, 1);
 		console.log(`Processing first ${urlsToProcess.length} URLs`);
 
 		// Process each URL
@@ -177,11 +177,4 @@ async function updateDatabase() {
 	}
 }
 
-// Run the script
-// updateDatabase().catch((error) => {
-//     console.error('Fatal error:', error);
-//     process.exit(1);
-// });
-
-// Add this export
 export { updateDatabase };
