@@ -26,7 +26,7 @@ async function collectProductUrls() {
 		await page.waitForTimeout(2000); // Give page time to load
 
 		const urls = await page.evaluate(() => {
-			const links = document.querySelectorAll('a.product-item-link-generated');
+			const links = document.querySelectorAll('a.product-item-link.generated');
 			return Array.from(links).map((link) => (link as HTMLAnchorElement).href);
 		});
 
@@ -124,11 +124,11 @@ async function updateDatabase() {
 				await connection.execute(
 					`INSERT INTO coffee_catalog (
 						name,
-						link,
+						score_value,
+						arrival_date,
 						region,
 						processing,
 						drying_method,
-						arrival_date,
 						lot_size,
 						bag_size,
 						packaging,
@@ -138,16 +138,16 @@ async function updateDatabase() {
 						appearance,
 						roast_recs,
 						type,
-						score_value,
-						created_at
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+						link,
+						last_updated
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
 					[
 						scrapedData.productName,
-						scrapedData.url,
+						scrapedData.scoreValue,
+						scrapedData['Arrival date'] || null,
 						scrapedData['Region'] || null,
 						scrapedData['Processing'] || null,
 						scrapedData['Drying Method'] || null,
-						scrapedData['Arrival date'] || null,
 						scrapedData['Lot size'] || null,
 						scrapedData['Bag size'] || null,
 						scrapedData['Packaging'] || null,
@@ -157,8 +157,7 @@ async function updateDatabase() {
 						scrapedData['Appearance'] || null,
 						scrapedData['Roast Recommendations'] || null,
 						scrapedData['Type'] || null,
-						scrapedData.scoreValue,
-						new Date()
+						scrapedData.url
 					]
 				);
 
