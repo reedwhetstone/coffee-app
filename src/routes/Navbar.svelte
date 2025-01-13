@@ -81,7 +81,9 @@
 				<li>
 					<a
 						href="/"
-						class="px-3 py-2 hover:bg-zinc-100 {routeId === '/' ? ' text-sky-800' : 'text-zinc-600'}
+						class="px-3 py-2 hover:bg-zinc-100 {routeId === '/(home)'
+							? ' text-sky-800'
+							: 'text-zinc-600'}
 							hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">PURCHASED</a
 					>
 				</li>
@@ -110,6 +112,16 @@
 							? ' text-sky-800'
 							: 'text-zinc-600'}
 							hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">SALES</a
+					>
+				</li>
+				<li>
+					<a
+						href="/SWEET"
+						class="px-3 py-2 hover:bg-zinc-100 {routeId === '/SWEET'
+							? ' text-sky-800'
+							: 'text-zinc-600'}
+							hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800"
+						>SWEET.SCRIPTS</a
 					>
 				</li>
 			</ul>

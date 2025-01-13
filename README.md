@@ -10,6 +10,10 @@ CoffeeApp is an all in one coffee management system.
 # Todo:
 
 - sales page
+- heat setting should end at drop - setting 0
+  take rounding out of the oz in oz out display on the roast profile - 8.50 & 8.59. Currently is rounding into the table!!!!
+- need roast id on the roast profile page
+- ghost roast - follow a template roast profile
 - search tool
 - PURCHASED in navbar in blue when selected is broken - probably due to changing the folder structure of the (home) page
 - TP, FC, DROP times in roast profile

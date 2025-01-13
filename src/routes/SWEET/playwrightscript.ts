@@ -69,6 +69,7 @@ async function updateDatabase() {
 			if (scrapedData) {
 				// Map the scraped data to your database columns
 				const updates = {
+					name: scrapedData['Region'] || null,
 					region: scrapedData['Region'] || null,
 					processing: scrapedData['Processing'] || null,
 					drying_method: scrapedData['Drying Method'] || null,
@@ -87,7 +88,7 @@ async function updateDatabase() {
 
 				// Update the database using prepared statement
 				await connection.execute(
-					`UPDATE \`green_coffee_inv\` SET 
+					`UPDATE \`coffee_catalog\` SET 
 					region = ?, 
 					processing = ?,
 					drying_method = ?,
@@ -129,10 +130,10 @@ async function updateDatabase() {
 		}
 
 		console.log('Database update complete');
-		process.exit(0); // Clean exit with success code
+		return { success: true };
 	} catch (error) {
 		console.error('Error updating database:', error);
-		process.exit(1); // Exit with error code
+		throw error;
 	} finally {
 		if (connection) {
 			await connection.end(); // Close database connection
@@ -141,7 +142,9 @@ async function updateDatabase() {
 }
 
 // Run the script
-updateDatabase().catch((error) => {
-	console.error('Fatal error:', error);
-	process.exit(1);
-});
+// updateDatabase().catch((error) => {
+//     console.error('Fatal error:', error);
+//     process.exit(1);
+// });
+
+export { updateDatabase };
