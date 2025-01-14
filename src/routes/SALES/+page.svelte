@@ -19,7 +19,7 @@
 	let chartContainer: HTMLDivElement;
 	let svg: d3.Selection<SVGGElement, unknown, null, undefined>;
 	let margin = { top: 20, right: 20, bottom: 50, left: 60 };
-	let width = 800;
+	let width: number;
 	let height = 400;
 
 	onMount(async () => {
@@ -35,6 +35,9 @@
 	});
 
 	function createChart() {
+		// Get the container width
+		width = chartContainer.clientWidth - margin.left - margin.right;
+
 		// Clear existing chart
 		d3.select(chartContainer).selectAll('*').remove();
 
@@ -42,7 +45,7 @@
 		svg = d3
 			.select(chartContainer)
 			.append('svg')
-			.attr('width', width + margin.left + margin.right)
+			.attr('width', '100%')
 			.attr('height', height + margin.top + margin.bottom)
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`);
@@ -52,8 +55,11 @@
 			.scaleTime()
 			.domain(d3.extent(salesData, (d) => new Date(d.sell_date)) as [Date, Date])
 			.range([0, width]);
-		// set the price range in the chart
-		const yScale = d3.scaleLinear().domain([0, 20]).range([height, 0]);
+		// set the price range in the chart with math.max to N
+		const yScale = d3
+			.scaleLinear()
+			.domain([0, Math.max(21, d3.max(salesData, (d) => d.price) || 0)])
+			.range([height, 0]);
 
 		// Create axes with white text
 		const xAxis = d3.axisBottom(xScale).tickFormat((d) => d.toLocaleDateString());
@@ -118,11 +124,41 @@
 	function hideTooltip() {
 		d3.select('.tooltip').remove();
 	}
+
+	// Add resize handler
+	let resizeObserver: ResizeObserver;
+
+	onMount(async () => {
+		try {
+			const response = await fetch('/api/sales');
+			if (response.ok) {
+				salesData = await response.json();
+
+				// Create resize observer
+				resizeObserver = new ResizeObserver(() => {
+					if (chartContainer) {
+						createChart();
+					}
+				});
+
+				resizeObserver.observe(chartContainer);
+				createChart();
+			}
+		} catch (error) {
+			console.error('Error fetching sales data:', error);
+		}
+
+		return () => {
+			if (resizeObserver) {
+				resizeObserver.disconnect();
+			}
+		};
+	});
 </script>
 
 <div class="m-8">
 	<h1 class="mb-4 text-2xl font-bold text-zinc-400">Sales Overview</h1>
-	<div class="rounded-lg bg-zinc-800 p-6">
-		<div bind:this={chartContainer}></div>
+	<div class="w-full rounded-lg bg-zinc-800 p-6">
+		<div bind:this={chartContainer} class="w-full"></div>
 	</div>
 </div>
