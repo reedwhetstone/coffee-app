@@ -88,7 +88,6 @@
 	// Add these new variables for sorting and filtering
 	let sortField: string | null = 'purchase_date';
 	let sortDirection: 'asc' | 'desc' | null = 'desc';
-	let filterByLatestPurchase = true;
 	let selectedPurchaseDate: string | null = null;
 
 	// Computed sorted and filtered data
@@ -114,10 +113,8 @@
 			return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
 		})
 		.filter((bean) => {
-			if (!selectedPurchaseDate) {
-				if (!filterByLatestPurchase) return true;
-				const mostRecent = Math.max(...data.data.map((b) => new Date(b.purchase_date).getTime()));
-				return new Date(bean.purchase_date).getTime() === mostRecent;
+			if (selectedPurchaseDate === null) {
+				return true; // Show all beans when no date is selected
 			}
 			return bean.purchase_date === selectedPurchaseDate;
 		});
@@ -146,28 +143,20 @@
 
 		// Load data first
 		await loadData().then(() => {
+			if (data.data.length > 0) {
+				// Set initial date to most recent purchase
+				const dates = data.data.map((bean) => bean.purchase_date);
+				selectedPurchaseDate = dates.sort().reverse()[0];
+			}
 			// Handle search navigation
 			const searchState = page.state as PageState;
 			if (searchState?.searchType === 'green' && searchState?.searchId) {
 				const foundBean = data.data.find((bean) => bean.id === searchState.searchId);
 				if (foundBean) {
 					selectedBean = foundBean;
-					selectedPurchaseDate = foundBean.purchase_date;
+					selectedPurchaseDate = null; // Clear the filter when coming from search
 					window.scrollTo({ top: 0, behavior: 'smooth' });
 				}
-			} else if (filterByLatestPurchase && data.data.length > 0) {
-				// If no search parameter, select the most recent bean by purchase date
-				const mostRecentDate = Math.max(
-					...data.data.map((b) => new Date(b.purchase_date).getTime())
-				);
-				selectedBean = data.data.find(
-					(bean) => new Date(bean.purchase_date).getTime() === mostRecentDate
-				);
-			}
-
-			// Don't automatically set a selected bean unless coming from search
-			if (!selectedBean) {
-				selectedPurchaseDate = null;
 			}
 		});
 
@@ -236,11 +225,7 @@
 				class="m-1 rounded bg-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-600"
 				bind:value={selectedPurchaseDate}
 			>
-				<option value={null}
-					>{selectedPurchaseDate
-						? new Date(selectedPurchaseDate).toLocaleDateString()
-						: 'All Purchase Dates'}</option
-				>
+				<option value={null}>Show All Dates</option>
 				{#each [...new Set(data.data.map((bean) => bean.purchase_date))].sort().reverse() as date}
 					<option value={date}>{new Date(date).toLocaleDateString()}</option>
 				{/each}
