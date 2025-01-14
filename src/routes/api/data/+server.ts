@@ -19,7 +19,11 @@ export async function GET({ url }) {
 		}
 
 		const [rows] = await dbConn.query(query, values);
-		return json({ data: rows });
+		const formattedRows = rows.map((row: any) => ({
+			...row,
+			purchase_date: row.purchase_date.toISOString().split('T')[0]
+		}));
+		return json({ data: formattedRows });
 	} catch (error) {
 		console.error('Error querying database:', error);
 		return json({ data: [], error: 'Failed to fetch data' });

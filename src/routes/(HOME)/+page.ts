@@ -14,7 +14,8 @@ export const load: Load = async ({ fetch }) => {
 
 	const json = await response.json();
 
-	console.log('Fetched data:', json);
+	// console.log('Fetched data:', json);
+	console.log('Fetched data, completed');
 
 	return { data: json.data }; // Return only the `data` array
 };

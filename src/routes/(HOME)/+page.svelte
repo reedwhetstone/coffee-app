@@ -128,6 +128,7 @@
 			selectedBean = [...data.data].sort(
 				(a, b) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime()
 			)[0];
+			selectedPurchaseDate = selectedBean?.purchase_date || null;
 		}
 	});
 
@@ -175,16 +176,18 @@
 	<div id="green-coffee-inv-table" class="overflow-x-auto">
 		<div class="mb-4 flex items-center justify-end gap-4">
 			<select
-				class="rounded bg-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-600"
+				class="m-1 rounded bg-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-600"
 				bind:value={selectedPurchaseDate}
 			>
-				<option value={null}>All Purchase Dates</option>
+				<option value={null}
+					>{selectedPurchaseDate
+						? new Date(selectedPurchaseDate).toLocaleDateString()
+						: 'All Purchase Dates'}</option
+				>
 				{#each [...new Set(data.data.map((bean) => bean.purchase_date))].sort().reverse() as date}
 					<option value={date}>{new Date(date).toLocaleDateString()}</option>
 				{/each}
 			</select>
-
-			<!-- ... existing code ... -->
 		</div>
 		<!-- Table with a reactive class binding -->
 		{#if data.data.length > 0}
