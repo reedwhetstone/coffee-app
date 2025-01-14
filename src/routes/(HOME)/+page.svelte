@@ -82,8 +82,10 @@
 
 			if (sortField === 'purchase_date') {
 				if (!sortDirection) return 0;
-				if (sortDirection === 'asc') return aVal.localeCompare(bVal);
-				return bVal.localeCompare(aVal);
+				const aStr = String(aVal);
+				const bStr = String(bVal);
+				if (sortDirection === 'asc') return aStr.localeCompare(bStr);
+				return bStr.localeCompare(aStr);
 			}
 
 			if (typeof aVal === 'string' && typeof bVal === 'string') {
@@ -126,11 +128,12 @@
 	onMount(() => {
 		// Handle navbar actions
 		navbarActions.set({
-			onAddNewBean: handleAddNewBean
+			onAddNewBean: handleAddNewBean,
+			onShowRoastForm: () => {}
 		});
 
-		// Handle search navigation first
-		const searchState = $page.state as any;
+		// Handle search navigation
+		const searchState = page.state as PageState;
 		if (searchState?.searchType === 'green' && searchState?.searchId) {
 			const foundBean = data.data.find((bean) => bean.id === searchState.searchId);
 			if (foundBean) {
@@ -138,21 +141,24 @@
 				selectedPurchaseDate = foundBean.purchase_date;
 				window.scrollTo({ top: 0, behavior: 'smooth' });
 			}
+		} else if (filterByLatestPurchase && data.data.length > 0) {
+			// If no search parameter, select the most recent bean by purchase date
+			const mostRecentDate = Math.max(...data.data.map((b) => new Date(b.purchase_date).getTime()));
+			selectedBean = data.data.find(
+				(bean) => new Date(bean.purchase_date).getTime() === mostRecentDate
+			);
 		}
 
-		// Initialize selectedBean if not already set
-		if (!selectedBean && data.data.length > 0) {
-			const sortedBeans = [...data.data].sort(
-				(a, b) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime()
-			);
-			selectedBean = sortedBeans[0];
-			selectedPurchaseDate = selectedBean.purchase_date;
+		// Don't automatically set a selected bean unless coming from search
+		if (!selectedBean) {
+			selectedPurchaseDate = null;
 		}
 
 		// Cleanup function
 		return () => {
 			navbarActions.set({
-				onAddNewBean: () => {}
+				onAddNewBean: () => {},
+				onShowRoastForm: () => {}
 			});
 		};
 	});
@@ -161,6 +167,26 @@
 		selectedBean = null;
 		isFormVisible = true;
 	}
+
+	// Add the missing toggleSort function
+	function toggleSort(field: string) {
+		if (sortField === field) {
+			if (sortDirection === 'asc') sortDirection = 'desc';
+			else if (sortDirection === 'desc') {
+				sortField = null;
+				sortDirection = null;
+			}
+		} else {
+			sortField = field;
+			sortDirection = 'asc';
+		}
+	}
+
+	// Add type at the top with other types
+	type PageState = {
+		searchType?: 'green';
+		searchId?: number;
+	};
 </script>
 
 <div class="m-4">
