@@ -63,39 +63,40 @@
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
-	// Add these new variables for sorting
+	// Add these new variables for sorting and filtering
 	let sortField: string | null = 'purchase_date';
 	let sortDirection: 'asc' | 'desc' | null = 'desc';
+	let filterByLatestPurchase = true;
+	let selectedPurchaseDate: string | null = null;
 
-	// Sorting function
-	function toggleSort(field: string) {
-		if (sortField === field) {
-			// Cycle through: asc -> desc -> null
-			if (sortDirection === 'asc') sortDirection = 'desc';
-			else if (sortDirection === 'desc') {
-				sortField = null;
-				sortDirection = null;
+	// Computed sorted and filtered data
+	$: sortedData = [...data.data]
+		.sort((a, b) => {
+			if (!sortField || !sortDirection) return 0;
+
+			const aVal = a[sortField as keyof typeof a];
+			const bVal = b[sortField as keyof typeof b];
+
+			if (sortField === 'purchase_date') {
+				if (!sortDirection) return 0;
+				if (sortDirection === 'asc') return aVal.localeCompare(bVal);
+				return bVal.localeCompare(aVal);
 			}
-		} else {
-			// New field selected, start with ascending
-			sortField = field;
-			sortDirection = 'asc';
-		}
-	}
 
-	// Computed sorted data
-	$: sortedData = [...data.data].sort((a, b) => {
-		if (!sortField || !sortDirection) return 0;
+			if (typeof aVal === 'string' && typeof bVal === 'string') {
+				return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+			}
 
-		const aVal = a[sortField as keyof typeof a];
-		const bVal = b[sortField as keyof typeof b];
-
-		if (typeof aVal === 'string' && typeof bVal === 'string') {
-			return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-		}
-
-		return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
-	});
+			return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
+		})
+		.filter((bean) => {
+			if (!selectedPurchaseDate) {
+				if (!filterByLatestPurchase) return true;
+				const mostRecent = Math.max(...data.data.map((b) => new Date(b.purchase_date).getTime()));
+				return new Date(bean.purchase_date).getTime() === mostRecent;
+			}
+			return bean.purchase_date === selectedPurchaseDate;
+		});
 
 	async function handleFormSubmit(newBean: any) {
 		// Refresh the data
@@ -172,6 +173,19 @@
 
 	<!-- Existing table code -->
 	<div id="green-coffee-inv-table" class="overflow-x-auto">
+		<div class="mb-4 flex items-center justify-end gap-4">
+			<select
+				class="rounded bg-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-600"
+				bind:value={selectedPurchaseDate}
+			>
+				<option value={null}>All Purchase Dates</option>
+				{#each [...new Set(data.data.map((bean) => bean.purchase_date))].sort().reverse() as date}
+					<option value={date}>{new Date(date).toLocaleDateString()}</option>
+				{/each}
+			</select>
+
+			<!-- ... existing code ... -->
+		</div>
 		<!-- Table with a reactive class binding -->
 		{#if data.data.length > 0}
 			<div class="overflow-hidden overflow-x-auto rounded-lg">
@@ -210,8 +224,8 @@
 									: ''}"
 								on:click={() => selectBean(bean)}
 							>
-								{#each Object.values(bean) as value}
-									<td class="whitespace-nowrap text-balance px-6 py-4 text-xs text-zinc-300">
+								{#each Object.entries(bean) as [key, value]}
+									<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
 										{value}
 									</td>
 								{/each}

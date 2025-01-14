@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
+	import SalesTable from './SalesTable.svelte';
 
 	interface SaleData {
 		id: number;
@@ -161,4 +162,6 @@
 	<div class="w-full rounded-lg bg-zinc-800 p-6">
 		<div bind:this={chartContainer} class="w-full"></div>
 	</div>
+
+	<SalesTable {salesData} />
 </div>
