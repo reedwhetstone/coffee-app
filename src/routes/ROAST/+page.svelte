@@ -73,12 +73,15 @@
 
 				// Only set currentRoastProfile if we have a selectedBean
 				if (selectedBean?.id) {
-					currentRoastProfile = allRoastProfiles
+					const matchingProfiles = allRoastProfiles
 						.filter((profile: any) => profile.coffee_id === selectedBean.id)
 						.sort(
 							(a: any, b: any) =>
 								new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime()
-						)[0];
+						);
+					currentRoastProfile = matchingProfiles.length > 0 ? matchingProfiles[0] : null;
+				} else {
+					currentRoastProfile = null;
 				}
 			}
 		} catch (error) {
@@ -89,6 +92,26 @@
 	onMount(() => {
 		loadRoastProfiles();
 
+		// Add search navigation handling
+		const searchState = $page.state as any;
+		if (searchState?.searchType === 'roast' && searchState?.searchId) {
+			loadRoastProfiles().then(() => {
+				const foundProfile = allRoastProfiles.find(
+					(profile) => profile.roast_id === searchState.searchId
+				);
+				if (foundProfile) {
+					// Set the selectedBean first
+					selectedBean = {
+						id: foundProfile.coffee_id,
+						name: foundProfile.coffee_name
+					};
+					// Then select the profile
+					selectProfile(foundProfile);
+				}
+			});
+		}
+
+		// Set navbar actions
 		navbarActions.set({
 			...get(navbarActions),
 			onShowRoastForm: () => (isFormVisible = true)

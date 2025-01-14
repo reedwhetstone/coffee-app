@@ -3,6 +3,9 @@
 	import { afterNavigate } from '$app/navigation';
 	import { navbarActions } from '$lib/stores/navbarStore';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import pkg from 'lodash';
+	const { debounce } = pkg;
 
 	let routeId = $page.route.id;
 
@@ -17,6 +20,40 @@
 			$navbarActions.onAddNewBean();
 		});
 	}
+
+	// Add these variables
+	let searchQuery = '';
+	let searchResults = [];
+	let showResults = false;
+
+	// Add search function
+	const handleSearch = debounce(async () => {
+		if (searchQuery.length < 2) {
+			searchResults = [];
+			return;
+		}
+
+		try {
+			const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+			searchResults = await response.json();
+		} catch (error) {
+			console.error('Search error:', error);
+			searchResults = [];
+		}
+	}, 300);
+
+	// Close search results when clicking outside
+	function handleClickOutside(event) {
+		const searchContainer = document.getElementById('search-container');
+		if (searchContainer && !searchContainer.contains(event.target)) {
+			showResults = false;
+		}
+	}
+
+	onMount(() => {
+		document.addEventListener('click', handleClickOutside);
+		return () => document.removeEventListener('click', handleClickOutside);
+	});
 </script>
 
 <nav class="border-sky-800 bg-zinc-300 dark:bg-zinc-800">
@@ -48,6 +85,43 @@
 			>
 				New Roast
 			</button>
+		</div>
+
+		<!-- Add search bar here -->
+		<div id="search-container" class="relative mx-4 flex-1">
+			<input
+				type="text"
+				bind:value={searchQuery}
+				on:input={handleSearch}
+				on:focus={() => (showResults = true)}
+				placeholder="Search..."
+				class="w-full rounded-lg border border-zinc-400 bg-zinc-100 px-4 py-2 dark:border-zinc-600 dark:bg-zinc-700"
+			/>
+
+			{#if showResults && searchResults.length > 0}
+				<div
+					class="absolute z-50 mt-1 max-h-96 w-full overflow-y-auto rounded-lg bg-white shadow-lg dark:bg-zinc-700"
+				>
+					{#each searchResults as result}
+						<button
+							class="w-full px-4 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-600"
+							on:click={() => {
+								goto(result.url, {
+									state: {
+										searchType: result.type,
+										searchId: result.item_id
+									}
+								});
+								showResults = false;
+								searchQuery = '';
+							}}
+						>
+							<div class="font-medium">{result.title}</div>
+							<div class="text-sm text-zinc-600 dark:text-zinc-400">{result.description}</div>
+						</button>
+					{/each}
+				</div>
+			{/if}
 		</div>
 
 		<button

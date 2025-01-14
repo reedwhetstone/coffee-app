@@ -29,6 +29,9 @@
 	// Add these new imports
 	import BeanForm from './BeanForm.svelte';
 	import BeanProfile from './BeanProfile.svelte';
+	import { onMount } from 'svelte';
+	import { navbarActions } from '$lib/stores/navbarStore';
+	import { page } from '$app/state';
 
 	let isFormVisible = false;
 	let selectedBean: any = null;
@@ -120,35 +123,44 @@
 	}
 
 	// Initialize selectedBean with the newest bean by purchase date
-	import { onMount } from 'svelte';
-	import { navbarActions } from '$lib/stores/navbarStore';
-
 	onMount(() => {
-		if (!selectedBean) {
-			selectedBean = [...data.data].sort(
-				(a, b) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime()
-			)[0];
-			selectedPurchaseDate = selectedBean?.purchase_date || null;
+		// Handle navbar actions
+		navbarActions.set({
+			onAddNewBean: handleAddNewBean
+		});
+
+		// Handle search navigation first
+		const searchState = $page.state as any;
+		if (searchState?.searchType === 'green' && searchState?.searchId) {
+			const foundBean = data.data.find((bean) => bean.id === searchState.searchId);
+			if (foundBean) {
+				selectedBean = foundBean;
+				selectedPurchaseDate = foundBean.purchase_date;
+				window.scrollTo({ top: 0, behavior: 'smooth' });
+			}
 		}
+
+		// Initialize selectedBean if not already set
+		if (!selectedBean && data.data.length > 0) {
+			const sortedBeans = [...data.data].sort(
+				(a, b) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime()
+			);
+			selectedBean = sortedBeans[0];
+			selectedPurchaseDate = selectedBean.purchase_date;
+		}
+
+		// Cleanup function
+		return () => {
+			navbarActions.set({
+				onAddNewBean: () => {}
+			});
+		};
 	});
 
 	function handleAddNewBean() {
 		selectedBean = null;
 		isFormVisible = true;
 	}
-
-	onMount(() => {
-		navbarActions.set({
-			onAddNewBean: handleAddNewBean
-		});
-
-		return () => {
-			// Reset when component is destroyed
-			navbarActions.set({
-				onAddNewBean: () => {}
-			});
-		};
-	});
 </script>
 
 <div class="m-4">
