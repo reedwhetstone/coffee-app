@@ -11,10 +11,10 @@ export async function GET() {
             SELECT 
                 s.*,
                 g.name as coffee_name,
-                r.roast_date
+                g.purchase_date
             FROM sales s
             LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
-            LEFT JOIN roast_profiles r ON s.batch_name = r.batch_name
+            
             ORDER BY s.sell_date DESC
         `;
 

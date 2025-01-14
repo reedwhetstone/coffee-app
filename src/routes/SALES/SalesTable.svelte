@@ -9,7 +9,6 @@
 		sell_date: string;
 		purchase_date: string;
 		coffee_name?: string;
-		roast_date?: string;
 	}
 
 	export let salesData: SaleData[] = [];
@@ -35,7 +34,7 @@
 		const aVal = a[sortField as keyof SaleData];
 		const bVal = b[sortField as keyof SaleData];
 
-		if (sortField === 'sell_date' || sortField === 'purchase_date' || sortField === 'roast_date') {
+		if (sortField === 'sell_date' || sortField === 'purchase_date') {
 			return sortDirection === 'asc'
 				? new Date(aVal as string).getTime() - new Date(bVal as string).getTime()
 				: new Date(bVal as string).getTime() - new Date(aVal as string).getTime();
@@ -157,11 +156,11 @@
 				</th>
 				<th
 					class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
-					on:click={() => toggleSort('roast_date')}
+					on:click={() => toggleSort('purchase_date')}
 				>
 					<div class="flex items-center gap-2">
-						Roast Date
-						{#if sortField === 'roast_date'}
+						Purchase Date
+						{#if sortField === 'purchase_date'}
 							{#if sortDirection === 'asc'}
 								<span>↑</span>
 							{:else if sortDirection === 'desc'}
@@ -196,7 +195,7 @@
 						${sale.price}
 					</td>
 					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
-						{sale.roast_date ? new Date(sale.roast_date).toLocaleDateString() : '-'}
+						{new Date(sale.purchase_date).toLocaleDateString()}
 					</td>
 				</tr>
 			{/each}
