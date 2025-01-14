@@ -90,11 +90,24 @@ async function scrapeUrl(url: string): Promise<ScrapedData | null> {
 }
 
 async function checkExistingUrls(connection: Connection, urls: string[]): Promise<string[]> {
-	const [rows] = await connection.execute('SELECT link FROM coffee_catalog WHERE link IN (?)', [
-		urls
-	]);
-	const existingUrls = new Set(rows.map((row: any) => row.link));
-	return urls.filter((url) => !existingUrls.has(url));
+	// URLs to ignore
+	const ignoredUrls = [
+		'https://www.sweetmarias.com/green-coffee-subscription-gift.html',
+		'https://www.sweetmarias.com/roasted-subscription-gift.html',
+		'https://www.sweetmarias.com/rstd-subs-1050.html'
+	];
+
+	// Filter out ignored URLs first
+	const filteredUrls = urls.filter((url) => !ignoredUrls.includes(url));
+
+	// Create placeholders for the SQL query
+	const placeholders = filteredUrls.map(() => '?').join(',');
+	const [rows] = await connection.execute(
+		`SELECT link FROM coffee_catalog WHERE link IN (${placeholders})`,
+		filteredUrls
+	);
+	const existingUrls = new Set((rows as any[]).map((row) => row.link));
+	return filteredUrls.filter((url) => !existingUrls.has(url));
 }
 
 async function updateDatabase() {
@@ -110,12 +123,12 @@ async function updateDatabase() {
 		const newUrls = await checkExistingUrls(connection, allProductUrls);
 		console.log(`Found ${newUrls.length} new products to process`);
 
-		// Take only first 10 URLs for testing
-		const urlsToProcess = newUrls.slice(0, 1);
-		console.log(`Processing first ${urlsToProcess.length} URLs`);
+		// Take only first N URLs for testing
+		//const urlsToProcess = newUrls.slice(0, 1);
+		//console.log(`Processing first ${urlsToProcess.length} URLs`);
 
 		// Process each URL
-		for (const url of urlsToProcess) {
+		for (const url of newUrls) {
 			console.log(`Processing URL: ${url}`);
 			const scrapedData = await scrapeUrl(url);
 

@@ -46,7 +46,7 @@
 		}[];
 	};
 
-	console.log('Component data:', data);
+	// console.log('Component data:', data);
 
 	// Add sorting functionality
 	let sortField: string | null = 'arrival_date';
@@ -66,13 +66,35 @@
 		}
 	}
 
-	// Computed sorted data
+	// Add helper function for date parsing
+	function parseMonthYear(dateStr: string | null): Date {
+		if (!dateStr) return new Date(0); // Return earliest possible date if null
+		const [month, year] = dateStr.split(' ');
+		const monthIndex = new Date(Date.parse(month + ' 1, 2000')).getMonth();
+		return new Date(parseInt(year), monthIndex);
+	}
+
+	// Computed sorted data with reordered columns
 	$: sortedData = data?.data
 		? [...data.data].sort((a, b) => {
 				if (!sortField || !sortDirection) return 0;
 
 				const aVal = a[sortField as keyof typeof a];
 				const bVal = b[sortField as keyof typeof b];
+
+				// Special handling for arrival_date
+				if (sortField === 'arrival_date') {
+					// Handle null values in sorting
+					if (!aVal && !bVal) return 0;
+					if (!aVal) return sortDirection === 'asc' ? -1 : 1;
+					if (!bVal) return sortDirection === 'asc' ? 1 : -1;
+
+					const dateA = parseMonthYear(aVal as string);
+					const dateB = parseMonthYear(bVal as string);
+					return sortDirection === 'asc'
+						? dateA.getTime() - dateB.getTime()
+						: dateB.getTime() - dateA.getTime();
+				}
 
 				if (typeof aVal === 'string' && typeof bVal === 'string') {
 					return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
@@ -81,20 +103,38 @@
 				return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
 			})
 		: [];
+
+	// Add function to get ordered keys
+	function getOrderedKeys(obj: any): string[] {
+		if (!obj) return [];
+		const keys = Object.keys(obj);
+		const idIndex = keys.indexOf('id');
+		const linkIndex = keys.indexOf('link');
+		const nameIndex = keys.indexOf('name');
+
+		// Remove the keys from their current positions
+		keys.splice(linkIndex, 1);
+		keys.splice(nameIndex, 1);
+
+		// Insert them in the desired order after id
+		keys.splice(1, 0, 'link', 'name');
+
+		return keys;
+	}
 </script>
 
-<div class="my-4 flex gap-4">
+<div class="my-8 mt-8 flex justify-center gap-4">
 	<button
 		on:click={runCoffeeScript}
-		class="cursor-pointer rounded bg-slate-600 px-4 py-2 text-white hover:bg-slate-700"
+		class="rounded border-2 border-zinc-500 bg-zinc-800 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
 	>
 		Run Coffee Script
 	</button>
 	<button
 		on:click={runPlaywrightScript}
-		class="cursor-pointer rounded bg-slate-600 px-4 py-2 text-white hover:bg-slate-700"
+		class="rounded border-2 border-zinc-500 bg-zinc-800 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
 	>
-		Run Playwright Script
+		Run New Bean Script
 	</button>
 </div>
 
@@ -105,7 +145,7 @@
 		<table class="w-full table-auto bg-zinc-800">
 			<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
 				<tr>
-					{#each Object.keys(data.data[0]) as header}
+					{#each getOrderedKeys(data.data[0]) as header}
 						<th
 							class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
 							on:click={() => toggleSort(header)}
@@ -131,14 +171,14 @@
 			<tbody>
 				{#each sortedData as row}
 					<tr class="border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700">
-						{#each Object.entries(row) as [key, value]}
+						{#each getOrderedKeys(row) as key}
 							<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
-								{#if key === 'link' && value}
-									<a href={value} target="_blank" class="text-blue-400 hover:underline">Link</a>
-								{:else if value === null}
+								{#if key === 'link' && row[key]}
+									<a href={row[key]} target="_blank" class="text-blue-400 hover:underline">Link</a>
+								{:else if row[key] === null}
 									-
 								{:else}
-									{value}
+									{row[key]}
 								{/if}
 							</td>
 						{/each}

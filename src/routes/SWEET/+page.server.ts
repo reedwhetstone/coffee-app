@@ -18,7 +18,7 @@ export async function load() {
 		const [rows] = await (dbConn as any).query(
 			'SELECT * FROM coffee_catalog ORDER BY arrival_date DESC'
 		);
-		console.log('Fetched rows:', rows);
+		// console.log('Fetched rows:', rows);
 		return { data: rows };
 	} catch (err) {
 		console.error('Database error:', err);
