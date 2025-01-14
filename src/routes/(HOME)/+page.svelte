@@ -36,6 +36,25 @@
 	let isFormVisible = false;
 	let selectedBean: any = null;
 
+	// Add loading state
+	let isLoading = true;
+
+	// Function to load data
+	async function loadData() {
+		try {
+			const response = await fetch('/api/data');
+			if (response.ok) {
+				const result = await response.json();
+				data = result;
+				return true;
+			}
+			return false;
+		} catch (error) {
+			console.error('Error loading data:', error);
+			return false;
+		}
+	}
+
 	// Function to handle bean deletion
 	async function deleteBean(id: number) {
 		try {
@@ -104,55 +123,55 @@
 		});
 
 	async function handleFormSubmit(newBean: any) {
-		// Refresh the data
-		const response = await fetch('/api/data');
-		data = await response.json();
-
-		// Set the newly created bean as selected and ensure it triggers the profile update
+		await loadData();
 		selectedBean = null; // Force a re-render by clearing first
 		setTimeout(() => {
-			// Use setTimeout to ensure the DOM updates
 			selectedBean = newBean;
 		}, 0);
 	}
 
-	// Update this function to properly handle the bean update
+	// Update handleBeanUpdate to use loadData
 	async function handleBeanUpdate(updatedBean: any) {
-		// Update the local data array
-		data.data = data.data.map((bean) => (bean.id === updatedBean.id ? updatedBean : bean));
-		// Update selectedBean to trigger UI refresh
+		await loadData();
 		selectedBean = updatedBean;
 	}
 
-	// Initialize selectedBean with the newest bean by purchase date
-	onMount(() => {
+	// Initialize selectedBean with proper data loading
+	onMount(async () => {
 		// Handle navbar actions
 		navbarActions.set({
 			onAddNewBean: handleAddNewBean,
 			onShowRoastForm: () => {}
 		});
 
-		// Handle search navigation
-		const searchState = page.state as PageState;
-		if (searchState?.searchType === 'green' && searchState?.searchId) {
-			const foundBean = data.data.find((bean) => bean.id === searchState.searchId);
-			if (foundBean) {
-				selectedBean = foundBean;
-				selectedPurchaseDate = foundBean.purchase_date;
-				window.scrollTo({ top: 0, behavior: 'smooth' });
+		// Load data first
+		await loadData().then(() => {
+			// Handle search navigation
+			const searchState = page.state as PageState;
+			if (searchState?.searchType === 'green' && searchState?.searchId) {
+				const foundBean = data.data.find((bean) => bean.id === searchState.searchId);
+				if (foundBean) {
+					selectedBean = foundBean;
+					selectedPurchaseDate = foundBean.purchase_date;
+					window.scrollTo({ top: 0, behavior: 'smooth' });
+				}
+			} else if (filterByLatestPurchase && data.data.length > 0) {
+				// If no search parameter, select the most recent bean by purchase date
+				const mostRecentDate = Math.max(
+					...data.data.map((b) => new Date(b.purchase_date).getTime())
+				);
+				selectedBean = data.data.find(
+					(bean) => new Date(bean.purchase_date).getTime() === mostRecentDate
+				);
 			}
-		} else if (filterByLatestPurchase && data.data.length > 0) {
-			// If no search parameter, select the most recent bean by purchase date
-			const mostRecentDate = Math.max(...data.data.map((b) => new Date(b.purchase_date).getTime()));
-			selectedBean = data.data.find(
-				(bean) => new Date(bean.purchase_date).getTime() === mostRecentDate
-			);
-		}
 
-		// Don't automatically set a selected bean unless coming from search
-		if (!selectedBean) {
-			selectedPurchaseDate = null;
-		}
+			// Don't automatically set a selected bean unless coming from search
+			if (!selectedBean) {
+				selectedPurchaseDate = null;
+			}
+		});
+
+		isLoading = false;
 
 		// Cleanup function
 		return () => {
