@@ -9,6 +9,7 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
+- add additional details to the new coffee script and create an algo to reccomend purchases based on freshness, cost, and rating
 - sales page
 - get #product-price-27637 > span "price per lb bean" into the coffee_catalog table
 - get all coffee data for coffee_catalog table - farm notes, tasting notes, etc.
