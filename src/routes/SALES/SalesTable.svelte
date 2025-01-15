@@ -46,6 +46,27 @@
 
 		return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
 	});
+
+	export let onEdit: (sale: SaleData) => void;
+	export let onDelete: (id: number) => void;
+
+	async function handleDelete(id: number) {
+		if (confirm('Are you sure you want to delete this sale?')) {
+			try {
+				const response = await fetch(`/api/sales?id=${id}`, {
+					method: 'DELETE'
+				});
+
+				if (response.ok) {
+					onDelete(id);
+				} else {
+					alert('Failed to delete sale');
+				}
+			} catch (error) {
+				console.error('Error deleting sale:', error);
+			}
+		}
+	}
 </script>
 
 <div class="mt-8 overflow-hidden overflow-x-auto rounded-lg">
@@ -196,6 +217,22 @@
 					</td>
 					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
 						{new Date(sale.purchase_date).toLocaleDateString()}
+					</td>
+					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
+						<div class="flex gap-2">
+							<button
+								class="rounded border border-blue-800 px-2 py-1 hover:bg-blue-900"
+								on:click={() => onEdit(sale)}
+							>
+								Edit
+							</button>
+							<button
+								class="rounded border border-red-800 px-2 py-1 hover:bg-red-900"
+								on:click={() => handleDelete(sale.id)}
+							>
+								Delete
+							</button>
+						</div>
 					</td>
 				</tr>
 			{/each}

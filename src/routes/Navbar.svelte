@@ -64,7 +64,7 @@
 				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
 				on:click={handleAddNewBean}
 			>
-				Add New Bean
+				New Bean
 			</button>
 
 			<button
@@ -84,6 +84,25 @@
 				}}
 			>
 				New Roast
+			</button>
+
+			<button
+				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+				on:click={() => {
+					if (routeId === '/SALES') {
+						// If already on SALES page, just show the form
+						$navbarActions.onAddNewSale();
+					} else {
+						// Otherwise, navigate with state
+						goto('/SALES', {
+							state: {
+								showSaleForm: true
+							}
+						});
+					}
+				}}
+			>
+				New Sale
 			</button>
 		</div>
 

@@ -1,9 +1,5 @@
-<script lang="ts">
-	import { onMount } from 'svelte';
-	import * as d3 from 'd3';
-	import SalesTable from './SalesTable.svelte';
-
-	interface SaleData {
+<script context="module" lang="ts">
+	export interface SaleData {
 		id: number;
 		green_coffee_inv_id: number;
 		oz_sold: number;
@@ -12,9 +8,24 @@
 		batch_name: string;
 		sell_date: string;
 		purchase_date: string;
-		coffee_name?: string; // From green_coffee_inv
-		roast_date?: string; // From roast_profiles
+		coffee_name?: string;
+		roast_date?: string;
 	}
+
+	export interface SaleFormProps {
+		sale: SaleData | null;
+		onClose: () => void;
+		onSubmit: (sale: SaleData) => void;
+	}
+</script>
+
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import * as d3 from 'd3';
+	import SalesTable from './SalesTable.svelte';
+	import SaleForm from '../SALES/SaleForm.svelte';
+	import { navbarActions } from '$lib/stores/navbarStore';
+	import { get } from 'svelte/store';
 
 	let salesData: SaleData[] = [];
 	let chartContainer: HTMLDivElement;
@@ -22,6 +33,8 @@
 	let margin = { top: 20, right: 20, bottom: 50, left: 60 };
 	let width: number;
 	let height = 400;
+	let isFormVisible = false;
+	let selectedSale: SaleData | null = null;
 
 	onMount(async () => {
 		try {
@@ -33,6 +46,18 @@
 		} catch (error) {
 			console.error('Error fetching sales data:', error);
 		}
+
+		navbarActions.set({
+			...get(navbarActions),
+			onAddNewSale: () => (isFormVisible = true)
+		});
+
+		return () => {
+			navbarActions.set({
+				...get(navbarActions),
+				onAddNewSale: () => {}
+			});
+		};
 	});
 
 	function createChart() {
@@ -155,7 +180,55 @@
 			}
 		};
 	});
+
+	async function handleFormSubmit(saleData: any) {
+		try {
+			const response = await fetch('/api/sales');
+			if (response.ok) {
+				salesData = await response.json();
+				createChart();
+			}
+		} catch (error) {
+			console.error('Error updating sales data:', error);
+		}
+		isFormVisible = false;
+	}
+
+	function handleEdit(sale: SaleData) {
+		selectedSale = sale;
+		isFormVisible = true;
+	}
+
+	async function handleDelete(id: number) {
+		try {
+			const response = await fetch('/api/sales');
+			if (response.ok) {
+				salesData = await response.json();
+				createChart();
+			}
+		} catch (error) {
+			console.error('Error updating sales data:', error);
+		}
+	}
 </script>
+
+/// <reference types="svelte" />
+
+<!-- Add the form modal -->
+{#if isFormVisible}
+	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75">
+		<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-6">
+			<SaleForm
+				sale={selectedSale}
+				onClose={() => {
+					isFormVisible = false;
+					selectedSale = null;
+				}}
+				onSubmit={handleFormSubmit}
+			/>
+		</div>
+	</div>
+{/if}
 
 <div class="m-8">
 	<h1 class="mb-4 text-2xl font-bold text-zinc-400">Sales Overview</h1>
@@ -163,5 +236,5 @@
 		<div bind:this={chartContainer} class="w-full"></div>
 	</div>
 
-	<SalesTable {salesData} />
+	<SalesTable {salesData} onEdit={handleEdit} onDelete={handleDelete} />
 </div>
