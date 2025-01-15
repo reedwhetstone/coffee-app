@@ -6,24 +6,68 @@
 		purchase_date: string;
 		coffee_name: string;
 		purchased_qty_lbs: number;
-		bean_cost: number;
-		tax_ship_cost: number;
-		total_sales: number;
-		oz_sold: number;
-		profit: number;
-		profit_margin: number;
+		purchased_qty_oz: number;
+		bean_cost: number; // Raw cost of beans
+		tax_ship_cost: number; // Additional costs
+		total_sales: number; // Total revenue from sales
+		oz_sold: number; // Amount sold in ounces
+		oz_in: number; // Amount roasted in ounces
+		oz_out: number; // output after roast (accounts for water loss during roast)
+		profit: number; // Calculated profit
+		profit_margin: number; // Profit margin as percentage
 	}
 
 	let profitData: ProfitData[] = [];
 	let selectedDateRange: 'all' | '30' | '90' | '180' | '365' = 'all';
 	let chartContainer: HTMLDivElement;
 
-	// Aggregate metrics
-	$: totalRevenue = d3.sum(profitData, (d) => d.total_sales);
-	$: totalCost = d3.sum(profitData, (d) => d.bean_cost + d.tax_ship_cost);
-	$: totalProfit = d3.sum(profitData, (d) => d.profit);
-	$: averageMargin = d3.mean(profitData, (d) => d.profit_margin) || 0;
-	$: totalPoundsRoasted = d3.sum(profitData, (d) => d.oz_sold) / 16;
+	// Updated aggregate metrics
+	$: totalRevenue = d3.sum(profitData, (d) => +d.total_sales || 0);
+	$: totalCost = d3.sum(profitData, (d) => (+d.bean_cost || 0) + (+d.tax_ship_cost || 0));
+	$: totalProfit = d3.sum(profitData, (d) => +d.profit || 0);
+	$: averageMargin =
+		(d3.sum(profitData, (d) => +d.profit || 0) / d3.sum(profitData, (d) => +d.total_sales || 0)) *
+			100 || 0;
+	$: totalPoundsRoasted = d3.sum(profitData, (d) => +d.purchased_qty_lbs || 0);
+
+	// Add these reactive declarations after your existing ones
+	$: sellThroughRate = (() => {
+		const totalOzSold = d3.sum(profitData, (d) => +d.oz_sold || 0);
+		const totalOzPurchased = d3.sum(profitData, (d) => (+d.purchased_qty_lbs || 0) * 16);
+		return totalOzPurchased > 0 ? (totalOzSold / totalOzPurchased) * 100 : 0;
+	})();
+	$: avgCostPerPound = totalPoundsRoasted ? totalCost / totalPoundsRoasted : 0;
+	$: avgRevenuePerPound = totalPoundsRoasted ? totalRevenue / totalPoundsRoasted : 0;
+	$: avgProfitPerPound = totalPoundsRoasted ? totalProfit / totalPoundsRoasted : 0;
+
+	$: roastLossRate = (() => {
+		const totalOzIn = d3.sum(profitData, (d) => +d.oz_in || 0);
+		const totalOzOut = d3.sum(profitData, (d) => +d.oz_out || 0);
+		return totalOzIn > 0 ? 1 - totalOzOut / totalOzIn : 0;
+	})();
+
+	$: {
+		console.log('Profit Data:', profitData);
+		console.log(
+			'Individual Costs:',
+			profitData.map((d) => ({
+				coffee: d.coffee_name,
+				bean_cost: d.bean_cost,
+				tax_ship_cost: d.tax_ship_cost,
+				total: (d.bean_cost || 0) + (d.tax_ship_cost || 0)
+			}))
+		);
+		console.log('profitData length:', profitData.length);
+		console.log(
+			'oz_in values:',
+			profitData.map((d) => d.oz_in)
+		);
+		console.log(
+			'sum of oz_in:',
+			d3.sum(profitData, (d) => +d.oz_in || 0)
+		);
+		console.log('lbs roasted:', totalPoundsRoasted);
+	}
 
 	onMount(async () => {
 		await fetchProfitData();
@@ -66,7 +110,7 @@
 
 		const yScale = d3
 			.scaleLinear()
-			.domain([0, d3.max(profitData, (d) => d.profit) || 0])
+			.domain([d3.min(profitData, (d) => d.profit) || 0, d3.max(profitData, (d) => d.profit) || 0])
 			.range([height, 0]);
 
 		// Create bars
@@ -76,10 +120,10 @@
 			.enter()
 			.append('rect')
 			.attr('x', (d) => xScale(d.coffee_name) || 0)
-			.attr('y', (d) => yScale(d.profit))
+			.attr('y', (d) => (d.profit >= 0 ? yScale(d.profit) : yScale(0)))
 			.attr('width', xScale.bandwidth())
-			.attr('height', (d) => height - yScale(d.profit))
-			.attr('fill', '#3730a3');
+			.attr('height', (d) => Math.abs(yScale(d.profit) - yScale(0)))
+			.attr('fill', (d) => (d.profit >= 0 ? '#3730a3' : '#dc2626'));
 
 		// Add axes
 		svg
@@ -119,6 +163,26 @@
 			<h3 class="text-sm text-zinc-400">Total Pounds Roasted</h3>
 			<p class="text-xl font-bold text-orange-500">{totalPoundsRoasted.toFixed(1)} lbs</p>
 		</div>
+		<div class="rounded-lg bg-zinc-800 p-4">
+			<h3 class="text-sm text-zinc-400">Avg. Sell-Through Rate</h3>
+			<p class="text-xl font-bold text-yellow-500">{sellThroughRate.toFixed(1)}%</p>
+		</div>
+		<div class="rounded-lg bg-zinc-800 p-4">
+			<h3 class="text-sm text-zinc-400">Avg. Profit/lb</h3>
+			<p class="text-xl font-bold text-emerald-500">${avgProfitPerPound.toFixed(2)}</p>
+		</div>
+		<div class="rounded-lg bg-zinc-800 p-4">
+			<h3 class="text-sm text-zinc-400">Avg. Cost/lb</h3>
+			<p class="text-xl font-bold text-pink-500">${avgCostPerPound.toFixed(2)}</p>
+		</div>
+		<div class="rounded-lg bg-zinc-800 p-4">
+			<h3 class="text-sm text-zinc-400">Avg. Revenue/lb</h3>
+			<p class="text-xl font-bold text-indigo-500">${avgRevenuePerPound.toFixed(2)}</p>
+		</div>
+		<div class="rounded-lg bg-zinc-800 p-4">
+			<h3 class="text-sm text-zinc-400">Avg. Roast Loss</h3>
+			<p class="text-xl font-bold text-cyan-500">{roastLossRate.toFixed(2)}%</p>
+		</div>
 	</div>
 
 	<!-- Date Range Filter -->
@@ -156,11 +220,13 @@
 					<tr class="border-b border-zinc-700 text-zinc-300">
 						<td class="px-6 py-4">{item.coffee_name}</td>
 						<td class="px-6 py-4">{new Date(item.purchase_date).toLocaleDateString()}</td>
-						<td class="px-6 py-4">{item.purchased_qty_lbs.toFixed(2)}</td>
-						<td class="px-6 py-4">${(item.bean_cost + item.tax_ship_cost).toFixed(2)}</td>
-						<td class="px-6 py-4">${item.total_sales.toFixed(2)}</td>
-						<td class="px-6 py-4">${item.profit.toFixed(2)}</td>
-						<td class="px-6 py-4">{item.profit_margin.toFixed(1)}%</td>
+						<td class="px-6 py-4">{(Number(item.purchased_qty_lbs) || 0).toFixed(2)}</td>
+						<td class="px-6 py-4"
+							>${(Number(item.bean_cost || 0) + Number(item.tax_ship_cost || 0)).toFixed(2)}</td
+						>
+						<td class="px-6 py-4">${(Number(item.total_sales) || 0).toFixed(2)}</td>
+						<td class="px-6 py-4">${(Number(item.profit) || 0).toFixed(2)}</td>
+						<td class="px-6 py-4">{(Number(item.profit_margin) || 0).toFixed(1)}%</td>
 					</tr>
 				{/each}
 			</tbody>

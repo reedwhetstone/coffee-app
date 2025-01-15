@@ -18,8 +18,8 @@ export async function GET({ url }) {
 			values.push(id);
 		}
 
-		const [rows] = await dbConn.query(query, values);
-		const formattedRows = rows.map((row: any) => ({
+		const [rows] = (await dbConn.query(query, values)) as [RowDataPacket[], any];
+		const formattedRows = (rows as any[]).map((row) => ({
 			...row,
 			purchase_date: row.purchase_date.toISOString().split('T')[0]
 		}));
