@@ -20,6 +20,7 @@
 	let profitData: ProfitData[] = [];
 	let selectedDateRange: 'all' | '30' | '90' | '180' | '365' = 'all';
 	let chartContainer: HTMLDivElement;
+	let expandedDates = new Set<string>();
 
 	// Updated aggregate metrics
 	$: totalRevenue = d3.sum(profitData, (d) => +d.total_sales || 0);
@@ -46,32 +47,20 @@
 		return totalOzIn > 0 ? 1 - totalOzOut / totalOzIn : 0;
 	})();
 
-	$: {
-		console.log('Profit Data:', profitData);
-		console.log(
-			'Individual Costs:',
-			profitData.map((d) => ({
-				coffee: d.coffee_name,
-				bean_cost: d.bean_cost,
-				tax_ship_cost: d.tax_ship_cost,
-				total: (d.bean_cost || 0) + (d.tax_ship_cost || 0)
-			}))
-		);
-		console.log('profitData length:', profitData.length);
-		console.log(
-			'oz_in values:',
-			profitData.map((d) => d.oz_in)
-		);
-		console.log(
-			'sum of oz_in:',
-			d3.sum(profitData, (d) => +d.oz_in || 0)
-		);
-		console.log('lbs roasted:', totalPoundsRoasted);
+	// Add this reactive declaration after your existing ones
+	$: groupedProfitData = d3.group(profitData, (d) => d.purchase_date);
+
+	function toggleDate(date: string) {
+		if (expandedDates.has(date)) {
+			expandedDates.delete(date);
+		} else {
+			expandedDates.add(date);
+		}
+		expandedDates = expandedDates; // trigger reactivity
 	}
 
 	onMount(async () => {
 		await fetchProfitData();
-		createChart();
 	});
 
 	async function fetchProfitData() {
@@ -83,58 +72,6 @@
 		} catch (error) {
 			console.error('Error fetching profit data:', error);
 		}
-	}
-
-	function createChart() {
-		// Clear existing chart
-		d3.select(chartContainer).selectAll('*').remove();
-
-		const margin = { top: 20, right: 20, bottom: 50, left: 60 };
-		const width = chartContainer.clientWidth - margin.left - margin.right;
-		const height = 400 - margin.top - margin.bottom;
-
-		const svg = d3
-			.select(chartContainer)
-			.append('svg')
-			.attr('width', width + margin.left + margin.right)
-			.attr('height', height + margin.top + margin.bottom)
-			.append('g')
-			.attr('transform', `translate(${margin.left},${margin.top})`);
-
-		// Create scales
-		const xScale = d3
-			.scaleBand()
-			.domain(profitData.map((d) => d.coffee_name))
-			.range([0, width])
-			.padding(0.1);
-
-		const yScale = d3
-			.scaleLinear()
-			.domain([d3.min(profitData, (d) => d.profit) || 0, d3.max(profitData, (d) => d.profit) || 0])
-			.range([height, 0]);
-
-		// Create bars
-		svg
-			.selectAll('rect')
-			.data(profitData)
-			.enter()
-			.append('rect')
-			.attr('x', (d) => xScale(d.coffee_name) || 0)
-			.attr('y', (d) => (d.profit >= 0 ? yScale(d.profit) : yScale(0)))
-			.attr('width', xScale.bandwidth())
-			.attr('height', (d) => Math.abs(yScale(d.profit) - yScale(0)))
-			.attr('fill', (d) => (d.profit >= 0 ? '#3730a3' : '#dc2626'));
-
-		// Add axes
-		svg
-			.append('g')
-			.attr('transform', `translate(0,${height})`)
-			.call(d3.axisBottom(xScale))
-			.selectAll('text')
-			.attr('transform', 'rotate(-45)')
-			.style('text-anchor', 'end');
-
-		svg.append('g').call(d3.axisLeft(yScale));
 	}
 </script>
 
@@ -185,49 +122,78 @@
 		</div>
 	</div>
 
-	<!-- Date Range Filter -->
-	<div class="mb-4">
-		<select bind:value={selectedDateRange} class="rounded bg-zinc-700 px-4 py-2 text-zinc-300">
-			<option value="all">All Time</option>
-			<option value="30">Last 30 Days</option>
-			<option value="90">Last 90 Days</option>
-			<option value="180">Last 180 Days</option>
-			<option value="365">Last Year</option>
-		</select>
-	</div>
-
-	<!-- Profit Chart -->
-	<div class="rounded-lg bg-zinc-800 p-6">
-		<div bind:this={chartContainer} class="w-full"></div>
-	</div>
-
 	<!-- Detailed Table -->
 	<div class="mt-8 overflow-x-auto">
 		<table class="w-full table-auto bg-zinc-800">
 			<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
 				<tr>
-					<th class="px-6 py-3">Coffee</th>
 					<th class="px-6 py-3">Purchase Date</th>
-					<th class="px-6 py-3">Qty (lbs)</th>
-					<th class="px-6 py-3">Cost</th>
-					<th class="px-6 py-3">Sales</th>
-					<th class="px-6 py-3">Profit</th>
-					<th class="px-6 py-3">Margin</th>
+					<th class="px-6 py-3">Details</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each profitData as item}
-					<tr class="border-b border-zinc-700 text-zinc-300">
-						<td class="px-6 py-4">{item.coffee_name}</td>
-						<td class="px-6 py-4">{new Date(item.purchase_date).toLocaleDateString()}</td>
-						<td class="px-6 py-4">{(Number(item.purchased_qty_lbs) || 0).toFixed(2)}</td>
-						<td class="px-6 py-4"
-							>${(Number(item.bean_cost || 0) + Number(item.tax_ship_cost || 0)).toFixed(2)}</td
-						>
-						<td class="px-6 py-4">${(Number(item.total_sales) || 0).toFixed(2)}</td>
-						<td class="px-6 py-4">${(Number(item.profit) || 0).toFixed(2)}</td>
-						<td class="px-6 py-4">{(Number(item.profit_margin) || 0).toFixed(1)}%</td>
+				{#each [...groupedProfitData] as [date, items]}
+					<!-- Purchase Date Group Header -->
+					<tr
+						class="cursor-pointer bg-zinc-700 hover:bg-zinc-600"
+						on:click={() => toggleDate(date)}
+					>
+						<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
+							{expandedDates.has(date) ? '▼' : '▶'}
+							{new Date(date).toLocaleDateString()}
+						</td>
+						<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
+							<div class="flex gap-4">
+								<span>{items.length} items</span>
+								<span
+									>Total Cost: ${items
+										.reduce(
+											(sum, item) => sum + Number(item.bean_cost) + Number(item.tax_ship_cost),
+											0
+										)
+										.toFixed(2)}</span
+								>
+								<span
+									>Total Sales: ${items
+										.reduce((sum, item) => sum + Number(item.total_sales), 0)
+										.toFixed(2)}</span
+								>
+								<span
+									>Total Profit: ${items
+										.reduce((sum, item) => sum + Number(item.profit), 0)
+										.toFixed(2)}</span
+								>
+								<span
+									>Avg Margin: {(
+										items.reduce((sum, item) => sum + Number(item.profit_margin), 0) / items.length
+									).toFixed(1)}%</span
+								>
+							</div>
+						</td>
 					</tr>
+					<!-- Items for this purchase date -->
+					{#if expandedDates.has(date)}
+						{#each items as item}
+							<tr class="border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700">
+								<td class="px-6 py-4 pl-12 text-xs text-zinc-300">
+									{item.coffee_name}
+								</td>
+								<td class="px-6 py-4 text-xs text-zinc-300">
+									<div class="flex gap-4">
+										<span>Qty: {item.purchased_qty_lbs.toFixed(2)} lbs</span>
+										<span
+											>Cost: ${(Number(item.bean_cost) + Number(item.tax_ship_cost)).toFixed(
+												2
+											)}</span
+										>
+										<span>Sales: ${Number(item.total_sales).toFixed(2)}</span>
+										<span>Profit: ${Number(item.profit).toFixed(2)}</span>
+										<span>Margin: {Number(item.profit_margin).toFixed(1)}%</span>
+									</div>
+								</td>
+							</tr>
+						{/each}
+					{/if}
 				{/each}
 			</tbody>
 		</table>
