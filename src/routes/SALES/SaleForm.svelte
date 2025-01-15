@@ -3,6 +3,38 @@
 	export let onClose: () => void;
 	export let onSubmit: (sale: any) => void;
 
+	let availableCoffees: any[] = [];
+	let availableBatches: any[] = [];
+
+	// Fetch available coffees and batches on component mount
+	async function loadData() {
+		try {
+			// Fetch coffees from green_coffee_inv
+			const coffeeResponse = await fetch('/api/data');
+			if (coffeeResponse.ok) {
+				const coffeeData = await coffeeResponse.json();
+				// Get unique coffee names
+				const uniqueBeans = [...new Set(coffeeData.data.map((profile: any) => profile.name))];
+				availableCoffees = uniqueBeans.map((name) => ({ name: name }));
+			}
+
+			// Fetch batches from roast_profiles
+			const batchResponse = await fetch('/api/roast-profiles');
+			if (batchResponse.ok) {
+				const batchData = await batchResponse.json();
+				// Get unique batch names
+				const uniqueBatches = [
+					...new Set(batchData.data.map((profile: any) => profile.batch_name))
+				];
+				availableBatches = uniqueBatches.map((name) => ({ batch_name: name }));
+			}
+		} catch (error) {
+			console.error('Error loading data:', error);
+		}
+	}
+
+	loadData();
+
 	let formData = sale
 		? { ...sale }
 		: {
@@ -45,6 +77,17 @@
 			console.error(`Error ${sale ? 'updating' : 'creating'} sale:`, error);
 		}
 	}
+
+	// Handle coffee selection
+	function handleCoffeeChange(event: Event) {
+		const selectedCoffee = availableCoffees.find(
+			(coffee) => coffee.name === (event.target as HTMLSelectElement).value
+		);
+		if (selectedCoffee) {
+			formData.coffee_name = selectedCoffee.name;
+			formData.green_coffee_inv_id = selectedCoffee.id;
+		}
+	}
 </script>
 
 <form on:submit|preventDefault={handleSubmit} class="space-y-4">
@@ -54,25 +97,34 @@
 
 	<div class="grid grid-cols-2 gap-4">
 		<div>
-			<label for="batch_name" class="block text-sm font-medium text-zinc-300">Batch Name</label>
-			<input
-				id="batch_name"
-				type="text"
-				bind:value={formData.batch_name}
+			<label for="coffee_name" class="block text-sm font-medium text-zinc-300">Coffee Name</label>
+			<select
+				id="coffee_name"
 				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				value={formData.coffee_name}
+				on:change={handleCoffeeChange}
 				required
-			/>
+			>
+				<option value="">Select a coffee...</option>
+				{#each availableCoffees as coffee}
+					<option value={coffee.name}>{coffee.name}</option>
+				{/each}
+			</select>
 		</div>
 
 		<div>
-			<label for="coffee_name" class="block text-sm font-medium text-zinc-300">Coffee Name</label>
-			<input
-				id="coffee_name"
-				type="text"
-				bind:value={formData.coffee_name}
+			<label for="batch_name" class="block text-sm font-medium text-zinc-300">Batch Name</label>
+			<select
+				id="batch_name"
 				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				bind:value={formData.batch_name}
 				required
-			/>
+			>
+				<option value="">Select a batch...</option>
+				{#each availableBatches as batch}
+					<option value={batch.batch_name}>{batch.batch_name}</option>
+				{/each}
+			</select>
 		</div>
 
 		<div>
