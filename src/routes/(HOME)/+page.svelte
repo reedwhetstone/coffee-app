@@ -135,19 +135,15 @@
 
 	// Initialize selectedBean with proper data loading
 	onMount(async () => {
-		// Handle navbar actions
 		navbarActions.set({
 			onAddNewBean: handleAddNewBean,
+			onAddNewRoast: () => {},
+			onAddNewSale: () => {},
 			onShowRoastForm: () => {}
 		});
 
 		// Load data first
 		await loadData().then(() => {
-			if (data.data.length > 0) {
-				// Set initial date to most recent purchase
-				const dates = data.data.map((bean) => bean.purchase_date);
-				selectedPurchaseDate = dates.sort().reverse()[0];
-			}
 			// Handle search navigation
 			const searchState = page.state as PageState;
 			if (searchState?.searchType === 'green' && searchState?.searchId) {
@@ -161,14 +157,6 @@
 		});
 
 		isLoading = false;
-
-		// Cleanup function
-		return () => {
-			navbarActions.set({
-				onAddNewBean: () => {},
-				onShowRoastForm: () => {}
-			});
-		};
 	});
 
 	function handleAddNewBean() {

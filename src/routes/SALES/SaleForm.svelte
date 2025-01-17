@@ -57,7 +57,7 @@
 				])
 			);
 
-			const response = await fetch('/api/sales', {
+			const response = await fetch(sale ? `/api/sales?id=${sale.id}` : '/api/sales', {
 				method: sale ? 'PUT' : 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -79,13 +79,26 @@
 	}
 
 	// Handle coffee selection
-	function handleCoffeeChange(event: Event) {
-		const selectedCoffee = availableCoffees.find(
-			(coffee) => coffee.name === (event.target as HTMLSelectElement).value
-		);
-		if (selectedCoffee) {
-			formData.coffee_name = selectedCoffee.name;
-			formData.green_coffee_inv_id = selectedCoffee.id;
+	async function handleCoffeeChange(event: Event) {
+		try {
+			const selectedCoffeeName = (event.target as HTMLSelectElement).value;
+
+			// Fetch the coffee data to get the ID
+			const response = await fetch('/api/data');
+			if (!response.ok) {
+				throw new Error('Failed to fetch coffee data');
+			}
+
+			const data = await response.json();
+			const selectedCoffee = data.data.find((coffee: any) => coffee.name === selectedCoffeeName);
+
+			if (selectedCoffee) {
+				formData.coffee_name = selectedCoffee.name;
+				formData.green_coffee_inv_id = selectedCoffee.id;
+				formData.purchase_date = selectedCoffee.purchase_date;
+			}
+		} catch (error) {
+			console.error('Error updating coffee selection:', error);
 		}
 	}
 </script>
