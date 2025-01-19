@@ -9,6 +9,7 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
+- correct the new bean data requirements - remove rank, change the arrows to change dollar amount, etc.
 - clean up table handling with apis etc.
 - add additional details to the new coffee script and create an algo to reccomend purchases based on freshness, cost, and rating
 - sales page

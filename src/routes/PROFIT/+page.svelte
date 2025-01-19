@@ -3,6 +3,7 @@
 	import * as d3 from 'd3';
 
 	interface ProfitData {
+		id: number;
 		purchase_date: string;
 		coffee_name: string;
 		purchased_qty_lbs: number;
@@ -17,7 +18,15 @@
 		profit_margin: number; // Profit margin as percentage
 	}
 
+	interface RoastProfileData {
+		roast_id: number;
+		coffee_id: number;
+		oz_in: number;
+		oz_out: number;
+	}
+
 	let profitData: ProfitData[] = [];
+	let roastProfileData: RoastProfileData[] = [];
 	let selectedDateRange: 'all' | '30' | '90' | '180' | '365' = 'all';
 	let chartContainer: HTMLDivElement;
 	let expandedDates = new Set<string>();
@@ -42,9 +51,20 @@
 	$: avgProfitPerPound = totalPoundsRoasted ? totalProfit / totalPoundsRoasted : 0;
 
 	$: roastLossRate = (() => {
-		const totalOzIn = d3.sum(profitData, (d) => +d.oz_in || 0);
-		const totalOzOut = d3.sum(profitData, (d) => +d.oz_out || 0);
-		return totalOzIn > 0 ? 1 - totalOzOut / totalOzIn : 0;
+		// Group roast data by coffee_id
+		const roastsByBean = d3.group(roastProfileData, (d) => d.coffee_id);
+
+		// Sum up oz_in and oz_out for each coffee
+		let totalOzIn = 0;
+		let totalOzOut = 0;
+
+		roastsByBean.forEach((roasts) => {
+			totalOzIn += d3.sum(roasts, (d) => Number(d.oz_in) || 0);
+			totalOzOut += d3.sum(roasts, (d) => Number(d.oz_out) || 0);
+		});
+
+		// Calculate loss rate if we have valid data
+		return totalOzIn > 0 ? ((totalOzIn - totalOzOut) / totalOzIn) * 100 : 0;
 	})();
 
 	// Add this reactive declaration after your existing ones
@@ -60,7 +80,7 @@
 	}
 
 	onMount(async () => {
-		await fetchProfitData();
+		await Promise.all([fetchProfitData(), fetchRoastProfileData()]);
 	});
 
 	async function fetchProfitData() {
@@ -71,6 +91,20 @@
 			}
 		} catch (error) {
 			console.error('Error fetching profit data:', error);
+		}
+	}
+
+	async function fetchRoastProfileData() {
+		try {
+			const response = await fetch('/api/roast-profiles');
+			if (response.ok) {
+				const data = await response.json();
+				roastProfileData = data.data.filter(
+					(profile: RoastProfileData) => profile.oz_in != null && profile.oz_out != null
+				);
+			}
+		} catch (error) {
+			console.error('Error fetching roast profile data:', error);
 		}
 	}
 </script>

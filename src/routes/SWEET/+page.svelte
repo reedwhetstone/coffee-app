@@ -125,6 +125,13 @@
 
 <div class="my-8 mt-8 flex justify-center gap-4">
 	<button
+		on:click={() => fetch('/api/update-green-coffee', { method: 'POST' })}
+		class="rounded border-2 border-zinc-500 bg-zinc-800 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
+	>
+		Update Green Coffee Data
+	</button>
+
+	<button
 		on:click={runCoffeeScript}
 		class="rounded border-2 border-zinc-500 bg-zinc-800 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
 	>
