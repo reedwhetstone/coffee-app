@@ -12,16 +12,6 @@
 		}
 	}
 
-	async function runPlaywrightScript() {
-		try {
-			logs = [...logs, 'Starting playwright script...'];
-			const response = await fetch('/api/run-playwright', { method: 'POST' });
-			if (!response.ok) throw new Error('Failed to run playwright script');
-			logs = [...logs, 'Playwright script executed successfully'];
-		} catch (error) {
-			logs = [...logs, `Error running playwright script: ${error}`];
-		}
-	}
 	export let data: {
 		data: {
 			id: number;
@@ -136,12 +126,6 @@
 		class="rounded border-2 border-zinc-500 bg-zinc-800 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
 	>
 		Run Coffee Script
-	</button>
-	<button
-		on:click={runPlaywrightScript}
-		class="rounded border-2 border-zinc-500 bg-zinc-800 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
-	>
-		Run New Bean Script
 	</button>
 </div>
 
