@@ -181,7 +181,7 @@
 										<input
 											id="oz_in_{index}"
 											type="number"
-											step="0.1"
+											step="1"
 											bind:value={bean.oz_in}
 											class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 											required
@@ -195,7 +195,7 @@
 										<input
 											id="oz_out_{index}"
 											type="number"
-											step="0.1"
+											step="1"
 											bind:value={bean.oz_out}
 											class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 										/>

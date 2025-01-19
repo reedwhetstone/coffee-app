@@ -70,19 +70,6 @@
 		</div>
 
 		<div>
-			<label for="rank" class="block text-sm font-medium text-zinc-300">Rank</label>
-			<input
-				id="rank"
-				type="number"
-				min="0"
-				max="10"
-				bind:value={formData.rank}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
-				required
-			/>
-		</div>
-
-		<div>
 			<label for="purchase_date" class="block text-sm font-medium text-zinc-300"
 				>Purchase Date</label
 			>
@@ -102,7 +89,7 @@
 			<input
 				id="purchased_qty"
 				type="number"
-				step="0.01"
+				step="1"
 				bind:value={formData.purchased_qty_lbs}
 				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
@@ -114,7 +101,7 @@
 			<input
 				id="bean_cost"
 				type="number"
-				step="0.01"
+				step="1"
 				bind:value={formData.bean_cost}
 				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
@@ -128,7 +115,7 @@
 			<input
 				id="tax_ship_cost"
 				type="number"
-				step="0.01"
+				step="1"
 				bind:value={formData.tax_ship_cost}
 				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
