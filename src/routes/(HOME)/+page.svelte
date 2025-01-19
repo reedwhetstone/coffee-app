@@ -227,21 +227,23 @@
 						<tr>
 							{#each Object.keys(data.data[0] || {}) as header}
 								<th
-									class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
+									class="group max-w-[200px] cursor-pointer px-6 py-3 hover:bg-zinc-600"
 									on:click={() => toggleSort(header)}
 								>
 									<div class="flex items-center gap-2">
-										{header.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+										<span class="truncate">
+											{header.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+										</span>
 
 										<!-- Sort indicators -->
 										{#if sortField === header}
 											{#if sortDirection === 'asc'}
-												<span>↑</span>
+												<span class="flex-shrink-0">↑</span>
 											{:else if sortDirection === 'desc'}
-												<span>↓</span>
+												<span class="flex-shrink-0">↓</span>
 											{/if}
 										{:else}
-											<span class="opacity-0 group-hover:opacity-50">↕</span>
+											<span class="flex-shrink-0 opacity-0 group-hover:opacity-50">↕</span>
 										{/if}
 									</div>
 								</th>
@@ -258,8 +260,10 @@
 								on:click={() => selectBean(bean)}
 							>
 								{#each Object.entries(bean) as [key, value]}
-									<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
-										{value}
+									<td class="max-w-[200px] px-6 py-4 text-xs text-zinc-300">
+										<div class="break-words">
+											{value}
+										</div>
 									</td>
 								{/each}
 							</tr>

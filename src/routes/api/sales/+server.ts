@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { dbConn } from '$lib/server/db';
+import type { RowDataPacket } from 'mysql2';
 
 export async function GET() {
 	if (!dbConn) {
@@ -47,13 +48,13 @@ export async function PUT({ url, request }) {
 		await dbConn.query('UPDATE sales SET ? WHERE id = ?', [updateData, id]);
 
 		// Fetch and return the updated sale with joined coffee_name
-		const [updatedSale] = await dbConn.query(
+		const [updatedSale] = (await dbConn.query(
 			`SELECT s.*, g.name as coffee_name, g.purchase_date
 			 FROM sales s
 			 LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
 			 WHERE s.id = ?`,
 			[id]
-		);
+		)) as [RowDataPacket[], any];
 
 		return json(updatedSale[0]);
 	} catch (error) {

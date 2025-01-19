@@ -27,6 +27,7 @@
 	import { navbarActions } from '$lib/stores/navbarStore';
 	import { get } from 'svelte/store';
 
+	let resizeObserver: ResizeObserver;
 	let salesData: SaleData[] = [];
 	let chartContainer: HTMLDivElement;
 	let svg: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -36,23 +37,37 @@
 	let isFormVisible = false;
 	let selectedSale: SaleData | null = null;
 
-	onMount(async () => {
-		try {
-			const response = await fetch('/api/sales');
-			if (response.ok) {
-				salesData = await response.json();
-				createChart();
-			}
-		} catch (error) {
-			console.error('Error fetching sales data:', error);
-		}
+	onMount(() => {
+		(async () => {
+			try {
+				const response = await fetch('/api/sales');
+				if (response.ok) {
+					salesData = await response.json();
+					createChart();
+				}
 
-		navbarActions.set({
-			...get(navbarActions),
-			onAddNewSale: () => (isFormVisible = true)
-		});
+				// Create resize observer
+				resizeObserver = new ResizeObserver(() => {
+					if (chartContainer) {
+						createChart();
+					}
+				});
+
+				resizeObserver.observe(chartContainer);
+
+				navbarActions.set({
+					...get(navbarActions),
+					onAddNewSale: () => (isFormVisible = true)
+				});
+			} catch (error) {
+				console.error('Error fetching sales data:', error);
+			}
+		})();
 
 		return () => {
+			if (resizeObserver) {
+				resizeObserver.disconnect();
+			}
 			navbarActions.set({
 				...get(navbarActions),
 				onAddNewSale: () => {}
@@ -88,7 +103,7 @@
 			.range([height, 0]);
 
 		// Create axes with white text
-		const xAxis = d3.axisBottom(xScale).tickFormat((d) => d.toLocaleDateString());
+		const xAxis = d3.axisBottom(xScale).tickFormat((d) => (d as Date).toLocaleDateString());
 		const yAxis = d3.axisLeft(yScale).tickFormat((d) => `$${d}`);
 
 		// Add axes to chart with white text styling
@@ -151,36 +166,6 @@
 		d3.select('.tooltip').remove();
 	}
 
-	// Add resize handler
-	let resizeObserver: ResizeObserver;
-
-	onMount(async () => {
-		try {
-			const response = await fetch('/api/sales');
-			if (response.ok) {
-				salesData = await response.json();
-
-				// Create resize observer
-				resizeObserver = new ResizeObserver(() => {
-					if (chartContainer) {
-						createChart();
-					}
-				});
-
-				resizeObserver.observe(chartContainer);
-				createChart();
-			}
-		} catch (error) {
-			console.error('Error fetching sales data:', error);
-		}
-
-		return () => {
-			if (resizeObserver) {
-				resizeObserver.disconnect();
-			}
-		};
-	});
-
 	async function handleFormSubmit(saleData: any) {
 		try {
 			const response = await fetch('/api/sales');
@@ -211,8 +196,6 @@
 		}
 	}
 </script>
-
-/// <reference types="svelte" />
 
 <!-- Add the form modal -->
 {#if isFormVisible}

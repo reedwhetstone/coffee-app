@@ -22,8 +22,17 @@
 	}
 
 	// Add these variables
+	interface SearchResult {
+		id: number;
+		title: string;
+		description: string;
+		url: string;
+		type: string;
+		item_id: number;
+	}
+
 	let searchQuery = '';
-	let searchResults = [];
+	let searchResults: SearchResult[] = [];
 	let showResults = false;
 
 	// Add search function
@@ -43,9 +52,9 @@
 	}, 300);
 
 	// Close search results when clicking outside
-	function handleClickOutside(event) {
+	function handleClickOutside(event: MouseEvent) {
 		const searchContainer = document.getElementById('search-container');
-		if (searchContainer && !searchContainer.contains(event.target)) {
+		if (searchContainer && !searchContainer.contains(event.target as Node)) {
 			showResults = false;
 		}
 	}
