@@ -127,7 +127,7 @@
 		<div class="flex items-center justify-between">
 			<div class="flex-1 text-center">
 				<h1 class="text-2xl font-bold text-zinc-400">
-					{profile.batch_name}
+					{profile.batch_name} // {profile.roast_date}
 				</h1>
 			</div>
 			<button
