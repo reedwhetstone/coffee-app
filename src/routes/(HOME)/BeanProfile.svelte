@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { formatDateForDisplay, prepareDateForAPI } from '$lib/utils/dates';
 	export let selectedBean: any;
 	export let onUpdate: (bean: any) => void;
 	export let onDelete: (id: number) => void;
@@ -21,21 +22,18 @@
 
 	async function saveChanges() {
 		try {
-			const cleanedBean = Object.fromEntries(
-				Object.entries(editedBean).map(([key, value]) => [
-					key,
-					value === '' || value === undefined ? null : value
-				])
-			);
-
-			cleanedBean.last_updated = new Date().toISOString();
+			const dataForAPI = {
+				...editedBean,
+				purchase_date: prepareDateForAPI(editedBean.purchase_date),
+				last_updated: new Date().toISOString()
+			};
 
 			const response = await fetch(`/api/data?id=${selectedBean.id}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(cleanedBean)
+				body: JSON.stringify(dataForAPI)
 			});
 
 			if (response.ok) {

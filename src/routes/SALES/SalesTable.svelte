@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { formatDateForDisplay } from '$lib/utils/dates';
+
 	interface SaleData {
 		id: number;
 		green_coffee_inv_id: number;
@@ -35,9 +37,11 @@
 		const bVal = b[sortField as keyof SaleData];
 
 		if (sortField === 'sell_date' || sortField === 'purchase_date') {
+			const aDate = new Date(aVal as string);
+			const bDate = new Date(bVal as string);
 			return sortDirection === 'asc'
-				? new Date(aVal as string).getTime() - new Date(bVal as string).getTime()
-				: new Date(bVal as string).getTime() - new Date(aVal as string).getTime();
+				? aDate.getTime() - bDate.getTime()
+				: bDate.getTime() - aDate.getTime();
 		}
 
 		if (typeof aVal === 'string' && typeof bVal === 'string') {
@@ -198,7 +202,7 @@
 			{#each sortedSales as sale}
 				<tr class="border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700">
 					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
-						{new Date(sale.sell_date).toLocaleDateString()}
+						{formatDateForDisplay(sale.sell_date)}
 					</td>
 					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
 						{sale.coffee_name || '-'}

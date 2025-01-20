@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { formatDateForInput, prepareDateForAPI, formatDateForDisplay } from '$lib/utils/dates';
+
 	export let profile: any;
 	export let onUpdate: (profile: any) => void;
 	export let onDelete: (id: number) => void;
@@ -127,7 +129,7 @@
 		<div class="flex items-center justify-between">
 			<div class="flex-1 text-center">
 				<h1 class="text-2xl font-bold text-zinc-400">
-					{profile.batch_name} // {profile.roast_date}
+					{profile.batch_name} // {formatDateForDisplay(profile.roast_date)}
 				</h1>
 			</div>
 			<button
@@ -191,7 +193,9 @@
 										<input
 											type="date"
 											class="relative z-0 ml-2 h-[24px] rounded bg-zinc-600 px-2 py-1 text-zinc-300"
-											bind:value={editedProfile[key]}
+											value={formatDateForInput(editedProfile[key])}
+											on:input={(e) =>
+												(editedProfile[key] = prepareDateForAPI(e.currentTarget.value))}
 										/>
 									{:else}
 										<input
@@ -209,7 +213,9 @@
 											? 'space-pre-wrap block'
 											: ''}"
 									>
-										{value}
+										{key === 'roast_date' || key === 'last_updated'
+											? formatDateForDisplay(value as string)
+											: value}
 									</span>
 								{/if}
 							</div>

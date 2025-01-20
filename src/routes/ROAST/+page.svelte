@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Component imports
 	import { onMount } from 'svelte';
+	import { prepareDateForAPI } from '$lib/utils/dates';
 	// import RoastChart from './RoastChart.svelte';
 	import RoastProfileForm from './RoastProfileForm.svelte';
 	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
@@ -171,25 +172,26 @@
 	// Form submission handler for new roast profiles
 	async function handleFormSubmit(profileData: any) {
 		try {
-			// Create a roast profile for each bean in the batch
 			const profiles = await Promise.all(
 				profileData.batch_beans.map(async (bean: any) => {
+					const dataForAPI = {
+						batch_name: profileData.batch_name,
+						coffee_id: bean.coffee_id,
+						coffee_name: bean.coffee_name,
+						roast_date: prepareDateForAPI(profileData.roast_date),
+						last_updated: new Date().toISOString(),
+						oz_in: bean.oz_in,
+						oz_out: bean.oz_out,
+						roast_notes: profileData.roast_notes,
+						roast_targets: profileData.roast_targets
+					};
+
 					const response = await fetch('/api/roast-profiles', {
-						method: 'POST', // Always use POST for new profiles
+						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json'
 						},
-						body: JSON.stringify({
-							batch_name: profileData.batch_name,
-							coffee_id: bean.coffee_id,
-							coffee_name: bean.coffee_name,
-							roast_date: profileData.roast_date,
-							last_updated: new Date().toISOString(),
-							oz_in: bean.oz_in,
-							oz_out: bean.oz_out,
-							roast_notes: profileData.roast_notes,
-							roast_targets: profileData.roast_targets
-						})
+						body: JSON.stringify(dataForAPI)
 					});
 
 					if (!response.ok) {
@@ -457,7 +459,7 @@
 					},
 					body: JSON.stringify({
 						...currentRoastProfile,
-						last_updated: new Date().toISOString()
+						last_updated: new Date()
 					})
 				});
 
@@ -477,8 +479,8 @@
 						batch_name: `${selectedBean.name} - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
 						coffee_id: selectedBean.id,
 						coffee_name: selectedBean.name,
-						roast_date: new Date().toISOString(),
-						last_updated: new Date().toISOString(),
+						roast_date: new Date(),
+						last_updated: new Date(),
 						oz_in: null,
 						oz_out: null,
 						roast_notes: null,

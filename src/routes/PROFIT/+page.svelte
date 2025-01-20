@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
+	import { formatDateForDisplay } from '$lib/utils/dates';
 
 	interface ProfitData {
 		id: number;
@@ -187,7 +188,7 @@
 					>
 						<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
 							{expandedDates.has(date) ? '▼' : '▶'}
-							{new Date(date).toLocaleDateString()}
+							{formatDateForDisplay(date)}
 						</td>
 						<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
 							<div class="flex gap-4">

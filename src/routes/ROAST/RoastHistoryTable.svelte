@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDateForDisplay } from '$lib/utils/dates';
 	export let sortedBatchNames: string[];
 	export let sortedGroupedProfiles: Record<string, any[]>;
 	export let expandedBatches: Set<string>;
@@ -29,7 +30,7 @@
 						{batchName}
 					</td>
 					<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
-						{sortedGroupedProfiles[batchName][0].roast_date}
+						{formatDateForDisplay(sortedGroupedProfiles[batchName][0].roast_date)}
 					</td>
 					<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
 						{sortedGroupedProfiles[batchName].length} roasts
@@ -47,7 +48,7 @@
 						>
 							<td class="px-6 py-4 pl-12 text-xs text-zinc-300">{profile.coffee_name}</td>
 							<td class="px-6 py-4 text-xs text-zinc-300">
-								{profile.roast_date}
+								{formatDateForDisplay(profile.roast_date)}
 							</td>
 							<td class="px-6 py-4 text-xs text-zinc-300">{profile.notes}</td>
 						</tr>

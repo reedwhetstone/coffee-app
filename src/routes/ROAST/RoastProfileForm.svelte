@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { formatDateForDisplay, prepareDateForAPI } from '$lib/utils/dates';
 
 	export let onClose: () => void;
 	export let onSubmit: (profile: any) => void;
@@ -28,7 +29,7 @@
 			: '',
 		coffee_id: selectedBean?.id || '',
 		coffee_name: selectedBean?.name || '',
-		roast_date: new Date().toISOString().split('T')[0],
+		roast_date: prepareDateForAPI(new Date().toISOString()),
 		oz_in: '',
 		oz_out: '',
 		roast_notes: '',
@@ -80,8 +81,30 @@
 				oz_out: bean.oz_out ? Number(bean.oz_out) : null
 			}))
 		};
+		try {
+			const dataForAPI = {
+				...formData,
+				roast_date: prepareDateForAPI(formData.roast_date),
+				last_updated: new Date().toISOString()
+			};
+			onSubmit(profileData);
+			const response = await fetch('/api/roast-profiles', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(dataForAPI)
+			});
 
-		onSubmit(profileData);
+			if (response.ok) {
+				const result = await response.json();
+				onSubmit(result);
+			} else {
+				console.error('Error submitting profile:', response.statusText);
+			}
+		} catch (error) {
+			console.error('Error submitting profile:', error);
+		}
 	}
 
 	onMount(() => {
