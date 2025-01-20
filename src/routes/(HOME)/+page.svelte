@@ -262,7 +262,7 @@
 								{#each Object.entries(bean) as [key, value]}
 									<td class="max-w-[200px] px-6 py-4 text-xs text-zinc-300">
 										<div class="break-words">
-											{value}
+											{String(value).length > 250 ? String(value).slice(0, 250) + '...' : value}
 										</div>
 									</td>
 								{/each}

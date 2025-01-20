@@ -25,6 +25,9 @@ export async function updateGreenCoffeeWithCatalogData() {
                 g.roast_recs = c.roast_recs,
                 g.type = c.type,
                 g.score_value = c.score_value,
+                g.description_short = c.description_short,
+                g.description_long = c.description_long,
+                g.farm_notes = c.farm_notes,
                 g.last_updated = NOW()
             WHERE g.link IS NOT NULL 
             AND g.link != ''
