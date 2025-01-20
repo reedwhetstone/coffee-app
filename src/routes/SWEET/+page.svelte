@@ -138,21 +138,23 @@
 				<tr>
 					{#each getOrderedKeys(data.data[0]) as header}
 						<th
-							class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
+							class="group max-w-[200px] cursor-pointer px-6 py-3 hover:bg-zinc-600"
 							on:click={() => toggleSort(header)}
 						>
 							<div class="flex items-center gap-2">
-								{header.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+								<span class="truncate">
+									{header.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+								</span>
 
 								<!-- Sort indicators -->
 								{#if sortField === header}
 									{#if sortDirection === 'asc'}
-										<span>↑</span>
+										<span class="flex-shrink-0">↑</span>
 									{:else if sortDirection === 'desc'}
-										<span>↓</span>
+										<span class="flex-shrink-0">↓</span>
 									{/if}
 								{:else}
-									<span class="opacity-0 group-hover:opacity-50">↕</span>
+									<span class="flex-shrink-0 opacity-0 group-hover:opacity-50">↕</span>
 								{/if}
 							</div>
 						</th>
@@ -163,14 +165,20 @@
 				{#each sortedData as row}
 					<tr class="border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700">
 						{#each getOrderedKeys(row) as key}
-							<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
-								{#if key === 'link' && row[key]}
-									<a href={row[key]} target="_blank" class="text-blue-400 hover:underline">Link</a>
-								{:else if row[key] === null}
-									-
-								{:else}
-									{row[key]}
-								{/if}
+							<td class="max-w-[200px] px-6 py-4 text-xs text-zinc-300">
+								<div class="break-words">
+									{#if key === 'link' && row[key as keyof typeof row]}
+										<a
+											href={row[key as keyof typeof row]}
+											target="_blank"
+											class="text-blue-400 hover:underline">Link</a
+										>
+									{:else if row[key as keyof typeof row] === null}
+										-
+									{:else}
+										{row[key as keyof typeof row]}
+									{/if}
+								</div>
 							</td>
 						{/each}
 					</tr>
