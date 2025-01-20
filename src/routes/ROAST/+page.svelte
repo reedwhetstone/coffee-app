@@ -353,10 +353,7 @@
 
 			const data = await response.json();
 
-			// Add flag to indicate if profile has log data
-			currentRoastProfile.has_log_data = data.data.length > 0;
-
-			if (currentRoastProfile.has_log_data) {
+			if (data.data.length > 0) {
 				// Convert profile log entries to roast data points
 				$roastData = data.data.map((log: any) => ({
 					time: mysqlTimeToMs(log.time),
@@ -625,7 +622,6 @@
 			{saveRoastProfile}
 			{logEvent}
 			{selectedBean}
-			hasLogData={currentRoastProfile?.has_log_data ?? false}
 			clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
 		/>
 	</div>

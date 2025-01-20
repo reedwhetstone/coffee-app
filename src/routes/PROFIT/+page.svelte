@@ -35,9 +35,22 @@
 	$: totalRevenue = d3.sum(profitData, (d) => +d.total_sales || 0);
 	$: totalCost = d3.sum(profitData, (d) => (+d.bean_cost || 0) + (+d.tax_ship_cost || 0));
 	$: totalProfit = d3.sum(profitData, (d) => +d.profit || 0);
-	$: averageMargin =
-		(d3.sum(profitData, (d) => +d.profit || 0) / d3.sum(profitData, (d) => +d.total_sales || 0)) *
-			100 || 0;
+	$: averageMargin = (() => {
+		// Calculate cost per oz for each item
+		const margins = profitData.map((d) => {
+			const totalOz = (+d.purchased_qty_lbs || 0) * 16 + (+d.purchased_qty_oz || 0);
+			const costPerOz = totalOz ? ((+d.bean_cost || 0) + (+d.tax_ship_cost || 0)) / totalOz : 0;
+			const soldCost = costPerOz * (+d.oz_sold || 0);
+			const sales = +d.total_sales || 0;
+			return sales > 0 ? ((sales - soldCost) / sales) * 100 : 0;
+		});
+
+		// Calculate weighted average margin based on sales
+		const totalSales = d3.sum(profitData, (d) => +d.total_sales || 0);
+		return totalSales > 0
+			? d3.sum(margins.map((margin, i) => margin * (+profitData[i].total_sales || 0))) / totalSales
+			: 0;
+	})();
 	$: totalPoundsRoasted = d3.sum(profitData, (d) => +d.purchased_qty_lbs || 0);
 
 	// Add these reactive declarations after your existing ones
@@ -127,7 +140,7 @@
 			<p class="text-xl font-bold text-blue-500">${totalProfit.toFixed(2)}</p>
 		</div>
 		<div class="rounded-lg bg-zinc-800 p-4">
-			<h3 class="text-sm text-zinc-400">Average Margin</h3>
+			<h3 class="text-sm text-zinc-400">Average Sales Margin</h3>
 			<p class="text-xl font-bold text-purple-500">{averageMargin.toFixed(1)}%</p>
 		</div>
 		<div class="rounded-lg bg-zinc-800 p-4">

@@ -119,7 +119,7 @@
 		}
 	}
 
-	$: slideDirection = currentIndex > previousIndex ? -1 : 1;
+	$: slideDirection = currentIndex > previousIndex ? 1 : -1;
 </script>
 
 <div class="mx-8 mt-8 rounded-lg bg-zinc-800 p-6">
@@ -158,7 +158,10 @@
 	<div class="relative h-auto min-h-[400px]">
 		<div class="overflow-hidden">
 			{#key currentIndex}
-				<div class="grid grid-cols-2 gap-4" in:slideTransition={{ direction: 1, delay: 50 }}>
+				<div
+					class="grid grid-cols-2 gap-4"
+					in:slideTransition={{ direction: slideDirection, delay: 50 }}
+				>
 					{#each Object.entries(profile) as [key, value]}
 						{#if !['roast_id', 'coffee_id'].includes(key)}
 							<div
@@ -217,7 +220,7 @@
 		</div>
 	</div>
 	<div>
-		<div class="flex justify-end space-x-2">
+		<div class="mt-4 flex justify-end space-x-2">
 			<button
 				class="rounded {isEditing
 					? 'border-2 border-green-800 hover:bg-green-900'

@@ -23,7 +23,6 @@
 	export let saveRoastProfile: () => void;
 	export let selectedBean: { name: string };
 	export let logEvent: (event: string) => void;
-	export let hasLogData = false;
 	export let clearRoastData: () => void;
 
 	let seconds = 0;
@@ -594,9 +593,9 @@
 				class:hover:bg-red-900={isRoasting && !isPaused}
 				class:border-orange-800={isRoasting && isPaused}
 				class:hover:bg-orange-900={isRoasting && isPaused}
-				disabled={hasLogData}
-				class:opacity-50={hasLogData}
-				class:cursor-not-allowed={hasLogData}
+				disabled={$roastData.length > 0}
+				class:opacity-50={$roastData.length > 0}
+				class:cursor-not-allowed={$roastData.length > 0}
 			>
 				{isRoasting ? (isPaused ? 'Resume' : 'Stop') : 'Start'}
 			</button>
@@ -626,14 +625,13 @@
 
 	<!-- Save roast button -->
 	<div class="flex justify-end">
-		{#if hasLogData}
+		{#if $roastData.length > 0}
 			<button
 				class="rounded border-2 border-red-800 px-3 py-1 text-zinc-300 hover:bg-red-950"
 				on:click={() => {
 					if (
 						confirm('Are you sure you want to clear this roast data? This action cannot be undone.')
 					) {
-						// Add function to handle clearing roast data
 						clearRoastData();
 					}
 				}}
