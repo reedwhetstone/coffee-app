@@ -56,10 +56,36 @@ async function scrapeUrl(url: string): Promise<ScrapedData | null> {
 			return nameElement ? (nameElement as HTMLElement).innerText.trim() : null;
 		});
 
+		// Add description_short extraction
+		const descriptionShort = await page.evaluate(() => {
+			const descElement = document.querySelector(
+				'#maincontent > div > div > div.product-main-container > div > div.product.attribute.overview > div > p'
+			);
+			return descElement ? (descElement as HTMLElement).innerText.trim() : null;
+		});
+
 		// Add score value extraction
 		const scoreValue = await page.evaluate(() => {
 			const scoreElement = document.querySelector('div.score-value');
 			return scoreElement ? parseInt((scoreElement as HTMLElement).innerText, 10) : null;
+		});
+
+		// Add description_long extraction
+		const descriptionLong = await page.evaluate(() => {
+			const descElement = document.querySelector(
+				'#product\\.info\\.description > div > div > div > div.column-right > div.product.attribute.cupping-notes > div.value > p'
+			);
+			return descElement ? (descElement as HTMLElement).innerText.trim() : null;
+		});
+
+		// Click farm notes tab and extract farm_notes
+		await page.click('#tab-label-product-info-origin-notes-title');
+		await page.waitForTimeout(200);
+		const farmNotes = await page.evaluate(() => {
+			const notesElement = document.querySelector(
+				'#product-info-origin-notes > div > div > div.column-right > p'
+			);
+			return notesElement ? (notesElement as HTMLElement).innerText.trim() : null;
 		});
 
 		await page.click('#tab-label-product\\.info\\.specs-title');
@@ -81,7 +107,15 @@ async function scrapeUrl(url: string): Promise<ScrapedData | null> {
 		});
 
 		await browser.close();
-		return { ...results, scoreValue, productName, url };
+		return {
+			...results,
+			scoreValue,
+			productName,
+			url,
+			descriptionShort,
+			descriptionLong,
+			farmNotes
+		};
 	} catch (error) {
 		console.error(`Error scraping ${url}:`, error);
 		await browser.close();
@@ -152,8 +186,11 @@ async function updateDatabase() {
 						roast_recs,
 						type,
 						link,
+						description_long,
+						description_short,
+						farm_notes,
 						last_updated
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
 					[
 						scrapedData.productName,
 						scrapedData.scoreValue,
@@ -170,7 +207,10 @@ async function updateDatabase() {
 						scrapedData['Appearance'] || null,
 						scrapedData['Roast Recommendations'] || null,
 						scrapedData['Type'] || null,
-						scrapedData.url
+						scrapedData.url,
+						scrapedData.descriptionLong || null,
+						scrapedData.descriptionShort || null,
+						scrapedData.farmNotes || null
 					]
 				);
 

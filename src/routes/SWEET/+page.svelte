@@ -176,7 +176,10 @@
 									{:else if row[key as keyof typeof row] === null}
 										-
 									{:else}
-										{row[key as keyof typeof row]}
+										{typeof row[key as keyof typeof row] === 'string'
+											? String(row[key as keyof typeof row]).slice(0, 250) +
+												(String(row[key as keyof typeof row]).length > 250 ? '...' : '')
+											: row[key as keyof typeof row]}
 									{/if}
 								</div>
 							</td>
