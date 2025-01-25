@@ -9,9 +9,8 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
-- 'end' logging on safe instead of drop
+- 'end' logging on save instead of drop
 - drop should bring heat setting to 0
--
 - clean up table handling with apis etc.
 - add additional details to the new coffee script and create an algo to recommend purchases based on freshness, cost, and rating
 - get #product-price-27637 > span "price per lb bean" into the coffee_catalog table

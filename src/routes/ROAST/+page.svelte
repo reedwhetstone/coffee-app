@@ -172,46 +172,50 @@
 	// Form submission handler for new roast profiles
 	async function handleFormSubmit(profileData: any) {
 		try {
-			const profiles = await Promise.all(
-				profileData.batch_beans.map(async (bean: any) => {
-					const dataForAPI = {
-						batch_name: profileData.batch_name,
-						coffee_id: bean.coffee_id,
-						coffee_name: bean.coffee_name,
-						roast_date: prepareDateForAPI(profileData.roast_date),
-						last_updated: new Date().toISOString(),
-						oz_in: bean.oz_in,
-						oz_out: bean.oz_out,
-						roast_notes: profileData.roast_notes,
-						roast_targets: profileData.roast_targets
-					};
+			const dataForAPI = profileData.batch_beans.map((bean: any) => ({
+				batch_name: profileData.batch_name,
+				coffee_id: bean.coffee_id,
+				coffee_name: bean.coffee_name,
+				roast_date: prepareDateForAPI(profileData.roast_date),
+				last_updated: new Date().toISOString(),
+				oz_in: bean.oz_in,
+				oz_out: bean.oz_out,
+				roast_notes: profileData.roast_notes,
+				roast_targets: profileData.roast_targets
+			}));
 
-					const response = await fetch('/api/roast-profiles', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify(dataForAPI)
-					});
+			const response = await fetch('/api/roast-profiles', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(dataForAPI)
+			});
 
-					if (!response.ok) {
-						const error = await response.json();
-						throw new Error(error.error || 'Failed to create roast profile');
-					}
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to create roast profiles');
+			}
 
-					return response.json();
-				})
-			);
+			const profiles = await response.json();
 
 			if (profiles && profiles.length > 0) {
-				currentRoastProfile = profiles[0];
+				// Update the selected bean and current profile
 				selectedBean = {
 					id: profiles[0].coffee_id,
 					name: profiles[0].coffee_name
 				};
 
-				isFormVisible = false;
+				// First refresh the profiles list
 				await loadRoastProfiles();
+
+				// Then find and select the newly created profile
+				const newProfile = allRoastProfiles.find((p) => p.roast_id === profiles[0].roast_id);
+				if (newProfile) {
+					await selectProfile(newProfile);
+				}
+
+				isFormVisible = false;
 			} else {
 				throw new Error('No profiles were created');
 			}

@@ -69,41 +69,29 @@
 	}
 
 	async function handleSubmit() {
-		// Ensure all numeric fields are properly typed
-		const profileData = {
-			...formData,
-			oz_in: formData.oz_in ? Number(formData.oz_in) : null,
-			oz_out: formData.oz_out ? Number(formData.oz_out) : null,
-			batch_beans: batchBeans.map((bean) => ({
-				coffee_id: Number(bean.coffee_id),
-				coffee_name: bean.coffee_name,
-				oz_in: bean.oz_in ? Number(bean.oz_in) : null,
-				oz_out: bean.oz_out ? Number(bean.oz_out) : null
-			}))
-		};
+		if (!batchBeans || !batchBeans.length) {
+			alert('Please add at least one bean to the batch');
+			return;
+		}
+
 		try {
 			const dataForAPI = {
-				...formData,
+				batch_name: formData.batch_name,
+				batch_beans: batchBeans.map((bean) => ({
+					coffee_id: bean.coffee_id,
+					coffee_name: bean.coffee_name,
+					oz_in: bean.oz_in ? Number(bean.oz_in) : null,
+					oz_out: bean.oz_out ? Number(bean.oz_out) : null
+				})),
 				roast_date: prepareDateForAPI(formData.roast_date),
-				last_updated: new Date().toISOString()
+				roast_notes: formData.roast_notes,
+				roast_targets: formData.roast_targets
 			};
-			onSubmit(profileData);
-			const response = await fetch('/api/roast-profiles', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(dataForAPI)
-			});
 
-			if (response.ok) {
-				const result = await response.json();
-				onSubmit(result);
-			} else {
-				console.error('Error submitting profile:', response.statusText);
-			}
+			onSubmit(dataForAPI);
 		} catch (error) {
 			console.error('Error submitting profile:', error);
+			alert(error instanceof Error ? error.message : 'Failed to save roast profiles');
 		}
 	}
 
