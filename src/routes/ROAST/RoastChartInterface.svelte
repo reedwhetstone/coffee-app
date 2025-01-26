@@ -284,13 +284,10 @@
 		// Sort events by time to ensure proper ordering
 		eventData.sort((a, b) => a.time - b.time);
 
-		// Keep all events (no filtering for duplicates)
-		const uniqueEventData = eventData;
-
 		// Update event markers - Create separate groups for each event
 		const eventGroups = svg
 			.selectAll('.event-group')
-			.data(uniqueEventData)
+			.data(eventData)
 			.join('g')
 			.attr('class', 'event-group');
 
