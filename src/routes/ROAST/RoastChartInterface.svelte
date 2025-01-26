@@ -201,10 +201,40 @@
 		svg.selectAll('.event-marker').remove();
 		svg.selectAll('.event-label').remove();
 
-		// Update x-axis scale based on data duration
-		const maxTime = Math.max(...data.map((d) => d.time));
-		const timeInMinutes = maxTime / (1000 * 60);
-		xScale.domain([0, Math.max(10, Math.ceil(timeInMinutes))]);
+		// Create combined events array and handle Drop/End renaming
+		const eventData = $roastEvents.map((event) => ({
+			time: event.time,
+			name: event.name
+		}));
+
+		// Check for duplicate 'drop' events and rename second occurrence to 'End'
+		let dropCount = 0;
+		eventData.forEach((event) => {
+			if (event.name === 'Drop') {
+				dropCount++;
+				if (dropCount > 1) {
+					event.name = 'End';
+				}
+			}
+		});
+
+		// Sort events by time to ensure proper ordering
+		eventData.sort((a, b) => a.time - b.time);
+
+		// Update x-axis scale based on data duration or End event
+		const endEvent = eventData.find((event) => event.name === 'End');
+		const maxTime =
+			data.length > 0
+				? endEvent
+					? endEvent.time / (1000 * 60) // Convert end event time to minutes
+					: Math.max(...data.map((d) => d.time / (1000 * 60))) // Convert data time to minutes
+				: 12; // Default to 12 if no data
+
+		xScale.domain([0, maxTime]);
+
+		// Debug logging
+		// console.log('End event:', endEvent);
+		// console.log('Max time:', maxTime);
 
 		// Update time tracker position
 		if (isRoasting && !isPaused) {
@@ -275,26 +305,6 @@
 			.attr('font-size', '12px')
 			.text((d) => d.fan);
 
-		// Create combined events array that includes both roastEvents and end events
-		const eventData = $roastEvents.map((event) => ({
-			time: event.time,
-			name: event.name
-		}));
-
-		// Check for duplicate 'drop' events and rename second occurrence to 'End'
-		let dropCount = 0;
-		eventData.forEach((event) => {
-			if (event.name === 'Drop') {
-				dropCount++;
-				if (dropCount > 1) {
-					event.name = 'End';
-				}
-			}
-		});
-
-		// Sort events by time to ensure proper ordering
-		eventData.sort((a, b) => a.time - b.time);
-
 		// Update event markers - Create separate groups for each event
 		const eventGroups = svg
 			.selectAll('.event-group')
@@ -354,7 +364,7 @@
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`);
 
-		xScale = d3.scaleLinear().domain([0, 10]).range([0, width]);
+		xScale = d3.scaleLinear().domain([0, 12]).range([0, width]);
 		yScaleFan = d3.scaleLinear().domain([10, 0]).range([height, 0]);
 		yScaleHeat = d3.scaleLinear().domain([0, 10]).range([height, 0]);
 
@@ -384,6 +394,7 @@
 	});
 
 	function handleEventLog(event: string) {
+		console.log('handleEventLog called with event:', event);
 		if ($startTime === null) return;
 		selectedEvent = event;
 		logEvent(event);
@@ -391,31 +402,38 @@
 			? $accumulatedTime
 			: performance.now() - $startTime + $accumulatedTime;
 
-		// Add to roastEvents for chart display
-		$roastEvents = [
-			...$roastEvents,
-			{
-				time: currentTime,
-				name: event
-			}
-		];
+		// Check if this event already exists at this time
+		const existingEvent = $roastEvents.find(
+			(e) => e.name === event && Math.abs(e.time - currentTime) < 1000
+		);
+		if (!existingEvent) {
+			// Add to roastEvents for chart display only if it doesn't exist
+			$roastEvents = [
+				...$roastEvents,
+				{
+					time: currentTime,
+					name: event
+				}
+			];
 
-		// Create profile log entry
-		const logEntry: ProfileLogEntry = {
-			fan_setting: fanValue,
-			heat_setting: heatValue,
-			start: false,
-			maillard: event === 'Maillard',
-			fc_start: event === 'FC Start',
-			fc_rolling: event === 'FC Rolling',
-			fc_end: event === 'FC End',
-			sc_start: event === 'SC Start',
-			drop: event === 'Drop',
-			end: false,
-			time: currentTime
-		};
+			// Create profile log entry
+			const logEntry: ProfileLogEntry = {
+				fan_setting: fanValue,
+				heat_setting: heatValue,
+				start: false,
+				maillard: event === 'Maillard',
+				fc_start: event === 'FC Start',
+				fc_rolling: event === 'FC Rolling',
+				fc_end: event === 'FC End',
+				sc_start: event === 'SC Start',
+				drop: event === 'Drop',
+				end: false,
+				time: currentTime
+			};
 
-		$profileLogs = [...$profileLogs, logEntry];
+			$profileLogs = [...$profileLogs, logEntry];
+			console.log('NEW EVENT');
+		}
 	}
 
 	function prepareProfileLogsForSave() {
