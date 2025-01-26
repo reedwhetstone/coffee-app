@@ -22,7 +22,6 @@
 	export let updateHeat: (value: number) => void;
 	export let saveRoastProfile: () => void;
 	export let selectedBean: { name: string };
-	export let logEvent: (event: string) => void;
 	export let clearRoastData: () => void;
 
 	let seconds = 0;
@@ -393,11 +392,40 @@
 		updateChart($roastData);
 	});
 
+	function prepareProfileLogsForSave() {
+		if ($profileLogs.length === 0) return $profileLogs;
+
+		const lastTime = $roastData[$roastData.length - 1]?.time || 0;
+
+		// Check if the last log entry is a 'Drop' event
+		const lastLog = $profileLogs[$profileLogs.length - 1];
+		if (lastLog && lastLog.drop) {
+			// If the last event was 'Drop', add a new 'End' entry
+			$profileLogs = [
+				...$profileLogs,
+				{
+					fan_setting: fanValue,
+					heat_setting: 0, // Set heat to 0 at end
+					start: false,
+					maillard: false,
+					fc_start: false,
+					fc_rolling: false,
+					fc_end: false,
+					sc_start: false,
+					drop: false,
+					end: true,
+					time: lastTime
+				}
+			];
+		}
+
+		return $profileLogs;
+	}
+
 	function handleEventLog(event: string) {
 		console.log('handleEventLog called with event:', event);
 		if ($startTime === null) return;
 		selectedEvent = event;
-		logEvent(event);
 		const currentTime = isPaused
 			? $accumulatedTime
 			: performance.now() - $startTime + $accumulatedTime;
@@ -407,7 +435,7 @@
 			(e) => e.name === event && Math.abs(e.time - currentTime) < 1000
 		);
 		if (!existingEvent) {
-			// Add to roastEvents for chart display only if it doesn't exist
+			// Add to roastEvents for chart display
 			$roastEvents = [
 				...$roastEvents,
 				{
@@ -416,10 +444,16 @@
 				}
 			];
 
+			// Special handling for Drop event
+			if (event === 'Drop') {
+				heatValue = 0; // Set heat to 0 when Drop is logged
+				updateHeat(0);
+			}
+
 			// Create profile log entry
 			const logEntry: ProfileLogEntry = {
 				fan_setting: fanValue,
-				heat_setting: heatValue,
+				heat_setting: event === 'Drop' ? 0 : heatValue, // Set heat to 0 if Drop event
 				start: false,
 				maillard: event === 'Maillard',
 				fc_start: event === 'FC Start',
@@ -427,39 +461,13 @@
 				fc_end: event === 'FC End',
 				sc_start: event === 'SC Start',
 				drop: event === 'Drop',
-				end: false,
+				end: false, // End is handled in prepareProfileLogsForSave
 				time: currentTime
 			};
 
 			$profileLogs = [...$profileLogs, logEntry];
 			console.log('NEW EVENT');
 		}
-	}
-
-	function prepareProfileLogsForSave() {
-		if ($profileLogs.length === 0) return $profileLogs;
-
-		const lastTime = $roastData[$roastData.length - 1]?.time || 0;
-
-		// Add final entry with end=true
-		$profileLogs = [
-			...$profileLogs,
-			{
-				fan_setting: fanValue,
-				heat_setting: heatValue,
-				start: false,
-				maillard: false,
-				fc_start: false,
-				fc_rolling: false,
-				fc_end: false,
-				sc_start: false,
-				drop: false,
-				end: true,
-				time: lastTime
-			}
-		];
-
-		return $profileLogs;
 	}
 
 	// Add this function to handle settings changes

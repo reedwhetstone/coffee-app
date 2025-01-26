@@ -263,41 +263,6 @@
 		];
 	}
 
-	// Event logger for roast milestones (First Crack, etc.)
-	function logEvent(event: string) {
-		if ($startTime === null) return;
-		selectedEvent = event;
-		const currentTime = isPaused
-			? $accumulatedTime
-			: performance.now() - $startTime + $accumulatedTime;
-
-		// Add to roastEvents for chart display
-		$roastEvents = [
-			...$roastEvents,
-			{
-				time: currentTime,
-				name: event
-			}
-		];
-
-		// Create profile log entry
-		const logEntry: ProfileLogEntry = {
-			fan_setting: fanValue,
-			heat_setting: heatValue,
-			start: false,
-			maillard: event === 'Maillard',
-			fc_start: event === 'FC Start',
-			fc_rolling: event === 'FC Rolling',
-			fc_end: event === 'FC End',
-			sc_start: event === 'SC Start',
-			drop: event === 'Drop',
-			end: false,
-			time: currentTime
-		};
-
-		$profileLogs = [...$profileLogs, logEntry];
-	}
-
 	// Profile management handlers
 	async function handleProfileUpdate(updatedProfile: any) {
 		try {
@@ -626,7 +591,6 @@
 			{updateFan}
 			{updateHeat}
 			{saveRoastProfile}
-			{logEvent}
 			{selectedBean}
 			clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
 		/>
