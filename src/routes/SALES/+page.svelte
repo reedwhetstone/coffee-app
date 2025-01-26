@@ -168,15 +168,30 @@
 
 	async function handleFormSubmit(saleData: any) {
 		try {
-			const response = await fetch('/api/sales');
-			if (response.ok) {
-				salesData = await response.json();
+			// Make the actual create/update request first
+			const response = await fetch(`/api/sales${selectedSale ? `?id=${selectedSale.id}` : ''}`, {
+				method: selectedSale ? 'PUT' : 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(saleData)
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to ${selectedSale ? 'update' : 'create'} sale`);
+			}
+
+			// After successful create/update, fetch the updated sales data
+			const refreshResponse = await fetch('/api/sales');
+			if (refreshResponse.ok) {
+				salesData = await refreshResponse.json();
 				createChart();
 			}
 		} catch (error) {
 			console.error('Error updating sales data:', error);
 		}
 		isFormVisible = false;
+		selectedSale = null;
 	}
 
 	function handleEdit(sale: SaleData) {

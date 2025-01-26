@@ -9,8 +9,12 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
+- correct rank formatting to allow two decimal places
+- fix db structure to retain paragraph formatting
 - 'end' logging on save instead of drop
 - drop should bring heat setting to 0
+- need settings to start at 8 and 1
+- add an average curve that takes the average of heat and fan settings and plots it on the chart
 - clean up table handling with apis etc.
 - add additional details to the new coffee script and create an algo to recommend purchases based on freshness, cost, and rating
 - get #product-price-27637 > span "price per lb bean" into the coffee_catalog table

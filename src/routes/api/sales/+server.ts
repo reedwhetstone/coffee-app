@@ -62,3 +62,54 @@ export async function PUT({ url, request }) {
 		return json({ error: 'Failed to update sale' }, { status: 500 });
 	}
 }
+
+export async function POST({ request }) {
+	if (!dbConn) {
+		return json({ error: 'Database connection is not established' }, { status: 500 });
+	}
+
+	try {
+		const saleData = await request.json();
+		const { coffee_name: _, ...insertData } = saleData;
+
+		if (!insertData.green_coffee_inv_id) {
+			return json({ error: 'green_coffee_inv_id is required' }, { status: 400 });
+		}
+
+		const [result] = await dbConn.query('INSERT INTO sales SET ?', [insertData]);
+		const insertId = (result as any).insertId;
+
+		// Fetch and return the newly created sale with joined coffee_name
+		const [newSale] = (await dbConn.query(
+			`SELECT s.*, g.name as coffee_name, g.purchase_date
+			 FROM sales s
+			 LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
+			 WHERE s.id = ?`,
+			[insertId]
+		)) as [RowDataPacket[], any];
+
+		return json(newSale[0]);
+	} catch (error) {
+		console.error('Error creating sale:', error);
+		return json({ error: 'Failed to create sale' }, { status: 500 });
+	}
+}
+
+export async function DELETE({ url }) {
+	if (!dbConn) {
+		return json({ error: 'Database connection is not established' }, { status: 500 });
+	}
+
+	try {
+		const id = url.searchParams.get('id');
+		if (!id) {
+			return json({ error: 'No ID provided' }, { status: 400 });
+		}
+
+		await dbConn.query('DELETE FROM sales WHERE id = ?', [id]);
+		return json({ success: true });
+	} catch (error) {
+		console.error('Error deleting sale:', error);
+		return json({ error: 'Failed to delete sale' }, { status: 500 });
+	}
+}

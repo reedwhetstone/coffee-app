@@ -593,9 +593,6 @@
 				class:hover:bg-red-900={isRoasting && !isPaused}
 				class:border-orange-800={isRoasting && isPaused}
 				class:hover:bg-orange-900={isRoasting && isPaused}
-				disabled={$roastData.length > 0}
-				class:opacity-50={$roastData.length > 0}
-				class:cursor-not-allowed={$roastData.length > 0}
 			>
 				{isRoasting ? (isPaused ? 'Resume' : 'Stop') : 'Start'}
 			</button>
@@ -623,8 +620,15 @@
 		{/each}
 	</div>
 
-	<!-- Save roast button -->
-	<div class="flex justify-end">
+	<!-- Save and Clear roast buttons -->
+	<div class="flex justify-end gap-4">
+		<button
+			class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-300 hover:bg-zinc-600"
+			on:click={saveRoastProfile}
+			disabled={!isRoasting && $profileLogs.length === 0}
+		>
+			Save Roast
+		</button>
 		{#if $roastData.length > 0}
 			<button
 				class="rounded border-2 border-red-800 px-3 py-1 text-zinc-300 hover:bg-red-950"
@@ -637,14 +641,6 @@
 				}}
 			>
 				Clear Roast
-			</button>
-		{:else}
-			<button
-				class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-300 hover:bg-zinc-600"
-				on:click={saveRoastProfile}
-				disabled={!isRoasting && $profileLogs.length === 0}
-			>
-				Save Roast
 			</button>
 		{/if}
 	</div>
