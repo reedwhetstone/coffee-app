@@ -28,8 +28,6 @@ CoffeeApp is an all in one coffee management system.
 - PURCHASED in navbar in blue when selected is broken - probably due to changing the folder structure of the (home) page
 - TP, FC, DROP times in roast profile
 - color shading phases on the chart
-- add the profile_log.drop column to the roast input data
-- adjust the save functionality so that it looks for the time @ Stop and logs the data at that time into the profile_log.end column.
 
 - Add loading states
 - Add form validation

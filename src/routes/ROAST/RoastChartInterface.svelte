@@ -40,6 +40,7 @@
 	let yScaleHeat: d3.ScaleLinear<number, number>;
 	let height: number;
 	let width: number;
+	let margin = { top: 20, right: 60, bottom: 30, left: 60 };
 
 	let currentFanValue = 10;
 	let currentHeatValue = 0;
@@ -350,8 +351,42 @@
 		updateChart($roastData);
 	}
 
+	function updateChartDimensions() {
+		if (!chartContainer || !svg) return;
+
+		width = chartContainer.clientWidth - margin.left - margin.right;
+		height = chartContainer.clientHeight - margin.top - margin.bottom;
+
+		// Update SVG dimensions
+		d3.select(chartContainer)
+			.select('svg')
+			.attr('width', width + margin.left + margin.right)
+			.attr('height', height + margin.top + margin.bottom);
+
+		// Update scales
+		xScale.range([0, width]);
+		yScaleFan.range([height, 0]);
+		yScaleHeat.range([height, 0]);
+
+		// Update axes
+		svg
+			.select('.x-axis')
+			.attr('transform', `translate(0,${height})`)
+			.call(d3.axisBottom(xScale) as any);
+
+		svg.select('.y-axis-left').call(d3.axisLeft(yScaleFan) as any);
+
+		svg
+			.select('.y-axis-right')
+			.attr('transform', `translate(${width},0)`)
+			.call(d3.axisRight(yScaleHeat) as any);
+
+		// Update chart with new dimensions
+		updateChart($roastData);
+	}
+
 	onMount(() => {
-		const margin = { top: 20, right: 60, bottom: 30, left: 60 };
+		// Initial setup
 		width = chartContainer.clientWidth - margin.left - margin.right;
 		height = chartContainer.clientHeight - margin.top - margin.bottom;
 
@@ -390,6 +425,17 @@
 
 		// Initial chart update
 		updateChart($roastData);
+
+		// Add resize listener
+		const resizeObserver = new ResizeObserver(() => {
+			updateChartDimensions();
+		});
+		resizeObserver.observe(chartContainer);
+
+		// Cleanup observer on component destroy
+		return () => {
+			resizeObserver.disconnect();
+		};
 	});
 
 	function prepareProfileLogsForSave() {
