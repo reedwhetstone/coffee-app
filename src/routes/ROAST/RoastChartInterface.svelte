@@ -281,6 +281,17 @@
 			name: event.name
 		}));
 
+		// Check for duplicate 'drop' events and rename second occurrence to 'End'
+		let dropCount = 0;
+		eventData.forEach((event) => {
+			if (event.name === 'Drop') {
+				dropCount++;
+				if (dropCount > 1) {
+					event.name = 'End';
+				}
+			}
+		});
+
 		// Sort events by time to ensure proper ordering
 		eventData.sort((a, b) => a.time - b.time);
 
