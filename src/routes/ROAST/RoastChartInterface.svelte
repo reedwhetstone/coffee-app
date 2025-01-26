@@ -415,44 +415,23 @@
 
 		const lastTime = $roastData[$roastData.length - 1]?.time || 0;
 
-		// Update the last log entry or create a new one with end=true
-		const lastLog = $profileLogs[$profileLogs.length - 1];
-		if (lastLog && lastLog.drop) {
-			// Create a new final entry instead of modifying the drop entry
-			$profileLogs = [
-				...$profileLogs,
-				{
-					fan_setting: fanValue,
-					heat_setting: heatValue,
-					start: false,
-					maillard: false,
-					fc_start: false,
-					fc_rolling: false,
-					fc_end: false,
-					sc_start: false,
-					drop: false,
-					end: true,
-					time: lastTime
-				}
-			];
-		} else {
-			$profileLogs = [
-				...$profileLogs,
-				{
-					fan_setting: fanValue,
-					heat_setting: heatValue,
-					start: false,
-					maillard: false,
-					fc_start: false,
-					fc_rolling: false,
-					fc_end: false,
-					sc_start: false,
-					drop: false,
-					end: true,
-					time: lastTime
-				}
-			];
-		}
+		// Add final entry with end=true
+		$profileLogs = [
+			...$profileLogs,
+			{
+				fan_setting: fanValue,
+				heat_setting: heatValue,
+				start: false,
+				maillard: false,
+				fc_start: false,
+				fc_rolling: false,
+				fc_end: false,
+				sc_start: false,
+				drop: false,
+				end: true,
+				time: lastTime
+			}
+		];
 
 		return $profileLogs;
 	}
@@ -624,7 +603,10 @@
 	<div class="flex justify-end gap-4">
 		<button
 			class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-300 hover:bg-zinc-600"
-			on:click={saveRoastProfile}
+			on:click={() => {
+				prepareProfileLogsForSave();
+				saveRoastProfile();
+			}}
 			disabled={!isRoasting && $profileLogs.length === 0}
 		>
 			Save Roast
