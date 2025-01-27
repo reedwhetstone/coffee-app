@@ -42,9 +42,6 @@
 	let width: number;
 	let margin = { top: 20, right: 60, bottom: 30, left: 60 };
 
-	let currentFanValue = 10;
-	let currentHeatValue = 0;
-
 	// Handle profile changes
 	$: if (currentRoastProfile) {
 		if (!currentRoastProfile.has_log_data) {
@@ -155,8 +152,8 @@
 	// Update current values when roastData changes
 	$: if ($roastData.length > 0) {
 		const lastDataPoint = $roastData[$roastData.length - 1];
-		currentFanValue = lastDataPoint.fan;
-		currentHeatValue = lastDataPoint.heat;
+		fanValue = lastDataPoint.fan;
+		heatValue = lastDataPoint.heat;
 	}
 
 	// Create line generators

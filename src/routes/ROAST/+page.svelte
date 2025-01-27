@@ -20,20 +20,6 @@
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import RoastChartInterface from './RoastChartInterface.svelte';
 
-	type ProfileLogEntry = {
-		fan_setting: number;
-		heat_setting: number;
-		start: boolean;
-		maillard: boolean;
-		fc_start: boolean;
-		fc_rolling: boolean;
-		fc_end: boolean;
-		sc_start: boolean;
-		end: boolean;
-		drop: boolean;
-		time: number;
-	};
-
 	// Roast profile state management
 	let currentRoastProfile: any = null;
 
@@ -46,8 +32,8 @@
 		: ($page.state as any)?.selectedBean || {};
 	let isRoasting = false;
 	let isPaused = false;
-	let fanValue = 10;
-	let heatValue = 0;
+	let fanValue = 8;
+	let heatValue = 1;
 	let selectedEvent: string | null = null;
 	let isFormVisible = ($page.state as any)?.showRoastForm || false;
 
@@ -378,8 +364,8 @@
 				$accumulatedTime = 0;
 
 				// Reset fan and heat to default values
-				fanValue = 10;
-				heatValue = 0;
+				fanValue = 8;
+				heatValue = 1;
 			}
 
 			// Smooth scroll to top

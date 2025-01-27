@@ -15,17 +15,11 @@ CoffeeApp is an all in one coffee management system.
 - drop should bring heat setting to 0
 - need settings to start at 8 and 1
 - add an average curve that takes the average of heat and fan settings and plots it on the chart
-- clean up table handling with apis etc.
 - add additional details to the new coffee script and create an algo to recommend purchases based on freshness, cost, and rating
 - get #product-price-27637 > span "price per lb bean" into the coffee_catalog table
-- get all coffee data for coffee_catalog table - farm notes, tasting notes, etc.
 - restructure the green_coffee_inv table to pull coffee data from the coffee_catalog table
-- heat setting should end at drop - setting 0
-  take rounding out of the oz in oz out display on the roast profile - 8.50 & 8.59. Currently is rounding into the table!!!!
 - need roast id on the roast profile page
 - ghost roast - follow a template roast profile
-- search tool
-- PURCHASED in navbar in blue when selected is broken - probably due to changing the folder structure of the (home) page
 - TP, FC, DROP times in roast profile
 - color shading phases on the chart
 
