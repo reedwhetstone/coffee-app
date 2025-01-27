@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import { dbConn } from '$lib/server/db';
-import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 export async function GET() {
 	if (!dbConn) {
@@ -8,7 +7,7 @@ export async function GET() {
 	}
 
 	try {
-		const [rows] = await dbConn.query('SELECT * FROM roast_profiles');
+		const { rows } = await dbConn.query('SELECT * FROM roast_profiles');
 		return json({ data: rows });
 	} catch (error) {
 		console.error('Error querying database:', error);
@@ -26,23 +25,22 @@ export async function POST({ request }) {
 		const profiles = Array.isArray(data) ? data : [data];
 
 		// Start transaction
-		await dbConn.beginTransaction();
-
+		const client = await dbConn.connect();
 		try {
+			await client.query('BEGIN');
+
 			const results = await Promise.all(
 				profiles.map(async (profileData) => {
-					// Validate required coffee_id
 					if (!profileData.coffee_id) {
 						throw new Error('coffee_id is required for all profiles');
 					}
 
-					// Verify coffee_id exists in green_coffee_inv
-					const [coffeeExists]: any[] = await dbConn.query(
-						'SELECT id, name FROM green_coffee_inv WHERE id = ?',
+					const coffeeExists = await client.query(
+						'SELECT id, name FROM green_coffee_inv WHERE id = $1',
 						[profileData.coffee_id]
 					);
 
-					if (!coffeeExists || !coffeeExists[0]) {
+					if (!coffeeExists.rows.length) {
 						throw new Error(`Invalid coffee_id - coffee not found: ${profileData.coffee_id}`);
 					}
 
@@ -50,9 +48,9 @@ export async function POST({ request }) {
 					const profile = {
 						batch_name:
 							profileData.batch_name ||
-							`${coffeeExists[0].name} - ${new Date().toLocaleDateString()}`,
+							`${coffeeExists.rows[0].name} - ${new Date().toLocaleDateString()}`,
 						coffee_id: profileData.coffee_id,
-						coffee_name: profileData.coffee_name || coffeeExists[0].name,
+						coffee_name: profileData.coffee_name || coffeeExists.rows[0].name,
 						roast_date: profileData.roast_date
 							? new Date(profileData.roast_date).toISOString().slice(0, 19).replace('T', ' ')
 							: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -76,10 +74,13 @@ export async function POST({ request }) {
 							oz_out,
 							roast_notes,
 							roast_targets
-						) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+						) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+						RETURNING *
 					`;
 
-					const values = [
+					const {
+						rows: [newRoast]
+					} = await client.query(query, [
 						profile.batch_name,
 						profile.coffee_id,
 						profile.coffee_name,
@@ -89,25 +90,19 @@ export async function POST({ request }) {
 						profile.oz_out,
 						profile.roast_notes,
 						profile.roast_targets
-					];
+					]);
 
-					const [result] = (await dbConn.execute(query, values)) as [ResultSetHeader, any];
-					const [newRoast] = (await dbConn.query(
-						'SELECT * FROM roast_profiles WHERE roast_id = ?',
-						[result.insertId]
-					)) as [RowDataPacket[], any];
-
-					return newRoast[0];
+					return newRoast;
 				})
 			);
 
-			// If we get here, all inserts were successful
-			await dbConn.commit();
+			await client.query('COMMIT');
 			return json(results);
 		} catch (error) {
-			// If any profile insert fails, roll back the transaction
-			await dbConn.rollback();
+			await client.query('ROLLBACK');
 			throw error;
+		} finally {
+			client.release();
 		}
 	} catch (error) {
 		console.error('Error creating roast profiles:', error);
@@ -126,32 +121,21 @@ export async function DELETE({ url, request }) {
 		throw new Error('Database connection is not established yet.');
 	}
 
-	// Handle single profile deletion
 	const id = url.searchParams.get('id');
 	if (id) {
-		if (!id) {
-			return json({ success: false, error: 'No ID provided' }, { status: 400 });
-		}
-
 		try {
-			// Start a transaction
-			await dbConn.beginTransaction();
-
+			const client = await dbConn.connect();
 			try {
-				// First delete associated profile logs
-				await dbConn.query('DELETE FROM profile_log WHERE roast_id = ?', [id]);
-
-				// Then delete the roast profile
-				await dbConn.query('DELETE FROM roast_profiles WHERE roast_id = ?', [id]);
-
-				// Commit the transaction
-				await dbConn.commit();
-
+				await client.query('BEGIN');
+				await client.query('DELETE FROM profile_log WHERE roast_id = $1', [id]);
+				await client.query('DELETE FROM roast_profiles WHERE roast_id = $1', [id]);
+				await client.query('COMMIT');
 				return json({ success: true });
 			} catch (error) {
-				// If anything fails, roll back the transaction
-				await dbConn.rollback();
+				await client.query('ROLLBACK');
 				throw error;
+			} finally {
+				client.release();
 			}
 		} catch (error) {
 			console.error('Error deleting roast profile and associated data:', error);
@@ -159,34 +143,27 @@ export async function DELETE({ url, request }) {
 		}
 	}
 
-	// Handle batch deletion
 	try {
 		const { batch_name, roast_date } = await request.json();
-
-		// Start a transaction
-		await dbConn.beginTransaction();
+		const client = await dbConn.connect();
 
 		try {
-			// First delete associated profile logs for all matching profiles
-			await dbConn.query(
-				'DELETE pl FROM profile_log pl INNER JOIN roast_profiles rp ON pl.roast_id = rp.roast_id WHERE rp.batch_name = ? AND rp.roast_date = ?',
+			await client.query('BEGIN');
+			await client.query(
+				'DELETE FROM profile_log pl USING roast_profiles rp WHERE pl.roast_id = rp.roast_id AND rp.batch_name = $1 AND rp.roast_date = $2',
 				[batch_name, roast_date]
 			);
-
-			// Then delete the roast profiles
-			const [result] = await dbConn.query(
-				'DELETE FROM roast_profiles WHERE batch_name = ? AND roast_date = ?',
-				[batch_name, roast_date]
-			);
-
-			// Commit the transaction
-			await dbConn.commit();
-
+			await client.query('DELETE FROM roast_profiles WHERE batch_name = $1 AND roast_date = $2', [
+				batch_name,
+				roast_date
+			]);
+			await client.query('COMMIT');
 			return json({ success: true });
 		} catch (error) {
-			// If anything fails, roll back the transaction
-			await dbConn.rollback();
+			await client.query('ROLLBACK');
 			throw error;
+		} finally {
+			client.release();
 		}
 	} catch (error) {
 		console.error('Error deleting batch profiles:', error);
@@ -203,10 +180,9 @@ export async function PUT({ url, request }) {
 		const id = url.searchParams.get('id');
 		const updates = await request.json();
 
-		// Remove properties that don't exist in the database
 		const { roast_id: _, has_log_data: __, ...updateData } = updates;
 
-		// Format dates for MySQL
+		// Format dates for PostgreSQL
 		if (updateData.roast_date) {
 			updateData.roast_date = new Date(updateData.roast_date)
 				.toISOString()
@@ -220,14 +196,20 @@ export async function PUT({ url, request }) {
 				.replace('T', ' ');
 		}
 
-		await dbConn.query('UPDATE roast_profiles SET ? WHERE roast_id = ?', [updateData, id]);
+		// Convert object to UPDATE query
+		const setClause = Object.keys(updateData)
+			.map((key, index) => `${key} = $${index + 1}`)
+			.join(', ');
+		const values = Object.values(updateData);
 
-		const [updatedRoast]: any[] = await dbConn.query(
-			'SELECT * FROM roast_profiles WHERE roast_id = ?',
-			[id]
+		const {
+			rows: [updatedRoast]
+		} = await dbConn.query(
+			`UPDATE roast_profiles SET ${setClause} WHERE roast_id = $${values.length + 1} RETURNING *`,
+			[...values, id]
 		);
 
-		return new Response(JSON.stringify(updatedRoast[0]), {
+		return new Response(JSON.stringify(updatedRoast), {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});

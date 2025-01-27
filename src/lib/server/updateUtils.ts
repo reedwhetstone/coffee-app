@@ -8,34 +8,35 @@ export async function updateGreenCoffeeWithCatalogData() {
 	try {
 		const query = `
             UPDATE green_coffee_inv g
-            JOIN coffee_catalog c ON g.link = c.link
             SET 
-                g.name = COALESCE(g.name, c.name),
-                g.region = c.region,
-                g.processing = c.processing,
-                g.drying_method = c.drying_method,
-                g.arrival_date = c.arrival_date,
-                g.lot_size = c.lot_size,
-                g.bag_size = c.bag_size,
-                g.packaging = c.packaging,
-                g.farm_gate = c.farm_gate,
-                g.cultivar_detail = c.cultivar_detail,
-                g.grade = c.grade,
-                g.appearance = c.appearance,
-                g.roast_recs = c.roast_recs,
-                g.type = c.type,
-                g.score_value = c.score_value,
-                g.description_short = c.description_short,
-                g.description_long = c.description_long,
-                g.farm_notes = c.farm_notes,
-                g.last_updated = NOW()
-            WHERE g.link IS NOT NULL 
+                name = COALESCE(g.name, c.name),
+                region = c.region,
+                processing = c.processing,
+                drying_method = c.drying_method,
+                arrival_date = c.arrival_date,
+                lot_size = c.lot_size,
+                bag_size = c.bag_size,
+                packaging = c.packaging,
+                farm_gate = c.farm_gate,
+                cultivar_detail = c.cultivar_detail,
+                grade = c.grade,
+                appearance = c.appearance,
+                roast_recs = c.roast_recs,
+                type = c.type,
+                score_value = c.score_value,
+                description_short = c.description_short,
+                description_long = c.description_long,
+                farm_notes = c.farm_notes,
+                last_updated = NOW()
+            FROM coffee_catalog c
+            WHERE g.link = c.link
+            AND g.link IS NOT NULL 
             AND g.link != ''
             AND c.link IS NOT NULL
             AND c.link != ''
         `;
 
-		const [result] = await dbConn.query(query);
+		const result = await dbConn.query(query);
 		console.log('Update complete:', result);
 		return { success: true, result };
 	} catch (error) {

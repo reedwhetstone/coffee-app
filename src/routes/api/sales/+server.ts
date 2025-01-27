@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import { dbConn } from '$lib/server/db';
-import type { RowDataPacket } from 'mysql2';
 
 export async function GET() {
 	if (!dbConn) {
@@ -19,7 +18,7 @@ export async function GET() {
             ORDER BY s.sell_date DESC
         `;
 
-		const [rows] = await dbConn.query(query);
+		const { rows } = await dbConn.query(query);
 		return json(rows);
 	} catch (error) {
 		console.error('Error querying database:', error);
@@ -45,18 +44,26 @@ export async function PUT({ url, request }) {
 			return json({ error: 'green_coffee_inv_id is required' }, { status: 400 });
 		}
 
-		await dbConn.query('UPDATE sales SET ? WHERE id = ?', [updateData, id]);
+		// Convert object to SET clause for PostgreSQL
+		const setClause = Object.keys(updateData)
+			.map((key, index) => `${key} = $${index + 1}`)
+			.join(', ');
+		const values = [...Object.values(updateData), id];
 
-		// Fetch and return the updated sale with joined coffee_name
-		const [updatedSale] = (await dbConn.query(
+		await dbConn.query(`UPDATE sales SET ${setClause} WHERE id = $${values.length}`, values);
+
+		// Fetch updated sale
+		const {
+			rows: [updatedSale]
+		} = await dbConn.query(
 			`SELECT s.*, g.name as coffee_name, g.purchase_date
 			 FROM sales s
 			 LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
-			 WHERE s.id = ?`,
+			 WHERE s.id = $1`,
 			[id]
-		)) as [RowDataPacket[], any];
+		);
 
-		return json(updatedSale[0]);
+		return json(updatedSale);
 	} catch (error) {
 		console.error('Error updating sale:', error);
 		return json({ error: 'Failed to update sale' }, { status: 500 });
@@ -76,19 +83,31 @@ export async function POST({ request }) {
 			return json({ error: 'green_coffee_inv_id is required' }, { status: 400 });
 		}
 
-		const [result] = await dbConn.query('INSERT INTO sales SET ?', [insertData]);
-		const insertId = (result as any).insertId;
+		const columns = Object.keys(insertData).join(', ');
+		const placeholders = Object.keys(insertData)
+			.map((_, index) => `$${index + 1}`)
+			.join(', ');
+		const values = Object.values(insertData);
 
-		// Fetch and return the newly created sale with joined coffee_name
-		const [newSale] = (await dbConn.query(
+		const {
+			rows: [result]
+		} = await dbConn.query(
+			`INSERT INTO sales (${columns}) VALUES (${placeholders}) RETURNING id`,
+			values
+		);
+
+		// Fetch new sale
+		const {
+			rows: [newSale]
+		} = await dbConn.query(
 			`SELECT s.*, g.name as coffee_name, g.purchase_date
 			 FROM sales s
 			 LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
-			 WHERE s.id = ?`,
-			[insertId]
-		)) as [RowDataPacket[], any];
+			 WHERE s.id = $1`,
+			[result.id]
+		);
 
-		return json(newSale[0]);
+		return json(newSale);
 	} catch (error) {
 		console.error('Error creating sale:', error);
 		return json({ error: 'Failed to create sale' }, { status: 500 });
@@ -106,7 +125,7 @@ export async function DELETE({ url }) {
 			return json({ error: 'No ID provided' }, { status: 400 });
 		}
 
-		await dbConn.query('DELETE FROM sales WHERE id = ?', [id]);
+		await dbConn.query('DELETE FROM sales WHERE id = $1', [id]);
 		return json({ success: true });
 	} catch (error) {
 		console.error('Error deleting sale:', error);

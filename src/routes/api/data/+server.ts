@@ -1,7 +1,6 @@
 // src/routes/api/data/+server.ts
 import { json } from '@sveltejs/kit';
 import { dbConn } from '$lib/server/db';
-import type { ResultSetHeader, RowDataPacket, QueryResult } from 'mysql2';
 
 export async function GET({ url }) {
 	if (!dbConn) {
@@ -14,14 +13,14 @@ export async function GET({ url }) {
 		let values = [];
 
 		if (id) {
-			query += ' WHERE id = ?';
+			query += ' WHERE id = $1';
 			values.push(id);
 		}
 
-		const [rows] = (await dbConn.query(query, values)) as [RowDataPacket[], any];
-		const formattedRows = (rows as any[]).map((row) => ({
+		const { rows } = await dbConn.query(query, values);
+		const formattedRows = rows.map((row) => ({
 			...row,
-			purchase_date: row.purchase_date.toISOString().split('T')[0]
+			purchase_date: row.purchase_date ? row.purchase_date.toISOString().split('T')[0] : null
 		}));
 		return json({ data: formattedRows });
 	} catch (error) {
@@ -41,7 +40,7 @@ export async function POST({ request }) {
 		const query = `
 			INSERT INTO green_coffee_inv (
 				name, 
-				\`rank\`,
+				"rank",
 				notes, 
 				purchase_date, 
 				purchased_qty_lbs, 
@@ -49,8 +48,8 @@ export async function POST({ request }) {
 				tax_ship_cost, 
 				link,
 				last_updated
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`;
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			RETURNING *`;
 
 		const values = [
 			bean.name,
@@ -64,12 +63,10 @@ export async function POST({ request }) {
 			bean.last_updated
 		];
 
-		const [result] = (await dbConn.execute(query, values)) as [ResultSetHeader, any];
-
-		const [newBean] = (await dbConn.query('SELECT * FROM green_coffee_inv WHERE id = ?', [
-			result.insertId
-		])) as [RowDataPacket[], any];
-		return json(newBean[0]);
+		const {
+			rows: [newBean]
+		} = await dbConn.query(query, values);
+		return json(newBean);
 	} catch (error) {
 		console.error('Error creating bean:', error);
 		return json({ success: false, error: 'Failed to create bean' }, { status: 500 });
@@ -89,34 +86,36 @@ export async function DELETE({ url }) {
 
 	try {
 		// Start a transaction
-		await dbConn.beginTransaction();
+		const client = await dbConn.connect();
 
 		try {
+			await client.query('BEGIN');
+
 			// First, get all roast_ids associated with this coffee
-			const [roastProfiles] = (await dbConn.query(
-				'SELECT roast_id FROM roast_profiles WHERE coffee_id = ?',
+			const { rows: roastProfiles } = await client.query(
+				'SELECT roast_id FROM roast_profiles WHERE coffee_id = $1',
 				[id]
-			)) as [RowDataPacket[], any];
+			);
 
 			// Delete associated profile logs
-			if ((roastProfiles as RowDataPacket[]).length > 0) {
-				const roastIds = (roastProfiles as RowDataPacket[]).map((profile: any) => profile.roast_id);
-				await dbConn.query('DELETE FROM profile_log WHERE roast_id IN (?)', [roastIds]);
+			if (roastProfiles.length > 0) {
+				const roastIds = roastProfiles.map((profile) => profile.roast_id);
+				await client.query('DELETE FROM profile_log WHERE roast_id = ANY($1)', [roastIds]);
 			}
 
 			// Delete roast profiles
-			await dbConn.query('DELETE FROM roast_profiles WHERE coffee_id = ?', [id]);
+			await client.query('DELETE FROM roast_profiles WHERE coffee_id = $1', [id]);
 
 			// Finally, delete the coffee
-			await dbConn.query('DELETE FROM green_coffee_inv WHERE id = ?', [id]);
+			await client.query('DELETE FROM green_coffee_inv WHERE id = $1', [id]);
 
-			// Commit the transaction
-			await dbConn.commit();
+			await client.query('COMMIT');
+			client.release();
 
 			return json({ success: true });
 		} catch (error) {
-			// If anything fails, roll back the transaction
-			await dbConn.rollback();
+			await client.query('ROLLBACK');
+			client.release();
 			throw error;
 		}
 	} catch (error) {
@@ -127,10 +126,7 @@ export async function DELETE({ url }) {
 
 export async function PUT({ url, request }) {
 	if (!dbConn) {
-		return new Response(JSON.stringify({ error: 'Database connection is not established' }), {
-			status: 500,
-			headers: { 'Content-Type': 'application/json' }
-		});
+		throw new Error('Database connection is not established yet.');
 	}
 
 	try {
@@ -138,22 +134,29 @@ export async function PUT({ url, request }) {
 		const updates = await request.json();
 		const { id: _, ...updateData } = updates;
 
-		await dbConn.query('UPDATE green_coffee_inv SET ? WHERE id = ?', [updateData, id]);
+		// Convert object to SET clause and values array
+		const setEntries = Object.entries(updateData);
+		const setClause = setEntries.map((entry, index) => `"${entry[0]}" = $${index + 1}`).join(', ');
+		const values = setEntries.map(([_, value]) => value);
+		values.push(id);
 
-		// Fetch and return the updated bean
-		const [updatedBean] = (await dbConn.query('SELECT * FROM green_coffee_inv WHERE id = ?', [
-			id
-		])) as [RowDataPacket[], any];
+		const query = `
+			UPDATE green_coffee_inv 
+			SET ${setClause} 
+			WHERE id = $${values.length} 
+			RETURNING *`;
 
-		return new Response(JSON.stringify(updatedBean[0]), {
-			status: 200,
-			headers: { 'Content-Type': 'application/json' }
-		});
+		const {
+			rows: [updatedBean]
+		} = await dbConn.query(query, values);
+
+		if (!updatedBean) {
+			return json({ success: false, error: 'Bean not found' }, { status: 404 });
+		}
+
+		return json(updatedBean);
 	} catch (error) {
 		console.error('Error updating bean:', error);
-		return new Response(JSON.stringify({ error: 'Failed to update bean' }), {
-			status: 500,
-			headers: { 'Content-Type': 'application/json' }
-		});
+		return json({ success: false, error: 'Failed to update bean' }, { status: 500 });
 	}
 }

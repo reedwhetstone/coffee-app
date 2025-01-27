@@ -40,11 +40,11 @@ export async function GET() {
         `;
 
 		console.log('Executing query');
-		const [rows] = await dbConn.query(query);
+		const result = await dbConn.query(query);
 		console.log('Query results:');
 
 		// Format the date in each row
-		const formattedRows = (rows as any[]).map((row) => ({
+		const formattedRows = result.rows.map((row) => ({
 			...row,
 			purchase_date: row.purchase_date.toISOString().split('T')[0]
 		}));

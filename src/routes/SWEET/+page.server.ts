@@ -15,11 +15,8 @@ export async function load() {
 			checkConnection();
 		});
 
-		const [rows] = await (dbConn as any).query(
-			'SELECT * FROM coffee_catalog ORDER BY arrival_date DESC'
-		);
-		// console.log('Fetched rows:', rows);
-		return { data: rows };
+		const result = await dbConn.query('SELECT * FROM coffee_catalog ORDER BY arrival_date DESC');
+		return { data: result.rows };
 	} catch (err) {
 		console.error('Database error:', err);
 		throw error(500, 'Failed to fetch coffee data');

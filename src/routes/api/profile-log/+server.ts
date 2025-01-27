@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import { dbConn } from '$lib/server/db';
-import type { ResultSetHeader } from 'mysql2';
 
 export async function GET({ url }) {
 	if (!dbConn) {
@@ -14,11 +13,11 @@ export async function GET({ url }) {
 		let values = [];
 
 		if (roastId) {
-			query += ' WHERE roast_id = ?';
+			query += ' WHERE roast_id = $1';
 			values.push(roastId);
 		}
 
-		const [rows] = await dbConn.query(query, values);
+		const { rows } = await dbConn.query(query, values);
 		return json({ data: rows });
 	} catch (error) {
 		console.error('Error querying database:', error);
@@ -50,36 +49,36 @@ export async function POST({ request }) {
 					fc_rolling,
 					fc_end,
 					sc_start,
-					\`drop\`,
-					\`end\`,
-					\`time\`
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					"drop",
+					"end",
+					"time"
+				) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+				RETURNING *
 			`;
 
 			// Ensure time is in the correct format
 			const timeValue = log.time?.includes(':') ? log.time : '00:00:00';
 
-			// Convert undefined/null boolean values to false
+			// Convert boolean values to 1/0 for PostgreSQL smallint
 			const values = [
 				log.roast_id || null,
 				log.fan_setting || 0,
 				log.heat_setting || 0,
-				log.start || false,
-				log.maillard || false,
-				log.fc_start || false,
-				log.fc_rolling || false,
-				log.fc_end || false,
-				log.sc_start || false,
-				log.drop || false,
-				log.end || false,
+				log.start ? 1 : 0,
+				log.maillard ? 1 : 0,
+				log.fc_start ? 1 : 0,
+				log.fc_rolling ? 1 : 0,
+				log.fc_end ? 1 : 0,
+				log.sc_start ? 1 : 0,
+				log.drop ? 1 : 0,
+				log.end ? 1 : 0,
 				timeValue
 			];
 
-			const [result] = (await dbConn.execute(query, values)) as [ResultSetHeader, any];
-			const [newLog] = (await dbConn.query('SELECT * FROM profile_log WHERE log_id = ?', [
-				result.insertId
-			])) as [any[], any];
-			results.push(newLog[0]);
+			const {
+				rows: [newLog]
+			} = await dbConn.query(query, values);
+			results.push(newLog);
 		}
 
 		return json(results);
@@ -100,7 +99,7 @@ export async function DELETE({ url }) {
 	}
 
 	try {
-		await dbConn.query('DELETE FROM profile_log WHERE roast_id = ?', [roastId]);
+		await dbConn.query('DELETE FROM profile_log WHERE roast_id = $1', [roastId]);
 		return json({ success: true });
 	} catch (error) {
 		console.error('Error deleting profile logs:', error);
@@ -118,13 +117,29 @@ export async function PUT({ url, request }) {
 		const updates = await request.json();
 		const { log_id: _, ...updateData } = updates;
 
-		await dbConn.query('UPDATE profile_log SET ? WHERE log_id = ?', [updateData, id]);
+		// Convert object to SET clause and values array
+		const keys = Object.keys(updateData);
+		const setClause = keys
+			.map((key, index) => {
+				const columnName = ['time', 'end', 'drop'].includes(key) ? `"${key}"` : key;
+				return `${columnName} = $${index + 1}`;
+			})
+			.join(', ');
+		const values = keys.map((key) => updateData[key]);
+		values.push(id);
 
-		const [updatedLog] = (await dbConn.query('SELECT * FROM profile_log WHERE log_id = ?', [
-			id
-		])) as [any[], any];
+		const query = `
+			UPDATE profile_log 
+			SET ${setClause} 
+			WHERE log_id = $${values.length} 
+			RETURNING *
+		`;
 
-		return new Response(JSON.stringify(updatedLog[0]), {
+		const {
+			rows: [updatedLog]
+		} = await dbConn.query(query, values);
+
+		return new Response(JSON.stringify(updatedLog), {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});

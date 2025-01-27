@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import dotenv from 'dotenv';
 import { initializeConnection } from './scriptDb.js';
-import type { Connection } from 'mysql2/promise';
+import type { PoolClient } from 'pg';
 
 // Load environment variables
 dotenv.config();
@@ -123,7 +123,7 @@ async function scrapeUrl(url: string): Promise<ScrapedData | null> {
 	}
 }
 
-async function checkExistingUrls(connection: Connection, urls: string[]): Promise<string[]> {
+async function checkExistingUrls(connection: PoolClient, urls: string[]): Promise<string[]> {
 	// URLs to ignore
 	const ignoredUrls = [
 		'https://www.sweetmarias.com/green-coffee-subscription-gift.html',
@@ -134,27 +134,29 @@ async function checkExistingUrls(connection: Connection, urls: string[]): Promis
 	// Filter out ignored URLs first
 	const filteredUrls = urls.filter((url) => !ignoredUrls.includes(url));
 
-	// Create placeholders for the SQL query
-	const placeholders = filteredUrls.map(() => '?').join(',');
-	const [rows] = await connection.execute(
+	// PostgreSQL uses $1, $2, etc. for parameterized queries instead of ?
+	const placeholders = filteredUrls.map((_, index) => `$${index + 1}`).join(',');
+	const { rows } = await connection.query(
 		`SELECT link FROM coffee_catalog WHERE link IN (${placeholders})`,
 		filteredUrls
 	);
-	const existingUrls = new Set((rows as any[]).map((row) => row.link));
+	const existingUrls = new Set(rows.map((row) => row.link));
 	return filteredUrls.filter((url) => !existingUrls.has(url));
 }
 
 async function updateDatabase() {
-	let connection;
+	let client;
 	try {
-		connection = await initializeConnection();
+		// Assuming initializeConnection() now returns a pg.Pool or pg.Client
+		const pool = await initializeConnection();
+		client = await pool.connect();
 
 		// Collect all product URLs
 		const allProductUrls = await collectInitUrlsData();
 		console.log(`Found ${allProductUrls.length} total products`);
 
 		// Filter out existing URLs
-		const newUrls = await checkExistingUrls(connection, allProductUrls);
+		const newUrls = await checkExistingUrls(client, allProductUrls);
 		console.log(`Found ${newUrls.length} new products to process`);
 
 		// Take only first N URLs for testing
@@ -167,8 +169,8 @@ async function updateDatabase() {
 			const scrapedData = await scrapeUrl(url);
 
 			if (scrapedData) {
-				// Insert into coffee_catalog table
-				await connection.execute(
+				// Update INSERT query to use PostgreSQL parameter syntax
+				await client.query(
 					`INSERT INTO coffee_catalog (
 						name,
 						score_value,
@@ -190,7 +192,7 @@ async function updateDatabase() {
 						description_short,
 						farm_notes,
 						last_updated
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW())`,
 					[
 						scrapedData.productName,
 						scrapedData.scoreValue,
@@ -201,7 +203,7 @@ async function updateDatabase() {
 						scrapedData['Lot size'] || null,
 						scrapedData['Bag size'] || null,
 						scrapedData['Packaging'] || null,
-						scrapedData['Farm Gate'] === 'Yes' ? 1 : 0,
+						scrapedData['Farm Gate'] === 'Yes' ? true : false, // Changed to boolean for PostgreSQL
 						scrapedData['Cultivar Detail'] || null,
 						scrapedData['Grade'] || null,
 						scrapedData['Appearance'] || null,
@@ -224,8 +226,8 @@ async function updateDatabase() {
 		console.error('Error updating database:', error);
 		throw error;
 	} finally {
-		if (connection) {
-			await connection.end(); // Close database connection
+		if (client) {
+			await client.release(); // Release the client back to the pool
 		}
 	}
 }
