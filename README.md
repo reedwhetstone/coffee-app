@@ -9,11 +9,17 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
+- overhaul green_coffee_inv structure:
+  - green_coffe_inv should join / xref coffee_catalog.id and should no longer duplicate that data.
+  - coffee_catalog should have a column for source website - Sweet Marias, etc.
+  - New coffee form should select the source website, coffee name -> should just xref the coffee_catalog.id
+- the sweet scripts need to be fixed with the new db structure
+- debug db issues with updating the db - green_coffee_inv, roast_profiles, roast_sessions etc
+- fix the search with new db
+- set up the entire app for mobile use
+- fix the navbar to be mobile friendly
 - correct rank formatting to allow two decimal places
 - fix db structure to retain paragraph formatting
-- 'end' logging on save instead of drop
-- drop should bring heat setting to 0
-- need settings to start at 8 and 1
 - add an average curve that takes the average of heat and fan settings and plots it on the chart
 - add additional details to the new coffee script and create an algo to recommend purchases based on freshness, cost, and rating
 - get #product-price-27637 > span "price per lb bean" into the coffee_catalog table
