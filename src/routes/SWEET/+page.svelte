@@ -10,9 +10,11 @@
 			const response = await fetch('/api/coffee-catalog');
 			if (response.ok) {
 				const result = await response.json();
+				console.log('API Response:', result);
 				data = result;
 				return true;
 			}
+			console.error('Response not OK:', await response.text());
 			return false;
 		} catch (error) {
 			console.error('Error loading data:', error);
@@ -141,7 +143,9 @@
 		Data length: {data?.data?.length}
 	</pre>
 
-	{#if !data?.data || data.data.length === 0}
+	{#if isLoading}
+		<p class="p-4 text-zinc-300">Loading coffee data...</p>
+	{:else if !data?.data || data.data.length === 0}
 		<p class="p-4 text-zinc-300">No coffee data available</p>
 	{:else}
 		<div class="m-8 overflow-hidden overflow-x-auto rounded-lg">

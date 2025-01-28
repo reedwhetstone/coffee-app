@@ -6,21 +6,22 @@ export async function GET() {
 		console.error('Supabase client check failed:', supabase);
 		throw new Error('Supabase client is not initialized.');
 	}
+	console.log('Supabase client:', !!supabase);
 
 	try {
 		console.log('Attempting to fetch coffee catalog data...');
-		const { data, error } = await supabase
-			.from('coffee_catalog')
-			.select('*')
-			.order('arrival_date', { ascending: false });
+		const { data: rows, error } = await supabase.rpc('run_query', {
+			query_text: 'SELECT * FROM coffee_catalog ORDER BY arrival_date DESC'
+		});
+
+		console.log('Direct query response:', rows);
 
 		if (error) {
 			console.error('Supabase query error:', error);
 			throw error;
 		}
 
-		console.log('Received data:', data);
-		return json({ data: data || [] });
+		return json({ data: rows || [] });
 	} catch (error) {
 		console.error('Error querying database:', error);
 		return json({ data: [], error: 'Failed to fetch coffee catalog data' });
