@@ -1,7 +1,7 @@
-import { dbConn } from './db';
+import { supabase } from './db';
 
 export async function updateGreenCoffeeWithCatalogData() {
-	if (!dbConn) {
+	if (!supabase) {
 		throw new Error('Database connection is not established yet.');
 	}
 
@@ -34,11 +34,17 @@ export async function updateGreenCoffeeWithCatalogData() {
             AND g.link != ''
             AND c.link IS NOT NULL
             AND c.link != ''
+            RETURNING *
         `;
 
-		const result = await dbConn.query(query);
-		console.log('Update complete:', result);
-		return { success: true, result };
+		const { data, error } = await supabase.rpc('run_query', {
+			query_text: query
+		});
+
+		if (error) throw error;
+
+		console.log('Update complete:', data);
+		return { success: true, result: data };
 	} catch (error) {
 		console.error('Error updating green coffee inventory:', error);
 		throw error;

@@ -1,40 +1,22 @@
 // src/lib/server/db.ts
-import pkg from 'pg';
-import { DB_HOST, DB_NAME, DB_USER, DB_PASSWORD } from '$env/static/private';
+import { createClient } from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
-const { Pool } = pkg;
+const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 
-let dbConn: pkg.Pool | undefined;
-
-async function initializeConnection() {
-	console.log('Initializing database connection...');
+export async function query(query: string, params?: any[]) {
 	try {
-		dbConn = new Pool({
-			host: DB_HOST,
-			database: DB_NAME,
-			user: DB_USER,
-			password: DB_PASSWORD
+		const { data, error } = await supabase.rpc('run_query', {
+			query_text: query,
+			query_params: params
 		});
 
-		// Test the connection
-		await dbConn.connect();
-		console.log('Database connection established successfully');
+		if (error) throw error;
+		return { rows: data };
 	} catch (error) {
-		console.error('Error establishing database connection:', error);
+		console.error('Database query error:', error);
 		throw error;
 	}
 }
 
-initializeConnection().catch((error) => {
-	console.error('Failed to initialize database connection:', error);
-});
-
-// Function to get the connection
-export function getDbConn(): pkg.Pool {
-	if (!dbConn) {
-		throw new Error('Database connection is not established yet.');
-	}
-	return dbConn;
-}
-
-export { dbConn };
+export { supabase };

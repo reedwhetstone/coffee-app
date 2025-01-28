@@ -1,16 +1,14 @@
 import { json } from '@sveltejs/kit';
-import { dbConn } from '$lib/server/db';
+import { supabase } from '$lib/server/db';
+
+interface ProfitRow {
+	purchase_date: string;
+	[key: string]: any;
+}
 
 export async function GET() {
-	// Wait for database connection to be established
-	let retries = 5;
-	while (!dbConn && retries > 0) {
-		await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
-		retries--;
-	}
-
-	if (!dbConn) {
-		throw new Error('Database connection could not be established after multiple attempts.');
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
 	}
 
 	try {
@@ -39,16 +37,18 @@ export async function GET() {
             ORDER BY g.purchase_date DESC
         `;
 
-		console.log('Executing query');
-		const result = await dbConn.query(query);
-		console.log('Query results:');
+		const { data: rows, error } = await supabase.rpc('run_query', {
+			query_text: query
+		});
+
+		if (error) throw error;
 
 		// Format the date in each row
-		const formattedRows = result.rows.map((row) => ({
+		const formattedRows = rows.map((row: ProfitRow) => ({
 			...row,
-			purchase_date: row.purchase_date.toISOString().split('T')[0]
+			purchase_date: row.purchase_date.split('T')[0]
 		}));
-		console.log(formattedRows);
+
 		return json(formattedRows);
 	} catch (error) {
 		console.error('Error querying database:', error);

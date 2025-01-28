@@ -1,26 +1,41 @@
 // src/routes/api/data/+server.ts
 import { json } from '@sveltejs/kit';
-import { dbConn } from '$lib/server/db';
+import { supabase } from '$lib/server/db';
+
+interface GreenCoffeeRow {
+	purchase_date: string | null;
+	[key: string]: any;
+}
+
+interface RoastProfile {
+	roast_id: number;
+}
 
 export async function GET({ url }) {
-	if (!dbConn) {
-		throw new Error('Database connection is not established yet.');
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
 	}
 
 	try {
 		const id = url.searchParams.get('id');
 		let query = 'SELECT * FROM green_coffee_inv';
-		let values = [];
+		let params = [];
 
 		if (id) {
 			query += ' WHERE id = $1';
-			values.push(id);
+			params.push(id);
 		}
 
-		const { rows } = await dbConn.query(query, values);
-		const formattedRows = rows.map((row) => ({
+		const { data: rows, error } = await supabase.rpc('run_query', {
+			query_text: query,
+			query_params: params
+		});
+
+		if (error) throw error;
+
+		const formattedRows = rows.map((row: GreenCoffeeRow) => ({
 			...row,
-			purchase_date: row.purchase_date ? row.purchase_date.toISOString().split('T')[0] : null
+			purchase_date: row.purchase_date ? row.purchase_date.split('T')[0] : null
 		}));
 		return json({ data: formattedRows });
 	} catch (error) {
@@ -30,8 +45,8 @@ export async function GET({ url }) {
 }
 
 export async function POST({ request }) {
-	if (!dbConn) {
-		throw new Error('Database connection is not established yet.');
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
 	}
 
 	try {
@@ -63,10 +78,14 @@ export async function POST({ request }) {
 			bean.last_updated
 		];
 
-		const {
-			rows: [newBean]
-		} = await dbConn.query(query, values);
-		return json(newBean);
+		const { data: newBean, error } = await supabase.rpc('run_query', {
+			query_text: query,
+			query_params: values
+		});
+
+		if (error) throw error;
+
+		return json(newBean[0]);
 	} catch (error) {
 		console.error('Error creating bean:', error);
 		return json({ success: false, error: 'Failed to create bean' }, { status: 500 });
@@ -74,8 +93,8 @@ export async function POST({ request }) {
 }
 
 export async function DELETE({ url }) {
-	if (!dbConn) {
-		throw new Error('Database connection is not established yet.');
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
 	}
 
 	const id = url.searchParams.get('id');
@@ -86,38 +105,63 @@ export async function DELETE({ url }) {
 
 	try {
 		// Start a transaction
-		const client = await dbConn.connect();
-
-		try {
-			await client.query('BEGIN');
-
-			// First, get all roast_ids associated with this coffee
-			const { rows: roastProfiles } = await client.query(
-				'SELECT roast_id FROM roast_profiles WHERE coffee_id = $1',
-				[id]
-			);
-
-			// Delete associated profile logs
-			if (roastProfiles.length > 0) {
-				const roastIds = roastProfiles.map((profile) => profile.roast_id);
-				await client.query('DELETE FROM profile_log WHERE roast_id = ANY($1)', [roastIds]);
+		const transactionQueries = [
+			{
+				query: 'SELECT roast_id FROM roast_profiles WHERE coffee_id = $1',
+				params: [id]
+			},
+			{
+				query: 'DELETE FROM profile_log WHERE roast_id = ANY($1)',
+				params: [] // Will be populated after first query
+			},
+			{
+				query: 'DELETE FROM roast_profiles WHERE coffee_id = $1',
+				params: [id]
+			},
+			{
+				query: 'DELETE FROM green_coffee_inv WHERE id = $1',
+				params: [id]
 			}
+		];
 
-			// Delete roast profiles
-			await client.query('DELETE FROM roast_profiles WHERE coffee_id = $1', [id]);
+		// Execute first query to get roast_ids
+		const { data: roastProfiles, error: selectError } = await supabase.rpc('run_query', {
+			query_text: transactionQueries[0].query,
+			query_params: transactionQueries[0].params
+		});
 
-			// Finally, delete the coffee
-			await client.query('DELETE FROM green_coffee_inv WHERE id = $1', [id]);
+		if (selectError) throw selectError;
 
-			await client.query('COMMIT');
-			client.release();
+		// If there are roast profiles, delete their logs
+		if (roastProfiles.length > 0) {
+			const roastIds = roastProfiles.map((profile: RoastProfile) => profile.roast_id);
+			transactionQueries[1].params = [roastIds];
 
-			return json({ success: true });
-		} catch (error) {
-			await client.query('ROLLBACK');
-			client.release();
-			throw error;
+			const { error: logError } = await supabase.rpc('run_query', {
+				query_text: transactionQueries[1].query,
+				query_params: transactionQueries[1].params
+			});
+
+			if (logError) throw logError;
 		}
+
+		// Delete roast profiles
+		const { error: profileError } = await supabase.rpc('run_query', {
+			query_text: transactionQueries[2].query,
+			query_params: transactionQueries[2].params
+		});
+
+		if (profileError) throw profileError;
+
+		// Finally, delete the coffee
+		const { error: deleteError } = await supabase.rpc('run_query', {
+			query_text: transactionQueries[3].query,
+			query_params: transactionQueries[3].params
+		});
+
+		if (deleteError) throw deleteError;
+
+		return json({ success: true });
 	} catch (error) {
 		console.error('Error deleting bean and associated data:', error);
 		return json({ success: false, error: 'Failed to delete bean' }, { status: 500 });
@@ -125,8 +169,8 @@ export async function DELETE({ url }) {
 }
 
 export async function PUT({ url, request }) {
-	if (!dbConn) {
-		throw new Error('Database connection is not established yet.');
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
 	}
 
 	try {
@@ -137,8 +181,7 @@ export async function PUT({ url, request }) {
 		// Convert object to SET clause and values array
 		const setEntries = Object.entries(updateData);
 		const setClause = setEntries.map((entry, index) => `"${entry[0]}" = $${index + 1}`).join(', ');
-		const values = setEntries.map(([_, value]) => value);
-		values.push(id);
+		const values = [...setEntries.map(([_, value]) => value), id];
 
 		const query = `
 			UPDATE green_coffee_inv 
@@ -146,15 +189,18 @@ export async function PUT({ url, request }) {
 			WHERE id = $${values.length} 
 			RETURNING *`;
 
-		const {
-			rows: [updatedBean]
-		} = await dbConn.query(query, values);
+		const { data: updatedBean, error } = await supabase.rpc('run_query', {
+			query_text: query,
+			query_params: values
+		});
 
-		if (!updatedBean) {
+		if (error) throw error;
+
+		if (!updatedBean[0]) {
 			return json({ success: false, error: 'Bean not found' }, { status: 404 });
 		}
 
-		return json(updatedBean);
+		return json(updatedBean[0]);
 	} catch (error) {
 		console.error('Error updating bean:', error);
 		return json({ success: false, error: 'Failed to update bean' }, { status: 500 });

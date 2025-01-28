@@ -1,24 +1,58 @@
 import { json } from '@sveltejs/kit';
-import { dbConn } from '$lib/server/db';
+import { supabase } from '$lib/server/db';
 
 export async function GET({ url }) {
-	if (!dbConn) {
-		throw new Error('Database connection is not established yet.');
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
 	}
 
 	try {
-		// Allow filtering by roast_id
 		const roastId = url.searchParams.get('roast_id');
-		let query = 'SELECT * FROM profile_log';
-		let values = [];
+		let query = `
+			SELECT 
+				roast_id,
+				fan_setting,
+				heat_setting,
+				time,
+				start,
+				maillard,
+				fc_start,
+				fc_rolling,
+				fc_end,
+				sc_start,
+				"drop",
+				"end"
+			FROM profile_log
+		`;
+		let params: number[] = [];
 
 		if (roastId) {
-			query += ' WHERE roast_id = $1';
-			values.push(roastId);
+			const parsedId = Number(roastId);
+			query += ` WHERE roast_id = ${parsedId} ORDER BY time ASC`;
 		}
 
-		const { rows } = await dbConn.query(query, values);
-		return json({ data: rows });
+		console.log('Query:', query);
+		console.log('Params:', params);
+
+		const { data: rows, error } = await supabase.rpc('run_query', {
+			query_text: query,
+			query_params: params
+		});
+
+		if (error) {
+			console.error('Database error:', error);
+			throw error;
+		}
+
+		// Transform the data for chart consumption
+		const formattedRows = rows.map((row: Record<string, any>) => ({
+			...row,
+			time: row.time, // Ensure time is in the correct format
+			fan: row.fan_setting,
+			heat: row.heat_setting
+		}));
+
+		return json({ data: formattedRows });
 	} catch (error) {
 		console.error('Error querying database:', error);
 		return json({ data: [], error: 'Failed to fetch data' });
@@ -26,8 +60,8 @@ export async function GET({ url }) {
 }
 
 export async function POST({ request }) {
-	if (!dbConn) {
-		throw new Error('Database connection is not established yet.');
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
 	}
 
 	try {
@@ -75,10 +109,13 @@ export async function POST({ request }) {
 				timeValue
 			];
 
-			const {
-				rows: [newLog]
-			} = await dbConn.query(query, values);
-			results.push(newLog);
+			const { data: newLog, error } = await supabase.rpc('run_query', {
+				query_text: query,
+				query_params: values
+			});
+
+			if (error) throw error;
+			results.push(newLog[0]);
 		}
 
 		return json(results);
@@ -89,17 +126,36 @@ export async function POST({ request }) {
 }
 
 export async function DELETE({ url }) {
-	if (!dbConn) {
-		throw new Error('Database connection is not established yet.');
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
 	}
 
 	const roastId = url.searchParams.get('roast_id');
+	console.log('Received roastId:', roastId, 'Type:', typeof roastId);
+
 	if (!roastId) {
 		return json({ success: false, error: 'No roast_id provided' }, { status: 400 });
 	}
 
 	try {
-		await dbConn.query('DELETE FROM profile_log WHERE roast_id = $1', [roastId]);
+		const parsedId = parseInt(roastId, 10);
+		console.log('Parsed roastId:', parsedId, 'Type:', typeof parsedId);
+
+		const query = 'DELETE FROM profile_log WHERE roast_id = $1';
+		const params = [parsedId];
+
+		console.log('Query:', query);
+		console.log('Params:', params, 'Type of first param:', typeof params[0]);
+
+		const { error } = await supabase.rpc('run_query', {
+			query_text: query,
+			query_params: params
+		});
+
+		if (error) {
+			console.error('Database error:', error);
+			throw error;
+		}
 		return json({ success: true });
 	} catch (error) {
 		console.error('Error deleting profile logs:', error);
@@ -108,8 +164,8 @@ export async function DELETE({ url }) {
 }
 
 export async function PUT({ url, request }) {
-	if (!dbConn) {
-		throw new Error('Database connection is not established yet.');
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
 	}
 
 	try {
@@ -125,8 +181,7 @@ export async function PUT({ url, request }) {
 				return `${columnName} = $${index + 1}`;
 			})
 			.join(', ');
-		const values = keys.map((key) => updateData[key]);
-		values.push(id);
+		const values = [...keys.map((key) => updateData[key]), id];
 
 		const query = `
 			UPDATE profile_log 
@@ -135,19 +190,16 @@ export async function PUT({ url, request }) {
 			RETURNING *
 		`;
 
-		const {
-			rows: [updatedLog]
-		} = await dbConn.query(query, values);
-
-		return new Response(JSON.stringify(updatedLog), {
-			status: 200,
-			headers: { 'Content-Type': 'application/json' }
+		const { data: updatedLog, error } = await supabase.rpc('run_query', {
+			query_text: query,
+			query_params: values
 		});
+
+		if (error) throw error;
+
+		return json(updatedLog[0]);
 	} catch (error) {
 		console.error('Error updating profile log:', error);
-		return new Response(JSON.stringify({ error: 'Failed to update profile log' }), {
-			status: 500,
-			headers: { 'Content-Type': 'application/json' }
-		});
+		return json({ error: 'Failed to update profile log' }, { status: 500 });
 	}
 }

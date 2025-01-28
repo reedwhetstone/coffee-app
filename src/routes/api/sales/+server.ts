@@ -1,24 +1,25 @@
 import { json } from '@sveltejs/kit';
-import { dbConn } from '$lib/server/db';
+import { supabase } from '$lib/server/db';
 
 export async function GET() {
-	if (!dbConn) {
-		throw new Error('Database connection is not established yet.');
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
 	}
 
 	try {
-		const query = `
-            SELECT 
-                s.*,
-                g.name as coffee_name,
-                g.purchase_date
-            FROM sales s
-            LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
-            
-            ORDER BY s.sell_date DESC
-        `;
+		const { data: rows, error } = await supabase.rpc('run_query', {
+			query_text: `
+                SELECT 
+                    s.*,
+                    g.name as coffee_name,
+                    g.purchase_date
+                FROM sales s
+                LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
+                ORDER BY s.sell_date DESC
+            `
+		});
 
-		const { rows } = await dbConn.query(query);
+		if (error) throw error;
 		return json(rows);
 	} catch (error) {
 		console.error('Error querying database:', error);
@@ -27,8 +28,8 @@ export async function GET() {
 }
 
 export async function PUT({ url, request }) {
-	if (!dbConn) {
-		return json({ error: 'Database connection is not established' }, { status: 500 });
+	if (!supabase) {
+		return json({ error: 'Supabase client is not initialized' }, { status: 500 });
 	}
 
 	try {
@@ -50,20 +51,27 @@ export async function PUT({ url, request }) {
 			.join(', ');
 		const values = [...Object.values(updateData), id];
 
-		await dbConn.query(`UPDATE sales SET ${setClause} WHERE id = $${values.length}`, values);
+		const { data: updatedSale, error } = await supabase.rpc('run_query', {
+			query_text: `UPDATE sales SET ${setClause} WHERE id = $${values.length} RETURNING *`,
+			query_params: values
+		});
 
-		// Fetch updated sale
-		const {
-			rows: [updatedSale]
-		} = await dbConn.query(
-			`SELECT s.*, g.name as coffee_name, g.purchase_date
-			 FROM sales s
-			 LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
-			 WHERE s.id = $1`,
-			[id]
-		);
+		if (error) throw error;
 
-		return json(updatedSale);
+		// Fetch updated sale with coffee name
+		const { data: fullSale, error: fetchError } = await supabase.rpc('run_query', {
+			query_text: `
+				SELECT s.*, g.name as coffee_name, g.purchase_date
+				FROM sales s
+				LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
+				WHERE s.id = $1
+			`,
+			query_params: [id]
+		});
+
+		if (fetchError) throw fetchError;
+
+		return json(fullSale[0]);
 	} catch (error) {
 		console.error('Error updating sale:', error);
 		return json({ error: 'Failed to update sale' }, { status: 500 });
@@ -71,8 +79,8 @@ export async function PUT({ url, request }) {
 }
 
 export async function POST({ request }) {
-	if (!dbConn) {
-		return json({ error: 'Database connection is not established' }, { status: 500 });
+	if (!supabase) {
+		return json({ error: 'Supabase client is not initialized' }, { status: 500 });
 	}
 
 	try {
@@ -89,25 +97,27 @@ export async function POST({ request }) {
 			.join(', ');
 		const values = Object.values(insertData);
 
-		const {
-			rows: [result]
-		} = await dbConn.query(
-			`INSERT INTO sales (${columns}) VALUES (${placeholders}) RETURNING id`,
-			values
-		);
+		const { data: result, error } = await supabase.rpc('run_query', {
+			query_text: `INSERT INTO sales (${columns}) VALUES (${placeholders}) RETURNING id`,
+			query_params: values
+		});
 
-		// Fetch new sale
-		const {
-			rows: [newSale]
-		} = await dbConn.query(
-			`SELECT s.*, g.name as coffee_name, g.purchase_date
-			 FROM sales s
-			 LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
-			 WHERE s.id = $1`,
-			[result.id]
-		);
+		if (error) throw error;
 
-		return json(newSale);
+		// Fetch new sale with coffee name
+		const { data: newSale, error: fetchError } = await supabase.rpc('run_query', {
+			query_text: `
+				SELECT s.*, g.name as coffee_name, g.purchase_date
+				FROM sales s
+				LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
+				WHERE s.id = $1
+			`,
+			query_params: [result[0].id]
+		});
+
+		if (fetchError) throw fetchError;
+
+		return json(newSale[0]);
 	} catch (error) {
 		console.error('Error creating sale:', error);
 		return json({ error: 'Failed to create sale' }, { status: 500 });
@@ -115,8 +125,8 @@ export async function POST({ request }) {
 }
 
 export async function DELETE({ url }) {
-	if (!dbConn) {
-		return json({ error: 'Database connection is not established' }, { status: 500 });
+	if (!supabase) {
+		return json({ error: 'Supabase client is not initialized' }, { status: 500 });
 	}
 
 	try {
@@ -125,7 +135,12 @@ export async function DELETE({ url }) {
 			return json({ error: 'No ID provided' }, { status: 400 });
 		}
 
-		await dbConn.query('DELETE FROM sales WHERE id = $1', [id]);
+		const { error } = await supabase.rpc('run_query', {
+			query_text: 'DELETE FROM sales WHERE id = $1',
+			query_params: [id]
+		});
+
+		if (error) throw error;
 		return json({ success: true });
 	} catch (error) {
 		console.error('Error deleting sale:', error);

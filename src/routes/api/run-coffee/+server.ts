@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { updateDatabase } from '../../SWEET/newcoffeescript';
+import { supabase } from '$lib/server/db';
 
 // Initialize processHandler if it doesn't exist
 if (!global.processHandler) {
@@ -10,6 +11,10 @@ if (!global.processHandler) {
 }
 
 export async function POST() {
+	if (!supabase) {
+		throw new Error('Supabase client is not initialized.');
+	}
+
 	const sendLog = (message: string) => {
 		global.processHandler.sendLog(message);
 	};
