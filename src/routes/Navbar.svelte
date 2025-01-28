@@ -44,7 +44,15 @@
 
 		try {
 			const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
-			searchResults = await response.json();
+			if (!response.ok) {
+				throw new Error('Search request failed');
+			}
+			const data = await response.json();
+			if (data.error) {
+				throw new Error(data.error);
+			}
+			searchResults = Array.isArray(data) ? data : [];
+			//	console.log('Search results:', searchResults);
 		} catch (error) {
 			console.error('Search error:', error);
 			searchResults = [];
@@ -134,12 +142,22 @@
 						<button
 							class="w-full px-4 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-600"
 							on:click={() => {
-								goto(result.url, {
-									state: {
-										searchType: result.type,
-										searchId: result.item_id
+								if (result.url === routeId) {
+									// If already on the same page, manually trigger the appropriate store/action
+									if (result.type === 'green') {
+										$navbarActions.onSearchSelect?.(result.type, result.item_id);
+									} else if (result.type === 'roast') {
+										$navbarActions.onSearchSelect?.(result.type, result.item_id);
 									}
-								});
+								} else {
+									// Navigate to new page with search state
+									goto(result.url, {
+										state: {
+											searchType: result.type,
+											searchId: result.item_id
+										}
+									});
+								}
 								showResults = false;
 								searchQuery = '';
 							}}

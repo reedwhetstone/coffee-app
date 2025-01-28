@@ -9,13 +9,13 @@ export async function GET() {
 	console.log('Supabase client:', !!supabase);
 
 	try {
-		console.log('Attempting to fetch coffee catalog data...');
+		//console.log('Attempting to fetch coffee catalog data...');
 		const { data: rows, error } = await supabase
 			.from('coffee_catalog')
 			.select('*')
 			.order('arrival_date', { ascending: false });
 
-		console.log('Direct query response:', rows);
+		//console.log('Direct query response:', rows);
 
 		if (error) {
 			console.error('Supabase query error:', error);

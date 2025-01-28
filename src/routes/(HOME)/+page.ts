@@ -1,7 +1,7 @@
 // src/routes/+page.ts
 import type { Load } from '@sveltejs/kit';
 
-export const load: Load = async ({ fetch }) => {
+export const load: Load = async ({ fetch, url }) => {
 	const response = await fetch('/api/data');
 
 	// Debugging logs
@@ -18,5 +18,8 @@ export const load: Load = async ({ fetch }) => {
 	// console.log('Fetched data:', json);
 	console.log('Fetched data, completed');
 
-	return { data: json.data }; // Return only the `data` array
+	return {
+		data: json.data,
+		searchState: url.searchParams
+	};
 };

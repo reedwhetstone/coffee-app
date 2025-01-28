@@ -7,6 +7,7 @@ export async function GET({ url }) {
 	}
 
 	const query = url.searchParams.get('q')?.toLowerCase() || '';
+	console.log('Search query:', query); // Debug log
 
 	if (!query || query.length < 2) {
 		return json([]);
@@ -19,27 +20,26 @@ export async function GET({ url }) {
 			.select(
 				`
 				id,
-				title:name,
-				description:region,
-				url:raw(''),
-				type:raw('green'),
-				item_id:id
+				name,
+				region,
+				processing
 			`
 			)
 			.or(`name.ilike.%${query}%,region.ilike.%${query}%,processing.ilike.%${query}%`)
 			.limit(5);
 
+		console.log('Green coffee results:', greenCoffeeResults); // Debug log
 		if (greenError) throw greenError;
 
 		// Format green coffee results
 		const formattedGreenResults =
-			greenCoffeeResults?.map((result: Record<string, any>) => ({
+			greenCoffeeResults?.map((result) => ({
 				id: result.id,
-				title: result.title,
-				description: `Green Coffee - ${result.description || ''}`,
+				title: result.name,
+				description: `Green Coffee - ${result.region || ''}`,
 				url: '/',
-				type: result.type,
-				item_id: result.item_id
+				type: 'green',
+				item_id: result.id
 			})) || [];
 
 		// Query for roast profile results
@@ -47,35 +47,31 @@ export async function GET({ url }) {
 			.from('roast_profiles')
 			.select(
 				`
-				id:roast_id,
+				roast_id,
 				coffee_name,
 				batch_name,
-				title:coffee_name,
-				description:raw('Roast Profile'),
-				url:raw('/ROAST'),
-				type:raw('roast'),
-				item_id:roast_id
+				roast_notes
 			`
 			)
 			.or(`coffee_name.ilike.%${query}%,batch_name.ilike.%${query}%,roast_notes.ilike.%${query}%`)
 			.limit(5);
 
+		console.log('Roast results:', roastResults); // Debug log
 		if (roastError) throw roastError;
 
 		// Format roast results
 		const formattedRoastResults =
-			roastResults?.map((result: Record<string, any>) => ({
-				id: result.id,
-				coffee_name: result.coffee_name,
-				batch_name: result.batch_name,
+			roastResults?.map((result) => ({
+				id: result.roast_id,
 				title: `${result.coffee_name} - ${result.batch_name}`,
-				description: result.description,
-				url: result.url,
-				type: result.type,
-				item_id: result.item_id
+				description: 'Roast Profile',
+				url: '/ROAST',
+				type: 'roast',
+				item_id: result.roast_id
 			})) || [];
 
 		const allResults = [...formattedGreenResults, ...formattedRoastResults].slice(0, 10);
+		console.log('Final results:', allResults); // Debug log
 		return json(allResults);
 	} catch (error) {
 		console.error('Search error:', error);

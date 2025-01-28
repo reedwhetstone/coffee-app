@@ -1,8 +1,17 @@
 import { writable } from 'svelte/store';
 
-export const navbarActions = writable({
+interface NavbarActions {
+	onAddNewBean: () => void;
+	onAddNewRoast: () => void;
+	onAddNewSale: () => void;
+	onShowRoastForm: () => void;
+	onSearchSelect?: (type: string, id: number) => void;
+}
+
+export const navbarActions = writable<NavbarActions>({
 	onAddNewBean: () => {}, // default empty function
 	onAddNewRoast: () => {},
 	onAddNewSale: () => {},
-	onShowRoastForm: () => {} // new action
+	onShowRoastForm: () => {}, // new action
+	onSearchSelect: () => {}
 });

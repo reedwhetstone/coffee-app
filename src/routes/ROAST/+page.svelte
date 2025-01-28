@@ -101,13 +101,23 @@
 		// Set navbar actions
 		navbarActions.set({
 			...get(navbarActions),
-			onShowRoastForm: () => (isFormVisible = true)
+			onShowRoastForm: () => (isFormVisible = true),
+			onSearchSelect: async (type, id) => {
+				if (type === 'roast') {
+					await loadRoastProfiles();
+					const foundProfile = allRoastProfiles.find((profile) => profile.roast_id === id);
+					if (foundProfile) {
+						selectProfile(foundProfile);
+					}
+				}
+			}
 		});
 
 		return () => {
 			navbarActions.set({
 				...get(navbarActions),
-				onShowRoastForm: () => {}
+				onShowRoastForm: () => {},
+				onSearchSelect: () => {}
 			});
 		};
 	});

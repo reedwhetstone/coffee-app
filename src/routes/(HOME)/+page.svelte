@@ -1,5 +1,9 @@
 <script lang="ts">
 	export let data: {
+		searchState?: {
+			searchType?: 'green';
+			searchId?: number;
+		};
 		data: {
 			id: number;
 			name: string;
@@ -31,7 +35,8 @@
 	import BeanProfile from './BeanProfile.svelte';
 	import { onMount } from 'svelte';
 	import { navbarActions } from '$lib/stores/navbarStore';
-	import { page } from '$app/state';
+	import { get } from 'svelte/store';
+	import { page } from '$app/stores';
 
 	let isFormVisible = false;
 	let selectedBean: any = null;
@@ -134,29 +139,47 @@
 	}
 
 	// Initialize selectedBean with proper data loading
-	onMount(async () => {
-		navbarActions.set({
-			onAddNewBean: handleAddNewBean,
-			onAddNewRoast: () => {},
-			onAddNewSale: () => {},
-			onShowRoastForm: () => {}
-		});
-
-		// Load data first
-		await loadData().then(() => {
-			// Handle search navigation
-			const searchState = page.state as PageState;
+	onMount(() => {
+		// First load the data
+		loadData().then(() => {
+			// Check for search state on initial load
+			const searchState = $page.state as any;
 			if (searchState?.searchType === 'green' && searchState?.searchId) {
 				const foundBean = data.data.find((bean) => bean.id === searchState.searchId);
 				if (foundBean) {
 					selectedBean = foundBean;
-					selectedPurchaseDate = null; // Clear the filter when coming from search
+					selectedPurchaseDate = null;
 					window.scrollTo({ top: 0, behavior: 'smooth' });
 				}
 			}
 		});
 
-		isLoading = false;
+		// Set up navbar actions
+		navbarActions.set({
+			...get(navbarActions),
+			onAddNewBean: handleAddNewBean,
+			onSearchSelect: async (type, id) => {
+				if (type === 'green') {
+					await loadData();
+					const foundBean = data.data.find((bean) => bean.id === id);
+					if (foundBean) {
+						selectedBean = null;
+						await Promise.resolve();
+						selectedBean = foundBean;
+						selectedPurchaseDate = null;
+						window.scrollTo({ top: 0, behavior: 'smooth' });
+					}
+				}
+			}
+		});
+
+		return () => {
+			navbarActions.set({
+				...get(navbarActions),
+				onAddNewBean: () => {},
+				onSearchSelect: () => {}
+			});
+		};
 	});
 
 	function handleAddNewBean() {
