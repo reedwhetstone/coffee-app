@@ -2,6 +2,9 @@
 	"name": "coffee-app",
 	"private": true,
 	"version": "0.0.1",
+	"engines": {
+		"node": "20.x"
+	},
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -48,10 +51,8 @@
 		"@tailwindcss/container-queries": "^0.1.1",
 		"@tailwindcss/forms": "^0.5.9",
 		"@tailwindcss/typography": "^0.5.15",
-		"@types/pg": "^8.11.11",
 		"d3": "^7.9.0",
 		"dotenv": "^16.4.7",
-		"lodash": "^4.17.21",
-		"pg": "^8.13.1"
+		"lodash": "^4.17.21"
 	}
 }
