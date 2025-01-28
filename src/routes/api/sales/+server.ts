@@ -7,20 +7,27 @@ export async function GET() {
 	}
 
 	try {
-		const { data: rows, error } = await supabase.rpc('run_query', {
-			query_text: `
-                SELECT 
-                    s.*,
-                    g.name as coffee_name,
-                    g.purchase_date
-                FROM sales s
-                LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
-                ORDER BY s.sell_date DESC
-            `
-		});
+		const { data: sales, error } = await supabase
+			.from('sales')
+			.select(
+				`
+				*,
+				green_coffee_inv!inner (
+					name
+				)
+			`
+			)
+			.order('sell_date', { ascending: false });
 
 		if (error) throw error;
-		return json(rows);
+
+		// Transform the response to match the expected format
+		const formattedSales = sales.map((sale) => ({
+			...sale,
+			coffee_name: sale.green_coffee_inv?.name || null
+		}));
+
+		return json(formattedSales);
 	} catch (error) {
 		console.error('Error querying database:', error);
 		return json({ data: [], error: 'Failed to fetch sales data' });
@@ -41,37 +48,16 @@ export async function PUT({ url, request }) {
 		const updates = await request.json();
 		const { coffee_name: _, ...updateData } = updates;
 
-		if (!updateData.green_coffee_inv_id) {
-			return json({ error: 'green_coffee_inv_id is required' }, { status: 400 });
-		}
-
-		// Convert object to SET clause for PostgreSQL
-		const setClause = Object.keys(updateData)
-			.map((key, index) => `${key} = $${index + 1}`)
-			.join(', ');
-		const values = [...Object.values(updateData), id];
-
-		const { data: updatedSale, error } = await supabase.rpc('run_query', {
-			query_text: `UPDATE sales SET ${setClause} WHERE id = $${values.length} RETURNING *`,
-			query_params: values
-		});
+		const { data: updatedSale, error } = await supabase
+			.from('sales')
+			.update(updateData)
+			.eq('id', id)
+			.select()
+			.single();
 
 		if (error) throw error;
 
-		// Fetch updated sale with coffee name
-		const { data: fullSale, error: fetchError } = await supabase.rpc('run_query', {
-			query_text: `
-				SELECT s.*, g.name as coffee_name, g.purchase_date
-				FROM sales s
-				LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
-				WHERE s.id = $1
-			`,
-			query_params: [id]
-		});
-
-		if (fetchError) throw fetchError;
-
-		return json(fullSale[0]);
+		return json(updatedSale);
 	} catch (error) {
 		console.error('Error updating sale:', error);
 		return json({ error: 'Failed to update sale' }, { status: 500 });

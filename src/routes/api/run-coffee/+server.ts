@@ -12,10 +12,12 @@ if (!global.processHandler) {
 
 export async function POST() {
 	if (!supabase) {
+		console.error('Supabase client check failed:', supabase);
 		throw new Error('Supabase client is not initialized.');
 	}
 
 	const sendLog = (message: string) => {
+		console.log(message); // Log to console for debugging
 		global.processHandler.sendLog(message);
 	};
 
@@ -23,10 +25,16 @@ export async function POST() {
 		sendLog('Starting coffee script execution...');
 		await updateDatabase();
 		sendLog('Coffee script completed successfully');
-		return json({ success: true });
+
+		return json({
+			success: true,
+			message: 'Coffee script completed successfully'
+		});
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		console.error('Error in coffee script:', error);
 		sendLog(`Error in coffee script endpoint: ${errorMessage}`);
+
 		return json(
 			{
 				success: false,

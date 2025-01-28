@@ -10,9 +10,10 @@ export async function GET() {
 
 	try {
 		console.log('Attempting to fetch coffee catalog data...');
-		const { data: rows, error } = await supabase.rpc('run_query', {
-			query_text: 'SELECT * FROM coffee_catalog ORDER BY arrival_date DESC'
-		});
+		const { data: rows, error } = await supabase
+			.from('coffee_catalog')
+			.select('*')
+			.order('arrival_date', { ascending: false });
 
 		console.log('Direct query response:', rows);
 

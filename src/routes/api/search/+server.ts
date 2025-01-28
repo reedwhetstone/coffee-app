@@ -14,48 +14,68 @@ export async function GET({ url }) {
 
 	try {
 		// Query for green coffee results
-		const { data: greenCoffeeResults, error: greenError } = await supabase.rpc('run_query', {
-			query_text: `
-				SELECT 
-					id,
-					name as title,
-					CONCAT('Green Coffee - ', region) as description,
-					'/' as url,
-					'green' as type,
-					id as item_id
-				FROM green_coffee_inv 
-				WHERE 
-					LOWER(name) LIKE $1 OR 
-					LOWER(region) LIKE $1 OR 
-					LOWER(processing) LIKE $1
-			`,
-			query_params: [`%${query}%`]
-		});
+		const { data: greenCoffeeResults, error: greenError } = await supabase
+			.from('green_coffee_inv')
+			.select(
+				`
+				id,
+				title:name,
+				description:region,
+				url:raw(''),
+				type:raw('green'),
+				item_id:id
+			`
+			)
+			.or(`name.ilike.%${query}%,region.ilike.%${query}%,processing.ilike.%${query}%`)
+			.limit(5);
 
 		if (greenError) throw greenError;
 
+		// Format green coffee results
+		const formattedGreenResults =
+			greenCoffeeResults?.map((result: Record<string, any>) => ({
+				id: result.id,
+				title: result.title,
+				description: `Green Coffee - ${result.description || ''}`,
+				url: '/',
+				type: result.type,
+				item_id: result.item_id
+			})) || [];
+
 		// Query for roast profile results
-		const { data: roastResults, error: roastError } = await supabase.rpc('run_query', {
-			query_text: `
-				SELECT 
-					roast_id as id,
-					CONCAT(coffee_name, ' - ', batch_name) as title,
-					'Roast Profile' as description,
-					'/ROAST' as url,
-					'roast' as type,
-					roast_id as item_id
-				FROM roast_profiles 
-				WHERE 
-					LOWER(coffee_name) LIKE $1 OR 
-					LOWER(batch_name) LIKE $1 OR 
-					LOWER(roast_notes) LIKE $1
-			`,
-			query_params: [`%${query}%`]
-		});
+		const { data: roastResults, error: roastError } = await supabase
+			.from('roast_profiles')
+			.select(
+				`
+				id:roast_id,
+				coffee_name,
+				batch_name,
+				title:coffee_name,
+				description:raw('Roast Profile'),
+				url:raw('/ROAST'),
+				type:raw('roast'),
+				item_id:roast_id
+			`
+			)
+			.or(`coffee_name.ilike.%${query}%,batch_name.ilike.%${query}%,roast_notes.ilike.%${query}%`)
+			.limit(5);
 
 		if (roastError) throw roastError;
 
-		const allResults = [...(greenCoffeeResults || []), ...(roastResults || [])].slice(0, 10);
+		// Format roast results
+		const formattedRoastResults =
+			roastResults?.map((result: Record<string, any>) => ({
+				id: result.id,
+				coffee_name: result.coffee_name,
+				batch_name: result.batch_name,
+				title: `${result.coffee_name} - ${result.batch_name}`,
+				description: result.description,
+				url: result.url,
+				type: result.type,
+				item_id: result.item_id
+			})) || [];
+
+		const allResults = [...formattedGreenResults, ...formattedRoastResults].slice(0, 10);
 		return json(allResults);
 	} catch (error) {
 		console.error('Search error:', error);

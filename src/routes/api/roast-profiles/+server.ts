@@ -7,9 +7,7 @@ export async function GET() {
 	}
 
 	try {
-		const { data: rows, error } = await supabase.rpc('run_query', {
-			query_text: 'SELECT * FROM roast_profiles'
-		});
+		const { data: rows, error } = await supabase.from('roast_profiles').select('*');
 
 		if (error) throw error;
 		return json({ data: rows });
@@ -35,23 +33,23 @@ export async function POST({ request }) {
 				}
 
 				// Check if coffee exists
-				const { data: coffeeExists, error: coffeeError } = await supabase.rpc('run_query', {
-					query_text: 'SELECT id, name FROM green_coffee_inv WHERE id = $1',
-					query_params: [profileData.coffee_id]
-				});
+				const { data: coffee, error: coffeeError } = await supabase
+					.from('green_coffee_inv')
+					.select('id, name')
+					.eq('id', profileData.coffee_id)
+					.single();
 
 				if (coffeeError) throw coffeeError;
-				if (!coffeeExists.length) {
+				if (!coffee) {
 					throw new Error(`Invalid coffee_id - coffee not found: ${profileData.coffee_id}`);
 				}
 
 				// Prepare profile data
 				const profile = {
 					batch_name:
-						profileData.batch_name ||
-						`${coffeeExists[0].name} - ${new Date().toLocaleDateString()}`,
+						profileData.batch_name || `${coffee.name} - ${new Date().toLocaleDateString()}`,
 					coffee_id: profileData.coffee_id,
-					coffee_name: profileData.coffee_name || coffeeExists[0].name,
+					coffee_name: profileData.coffee_name || coffee.name,
 					roast_date: profileData.roast_date
 						? new Date(profileData.roast_date).toISOString().slice(0, 19).replace('T', ' ')
 						: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -64,38 +62,14 @@ export async function POST({ request }) {
 					roast_targets: profileData.roast_targets || null
 				};
 
-				const query = `
-					INSERT INTO roast_profiles (
-						batch_name,
-						coffee_id,
-						coffee_name,
-						roast_date,
-						last_updated,
-						oz_in,
-						oz_out,
-						roast_notes,
-						roast_targets
-					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-					RETURNING *
-				`;
-
-				const { data: newRoast, error } = await supabase.rpc('run_query', {
-					query_text: query,
-					query_params: [
-						profile.batch_name,
-						profile.coffee_id,
-						profile.coffee_name,
-						profile.roast_date,
-						profile.last_updated,
-						profile.oz_in,
-						profile.oz_out,
-						profile.roast_notes,
-						profile.roast_targets
-					]
-				});
+				const { data: newRoast, error } = await supabase
+					.from('roast_profiles')
+					.insert(profile)
+					.select()
+					.single();
 
 				if (error) throw error;
-				return newRoast[0];
+				return newRoast;
 			})
 		);
 
@@ -121,17 +95,16 @@ export async function DELETE({ url, request }) {
 	if (id) {
 		try {
 			// Delete associated logs first
-			const { error: logError } = await supabase.rpc('run_query', {
-				query_text: 'DELETE FROM profile_log WHERE roast_id = $1',
-				query_params: [id]
-			});
+			const { error: logError } = await supabase.from('profile_log').delete().eq('roast_id', id);
+
 			if (logError) throw logError;
 
 			// Then delete the profile
-			const { error: profileError } = await supabase.rpc('run_query', {
-				query_text: 'DELETE FROM roast_profiles WHERE roast_id = $1',
-				query_params: [id]
-			});
+			const { error: profileError } = await supabase
+				.from('roast_profiles')
+				.delete()
+				.eq('roast_id', id);
+
 			if (profileError) throw profileError;
 
 			return json({ success: true });
@@ -144,20 +117,28 @@ export async function DELETE({ url, request }) {
 	try {
 		const { batch_name, roast_date } = await request.json();
 
-		// Delete associated logs first
-		const { error: logError } = await supabase.rpc('run_query', {
-			query_text: `DELETE FROM profile_log pl USING roast_profiles rp 
-						WHERE pl.roast_id = rp.roast_id 
-						AND rp.batch_name = $1 AND rp.roast_date = $2`,
-			query_params: [batch_name, roast_date]
-		});
+		// Delete associated logs first using a join
+		const { error: logError } = await supabase
+			.from('profile_log')
+			.delete()
+			.eq(
+				'roast_id',
+				supabase
+					.from('roast_profiles')
+					.select('roast_id')
+					.eq('batch_name', batch_name)
+					.eq('roast_date', roast_date)
+			);
+
 		if (logError) throw logError;
 
 		// Then delete the profiles
-		const { error: profileError } = await supabase.rpc('run_query', {
-			query_text: 'DELETE FROM roast_profiles WHERE batch_name = $1 AND roast_date = $2',
-			query_params: [batch_name, roast_date]
-		});
+		const { error: profileError } = await supabase
+			.from('roast_profiles')
+			.delete()
+			.eq('batch_name', batch_name)
+			.eq('roast_date', roast_date);
+
 		if (profileError) throw profileError;
 
 		return json({ success: true });
@@ -191,20 +172,16 @@ export async function PUT({ url, request }) {
 				.replace('T', ' ');
 		}
 
-		// Convert object to UPDATE query
-		const setClause = Object.keys(updateData)
-			.map((key, index) => `${key} = $${index + 1}`)
-			.join(', ');
-		const values = [...Object.values(updateData), id];
-
-		const { data: updatedRoast, error } = await supabase.rpc('run_query', {
-			query_text: `UPDATE roast_profiles SET ${setClause} WHERE roast_id = $${values.length} RETURNING *`,
-			query_params: values
-		});
+		const { data: updatedRoast, error } = await supabase
+			.from('roast_profiles')
+			.update(updateData)
+			.eq('roast_id', id)
+			.select()
+			.single();
 
 		if (error) throw error;
 
-		return new Response(JSON.stringify(updatedRoast[0]), {
+		return new Response(JSON.stringify(updatedRoast), {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});

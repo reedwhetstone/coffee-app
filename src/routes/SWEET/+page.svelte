@@ -27,9 +27,6 @@
 		isLoading = false;
 	});
 
-	// Add this console.log to check the data
-	console.log('SWEET page data:', data);
-
 	let logs: string[] = [];
 
 	async function runCoffeeScript() {
@@ -137,12 +134,6 @@
 </div>
 
 <div class="my-8 mt-8">
-	<!-- Add debug output -->
-	<pre class="p-4 text-zinc-300">
-		Data exists: {Boolean(data?.data)}
-		Data length: {data?.data?.length}
-	</pre>
-
 	{#if isLoading}
 		<p class="p-4 text-zinc-300">Loading coffee data...</p>
 	{:else if !data?.data || data.data.length === 0}

@@ -12,42 +12,60 @@ export async function GET() {
 	}
 
 	try {
-		const query = `
-            SELECT 
-                g.id,
-                g.name as coffee_name,
-                g.purchase_date,
-                g.purchased_qty_lbs,
-                g.purchased_qty_lbs * 16 as purchased_qty_oz,
-                g.bean_cost,
-                g.tax_ship_cost,
-                COALESCE(SUM(s.price), 0) as total_sales,
-                COALESCE(SUM(s.oz_sold), 0) as oz_sold,
-                COALESCE(SUM(s.price), 0) - (g.bean_cost + g.tax_ship_cost) as profit,
-                COALESCE((SELECT SUM(r2.oz_in) FROM roast_profiles r2 WHERE r2.coffee_id = g.id), 0) as oz_in,
-                COALESCE((SELECT SUM(r2.oz_out) FROM roast_profiles r2 WHERE r2.coffee_id = g.id), 0) as oz_out,
-                CASE 
-                    WHEN (g.bean_cost + g.tax_ship_cost) > 0 
-                    THEN ((COALESCE(SUM(s.price), 0) - (g.bean_cost + g.tax_ship_cost)) / (g.bean_cost + g.tax_ship_cost)) * 100
-                    ELSE 0 
-                END as profit_margin
-            FROM green_coffee_inv g
-            LEFT JOIN sales s ON g.id = s.green_coffee_inv_id
-            GROUP BY g.id, g.name, g.purchase_date, g.purchased_qty_lbs, g.bean_cost, g.tax_ship_cost
-            ORDER BY g.purchase_date DESC
-        `;
-
-		const { data: rows, error } = await supabase.rpc('run_query', {
-			query_text: query
-		});
+		const { data: rows, error } = await supabase
+			.from('green_coffee_inv')
+			.select(
+				`
+				id,
+				name:name,
+				coffee_name:name,
+				purchase_date,
+				purchased_qty_lbs,
+				purchased_qty_oz:purchased_qty_lbs,
+				bean_cost,
+				tax_ship_cost,
+				sales(
+					price,
+					oz_sold
+				),
+				roast_profiles(
+					oz_in,
+					oz_out
+				)
+			`
+			)
+			.order('purchase_date', { ascending: false });
 
 		if (error) throw error;
 
-		// Format the date in each row
-		const formattedRows = rows.map((row: ProfitRow) => ({
-			...row,
-			purchase_date: row.purchase_date.split('T')[0]
-		}));
+		// Transform the data to match the expected format
+		const formattedRows = rows.map((row) => {
+			const totalSales = row.sales?.reduce((sum, sale) => sum + (sale.price || 0), 0) || 0;
+			const totalOzSold = row.sales?.reduce((sum, sale) => sum + (sale.oz_sold || 0), 0) || 0;
+			const totalOzIn =
+				row.roast_profiles?.reduce((sum, profile) => sum + (profile.oz_in || 0), 0) || 0;
+			const totalOzOut =
+				row.roast_profiles?.reduce((sum, profile) => sum + (profile.oz_out || 0), 0) || 0;
+			const totalCost = (row.bean_cost || 0) + (row.tax_ship_cost || 0);
+			const profit = totalSales - totalCost;
+			const profitMargin = totalCost > 0 ? (profit / totalCost) * 100 : 0;
+
+			return {
+				id: row.id,
+				coffee_name: row.name,
+				purchase_date: row.purchase_date?.split('T')[0],
+				purchased_qty_lbs: row.purchased_qty_lbs,
+				purchased_qty_oz: (row.purchased_qty_lbs || 0) * 16,
+				bean_cost: row.bean_cost,
+				tax_ship_cost: row.tax_ship_cost,
+				total_sales: totalSales,
+				oz_sold: totalOzSold,
+				profit: profit,
+				oz_in: totalOzIn,
+				oz_out: totalOzOut,
+				profit_margin: profitMargin
+			};
+		});
 
 		return json(formattedRows);
 	} catch (error) {
