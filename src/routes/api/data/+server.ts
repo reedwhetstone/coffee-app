@@ -18,18 +18,18 @@ export async function GET({ url }) {
 
 	try {
 		const id = url.searchParams.get('id');
-		let query = 'SELECT * FROM green_coffee_inv';
-		let params = [];
+		let query = supabase.from('green_coffee_inv').select('*');
 
 		if (id) {
-			query += ' WHERE id = $1';
-			params.push(id);
+			query = query.eq('id', id);
 		}
 
-		const { data: rows, error } = await supabase.rpc('run_query', {
-			query_text: query,
-			query_params: params
-		});
+		//console.log('Executing Supabase query for table:', 'green_coffee_inv');
+		//console.log('Query filter:', id ? `id = ${id}` : 'none');
+
+		const { data: rows, error } = await query;
+
+		//	console.log('Supabase response:', { rows, error });
 
 		if (error) throw error;
 
@@ -52,40 +52,25 @@ export async function POST({ request }) {
 	try {
 		const bean = await request.json();
 
-		const query = `
-			INSERT INTO green_coffee_inv (
-				name, 
-				"rank",
-				notes, 
-				purchase_date, 
-				purchased_qty_lbs, 
-				bean_cost, 
-				tax_ship_cost, 
-				link,
-				last_updated
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-			RETURNING *`;
-
-		const values = [
-			bean.name,
-			bean.rank,
-			bean.notes,
-			bean.purchase_date,
-			bean.purchased_qty_lbs,
-			bean.bean_cost,
-			bean.tax_ship_cost,
-			bean.link,
-			bean.last_updated
-		];
-
-		const { data: newBean, error } = await supabase.rpc('run_query', {
-			query_text: query,
-			query_params: values
-		});
+		const { data: newBean, error } = await supabase
+			.from('green_coffee_inv')
+			.insert({
+				name: bean.name,
+				rank: bean.rank,
+				notes: bean.notes,
+				purchase_date: bean.purchase_date,
+				purchased_qty_lbs: bean.purchased_qty_lbs,
+				bean_cost: bean.bean_cost,
+				tax_ship_cost: bean.tax_ship_cost,
+				link: bean.link,
+				last_updated: bean.last_updated
+			})
+			.select()
+			.single();
 
 		if (error) throw error;
 
-		return json(newBean[0]);
+		return json(newBean);
 	} catch (error) {
 		console.error('Error creating bean:', error);
 		return json({ success: false, error: 'Failed to create bean' }, { status: 500 });
@@ -104,60 +89,35 @@ export async function DELETE({ url }) {
 	}
 
 	try {
-		// Start a transaction
-		const transactionQueries = [
-			{
-				query: 'SELECT roast_id FROM roast_profiles WHERE coffee_id = $1',
-				params: [id]
-			},
-			{
-				query: 'DELETE FROM profile_log WHERE roast_id = ANY($1)',
-				params: [] // Will be populated after first query
-			},
-			{
-				query: 'DELETE FROM roast_profiles WHERE coffee_id = $1',
-				params: [id]
-			},
-			{
-				query: 'DELETE FROM green_coffee_inv WHERE id = $1',
-				params: [id]
-			}
-		];
-
-		// Execute first query to get roast_ids
-		const { data: roastProfiles, error: selectError } = await supabase.rpc('run_query', {
-			query_text: transactionQueries[0].query,
-			query_params: transactionQueries[0].params
-		});
+		// Get roast profiles first
+		const { data: roastProfiles, error: selectError } = await supabase
+			.from('roast_profiles')
+			.select('roast_id')
+			.eq('coffee_id', id);
 
 		if (selectError) throw selectError;
 
 		// If there are roast profiles, delete their logs
-		if (roastProfiles.length > 0) {
-			const roastIds = roastProfiles.map((profile: RoastProfile) => profile.roast_id);
-			transactionQueries[1].params = [roastIds];
-
-			const { error: logError } = await supabase.rpc('run_query', {
-				query_text: transactionQueries[1].query,
-				query_params: transactionQueries[1].params
-			});
+		if (roastProfiles && roastProfiles.length > 0) {
+			const roastIds = roastProfiles.map((profile) => profile.roast_id);
+			const { error: logError } = await supabase
+				.from('profile_log')
+				.delete()
+				.in('roast_id', roastIds);
 
 			if (logError) throw logError;
 		}
 
 		// Delete roast profiles
-		const { error: profileError } = await supabase.rpc('run_query', {
-			query_text: transactionQueries[2].query,
-			query_params: transactionQueries[2].params
-		});
+		const { error: profileError } = await supabase
+			.from('roast_profiles')
+			.delete()
+			.eq('coffee_id', id);
 
 		if (profileError) throw profileError;
 
 		// Finally, delete the coffee
-		const { error: deleteError } = await supabase.rpc('run_query', {
-			query_text: transactionQueries[3].query,
-			query_params: transactionQueries[3].params
-		});
+		const { error: deleteError } = await supabase.from('green_coffee_inv').delete().eq('id', id);
 
 		if (deleteError) throw deleteError;
 
@@ -178,29 +138,39 @@ export async function PUT({ url, request }) {
 		const updates = await request.json();
 		const { id: _, ...updateData } = updates;
 
-		// Convert object to SET clause and values array
-		const setEntries = Object.entries(updateData);
-		const setClause = setEntries.map((entry, index) => `"${entry[0]}" = $${index + 1}`).join(', ');
-		const values = [...setEntries.map(([_, value]) => value), id];
+		//	console.log('PUT request - ID:', id);
+		//	console.log('PUT request - Update data:', updateData);
 
-		const query = `
-			UPDATE green_coffee_inv 
-			SET ${setClause} 
-			WHERE id = $${values.length} 
-			RETURNING *`;
+		// First, verify the record exists
+		const { data: existingBean, error: checkError } = await supabase
+			.from('green_coffee_inv')
+			.select('id')
+			.eq('id', id)
+			.single();
 
-		const { data: updatedBean, error } = await supabase.rpc('run_query', {
-			query_text: query,
-			query_params: values
-		});
+		if (checkError) {
+			console.log('Error checking for existing bean:', checkError);
+			throw checkError;
+		}
 
-		if (error) throw error;
-
-		if (!updatedBean[0]) {
+		if (!existingBean) {
+			console.log(`No bean found with ID ${id}`);
 			return json({ success: false, error: 'Bean not found' }, { status: 404 });
 		}
 
-		return json(updatedBean[0]);
+		const { data: updatedBeans, error } = await supabase
+			.from('green_coffee_inv')
+			.update(updateData)
+			.eq('id', id)
+			.select();
+
+		if (error) throw error;
+
+		if (!updatedBeans || updatedBeans.length === 0) {
+			return json({ success: false, error: 'Update failed' }, { status: 500 });
+		}
+
+		return json(updatedBeans[0]);
 	} catch (error) {
 		console.error('Error updating bean:', error);
 		return json({ success: false, error: 'Failed to update bean' }, { status: 500 });

@@ -18,5 +18,4 @@ export async function query(query: string, params?: any[]) {
 		throw error;
 	}
 }
-
 export { supabase };
