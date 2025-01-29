@@ -1,4 +1,4 @@
-import { supabase } from './db';
+import { supabase } from '$lib/auth/supabase';
 import type { Database } from '../types/database.types';
 
 export async function updateGreenCoffeeWithCatalogData() {

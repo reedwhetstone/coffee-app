@@ -1,6 +1,6 @@
 // src/routes/api/data/+server.ts
 import { json } from '@sveltejs/kit';
-import { supabase } from '$lib/server/db';
+import { supabase } from '$lib/auth/supabase';
 
 interface GreenCoffeeRow {
 	purchase_date: string | null;

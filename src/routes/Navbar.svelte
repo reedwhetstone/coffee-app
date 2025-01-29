@@ -5,6 +5,8 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import pkg from 'lodash';
+	import { auth } from '$lib/stores/auth';
+	import { signInWithGoogle, signOut } from '$lib/auth/supabase';
 	const { debounce } = pkg;
 
 	let routeId = $page.route.id;
@@ -71,6 +73,20 @@
 		document.addEventListener('click', handleClickOutside);
 		return () => document.removeEventListener('click', handleClickOutside);
 	});
+
+	async function handleSignIn() {
+		const { error } = await signInWithGoogle();
+		if (error) {
+			console.error('Error signing in:', error.message);
+		}
+	}
+
+	async function handleSignOut() {
+		const { error } = await signOut();
+		if (error) {
+			console.error('Error signing out:', error.message);
+		}
+	}
 </script>
 
 <nav class="border-sky-800 bg-zinc-300 dark:bg-zinc-800">
@@ -169,6 +185,7 @@
 				</div>
 			{/if}
 		</div>
+		<!-- Auth LOGIN -->
 
 		<button
 			data-collapse-toggle="navbar-default"
@@ -245,6 +262,27 @@
 					>
 				</li>
 			</ul>
+		</div>
+
+		<div class="flex items-center gap-2">
+			{#if $auth.user}
+				<span class="hidden text-sm text-zinc-400 md:inline">
+					{$auth.user.email}
+				</span>
+				<button
+					on:click={handleSignOut}
+					class="rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900"
+				>
+					Sign Out
+				</button>
+			{:else}
+				<button
+					on:click={handleSignIn}
+					class="rounded border-2 border-blue-800 px-3 py-1 text-zinc-500 hover:bg-blue-900"
+				>
+					Sign In
+				</button>
+			{/if}
 		</div>
 	</div>
 </nav>

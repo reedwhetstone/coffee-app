@@ -6,10 +6,25 @@
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { onMount } from 'svelte';
+	import { supabase, getUser } from '$lib/auth/supabase';
+	import { auth } from '$lib/stores/auth';
 
-	onMount(() => {
+	onMount(async () => {
 		injectSpeedInsights();
 		injectAnalytics();
+
+		// Set initial user
+		const user = await getUser();
+		auth.setUser(user);
+
+		// Listen for auth changes
+		const {
+			data: { subscription }
+		} = supabase.auth.onAuthStateChange((event, session) => {
+			auth.setUser(session?.user ?? null);
+		});
+
+		return () => subscription.unsubscribe();
 	});
 
 	let { children } = $props();

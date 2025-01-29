@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { updateDatabase } from '../../SWEET/newcoffeescript';
-import { supabase } from '$lib/server/db';
+import { supabase } from '$lib/auth/supabase';
 
 // Initialize processHandler if it doesn't exist
 if (!global.processHandler) {

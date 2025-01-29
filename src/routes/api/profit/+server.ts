@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { supabase } from '$lib/server/db';
+import { supabase } from '$lib/auth/supabase';
 
 interface ProfitRow {
 	purchase_date: string;

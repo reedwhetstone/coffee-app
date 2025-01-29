@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { updateGreenCoffeeWithCatalogData } from '$lib/server/updateUtils';
-import { supabase } from '$lib/server/db';
+import { supabase } from '$lib/auth/supabase';
 
 export async function POST() {
 	if (!supabase) {

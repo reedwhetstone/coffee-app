@@ -78,6 +78,18 @@ export interface Database {
 				Insert: Omit<Database['public']['Tables']['profile_log']['Row'], 'log_id'>;
 				Update: Partial<Database['public']['Tables']['profile_log']['Row']>;
 			};
+			profiles: {
+				Row: {
+					id: string;
+					user_id: string;
+					username: string | null;
+					full_name: string | null;
+					avatar_url: string | null;
+					updated_at: string;
+				};
+				Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'id' | 'updated_at'>;
+				Update: Partial<Database['public']['Tables']['profiles']['Row']>;
+			};
 		};
 	};
 }
