@@ -57,14 +57,14 @@ export async function POST({ request }) {
 						fan_setting: log.fan_setting || 0,
 						heat_setting: log.heat_setting || 0,
 						time: timeValue,
-						start: !!log.start,
-						maillard: !!log.maillard,
-						fc_start: !!log.fc_start,
-						fc_rolling: !!log.fc_rolling,
-						fc_end: !!log.fc_end,
-						sc_start: !!log.sc_start,
-						drop: !!log.drop,
-						end: !!log.end
+						start: log.start ? 1 : 0,
+						maillard: log.maillard ? 1 : 0,
+						fc_start: log.fc_start ? 1 : 0,
+						fc_rolling: log.fc_rolling ? 1 : 0,
+						fc_end: log.fc_end ? 1 : 0,
+						sc_start: log.sc_start ? 1 : 0,
+						drop: log.drop ? 1 : 0,
+						end: log.end ? 1 : 0
 					})
 					.select()
 					.single();
