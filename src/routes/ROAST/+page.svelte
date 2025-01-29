@@ -312,6 +312,10 @@
 			isRoasting = false;
 			isPaused = false;
 
+			// Set default values first
+			fanValue = 8;
+			heatValue = 1;
+
 			// Fetch and load profile log data
 			const response = await fetch(`/api/profile-log?roast_id=${profile.roast_id}`);
 			if (!response.ok) {
@@ -359,12 +363,6 @@
 													? 'Drop'
 													: 'End'
 					}));
-
-				// Set initial fan and heat values from the first log entry if available
-				if (data.data.length > 0) {
-					fanValue = data.data[0].fan_setting;
-					heatValue = data.data[0].heat_setting;
-				}
 			} else {
 				// Clear all data for new roast
 				$roastData = [];
@@ -372,10 +370,6 @@
 				$profileLogs = [];
 				$startTime = null;
 				$accumulatedTime = 0;
-
-				// Reset fan and heat to default values
-				fanValue = 8;
-				heatValue = 1;
 			}
 
 			// Smooth scroll to top
@@ -588,6 +582,7 @@
 			{updateHeat}
 			{saveRoastProfile}
 			{selectedBean}
+			isHistoricalView={$roastData.length > 0 && !isRoasting}
 			clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
 		/>
 	</div>

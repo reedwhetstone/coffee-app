@@ -23,6 +23,7 @@
 	export let saveRoastProfile: () => void;
 	export let selectedBean: { name: string };
 	export let clearRoastData: () => void;
+	export let isHistoricalView = false;
 
 	let seconds = 0;
 	let milliseconds = 0;
@@ -41,6 +42,16 @@
 	let height: number;
 	let width: number;
 	let margin = { top: 20, right: 60, bottom: 30, left: 60 };
+
+	// Add internal state for current control values
+	let currentFanValue = fanValue;
+	let currentHeatValue = heatValue;
+
+	// Update the internal values when props change, but only if not viewing historical data
+	$: if (!isHistoricalView) {
+		currentFanValue = fanValue;
+		currentHeatValue = heatValue;
+	}
 
 	// Handle profile changes
 	$: if (currentRoastProfile) {
@@ -150,7 +161,7 @@
 		.padStart(2, '0')}`;
 
 	// Update current values when roastData changes
-	$: if ($roastData.length > 0) {
+	$: if ($roastData.length > 0 && !isHistoricalView) {
 		const lastDataPoint = $roastData[$roastData.length - 1];
 		fanValue = lastDataPoint.fan;
 		heatValue = lastDataPoint.heat;
@@ -538,6 +549,23 @@
 
 		$profileLogs = [...$profileLogs, logEntry];
 	}
+
+	// Use these values in the controls instead of the props
+	function handleFanChange(value: number) {
+		currentFanValue = value;
+		if (!isHistoricalView) {
+			updateFan(value);
+			handleSettingsChange();
+		}
+	}
+
+	function handleHeatChange(value: number) {
+		currentHeatValue = value;
+		if (!isHistoricalView) {
+			updateHeat(value);
+			handleSettingsChange();
+		}
+	}
 </script>
 
 <div>
@@ -555,53 +583,51 @@
 	<!-- Main roasting controls: fan, chart, and heat -->
 	<div class="flex h-[500px] w-full justify-center">
 		<!-- Fan buttons -->
-		<div class="my-5 flex flex-col justify-between">
-			{#each Array(11) as _, i}
-				<label
-					class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
-					class:bg-indigo-900={fanValue === i}
-				>
-					<input
-						type="radio"
-						name="fanSetting"
-						value={i}
-						on:change={() => {
-							updateFan(i);
-							handleSettingsChange();
-						}}
-						checked={fanValue === i}
-						class="hidden"
-					/>
-					{i}
-				</label>
-			{/each}
-		</div>
+		{#if !isHistoricalView}
+			<div class="my-5 flex flex-col justify-between">
+				{#each Array(11) as _, i}
+					<label
+						class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
+						class:bg-indigo-900={currentFanValue === i}
+					>
+						<input
+							type="radio"
+							name="fanSetting"
+							value={i}
+							on:change={() => handleFanChange(i)}
+							checked={currentFanValue === i}
+							class="hidden"
+						/>
+						{i}
+					</label>
+				{/each}
+			</div>
+		{/if}
 
 		<!-- Chart -->
 		<div bind:this={chartContainer} class="h-full w-full text-zinc-400"></div>
 
 		<!-- Heat buttons -->
-		<div class="my-5 flex flex-col justify-between">
-			{#each Array.from({ length: 11 }, (_, i) => 10 - i) as value}
-				<label
-					class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
-					class:bg-amber-900={heatValue === value}
-				>
-					<input
-						type="radio"
-						name="heatSetting"
+		{#if !isHistoricalView}
+			<div class="my-5 flex flex-col justify-between">
+				{#each Array.from({ length: 11 }, (_, i) => 10 - i) as value}
+					<label
+						class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
+						class:bg-amber-900={currentHeatValue === value}
+					>
+						<input
+							type="radio"
+							name="heatSetting"
+							{value}
+							on:change={() => handleHeatChange(value)}
+							checked={currentHeatValue === value}
+							class="hidden"
+						/>
 						{value}
-						on:change={() => {
-							updateHeat(value);
-							handleSettingsChange();
-						}}
-						checked={heatValue === value}
-						class="hidden"
-					/>
-					{value}
-				</label>
-			{/each}
-		</div>
+					</label>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
 	<!-- Roast event controls and timer -->
