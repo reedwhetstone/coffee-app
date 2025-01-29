@@ -121,10 +121,7 @@ export async function DELETE({ url }) {
 			return json({ error: 'No ID provided' }, { status: 400 });
 		}
 
-		const { error } = await supabase.rpc('run_query', {
-			query_text: 'DELETE FROM sales WHERE id = $1',
-			query_params: [id]
-		});
+		const { error } = await supabase.from('sales').delete().eq('id', id);
 
 		if (error) throw error;
 		return json({ success: true });
