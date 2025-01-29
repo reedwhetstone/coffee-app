@@ -18,7 +18,7 @@
 </script>
 
 <div class="flex gap-4">
-	{#if $auth.user}
+	{#if $auth.session?.user}
 		<button
 			on:click={handleSignOut}
 			class="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"

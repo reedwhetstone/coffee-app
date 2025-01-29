@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import type { Database } from '../types/database.types';
-
-export const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+import { supabase } from '$lib/auth/supabase';
+import type { RequestEvent } from '@sveltejs/kit';
 
 export async function getProfile(userId: string) {
 	const { data: profile, error } = await supabase
@@ -40,4 +40,34 @@ export async function updateProfile({
 
 	if (error) throw error;
 	return data;
+}
+
+class AuthError extends Error {
+	constructor(
+		message: string,
+		public status = 401
+	) {
+		super(message);
+		this.name = 'AuthError';
+	}
+}
+
+export async function requireAuth(event: RequestEvent) {
+	const authHeader = event.request.headers.get('Authorization');
+
+	if (!authHeader?.startsWith('Bearer ')) {
+		throw new AuthError('No valid authorization header');
+	}
+
+	const token = authHeader.split(' ')[1];
+	const {
+		data: { user },
+		error
+	} = await supabase.auth.getUser(token);
+
+	if (error || !user) {
+		throw new AuthError('Invalid or expired token');
+	}
+
+	return user;
 }

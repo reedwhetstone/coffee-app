@@ -3,7 +3,18 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/publi
 import type { Database } from '../types/database.types';
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+export const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
+	auth: {
+		autoRefreshToken: true,
+		persistSession: true,
+		detectSessionInUrl: true
+	},
+	global: {
+		headers: {
+			'X-Client-Info': 'supabase-js'
+		}
+	}
+});
 
 // Auth helpers
 export async function signInWithGoogle() {
@@ -95,4 +106,23 @@ export async function updateProfile({
 
 	if (error) throw error;
 	return data;
+}
+
+export function getAuthHeader() {
+	return supabase.auth.getSession().then((session) => {
+		if (session.data.session?.access_token) {
+			return `Bearer ${session.data.session.access_token}`;
+		}
+		return null;
+	});
+}
+
+export async function getAuthHeaders() {
+	const session = await supabase.auth.getSession();
+	if (!session.data.session) {
+		console.log('No active session found');
+		return null;
+	}
+	console.log('Active session found:', session.data.session.user.email);
+	return session.data.session.access_token;
 }
