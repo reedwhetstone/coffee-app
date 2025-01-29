@@ -31,6 +31,8 @@ export async function signInWithGoogle() {
 		provider: 'google',
 		options: {
 			redirectTo: redirectUrl,
+			skipBrowserRedirect: false,
+			flowType: 'pkce',
 			queryParams: {
 				access_type: 'offline',
 				prompt: 'consent'
