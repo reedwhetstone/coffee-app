@@ -9,6 +9,7 @@ interface AuthState {
 	profile: Profile | null;
 	session: Session | null;
 	loading: boolean;
+	error: Error | null;
 }
 
 function createAuthStore() {
@@ -16,7 +17,8 @@ function createAuthStore() {
 		user: null,
 		profile: null,
 		session: null,
-		loading: true
+		loading: true,
+		error: null
 	});
 
 	return {
@@ -25,7 +27,7 @@ function createAuthStore() {
 		setProfile: (profile: Profile | null) => update((state) => ({ ...state, profile })),
 		setSession: (session: Session | null) =>
 			update((state) => ({ ...state, session, loading: false })),
-		reset: () => set({ user: null, profile: null, session: null, loading: false })
+		reset: () => set({ user: null, profile: null, session: null, loading: false, error: null })
 	};
 }
 

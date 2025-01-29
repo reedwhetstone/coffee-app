@@ -2,12 +2,16 @@ import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import type { Database } from '../types/database.types';
 
+const browserStorage = typeof window !== 'undefined' ? window.localStorage : undefined;
+
 // Create a single supabase client for interacting with your database
 export const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 	auth: {
 		autoRefreshToken: true,
 		persistSession: true,
-		detectSessionInUrl: true
+		detectSessionInUrl: true,
+		storageKey: 'supabase-auth-token',
+		storage: browserStorage
 	},
 	global: {
 		headers: {
@@ -29,7 +33,6 @@ export async function signInWithGoogle() {
 		options: {
 			redirectTo: redirectUrl,
 			skipBrowserRedirect: false,
-			flowType: 'pkce',
 			queryParams: {
 				access_type: 'offline',
 				prompt: 'consent'
@@ -43,7 +46,14 @@ export async function signOut() {
 }
 
 export async function getSession() {
-	return supabase.auth.getSession();
+	const session = await supabase.auth.getSession();
+	console.log('Getting session:', session);
+
+	// Check localStorage directly
+	const storedSession = window?.localStorage.getItem('supabase-auth-token');
+	console.log('Stored session in localStorage:', storedSession);
+
+	return session;
 }
 
 export async function getUser() {
