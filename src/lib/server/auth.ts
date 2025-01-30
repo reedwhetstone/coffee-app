@@ -71,3 +71,23 @@ export async function requireAuth(event: RequestEvent) {
 
 	return user;
 }
+
+export const cookieConfig = {
+	name: 'sb-auth-token',
+	path: '/',
+	sameSite: 'lax',
+	secure: process.env.NODE_ENV === 'production',
+	httpOnly: true,
+	maxAge: 60 * 60 * 24 * 7 // 7 days
+};
+
+export async function requireAuthMiddleware(event: RequestEvent) {
+	try {
+		await requireAuth(event);
+	} catch (error) {
+		return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+			status: 401,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	}
+}

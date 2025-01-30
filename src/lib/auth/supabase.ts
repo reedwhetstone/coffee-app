@@ -1,59 +1,92 @@
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { supabaseBrowserClient } from './supabase.browser';
 import type { Database } from '../types/database.types';
+import { generatePKCEVerifier } from '$lib/utils/auth';
+
+// Create a singleton instance
+let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
 
 const browserStorage = typeof window !== 'undefined' ? window.localStorage : undefined;
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
-	auth: {
-		autoRefreshToken: true,
-		persistSession: true,
-		detectSessionInUrl: true,
-		storageKey: 'supabase-auth-token',
-		storage: browserStorage
-	},
-	global: {
-		headers: {
-			'X-Client-Info': 'supabase-js'
-		}
-	}
-});
+export const supabase = supabaseBrowserClient;
+
+// Cache the instance
+supabaseInstance = supabase;
 
 // Auth helpers
 export async function signInWithGoogle() {
 	const origin = window.location.origin;
 	const redirectUrl = `${origin}/auth/callback`;
-	console.log('Redirect URL:', redirectUrl);
-	console.log('Current Origin:', origin);
-	console.log('Full window.location:', window.location);
+
+	// Generate PKCE verifier
+	const codeVerifier = generatePKCEVerifier();
+
+	// Store in sessionStorage (browser only)
+	if (typeof window !== 'undefined') {
+		sessionStorage.setItem('pkce_verifier', codeVerifier);
+	}
 
 	return supabase.auth.signInWithOAuth({
 		provider: 'google',
 		options: {
 			redirectTo: redirectUrl,
-			skipBrowserRedirect: false,
 			queryParams: {
 				access_type: 'offline',
 				prompt: 'consent'
-			}
+			},
+			skipBrowserRedirect: false,
+			pkceVerifier: codeVerifier
 		}
 	});
 }
 
 export async function signOut() {
-	return supabase.auth.signOut();
+	try {
+		const { error } = await supabase.auth.signOut();
+		if (error) throw error;
+
+		// Clear auth store state
+		auth.reset();
+
+		// Clear all storage (browser only)
+		if (typeof window !== 'undefined') {
+			// Clear sessionStorage
+			sessionStorage.removeItem('pkce_verifier');
+
+			// Clear localStorage
+			localStorage.removeItem('sb-auth-token');
+			localStorage.removeItem('supabase.auth.token');
+
+			// Clear cookies
+			document.cookie.split(';').forEach((cookie) => {
+				const name = cookie.split('=')[0].trim();
+				if (name.startsWith('sb-')) {
+					document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+				}
+			});
+		}
+
+		return { error: null };
+	} catch (error) {
+		console.error('Sign out error:', error);
+		return { error };
+	}
 }
 
 export async function getSession() {
-	const session = await supabase.auth.getSession();
-	console.log('Getting session:', session);
+	try {
+		const session = await supabase.auth.getSession();
+		console.log('Getting session:', session);
 
-	// Check localStorage directly
-	const storedSession = window?.localStorage.getItem('supabase-auth-token');
-	console.log('Stored session in localStorage:', storedSession);
+		const storedSession = window?.localStorage.getItem('supabase-auth-token');
+		console.log('Stored session in localStorage:', storedSession);
 
-	return session;
+		return session;
+	} catch (error) {
+		console.error('Error getting session:', error);
+		throw error;
+	}
 }
 
 export async function getUser() {
@@ -135,4 +168,30 @@ export async function getAuthHeaders() {
 	}
 	console.log('Active session found:', session.data.session.user.email);
 	return session.data.session.access_token;
+}
+
+export async function signOutCompletely() {
+	try {
+		await supabase.auth.signOut();
+		auth.reset();
+
+		// Clear all auth-related cookies
+		document.cookie.split(';').forEach((cookie) => {
+			const name = cookie.split('=')[0].trim();
+			if (name.startsWith('sb-')) {
+				document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+			}
+		});
+
+		// Clear any sensitive localStorage items
+		if (typeof window !== 'undefined') {
+			window.localStorage.removeItem('sb-auth-token');
+			window.localStorage.removeItem('supabase.auth.token');
+		}
+
+		return { success: true };
+	} catch (error) {
+		console.error('Sign out error:', error);
+		throw error;
+	}
 }
