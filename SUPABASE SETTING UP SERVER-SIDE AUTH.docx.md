@@ -1,3 +1,5 @@
+https://www.hemantasundaray.com/blog/implement-google-signin-nextjs-supabase-auth
+
 If you are searching google on how to do supabase auth in sveltekit, welcome. Please read till the end.
 
 Topics we're gonna talk about:
