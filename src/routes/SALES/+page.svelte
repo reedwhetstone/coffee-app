@@ -230,6 +230,17 @@
 
 <div class="m-8">
 	<h1 class="mb-4 text-2xl font-bold text-zinc-400">Sales Overview</h1>
+	<div class="mb-4 flex justify-end">
+		<button
+			class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+			onclick={() => {
+				selectedSale = null;
+				isFormVisible = true;
+			}}
+		>
+			New Sale
+		</button>
+	</div>
 	<div class="w-full rounded-lg bg-zinc-800 p-6">
 		<div bind:this={chartContainer} class="w-full"></div>
 	</div>

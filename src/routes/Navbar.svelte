@@ -12,7 +12,7 @@
 	let { data } = $props();
 	let { supabase, session } = $derived(data);
 
-	let routeId = $page.route.id;
+	let routeId = $state($page.route.id);
 
 	// Update `routeId` after each navigation
 	afterNavigate(() => {
@@ -36,9 +36,10 @@
 		item_id: number;
 	}
 
-	let searchQuery = '';
-	let searchResults: SearchResult[] = [];
-	let showResults = false;
+	// Make searchQuery reactive with $state
+	let searchQuery = $state('');
+	let searchResults: SearchResult[] = $state([]);
+	let showResults = $state(false);
 
 	// Add search function
 	const handleSearch = debounce(async () => {
@@ -49,33 +50,27 @@
 
 		try {
 			const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
-			if (!response.ok) {
-				throw new Error('Search request failed');
-			}
-			const data = await response.json();
-			if (data.error) {
-				throw new Error(data.error);
-			}
-			searchResults = Array.isArray(data) ? data : [];
-			//	console.log('Search results:', searchResults);
+			if (!response.ok) throw new Error('Search failed');
+			searchResults = await response.json();
 		} catch (error) {
 			console.error('Search error:', error);
 			searchResults = [];
 		}
 	}, 300);
 
-	// Close search results when clicking outside
-	function handleClickOutside(event: MouseEvent) {
-		const searchContainer = document.getElementById('search-container');
-		if (searchContainer && !searchContainer.contains(event.target as Node)) {
-			showResults = false;
+	// Handle search result selection
+	function handleSearchSelect(result: SearchResult) {
+		if (result.type === 'green') {
+			$navbarActions.onSearchSelect?.(result.type, result.item_id);
+			goto('/');
+		} else if (result.type === 'roast') {
+			goto('/ROAST');
+			$navbarActions.onSearchSelect?.(result.type, result.item_id);
 		}
+		searchQuery = '';
+		searchResults = [];
+		showResults = false;
 	}
-
-	onMount(() => {
-		document.addEventListener('click', handleClickOutside);
-		return () => document.removeEventListener('click', handleClickOutside);
-	});
 
 	async function handleSignIn() {
 		try {
@@ -92,141 +87,58 @@
 			console.error('Error signing out:', error);
 		}
 	}
+
+	// Close search results when clicking outside
+	function handleClickOutside(event: MouseEvent) {
+		const searchContainer = document.getElementById('search-container');
+		if (searchContainer && !searchContainer.contains(event.target as Node)) {
+			showResults = false;
+		}
+	}
+
+	onMount(() => {
+		document.addEventListener('click', handleClickOutside);
+		return () => {
+			document.removeEventListener('click', handleClickOutside);
+		};
+	});
 </script>
 
-<nav class="border-sky-800 bg-zinc-300 dark:bg-zinc-800">
-	<div class="mx-auto flex max-w-screen-xl flex-wrap items-center justify-between p-4">
-		<!-- Left side buttons group -->
-		<div class="flex space-x-2">
-			<button
-				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
-				on:click={handleAddNewBean}
-			>
-				New Bean
-			</button>
-
-			<button
-				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
-				on:click={() => {
-					if (routeId === '/ROAST') {
-						// If already on ROAST page, just show the form
-						$navbarActions.onShowRoastForm();
-					} else {
-						// Otherwise, navigate with state
-						goto('/ROAST', {
-							state: {
-								showRoastForm: true
-							}
-						});
-					}
-				}}
-			>
-				New Roast
-			</button>
-
-			<button
-				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
-				on:click={() => {
-					if (routeId === '/SALES') {
-						// If already on SALES page, just show the form
-						$navbarActions.onAddNewSale();
-					} else {
-						// Otherwise, navigate with state
-						goto('/SALES', {
-							state: {
-								showSaleForm: true
-							}
-						});
-					}
-				}}
-			>
-				New Sale
-			</button>
-		</div>
-
-		<!-- Add search bar here -->
-		<div id="search-container" class="relative mx-4 flex-1">
+<nav class="sticky top-0 z-50 bg-zinc-900 px-4 py-2 shadow-lg">
+	<div class="mx-auto flex max-w-7xl items-center justify-between">
+		<!-- Search Section -->
+		<div id="search-container" class="relative">
 			<input
 				type="text"
 				bind:value={searchQuery}
-				on:input={handleSearch}
-				on:focus={() => (showResults = true)}
+				oninput={handleSearch}
+				onfocus={() => (showResults = true)}
 				placeholder="Search..."
-				class="w-full rounded-lg border border-zinc-400 bg-zinc-100 px-4 py-2 dark:border-zinc-600 dark:bg-zinc-700"
+				class="w-64 rounded bg-zinc-800 px-3 py-1 text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
 			/>
-
 			{#if showResults && searchResults.length > 0}
-				<div
-					class="absolute z-50 mt-1 max-h-96 w-full overflow-y-auto rounded-lg bg-white shadow-lg dark:bg-zinc-700"
-				>
+				<div class="absolute mt-1 w-full rounded border border-zinc-700 bg-zinc-800 shadow-lg">
 					{#each searchResults as result}
 						<button
-							class="w-full px-4 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-600"
-							on:click={() => {
-								if (result.url === routeId) {
-									// If already on the same page, manually trigger the appropriate store/action
-									if (result.type === 'green') {
-										$navbarActions.onSearchSelect?.(result.type, result.item_id);
-									} else if (result.type === 'roast') {
-										$navbarActions.onSearchSelect?.(result.type, result.item_id);
-									}
-								} else {
-									// Navigate to new page with search state
-									goto(result.url, {
-										state: {
-											searchType: result.type,
-											searchId: result.item_id
-										}
-									});
-								}
-								showResults = false;
-								searchQuery = '';
-							}}
+							class="block w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700"
+							onclick={() => handleSearchSelect(result)}
 						>
 							<div class="font-medium">{result.title}</div>
-							<div class="text-sm text-zinc-600 dark:text-zinc-400">{result.description}</div>
+							<div class="text-xs text-zinc-500">{result.description}</div>
 						</button>
 					{/each}
 				</div>
 			{/if}
 		</div>
-		<!-- Auth LOGIN -->
 
-		<button
-			data-collapse-toggle="navbar-default"
-			type="button"
-			class="inline-flex h-10 w-10 items-center justify-center rounded-lg p-2 text-sm text-zinc-500 hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-sky-800 md:hidden dark:text-zinc-400 dark:hover:bg-zinc-800 dark:focus:ring-zinc-600"
-			aria-controls="navbar-default"
-			aria-expanded="false"
-		>
-			<span class="sr-only">Open main menu</span>
-			<svg
-				class="h-5 w-5"
-				aria-hidden="true"
-				xmlns="http://www.w3.org/2000/svg"
-				fill="none"
-				viewBox="0 0 17 14"
-			>
-				<path
-					stroke="currentColor"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M1 1h15M1 7h15M1 13h15"
-				/>
-			</svg>
-		</button>
-		<div class="hidden w-full md:block md:w-auto" id="navbar-default">
-			<ul
-				class="mt-4 flex flex-col rounded-lg border border-zinc-100 bg-zinc-50 p-4 font-medium md:mt-0 md:flex-row md:space-x-8 md:border-0 md:bg-zinc-300 md:p-0 rtl:space-x-reverse dark:border-zinc-800 dark:bg-zinc-800 md:dark:bg-zinc-800"
-			>
+		<!-- Navigation Links -->
+		<div class="flex items-center gap-4">
+			<ul class="flex items-center gap-2">
 				<li>
 					<a
 						href="/"
-						class="px-3 py-2 hover:bg-zinc-100 {routeId === '/(home)'
-							? ' text-sky-800'
-							: 'text-zinc-600'}
-							hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">PURCHASED</a
+						class="px-3 py-2 hover:bg-zinc-100 {routeId === '/' ? ' text-sky-800' : 'text-zinc-600'}
+							hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">BEANS</a
 					>
 				</li>
 				<li>
@@ -235,7 +147,7 @@
 						class="px-3 py-2 hover:bg-zinc-100 {routeId === '/ROAST'
 							? ' text-sky-800'
 							: 'text-zinc-600'}
-							hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">ROAST</a
+							hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">ROAST</a
 					>
 				</li>
 				<li>
@@ -269,20 +181,21 @@
 			</ul>
 		</div>
 
+		<!-- Auth Section -->
 		<div class="flex items-center gap-2">
 			{#if session?.user}
 				<span class="hidden text-sm text-zinc-400 md:inline">
 					{session.user.email}
 				</span>
 				<button
-					on:click={handleSignOut}
+					onclick={handleSignOut}
 					class="rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900"
 				>
 					Sign Out
 				</button>
 			{:else}
 				<button
-					on:click={handleSignIn}
+					onclick={handleSignIn}
 					class="rounded border-2 border-blue-800 px-3 py-1 text-zinc-500 hover:bg-blue-900"
 				>
 					Sign In
@@ -291,3 +204,9 @@
 		</div>
 	</div>
 </nav>
+
+<style>
+	:global(html) {
+		background-color: rgb(24 24 27);
+	}
+</style>

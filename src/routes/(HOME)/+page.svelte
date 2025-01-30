@@ -210,6 +210,14 @@
 
 <div class="m-4">
 	<!-- Bean Profile Section -->
+	<div class="mb-4 flex justify-end">
+		<button
+			class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+			onclick={handleAddNewBean}
+		>
+			New Bean
+		</button>
+	</div>
 	{#if selectedBean}
 		<div class="mb-4">
 			<BeanProfile
@@ -250,8 +258,8 @@
 						<tr>
 							{#each Object.keys(data.data[0] || {}) as header}
 								<th
+									onclick={() => toggleSort(header)}
 									class="group max-w-[200px] cursor-pointer px-6 py-3 hover:bg-zinc-600"
-									on:click={() => toggleSort(header)}
 								>
 									<div class="flex items-center gap-2">
 										<span class="truncate">
@@ -280,7 +288,7 @@
 								bean.id
 									? 'bg-zinc-700'
 									: ''}"
-								on:click={() => selectBean(bean)}
+								onclick={() => selectBean(bean)}
 							>
 								{#each Object.entries(bean) as [key, value]}
 									<td class="max-w-[200px] px-6 py-4 text-xs text-zinc-300">

@@ -559,13 +559,23 @@
 
 <!-- Current roast profile display -->
 {#if currentRoastProfile}
-	<RoastProfileDisplay
-		profile={currentRoastProfile}
-		profiles={currentRoastProfile ? groupedProfiles[currentRoastProfile.batch_name] || [] : []}
-		currentIndex={currentProfileIndex}
-		onUpdate={handleProfileUpdate}
-		onDelete={handleProfileDelete}
-	/>
+	<div class="m-8">
+		<div class="mb-4 flex justify-end">
+			<button
+				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+				onclick={() => (isFormVisible = true)}
+			>
+				New Roast
+			</button>
+		</div>
+		<RoastProfileDisplay
+			profile={currentRoastProfile}
+			profiles={currentRoastProfile ? groupedProfiles[currentRoastProfile.batch_name] || [] : []}
+			currentIndex={currentProfileIndex}
+			onUpdate={handleProfileUpdate}
+			onDelete={handleProfileDelete}
+		/>
+	</div>
 {/if}
 
 <!-- Main roasting interface -->

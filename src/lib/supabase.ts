@@ -7,40 +7,25 @@ import type { CookieOptions } from '@supabase/ssr';
 export const createClient = (
 	options: {
 		cookies?: {
-			getAll: () => { name: string; value: string }[];
-			setAll: (cookies: { name: string; value: string; options?: CookieOptions }[]) => void;
+			get: (key: string) => string | undefined;
+			set: (key: string, value: string, options: CookieOptions) => void;
+			remove: (key: string, options: CookieOptions) => void;
 		};
-	} = {}
+	} = { cookies: {} }
 ) => {
-	const defaultCookies = {
-		getAll: () => {
-			if (!document.cookie) return [];
-			return document.cookie.split('; ').map((cookie) => {
-				const [name, ...rest] = cookie.split('=');
-				return {
-					name,
-					value: rest.join('=')
-				};
-			});
-		},
-		setAll: (cookies: { name: string; value: string; options?: CookieOptions }[]) => {
-			cookies.forEach(({ name, value, options }) => {
-				document.cookie = `${name}=${value}${
-					options?.path ? `; path=${options.path}` : ''
-				}${options?.maxAge ? `; max-age=${options.maxAge}` : ''}${
-					options?.domain ? `; domain=${options.domain}` : ''
-				}${options?.sameSite ? `; samesite=${options.sameSite}` : ''}${
-					options?.secure ? '; secure' : ''
-				}`;
-			});
-		}
-	};
+	const cookieMethods = options.cookies
+		? {
+				getAll: () => [], // Browser doesn't need this
+				setAll: () => {}, // Browser doesn't need this
+				...options.cookies
+			}
+		: undefined;
 
 	return createBrowserClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 		global: {
 			fetch
 		},
-		cookies: options.cookies || defaultCookies,
+		cookies: cookieMethods,
 		auth: {
 			flowType: 'pkce',
 			detectSessionInUrl: true,
@@ -55,24 +40,13 @@ export const createServerSupabaseClient = ({
 	cookies
 }: {
 	cookies: {
-		getAll: () => { name: string; value: string }[];
-		set: (name: string, value: string, options: CookieOptions) => void;
-		remove: (name: string, options: CookieOptions) => void;
+		get: (key: string) => string | undefined;
+		set: (key: string, value: string, options: CookieOptions) => void;
+		remove: (key: string, options: CookieOptions) => void;
 	};
 }) => {
 	return createServerClient<Database>(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
-		cookies: {
-			getAll: cookies.getAll,
-			setAll: (cookieList) => {
-				cookieList.forEach((cookie) => {
-					cookies.set(cookie.name, cookie.value, cookie.options || {});
-				});
-			},
-			remove: cookies.remove
-		},
-		auth: {
-			flowType: 'pkce'
-		}
+		cookies
 	});
 };
 
@@ -85,8 +59,7 @@ export const signInWithGoogle = (supabase: ReturnType<typeof createClient>) => {
 			queryParams: {
 				access_type: 'offline',
 				prompt: 'consent'
-			},
-			flowType: 'pkce'
+			}
 		}
 	});
 };

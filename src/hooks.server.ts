@@ -1,5 +1,6 @@
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import { createServerSupabaseClient } from '$lib/supabase';
+import type { Database } from '$lib/types/database.types';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { i18n } from '$lib/i18n';
@@ -9,52 +10,39 @@ const handleParaglide = i18n.handle();
 
 const handleSupabase: Handle = async ({ event, resolve }) => {
 	event.locals.supabase = createServerSupabaseClient({
-		cookies: event.cookies
+		cookies: {
+			get: (key) => event.cookies.get(key),
+			set: (key, value, options) => event.cookies.set(key, value, { ...options, path: '/' }),
+			remove: (key, options) => {
+				event.cookies.delete(key, { ...options, path: '/' });
+				return true;
+			}
+		}
 	});
 
-	/**
-	 * Unlike `supabase.auth.getSession()`, which returns the session _without_
-	 * validating the JWT, this function also calls `getUser()` to validate the
-	 * JWT before returning the session.
-	 */
-	event.locals.safeGetSession = async () => {
+	event.locals.getSession = async () => {
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
-		if (!session) {
-			return { session: null, user: null };
-		}
-
-		const {
-			data: { user },
-			error
-		} = await event.locals.supabase.auth.getUser();
-		if (error) {
-			// JWT validation has failed
-			return { session: null, user: null };
-		}
-
-		return { session, user };
+		return session;
 	};
 
 	return resolve(event, {
 		filterSerializedResponseHeaders(name) {
-			return name === 'content-range' || name === 'x-supabase-api-version';
+			return name === 'content-range';
 		}
 	});
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
-	const { session, user } = await event.locals.safeGetSession();
+	const session = await event.locals.getSession();
 	event.locals.session = session;
-	event.locals.user = user;
+	event.locals.user = session?.user ?? null;
 
-	// Protect private routes
 	if (!event.locals.session && event.url.pathname.startsWith('/private')) {
 		throw redirect(303, '/auth');
 	}
 
-	// Redirect logged-in users away from auth page
 	if (event.locals.session && event.url.pathname === '/auth') {
 		throw redirect(303, '/private');
 	}

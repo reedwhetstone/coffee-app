@@ -13,7 +13,13 @@ interface RoastProfile {
 }
 
 export const GET: RequestHandler = async ({ url, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
+	const supabase = createServerSupabaseClient({
+		cookies: {
+			get: (key) => cookies.get(key),
+			set: (key, value, options) => cookies.set(key, value, { ...options, path: '/' }),
+			remove: (key, options) => cookies.delete(key, { ...options, path: '/' })
+		}
+	});
 
 	try {
 		const id = url.searchParams.get('id');
@@ -44,7 +50,16 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 };
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
+	const supabase = createServerSupabaseClient({
+		cookies: {
+			get: (key) => cookies.get(key),
+			set: (key, value, options) => cookies.set(key, value, { ...options, path: '/' }),
+			remove: (key, options) => {
+				cookies.delete(key, { ...options, path: '/' });
+				return true;
+			}
+		}
+	});
 
 	try {
 		const bean = await request.json();
@@ -75,7 +90,16 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 };
 
 export const DELETE: RequestHandler = async ({ url, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
+	const supabase = createServerSupabaseClient({
+		cookies: {
+			get: (key) => cookies.get(key),
+			set: (key, value, options) => cookies.set(key, value, { ...options, path: '/' }),
+			remove: (key, options) => {
+				cookies.delete(key, { ...options, path: '/' });
+				return true;
+			}
+		}
+	});
 	const id = url.searchParams.get('id');
 
 	if (!id) {
@@ -123,7 +147,16 @@ export const DELETE: RequestHandler = async ({ url, cookies }) => {
 };
 
 export const PUT: RequestHandler = async ({ url, request, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
+	const supabase = createServerSupabaseClient({
+		cookies: {
+			get: (key) => cookies.get(key),
+			set: (key, value, options) => cookies.set(key, value, { ...options, path: '/' }),
+			remove: (key, options) => {
+				cookies.delete(key, { ...options, path: '/' });
+				return true;
+			}
+		}
+	});
 
 	try {
 		const id = url.searchParams.get('id');
