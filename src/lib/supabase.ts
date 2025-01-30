@@ -40,7 +40,13 @@ export const createClient = (
 		global: {
 			fetch
 		},
-		cookies: options.cookies || defaultCookies
+		cookies: options.cookies || defaultCookies,
+		auth: {
+			flowType: 'pkce',
+			detectSessionInUrl: true,
+			persistSession: true,
+			autoRefreshToken: true
+		}
 	});
 };
 
@@ -63,6 +69,9 @@ export const createServerSupabaseClient = ({
 				});
 			},
 			remove: cookies.remove
+		},
+		auth: {
+			flowType: 'pkce'
 		}
 	});
 };
@@ -76,7 +85,8 @@ export const signInWithGoogle = (supabase: ReturnType<typeof createClient>) => {
 			queryParams: {
 				access_type: 'offline',
 				prompt: 'consent'
-			}
+			},
+			flowType: 'pkce'
 		}
 	});
 };
