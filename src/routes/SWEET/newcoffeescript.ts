@@ -1,9 +1,11 @@
 import { chromium } from 'playwright';
 import dotenv from 'dotenv';
-import { supabase } from '$lib/server/db';
+import { createClient } from '$lib/supabase';
 
 // Load environment variables
 dotenv.config();
+
+const supabase = createClient();
 
 interface ScrapedData {
 	productName: string | null;
