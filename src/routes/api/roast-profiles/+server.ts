@@ -1,10 +1,7 @@
-import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
-
+export const GET: RequestHandler = async ({ locals: { supabase } }) => {
 	try {
 		const { data, error } = await supabase.from('roast_profiles').select('*');
 
@@ -18,9 +15,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
-
+export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
 	try {
 		const data = await request.json();
 		const profiles = Array.isArray(data) ? data : [data];
@@ -73,17 +68,11 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		return json(results);
 	} catch (error) {
 		console.error('Error creating roast profiles:', error);
-		return json(
-			{
-				error: error instanceof Error ? error.message : 'Failed to create roast profiles'
-			},
-			{ status: 500 }
-		);
+		return json({ error: 'Failed to create roast profiles' }, { status: 500 });
 	}
 };
 
-export const DELETE: RequestHandler = async ({ url, request, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
+export const DELETE: RequestHandler = async ({ url, request, locals: { supabase } }) => {
 	const id = url.searchParams.get('id');
 
 	if (id) {
@@ -136,9 +125,7 @@ export const DELETE: RequestHandler = async ({ url, request, cookies }) => {
 	}
 };
 
-export const PUT: RequestHandler = async ({ url, request, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
-
+export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }) => {
 	try {
 		const id = url.searchParams.get('id');
 		const updates = await request.json();

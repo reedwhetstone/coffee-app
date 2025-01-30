@@ -1,5 +1,4 @@
 // src/routes/api/data/+server.ts
-import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -9,18 +8,10 @@ interface GreenCoffeeRow {
 }
 
 interface RoastProfile {
-	roast_id: number;
+	roast_id: string;
 }
 
-export const GET: RequestHandler = async ({ url, cookies }) => {
-	const supabase = createServerSupabaseClient({
-		cookies: {
-			get: (key) => cookies.get(key),
-			set: (key, value, options) => cookies.set(key, value, { ...options, path: '/' }),
-			remove: (key, options) => cookies.delete(key, { ...options, path: '/' })
-		}
-	});
-
+export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 	try {
 		const id = url.searchParams.get('id');
 		let query = supabase.from('green_coffee_inv').select('*');
@@ -29,12 +20,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			query = query.eq('id', id);
 		}
 
-		//console.log('Executing Supabase query for table:', 'green_coffee_inv');
-		//console.log('Query filter:', id ? `id = ${id}` : 'none');
-
 		const { data: rows, error } = await query;
-
-		//	console.log('Supabase response:', { rows, error });
 
 		if (error) throw error;
 
@@ -49,21 +35,9 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
-	const supabase = createServerSupabaseClient({
-		cookies: {
-			get: (key) => cookies.get(key),
-			set: (key, value, options) => cookies.set(key, value, { ...options, path: '/' }),
-			remove: (key, options) => {
-				cookies.delete(key, { ...options, path: '/' });
-				return true;
-			}
-		}
-	});
-
+export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
 	try {
 		const bean = await request.json();
-
 		const { data: newBean, error } = await supabase
 			.from('green_coffee_inv')
 			.insert({
@@ -81,7 +55,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			.single();
 
 		if (error) throw error;
-
 		return json(newBean);
 	} catch (error) {
 		console.error('Error creating bean:', error);
@@ -89,17 +62,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	}
 };
 
-export const DELETE: RequestHandler = async ({ url, cookies }) => {
-	const supabase = createServerSupabaseClient({
-		cookies: {
-			get: (key) => cookies.get(key),
-			set: (key, value, options) => cookies.set(key, value, { ...options, path: '/' }),
-			remove: (key, options) => {
-				cookies.delete(key, { ...options, path: '/' });
-				return true;
-			}
-		}
-	});
+export const DELETE: RequestHandler = async ({ url, locals: { supabase } }) => {
 	const id = url.searchParams.get('id');
 
 	if (!id) {
@@ -146,25 +109,11 @@ export const DELETE: RequestHandler = async ({ url, cookies }) => {
 	}
 };
 
-export const PUT: RequestHandler = async ({ url, request, cookies }) => {
-	const supabase = createServerSupabaseClient({
-		cookies: {
-			get: (key) => cookies.get(key),
-			set: (key, value, options) => cookies.set(key, value, { ...options, path: '/' }),
-			remove: (key, options) => {
-				cookies.delete(key, { ...options, path: '/' });
-				return true;
-			}
-		}
-	});
-
+export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }) => {
 	try {
 		const id = url.searchParams.get('id');
 		const updates = await request.json();
 		const { id: _, ...updateData } = updates;
-
-		//	console.log('PUT request - ID:', id);
-		//	console.log('PUT request - Update data:', updateData);
 
 		// First, verify the record exists
 		const { data: existingBean, error: checkError } = await supabase

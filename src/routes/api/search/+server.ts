@@ -1,9 +1,7 @@
-import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
+export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 	const query = url.searchParams.get('q')?.toLowerCase() || '';
 
 	if (!query || query.length < 2) {

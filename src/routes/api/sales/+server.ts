@@ -1,10 +1,7 @@
-import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
-
+export const GET: RequestHandler = async ({ locals: { supabase } }) => {
 	try {
 		const { data: sales, error } = await supabase
 			.from('sales')
@@ -34,8 +31,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 	}
 };
 
-export const PUT: RequestHandler = async ({ url, request, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
+export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }) => {
 	const id = url.searchParams.get('id');
 
 	if (!id) {
@@ -64,9 +60,7 @@ export const PUT: RequestHandler = async ({ url, request, cookies }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
-
+export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
 	try {
 		const saleData = await request.json();
 		const { coffee_name: _, ...insertData } = saleData;
@@ -111,8 +105,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	}
 };
 
-export const DELETE: RequestHandler = async ({ url, cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
+export const DELETE: RequestHandler = async ({ url, locals: { supabase } }) => {
 	const id = url.searchParams.get('id');
 
 	if (!id) {

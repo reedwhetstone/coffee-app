@@ -1,5 +1,5 @@
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
-import { createServerSupabaseClient } from '$lib/supabase';
+import { createServerClient } from '@supabase/ssr';
 import type { Database } from '$lib/types/database.types';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
@@ -9,22 +9,36 @@ import { handleCookieCheck } from '$lib/middleware/cookieCheck';
 const handleParaglide = i18n.handle();
 
 const handleSupabase: Handle = async ({ event, resolve }) => {
-	event.locals.supabase = createServerSupabaseClient({
-		cookies: {
-			get: (key) => event.cookies.get(key),
-			set: (key, value, options) => event.cookies.set(key, value, { ...options, path: '/' }),
-			remove: (key, options) => {
-				event.cookies.delete(key, { ...options, path: '/' });
-				return true;
+	event.locals.supabase = createServerClient<Database>(
+		PUBLIC_SUPABASE_URL,
+		PUBLIC_SUPABASE_ANON_KEY,
+		{
+			cookies: {
+				get: (key) => event.cookies.get(key),
+				set: (key, value, options) => event.cookies.set(key, value, { ...options, path: '/' }),
+				remove: (key, options) => event.cookies.delete(key, { ...options, path: '/' })
 			}
 		}
-	});
+	);
 
-	event.locals.getSession = async () => {
+	event.locals.safeGetSession = async () => {
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
-		return session;
+		if (!session) {
+			return { session: null, user: null };
+		}
+
+		const {
+			data: { user },
+			error
+		} = await event.locals.supabase.auth.getUser();
+		if (error) {
+			// JWT validation has failed
+			return { session: null, user: null };
+		}
+
+		return { session, user };
 	};
 
 	return resolve(event, {
@@ -35,15 +49,15 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
-	const session = await event.locals.getSession();
+	const { session, user } = await event.locals.safeGetSession();
 	event.locals.session = session;
-	event.locals.user = session?.user ?? null;
+	event.locals.user = user;
 
-	if (!event.locals.session && event.url.pathname.startsWith('/private')) {
+	if (!session && event.url.pathname.startsWith('/private')) {
 		throw redirect(303, '/auth');
 	}
 
-	if (event.locals.session && event.url.pathname === '/auth') {
+	if (session && event.url.pathname === '/auth') {
 		throw redirect(303, '/private');
 	}
 

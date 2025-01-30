@@ -1,15 +1,28 @@
-import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-interface ProfitRow {
-	purchase_date: string;
-	[key: string]: any;
+interface Sale {
+	price: number | null;
+	oz_sold: number | null;
 }
 
-export const GET: RequestHandler = async ({ cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
+interface RoastProfile {
+	oz_in: number | null;
+	oz_out: number | null;
+}
 
+interface Row {
+	id: number;
+	name: string;
+	purchase_date: string | null;
+	purchased_qty_lbs: number | null;
+	bean_cost: number | null;
+	tax_ship_cost: number | null;
+	sales?: Sale[];
+	roast_profiles?: RoastProfile[];
+}
+
+export const GET: RequestHandler = async ({ locals: { supabase } }) => {
 	try {
 		const { data, error } = await supabase
 			.from('green_coffee_inv')
@@ -39,7 +52,7 @@ export const GET: RequestHandler = async ({ cookies }) => {
 			return json({ error: error.message }, { status: 500 });
 		}
 
-		const formattedRows = data.map((row) => {
+		const formattedRows = data.map((row: Row) => {
 			const totalSales = row.sales?.reduce((sum, sale) => sum + (sale.price || 0), 0) || 0;
 			const totalOzSold = row.sales?.reduce((sum, sale) => sum + (sale.oz_sold || 0), 0) || 0;
 			const totalOzIn =

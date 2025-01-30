@@ -1,4 +1,3 @@
-import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { updateDatabase } from '../../SWEET/newcoffeescript';
@@ -11,9 +10,7 @@ if (!global.processHandler) {
 	};
 }
 
-export const POST: RequestHandler = async ({ cookies }) => {
-	const supabase = createServerSupabaseClient({ cookies });
-
+export const POST: RequestHandler = async ({ locals: { supabase } }) => {
 	const sendLog = (message: string) => {
 		console.log(message);
 		global.processHandler.sendLog(message);

@@ -1,7 +1,7 @@
-import { supabase } from '$lib/auth/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.types';
 
-export async function updateGreenCoffeeWithCatalogData() {
+export async function updateGreenCoffeeWithCatalogData(supabase: SupabaseClient<Database>) {
 	if (!supabase) {
 		throw new Error('Database connection is not established yet.');
 	}

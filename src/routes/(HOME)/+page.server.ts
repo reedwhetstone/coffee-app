@@ -1,6 +1,9 @@
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals: { supabase } }) => {
+export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession }, url }) => {
+	// First validate the session
+	const { session, user } = await safeGetSession();
+
 	const { data, error } = await supabase
 		.from('green_coffee_inv')
 		.select('*')
@@ -8,5 +11,10 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 
 	if (error) throw error;
 
-	return { data };
+	return {
+		data,
+		searchState: Object.fromEntries(url.searchParams.entries()),
+		session,
+		user
+	};
 };
