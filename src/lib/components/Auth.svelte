@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { signInWithGoogle } from '$lib/supabase';
 	import { getContext } from 'svelte';
+	import type { SupabaseClient } from '@supabase/supabase-js';
+	import type { Database } from '$lib/types/database.types';
 
-	const supabase = getContext('supabase');
+	const supabase = getContext('supabase') as SupabaseClient<Database>;
 
 	async function handleGoogleSignIn() {
 		try {

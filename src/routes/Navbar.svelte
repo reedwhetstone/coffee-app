@@ -82,7 +82,10 @@
 
 	async function handleSignOut() {
 		try {
-			await signOut(supabase);
+			const { error } = await supabase.auth.signOut();
+			if (error) throw error;
+			// Force a page reload to clear any cached state
+			window.location.href = '/';
 		} catch (error) {
 			console.error('Error signing out:', error);
 		}

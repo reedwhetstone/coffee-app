@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { signOut } from '$lib/supabase';
+	import type { LayoutData } from './$types';
 
-	let { data } = $props();
+	let { data } = $props<{ data: LayoutData }>();
 	let { supabase } = $derived(data);
 
 	async function handleSignOut() {
@@ -13,4 +14,4 @@
 	}
 </script>
 
-<button on:click={handleSignOut}>Sign Out</button>
+<button onclick={handleSignOut}>Sign Out</button>
