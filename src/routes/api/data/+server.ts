@@ -1,6 +1,7 @@
 // src/routes/api/data/+server.ts
+import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
-import { supabase } from '$lib/auth/supabase';
+import type { RequestHandler } from './$types';
 
 interface GreenCoffeeRow {
 	purchase_date: string | null;
@@ -11,10 +12,8 @@ interface RoastProfile {
 	roast_id: number;
 }
 
-export async function GET({ url }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const GET: RequestHandler = async ({ url, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
 		const id = url.searchParams.get('id');
@@ -42,12 +41,10 @@ export async function GET({ url }) {
 		console.error('Error querying database:', error);
 		return json({ data: [], error: 'Failed to fetch data' });
 	}
-}
+};
 
-export async function POST({ request }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const POST: RequestHandler = async ({ request, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
 		const bean = await request.json();
@@ -75,13 +72,10 @@ export async function POST({ request }) {
 		console.error('Error creating bean:', error);
 		return json({ success: false, error: 'Failed to create bean' }, { status: 500 });
 	}
-}
+};
 
-export async function DELETE({ url }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
-
+export const DELETE: RequestHandler = async ({ url, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 	const id = url.searchParams.get('id');
 
 	if (!id) {
@@ -99,7 +93,7 @@ export async function DELETE({ url }) {
 
 		// If there are roast profiles, delete their logs
 		if (roastProfiles && roastProfiles.length > 0) {
-			const roastIds = roastProfiles.map((profile) => profile.roast_id);
+			const roastIds = roastProfiles.map((profile: RoastProfile) => profile.roast_id);
 			const { error: logError } = await supabase
 				.from('profile_log')
 				.delete()
@@ -126,12 +120,10 @@ export async function DELETE({ url }) {
 		console.error('Error deleting bean and associated data:', error);
 		return json({ success: false, error: 'Failed to delete bean' }, { status: 500 });
 	}
-}
+};
 
-export async function PUT({ url, request }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const PUT: RequestHandler = async ({ url, request, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
 		const id = url.searchParams.get('id');
@@ -175,4 +167,4 @@ export async function PUT({ url, request }) {
 		console.error('Error updating bean:', error);
 		return json({ success: false, error: 'Failed to update bean' }, { status: 500 });
 	}
-}
+};

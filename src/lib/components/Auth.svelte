@@ -1,36 +1,16 @@
 <script lang="ts">
-	import { signInWithGoogle, signOut } from '$lib/auth/supabase';
-	import { auth } from '$lib/stores/auth';
+	import { signInWithGoogle } from '$lib/supabase';
+	import { getContext } from 'svelte';
 
-	async function handleSignIn() {
-		const { error } = await signInWithGoogle();
-		if (error) {
-			console.error('Error signing in:', error.message);
-		}
-	}
+	const supabase = getContext('supabase');
 
-	async function handleSignOut() {
-		const { error } = await signOut();
-		if (error) {
-			console.error('Error signing out:', error.message);
+	async function handleGoogleSignIn() {
+		try {
+			await signInWithGoogle(supabase);
+		} catch (error) {
+			console.error('Error signing in with Google:', error);
 		}
 	}
 </script>
 
-<div class="flex gap-4">
-	{#if $auth.session?.user}
-		<button
-			on:click={handleSignOut}
-			class="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-		>
-			Sign Out
-		</button>
-	{:else}
-		<button
-			on:click={handleSignIn}
-			class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-		>
-			Sign in with Google
-		</button>
-	{/if}
-</div>
+<button on:click={handleGoogleSignIn}> Sign in with Google </button>

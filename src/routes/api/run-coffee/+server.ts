@@ -1,6 +1,7 @@
+import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { updateDatabase } from '../../SWEET/newcoffeescript';
-import { supabase } from '$lib/auth/supabase';
 
 // Initialize processHandler if it doesn't exist
 if (!global.processHandler) {
@@ -10,14 +11,11 @@ if (!global.processHandler) {
 	};
 }
 
-export async function POST() {
-	if (!supabase) {
-		console.error('Supabase client check failed:', supabase);
-		throw new Error('Supabase client is not initialized.');
-	}
+export const POST: RequestHandler = async ({ cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	const sendLog = (message: string) => {
-		console.log(message); // Log to console for debugging
+		console.log(message);
 		global.processHandler.sendLog(message);
 	};
 
@@ -35,13 +33,6 @@ export async function POST() {
 		console.error('Error in coffee script:', error);
 		sendLog(`Error in coffee script endpoint: ${errorMessage}`);
 
-		return json(
-			{
-				success: false,
-				error: errorMessage,
-				details: error
-			},
-			{ status: 500 }
-		);
+		return json({ error: errorMessage }, { status: 500 });
 	}
-}
+};

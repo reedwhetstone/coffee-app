@@ -1,10 +1,9 @@
+import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
-import { supabase } from '$lib/auth/supabase';
+import type { RequestHandler } from './$types';
 
-export async function GET({ url }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const GET: RequestHandler = async ({ url, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
 		const roastId = url.searchParams.get('roast_id');
@@ -15,15 +14,14 @@ export async function GET({ url }) {
 			query = query.eq('roast_id', parsedId).order('time', { ascending: true });
 		}
 
-		const { data: rows, error } = await query;
+		const { data, error } = await query;
 
 		if (error) {
 			console.error('Database error:', error);
-			throw error;
+			return json({ error: error.message }, { status: 500 });
 		}
 
-		// Transform the data for chart consumption
-		const formattedRows = rows.map((row) => ({
+		const formattedRows = data.map((row) => ({
 			...row,
 			time: row.time,
 			fan: row.fan_setting,
@@ -35,12 +33,10 @@ export async function GET({ url }) {
 		console.error('Error querying database:', error);
 		return json({ data: [], error: 'Failed to fetch data' });
 	}
-}
+};
 
-export async function POST({ request }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const POST: RequestHandler = async ({ request, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
 		const logs = await request.json();
@@ -50,7 +46,7 @@ export async function POST({ request }) {
 			logsArray.map(async (log) => {
 				const timeValue = log.time?.includes(':') ? log.time : '00:00:00';
 
-				const { data: newLog, error } = await supabase
+				const { data, error } = await supabase
 					.from('profile_log')
 					.insert({
 						roast_id: log.roast_id || null,
@@ -70,26 +66,23 @@ export async function POST({ request }) {
 					.single();
 
 				if (error) throw error;
-				return newLog;
+				return data;
 			})
 		);
 
 		return json(results);
 	} catch (error) {
 		console.error('Error creating profile log:', error);
-		return json({ success: false, error: 'Failed to create profile log' }, { status: 500 });
+		return json({ error: 'Failed to create profile log' }, { status: 500 });
 	}
-}
+};
 
-export async function DELETE({ url }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
-
+export const DELETE: RequestHandler = async ({ url, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 	const roastId = url.searchParams.get('roast_id');
 
 	if (!roastId) {
-		return json({ success: false, error: 'No roast_id provided' }, { status: 400 });
+		return json({ error: 'No roast_id provided' }, { status: 400 });
 	}
 
 	try {
@@ -98,26 +91,24 @@ export async function DELETE({ url }) {
 
 		if (error) {
 			console.error('Database error:', error);
-			throw error;
+			return json({ error: error.message }, { status: 500 });
 		}
 		return json({ success: true });
 	} catch (error) {
 		console.error('Error deleting profile logs:', error);
-		return json({ success: false, error: 'Failed to delete profile logs' }, { status: 500 });
+		return json({ error: 'Failed to delete profile logs' }, { status: 500 });
 	}
-}
+};
 
-export async function PUT({ url, request }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const PUT: RequestHandler = async ({ url, request, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
 		const id = url.searchParams.get('id');
 		const updates = await request.json();
 		const { log_id: _, ...updateData } = updates;
 
-		const { data: updatedLog, error } = await supabase
+		const { data, error } = await supabase
 			.from('profile_log')
 			.update(updateData)
 			.eq('log_id', id)
@@ -126,9 +117,9 @@ export async function PUT({ url, request }) {
 
 		if (error) throw error;
 
-		return json(updatedLog);
+		return json(data);
 	} catch (error) {
 		console.error('Error updating profile log:', error);
 		return json({ error: 'Failed to update profile log' }, { status: 500 });
 	}
-}
+};

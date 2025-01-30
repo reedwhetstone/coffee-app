@@ -5,9 +5,12 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import pkg from 'lodash';
-	import { auth } from '$lib/stores/auth';
-	import { signInWithGoogle, signOut } from '$lib/auth/supabase';
+	import { signInWithGoogle, signOut } from '$lib/supabase';
 	const { debounce } = pkg;
+
+	// Add props for data
+	let { data } = $props();
+	let { supabase, session } = $derived(data);
 
 	let routeId = $page.route.id;
 
@@ -75,16 +78,18 @@
 	});
 
 	async function handleSignIn() {
-		const { error } = await signInWithGoogle();
-		if (error) {
-			console.error('Error signing in:', error.message);
+		try {
+			await signInWithGoogle(supabase);
+		} catch (error) {
+			console.error('Error signing in:', error);
 		}
 	}
 
 	async function handleSignOut() {
-		const { error } = await signOut();
-		if (error) {
-			console.error('Error signing out:', error.message);
+		try {
+			await signOut(supabase);
+		} catch (error) {
+			console.error('Error signing out:', error);
 		}
 	}
 </script>
@@ -265,9 +270,9 @@
 		</div>
 
 		<div class="flex items-center gap-2">
-			{#if $auth.user}
+			{#if session?.user}
 				<span class="hidden text-sm text-zinc-400 md:inline">
-					{$auth.user.email}
+					{session.user.email}
 				</span>
 				<button
 					on:click={handleSignOut}

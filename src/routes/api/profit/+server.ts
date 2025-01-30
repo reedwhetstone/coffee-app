@@ -1,18 +1,17 @@
+import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
-import { supabase } from '$lib/auth/supabase';
+import type { RequestHandler } from './$types';
 
 interface ProfitRow {
 	purchase_date: string;
 	[key: string]: any;
 }
 
-export async function GET() {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const GET: RequestHandler = async ({ cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
-		const { data: rows, error } = await supabase
+		const { data, error } = await supabase
 			.from('green_coffee_inv')
 			.select(
 				`
@@ -36,10 +35,11 @@ export async function GET() {
 			)
 			.order('purchase_date', { ascending: false });
 
-		if (error) throw error;
+		if (error) {
+			return json({ error: error.message }, { status: 500 });
+		}
 
-		// Transform the data to match the expected format
-		const formattedRows = rows.map((row) => {
+		const formattedRows = data.map((row) => {
 			const totalSales = row.sales?.reduce((sum, sale) => sum + (sale.price || 0), 0) || 0;
 			const totalOzSold = row.sales?.reduce((sum, sale) => sum + (sale.oz_sold || 0), 0) || 0;
 			const totalOzIn =
@@ -72,4 +72,4 @@ export async function GET() {
 		console.error('Error querying database:', error);
 		return json({ error: 'Failed to fetch profit data' }, { status: 500 });
 	}
-}
+};

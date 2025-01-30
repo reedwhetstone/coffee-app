@@ -1,10 +1,9 @@
+import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
-import { supabase } from '$lib/auth/supabase';
+import type { RequestHandler } from './$types';
 
-export async function GET() {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const GET: RequestHandler = async ({ cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
 		const { data: sales, error } = await supabase
@@ -19,9 +18,10 @@ export async function GET() {
 			)
 			.order('sell_date', { ascending: false });
 
-		if (error) throw error;
+		if (error) {
+			return json({ error: error.message }, { status: 500 });
+		}
 
-		// Transform the response to match the expected format
 		const formattedSales = sales.map((sale) => ({
 			...sale,
 			coffee_name: sale.green_coffee_inv?.name || null
@@ -30,44 +30,42 @@ export async function GET() {
 		return json(formattedSales);
 	} catch (error) {
 		console.error('Error querying database:', error);
-		return json({ data: [], error: 'Failed to fetch sales data' });
+		return json({ error: 'Failed to fetch sales data' }, { status: 500 });
 	}
-}
+};
 
-export async function PUT({ url, request }) {
-	if (!supabase) {
-		return json({ error: 'Supabase client is not initialized' }, { status: 500 });
+export const PUT: RequestHandler = async ({ url, request, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
+	const id = url.searchParams.get('id');
+
+	if (!id) {
+		return json({ error: 'No ID provided' }, { status: 400 });
 	}
 
 	try {
-		const id = url.searchParams.get('id');
-		if (!id) {
-			return json({ error: 'No ID provided' }, { status: 400 });
-		}
-
 		const updates = await request.json();
 		const { coffee_name: _, ...updateData } = updates;
 
-		const { data: updatedSale, error } = await supabase
+		const { data, error } = await supabase
 			.from('sales')
 			.update(updateData)
 			.eq('id', id)
 			.select()
 			.single();
 
-		if (error) throw error;
+		if (error) {
+			return json({ error: error.message }, { status: 500 });
+		}
 
-		return json(updatedSale);
+		return json(data);
 	} catch (error) {
 		console.error('Error updating sale:', error);
 		return json({ error: 'Failed to update sale' }, { status: 500 });
 	}
-}
+};
 
-export async function POST({ request }) {
-	if (!supabase) {
-		return json({ error: 'Supabase client is not initialized' }, { status: 500 });
-	}
+export const POST: RequestHandler = async ({ request, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
 		const saleData = await request.json();
@@ -83,14 +81,15 @@ export async function POST({ request }) {
 			.join(', ');
 		const values = Object.values(insertData);
 
-		const { data: result, error } = await supabase.rpc('run_query', {
+		const { data: result, error: insertError } = await supabase.rpc('run_query', {
 			query_text: `INSERT INTO sales (${columns}) VALUES (${placeholders}) RETURNING id`,
 			query_params: values
 		});
 
-		if (error) throw error;
+		if (insertError) {
+			return json({ error: insertError.message }, { status: 500 });
+		}
 
-		// Fetch new sale with coffee name
 		const { data: newSale, error: fetchError } = await supabase.rpc('run_query', {
 			query_text: `
 				SELECT s.*, g.name as coffee_name, g.purchase_date
@@ -101,32 +100,35 @@ export async function POST({ request }) {
 			query_params: [result[0].id]
 		});
 
-		if (fetchError) throw fetchError;
+		if (fetchError) {
+			return json({ error: fetchError.message }, { status: 500 });
+		}
 
 		return json(newSale[0]);
 	} catch (error) {
 		console.error('Error creating sale:', error);
 		return json({ error: 'Failed to create sale' }, { status: 500 });
 	}
-}
+};
 
-export async function DELETE({ url }) {
-	if (!supabase) {
-		return json({ error: 'Supabase client is not initialized' }, { status: 500 });
+export const DELETE: RequestHandler = async ({ url, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
+	const id = url.searchParams.get('id');
+
+	if (!id) {
+		return json({ error: 'No ID provided' }, { status: 400 });
 	}
 
 	try {
-		const id = url.searchParams.get('id');
-		if (!id) {
-			return json({ error: 'No ID provided' }, { status: 400 });
-		}
-
 		const { error } = await supabase.from('sales').delete().eq('id', id);
 
-		if (error) throw error;
+		if (error) {
+			return json({ error: error.message }, { status: 500 });
+		}
+
 		return json({ success: true });
 	} catch (error) {
 		console.error('Error deleting sale:', error);
 		return json({ error: 'Failed to delete sale' }, { status: 500 });
 	}
-}
+};

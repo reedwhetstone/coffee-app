@@ -1,26 +1,25 @@
+import { createServerSupabaseClient } from '$lib/supabase';
 import { json } from '@sveltejs/kit';
-import { supabase } from '$lib/auth/supabase';
+import type { RequestHandler } from './$types';
 
-export async function GET() {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const GET: RequestHandler = async ({ cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
-		const { data: rows, error } = await supabase.from('roast_profiles').select('*');
+		const { data, error } = await supabase.from('roast_profiles').select('*');
 
-		if (error) throw error;
-		return json({ data: rows });
+		if (error) {
+			return json({ error: error.message }, { status: 500 });
+		}
+		return json({ data });
 	} catch (error) {
 		console.error('Error querying database:', error);
-		return json({ data: [], error: 'Failed to fetch data' });
+		return json({ error: 'Failed to fetch data' }, { status: 500 });
 	}
-}
+};
 
-export async function POST({ request }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const POST: RequestHandler = async ({ request, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
 		const data = await request.json();
@@ -32,7 +31,6 @@ export async function POST({ request }) {
 					throw new Error('coffee_id is required for all profiles');
 				}
 
-				// Check if coffee exists
 				const { data: coffee, error: coffeeError } = await supabase
 					.from('green_coffee_inv')
 					.select('id, name')
@@ -44,7 +42,6 @@ export async function POST({ request }) {
 					throw new Error(`Invalid coffee_id - coffee not found: ${profileData.coffee_id}`);
 				}
 
-				// Prepare profile data
 				const profile = {
 					batch_name:
 						profileData.batch_name || `${coffee.name} - ${new Date().toLocaleDateString()}`,
@@ -78,46 +75,38 @@ export async function POST({ request }) {
 		console.error('Error creating roast profiles:', error);
 		return json(
 			{
-				success: false,
 				error: error instanceof Error ? error.message : 'Failed to create roast profiles'
 			},
 			{ status: 500 }
 		);
 	}
-}
+};
 
-export async function DELETE({ url, request }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
-
+export const DELETE: RequestHandler = async ({ url, request, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 	const id = url.searchParams.get('id');
+
 	if (id) {
 		try {
-			// Delete associated logs first
 			const { error: logError } = await supabase.from('profile_log').delete().eq('roast_id', id);
-
 			if (logError) throw logError;
 
-			// Then delete the profile
 			const { error: profileError } = await supabase
 				.from('roast_profiles')
 				.delete()
 				.eq('roast_id', id);
 
 			if (profileError) throw profileError;
-
 			return json({ success: true });
 		} catch (error) {
 			console.error('Error deleting roast profile and associated data:', error);
-			return json({ success: false, error: 'Failed to delete roast profile' }, { status: 500 });
+			return json({ error: 'Failed to delete roast profile' }, { status: 500 });
 		}
 	}
 
 	try {
 		const { batch_name, roast_date } = await request.json();
 
-		// Delete associated logs first using a join
 		const { error: logError } = await supabase
 			.from('profile_log')
 			.delete()
@@ -132,7 +121,6 @@ export async function DELETE({ url, request }) {
 
 		if (logError) throw logError;
 
-		// Then delete the profiles
 		const { error: profileError } = await supabase
 			.from('roast_profiles')
 			.delete()
@@ -144,21 +132,18 @@ export async function DELETE({ url, request }) {
 		return json({ success: true });
 	} catch (error) {
 		console.error('Error deleting batch profiles:', error);
-		return json({ success: false, error: 'Failed to delete batch profiles' }, { status: 500 });
+		return json({ error: 'Failed to delete batch profiles' }, { status: 500 });
 	}
-}
+};
 
-export async function PUT({ url, request }) {
-	if (!supabase) {
-		throw new Error('Supabase client is not initialized.');
-	}
+export const PUT: RequestHandler = async ({ url, request, cookies }) => {
+	const supabase = createServerSupabaseClient({ cookies });
 
 	try {
 		const id = url.searchParams.get('id');
 		const updates = await request.json();
 		const { roast_id: _, has_log_data: __, ...updateData } = updates;
 
-		// Format dates for PostgreSQL
 		if (updateData.roast_date) {
 			updateData.roast_date = new Date(updateData.roast_date)
 				.toISOString()
@@ -172,7 +157,7 @@ export async function PUT({ url, request }) {
 				.replace('T', ' ');
 		}
 
-		const { data: updatedRoast, error } = await supabase
+		const { data, error } = await supabase
 			.from('roast_profiles')
 			.update(updateData)
 			.eq('roast_id', id)
@@ -181,15 +166,9 @@ export async function PUT({ url, request }) {
 
 		if (error) throw error;
 
-		return new Response(JSON.stringify(updatedRoast), {
-			status: 200,
-			headers: { 'Content-Type': 'application/json' }
-		});
+		return json(data);
 	} catch (error) {
 		console.error('Error updating roast profile:', error);
-		return new Response(JSON.stringify({ error: 'Failed to update roast profile' }), {
-			status: 500,
-			headers: { 'Content-Type': 'application/json' }
-		});
+		return json({ error: 'Failed to update roast profile' }, { status: 500 });
 	}
-}
+};
