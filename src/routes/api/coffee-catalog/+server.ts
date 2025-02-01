@@ -1,13 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
-	// Check for authentication
-	const { session, user } = await safeGetSession();
-	if (!session) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
-	}
-
+export const GET: RequestHandler = async ({ locals: { supabase } }) => {
 	const { data, error } = await supabase
 		.from('coffee_catalog')
 		.select('*')

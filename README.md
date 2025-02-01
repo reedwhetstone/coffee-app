@@ -9,8 +9,10 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
+- lot share platform to divvy up lots - like a kickstarter for high quality coffee lots
 - overhaul green_coffee_inv structure:
   - green_coffe_inv should join / xref coffee_catalog.id and should no longer duplicate that data.
+    - create a foreign key on green_coffee_inv.coffee_catalog_id that references coffee_catalog.id
   - coffee_catalog should have a column for source website - Sweet Marias, etc.
   - New coffee form should select the source website, coffee name -> should just xref the coffee_catalog.id
 - the sweet scripts need to be fixed with the new db structure
