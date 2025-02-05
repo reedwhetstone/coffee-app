@@ -221,25 +221,6 @@
 		}
 	}
 
-	// Heat control handler - updates heat value and logs to roast data
-	function updateHeat(value: number) {
-		heatValue = value;
-		if ($startTime === null) return;
-
-		const currentTime = isPaused
-			? $accumulatedTime
-			: performance.now() - $startTime + $accumulatedTime;
-
-		$roastData = [
-			...$roastData,
-			{
-				time: currentTime,
-				heat: value,
-				fan: fanValue
-			}
-		];
-	}
-
 	// Fan control handler - updates fan value and logs to roast data
 	function updateFan(value: number) {
 		fanValue = value;
@@ -255,6 +236,25 @@
 				time: currentTime,
 				heat: heatValue,
 				fan: value
+			}
+		];
+	}
+
+	// Heat control handler - updates heat value and logs to roast data
+	function updateHeat(value: number) {
+		heatValue = value;
+		if ($startTime === null) return;
+
+		const currentTime = isPaused
+			? $accumulatedTime
+			: performance.now() - $startTime + $accumulatedTime;
+
+		$roastData = [
+			...$roastData,
+			{
+				time: currentTime,
+				heat: value,
+				fan: fanValue
 			}
 		];
 	}
@@ -311,10 +311,6 @@
 			// Reset roasting state
 			isRoasting = false;
 			isPaused = false;
-
-			// Set default values first
-			fanValue = 8;
-			heatValue = 1;
 
 			// Fetch and load profile log data
 			const response = await fetch(`/api/profile-log?roast_id=${profile.roast_id}`);
@@ -592,7 +588,6 @@
 			{updateHeat}
 			{saveRoastProfile}
 			{selectedBean}
-			isHistoricalView={$roastData.length > 0 && !isRoasting}
 			clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
 		/>
 	</div>

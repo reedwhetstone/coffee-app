@@ -67,11 +67,16 @@
 			// Initial start
 			$startTime = performance.now();
 			$accumulatedTime = 0;
+
+			// Use the current selected values instead of defaults
+			fanValue = currentFanValue;
+			heatValue = currentHeatValue;
+
 			// Log initial start event
 			$profileLogs = [
 				{
-					fan_setting: fanValue,
-					heat_setting: heatValue,
+					fan_setting: currentFanValue, // Use current selected values
+					heat_setting: currentHeatValue,
 					start: true,
 					maillard: false,
 					fc_start: false,
@@ -624,50 +629,56 @@
 	<div class="flex h-[500px] w-full justify-center gap-4">
 		<!-- Fan buttons -->
 		{#if isBeforeRoasting || isDuringRoasting}
-			<div class="my-5 flex flex-shrink-0 flex-col justify-between">
-				{#each Array(11) as _, i}
-					<label
-						class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
-						class:bg-indigo-900={currentFanValue === i}
-					>
-						<input
-							type="radio"
-							name="fanSetting"
-							value={i}
-							on:change={() => handleFanChange(i)}
-							checked={currentFanValue === i}
-							class="hidden"
-						/>
-						{i}
-					</label>
-				{/each}
+			<div class="my-5 flex flex-shrink-0 flex-col justify-center gap-2">
+				<button
+					class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
+					on:click={() => handleFanChange(Math.max(0, currentFanValue - 1))}
+					disabled={currentFanValue <= 0}
+				>
+					▲
+				</button>
+				<div
+					class="flex h-10 items-center justify-center rounded border-2 border-indigo-800 px-3 text-xl text-zinc-300"
+				>
+					{currentFanValue}
+				</div>
+				<button
+					class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
+					on:click={() => handleFanChange(Math.min(10, currentFanValue + 1))}
+					disabled={currentFanValue >= 10}
+				>
+					▼
+				</button>
 			</div>
 		{/if}
 
 		<!-- Chart -->
 		<div class="min-w-0 flex-grow">
-			<div bind:this={chartContainer} class="h-full w-full text-zinc-400" />
+			<div bind:this={chartContainer} class="h-full w-full text-zinc-400"></div>
 		</div>
 
 		<!-- Heat buttons -->
 		{#if isBeforeRoasting || isDuringRoasting}
-			<div class="my-5 flex flex-shrink-0 flex-col justify-between">
-				{#each Array.from({ length: 11 }, (_, i) => 10 - i) as value}
-					<label
-						class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
-						class:bg-amber-900={currentHeatValue === value}
-					>
-						<input
-							type="radio"
-							name="heatSetting"
-							{value}
-							on:change={() => handleHeatChange(value)}
-							checked={currentHeatValue === value}
-							class="hidden"
-						/>
-						{value}
-					</label>
-				{/each}
+			<div class="my-5 flex flex-shrink-0 flex-col justify-center gap-2">
+				<button
+					class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
+					on:click={() => handleHeatChange(Math.min(10, currentHeatValue + 1))}
+					disabled={currentHeatValue >= 10}
+				>
+					▲
+				</button>
+				<div
+					class="flex h-10 items-center justify-center rounded border-2 border-amber-800 px-3 text-xl text-zinc-300"
+				>
+					{currentHeatValue}
+				</div>
+				<button
+					class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
+					on:click={() => handleHeatChange(Math.max(0, currentHeatValue - 1))}
+					disabled={currentHeatValue <= 0}
+				>
+					▼
+				</button>
 			</div>
 		{/if}
 	</div>
