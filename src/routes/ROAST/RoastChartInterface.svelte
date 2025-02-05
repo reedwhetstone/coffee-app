@@ -621,10 +621,10 @@
 	</div>
 
 	<!-- Main roasting controls: fan, chart, and heat -->
-	<div class="flex h-[500px] w-full justify-center">
+	<div class="flex h-[500px] w-full justify-center gap-4">
 		<!-- Fan buttons -->
 		{#if isBeforeRoasting || isDuringRoasting}
-			<div class="my-5 flex flex-col justify-between">
+			<div class="my-5 flex flex-shrink-0 flex-col justify-between">
 				{#each Array(11) as _, i}
 					<label
 						class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
@@ -645,11 +645,13 @@
 		{/if}
 
 		<!-- Chart -->
-		<div bind:this={chartContainer} class="h-full w-full text-zinc-400" />
+		<div class="min-w-0 flex-grow">
+			<div bind:this={chartContainer} class="h-full w-full text-zinc-400" />
+		</div>
 
 		<!-- Heat buttons -->
 		{#if isBeforeRoasting || isDuringRoasting}
-			<div class="my-5 flex flex-col justify-between">
+			<div class="my-5 flex flex-shrink-0 flex-col justify-between">
 				{#each Array.from({ length: 11 }, (_, i) => 10 - i) as value}
 					<label
 						class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
