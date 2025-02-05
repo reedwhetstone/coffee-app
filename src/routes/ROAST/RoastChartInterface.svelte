@@ -56,10 +56,6 @@
 			$startTime = performance.now();
 			$accumulatedTime = 0;
 
-			// Use the current selected values instead of defaults
-			fanValue = heatValue;
-			heatValue = fanValue;
-
 			// Log initial start event
 			$profileLogs = [
 				{
