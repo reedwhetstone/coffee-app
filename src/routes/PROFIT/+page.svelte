@@ -39,6 +39,7 @@
 		sell_date: string;
 		purchase_date: string;
 		coffee_name?: string;
+		totalCost?: number;
 	}
 
 	let profitData: ProfitData[] = [];
@@ -111,6 +112,32 @@
 		// Clear existing chart
 		d3.select(chartContainer).selectAll('*').remove();
 
+		// Sort data by date and calculate running totals
+		const sortedSales = [...salesData].sort(
+			(a, b) => new Date(a.sell_date).getTime() - new Date(b.sell_date).getTime()
+		);
+
+		const sortedProfitData = [...profitData].sort(
+			(a, b) => new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime()
+		);
+
+		let runningTotal = 0;
+		let runningCost = 0;
+		const cumulativeData = sortedSales.map((sale) => {
+			runningTotal += sale.price;
+			// Find all costs up to this sale date
+			runningCost = d3.sum(
+				sortedProfitData.filter((p) => new Date(p.purchase_date) <= new Date(sale.sell_date)),
+				(p) => (+p.bean_cost || 0) + (+p.tax_ship_cost || 0)
+			);
+
+			return {
+				...sale,
+				cumulativeTotal: runningTotal,
+				cumulativeCost: runningCost
+			};
+		});
+
 		// Create SVG
 		const svg = d3
 			.select(chartContainer)
@@ -120,15 +147,21 @@
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`);
 
-		// Create default scales for empty state
+		// Update scales with cumulative data
 		const xScale = d3
 			.scaleTime()
-			.domain([new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), new Date()]) // Last 30 days
+			.domain(d3.extent(cumulativeData, (d) => new Date(d.sell_date)) as [Date, Date])
 			.range([0, width]);
 
 		const yScale = d3
 			.scaleLinear()
-			.domain([0, 21]) // Default y-axis range
+			.domain([
+				0,
+				Math.max(
+					d3.max(cumulativeData, (d) => d.cumulativeTotal) || 0,
+					d3.max(cumulativeData, (d) => d.cumulativeCost) || 0
+				)
+			])
 			.range([height, 0]);
 
 		// Create axes with white text
@@ -146,36 +179,119 @@
 
 		svg.append('g').call(yAxis).attr('color', 'white').selectAll('text').style('fill', 'white');
 
-		// Always add sales points using initial salesData
-		// Update scales with actual data
-		xScale.domain(d3.extent(salesData, (d) => new Date(d.sell_date)) as [Date, Date]);
-		yScale.domain([0, Math.max(21, d3.max(salesData, (d) => d.price) || 0)]);
+		// Create line generators for cumulative totals
+		const salesLine = d3
+			.line<(typeof cumulativeData)[0]>()
+			.x((d) => xScale(new Date(d.sell_date)))
+			.y((d) => yScale(d.cumulativeTotal))
+			.curve(d3.curveMonotoneX);
 
-		// Update axes with new scales
-		svg.select<SVGGElement>('g').call(xAxis);
+		const costLine = d3
+			.line<(typeof cumulativeData)[0]>()
+			.x((d) => xScale(new Date(d.sell_date)))
+			.y((d) => yScale(d.cumulativeCost))
+			.curve(d3.curveMonotoneX);
+
+		// Add the cumulative cost line (red)
 		svg
-			.selectAll<SVGGElement, unknown>('g')
-			.filter((d, i) => i === 1)
-			.call(yAxis);
+			.append('path')
+			.datum(cumulativeData)
+			.attr('fill', 'none')
+			.attr('stroke', '#dc2626')
+			.attr('stroke-width', 2)
+			.attr('d', costLine);
+
+		// Add the cumulative sales line (blue)
+		svg
+			.append('path')
+			.datum(cumulativeData)
+			.attr('fill', 'none')
+			.attr('stroke', '#3730a3')
+			.attr('stroke-width', 2)
+			.attr('d', salesLine);
 
 		// Add sales points
 		svg
-			.selectAll('circle')
-			.data(salesData)
+			.selectAll('.sales-point')
+			.data(cumulativeData)
 			.enter()
 			.append('circle')
+			.attr('class', 'sales-point')
 			.attr('cx', (d) => xScale(new Date(d.sell_date)))
-			.attr('cy', (d) => yScale(d.price))
+			.attr('cy', (d) => yScale(d.cumulativeTotal))
 			.attr('r', 5)
 			.attr('fill', '#3730a3')
 			.on('mouseover', function (event, d) {
-				showTooltip(event, d);
+				showTooltip(event, {
+					...d,
+					price: d.cumulativeTotal, // Show cumulative total in tooltip
+					totalCost: d.cumulativeCost // Add cumulative cost to tooltip
+				});
 			})
 			.on('mouseout', hideTooltip);
+
+		// Add legend
+		const legend = svg
+			.append('g')
+			.attr('class', 'legend')
+			.attr('transform', `translate(${width - 100}, 20)`);
+
+		// Sales legend item
+		legend
+			.append('line')
+			.attr('x1', 0)
+			.attr('x2', 20)
+			.attr('y1', 0)
+			.attr('y2', 0)
+			.attr('stroke', '#3730a3')
+			.attr('stroke-width', 2);
+
+		legend
+			.append('text')
+			.attr('x', 25)
+			.attr('y', 4)
+			.text('Total Sales')
+			.style('fill', 'white')
+			.style('font-size', '12px');
+
+		// Cost legend item
+		legend
+			.append('line')
+			.attr('x1', 0)
+			.attr('x2', 20)
+			.attr('y1', 20)
+			.attr('y2', 20)
+			.attr('stroke', '#dc2626')
+			.attr('stroke-width', 2);
+
+		legend
+			.append('text')
+			.attr('x', 25)
+			.attr('y', 24)
+			.text('Total Cost')
+			.style('fill', 'white')
+			.style('font-size', '12px');
+	}
+
+	// Helper function to calculate cost per oz for a sale
+	function calculateCostPerOz(sale: SaleData) {
+		const matchingProfitData = profitData.find(
+			(p) => p.coffee_name === sale.coffee_name && p.purchase_date === sale.purchase_date
+		);
+
+		if (!matchingProfitData) return 0;
+
+		const totalOz = matchingProfitData.purchased_qty_lbs * 16 + matchingProfitData.purchased_qty_oz;
+		const totalCost = matchingProfitData.bean_cost + matchingProfitData.tax_ship_cost;
+
+		return totalOz > 0 ? totalCost / totalOz : 0;
 	}
 
 	// Add tooltip helper functions
-	function showTooltip(event: MouseEvent, d: SaleData) {
+	function showTooltip(
+		event: MouseEvent,
+		d: SaleData & { cumulativeTotal?: number; cumulativeCost?: number }
+	) {
 		const tooltip = d3
 			.select('body')
 			.append('div')
@@ -190,15 +306,19 @@
 		tooltip
 			.html(
 				`
-				<div>
-					<strong>Batch:</strong> ${d.batch_name}<br>
-					<strong>Coffee:</strong> ${d.coffee_name || 'N/A'}<br>
-					<strong>Buyer:</strong> ${d.buyer}<br>
-					<strong>Amount:</strong> ${d.oz_sold}oz<br>
-					<strong>Price:</strong> $${d.price}<br>
-					<strong>Sale Date:</strong> ${new Date(d.sell_date).toLocaleDateString()}
-				</div>
-			`
+			<div>
+				<strong>Date:</strong> ${new Date(d.sell_date).toLocaleDateString()}<br>
+				<strong>Total Sales:</strong> $${d.cumulativeTotal?.toFixed(2)}<br>
+				<strong>Total Cost:</strong> $${d.cumulativeCost?.toFixed(2)}<br>
+				<strong>Total Profit:</strong> $${(d.cumulativeTotal! - d.cumulativeCost!).toFixed(2)}<br>
+				<hr style="margin: 5px 0; border-color: #374151;">
+				<strong>Sale Details:</strong><br>
+				<strong>Batch:</strong> ${d.batch_name}<br>
+				<strong>Coffee:</strong> ${d.coffee_name || 'N/A'}<br>
+				<strong>Buyer:</strong> ${d.buyer}<br>
+				<strong>Amount:</strong> ${d.oz_sold}oz
+			</div>
+		`
 			)
 			.style('left', event.pageX + 10 + 'px')
 			.style('top', event.pageY - 10 + 'px');
