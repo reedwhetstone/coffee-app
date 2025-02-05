@@ -42,18 +42,6 @@
 	let width: number;
 	let margin = { top: 20, right: 60, bottom: 30, left: 60 };
 
-	// Add internal state for current control values
-	let currentFanValue = fanValue;
-	let currentHeatValue = heatValue;
-
-	// Update the internal values when props change, but only if not viewing historical data
-	$: {
-		if (isDuringRoasting) {
-			currentFanValue = fanValue;
-			currentHeatValue = heatValue;
-		}
-	}
-
 	// Handle profile changes
 	$: if (currentRoastProfile) {
 		if (isBeforeRoasting) {
@@ -69,14 +57,14 @@
 			$accumulatedTime = 0;
 
 			// Use the current selected values instead of defaults
-			fanValue = currentFanValue;
-			heatValue = currentHeatValue;
+			fanValue = heatValue;
+			heatValue = fanValue;
 
 			// Log initial start event
 			$profileLogs = [
 				{
-					fan_setting: currentFanValue, // Use current selected values
-					heat_setting: currentHeatValue,
+					fan_setting: fanValue,
+					heat_setting: heatValue,
 					start: true,
 					maillard: false,
 					fc_start: false,
@@ -596,21 +584,13 @@
 		$profileLogs = [...$profileLogs, logEntry];
 	}
 
-	// Use these values in the controls instead of the props
+	// Simplify the handlers to use props directly
 	function handleFanChange(value: number) {
-		currentFanValue = value;
-		if (isDuringRoasting) {
-			updateFan(value);
-			handleSettingsChange();
-		}
+		updateFan(value);
 	}
 
 	function handleHeatChange(value: number) {
-		currentHeatValue = value;
-		if (isDuringRoasting) {
-			updateHeat(value);
-			handleSettingsChange();
-		}
+		updateHeat(value);
 	}
 
 	// Add these computed values at the top of the script
@@ -632,20 +612,20 @@
 			<div class="my-5 flex flex-shrink-0 flex-col justify-center gap-2">
 				<button
 					class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
-					on:click={() => handleFanChange(Math.max(0, currentFanValue - 1))}
-					disabled={currentFanValue <= 0}
+					on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
+					disabled={fanValue <= 0}
 				>
 					▲
 				</button>
 				<div
 					class="flex h-10 items-center justify-center rounded border-2 border-indigo-800 px-3 text-xl text-zinc-300"
 				>
-					{currentFanValue}
+					{fanValue}
 				</div>
 				<button
 					class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
-					on:click={() => handleFanChange(Math.min(10, currentFanValue + 1))}
-					disabled={currentFanValue >= 10}
+					on:click={() => handleFanChange(Math.min(10, fanValue + 1))}
+					disabled={fanValue >= 10}
 				>
 					▼
 				</button>
@@ -662,20 +642,20 @@
 			<div class="my-5 flex flex-shrink-0 flex-col justify-center gap-2">
 				<button
 					class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
-					on:click={() => handleHeatChange(Math.min(10, currentHeatValue + 1))}
-					disabled={currentHeatValue >= 10}
+					on:click={() => handleHeatChange(Math.min(10, heatValue + 1))}
+					disabled={heatValue >= 10}
 				>
 					▲
 				</button>
 				<div
 					class="flex h-10 items-center justify-center rounded border-2 border-amber-800 px-3 text-xl text-zinc-300"
 				>
-					{currentHeatValue}
+					{heatValue}
 				</div>
 				<button
 					class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
-					on:click={() => handleHeatChange(Math.max(0, currentHeatValue - 1))}
-					disabled={currentHeatValue <= 0}
+					on:click={() => handleHeatChange(Math.max(0, heatValue - 1))}
+					disabled={heatValue <= 0}
 				>
 					▼
 				</button>

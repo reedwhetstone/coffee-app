@@ -221,7 +221,7 @@
 		}
 	}
 
-	// Fan control handler - updates fan value and logs to roast data
+	// Update the fan control handler to work even before roasting starts
 	function updateFan(value: number) {
 		fanValue = value;
 		if ($startTime === null) return;
@@ -240,7 +240,7 @@
 		];
 	}
 
-	// Heat control handler - updates heat value and logs to roast data
+	// Update the heat control handler to work even before roasting starts
 	function updateHeat(value: number) {
 		heatValue = value;
 		if ($startTime === null) return;
