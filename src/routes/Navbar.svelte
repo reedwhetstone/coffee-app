@@ -165,12 +165,11 @@
 
 				<li>
 					<a
-						href="/SWEET"
-						class="px-3 py-2 hover:bg-zinc-100 {routeId === '/SWEET'
+						href="/CATALOG"
+						class="px-3 py-2 hover:bg-zinc-100 {routeId === '/CATALOG'
 							? ' text-sky-800'
 							: 'text-zinc-600'}
-							hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800"
-						>SWEET.SCRIPTS</a
+							hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">CATALOG</a
 					>
 				</li>
 			</ul>
