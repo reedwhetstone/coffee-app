@@ -144,17 +144,6 @@
 				{profile.coffee_name}
 			</h3>
 		</div>
-		<div class="mt-4 flex items-center justify-center gap-2">
-			{#each profiles as _, i}
-				<button
-					class="h-3 w-3 rounded-full transition-all duration-300 {i === currentIndex
-						? 'scale-110 bg-blue-500'
-						: 'bg-zinc-600 hover:bg-zinc-500'}"
-					on:click={() => goToProfile(i)}
-					aria-label="Go to profile {i + 1}"
-				></button>
-			{/each}
-		</div>
 	</div>
 
 	<div class="relative h-auto min-h-[400px]">
@@ -226,6 +215,17 @@
 		</div>
 	</div>
 	<div>
+		<div class="mt-4 flex items-center justify-center gap-2">
+			{#each profiles as _, i}
+				<button
+					class="h-3 w-3 rounded-full transition-all duration-300 {i === currentIndex
+						? 'scale-110 bg-blue-500'
+						: 'bg-zinc-600 hover:bg-zinc-500'}"
+					on:click={() => goToProfile(i)}
+					aria-label="Go to profile {i + 1}"
+				></button>
+			{/each}
+		</div>
 		<div class="mt-4 flex justify-end space-x-2">
 			<button
 				class="rounded {isEditing
