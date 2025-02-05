@@ -57,7 +57,7 @@
 				])
 			);
 
-			const response = await fetch(sale ? `/api/sales?id=${sale.id}` : '/api/sales', {
+			const response = await fetch(sale ? `/api/profit?id=${sale.id}` : '/api/profit', {
 				method: sale ? 'PUT' : 'POST',
 				headers: {
 					'Content-Type': 'application/json'

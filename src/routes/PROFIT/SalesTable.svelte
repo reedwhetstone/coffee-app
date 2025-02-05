@@ -57,7 +57,7 @@
 	async function handleDelete(id: number) {
 		if (confirm('Are you sure you want to delete this sale?')) {
 			try {
-				const response = await fetch(`/api/sales?id=${id}`, {
+				const response = await fetch(`/api/profit?id=${id}`, {
 					method: 'DELETE'
 				});
 

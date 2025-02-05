@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 	import { formatDateForDisplay } from '$lib/utils/dates';
+	import SalesTable from './SalesTable.svelte';
+	import SaleForm from './SaleForm.svelte';
 
 	interface ProfitData {
 		id: number;
@@ -26,11 +28,28 @@
 		oz_out: number;
 	}
 
+	// Add new interfaces and variables for sales functionality
+	interface SaleData {
+		id: number;
+		green_coffee_inv_id: number;
+		oz_sold: number;
+		price: number;
+		buyer: string;
+		batch_name: string;
+		sell_date: string;
+		purchase_date: string;
+		coffee_name?: string;
+	}
+
 	let profitData: ProfitData[] = [];
 	let roastProfileData: RoastProfileData[] = [];
 	let selectedDateRange: 'all' | '30' | '90' | '180' | '365' = 'all';
 	let chartContainer: HTMLDivElement;
 	let expandedDates = new Set<string>();
+	let salesData: SaleData[] = [];
+	let isFormVisible = false;
+	let selectedSale: SaleData | null = null;
+	let selectedCoffee: string | null = null;
 
 	// Updated aggregate metrics
 	$: totalRevenue = d3.sum(profitData, (d) => +d.total_sales || 0);
@@ -84,24 +103,208 @@
 	// Add this reactive declaration after your existing ones
 	$: groupedProfitData = d3.group(profitData, (d) => d.purchase_date);
 
+	// Add sales chart related functions
+	function createSalesChart() {
+		// Get the container width
+		width = chartContainer.clientWidth - margin.left - margin.right;
+
+		// Clear existing chart
+		d3.select(chartContainer).selectAll('*').remove();
+
+		// Create SVG
+		const svg = d3
+			.select(chartContainer)
+			.append('svg')
+			.attr('width', '100%')
+			.attr('height', height + margin.top + margin.bottom)
+			.append('g')
+			.attr('transform', `translate(${margin.left},${margin.top})`);
+
+		// Create default scales for empty state
+		const xScale = d3
+			.scaleTime()
+			.domain([new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), new Date()]) // Last 30 days
+			.range([0, width]);
+
+		const yScale = d3
+			.scaleLinear()
+			.domain([0, 21]) // Default y-axis range
+			.range([height, 0]);
+
+		// Create axes with white text
+		const xAxis = d3.axisBottom(xScale).tickFormat((d) => (d as Date).toLocaleDateString());
+		const yAxis = d3.axisLeft(yScale).tickFormat((d) => `$${d}`);
+
+		// Add axes to chart with white text styling
+		svg
+			.append('g')
+			.attr('transform', `translate(0,${height})`)
+			.call(xAxis)
+			.attr('color', 'white')
+			.selectAll('text')
+			.style('fill', 'white');
+
+		svg.append('g').call(yAxis).attr('color', 'white').selectAll('text').style('fill', 'white');
+
+		// Always add sales points using initial salesData
+		// Update scales with actual data
+		xScale.domain(d3.extent(salesData, (d) => new Date(d.sell_date)) as [Date, Date]);
+		yScale.domain([0, Math.max(21, d3.max(salesData, (d) => d.price) || 0)]);
+
+		// Update axes with new scales
+		svg.select<SVGGElement>('g').call(xAxis);
+		svg
+			.selectAll<SVGGElement, unknown>('g')
+			.filter((d, i) => i === 1)
+			.call(yAxis);
+
+		// Add sales points
+		svg
+			.selectAll('circle')
+			.data(salesData)
+			.enter()
+			.append('circle')
+			.attr('cx', (d) => xScale(new Date(d.sell_date)))
+			.attr('cy', (d) => yScale(d.price))
+			.attr('r', 5)
+			.attr('fill', '#3730a3')
+			.on('mouseover', function (event, d) {
+				showTooltip(event, d);
+			})
+			.on('mouseout', hideTooltip);
+	}
+
+	// Add tooltip helper functions
+	function showTooltip(event: MouseEvent, d: SaleData) {
+		const tooltip = d3
+			.select('body')
+			.append('div')
+			.attr('class', 'tooltip')
+			.style('position', 'absolute')
+			.style('background', '#1f2937')
+			.style('padding', '10px')
+			.style('border-radius', '5px')
+			.style('color', 'white')
+			.style('font-size', '12px');
+
+		tooltip
+			.html(
+				`
+				<div>
+					<strong>Batch:</strong> ${d.batch_name}<br>
+					<strong>Coffee:</strong> ${d.coffee_name || 'N/A'}<br>
+					<strong>Buyer:</strong> ${d.buyer}<br>
+					<strong>Amount:</strong> ${d.oz_sold}oz<br>
+					<strong>Price:</strong> $${d.price}<br>
+					<strong>Sale Date:</strong> ${new Date(d.sell_date).toLocaleDateString()}
+				</div>
+			`
+			)
+			.style('left', event.pageX + 10 + 'px')
+			.style('top', event.pageY - 10 + 'px');
+	}
+
+	function hideTooltip() {
+		d3.select('.tooltip').remove();
+	}
+
+	// Also add these variables at the top of your script with other variables
+	let width: number;
+	let height = 400;
+	let margin = { top: 20, right: 20, bottom: 50, left: 60 };
+
+	// Add sales form handlers
+	async function handleFormSubmit(saleData: any) {
+		try {
+			const response = await fetch(`/api/profit${selectedSale ? `?id=${selectedSale.id}` : ''}`, {
+				method: selectedSale ? 'PUT' : 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(saleData)
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to ${selectedSale ? 'update' : 'create'} sale`);
+			}
+
+			// Refresh the sales data for the selected coffee
+			await fetchSalesForCoffee(salesData[0].coffee_name || '');
+		} catch (error) {
+			console.error('Error updating sales data:', error);
+		}
+		isFormVisible = false;
+		selectedSale = null;
+	}
+
+	async function fetchSalesForCoffee(coffeeName: string) {
+		try {
+			const response = await fetch(`/api/profit?coffee=${encodeURIComponent(coffeeName)}`);
+			if (response.ok) {
+				const data = await response.json();
+				salesData = data.sales || [];
+				setTimeout(createSalesChart, 0);
+			}
+		} catch (error) {
+			console.error('Error fetching sales data:', error);
+		}
+	}
+
+	// Modify toggleDate to set the selected coffee
 	function toggleDate(date: string) {
 		if (expandedDates.has(date)) {
 			expandedDates.delete(date);
+			salesData = [];
+			selectedCoffee = null; // Clear selected coffee when closing
 		} else {
 			expandedDates.add(date);
+			// Get the first coffee for this date
+			const items = groupedProfitData.get(date) || [];
+			if (items.length > 0) {
+				selectedCoffee = items[0].coffee_name; // Set selected coffee
+				fetchSalesForCoffee(items[0].coffee_name);
+			}
 		}
-		expandedDates = expandedDates; // trigger reactivity
+		expandedDates = expandedDates;
 	}
 
-	onMount(async () => {
-		await Promise.all([fetchProfitData(), fetchRoastProfileData()]);
+	function handleSaleEdit(sale: SaleData) {
+		selectedSale = sale;
+		isFormVisible = true;
+	}
+
+	async function handleSaleDelete(id: number) {
+		if (salesData.length > 0) {
+			await fetchSalesForCoffee(salesData[0].coffee_name || '');
+		}
+	}
+
+	// Modify onMount to include fetching sales data
+	onMount(() => {
+		const fetchData = async () => {
+			await Promise.all([fetchProfitData(), fetchRoastProfileData(), fetchInitialSalesData()]);
+			createSalesChart();
+		};
+
+		fetchData(); // Call the async function
+
+		const handleResize = () => {
+			createSalesChart();
+		};
+
+		window.addEventListener('resize', handleResize);
+
+		return () => {
+			window.removeEventListener('resize', handleResize);
+		};
 	});
 
 	async function fetchProfitData() {
 		try {
 			const response = await fetch('/api/profit');
 			if (response.ok) {
-				profitData = await response.json();
+				const data = await response.json();
+				profitData = data.profit || [];
 			}
 		} catch (error) {
 			console.error('Error fetching profit data:', error);
@@ -121,9 +324,38 @@
 			console.error('Error fetching roast profile data:', error);
 		}
 	}
+
+	async function fetchInitialSalesData() {
+		try {
+			const response = await fetch('/api/profit');
+			if (response.ok) {
+				const data = await response.json();
+				salesData = data.sales || [];
+				profitData = data.profit || [];
+			}
+		} catch (error) {
+			console.error('Error fetching sales data:', error);
+		}
+	}
 </script>
 
-<div class="m-8">
+<!-- Add form modal -->
+{#if isFormVisible}
+	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75">
+		<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-6">
+			<SaleForm
+				sale={selectedSale}
+				onClose={() => {
+					isFormVisible = false;
+					selectedSale = null;
+				}}
+				onSubmit={handleFormSubmit}
+			/>
+		</div>
+	</div>
+{/if}
+
+<div class="m-8 p-8">
 	<h1 class="mb-4 text-2xl font-bold text-zinc-400">Profit Dashboard</h1>
 
 	<!-- KPI Cards -->
@@ -170,7 +402,11 @@
 		</div>
 	</div>
 
-	<!-- Detailed Table -->
+	<div class="mb-8 w-full rounded-lg bg-zinc-800 p-6">
+		<div bind:this={chartContainer} class="w-full"></div>
+	</div>
+
+	<!-- Detailed Profit Table -->
 	<div class="mt-8 overflow-x-auto">
 		<table class="w-full table-auto bg-zinc-800">
 			<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
@@ -223,8 +459,16 @@
 					{#if expandedDates.has(date)}
 						{#each items as item}
 							<tr class="border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700">
-								<td class="px-6 py-4 pl-12 text-xs text-zinc-300">
-									{item.coffee_name}
+								<td
+									class="cursor-pointer px-6 py-4 pl-12 text-xs text-zinc-300 hover:text-blue-400"
+									on:click={() => {
+										selectedCoffee = item.coffee_name;
+										fetchSalesForCoffee(item.coffee_name);
+									}}
+								>
+									<span class={selectedCoffee === item.coffee_name ? 'text-blue-400' : ''}>
+										{item.coffee_name}
+									</span>
 								</td>
 								<td class="px-6 py-4 text-xs text-zinc-300">
 									<div class="flex gap-4">
@@ -246,4 +490,30 @@
 			</tbody>
 		</table>
 	</div>
+
+	<!-- Modify the sales content section -->
+	{#if salesData.length > 0 && selectedCoffee}
+		<div class="mt-8">
+			<div class="mb-4 flex items-center justify-between">
+				<h2 class="text-xl font-bold text-zinc-400">
+					Sales for {selectedCoffee}
+				</h2>
+				<button
+					class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+					on:click={() => {
+						selectedSale = null;
+						isFormVisible = true;
+					}}
+				>
+					New Sale
+				</button>
+			</div>
+
+			<SalesTable
+				salesData={salesData.filter((sale) => sale.coffee_name === selectedCoffee)}
+				onEdit={handleSaleEdit}
+				onDelete={handleSaleDelete}
+			/>
+		</div>
+	{/if}
 </div>
