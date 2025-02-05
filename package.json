@@ -2,9 +2,6 @@
 	"name": "coffee-app",
 	"private": true,
 	"version": "0.0.1",
-	"engines": {
-		"node": "20.x"
-	},
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
