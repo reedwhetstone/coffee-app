@@ -155,11 +155,49 @@
 		isPaused = false;
 	}
 
-	$: formattedTime = `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}.${Math.floor(
-		milliseconds / 10
-	)
-		.toString()
-		.padStart(2, '0')}`;
+	$: formattedTime = isAfterRoasting
+		? (() => {
+				// Create a copy of events and handle Drop/End renaming
+				const events = $roastEvents.map((event) => ({
+					time: event.time,
+					name: event.name
+				}));
+
+				// Check for duplicate 'Drop' events and rename second occurrence to 'End'
+				let dropCount = 0;
+				events.forEach((event) => {
+					if (event.name === 'Drop') {
+						dropCount++;
+						if (dropCount > 1) {
+							event.name = 'End';
+						}
+					}
+				});
+
+				// Sort events by time and find the End event
+				events.sort((a, b) => a.time - b.time);
+				const endEvent = events.find((event) => event.name === 'End');
+
+				if (endEvent) {
+					const endSeconds = Math.floor(endEvent.time / 1000);
+					const endMilliseconds = endEvent.time % 1000;
+					return `${Math.floor(endSeconds / 60)}:${(endSeconds % 60)
+						.toString()
+						.padStart(2, '0')}.${Math.floor(endMilliseconds / 10)
+						.toString()
+						.padStart(2, '0')}`;
+				}
+				return `${Math.floor(seconds / 60)}:${(seconds % 60)
+					.toString()
+					.padStart(2, '0')}.${Math.floor(milliseconds / 10)
+					.toString()
+					.padStart(2, '0')}`;
+			})()
+		: `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}.${Math.floor(
+				milliseconds / 10
+			)
+				.toString()
+				.padStart(2, '0')}`;
 
 	// Update current values when roastData changes
 	$: {
@@ -582,12 +620,6 @@
 		<h1 class="text-2xl font-bold text-zinc-300">Roast Session: {selectedBean.name}</h1>
 	</div>
 
-	<!-- Roast milestone timestamps -->
-	<div class="flex justify-end space-x-4">
-		<div class="text-2xl font-bold text-zinc-300">TP: --:--</div>
-		<div class="text-2xl font-bold text-zinc-300">FC: --:--</div>
-	</div>
-
 	<!-- Main roasting controls: fan, chart, and heat -->
 	<div class="flex h-[500px] w-full justify-center">
 		<!-- Fan buttons -->
@@ -712,6 +744,14 @@
 				</label>
 			{/each}
 		{/if}
+		<!-- Roast milestone timestamps -->
+		<div class="flex justify-end space-x-4">
+			<div class="text-2xl font-bold text-zinc-300">DRYING %: --:--</div>
+			<div class="text-2xl font-bold text-zinc-300">TP: --:--</div>
+			<div class="text-2xl font-bold text-zinc-300">MAILLARD %: --:--</div>
+			<div class="text-2xl font-bold text-zinc-300">FC: --:--</div>
+			<div class="text-2xl font-bold text-zinc-300">DEV %: --:--</div>
+		</div>
 	</div>
 
 	<!-- Save and Clear roast buttons -->
