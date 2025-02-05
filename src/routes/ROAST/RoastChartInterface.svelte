@@ -23,7 +23,6 @@
 	export let saveRoastProfile: () => void;
 	export let selectedBean: { name: string };
 	export let clearRoastData: () => void;
-	export let isHistoricalView = false;
 
 	let seconds = 0;
 	let milliseconds = 0;
@@ -48,14 +47,16 @@
 	let currentHeatValue = heatValue;
 
 	// Update the internal values when props change, but only if not viewing historical data
-	$: if (!isHistoricalView) {
-		currentFanValue = fanValue;
-		currentHeatValue = heatValue;
+	$: {
+		if (isDuringRoasting) {
+			currentFanValue = fanValue;
+			currentHeatValue = heatValue;
+		}
 	}
 
 	// Handle profile changes
 	$: if (currentRoastProfile) {
-		if (!currentRoastProfile.has_log_data) {
+		if (isBeforeRoasting) {
 			resetTimer();
 		}
 	}
@@ -161,10 +162,12 @@
 		.padStart(2, '0')}`;
 
 	// Update current values when roastData changes
-	$: if ($roastData.length > 0 && !isHistoricalView) {
-		const lastDataPoint = $roastData[$roastData.length - 1];
-		fanValue = lastDataPoint.fan;
-		heatValue = lastDataPoint.heat;
+	$: {
+		if ($roastData.length > 0 && isDuringRoasting) {
+			const lastDataPoint = $roastData[$roastData.length - 1];
+			fanValue = lastDataPoint.fan;
+			heatValue = lastDataPoint.heat;
+		}
 	}
 
 	// Create line generators
@@ -553,7 +556,7 @@
 	// Use these values in the controls instead of the props
 	function handleFanChange(value: number) {
 		currentFanValue = value;
-		if (!isHistoricalView) {
+		if (isDuringRoasting) {
 			updateFan(value);
 			handleSettingsChange();
 		}
@@ -561,11 +564,16 @@
 
 	function handleHeatChange(value: number) {
 		currentHeatValue = value;
-		if (!isHistoricalView) {
+		if (isDuringRoasting) {
 			updateHeat(value);
 			handleSettingsChange();
 		}
 	}
+
+	// Add these computed values at the top of the script
+	$: isBeforeRoasting = !currentRoastProfile?.roast_id || $roastData.length === 0;
+	$: isDuringRoasting = isRoasting;
+	$: isAfterRoasting = $roastData.length > 0 && !isRoasting;
 </script>
 
 <div>
@@ -583,7 +591,7 @@
 	<!-- Main roasting controls: fan, chart, and heat -->
 	<div class="flex h-[500px] w-full justify-center">
 		<!-- Fan buttons -->
-		{#if !isHistoricalView}
+		{#if isBeforeRoasting || isDuringRoasting}
 			<div class="my-5 flex flex-col justify-between">
 				{#each Array(11) as _, i}
 					<label
@@ -605,10 +613,10 @@
 		{/if}
 
 		<!-- Chart -->
-		<div bind:this={chartContainer} class="h-full w-full text-zinc-400"></div>
+		<div bind:this={chartContainer} class="h-full w-full text-zinc-400" />
 
 		<!-- Heat buttons -->
-		{#if !isHistoricalView}
+		{#if isBeforeRoasting || isDuringRoasting}
 			<div class="my-5 flex flex-col justify-between">
 				{#each Array.from({ length: 11 }, (_, i) => 10 - i) as value}
 					<label
@@ -634,87 +642,93 @@
 	<div class="z-0 flex flex-wrap items-center justify-center gap-4">
 		<div class="flex items-center gap-4">
 			<div class="w-48 text-5xl font-bold text-zinc-300">{formattedTime}</div>
-			<button
-				id="start-end-roast"
-				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-300 hover:bg-green-900"
-				on:mousedown={(e) => {
-					if (isRoasting) {
-						isLongPressing = true;
-						pressTimer = setTimeout(() => {
-							resetTimer();
-							e.preventDefault();
-							const clickHandler = (clickEvent: Event) => {
-								clickEvent.preventDefault();
-								clickEvent.stopPropagation();
-								document.removeEventListener('click', clickHandler, true);
-							};
-							document.addEventListener('click', clickHandler, true);
-						}, LONG_PRESS_DURATION);
-					}
-				}}
-				on:click={() => {
-					if (!isLongPressing) {
-						toggleTimer();
-					}
-				}}
-				on:mouseup={() => {
-					if (pressTimer) {
-						clearTimeout(pressTimer);
-						pressTimer = null;
-					}
-					isLongPressing = false;
-				}}
-				on:mouseleave={() => {
-					if (pressTimer) {
-						clearTimeout(pressTimer);
-						pressTimer = null;
-					}
-					isLongPressing = false;
-				}}
-				class:border-red-800={isRoasting && !isPaused}
-				class:hover:bg-red-900={isRoasting && !isPaused}
-				class:border-orange-800={isRoasting && isPaused}
-				class:hover:bg-orange-900={isRoasting && isPaused}
-			>
-				{isRoasting ? (isPaused ? 'Resume' : 'Stop') : 'Start'}
-			</button>
+			{#if isBeforeRoasting || isDuringRoasting}
+				<button
+					id="start-end-roast"
+					class="rounded border-2 border-green-800 px-3 py-1 text-zinc-300 hover:bg-green-900"
+					on:mousedown={(e) => {
+						if (isRoasting) {
+							isLongPressing = true;
+							pressTimer = setTimeout(() => {
+								resetTimer();
+								e.preventDefault();
+								const clickHandler = (clickEvent: Event) => {
+									clickEvent.preventDefault();
+									clickEvent.stopPropagation();
+									document.removeEventListener('click', clickHandler, true);
+								};
+								document.addEventListener('click', clickHandler, true);
+							}, LONG_PRESS_DURATION);
+						}
+					}}
+					on:click={() => {
+						if (!isLongPressing) {
+							toggleTimer();
+						}
+					}}
+					on:mouseup={() => {
+						if (pressTimer) {
+							clearTimeout(pressTimer);
+							pressTimer = null;
+						}
+						isLongPressing = false;
+					}}
+					on:mouseleave={() => {
+						if (pressTimer) {
+							clearTimeout(pressTimer);
+							pressTimer = null;
+						}
+						isLongPressing = false;
+					}}
+					class:border-red-800={isRoasting && !isPaused}
+					class:hover:bg-red-900={isRoasting && !isPaused}
+					class:border-orange-800={isRoasting && isPaused}
+					class:hover:bg-orange-900={isRoasting && isPaused}
+				>
+					{isRoasting ? (isPaused ? 'Resume' : 'Stop') : 'Start'}
+				</button>
+			{/if}
 		</div>
 
-		{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event}
-			<label
-				class="flex items-center rounded border-2 border-green-800 px-3 py-1 text-zinc-300 hover:bg-green-900"
-				class:bg-green-900={selectedEvent === event}
-				class:opacity-50={!isRoasting}
-				class:cursor-not-allowed={!isRoasting}
-				class:hover:bg-transparent={!isRoasting}
-			>
-				<input
-					type="radio"
-					name="roastEvent"
-					value={event}
-					on:change={() => handleEventLog(event)}
-					checked={selectedEvent === event}
-					class="hidden"
-					disabled={!isRoasting}
-				/>
-				{event}
-			</label>
-		{/each}
+		{#if isBeforeRoasting || isDuringRoasting}
+			{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event}
+				<label
+					class="flex items-center rounded border-2 border-green-800 px-3 py-1 text-zinc-300 hover:bg-green-900"
+					class:bg-green-900={selectedEvent === event}
+					class:opacity-50={!isRoasting}
+					class:cursor-not-allowed={!isRoasting}
+					class:hover:bg-transparent={!isRoasting}
+				>
+					<input
+						type="radio"
+						name="roastEvent"
+						value={event}
+						on:change={() => handleEventLog(event)}
+						checked={selectedEvent === event}
+						class="hidden"
+						disabled={!isRoasting}
+					/>
+					{event}
+				</label>
+			{/each}
+		{/if}
 	</div>
 
 	<!-- Save and Clear roast buttons -->
 	<div class="flex justify-end gap-4">
-		<button
-			class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-300 hover:bg-zinc-600"
-			on:click={() => {
-				prepareProfileLogsForSave();
-				saveRoastProfile();
-			}}
-			disabled={!isRoasting && $profileLogs.length === 0}
-		>
-			Save Roast
-		</button>
-		{#if $roastData.length > 0}
+		{#if isBeforeRoasting || isDuringRoasting}
+			<button
+				class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-300 hover:bg-zinc-600"
+				on:click={() => {
+					prepareProfileLogsForSave();
+					saveRoastProfile();
+				}}
+				disabled={!isRoasting && $profileLogs.length === 0}
+			>
+				Save Roast
+			</button>
+		{/if}
+		{#if !isBeforeRoasting}
 			<button
 				class="rounded border-2 border-red-800 px-3 py-1 text-zinc-300 hover:bg-red-950"
 				on:click={() => {

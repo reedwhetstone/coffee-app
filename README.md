@@ -9,6 +9,7 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
+- the roast chart interface is poorly scaling with page loads between charts in the different states. It is keeping the sizing of the prior chart, causing the controls and other aspecs to be misaligned.
 - lot share platform to divvy up lots - like a kickstarter for high quality coffee lots
 - overhaul green_coffee_inv structure:
   - green_coffe_inv should join / xref coffee_catalog.id and should no longer duplicate that data.
