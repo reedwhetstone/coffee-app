@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { updateDatabase } from '../../SWEET/newcoffeescript';
+import { updateDatabase } from '../../CATALOG/newcoffeescript';
 
 // Initialize processHandler if it doesn't exist
 if (!global.processHandler) {
