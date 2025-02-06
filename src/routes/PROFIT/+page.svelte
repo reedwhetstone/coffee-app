@@ -138,6 +138,29 @@
 			};
 		});
 
+		// Calculate trend line data
+		const trendData = sortedSales.map((sale) => {
+			// Calculate total lbs purchased up to this date
+			const lbsPurchased = d3.sum(
+				sortedProfitData.filter((p) => new Date(p.purchase_date) <= new Date(sale.sell_date)),
+				(p) => +p.purchased_qty_lbs || 0
+			);
+
+			// Calculate total lbs sold up to this date
+			const lbsSold = d3.sum(
+				sortedSales.filter((s) => new Date(s.sell_date) <= new Date(sale.sell_date)),
+				(s) => (+s.oz_sold || 0) / 16
+			);
+
+			// Calculate trend value ($18 per lb of remaining inventory)
+			const trendValue = (lbsPurchased - lbsSold) * 18;
+
+			return {
+				...sale,
+				trendValue
+			};
+		});
+
 		// Create SVG
 		const svg = d3
 			.select(chartContainer)
@@ -210,27 +233,24 @@
 			.attr('stroke-width', 2)
 			.attr('d', salesLine);
 
-		// Add sales points
+		// Add trend line after existing lines
 		svg
-			.selectAll('.sales-point')
-			.data(cumulativeData)
-			.enter()
-			.append('circle')
-			.attr('class', 'sales-point')
-			.attr('cx', (d) => xScale(new Date(d.sell_date)))
-			.attr('cy', (d) => yScale(d.cumulativeTotal))
-			.attr('r', 5)
-			.attr('fill', '#3730a3')
-			.on('mouseover', function (event, d) {
-				showTooltip(event, {
-					...d,
-					price: d.cumulativeTotal, // Show cumulative total in tooltip
-					totalCost: d.cumulativeCost // Add cumulative cost to tooltip
-				});
-			})
-			.on('mouseout', hideTooltip);
+			.append('path')
+			.datum(trendData)
+			.attr('fill', 'none')
+			.attr('stroke', '#a855f7') // purple-500
+			.attr('stroke-width', 2)
+			.attr('stroke-dasharray', '5,5')
+			.attr(
+				'd',
+				d3
+					.line<(typeof trendData)[0]>()
+					.x((d) => xScale(new Date(d.sell_date)))
+					.y((d) => yScale(d.trendValue))
+					.curve(d3.curveMonotoneX)
+			);
 
-		// Add legend
+		// Add trend line to legend
 		const legend = svg
 			.append('g')
 			.attr('class', 'legend')
@@ -271,6 +291,45 @@
 			.text('Total Cost')
 			.style('fill', 'white')
 			.style('font-size', '12px');
+
+		// Add trend line legend item
+		legend
+			.append('line')
+			.attr('x1', 0)
+			.attr('x2', 20)
+			.attr('y1', 40)
+			.attr('y2', 40)
+			.attr('stroke', '#a855f7')
+			.attr('stroke-width', 2)
+			.attr('stroke-dasharray', '5,5');
+
+		legend
+			.append('text')
+			.attr('x', 25)
+			.attr('y', 44)
+			.text('Target ($18/lb)')
+			.style('fill', 'white')
+			.style('font-size', '12px');
+
+		// Add sales points
+		svg
+			.selectAll('.sales-point')
+			.data(cumulativeData)
+			.enter()
+			.append('circle')
+			.attr('class', 'sales-point')
+			.attr('cx', (d) => xScale(new Date(d.sell_date)))
+			.attr('cy', (d) => yScale(d.cumulativeTotal))
+			.attr('r', 5)
+			.attr('fill', '#3730a3')
+			.on('mouseover', function (event, d) {
+				showTooltip(event, {
+					...d,
+					price: d.cumulativeTotal, // Show cumulative total in tooltip
+					totalCost: d.cumulativeCost // Add cumulative cost to tooltip
+				});
+			})
+			.on('mouseout', hideTooltip);
 	}
 
 	// Helper function to calculate cost per oz for a sale
