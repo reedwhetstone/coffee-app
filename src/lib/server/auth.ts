@@ -3,6 +3,7 @@ import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/publi
 import type { Database } from '../types/database.types';
 import { supabase } from '$lib/auth/supabase';
 import type { RequestEvent } from '@sveltejs/kit';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export async function getProfile(userId: string) {
 	const { data: profile, error } = await supabase
@@ -90,4 +91,28 @@ export async function requireAuthMiddleware(event: RequestEvent) {
 			headers: { 'Content-Type': 'application/json' }
 		});
 	}
+}
+
+export type UserRole = 'viewer' | 'member' | 'admin';
+
+export async function getUserRole(supabase: SupabaseClient, userId: string): Promise<UserRole> {
+	const { data, error } = await supabase
+		.from('user_roles')
+		.select('role')
+		.eq('id', userId)
+		.single();
+
+	if (error || !data) return 'viewer';
+	return data.role as UserRole;
+}
+
+export function requireRole(userRole: UserRole | undefined, requiredRole: UserRole): boolean {
+	const roleHierarchy = {
+		viewer: 0,
+		member: 1,
+		admin: 2
+	};
+
+	if (!userRole) return false;
+	return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
 }

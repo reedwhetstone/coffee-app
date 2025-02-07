@@ -2,9 +2,10 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { requireRole } from '$lib/server/auth';
 
 	// Check user authorization
-	$: if ($page.data.user?.email !== 'rwhetstone0934@gmail.com') {
+	$: if (!requireRole($page.data.role, 'admin')) {
 		goto('/');
 	}
 

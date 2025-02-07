@@ -26,7 +26,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
 		if (!session) {
-			return { session: null, user: null };
+			return { session: null, user: null, role: undefined };
 		}
 
 		const {
@@ -34,11 +34,21 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			error
 		} = await event.locals.supabase.auth.getUser();
 		if (error) {
-			// JWT validation has failed
-			return { session: null, user: null };
+			return { session: null, user: null, role: undefined };
 		}
 
-		return { session, user };
+		// Fetch user role
+		const { data: roleData } = await event.locals.supabase
+			.from('user_roles')
+			.select('role')
+			.eq('id', user?.id || '')
+			.single();
+
+		return {
+			session,
+			user,
+			role: roleData?.role || 'viewer'
+		};
 	};
 
 	return resolve(event, {
@@ -49,12 +59,13 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
-	const { session, user } = await event.locals.safeGetSession();
+	const { session, user, role } = await event.locals.safeGetSession();
 	event.locals.session = session;
 	event.locals.user = user;
+	event.locals.role = role;
 
 	// Add authorization check for CATALOG route
-	if (event.url.pathname === '/CATALOG' && user?.email !== 'rwhetstone0934@gmail.com') {
+	if (event.url.pathname === '/CATALOG' && role !== 'admin') {
 		throw redirect(303, '/');
 	}
 

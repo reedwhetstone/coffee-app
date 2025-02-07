@@ -4,6 +4,7 @@
 // for information about these interfaces
 import { SupabaseClient, Session } from '@supabase/supabase-js';
 import { Database } from '$lib/database.types';
+import { User } from '@supabase/supabase-js';
 
 declare global {
 	namespace App {
@@ -11,6 +12,14 @@ declare global {
 		interface Locals {
 			supabase: SupabaseClient<Database>;
 			getSession: () => Promise<Session | null>;
+			safeGetSession: () => Promise<{
+				session: Session | null;
+				user: User | null;
+				role?: 'viewer' | 'member' | 'admin';
+			}>;
+			session?: Session | null;
+			user?: User | null;
+			role?: 'viewer' | 'member' | 'admin';
 		}
 		interface PageData {
 			session: Session | null;
