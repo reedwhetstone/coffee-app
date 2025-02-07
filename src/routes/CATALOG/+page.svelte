@@ -1,5 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
+
+	// Check user authorization
+	$: if ($page.data.user?.email !== 'rwhetstone0934@gmail.com') {
+		goto('/');
+	}
 
 	let data = { data: [] }; // Initialize with empty array
 	let isLoading = true;

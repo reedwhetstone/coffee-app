@@ -56,6 +56,8 @@
 		"@vercel/speed-insights": "^1.1.0",
 		"d3": "^7.9.0",
 		"dotenv": "^16.4.7",
+		"jose": "^5.9.6",
+		"jwt-decode": "^4.0.0",
 		"lodash": "^4.17.21"
 	}
 }

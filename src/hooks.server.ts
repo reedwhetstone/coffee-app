@@ -53,11 +53,16 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	event.locals.session = session;
 	event.locals.user = user;
 
-	if (!session && event.url.pathname.startsWith('/private')) {
+	// Add authorization check for CATALOG route
+	if (event.url.pathname === '/CATALOG' && user?.email !== 'rwhetstone0934@gmail.com') {
+		throw redirect(303, '/');
+	}
+
+	if (!event.locals.session && event.url.pathname.startsWith('/private')) {
 		throw redirect(303, '/auth');
 	}
 
-	if (session && event.url.pathname === '/auth') {
+	if (event.locals.session && event.url.pathname === '/auth') {
 		throw redirect(303, '/private');
 	}
 
