@@ -1,15 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { requireRole } from '$lib/server/auth';
 
-	// Check user authorization
-	$: if (!requireRole($page.data.role, 'admin')) {
-		goto('/');
-	}
+	import type { PageData } from './$types';
 
-	let data = { data: [] }; // Initialize with empty array
+	export let data: PageData;
+
 	let isLoading = true;
 
 	// Function to load data

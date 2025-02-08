@@ -25,6 +25,8 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
+		console.log('Session:', session);
+
 		if (!session) {
 			return { session: null, user: null, role: undefined };
 		}
@@ -33,16 +35,21 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			data: { user },
 			error
 		} = await event.locals.supabase.auth.getUser();
+		console.log('User:', user);
+
 		if (error) {
+			console.error('Auth error:', error);
 			return { session: null, user: null, role: undefined };
 		}
 
 		// Fetch user role
-		const { data: roleData } = await event.locals.supabase
+		const { data: roleData, error: roleError } = await event.locals.supabase
 			.from('user_roles')
 			.select('role')
 			.eq('id', user?.id || '')
 			.single();
+
+		console.log('Role data:', roleData, 'Role error:', roleError);
 
 		return {
 			session,
@@ -65,7 +72,15 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	event.locals.role = role;
 
 	// Add authorization check for CATALOG route
-	if (event.url.pathname === '/CATALOG' && role !== 'admin') {
+	if (event.url.pathname.startsWith('/CATALOG') && role !== 'admin') {
+		throw redirect(303, '/');
+	}
+	// Add authorization check for PROFIT route
+	if (event.url.pathname.startsWith('/PROFIT') && role !== 'admin') {
+		throw redirect(303, '/');
+	}
+	// Add authorization check for ROAST route
+	if (event.url.pathname.startsWith('/ROAST') && role !== 'admin') {
 		throw redirect(303, '/');
 	}
 
