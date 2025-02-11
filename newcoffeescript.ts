@@ -1,11 +1,14 @@
 import { chromium } from 'playwright';
 import dotenv from 'dotenv';
-import { createClient } from '$lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 // Load environment variables
 dotenv.config();
 
-const supabase = createClient();
+const supabase = createClient(
+	process.env.PUBLIC_SUPABASE_URL || '',
+	process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 
 interface ScrapedData {
 	productName: string | null;
@@ -65,6 +68,15 @@ async function scrapeUrl(url: string): Promise<ScrapedData | null> {
 			return descElement ? (descElement as HTMLElement).innerText.trim() : null;
 		});
 
+		// Add cost_lb extraction
+		const costLb = await page.evaluate(() => {
+			const priceElement = document.querySelector('.price');
+			if (!priceElement) return null;
+			const priceText = (priceElement as HTMLElement).innerText.trim();
+			// Remove '$' and convert to number
+			return priceText ? parseFloat(priceText.replace('$', '')) : null;
+		});
+
 		// Add score value extraction
 		const scoreValue = await page.evaluate(() => {
 			const scoreElement = document.querySelector('div.score-value');
@@ -115,7 +127,8 @@ async function scrapeUrl(url: string): Promise<ScrapedData | null> {
 			url,
 			descriptionShort,
 			descriptionLong,
-			farmNotes
+			farmNotes,
+			cost_lb: costLb
 		};
 	} catch (error) {
 		console.error(`Error scraping ${url}:`, error);
@@ -125,13 +138,16 @@ async function scrapeUrl(url: string): Promise<ScrapedData | null> {
 }
 
 async function checkExistingUrls(urls: string[]): Promise<string[]> {
-	const ignoredUrls = [
-		'https://www.sweetmarias.com/green-coffee-subscription-gift.html',
-		'https://www.sweetmarias.com/roasted-subscription-gift.html',
-		'https://www.sweetmarias.com/rstd-subs-1050.html'
-	];
-
-	const filteredUrls = urls.filter((url) => !ignoredUrls.includes(url));
+	// Filter out URLs containing unwanted patterns
+	const filteredUrls = urls.filter((url) => {
+		return (
+			!url.includes('roasted') &&
+			!url.includes('subscription') &&
+			!url.includes('rstd-subs-') &&
+			!url.includes('-set-') &&
+			!url.includes('-set.html')
+		);
+	});
 
 	const { data: existingUrls, error } = await supabase
 		.from('coffee_catalog')
@@ -144,16 +160,73 @@ async function checkExistingUrls(urls: string[]): Promise<string[]> {
 	return filteredUrls.filter((url) => !existingUrlSet.has(url));
 }
 
+// Add this helper function before updateDatabase
+async function confirmStep(message: string): Promise<boolean> {
+	console.log('\n' + message);
+	process.stdout.write('Continue? (y/n): ');
+
+	const response = await new Promise<string>((resolve) => {
+		process.stdin.once('data', (data) => {
+			resolve(data.toString().trim().toLowerCase());
+		});
+	});
+
+	if (response !== 'y') {
+		console.log('Operation aborted by user');
+		return false;
+	}
+	return true;
+}
+
 async function updateDatabase() {
 	try {
+		if (
+			!(await confirmStep("Step 1: About to collect all product URLs from Sweet Maria's website."))
+		) {
+			return { success: false, message: 'Aborted before URL collection' };
+		}
+
 		const allProductUrls = await collectInitUrlsData();
 		console.log(`Found ${allProductUrls.length} total products`);
 
-		const newUrls = await checkExistingUrls(allProductUrls);
-		console.log(`Found ${newUrls.length} new products to process`);
+		if (
+			!(await confirmStep(
+				`Step 2: About to set all existing Sweet Maria products to stocked = false (${allProductUrls.length} products found).`
+			))
+		) {
+			return { success: false, message: 'Aborted before updating stock status' };
+		}
 
+		const { error: updateError } = await supabase
+			.from('coffee_catalog')
+			.update({ stocked: false })
+			.eq('source', 'sweet_maria');
+
+		if (updateError) throw updateError;
+
+		const newUrls = await checkExistingUrls(allProductUrls);
+		if (
+			!(await confirmStep(
+				`Step 3: Found ${newUrls.length} new products to process and ${allProductUrls.length - newUrls.length} existing products to update.`
+			))
+		) {
+			return { success: false, message: 'Aborted before processing new products' };
+		}
+
+		const { error: stockedError } = await supabase
+			.from('coffee_catalog')
+			.update({ stocked: true })
+			.in('link', allProductUrls)
+			.eq('source', 'sweet_maria');
+
+		if (stockedError) throw stockedError;
+
+		// Process new products
 		for (const url of newUrls) {
-			console.log(`Processing URL: ${url}`);
+			if (!(await confirmStep(`Step 4: About to process URL: ${url}`))) {
+				return { success: false, message: 'Aborted during product processing' };
+			}
+
 			const scrapedData = await scrapeUrl(url);
 
 			if (scrapedData) {
@@ -177,7 +250,10 @@ async function updateDatabase() {
 					description_long: scrapedData.descriptionLong || null,
 					description_short: scrapedData.descriptionShort || null,
 					farm_notes: scrapedData.farmNotes || null,
-					last_updated: new Date().toISOString()
+					last_updated: new Date().toISOString(),
+					source: 'sweet_maria',
+					cost_lb: scrapedData['Cost per lb'] || null,
+					stocked: true
 				});
 
 				if (error) throw error;
@@ -194,3 +270,20 @@ async function updateDatabase() {
 }
 
 export { updateDatabase };
+
+// Add this at the end of the file
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+
+if (isMainModule) {
+	updateDatabase()
+		.then((result) => {
+			if (!result.success) {
+				console.log(result.message);
+			}
+			process.exit(0);
+		})
+		.catch((error) => {
+			console.error('Error:', error);
+			process.exit(1);
+		});
+}
