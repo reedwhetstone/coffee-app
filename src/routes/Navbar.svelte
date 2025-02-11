@@ -64,7 +64,7 @@
 			$navbarActions.onSearchSelect?.(result.type, result.item_id);
 			goto('/');
 		} else if (result.type === 'roast') {
-			goto('/ROAST');
+			goto('/roast');
 			$navbarActions.onSearchSelect?.(result.type, result.item_id);
 		}
 		searchQuery = '';

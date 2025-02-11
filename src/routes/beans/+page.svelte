@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Database } from '$lib/types/database.types';
 
-	export let data: {
+	type PageData = {
 		searchState?: {
 			searchType?: 'green';
 			searchId?: number;
@@ -9,6 +9,8 @@
 		data: Database['public']['Tables']['green_coffee_inv']['Row'][];
 		role?: 'viewer' | 'member' | 'admin';
 	};
+
+	let { data } = $props<{ data: PageData }>();
 
 	// Add these new imports
 	import BeanForm from './BeanForm.svelte';
@@ -18,8 +20,8 @@
 	import { get } from 'svelte/store';
 	import { page } from '$app/stores';
 
-	let isFormVisible = false;
-	let selectedBean: any = null;
+	let isFormVisible = $state(false);
+	let selectedBean = $state<any>(null);
 
 	// Function to load data
 	async function loadData() {
@@ -27,7 +29,12 @@
 			const response = await fetch('/api/data');
 			if (response.ok) {
 				const result = await response.json();
-				data = result;
+				// Preserve the role and searchState when updating data
+				data = {
+					data: result.data,
+					searchState: data.searchState,
+					role: data.role
+				};
 				return true;
 			}
 			return false;
@@ -45,7 +52,9 @@
 			});
 			if (response.ok) {
 				// Update local state
-				data.data = data.data.filter((bean) => bean.id !== id);
+				data.data = data.data.filter(
+					(bean: Database['public']['Tables']['green_coffee_inv']['Row']) => bean.id !== id
+				);
 				// Clear selected bean since it's been deleted
 				selectedBean = null;
 			}
@@ -55,62 +64,68 @@
 	}
 
 	// Function to handle editing
-	function editBean(bean: (typeof data.data)[0]) {
+	function editBean(bean: Database['public']['Tables']['green_coffee_inv']['Row']) {
 		selectedBean = bean;
 		isFormVisible = true;
 	}
 
 	// Function to handle row selection
-	function selectBean(bean: (typeof data.data)[0]) {
+	function selectBean(bean: Database['public']['Tables']['green_coffee_inv']['Row']) {
 		selectedBean = bean;
 		// Smooth scroll to top
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
 	// Add these new variables for sorting and filtering
-	let sortField: string | null = 'purchase_date';
-	let sortDirection: 'asc' | 'desc' | null = 'desc';
-	let selectedPurchaseDate: string | null = null;
+	let sortField = $state<string | null>('purchase_date');
+	let sortDirection = $state<'asc' | 'desc' | null>('desc');
+	let selectedPurchaseDate = $state<string | null>(null);
 
 	// Computed sorted and filtered data
-	$: sortedData = [...data.data]
-		.sort((a, b) => {
-			if (!sortField || !sortDirection) return 0;
+	let sortedData = $derived(
+		[...data.data]
+			.sort((a, b) => {
+				if (!sortField || !sortDirection) return 0;
 
-			const aVal = a[sortField as keyof typeof a];
-			const bVal = b[sortField as keyof typeof b];
+				const aVal = a[sortField as keyof typeof a];
+				const bVal = b[sortField as keyof typeof b];
 
-			if (sortField === 'purchase_date') {
-				if (!sortDirection) return 0;
-				const aStr = String(aVal);
-				const bStr = String(bVal);
-				if (sortDirection === 'asc') return aStr.localeCompare(bStr);
-				return bStr.localeCompare(aStr);
-			}
+				if (sortField === 'purchase_date') {
+					if (!sortDirection) return 0;
+					const aStr = String(aVal);
+					const bStr = String(bVal);
+					if (sortDirection === 'asc') return aStr.localeCompare(bStr);
+					return bStr.localeCompare(aStr);
+				}
 
-			if (typeof aVal === 'string' && typeof bVal === 'string') {
-				return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-			}
+				if (typeof aVal === 'string' && typeof bVal === 'string') {
+					return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+				}
 
-			return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
-		})
-		.filter((bean) => {
-			if (selectedPurchaseDate === null) {
-				return true; // Show all beans when no date is selected
-			}
-			return bean.purchase_date === selectedPurchaseDate;
-		});
+				return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
+			})
+			.filter((bean) => {
+				if (selectedPurchaseDate === null) {
+					return true; // Show all beans when no date is selected
+				}
+				return bean.purchase_date === selectedPurchaseDate;
+			})
+	);
 
-	async function handleFormSubmit(newBean: any) {
+	async function handleFormSubmit(
+		newBean: Database['public']['Tables']['green_coffee_inv']['Row']
+	) {
 		await loadData();
-		selectedBean = null; // Force a re-render by clearing first
+		selectedBean = null;
 		setTimeout(() => {
 			selectedBean = newBean;
 		}, 0);
 	}
 
 	// Update handleBeanUpdate to use loadData
-	async function handleBeanUpdate(updatedBean: any) {
+	async function handleBeanUpdate(
+		updatedBean: Database['public']['Tables']['green_coffee_inv']['Row']
+	) {
 		await loadData();
 		selectedBean = updatedBean;
 	}
@@ -122,7 +137,10 @@
 			// Check for search state on initial load
 			const searchState = $page.state as any;
 			if (searchState?.searchType === 'green' && searchState?.searchId) {
-				const foundBean = data.data.find((bean) => bean.id === searchState.searchId);
+				const foundBean = data.data.find(
+					(bean: Database['public']['Tables']['green_coffee_inv']['Row']) =>
+						bean.id === searchState.searchId
+				);
 				if (foundBean) {
 					selectedBean = foundBean;
 					selectedPurchaseDate = null;
@@ -138,7 +156,9 @@
 			onSearchSelect: async (type, id) => {
 				if (type === 'green') {
 					await loadData();
-					const foundBean = data.data.find((bean) => bean.id === id);
+					const foundBean = data.data.find(
+						(bean: Database['public']['Tables']['green_coffee_inv']['Row']) => bean.id === id
+					);
 					if (foundBean) {
 						selectedBean = null;
 						await Promise.resolve();
@@ -225,8 +245,12 @@
 				bind:value={selectedPurchaseDate}
 			>
 				<option value={null}>Show All Dates</option>
-				{#each [...new Set(data.data.map((bean) => bean.purchase_date))].sort().reverse() as date}
-					<option value={date}>{date ? new Date(date).toLocaleDateString() : ''}</option>
+				{#each [...new Set(data.data.map((bean: Database['public']['Tables']['green_coffee_inv']['Row']) => bean.purchase_date))]
+					.sort()
+					.reverse() as date}
+					<option value={date}
+						>{typeof date === 'string' ? new Date(date).toLocaleDateString() : ''}</option
+					>
 				{/each}
 			</select>
 		</div>
@@ -236,7 +260,7 @@
 				<table class="table-auto bg-zinc-800">
 					<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
 						<tr>
-							{#each Object.keys(data.data[0] || {}) as header}
+							{#each Object.keys(data.data[0] || ({} as Record<string, unknown>)) as header}
 								<th
 									onclick={() => toggleSort(header)}
 									class="group max-w-[200px] cursor-pointer px-6 py-3 hover:bg-zinc-600"

@@ -2,17 +2,19 @@
 	import { goto } from '$app/navigation';
 	import { formatDateForDisplay, prepareDateForAPI } from '$lib/utils/dates';
 
-	export let selectedBean: any;
-	export let onUpdate: (bean: any) => void;
-	export let onDelete: (id: number) => void;
-	export let role: 'viewer' | 'member' | 'admin' | undefined;
+	let { selectedBean, role, onUpdate, onDelete } = $props<{
+		selectedBean: any;
+		role?: 'viewer' | 'member' | 'admin';
+		onUpdate: (bean: any) => void;
+		onDelete: (id: number) => void;
+	}>();
 
-	let isEditing = false;
-	let editedBean = { ...selectedBean };
-	let currentPage = 0;
+	let isEditing = $state(false);
+	let editedBean = $state({ ...selectedBean });
+	let currentPage = $state(0);
 	const totalPages = 2;
 
-	let previousPage = currentPage;
+	let previousPage = $state(0);
 
 	function slideTransition(_: Element, { duration = 300, direction = 1, delay = 0 }) {
 		return {
@@ -27,11 +29,12 @@
 	}
 
 	function goToPage(pageIndex: number) {
-		previousPage = currentPage;
+		const current = currentPage;
+		previousPage = current;
 		currentPage = pageIndex;
 	}
 
-	$: slideDirection = currentPage > previousPage ? 1 : -1;
+	let slideDirection = $derived(currentPage > previousPage ? 1 : -1);
 
 	// Function to handle editing
 	function toggleEdit() {
@@ -93,6 +96,10 @@
 			}
 		}
 	}
+
+	$effect(() => {
+		console.log('Role in BeanProfile:', role);
+	});
 </script>
 
 <div class="rounded-lg bg-zinc-800 p-6">
@@ -103,8 +110,8 @@
 				{#if role === 'admin'}
 					<button
 						class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
-						on:click={() => {
-							goto(`/ROAST`, {
+						onclick={() => {
+							goto(`/roast`, {
 								state: {
 									selectedBean,
 									showRoastForm: true
@@ -125,9 +132,9 @@
 					class="h-3 w-3 rounded-full transition-all duration-300 {i === currentPage
 						? 'scale-110 bg-blue-500'
 						: 'bg-zinc-600 hover:bg-zinc-500'}"
-					on:click={() => goToPage(i)}
+					onclick={() => goToPage(i)}
 					aria-label="Go to page {i + 1}"
-				/>
+				></button>
 			{/each}
 		</div>
 	</div>
@@ -294,13 +301,13 @@
 				class="rounded {isEditing
 					? 'border-2 border-green-800 hover:bg-green-900'
 					: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-zinc-500"
-				on:click={toggleEdit}
+				onclick={toggleEdit}
 			>
 				{isEditing ? 'Save' : 'Edit'}
 			</button>
 			<button
 				class="rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900"
-				on:click={deleteBean}
+				onclick={deleteBean}
 			>
 				Delete
 			</button>
