@@ -1,47 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-
 	import type { PageData } from './$types';
 
 	export let data: PageData;
-
-	let isLoading = true;
-
-	// Function to load data
-	async function loadData() {
-		try {
-			const response = await fetch('/api/coffee-catalog');
-			if (response.ok) {
-				const result = await response.json();
-				console.log('API Response:', result);
-				data = result;
-				return true;
-			}
-			console.error('Response not OK:', await response.text());
-			return false;
-		} catch (error) {
-			console.error('Error loading data:', error);
-			return false;
-		}
-	}
-
-	onMount(async () => {
-		await loadData();
-		isLoading = false;
-	});
-
-	let logs: string[] = [];
-
-	async function runCoffeeScript() {
-		try {
-			logs = [...logs, 'Starting coffee script...'];
-			const response = await fetch('/api/run-coffee', { method: 'POST' });
-			if (!response.ok) throw new Error('Failed to run coffee script');
-			logs = [...logs, 'Coffee script executed successfully'];
-		} catch (error) {
-			logs = [...logs, `Error running coffee script: ${error}`];
-		}
-	}
 
 	// Add sorting functionality
 	let sortField: string | null = 'arrival_date';
@@ -92,9 +52,7 @@
 				}
 
 				if (typeof aVal === 'string' && typeof bVal === 'string') {
-					return sortDirection === 'asc'
-						? (aVal as string).localeCompare(bVal as string)
-						: (bVal as string).localeCompare(aVal as string);
+					return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
 				}
 
 				return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
@@ -120,26 +78,8 @@
 	}
 </script>
 
-<div class="my-8 mt-8 flex justify-center gap-4">
-	<button
-		on:click={() => fetch('/api/update-green-coffee', { method: 'POST' })}
-		class="rounded border-2 border-zinc-500 bg-zinc-800 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
-	>
-		Update Green Coffee Data
-	</button>
-
-	<button
-		on:click={runCoffeeScript}
-		class="rounded border-2 border-zinc-500 bg-zinc-800 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
-	>
-		Run Coffee Script
-	</button>
-</div>
-
 <div class="my-8 mt-8">
-	{#if isLoading}
-		<p class="p-4 text-zinc-300">Loading coffee data...</p>
-	{:else if !data?.data || data.data.length === 0}
+	{#if !data?.data || data.data.length === 0}
 		<p class="p-4 text-zinc-300">No coffee data available</p>
 	{:else}
 		<div class="m-8 overflow-hidden overflow-x-auto rounded-lg">
