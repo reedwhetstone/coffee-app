@@ -25,7 +25,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
-		console.log('Session:', session);
+		//console.log('Session:', session);
 
 		if (!session) {
 			return { session: null, user: null, role: undefined };
@@ -35,7 +35,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			data: { user },
 			error
 		} = await event.locals.supabase.auth.getUser();
-		console.log('User:', user);
+		//	console.log('User:', user);
 
 		if (error) {
 			console.error('Auth error:', error);
@@ -49,7 +49,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			.eq('id', user?.id || '')
 			.single();
 
-		console.log('Role data:', roleData, 'Role error:', roleError);
+		//console.log('Role data:', roleData, 'Role error:', roleError);
 
 		return {
 			session,

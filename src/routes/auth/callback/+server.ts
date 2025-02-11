@@ -7,17 +7,21 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 
 	if (code) {
 		const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-		if (!error && data?.session?.provider_token) {
-			// Store provider_token and provider_refresh_token if needed
-			// You can store these in your database or secure storage
-			const { provider_token, provider_refresh_token } = data.session;
+		if (!error && data?.session) {
+			// Validate the user after exchange
+			const { data: userData, error: userError } = await supabase.auth.getUser();
+			if (userError || !userData.user) {
+				throw redirect(303, '/auth/auth-code-error');
+			}
 
-			// Continue with redirect
+			// Now safe to proceed with validated user
+			if (data.session.provider_token) {
+				const { provider_token, provider_refresh_token } = data.session;
+			}
 			throw redirect(303, next);
 		}
 		console.error('Auth error:', error);
 	}
 
-	// return the user to an error page with instructions
 	throw redirect(303, '/auth/auth-code-error');
 };

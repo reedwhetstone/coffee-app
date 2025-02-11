@@ -22,11 +22,18 @@ export async function requireAuth(event: RequestEvent) {
 	}
 
 	const token = authHeader.split(' ')[1];
+
+	// First get the session
+	const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+	if (sessionError || !sessionData.session) {
+		throw new AuthError('Invalid or expired token');
+	}
+
+	// Then validate the user
 	const {
 		data: { user },
 		error
 	} = await supabase.auth.getUser(token);
-
 	if (error || !user) {
 		throw new AuthError('Invalid or expired token');
 	}
