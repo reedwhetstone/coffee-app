@@ -71,16 +71,11 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	event.locals.user = user;
 	event.locals.role = role;
 
-	// Add authorization check for CATALOG route
-	if (event.url.pathname.startsWith('/CATALOG') && role !== 'admin') {
+	// Update case for other route checks
+	if (event.url.pathname.startsWith('/roast') && role !== 'admin') {
 		throw redirect(303, '/');
 	}
-	// Add authorization check for PROFIT route
-	if (event.url.pathname.startsWith('/PROFIT') && role !== 'admin') {
-		throw redirect(303, '/');
-	}
-	// Add authorization check for ROAST route
-	if (event.url.pathname.startsWith('/ROAST') && role !== 'admin') {
+	if (event.url.pathname.startsWith('/profit') && role !== 'admin') {
 		throw redirect(303, '/');
 	}
 

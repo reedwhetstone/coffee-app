@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { formatDateForDisplay, prepareDateForAPI } from '$lib/utils/dates';
+
 	export let selectedBean: any;
 	export let onUpdate: (bean: any) => void;
 	export let onDelete: (id: number) => void;
+	export let role: 'viewer' | 'member' | 'admin' | undefined;
 
 	let isEditing = false;
 	let editedBean = { ...selectedBean };
@@ -98,19 +100,21 @@
 		<div class="flex items-center justify-between">
 			<h2 class="text-xl font-bold text-zinc-300">{selectedBean.name}</h2>
 			<div class="space-x-2">
-				<button
-					class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
-					on:click={() => {
-						goto(`/ROAST`, {
-							state: {
-								selectedBean,
-								showRoastForm: true
-							}
-						});
-					}}
-				>
-					New Roast
-				</button>
+				{#if role === 'admin'}
+					<button
+						class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
+						on:click={() => {
+							goto(`/ROAST`, {
+								state: {
+									selectedBean,
+									showRoastForm: true
+								}
+							});
+						}}
+					>
+						New Roast
+					</button>
+				{/if}
 			</div>
 		</div>
 
@@ -284,21 +288,22 @@
 			</div>
 		{/key}
 	</div>
-
-	<div class="mb-4 flex justify-end space-x-2">
-		<button
-			class="rounded {isEditing
-				? 'border-2 border-green-800 hover:bg-green-900'
-				: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-zinc-500"
-			on:click={toggleEdit}
-		>
-			{isEditing ? 'Save' : 'Edit'}
-		</button>
-		<button
-			class="rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900"
-			on:click={deleteBean}
-		>
-			Delete
-		</button>
-	</div>
+	{#if role === 'admin'}
+		<div class="mb-4 flex justify-end space-x-2">
+			<button
+				class="rounded {isEditing
+					? 'border-2 border-green-800 hover:bg-green-900'
+					: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-zinc-500"
+				on:click={toggleEdit}
+			>
+				{isEditing ? 'Save' : 'Edit'}
+			</button>
+			<button
+				class="rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900"
+				on:click={deleteBean}
+			>
+				Delete
+			</button>
+		</div>
+	{/if}
 </div>

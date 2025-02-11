@@ -139,21 +139,27 @@
 
 		<div class="flex items-center gap-4">
 			<ul class="flex items-center gap-2">
+				<li>
+					<a
+						href="/"
+						class="px-3 py-2 hover:bg-zinc-100 {routeId === '/' ? ' text-sky-800' : 'text-zinc-600'}
+							hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">CATALOG</a
+					>
+				</li>
+				<li>
+					<a
+						href="/beans"
+						class="px-3 py-2 hover:bg-zinc-100 {routeId === '/beans'
+							? ' text-sky-800'
+							: 'text-zinc-600'}
+								hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">BEANS</a
+					>
+				</li>
 				{#if data.role === 'admin'}
 					<li>
 						<a
-							href="/"
-							class="px-3 py-2 hover:bg-zinc-100 {routeId === '/'
-								? ' text-sky-800'
-								: 'text-zinc-600'}
-							hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">BEANS</a
-						>
-					</li>
-
-					<li>
-						<a
-							href="/ROAST"
-							class="px-3 py-2 hover:bg-zinc-100 {routeId === '/ROAST'
+							href="/roast"
+							class="px-3 py-2 hover:bg-zinc-100 {routeId === '/roast'
 								? ' text-sky-800'
 								: 'text-zinc-600'}
 								hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">ROAST</a
@@ -161,20 +167,11 @@
 					</li>
 					<li>
 						<a
-							href="/PROFIT"
-							class="px-3 py-2 hover:bg-zinc-100 {routeId === '/PROFIT'
+							href="/profit"
+							class="px-3 py-2 hover:bg-zinc-100 {routeId === '/profit'
 								? ' text-sky-800'
 								: 'text-zinc-600'}
 								hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">PROFIT</a
-						>
-					</li>
-					<li>
-						<a
-							href="/CATALOG"
-							class="px-3 py-2 hover:bg-zinc-100 {routeId === '/CATALOG'
-								? ' text-sky-800'
-								: 'text-zinc-600'}
-								hover:text-drop-shadow-sm hover:bg-transparent hover:bg-zinc-800 hover:text-sky-800">CATALOG</a
 						>
 					</li>
 				{/if}
