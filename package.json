@@ -17,8 +17,8 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright test",
-		"scrape": "tsx newcoffeescript.ts",
-		"update-prices": "tsx updatePrices.ts"
+		"scrape": "tsx ./scrape/newcoffeescript.ts",
+		"update-prices": "tsx ./scrape/updatePrices.ts"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.3",
