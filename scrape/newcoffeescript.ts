@@ -313,11 +313,22 @@ class CaptainCoffeeSource implements CoffeeSource {
 				const container = document.querySelector('#collapse-tab4 > div');
 				if (!container) return {};
 
-				// Extract arrival and harvest dates
+				// Extract arrival, harvest dates, and packaging
 				const dateText = container.querySelector('p:nth-child(1)')?.textContent || '';
-				const [arrivalDate, harvestDate] = dateText.includes('Harvest')
-					? [dateText.split('Harvest')[0], 'Harvest' + dateText.split('Harvest')[1]]
-					: [dateText, null];
+				let remainingText = dateText;
+				let packaging = null;
+
+				// Extract packaging information first
+				if (remainingText.toLowerCase().includes('packed')) {
+					const [beforePacked, afterPacked] = remainingText.split(/packed/i);
+					remainingText = beforePacked.trim();
+					packaging = afterPacked.trim();
+				}
+
+				// Then split remaining text for arrival and harvest dates
+				const [arrivalDate, harvestDate] = remainingText.toLowerCase().includes('harvest')
+					? [remainingText.split(/harvest/i)[0], 'Harvest' + remainingText.split(/harvest/i)[1]]
+					: [remainingText, null];
 
 				// Extract cupping notes
 				const cuppingRows = [
@@ -350,6 +361,7 @@ class CaptainCoffeeSource implements CoffeeSource {
 				return {
 					arrivalDate,
 					harvestDate,
+					packaging,
 					cuppingNotes: cuppingRows.join('\n'),
 					...details
 				};
@@ -384,7 +396,7 @@ class CaptainCoffeeSource implements CoffeeSource {
 				dryingMethod: null,
 				lotSize: null,
 				bagSize: null,
-				packaging: null,
+				packaging: details.packaging,
 				type: importer || null, // Store the actual importer text instead of boolean
 				cultivarDetail: details.cultivar?.replace('Varietals:', '').trim() || null,
 				grade: details.grade?.replace('Grade:', '').trim() || null,
