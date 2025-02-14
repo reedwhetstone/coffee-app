@@ -276,6 +276,19 @@ class CaptainCoffeeSource implements CoffeeSource {
 				return importerElement ? importerElement.textContent?.trim() : null;
 			});
 
+			// Score Value
+			const scoreValue = await page.evaluate(() => {
+				const scoreElement = document.querySelector(
+					'div.short-description > p > em > i > a > strong'
+				);
+				if (scoreElement) {
+					const text = scoreElement.textContent?.trim();
+					if (text?.includes('3')) return 91.5;
+					if (text?.includes('6')) return 87.5;
+				}
+				return 85;
+			});
+
 			// Short Description
 			const descriptionShort = await page.evaluate(() => {
 				const descElement = document.querySelector('div.short-description > p > em');
@@ -302,7 +315,9 @@ class CaptainCoffeeSource implements CoffeeSource {
 
 				// Extract arrival and harvest dates
 				const dateText = container.querySelector('p:nth-child(1)')?.textContent || '';
-				const [arrivalDate, harvestDate] = dateText.split(';').map((s) => s.trim());
+				const [arrivalDate, harvestDate] = dateText.includes('Harvest')
+					? [dateText.split('Harvest')[0], 'Harvest' + dateText.split('Harvest')[1]]
+					: [dateText, null];
 
 				// Extract cupping notes
 				const cuppingRows = [
@@ -357,7 +372,7 @@ class CaptainCoffeeSource implements CoffeeSource {
 			return {
 				productName,
 				url,
-				scoreValue: null, // Captain's Coffee doesn't have scores
+				scoreValue,
 				descriptionShort,
 				descriptionLong,
 				farmNotes: `${details.grower}\n${farmNotes}`.trim(),
