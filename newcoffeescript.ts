@@ -1,3 +1,5 @@
+//run with -- npm run scrape
+
 import { chromium } from 'playwright';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
@@ -17,7 +19,12 @@ interface ScrapedData {
 	[key: string]: any; // This allows for dynamic string keys
 }
 
-async function collectInitUrlsData() {
+interface ProductData {
+	url: string;
+	price: number | null;
+}
+
+async function collectInitUrlsData(): Promise<ProductData[]> {
 	const browser = await chromium.launch({ headless: false });
 	const context = await browser.newContext();
 	const page = await context.newPage();
@@ -27,23 +34,36 @@ async function collectInitUrlsData() {
 			'https://www.sweetmarias.com/green-coffee.html?product_list_limit=all&sm_status=1',
 			{ timeout: 60000 }
 		);
-		await page.waitForTimeout(2000); // Give page time to load
+		await page.waitForTimeout(2000);
 
-		const urls = await page.evaluate(() => {
-			const links = document.querySelectorAll('a.product-item-link.generated');
-			return Array.from(links).map((link) => (link as HTMLAnchorElement).href);
+		const urlsAndPrices = await page.evaluate(() => {
+			const products = document.querySelectorAll('tr.item');
+			return Array.from(products).map((product) => {
+				const link = product.querySelector('.product-item-link') as HTMLAnchorElement;
+				const priceElement = product.querySelector('.price-wrapper .price') as HTMLElement;
+
+				const url = link ? link.href : null;
+				const priceText = priceElement ? priceElement.innerText.trim() : null;
+				const price = priceText ? parseFloat(priceText.replace('$', '')) : null;
+
+				return { url, price };
+			});
 		});
 
 		await browser.close();
-		return urls;
+		const filteredResults = urlsAndPrices.filter(
+			(item): item is ProductData =>
+				item.url !== null && typeof item.url === 'string' && item.price !== null // Only include items with valid prices
+		);
+		return filteredResults;
 	} catch (error) {
-		console.error('Error collecting URLs:', error);
+		console.error('Error collecting URLs and prices:', error);
 		await browser.close();
 		return [];
 	}
 }
 
-async function scrapeUrl(url: string): Promise<ScrapedData | null> {
+async function scrapeUrl(url: string, price: number | null): Promise<ScrapedData | null> {
 	const browser = await chromium.launch({ headless: false });
 	const context = await browser.newContext();
 	const page = await context.newPage();
@@ -66,15 +86,6 @@ async function scrapeUrl(url: string): Promise<ScrapedData | null> {
 				'#maincontent > div > div > div.product-main-container > div > div.product.attribute.overview > div > p'
 			);
 			return descElement ? (descElement as HTMLElement).innerText.trim() : null;
-		});
-
-		// Add cost_lb extraction
-		const costLb = await page.evaluate(() => {
-			const priceElement = document.querySelector('.price');
-			if (!priceElement) return null;
-			const priceText = (priceElement as HTMLElement).innerText.trim();
-			// Remove '$' and convert to number
-			return priceText ? parseFloat(priceText.replace('$', '')) : null;
 		});
 
 		// Add score value extraction
@@ -128,7 +139,7 @@ async function scrapeUrl(url: string): Promise<ScrapedData | null> {
 			descriptionShort,
 			descriptionLong,
 			farmNotes,
-			cost_lb: costLb
+			cost_lb: price
 		};
 	} catch (error) {
 		console.error(`Error scraping ${url}:`, error);
@@ -186,17 +197,29 @@ async function updateDatabase() {
 			return { success: false, message: 'Aborted before URL collection' };
 		}
 
-		const allProductUrls = await collectInitUrlsData();
-		console.log(`Found ${allProductUrls.length} total products`);
+		// First get all current products from the page
+		const productsData = await collectInitUrlsData();
+		const inStockUrls = productsData.map((item) => item.url);
+		console.log(`Found ${inStockUrls.length} total products on Sweet Maria's website`);
+
+		// Get all Sweet Maria products from database
+		const { data: dbProducts, error: fetchError } = await supabase
+			.from('coffee_catalog')
+			.select('link')
+			.eq('source', 'sweet_maria');
+
+		if (fetchError) throw fetchError;
+		console.log(`Found ${dbProducts?.length || 0} Sweet Maria products in database`);
 
 		if (
 			!(await confirmStep(
-				`Step 2: About to set all existing Sweet Maria products to stocked = false (${allProductUrls.length} products found).`
+				`Step 2: About to set all ${dbProducts?.length || 0} existing Sweet Maria products to stocked = false`
 			))
 		) {
 			return { success: false, message: 'Aborted before updating stock status' };
 		}
 
+		// Set all existing Sweet Maria products to stocked = false
 		const { error: updateError } = await supabase
 			.from('coffee_catalog')
 			.update({ stocked: false })
@@ -204,30 +227,46 @@ async function updateDatabase() {
 
 		if (updateError) throw updateError;
 
-		const newUrls = await checkExistingUrls(allProductUrls);
-		if (
-			!(await confirmStep(
-				`Step 3: Found ${newUrls.length} new products to process and ${allProductUrls.length - newUrls.length} existing products to update.`
-			))
-		) {
-			return { success: false, message: 'Aborted before processing new products' };
+		// Create a map of URL to price for updates
+		const priceMap = new Map(productsData.map((item) => [item.url, item.price]));
+
+		// Then update stocked status and prices for in-stock items
+		for (const url of inStockUrls) {
+			const price = priceMap.get(url);
+			const { error: stockedError } = await supabase
+				.from('coffee_catalog')
+				.update({
+					stocked: true,
+					cost_lb: price
+				})
+				.eq('link', url)
+				.eq('source', 'sweet_maria');
+
+			if (stockedError) throw stockedError;
 		}
 
-		const { error: stockedError } = await supabase
-			.from('coffee_catalog')
-			.update({ stocked: true })
-			.in('link', allProductUrls)
-			.eq('source', 'sweet_maria');
+		// Get new URLs to process (ones not in our database)
+		const newUrls = await checkExistingUrls(inStockUrls);
 
-		if (stockedError) throw stockedError;
+		// Add debugging to verify the updates
+		const { data: stillStocked, error: checkError } = await supabase
+			.from('coffee_catalog')
+			.select('link')
+			.eq('source', 'sweet_maria')
+			.eq('stocked', true);
+
+		if (checkError) throw checkError;
+		console.log('Products now marked as stocked in DB:', stillStocked?.length || 0);
+		console.log('Number of new URLs to process:', newUrls.length);
 
 		// Process new products
 		for (const url of newUrls) {
-			if (!(await confirmStep(`Step 4: About to process URL: ${url}`))) {
+			if (!(await confirmStep(`Step 3: About to process URL: ${url}`))) {
 				return { success: false, message: 'Aborted during product processing' };
 			}
 
-			const scrapedData = await scrapeUrl(url);
+			const price = priceMap.get(url);
+			const scrapedData = await scrapeUrl(url, price);
 
 			if (scrapedData) {
 				const { error } = await supabase.from('coffee_catalog').insert({
