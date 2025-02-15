@@ -22,7 +22,18 @@
 	});
 
 	let chatSession = model.startChat({
-		history: []
+		history: [
+			{
+				role: 'user',
+				parts:
+					'You are a coffee expert. Please help users find the perfect coffee based on their preferences and questions.'
+			},
+			{
+				role: 'model',
+				parts:
+					"I'll help users find their perfect coffee match by leveraging my expertise and the available coffee data."
+			}
+		]
 	});
 
 	// Function to handle chat
@@ -31,8 +42,12 @@
 
 		isLoading = true;
 		try {
+			// The history is automatically maintained by the chatSession
 			const result = await chatSession.sendMessage(searchQuery);
 			chatResponse = result.response.text();
+
+			// Clear the search query after sending
+			searchQuery = '';
 		} catch (error) {
 			console.error('Chat error:', error);
 			chatResponse = 'An error occurred while processing your request.';
@@ -114,6 +129,79 @@
 
 		return keys;
 	}
+
+	// Add recommendation state
+	let recommendedCoffees: any[] = [];
+	let isLoadingRecommendations = false;
+
+	// Add function to get recommendations
+	async function getRecommendations(query: string) {
+		isLoadingRecommendations = true;
+		try {
+			const result = await chatSession.sendMessage(`
+				You are a coffee expert. Use the following information to make informed recommendations:
+
+				COFFEE KNOWLEDGE BASE:
+				${JSON.stringify(data.trainingData)}
+
+				CURRENTLY STOCKED COFFEES:
+				${JSON.stringify(data.data.map((coffee) => coffee.id))}
+
+				COFFEE EXPERTISE GUIDELINES:
+				1. Higher scoring coffees generally indicate superior quality. Sweet Maria's coffee scores are the only true scores. The other sources do not provide ranking out of 100 and are therefore calibrated based on sentiment. They should be considered with a grain of salt.
+				2. Price per pound is both an indicator of quality and value.
+				2. Fresh arrival dates are preferred (within the last 6 months) but coffees without arrival dates should not be excluded.
+				3. Consider this source ranking when weighting recommendations:
+				Sweet Maria’s: 93/100
+					• Reputation: Often called the “gold standard” for green coffee; praised for excellent farm‐and‐bean information.
+					• Strengths: Consistent quality, broad range of origins, trusted by home roasters worldwide.
+					• Minor Criticisms: Occasional reports of beans arriving slightly past their prime.
+
+				Bodhi Leaf: 90/100
+					• Reputation: Known for its Q-Grader–certified approach and fresh, interesting beans.
+					• Strengths: Emphasis on quality and careful sourcing; appeals to a niche of specialty roasters looking for a modern, curated selection. 
+					• Minor Criticisms: Slightly higher price point can affect perceived value for some consumers.There are a few isolated reports—such as one reviewer noting excessive defects (e.g. holes from bugs)—which might affect consistency for some batches.
+
+				The Captain’s Coffee: 87/100
+					• Reputation: Well‐regarded for its unique selections and detailed bean/farm notes.
+					• Strengths: High-quality, with a loyal following among roasters who appreciate its curated offerings.
+					• Minor Criticisms: Some regional preferences noted, and while quality is high, it’s sometimes seen as less “iconic” than Sweet Maria’s. Mixed regional sentiment (for example, some West Coast roasters lean toward Sweet Maria’s for shipping speed and reputation) 
+
+				USER QUERY: ${query}
+
+				TASK:
+				Recommend 3 currently stocked coffees that best match the query.
+				Consider freshness, scores, processing methods, and value.
+				Explain why each coffee was selected.
+
+				FORMAT RESPONSE AS JSON:
+				{
+					"recommendations": [
+						{
+							"id": "coffee_id",
+							"reason": "Detailed explanation including quality, freshness, value, and flavor profile"
+						}
+					]
+				}
+			`);
+
+			const recommendations = JSON.parse(result.response.text());
+			recommendedCoffees = recommendations.recommendations.map((rec) => ({
+				...data.data.find((coffee) => coffee.id === rec.id),
+				reason: rec.reason
+			}));
+		} catch (error) {
+			console.error('Recommendation error:', error);
+			recommendedCoffees = [];
+		} finally {
+			isLoadingRecommendations = false;
+		}
+	}
+
+	// Update your search handler to also get recommendations
+	async function handleSearch() {
+		await Promise.all([handleChat(), getRecommendations(searchQuery)]);
+	}
 </script>
 
 <!-- Add search and chat interface -->
@@ -126,7 +214,7 @@
 			class="flex-1 rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 placeholder-zinc-400"
 		/>
 		<button
-			on:click={handleChat}
+			on:click={handleSearch}
 			class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
 			disabled={isLoading}
 		>
@@ -140,6 +228,29 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Add recommendations UI -->
+{#if recommendedCoffees.length > 0}
+	<div class="mt-8">
+		<h3 class="mb-4 text-xl font-semibold">Recommended Coffees</h3>
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+			{#each recommendedCoffees as coffee}
+				<a
+					href={coffee.link}
+					target="_blank"
+					class="block rounded-lg border p-4 transition-colors hover:bg-zinc-100 hover:shadow-md"
+				>
+					<h4 class="font-semibold">{coffee.name}</h4>
+					<p class="mt-2 text-sm text-gray-600">{coffee.reason}</p>
+					<div class="mt-4">
+						<span class="text-sm">Score: {coffee.score_value}</span>
+						<span class="ml-4 text-sm">${coffee.cost_lb}/lb</span>
+					</div>
+				</a>
+			{/each}
+		</div>
+	</div>
+{/if}
 
 <div class="my-8 mt-8">
 	{#if !data?.data || data.data.length === 0}
