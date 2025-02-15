@@ -24,6 +24,7 @@ interface ScrapedData {
 interface ProductData {
 	url: string;
 	price: number | null;
+	available?: boolean; // Add this optional field
 }
 
 // Add new interfaces for source-specific implementations
@@ -241,7 +242,8 @@ class CaptainCoffeeSource implements CoffeeSource {
 			await browser.close();
 
 			const filteredResults = initPageData.filter(
-				(item): item is ProductData => item.url !== null && typeof item.url === 'string'
+				(item): item is ProductData =>
+					item.url !== null && typeof item.url === 'string' && item.price !== null
 			);
 			console.log('Filtered results:', filteredResults);
 
@@ -403,6 +405,134 @@ class CaptainCoffeeSource implements CoffeeSource {
 				appearance: null,
 				roastRecs,
 				cuppingNotes: details.cuppingNotes
+			};
+		} catch (error) {
+			console.error(`Error scraping ${url}:`, error);
+			await browser.close();
+			return null;
+		}
+	}
+}
+
+class BohdiLeafSource implements CoffeeSource {
+	name = 'bohdi_leaf';
+	baseUrl = 'https://www.bodhileafcoffee.com/collections/green-coffee';
+
+	async collectInitUrlsData(): Promise<ProductData[]> {
+		const browser = await chromium.launch({ headless: false });
+		const context = await browser.newContext();
+		const page = await context.newPage();
+
+		try {
+			await page.goto(this.baseUrl, { timeout: 60000 });
+			await page.waitForTimeout(2000);
+
+			const urlsAndPrices = await page.evaluate(() => {
+				const products = document.querySelectorAll('.grid__item');
+				return Array.from(products).map((product) => {
+					const link = product.querySelector('a.full-unstyled-link') as HTMLAnchorElement;
+					const priceElement = product.querySelector('.price__regular .price-item') as HTMLElement;
+
+					const url = link ? link.href : null;
+					const priceText = priceElement ? priceElement.innerText.trim() : null;
+					const price = priceText ? parseFloat(priceText.replace('$', '')) : null;
+
+					return { url, price };
+				});
+			});
+
+			await browser.close();
+			const filteredResults = urlsAndPrices.filter(
+				(item): item is ProductData =>
+					item.url !== null && typeof item.url === 'string' && item.price !== null
+			);
+			return filteredResults;
+		} catch (error) {
+			console.error('Error collecting URLs and prices:', error);
+			await browser.close();
+			return [];
+		}
+	}
+
+	async scrapeUrl(url: string, price: number | null): Promise<ScrapedData | null> {
+		const browser = await chromium.launch({ headless: false });
+		const context = await browser.newContext();
+		const page = await context.newPage();
+
+		try {
+			await page.goto(url, { timeout: 60000 });
+			await page.waitForTimeout(2000);
+
+			const productData = await page.evaluate(() => {
+				const productName =
+					document.querySelector('.product__title h1')?.textContent?.trim() || null;
+				const descriptionElement = document.querySelector('.product__description');
+				const description = descriptionElement?.textContent?.trim() || null;
+
+				// Split description into parts
+				let descriptionShort = null;
+				let descriptionLong = null;
+				let farmNotes = null;
+
+				if (description) {
+					const parts = description.split('\n').filter((part) => part.trim());
+					descriptionShort = parts[0] || null;
+					descriptionLong = parts.slice(1).join('\n') || null;
+				}
+
+				// Extract details from the description
+				const details: { [key: string]: string | null } = {};
+				const detailsText = description || '';
+
+				// Common patterns to look for
+				const patterns = {
+					region: /Region:\s*([^\n]+)/i,
+					processing: /Process(?:ing)?:\s*([^\n]+)/i,
+					cultivarDetail: /Variet(?:y|ies|als):\s*([^\n]+)/i,
+					grade: /Grade:\s*([^\n]+)/i,
+					elevation: /Elevation:\s*([^\n]+)/i,
+					harvestDate: /Harvest:\s*([^\n]+)/i,
+					arrivalDate: /Arrival:\s*([^\n]+)/i
+				};
+
+				Object.entries(patterns).forEach(([key, pattern]) => {
+					const match = detailsText.match(pattern);
+					details[key] = match ? match[1].trim() : null;
+				});
+
+				return {
+					productName,
+					descriptionShort,
+					descriptionLong,
+					farmNotes,
+					...details
+				};
+			});
+
+			await browser.close();
+
+			return {
+				productName: productData.productName,
+				url,
+				scoreValue: null,
+				descriptionShort: productData.descriptionShort,
+				descriptionLong: productData.descriptionLong,
+				farmNotes: productData.farmNotes,
+				cost_lb: price,
+				arrivalDate: productData.arrivalDate,
+				harvestDate: productData.harvestDate,
+				region: productData.region,
+				processing: productData.processing,
+				dryingMethod: null,
+				lotSize: null,
+				bagSize: null,
+				packaging: null,
+				cultivarDetail: productData.cultivarDetail,
+				grade: productData.grade,
+				appearance: null,
+				roastRecs: null,
+				type: null,
+				cuppingNotes: null
 			};
 		} catch (error) {
 			console.error(`Error scraping ${url}:`, error);
@@ -580,7 +710,8 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
 	const sourceMap = {
 		sweet_maria: new SweetMariasSource(),
-		captain_coffee: new CaptainCoffeeSource()
+		captain_coffee: new CaptainCoffeeSource(),
+		bohdi_leaf: new BohdiLeafSource()
 	};
 
 	const sourceName = process.argv[2];
