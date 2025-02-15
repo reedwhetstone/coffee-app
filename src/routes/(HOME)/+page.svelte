@@ -28,7 +28,10 @@
 				role: 'user',
 				parts: [
 					{
-						text: 'You are a coffee expert. Please help users find the perfect coffee based on their preferences and questions.'
+						text:
+							'You are a coffee expert. Please help users find the perfect coffee based on their preferences and questions. The date is currently ' +
+							new Date().toLocaleDateString() +
+							'.'
 					}
 				]
 			},
@@ -36,7 +39,10 @@
 				role: 'model',
 				parts: [
 					{
-						text: "I'll help users find their perfect coffee match by leveraging my expertise and the available coffee data. I will only recommend coffees that are currently stocked. When possible, I will make recommendations based on the initial user request, without additional information from the user."
+						text:
+							"I'll help users find their perfect coffee match by leveraging my expertise and the available coffee data. I will only recommend coffees that are currently stocked. When possible, I will make recommendations based on the initial user request, without additional information from the user. I underdtand that today's date is " +
+							new Date().toLocaleDateString() +
+							'.'
 					}
 				]
 			}
@@ -131,24 +137,23 @@
 		isLoadingRecommendations = true;
 		try {
 			const result = await getRecommendations(searchQuery);
-			console.log('Raw AI response:', result.response);
+			//console.log('Raw AI response:', result.response);
 			const responseText = result.response.text();
-			console.log('Response text:', responseText);
+			//console.log('Response text:', responseText);
 
 			// Find JSON content between ```json and ``` markers
 			const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
-			console.log('JSON match:', jsonMatch);
+			//console.log('JSON match:', jsonMatch);
 
 			// Everything before the JSON is the natural language response
 			chatResponse = responseText.split('```json')[0].trim();
-			console.log('Chat response:', chatResponse);
 
 			if (jsonMatch && jsonMatch[1]) {
 				try {
 					const parsedJson = JSON.parse(jsonMatch[1].trim());
-					console.log('Parsed JSON:', parsedJson);
+					//	console.log('Parsed JSON:', parsedJson);
 					const { recommendations } = parsedJson;
-					console.log('Recommendations:', recommendations);
+					//	console.log('Recommendations:', recommendations);
 
 					// Fetch coffee details from the database for each recommended ID
 					const coffeeDetails = await Promise.all(
@@ -185,7 +190,7 @@
 		return await chatSession.sendMessage(`
 			You are a coffee expert. Use the following information to make informed recommendations:
 
-			AVAILABLE COFFEES:
+			AVAILABLE STOCKED COFFEES:
 			${JSON.stringify(data.data, null, 2)}
 
 			COFFEE EXPERTISE GUIDELINES:
@@ -249,53 +254,55 @@
 	});
 </script>
 
-<!-- Add search and chat interface -->
 <div class="mx-8 mt-8 space-y-4">
-	<div class="flex gap-4">
-		<input
-			type="text"
-			bind:value={searchQuery}
-			placeholder="Search coffees or ask a question..."
-			class="flex-1 rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 placeholder-zinc-400"
-		/>
-		<button
-			on:click={handleSearch}
-			class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-			disabled={isLoading}
-		>
-			{isLoading ? 'Processing...' : 'Ask AI'}
-		</button>
+	<!-- Add search and chat interface -->
+	<div class="mx-8 mt-8 space-y-4">
+		<div class="flex gap-4">
+			<input
+				type="text"
+				bind:value={searchQuery}
+				placeholder="Search coffees or ask a question..."
+				class="flex-1 rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 placeholder-zinc-400"
+			/>
+			<button
+				on:click={handleSearch}
+				class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+				disabled={isLoading}
+			>
+				{isLoading ? 'Processing...' : 'YOLO!'}
+			</button>
+		</div>
+
+		{#if chatResponse}
+			<div class="rounded-lg bg-zinc-700 p-4 text-zinc-100">
+				<p class="whitespace-pre-wrap">{chatResponse}</p>
+			</div>
+		{/if}
 	</div>
 
-	{#if chatResponse}
-		<div class="rounded-lg bg-zinc-700 p-4 text-zinc-100">
-			<p class="whitespace-pre-wrap">{chatResponse}</p>
+	<!-- Add recommendations UI -->
+	{#if recommendedCoffees.length > 0}
+		<div class="mt-8">
+			<h3 class="mb-4 text-xl font-semibold text-zinc-100">Recommended Coffees</h3>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+				{#each recommendedCoffees as coffee}
+					<a
+						href={coffee.link}
+						target="_blank"
+						class="block rounded-lg bg-zinc-700 p-4 transition-colors hover:bg-zinc-800 hover:shadow-md"
+					>
+						<h4 class="font-semibold text-zinc-100">{coffee.name}</h4>
+						<p class="mt-2 text-sm text-zinc-100">{coffee.reason}</p>
+						<div class="mt-4">
+							<span class="text-sm text-zinc-100">Score: {coffee.score_value}</span>
+							<span class="ml-4 text-sm text-zinc-100">${coffee.cost_lb}/lb</span>
+						</div>
+					</a>
+				{/each}
+			</div>
 		</div>
 	{/if}
 </div>
-
-<!-- Add recommendations UI -->
-{#if recommendedCoffees.length > 0}
-	<div class="mt-8">
-		<h3 class="mb-4 text-xl font-semibold">Recommended Coffees</h3>
-		<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-			{#each recommendedCoffees as coffee}
-				<a
-					href={coffee.link}
-					target="_blank"
-					class="block rounded-lg border bg-zinc-700 p-4 transition-colors hover:bg-zinc-800 hover:shadow-md"
-				>
-					<h4 class="font-semibold">{coffee.name}</h4>
-					<p class="mt-2 text-sm text-zinc-100">{coffee.reason}</p>
-					<div class="mt-4">
-						<span class="text-sm text-zinc-100">Score: {coffee.score_value}</span>
-						<span class="ml-4 text-sm text-zinc-100">${coffee.cost_lb}/lb</span>
-					</div>
-				</a>
-			{/each}
-		</div>
-	</div>
-{/if}
 
 <div class="my-8 mt-8">
 	{#if !data?.data || data.data.length === 0}
