@@ -285,14 +285,14 @@ class CaptainCoffeeSource implements CoffeeSource {
 				});
 			});
 
-			console.log('All collected data:', initPageData);
+			//console.log('All collected data:', initPageData);
 			await browser.close();
 
 			const filteredResults = initPageData.filter(
 				(item): item is ProductData =>
 					item.url !== null && typeof item.url === 'string' && item.price !== null
 			);
-			console.log('Filtered results:', filteredResults);
+			//console.log('Filtered results:', filteredResults);
 
 			return filteredResults;
 		} catch (error) {
