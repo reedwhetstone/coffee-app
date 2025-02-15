@@ -357,14 +357,27 @@ class CaptainCoffeeSource implements CoffeeSource {
 			});
 
 			// Details (Tab 4)
-			const details = await page.evaluate(() => {
-				const container = document.querySelector('#collapse-tab4 > div');
-				if (!container) return {};
+			const details: {
+				grower?: string;
+				arrivalDate?: string;
+				harvestDate?: string;
+				region?: string;
+				processing?: string;
+				packaging?: string;
+				cultivar?: string;
+				grade?: string;
+				cuppingNotes?: string;
+				country?: string;
+				cultivarDetail?: string;
+				farmNotes?: string;
+				roastRecs?: string;
+			} = {};
 
+			await page.evaluate(() => {
 				// Extract arrival, harvest dates, and packaging
-				const dateText = container.querySelector('p:nth-child(1)')?.textContent || '';
+				const dateText = document.querySelector('p:nth-child(1)')?.textContent || '';
 				let remainingText = dateText;
-				let packaging = null;
+				let packaging = '';
 
 				// Extract packaging information first
 				if (remainingText.toLowerCase().includes('packed')) {
@@ -386,7 +399,7 @@ class CaptainCoffeeSource implements CoffeeSource {
 					'Flavors'
 				]
 					.map((header) => {
-						const row = Array.from(container.querySelectorAll('p')).find((p) =>
+						const row = Array.from(document.querySelectorAll('p')).find((p) =>
 							p.textContent?.includes(header)
 						);
 						return row ? row.textContent?.trim() : null;
@@ -394,8 +407,7 @@ class CaptainCoffeeSource implements CoffeeSource {
 					.filter(Boolean);
 
 				// Extract other details
-				const rows = Array.from(container.querySelectorAll('p'));
-				const details: { [key: string]: string } = {};
+				const rows = Array.from(document.querySelectorAll('p'));
 
 				rows.forEach((row) => {
 					const text = row.textContent?.trim() || '';
@@ -430,7 +442,7 @@ class CaptainCoffeeSource implements CoffeeSource {
 			await browser.close();
 
 			return {
-				productName,
+				productName: productName ?? null,
 				url,
 				scoreValue,
 				descriptionShort,
@@ -522,7 +534,21 @@ class BodhiLeafSource implements CoffeeSource {
 
 				// Process description div content
 				const descDiv = document.querySelector('div.description.bottom');
-				const details: { [key: string]: string | null } = {};
+				const details: {
+					grower?: string;
+					arrivalDate?: string;
+					harvestDate?: string;
+					region?: string;
+					processing?: string;
+					packaging?: string;
+					cultivar?: string;
+					grade?: string;
+					cuppingNotes?: string;
+					country?: string;
+					cultivarDetail?: string;
+					farmNotes?: string;
+					roastRecs?: string;
+				} = {};
 				let descriptionShort = '';
 				let descriptionLong = '';
 
@@ -591,7 +617,7 @@ class BodhiLeafSource implements CoffeeSource {
 			await browser.close();
 
 			return {
-				productName: productData.productName,
+				productName: productData.productName ?? null,
 				url,
 				scoreValue: productData.scoreValue,
 				descriptionShort: productData.descriptionShort,
@@ -695,7 +721,7 @@ async function updateDatabase(source: CoffeeSource) {
 				return { success: false, message: 'Aborted during product processing' };
 			}
 
-			const price = priceMap.get(url);
+			const price = priceMap.get(url) ?? null;
 			const scrapedData = await source.scrapeUrl(url, price);
 
 			if (scrapedData) {
