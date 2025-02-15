@@ -828,23 +828,51 @@ if (isMainModule) {
 		process.exit(1);
 	}
 
-	const source = sourceMap[sourceName as keyof typeof sourceMap];
-	if (!source) {
-		console.error(
-			`Error: Invalid source specified. Valid options are: "${Object.keys(sourceMap).join('" or "')}"`
-		);
-		process.exit(1);
-	}
-
-	updateDatabase(source)
-		.then((result) => {
-			if (!result.success) {
-				console.log(result.message);
-			}
-			process.exit(0);
-		})
-		.catch((error) => {
-			console.error('Error:', error);
+	// Check if "all" is specified
+	if (sourceName === 'all') {
+		// Run all sources in parallel
+		Promise.all(
+			Object.values(sourceMap).map((source) =>
+				updateDatabase(source)
+					.then((result) => {
+						if (!result.success) {
+							console.log(`${source.name}: ${result.message}`);
+						} else {
+							console.log(`${source.name}: Completed successfully`);
+						}
+					})
+					.catch((error) => {
+						console.error(`${source.name} Error:`, error);
+					})
+			)
+		)
+			.then(() => {
+				console.log('All sources completed');
+				process.exit(0);
+			})
+			.catch((error) => {
+				console.error('Fatal error:', error);
+				process.exit(1);
+			});
+	} else {
+		const source = sourceMap[sourceName as keyof typeof sourceMap];
+		if (!source) {
+			console.error(
+				`Error: Invalid source specified. Valid options are: "all" or "${Object.keys(sourceMap).join('" or "')}"`
+			);
 			process.exit(1);
-		});
+		}
+
+		updateDatabase(source)
+			.then((result) => {
+				if (!result.success) {
+					console.log(result.message);
+				}
+				process.exit(0);
+			})
+			.catch((error) => {
+				console.error('Error:', error);
+				process.exit(1);
+			});
+	}
 }
