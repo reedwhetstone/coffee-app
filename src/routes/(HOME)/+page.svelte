@@ -1,7 +1,45 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { GoogleGenerativeAI } from '@google/generative-ai';
 
 	export let data: PageData;
+
+	// Add search functionality
+	let searchQuery = '';
+	let chatResponse = '';
+	let isLoading = false;
+
+	// Initialize Gemini
+	const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+	const model = genAI.getGenerativeModel({
+		model: 'gemini-2.0-flash-exp',
+		generationConfig: {
+			temperature: 0,
+			topP: 0.95,
+			topK: 40,
+			maxOutputTokens: 8192
+		}
+	});
+
+	let chatSession = model.startChat({
+		history: []
+	});
+
+	// Function to handle chat
+	async function handleChat() {
+		if (!searchQuery.trim()) return;
+
+		isLoading = true;
+		try {
+			const result = await chatSession.sendMessage(searchQuery);
+			chatResponse = result.response.text();
+		} catch (error) {
+			console.error('Chat error:', error);
+			chatResponse = 'An error occurred while processing your request.';
+		} finally {
+			isLoading = false;
+		}
+	}
 
 	// Add sorting functionality
 	let sortField: string | null = 'arrival_date';
@@ -29,7 +67,7 @@
 		return new Date(parseInt(year), monthIndex);
 	}
 
-	// Computed sorted data with reordered columns
+	// Update sorted data (removed search filtering)
 	$: sortedData = data?.data
 		? [...data.data].sort((a, b) => {
 				if (!sortField || !sortDirection) return 0;
@@ -77,6 +115,31 @@
 		return keys;
 	}
 </script>
+
+<!-- Add search and chat interface -->
+<div class="mx-8 mt-8 space-y-4">
+	<div class="flex gap-4">
+		<input
+			type="text"
+			bind:value={searchQuery}
+			placeholder="Search coffees or ask a question..."
+			class="flex-1 rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 placeholder-zinc-400"
+		/>
+		<button
+			on:click={handleChat}
+			class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+			disabled={isLoading}
+		>
+			{isLoading ? 'Processing...' : 'Ask AI'}
+		</button>
+	</div>
+
+	{#if chatResponse}
+		<div class="rounded-lg bg-zinc-700 p-4 text-zinc-100">
+			<p class="whitespace-pre-wrap">{chatResponse}</p>
+		</div>
+	{/if}
+</div>
 
 <div class="my-8 mt-8">
 	{#if !data?.data || data.data.length === 0}
