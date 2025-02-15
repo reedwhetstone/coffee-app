@@ -512,48 +512,79 @@ class BodhiLeafSource implements CoffeeSource {
 			await page.waitForTimeout(2000);
 
 			const productData = await page.evaluate(() => {
-				const productName =
-					document.querySelector('.product__title h1')?.textContent?.trim() || null;
-				const descriptionElement = document.querySelector('.product__description');
-				const description = descriptionElement?.textContent?.trim() || null;
+				// Product Name
+				const productName = document.querySelector('h1.product_name')?.textContent?.trim() || null;
 
-				// Split description into parts
-				let descriptionShort = null;
-				let descriptionLong = null;
-				let farmNotes = null;
+				// Score Value
+				const scoreElement = document.querySelector('span.jdgm-prev-badge__stars');
+				const dataScore = scoreElement?.getAttribute('data-score');
+				const scoreValue = dataScore ? 4.3 * parseFloat(dataScore) + 70 : null;
 
-				if (description) {
-					const parts = description.split('\n').filter((part) => part.trim());
-					descriptionShort = parts[0] || null;
-					descriptionLong = parts.slice(1).join('\n') || null;
+				// Process description div content
+				const descDiv = document.querySelector('div.description.bottom');
+				const details: { [key: string]: string | null } = {};
+				let descriptionShort = '';
+				let descriptionLong = '';
+
+				if (descDiv) {
+					const content = descDiv.innerHTML;
+					const lines = content.split('<br>');
+
+					// Process each line for structured data
+					lines.forEach((line) => {
+						const text = line.replace(/<[^>]*>/g, ' ').trim();
+
+						if (text.startsWith('Country:')) {
+							details.country = text.replace('Country:', '').trim();
+						} else if (text.startsWith('Region:')) {
+							details.region = text.replace('Region:', '').trim();
+						} else if (text.startsWith('Varietal:')) {
+							details.cultivarDetail = text.replace('Varietal:', '').trim();
+						} else if (text.startsWith('Farm:')) {
+							details.farmNotes = text.replace('Farm:', '').trim();
+						} else if (text.startsWith('Process:')) {
+							details.processing = text.replace('Process:', '').trim();
+						} else if (text.startsWith('Altitude:')) {
+							details.grade = text.replace('Altitude:', '').trim();
+						} else if (text.startsWith('Cupping Notes:')) {
+							details.cuppingNotes = text.replace('Cupping Notes:', '').trim();
+						} else if (text.startsWith('Recommended Roast:')) {
+							details.roastRecs = text.replace('Recommended Roast:', '').trim();
+						}
+					});
+
+					// Process description paragraphs
+					const paragraphs = Array.from(descDiv.querySelectorAll('p'));
+					paragraphs.forEach((p) => {
+						const text = p.textContent?.trim() || '';
+						if (text.startsWith('Good For:')) {
+							descriptionShort = text + '\n';
+						} else if (text.includes('Description:')) {
+							descriptionShort += text.replace('Description:', '').trim();
+						} else {
+							descriptionLong += text + '\n';
+						}
+					});
 				}
 
-				// Extract details from the description
-				const details: { [key: string]: string | null } = {};
-				const detailsText = description || '';
-
-				// Common patterns to look for
-				const patterns = {
-					region: /Region:\s*([^\n]+)/i,
-					processing: /Process(?:ing)?:\s*([^\n]+)/i,
-					cultivarDetail: /Variet(?:y|ies|als):\s*([^\n]+)/i,
-					grade: /Grade:\s*([^\n]+)/i,
-					elevation: /Elevation:\s*([^\n]+)/i,
-					harvestDate: /Harvest:\s*([^\n]+)/i,
-					arrivalDate: /Arrival:\s*([^\n]+)/i
-				};
-
-				Object.entries(patterns).forEach(([key, pattern]) => {
-					const match = detailsText.match(pattern);
-					details[key] = match ? match[1].trim() : null;
-				});
+				// Combine region and country
+				const region =
+					details.region && details.country
+						? `${details.region}, ${details.country}`
+						: details.region || details.country || null;
 
 				return {
 					productName,
-					descriptionShort,
-					descriptionLong,
-					farmNotes,
-					...details
+					scoreValue,
+					region,
+					cultivarDetail: details.cultivarDetail,
+					farmNotes: details.farmNotes,
+					cuppingNotes: details.cuppingNotes,
+					processing: details.processing,
+					grade: details.grade,
+					roastRecs: details.roastRecs,
+					descriptionShort: descriptionShort.trim(),
+					descriptionLong: descriptionLong.trim()
 				};
 			});
 
@@ -562,13 +593,13 @@ class BodhiLeafSource implements CoffeeSource {
 			return {
 				productName: productData.productName,
 				url,
-				scoreValue: null,
+				scoreValue: productData.scoreValue,
 				descriptionShort: productData.descriptionShort,
 				descriptionLong: productData.descriptionLong,
 				farmNotes: productData.farmNotes,
 				cost_lb: price,
-				arrivalDate: productData.arrivalDate,
-				harvestDate: productData.harvestDate,
+				arrivalDate: null,
+				harvestDate: null,
 				region: productData.region,
 				processing: productData.processing,
 				dryingMethod: null,
@@ -578,9 +609,9 @@ class BodhiLeafSource implements CoffeeSource {
 				cultivarDetail: productData.cultivarDetail,
 				grade: productData.grade,
 				appearance: null,
-				roastRecs: null,
+				roastRecs: productData.roastRecs,
 				type: null,
-				cuppingNotes: null
+				cuppingNotes: productData.cuppingNotes
 			};
 		} catch (error) {
 			console.error(`Error scraping ${url}:`, error);
