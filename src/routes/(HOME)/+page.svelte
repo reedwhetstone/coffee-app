@@ -131,25 +131,42 @@
 		isLoadingRecommendations = true;
 		try {
 			const result = await getRecommendations(searchQuery);
+			console.log('Raw AI response:', result.response);
 			const responseText = result.response.text();
+			console.log('Response text:', responseText);
 
 			// Find JSON content between ```json and ``` markers
 			const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+			console.log('JSON match:', jsonMatch);
+
 			// Everything before the JSON is the natural language response
 			chatResponse = responseText.split('```json')[0].trim();
+			console.log('Chat response:', chatResponse);
 
 			if (jsonMatch && jsonMatch[1]) {
 				try {
-					const recommendations = JSON.parse(jsonMatch[1].trim());
-					recommendedCoffees = recommendations.recommendations.map((rec) => ({
-						...data.data.find((coffee) => coffee.id === rec.id),
-						reason: rec.reason
-					}));
+					const parsedJson = JSON.parse(jsonMatch[1].trim());
+					console.log('Parsed JSON:', parsedJson);
+					const { recommendations } = parsedJson;
+					console.log('Recommendations:', recommendations);
+
+					// Fetch coffee details from the database for each recommended ID
+					const coffeeDetails = await Promise.all(
+						recommendations.map(async (rec) => {
+							// Convert both IDs to strings for comparison
+							const coffee = data.data.find((c) => String(c.id) === String(rec.id));
+							console.log('Found coffee for ID:', rec.id, coffee);
+							return coffee ? { ...coffee, reason: rec.reason } : null;
+						})
+					);
+					recommendedCoffees = coffeeDetails.filter(Boolean);
+					console.log('Final recommended coffees:', recommendedCoffees);
 				} catch (jsonError) {
 					console.error('JSON parsing error:', jsonError);
 					recommendedCoffees = [];
 				}
 			} else {
+				console.log('No JSON match found in response');
 				recommendedCoffees = [];
 			}
 		} catch (error) {
@@ -168,11 +185,8 @@
 		return await chatSession.sendMessage(`
 			You are a coffee expert. Use the following information to make informed recommendations:
 
-			COFFEE KNOWLEDGE BASE:
-			${JSON.stringify(data.trainingData)}
-
-			CURRENTLY STOCKED COFFEES:
-			${JSON.stringify(data.data.map((coffee) => coffee.id))}
+			AVAILABLE COFFEES:
+			${JSON.stringify(data.data, null, 2)}
 
 			COFFEE EXPERTISE GUIDELINES:
 			1. Higher scoring coffees generally indicate superior quality. Sweet Maria's coffee scores are the only true scores. The other sources do not provide ranking out of 100 and are therefore calibrated based on sentiment. They should be considered with a grain of salt.
@@ -205,16 +219,16 @@
 			FORMAT RESPONSE AS:
 			[Natural language response to the query]
 
-			json
+			\`\`\`json
 			{
 				"recommendations": [
 					{
 						"id": "coffee_id",
-						"reason": "Detailed explanation including quality, freshness, value, and flavor profile"
+						"reason": "Detailed explanation of why this coffee matches the query"
 					}
 				]
 			}
-			
+			\`\`\`
 		`);
 	}
 
