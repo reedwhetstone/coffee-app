@@ -1,6 +1,7 @@
-//run with -- npm run scrape
+//npm run scrape all
 // npm run scrape sweet-marias
 // npm run scrape captain-coffee
+// npm run scrape bodhi-leaf
 
 import { chromium, Page } from 'playwright';
 import dotenv from 'dotenv';
