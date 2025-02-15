@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { GoogleGenerativeAI } from '@google/generative-ai';
+	import { onMount } from 'svelte';
 
 	export let data: PageData;
 
@@ -25,13 +26,19 @@
 		history: [
 			{
 				role: 'user',
-				parts:
-					'You are a coffee expert. Please help users find the perfect coffee based on their preferences and questions.'
+				parts: [
+					{
+						text: 'You are a coffee expert. Please help users find the perfect coffee based on their preferences and questions.'
+					}
+				]
 			},
 			{
 				role: 'model',
-				parts:
-					"I'll help users find their perfect coffee match by leveraging my expertise and the available coffee data."
+				parts: [
+					{
+						text: "I'll help users find their perfect coffee match by leveraging my expertise and the available coffee data."
+					}
+				]
 			}
 		]
 	});
@@ -152,8 +159,8 @@
 				2. Price per pound is both an indicator of quality and value.
 				2. Fresh arrival dates are preferred (within the last 6 months) but coffees without arrival dates should not be excluded.
 				3. Consider this source ranking when weighting recommendations:
-				Sweet Maria’s: 93/100
-					• Reputation: Often called the “gold standard” for green coffee; praised for excellent farm‐and‐bean information.
+				Sweet Maria's: 93/100
+					• Reputation: Often called the "gold standard" for green coffee; praised for excellent farm‐and‐bean information.
 					• Strengths: Consistent quality, broad range of origins, trusted by home roasters worldwide.
 					• Minor Criticisms: Occasional reports of beans arriving slightly past their prime.
 
@@ -162,10 +169,10 @@
 					• Strengths: Emphasis on quality and careful sourcing; appeals to a niche of specialty roasters looking for a modern, curated selection. 
 					• Minor Criticisms: Slightly higher price point can affect perceived value for some consumers.There are a few isolated reports—such as one reviewer noting excessive defects (e.g. holes from bugs)—which might affect consistency for some batches.
 
-				The Captain’s Coffee: 87/100
+				The Captain's Coffee: 87/100
 					• Reputation: Well‐regarded for its unique selections and detailed bean/farm notes.
 					• Strengths: High-quality, with a loyal following among roasters who appreciate its curated offerings.
-					• Minor Criticisms: Some regional preferences noted, and while quality is high, it’s sometimes seen as less “iconic” than Sweet Maria’s. Mixed regional sentiment (for example, some West Coast roasters lean toward Sweet Maria’s for shipping speed and reputation) 
+					• Minor Criticisms: Some regional preferences noted, and while quality is high, it's sometimes seen as less "iconic" than Sweet Maria's. Mixed regional sentiment (for example, some West Coast roasters lean toward Sweet Maria's for shipping speed and reputation) 
 
 				USER QUERY: ${query}
 
@@ -202,6 +209,22 @@
 	async function handleSearch() {
 		await Promise.all([handleChat(), getRecommendations(searchQuery)]);
 	}
+
+	// Add default query constant
+	const DEFAULT_QUERY =
+		'What are the best value coffees available right now? Consider the price per pound and quality scores to find coffees that offer the most bang for the buck.';
+
+	// Add initial load function
+	async function loadInitialRecommendations() {
+		if (!isLoading && !chatResponse) {
+			searchQuery = DEFAULT_QUERY;
+			await handleSearch();
+		}
+	}
+
+	onMount(() => {
+		loadInitialRecommendations();
+	});
 </script>
 
 <!-- Add search and chat interface -->

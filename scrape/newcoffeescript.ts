@@ -656,7 +656,20 @@ async function updateDatabase(source: CoffeeSource) {
 		}
 
 		const productsData = await source.collectInitUrlsData();
-		const inStockUrls = productsData.map((item) => item.url);
+		const unfilteredUrls = productsData.map((item) => item.url);
+		const inStockUrls = unfilteredUrls.filter((url) => {
+			return (
+				// list of patterns to filter out
+				!url.includes('roasted') &&
+				!url.includes('subscription') &&
+				!url.includes('rstd-subs-') &&
+				!url.includes('-set-') &&
+				!url.includes('-set.html') &&
+				!url.includes('-blend') &&
+				!url.includes('-sampler') &&
+				!url.includes('steves-favorites')
+			);
+		});
 		console.log(`Found ${inStockUrls.length} total products on ${source.name}`);
 
 		// Update existing products for this source
