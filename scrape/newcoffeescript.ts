@@ -2,7 +2,7 @@
 // npm run scrape sweet-marias
 // npm run scrape captain-coffee
 
-import { chromium } from 'playwright';
+import { chromium, Page } from 'playwright';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 
@@ -33,6 +33,53 @@ interface CoffeeSource {
 	collectInitUrlsData(): Promise<ProductData[]>;
 	scrapeUrl(url: string, price: number | null): Promise<ScrapedData | null>;
 	baseUrl: string;
+}
+
+/**
+ * Scrolls down the page until no more content is loaded.
+ * @param {Page} page - The Playwright page object
+ */
+async function scrollDownUntilNoMoreContent(page: Page) {
+	// Press End key to get initial scroll height
+	//await page.keyboard.press('End');
+	await page.waitForTimeout(1000);
+
+	// Scroll down gradually
+	await page.evaluate(() => {
+		return new Promise<void>((resolve) => {
+			const distance = 100;
+			const delay = 100;
+			let extraScrolls = 0;
+			const maxExtraScrolls = 5;
+
+			const timer = setInterval(() => {
+				const scrollHeight = Math.max(
+					document.documentElement.scrollHeight,
+					document.body.scrollHeight
+				);
+				const scrollTop = Math.max(document.documentElement.scrollTop, document.body.scrollTop);
+				const clientHeight = window.innerHeight;
+
+				// More reliable bottom detection
+				const isAtBottom = Math.abs(scrollHeight - (scrollTop + clientHeight)) < 10;
+
+				if (isAtBottom) {
+					extraScrolls++;
+					console.log(`At bottom, extra scroll ${extraScrolls}/${maxExtraScrolls}`);
+					if (extraScrolls >= maxExtraScrolls) {
+						clearInterval(timer);
+						resolve();
+						return;
+					}
+				}
+
+				window.scrollBy(0, distance);
+			}, delay);
+		});
+	});
+
+	// Final wait to ensure content is loaded
+	await page.waitForTimeout(2000);
 }
 
 // Refactor Sweet Maria's specific code into a class
@@ -185,12 +232,11 @@ class CaptainCoffeeSource implements CoffeeSource {
 		const context = await browser.newContext();
 		const page = await context.newPage();
 
-		// Add console listener
-		page.on('console', (msg) => console.log('Browser:', msg.text()));
-
 		try {
 			await page.goto(this.baseUrl, { timeout: 60000 });
-			await page.waitForTimeout(2000);
+
+			// Replace the old scrolling logic with the new method
+			await scrollDownUntilNoMoreContent(page);
 
 			const initPageData = await page.evaluate(() => {
 				console.log('Starting page evaluation...');
@@ -414,8 +460,8 @@ class CaptainCoffeeSource implements CoffeeSource {
 	}
 }
 
-class BohdiLeafSource implements CoffeeSource {
-	name = 'bohdi_leaf';
+class BodhiLeafSource implements CoffeeSource {
+	name = 'bodhi_leaf';
 	baseUrl = 'https://www.bodhileafcoffee.com/collections/green-coffee';
 
 	async collectInitUrlsData(): Promise<ProductData[]> {
@@ -425,16 +471,18 @@ class BohdiLeafSource implements CoffeeSource {
 
 		try {
 			await page.goto(this.baseUrl, { timeout: 60000 });
-			await page.waitForTimeout(2000);
+			await scrollDownUntilNoMoreContent(page);
 
 			const urlsAndPrices = await page.evaluate(() => {
-				const products = document.querySelectorAll('.grid__item');
+				const products = document.querySelectorAll(
+					'.product-list.collection-matrix div.product-wrap'
+				);
 				return Array.from(products).map((product) => {
-					const link = product.querySelector('a.full-unstyled-link') as HTMLAnchorElement;
-					const priceElement = product.querySelector('.price__regular .price-item') as HTMLElement;
+					const link = product.querySelector('a[href*="/collections/green-coffee/products/"]');
+					const priceElement = product.querySelector('span.money');
 
-					const url = link ? link.href : null;
-					const priceText = priceElement ? priceElement.innerText.trim() : null;
+					const url = link ? 'https://www.bodhileafcoffee.com' + link.getAttribute('href') : null;
+					const priceText = priceElement ? priceElement.textContent?.trim() : null;
 					const price = priceText ? parseFloat(priceText.replace('$', '')) : null;
 
 					return { url, price };
@@ -671,7 +719,8 @@ async function checkExistingUrls(urls: string[]): Promise<string[]> {
 			!url.includes('-set-') &&
 			!url.includes('-set.html') &&
 			!url.includes('-blend') &&
-			!url.includes('-sampler')
+			!url.includes('-sampler') &&
+			!url.includes('steves-favorites')
 		);
 	});
 
@@ -711,7 +760,7 @@ if (isMainModule) {
 	const sourceMap = {
 		sweet_maria: new SweetMariasSource(),
 		captain_coffee: new CaptainCoffeeSource(),
-		bohdi_leaf: new BohdiLeafSource()
+		bodhi_leaf: new BodhiLeafSource()
 	};
 
 	const sourceName = process.argv[2];
