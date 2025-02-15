@@ -36,32 +36,12 @@
 				role: 'model',
 				parts: [
 					{
-						text: "I'll help users find their perfect coffee match by leveraging my expertise and the available coffee data."
+						text: "I'll help users find their perfect coffee match by leveraging my expertise and the available coffee data. I will only recommend coffees that are currently stocked. When possible, I will make recommendations based on the initial user request, without additional information from the user."
 					}
 				]
 			}
 		]
 	});
-
-	// Function to handle chat
-	async function handleChat() {
-		if (!searchQuery.trim()) return;
-
-		isLoading = true;
-		try {
-			// The history is automatically maintained by the chatSession
-			const result = await chatSession.sendMessage(searchQuery);
-			chatResponse = result.response.text();
-
-			// Clear the search query after sending
-			searchQuery = '';
-		} catch (error) {
-			console.error('Chat error:', error);
-			chatResponse = 'An error occurred while processing your request.';
-		} finally {
-			isLoading = false;
-		}
-	}
 
 	// Add sorting functionality
 	let sortField: string | null = 'arrival_date';
@@ -122,92 +102,120 @@
 	// Add function to get ordered keys
 	function getOrderedKeys(obj: any): string[] {
 		if (!obj) return [];
-		const keys = Object.keys(obj);
-		const idIndex = keys.indexOf('id');
-		const linkIndex = keys.indexOf('link');
-		const nameIndex = keys.indexOf('name');
-
-		// Remove the keys from their current positions
-		keys.splice(linkIndex, 1);
-		keys.splice(nameIndex, 1);
-
-		// Insert them in the desired order after id
-		keys.splice(1, 0, 'link', 'name');
-
-		return keys;
+		return [
+			'id',
+			'source',
+			'name',
+			'processing',
+			'region',
+			'cost_lb',
+			'score_value',
+			'arrival_date',
+			'harvest_date',
+			'cultivar_detail',
+			'description_short',
+			'cupping_notes',
+			'last_updated'
+		];
 	}
 
 	// Add recommendation state
 	let recommendedCoffees: any[] = [];
 	let isLoadingRecommendations = false;
 
-	// Add function to get recommendations
-	async function getRecommendations(query: string) {
+	// Remove the separate handleChat function and modify handleSearch to only use getRecommendations
+	async function handleSearch() {
+		if (!searchQuery.trim()) return;
+
+		isLoading = true;
 		isLoadingRecommendations = true;
 		try {
-			const result = await chatSession.sendMessage(`
-				You are a coffee expert. Use the following information to make informed recommendations:
+			const result = await getRecommendations(searchQuery);
+			const responseText = result.response.text();
 
-				COFFEE KNOWLEDGE BASE:
-				${JSON.stringify(data.trainingData)}
+			// Find JSON content between ```json and ``` markers
+			const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
+			// Everything before the JSON is the natural language response
+			chatResponse = responseText.split('```json')[0].trim();
 
-				CURRENTLY STOCKED COFFEES:
-				${JSON.stringify(data.data.map((coffee) => coffee.id))}
-
-				COFFEE EXPERTISE GUIDELINES:
-				1. Higher scoring coffees generally indicate superior quality. Sweet Maria's coffee scores are the only true scores. The other sources do not provide ranking out of 100 and are therefore calibrated based on sentiment. They should be considered with a grain of salt.
-				2. Price per pound is both an indicator of quality and value.
-				2. Fresh arrival dates are preferred (within the last 6 months) but coffees without arrival dates should not be excluded.
-				3. Consider this source ranking when weighting recommendations:
-				Sweet Maria's: 93/100
-					• Reputation: Often called the "gold standard" for green coffee; praised for excellent farm‐and‐bean information.
-					• Strengths: Consistent quality, broad range of origins, trusted by home roasters worldwide.
-					• Minor Criticisms: Occasional reports of beans arriving slightly past their prime.
-
-				Bodhi Leaf: 90/100
-					• Reputation: Known for its Q-Grader–certified approach and fresh, interesting beans.
-					• Strengths: Emphasis on quality and careful sourcing; appeals to a niche of specialty roasters looking for a modern, curated selection. 
-					• Minor Criticisms: Slightly higher price point can affect perceived value for some consumers.There are a few isolated reports—such as one reviewer noting excessive defects (e.g. holes from bugs)—which might affect consistency for some batches.
-
-				The Captain's Coffee: 87/100
-					• Reputation: Well‐regarded for its unique selections and detailed bean/farm notes.
-					• Strengths: High-quality, with a loyal following among roasters who appreciate its curated offerings.
-					• Minor Criticisms: Some regional preferences noted, and while quality is high, it's sometimes seen as less "iconic" than Sweet Maria's. Mixed regional sentiment (for example, some West Coast roasters lean toward Sweet Maria's for shipping speed and reputation) 
-
-				USER QUERY: ${query}
-
-				TASK:
-				Recommend 3 currently stocked coffees that best match the query.
-				Consider freshness, scores, processing methods, and value.
-				Explain why each coffee was selected.
-
-				FORMAT RESPONSE AS JSON:
-				{
-					"recommendations": [
-						{
-							"id": "coffee_id",
-							"reason": "Detailed explanation including quality, freshness, value, and flavor profile"
-						}
-					]
+			if (jsonMatch && jsonMatch[1]) {
+				try {
+					const recommendations = JSON.parse(jsonMatch[1].trim());
+					recommendedCoffees = recommendations.recommendations.map((rec) => ({
+						...data.data.find((coffee) => coffee.id === rec.id),
+						reason: rec.reason
+					}));
+				} catch (jsonError) {
+					console.error('JSON parsing error:', jsonError);
+					recommendedCoffees = [];
 				}
-			`);
-
-			const recommendations = JSON.parse(result.response.text());
-			recommendedCoffees = recommendations.recommendations.map((rec) => ({
-				...data.data.find((coffee) => coffee.id === rec.id),
-				reason: rec.reason
-			}));
+			} else {
+				recommendedCoffees = [];
+			}
 		} catch (error) {
-			console.error('Recommendation error:', error);
+			console.error('Search error:', error);
+			chatResponse = 'An error occurred while processing your request.';
 			recommendedCoffees = [];
 		} finally {
+			isLoading = false;
 			isLoadingRecommendations = false;
+			searchQuery = '';
 		}
 	}
 
-	// Update your search handler to also get recommendations
-	async function handleSearch() {
-		await Promise.all([handleChat(), getRecommendations(searchQuery)]);
+	// Update getRecommendations to return the result instead of processing it
+	async function getRecommendations(query: string) {
+		return await chatSession.sendMessage(`
+			You are a coffee expert. Use the following information to make informed recommendations:
+
+			COFFEE KNOWLEDGE BASE:
+			${JSON.stringify(data.trainingData)}
+
+			CURRENTLY STOCKED COFFEES:
+			${JSON.stringify(data.data.map((coffee) => coffee.id))}
+
+			COFFEE EXPERTISE GUIDELINES:
+			1. Higher scoring coffees generally indicate superior quality. Sweet Maria's coffee scores are the only true scores. The other sources do not provide ranking out of 100 and are therefore calibrated based on sentiment. They should be considered with a grain of salt.
+			2. Price per pound is both an indicator of quality and value.
+			2. Fresh arrival dates are preferred (within the last 6 months) but coffees without arrival dates should not be excluded.
+			3. Consider this source ranking when weighting recommendations:
+			Sweet Maria's: 93/100
+				• Reputation: Often called the "gold standard" for green coffee; praised for excellent farm‐and‐bean information.
+				• Strengths: Consistent quality, broad range of origins, trusted by home roasters worldwide.
+				• Minor Criticisms: Occasional reports of beans arriving slightly past their prime.
+
+			Bodhi Leaf: 90/100
+				• Reputation: Known for its Q-Grader–certified approach and fresh, interesting beans.
+				• Strengths: Emphasis on quality and careful sourcing; appeals to a niche of specialty roasters looking for a modern, curated selection. 
+				• Minor Criticisms: Slightly higher price point can affect perceived value for some consumers.There are a few isolated reports—such as one reviewer noting excessive defects (e.g. holes from bugs)—which might affect consistency for some batches.
+
+			The Captain's Coffee: 87/100
+				• Reputation: Well‐regarded for its unique selections and detailed bean/farm notes.
+				• Strengths: High-quality, with a loyal following among roasters who appreciate its curated offerings.
+				• Minor Criticisms: Some regional preferences noted, and while quality is high, it's sometimes seen as less "iconic" than Sweet Maria's. Mixed regional sentiment (for example, some West Coast roasters lean toward Sweet Maria's for shipping speed and reputation) 
+
+			USER QUERY: ${query}
+
+			TASK:
+			Recommend 3 currently stocked coffees that best match the query.
+			Consider freshness, scores, processing methods, and value.
+			First, provide a natural language response to the user's query.
+			Then, provide specific recommendations in the JSON format below.
+
+			FORMAT RESPONSE AS:
+			[Natural language response to the query]
+
+			json
+			{
+				"recommendations": [
+					{
+						"id": "coffee_id",
+						"reason": "Detailed explanation including quality, freshness, value, and flavor profile"
+					}
+				]
+			}
+			
+		`);
 	}
 
 	// Add default query constant
@@ -261,13 +269,13 @@
 				<a
 					href={coffee.link}
 					target="_blank"
-					class="block rounded-lg border p-4 transition-colors hover:bg-zinc-100 hover:shadow-md"
+					class="block rounded-lg border bg-zinc-700 p-4 transition-colors hover:bg-zinc-800 hover:shadow-md"
 				>
 					<h4 class="font-semibold">{coffee.name}</h4>
-					<p class="mt-2 text-sm text-gray-600">{coffee.reason}</p>
+					<p class="mt-2 text-sm text-zinc-100">{coffee.reason}</p>
 					<div class="mt-4">
-						<span class="text-sm">Score: {coffee.score_value}</span>
-						<span class="ml-4 text-sm">${coffee.cost_lb}/lb</span>
+						<span class="text-sm text-zinc-100">Score: {coffee.score_value}</span>
+						<span class="ml-4 text-sm text-zinc-100">${coffee.cost_lb}/lb</span>
 					</div>
 				</a>
 			{/each}
@@ -310,7 +318,14 @@
 				</thead>
 				<tbody>
 					{#each sortedData as row}
-						<tr class="border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700">
+						<tr
+							class="cursor-pointer border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700"
+							on:click={() => {
+								if (row.link) {
+									window.open(row.link, '_blank');
+								}
+							}}
+						>
 							{#each getOrderedKeys(row) as key}
 								<td class="max-w-[200px] px-6 py-4 text-xs text-zinc-300">
 									<div class="break-words">
@@ -318,7 +333,8 @@
 											<a
 												href={String(row[key as keyof typeof row])}
 												target="_blank"
-												class="text-blue-400 hover:underline">Link</a
+												class="text-blue-400 hover:underline"
+												on:click|stopPropagation>Link</a
 											>
 										{:else if row[key as keyof typeof row] === null}
 											-
