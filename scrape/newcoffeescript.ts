@@ -566,22 +566,28 @@ class BodhiLeafSource implements CoffeeSource {
 					}
 
 					// Handle description paragraphs
-					let foundDescription = false;
 					const paragraphs = Array.from(descDiv.querySelectorAll('p'));
+					let isFirstRelevantParagraph = true;
+					let goodForText = descriptionShort; // Store the "Good For" text
 
 					paragraphs.forEach((p) => {
 						const text = p.textContent?.trim() || '';
 
 						if (text.includes('Description:')) {
-							foundDescription = true;
-							// Add the text after "Description:" to descriptionShort
+							// Add the text after "Description:" to descriptionShort, preserving goodFor
 							const descriptionPart = text.split('Description:')[1]?.trim();
 							if (descriptionPart) {
-								descriptionShort += '\n' + descriptionPart;
+								descriptionShort = goodForText
+									? `${goodForText}\n\n${descriptionPart}`
+									: descriptionPart;
+								isFirstRelevantParagraph = false;
 							}
-						} else if (foundDescription) {
-							// Add all subsequent paragraphs to descriptionShort
-							descriptionShort += '\n' + text;
+						} else if (text && isFirstRelevantParagraph) {
+							descriptionShort = goodForText ? `${goodForText}\n\n${text}` : text;
+							isFirstRelevantParagraph = false;
+						} else if (text) {
+							// Add all subsequent paragraphs to descriptionLong
+							descriptionLong += (descriptionLong ? '\n\n' : '') + text;
 						}
 					});
 				}
