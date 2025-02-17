@@ -17,7 +17,8 @@
 </script>
 
 <Navbar {data} />
-
-<ParaglideJS {i18n}>
-	{@render children()}
-</ParaglideJS>
+<div class="m-10">
+	<ParaglideJS {i18n}>
+		{@render children()}
+	</ParaglideJS>
+</div>

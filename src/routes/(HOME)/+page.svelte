@@ -183,7 +183,9 @@
 	});
 
 	// Add filter state
-	let filters: Record<string, any> = {};
+	let filters: Record<string, any> = {
+		score_value: { min: '', max: '' }
+	};
 	let expandedFilters = false;
 
 	// Helper to get filterable columns (excluding long-form text fields)
@@ -206,6 +208,16 @@
 		return Object.entries(filters).every(([key, value]) => {
 			if (!value) return true;
 			const itemValue = item[key as keyof typeof item];
+
+			// Special handling for score_value
+			if (key === 'score_value') {
+				const score = Number(itemValue);
+				return (
+					(!value.min || score >= Number(value.min)) && (!value.max || score <= Number(value.max))
+				);
+			}
+
+			// Default string filtering
 			if (typeof value === 'string') {
 				return String(itemValue).toLowerCase().includes(value.toLowerCase());
 			}
@@ -265,7 +277,7 @@
 	{/if}
 </div>
 
-<div class="my-8 mt-8 flex gap-4">
+<div class="mx-8 mt-8 flex gap-4">
 	<!-- Filter Panel -->
 	<div class="w-64 flex-shrink-0 space-y-4 rounded-lg bg-zinc-800 p-4">
 		<div class="flex items-center justify-between">
@@ -309,13 +321,38 @@
 					<label for={column} class="block text-xs text-zinc-400">
 						{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
 					</label>
-					<input
-						id={column}
-						type="text"
-						bind:value={filters[column]}
-						class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
-						placeholder={`Filter by ${column}`}
-					/>
+					{#if column === 'score_value'}
+						<div class="flex gap-2">
+							<input
+								id={`${column}_min`}
+								type="number"
+								bind:value={filters[column].min}
+								class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+								placeholder="Min"
+								min="0"
+								max="100"
+								step="0.1"
+							/>
+							<input
+								id={`${column}_max`}
+								type="number"
+								bind:value={filters[column].max}
+								class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+								placeholder="Max"
+								min="0"
+								max="100"
+								step="0.1"
+							/>
+						</div>
+					{:else}
+						<input
+							id={column}
+							type="text"
+							bind:value={filters[column]}
+							class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+							placeholder={`Filter by ${column}`}
+						/>
+					{/if}
 				</div>
 			{/each}
 		</div>
