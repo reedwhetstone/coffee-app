@@ -181,6 +181,37 @@
 	onMount(() => {
 		loadInitialRecommendations();
 	});
+
+	// Add filter state
+	let filters: Record<string, any> = {};
+	let expandedFilters = false;
+
+	// Helper to get filterable columns (excluding long-form text fields)
+	function getFilterableColumns(): string[] {
+		return [
+			'source',
+			'name',
+			'processing',
+			'region',
+			'cost_lb',
+			'score_value',
+			'arrival_date',
+			'harvest_date',
+			'cultivar_detail'
+		];
+	}
+
+	// Update the sorted data to include filtering
+	$: filteredAndSortedData = sortedData.filter((item) => {
+		return Object.entries(filters).every(([key, value]) => {
+			if (!value) return true;
+			const itemValue = item[key as keyof typeof item];
+			if (typeof value === 'string') {
+				return String(itemValue).toLowerCase().includes(value.toLowerCase());
+			}
+			return true;
+		});
+	});
 </script>
 
 <div class="mx-8 mt-8 space-y-4">
@@ -234,74 +265,105 @@
 	{/if}
 </div>
 
-<div class="my-8 mt-8">
-	{#if !data?.data || data.data.length === 0}
-		<p class="p-4 text-zinc-300">No coffee data available</p>
-	{:else}
-		<div class="m-8 overflow-hidden overflow-x-auto rounded-lg">
-			<table class="w-full table-auto bg-zinc-800">
-				<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
-					<tr>
-						{#each getOrderedKeys(data.data[0]) as header}
-							<th
-								class="group max-w-[200px] cursor-pointer px-6 py-3 hover:bg-zinc-600"
-								on:click={() => toggleSort(header)}
-							>
-								<div class="flex items-center gap-2">
-									<span class="truncate">
-										{header.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-									</span>
-
-									<!-- Sort indicators -->
-									{#if sortField === header}
-										{#if sortDirection === 'asc'}
-											<span class="flex-shrink-0">↑</span>
-										{:else if sortDirection === 'desc'}
-											<span class="flex-shrink-0">↓</span>
-										{/if}
-									{:else}
-										<span class="flex-shrink-0 opacity-0 group-hover:opacity-50">↕</span>
-									{/if}
-								</div>
-							</th>
-						{/each}
-					</tr>
-				</thead>
-				<tbody>
-					{#each sortedData as row}
-						<tr
-							class="cursor-pointer border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700"
-							on:click={() => {
-								if (row.link) {
-									window.open(row.link, '_blank');
-								}
-							}}
-						>
-							{#each getOrderedKeys(row) as key}
-								<td class="max-w-[200px] px-6 py-4 text-xs text-zinc-300">
-									<div class="break-words">
-										{#if key === 'link' && row[key as keyof typeof row]}
-											<a
-												href={String(row[key as keyof typeof row])}
-												target="_blank"
-												class="text-blue-400 hover:underline"
-												on:click|stopPropagation>Link</a
-											>
-										{:else if row[key as keyof typeof row] === null}
-											-
-										{:else}
-											{typeof row[key as keyof typeof row] === 'string'
-												? String(row[key as keyof typeof row]).slice(0, 250) +
-													(String(row[key as keyof typeof row]).length > 250 ? '...' : '')
-												: row[key as keyof typeof row]}
-										{/if}
-									</div>
-								</td>
-							{/each}
-						</tr>
-					{/each}
-				</tbody>
-			</table>
+<div class="my-8 mt-8 flex gap-4">
+	<!-- Filter Panel -->
+	<div class="w-64 flex-shrink-0 space-y-4 rounded-lg bg-zinc-800 p-4">
+		<div class="flex items-center justify-between">
+			<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
+			<button
+				class="text-sm text-zinc-400 hover:text-zinc-100"
+				on:click={() => (expandedFilters = !expandedFilters)}
+			>
+				{expandedFilters ? 'Collapse' : 'Expand'}
+			</button>
 		</div>
-	{/if}
+
+		<!-- Sort Controls -->
+		<div class="space-y-2">
+			<label class="block text-sm text-zinc-400">Sort by</label>
+			<select bind:value={sortField} class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100">
+				<option value={null}>None</option>
+				{#each getFilterableColumns() as column}
+					<option value={column}>
+						{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+					</option>
+				{/each}
+			</select>
+
+			{#if sortField}
+				<select
+					bind:value={sortDirection}
+					class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+				>
+					<option value="asc">Ascending</option>
+					<option value="desc">Descending</option>
+				</select>
+			{/if}
+		</div>
+
+		<!-- Filter Controls -->
+		<div class="space-y-2">
+			<label class="block text-sm text-zinc-400">Filters</label>
+			{#each getFilterableColumns() as column}
+				<div class="space-y-1">
+					<label class="block text-xs text-zinc-400">
+						{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+					</label>
+					<input
+						type="text"
+						bind:value={filters[column]}
+						class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+						placeholder={`Filter by ${column}`}
+					/>
+				</div>
+			{/each}
+		</div>
+	</div>
+
+	<!-- Coffee Cards -->
+	<div class="flex-1">
+		{#if !data?.data || data.data.length === 0}
+			<p class="p-4 text-zinc-300">No coffee data available</p>
+		{:else}
+			<div class="space-y-4">
+				{#each filteredAndSortedData as coffee}
+					<div
+						class="cursor-pointer rounded-lg bg-zinc-800 p-4 transition-colors hover:bg-zinc-700"
+						on:click={() => {
+							if (coffee.link) window.open(coffee.link, '_blank');
+						}}
+					>
+						<div class="flex justify-between">
+							<div>
+								<h3 class="text-lg font-semibold text-zinc-100">{coffee.name}</h3>
+								<p class="text-sm text-zinc-400">{coffee.source}</p>
+							</div>
+							<div class="text-right">
+								<p class="text-lg font-bold text-zinc-100">${coffee.cost_lb}/lb</p>
+								<p class="text-sm text-zinc-400">Score: {coffee.score_value}</p>
+							</div>
+						</div>
+						<div class="mt-2 grid grid-cols-2 gap-4 text-sm text-zinc-300">
+							<div>
+								<span class="text-zinc-400">Region:</span>
+								{coffee.region || '-'}
+							</div>
+							<div>
+								<span class="text-zinc-400">Processing:</span>
+								{coffee.processing || '-'}
+							</div>
+							<div>
+								<span class="text-zinc-400">Arrival:</span>
+								{coffee.arrival_date || '-'}
+							</div>
+							<div>
+								<span class="text-zinc-400">Harvest:</span>
+								{coffee.harvest_date || '-'}
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</div>
 </div>
