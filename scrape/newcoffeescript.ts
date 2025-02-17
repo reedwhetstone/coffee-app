@@ -358,31 +358,21 @@ class CaptainCoffeeSource implements CoffeeSource {
 
 			// Details (Tab 4)
 			const detailsFromPage = await page.evaluate(() => {
-				// Declare the details object locally
 				const details: Record<string, any> = {};
-				const dateText = document.querySelector('p:nth-child(1)')?.textContent || '';
-				let remainingText = dateText;
+				const dateElement = document.querySelector('#collapse-tab4 > div > p:nth-child(1)');
+				const fullText = dateElement?.textContent?.trim() || '';
 
-				// First, get the complete text and clean it up
-				const fullText = remainingText.replace(/\s+/g, ' ').trim();
+				// Extract packaging first - everything after "Packed in"
+				const packagingMatch = fullText.match(/Packed in\s+([^\.]+)/i);
+				const packaging = packagingMatch ? packagingMatch[1].trim() : null;
 
-				// Extract arrival date more safely
-				let arrivalDate = null;
-				const arrivalMatch = fullText.match(/Arrival Date:\s*([^\.]+)/i);
-				if (arrivalMatch) {
-					arrivalDate = arrivalMatch[1].trim();
-				}
+				// Get arrival date - everything before "Packed in" or end of string
+				let arrivalDate = fullText
+					.split(/Packed in/i)[0] // Split at "Packed in" and take first part
+					.replace(/Arrival Date:/i, ''); // Remove "Arrival Date:" text
 
-				// Get the rest of the text after the arrival date if it exists
-				const remainingParts = arrivalMatch
-					? fullText.slice(fullText.indexOf('.') + 1).trim()
-					: fullText;
-
-				// Extract harvest year
-				const harvestDate = remainingParts.match(/Harvest year:\s*(\d{4})/i)?.[1] || null;
-
-				// Extract packaging
-				const packaging = remainingParts.match(/Packed in\s*([^,\.]+)/i)?.[1] || null;
+				// Clean up any trailing punctuation
+				arrivalDate = arrivalDate.replace(/[,\.]$/, '').trim();
 
 				// Extract cupping notes
 				const cuppingRows = [
@@ -407,13 +397,12 @@ class CaptainCoffeeSource implements CoffeeSource {
 					if (text.includes('Grade:')) details.grade = text;
 					if (text.includes('Processing:')) details.processing = text;
 					if (text.includes('Grower:')) details.grower = text;
-					if (text.includes('Region:')) details.region = text;
-					if (text.includes('Varietals:')) details.cultivar = text;
+					if (text.match(/Region:?\s/i)) details.region = text;
+					if (text.match(/Varieties?:?\s/i)) details.cultivar = text;
 				});
 
 				return {
 					arrivalDate,
-					harvestDate,
 					packaging,
 					cuppingNotes: cuppingRows.join('\n'),
 					details
@@ -443,19 +432,15 @@ class CaptainCoffeeSource implements CoffeeSource {
 				farmNotes: `${detailsFromPage.details.grower}\n${farmNotes}`.trim(),
 				cost_lb: price,
 				arrivalDate: detailsFromPage.arrivalDate?.replace('Arrival Date:', '').trim() || null,
-				harvestDate: detailsFromPage.harvestDate?.replace('Harvest Year:', '').trim() || null,
-				region: detailsFromPage.details.region?.replace('Region:', '').trim() || null,
-				processing: detailsFromPage.details.processing?.replace('Processing:', '').trim() || null,
-				dryingMethod: null,
-				lotSize: null,
-				bagSize: null,
 				packaging: detailsFromPage.packaging,
-				type: importer || null, // Store the actual importer text instead of boolean
-				cultivarDetail: detailsFromPage.details.cultivar?.replace('Varietals:', '').trim() || null,
+				type: importer || null,
+				cultivarDetail: detailsFromPage.details.cultivar?.replace('Varieties:', '').trim() || null,
 				grade: detailsFromPage.details.grade?.replace('Grade:', '').trim() || null,
 				appearance: null,
 				roastRecs,
-				cuppingNotes: detailsFromPage.cuppingNotes
+				cuppingNotes: detailsFromPage.cuppingNotes,
+				region: detailsFromPage.details.region?.replace('Region:', '').trim() || null,
+				processing: detailsFromPage.details.processing?.replace('Processing:', '').trim() || null
 			};
 		} catch (error) {
 			console.error(`Error scraping ${url}:`, error);
@@ -523,14 +508,13 @@ class BodhiLeafSource implements CoffeeSource {
 				// Score Value
 				const scoreElement = document.querySelector('span.jdgm-prev-badge__stars');
 				const dataScore = scoreElement?.getAttribute('data-score');
-				const scoreValue = dataScore ? 4.3 * parseFloat(dataScore) + 70 : null;
+				const scoreValue = dataScore ? Math.max(85, 4.3 * parseFloat(dataScore) + 70) : null;
 
 				// Process description div content
 				const descDiv = document.querySelector('div.description.bottom');
 				const details: {
 					grower?: string;
 					arrivalDate?: string;
-					harvestDate?: string;
 					region?: string;
 					processing?: string;
 					packaging?: string;
@@ -618,18 +602,12 @@ class BodhiLeafSource implements CoffeeSource {
 				farmNotes: productData.farmNotes,
 				cost_lb: price,
 				arrivalDate: null,
-				harvestDate: null,
-				region: productData.region,
-				processing: productData.processing,
-				dryingMethod: null,
-				lotSize: null,
-				bagSize: null,
 				packaging: null,
+				type: null,
 				cultivarDetail: productData.cultivarDetail,
 				grade: productData.grade,
 				appearance: null,
 				roastRecs: productData.roastRecs,
-				type: null,
 				cuppingNotes: productData.cuppingNotes
 			};
 		} catch (error) {
@@ -735,7 +713,6 @@ async function updateDatabase(source: CoffeeSource) {
 					name: scrapedData.productName,
 					score_value: scrapedData.scoreValue,
 					arrival_date: scrapedData.arrivalDate,
-					harvest_date: scrapedData.harvestDate,
 					region: scrapedData.region,
 					processing: scrapedData.processing,
 					drying_method: scrapedData.dryingMethod,
