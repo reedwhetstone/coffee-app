@@ -10,45 +10,6 @@
 	let chatResponse = '';
 	let isLoading = false;
 
-	// Initialize Gemini
-	const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-	const model = genAI.getGenerativeModel({
-		model: 'gemini-2.0-flash-exp',
-		generationConfig: {
-			temperature: 0,
-			topP: 0.95,
-			topK: 40,
-			maxOutputTokens: 8192
-		}
-	});
-
-	let chatSession = model.startChat({
-		history: [
-			{
-				role: 'user',
-				parts: [
-					{
-						text:
-							'You are a coffee expert. Please help users find the perfect coffee based on their preferences and questions. The date is currently ' +
-							new Date().toLocaleDateString() +
-							'.'
-					}
-				]
-			},
-			{
-				role: 'model',
-				parts: [
-					{
-						text:
-							"I'll help users find their perfect coffee match by leveraging my expertise and the available coffee data. I will only recommend coffees that are currently stocked. When possible, I will make recommendations based on the initial user request, without additional information from the user. I underdtand that today's date is " +
-							new Date().toLocaleDateString() +
-							'.'
-					}
-				]
-			}
-		]
-	});
-
 	// Add sorting functionality
 	let sortField: string | null = 'arrival_date';
 	let sortDirection: 'asc' | 'desc' | null = 'desc';
@@ -187,54 +148,23 @@
 
 	// Update getRecommendations to return the result instead of processing it
 	async function getRecommendations(query: string) {
-		return await chatSession.sendMessage(`
-			You are a coffee expert. Use the following information to make informed recommendations:
+		const response = await fetch('/api/gemini', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				prompt: query,
+				coffeeData: data.data
+			})
+		});
 
-			AVAILABLE STOCKED COFFEES:
-			${JSON.stringify(data.data, null, 2)}
+		if (!response.ok) {
+			throw new Error('Failed to get recommendations');
+		}
 
-			COFFEE EXPERTISE GUIDELINES:
-			1. Higher scoring coffees generally indicate superior quality. Sweet Maria's coffee scores are the only true scores. The other sources do not provide ranking out of 100 and are therefore calibrated based on sentiment. They should be considered with a grain of salt.
-			2. Price per pound is both an indicator of quality and value.
-			2. Fresh arrival dates are preferred (within the last 6 months) but coffees without arrival dates should not be excluded.
-			3. Consider this source ranking when weighting recommendations:
-			Sweet Maria's: 93/100
-				• Reputation: Often called the "gold standard" for green coffee; praised for excellent farm‐and‐bean information.
-				• Strengths: Consistent quality, broad range of origins, trusted by home roasters worldwide.
-				• Minor Criticisms: Occasional reports of beans arriving slightly past their prime.
-
-			Bodhi Leaf: 90/100
-				• Reputation: Known for its Q-Grader–certified approach and fresh, interesting beans.
-				• Strengths: Emphasis on quality and careful sourcing; appeals to a niche of specialty roasters looking for a modern, curated selection. 
-				• Minor Criticisms: Slightly higher price point can affect perceived value for some consumers.There are a few isolated reports—such as one reviewer noting excessive defects (e.g. holes from bugs)—which might affect consistency for some batches.
-
-			The Captain's Coffee: 87/100
-				• Reputation: Well‐regarded for its unique selections and detailed bean/farm notes.
-				• Strengths: High-quality, with a loyal following among roasters who appreciate its curated offerings.
-				• Minor Criticisms: Some regional preferences noted, and while quality is high, it's sometimes seen as less "iconic" than Sweet Maria's. Mixed regional sentiment (for example, some West Coast roasters lean toward Sweet Maria's for shipping speed and reputation) 
-
-			USER QUERY: ${query}
-
-			TASK:
-			Recommend 3 currently stocked coffees that best match the query.
-			Consider freshness, scores, processing methods, and value.
-			First, provide a natural language response to the user's query.
-			Then, provide specific recommendations in the JSON format below.
-
-			FORMAT RESPONSE AS:
-			[Natural language response to the query]
-
-			\`\`\`json
-			{
-				"recommendations": [
-					{
-						"id": "coffee_id",
-						"reason": "Detailed explanation of why this coffee matches the query"
-					}
-				]
-			}
-			\`\`\`
-		`);
+		const result = await response.json();
+		return { response: { text: () => result.text } };
 	}
 
 	// Add default query constant
