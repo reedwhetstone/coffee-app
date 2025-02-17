@@ -325,23 +325,22 @@ class CaptainCoffeeSource implements CoffeeSource {
 				return importerElement ? importerElement.textContent?.trim() : null;
 			});
 
-			// Score Value
-			const scoreValue = await page.evaluate(() => {
-				const scoreElement = document.querySelector(
-					'div.short-description > p > em > i > a > strong'
-				);
-				if (scoreElement) {
-					const text = scoreElement.textContent?.trim();
-					if (text?.includes('3')) return 91.5;
-					if (text?.includes('6')) return 87.5;
-				}
-				return 85;
-			});
-
-			// Short Description
-			const descriptionShort = await page.evaluate(() => {
+			// Score Value and Short Description combined
+			const { descriptionShort, scoreValue } = await page.evaluate(() => {
 				const descElement = document.querySelector('div.short-description > p > em');
-				return descElement ? descElement.textContent?.trim() : null;
+				const descriptionShort = descElement ? descElement.textContent?.trim() : null;
+
+				let scoreValue = 85; // default score
+				if (descriptionShort) {
+					const lowerDescription = descriptionShort.toLowerCase();
+					if (lowerDescription.includes('top 3')) {
+						scoreValue = 91.5;
+					} else if (lowerDescription.includes('top 6')) {
+						scoreValue = 87.5;
+					}
+				}
+
+				return { descriptionShort, scoreValue };
 			});
 
 			// Long Description (Tab 3)
@@ -358,39 +357,32 @@ class CaptainCoffeeSource implements CoffeeSource {
 			});
 
 			// Details (Tab 4)
-			const details: {
-				grower?: string;
-				arrivalDate?: string;
-				harvestDate?: string;
-				region?: string;
-				processing?: string;
-				packaging?: string;
-				cultivar?: string;
-				grade?: string;
-				cuppingNotes?: string;
-				country?: string;
-				cultivarDetail?: string;
-				farmNotes?: string;
-				roastRecs?: string;
-			} = {};
-
-			await page.evaluate(() => {
-				// Extract arrival, harvest dates, and packaging
+			const detailsFromPage = await page.evaluate(() => {
+				// Declare the details object locally
+				const details: Record<string, any> = {};
 				const dateText = document.querySelector('p:nth-child(1)')?.textContent || '';
 				let remainingText = dateText;
-				let packaging = '';
 
-				// Extract packaging information first
-				if (remainingText.toLowerCase().includes('packed')) {
-					const [beforePacked, afterPacked] = remainingText.split(/packed/i);
-					remainingText = beforePacked.trim();
-					packaging = afterPacked.trim();
+				// First, get the complete text and clean it up
+				const fullText = remainingText.replace(/\s+/g, ' ').trim();
+
+				// Extract arrival date more safely
+				let arrivalDate = null;
+				const arrivalMatch = fullText.match(/Arrival Date:\s*([^\.]+)/i);
+				if (arrivalMatch) {
+					arrivalDate = arrivalMatch[1].trim();
 				}
 
-				// Then split remaining text for arrival and harvest dates
-				const [arrivalDate, harvestDate] = remainingText.toLowerCase().includes('harvest')
-					? [remainingText.split(/harvest/i)[0], 'Harvest' + remainingText.split(/harvest/i)[1]]
-					: [remainingText, null];
+				// Get the rest of the text after the arrival date if it exists
+				const remainingParts = arrivalMatch
+					? fullText.slice(fullText.indexOf('.') + 1).trim()
+					: fullText;
+
+				// Extract harvest year
+				const harvestDate = remainingParts.match(/Harvest year:\s*(\d{4})/i)?.[1] || null;
+
+				// Extract packaging
+				const packaging = remainingParts.match(/Packed in\s*([^,\.]+)/i)?.[1] || null;
 
 				// Extract cupping notes
 				const cuppingRows = [
@@ -424,7 +416,7 @@ class CaptainCoffeeSource implements CoffeeSource {
 					harvestDate,
 					packaging,
 					cuppingNotes: cuppingRows.join('\n'),
-					...details
+					details
 				};
 			});
 
@@ -448,22 +440,22 @@ class CaptainCoffeeSource implements CoffeeSource {
 				scoreValue,
 				descriptionShort,
 				descriptionLong,
-				farmNotes: `${details.grower}\n${farmNotes}`.trim(),
+				farmNotes: `${detailsFromPage.details.grower}\n${farmNotes}`.trim(),
 				cost_lb: price,
-				arrivalDate: details.arrivalDate?.replace('Arrival Date:', '').trim() || null,
-				harvestDate: details.harvestDate?.replace('Harvest Year:', '').trim() || null,
-				region: details.region?.replace('Region:', '').trim() || null,
-				processing: details.processing?.replace('Processing:', '').trim() || null,
+				arrivalDate: detailsFromPage.arrivalDate?.replace('Arrival Date:', '').trim() || null,
+				harvestDate: detailsFromPage.harvestDate?.replace('Harvest Year:', '').trim() || null,
+				region: detailsFromPage.details.region?.replace('Region:', '').trim() || null,
+				processing: detailsFromPage.details.processing?.replace('Processing:', '').trim() || null,
 				dryingMethod: null,
 				lotSize: null,
 				bagSize: null,
-				packaging: details.packaging,
+				packaging: detailsFromPage.packaging,
 				type: importer || null, // Store the actual importer text instead of boolean
-				cultivarDetail: details.cultivar?.replace('Varietals:', '').trim() || null,
-				grade: details.grade?.replace('Grade:', '').trim() || null,
+				cultivarDetail: detailsFromPage.details.cultivar?.replace('Varietals:', '').trim() || null,
+				grade: detailsFromPage.details.grade?.replace('Grade:', '').trim() || null,
 				appearance: null,
 				roastRecs,
-				cuppingNotes: details.cuppingNotes
+				cuppingNotes: detailsFromPage.cuppingNotes
 			};
 		} catch (error) {
 			console.error(`Error scraping ${url}:`, error);
