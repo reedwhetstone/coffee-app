@@ -303,13 +303,14 @@
 
 		<!-- Filter Controls -->
 		<div class="space-y-2">
-			<label class="block text-sm text-zinc-400">Filters</label>
+			<h4 class="block text-sm text-zinc-400">Filters</h4>
 			{#each getFilterableColumns() as column}
 				<div class="space-y-1">
-					<label class="block text-xs text-zinc-400">
+					<label for={column} class="block text-xs text-zinc-400">
 						{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
 					</label>
 					<input
+						id={column}
 						type="text"
 						bind:value={filters[column]}
 						class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
@@ -327,10 +328,14 @@
 		{:else}
 			<div class="space-y-4">
 				{#each filteredAndSortedData as coffee}
-					<div
-						class="cursor-pointer rounded-lg bg-zinc-800 p-4 transition-colors hover:bg-zinc-700"
+					<button
+						type="button"
+						class="w-full cursor-pointer rounded-lg bg-zinc-800 p-4 text-left transition-colors hover:bg-zinc-700"
 						on:click={() => {
 							if (coffee.link) window.open(coffee.link, '_blank');
+						}}
+						on:keydown={(e) => {
+							if (e.key === 'Enter' && coffee.link) window.open(coffee.link, '_blank');
 						}}
 					>
 						<div class="flex justify-between">
@@ -361,7 +366,7 @@
 								{coffee.harvest_date || '-'}
 							</div>
 						</div>
-					</div>
+					</button>
 				{/each}
 			</div>
 		{/if}
