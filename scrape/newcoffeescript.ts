@@ -538,8 +538,11 @@ class BodhiLeafSource implements CoffeeSource {
 						const lines = content.split('<br>');
 
 						lines.forEach((line) => {
-							// Remove HTML tags and trim
-							const text = line.replace(/<[^>]*>/g, ' ').trim();
+							// Remove HTML tags, &nbsp; entities, and trim
+							const text = line
+								.replace(/<[^>]*>/g, ' ')
+								.replace(/&nbsp;/g, '')
+								.trim();
 
 							// More specific matching patterns
 							if (text.match(/^Country:\s*(.+)/i)) {
