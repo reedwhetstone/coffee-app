@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { GoogleGenerativeAI } from '@google/generative-ai';
 	import { onMount } from 'svelte';
 
 	export let data: PageData;
@@ -148,7 +147,7 @@
 
 	// Update getRecommendations to return the result instead of processing it
 	async function getRecommendations(query: string) {
-		const response = await fetch('/api/gemini', {
+		const response = await fetch('/api/LLM', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -169,7 +168,7 @@
 
 	// Add default query constant
 	const DEFAULT_QUERY =
-		'What are the best value coffees available right now? Consider the price per pound and quality scores to find coffees that offer the most bang for the buck.';
+		'Provide a coffee reccomendation from each source - bodhi leaf, captains coffee, and sweet marias';
 
 	// Add initial load function
 	async function loadInitialRecommendations() {
@@ -222,6 +221,7 @@
 						class="block rounded-lg bg-zinc-700 p-4 transition-colors hover:bg-zinc-800 hover:shadow-md"
 					>
 						<h4 class="font-semibold text-zinc-100">{coffee.name}</h4>
+						<h3 class="text-zinc-100">{coffee.source}</h3>
 						<p class="mt-2 text-sm text-zinc-100">{coffee.reason}</p>
 						<div class="mt-4">
 							<span class="text-sm text-zinc-100">Score: {coffee.score_value}</span>

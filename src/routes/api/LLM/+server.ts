@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GEMINI_API_KEY } from '$env/static/private';
+import { AI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(AI_API_KEY);
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
