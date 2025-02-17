@@ -1,7 +1,7 @@
 //npm run scrape all
-// npm run scrape sweet-marias
-// npm run scrape captain-coffee
-// npm run scrape bodhi-leaf
+// npm run scrape sweet_maria
+// npm run scrape captain_coffee
+// npm run scrape bodhi_leaf
 
 import { chromium, Page } from 'playwright';
 import dotenv from 'dotenv';
@@ -530,42 +530,55 @@ class BodhiLeafSource implements CoffeeSource {
 				let descriptionLong = '';
 
 				if (descDiv) {
-					const content = descDiv.innerHTML;
-					const lines = content.split('<br>');
+					// Handle the first paragraph with all the details
+					const firstParagraph = descDiv.querySelector('p:first-child');
+					if (firstParagraph) {
+						const content = firstParagraph.innerHTML;
+						// Split by <br> and process each line
+						const lines = content.split('<br>');
 
-					// Process each line for structured data
-					lines.forEach((line) => {
-						const text = line.replace(/<[^>]*>/g, ' ').trim();
+						lines.forEach((line) => {
+							// Remove HTML tags and trim
+							const text = line.replace(/<[^>]*>/g, ' ').trim();
 
-						if (text.startsWith('Country:')) {
-							details.country = text.replace('Country:', '').trim();
-						} else if (text.startsWith('Region:')) {
-							details.region = text.replace('Region:', '').trim();
-						} else if (text.startsWith('Varietal:')) {
-							details.cultivarDetail = text.replace('Varietal:', '').trim();
-						} else if (text.startsWith('Farm:')) {
-							details.farmNotes = text.replace('Farm:', '').trim();
-						} else if (text.startsWith('Process:')) {
-							details.processing = text.replace('Process:', '').trim();
-						} else if (text.startsWith('Altitude:')) {
-							details.grade = text.replace('Altitude:', '').trim();
-						} else if (text.startsWith('Cupping Notes:')) {
-							details.cuppingNotes = text.replace('Cupping Notes:', '').trim();
-						} else if (text.startsWith('Recommended Roast:')) {
-							details.roastRecs = text.replace('Recommended Roast:', '').trim();
-						}
-					});
+							// More specific matching patterns
+							if (text.match(/^Country:\s*(.+)/i)) {
+								details.country = text.replace(/^Country:\s*/i, '').trim();
+							} else if (text.match(/^Region:\s*(.+)/i)) {
+								details.region = text.replace(/^Region:\s*/i, '').trim();
+							} else if (text.match(/^Varietal:\s*(.+)/i)) {
+								details.cultivarDetail = text.replace(/^Varietal:\s*/i, '').trim();
+							} else if (text.match(/^Process:\s*(.+)/i)) {
+								details.processing = text.replace(/^Process:\s*/i, '').trim();
+							} else if (text.match(/^Altitude:\s*(.+)/i)) {
+								details.grade = text.replace(/^Altitude:\s*/i, '').trim();
+							} else if (text.match(/^Cupping Notes:\s*(.+)/i)) {
+								details.cuppingNotes = text.replace(/^Cupping Notes:\s*/i, '').trim();
+							} else if (text.match(/^Recommended Roast:\s*(.+)/i)) {
+								details.roastRecs = text.replace(/^Recommended Roast:\s*/i, '').trim();
+							} else if (text.match(/^Good For:\s*(.+)/i)) {
+								descriptionShort = text.trim();
+							}
+						});
+					}
 
-					// Process description paragraphs
+					// Handle description paragraphs
+					let foundDescription = false;
 					const paragraphs = Array.from(descDiv.querySelectorAll('p'));
+
 					paragraphs.forEach((p) => {
 						const text = p.textContent?.trim() || '';
-						if (text.startsWith('Good For:')) {
-							descriptionShort = text + '\n';
-						} else if (text.includes('Description:')) {
-							descriptionShort += text.replace('Description:', '').trim();
-						} else {
-							descriptionLong += text + '\n';
+
+						if (text.includes('Description:')) {
+							foundDescription = true;
+							// Add the text after "Description:" to descriptionShort
+							const descriptionPart = text.split('Description:')[1]?.trim();
+							if (descriptionPart) {
+								descriptionShort += '\n' + descriptionPart;
+							}
+						} else if (foundDescription) {
+							// Add all subsequent paragraphs to descriptionShort
+							descriptionShort += '\n' + text;
 						}
 					});
 				}
@@ -608,7 +621,9 @@ class BodhiLeafSource implements CoffeeSource {
 				grade: productData.grade,
 				appearance: null,
 				roastRecs: productData.roastRecs,
-				cuppingNotes: productData.cuppingNotes
+				cuppingNotes: productData.cuppingNotes,
+				region: productData.region,
+				processing: productData.processing
 			};
 		} catch (error) {
 			console.error(`Error scraping ${url}:`, error);
