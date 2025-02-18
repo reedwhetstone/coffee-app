@@ -182,9 +182,13 @@
 		loadInitialRecommendations();
 	});
 
-	// Add filter state
+	// Add unique sources state
+	$: uniqueSources = [...new Set(data?.data?.map((coffee) => coffee.source) || [])];
+
+	// Modify filters initialization to handle source as array
 	let filters: Record<string, any> = {
-		score_value: { min: '', max: '' }
+		score_value: { min: '', max: '' },
+		source: [] as string[]
 	};
 	let expandedFilters = false;
 
@@ -208,6 +212,11 @@
 		return Object.entries(filters).every(([key, value]) => {
 			if (!value) return true;
 			const itemValue = item[key as keyof typeof item];
+
+			// Special handling for source
+			if (key === 'source') {
+				return value.length === 0 || value.includes(itemValue);
+			}
 
 			// Special handling for score_value
 			if (key === 'score_value') {
@@ -321,7 +330,21 @@
 					<label for={column} class="block text-xs text-zinc-400">
 						{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
 					</label>
-					{#if column === 'score_value'}
+					{#if column === 'source'}
+						<div class="space-y-2">
+							{#each uniqueSources as source}
+								<label class="flex items-center gap-2">
+									<input
+										type="checkbox"
+										bind:group={filters.source}
+										value={source}
+										class="rounded border-zinc-600 bg-zinc-700 text-blue-600"
+									/>
+									<span class="text-sm text-zinc-100">{source}</span>
+								</label>
+							{/each}
+						</div>
+					{:else if column === 'score_value'}
 						<div class="flex gap-2">
 							<input
 								id={`${column}_min`}
