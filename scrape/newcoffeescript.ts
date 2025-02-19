@@ -127,7 +127,7 @@ class SweetMariasSource implements CoffeeSource {
 			await browser.close();
 			const filteredResults = urlsAndPrices.filter(
 				(item): item is ProductData =>
-					item.url !== null && typeof item.url === 'string' && item.price !== null
+					item.url !== null && typeof item.url === 'string' && item.price !== null // Only include items with valid prices
 			);
 			return filteredResults;
 		} catch (error) {
