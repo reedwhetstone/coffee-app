@@ -89,13 +89,26 @@ class SweetMariasSource implements CoffeeSource {
 	baseUrl = 'https://www.sweetmarias.com/green-coffee.html?product_list_limit=all&sm_status=1';
 
 	async collectInitUrlsData(): Promise<ProductData[]> {
-		const browser = await chromium.launch({ headless: false });
-		const context = await browser.newContext();
+		const browser = await chromium.launch({
+			// Use the new headless mode which has better site compatibility
+			headless: true,
+			args: ['--headless=new']
+		});
+		const context = await browser.newContext({
+			// Add a desktop user agent to avoid headless detection
+			userAgent:
+				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+		});
 		const page = await context.newPage();
 
 		try {
-			await page.goto(this.baseUrl, { timeout: 60000 });
-			await page.waitForTimeout(2000);
+			await page.goto(this.baseUrl, {
+				timeout: 60000,
+				waitUntil: 'networkidle' // Wait for network to be idle
+			});
+
+			// Add a longer wait to ensure dynamic content loads
+			await page.waitForTimeout(5000);
 
 			const urlsAndPrices = await page.evaluate(() => {
 				const products = document.querySelectorAll('tr.item');
@@ -114,7 +127,7 @@ class SweetMariasSource implements CoffeeSource {
 			await browser.close();
 			const filteredResults = urlsAndPrices.filter(
 				(item): item is ProductData =>
-					item.url !== null && typeof item.url === 'string' && item.price !== null // Only include items with valid prices
+					item.url !== null && typeof item.url === 'string' && item.price !== null
 			);
 			return filteredResults;
 		} catch (error) {
@@ -125,7 +138,7 @@ class SweetMariasSource implements CoffeeSource {
 	}
 
 	async scrapeUrl(url: string, price: number | null): Promise<ScrapedData | null> {
-		const browser = await chromium.launch({ headless: false });
+		const browser = await chromium.launch();
 		const context = await browser.newContext();
 		const page = await context.newPage();
 
@@ -229,7 +242,7 @@ class CaptainCoffeeSource implements CoffeeSource {
 	baseUrl = 'https://thecaptainscoffee.com/collections/green-coffee';
 
 	async collectInitUrlsData(): Promise<ProductData[]> {
-		const browser = await chromium.launch({ headless: false });
+		const browser = await chromium.launch();
 		const context = await browser.newContext();
 		const page = await context.newPage();
 
@@ -303,7 +316,7 @@ class CaptainCoffeeSource implements CoffeeSource {
 	}
 
 	async scrapeUrl(url: string, price: number | null): Promise<ScrapedData | null> {
-		const browser = await chromium.launch({ headless: false });
+		const browser = await chromium.launch();
 		const context = await browser.newContext();
 		const page = await context.newPage();
 
@@ -455,7 +468,7 @@ class BodhiLeafSource implements CoffeeSource {
 	baseUrl = 'https://www.bodhileafcoffee.com/collections/green-coffee';
 
 	async collectInitUrlsData(): Promise<ProductData[]> {
-		const browser = await chromium.launch({ headless: false });
+		const browser = await chromium.launch();
 		const context = await browser.newContext();
 		const page = await context.newPage();
 
@@ -493,7 +506,7 @@ class BodhiLeafSource implements CoffeeSource {
 	}
 
 	async scrapeUrl(url: string, price: number | null): Promise<ScrapedData | null> {
-		const browser = await chromium.launch({ headless: false });
+		const browser = await chromium.launch();
 		const context = await browser.newContext();
 		const page = await context.newPage();
 
@@ -645,10 +658,7 @@ class BodhiLeafSource implements CoffeeSource {
 // Modified database update function to handle multiple sources
 async function updateDatabase(source: CoffeeSource) {
 	try {
-		if (!(await confirmStep(`Step 1: About to collect all product URLs from ${source.name}`))) {
-			return { success: false, message: 'Aborted before URL collection' };
-		}
-
+		console.log(`[${source.name}] Step 1: Collecting all product URLs`);
 		const productsData = await source.collectInitUrlsData();
 		const unfilteredUrls = productsData.map((item) => item.url);
 		const inStockUrls = unfilteredUrls.filter((url) => {
@@ -664,7 +674,7 @@ async function updateDatabase(source: CoffeeSource) {
 				!url.includes('steves-favorites')
 			);
 		});
-		console.log(`Found ${inStockUrls.length} total products on ${source.name}`);
+		console.log(`[${source.name}] Found ${inStockUrls.length} total products on the site`);
 
 		// Update existing products for this source
 		const { data: dbProducts, error: fetchError } = await supabase
@@ -673,17 +683,11 @@ async function updateDatabase(source: CoffeeSource) {
 			.eq('source', source.name);
 
 		if (fetchError) throw fetchError;
-		console.log(`Found ${dbProducts?.length || 0} ${source.name} products in database`);
+		console.log(`[${source.name}] Found ${dbProducts?.length || 0} products in database`);
 
-		if (
-			!(await confirmStep(
-				`Step 2: About to set all ${dbProducts?.length || 0} existing ${source.name} products to stocked = false`
-			))
-		) {
-			return { success: false, message: 'Aborted before updating stock status' };
-		}
-
-		// Set all existing ${source.name} products to stocked = false
+		console.log(
+			`[${source.name}] Step 2: Setting all ${dbProducts?.length || 0} existing db products to stocked = false`
+		);
 		const { error: updateError } = await supabase
 			.from('coffee_catalog')
 			.update({ stocked: false })
@@ -709,7 +713,7 @@ async function updateDatabase(source: CoffeeSource) {
 			if (stockedError) throw stockedError;
 		}
 
-		// Get new URLs to process (ones not in our database)
+		// Get new URLs to process
 		const newUrls = await checkExistingUrls(inStockUrls);
 
 		// Add debugging to verify the updates
@@ -720,15 +724,14 @@ async function updateDatabase(source: CoffeeSource) {
 			.eq('stocked', true);
 
 		if (checkError) throw checkError;
-		console.log('Products now marked as stocked in DB:', stillStocked?.length || 0);
-		console.log('Number of new URLs to process:', newUrls.length);
+		console.log(
+			`[${source.name}] Products now marked as stocked in DB: ${stillStocked?.length || 0}`
+		);
+		console.log(`[${source.name}] Number of new URLs to process: ${newUrls.length}`);
 
 		// Process new products
 		for (const url of newUrls) {
-			if (!(await confirmStep(`Step 3: About to process URL: ${url}`))) {
-				return { success: false, message: 'Aborted during product processing' };
-			}
-
+			console.log(`[${source.name}] Step 3: Processing URL: ${url}`);
 			const price = priceMap.get(url) ?? null;
 			const scrapedData = await source.scrapeUrl(url, price);
 
@@ -760,14 +763,14 @@ async function updateDatabase(source: CoffeeSource) {
 				});
 
 				if (error) throw error;
-				console.log(`Successfully inserted product: ${scrapedData.productName}`);
+				console.log(`[${source.name}] Successfully inserted product: ${scrapedData.productName}`);
 			}
 		}
 
-		console.log('Database update complete');
+		console.log(`[${source.name}] Database update complete`);
 		return { success: true };
 	} catch (error) {
-		console.error('Error updating database:', error);
+		console.error(`[${source.name}] Error updating database:`, error);
 		throw error;
 	}
 }
@@ -799,7 +802,7 @@ async function checkExistingUrls(urls: string[]): Promise<string[]> {
 	return filteredUrls.filter((url) => !existingUrlSet.has(url));
 }
 
-// Add this helper function before updateDatabase
+// Helper function to confirm steps & debug
 async function confirmStep(message: string): Promise<boolean> {
 	console.log('\n' + message);
 	process.stdout.write('Continue? (y/n): ');

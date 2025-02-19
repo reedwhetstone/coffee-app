@@ -168,7 +168,7 @@
 
 	// Add default query constant
 	const DEFAULT_QUERY =
-		'Provide a coffee reccomendation from each source - bodhi leaf, captains coffee, and sweet marias';
+		'Provide a coffee recommendation from each source - bodhi leaf, captains coffee, and sweet marias';
 
 	// Add initial load function
 	async function loadInitialRecommendations() {
