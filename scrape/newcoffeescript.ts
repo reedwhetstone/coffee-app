@@ -138,8 +138,16 @@ class SweetMariasSource implements CoffeeSource {
 	}
 
 	async scrapeUrl(url: string, price: number | null): Promise<ScrapedData | null> {
-		const browser = await chromium.launch();
-		const context = await browser.newContext();
+		const browser = await chromium.launch({
+			// Use the new headless mode which has better site compatibility
+			headless: true,
+			args: ['--headless=new']
+		});
+		const context = await browser.newContext({
+			// Add a desktop user agent to avoid headless detection
+			userAgent:
+				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+		});
 		const page = await context.newPage();
 
 		try {
@@ -177,8 +185,18 @@ class SweetMariasSource implements CoffeeSource {
 			});
 
 			// Click farm notes tab and extract farm_notes
-			await page.click('#tab-label-product-info-origin-notes-title');
-			await page.waitForTimeout(200);
+			try {
+				await page.waitForSelector('#tab-label-product-info-origin-notes-title', { timeout: 5000 });
+				await page.click('#tab-label-product-info-origin-notes-title');
+				// Wait for content to be visible
+				await page.waitForSelector('#product-info-origin-notes', {
+					state: 'visible',
+					timeout: 5000
+				});
+			} catch (error) {
+				console.log('Farm notes tab not found or not clickable');
+			}
+
 			const farmNotes = await page.evaluate(() => {
 				const notesElement = document.querySelector(
 					'#product-info-origin-notes > div > div > div.column-right > p'
@@ -186,8 +204,18 @@ class SweetMariasSource implements CoffeeSource {
 				return notesElement ? (notesElement as HTMLElement).innerText.trim() : null;
 			});
 
-			await page.click('#tab-label-product\\.info\\.specs-title');
-			await page.waitForSelector('#product-attribute-specs-table', { state: 'visible' });
+			// Click specs tab and extract specs
+			try {
+				await page.waitForSelector('#tab-label-product\\.info\\.specs-title', { timeout: 5000 });
+				await page.click('#tab-label-product\\.info\\.specs-title');
+				// Wait for content to be visible
+				await page.waitForSelector('#product-attribute-specs-table', {
+					state: 'visible',
+					timeout: 5000
+				});
+			} catch (error) {
+				console.log('Specs tab not found or not clickable');
+			}
 
 			const specs = await page.evaluate(() => {
 				const rows = document.querySelectorAll('#product-attribute-specs-table tbody tr');
@@ -846,7 +874,7 @@ if (isMainModule) {
 				updateDatabase(source)
 					.then((result) => {
 						if (!result.success) {
-							console.log(`${source.name}: ${result.message}`);
+							console.log(`${source.name}: failed to update db`);
 						} else {
 							console.log(`${source.name}: Completed successfully`);
 						}
@@ -876,7 +904,7 @@ if (isMainModule) {
 		updateDatabase(source)
 			.then((result) => {
 				if (!result.success) {
-					console.log(result.message);
+					console.log(`${sourceName} failed to update`);
 				}
 				process.exit(0);
 			})
