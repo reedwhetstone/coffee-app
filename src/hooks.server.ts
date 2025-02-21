@@ -25,7 +25,6 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
-		//console.log('Session check:', { hasSession: !!session });
 
 		if (!session) {
 			return { session: null, user: null, role: undefined };
@@ -35,24 +34,24 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			data: { user },
 			error
 		} = await event.locals.supabase.auth.getUser();
-		//console.log('User check:', { hasUser: !!user, error });
 
-		if (error) {
+		if (error || !user) {
 			console.error('Auth error:', error);
 			return { session: null, user: null, role: undefined };
 		}
 
 		// Fetch user role
-		const { data: roleData, error: roleError } = await event.locals.supabase
+		const { data: roleData } = await event.locals.supabase
 			.from('user_roles')
 			.select('role')
-			.eq('id', user?.id || '')
+			.eq('id', user.id)
 			.single();
 
-		//console.log('Role check:', { roleData, roleError });
-
 		return {
-			session,
+			session: {
+				...session,
+				user: session.user
+			},
 			user,
 			role: roleData?.role || 'viewer'
 		};
@@ -66,40 +65,52 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
-	const { session, user, role } = await event.locals.safeGetSession();
-	console.log('Auth Check:', {
-		path: event.url.pathname,
-		hasSession: !!session,
-		hasUser: !!user,
-		role
-	});
+	// First get the session
+	const {
+		data: { session },
+		error: sessionError
+	} = await event.locals.supabase.auth.getSession();
 
-	event.locals.session = session;
-	event.locals.user = user;
-	event.locals.role = role;
+	if (sessionError) {
+		console.error('Session error:', sessionError);
+		return resolve(event);
+	}
 
-	// // Update case for other route checks
-	// if (!session && event.url.pathname.startsWith('/roast')) {
-	// 	throw redirect(303, '/');
-	// }
+	if (session) {
+		// Validate the user with getUser()
+		const {
+			data: { user },
+			error: userError
+		} = await event.locals.supabase.auth.getUser();
 
-	// if (session && event.url.pathname.startsWith('/roast') && role !== 'admin') {
-	// 	//console.log('Redirecting from /roast - Not admin');
-	// 	throw redirect(303, '/');
-	// }
+		if (userError || !user) {
+			console.error('User validation error:', userError);
+			event.locals.session = null;
+			event.locals.user = null;
+			event.locals.role = 'viewer';
+			return resolve(event);
+		}
 
-	// if (event.url.pathname.startsWith('/profit') && role !== 'admin') {
-	// 	//console.log('Redirecting from /profit - Not admin');
-	// 	throw redirect(303, '/');
-	// }
+		// Fetch user role
+		const { data: roleData } = await event.locals.supabase
+			.from('user_roles')
+			.select('role')
+			.eq('id', user.id)
+			.single();
 
-	// if (!event.locals.session && event.url.pathname.startsWith('/private')) {
-	// 	throw redirect(303, '/');
-	// }
+		event.locals.session = session;
+		event.locals.user = user;
+		event.locals.role = roleData?.role || 'viewer';
+	}
 
-	// if (event.locals.session && event.url.pathname === '/auth') {
-	// 	throw redirect(303, '/');
-	// }
+	// Add your route protection logic here
+	if (!session && event.url.pathname.startsWith('/profit')) {
+		throw redirect(303, '/');
+	}
+
+	if (session && event.url.pathname.startsWith('/profit') && event.locals.role !== 'admin') {
+		throw redirect(303, '/');
+	}
 
 	return resolve(event);
 };
