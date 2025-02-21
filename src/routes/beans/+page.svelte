@@ -249,8 +249,14 @@
 
 	// Add this computed property for unique purchase dates
 	let uniquePurchaseDates = $derived(
-		Array.from(new Set(data.data.map((bean) => bean.purchase_date)))
-			.filter((date) => date) // Remove null/undefined values
+		Array.from(
+			new Set(
+				data.data.map(
+					(bean: Database['public']['Tables']['green_coffee_inv']['Row']) => bean.purchase_date
+				)
+			)
+		)
+			.filter((date): date is string => typeof date === 'string') // Remove null/undefined values
 			.sort((a, b) => b.localeCompare(a)) // Sort descending
 	);
 </script>
