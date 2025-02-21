@@ -16,7 +16,8 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
-		"test": "npm run test:unit -- --run"
+		"test": "npm run test:unit -- --run",
+		"vercel-dev": "vercel dev"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.3",

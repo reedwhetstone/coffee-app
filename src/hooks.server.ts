@@ -25,7 +25,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
-		console.log('Session data:', JSON.stringify(session, null, 2));
+		console.log('Session in safeGetSession:', session);
 
 		if (!session) {
 			return { session: null, user: null, role: undefined };
@@ -42,16 +42,21 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 
 		// Fetch user role
-		const { data: roleData } = await event.locals.supabase
+		const { data: roleData, error: roleError } = await event.locals.supabase
 			.from('user_roles')
 			.select('role')
 			.eq('id', user.id)
 			.single();
 
-		// Return the complete session and user objects
+		if (roleError) {
+			console.error('Role fetch error:', roleError);
+		}
+
+		console.log('Role data:', roleData);
+
 		return {
-			session, // Keep the full session object
-			user, // Keep the full user object
+			session,
+			user,
 			role: roleData?.role || 'viewer'
 		};
 	};
