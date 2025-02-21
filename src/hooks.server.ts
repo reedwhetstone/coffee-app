@@ -25,7 +25,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
-		console.log('Session check:', { hasSession: !!session });
+		//console.log('Session check:', { hasSession: !!session });
 
 		if (!session) {
 			return { session: null, user: null, role: undefined };
@@ -35,7 +35,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			data: { user },
 			error
 		} = await event.locals.supabase.auth.getUser();
-		console.log('User check:', { hasUser: !!user, error });
+		//console.log('User check:', { hasUser: !!user, error });
 
 		if (error) {
 			console.error('Auth error:', error);
@@ -49,7 +49,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			.eq('id', user?.id || '')
 			.single();
 
-		console.log('Role check:', { roleData, roleError });
+		//console.log('Role check:', { roleData, roleError });
 
 		return {
 			session,
@@ -80,25 +80,25 @@ const authGuard: Handle = async ({ event, resolve }) => {
 
 	// Update case for other route checks
 	if (!session && event.url.pathname.startsWith('/roast')) {
-		throw redirect(303, '/auth');
+		throw redirect(303, '/');
 	}
 
 	if (session && event.url.pathname.startsWith('/roast') && role !== 'admin') {
-		console.log('Redirecting from /roast - Not admin');
+		//console.log('Redirecting from /roast - Not admin');
 		throw redirect(303, '/');
 	}
 
 	if (event.url.pathname.startsWith('/profit') && role !== 'admin') {
-		console.log('Redirecting from /profit - Not admin');
+		//console.log('Redirecting from /profit - Not admin');
 		throw redirect(303, '/');
 	}
 
 	if (!event.locals.session && event.url.pathname.startsWith('/private')) {
-		throw redirect(303, '/auth');
+		throw redirect(303, '/');
 	}
 
 	if (event.locals.session && event.url.pathname === '/auth') {
-		throw redirect(303, '/private');
+		throw redirect(303, '/');
 	}
 
 	return resolve(event);
