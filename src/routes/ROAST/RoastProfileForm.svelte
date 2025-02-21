@@ -9,7 +9,7 @@
 		selectedBean: any;
 	}>();
 
-	let availableCoffees: any[] = [];
+	let availableCoffees = $state<any[]>([]);
 
 	// Fetch available coffees on component mount
 	async function loadCoffees() {
@@ -41,14 +41,14 @@
 	};
 
 	// Array to store multiple beans in the batch
-	let batchBeans = [
+	let batchBeans = $state([
 		{
 			coffee_id: selectedBean?.id || '',
 			coffee_name: selectedBean?.name || '',
 			oz_in: '',
 			oz_out: ''
 		}
-	];
+	]);
 
 	function addBeanToBatch() {
 		batchBeans = [...batchBeans, { coffee_id: '', coffee_name: '', oz_in: '', oz_out: '' }];
@@ -112,8 +112,8 @@
 	<button
 		type="button"
 		class="fixed inset-0 bg-black/50"
-		on:click={onClose}
-		on:keydown={(e) => e.key === 'Escape' && onClose()}
+		onclick={onClose}
+		onkeydown={(e) => e.key === 'Escape' && onClose()}
 		aria-label="Close modal"
 	></button>
 	<div class="flex min-h-screen items-center justify-center p-4">
@@ -135,7 +135,13 @@
 			</div>
 
 			<!-- Scrollable Content -->
-			<form on:submit|preventDefault={handleSubmit} class="max-h-[60vh] overflow-y-auto p-4">
+			<form
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleSubmit();
+				}}
+				class="max-h-[60vh] overflow-y-auto p-4"
+			>
 				<div class="space-y-4">
 					<!-- Roast Date -->
 					<div class="w-full">
@@ -160,7 +166,7 @@
 									<button
 										type="button"
 										class="absolute right-2 top-2 text-zinc-500 hover:text-zinc-300"
-										on:click={() => removeBeanFromBatch(index)}
+										onclick={() => removeBeanFromBatch(index)}
 									>
 										✕
 									</button>
@@ -176,7 +182,7 @@
 											id="coffee_select_{index}"
 											class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 											value={bean.coffee_id}
-											on:change={(e) => handleCoffeeChange(e, index)}
+											onchange={(e) => handleCoffeeChange(e, index)}
 											required
 										>
 											<option value="">Select a coffee...</option>
@@ -222,7 +228,7 @@
 						<button
 							type="button"
 							class="flex items-center gap-2 rounded border border-zinc-700 px-4 py-2 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300"
-							on:click={addBeanToBatch}
+							onclick={addBeanToBatch}
 						>
 							<span class="text-xl">+</span>
 							<span>Add Bean to Batch</span>
@@ -264,14 +270,14 @@
 					<button
 						type="button"
 						class="rounded bg-zinc-600 px-4 py-2 text-zinc-300"
-						on:click={onClose}
+						onclick={onClose}
 					>
 						Cancel
 					</button>
 					<button
 						type="submit"
 						class="rounded bg-green-600 px-4 py-2 text-zinc-300"
-						on:click={handleSubmit}
+						onclick={handleSubmit}
 					>
 						Create
 					</button>
