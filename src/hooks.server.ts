@@ -25,6 +25,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
+		console.log('Session data:', JSON.stringify(session, null, 2));
 
 		if (!session) {
 			return { session: null, user: null, role: undefined };
