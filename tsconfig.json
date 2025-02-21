@@ -11,5 +11,11 @@
 		"strict": true,
 		"types": ["@sveltejs/kit", "vite/client"]
 	},
-	"include": ["src/**/*.d.ts", "src/**/*.ts", "src/**/*.js", "src/**/*.svelte"]
+	"include": [
+		"src/**/*.d.ts",
+		"src/**/*.ts",
+		"src/**/*.js",
+		"src/**/*.svelte",
+		".svelte-kit/ambient.d.ts"
+	]
 }
