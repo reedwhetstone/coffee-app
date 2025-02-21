@@ -79,10 +79,15 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	event.locals.role = role;
 
 	// Update case for other route checks
-	if (event.url.pathname.startsWith('/roast') && role !== 'admin') {
+	if (!session && event.url.pathname.startsWith('/roast')) {
+		throw redirect(303, '/auth');
+	}
+
+	if (session && event.url.pathname.startsWith('/roast') && role !== 'admin') {
 		console.log('Redirecting from /roast - Not admin');
 		throw redirect(303, '/');
 	}
+
 	if (event.url.pathname.startsWith('/profit') && role !== 'admin') {
 		console.log('Redirecting from /profit - Not admin');
 		throw redirect(303, '/');
