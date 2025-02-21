@@ -78,28 +78,28 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	event.locals.user = user;
 	event.locals.role = role;
 
-	// Update case for other route checks
-	if (!session && event.url.pathname.startsWith('/roast')) {
-		throw redirect(303, '/');
-	}
+	// // Update case for other route checks
+	// if (!session && event.url.pathname.startsWith('/roast')) {
+	// 	throw redirect(303, '/');
+	// }
 
-	if (session && event.url.pathname.startsWith('/roast') && role !== 'admin') {
-		//console.log('Redirecting from /roast - Not admin');
-		throw redirect(303, '/');
-	}
+	// if (session && event.url.pathname.startsWith('/roast') && role !== 'admin') {
+	// 	//console.log('Redirecting from /roast - Not admin');
+	// 	throw redirect(303, '/');
+	// }
 
-	if (event.url.pathname.startsWith('/profit') && role !== 'admin') {
-		//console.log('Redirecting from /profit - Not admin');
-		throw redirect(303, '/');
-	}
+	// if (event.url.pathname.startsWith('/profit') && role !== 'admin') {
+	// 	//console.log('Redirecting from /profit - Not admin');
+	// 	throw redirect(303, '/');
+	// }
 
-	if (!event.locals.session && event.url.pathname.startsWith('/private')) {
-		throw redirect(303, '/');
-	}
+	// if (!event.locals.session && event.url.pathname.startsWith('/private')) {
+	// 	throw redirect(303, '/');
+	// }
 
-	if (event.locals.session && event.url.pathname === '/auth') {
-		throw redirect(303, '/');
-	}
+	// if (event.locals.session && event.url.pathname === '/auth') {
+	// 	throw redirect(303, '/');
+	// }
 
 	return resolve(event);
 };
