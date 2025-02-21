@@ -47,12 +47,10 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			.eq('id', user.id)
 			.single();
 
+		// Return the complete session and user objects
 		return {
-			session: {
-				...session,
-				user: session.user
-			},
-			user,
+			session, // Keep the full session object
+			user, // Keep the full user object
 			role: roleData?.role || 'viewer'
 		};
 	};
