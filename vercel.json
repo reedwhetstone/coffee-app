@@ -1,7 +1,0 @@
-{
-	"routes": [
-		{ "src": "/roast", "dest": "/" },
-		{ "src": "/profit", "dest": "/" },
-		{ "src": "/(.*)", "dest": "/" }
-	]
-}
