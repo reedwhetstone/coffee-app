@@ -134,6 +134,11 @@
 	onMount(() => {
 		// First load the data
 		loadData().then(() => {
+			// Set default purchase date to the first date in uniquePurchaseDates
+			if (uniquePurchaseDates.length > 0) {
+				filters.purchase_date = uniquePurchaseDates[0];
+			}
+
 			// Check for search state on initial load
 			const searchState = $page.state as any;
 			if (searchState?.searchType === 'green' && searchState?.searchId) {
@@ -184,25 +189,70 @@
 		isFormVisible = true;
 	}
 
-	// Add the missing toggleSort function
-	function toggleSort(field: string) {
-		if (sortField === field) {
-			if (sortDirection === 'asc') sortDirection = 'desc';
-			else if (sortDirection === 'desc') {
-				sortField = null;
-				sortDirection = null;
-			}
-		} else {
-			sortField = field;
-			sortDirection = 'asc';
-		}
-	}
-
 	// Add type at the top with other types
 	type PageState = {
 		searchType?: 'green';
 		searchId?: number;
 	};
+
+	// Add these new variables and functions
+	let filters = $state<Record<string, any>>({
+		name: '',
+		score_value: { min: '', max: '' },
+		rank: '',
+		cultivar_detail: '',
+		processing: '',
+		vendor: '',
+		price_per_lb: '',
+		purchase_date: '',
+		arrival_date: ''
+	});
+	let expandedFilters = false;
+
+	function getFilterableColumns(): string[] {
+		return [
+			'name',
+			'purchase_date',
+			'score_value',
+			'rank',
+			'cultivar_detail',
+			'processing',
+			'vendor',
+			'price_per_lb',
+			'arrival_date'
+		];
+	}
+
+	// Update the sorted and filtered data computation
+	let filteredAndSortedData = $derived(
+		sortedData.filter((item) => {
+			return Object.entries(filters).every(([key, value]) => {
+				if (!value) return true;
+				const itemValue = item[key as keyof typeof item];
+
+				// Special handling for score
+				if (key === 'score_value') {
+					const score = Number(itemValue);
+					return (
+						(!value.min || score >= Number(value.min)) && (!value.max || score <= Number(value.max))
+					);
+				}
+
+				// Default string filtering
+				if (typeof value === 'string') {
+					return String(itemValue).toLowerCase().includes(value.toLowerCase());
+				}
+				return true;
+			});
+		})
+	);
+
+	// Add this computed property for unique purchase dates
+	let uniquePurchaseDates = $derived(
+		Array.from(new Set(data.data.map((bean) => bean.purchase_date)))
+			.filter((date) => date) // Remove null/undefined values
+			.sort((a, b) => b.localeCompare(a)) // Sort descending
+	);
 </script>
 
 <div class="m-4">
@@ -237,77 +287,144 @@
 		</div>
 	{/if}
 
-	<!-- Existing table code -->
-	<div id="green-coffee-inv-table" class="overflow-x-auto">
-		<div class="mb-4 flex items-center justify-end gap-4">
-			<select
-				class="m-1 rounded bg-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-600"
-				bind:value={selectedPurchaseDate}
-			>
-				<option value={null}>Show All Dates</option>
-				{#each [...new Set(data.data.map((bean: Database['public']['Tables']['green_coffee_inv']['Row']) => bean.purchase_date))]
-					.sort()
-					.reverse() as date}
-					<option value={date}
-						>{typeof date === 'string' ? new Date(date).toLocaleDateString() : ''}</option
-					>
-				{/each}
-			</select>
-		</div>
-		<!-- Table with a reactive class binding -->
-		{#if data.data.length > 0}
-			<div class="overflow-hidden overflow-x-auto rounded-lg">
-				<table class="table-auto bg-zinc-800">
-					<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
-						<tr>
-							{#each Object.keys(data.data[0] || ({} as Record<string, unknown>)) as header}
-								<th
-									onclick={() => toggleSort(header)}
-									class="group max-w-[200px] cursor-pointer px-6 py-3 hover:bg-zinc-600"
-								>
-									<div class="flex items-center gap-2">
-										<span class="truncate">
-											{header.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-										</span>
-
-										<!-- Sort indicators -->
-										{#if sortField === header}
-											{#if sortDirection === 'asc'}
-												<span class="flex-shrink-0">↑</span>
-											{:else if sortDirection === 'desc'}
-												<span class="flex-shrink-0">↓</span>
-											{/if}
-										{:else}
-											<span class="flex-shrink-0 opacity-0 group-hover:opacity-50">↕</span>
-										{/if}
-									</div>
-								</th>
-							{/each}
-						</tr>
-					</thead>
-					<tbody>
-						{#each sortedData as bean}
-							<tr
-								class="cursor-pointer border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700 {selectedBean?.id ===
-								bean.id
-									? 'bg-zinc-700'
-									: ''}"
-								onclick={() => selectBean(bean)}
-							>
-								{#each Object.entries(bean) as [key, value]}
-									<td class="max-w-[200px] px-6 py-4 text-xs text-zinc-300">
-										<div class="break-words">
-											{String(value).length > 250 ? String(value).slice(0, 250) + '...' : value}
-										</div>
-									</td>
-								{/each}
-							</tr>
-						{/each}
-					</tbody>
-				</table>
+	<!-- Replace the table section with this new card layout -->
+	<div class="mx-8 mt-8 flex gap-4">
+		<!-- Filter Panel -->
+		<div class="w-64 flex-shrink-0 space-y-4 rounded-lg bg-zinc-800 p-4">
+			<div class="flex items-center justify-between">
+				<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
+				<button
+					class="text-sm text-zinc-400 hover:text-zinc-100"
+					onclick={() => (expandedFilters = !expandedFilters)}
+				>
+					{expandedFilters ? 'Collapse' : 'Expand'}
+				</button>
 			</div>
-		{:else}
-			<p class="text-zinc-300">No data available</p>
-		{/if}
+
+			<!-- Sort Controls -->
+			<div class="space-y-2">
+				<label for="sort-field" class="block text-sm text-zinc-400">Sort by</label>
+				<select
+					id="sort-field"
+					bind:value={sortField}
+					class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+				>
+					<option value={null}>None</option>
+					{#each getFilterableColumns() as column}
+						<option value={column}>
+							{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+						</option>
+					{/each}
+				</select>
+
+				{#if sortField}
+					<select
+						id="sort-direction"
+						bind:value={sortDirection}
+						class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+					>
+						<option value="asc">Ascending</option>
+						<option value="desc">Descending</option>
+					</select>
+				{/if}
+			</div>
+
+			<!-- Filter Controls -->
+			<div class="space-y-2">
+				<h4 class="block text-sm text-zinc-400">Filters</h4>
+				{#each getFilterableColumns() as column}
+					<div class="space-y-1">
+						<label for={column} class="block text-xs text-zinc-400">
+							{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+						</label>
+						{#if column === 'purchase_date'}
+							<select
+								bind:value={filters[column]}
+								class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+							>
+								<option value="">All Dates</option>
+								{#each uniquePurchaseDates as date}
+									<option value={date}>{date}</option>
+								{/each}
+							</select>
+						{:else if column === 'score_value'}
+							<div class="flex gap-2">
+								<input
+									type="number"
+									bind:value={filters.score_value.min}
+									class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+									placeholder="Min"
+									min="0"
+									max="100"
+									step="0.1"
+								/>
+								<input
+									type="number"
+									bind:value={filters.score_value.max}
+									class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+									placeholder="Max"
+									min="0"
+									max="100"
+									step="0.1"
+								/>
+							</div>
+						{:else}
+							<input
+								type="text"
+								bind:value={filters[column]}
+								class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+								placeholder={`Filter by ${column}`}
+							/>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		</div>
+
+		<!-- Coffee Cards -->
+		<div class="flex-1">
+			{#if !data?.data || data.data.length === 0}
+				<p class="p-4 text-zinc-300">No coffee data available</p>
+			{:else}
+				<div class="space-y-4">
+					{#each filteredAndSortedData as bean}
+						<button
+							type="button"
+							class="w-full cursor-pointer rounded-lg bg-zinc-800 p-4 text-left transition-colors hover:bg-zinc-700"
+							onclick={() => selectBean(bean)}
+						>
+							<div class="flex justify-between">
+								<div>
+									<h3 class="text-lg font-semibold text-zinc-100">{bean.name}</h3>
+									<p class="text-sm text-zinc-400">{bean.vendor}</p>
+								</div>
+								<div class="text-right">
+									<p class="text-lg font-bold text-zinc-100">${bean.price_per_lb}/lb</p>
+									<p class="text-sm text-zinc-400">Score: {bean.score_value}</p>
+								</div>
+							</div>
+							<div class="mt-2 grid grid-cols-2 gap-4 text-sm text-zinc-300">
+								<div>
+									<span class="text-zinc-400">Cultivar:</span>
+									{bean.cultivar_detail || '-'}
+								</div>
+								<div>
+									<span class="text-zinc-400">Processing:</span>
+									{bean.processing || '-'}
+								</div>
+								<div>
+									<span class="text-zinc-400">Purchase:</span>
+									{bean.purchase_date || '-'}
+								</div>
+								<div>
+									<span class="text-zinc-400">Arrival:</span>
+									{bean.arrival_date || '-'}
+								</div>
+							</div>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
 	</div>
 </div>

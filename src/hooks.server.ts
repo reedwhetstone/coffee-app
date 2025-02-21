@@ -52,7 +52,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			console.error('Role fetch error:', roleError);
 		}
 
-		console.log('Role data:', roleData);
+		//console.log('Role data:', roleData);
 
 		return {
 			session,
@@ -69,7 +69,12 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
-	// First get the session
+	// Define protected routes first
+	const protectedRoutes = ['/roast', '/profit'];
+	const currentPath = event.url.pathname;
+	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
+
+	// Get session
 	const {
 		data: { session },
 		error: sessionError
@@ -77,8 +82,17 @@ const authGuard: Handle = async ({ event, resolve }) => {
 
 	if (sessionError) {
 		console.error('Session error:', sessionError);
+		// If this is a protected route, redirect
+		if (requiresProtection) {
+			throw redirect(303, '/');
+		}
 		return resolve(event);
 	}
+
+	// Set default values
+	event.locals.session = session;
+	event.locals.user = null;
+	event.locals.role = 'viewer';
 
 	if (session) {
 		// Validate the user with getUser()
@@ -87,27 +101,23 @@ const authGuard: Handle = async ({ event, resolve }) => {
 			error: userError
 		} = await event.locals.supabase.auth.getUser();
 
-		if (userError || !user) {
-			console.error('User validation error:', userError);
-			event.locals.session = null;
-			event.locals.user = null;
-			event.locals.role = 'viewer';
-			return resolve(event);
+		if (!userError && user) {
+			// Fetch user role
+			const { data: roleData } = await event.locals.supabase
+				.from('user_roles')
+				.select('role')
+				.eq('id', user.id)
+				.single();
+
+			event.locals.user = user;
+			event.locals.role = roleData?.role || 'viewer';
 		}
-
-		// Fetch user role
-		const { data: roleData } = await event.locals.supabase
-			.from('user_roles')
-			.select('role')
-			.eq('id', user.id)
-			.single();
-
-		event.locals.session = session;
-		event.locals.user = user;
-		event.locals.role = roleData?.role || 'viewer';
 	}
 
-	// Add your route protection logic here
+	// Check protected routes - do this after setting up locals but before resolving
+	if (requiresProtection && (!session || event.locals.role !== 'admin')) {
+		throw redirect(303, '/');
+	}
 
 	return resolve(event);
 };
