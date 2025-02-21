@@ -458,11 +458,25 @@
 			}
 
 			// Save new log entries with prepared logs
-			const logEntries = preparedLogs.map((entry) => ({
-				...entry,
-				roast_id: profile.roast_id,
-				time: msToMySQLTime(entry.time)
-			}));
+			const logEntries = preparedLogs.map(
+				(entry: {
+					time: number;
+					fan_setting: number;
+					heat_setting: number;
+					start: boolean;
+					maillard: boolean;
+					fc_start: boolean;
+					fc_rolling: boolean;
+					fc_end: boolean;
+					sc_start: boolean;
+					drop: boolean;
+					end: boolean;
+				}) => ({
+					...entry,
+					roast_id: profile.roast_id,
+					time: msToMySQLTime(entry.time)
+				})
+			);
 
 			const logResponse = await fetch('/api/profile-log', {
 				method: 'POST',
@@ -559,7 +573,7 @@
 		<div class="mb-4 flex justify-end">
 			<button
 				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
-				onclick={() => (isFormVisible = true)}
+				on:click={() => (isFormVisible = true)}
 			>
 				New Roast
 			</button>

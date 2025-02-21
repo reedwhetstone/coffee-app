@@ -2,9 +2,12 @@
 	import { onMount } from 'svelte';
 	import { formatDateForDisplay, prepareDateForAPI } from '$lib/utils/dates';
 
-	export let onClose: () => void;
-	export let onSubmit: (profile: any) => void;
-	export let selectedBean: any;
+	// Replace event dispatcher with callback props
+	let { onClose, onSubmit, selectedBean } = $props<{
+		onClose: () => void;
+		onSubmit: (data: any) => void;
+		selectedBean: any;
+	}>();
 
 	let availableCoffees: any[] = [];
 
