@@ -3,10 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import type { Database } from '$lib/types/database.types';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
-import { i18n } from '$lib/i18n';
 import { handleCookieCheck } from '$lib/middleware/cookieCheck';
-
-const handleParaglide = i18n.handle();
 
 const handleSupabase: Handle = async ({ event, resolve }) => {
 	event.locals.supabase = createServerClient<Database>(
@@ -104,4 +101,4 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-export const handle = sequence(handleCookieCheck, handleParaglide, handleSupabase, authGuard);
+export const handle = sequence(handleCookieCheck, handleSupabase, authGuard);
