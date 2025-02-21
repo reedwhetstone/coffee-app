@@ -117,7 +117,7 @@
 
 					// Fetch coffee details from the database for each recommended ID
 					const coffeeDetails = await Promise.all(
-						recommendations.map(async (rec) => {
+						recommendations.map(async (rec: { id: string | number; reason: string }) => {
 							// Convert both IDs to strings for comparison
 							const coffee = data.data.find((c) => String(c.id) === String(rec.id));
 							console.log('Found coffee for ID:', rec.id, coffee);
@@ -301,8 +301,12 @@
 
 		<!-- Sort Controls -->
 		<div class="space-y-2">
-			<label class="block text-sm text-zinc-400">Sort by</label>
-			<select bind:value={sortField} class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100">
+			<label for="sort-field" class="block text-sm text-zinc-400">Sort by</label>
+			<select
+				id="sort-field"
+				bind:value={sortField}
+				class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+			>
 				<option value={null}>None</option>
 				{#each getFilterableColumns() as column}
 					<option value={column}>
@@ -312,7 +316,9 @@
 			</select>
 
 			{#if sortField}
+				<label for="sort-direction" class="block text-sm text-zinc-400">Sort Direction</label>
 				<select
+					id="sort-direction"
 					bind:value={sortDirection}
 					class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
 				>
