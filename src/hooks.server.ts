@@ -108,13 +108,6 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	}
 
 	// Add your route protection logic here
-	if (!session && event.url.pathname.startsWith('/profit')) {
-		throw redirect(303, '/');
-	}
-
-	if (session && event.url.pathname.startsWith('/profit') && event.locals.role !== 'admin') {
-		throw redirect(303, '/');
-	}
 
 	return resolve(event);
 };
