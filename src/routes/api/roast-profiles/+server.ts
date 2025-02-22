@@ -3,15 +3,15 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
-		const { session } = await safeGetSession();
-		if (!session) {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
 		const { data, error } = await supabase
 			.from('roast_profiles')
 			.select('*')
-			.eq('user', session.user.id)
+			.eq('user', user.id)
 			.order('roast_date', { ascending: false });
 
 		if (error) throw error;
@@ -24,8 +24,8 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
-		const session = await safeGetSession();
-		if (!session) {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -51,7 +51,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 				const profile = {
 					...profileData,
-					user: session.user.id,
+					user: user.id,
 					batch_name:
 						profileData.batch_name || `${coffee.name} - ${new Date().toLocaleDateString()}`,
 					coffee_id: profileData.coffee_id,
@@ -88,8 +88,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
-		const session = await safeGetSession();
-		if (!session) {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -105,7 +105,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			.eq('roast_id', id)
 			.single();
 
-		if (!existing || existing.user !== session.user.id) {
+		if (!existing || existing.user !== user.id) {
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
@@ -113,7 +113,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			.from('roast_profiles')
 			.delete()
 			.eq('roast_id', id)
-			.eq('user', session.user.id);
+			.eq('user', user.id);
 
 		if (error) throw error;
 		return json({ success: true });
@@ -129,8 +129,8 @@ export const PUT: RequestHandler = async ({
 	locals: { supabase, safeGetSession }
 }) => {
 	try {
-		const session = await safeGetSession();
-		if (!session) {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -148,7 +148,7 @@ export const PUT: RequestHandler = async ({
 			.eq('roast_id', id)
 			.single();
 
-		if (!existing || existing.user !== session.user.id) {
+		if (!existing || existing.user !== user.id) {
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
@@ -156,7 +156,7 @@ export const PUT: RequestHandler = async ({
 			.from('roast_profiles')
 			.update(data)
 			.eq('roast_id', id)
-			.eq('user', session.user.id)
+			.eq('user', user.id)
 			.select()
 			.single();
 

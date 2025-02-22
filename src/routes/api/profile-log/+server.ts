@@ -3,8 +3,8 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
-		const { session } = await safeGetSession();
-		if (!session) {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				.eq('roast_id', roastId)
 				.single();
 
-			if (!profile || profile.user !== session.user.id) {
+			if (!profile || profile.user !== user.id) {
 				return json({ error: 'Unauthorized' }, { status: 403 });
 			}
 		}
@@ -33,7 +33,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			const { data: userProfiles } = await supabase
 				.from('roast_profiles')
 				.select('roast_id')
-				.eq('user', session.user.id);
+				.eq('user', user.id);
 
 			if (userProfiles && userProfiles.length > 0) {
 				const roastIds = userProfiles.map((profile) => profile.roast_id);
@@ -64,8 +64,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
-		const session = await safeGetSession();
-		if (!session) {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -81,7 +81,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				.eq('roast_id', roastId)
 				.single();
 
-			if (!profile || profile.user !== session.user.id) {
+			if (!profile || profile.user !== user.id) {
 				return json({ error: 'Unauthorized' }, { status: 403 });
 			}
 		}
@@ -123,8 +123,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
-		const session = await safeGetSession();
-		if (!session) {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -140,7 +140,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			.eq('roast_id', roastId)
 			.single();
 
-		if (!profile || profile.user !== session.user.id) {
+		if (!profile || profile.user !== user.id) {
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
@@ -164,8 +164,8 @@ export const PUT: RequestHandler = async ({
 	locals: { supabase, safeGetSession }
 }) => {
 	try {
-		const session = await safeGetSession();
-		if (!session) {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -188,7 +188,7 @@ export const PUT: RequestHandler = async ({
 				.eq('roast_id', log.roast_id)
 				.single();
 
-			if (!profile || profile.user !== session.user.id) {
+			if (!profile || profile.user !== user.id) {
 				return json({ error: 'Unauthorized' }, { status: 403 });
 			}
 		}
