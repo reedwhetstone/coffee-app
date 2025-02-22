@@ -19,7 +19,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		}
 
 		const id = url.searchParams.get('id');
-		let query = supabase.from('green_coffee_inv').select('*').eq('user_id', user.id);
+		let query = supabase.from('green_coffee_inv').select('*').eq('user', user.id);
 
 		if (id) {
 			query = query.eq('id', id);
@@ -52,7 +52,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			.from('green_coffee_inv')
 			.insert({
 				...bean,
-				user_id: user.id
+				user: user.id
 			})
 			.select()
 			.single();
@@ -80,11 +80,11 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		// Verify ownership
 		const { data: existing } = await supabase
 			.from('green_coffee_inv')
-			.select('user_id')
+			.select('user')
 			.eq('id', id)
 			.single();
 
-		if (!existing || existing.user_id !== user.id) {
+		if (!existing || existing.user !== user.id) {
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
@@ -146,11 +146,11 @@ export const PUT: RequestHandler = async ({
 		// Verify ownership
 		const { data: existing } = await supabase
 			.from('green_coffee_inv')
-			.select('user_id')
+			.select('user')
 			.eq('id', id)
 			.single();
 
-		if (!existing || existing.user_id !== user.id) {
+		if (!existing || existing.user !== user.id) {
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
