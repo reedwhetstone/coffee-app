@@ -141,7 +141,6 @@ export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }
 		return json({ error: 'Failed to update sale' }, { status: 500 });
 	}
 };
-
 export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
 	try {
 		const saleData = await request.json();
@@ -151,36 +150,33 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 			return json({ error: 'green_coffee_inv_id is required' }, { status: 400 });
 		}
 
-		const columns = Object.keys(insertData).join(', ');
-		const placeholders = Object.keys(insertData)
-			.map((_, index) => `$${index + 1}`)
-			.join(', ');
-		const values = Object.values(insertData);
-
-		const { data: result, error: insertError } = await supabase.rpc('run_query', {
-			query_text: `INSERT INTO sales (${columns}) VALUES (${placeholders}) RETURNING id`,
-			query_params: values
-		});
+		// Insert the new sale
+		const { data: newSale, error: insertError } = await supabase
+			.from('sales')
+			.insert(insertData)
+			.select(
+				`
+                *,
+                green_coffee_inv (
+                    name,
+                    purchase_date
+                )
+            `
+			)
+			.single();
 
 		if (insertError) {
 			return json({ error: insertError.message }, { status: 500 });
 		}
 
-		const { data: newSale, error: fetchError } = await supabase.rpc('run_query', {
-			query_text: `
-				SELECT s.*, g.name as coffee_name, g.purchase_date
-				FROM sales s
-				LEFT JOIN green_coffee_inv g ON s.green_coffee_inv_id = g.id
-				WHERE s.id = $1
-			`,
-			query_params: [result[0].id]
-		});
+		// Format the response to match the expected structure
+		const formattedSale = {
+			...newSale,
+			coffee_name: newSale.green_coffee_inv?.name || null,
+			purchase_date: newSale.green_coffee_inv?.purchase_date || null
+		};
 
-		if (fetchError) {
-			return json({ error: fetchError.message }, { status: 500 });
-		}
-
-		return json(newSale[0]);
+		return json(formattedSale);
 	} catch (error) {
 		console.error('Error creating sale:', error);
 		return json({ error: 'Failed to create sale' }, { status: 500 });
