@@ -235,19 +235,19 @@
 	});
 </script>
 
-<div class="mx-8 mt-8 space-y-4">
-	<!-- Add search and chat interface -->
-	<div class="mx-8 mt-8 space-y-4">
-		<div class="flex gap-4">
+<div class="mx-2 mt-4 space-y-4 md:mx-8 md:mt-8">
+	<!-- Update search and chat interface spacing -->
+	<div class="space-y-4">
+		<div class="flex flex-col gap-2 md:flex-row md:gap-4">
 			<input
 				type="text"
 				bind:value={searchQuery}
 				placeholder="Search coffees or ask a question..."
-				class="flex-1 rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 placeholder-zinc-400"
+				class="w-full rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 placeholder-zinc-400"
 			/>
 			<button
 				on:click={handleSearch}
-				class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+				class="w-full rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 md:w-auto"
 				disabled={isLoading}
 			>
 				{isLoading ? 'Processing...' : 'YOLO!'}
@@ -261,11 +261,11 @@
 		{/if}
 	</div>
 
-	<!-- Add recommendations UI -->
+	<!-- Update recommendations layout -->
 	{#if recommendedCoffees.length > 0}
-		<div class="mt-8">
+		<div class="mt-4 md:mt-8">
 			<h3 class="mb-4 text-xl font-semibold text-zinc-100">Recommended Coffees</h3>
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{#each recommendedCoffees as coffee}
 					<a
 						href={coffee.link}
@@ -286,117 +286,121 @@
 	{/if}
 </div>
 
-<div class="mx-8 mt-8 flex gap-4">
-	<!-- Filter Panel -->
-	<div class="w-64 flex-shrink-0 space-y-4 rounded-lg bg-zinc-800 p-4">
+<!-- Update main content layout -->
+<div class="mx-2 mt-4 flex flex-col gap-4 md:mx-8 md:mt-8 md:flex-row">
+	<!-- Filter Panel - Make collapsible on mobile -->
+	<div class="rounded-lg bg-zinc-800 p-4 md:w-64 md:flex-shrink-0">
 		<div class="flex items-center justify-between">
 			<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
 			<button
-				class="text-sm text-zinc-400 hover:text-zinc-100"
+				class="text-sm text-zinc-400 hover:text-zinc-100 md:hidden"
 				on:click={() => (expandedFilters = !expandedFilters)}
 			>
-				{expandedFilters ? 'Collapse' : 'Expand'}
+				{expandedFilters ? 'Hide Filters' : 'Show Filters'}
 			</button>
 		</div>
 
-		<!-- Sort Controls -->
-		<div class="space-y-2">
-			<label for="sort-field" class="block text-sm text-zinc-400">Sort by</label>
-			<select
-				id="sort-field"
-				bind:value={sortField}
-				class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
-			>
-				<option value={null}>None</option>
-				{#each getFilterableColumns() as column}
-					<option value={column}>
-						{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-					</option>
-				{/each}
-			</select>
-
-			{#if sortField}
-				<label for="sort-direction" class="block text-sm text-zinc-400">Sort Direction</label>
+		<!-- Wrap filter controls in a conditional display div -->
+		<div class={`space-y-4 ${expandedFilters ? 'block' : 'hidden'} md:block`}>
+			<!-- Sort Controls -->
+			<div class="space-y-2">
+				<label for="sort-field" class="block text-sm text-zinc-400">Sort by</label>
 				<select
-					id="sort-direction"
-					bind:value={sortDirection}
+					id="sort-field"
+					bind:value={sortField}
 					class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
 				>
-					<option value="asc">Ascending</option>
-					<option value="desc">Descending</option>
+					<option value={null}>None</option>
+					{#each getFilterableColumns() as column}
+						<option value={column}>
+							{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+						</option>
+					{/each}
 				</select>
-			{/if}
-		</div>
 
-		<!-- Filter Controls -->
-		<div class="space-y-2">
-			<h4 class="block text-sm text-zinc-400">Filters</h4>
-			{#each getFilterableColumns() as column}
-				<div class="space-y-1">
-					<label for={column} class="block text-xs text-zinc-400">
-						{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-					</label>
-					{#if column === 'source'}
-						<div class="space-y-2">
-							{#each uniqueSources as source}
-								<label class="flex items-center gap-2">
-									<input
-										type="checkbox"
-										bind:group={filters.source}
-										value={source}
-										class="rounded border-zinc-600 bg-zinc-700 text-blue-600"
-									/>
-									<span class="text-sm text-zinc-100">{source}</span>
-								</label>
-							{/each}
-						</div>
-					{:else if column === 'score_value'}
-						<div class="flex gap-2">
+				{#if sortField}
+					<label for="sort-direction" class="block text-sm text-zinc-400">Sort Direction</label>
+					<select
+						id="sort-direction"
+						bind:value={sortDirection}
+						class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+					>
+						<option value="asc">Ascending</option>
+						<option value="desc">Descending</option>
+					</select>
+				{/if}
+			</div>
+
+			<!-- Filter Controls -->
+			<div class="space-y-2">
+				<h4 class="block text-sm text-zinc-400">Filters</h4>
+				{#each getFilterableColumns() as column}
+					<div class="space-y-1">
+						<label for={column} class="block text-xs text-zinc-400">
+							{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+						</label>
+						{#if column === 'source'}
+							<div class="space-y-2">
+								{#each uniqueSources as source}
+									<label class="flex items-center gap-2">
+										<input
+											type="checkbox"
+											bind:group={filters.source}
+											value={source}
+											class="rounded border-zinc-600 bg-zinc-700 text-blue-600"
+										/>
+										<span class="text-sm text-zinc-100">{source}</span>
+									</label>
+								{/each}
+							</div>
+						{:else if column === 'score_value'}
+							<div class="flex gap-2">
+								<input
+									id={`${column}_min`}
+									type="number"
+									bind:value={filters[column].min}
+									class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+									placeholder="Min"
+									min="0"
+									max="100"
+									step="0.1"
+								/>
+								<input
+									id={`${column}_max`}
+									type="number"
+									bind:value={filters[column].max}
+									class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+									placeholder="Max"
+									min="0"
+									max="100"
+									step="0.1"
+								/>
+							</div>
+						{:else}
 							<input
-								id={`${column}_min`}
-								type="number"
-								bind:value={filters[column].min}
+								id={column}
+								type="text"
+								bind:value={filters[column]}
 								class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
-								placeholder="Min"
-								min="0"
-								max="100"
-								step="0.1"
+								placeholder={`Filter by ${column}`}
 							/>
-							<input
-								id={`${column}_max`}
-								type="number"
-								bind:value={filters[column].max}
-								class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
-								placeholder="Max"
-								min="0"
-								max="100"
-								step="0.1"
-							/>
-						</div>
-					{:else}
-						<input
-							id={column}
-							type="text"
-							bind:value={filters[column]}
-							class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
-							placeholder={`Filter by ${column}`}
-						/>
-					{/if}
-				</div>
-			{/each}
+						{/if}
+					</div>
+				{/each}
+			</div>
 		</div>
 	</div>
 
-	<!-- Coffee Cards -->
+	<!-- Coffee Cards - Update grid layout -->
 	<div class="flex-1">
 		{#if !data?.data || data.data.length === 0}
 			<p class="p-4 text-zinc-300">No coffee data available</p>
 		{:else}
-			<div class="space-y-4">
+			<div class="space-y-2 md:space-y-4">
 				{#each filteredAndSortedData as coffee}
 					<button
 						type="button"
-						class="w-full cursor-pointer rounded-lg bg-zinc-800 p-4 text-left transition-colors hover:bg-zinc-700"
+						class="w-full cursor-pointer rounded-lg bg-zinc-800 p-3 text-left transition-colors hover:bg-zinc-700 md:p-4"
 						on:click={() => {
 							if (coffee.link) window.open(coffee.link, '_blank');
 						}}
@@ -404,17 +408,17 @@
 							if (e.key === 'Enter' && coffee.link) window.open(coffee.link, '_blank');
 						}}
 					>
-						<div class="flex justify-between">
+						<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
 							<div>
-								<h3 class="text-lg font-semibold text-zinc-100">{coffee.name}</h3>
+								<h3 class="text-base font-semibold text-zinc-100 md:text-lg">{coffee.name}</h3>
 								<p class="text-sm text-zinc-400">{coffee.source}</p>
 							</div>
-							<div class="text-right">
-								<p class="text-lg font-bold text-zinc-100">${coffee.cost_lb}/lb</p>
+							<div class="text-left sm:text-right">
+								<p class="text-base font-bold text-zinc-100 md:text-lg">${coffee.cost_lb}/lb</p>
 								<p class="text-sm text-zinc-400">Score: {coffee.score_value}</p>
 							</div>
 						</div>
-						<div class="mt-2 grid grid-cols-2 gap-4 text-sm text-zinc-300">
+						<div class="mt-2 grid grid-cols-1 gap-2 text-sm text-zinc-300 sm:grid-cols-2 sm:gap-4">
 							<div>
 								<span class="text-zinc-400">Region:</span>
 								{coffee.region || '-'}
