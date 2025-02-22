@@ -107,7 +107,7 @@
 		<div class="flex items-center justify-between">
 			<h2 class="text-xl font-bold text-zinc-300">{selectedBean.name}</h2>
 			<div class="space-x-2">
-				{#if role === 'admin'}
+				{#if role === 'admin' || role === 'member'}
 					<button
 						class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
 						onclick={() => {

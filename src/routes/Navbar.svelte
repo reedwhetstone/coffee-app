@@ -229,7 +229,7 @@
 						BEANS
 					</a>
 				</li>
-				{#if data.role === 'admin'}
+				{#if data.role === 'admin' || data.role === 'member'}
 					<li class="w-full md:w-auto">
 						<a
 							href="/roast"

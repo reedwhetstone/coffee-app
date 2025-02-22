@@ -115,7 +115,10 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	}
 
 	// Check protected routes - do this after setting up locals but before resolving
-	if (requiresProtection && (!session || event.locals.role !== 'admin')) {
+	if (
+		requiresProtection &&
+		(!session || !event.locals.role || !['admin', 'member'].includes(event.locals.role))
+	) {
 		throw redirect(303, '/');
 	}
 

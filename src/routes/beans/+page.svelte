@@ -265,7 +265,7 @@
 
 <div class="m-2 md:m-4">
 	<!-- Bean Profile Section -->
-	{#if data.role === 'admin'}
+	{#if data.role === 'admin' || data.role === 'member'}
 		<div class="mb-4 flex justify-end">
 			<button
 				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
