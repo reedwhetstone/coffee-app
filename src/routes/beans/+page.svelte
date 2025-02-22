@@ -23,6 +23,9 @@
 	let isFormVisible = $state(false);
 	let selectedBean = $state<any>(null);
 
+	// Add this state variable at the top of the script section with other state variables
+	let expandedFilters = $state(false);
+
 	// Function to load data
 	async function loadData() {
 		try {
@@ -207,7 +210,6 @@
 		purchase_date: '',
 		arrival_date: ''
 	});
-	let expandedFilters = false;
 
 	function getFilterableColumns(): string[] {
 		return [
@@ -261,7 +263,7 @@
 	);
 </script>
 
-<div class="m-4">
+<div class="m-2 md:m-4">
 	<!-- Bean Profile Section -->
 	{#if data.role === 'admin'}
 		<div class="mb-4 flex justify-end">
@@ -286,104 +288,107 @@
 
 	<!-- Form Modal -->
 	{#if isFormVisible}
-		<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75">
-			<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-6">
+		<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 p-4">
+			<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-4 md:p-6">
 				<BeanForm bean={null} onClose={() => (isFormVisible = false)} onSubmit={handleFormSubmit} />
 			</div>
 		</div>
 	{/if}
 
-	<!-- Replace the table section with this new card layout -->
-	<div class="mx-8 mt-8 flex gap-4">
+	<!-- Main content section -->
+	<div class="mx-2 mt-4 flex flex-col gap-4 md:mx-8 md:mt-8 md:flex-row">
 		<!-- Filter Panel -->
-		<div class="w-64 flex-shrink-0 space-y-4 rounded-lg bg-zinc-800 p-4">
+		<div class="rounded-lg bg-zinc-800 p-4 md:w-64 md:flex-shrink-0">
 			<div class="flex items-center justify-between">
 				<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
 				<button
-					class="text-sm text-zinc-400 hover:text-zinc-100"
+					class="text-sm text-zinc-400 hover:text-zinc-100 md:hidden"
 					onclick={() => (expandedFilters = !expandedFilters)}
 				>
-					{expandedFilters ? 'Collapse' : 'Expand'}
+					{expandedFilters ? 'Hide Filters' : 'Show Filters'}
 				</button>
 			</div>
 
-			<!-- Sort Controls -->
-			<div class="space-y-2">
-				<label for="sort-field" class="block text-sm text-zinc-400">Sort by</label>
-				<select
-					id="sort-field"
-					bind:value={sortField}
-					class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
-				>
-					<option value={null}>None</option>
-					{#each getFilterableColumns() as column}
-						<option value={column}>
-							{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-						</option>
-					{/each}
-				</select>
-
-				{#if sortField}
+			<!-- Wrap filter controls in a conditional display div -->
+			<div class={`space-y-4 ${expandedFilters ? 'block' : 'hidden'} md:block`}>
+				<!-- Sort Controls -->
+				<div class="space-y-2">
+					<label for="sort-field" class="block text-sm text-zinc-400">Sort by</label>
 					<select
-						id="sort-direction"
-						bind:value={sortDirection}
+						id="sort-field"
+						bind:value={sortField}
 						class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
 					>
-						<option value="asc">Ascending</option>
-						<option value="desc">Descending</option>
+						<option value={null}>None</option>
+						{#each getFilterableColumns() as column}
+							<option value={column}>
+								{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+							</option>
+						{/each}
 					</select>
-				{/if}
-			</div>
 
-			<!-- Filter Controls -->
-			<div class="space-y-2">
-				<h4 class="block text-sm text-zinc-400">Filters</h4>
-				{#each getFilterableColumns() as column}
-					<div class="space-y-1">
-						<label for={column} class="block text-xs text-zinc-400">
-							{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-						</label>
-						{#if column === 'purchase_date'}
-							<select
-								bind:value={filters[column]}
-								class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
-							>
-								<option value="">All Dates</option>
-								{#each uniquePurchaseDates as date}
-									<option value={date}>{date}</option>
-								{/each}
-							</select>
-						{:else if column === 'score_value'}
-							<div class="flex gap-2">
-								<input
-									type="number"
-									bind:value={filters.score_value.min}
+					{#if sortField}
+						<select
+							id="sort-direction"
+							bind:value={sortDirection}
+							class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+						>
+							<option value="asc">Ascending</option>
+							<option value="desc">Descending</option>
+						</select>
+					{/if}
+				</div>
+
+				<!-- Filter Controls -->
+				<div class="space-y-2">
+					<h4 class="block text-sm text-zinc-400">Filters</h4>
+					{#each getFilterableColumns() as column}
+						<div class="space-y-1">
+							<label for={column} class="block text-xs text-zinc-400">
+								{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+							</label>
+							{#if column === 'purchase_date'}
+								<select
+									bind:value={filters[column]}
 									class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
-									placeholder="Min"
-									min="0"
-									max="100"
-									step="0.1"
-								/>
+								>
+									<option value="">All Dates</option>
+									{#each uniquePurchaseDates as date}
+										<option value={date}>{date}</option>
+									{/each}
+								</select>
+							{:else if column === 'score_value'}
+								<div class="flex gap-2">
+									<input
+										type="number"
+										bind:value={filters.score_value.min}
+										class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+										placeholder="Min"
+										min="0"
+										max="100"
+										step="0.1"
+									/>
+									<input
+										type="number"
+										bind:value={filters.score_value.max}
+										class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+										placeholder="Max"
+										min="0"
+										max="100"
+										step="0.1"
+									/>
+								</div>
+							{:else}
 								<input
-									type="number"
-									bind:value={filters.score_value.max}
+									type="text"
+									bind:value={filters[column]}
 									class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
-									placeholder="Max"
-									min="0"
-									max="100"
-									step="0.1"
+									placeholder={`Filter by ${column}`}
 								/>
-							</div>
-						{:else}
-							<input
-								type="text"
-								bind:value={filters[column]}
-								class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
-								placeholder={`Filter by ${column}`}
-							/>
-						{/if}
-					</div>
-				{/each}
+							{/if}
+						</div>
+					{/each}
+				</div>
 			</div>
 		</div>
 
@@ -392,24 +397,28 @@
 			{#if !data?.data || data.data.length === 0}
 				<p class="p-4 text-zinc-300">No coffee data available</p>
 			{:else}
-				<div class="space-y-4">
+				<div class="space-y-2 md:space-y-4">
 					{#each filteredAndSortedData as bean}
 						<button
 							type="button"
-							class="w-full cursor-pointer rounded-lg bg-zinc-800 p-4 text-left transition-colors hover:bg-zinc-700"
+							class="w-full cursor-pointer rounded-lg bg-zinc-800 p-3 text-left transition-colors hover:bg-zinc-700 md:p-4"
 							onclick={() => selectBean(bean)}
 						>
-							<div class="flex justify-between">
+							<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
 								<div>
-									<h3 class="text-lg font-semibold text-zinc-100">{bean.name}</h3>
+									<h3 class="text-base font-semibold text-zinc-100 md:text-lg">{bean.name}</h3>
 									<p class="text-sm text-zinc-400">{bean.vendor}</p>
 								</div>
-								<div class="text-right">
-									<p class="text-lg font-bold text-zinc-100">${bean.price_per_lb}/lb</p>
+								<div class="text-left sm:text-right">
+									<p class="text-base font-bold text-zinc-100 md:text-lg">
+										${bean.price_per_lb}/lb
+									</p>
 									<p class="text-sm text-zinc-400">Score: {bean.score_value}</p>
 								</div>
 							</div>
-							<div class="mt-2 grid grid-cols-2 gap-4 text-sm text-zinc-300">
+							<div
+								class="mt-2 grid grid-cols-1 gap-2 text-sm text-zinc-300 sm:grid-cols-2 sm:gap-4"
+							>
 								<div>
 									<span class="text-zinc-400">Cultivar:</span>
 									{bean.cultivar_detail || '-'}
