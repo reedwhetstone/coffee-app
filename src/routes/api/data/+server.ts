@@ -11,10 +11,15 @@ interface RoastProfile {
 	roast_id: string;
 }
 
-export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
+export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const id = url.searchParams.get('id');
-		let query = supabase.from('green_coffee_inv').select('*');
+		let query = supabase.from('green_coffee_inv').select('*').eq('user_id', user.id);
 
 		if (id) {
 			query = query.eq('id', id);
