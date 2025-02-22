@@ -124,16 +124,16 @@
 	$: slideDirection = currentIndex > previousIndex ? 1 : -1;
 </script>
 
-<div class="mx-8 mt-8 rounded-lg bg-zinc-800 p-6">
+<div class="mx-2 mt-4 rounded-lg bg-zinc-800 p-3 sm:mx-8 sm:mt-8 sm:p-6">
 	<div class="mb-4">
-		<div class="flex items-center justify-between">
+		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center">
-				<h1 class="text-2xl font-bold text-zinc-400">
+				<h1 class="text-xl font-bold text-zinc-400 sm:text-2xl">
 					{profile.batch_name} // {formatDateForDisplay(profile.roast_date)}
 				</h1>
 			</div>
 			<button
-				class="rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900"
+				class="w-full rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900 sm:w-auto"
 				on:click={deleteBatch}
 			>
 				Delete Batch
@@ -150,7 +150,7 @@
 		<div class="overflow-hidden">
 			{#key currentIndex}
 				<div
-					class="grid grid-cols-2 gap-4"
+					class="grid grid-cols-1 gap-4 sm:grid-cols-2"
 					in:slideTransition={{ direction: slideDirection, delay: 50 }}
 				>
 					{#each Object.entries(profile) as [key, value]}
@@ -226,9 +226,9 @@
 				></button>
 			{/each}
 		</div>
-		<div class="mt-4 flex justify-end space-x-2">
+		<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row sm:space-x-2">
 			<button
-				class="rounded {isEditing
+				class="w-full rounded sm:w-auto {isEditing
 					? 'border-2 border-green-800 hover:bg-green-900'
 					: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-zinc-500"
 				on:click={toggleEdit}
@@ -236,7 +236,7 @@
 				{isEditing ? 'Save' : 'Edit'}
 			</button>
 			<button
-				class="rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900"
+				class="w-full rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900 sm:w-auto"
 				on:click={deleteProfile}
 			>
 				Delete

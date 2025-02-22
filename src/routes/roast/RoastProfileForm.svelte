@@ -116,20 +116,22 @@
 		onkeydown={(e) => e.key === 'Escape' && onClose()}
 		aria-label="Close modal"
 	></button>
-	<div class="flex min-h-screen items-center justify-center p-4">
+	<div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
 		<div
-			class="relative w-full max-w-2xl rounded-lg bg-zinc-800 p-4"
+			class="relative w-full max-w-2xl rounded-lg bg-zinc-800 p-2 sm:p-4"
 			role="dialog"
 			aria-modal="true"
 		>
 			<!-- Fixed Header -->
-			<div class="border-b border-zinc-700 p-4">
-				<label for="batch_name" class="block text-lg font-medium text-zinc-300">Batch Name</label>
+			<div class="border-b border-zinc-700 p-2 sm:p-4">
+				<label for="batch_name" class="block text-base font-medium text-zinc-300 sm:text-lg"
+					>Batch Name</label
+				>
 				<input
 					id="batch_name"
 					type="text"
 					bind:value={formData.batch_name}
-					class="mt-1 block w-full rounded bg-zinc-700 text-xl text-zinc-300"
+					class="mt-1 block w-full rounded bg-zinc-700 text-lg text-zinc-300 sm:text-xl"
 					required
 				/>
 			</div>
@@ -140,7 +142,7 @@
 					e.preventDefault();
 					handleSubmit();
 				}}
-				class="max-h-[60vh] overflow-y-auto p-4"
+				class="max-h-[60vh] overflow-y-auto p-2 sm:p-4"
 			>
 				<div class="space-y-4">
 					<!-- Roast Date -->
@@ -158,9 +160,9 @@
 					</div>
 
 					<!-- Beans in Batch -->
-					<div class="space-y-4">
+					<div class="space-y-2 sm:space-y-4">
 						{#each batchBeans as bean, index}
-							<div class="relative rounded border border-zinc-700 p-4">
+							<div class="relative rounded border border-zinc-700 p-2 sm:p-4">
 								<!-- Remove bean button (except for first bean) -->
 								{#if index > 0}
 									<button
@@ -172,8 +174,8 @@
 									</button>
 								{/if}
 
-								<div class="grid grid-cols-2 gap-4">
-									<div class="col-span-2">
+								<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-4">
+									<div class="col-span-1 sm:col-span-2">
 										<label
 											for="coffee_select_{index}"
 											class="block text-sm font-medium text-zinc-300">Select Coffee</label
@@ -236,7 +238,7 @@
 					</div>
 
 					<!-- Notes and Targets -->
-					<div class="grid grid-cols-1 gap-4">
+					<div class="grid grid-cols-1 gap-2 sm:gap-4">
 						<div>
 							<label for="roast_targets" class="block text-sm font-medium text-zinc-300"
 								>Roast Targets</label
@@ -265,18 +267,18 @@
 			</form>
 
 			<!-- Footer -->
-			<div class="border-t border-zinc-700 p-4">
+			<div class="border-t border-zinc-700 p-2 sm:p-4">
 				<div class="flex justify-end space-x-2">
 					<button
 						type="button"
-						class="rounded bg-zinc-600 px-4 py-2 text-zinc-300"
+						class="rounded bg-zinc-600 px-3 py-1.5 text-zinc-300 sm:px-4 sm:py-2"
 						onclick={onClose}
 					>
 						Cancel
 					</button>
 					<button
 						type="submit"
-						class="rounded bg-green-600 px-4 py-2 text-zinc-300"
+						class="rounded bg-green-600 px-3 py-1.5 text-zinc-300 sm:px-4 sm:py-2"
 						onclick={handleSubmit}
 					>
 						Create

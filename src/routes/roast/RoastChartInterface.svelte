@@ -597,15 +597,15 @@
 
 <div>
 	<!-- Roast session header -->
-	<div class="mb-3 flex justify-between">
-		<h1 class="text-2xl font-bold text-zinc-300">Roast Session: {selectedBean.name}</h1>
+	<div class="mb-3 flex flex-wrap justify-between">
+		<h1 class="text-xl font-bold text-zinc-300 sm:text-2xl">Roast Session: {selectedBean.name}</h1>
 	</div>
 
 	<!-- Main roasting controls: fan, chart, and heat -->
-	<div class="flex h-[500px] w-full justify-center gap-4">
+	<div class="flex h-[500px] w-full flex-col justify-center gap-4 sm:flex-row">
 		<!-- Fan buttons -->
 		{#if isBeforeRoasting || isDuringRoasting}
-			<div class="my-5 flex flex-shrink-0 flex-col justify-center gap-2">
+			<div class="flex flex-row justify-center gap-2 sm:my-5 sm:flex-col">
 				<button
 					class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
 					on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
@@ -614,7 +614,7 @@
 					▲
 				</button>
 				<div
-					class="flex h-10 items-center justify-center rounded border-2 border-indigo-800 px-3 text-xl text-zinc-300"
+					class="flex h-10 w-20 items-center justify-center rounded border-2 border-indigo-800 px-3 text-xl text-zinc-300 sm:w-auto"
 				>
 					{fanValue}
 				</div>
@@ -635,7 +635,7 @@
 
 		<!-- Heat buttons -->
 		{#if isBeforeRoasting || isDuringRoasting}
-			<div class="my-5 flex flex-shrink-0 flex-col justify-center gap-2">
+			<div class="flex flex-row justify-center gap-2 sm:my-5 sm:flex-col">
 				<button
 					class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
 					on:click={() => handleHeatChange(Math.min(10, heatValue + 1))}
@@ -644,7 +644,7 @@
 					▲
 				</button>
 				<div
-					class="flex h-10 items-center justify-center rounded border-2 border-amber-800 px-3 text-xl text-zinc-300"
+					class="flex h-10 w-20 items-center justify-center rounded border-2 border-amber-800 px-3 text-xl text-zinc-300 sm:w-auto"
 				>
 					{heatValue}
 				</div>
@@ -660,9 +660,9 @@
 	</div>
 
 	<!-- Roast event controls and timer -->
-	<div class="z-0 flex flex-wrap items-center justify-center gap-4">
+	<div class="z-0 mt-4 flex flex-col flex-wrap items-center justify-center gap-4 sm:flex-row">
 		<div class="flex items-center gap-4">
-			<div class="w-48 text-5xl font-bold text-zinc-300">{formattedTime}</div>
+			<div class="w-36 text-3xl font-bold text-zinc-300 sm:w-48 sm:text-5xl">{formattedTime}</div>
 			{#if isBeforeRoasting || isDuringRoasting}
 				<button
 					id="start-end-roast"
@@ -712,39 +712,42 @@
 		</div>
 
 		{#if isBeforeRoasting || isDuringRoasting}
-			{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event}
-				<label
-					class="flex items-center rounded border-2 border-green-800 px-3 py-1 text-zinc-300 hover:bg-green-900"
-					class:bg-green-900={selectedEvent === event}
-					class:opacity-50={!isRoasting}
-					class:cursor-not-allowed={!isRoasting}
-					class:hover:bg-transparent={!isRoasting}
-				>
-					<input
-						type="radio"
-						name="roastEvent"
-						value={event}
-						on:change={() => handleEventLog(event)}
-						checked={selectedEvent === event}
-						class="hidden"
-						disabled={!isRoasting}
-					/>
-					{event}
-				</label>
-			{/each}
+			<div class="flex flex-wrap justify-center gap-2">
+				{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event}
+					<label
+						class="flex items-center rounded border-2 border-green-800 px-3 py-1 text-sm text-zinc-300 hover:bg-green-900 sm:text-base"
+						class:bg-green-900={selectedEvent === event}
+						class:opacity-50={!isRoasting}
+						class:cursor-not-allowed={!isRoasting}
+						class:hover:bg-transparent={!isRoasting}
+					>
+						<input
+							type="radio"
+							name="roastEvent"
+							value={event}
+							on:change={() => handleEventLog(event)}
+							checked={selectedEvent === event}
+							class="hidden"
+							disabled={!isRoasting}
+						/>
+						{event}
+					</label>
+				{/each}
+			</div>
 		{/if}
-		<!-- Roast milestone timestamps -->
-		<div class="flex justify-end space-x-4">
-			<div class="text-2xl font-bold text-zinc-300">DRYING %: --:--</div>
-			<div class="text-2xl font-bold text-zinc-300">TP: --:--</div>
-			<div class="text-2xl font-bold text-zinc-300">MAILLARD %: --:--</div>
-			<div class="text-2xl font-bold text-zinc-300">FC: --:--</div>
-			<div class="text-2xl font-bold text-zinc-300">DEV %: --:--</div>
-		</div>
+	</div>
+
+	<!-- Roast milestone timestamps -->
+	<div class="mt-4 flex flex-wrap justify-center space-x-2 sm:justify-end sm:space-x-4">
+		<div class="text-lg font-bold text-zinc-300 sm:text-2xl">DRYING %: --:--</div>
+		<div class="text-lg font-bold text-zinc-300 sm:text-2xl">TP: --:--</div>
+		<div class="text-lg font-bold text-zinc-300 sm:text-2xl">MAILLARD %: --:--</div>
+		<div class="text-lg font-bold text-zinc-300 sm:text-2xl">FC: --:--</div>
+		<div class="text-lg font-bold text-zinc-300 sm:text-2xl">DEV %: --:--</div>
 	</div>
 
 	<!-- Save and Clear roast buttons -->
-	<div class="flex justify-end gap-4">
+	<div class="mt-4 flex justify-end gap-4">
 		{#if isBeforeRoasting || isDuringRoasting}
 			<button
 				class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-300 hover:bg-zinc-600"

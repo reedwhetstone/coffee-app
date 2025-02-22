@@ -560,8 +560,8 @@
 
 <!-- Modal for adding new roast profiles -->
 {#if isFormVisible}
-	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75">
-		<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-6">
+	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 p-4">
+		<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-4 sm:p-6">
 			<RoastProfileForm {selectedBean} onClose={hideRoastForm} onSubmit={handleFormSubmit} />
 		</div>
 	</div>
@@ -569,7 +569,7 @@
 
 <!-- Current roast profile display -->
 {#if currentRoastProfile}
-	<div class="m-8">
+	<div class="mx-4 my-6 sm:m-8">
 		<div class="mb-4 flex justify-end">
 			<button
 				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
@@ -590,7 +590,7 @@
 
 <!-- Main roasting interface -->
 {#if currentRoastProfile}
-	<div class="z-0 m-8 rounded-lg bg-zinc-800 p-8">
+	<div class="mx-4 my-6 rounded-lg bg-zinc-800 p-4 sm:m-8 sm:p-8">
 		<RoastChartInterface
 			{isPaused}
 			{currentRoastProfile}
