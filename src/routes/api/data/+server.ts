@@ -35,21 +35,19 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const bean = await request.json();
 		const { data: newBean, error } = await supabase
 			.from('green_coffee_inv')
 			.insert({
-				name: bean.name,
-				rank: bean.rank,
-				notes: bean.notes,
-				purchase_date: bean.purchase_date,
-				purchased_qty_lbs: bean.purchased_qty_lbs,
-				bean_cost: bean.bean_cost,
-				tax_ship_cost: bean.tax_ship_cost,
-				link: bean.link,
-				last_updated: bean.last_updated
+				...bean,
+				user_id: user.id
 			})
 			.select()
 			.single();
@@ -62,14 +60,29 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 	}
 };
 
-export const DELETE: RequestHandler = async ({ url, locals: { supabase } }) => {
-	const id = url.searchParams.get('id');
-
-	if (!id) {
-		return json({ success: false, error: 'No ID provided' }, { status: 400 });
-	}
-
+export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		const id = url.searchParams.get('id');
+		if (!id) {
+			return json({ success: false, error: 'No ID provided' }, { status: 400 });
+		}
+
+		// Verify ownership
+		const { data: existing } = await supabase
+			.from('green_coffee_inv')
+			.select('user_id')
+			.eq('id', id)
+			.single();
+
+		if (!existing || existing.user_id !== user.id) {
+			return json({ error: 'Unauthorized' }, { status: 403 });
+		}
+
 		// Get roast profiles first
 		const { data: roastProfiles, error: selectError } = await supabase
 			.from('roast_profiles')
@@ -109,9 +122,33 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase } }) => {
 	}
 };
 
-export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }) => {
+export const PUT: RequestHandler = async ({
+	url,
+	request,
+	locals: { supabase, safeGetSession }
+}) => {
 	try {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const id = url.searchParams.get('id');
+		if (!id) {
+			return json({ error: 'No ID provided' }, { status: 400 });
+		}
+
+		// Verify ownership
+		const { data: existing } = await supabase
+			.from('green_coffee_inv')
+			.select('user_id')
+			.eq('id', id)
+			.single();
+
+		if (!existing || existing.user_id !== user.id) {
+			return json({ error: 'Unauthorized' }, { status: 403 });
+		}
+
 		const updates = await request.json();
 		const { id: _, ...updateData } = updates;
 

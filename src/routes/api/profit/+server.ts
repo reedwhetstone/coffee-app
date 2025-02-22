@@ -22,8 +22,13 @@ interface Row {
 	roast_profiles?: RoastProfile[];
 }
 
-export const GET: RequestHandler = async ({ locals: { supabase } }) => {
+export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		// Fetch sales data
 		const { data: sales, error: salesError } = await supabase
 			.from('sales')
@@ -35,6 +40,7 @@ export const GET: RequestHandler = async ({ locals: { supabase } }) => {
 				)
 			`
 			)
+			.eq('user', user.id)
 			.order('sell_date', { ascending: false });
 
 		if (salesError) {
@@ -64,6 +70,7 @@ export const GET: RequestHandler = async ({ locals: { supabase } }) => {
 				)
 			`
 			)
+			.eq('user', user.id)
 			.order('purchase_date', { ascending: false });
 
 		if (profitError) {
@@ -113,14 +120,29 @@ export const GET: RequestHandler = async ({ locals: { supabase } }) => {
 	}
 };
 
-export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }) => {
-	const id = url.searchParams.get('id');
-
-	if (!id) {
-		return json({ error: 'No ID provided' }, { status: 400 });
-	}
-
+export const PUT: RequestHandler = async ({
+	url,
+	request,
+	locals: { supabase, safeGetSession }
+}) => {
 	try {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		const id = url.searchParams.get('id');
+		if (!id) {
+			return json({ error: 'No ID provided' }, { status: 400 });
+		}
+
+		// Verify ownership
+		const { data: existing } = await supabase.from('sales').select('user').eq('id', id).single();
+
+		if (!existing || existing.user !== user.id) {
+			return json({ error: 'Unauthorized' }, { status: 403 });
+		}
+
 		const updates = await request.json();
 		const { coffee_name: _, ...updateData } = updates;
 
@@ -128,6 +150,7 @@ export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }
 			.from('sales')
 			.update(updateData)
 			.eq('id', id)
+			.eq('user', user.id)
 			.select()
 			.single();
 
@@ -141,8 +164,14 @@ export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }
 		return json({ error: 'Failed to update sale' }, { status: 500 });
 	}
 };
-export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
+
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const saleData = await request.json();
 		const { coffee_name: _, ...insertData } = saleData;
 
@@ -150,10 +179,21 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 			return json({ error: 'green_coffee_inv_id is required' }, { status: 400 });
 		}
 
-		// Insert the new sale
+		// Verify ownership of the green coffee inventory
+		const { data: coffee } = await supabase
+			.from('green_coffee_inv')
+			.select('user')
+			.eq('id', insertData.green_coffee_inv_id)
+			.single();
+
+		if (!coffee || coffee.user !== user.id) {
+			return json({ error: 'Unauthorized' }, { status: 403 });
+		}
+
+		// Insert the new sale with user ID
 		const { data: newSale, error: insertError } = await supabase
 			.from('sales')
-			.insert(insertData)
+			.insert({ ...insertData, user: user.id })
 			.select(
 				`
                 *,
@@ -183,15 +223,26 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 	}
 };
 
-export const DELETE: RequestHandler = async ({ url, locals: { supabase } }) => {
-	const id = url.searchParams.get('id');
-
-	if (!id) {
-		return json({ error: 'No ID provided' }, { status: 400 });
-	}
-
+export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
-		const { error } = await supabase.from('sales').delete().eq('id', id);
+		const { session, user } = await safeGetSession();
+		if (!session || !user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		const id = url.searchParams.get('id');
+		if (!id) {
+			return json({ error: 'No ID provided' }, { status: 400 });
+		}
+
+		// Verify ownership
+		const { data: existing } = await supabase.from('sales').select('user').eq('id', id).single();
+
+		if (!existing || existing.user !== user.id) {
+			return json({ error: 'Unauthorized' }, { status: 403 });
+		}
+
+		const { error } = await supabase.from('sales').delete().eq('id', id).eq('user', user.id);
 
 		if (error) {
 			return json({ error: error.message }, { status: 500 });
