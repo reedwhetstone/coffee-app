@@ -1,14 +1,44 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
+export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
+		const { session } = await safeGetSession();
+		if (!session) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const roastId = url.searchParams.get('roast_id');
+
+		// First verify ownership of the roast profile
+		if (roastId) {
+			const { data: profile } = await supabase
+				.from('roast_profiles')
+				.select('user')
+				.eq('roast_id', roastId)
+				.single();
+
+			if (!profile || profile.user !== session.user.id) {
+				return json({ error: 'Unauthorized' }, { status: 403 });
+			}
+		}
+
 		let query = supabase.from('profile_log').select('*');
 
 		if (roastId) {
 			const parsedId = Number(roastId);
 			query = query.eq('roast_id', parsedId).order('time', { ascending: true });
+		} else {
+			// If no roast_id provided, get all logs for user's roast profiles
+			const { data: userProfiles } = await supabase
+				.from('roast_profiles')
+				.select('roast_id')
+				.eq('user', session.user.id);
+
+			if (userProfiles && userProfiles.length > 0) {
+				const roastIds = userProfiles.map((profile) => profile.roast_id);
+				query = query.in('roast_id', roastIds).order('time', { ascending: true });
+			}
 		}
 
 		const { data, error } = await query;
@@ -32,10 +62,29 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
+		const session = await safeGetSession();
+		if (!session) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const logs = await request.json();
 		const logsArray = Array.isArray(logs) ? logs : [logs];
+
+		// Verify ownership of the roast profile
+		const roastId = logsArray[0]?.roast_id;
+		if (roastId) {
+			const { data: profile } = await supabase
+				.from('roast_profiles')
+				.select('user')
+				.eq('roast_id', roastId)
+				.single();
+
+			if (!profile || profile.user !== session.user.id) {
+				return json({ error: 'Unauthorized' }, { status: 403 });
+			}
+		}
 
 		const results = await Promise.all(
 			logsArray.map(async (log) => {
@@ -72,14 +121,29 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 	}
 };
 
-export const DELETE: RequestHandler = async ({ url, locals: { supabase } }) => {
-	const roastId = url.searchParams.get('roast_id');
-
-	if (!roastId) {
-		return json({ error: 'No roast_id provided' }, { status: 400 });
-	}
-
+export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
+		const session = await safeGetSession();
+		if (!session) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		const roastId = url.searchParams.get('roast_id');
+		if (!roastId) {
+			return json({ error: 'No roast_id provided' }, { status: 400 });
+		}
+
+		// Verify ownership of the roast profile
+		const { data: profile } = await supabase
+			.from('roast_profiles')
+			.select('user')
+			.eq('roast_id', roastId)
+			.single();
+
+		if (!profile || profile.user !== session.user.id) {
+			return json({ error: 'Unauthorized' }, { status: 403 });
+		}
+
 		const parsedId = parseInt(roastId, 10);
 		const { error } = await supabase.from('profile_log').delete().eq('roast_id', parsedId);
 
@@ -94,9 +158,41 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase } }) => {
 	}
 };
 
-export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }) => {
+export const PUT: RequestHandler = async ({
+	url,
+	request,
+	locals: { supabase, safeGetSession }
+}) => {
 	try {
+		const session = await safeGetSession();
+		if (!session) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const id = url.searchParams.get('id');
+		if (!id) {
+			return json({ error: 'No ID provided' }, { status: 400 });
+		}
+
+		// Verify ownership through the roast profile
+		const { data: log } = await supabase
+			.from('profile_log')
+			.select('roast_id')
+			.eq('log_id', id)
+			.single();
+
+		if (log) {
+			const { data: profile } = await supabase
+				.from('roast_profiles')
+				.select('user')
+				.eq('roast_id', log.roast_id)
+				.single();
+
+			if (!profile || profile.user !== session.user.id) {
+				return json({ error: 'Unauthorized' }, { status: 403 });
+			}
+		}
+
 		const updates = await request.json();
 		const { log_id: _, ...updateData } = updates;
 
@@ -108,7 +204,6 @@ export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }
 			.single();
 
 		if (error) throw error;
-
 		return json(data);
 	} catch (error) {
 		console.error('Error updating profile log:', error);

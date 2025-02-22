@@ -1,22 +1,34 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals: { supabase } }) => {
+export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
-		const { data, error } = await supabase.from('roast_profiles').select('*');
-
-		if (error) {
-			return json({ error: error.message }, { status: 500 });
+		const { session } = await safeGetSession();
+		if (!session) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
+
+		const { data, error } = await supabase
+			.from('roast_profiles')
+			.select('*')
+			.eq('user', session.user.id)
+			.order('roast_date', { ascending: false });
+
+		if (error) throw error;
 		return json({ data });
 	} catch (error) {
-		console.error('Error querying database:', error);
-		return json({ error: 'Failed to fetch data' }, { status: 500 });
+		console.error('Error fetching roast profiles:', error);
+		return json({ error: 'Failed to fetch roast profiles' }, { status: 500 });
 	}
 };
 
-export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
+		const session = await safeGetSession();
+		if (!session) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const data = await request.json();
 		const profiles = Array.isArray(data) ? data : [data];
 
@@ -38,6 +50,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 				}
 
 				const profile = {
+					...profileData,
+					user: session.user.id,
 					batch_name:
 						profileData.batch_name || `${coffee.name} - ${new Date().toLocaleDateString()}`,
 					coffee_id: profileData.coffee_id,
@@ -72,95 +86,82 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 	}
 };
 
-export const DELETE: RequestHandler = async ({ url, request, locals: { supabase } }) => {
-	const id = url.searchParams.get('id');
-
-	if (id) {
-		try {
-			const { error: logError } = await supabase.from('profile_log').delete().eq('roast_id', id);
-			if (logError) throw logError;
-
-			const { error: profileError } = await supabase
-				.from('roast_profiles')
-				.delete()
-				.eq('roast_id', id);
-
-			if (profileError) throw profileError;
-			return json({ success: true });
-		} catch (error) {
-			console.error('Error deleting roast profile and associated data:', error);
-			return json({ error: 'Failed to delete roast profile' }, { status: 500 });
-		}
-	}
-
+export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
-		const { batch_name, roast_date } = await request.json();
-
-		// First get all roast_ids for the batch
-		const { data: roastIds, error: selectError } = await supabase
-			.from('roast_profiles')
-			.select('roast_id')
-			.eq('batch_name', batch_name)
-			.eq('roast_date', roast_date);
-
-		if (selectError) throw selectError;
-		if (!roastIds || roastIds.length === 0) {
-			return json({ error: 'No profiles found for this batch' }, { status: 404 });
+		const session = await safeGetSession();
+		if (!session) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		// Extract just the roast_id values into an array
-		const ids = roastIds.map((profile) => profile.roast_id);
+		const id = url.searchParams.get('id');
+		if (!id) {
+			return json({ error: 'No ID provided' }, { status: 400 });
+		}
 
-		// Delete associated profile logs first
-		const { error: logError } = await supabase.from('profile_log').delete().in('roast_id', ids);
+		// Verify ownership
+		const { data: existing } = await supabase
+			.from('roast_profiles')
+			.select('user')
+			.eq('roast_id', id)
+			.single();
 
-		if (logError) throw logError;
+		if (!existing || existing.user !== session.user.id) {
+			return json({ error: 'Unauthorized' }, { status: 403 });
+		}
 
-		// Then delete the roast profiles
-		const { error: profileError } = await supabase
+		const { error } = await supabase
 			.from('roast_profiles')
 			.delete()
-			.eq('batch_name', batch_name)
-			.eq('roast_date', roast_date);
+			.eq('roast_id', id)
+			.eq('user', session.user.id);
 
-		if (profileError) throw profileError;
-
-		return json({ success: true, deletedIds: ids });
+		if (error) throw error;
+		return json({ success: true });
 	} catch (error) {
-		console.error('Error deleting batch profiles:', error);
-		return json({ error: 'Failed to delete batch profiles' }, { status: 500 });
+		console.error('Error deleting roast profile:', error);
+		return json({ error: 'Failed to delete roast profile' }, { status: 500 });
 	}
 };
 
-export const PUT: RequestHandler = async ({ url, request, locals: { supabase } }) => {
+export const PUT: RequestHandler = async ({
+	request,
+	url,
+	locals: { supabase, safeGetSession }
+}) => {
 	try {
+		const session = await safeGetSession();
+		if (!session) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const id = url.searchParams.get('id');
-		const updates = await request.json();
-		const { roast_id: _, has_log_data: __, ...updateData } = updates;
-
-		if (updateData.roast_date) {
-			updateData.roast_date = new Date(updateData.roast_date)
-				.toISOString()
-				.slice(0, 19)
-				.replace('T', ' ');
-		}
-		if (updateData.last_updated) {
-			updateData.last_updated = new Date(updateData.last_updated)
-				.toISOString()
-				.slice(0, 19)
-				.replace('T', ' ');
+		if (!id) {
+			return json({ error: 'No ID provided' }, { status: 400 });
 		}
 
-		const { data, error } = await supabase
+		const data = await request.json();
+
+		// Verify ownership
+		const { data: existing } = await supabase
 			.from('roast_profiles')
-			.update(updateData)
+			.select('user')
 			.eq('roast_id', id)
+			.single();
+
+		if (!existing || existing.user !== session.user.id) {
+			return json({ error: 'Unauthorized' }, { status: 403 });
+		}
+
+		const { data: updated, error } = await supabase
+			.from('roast_profiles')
+			.update(data)
+			.eq('roast_id', id)
+			.eq('user', session.user.id)
 			.select()
 			.single();
 
 		if (error) throw error;
-
-		return json(data);
+		return json(updated);
 	} catch (error) {
 		console.error('Error updating roast profile:', error);
 		return json({ error: 'Failed to update roast profile' }, { status: 500 });
