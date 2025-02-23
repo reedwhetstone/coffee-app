@@ -25,21 +25,19 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
 			if (error) throw error;
 
 			return {
-				data: {
-					data: greenCoffeeData,
-					role: 'viewer',
-					isShared: true
-				}
+				data: greenCoffeeData || [],
+				role: 'viewer',
+				searchState: Object.fromEntries(url.searchParams.entries()),
+				isShared: true
 			};
 		}
 
 		// Return empty data if share link is invalid
 		return {
-			data: {
-				data: [],
-				role: 'viewer',
-				isShared: true
-			}
+			data: [],
+			role: 'viewer',
+			searchState: {},
+			isShared: true
 		};
 	}
 
@@ -54,11 +52,10 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
 	if (error) throw error;
 
 	return {
-		data: {
-			data: greenCoffeeData,
-			searchState: Object.fromEntries(url.searchParams.entries()),
-			role
-		},
+		data: greenCoffeeData || [],
+		searchState: Object.fromEntries(url.searchParams.entries()),
+		role,
+		isShared: false,
 		session,
 		user
 	};

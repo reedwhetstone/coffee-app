@@ -16,9 +16,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const id = url.searchParams.get('id');
 		const shareToken = url.searchParams.get('share');
 
-		// Get session but don't require it
-		const { session, user, role } = await safeGetSession();
-
 		let query = supabase.from('green_coffee_inv').select('*');
 
 		// If share token is provided, verify it and show shared data
@@ -39,10 +36,11 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					query = query.eq('id', shareData.resource_id);
 				}
 			} else {
-				return json({ data: [], error: 'Invalid or expired share link' });
+				return json({ data: [] });
 			}
 		} else {
 			// Regular authorization logic
+			const { session, user, role } = await safeGetSession();
 			if (role !== 'admin') {
 				if (session && user) {
 					query = query.eq('user', user.id);
@@ -50,7 +48,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					return json({ data: [] });
 				}
 			}
-
 			if (id) {
 				query = query.eq('id', id);
 			}
@@ -59,12 +56,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const { data: rows, error } = await query;
 		if (error) throw error;
 
-		const formattedRows = rows.map((row: GreenCoffeeRow) => ({
-			...row,
-			purchase_date: row.purchase_date ? row.purchase_date.split('T')[0] : null
-		}));
-
-		return json({ data: formattedRows });
+		return json({
+			data: rows || [],
+			searchState: Object.fromEntries(url.searchParams.entries())
+		});
 	} catch (error) {
 		console.error('Error querying database:', error);
 		return json({ data: [], error: 'Failed to fetch data' });
