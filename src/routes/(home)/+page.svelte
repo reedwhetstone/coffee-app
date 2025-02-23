@@ -237,71 +237,95 @@
 
 <div class="mx-2 mt-4 space-y-4 md:mx-8 md:mt-8">
 	<div class="space-y-4">
-		<!-- Chat interface -->
-		<form on:submit|preventDefault={handleSearch} class="flex flex-col gap-2 md:flex-row md:gap-4">
-			<div class="relative flex-1">
-				<input
-					type="text"
-					bind:value={searchQuery}
-					placeholder="Search coffees or ask a question..."
-					class="w-full rounded-lg bg-zinc-700 px-4 py-2 pr-12 text-zinc-100 placeholder-zinc-400 disabled:opacity-50"
-					disabled={isLoading}
-				/>
-				{#if isLoading}
-					<div class="absolute right-3 top-1/2 -translate-y-1/2">
-						<div
-							class="h-5 w-5 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent"
-						/>
+		<!-- Integrated chat interface -->
+		<div class="rounded-lg bg-zinc-700 p-4">
+			<form on:submit|preventDefault={handleSearch} class="space-y-4">
+				<!-- Query/Input area -->
+				<div class="relative">
+					{#if chatResponse && !isLoading}
+						<!-- Show previous query that can be clicked to edit -->
+						<button
+							on:click={() => {
+								searchQuery = searchQuery || DEFAULT_QUERY;
+								chatResponse = '';
+							}}
+							class="block w-full cursor-text text-left"
+						>
+							<span class="text-sm text-zinc-400">Query:</span>
+							<p class="mt-1 font-medium text-zinc-100">{searchQuery || DEFAULT_QUERY}</p>
+						</button>
+					{:else}
+						<!-- Show input field -->
+						<div class="flex items-center gap-2">
+							<input
+								type="text"
+								bind:value={searchQuery}
+								placeholder="Search coffees or ask a question..."
+								class="flex-1 bg-transparent text-zinc-100 placeholder-zinc-400 focus:outline-none"
+								disabled={isLoading}
+							/>
+							<button
+								type="submit"
+								class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+								disabled={isLoading || !searchQuery.trim()}
+							>
+								{#if isLoading}
+									<div
+										class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+									/>
+								{:else}
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-4 w-4"
+										viewBox="0 0 20 20"
+										fill="currentColor"
+									>
+										<path
+											fill-rule="evenodd"
+											d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+											clip-rule="evenodd"
+										/>
+									</svg>
+								{/if}
+							</button>
+						</div>
+					{/if}
+				</div>
+
+				<!-- Chat response -->
+				{#if chatResponse}
+					<div class="border-t border-zinc-600 pt-4">
+						<span class="text-sm text-zinc-400">Response:</span>
+						<p class="mt-1 whitespace-pre-wrap text-zinc-100">{chatResponse}</p>
 					</div>
 				{/if}
-			</div>
-			<button
-				type="submit"
-				class="w-full rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 md:w-auto"
-				disabled={isLoading || !searchQuery.trim()}
-			>
-				{isLoading ? 'Processing...' : 'Ask'}
-			</button>
-		</form>
+			</form>
+		</div>
 
-		<!-- Chat response -->
-		{#if chatResponse}
-			<div class="space-y-4 rounded-lg bg-zinc-700 p-4 text-zinc-100">
-				<div class="border-b border-zinc-600 pb-3">
-					<span class="text-sm text-zinc-400">Query:</span>
-					<p class="mt-1 font-medium">{searchQuery || DEFAULT_QUERY}</p>
-				</div>
-				<div>
-					<span class="text-sm text-zinc-400">Response:</span>
-					<p class="mt-1 whitespace-pre-wrap">{chatResponse}</p>
+		<!-- Recommendations with matching style -->
+		{#if recommendedCoffees.length > 0}
+			<div class="mt-4">
+				<h3 class="mb-4 text-xl font-semibold text-zinc-100">Recommended Coffees</h3>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					{#each recommendedCoffees as coffee}
+						<a
+							href={coffee.link}
+							target="_blank"
+							class="block rounded-lg bg-zinc-700 p-4 transition-colors hover:bg-zinc-800 hover:shadow-md"
+						>
+							<h4 class="font-semibold text-zinc-100">{coffee.name}</h4>
+							<h3 class="text-zinc-100">{coffee.source}</h3>
+							<p class="mt-2 text-sm text-zinc-100">{coffee.reason}</p>
+							<div class="mt-4">
+								<span class="text-sm text-zinc-100">Score: {coffee.score_value}</span>
+								<span class="ml-4 text-sm text-zinc-100">${coffee.cost_lb}/lb</span>
+							</div>
+						</a>
+					{/each}
 				</div>
 			</div>
 		{/if}
 	</div>
-
-	<!-- Update recommendations layout -->
-	{#if recommendedCoffees.length > 0}
-		<div class="mt-4 md:mt-8">
-			<h3 class="mb-4 text-xl font-semibold text-zinc-100">Recommended Coffees</h3>
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{#each recommendedCoffees as coffee}
-					<a
-						href={coffee.link}
-						target="_blank"
-						class="block rounded-lg bg-zinc-700 p-4 transition-colors hover:bg-zinc-800 hover:shadow-md"
-					>
-						<h4 class="font-semibold text-zinc-100">{coffee.name}</h4>
-						<h3 class="text-zinc-100">{coffee.source}</h3>
-						<p class="mt-2 text-sm text-zinc-100">{coffee.reason}</p>
-						<div class="mt-4">
-							<span class="text-sm text-zinc-100">Score: {coffee.score_value}</span>
-							<span class="ml-4 text-sm text-zinc-100">${coffee.cost_lb}/lb</span>
-						</div>
-					</a>
-				{/each}
-			</div>
-		</div>
-	{/if}
 </div>
 
 <!-- Update main content layout -->

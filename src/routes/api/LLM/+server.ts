@@ -81,8 +81,22 @@ The current date is ${new Date().toLocaleDateString()}.
 When making recommendations:
 1. Calculate scores for each coffee using this rubric
 2. Select the highest scoring matches
-3. Explain the scoring rationale in the recommendation reason
-4. Highlight the key attributes that led to the selection`
+3. Unless otherwise requested, recommend 3 coffees
+4. Explain the scoring rationale in the recommendation reason
+5. Highlight the key attributes that led to the selection
+
+
+OUTPUT FORMAT REQUIREMENTS:
+1. Start with a natural, conversational response addressing the user's query
+2. Follow with recommendations in this exact JSON structure:
+{
+    "recommendations": [
+        {
+            "id": "coffee_id",
+            "reason": "Detailed explanation of your reasoning for the recommendation using a conversational tone"
+        }
+    ]
+}`
 						}
 					]
 				},
@@ -90,39 +104,16 @@ When making recommendations:
 					role: 'model',
 					parts: [
 						{
-							text: "I understand my role and will use the detailed scoring rubric to evaluate coffees systematically. I'll provide scored recommendations with clear explanations of how each coffee earned its ranking."
+							text: "I understand my role and will use the detailed scoring rubric to evaluate coffees systematically. I'll provide scored recommendations with clear explanations of how each coffee earned its ranking, following the specified output format."
 						}
 					]
 				}
 			]
 		});
 
-		const result = await chatSession.sendMessage(`
-            AVAILABLE COFFEE INVENTORY:
-            ${JSON.stringify(coffeeData, null, 2)}
-
-            USER QUERY: ${prompt}
-
-            TASK:
-            Recommend 3 currently stocked coffees that best match the query.
-    
-            First, provide a natural language response to the user's query.
-            Then, provide specific recommendations in the JSON format below.
-
-            FORMAT RESPONSE AS:
-            [Natural language response to the query]
-
-            \`\`\`json
-            {
-                "recommendations": [
-                    {
-                        "id": "coffee_id",
-                        "reason": "Detailed explanation of why this coffee matches the query"
-                    }
-                ]
-            }
-            \`\`\`
-        `);
+		const result = await chatSession.sendMessage(
+			`AVAILABLE COFFEE INVENTORY:\n${JSON.stringify(coffeeData, null, 2)}\n\nUSER QUERY: ${prompt}\n\n`
+		);
 
 		const response = await result.response;
 		return json({ text: response.text() });
