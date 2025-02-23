@@ -241,38 +241,27 @@
 		<div class="rounded-lg bg-zinc-700 p-4">
 			<form on:submit|preventDefault={handleSearch} class="space-y-4">
 				<!-- Query/Input area -->
-				<div class="relative">
-					{#if chatResponse && !isLoading}
-						<!-- Show previous query that can be clicked to edit -->
-						<button
-							on:click={() => {
-								searchQuery = searchQuery || DEFAULT_QUERY;
-								chatResponse = '';
-							}}
-							class="block w-full cursor-text text-left"
-						>
-							<span class="text-sm text-zinc-400">Query:</span>
-							<p class="mt-1 font-medium text-zinc-100">{searchQuery || DEFAULT_QUERY}</p>
-						</button>
-					{:else}
-						<!-- Show input field -->
+				<div class="relative rounded-2xl bg-zinc-800 p-4">
+					<span class="text-sm text-zinc-400">Query:</span>
+					<div class="mt-1">
 						<div class="flex items-center gap-2">
 							<input
 								type="text"
 								bind:value={searchQuery}
-								placeholder="Search coffees or ask a question..."
-								class="flex-1 bg-transparent text-zinc-100 placeholder-zinc-400 focus:outline-none"
+								placeholder={chatResponse ? DEFAULT_QUERY : 'Search coffees or ask a question...'}
+								class="flex-1 border-none bg-transparent font-medium text-zinc-100 placeholder-zinc-400"
 								disabled={isLoading}
+								on:focus={(e) => (e.target as HTMLInputElement).select()}
 							/>
 							<button
 								type="submit"
-								class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+								class="flex h-8 w-8 items-center justify-center rounded-full border-none bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
 								disabled={isLoading || !searchQuery.trim()}
 							>
 								{#if isLoading}
 									<div
 										class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
-									/>
+									></div>
 								{:else}
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
@@ -289,12 +278,12 @@
 								{/if}
 							</button>
 						</div>
-					{/if}
+					</div>
 				</div>
 
 				<!-- Chat response -->
 				{#if chatResponse}
-					<div class="border-t border-zinc-600 pt-4">
+					<div class="p-4">
 						<span class="text-sm text-zinc-400">Response:</span>
 						<p class="mt-1 whitespace-pre-wrap text-zinc-100">{chatResponse}</p>
 					</div>
