@@ -168,7 +168,7 @@
 
 	// Add default query constant
 	const DEFAULT_QUERY =
-		'Provide a coffee recommendation from each source - bodhi leaf, captains coffee, and sweet marias';
+		'For each coffee source, recommend their most distinctive coffee, highlighting what makes it special to the supplier.';
 
 	// Add initial load function
 	async function loadInitialRecommendations() {
@@ -236,27 +236,45 @@
 </script>
 
 <div class="mx-2 mt-4 space-y-4 md:mx-8 md:mt-8">
-	<!-- Update search and chat interface spacing -->
 	<div class="space-y-4">
-		<div class="flex flex-col gap-2 md:flex-row md:gap-4">
-			<input
-				type="text"
-				bind:value={searchQuery}
-				placeholder="Search coffees or ask a question..."
-				class="w-full rounded-lg bg-zinc-700 px-4 py-2 text-zinc-100 placeholder-zinc-400"
-			/>
+		<!-- Chat interface -->
+		<form on:submit|preventDefault={handleSearch} class="flex flex-col gap-2 md:flex-row md:gap-4">
+			<div class="relative flex-1">
+				<input
+					type="text"
+					bind:value={searchQuery}
+					placeholder="Search coffees or ask a question..."
+					class="w-full rounded-lg bg-zinc-700 px-4 py-2 pr-12 text-zinc-100 placeholder-zinc-400 disabled:opacity-50"
+					disabled={isLoading}
+				/>
+				{#if isLoading}
+					<div class="absolute right-3 top-1/2 -translate-y-1/2">
+						<div
+							class="h-5 w-5 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent"
+						/>
+					</div>
+				{/if}
+			</div>
 			<button
-				on:click={handleSearch}
+				type="submit"
 				class="w-full rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 md:w-auto"
-				disabled={isLoading}
+				disabled={isLoading || !searchQuery.trim()}
 			>
-				{isLoading ? 'Processing...' : 'YOLO!'}
+				{isLoading ? 'Processing...' : 'Ask'}
 			</button>
-		</div>
+		</form>
 
+		<!-- Chat response -->
 		{#if chatResponse}
-			<div class="rounded-lg bg-zinc-700 p-4 text-zinc-100">
-				<p class="whitespace-pre-wrap">{chatResponse}</p>
+			<div class="space-y-4 rounded-lg bg-zinc-700 p-4 text-zinc-100">
+				<div class="border-b border-zinc-600 pb-3">
+					<span class="text-sm text-zinc-400">Query:</span>
+					<p class="mt-1 font-medium">{searchQuery || DEFAULT_QUERY}</p>
+				</div>
+				<div>
+					<span class="text-sm text-zinc-400">Response:</span>
+					<p class="mt-1 whitespace-pre-wrap">{chatResponse}</p>
+				</div>
 			</div>
 		{/if}
 	</div>
