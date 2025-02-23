@@ -29,7 +29,11 @@
 	// Function to load data
 	async function loadData() {
 		try {
-			const response = await fetch('/api/data');
+			// Get share token from URL if it exists
+			const shareToken = $page.url.searchParams.get('share');
+			const url = shareToken ? `/api/data?share=${shareToken}` : '/api/data';
+
+			const response = await fetch(url);
 			if (response.ok) {
 				const result = await response.json();
 				// Preserve the role and searchState when updating data
