@@ -4,11 +4,16 @@ export const handleCookieCheck: Handle = async ({ event, resolve }) => {
 	// Check if cookies are disabled
 	const cookiesEnabled = event.request.headers.get('cookie') !== null;
 
-	if (!cookiesEnabled && !event.url.pathname.startsWith('/no-cookies')) {
-		// Redirect to a warning page if cookies are disabled
-		return new Response(null, {
-			status: 302,
-			headers: { Location: '/no-cookies' }
+	if (!cookiesEnabled) {
+		// Instead of redirecting, add a custom header that the page can use
+		// to show a warning banner
+		const response = await resolve(event);
+		return new Response(response.body, {
+			...response,
+			headers: {
+				...response.headers,
+				'X-Cookies-Disabled': 'true'
+			}
 		});
 	}
 

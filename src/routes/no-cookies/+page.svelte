@@ -6,7 +6,7 @@
 			and refresh the page.
 		</p>
 		<a href="/" class="inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
-			Try Again
+			Go to Home
 		</a>
 	</div>
 </div>
