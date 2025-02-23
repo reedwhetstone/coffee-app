@@ -24,7 +24,7 @@
 	let currentRoastProfile: any = null;
 
 	// Main state variables
-	let selectedBean = currentRoastProfile
+	let selectedBean: { id?: number; name: string } = currentRoastProfile
 		? {
 				id: currentRoastProfile.coffee_id,
 				name: currentRoastProfile.coffee_name
@@ -38,7 +38,7 @@
 							id: parseInt(beanId),
 							name: decodeURIComponent(beanName)
 						}
-					: {};
+					: { name: 'No Bean Selected' };
 			})();
 	let isRoasting = false;
 	let isPaused = false;

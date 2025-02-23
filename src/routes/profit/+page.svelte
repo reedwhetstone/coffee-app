@@ -4,6 +4,7 @@
 	import { formatDateForDisplay } from '$lib/utils/dates';
 	import SalesTable from './SalesTable.svelte';
 	import SaleForm from './SaleForm.svelte';
+	import { page } from '$app/stores';
 
 	interface ProfitData {
 		id: number;
@@ -518,6 +519,15 @@
 	}
 </script>
 
+<button
+	class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+	on:click={() => {
+		selectedSale = null;
+		isFormVisible = true;
+	}}
+>
+	New Sale
+</button>
 <!-- Add form modal -->
 {#if isFormVisible}
 	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75">
@@ -677,15 +687,6 @@
 				<h2 class="text-xl font-bold text-zinc-400">
 					Sales for {selectedCoffee}
 				</h2>
-				<button
-					class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
-					on:click={() => {
-						selectedSale = null;
-						isFormVisible = true;
-					}}
-				>
-					New Sale
-				</button>
 			</div>
 
 			<SalesTable

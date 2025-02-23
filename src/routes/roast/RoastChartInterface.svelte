@@ -21,7 +21,7 @@
 	export let updateFan: (value: number) => void;
 	export let updateHeat: (value: number) => void;
 	export let saveRoastProfile: () => void;
-	export let selectedBean: { name: string };
+	export let selectedBean: { id?: number; name: string };
 	export let clearRoastData: () => void;
 
 	let seconds = 0;
