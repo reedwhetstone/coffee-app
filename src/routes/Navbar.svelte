@@ -208,28 +208,30 @@
 				: 'hidden md:flex'}"
 		>
 			<ul class="flex flex-wrap items-center gap-2">
-				<li class="w-full md:w-auto">
-					<a
-						href="/"
-						class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/'
-							? 'text-sky-800'
-							: 'text-zinc-600'} hover:bg-zinc-800 hover:text-sky-800"
-					>
-						CATALOG
-					</a>
-				</li>
-				<li class="w-full md:w-auto">
-					<a
-						href="/beans"
-						class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/beans'
-							? 'text-sky-800'
-							: 'text-zinc-600'}
-							hover:bg-zinc-800 hover:text-sky-800"
-					>
-						BEANS
-					</a>
-				</li>
 				{#if data.role === 'admin' || data.role === 'member'}
+					<li class="w-full md:w-auto">
+						<a
+							href="/"
+							class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/'
+								? 'text-sky-800'
+								: 'text-zinc-600'} hover:bg-zinc-800 hover:text-sky-800"
+						>
+							CATALOG
+						</a>
+					</li>
+
+					<li class="w-full md:w-auto">
+						<a
+							href="/beans"
+							class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/beans'
+								? 'text-sky-800'
+								: 'text-zinc-600'}
+							hover:bg-zinc-800 hover:text-sky-800"
+						>
+							BEANS
+						</a>
+					</li>
+
 					<li class="w-full md:w-auto">
 						<a
 							href="/roast"

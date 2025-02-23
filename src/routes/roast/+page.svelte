@@ -578,16 +578,17 @@
 {/if}
 
 <!-- Current roast profile display -->
-{#if currentRoastProfile}
-	<div class="mx-4 my-6 sm:m-8">
-		<div class="mb-4 flex justify-end">
-			<button
-				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
-				on:click={() => (isFormVisible = true)}
-			>
-				New Roast
-			</button>
-		</div>
+
+<div class="mx-4 my-6 sm:m-8">
+	<div class="mb-4 flex justify-end">
+		<button
+			class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+			on:click={() => (isFormVisible = true)}
+		>
+			New Roast
+		</button>
+	</div>
+	{#if currentRoastProfile}
 		<RoastProfileDisplay
 			profile={currentRoastProfile}
 			profiles={currentRoastProfile ? groupedProfiles[currentRoastProfile.batch_name] || [] : []}
@@ -595,8 +596,8 @@
 			onUpdate={handleProfileUpdate}
 			onDelete={handleProfileDelete}
 		/>
-	</div>
-{/if}
+	{/if}
+</div>
 
 <!-- Main roasting interface -->
 {#if currentRoastProfile}
