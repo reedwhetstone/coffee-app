@@ -261,20 +261,52 @@
 			.filter((date): date is string => typeof date === 'string') // Remove null/undefined values
 			.sort((a, b) => b.localeCompare(a)) // Sort descending
 	);
+
+	$effect(() => {
+		console.log('Current data:', data);
+	});
 </script>
 
 <div class="m-2 md:m-4">
 	<!-- Bean Profile Section -->
 	{#if data.role === 'admin' || data.role === 'member'}
-		<div class="mb-4 flex justify-end">
+		<div class="mb-4 flex justify-end gap-2">
 			<button
 				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
 				onclick={handleAddNewBean}
 			>
 				New Bean
 			</button>
+			<button
+				class="rounded border-2 border-blue-800 px-3 py-1 text-zinc-500 hover:bg-blue-900"
+				onclick={async () => {
+					try {
+						const response = await fetch('/api/share', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								resourceId: selectedBean ? selectedBean.id : 'all'
+							})
+						});
+
+						if (!response.ok) {
+							throw new Error('Failed to create share link');
+						}
+
+						const { shareUrl } = await response.json();
+						await navigator.clipboard.writeText(shareUrl);
+						alert('Share link copied to clipboard!');
+					} catch (error) {
+						console.error('Error sharing:', error);
+						alert('Failed to create share link. Please try again.');
+					}
+				}}
+			>
+				Share {selectedBean ? 'Selected Bean' : 'All Beans'}
+			</button>
 		</div>
 	{/if}
+
 	{#if selectedBean}
 		<div class="mb-4">
 			<BeanProfile

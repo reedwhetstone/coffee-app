@@ -13,26 +13,57 @@ interface RoastProfile {
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
-		const { session, user } = await safeGetSession();
-		if (!session || !user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
 		const id = url.searchParams.get('id');
-		let query = supabase.from('green_coffee_inv').select('*').eq('user', user.id);
+		const shareToken = url.searchParams.get('share');
 
-		if (id) {
-			query = query.eq('id', id);
+		// Get session but don't require it
+		const { session, user, role } = await safeGetSession();
+
+		let query = supabase.from('green_coffee_inv').select('*');
+
+		// If share token is provided, verify it and show shared data
+		if (shareToken) {
+			const { data: shareData } = await supabase
+				.from('shared_links')
+				.select('user_id, resource_id')
+				.eq('share_token', shareToken)
+				.eq('is_active', true)
+				.gte('expires_at', new Date().toISOString())
+				.single();
+
+			if (shareData) {
+				// Show only the shared bean or all beans from the user
+				if (shareData.resource_id === 'all') {
+					query = query.eq('user', shareData.user_id);
+				} else {
+					query = query.eq('id', shareData.resource_id);
+				}
+			} else {
+				return json({ data: [], error: 'Invalid or expired share link' });
+			}
+		} else {
+			// Regular authorization logic
+			if (role !== 'admin') {
+				if (session && user) {
+					query = query.eq('user', user.id);
+				} else {
+					return json({ data: [] });
+				}
+			}
+
+			if (id) {
+				query = query.eq('id', id);
+			}
 		}
 
 		const { data: rows, error } = await query;
-
 		if (error) throw error;
 
 		const formattedRows = rows.map((row: GreenCoffeeRow) => ({
 			...row,
 			purchase_date: row.purchase_date ? row.purchase_date.split('T')[0] : null
 		}));
+
 		return json({ data: formattedRows });
 	} catch (error) {
 		console.error('Error querying database:', error);
