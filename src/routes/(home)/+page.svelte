@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 
 	export let data: PageData;
 
@@ -174,6 +174,13 @@
 	async function loadInitialRecommendations() {
 		if (!isLoading && !chatResponse) {
 			searchQuery = DEFAULT_QUERY;
+			// Trigger resize after a small delay to ensure the DOM has updated
+			await tick();
+			const textarea = document.querySelector('textarea');
+			if (textarea) {
+				textarea.style.height = 'auto';
+				textarea.style.height = textarea.scrollHeight + 'px';
+			}
 			await handleSearch();
 		}
 	}
@@ -240,19 +247,24 @@
 		<!-- Integrated chat interface -->
 		<div class="rounded-2xl bg-zinc-700">
 			<form on:submit|preventDefault={handleSearch} class="space-y-4">
-				<!-- Query/Input area -->
+				<!-- Query/Input area with wrapping textarea -->
 				<div class="relative rounded-2xl bg-zinc-800 p-4">
 					<span class="text-sm text-zinc-400">Query:</span>
-					<div class="">
+					<div>
 						<div class="flex items-center gap-2">
-							<input
-								type="text"
+							<textarea
 								bind:value={searchQuery}
 								placeholder={chatResponse ? DEFAULT_QUERY : 'Search coffees or ask a question...'}
-								class="flex-1 border-none bg-transparent font-medium text-zinc-100 placeholder-zinc-400 focus:border-none focus:outline-none focus:ring-0"
+								class="flex-1 resize-none border-none bg-transparent font-medium text-zinc-100 placeholder-zinc-400 focus:border-none focus:outline-none focus:ring-0"
 								disabled={isLoading}
-								on:focus={(e) => (e.target as HTMLInputElement).select()}
-							/>
+								on:focus={(e) => (e.target as HTMLTextAreaElement).select()}
+								on:input={(e) => {
+									const textarea = e.target as HTMLTextAreaElement;
+									textarea.style.height = 'auto';
+									textarea.style.height = textarea.scrollHeight + 'px';
+								}}
+								style="min-height: 3rem; overflow-y: hidden;"
+							></textarea>
 							<button
 								type="submit"
 								class="flex h-8 w-8 items-center justify-center rounded-full border-none bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
