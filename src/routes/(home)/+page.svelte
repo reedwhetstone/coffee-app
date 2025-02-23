@@ -238,18 +238,18 @@
 <div class="mx-2 mt-4 space-y-4 md:mx-8 md:mt-8">
 	<div class="space-y-4">
 		<!-- Integrated chat interface -->
-		<div class="rounded-lg bg-zinc-700 p-4">
+		<div class="rounded-2xl bg-zinc-700">
 			<form on:submit|preventDefault={handleSearch} class="space-y-4">
 				<!-- Query/Input area -->
 				<div class="relative rounded-2xl bg-zinc-800 p-4">
 					<span class="text-sm text-zinc-400">Query:</span>
-					<div class="mt-1">
+					<div class="">
 						<div class="flex items-center gap-2">
 							<input
 								type="text"
 								bind:value={searchQuery}
 								placeholder={chatResponse ? DEFAULT_QUERY : 'Search coffees or ask a question...'}
-								class="flex-1 border-none bg-transparent font-medium text-zinc-100 placeholder-zinc-400"
+								class="flex-1 border-none bg-transparent font-medium text-zinc-100 placeholder-zinc-400 focus:border-none focus:outline-none focus:ring-0"
 								disabled={isLoading}
 								on:focus={(e) => (e.target as HTMLInputElement).select()}
 							/>
@@ -271,7 +271,7 @@
 									>
 										<path
 											fill-rule="evenodd"
-											d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+											d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
 											clip-rule="evenodd"
 										/>
 									</svg>
@@ -283,9 +283,9 @@
 
 				<!-- Chat response -->
 				{#if chatResponse}
-					<div class="p-4">
+					<div class="px-4 pb-4">
 						<span class="text-sm text-zinc-400">Response:</span>
-						<p class="mt-1 whitespace-pre-wrap text-zinc-100">{chatResponse}</p>
+						<p class="mx-4 mt-1 whitespace-pre-wrap text-zinc-100">{chatResponse}</p>
 					</div>
 				{/if}
 			</form>
