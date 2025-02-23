@@ -29,7 +29,17 @@
 				id: currentRoastProfile.coffee_id,
 				name: currentRoastProfile.coffee_name
 			}
-		: ($page.state as any)?.selectedBean || {};
+		: (() => {
+				const params = new URLSearchParams(window.location.search);
+				const beanId = params.get('beanId');
+				const beanName = params.get('beanName');
+				return beanId && beanName
+					? {
+							id: parseInt(beanId),
+							name: decodeURIComponent(beanName)
+						}
+					: {};
+			})();
 	let isRoasting = false;
 	let isPaused = false;
 	let fanValue = 8;

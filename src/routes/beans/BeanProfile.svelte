@@ -111,12 +111,14 @@
 					<button
 						class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-zinc-600"
 						onclick={() => {
-							goto(`/roast`, {
-								state: {
-									selectedBean,
-									showRoastForm: true
+							goto(
+								`/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.name)}`,
+								{
+									state: {
+										showRoastForm: true
+									}
 								}
-							});
+							);
 						}}
 					>
 						New Roast
