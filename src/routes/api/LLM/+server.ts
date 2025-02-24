@@ -78,17 +78,15 @@ When a specific attribute is requested (e.g., "natural process only"), that attr
 
 The current date is ${new Date().toLocaleDateString()}.
 
-When making recommendations:
+RECOMMENDATION INSTRUCTIONS:
 1. Calculate scores for each coffee using this rubric
 2. Select the highest scoring matches
-3. Unless otherwise requested, recommend 3 coffees
-4. Explain the scoring rationale in the recommendation reason
-5. Highlight the key attributes that led to the selection
-
 
 OUTPUT FORMAT REQUIREMENTS:
-1. Start with a natural, conversational response addressing the user's query
-2. Follow with recommendations in this exact JSON structure:
+1. Start with a conversational response addressing the user's query 
+2. Unless otherwise requested, recommend 3 coffees
+3. Follow with recommendations in this exact JSON structure:
+
 {
     "recommendations": [
         {
@@ -104,7 +102,7 @@ OUTPUT FORMAT REQUIREMENTS:
 					role: 'model',
 					parts: [
 						{
-							text: "I understand my role and will use the detailed scoring rubric to evaluate coffees systematically. I'll provide scored recommendations with clear explanations of how each coffee earned its ranking, following the specified output format."
+							text: "I understand my role and will use the detailed scoring rubric to evaluate coffees systematically. I'll provide scored recommendations with clear explanations of how each coffee earned its selection, following the specified output format."
 						}
 					]
 				}

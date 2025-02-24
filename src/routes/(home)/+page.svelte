@@ -168,7 +168,7 @@
 
 	// Add default query constant
 	const DEFAULT_QUERY =
-		'For each coffee source, recommend their most distinctive coffee, highlighting what makes it special to the supplier.';
+		'Recommend the most distinctive coffee from each source (bodhi_leaf, sweet_maria, captain_coffee), highlighting what makes it special to the supplier.';
 
 	// Add initial load function
 	async function loadInitialRecommendations() {
@@ -263,7 +263,7 @@
 									textarea.style.height = 'auto';
 									textarea.style.height = textarea.scrollHeight + 'px';
 								}}
-								style="min-height: 3rem; overflow-y: hidden;"
+								style=" overflow-y: hidden;"
 							></textarea>
 							<button
 								type="submit"
