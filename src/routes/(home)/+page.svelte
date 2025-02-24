@@ -283,7 +283,7 @@
 									>
 										<path
 											fill-rule="evenodd"
-											d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+											d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z"
 											clip-rule="evenodd"
 										/>
 									</svg>
@@ -312,9 +312,24 @@
 								<a
 									href={coffee.link}
 									target="_blank"
-									class="block rounded-lg bg-zinc-700 p-4 transition-colors hover:bg-zinc-800 hover:shadow-md"
+									class="group block rounded-lg bg-zinc-700 p-4 transition-all hover:scale-[1.02] hover:bg-zinc-800 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 								>
-									<h4 class="font-semibold text-zinc-100">{coffee.name}</h4>
+									<div class="flex items-center justify-between">
+										<h4 class="font-semibold text-zinc-100">{coffee.name}</h4>
+										<svg
+											class="h-4 w-4 text-zinc-400 transition-transform group-hover:translate-x-1 group-hover:text-blue-400"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+											/>
+										</svg>
+									</div>
 									<div class="mb-2">
 										<h3 class="text-zinc-100">{coffee.source}</h3>
 										<span class="text-sm text-zinc-100">Score: {coffee.score_value}</span>
@@ -477,8 +492,8 @@
 								{coffee.arrival_date || '-'}
 							</div>
 							<div>
-								<span class="text-zinc-400">Harvest:</span>
-								{coffee.harvest_date || '-'}
+								<span class="text-zinc-400">Cultivar:</span>
+								{coffee.cultivar_detail || '-'}
 							</div>
 						</div>
 					</button>
