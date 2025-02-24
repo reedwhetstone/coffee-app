@@ -295,37 +295,39 @@
 
 				<!-- Chat response -->
 				{#if chatResponse}
-					<div class="px-4 pb-4">
+					<div class="px-4 pb-1">
 						<span class="text-sm text-zinc-400">Response:</span>
 						<p class="mx-4 mt-1 whitespace-pre-wrap text-zinc-100">{chatResponse}</p>
 					</div>
 				{/if}
+				<!-- Recommendations-->
+				{#if recommendedCoffees.length > 0}
+					<div class="px-4 pb-4">
+						<!-- Add divider here -->
+						<div class="flex items-center gap-2 py-2">
+							<hr class="flex-1 border-zinc-600" />
+						</div>
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+							{#each recommendedCoffees as coffee}
+								<a
+									href={coffee.link}
+									target="_blank"
+									class="block rounded-lg bg-zinc-700 p-4 transition-colors hover:bg-zinc-800 hover:shadow-md"
+								>
+									<h4 class="font-semibold text-zinc-100">{coffee.name}</h4>
+									<div class="mb-2">
+										<h3 class="text-zinc-100">{coffee.source}</h3>
+										<span class="text-sm text-zinc-100">Score: {coffee.score_value}</span>
+										<span class="ml-4 text-sm text-zinc-100">${coffee.cost_lb}/lb</span>
+									</div>
+									<p class="mt-2 text-sm text-zinc-100">{coffee.reason}</p>
+								</a>
+							{/each}
+						</div>
+					</div>
+				{/if}
 			</form>
 		</div>
-
-		<!-- Recommendations with matching style -->
-		{#if recommendedCoffees.length > 0}
-			<div class="mt-4">
-				<h3 class="mb-4 text-xl font-semibold text-zinc-100">Recommended Coffees</h3>
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{#each recommendedCoffees as coffee}
-						<a
-							href={coffee.link}
-							target="_blank"
-							class="block rounded-lg bg-zinc-700 p-4 transition-colors hover:bg-zinc-800 hover:shadow-md"
-						>
-							<h4 class="font-semibold text-zinc-100">{coffee.name}</h4>
-							<h3 class="text-zinc-100">{coffee.source}</h3>
-							<p class="mt-2 text-sm text-zinc-100">{coffee.reason}</p>
-							<div class="mt-4">
-								<span class="text-sm text-zinc-100">Score: {coffee.score_value}</span>
-								<span class="ml-4 text-sm text-zinc-100">${coffee.cost_lb}/lb</span>
-							</div>
-						</a>
-					{/each}
-				</div>
-			</div>
-		{/if}
 	</div>
 </div>
 
