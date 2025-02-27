@@ -29,17 +29,7 @@
 				id: currentRoastProfile.coffee_id,
 				name: currentRoastProfile.coffee_name
 			}
-		: (() => {
-				const params = new URLSearchParams(window.location.search);
-				const beanId = params.get('beanId');
-				const beanName = params.get('beanName');
-				return beanId && beanName
-					? {
-							id: parseInt(beanId),
-							name: decodeURIComponent(beanName)
-						}
-					: { name: 'No Bean Selected' };
-			})();
+		: { name: 'No Bean Selected' };
 	let isRoasting = false;
 	let isPaused = false;
 	let fanValue = 8;
@@ -87,6 +77,19 @@
 	}
 
 	onMount(() => {
+		if (typeof window !== 'undefined' && !currentRoastProfile) {
+			const params = new URLSearchParams(window.location.search);
+			const beanId = params.get('beanId');
+			const beanName = params.get('beanName');
+
+			if (beanId && beanName) {
+				selectedBean = {
+					id: parseInt(beanId),
+					name: decodeURIComponent(beanName)
+				};
+			}
+		}
+
 		loadRoastProfiles();
 
 		// Add search navigation handling
@@ -566,9 +569,38 @@
 			alert('Failed to clear roast data');
 		}
 	}
+
+	// Update this function to handle batch deletion
+	async function handleBatchDelete(event: { detail: string }) {
+		try {
+			const batchName = event.detail;
+
+			// Make API call to delete all profiles in the batch
+			const response = await fetch(`/api/roast-profiles?name=${encodeURIComponent(batchName)}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to delete batch profiles');
+			}
+
+			// Clear current profile first if it was in the deleted batch
+			if (currentRoastProfile && currentRoastProfile.batch_name === batchName) {
+				currentRoastProfile = null;
+			}
+
+			// Then reload profiles
+			await loadRoastProfiles();
+
+			alert(`Batch "${batchName}" deleted successfully`);
+		} catch (error) {
+			console.error('Error deleting batch:', error);
+			alert(error instanceof Error ? error.message : 'Failed to delete batch profiles');
+		}
+	}
 </script>
 
-<!-- Modal for adding new roast profiles -->
 {#if isFormVisible}
 	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 p-4">
 		<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-4 sm:p-6">
@@ -626,9 +658,5 @@
 	{currentRoastProfile}
 	onToggleBatch={toggleBatch}
 	onSelectProfile={selectProfile}
+	on:deleteBatch={handleBatchDelete}
 />
-
-<!-- Move modal to the end of the file and keep it simple -->
-{#if isFormVisible}
-	<RoastProfileForm {selectedBean} onClose={hideRoastForm} onSubmit={handleFormSubmit} />
-{/if}

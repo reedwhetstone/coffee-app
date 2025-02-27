@@ -94,32 +94,70 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		}
 
 		const id = url.searchParams.get('id');
-		if (!id) {
-			return json({ error: 'No ID provided' }, { status: 400 });
+		const batchName = url.searchParams.get('name');
+
+		// Handle single profile deletion
+		if (id) {
+			// Verify ownership
+			const { data: existing } = await supabase
+				.from('roast_profiles')
+				.select('user')
+				.eq('roast_id', id)
+				.single();
+
+			if (!existing || existing.user !== user.id) {
+				return json({ error: 'Unauthorized' }, { status: 403 });
+			}
+
+			const { error } = await supabase
+				.from('roast_profiles')
+				.delete()
+				.eq('roast_id', id)
+				.eq('user', user.id);
+
+			if (error) throw error;
+			return json({ success: true });
 		}
+		// Handle batch deletion
+		else if (batchName) {
+			// First, get all profile IDs in the batch to delete associated logs
+			const { data: profiles, error: fetchError } = await supabase
+				.from('roast_profiles')
+				.select('roast_id')
+				.eq('batch_name', batchName)
+				.eq('user', user.id);
 
-		// Verify ownership
-		const { data: existing } = await supabase
-			.from('roast_profiles')
-			.select('user')
-			.eq('roast_id', id)
-			.single();
+			if (fetchError) throw fetchError;
 
-		if (!existing || existing.user !== user.id) {
-			return json({ error: 'Unauthorized' }, { status: 403 });
+			// Delete all profiles in the batch
+			const { error: deleteError } = await supabase
+				.from('roast_profiles')
+				.delete()
+				.eq('batch_name', batchName)
+				.eq('user', user.id);
+
+			if (deleteError) throw deleteError;
+
+			// Also delete associated profile logs
+			if (profiles && profiles.length > 0) {
+				const roastIds = profiles.map((p) => p.roast_id);
+				const { error: logDeleteError } = await supabase
+					.from('profile_logs')
+					.delete()
+					.in('roast_id', roastIds);
+
+				if (logDeleteError) {
+					console.warn('Failed to delete some profile logs:', logDeleteError);
+				}
+			}
+
+			return json({ success: true, count: profiles?.length || 0 });
+		} else {
+			return json({ error: 'No ID or batch name provided' }, { status: 400 });
 		}
-
-		const { error } = await supabase
-			.from('roast_profiles')
-			.delete()
-			.eq('roast_id', id)
-			.eq('user', user.id);
-
-		if (error) throw error;
-		return json({ success: true });
 	} catch (error) {
-		console.error('Error deleting roast profile:', error);
-		return json({ error: 'Failed to delete roast profile' }, { status: 500 });
+		console.error('Error deleting roast profile(s):', error);
+		return json({ error: 'Failed to delete roast profile(s)' }, { status: 500 });
 	}
 };
 

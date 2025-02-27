@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { formatDateForInput, prepareDateForAPI, formatDateForDisplay } from '$lib/utils/dates';
+	import { createEventDispatcher } from 'svelte';
+
+	const dispatch = createEventDispatcher();
 
 	export let profile: any;
 	export let onUpdate: (profile: any) => void;
@@ -8,9 +11,14 @@
 	export let currentIndex: number = 0;
 
 	let isEditing = false;
-	let editedProfile = { ...profile };
+	let editedProfile: any = {};
+	let previousIndex = 0;
 
-	let previousIndex = currentIndex;
+	$: {
+		// Update these values when props change
+		editedProfile = { ...profile };
+		previousIndex = currentIndex;
+	}
 
 	function slideTransition(_: Element, { duration = 300, direction = 1, delay = 0 }) {
 		return {
@@ -92,32 +100,33 @@
 	}
 
 	async function deleteBatch() {
-		if (confirm('Are you sure you want to delete all profiles in this batch?')) {
-			try {
-				const formattedDate = profile.roast_date.split('T')[0];
-
-				const response = await fetch(`/api/roast-profiles`, {
-					method: 'DELETE',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						batch_name: profile.batch_name,
-						roast_date: formattedDate
-					})
-				});
-
-				if (response.ok) {
-					const deletedIds = await response.json();
-					profiles.forEach((profile) => onDelete(profile.roast_id));
-				} else {
-					const errorData = await response.json();
-					alert(`Failed to delete batch profiles: ${errorData.error || 'Unknown error'}`);
-				}
-			} catch (error) {
-				console.error('Error deleting batch profiles:', error);
-				alert('Failed to delete batch profiles. See console for details.');
+		try {
+			if (!profile || !profile.batch_name) {
+				throw new Error('No batch name available');
 			}
+
+			const batchName = profile.batch_name;
+
+			// Confirm deletion
+			if (!confirm(`Are you sure you want to delete all profiles in batch "${batchName}"?`)) {
+				return;
+			}
+
+			// Make API call with the name parameter
+			const response = await fetch(`/api/roast-profiles?name=${encodeURIComponent(batchName)}`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to delete batch profiles');
+			}
+
+			// Dispatch event to parent component
+			dispatch('deleteBatch', batchName);
+		} catch (error) {
+			console.error('Error deleting batch:', error);
+			alert(error instanceof Error ? error.message : 'Failed to delete batch profiles');
 		}
 	}
 
