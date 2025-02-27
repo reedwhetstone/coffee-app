@@ -80,19 +80,46 @@
 
 	// Function to handle deletion
 	async function deleteBean() {
-		if (confirm('Are you sure you want to delete this bean?')) {
+		if (
+			confirm(
+				'Are you sure you want to delete this bean? This will also delete all associated roast profiles and logs.'
+			)
+		) {
 			try {
 				const response = await fetch(`/api/data?id=${selectedBean.id}`, {
 					method: 'DELETE'
 				});
 
 				if (response.ok) {
+					// Notify user of successful deletion
+					alert('Bean deleted successfully with all associated roast profiles and logs.');
 					onDelete(selectedBean.id);
 				} else {
-					alert(`Failed to delete bean: ${selectedBean.id}`);
+					// Handle error cases
+					const statusCode = response.status;
+					let errorMessage = 'Failed to delete bean';
+
+					try {
+						const errorData = await response.json();
+						errorMessage = errorData.error || errorMessage;
+					} catch (e) {
+						// If we can't parse the JSON response
+						console.error('Error parsing error response', e);
+					}
+
+					// Provide more specific error messages
+					if (statusCode === 403) {
+						errorMessage =
+							'You do not have permission to delete this bean. It may belong to another user.';
+					} else if (statusCode === 401) {
+						errorMessage = 'Your session has expired. Please log in again.';
+					}
+
+					alert(`Error (${statusCode}): ${errorMessage}`);
 				}
 			} catch (error) {
 				console.error('Error deleting bean:', error);
+				alert('An unexpected error occurred. Please try again or reload the page.');
 			}
 		}
 	}
@@ -297,7 +324,7 @@
 			</div>
 		{/key}
 	</div>
-	{#if role === 'admin'}
+	{#if role === 'admin' || role === 'member'}
 		<div class="mb-4 flex justify-end space-x-2">
 			<button
 				class="rounded {isEditing

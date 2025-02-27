@@ -59,14 +59,21 @@
 			});
 			if (response.ok) {
 				// Update local state
-				data.data = data.data.filter(
-					(bean: Database['public']['Tables']['green_coffee_inv']['Row']) => bean.id !== id
-				);
+				await loadData(); // Reload all data to ensure consistency
+
 				// Clear selected bean since it's been deleted
 				selectedBean = null;
+
+				// Notify the user of successful deletion
+				// Note: We don't need to alert here as BeanProfile component already shows a success message
+			} else {
+				const errorData = await response.json();
+				console.error('Failed to delete bean:', errorData.error || 'Unknown error');
+				// Don't show alert here as BeanProfile already handles error alerts
 			}
 		} catch (error) {
 			console.error('Error deleting bean:', error);
+			// Don't show alert here as BeanProfile already handles error alerts
 		}
 	}
 
