@@ -580,9 +580,9 @@
 <!-- Current roast profile display -->
 
 <div class="mx-4 my-6 sm:m-8">
-	<div class="mb-4 flex justify-end">
+	<div class="mb-4 flex justify-center sm:justify-end">
 		<button
-			class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+			class="w-full rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900 sm:w-auto"
 			on:click={() => (isFormVisible = true)}
 		>
 			New Roast

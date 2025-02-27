@@ -274,7 +274,7 @@
 <div class="m-2 md:m-4">
 	<!-- Bean Profile Section -->
 	{#if data.role === 'admin' || data.role === 'member'}
-		<div class="mb-4 flex justify-end gap-2">
+		<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
 			<button
 				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
 				onclick={handleAddNewBean}
@@ -334,7 +334,7 @@
 	<!-- Main content section -->
 	<div class="mx-2 mt-4 flex flex-col gap-4 md:mx-8 md:mt-8 md:flex-row">
 		<!-- Filter Panel -->
-		<div class="rounded-lg bg-zinc-800 p-4 md:w-64 md:flex-shrink-0">
+		<div class="w-full rounded-lg bg-zinc-800 p-4 md:w-64 md:flex-shrink-0">
 			<div class="flex items-center justify-between">
 				<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
 				<button

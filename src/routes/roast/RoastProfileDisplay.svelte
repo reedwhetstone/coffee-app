@@ -127,7 +127,7 @@
 <div class="mx-2 mt-4 rounded-lg bg-zinc-800 p-3 sm:mx-8 sm:mt-8 sm:p-6">
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
-			<div class="flex-1 text-center">
+			<div class="flex-1 text-center sm:text-left">
 				<h1 class="text-xl font-bold text-zinc-400 sm:text-2xl">
 					{profile.batch_name} // {formatDateForDisplay(profile.roast_date)}
 				</h1>
@@ -139,7 +139,7 @@
 				Delete Batch
 			</button>
 		</div>
-		<div class="flex items-center justify-center">
+		<div class="mt-2 flex items-center justify-center sm:justify-start">
 			<h3 class="text-l font-bold text-zinc-500">
 				{profile.coffee_name}
 			</h3>
@@ -156,57 +156,56 @@
 					{#each Object.entries(profile) as [key, value]}
 						{#if !['roast_id', 'coffee_id'].includes(key)}
 							<div
-								class="rounded bg-zinc-700 p-2 {['roast_notes', 'roast_targets'].includes(key)
-									? 'col-span-2'
+								class="rounded bg-zinc-700 p-3 {['roast_notes', 'roast_targets'].includes(key)
+									? 'col-span-1 sm:col-span-2'
 									: ''}"
 							>
-								<span class="font-medium text-zinc-400"
-									>{key.replace(/_/g, ' ').toUpperCase()}:</span
-								>
-								{#if isEditing && key !== 'last_updated'}
-									{#if ['roast_notes', 'roast_targets'].includes(key)}
-										<textarea
-											class="relative z-0 ml-2 min-h-[24px] w-full rounded bg-zinc-600 px-2 py-1 text-zinc-300"
-											rows="4"
-											bind:value={editedProfile[key]}
-										></textarea>
-									{:else if ['oz_in', 'oz_out'].includes(key)}
-										<input
-											type="number"
-											step="0.1"
-											min="0"
-											class="relative z-0 ml-2 h-[24px] rounded bg-zinc-600 px-2 py-1 text-zinc-300"
-											bind:value={editedProfile[key]}
-										/>
-									{:else if key === 'roast_date'}
-										<input
-											type="date"
-											class="relative z-0 ml-2 h-[24px] rounded bg-zinc-600 px-2 py-1 text-zinc-300"
-											value={formatDateForInput(editedProfile[key])}
-											on:input={(e) =>
-												(editedProfile[key] = prepareDateForAPI(e.currentTarget.value))}
-										/>
-									{:else}
-										<input
-											type="text"
-											class="relative z-0 ml-2 h-[24px] rounded bg-zinc-600 px-2 py-1 text-zinc-300"
-											bind:value={editedProfile[key]}
-										/>
-									{/if}
-								{:else}
-									<span
-										class="ml-2 h-[24px] leading-[24px] text-zinc-300 {[
-											'roast_notes',
-											'roast_targets'
-										].includes(key)
-											? 'space-pre-wrap block'
-											: ''}"
+								<div class="flex flex-col">
+									<span class="mb-1 font-medium text-zinc-400"
+										>{key.replace(/_/g, ' ').toUpperCase()}:</span
 									>
-										{key === 'roast_date' || key === 'last_updated'
-											? formatDateForDisplay(value as string)
-											: value}
-									</span>
-								{/if}
+									{#if isEditing && key !== 'last_updated'}
+										{#if ['roast_notes', 'roast_targets'].includes(key)}
+											<textarea
+												class="relative z-0 min-h-[80px] w-full rounded bg-zinc-600 px-2 py-1 text-zinc-300"
+												rows="4"
+												bind:value={editedProfile[key]}
+											></textarea>
+										{:else if ['oz_in', 'oz_out'].includes(key)}
+											<input
+												type="number"
+												step="0.1"
+												min="0"
+												class="relative z-0 h-[36px] w-full rounded bg-zinc-600 px-2 py-1 text-zinc-300"
+												bind:value={editedProfile[key]}
+											/>
+										{:else if key === 'roast_date'}
+											<input
+												type="date"
+												class="relative z-0 h-[36px] w-full rounded bg-zinc-600 px-2 py-1 text-zinc-300"
+												value={formatDateForInput(editedProfile[key])}
+												on:input={(e) =>
+													(editedProfile[key] = prepareDateForAPI(e.currentTarget.value))}
+											/>
+										{:else}
+											<input
+												type="text"
+												class="relative z-0 h-[36px] w-full rounded bg-zinc-600 px-2 py-1 text-zinc-300"
+												bind:value={editedProfile[key]}
+											/>
+										{/if}
+									{:else}
+										<span
+											class="text-zinc-300 {['roast_notes', 'roast_targets'].includes(key)
+												? 'space-pre-wrap block'
+												: ''}"
+										>
+											{key === 'roast_date' || key === 'last_updated'
+												? formatDateForDisplay(value as string)
+												: value}
+										</span>
+									{/if}
+								</div>
 							</div>
 						{/if}
 					{/each}
