@@ -74,6 +74,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		const bean = await request.json();
+
+		// If this bean came from the catalog, verify the catalog entry exists
+		if (bean.catalog_id) {
+			const { data: catalogBean, error: catalogError } = await supabase
+				.from('coffee_catalog')
+				.select('*')
+				.eq('id', bean.catalog_id)
+				.single();
+
+			if (catalogError || !catalogBean) {
+				return json({ error: 'Invalid catalog reference' }, { status: 400 });
+			}
+		}
+
 		const { data: newBean, error } = await supabase
 			.from('green_coffee_inv')
 			.insert({
@@ -87,7 +101,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		return json(newBean);
 	} catch (error) {
 		console.error('Error creating bean:', error);
-		return json({ success: false, error: 'Failed to create bean' }, { status: 500 });
+		return json({ error: 'Failed to create bean' }, { status: 500 });
 	}
 };
 
