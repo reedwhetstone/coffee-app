@@ -270,10 +270,6 @@
 
 		xScale.domain([0, maxTime]);
 
-		// Debug logging
-		// console.log('End event:', endEvent);
-		// console.log('Max time:', maxTime);
-
 		// Update time tracker position
 		if (isRoasting && !isPaused) {
 			const currentTime = (performance.now() - $startTime! + $accumulatedTime) / (1000 * 60);
@@ -286,7 +282,7 @@
 			svg.select('.time-tracker').style('display', 'none');
 		}
 
-		// Update axes with type assertion
+		// Update x-axis with type assertion
 		svg.select('.x-axis').call(d3.axisBottom(xScale) as any);
 
 		// Add heat line
@@ -309,7 +305,7 @@
 			.attr('stroke-width', 2)
 			.attr('d', fanLine);
 
-		// Add heat value labels
+		// Add heat value labels with improved legibility
 		const heatChanges = processedData.filter(
 			(d, i) => i === 0 || d.heat !== processedData[i - 1].heat
 		);
@@ -321,12 +317,14 @@
 			.attr('class', 'heat-label')
 			.attr('x', (d) => xScale(d.time / (1000 * 60)))
 			.attr('y', (d) => yScaleHeat(d.heat))
-			.attr('dy', -5)
+			.attr('dy', -8)
 			.attr('fill', '#b45309')
-			.attr('font-size', '12px')
+			.attr('font-size', '14px')
+			.attr('font-weight', 'bold')
+			.attr('text-shadow', '0px 0px 3px rgba(0,0,0,0.7)')
 			.text((d) => d.heat);
 
-		// Add fan value labels
+		// Add fan value labels with improved legibility
 		const fanChanges = processedData.filter(
 			(d, i) => i === 0 || d.fan !== processedData[i - 1].fan
 		);
@@ -338,9 +336,11 @@
 			.attr('class', 'fan-label')
 			.attr('x', (d) => xScale(d.time / (1000 * 60)))
 			.attr('y', (d) => yScaleFan(d.fan))
-			.attr('dy', -5)
+			.attr('dy', -8)
 			.attr('fill', '#3730a3')
-			.attr('font-size', '12px')
+			.attr('font-size', '14px')
+			.attr('font-weight', 'bold')
+			.attr('text-shadow', '0px 0px 3px rgba(0,0,0,0.7)')
 			.text((d) => d.fan);
 
 		// Update event markers - Create separate groups for each event
@@ -406,18 +406,67 @@
 		yScaleFan.range([height, 0]);
 		yScaleHeat.range([height, 0]);
 
-		// Update axes
+		// Clear and redraw background grid
+		svg.selectAll('.heat-zone').remove();
+		svg.selectAll('.fan-zone').remove();
+		svg.selectAll('.y-value-indicator').remove();
+
+		// Redraw background grid shading for values 1-10
+		for (let i = 0; i <= 10; i++) {
+			// Skip the first and last to avoid unnecessary borders
+			if (i > 0 && i < 10) {
+				// Add heat zone shading (amber)
+				svg
+					.append('rect')
+					.attr('class', 'heat-zone')
+					.attr('x', 0)
+					.attr('y', yScaleHeat(i))
+					.attr('width', width)
+					.attr('height', yScaleHeat(i - 1) - yScaleHeat(i))
+					.attr('fill', i % 2 === 0 ? 'rgba(180, 83, 9, 0.05)' : 'rgba(180, 83, 9, 0.1)')
+					.attr('stroke', 'none');
+
+				// Add fan zone shading (indigo)
+				svg
+					.append('rect')
+					.attr('class', 'fan-zone')
+					.attr('x', 0)
+					.attr('y', yScaleFan(i))
+					.attr('width', width)
+					.attr('height', yScaleFan(i - 1) - yScaleFan(i))
+					.attr('fill', i % 2 === 0 ? 'rgba(55, 48, 163, 0.05)' : 'rgba(55, 48, 163, 0.1)')
+					.attr('stroke', 'none');
+
+				// Add value indicators on both sides
+				svg
+					.append('text')
+					.attr('class', 'y-value-indicator')
+					.attr('x', -10)
+					.attr('y', yScaleFan(i))
+					.attr('dy', '0.3em')
+					.attr('text-anchor', 'end')
+					.attr('fill', '#3730a3')
+					.attr('font-size', '10px')
+					.text(i);
+
+				svg
+					.append('text')
+					.attr('class', 'y-value-indicator')
+					.attr('x', width + 10)
+					.attr('y', yScaleHeat(i))
+					.attr('dy', '0.3em')
+					.attr('text-anchor', 'start')
+					.attr('fill', '#b45309')
+					.attr('font-size', '10px')
+					.text(i);
+			}
+		}
+
+		// Update x-axis only
 		svg
 			.select('.x-axis')
 			.attr('transform', `translate(0,${height})`)
 			.call(d3.axisBottom(xScale) as any);
-
-		svg.select('.y-axis-left').call(d3.axisLeft(yScaleFan) as any);
-
-		svg
-			.select('.y-axis-right')
-			.attr('transform', `translate(${width},0)`)
-			.call(d3.axisRight(yScaleHeat) as any);
 
 		// Update chart with new dimensions
 		updateChart($roastData);
@@ -440,6 +489,57 @@
 		yScaleFan = d3.scaleLinear().domain([10, 0]).range([height, 0]);
 		yScaleHeat = d3.scaleLinear().domain([0, 10]).range([height, 0]);
 
+		// Add background grid shading for values 1-10
+		for (let i = 0; i <= 10; i++) {
+			// Skip the first and last to avoid unnecessary borders
+			if (i > 0 && i < 10) {
+				// Add heat zone shading (amber)
+				svg
+					.append('rect')
+					.attr('class', 'heat-zone')
+					.attr('x', 0)
+					.attr('y', yScaleHeat(i))
+					.attr('width', width)
+					.attr('height', yScaleHeat(i - 1) - yScaleHeat(i))
+					.attr('fill', i % 2 === 0 ? 'rgba(180, 83, 9, 0.05)' : 'rgba(180, 83, 9, 0.1)')
+					.attr('stroke', 'none');
+
+				// Add fan zone shading (indigo)
+				svg
+					.append('rect')
+					.attr('class', 'fan-zone')
+					.attr('x', 0)
+					.attr('y', yScaleFan(i))
+					.attr('width', width)
+					.attr('height', yScaleFan(i - 1) - yScaleFan(i))
+					.attr('fill', i % 2 === 0 ? 'rgba(55, 48, 163, 0.05)' : 'rgba(55, 48, 163, 0.1)')
+					.attr('stroke', 'none');
+
+				// Add value indicators on both sides
+				svg
+					.append('text')
+					.attr('class', 'y-value-indicator')
+					.attr('x', -10)
+					.attr('y', yScaleFan(i))
+					.attr('dy', '0.3em')
+					.attr('text-anchor', 'end')
+					.attr('fill', '#3730a3')
+					.attr('font-size', '10px')
+					.text(i);
+
+				svg
+					.append('text')
+					.attr('class', 'y-value-indicator')
+					.attr('x', width + 10)
+					.attr('y', yScaleHeat(i))
+					.attr('dy', '0.3em')
+					.attr('text-anchor', 'start')
+					.attr('fill', '#b45309')
+					.attr('font-size', '10px')
+					.text(i);
+			}
+		}
+
 		// Add time tracker line
 		svg
 			.append('line')
@@ -450,16 +550,12 @@
 			.attr('stroke-width', 1)
 			.style('display', 'none');
 
-		// Add axes
+		// Add x-axis only
 		svg
 			.append('g')
 			.attr('class', 'x-axis')
 			.attr('transform', `translate(0,${height})`)
 			.call(d3.axisBottom(xScale));
-
-		svg.append('g').call(d3.axisLeft(yScaleFan));
-
-		svg.append('g').attr('transform', `translate(${width},0)`).call(d3.axisRight(yScaleHeat));
 
 		// Initial chart update
 		updateChart($roastData);
@@ -608,8 +704,8 @@
 			<div class="flex flex-row justify-center gap-2 sm:my-5 sm:flex-col">
 				<button
 					class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
-					on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
-					disabled={fanValue <= 0}
+					on:click={() => handleFanChange(Math.min(10, fanValue + 1))}
+					disabled={fanValue >= 10}
 				>
 					▲
 				</button>
@@ -620,8 +716,8 @@
 				</div>
 				<button
 					class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
-					on:click={() => handleFanChange(Math.min(10, fanValue + 1))}
-					disabled={fanValue >= 10}
+					on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
+					disabled={fanValue <= 0}
 				>
 					▼
 				</button>
