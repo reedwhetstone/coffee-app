@@ -415,14 +415,18 @@
 		for (let i = 0; i <= 10; i++) {
 			// Skip the first and last to avoid unnecessary borders
 			if (i > 0 && i < 10) {
+				// Calculate heights ensuring they're positive
+				const heatZoneHeight = Math.abs(yScaleHeat(i - 1) - yScaleHeat(i));
+				const fanZoneHeight = Math.abs(yScaleFan(i - 1) - yScaleFan(i));
+
 				// Add heat zone shading (amber)
 				svg
 					.append('rect')
 					.attr('class', 'heat-zone')
 					.attr('x', 0)
-					.attr('y', yScaleHeat(i))
+					.attr('y', Math.min(yScaleHeat(i), yScaleHeat(i - 1)))
 					.attr('width', width)
-					.attr('height', yScaleHeat(i - 1) - yScaleHeat(i))
+					.attr('height', heatZoneHeight)
 					.attr('fill', i % 2 === 0 ? 'rgba(180, 83, 9, 0.05)' : 'rgba(180, 83, 9, 0.1)')
 					.attr('stroke', 'none');
 
@@ -431,9 +435,9 @@
 					.append('rect')
 					.attr('class', 'fan-zone')
 					.attr('x', 0)
-					.attr('y', yScaleFan(i))
+					.attr('y', Math.min(yScaleFan(i), yScaleFan(i - 1)))
 					.attr('width', width)
-					.attr('height', yScaleFan(i - 1) - yScaleFan(i))
+					.attr('height', fanZoneHeight)
 					.attr('fill', i % 2 === 0 ? 'rgba(55, 48, 163, 0.05)' : 'rgba(55, 48, 163, 0.1)')
 					.attr('stroke', 'none');
 
@@ -493,14 +497,18 @@
 		for (let i = 0; i <= 10; i++) {
 			// Skip the first and last to avoid unnecessary borders
 			if (i > 0 && i < 10) {
+				// Calculate heights ensuring they're positive
+				const heatZoneHeight = Math.abs(yScaleHeat(i - 1) - yScaleHeat(i));
+				const fanZoneHeight = Math.abs(yScaleFan(i - 1) - yScaleFan(i));
+
 				// Add heat zone shading (amber)
 				svg
 					.append('rect')
 					.attr('class', 'heat-zone')
 					.attr('x', 0)
-					.attr('y', yScaleHeat(i))
+					.attr('y', Math.min(yScaleHeat(i), yScaleHeat(i - 1)))
 					.attr('width', width)
-					.attr('height', yScaleHeat(i - 1) - yScaleHeat(i))
+					.attr('height', heatZoneHeight)
 					.attr('fill', i % 2 === 0 ? 'rgba(180, 83, 9, 0.05)' : 'rgba(180, 83, 9, 0.1)')
 					.attr('stroke', 'none');
 
@@ -509,9 +517,9 @@
 					.append('rect')
 					.attr('class', 'fan-zone')
 					.attr('x', 0)
-					.attr('y', yScaleFan(i))
+					.attr('y', Math.min(yScaleFan(i), yScaleFan(i - 1)))
 					.attr('width', width)
-					.attr('height', yScaleFan(i - 1) - yScaleFan(i))
+					.attr('height', fanZoneHeight)
 					.attr('fill', i % 2 === 0 ? 'rgba(55, 48, 163, 0.05)' : 'rgba(55, 48, 163, 0.1)')
 					.attr('stroke', 'none');
 

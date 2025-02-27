@@ -585,10 +585,18 @@
 				throw new Error(error.error || 'Failed to delete batch profiles');
 			}
 
-			// Clear current profile first if it was in the deleted batch
-			if (currentRoastProfile && currentRoastProfile.batch_name === batchName) {
-				currentRoastProfile = null;
-			}
+			// Clear current profile and reset selectedBean
+			currentRoastProfile = null;
+			selectedBean = { name: 'No Bean Selected' };
+
+			// Reset roasting state and data
+			isRoasting = false;
+			isPaused = false;
+			$roastData = [];
+			$roastEvents = [];
+			$profileLogs = [];
+			$startTime = null;
+			$accumulatedTime = 0;
 
 			// Then reload profiles
 			await loadRoastProfiles();
