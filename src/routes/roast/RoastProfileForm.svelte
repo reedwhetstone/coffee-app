@@ -118,7 +118,7 @@
 	></button>
 	<div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
 		<div
-			class="relative w-full max-w-2xl rounded-lg bg-zinc-800 p-2 sm:p-4"
+			class="relative w-full max-w-2xl rounded-lg bg-zinc-800 p-2 shadow-xl sm:p-4"
 			role="dialog"
 			aria-modal="true"
 		>

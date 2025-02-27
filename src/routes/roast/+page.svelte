@@ -610,8 +610,8 @@
 </script>
 
 {#if isFormVisible}
-	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 p-4">
-		<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-4 sm:p-6">
+	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 p-4">
+		<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-4 shadow-xl sm:p-6">
 			<RoastProfileForm {selectedBean} onClose={hideRoastForm} onSubmit={handleFormSubmit} />
 		</div>
 	</div>
