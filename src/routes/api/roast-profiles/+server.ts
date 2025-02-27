@@ -142,7 +142,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			if (profiles && profiles.length > 0) {
 				const roastIds = profiles.map((p) => p.roast_id);
 				const { error: logDeleteError } = await supabase
-					.from('profile_logs')
+					.from('profile_log')
 					.delete()
 					.in('roast_id', roastIds);
 
