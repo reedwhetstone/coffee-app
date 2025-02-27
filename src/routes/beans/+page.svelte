@@ -57,6 +57,9 @@
 			// First clear the selected bean to prevent any additional API calls with the deleted ID
 			selectedBean = null;
 
+			// Store the current purchase date filter before deletion
+			const currentPurchaseDate = filters.purchase_date;
+
 			const response = await fetch(`/api/data?id=${id}`, {
 				method: 'DELETE'
 			});
@@ -65,16 +68,26 @@
 				// Only reload data after we've confirmed the deletion was successful
 				await loadData();
 
-				// selectedBean is already null, so no need to set it again
+				// After reloading data, check if there are any beans with the current purchase date
+				if (currentPurchaseDate) {
+					const beansWithSamePurchaseDate = data.data.filter(
+						(bean: Database['public']['Tables']['green_coffee_inv']['Row']) =>
+							bean.purchase_date === currentPurchaseDate
+					);
+
+					// If no beans match the current filter, reset the filter
+					if (beansWithSamePurchaseDate.length === 0) {
+						filters.purchase_date = '';
+						selectedPurchaseDate = null;
+					}
+				}
 			} else {
 				const errorData = await response.json();
 				console.error('Failed to delete bean:', errorData.error || 'Unknown error');
-				// Reloading data is important here too, to ensure consistent state
 				await loadData();
 			}
 		} catch (error) {
 			console.error('Error deleting bean:', error);
-			// Reload data to ensure consistent state
 			await loadData();
 		}
 	}
