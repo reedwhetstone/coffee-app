@@ -96,7 +96,6 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		const id = url.searchParams.get('id');
 		const batchName = url.searchParams.get('name');
 
-		// Handle single profile deletion
 		if (id) {
 			// Verify ownership
 			const { data: existing } = await supabase
@@ -109,55 +108,38 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 				return json({ error: 'Unauthorized' }, { status: 403 });
 			}
 
-			const { error } = await supabase
-				.from('roast_profiles')
-				.delete()
-				.eq('roast_id', id)
-				.eq('user', user.id);
-
-			if (error) throw error;
-			return json({ success: true });
-		}
-		// Handle batch deletion
-		else if (batchName) {
-			// First, get all profile IDs in the batch to delete associated logs
-			const { data: profiles, error: fetchError } = await supabase
+			// Delete associated logs first
+			await supabase.from('profile_log').delete().eq('roast_id', id);
+			// Then delete the profile
+			await supabase.from('roast_profiles').delete().eq('roast_id', id).eq('user', user.id);
+		} else if (batchName) {
+			// Get all profile IDs in the batch that belong to the user
+			const { data: profiles } = await supabase
 				.from('roast_profiles')
 				.select('roast_id')
 				.eq('batch_name', batchName)
 				.eq('user', user.id);
 
-			if (fetchError) throw fetchError;
-
-			// Delete all profiles in the batch
-			const { error: deleteError } = await supabase
-				.from('roast_profiles')
-				.delete()
-				.eq('batch_name', batchName)
-				.eq('user', user.id);
-
-			if (deleteError) throw deleteError;
-
-			// Also delete associated profile logs
 			if (profiles && profiles.length > 0) {
-				const roastIds = profiles.map((p) => p.roast_id);
-				const { error: logDeleteError } = await supabase
-					.from('profile_log')
+				const roastIds = profiles.map((p: { roast_id: number }) => p.roast_id);
+				// Delete associated logs first
+				await supabase.from('profile_log').delete().in('roast_id', roastIds);
+				// Then delete all profiles in the batch
+				await supabase
+					.from('roast_profiles')
 					.delete()
-					.in('roast_id', roastIds);
-
-				if (logDeleteError) {
-					console.warn('Failed to delete some profile logs:', logDeleteError);
-				}
+					.eq('batch_name', batchName)
+					.eq('user', user.id);
 			}
-
-			return json({ success: true, count: profiles?.length || 0 });
 		} else {
 			return json({ error: 'No ID or batch name provided' }, { status: 400 });
 		}
+
+		return json({ success: true });
 	} catch (error) {
 		console.error('Error deleting roast profile(s):', error);
-		return json({ error: 'Failed to delete roast profile(s)' }, { status: 500 });
+		const message = error instanceof Error ? error.message : 'Failed to delete roast profile(s)';
+		return json({ error: message }, { status: 500 });
 	}
 };
 

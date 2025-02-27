@@ -288,8 +288,11 @@
 		}
 	}
 
-	async function handleProfileDelete(id: number) {
+	async function handleProfileDelete() {
+		// Reset state
 		currentRoastProfile = null;
+		selectedBean = { name: 'No Bean Selected' };
+		// Refresh profiles list
 		await loadRoastProfiles();
 	}
 
@@ -572,41 +575,12 @@
 	}
 
 	// Update this function to handle batch deletion
-	async function handleBatchDelete(event: { detail: string }) {
-		try {
-			const batchName = event.detail;
-
-			// Make API call to delete all profiles in the batch
-			const response = await fetch(`/api/roast-profiles?name=${encodeURIComponent(batchName)}`, {
-				method: 'DELETE'
-			});
-
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to delete batch profiles');
-			}
-
-			// Clear current profile and reset selectedBean
-			currentRoastProfile = null;
-			selectedBean = { name: 'No Bean Selected' };
-
-			// Reset roasting state and data
-			isRoasting = false;
-			isPaused = false;
-			$roastData = [];
-			$roastEvents = [];
-			$profileLogs = [];
-			$startTime = null;
-			$accumulatedTime = 0;
-
-			// Then reload profiles
-			await loadRoastProfiles();
-
-			alert(`Batch "${batchName}" deleted successfully`);
-		} catch (error) {
-			console.error('Error deleting batch:', error);
-			alert(error instanceof Error ? error.message : 'Failed to delete batch profiles');
-		}
+	async function handleBatchDelete() {
+		// Reset state
+		currentRoastProfile = null;
+		selectedBean = { name: 'No Bean Selected' };
+		// Refresh profiles list
+		await loadRoastProfiles();
 	}
 </script>
 
@@ -636,6 +610,8 @@
 			currentIndex={currentProfileIndex}
 			onUpdate={handleProfileUpdate}
 			onDelete={handleProfileDelete}
+			on:profileDeleted={handleProfileDelete}
+			on:batchDeleted={handleBatchDelete}
 		/>
 	{/if}
 </div>

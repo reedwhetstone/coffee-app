@@ -81,13 +81,16 @@
 					method: 'DELETE'
 				});
 
-				if (response.ok) {
-					onDelete(profile.roast_id);
-				} else {
-					alert(`Failed to delete roast profile: ${profile.roast_id}`);
+				if (!response.ok) {
+					const error = await response.json();
+					throw new Error(error.error || 'Failed to delete profile');
 				}
+
+				// Dispatch event to parent for state update
+				dispatch('profileDeleted');
 			} catch (error) {
 				console.error('Error deleting roast profile:', error);
+				alert(error instanceof Error ? error.message : 'Failed to delete roast profile');
 			}
 		}
 	}
@@ -101,29 +104,30 @@
 
 	async function deleteBatch() {
 		try {
-			if (!profile || !profile.batch_name) {
+			if (!profile?.batch_name) {
 				throw new Error('No batch name available');
 			}
 
-			const batchName = profile.batch_name;
-
-			// Confirm deletion
-			if (!confirm(`Are you sure you want to delete all profiles in batch "${batchName}"?`)) {
+			if (
+				!confirm(`Are you sure you want to delete all profiles in batch "${profile.batch_name}"?`)
+			) {
 				return;
 			}
 
-			// Make API call with the name parameter
-			const response = await fetch(`/api/roast-profiles?name=${encodeURIComponent(batchName)}`, {
-				method: 'DELETE'
-			});
+			const response = await fetch(
+				`/api/roast-profiles?name=${encodeURIComponent(profile.batch_name)}`,
+				{
+					method: 'DELETE'
+				}
+			);
 
 			if (!response.ok) {
 				const error = await response.json();
 				throw new Error(error.error || 'Failed to delete batch profiles');
 			}
 
-			// Dispatch event to parent component
-			dispatch('deleteBatch', batchName);
+			// Dispatch event to parent for state update
+			dispatch('batchDeleted');
 		} catch (error) {
 			console.error('Error deleting batch:', error);
 			alert(error instanceof Error ? error.message : 'Failed to delete batch profiles');
