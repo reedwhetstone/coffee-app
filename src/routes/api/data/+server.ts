@@ -86,19 +86,72 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			if (catalogError || !catalogBean) {
 				return json({ error: 'Invalid catalog reference' }, { status: 400 });
 			}
-		}
 
-		const { data: newBean, error } = await supabase
-			.from('green_coffee_inv')
-			.insert({
+			// Ensure consistent mapping between coffee_catalog and green_coffee_inv
+			// This serves as a safety check to ensure all required fields are mapped
+			const mappedBean = {
 				...bean,
-				user: user.id
-			})
-			.select()
-			.single();
+				// Core fields always come from the form submission
+				user: user.id,
+				purchase_date: bean.purchase_date,
+				purchased_qty_lbs: bean.purchased_qty_lbs,
+				tax_ship_cost:
+					typeof bean.tax_ship_cost === 'number' ? parseFloat(bean.tax_ship_cost.toFixed(2)) : 0.0,
+				last_updated: bean.last_updated,
 
-		if (error) throw error;
-		return json(newBean);
+				// Fields that should come from catalog if not manually overridden
+				name: bean.name || catalogBean.name,
+				score_value: bean.score_value ?? catalogBean.score_value,
+				arrival_date: bean.arrival_date || catalogBean.arrival_date,
+				region: bean.region || catalogBean.region,
+				processing: bean.processing || catalogBean.processing,
+				drying_method: bean.drying_method || catalogBean.drying_method,
+				lot_size: bean.lot_size || catalogBean.lot_size,
+				bag_size: bean.bag_size || catalogBean.bag_size,
+				packaging: bean.packaging || catalogBean.packaging,
+				cultivar_detail: bean.cultivar_detail || catalogBean.cultivar_detail,
+				grade: bean.grade || catalogBean.grade,
+				appearance: bean.appearance || catalogBean.appearance,
+				roast_recs: bean.roast_recs || catalogBean.roast_recs,
+				type: bean.type || catalogBean.type,
+				description_short: bean.description_short || catalogBean.description_short,
+				description_long: bean.description_long || catalogBean.description_long,
+				farm_notes: bean.farm_notes || catalogBean.farm_notes,
+				link: bean.link || catalogBean.link,
+				// Ensure bean_cost is properly formatted as decimal
+				bean_cost:
+					typeof bean.bean_cost === 'number'
+						? parseFloat(bean.bean_cost.toFixed(2))
+						: typeof catalogBean.cost_lb === 'number'
+							? parseFloat(catalogBean.cost_lb.toFixed(2))
+							: 0.0,
+				catalog_id: catalogBean.id,
+				cupping_notes: bean.cupping_notes || catalogBean.cupping_notes,
+				source: bean.source || catalogBean.source
+			};
+
+			const { data: newBean, error } = await supabase
+				.from('green_coffee_inv')
+				.insert(mappedBean)
+				.select()
+				.single();
+
+			if (error) throw error;
+			return json(newBean);
+		} else {
+			// No catalog_id, just regular insert
+			const { data: newBean, error } = await supabase
+				.from('green_coffee_inv')
+				.insert({
+					...bean,
+					user: user.id
+				})
+				.select()
+				.single();
+
+			if (error) throw error;
+			return json(newBean);
+		}
 	} catch (error) {
 		console.error('Error creating bean:', error);
 		return json({ error: 'Failed to create bean' }, { status: 500 });

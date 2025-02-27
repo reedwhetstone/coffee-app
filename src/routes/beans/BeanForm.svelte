@@ -26,8 +26,8 @@
 					notes: '',
 					purchase_date: '',
 					purchased_qty_lbs: 0,
-					bean_cost: 0,
-					tax_ship_cost: 0,
+					bean_cost: 0.0,
+					tax_ship_cost: 0.0,
 					link: '',
 					last_updated: new Date().toISOString(),
 					// Add all the new fields that match coffee_catalog
@@ -58,8 +58,8 @@
 			notes: '',
 			purchase_date: '',
 			purchased_qty_lbs: 0,
-			bean_cost: 0,
-			tax_ship_cost: 0,
+			bean_cost: 0.0,
+			tax_ship_cost: 0.0,
 			link: '',
 			last_updated: new Date().toISOString(),
 			score_value: null,
@@ -97,29 +97,39 @@
 	function populateFromCatalog(catalogBean: any) {
 		if (!catalogBean) return;
 
+		// Create a comprehensive mapping from coffee_catalog to green_coffee_inv
 		formData = {
-			...formData,
+			...formData, // Keep existing fields like purchase_date that aren't from catalog
+
+			// Map catalog fields to form fields
 			name: catalogBean.name,
 			score_value: catalogBean.score_value,
-			arrival_date: catalogBean.arrival_date,
-			region: catalogBean.region,
-			processing: catalogBean.processing,
-			drying_method: catalogBean.drying_method,
-			lot_size: catalogBean.lot_size,
-			bag_size: catalogBean.bag_size,
-			packaging: catalogBean.packaging,
-			cultivar_detail: catalogBean.cultivar_detail,
-			grade: catalogBean.grade,
-			appearance: catalogBean.appearance,
-			roast_recs: catalogBean.roast_recs,
-			type: catalogBean.type,
-			description_short: catalogBean.description_short,
-			description_long: catalogBean.description_long,
-			farm_notes: catalogBean.farm_notes,
-			link: catalogBean.link,
-			bean_cost: catalogBean.cost_lb,
-			catalog_id: catalogBean.id
+			arrival_date: catalogBean.arrival_date || '',
+			region: catalogBean.region || '',
+			processing: catalogBean.processing || '',
+			drying_method: catalogBean.drying_method || '',
+			lot_size: catalogBean.lot_size || '',
+			bag_size: catalogBean.bag_size || '',
+			packaging: catalogBean.packaging || '',
+			cultivar_detail: catalogBean.cultivar_detail || '',
+			grade: catalogBean.grade || '',
+			appearance: catalogBean.appearance || '',
+			roast_recs: catalogBean.roast_recs || '',
+			type: catalogBean.type || '',
+			description_short: catalogBean.description_short || '',
+			description_long: catalogBean.description_long || '',
+			farm_notes: catalogBean.farm_notes || '',
+			link: catalogBean.link || '',
+			// Format bean_cost to ensure it's a proper decimal number
+			bean_cost:
+				typeof catalogBean.cost_lb === 'number' ? parseFloat(catalogBean.cost_lb.toFixed(2)) : 0.0,
+			catalog_id: catalogBean.id,
+			cupping_notes: catalogBean.cupping_notes || '',
+			source: catalogBean.source || ''
 		};
+
+		// Log to ensure we're mapping everything correctly
+		console.log('Populated form from catalog bean:', { catalogBean, formData });
 	}
 
 	async function handleSubmit() {
@@ -301,7 +311,9 @@
 			<input
 				id="bean_cost"
 				type="number"
-				step="1"
+				step="0.01"
+				min="0"
+				placeholder="0.00"
 				bind:value={formData.bean_cost}
 				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
@@ -315,7 +327,9 @@
 			<input
 				id="tax_ship_cost"
 				type="number"
-				step="1"
+				step="0.01"
+				min="0"
+				placeholder="0.00"
 				bind:value={formData.tax_ship_cost}
 				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
 				required
