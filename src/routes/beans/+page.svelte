@@ -54,26 +54,28 @@
 	// Function to handle bean deletion
 	async function deleteBean(id: number) {
 		try {
+			// First clear the selected bean to prevent any additional API calls with the deleted ID
+			selectedBean = null;
+
 			const response = await fetch(`/api/data?id=${id}`, {
 				method: 'DELETE'
 			});
+
 			if (response.ok) {
-				// Update local state
-				await loadData(); // Reload all data to ensure consistency
+				// Only reload data after we've confirmed the deletion was successful
+				await loadData();
 
-				// Clear selected bean since it's been deleted
-				selectedBean = null;
-
-				// Notify the user of successful deletion
-				// Note: We don't need to alert here as BeanProfile component already shows a success message
+				// selectedBean is already null, so no need to set it again
 			} else {
 				const errorData = await response.json();
 				console.error('Failed to delete bean:', errorData.error || 'Unknown error');
-				// Don't show alert here as BeanProfile already handles error alerts
+				// Reloading data is important here too, to ensure consistent state
+				await loadData();
 			}
 		} catch (error) {
 			console.error('Error deleting bean:', error);
-			// Don't show alert here as BeanProfile already handles error alerts
+			// Reload data to ensure consistent state
+			await loadData();
 		}
 	}
 

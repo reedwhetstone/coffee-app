@@ -94,6 +94,7 @@
 					// Notify user of successful deletion
 					alert('Bean deleted successfully with all associated roast profiles and logs.');
 					onDelete(selectedBean.id);
+					return;
 				} else {
 					// Handle error cases
 					const statusCode = response.status;
