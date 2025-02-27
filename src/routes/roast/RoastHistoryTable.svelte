@@ -105,11 +105,12 @@
 
 						{#if expandedBatches.has(batchName)}
 							<div class="mt-4 space-y-2">
+								<!-- Display profiles in the order they appear in filteredProfiles -->
 								{#each filteredProfiles[batchName] as profile}
 									<button
 										type="button"
-										class="w-full cursor-pointer rounded-lg bg-zinc-800 p-3 text-left transition-colors hover:bg-zinc-700 {currentRoastProfile?.id ===
-										profile.id
+										class="w-full cursor-pointer rounded-lg bg-zinc-800 p-3 text-left transition-colors hover:bg-zinc-700 {currentRoastProfile?.roast_id ===
+										profile.roast_id
 											? 'bg-zinc-700'
 											: ''}"
 										on:click={() => onSelectProfile(profile)}

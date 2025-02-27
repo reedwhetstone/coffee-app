@@ -39,8 +39,8 @@
 
 	// Roast profile state management
 	let allRoastProfiles: any[] = [];
-	let sortField: string | null = 'roast_date';
-	let sortDirection: 'asc' | 'desc' | null = 'desc';
+	let sortField: string | null = 'roast_id';
+	let sortDirection: 'asc' | 'desc' | null = 'asc';
 
 	// Profile grouping and sorting state
 	let groupedProfiles: Record<string, any[]> = {};
@@ -62,10 +62,7 @@
 				if (selectedBean?.id) {
 					const matchingProfiles = allRoastProfiles
 						.filter((profile: any) => profile.coffee_id === selectedBean.id)
-						.sort(
-							(a: any, b: any) =>
-								new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime()
-						);
+						.sort((a: any, b: any) => a.roast_id - b.roast_id);
 					currentRoastProfile = matchingProfiles.length > 0 ? matchingProfiles[0] : null;
 				} else {
 					currentRoastProfile = null;
@@ -151,19 +148,22 @@
 		sortedBatchNames = Object.keys(groupedProfiles).sort((a, b) => {
 			const latestA = Math.max(...groupedProfiles[a].map((p) => new Date(p.roast_date).getTime()));
 			const latestB = Math.max(...groupedProfiles[b].map((p) => new Date(p.roast_date).getTime()));
-			return sortDirection === 'asc' ? latestA - latestB : latestB - latestA;
+			return sortDirection === 'desc' ? latestA - latestB : latestB - latestA;
 		});
 
 		// Sort profiles within each batch group
 		sortedGroupedProfiles = {};
 		sortedBatchNames.forEach((batch) => {
 			sortedGroupedProfiles[batch] = [...groupedProfiles[batch]].sort((a, b) => {
-				if (!sortField || sortField === 'batch_name') return 0;
+				if (!sortField) return 0;
 
 				const aVal = a[sortField];
 				const bVal = b[sortField];
 
-				if (sortField === 'roast_date' || sortField === 'last_updated') {
+				if (sortField === 'roast_id') {
+					// For roast_id, always sort in ascending order (oldest first)
+					return Number(aVal) - Number(bVal);
+				} else if (sortField === 'roast_date' || sortField === 'last_updated') {
 					return sortDirection === 'asc'
 						? new Date(aVal).getTime() - new Date(bVal).getTime()
 						: new Date(bVal).getTime() - new Date(aVal).getTime();
@@ -318,7 +318,8 @@
 			};
 
 			// Find the index of the selected profile in its batch
-			const batchProfiles = groupedProfiles[profile.batch_name] || [];
+			// Use the sorted profiles array to find the correct index
+			const batchProfiles = sortedGroupedProfiles[profile.batch_name] || [];
 			currentProfileIndex = batchProfiles.findIndex((p) => p.roast_id === profile.roast_id);
 
 			// Reset roasting state
