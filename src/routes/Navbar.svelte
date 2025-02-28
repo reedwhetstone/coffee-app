@@ -49,52 +49,6 @@
 		});
 	}
 
-	// Add these variables
-	interface SearchResult {
-		id: number;
-		title: string;
-		description: string;
-		url: string;
-		type: string;
-		item_id: number;
-	}
-
-	// Make searchQuery reactive with $state
-	let searchQuery = $state('');
-	let searchResults: SearchResult[] = $state([]);
-	let showResults = $state(false);
-
-	// Add search function
-	const handleSearch = debounce(async () => {
-		if (searchQuery.length < 2) {
-			searchResults = [];
-			return;
-		}
-
-		try {
-			const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
-			if (!response.ok) throw new Error('Search failed');
-			searchResults = await response.json();
-		} catch (error) {
-			console.error('Search error:', error);
-			searchResults = [];
-		}
-	}, 300);
-
-	// Handle search result selection
-	function handleSearchSelect(result: SearchResult) {
-		if (result.type === 'green') {
-			$navbarActions.onSearchSelect?.(result.type, result.item_id);
-			goto('/');
-		} else if (result.type === 'roast') {
-			goto('/roast');
-			$navbarActions.onSearchSelect?.(result.type, result.item_id);
-		}
-		searchQuery = '';
-		searchResults = [];
-		showResults = false;
-	}
-
 	async function handleSignIn() {
 		try {
 			await signInWithGoogle(supabase);
@@ -113,22 +67,6 @@
 			console.error('Error signing out:', error);
 		}
 	}
-
-	// Close search results when clicking outside
-	function handleClickOutside(event: MouseEvent) {
-		const searchContainer = document.getElementById('search-container');
-		if (searchContainer && !searchContainer.contains(event.target as Node)) {
-			showResults = false;
-		}
-	}
-
-	onMount(() => {
-		document.addEventListener('click', handleClickOutside);
-
-		return () => {
-			document.removeEventListener('click', handleClickOutside);
-		};
-	});
 
 	// Add state for mobile menu
 	let isMenuOpen = $state(false);
@@ -149,31 +87,6 @@
 	<div class="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
 		<!-- Mobile Menu Button -->
 		<div class="flex items-center justify-between md:hidden">
-			<div id="search-container" class="relative w-full">
-				<input
-					type="text"
-					bind:value={searchQuery}
-					oninput={handleSearch}
-					onfocus={() => (showResults = true)}
-					placeholder="Search..."
-					class="bg-coffee-brown w-full rounded px-3 py-1 text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-				/>
-				{#if showResults && searchResults.length > 0}
-					<div
-						class="bg-coffee-brown absolute mt-1 w-full rounded border border-zinc-700 shadow-lg"
-					>
-						{#each searchResults as result}
-							<button
-								class="block w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700"
-								onclick={() => handleSearchSelect(result)}
-							>
-								<div class="font-medium">{result.title}</div>
-								<div class="text-xs text-zinc-500">{result.description}</div>
-							</button>
-						{/each}
-					</div>
-				{/if}
-			</div>
 			<button onclick={toggleMenu} class="hover:bg-coffee-brown ml-2 rounded p-2 text-zinc-400">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -199,31 +112,6 @@
 					{/if}
 				</svg>
 			</button>
-		</div>
-
-		<!-- Desktop Search -->
-		<div id="search-container" class="relative hidden w-64 md:block">
-			<input
-				type="text"
-				bind:value={searchQuery}
-				oninput={handleSearch}
-				onfocus={() => (showResults = true)}
-				placeholder="Search..."
-				class="bg-coffee-brown w-full rounded px-3 py-1 text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-			/>
-			{#if showResults && searchResults.length > 0}
-				<div class="bg-coffee-brown absolute mt-1 w-full rounded border border-zinc-700 shadow-lg">
-					{#each searchResults as result}
-						<button
-							class="block w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700"
-							onclick={() => handleSearchSelect(result)}
-						>
-							<div class="font-medium">{result.title}</div>
-							<div class="text-xs text-zinc-500">{result.description}</div>
-						</button>
-					{/each}
-				</div>
-			{/if}
 		</div>
 
 		<!-- Navigation Links -->
