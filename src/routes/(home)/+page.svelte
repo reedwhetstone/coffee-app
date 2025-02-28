@@ -281,7 +281,7 @@
 						<div class="flex items-center gap-2">
 							<textarea
 								bind:value={searchQuery}
-								placeholder={chatResponse ? DEFAULT_QUERY : 'Search coffees or ask a question...'}
+								placeholder={'Search coffees or ask a question'}
 								class="flex-1 resize-none border-none bg-transparent font-medium text-zinc-100 placeholder-zinc-400 focus:border-none focus:outline-none focus:ring-0"
 								disabled={isLoading}
 								on:focus={(e) => (e.target as HTMLTextAreaElement).select()}
