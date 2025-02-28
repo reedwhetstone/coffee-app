@@ -8,9 +8,15 @@
 	import { signInWithGoogle, signOut } from '$lib/supabase';
 	const { debounce } = pkg;
 
-	// Add props for data
+	// Update the props declaration
 	let { data } = $props();
-	let { supabase, session } = $derived(data);
+
+	// Destructure with default values to prevent undefined errors
+	let { supabase, session, user, role = 'viewer' } = $derived(data);
+
+	// Add type checking for role
+	type UserRole = 'viewer' | 'member' | 'admin';
+	let userRole: UserRole = $derived(role as UserRole);
 
 	let routeId = $state($page.route.id);
 
@@ -208,7 +214,7 @@
 				: 'hidden md:flex'}"
 		>
 			<ul class="flex flex-wrap items-center gap-2">
-				{#if data.role === 'admin' || data.role === 'member'}
+				{#if userRole === 'admin' || userRole === 'member'}
 					<li class="w-full md:w-auto">
 						<a
 							href="/"

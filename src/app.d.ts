@@ -11,17 +11,23 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			supabase: SupabaseClient<Database>;
-			safeGetSession: () => Promise<{
+			session: Session | null;
+			user: User | null;
+			role: 'viewer' | 'member' | 'admin';
+			data: {
 				session: Session | null;
 				user: User | null;
-				role?: 'viewer' | 'member' | 'admin';
+				role: 'viewer' | 'member' | 'admin';
+			};
+			safeGetSession(): Promise<{
+				session: Session | null;
+				user: User | null;
 			}>;
-			session?: Session | null;
-			user?: User | null;
-			role?: 'viewer' | 'member' | 'admin';
 		}
 		interface PageData {
 			session: Session | null;
+			user: User | null;
+			role: 'viewer' | 'member' | 'admin';
 		}
 		// interface PageState {}
 		// interface Platform {}

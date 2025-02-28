@@ -21,27 +21,60 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	);
 
+	// Implement safeGetSession function
 	event.locals.safeGetSession = async () => {
+		const {
+			data: { session }
+		} = await event.locals.supabase.auth.getSession();
+
 		const {
 			data: { user },
 			error: userError
 		} = await event.locals.supabase.auth.getUser();
 
-		if (userError || !user) {
-			console.error('Auth error:', userError);
-			return {
-				session: null,
-				user: null,
-				role: undefined as 'viewer' | 'member' | 'admin' | undefined
-			};
+		if (userError) {
+			return { session: null, user: null };
 		}
 
-		const {
-			data: { session }
-		} = await event.locals.supabase.auth.getSession();
+		return { session, user };
+	};
 
-		// Cast the role to the allowed types
-		return { session, user, role: user.role as 'viewer' | 'member' | 'admin' | undefined };
+	// First get the session
+	const {
+		data: { session }
+	} = await event.locals.supabase.auth.getSession();
+
+	// Then validate the user with getUser
+	const {
+		data: { user },
+		error: userError
+	} = await event.locals.supabase.auth.getUser();
+
+	if (userError || !user) {
+		// Reset all auth state if validation fails
+		event.locals.session = null;
+		event.locals.user = null;
+		event.locals.role = 'viewer';
+	} else {
+		// Set validated user data
+		event.locals.session = session;
+		event.locals.user = user;
+
+		// Fetch user role from database
+		const { data: roleData } = await event.locals.supabase
+			.from('user_roles')
+			.select('role')
+			.eq('id', user.id)
+			.single();
+
+		event.locals.role = (roleData?.role as 'viewer' | 'member' | 'admin') || 'viewer';
+	}
+
+	// Make data available to the frontend
+	event.locals.data = {
+		session: event.locals.session,
+		user: event.locals.user,
+		role: event.locals.role
 	};
 
 	return resolve(event, {
@@ -56,35 +89,34 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	const currentPath = event.url.pathname;
 	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
 
-	// Get session
+	// Get session and verified user data
 	const { session, user } = await event.locals.safeGetSession();
 
 	// Set default values
 	event.locals.session = session;
-	event.locals.user = null;
-	event.locals.role = 'viewer';
+	event.locals.user = user;
+	event.locals.role = 'viewer'; // default role
 
-	if (session) {
-		// Validate the user with getUser()
-		const {
-			data: { user },
-			error: userError
-		} = await event.locals.supabase.auth.getUser();
+	if (user) {
+		// Fetch user role from database
+		const { data: roleData } = await event.locals.supabase
+			.from('user_roles')
+			.select('role')
+			.eq('id', user.id)
+			.single();
 
-		if (!userError && user) {
-			// Fetch user role
-			const { data: roleData } = await event.locals.supabase
-				.from('user_roles')
-				.select('role')
-				.eq('id', user.id)
-				.single();
-
-			event.locals.user = user;
-			event.locals.role = roleData?.role || 'viewer';
-		}
+		// This is the important part - make sure role is one of the expected values
+		event.locals.role = (roleData?.role as 'viewer' | 'member' | 'admin') || 'viewer';
 	}
 
-	// Check protected routes - do this after setting up locals but before resolving
+	// Make sure these values are available to the frontend
+	event.locals.data = {
+		session: event.locals.session,
+		user: event.locals.user,
+		role: event.locals.role
+	};
+
+	// Check protected routes
 	if (
 		requiresProtection &&
 		(!session || !event.locals.role || !['admin', 'member'].includes(event.locals.role))
