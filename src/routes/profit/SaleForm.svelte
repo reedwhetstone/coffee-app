@@ -113,7 +113,7 @@
 			<label for="coffee_name" class="block text-sm font-medium text-zinc-300">Coffee Name</label>
 			<select
 				id="coffee_name"
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				value={formData.coffee_name}
 				on:change={handleCoffeeChange}
 				required
@@ -129,7 +129,7 @@
 			<label for="batch_name" class="block text-sm font-medium text-zinc-300">Batch Name</label>
 			<select
 				id="batch_name"
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				bind:value={formData.batch_name}
 				required
 			>
@@ -146,7 +146,7 @@
 				id="sell_date"
 				type="date"
 				bind:value={formData.sell_date}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				required
 			/>
 		</div>
@@ -157,7 +157,7 @@
 				id="buyer"
 				type="text"
 				bind:value={formData.buyer}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				required
 			/>
 		</div>
@@ -169,7 +169,7 @@
 				type="number"
 				step="0.1"
 				bind:value={formData.oz_sold}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				required
 			/>
 		</div>
@@ -181,7 +181,7 @@
 				type="number"
 				step="0.01"
 				bind:value={formData.price}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				required
 			/>
 		</div>

@@ -10,6 +10,7 @@ export default {
 		extend: {
 			colors: {
 				'background-secondary-light': '#faf8f3',
+				'background-tertiary-light': '#f4dbae',
 				'growth-green': '#7FB069',
 				'background-primary-light': '#f4ece0',
 				'harvest-gold': '#7FB069',

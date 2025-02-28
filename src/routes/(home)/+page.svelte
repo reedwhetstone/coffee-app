@@ -272,17 +272,17 @@
 <div class="mx-2 mt-4 space-y-4 md:mx-8 md:mt-8">
 	<div class="space-y-4">
 		<!-- Integrated chat interface -->
-		<div class="rounded-2xl bg-zinc-700">
+		<div class="bg-background-tertiary-light rounded-2xl">
 			<form on:submit|preventDefault={handleSearch} class="space-y-4">
 				<!-- Query/Input area with wrapping textarea -->
 				<div class="bg-background-secondary-light relative rounded-2xl p-4">
-					<span class="text-sm text-zinc-400">Query:</span>
+					<span class="text-primary-light text-sm">Query:</span>
 					<div>
 						<div class="flex items-center gap-2">
 							<textarea
 								bind:value={searchQuery}
 								placeholder={'Search coffees or ask a question'}
-								class="flex-1 resize-none border-none bg-transparent font-medium text-zinc-100 placeholder-zinc-400 focus:border-none focus:outline-none focus:ring-0"
+								class="text-secondary-light flex-1 resize-none border-none bg-transparent font-medium placeholder-zinc-400 focus:border-none focus:outline-none focus:ring-0"
 								disabled={isLoading}
 								on:focus={(e) => (e.target as HTMLTextAreaElement).select()}
 								on:input={(e) => {
@@ -323,8 +323,8 @@
 				<!-- Chat response -->
 				{#if chatResponse}
 					<div class="px-4 pb-1">
-						<span class="text-sm text-zinc-400">Response:</span>
-						<p class="mx-4 mt-1 whitespace-pre-wrap text-zinc-100">{chatResponse}</p>
+						<span class="text-primary-light text-sm">Response:</span>
+						<p class="text-secondary-light mx-4 mt-1 whitespace-pre-wrap">{chatResponse}</p>
 					</div>
 				{/if}
 				<!-- Recommendations-->
@@ -339,12 +339,12 @@
 								<a
 									href={coffee.link}
 									target="_blank"
-									class="hover:bg-background-secondary-light group block rounded-lg bg-zinc-700 p-4 transition-all hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+									class="hover:bg-background-secondary-light bg-background-tertiary-light group block rounded-lg p-4 transition-all hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 								>
 									<div class="flex items-center justify-between">
-										<h4 class="font-semibold text-zinc-100">{coffee.name}</h4>
+										<h4 class="text-secondary-light font-semibold">{coffee.name}</h4>
 										<svg
-											class="h-4 w-4 text-zinc-400 transition-transform group-hover:translate-x-1 group-hover:text-blue-400"
+											class="text-primary-light h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:text-blue-400"
 											fill="none"
 											stroke="currentColor"
 											viewBox="0 0 24 24"
@@ -358,11 +358,11 @@
 										</svg>
 									</div>
 									<div class="mb-2">
-										<h3 class="text-zinc-100">{coffee.source}</h3>
-										<span class="text-sm text-zinc-100">Score: {coffee.score_value}</span>
-										<span class="ml-4 text-sm text-zinc-100">${coffee.cost_lb}/lb</span>
+										<h3 class="text-secondary-light">{coffee.source}</h3>
+										<span class="text-secondary-light text-sm">Score: {coffee.score_value}</span>
+										<span class="text-secondary-light ml-4 text-sm">${coffee.cost_lb}/lb</span>
 									</div>
-									<p class="mt-2 text-sm text-zinc-100">{coffee.reason}</p>
+									<p class="text-secondary-light mt-2 text-sm">{coffee.reason}</p>
 								</a>
 							{/each}
 						</div>
@@ -378,9 +378,9 @@
 	<!-- Filter Panel - Make collapsible on mobile -->
 	<div class="bg-background-secondary-light rounded-lg p-4 md:w-64 md:flex-shrink-0">
 		<div class="flex items-center justify-between">
-			<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
+			<h3 class="text-secondary-light text-lg font-semibold">Filters</h3>
 			<button
-				class="text-sm text-zinc-400 hover:text-zinc-100 md:hidden"
+				class="text-primary-light hover:text-secondary-light text-sm md:hidden"
 				on:click={() => (expandedFilters = !expandedFilters)}
 			>
 				{expandedFilters ? 'Hide Filters' : 'Show Filters'}
@@ -391,11 +391,11 @@
 		<div class={`space-y-4 ${expandedFilters ? 'block' : 'hidden'} md:block`}>
 			<!-- Sort Controls -->
 			<div class="space-y-2">
-				<label for="sort-field" class="block text-sm text-zinc-400">Sort by</label>
+				<label for="sort-field" class="text-primary-light block text-sm">Sort by</label>
 				<select
 					id="sort-field"
 					bind:value={sortField}
-					class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+					class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 				>
 					<option value={null}>None</option>
 					{#each getFilterableColumns() as column}
@@ -406,11 +406,12 @@
 				</select>
 
 				{#if sortField}
-					<label for="sort-direction" class="block text-sm text-zinc-400">Sort Direction</label>
+					<label for="sort-direction" class="text-primary-light block text-sm">Sort Direction</label
+					>
 					<select
 						id="sort-direction"
 						bind:value={sortDirection}
-						class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+						class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 					>
 						<option value="asc">Ascending</option>
 						<option value="desc">Descending</option>
@@ -420,10 +421,10 @@
 
 			<!-- Filter Controls -->
 			<div class="space-y-2">
-				<h4 class="block text-sm text-zinc-400">Filters</h4>
+				<h4 class="text-primary-light block text-sm">Filters</h4>
 				{#each getFilterableColumns() as column}
 					<div class="space-y-1">
-						<label for={column} class="block text-xs text-zinc-400">
+						<label for={column} class="text-primary-light block text-xs">
 							{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
 						</label>
 						{#if column === 'source'}
@@ -434,9 +435,9 @@
 											type="checkbox"
 											bind:group={filters.source}
 											value={source}
-											class="border-background-primary-light rounded bg-zinc-700 text-blue-600"
+											class="border-background-primary-light bg-background-tertiary-light rounded text-blue-600"
 										/>
-										<span class="text-sm text-zinc-100">{source}</span>
+										<span class="text-secondary-light text-sm">{source}</span>
 									</label>
 								{/each}
 							</div>
@@ -446,7 +447,7 @@
 									id={`${column}_min`}
 									type="number"
 									bind:value={filters[column].min}
-									class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+									class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 									placeholder="Min"
 									min="0"
 									max="100"
@@ -456,7 +457,7 @@
 									id={`${column}_max`}
 									type="number"
 									bind:value={filters[column].max}
-									class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+									class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 									placeholder="Max"
 									min="0"
 									max="100"
@@ -468,7 +469,7 @@
 								id={column}
 								type="text"
 								bind:value={filters[column]}
-								class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+								class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 								placeholder={`Filter by ${column}`}
 							/>
 						{/if}
@@ -487,7 +488,7 @@
 				{#each paginatedData as coffee}
 					<button
 						type="button"
-						class="bg-background-secondary-light w-full cursor-pointer rounded-lg p-3 text-left transition-colors hover:bg-zinc-700 md:p-4"
+						class="bg-background-secondary-light hover:bg-background-tertiary-light w-full cursor-pointer rounded-lg p-3 text-left transition-colors md:p-4"
 						on:click={() => {
 							if (coffee.link) window.open(coffee.link, '_blank');
 						}}
@@ -497,29 +498,33 @@
 					>
 						<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
 							<div>
-								<h3 class="text-base font-semibold text-zinc-100 md:text-lg">{coffee.name}</h3>
-								<p class="text-sm text-zinc-400">{coffee.source}</p>
+								<h3 class="text-secondary-light text-base font-semibold md:text-lg">
+									{coffee.name}
+								</h3>
+								<p class="text-primary-light text-sm">{coffee.source}</p>
 							</div>
 							<div class="text-left sm:text-right">
-								<p class="text-base font-bold text-zinc-100 md:text-lg">${coffee.cost_lb}/lb</p>
-								<p class="text-sm text-zinc-400">Score: {coffee.score_value}</p>
+								<p class="text-secondary-light text-base font-bold md:text-lg">
+									${coffee.cost_lb}/lb
+								</p>
+								<p class="text-primary-light text-sm">Score: {coffee.score_value}</p>
 							</div>
 						</div>
 						<div class="mt-2 grid grid-cols-1 gap-2 text-sm text-zinc-300 sm:grid-cols-2 sm:gap-4">
 							<div>
-								<span class="text-zinc-400">Region:</span>
+								<span class="text-primary-light">Region:</span>
 								{coffee.region || '-'}
 							</div>
 							<div>
-								<span class="text-zinc-400">Processing:</span>
+								<span class="text-primary-light">Processing:</span>
 								{coffee.processing || '-'}
 							</div>
 							<div>
-								<span class="text-zinc-400">Arrival:</span>
+								<span class="text-primary-light">Arrival:</span>
 								{coffee.arrival_date || '-'}
 							</div>
 							<div>
-								<span class="text-zinc-400">Cultivar:</span>
+								<span class="text-primary-light">Cultivar:</span>
 								{coffee.cultivar_detail || '-'}
 							</div>
 						</div>
@@ -536,13 +541,13 @@
 
 				{#if !isLoadingMore && displayLimit < filteredAndSortedData.length}
 					<div class="flex justify-center p-4">
-						<p class="text-sm text-zinc-400">Scroll for more coffees...</p>
+						<p class="text-primary-light text-sm">Scroll for more coffees...</p>
 					</div>
 				{/if}
 
 				{#if displayLimit >= filteredAndSortedData.length}
 					<div class="flex justify-center p-4">
-						<p class="text-sm text-zinc-400">No more coffees to load</p>
+						<p class="text-primary-light text-sm">No more coffees to load</p>
 					</div>
 				{/if}
 			</div>

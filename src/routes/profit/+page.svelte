@@ -545,48 +545,48 @@
 {/if}
 
 <div class="m-8 p-8">
-	<h1 class="mb-4 text-2xl font-bold text-zinc-400">Profit Dashboard</h1>
+	<h1 class="text-primary-light mb-4 text-2xl font-bold">Profit Dashboard</h1>
 
 	<!-- KPI Cards -->
 	<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
 		<div class="bg-background-secondary-light rounded-lg p-4">
-			<h3 class="text-sm text-zinc-400">Total Revenue</h3>
+			<h3 class="text-primary-light text-sm">Total Revenue</h3>
 			<p class="text-xl font-bold text-green-500">${totalRevenue.toFixed(2)}</p>
 		</div>
 		<div class="bg-background-secondary-light rounded-lg p-4">
-			<h3 class="text-sm text-zinc-400">Total Cost</h3>
+			<h3 class="text-primary-light text-sm">Total Cost</h3>
 			<p class="text-xl font-bold text-red-500">${totalCost.toFixed(2)}</p>
 		</div>
 		<div class="bg-background-secondary-light rounded-lg p-4">
-			<h3 class="text-sm text-zinc-400">Total Profit</h3>
+			<h3 class="text-primary-light text-sm">Total Profit</h3>
 			<p class="text-xl font-bold text-blue-500">${totalProfit.toFixed(2)}</p>
 		</div>
 		<div class="bg-background-secondary-light rounded-lg p-4">
-			<h3 class="text-sm text-zinc-400">Average Sales Margin</h3>
+			<h3 class="text-primary-light text-sm">Average Sales Margin</h3>
 			<p class="text-xl font-bold text-purple-500">{averageMargin.toFixed(1)}%</p>
 		</div>
 		<div class="bg-background-secondary-light rounded-lg p-4">
-			<h3 class="text-sm text-zinc-400">Total Pounds Roasted</h3>
+			<h3 class="text-primary-light text-sm">Total Pounds Roasted</h3>
 			<p class="text-xl font-bold text-orange-500">{totalPoundsRoasted.toFixed(1)} lbs</p>
 		</div>
 		<div class="bg-background-secondary-light rounded-lg p-4">
-			<h3 class="text-sm text-zinc-400">Avg. Sell-Through Rate</h3>
+			<h3 class="text-primary-light text-sm">Avg. Sell-Through Rate</h3>
 			<p class="text-xl font-bold text-yellow-500">{sellThroughRate.toFixed(1)}%</p>
 		</div>
 		<div class="bg-background-secondary-light rounded-lg p-4">
-			<h3 class="text-sm text-zinc-400">Avg. Profit/lb</h3>
+			<h3 class="text-primary-light text-sm">Avg. Profit/lb</h3>
 			<p class="text-xl font-bold text-emerald-500">${avgProfitPerPound.toFixed(2)}</p>
 		</div>
 		<div class="bg-background-secondary-light rounded-lg p-4">
-			<h3 class="text-sm text-zinc-400">Avg. Cost/lb</h3>
+			<h3 class="text-primary-light text-sm">Avg. Cost/lb</h3>
 			<p class="text-xl font-bold text-pink-500">${avgCostPerPound.toFixed(2)}</p>
 		</div>
 		<div class="bg-background-secondary-light rounded-lg p-4">
-			<h3 class="text-sm text-zinc-400">Avg. Revenue/lb</h3>
+			<h3 class="text-primary-light text-sm">Avg. Revenue/lb</h3>
 			<p class="text-xl font-bold text-indigo-500">${avgRevenuePerPound.toFixed(2)}</p>
 		</div>
 		<div class="bg-background-secondary-light rounded-lg p-4">
-			<h3 class="text-sm text-zinc-400">Avg. Roast Loss</h3>
+			<h3 class="text-primary-light text-sm">Avg. Roast Loss</h3>
 			<p class="text-xl font-bold text-cyan-500">{roastLossRate.toFixed(2)}%</p>
 		</div>
 	</div>
@@ -598,7 +598,7 @@
 	<!-- Detailed Profit Table -->
 	<div class="mt-8 overflow-x-auto">
 		<table class="bg-background-secondary-light w-full table-auto">
-			<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
+			<thead class="bg-background-tertiary-light text-primary-light text-xs uppercase">
 				<tr>
 					<th class="px-6 py-3">Purchase Date</th>
 					<th class="px-6 py-3">Details</th>
@@ -608,7 +608,7 @@
 				{#each [...groupedProfitData] as [date, items]}
 					<!-- Purchase Date Group Header -->
 					<tr
-						class="hover:bg-background-primary-light cursor-pointer bg-zinc-700"
+						class="hover:bg-background-primary-light bg-background-tertiary-light cursor-pointer"
 						on:click={() => toggleDate(date)}
 					>
 						<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
@@ -648,7 +648,7 @@
 					{#if expandedDates.has(date)}
 						{#each items as item}
 							<tr
-								class="bg-background-secondary-light border-b border-zinc-700 transition-colors hover:bg-zinc-700"
+								class="bg-background-secondary-light border-background-tertiary-light hover:bg-background-tertiary-light border-b transition-colors"
 							>
 								<td
 									class="cursor-pointer px-6 py-4 pl-12 text-xs text-zinc-300 hover:text-blue-400"
@@ -686,7 +686,7 @@
 	{#if salesData.length > 0 && selectedCoffee}
 		<div class="mt-8">
 			<div class="mb-4 flex items-center justify-between">
-				<h2 class="text-xl font-bold text-zinc-400">
+				<h2 class="text-primary-light text-xl font-bold">
 					Sales for {selectedCoffee}
 				</h2>
 			</div>

@@ -50,9 +50,9 @@
 	<!-- Filter Panel -->
 	<div class="bg-background-secondary-light rounded-lg p-4 md:w-64 md:flex-shrink-0">
 		<div class="flex items-center justify-between">
-			<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
+			<h3 class="text-secondary-light text-lg font-semibold">Filters</h3>
 			<button
-				class="text-sm text-zinc-400 hover:text-zinc-100 md:hidden"
+				class="text-primary-light hover:text-secondary-light text-sm md:hidden"
 				on:click={() => (expandedFilters = !expandedFilters)}
 			>
 				{expandedFilters ? 'Hide Filters' : 'Show Filters'}
@@ -62,16 +62,16 @@
 		<!-- Filter controls -->
 		<div class={`space-y-4 ${expandedFilters ? 'block' : 'hidden'} md:block`}>
 			<div class="space-y-2">
-				<h4 class="block text-sm text-zinc-400">Filters</h4>
+				<h4 class="text-primary-light block text-sm">Filters</h4>
 				{#each getFilterableColumns() as column}
 					<div class="space-y-1">
-						<label for={column} class="block text-xs text-zinc-400">
+						<label for={column} class="text-primary-light block text-xs">
 							{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
 						</label>
 						<input
 							type="text"
 							bind:value={filters[column]}
-							class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+							class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 							placeholder={`Filter by ${column.replace(/_/g, ' ')}`}
 						/>
 					</div>
@@ -88,17 +88,17 @@
 			<div class="space-y-4">
 				{#each filteredBatchNames as batchName}
 					<!-- Batch Header -->
-					<div class="rounded-lg bg-zinc-700 p-4">
+					<div class="bg-background-tertiary-light rounded-lg p-4">
 						<button
 							type="button"
 							class="flex w-full items-center justify-between"
 							on:click={() => onToggleBatch(batchName)}
 						>
-							<h3 class="text-lg font-semibold text-zinc-100">
+							<h3 class="text-secondary-light text-lg font-semibold">
 								{expandedBatches.has(batchName) ? '▼' : '▶'}
 								{batchName}
 							</h3>
-							<span class="text-sm text-zinc-400">
+							<span class="text-primary-light text-sm">
 								{filteredProfiles[batchName].length} roasts
 							</span>
 						</button>
@@ -109,18 +109,18 @@
 								{#each filteredProfiles[batchName] as profile}
 									<button
 										type="button"
-										class="bg-background-secondary-light w-full cursor-pointer rounded-lg p-3 text-left transition-colors hover:bg-zinc-700 {currentRoastProfile?.roast_id ===
+										class="bg-background-secondary-light hover:bg-background-tertiary-light w-full cursor-pointer rounded-lg p-3 text-left transition-colors {currentRoastProfile?.roast_id ===
 										profile.roast_id
-											? 'bg-zinc-700'
+											? 'bg-background-tertiary-light'
 											: ''}"
 										on:click={() => onSelectProfile(profile)}
 									>
 										<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
 											<div>
-												<h4 class="text-base font-semibold text-zinc-100">
+												<h4 class="text-secondary-light text-base font-semibold">
 													{profile.coffee_name}
 												</h4>
-												<p class="text-sm text-zinc-400">
+												<p class="text-primary-light text-sm">
 													{formatDateForDisplay(profile.roast_date)}
 												</p>
 											</div>

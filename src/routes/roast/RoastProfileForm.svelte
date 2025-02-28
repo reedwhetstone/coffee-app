@@ -123,7 +123,7 @@
 			aria-modal="true"
 		>
 			<!-- Fixed Header -->
-			<div class="border-b border-zinc-700 p-2 sm:p-4">
+			<div class="border-background-tertiary-light border-b p-2 sm:p-4">
 				<label for="batch_name" class="block text-base font-medium text-zinc-300 sm:text-lg"
 					>Batch Name</label
 				>
@@ -131,7 +131,7 @@
 					id="batch_name"
 					type="text"
 					bind:value={formData.batch_name}
-					class="mt-1 block w-full rounded bg-zinc-700 text-lg text-zinc-300 sm:text-xl"
+					class="bg-background-tertiary-light mt-1 block w-full rounded text-lg text-zinc-300 sm:text-xl"
 					required
 				/>
 			</div>
@@ -154,7 +154,7 @@
 							id="roast_date"
 							type="date"
 							bind:value={formData.roast_date}
-							class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+							class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 							required
 						/>
 					</div>
@@ -162,7 +162,7 @@
 					<!-- Beans in Batch -->
 					<div class="space-y-2 sm:space-y-4">
 						{#each batchBeans as bean, index}
-							<div class="relative rounded border border-zinc-700 p-2 sm:p-4">
+							<div class="border-background-tertiary-light relative rounded border p-2 sm:p-4">
 								<!-- Remove bean button (except for first bean) -->
 								{#if index > 0}
 									<button
@@ -182,7 +182,7 @@
 										>
 										<select
 											id="coffee_select_{index}"
-											class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+											class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 											value={bean.coffee_id}
 											onchange={(e) => handleCoffeeChange(e, index)}
 											required
@@ -205,7 +205,7 @@
 											type="number"
 											step="1"
 											bind:value={bean.oz_in}
-											class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+											class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 											required
 										/>
 									</div>
@@ -219,7 +219,7 @@
 											type="number"
 											step="1"
 											bind:value={bean.oz_out}
-											class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+											class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 										/>
 									</div>
 								</div>
@@ -229,7 +229,7 @@
 						<!-- Add Bean Button -->
 						<button
 							type="button"
-							class="flex items-center gap-2 rounded border border-zinc-700 px-4 py-2 text-zinc-500 hover:bg-zinc-700 hover:text-zinc-300"
+							class="border-background-tertiary-light hover:bg-background-tertiary-light flex items-center gap-2 rounded border px-4 py-2 text-zinc-500 hover:text-zinc-300"
 							onclick={addBeanToBatch}
 						>
 							<span class="text-xl">+</span>
@@ -247,7 +247,7 @@
 								id="roast_targets"
 								bind:value={formData.roast_targets}
 								rows="3"
-								class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+								class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 							></textarea>
 						</div>
 
@@ -259,7 +259,7 @@
 								id="roast_notes"
 								bind:value={formData.roast_notes}
 								rows="3"
-								class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+								class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 							></textarea>
 						</div>
 					</div>
@@ -267,7 +267,7 @@
 			</form>
 
 			<!-- Footer -->
-			<div class="border-t border-zinc-700 p-2 sm:p-4">
+			<div class="border-background-tertiary-light border-t p-2 sm:p-4">
 				<div class="flex justify-end space-x-2">
 					<button
 						type="button"

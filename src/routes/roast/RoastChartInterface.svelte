@@ -734,7 +734,7 @@
 
 		<!-- Chart -->
 		<div class="min-w-0 flex-grow">
-			<div bind:this={chartContainer} class="h-full w-full text-zinc-400"></div>
+			<div bind:this={chartContainer} class="text-primary-light h-full w-full"></div>
 		</div>
 
 		<!-- Heat buttons -->

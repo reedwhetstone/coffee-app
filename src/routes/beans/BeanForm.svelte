@@ -239,7 +239,7 @@
 					id="source"
 					bind:value={sourceFilter}
 					onchange={handleSourceChange}
-					class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+					class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				>
 					<option value="">All Sources</option>
 					{#each [...new Set(catalogBeans.map((b) => b.source))] as source}
@@ -253,7 +253,7 @@
 				>
 				<select
 					id="catalog-bean"
-					class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+					class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 					required={!isManualEntry}
 					onchange={handleBeanSelect}
 				>
@@ -274,7 +274,7 @@
 				id="name"
 				type="text"
 				bind:value={formData.name}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				required
 			/>
 		</div>
@@ -287,7 +287,7 @@
 				id="purchase_date"
 				type="date"
 				bind:value={formData.purchase_date}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				required
 			/>
 		</div>
@@ -301,7 +301,7 @@
 				type="number"
 				step="1"
 				bind:value={formData.purchased_qty_lbs}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				required
 			/>
 		</div>
@@ -315,7 +315,7 @@
 				min="0"
 				placeholder="0.00"
 				bind:value={formData.bean_cost}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				required
 			/>
 		</div>
@@ -331,7 +331,7 @@
 				min="0"
 				placeholder="0.00"
 				bind:value={formData.tax_ship_cost}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 				required
 			/>
 		</div>
@@ -342,7 +342,7 @@
 				id="link"
 				type="url"
 				bind:value={formData.link}
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 			/>
 		</div>
 
@@ -352,7 +352,7 @@
 				id="notes"
 				bind:value={formData.notes}
 				rows="3"
-				class="mt-1 block w-full rounded bg-zinc-700 text-zinc-300"
+				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
 			></textarea>
 		</div>
 	</div>

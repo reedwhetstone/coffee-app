@@ -144,11 +144,14 @@
 					{#each ['score_value', 'rank', 'description_short', 'notes', 'purchase_date', 'arrival_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'last_updated'] as key}
 						{#if selectedBean[key] !== undefined}
 							<div
-								class="rounded bg-zinc-700 p-2 {['notes', 'description_short'].includes(key)
+								class="bg-background-tertiary-light rounded p-2 {[
+									'notes',
+									'description_short'
+								].includes(key)
 									? 'col-span-2'
 									: ''}"
 							>
-								<span class="font-medium text-zinc-400"
+								<span class="text-primary-light font-medium"
 									>{key.replace(/_/g, ' ').toUpperCase()}:</span
 								>
 								{#if isEditing && key !== 'id' && key !== 'last_updated'}
@@ -221,8 +224,8 @@
 				{:else}
 					{#each Object.entries(selectedBean) as [key, value]}
 						{#if !['score_value', 'rank', 'notes', 'purchase_date', 'arrival_date', 'last_updated', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'description_short', 'id'].includes(key)}
-							<div class="rounded bg-zinc-700 p-2">
-								<span class="font-medium text-zinc-400"
+							<div class="bg-background-tertiary-light rounded p-2">
+								<span class="text-primary-light font-medium"
 									>{key.replace(/_/g, ' ').toUpperCase()}:</span
 								>
 								{#if isEditing && key !== 'id' && key !== 'last_updated'}

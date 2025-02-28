@@ -141,7 +141,7 @@
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center sm:text-left">
-				<h1 class="text-xl font-bold text-zinc-400 sm:text-2xl">
+				<h1 class="text-primary-light text-xl font-bold sm:text-2xl">
 					{profile.batch_name} // {formatDateForDisplay(profile.roast_date)}
 				</h1>
 			</div>
@@ -169,12 +169,15 @@
 					{#each Object.entries(profile) as [key, value]}
 						{#if !['roast_id', 'coffee_id'].includes(key)}
 							<div
-								class="rounded bg-zinc-700 p-3 {['roast_notes', 'roast_targets'].includes(key)
+								class="bg-background-tertiary-light rounded p-3 {[
+									'roast_notes',
+									'roast_targets'
+								].includes(key)
 									? 'col-span-1 sm:col-span-2'
 									: ''}"
 							>
 								<div class="flex flex-col">
-									<span class="mb-1 font-medium text-zinc-400"
+									<span class="text-primary-light mb-1 font-medium"
 										>{key.replace(/_/g, ' ').toUpperCase()}:</span
 									>
 									{#if isEditing && key !== 'last_updated'}

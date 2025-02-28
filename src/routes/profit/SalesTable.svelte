@@ -75,7 +75,7 @@
 
 <div class="mt-8 overflow-hidden overflow-x-auto rounded-lg">
 	<table class="bg-background-secondary-light w-full table-auto">
-		<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
+		<thead class="bg-background-tertiary-light text-primary-light text-xs uppercase">
 			<tr>
 				<th
 					class="hover:bg-background-primary-light group cursor-pointer px-6 py-3"
@@ -201,7 +201,7 @@
 		<tbody>
 			{#each sortedSales as sale}
 				<tr
-					class="bg-background-secondary-light border-b border-zinc-700 transition-colors hover:bg-zinc-700"
+					class="bg-background-secondary-light border-background-tertiary-light hover:bg-background-tertiary-light border-b transition-colors"
 				>
 					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
 						{formatDateForDisplay(sale.sell_date)}

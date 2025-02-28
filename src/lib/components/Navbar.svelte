@@ -3,7 +3,7 @@
 </script>
 
 <button
-	class="hover:bg-background-primary-light rounded bg-zinc-700 px-4 py-2 text-sm text-zinc-300"
+	class="hover:bg-background-primary-light bg-background-tertiary-light rounded px-4 py-2 text-sm text-zinc-300"
 	on:click={() => $navbarActions.onAddNewSale()}
 >
 	Add Sale

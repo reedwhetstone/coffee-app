@@ -358,9 +358,9 @@
 		<!-- Filter Panel -->
 		<div class="bg-background-secondary-light w-full rounded-lg p-4 md:w-64 md:flex-shrink-0">
 			<div class="flex items-center justify-between">
-				<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
+				<h3 class="text-secondary-light text-lg font-semibold">Filters</h3>
 				<button
-					class="text-sm text-zinc-400 hover:text-zinc-100 md:hidden"
+					class="text-primary-light hover:text-secondary-light text-sm md:hidden"
 					onclick={() => (expandedFilters = !expandedFilters)}
 				>
 					{expandedFilters ? 'Hide Filters' : 'Show Filters'}
@@ -371,11 +371,11 @@
 			<div class={`space-y-4 ${expandedFilters ? 'block' : 'hidden'} md:block`}>
 				<!-- Sort Controls -->
 				<div class="space-y-2">
-					<label for="sort-field" class="block text-sm text-zinc-400">Sort by</label>
+					<label for="sort-field" class="text-primary-light block text-sm">Sort by</label>
 					<select
 						id="sort-field"
 						bind:value={sortField}
-						class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+						class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 					>
 						<option value={null}>None</option>
 						{#each getFilterableColumns() as column}
@@ -389,7 +389,7 @@
 						<select
 							id="sort-direction"
 							bind:value={sortDirection}
-							class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+							class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 						>
 							<option value="asc">Ascending</option>
 							<option value="desc">Descending</option>
@@ -399,16 +399,16 @@
 
 				<!-- Filter Controls -->
 				<div class="space-y-2">
-					<h4 class="block text-sm text-zinc-400">Filters</h4>
+					<h4 class="text-primary-light block text-sm">Filters</h4>
 					{#each getFilterableColumns() as column}
 						<div class="space-y-1">
-							<label for={column} class="block text-xs text-zinc-400">
+							<label for={column} class="text-primary-light block text-xs">
 								{column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
 							</label>
 							{#if column === 'purchase_date'}
 								<select
 									bind:value={filters[column]}
-									class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+									class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 								>
 									<option value="">All Dates</option>
 									{#each uniquePurchaseDates as date}
@@ -420,7 +420,7 @@
 									<input
 										type="number"
 										bind:value={filters.score_value.min}
-										class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+										class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 										placeholder="Min"
 										min="0"
 										max="100"
@@ -429,7 +429,7 @@
 									<input
 										type="number"
 										bind:value={filters.score_value.max}
-										class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+										class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 										placeholder="Max"
 										min="0"
 										max="100"
@@ -440,7 +440,7 @@
 								<input
 									type="text"
 									bind:value={filters[column]}
-									class="w-full rounded bg-zinc-700 p-2 text-sm text-zinc-100"
+									class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 									placeholder={`Filter by ${column}`}
 								/>
 							{/if}
@@ -459,38 +459,40 @@
 					{#each filteredAndSortedData as bean}
 						<button
 							type="button"
-							class="bg-background-secondary-light w-full cursor-pointer rounded-lg p-3 text-left transition-colors hover:bg-zinc-700 md:p-4"
+							class="bg-background-secondary-light hover:bg-background-tertiary-light w-full cursor-pointer rounded-lg p-3 text-left transition-colors md:p-4"
 							onclick={() => selectBean(bean)}
 						>
 							<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
 								<div>
-									<h3 class="text-base font-semibold text-zinc-100 md:text-lg">{bean.name}</h3>
-									<p class="text-sm text-zinc-400">{bean.vendor}</p>
+									<h3 class="text-secondary-light text-base font-semibold md:text-lg">
+										{bean.name}
+									</h3>
+									<p class="text-primary-light text-sm">{bean.vendor}</p>
 								</div>
 								<div class="text-left sm:text-right">
-									<p class="text-base font-bold text-zinc-100 md:text-lg">
+									<p class="text-secondary-light text-base font-bold md:text-lg">
 										${bean.price_per_lb}/lb
 									</p>
-									<p class="text-sm text-zinc-400">Score: {bean.score_value}</p>
+									<p class="text-primary-light text-sm">Score: {bean.score_value}</p>
 								</div>
 							</div>
 							<div
 								class="mt-2 grid grid-cols-1 gap-2 text-sm text-zinc-300 sm:grid-cols-2 sm:gap-4"
 							>
 								<div>
-									<span class="text-zinc-400">Cultivar:</span>
+									<span class="text-primary-light">Cultivar:</span>
 									{bean.cultivar_detail || '-'}
 								</div>
 								<div>
-									<span class="text-zinc-400">Processing:</span>
+									<span class="text-primary-light">Processing:</span>
 									{bean.processing || '-'}
 								</div>
 								<div>
-									<span class="text-zinc-400">Purchase:</span>
+									<span class="text-primary-light">Purchase:</span>
 									{bean.purchase_date || '-'}
 								</div>
 								<div>
-									<span class="text-zinc-400">Arrival:</span>
+									<span class="text-primary-light">Arrival:</span>
 									{bean.arrival_date || '-'}
 								</div>
 							</div>
