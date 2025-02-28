@@ -6,17 +6,33 @@
 	import { onMount } from 'svelte';
 	import pkg from 'lodash';
 	import { signInWithGoogle, signOut } from '$lib/supabase';
+	import { checkRole } from '$lib/types/auth.types';
 	const { debounce } = pkg;
 
 	// Update the props declaration
 	let { data } = $props();
 
 	// Destructure with default values to prevent undefined errors
-	let { supabase, session, user, role = 'viewer' } = $derived(data);
+	let { supabase, session, role = 'viewer' } = $derived(data);
 
 	// Add type checking for role
 	type UserRole = 'viewer' | 'member' | 'admin';
 	let userRole: UserRole = $derived(role as UserRole);
+
+	// Add more detailed debug logging
+	$effect(() => {
+		console.log('Navbar data:', data);
+		console.log('Destructured role:', role);
+		console.log('Parsed userRole:', userRole);
+		console.log('data.role:', data.role);
+	});
+
+	// Use the imported checkRole function
+	function hasRequiredRole(requiredRole: UserRole): boolean {
+		const hasRole = checkRole(userRole, requiredRole);
+		console.log(`Role check: ${userRole} >= ${requiredRole} = ${hasRole}`);
+		return hasRole;
+	}
 
 	let routeId = $state($page.route.id);
 
@@ -214,7 +230,7 @@
 				: 'hidden md:flex'}"
 		>
 			<ul class="flex flex-wrap items-center gap-2">
-				{#if userRole === 'admin' || userRole === 'member'}
+				{#if hasRequiredRole('member')}
 					<li class="w-full md:w-auto">
 						<a
 							href="/"

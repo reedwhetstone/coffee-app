@@ -4,6 +4,8 @@ import type { Database } from '$lib/types/database.types';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { handleCookieCheck } from '$lib/middleware/cookieCheck';
+import { getUserRole } from '$lib/server/auth';
+import { requireRole } from '$lib/server/auth';
 
 const handleSupabase: Handle = async ({ event, resolve }) => {
 	event.locals.supabase = createServerClient<Database>(
@@ -21,53 +23,41 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	);
 
-	// Implement safeGetSession function
+	// Implement safeGetSession function that properly validates the JWT
 	event.locals.safeGetSession = async () => {
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
 
+		if (!session) {
+			return { session: null, user: null };
+		}
+
+		// Always validate the user with getUser() to ensure the JWT is valid
 		const {
 			data: { user },
 			error: userError
 		} = await event.locals.supabase.auth.getUser();
 
 		if (userError) {
+			// JWT validation has failed
 			return { session: null, user: null };
 		}
 
 		return { session, user };
 	};
 
-	// First get the session
-	const {
-		data: { session }
-	} = await event.locals.supabase.auth.getSession();
+	// Get validated session and user data
+	const { session, user } = await event.locals.safeGetSession();
 
-	// Then validate the user with getUser
-	const {
-		data: { user },
-		error: userError
-	} = await event.locals.supabase.auth.getUser();
+	// Set initial state
+	event.locals.session = session;
+	event.locals.user = user;
+	event.locals.role = 'viewer'; // default role
 
-	if (userError || !user) {
-		// Reset all auth state if validation fails
-		event.locals.session = null;
-		event.locals.user = null;
-		event.locals.role = 'viewer';
-	} else {
-		// Set validated user data
-		event.locals.session = session;
-		event.locals.user = user;
-
-		// Fetch user role from database
-		const { data: roleData } = await event.locals.supabase
-			.from('user_roles')
-			.select('role')
-			.eq('id', user.id)
-			.single();
-
-		event.locals.role = (roleData?.role as 'viewer' | 'member' | 'admin') || 'viewer';
+	if (user) {
+		// Use the getUserRole utility function instead of duplicating the logic
+		event.locals.role = await getUserRole(event.locals.supabase, user.id);
 	}
 
 	// Make data available to the frontend
@@ -79,7 +69,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 	return resolve(event, {
 		filterSerializedResponseHeaders(name) {
-			return name === 'content-range';
+			return name === 'content-range' || name === 'x-supabase-api-version';
 		}
 	});
 };
@@ -98,15 +88,8 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	event.locals.role = 'viewer'; // default role
 
 	if (user) {
-		// Fetch user role from database
-		const { data: roleData } = await event.locals.supabase
-			.from('user_roles')
-			.select('role')
-			.eq('id', user.id)
-			.single();
-
-		// This is the important part - make sure role is one of the expected values
-		event.locals.role = (roleData?.role as 'viewer' | 'member' | 'admin') || 'viewer';
+		// Use the getUserRole utility here as well
+		event.locals.role = await getUserRole(event.locals.supabase, user.id);
 	}
 
 	// Make sure these values are available to the frontend
@@ -116,11 +99,8 @@ const authGuard: Handle = async ({ event, resolve }) => {
 		role: event.locals.role
 	};
 
-	// Check protected routes
-	if (
-		requiresProtection &&
-		(!session || !event.locals.role || !['admin', 'member'].includes(event.locals.role))
-	) {
+	// Use requireRole for protected route checks
+	if (requiresProtection && !requireRole(event.locals.role, 'member')) {
 		throw redirect(303, '/');
 	}
 

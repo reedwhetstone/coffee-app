@@ -1,6 +1,8 @@
 import { createClient } from '$lib/supabase';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { UserRole } from '$lib/types/auth.types';
+import { checkRole } from '$lib/types/auth.types';
 
 const supabase = createClient();
 
@@ -46,26 +48,22 @@ export async function requireAuthMiddleware(event: RequestEvent) {
 	}
 }
 
-export type UserRole = 'viewer' | 'member' | 'admin';
-
 export async function getUserRole(supabase: SupabaseClient, userId: string): Promise<UserRole> {
+	console.log('Getting role for user:', userId);
 	const { data, error } = await supabase
 		.from('user_roles')
 		.select('role')
 		.eq('id', userId)
 		.single();
 
-	if (error || !data) return 'viewer';
+	console.log('Role query result:', { data, error });
+
+	if (error || !data) {
+		console.log('Defaulting to viewer role due to:', error || 'no data');
+		return 'viewer';
+	}
+	console.log('Found role:', data.role);
 	return data.role as UserRole;
 }
 
-export function requireRole(userRole: UserRole | undefined, requiredRole: UserRole): boolean {
-	const roleHierarchy = {
-		viewer: 0,
-		member: 1,
-		admin: 2
-	};
-
-	if (!userRole) return false;
-	return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
-}
+export { checkRole as requireRole };
