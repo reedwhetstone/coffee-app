@@ -23,42 +23,25 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 	event.locals.safeGetSession = async () => {
 		const {
-			data: { session }
-		} = await event.locals.supabase.auth.getSession();
-		//console.log('Session in safeGetSession:', session);
+			data: { user },
+			error: userError
+		} = await event.locals.supabase.auth.getUser();
 
-		if (!session) {
-			return { session: null, user: null, role: undefined };
+		if (userError || !user) {
+			console.error('Auth error:', userError);
+			return {
+				session: null,
+				user: null,
+				role: undefined as 'viewer' | 'member' | 'admin' | undefined
+			};
 		}
 
 		const {
-			data: { user },
-			error
-		} = await event.locals.supabase.auth.getUser();
+			data: { session }
+		} = await event.locals.supabase.auth.getSession();
 
-		if (error || !user) {
-			console.error('Auth error:', error);
-			return { session: null, user: null, role: undefined };
-		}
-
-		// Fetch user role
-		const { data: roleData, error: roleError } = await event.locals.supabase
-			.from('user_roles')
-			.select('role')
-			.eq('id', user.id)
-			.single();
-
-		if (roleError) {
-			console.error('Role fetch error:', roleError);
-		}
-
-		//console.log('Role data:', roleData);
-
-		return {
-			session,
-			user,
-			role: roleData?.role || 'viewer'
-		};
+		// Cast the role to the allowed types
+		return { session, user, role: user.role as 'viewer' | 'member' | 'admin' | undefined };
 	};
 
 	return resolve(event, {
@@ -69,25 +52,12 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
-	// Define protected routes first
 	const protectedRoutes = ['/roast', '/profit'];
 	const currentPath = event.url.pathname;
 	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
 
 	// Get session
-	const {
-		data: { session },
-		error: sessionError
-	} = await event.locals.supabase.auth.getSession();
-
-	if (sessionError) {
-		console.error('Session error:', sessionError);
-		// If this is a protected route, redirect
-		if (requiresProtection) {
-			throw redirect(303, '/');
-		}
-		return resolve(event);
-	}
+	const { session, user } = await event.locals.safeGetSession();
 
 	// Set default values
 	event.locals.session = session;
