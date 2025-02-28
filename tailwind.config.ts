@@ -7,7 +7,14 @@ export default {
 	content: ['./src/**/*.{html,js,svelte,ts}'],
 	darkMode: 'media',
 	theme: {
-		extend: {}
+		extend: {
+			colors: {
+				'coffee-brown': '#4B3621',
+				'growth-green': '#7FB069',
+				cream: '#3D2314',
+				'harvest-gold': '#7FB069'
+			}
+		}
 	},
 
 	plugins: [typography, forms, containerQueries]

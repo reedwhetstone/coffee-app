@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
 	import { navbarActions } from '$lib/stores/navbarStore';
 	import { goto } from '$app/navigation';
@@ -34,11 +34,12 @@
 		return hasRole;
 	}
 
-	let routeId = $state($page.route.id);
+	// Update routeId to use the store value directly
+	let routeId = $state(page.route.id);
 
 	// Update `routeId` after each navigation
 	afterNavigate(() => {
-		routeId = $page.route.id;
+		routeId = page.route.id;
 	});
 
 	// Function to handle Add New Bean click
@@ -139,12 +140,12 @@
 
 	// Close menu when route changes
 	afterNavigate(() => {
-		routeId = $page.route.id;
+		routeId = page.route.id;
 		isMenuOpen = false;
 	});
 </script>
 
-<nav class="sticky top-0 z-50 bg-zinc-900 px-4 py-2 shadow-lg">
+<nav class="bg-coffee-brown sticky top-0 z-50 px-4 py-2 shadow-lg">
 	<div class="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
 		<!-- Mobile Menu Button -->
 		<div class="flex items-center justify-between md:hidden">
@@ -303,9 +304,3 @@
 		</div>
 	</div>
 </nav>
-
-<style>
-	:global(html) {
-		background-color: rgb(24 24 27);
-	}
-</style>

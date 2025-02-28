@@ -1,4 +1,4 @@
-<div class="flex min-h-screen items-center justify-center bg-zinc-900 text-white">
+<div class="bg-coffee-brown flex min-h-screen items-center justify-center text-white">
 	<div class="max-w-md rounded-lg bg-zinc-800 p-8 text-center">
 		<h1 class="mb-4 text-2xl font-bold">Cookies Required</h1>
 		<p class="mb-4">
