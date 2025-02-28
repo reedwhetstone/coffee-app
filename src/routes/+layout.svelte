@@ -15,6 +15,6 @@
 </script>
 
 <Navbar {data} />
-<div class="m-10">
+<div class="">
 	{@render children()}
 </div>
