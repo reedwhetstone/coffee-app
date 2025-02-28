@@ -185,10 +185,6 @@
 		}
 	}
 
-	onMount(() => {
-		loadInitialRecommendations();
-	});
-
 	// Add unique sources state
 	$: uniqueSources = [...new Set(data?.data?.map((coffee) => coffee.source) || [])];
 
@@ -239,6 +235,37 @@
 			}
 			return true;
 		});
+	});
+
+	// Add pagination state
+	let displayLimit = 15;
+	let isLoadingMore = false;
+
+	// Update filtered and sorted data to include pagination
+	$: paginatedData = filteredAndSortedData.slice(0, displayLimit);
+
+	// Update infinite scroll handler
+	async function handleScroll() {
+		const scrollPosition = window.innerHeight + window.scrollY;
+		const bottomOfPage = document.documentElement.offsetHeight - 200; // Trigger 200px before bottom
+
+		if (
+			scrollPosition >= bottomOfPage &&
+			!isLoadingMore &&
+			displayLimit < filteredAndSortedData.length
+		) {
+			isLoadingMore = true;
+			await new Promise((resolve) => setTimeout(resolve, 300)); // Debounce
+			displayLimit += 15;
+			isLoadingMore = false;
+		}
+	}
+
+	onMount(() => {
+		loadInitialRecommendations();
+		// Add scroll event listener to the window
+		window.addEventListener('scroll', handleScroll);
+		return () => window.removeEventListener('scroll', handleScroll);
 	});
 </script>
 
@@ -457,7 +484,7 @@
 			<p class="p-4 text-zinc-300">No coffee data available</p>
 		{:else}
 			<div class="space-y-2 md:space-y-4">
-				{#each filteredAndSortedData as coffee}
+				{#each paginatedData as coffee}
 					<button
 						type="button"
 						class="w-full cursor-pointer rounded-lg bg-zinc-800 p-3 text-left transition-colors hover:bg-zinc-700 md:p-4"
@@ -498,6 +525,26 @@
 						</div>
 					</button>
 				{/each}
+
+				{#if isLoadingMore}
+					<div class="flex justify-center p-4">
+						<div
+							class="h-8 w-8 animate-spin rounded-full border-4 border-zinc-400 border-t-blue-500"
+						></div>
+					</div>
+				{/if}
+
+				{#if !isLoadingMore && displayLimit < filteredAndSortedData.length}
+					<div class="flex justify-center p-4">
+						<p class="text-sm text-zinc-400">Scroll for more coffees...</p>
+					</div>
+				{/if}
+
+				{#if displayLimit >= filteredAndSortedData.length}
+					<div class="flex justify-center p-4">
+						<p class="text-sm text-zinc-400">No more coffees to load</p>
+					</div>
+				{/if}
 			</div>
 		{/if}
 	</div>
