@@ -49,20 +49,20 @@ export async function requireAuthMiddleware(event: RequestEvent) {
 }
 
 export async function getUserRole(supabase: SupabaseClient, userId: string): Promise<UserRole> {
-	console.log('Getting role for user:', userId);
+	//console.log('Getting role for user:', userId);
 	const { data, error } = await supabase
 		.from('user_roles')
 		.select('role')
 		.eq('id', userId)
 		.single();
 
-	console.log('Role query result:', { data, error });
+	//console.log('Role query result:', { data, error });
 
 	if (error || !data) {
-		console.log('Defaulting to viewer role due to:', error || 'no data');
+		//console.log('Defaulting to viewer role due to:', error || 'no data');
 		return 'viewer';
 	}
-	console.log('Found role:', data.role);
+	//console.log('Found role:', data.role);
 	return data.role as UserRole;
 }
 
