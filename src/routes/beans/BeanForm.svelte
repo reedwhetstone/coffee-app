@@ -358,7 +358,7 @@
 	</div>
 
 	<div class="mt-4 flex justify-end space-x-2">
-		<button type="button" class="rounded bg-zinc-600 px-4 py-2 text-zinc-300" onclick={onClose}>
+		<button type="button" class="bg-light-cream rounded px-4 py-2 text-zinc-300" onclick={onClose}>
 			Cancel
 		</button>
 		<button type="submit" class="rounded bg-green-600 px-4 py-2 text-zinc-300">

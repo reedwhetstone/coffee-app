@@ -156,10 +156,12 @@
 					oninput={handleSearch}
 					onfocus={() => (showResults = true)}
 					placeholder="Search..."
-					class="w-full rounded bg-zinc-800 px-3 py-1 text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+					class="bg-coffee-brown w-full rounded px-3 py-1 text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
 				/>
 				{#if showResults && searchResults.length > 0}
-					<div class="absolute mt-1 w-full rounded border border-zinc-700 bg-zinc-800 shadow-lg">
+					<div
+						class="bg-coffee-brown absolute mt-1 w-full rounded border border-zinc-700 shadow-lg"
+					>
 						{#each searchResults as result}
 							<button
 								class="block w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700"
@@ -172,7 +174,7 @@
 					</div>
 				{/if}
 			</div>
-			<button onclick={toggleMenu} class="ml-2 rounded p-2 text-zinc-400 hover:bg-zinc-800">
+			<button onclick={toggleMenu} class="hover:bg-coffee-brown ml-2 rounded p-2 text-zinc-400">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					class="h-6 w-6"
@@ -207,10 +209,10 @@
 				oninput={handleSearch}
 				onfocus={() => (showResults = true)}
 				placeholder="Search..."
-				class="w-full rounded bg-zinc-800 px-3 py-1 text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+				class="bg-coffee-brown w-full rounded px-3 py-1 text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
 			/>
 			{#if showResults && searchResults.length > 0}
-				<div class="absolute mt-1 w-full rounded border border-zinc-700 bg-zinc-800 shadow-lg">
+				<div class="bg-coffee-brown absolute mt-1 w-full rounded border border-zinc-700 shadow-lg">
 					{#each searchResults as result}
 						<button
 							class="block w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700"
@@ -237,7 +239,7 @@
 							href="/"
 							class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/'
 								? 'text-sky-800'
-								: 'text-zinc-600'} hover:bg-zinc-800 hover:text-sky-800"
+								: 'text-light-cream'} hover:bg-coffee-brown hover:text-sky-800"
 						>
 							CATALOG
 						</a>
@@ -248,8 +250,8 @@
 							href="/beans"
 							class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/beans'
 								? 'text-sky-800'
-								: 'text-zinc-600'}
-							hover:bg-zinc-800 hover:text-sky-800"
+								: 'text-light-cream'}
+							hover:bg-coffee-brown hover:text-sky-800"
 						>
 							BEANS
 						</a>
@@ -260,8 +262,8 @@
 							href="/roast"
 							class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/roast'
 								? 'text-sky-800'
-								: 'text-zinc-600'}
-								hover:bg-zinc-800 hover:text-sky-800"
+								: 'text-light-cream'}
+								hover:bg-coffee-brown hover:text-sky-800"
 						>
 							ROAST
 						</a>
@@ -271,8 +273,8 @@
 							href="/profit"
 							class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/profit'
 								? 'text-sky-800'
-								: 'text-zinc-600'}
-								hover:bg-zinc-800 hover:text-sky-800"
+								: 'text-light-cream'}
+								hover:bg-coffee-brown hover:text-sky-800"
 						>
 							PROFIT
 						</a>

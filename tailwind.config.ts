@@ -9,9 +9,9 @@ export default {
 	theme: {
 		extend: {
 			colors: {
-				'coffee-brown': '#4B3621',
+				'coffee-brown': '#faf8f3',
 				'growth-green': '#7FB069',
-				cream: '#3D2314',
+				'light-cream': '#f4ece0',
 				'harvest-gold': '#7FB069'
 			}
 		}

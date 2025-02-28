@@ -74,11 +74,11 @@
 </script>
 
 <div class="mt-8 overflow-hidden overflow-x-auto rounded-lg">
-	<table class="w-full table-auto bg-zinc-800">
+	<table class="bg-coffee-brown w-full table-auto">
 		<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
 			<tr>
 				<th
-					class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
+					class="hover:bg-light-cream group cursor-pointer px-6 py-3"
 					on:click={() => toggleSort('sell_date')}
 				>
 					<div class="flex items-center gap-2">
@@ -95,7 +95,7 @@
 					</div>
 				</th>
 				<th
-					class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
+					class="hover:bg-light-cream group cursor-pointer px-6 py-3"
 					on:click={() => toggleSort('coffee_name')}
 				>
 					<div class="flex items-center gap-2">
@@ -112,7 +112,7 @@
 					</div>
 				</th>
 				<th
-					class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
+					class="hover:bg-light-cream group cursor-pointer px-6 py-3"
 					on:click={() => toggleSort('batch_name')}
 				>
 					<div class="flex items-center gap-2">
@@ -129,7 +129,7 @@
 					</div>
 				</th>
 				<th
-					class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
+					class="hover:bg-light-cream group cursor-pointer px-6 py-3"
 					on:click={() => toggleSort('buyer')}
 				>
 					<div class="flex items-center gap-2">
@@ -146,7 +146,7 @@
 					</div>
 				</th>
 				<th
-					class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
+					class="hover:bg-light-cream group cursor-pointer px-6 py-3"
 					on:click={() => toggleSort('oz_sold')}
 				>
 					<div class="flex items-center gap-2">
@@ -163,7 +163,7 @@
 					</div>
 				</th>
 				<th
-					class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
+					class="hover:bg-light-cream group cursor-pointer px-6 py-3"
 					on:click={() => toggleSort('price')}
 				>
 					<div class="flex items-center gap-2">
@@ -180,7 +180,7 @@
 					</div>
 				</th>
 				<th
-					class="group cursor-pointer px-6 py-3 hover:bg-zinc-600"
+					class="hover:bg-light-cream group cursor-pointer px-6 py-3"
 					on:click={() => toggleSort('purchase_date')}
 				>
 					<div class="flex items-center gap-2">
@@ -200,7 +200,7 @@
 		</thead>
 		<tbody>
 			{#each sortedSales as sale}
-				<tr class="border-b border-zinc-700 bg-zinc-800 transition-colors hover:bg-zinc-700">
+				<tr class="bg-coffee-brown border-b border-zinc-700 transition-colors hover:bg-zinc-700">
 					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
 						{formatDateForDisplay(sale.sell_date)}
 					</td>

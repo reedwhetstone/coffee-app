@@ -347,7 +347,7 @@
 	<!-- Form Modal -->
 	{#if isFormVisible}
 		<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 p-4">
-			<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-4 md:p-6">
+			<div class="bg-coffee-brown w-full max-w-2xl rounded-lg p-4 md:p-6">
 				<BeanForm bean={null} onClose={() => (isFormVisible = false)} onSubmit={handleFormSubmit} />
 			</div>
 		</div>
@@ -356,7 +356,7 @@
 	<!-- Main content section -->
 	<div class="mx-2 mt-4 flex flex-col gap-4 md:mx-8 md:mt-8 md:flex-row">
 		<!-- Filter Panel -->
-		<div class="w-full rounded-lg bg-zinc-800 p-4 md:w-64 md:flex-shrink-0">
+		<div class="bg-coffee-brown w-full rounded-lg p-4 md:w-64 md:flex-shrink-0">
 			<div class="flex items-center justify-between">
 				<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
 				<button
@@ -459,7 +459,7 @@
 					{#each filteredAndSortedData as bean}
 						<button
 							type="button"
-							class="w-full cursor-pointer rounded-lg bg-zinc-800 p-3 text-left transition-colors hover:bg-zinc-700 md:p-4"
+							class="bg-coffee-brown w-full cursor-pointer rounded-lg p-3 text-left transition-colors hover:bg-zinc-700 md:p-4"
 							onclick={() => selectBean(bean)}
 						>
 							<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">

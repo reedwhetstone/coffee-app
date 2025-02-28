@@ -118,7 +118,7 @@
 	></button>
 	<div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
 		<div
-			class="relative w-full max-w-2xl rounded-lg bg-zinc-800 p-2 shadow-xl sm:p-4"
+			class="bg-coffee-brown relative w-full max-w-2xl rounded-lg p-2 shadow-xl sm:p-4"
 			role="dialog"
 			aria-modal="true"
 		>
@@ -271,7 +271,7 @@
 				<div class="flex justify-end space-x-2">
 					<button
 						type="button"
-						class="rounded bg-zinc-600 px-3 py-1.5 text-zinc-300 sm:px-4 sm:py-2"
+						class="bg-light-cream rounded px-3 py-1.5 text-zinc-300 sm:px-4 sm:py-2"
 						onclick={onClose}
 					>
 						Cancel

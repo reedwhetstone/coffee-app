@@ -275,7 +275,7 @@
 		<div class="rounded-2xl bg-zinc-700">
 			<form on:submit|preventDefault={handleSearch} class="space-y-4">
 				<!-- Query/Input area with wrapping textarea -->
-				<div class="relative rounded-2xl bg-zinc-800 p-4">
+				<div class="bg-coffee-brown relative rounded-2xl p-4">
 					<span class="text-sm text-zinc-400">Query:</span>
 					<div>
 						<div class="flex items-center gap-2">
@@ -332,14 +332,14 @@
 					<div class="px-4 pb-4">
 						<!-- Add divider here -->
 						<div class="flex items-center gap-2 py-2">
-							<hr class="flex-1 border-zinc-600" />
+							<hr class="border-light-cream flex-1" />
 						</div>
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 							{#each recommendedCoffees as coffee}
 								<a
 									href={coffee.link}
 									target="_blank"
-									class="group block rounded-lg bg-zinc-700 p-4 transition-all hover:scale-[1.02] hover:bg-zinc-800 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+									class="hover:bg-coffee-brown group block rounded-lg bg-zinc-700 p-4 transition-all hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 								>
 									<div class="flex items-center justify-between">
 										<h4 class="font-semibold text-zinc-100">{coffee.name}</h4>
@@ -376,7 +376,7 @@
 <!-- Update main content layout -->
 <div class="mx-2 mt-4 flex flex-col gap-4 md:mx-8 md:mt-8 md:flex-row">
 	<!-- Filter Panel - Make collapsible on mobile -->
-	<div class="rounded-lg bg-zinc-800 p-4 md:w-64 md:flex-shrink-0">
+	<div class="bg-coffee-brown rounded-lg p-4 md:w-64 md:flex-shrink-0">
 		<div class="flex items-center justify-between">
 			<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
 			<button
@@ -434,7 +434,7 @@
 											type="checkbox"
 											bind:group={filters.source}
 											value={source}
-											class="rounded border-zinc-600 bg-zinc-700 text-blue-600"
+											class="border-light-cream rounded bg-zinc-700 text-blue-600"
 										/>
 										<span class="text-sm text-zinc-100">{source}</span>
 									</label>
@@ -487,7 +487,7 @@
 				{#each paginatedData as coffee}
 					<button
 						type="button"
-						class="w-full cursor-pointer rounded-lg bg-zinc-800 p-3 text-left transition-colors hover:bg-zinc-700 md:p-4"
+						class="bg-coffee-brown w-full cursor-pointer rounded-lg p-3 text-left transition-colors hover:bg-zinc-700 md:p-4"
 						on:click={() => {
 							if (coffee.link) window.open(coffee.link, '_blank');
 						}}

@@ -1,5 +1,5 @@
 <div class="bg-coffee-brown flex min-h-screen items-center justify-center text-white">
-	<div class="max-w-md rounded-lg bg-zinc-800 p-8 text-center">
+	<div class="bg-coffee-brown max-w-md rounded-lg p-8 text-center">
 		<h1 class="mb-4 text-2xl font-bold">Cookies Required</h1>
 		<p class="mb-4">
 			This application requires cookies to function properly. Please enable cookies in your browser

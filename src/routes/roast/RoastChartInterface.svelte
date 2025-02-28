@@ -854,7 +854,7 @@
 	<div class="mt-4 flex justify-end gap-4">
 		{#if isBeforeRoasting || isDuringRoasting}
 			<button
-				class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-300 hover:bg-zinc-600"
+				class="hover:bg-light-cream rounded border-2 border-zinc-500 px-3 py-1 text-zinc-300"
 				on:click={() => {
 					prepareProfileLogsForSave();
 					saveRoastProfile();

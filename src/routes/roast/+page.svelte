@@ -586,7 +586,7 @@
 
 {#if isFormVisible}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 p-4">
-		<div class="w-full max-w-2xl rounded-lg bg-zinc-800 p-4 shadow-xl sm:p-6">
+		<div class="bg-coffee-brown w-full max-w-2xl rounded-lg p-4 shadow-xl sm:p-6">
 			<RoastProfileForm {selectedBean} onClose={hideRoastForm} onSubmit={handleFormSubmit} />
 		</div>
 	</div>
@@ -618,7 +618,7 @@
 
 <!-- Main roasting interface -->
 {#if currentRoastProfile}
-	<div class="mx-4 my-6 rounded-lg bg-zinc-800 p-4 sm:m-8 sm:p-8">
+	<div class="bg-coffee-brown mx-4 my-6 rounded-lg p-4 sm:m-8 sm:p-8">
 		<RoastChartInterface
 			{isPaused}
 			{currentRoastProfile}
