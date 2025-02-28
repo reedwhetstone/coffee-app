@@ -9,6 +9,8 @@
 	import { checkRole } from '$lib/types/auth.types';
 	const { debounce } = pkg;
 
+	import { clickOutside } from '$lib/utils/clickOutside';
+
 	// Update the props declaration
 	let { data } = $props();
 
@@ -88,21 +90,6 @@
 	}
 
 	// Add the clickOutside action definition directly in the component
-	function clickOutside(node: HTMLElement, { handler }: { handler: () => void }) {
-		const handleClick = (event: MouseEvent) => {
-			if (!node.contains(event.target as Node)) {
-				handler();
-			}
-		};
-
-		document.addEventListener('click', handleClick, true);
-
-		return {
-			destroy() {
-				document.removeEventListener('click', handleClick, true);
-			}
-		};
-	}
 </script>
 
 <div class="fixed right-4 top-4 z-50">
