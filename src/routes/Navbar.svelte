@@ -40,6 +40,7 @@
 	// Update `routeId` after each navigation
 	afterNavigate(() => {
 		routeId = page.route.id;
+		isMenuOpen = false;
 	});
 
 	// Function to handle Add New Bean click
@@ -81,116 +82,128 @@
 		routeId = page.route.id;
 		isMenuOpen = false;
 	});
+
+	function closeMenu() {
+		isMenuOpen = false;
+	}
+
+	// Add the clickOutside action definition directly in the component
+	function clickOutside(node: HTMLElement, { handler }: { handler: () => void }) {
+		const handleClick = (event: MouseEvent) => {
+			if (!node.contains(event.target as Node)) {
+				handler();
+			}
+		};
+
+		document.addEventListener('click', handleClick, true);
+
+		return {
+			destroy() {
+				document.removeEventListener('click', handleClick, true);
+			}
+		};
+	}
 </script>
 
-<nav class="bg-coffee-brown sticky top-0 z-50 px-4 py-2 shadow-lg">
-	<div class="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
-		<!-- Mobile Menu Button -->
-		<div class="flex items-center justify-between md:hidden">
-			<button onclick={toggleMenu} class="hover:bg-coffee-brown ml-2 rounded p-2 text-zinc-400">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-6 w-6"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					{#if isMenuOpen}
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						/>
-					{:else}
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M4 6h16M4 12h16M4 18h16"
-						/>
-					{/if}
-				</svg>
-			</button>
-		</div>
+<div class="fixed right-4 top-4 z-50">
+	<button
+		onclick={toggleMenu}
+		class="bg-background-secondary-light text-background-primary-light hover:bg-background-secondary-light/90 rounded-full p-2 shadow-lg"
+		aria-label="Toggle menu"
+	>
+		{#if session?.user}
+			<!-- User Avatar/Icon -->
+			<div
+				class="text-background-primary-light flex h-8 w-8 items-center justify-center rounded-full bg-sky-800"
+			>
+				{session.user.email?.[0].toUpperCase() || 'U'}
+			</div>
+		{:else}
+			<!-- Default Profile Icon -->
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-8 w-8"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+				/>
+			</svg>
+		{/if}
+	</button>
 
-		<!-- Navigation Links -->
+	{#if isMenuOpen}
 		<div
-			class="flex flex-col md:flex-row md:items-center md:gap-4 {isMenuOpen
-				? 'block'
-				: 'hidden md:flex'}"
+			class="absolute right-0 mt-2 w-48 rounded-lg bg-white shadow-xl"
+			use:clickOutside={{ handler: closeMenu }}
 		>
-			<ul class="flex flex-wrap items-center gap-2">
+			<div class="p-2">
+				{#if session?.user}
+					<div class="mb-2 border-b border-gray-200 pb-2 text-sm text-gray-600">
+						{session.user.email}
+					</div>
+				{/if}
+
 				{#if hasRequiredRole('member')}
-					<li class="w-full md:w-auto">
+					<nav class="space-y-1">
 						<a
 							href="/"
-							class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/'
-								? 'text-sky-800'
-								: 'text-light-cream'} hover:bg-coffee-brown hover:text-sky-800"
+							class="block rounded px-3 py-2 text-sm {routeId === '/'
+								? 'bg-background-secondary-light/10 text-background-secondary-light'
+								: 'text-gray-700'} hover:bg-background-secondary-light/10"
 						>
-							CATALOG
+							Catalog
 						</a>
-					</li>
-
-					<li class="w-full md:w-auto">
 						<a
 							href="/beans"
-							class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/beans'
-								? 'text-sky-800'
-								: 'text-light-cream'}
-							hover:bg-coffee-brown hover:text-sky-800"
+							class="block rounded px-3 py-2 text-sm {routeId === '/beans'
+								? 'bg-background-secondary-light/10 text-background-secondary-light'
+								: 'text-gray-700'} hover:bg-background-secondary-light/10"
 						>
-							BEANS
+							Beans
 						</a>
-					</li>
-
-					<li class="w-full md:w-auto">
 						<a
 							href="/roast"
-							class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/roast'
-								? 'text-sky-800'
-								: 'text-light-cream'}
-								hover:bg-coffee-brown hover:text-sky-800"
+							class="block rounded px-3 py-2 text-sm {routeId === '/roast'
+								? 'bg-background-secondary-light/10 text-background-secondary-light'
+								: 'text-gray-700'} hover:bg-background-secondary-light/10"
 						>
-							ROAST
+							Roast
 						</a>
-					</li>
-					<li class="w-full md:w-auto">
 						<a
 							href="/profit"
-							class="block w-full px-3 py-2 text-center md:inline md:w-auto {routeId === '/profit'
-								? 'text-sky-800'
-								: 'text-light-cream'}
-								hover:bg-coffee-brown hover:text-sky-800"
+							class="block rounded px-3 py-2 text-sm {routeId === '/profit'
+								? 'bg-background-secondary-light/10 text-background-secondary-light'
+								: 'text-gray-700'} hover:bg-background-secondary-light/10"
 						>
-							PROFIT
+							Profit
 						</a>
-					</li>
+					</nav>
 				{/if}
-			</ul>
-		</div>
 
-		<!-- Auth Section -->
-		<div class="flex items-center gap-2 {isMenuOpen ? 'block' : 'hidden md:flex'}">
-			{#if session?.user}
-				<span class="hidden text-sm text-zinc-400 md:inline">
-					{session.user.email}
-				</span>
-				<button
-					onclick={handleSignOut}
-					class="w-full rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900 md:w-auto"
-				>
-					Sign Out
-				</button>
-			{:else}
-				<button
-					onclick={handleSignIn}
-					class="w-full rounded border-2 border-blue-800 px-3 py-1 text-zinc-500 hover:bg-blue-900 md:w-auto"
-				>
-					Sign In
-				</button>
-			{/if}
+				<div class="mt-2 border-t border-gray-200 pt-2">
+					{#if session?.user}
+						<button
+							onclick={handleSignOut}
+							class="block w-full rounded px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+						>
+							Sign Out
+						</button>
+					{:else}
+						<button
+							onclick={handleSignIn}
+							class="block w-full rounded px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50"
+						>
+							Sign In
+						</button>
+					{/if}
+				</div>
+			</div>
 		</div>
-	</div>
-</nav>
+	{/if}
+</div>

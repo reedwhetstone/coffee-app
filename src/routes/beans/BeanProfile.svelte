@@ -95,14 +95,14 @@
 	});
 </script>
 
-<div class="bg-coffee-brown rounded-lg p-6">
+<div class="bg-background-secondary-light rounded-lg p-6">
 	<div class="mb-4">
 		<div class="flex items-center justify-between">
 			<h2 class="text-xl font-bold text-zinc-300">{selectedBean.name}</h2>
 			<div class="space-x-2">
 				{#if role === 'admin' || role === 'member'}
 					<button
-						class="hover:bg-light-cream rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500"
+						class="hover:bg-background-primary-light rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500"
 						onclick={() => {
 							goto(
 								`/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.name)}`,
@@ -126,7 +126,7 @@
 				<button
 					class="h-3 w-3 rounded-full transition-all duration-300 {i === currentPage
 						? 'scale-110 bg-blue-500'
-						: 'bg-light-cream hover:bg-zinc-500'}"
+						: 'bg-background-primary-light hover:bg-zinc-500'}"
 					onclick={() => goToPage(i)}
 					aria-label="Go to page {i + 1}"
 				></button>
@@ -154,7 +154,7 @@
 								{#if isEditing && key !== 'id' && key !== 'last_updated'}
 									{#if key === 'notes'}
 										<textarea
-											class="bg-light-cream ml-2 w-full rounded px-2 py-1 text-zinc-300"
+											class="bg-background-primary-light ml-2 w-full rounded px-2 py-1 text-zinc-300"
 											rows="4"
 											bind:value={editedBean[key]}
 										></textarea>
@@ -164,13 +164,13 @@
 											min="1"
 											max="10"
 											step="1"
-											class="bg-light-cream ml-2 rounded px-2 py-1 text-zinc-300"
+											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else if key === 'link'}
 										<input
 											type="url"
-											class="bg-light-cream ml-2 rounded px-2 py-1 text-zinc-300"
+											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else if key === 'bean_cost' || key === 'tax_ship_cost'}
@@ -178,13 +178,13 @@
 											type="number"
 											step="0.01"
 											min="0"
-											class="bg-light-cream ml-2 rounded px-2 py-1 text-zinc-300"
+											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else}
 										<input
 											type={typeof selectedBean[key] === 'number' ? 'number' : 'text'}
-											class="bg-light-cream ml-2 rounded px-2 py-1 text-zinc-300"
+											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{/if}
@@ -228,7 +228,7 @@
 								{#if isEditing && key !== 'id' && key !== 'last_updated'}
 									{#if key === 'notes'}
 										<textarea
-											class="bg-light-cream ml-2 w-full rounded px-2 py-1 text-zinc-300"
+											class="bg-background-primary-light ml-2 w-full rounded px-2 py-1 text-zinc-300"
 											rows="4"
 											bind:value={editedBean[key]}
 										></textarea>
@@ -238,13 +238,13 @@
 											min="1"
 											max="10"
 											step="1"
-											class="bg-light-cream ml-2 rounded px-2 py-1 text-zinc-300"
+											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else if key === 'link'}
 										<input
 											type="url"
-											class="bg-light-cream ml-2 rounded px-2 py-1 text-zinc-300"
+											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else if key === 'bean_cost' || key === 'tax_ship_cost'}
@@ -252,13 +252,13 @@
 											type="number"
 											step="0.01"
 											min="0"
-											class="bg-light-cream ml-2 rounded px-2 py-1 text-zinc-300"
+											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else}
 										<input
 											type={typeof value === 'number' ? 'number' : 'text'}
-											class="bg-light-cream ml-2 rounded px-2 py-1 text-zinc-300"
+											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{/if}

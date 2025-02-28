@@ -9,10 +9,14 @@ export default {
 	theme: {
 		extend: {
 			colors: {
-				'coffee-brown': '#faf8f3',
+				'background-secondary-light': '#faf8f3',
 				'growth-green': '#7FB069',
-				'light-cream': '#f4ece0',
-				'harvest-gold': '#7FB069'
+				'background-primary-light': '#f4ece0',
+				'harvest-gold': '#7FB069',
+				'border-light': '#e0d7c5',
+				'text-primary-light': '#3b3024',
+				'text-secondary-light': '#695c4d',
+				'link-light': '#a07d50'
 			}
 		}
 	},

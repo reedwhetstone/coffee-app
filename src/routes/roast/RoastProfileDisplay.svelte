@@ -137,7 +137,7 @@
 	$: slideDirection = currentIndex > previousIndex ? 1 : -1;
 </script>
 
-<div class="bg-coffee-brown mx-2 mt-4 rounded-lg p-3 sm:mx-8 sm:mt-8 sm:p-6">
+<div class="bg-background-secondary-light mx-2 mt-4 rounded-lg p-3 sm:mx-8 sm:mt-8 sm:p-6">
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center sm:text-left">
@@ -180,7 +180,7 @@
 									{#if isEditing && key !== 'last_updated'}
 										{#if ['roast_notes', 'roast_targets'].includes(key)}
 											<textarea
-												class="bg-light-cream relative z-0 min-h-[80px] w-full rounded px-2 py-1 text-zinc-300"
+												class="bg-background-primary-light relative z-0 min-h-[80px] w-full rounded px-2 py-1 text-zinc-300"
 												rows="4"
 												bind:value={editedProfile[key]}
 											></textarea>
@@ -189,13 +189,13 @@
 												type="number"
 												step="0.1"
 												min="0"
-												class="bg-light-cream relative z-0 h-[36px] w-full rounded px-2 py-1 text-zinc-300"
+												class="bg-background-primary-light relative z-0 h-[36px] w-full rounded px-2 py-1 text-zinc-300"
 												bind:value={editedProfile[key]}
 											/>
 										{:else if key === 'roast_date'}
 											<input
 												type="date"
-												class="bg-light-cream relative z-0 h-[36px] w-full rounded px-2 py-1 text-zinc-300"
+												class="bg-background-primary-light relative z-0 h-[36px] w-full rounded px-2 py-1 text-zinc-300"
 												value={formatDateForInput(editedProfile[key])}
 												on:input={(e) =>
 													(editedProfile[key] = prepareDateForAPI(e.currentTarget.value))}
@@ -203,7 +203,7 @@
 										{:else}
 											<input
 												type="text"
-												class="bg-light-cream relative z-0 h-[36px] w-full rounded px-2 py-1 text-zinc-300"
+												class="bg-background-primary-light relative z-0 h-[36px] w-full rounded px-2 py-1 text-zinc-300"
 												bind:value={editedProfile[key]}
 											/>
 										{/if}
@@ -232,7 +232,7 @@
 				<button
 					class="h-3 w-3 rounded-full transition-all duration-300 {i === currentIndex
 						? 'scale-110 bg-blue-500'
-						: 'bg-light-cream hover:bg-zinc-500'}"
+						: 'bg-background-primary-light hover:bg-zinc-500'}"
 					on:click={() => goToProfile(i)}
 					aria-label="Go to profile {i + 1}"
 				></button>

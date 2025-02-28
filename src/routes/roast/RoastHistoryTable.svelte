@@ -48,7 +48,7 @@
 
 <div class="mx-2 mt-4 flex flex-col gap-4 md:mx-8 md:mt-8 md:flex-row">
 	<!-- Filter Panel -->
-	<div class="bg-coffee-brown rounded-lg p-4 md:w-64 md:flex-shrink-0">
+	<div class="bg-background-secondary-light rounded-lg p-4 md:w-64 md:flex-shrink-0">
 		<div class="flex items-center justify-between">
 			<h3 class="text-lg font-semibold text-zinc-100">Filters</h3>
 			<button
@@ -109,7 +109,7 @@
 								{#each filteredProfiles[batchName] as profile}
 									<button
 										type="button"
-										class="bg-coffee-brown w-full cursor-pointer rounded-lg p-3 text-left transition-colors hover:bg-zinc-700 {currentRoastProfile?.roast_id ===
+										class="bg-background-secondary-light w-full cursor-pointer rounded-lg p-3 text-left transition-colors hover:bg-zinc-700 {currentRoastProfile?.roast_id ===
 										profile.roast_id
 											? 'bg-zinc-700'
 											: ''}"

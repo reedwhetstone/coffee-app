@@ -531,7 +531,7 @@
 <!-- Add form modal -->
 {#if isFormVisible}
 	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75">
-		<div class="bg-coffee-brown w-full max-w-2xl rounded-lg p-6">
+		<div class="bg-background-secondary-light w-full max-w-2xl rounded-lg p-6">
 			<SaleForm
 				sale={selectedSale}
 				onClose={() => {
@@ -549,55 +549,55 @@
 
 	<!-- KPI Cards -->
 	<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-		<div class="bg-coffee-brown rounded-lg p-4">
+		<div class="bg-background-secondary-light rounded-lg p-4">
 			<h3 class="text-sm text-zinc-400">Total Revenue</h3>
 			<p class="text-xl font-bold text-green-500">${totalRevenue.toFixed(2)}</p>
 		</div>
-		<div class="bg-coffee-brown rounded-lg p-4">
+		<div class="bg-background-secondary-light rounded-lg p-4">
 			<h3 class="text-sm text-zinc-400">Total Cost</h3>
 			<p class="text-xl font-bold text-red-500">${totalCost.toFixed(2)}</p>
 		</div>
-		<div class="bg-coffee-brown rounded-lg p-4">
+		<div class="bg-background-secondary-light rounded-lg p-4">
 			<h3 class="text-sm text-zinc-400">Total Profit</h3>
 			<p class="text-xl font-bold text-blue-500">${totalProfit.toFixed(2)}</p>
 		</div>
-		<div class="bg-coffee-brown rounded-lg p-4">
+		<div class="bg-background-secondary-light rounded-lg p-4">
 			<h3 class="text-sm text-zinc-400">Average Sales Margin</h3>
 			<p class="text-xl font-bold text-purple-500">{averageMargin.toFixed(1)}%</p>
 		</div>
-		<div class="bg-coffee-brown rounded-lg p-4">
+		<div class="bg-background-secondary-light rounded-lg p-4">
 			<h3 class="text-sm text-zinc-400">Total Pounds Roasted</h3>
 			<p class="text-xl font-bold text-orange-500">{totalPoundsRoasted.toFixed(1)} lbs</p>
 		</div>
-		<div class="bg-coffee-brown rounded-lg p-4">
+		<div class="bg-background-secondary-light rounded-lg p-4">
 			<h3 class="text-sm text-zinc-400">Avg. Sell-Through Rate</h3>
 			<p class="text-xl font-bold text-yellow-500">{sellThroughRate.toFixed(1)}%</p>
 		</div>
-		<div class="bg-coffee-brown rounded-lg p-4">
+		<div class="bg-background-secondary-light rounded-lg p-4">
 			<h3 class="text-sm text-zinc-400">Avg. Profit/lb</h3>
 			<p class="text-xl font-bold text-emerald-500">${avgProfitPerPound.toFixed(2)}</p>
 		</div>
-		<div class="bg-coffee-brown rounded-lg p-4">
+		<div class="bg-background-secondary-light rounded-lg p-4">
 			<h3 class="text-sm text-zinc-400">Avg. Cost/lb</h3>
 			<p class="text-xl font-bold text-pink-500">${avgCostPerPound.toFixed(2)}</p>
 		</div>
-		<div class="bg-coffee-brown rounded-lg p-4">
+		<div class="bg-background-secondary-light rounded-lg p-4">
 			<h3 class="text-sm text-zinc-400">Avg. Revenue/lb</h3>
 			<p class="text-xl font-bold text-indigo-500">${avgRevenuePerPound.toFixed(2)}</p>
 		</div>
-		<div class="bg-coffee-brown rounded-lg p-4">
+		<div class="bg-background-secondary-light rounded-lg p-4">
 			<h3 class="text-sm text-zinc-400">Avg. Roast Loss</h3>
 			<p class="text-xl font-bold text-cyan-500">{roastLossRate.toFixed(2)}%</p>
 		</div>
 	</div>
 
-	<div class="bg-coffee-brown mb-8 w-full rounded-lg p-6">
+	<div class="bg-background-secondary-light mb-8 w-full rounded-lg p-6">
 		<div bind:this={chartContainer} class="w-full"></div>
 	</div>
 
 	<!-- Detailed Profit Table -->
 	<div class="mt-8 overflow-x-auto">
-		<table class="bg-coffee-brown w-full table-auto">
+		<table class="bg-background-secondary-light w-full table-auto">
 			<thead class="bg-zinc-700 text-xs uppercase text-zinc-400">
 				<tr>
 					<th class="px-6 py-3">Purchase Date</th>
@@ -608,7 +608,7 @@
 				{#each [...groupedProfitData] as [date, items]}
 					<!-- Purchase Date Group Header -->
 					<tr
-						class="hover:bg-light-cream cursor-pointer bg-zinc-700"
+						class="hover:bg-background-primary-light cursor-pointer bg-zinc-700"
 						on:click={() => toggleDate(date)}
 					>
 						<td class="px-6 py-2 text-left text-xs font-semibold text-zinc-300">
@@ -648,7 +648,7 @@
 					{#if expandedDates.has(date)}
 						{#each items as item}
 							<tr
-								class="bg-coffee-brown border-b border-zinc-700 transition-colors hover:bg-zinc-700"
+								class="bg-background-secondary-light border-b border-zinc-700 transition-colors hover:bg-zinc-700"
 							>
 								<td
 									class="cursor-pointer px-6 py-4 pl-12 text-xs text-zinc-300 hover:text-blue-400"

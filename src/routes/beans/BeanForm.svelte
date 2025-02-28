@@ -358,7 +358,11 @@
 	</div>
 
 	<div class="mt-4 flex justify-end space-x-2">
-		<button type="button" class="bg-light-cream rounded px-4 py-2 text-zinc-300" onclick={onClose}>
+		<button
+			type="button"
+			class="bg-background-primary-light rounded px-4 py-2 text-zinc-300"
+			onclick={onClose}
+		>
 			Cancel
 		</button>
 		<button type="submit" class="rounded bg-green-600 px-4 py-2 text-zinc-300">
