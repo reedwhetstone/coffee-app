@@ -5,6 +5,12 @@
 
 	let { data } = $props<{ data: PageData }>();
 
+	// Debug: Log the data
+	$effect(() => {
+		console.log('Home page data:', data);
+		console.log('FilteredData store value:', $filteredData);
+	});
+
 	// Add search functionality
 	let searchQuery = $state('');
 	let chatResponse = $state('');
@@ -18,6 +24,15 @@
 	let recommendedCoffees = $state<any[]>([]);
 	let isLoadingRecommendations = $state(false);
 	let updatingRecommendations = $state(false);
+
+	// Only initialize filtered data if needed - most of the time the filter store should handle this
+	$effect(() => {
+		// If we have page data but filtered data is empty, initialize it manually
+		if (data?.data?.length > 0 && $filteredData.length === 0) {
+			console.log('Manually initializing filtered data with page data');
+			// This shouldn't be needed once the filterStore is fixed
+		}
+	});
 
 	// Update recommendations when filtered data changes with guard
 	$effect(() => {
@@ -262,7 +277,9 @@
 		<!-- Coffee Cards -->
 		<div class="flex-1">
 			{#if !$filteredData || $filteredData.length === 0}
-				<p class="p-4 text-zinc-300">No coffee data available</p>
+				<p class="p-4 text-zinc-300">
+					No coffee data available ({data?.data?.length || 0} items in raw data)
+				</p>
 			{:else}
 				<div class="space-y-2 md:space-y-4">
 					{#each paginatedData as coffee}

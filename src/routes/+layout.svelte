@@ -30,15 +30,24 @@
 		data?: any[];
 	}
 
-	let { data, children } = $props<{ data: LayoutData }>();
+	let { data, children } = $props<{ data: LayoutData; children: any }>();
+
+	// Debug data in the layout
+	$effect(() => {
+		console.log('Layout data:', data);
+	});
 
 	// Track route changes and initialize data for new routes
 	$effect(() => {
 		const currentRoute = $page.url.pathname;
+		console.log('Current route:', currentRoute);
 
-		// Initialize the filter store with the current route and data
-		if (data?.data && data.data.length > 0) {
+		// Check if we have data in the layout data object
+		if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
+			console.log('Initializing filter store with layout data:', data.data.length, 'items');
 			filterStore.initializeForRoute(currentRoute, data.data);
+		} else {
+			console.warn('No data available in layout to initialize filter store');
 		}
 	});
 

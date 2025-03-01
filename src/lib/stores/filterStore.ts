@@ -33,9 +33,12 @@ function createFilterStore() {
 
 	// Initialize filters for a specific route
 	function initializeForRoute(routeId: string, data: any[]) {
+		console.log(`Initializing filter store for route: ${routeId} with data:`, data);
+
 		update((state) => {
 			// Reset state if route has changed
 			if (state.routeId !== routeId) {
+				console.log(`Route changed from ${state.routeId} to ${routeId}, resetting state`);
 				return {
 					...initialState,
 					routeId,
@@ -45,6 +48,7 @@ function createFilterStore() {
 			}
 
 			// If same route but new data
+			console.log(`Same route (${routeId}), updating data`);
 			return {
 				...state,
 				originalData: data,
@@ -69,6 +73,9 @@ function createFilterStore() {
 
 		const defaultSort = defaultSorts[routeId] || null;
 		if (defaultSort) {
+			console.log(
+				`Setting default sort for ${routeId}: ${defaultSort.field} ${defaultSort.direction}`
+			);
 			setSortField(defaultSort.field);
 			setSortDirection(defaultSort.direction);
 		}
@@ -156,7 +163,12 @@ function createFilterStore() {
 		update((state) => {
 			const uniqueValues: Record<string, any[]> = {};
 
-			if (!state.originalData?.length) return { ...state, uniqueValues };
+			if (!state.originalData?.length) {
+				console.log('No original data found for generating unique filter values');
+				return { ...state, uniqueValues };
+			}
+
+			console.log(`Updating unique filter values for route: ${state.routeId}`);
 
 			switch (state.routeId) {
 				case '/':
@@ -184,6 +196,8 @@ function createFilterStore() {
 					break;
 			}
 
+			console.log('Generated unique values:', uniqueValues);
+
 			return {
 				...state,
 				uniqueValues
@@ -194,6 +208,8 @@ function createFilterStore() {
 	// Filter data based on current filters
 	function filterData(data: any[], filters: Record<string, any>): any[] {
 		if (!data?.length || !filters) return data;
+
+		console.log('Filtering data with filters:', filters);
 
 		return data.filter((item) => {
 			return Object.entries(filters).every(([key, value]) => {
@@ -231,6 +247,8 @@ function createFilterStore() {
 		sortDirection: 'asc' | 'desc' | null
 	): any[] {
 		if (!sortField || !sortDirection || !data?.length) return data;
+
+		console.log(`Sorting data by ${sortField} ${sortDirection}`);
 
 		return [...data].sort((a, b) => {
 			const aVal = a[sortField];
@@ -285,10 +303,18 @@ function createFilterStore() {
 		sortDirection: 'asc' | 'desc' | null,
 		filters: Record<string, any>
 	): any[] {
-		if (!data?.length) return [];
+		if (!data?.length) {
+			console.log('No data to process');
+			return [];
+		}
+
+		console.log(`Processing data: ${data.length} items`);
 
 		const filteredResults = filterData(data, filters);
+		console.log(`After filtering: ${filteredResults.length} items`);
+
 		const sortedResults = sortData(filteredResults, sortField, sortDirection);
+		console.log(`After sorting: ${sortedResults.length} items`);
 
 		return sortedResults;
 	}
@@ -300,10 +326,16 @@ function createFilterStore() {
 			clearTimeout(processTimeout);
 		}
 
+		console.log('Scheduling data processing...');
+
 		processTimeout = setTimeout(() => {
 			update((state) => {
-				if (state.processing) return state;
+				if (state.processing) {
+					console.log('Already processing, skipping update');
+					return state;
+				}
 
+				console.log('Starting data processing');
 				state.processing = true;
 
 				try {
@@ -318,6 +350,7 @@ function createFilterStore() {
 					const newDataString = JSON.stringify(newFilteredData);
 
 					if (state.lastProcessedString !== newDataString) {
+						console.log(`Data changed, updating filtered data (${newFilteredData.length} items)`);
 						return {
 							...state,
 							filteredData: newFilteredData,
@@ -326,6 +359,7 @@ function createFilterStore() {
 						};
 					}
 
+					console.log('Data unchanged, skipping update');
 					return {
 						...state,
 						processing: false

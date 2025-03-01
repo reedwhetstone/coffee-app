@@ -6,7 +6,7 @@
 	import { navbarActions } from '$lib/stores/navbarStore';
 	import { get } from 'svelte/store';
 	import { page } from '$app/stores';
-	import { filteredData } from '$lib/stores/filterStore';
+	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
 	// Define the type for the page data
 	type PageData = {
@@ -19,6 +19,21 @@
 	};
 
 	let { data } = $props<{ data: PageData }>();
+
+	// Debug: Log the data
+	$effect(() => {
+		console.log('Beans page data:', data);
+		console.log('FilteredData store value:', $filteredData);
+	});
+
+	// Only initialize filtered data if needed - most of the time the filter store should handle this
+	$effect(() => {
+		// If we have page data but filtered data is empty, initialize it manually
+		if (data?.data?.length > 0 && $filteredData.length === 0) {
+			console.log('Manually initializing filtered data with page data');
+			filterStore.initializeForRoute($page.url.pathname, data.data);
+		}
+	});
 
 	// State for form and bean selection
 	let isFormVisible = $state(false);
@@ -55,6 +70,12 @@
 					searchState: data.searchState,
 					role: data.role
 				};
+
+				// Re-initialize filter store with new data
+				if (data.data.length > 0) {
+					filterStore.initializeForRoute($page.url.pathname, data.data);
+				}
+
 				return true;
 			}
 			return false;
@@ -226,7 +247,9 @@
 	<!-- Coffee Cards -->
 	<div class="flex-1">
 		{#if !$filteredData || $filteredData.length === 0}
-			<p class="p-4 text-zinc-300">No coffee data available</p>
+			<p class="p-4 text-zinc-300">
+				No coffee data available ({data?.data?.length || 0} items in raw data)
+			</p>
 		{:else}
 			<div class="space-y-2 md:space-y-4">
 				{#each $filteredData as bean}

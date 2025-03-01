@@ -20,6 +20,7 @@
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import RoastChartInterface from './RoastChartInterface.svelte';
 	import { filteredData } from '$lib/stores/filterStore';
+	import { filterStore } from '$lib/stores/filterStore';
 
 	// Roast profile state management
 	let currentRoastProfile = $state<any>(null);
@@ -53,6 +54,21 @@
 
 	// Track initialization and processing
 	let updatingProfileGroups = $state(false);
+
+	// Debug: Log the data
+	$effect(() => {
+		console.log('Roast page data:', data);
+		console.log('FilteredData store value:', $filteredData);
+	});
+
+	// Only initialize filtered data if needed - most of the time the filter store should handle this
+	$effect(() => {
+		// If we have page data but filtered data is empty, initialize it manually
+		if (data?.data?.length > 0 && $filteredData.length === 0) {
+			console.log('Manually initializing filtered data with page data');
+			filterStore.initializeForRoute($page.url.pathname, data.data);
+		}
+	});
 
 	// Function to update grouped profiles from filtered data
 	function updateGroupedProfiles(profiles: any[]) {
@@ -708,3 +724,11 @@
 	onSelectProfile={selectProfile}
 	on:deleteBatch={handleBatchDelete}
 />
+
+{#if !$filteredData || $filteredData.length === 0}
+	<p class="p-4 text-zinc-300">
+		No roast profiles available ({data?.data?.length || 0} items in raw data)
+	</p>
+{:else}
+	<!-- Existing content -->
+{/if}
