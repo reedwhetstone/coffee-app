@@ -2,10 +2,11 @@
 	import { page } from '$app/stores';
 	import { clickOutside } from '$lib/utils/clickOutside';
 
-	// Props for filter configuration
-	let { filters = {}, onFilterChange } = $props<{
-		filters: Record<string, any>;
-		onFilterChange: (filters: Record<string, any>) => void;
+	// Props for filter configuration and data
+	let { data, filteredData, onFilteredData } = $props<{
+		data: any[];
+		filteredData: any[];
+		onFilteredData: (filteredData: any[]) => void;
 	}>();
 
 	// State
@@ -14,6 +15,23 @@
 
 	// Get current route to determine which filters to show
 	let routeId = $derived($page.url.pathname);
+
+	// Local state for filters
+	let filters = $state<Record<string, any>>({
+		sortField: 'arrival_date',
+		sortDirection: 'desc',
+		source: [],
+		name: '',
+		processing: '',
+		region: '',
+		cost_lb: '',
+		score_value: { min: '', max: '' },
+		arrival_date: '',
+		harvest_date: '',
+		cultivar_detail: '',
+		uniqueSources: [],
+		uniqueDates: {}
+	});
 
 	// Helper function to format column names
 	function formatColumnName(column: string): string {
@@ -54,15 +72,171 @@
 		}
 	}
 
+	// Initialize unique values for filters
+	function initializeFilters() {
+		switch (routeId) {
+			case '/':
+				filters.uniqueSources = [...new Set(data.map((item: { source: string }) => item.source))];
+				break;
+			case '/beans':
+				filters.uniqueDates = {
+					purchase_date: Array.from(
+						new Set(data.map((item: { purchase_date: string }) => item.purchase_date))
+					)
+						.filter((date): date is string => typeof date === 'string')
+						.sort((a, b) => b.localeCompare(a))
+				};
+				break;
+			case '/roast':
+				filters.uniqueDates = {
+					roast_date: Array.from(
+						new Set(data.map((item: { roast_date: string }) => item.roast_date))
+					)
+						.filter((date): date is string => typeof date === 'string')
+						.sort((a, b) => b.localeCompare(a))
+				};
+				break;
+		}
+	}
+
+	// Helper function to parse month/year dates
+	function parseMonthYear(dateStr: string | null): Date {
+		if (!dateStr) return new Date(0);
+		const [month, year] = dateStr.split(' ');
+		const monthIndex = new Date(Date.parse(month + ' 1, 2000')).getMonth();
+		return new Date(parseInt(year), monthIndex);
+	}
+
+	// Filter data based on current filters
+	function filterData(data: any[]): any[] {
+		return data.filter((item) => {
+			return Object.entries(filters).every(([key, value]) => {
+				if (
+					key === 'sortField' ||
+					key === 'sortDirection' ||
+					key === 'uniqueSources' ||
+					key === 'uniqueDates'
+				)
+					return true;
+				if (!value) return true;
+				const itemValue = item[key as keyof typeof item];
+
+				// Special handling for source
+				if (key === 'source') {
+					return value.length === 0 || value.includes(itemValue);
+				}
+
+				// Special handling for score_value
+				if (key === 'score_value') {
+					const score = Number(itemValue);
+					return (
+						(!value.min || score >= Number(value.min)) && (!value.max || score <= Number(value.max))
+					);
+				}
+
+				// Default string filtering
+				if (typeof value === 'string') {
+					return String(itemValue).toLowerCase().includes(value.toLowerCase());
+				}
+				return true;
+			});
+		});
+	}
+
+	// Sort data based on current sort settings
+	function sortData(data: any[]): any[] {
+		if (!filters.sortField || !filters.sortDirection) return data;
+
+		return [...data].sort((a, b) => {
+			const aVal = a[filters.sortField];
+			const bVal = b[filters.sortField];
+
+			// Special handling for dates
+			if (
+				filters.sortField === 'arrival_date' ||
+				filters.sortField === 'purchase_date' ||
+				filters.sortField === 'roast_date'
+			) {
+				if (!aVal && !bVal) return 0;
+				if (!aVal) return filters.sortDirection === 'asc' ? -1 : 1;
+				if (!bVal) return filters.sortDirection === 'asc' ? 1 : -1;
+
+				if (filters.sortField === 'arrival_date') {
+					const dateA = parseMonthYear(aVal as string);
+					const dateB = parseMonthYear(bVal as string);
+					return filters.sortDirection === 'asc'
+						? dateA.getTime() - dateB.getTime()
+						: dateB.getTime() - dateA.getTime();
+				} else {
+					const aStr = String(aVal);
+					const bStr = String(bVal);
+					return filters.sortDirection === 'asc'
+						? aStr.localeCompare(bStr)
+						: bStr.localeCompare(aStr);
+				}
+			}
+
+			// String comparison
+			if (typeof aVal === 'string' && typeof bVal === 'string') {
+				return filters.sortDirection === 'asc'
+					? aVal.localeCompare(bVal)
+					: bVal.localeCompare(aVal);
+			}
+
+			// Number comparison
+			return filters.sortDirection === 'asc'
+				? Number(aVal) - Number(bVal)
+				: Number(bVal) - Number(aVal);
+		});
+	}
+
+	// Process and emit filtered data
+	function processData(): void {
+		const filteredData = filterData(data);
+		const sortedData = sortData(filteredData);
+		onFilteredData(sortedData);
+	}
+
 	function closePanel() {
 		isOpen = false;
 	}
+
+	// Initialize filters when data changes
+	$effect(() => {
+		if (data?.length > 0) {
+			initializeFilters();
+			processData();
+		}
+	});
+
+	// Reset filters when route changes
+	$effect(() => {
+		const currentRoute = $page.url.pathname;
+		if (currentRoute !== routeId) {
+			filters = {
+				sortField: 'arrival_date',
+				sortDirection: 'desc',
+				source: [],
+				name: '',
+				processing: '',
+				region: '',
+				cost_lb: '',
+				score_value: { min: '', max: '' },
+				arrival_date: '',
+				harvest_date: '',
+				cultivar_detail: '',
+				uniqueSources: [],
+				uniqueDates: {}
+			};
+			processData();
+		}
+	});
 </script>
 
 <!-- Settings button -->
 <div class="fixed left-4 top-4 z-50">
 	<button
-		on:click={() => (isOpen = !isOpen)}
+		onclick={() => (isOpen = !isOpen)}
 		class="bg-background-secondary-light text-background-primary-light hover:bg-background-secondary-light/90 rounded-full p-2 shadow-lg"
 		aria-label="Toggle settings"
 	>
@@ -102,7 +276,7 @@
 					<h3 class="text-secondary-light text-lg font-semibold">Filters</h3>
 					<button
 						class="text-primary-light hover:text-secondary-light text-sm"
-						on:click={() => (expandedFilters = !expandedFilters)}
+						onclick={() => (expandedFilters = !expandedFilters)}
 					>
 						{expandedFilters ? 'Hide Filters' : 'Show Filters'}
 					</button>
@@ -112,36 +286,34 @@
 				<div class="flex-1 overflow-y-auto p-4">
 					<div class={`space-y-4 ${expandedFilters ? 'block' : 'hidden'}`}>
 						<!-- Sort Controls -->
-						{#if filters.sortField !== undefined}
-							<div class="space-y-2">
-								<label for="sort-field" class="text-primary-light block text-sm">Sort by</label>
+						<div class="space-y-2">
+							<label for="sort-field" class="text-primary-light block text-sm">Sort by</label>
+							<select
+								id="sort-field"
+								bind:value={filters.sortField}
+								onchange={processData}
+								class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
+							>
+								<option value={null}>None</option>
+								{#each getFilterableColumns() as column}
+									<option value={column}>
+										{formatColumnName(column)}
+									</option>
+								{/each}
+							</select>
+
+							{#if filters.sortField}
 								<select
-									id="sort-field"
-									bind:value={filters.sortField}
-									on:change={() => onFilterChange(filters)}
+									id="sort-direction"
+									bind:value={filters.sortDirection}
+									onchange={processData}
 									class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 								>
-									<option value={null}>None</option>
-									{#each getFilterableColumns() as column}
-										<option value={column}>
-											{formatColumnName(column)}
-										</option>
-									{/each}
+									<option value="asc">Ascending</option>
+									<option value="desc">Descending</option>
 								</select>
-
-								{#if filters.sortField}
-									<select
-										id="sort-direction"
-										bind:value={filters.sortDirection}
-										on:change={() => onFilterChange(filters)}
-										class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
-									>
-										<option value="asc">Ascending</option>
-										<option value="desc">Descending</option>
-									</select>
-								{/if}
-							</div>
-						{/if}
+							{/if}
+						</div>
 
 						<!-- Filter Controls -->
 						<div class="space-y-2">
@@ -153,13 +325,13 @@
 									</label>
 									{#if column === 'source' && filters.uniqueSources}
 										<div class="space-y-2">
-											{#each filters.uniqueSources as source}
+											{#each filters.uniqueSources.map((item: any) => item.source) as source}
 												<label class="flex items-center gap-2">
 													<input
 														type="checkbox"
 														bind:group={filters.source}
 														value={source}
-														on:change={() => onFilterChange(filters)}
+														onchange={processData}
 														class="border-background-primary-light bg-background-tertiary-light rounded text-blue-600"
 													/>
 													<span class="text-secondary-light text-sm">{source}</span>
@@ -171,7 +343,7 @@
 											<input
 												type="number"
 												bind:value={filters[column].min}
-												on:input={() => onFilterChange(filters)}
+												oninput={processData}
 												class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 												placeholder="Min"
 												min="0"
@@ -181,7 +353,7 @@
 											<input
 												type="number"
 												bind:value={filters[column].max}
-												on:input={() => onFilterChange(filters)}
+												oninput={processData}
 												class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 												placeholder="Max"
 												min="0"
@@ -189,14 +361,14 @@
 												step="0.1"
 											/>
 										</div>
-									{:else if column === 'purchase_date' && filters.uniquePurchaseDates}
+									{:else if (column === 'purchase_date' || column === 'roast_date') && filters.uniqueDates?.[column]}
 										<select
 											bind:value={filters[column]}
-											on:change={() => onFilterChange(filters)}
+											onchange={processData}
 											class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 										>
 											<option value="">All Dates</option>
-											{#each filters.uniquePurchaseDates as date}
+											{#each filters.uniqueDates[column].map((item: any) => item.date) as date}
 												<option value={date}>{date}</option>
 											{/each}
 										</select>
@@ -204,7 +376,7 @@
 										<input
 											type="text"
 											bind:value={filters[column]}
-											on:input={() => onFilterChange(filters)}
+											oninput={processData}
 											class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
 											placeholder={`Filter by ${column.replace(/_/g, ' ')}`}
 										/>

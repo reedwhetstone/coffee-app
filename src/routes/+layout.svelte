@@ -7,20 +7,34 @@
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { onMount } from 'svelte';
 
-	let { data, children } = $props();
+	interface LayoutData {
+		session: {
+			access_token: string;
+			refresh_token: string;
+			expires_in: number;
+			expires_at: number | undefined;
+			user: {
+				id: string;
+				email: string;
+				role: string;
+			};
+		} | null;
+		user: {
+			id: string;
+			email: string;
+			role: string;
+		} | null;
+		role: 'viewer' | 'member' | 'admin';
+		data?: any[];
+	}
 
-	// Global filter state
-	let filters = $state<Record<string, any>>({
-		sortField: null,
-		sortDirection: null,
-		source: [],
-		uniqueSources: [],
-		score_value: { min: '', max: '' },
-		uniquePurchaseDates: []
-	});
+	let { data, children } = $props<{ data: LayoutData }>();
 
-	function handleFilterChange(newFilters: Record<string, any>) {
-		filters = { ...filters, ...newFilters };
+	// Global filtered data state
+	let filteredData = $state<any[]>([]);
+
+	function handleFilteredData(newFilteredData: any[]) {
+		filteredData = newFilteredData;
 	}
 
 	onMount(() => {
@@ -30,7 +44,7 @@
 </script>
 
 <Navbar {data} />
-<Settingsbar {filters} onFilterChange={handleFilterChange} />
+<Settingsbar data={data.data ?? []} {filteredData} onFilteredData={handleFilteredData} />
 <div class="">
 	{@render children()}
 </div>
