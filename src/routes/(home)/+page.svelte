@@ -48,28 +48,6 @@
 		}
 	});
 
-	// Update recommendations when filtered data changes with guard
-	$effect(() => {
-		if ($filteredData.length && recommendedCoffees.length > 0 && !updatingRecommendations) {
-			updatingRecommendations = true;
-			setTimeout(() => {
-				try {
-					// Filter recommendations to only include items that are in the filtered data
-					const newRecommendations = recommendedCoffees.filter((coffee) =>
-						$filteredData.some((item) => item.id === coffee.id)
-					);
-
-					// Only update if there's a change
-					if (JSON.stringify(newRecommendations) !== JSON.stringify(recommendedCoffees)) {
-						recommendedCoffees = newRecommendations;
-					}
-				} finally {
-					updatingRecommendations = false;
-				}
-			}, 0);
-		}
-	});
-
 	// Pagination computation with memoization to prevent unnecessary updates
 	let lastFilteredDataLength = $state(-1);
 	let paginatedData = $state<any[]>([]);
