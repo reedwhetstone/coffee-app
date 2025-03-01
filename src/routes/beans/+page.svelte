@@ -26,6 +26,9 @@
 		console.log('FilteredData store value:', $filteredData);
 	});
 
+	// Track initialization state
+	let initializing = $state(false);
+
 	// Only initialize filtered data if needed - most of the time the filter store should handle this
 	$effect(() => {
 		const currentRoute = $page.url.pathname;
@@ -35,10 +38,16 @@
 			data?.data?.length > 0 &&
 			($filteredData.length === 0 ||
 				!$filterStore.initialized ||
-				$filterStore.routeId !== currentRoute)
+				$filterStore.routeId !== currentRoute) &&
+			!initializing
 		) {
 			console.log('Manually initializing filtered data with page data');
-			filterStore.initializeForRoute(currentRoute, data.data);
+			initializing = true;
+			// Use setTimeout to break the update cycle
+			setTimeout(() => {
+				filterStore.initializeForRoute(currentRoute, data.data);
+				initializing = false;
+			}, 0);
 		}
 	});
 
@@ -46,15 +55,16 @@
 	let isFormVisible = $state(false);
 	let selectedBean = $state<any>(null);
 	let processingUpdate = $state(false);
+	let lastSelectedBeanId = $state<number | null>(null);
 
-	// Reset selected bean if it's filtered out
+	// Reset selected bean if it's filtered out with guard to prevent loops
 	$effect(() => {
 		if ($filteredData.length && selectedBean && !processingUpdate) {
 			processingUpdate = true;
 			try {
 				// Check if the selected bean still exists in the filtered data
 				const stillExists = $filteredData.some((bean) => bean.id === selectedBean.id);
-				if (!stillExists) {
+				if (!stillExists && selectedBean.id !== lastSelectedBeanId) {
 					selectedBean = null;
 				}
 			} finally {
@@ -62,6 +72,25 @@
 			}
 		}
 	});
+
+	// Function to select a bean with guard
+	function selectBean(bean: any) {
+		if (processingUpdate) return;
+
+		processingUpdate = true;
+		try {
+			// Only update if different to avoid unnecessary re-renders
+			if (!selectedBean || selectedBean.id !== bean.id) {
+				selectedBean = bean;
+				lastSelectedBeanId = bean.id;
+			}
+		} finally {
+			// Use setTimeout to break potential update cycles
+			setTimeout(() => {
+				processingUpdate = false;
+			}, 50);
+		}
+	}
 
 	// Function to load data
 	async function loadData() {
@@ -79,8 +108,12 @@
 				};
 
 				// Re-initialize filter store with new data
-				if (data.data.length > 0) {
-					filterStore.initializeForRoute($page.url.pathname, data.data);
+				if (data.data.length > 0 && !initializing) {
+					initializing = true;
+					setTimeout(() => {
+						filterStore.initializeForRoute($page.url.pathname, data.data);
+						initializing = false;
+					}, 0);
 				}
 
 				return true;
@@ -117,12 +150,6 @@
 	function editBean(bean: Database['public']['Tables']['green_coffee_inv']['Row']) {
 		selectedBean = bean;
 		isFormVisible = true;
-	}
-
-	// Function to handle row selection
-	function selectBean(bean: Database['public']['Tables']['green_coffee_inv']['Row']) {
-		selectedBean = bean;
-		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
 	async function handleFormSubmit(
@@ -236,8 +263,34 @@
 			<BeanProfile
 				{selectedBean}
 				role={data.role}
-				onUpdate={(bean) => handleBeanUpdate(bean)}
-				onDelete={(id) => deleteBean(id)}
+				onUpdate={async (updatedBean) => {
+					if (processingUpdate) return;
+					processingUpdate = true;
+					try {
+						await loadData();
+						// Find the updated bean in the filtered data
+						const refreshedBean = $filteredData.find((bean) => bean.id === updatedBean.id);
+						if (refreshedBean) {
+							selectedBean = refreshedBean;
+						}
+					} finally {
+						setTimeout(() => {
+							processingUpdate = false;
+						}, 50);
+					}
+				}}
+				onDelete={async (id) => {
+					if (processingUpdate) return;
+					processingUpdate = true;
+					try {
+						await deleteBean(id);
+						selectedBean = null;
+					} finally {
+						setTimeout(() => {
+							processingUpdate = false;
+						}, 50);
+					}
+				}}
 			/>
 		</div>
 	{/if}

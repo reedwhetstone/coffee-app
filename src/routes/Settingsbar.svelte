@@ -12,6 +12,8 @@
 	let isOpen = $state(false);
 	let expandedFilters = $state(true);
 	let processingFilterChange = $state(false);
+	let lastFilterChange = $state(Date.now());
+	let filterQueueId: NodeJS.Timeout | null = $state(null);
 
 	// Debug info
 	$effect(() => {
@@ -36,58 +38,66 @@
 		isOpen = !isOpen;
 	}
 
-	// Safe filter update methods
-	function safeSetFilter(key: string, value: any) {
-		if (processingFilterChange) return;
+	// Queue filter changes with a minimum time between calls
+	function queueFilterChange(callback: () => void) {
+		// Clear any pending queue
+		if (filterQueueId) {
+			clearTimeout(filterQueueId);
+			filterQueueId = null;
+		}
 
+		// If processing, queue it for later
+		if (processingFilterChange) {
+			console.log('Already processing a filter change, queueing next change');
+			filterQueueId = setTimeout(() => queueFilterChange(callback), 100);
+			return;
+		}
+
+		// If we've had a recent update, add a delay
+		const now = Date.now();
+		const timeSinceLastChange = now - lastFilterChange;
+		if (timeSinceLastChange < 300) {
+			// Queue with enough delay to space out calls
+			const delay = 300 - timeSinceLastChange;
+			console.log(`Recent filter change detected, adding ${delay}ms delay before next change`);
+			filterQueueId = setTimeout(() => queueFilterChange(callback), delay);
+			return;
+		}
+
+		// Execute the change
+		processingFilterChange = true;
 		try {
-			processingFilterChange = true;
-			filterStore.setFilter(key, value);
+			lastFilterChange = Date.now();
+			callback();
 		} finally {
-			// Use setTimeout to ensure we don't get into an update loop
+			// Use a longer delay to ensure we don't get cascading updates
 			setTimeout(() => {
 				processingFilterChange = false;
-			}, 50);
+
+				// Check the queue after we're done
+				if (filterQueueId) {
+					clearTimeout(filterQueueId);
+					filterQueueId = null;
+				}
+			}, 200);
 		}
+	}
+
+	// Safe filter update methods
+	function safeSetFilter(key: string, value: any) {
+		queueFilterChange(() => filterStore.setFilter(key, value));
 	}
 
 	function safeSetSortField(field: string | null) {
-		if (processingFilterChange) return;
-
-		try {
-			processingFilterChange = true;
-			filterStore.setSortField(field);
-		} finally {
-			setTimeout(() => {
-				processingFilterChange = false;
-			}, 50);
-		}
+		queueFilterChange(() => filterStore.setSortField(field));
 	}
 
 	function safeSetSortDirection(direction: 'asc' | 'desc' | null) {
-		if (processingFilterChange) return;
-
-		try {
-			processingFilterChange = true;
-			filterStore.setSortDirection(direction);
-		} finally {
-			setTimeout(() => {
-				processingFilterChange = false;
-			}, 50);
-		}
+		queueFilterChange(() => filterStore.setSortDirection(direction));
 	}
 
 	function safeClearFilters() {
-		if (processingFilterChange) return;
-
-		try {
-			processingFilterChange = true;
-			filterStore.clearFilters();
-		} finally {
-			setTimeout(() => {
-				processingFilterChange = false;
-			}, 50);
-		}
+		queueFilterChange(() => filterStore.clearFilters());
 	}
 </script>
 

@@ -26,6 +26,9 @@
 	let isLoadingRecommendations = $state(false);
 	let updatingRecommendations = $state(false);
 
+	// Track initialization to prevent loops
+	let initializing = $state(false);
+
 	// Initialize filter store when page mounts
 	$effect(() => {
 		const currentRoute = $page.url.pathname;
@@ -33,10 +36,15 @@
 		// If we have data and filter store isn't initialized for this route yet, initialize it
 		if (
 			data?.data?.length > 0 &&
-			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
+			(!$filterStore.initialized || $filterStore.routeId !== currentRoute) &&
+			!initializing
 		) {
 			console.log('Initializing filter store with home page data:', data.data.length, 'items');
-			filterStore.initializeForRoute(currentRoute, data.data);
+			initializing = true;
+			setTimeout(() => {
+				filterStore.initializeForRoute(currentRoute, data.data);
+				initializing = false;
+			}, 0);
 		}
 	});
 
@@ -44,31 +52,41 @@
 	$effect(() => {
 		if ($filteredData.length && recommendedCoffees.length > 0 && !updatingRecommendations) {
 			updatingRecommendations = true;
-			try {
-				// Filter recommendations to only include items that are in the filtered data
-				const newRecommendations = recommendedCoffees.filter((coffee) =>
-					$filteredData.some((item) => item.id === coffee.id)
-				);
+			setTimeout(() => {
+				try {
+					// Filter recommendations to only include items that are in the filtered data
+					const newRecommendations = recommendedCoffees.filter((coffee) =>
+						$filteredData.some((item) => item.id === coffee.id)
+					);
 
-				// Only update if there's a change
-				if (JSON.stringify(newRecommendations) !== JSON.stringify(recommendedCoffees)) {
-					recommendedCoffees = newRecommendations;
+					// Only update if there's a change
+					if (JSON.stringify(newRecommendations) !== JSON.stringify(recommendedCoffees)) {
+						recommendedCoffees = newRecommendations;
+					}
+				} finally {
+					updatingRecommendations = false;
 				}
-			} finally {
-				updatingRecommendations = false;
-			}
+			}, 0);
 		}
 	});
 
 	// Pagination computation with memoization to prevent unnecessary updates
 	let lastFilteredDataLength = $state(-1);
 	let paginatedData = $state<any[]>([]);
+	let updatingPagination = $state(false);
 
 	$effect(() => {
 		// Only update if filtered data length has changed or display limit has changed
-		if ($filteredData.length !== lastFilteredDataLength || displayLimit) {
-			lastFilteredDataLength = $filteredData.length;
-			paginatedData = $filteredData.slice(0, displayLimit);
+		if (($filteredData.length !== lastFilteredDataLength || displayLimit) && !updatingPagination) {
+			updatingPagination = true;
+			setTimeout(() => {
+				try {
+					lastFilteredDataLength = $filteredData.length;
+					paginatedData = $filteredData.slice(0, displayLimit);
+				} finally {
+					updatingPagination = false;
+				}
+			}, 0);
 		}
 	});
 

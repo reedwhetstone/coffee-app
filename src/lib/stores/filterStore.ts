@@ -15,6 +15,7 @@ type FilterState = {
 	initialized: boolean; // Flag to track if store is initialized
 	initializingRoute: string | null; // Flag to track route being initialized
 	lastDebounceId: NodeJS.Timeout | null; // Track the last debounce timer
+	lastProcessedCacheKey: string | null; // Track the last processed cache key
 };
 
 // Initialize default state
@@ -30,7 +31,8 @@ const initialState: FilterState = {
 	processing: false,
 	initialized: false,
 	initializingRoute: null,
-	lastDebounceId: null
+	lastDebounceId: null,
+	lastProcessedCacheKey: null
 };
 
 // Create the store
@@ -422,11 +424,18 @@ function createFilterStore() {
 			clearTimeout(currentState.lastDebounceId);
 		}
 
-		// Set a new debounce timer
+		// Skip processing if already processing - this prevents update loops
+		if (currentState.processing) {
+			console.log('Already processing, skipping update');
+			return;
+		}
+
+		// Set a new debounce timer with a slightly longer delay to allow for batching of updates
 		const debounceId = setTimeout(() => {
 			update((state) => {
 				// If already processing, skip this update
 				if (state.processing) {
+					console.log('Already processing in timeout, skipping update');
 					return state;
 				}
 
@@ -439,6 +448,23 @@ function createFilterStore() {
 						return state;
 					}
 
+					// Generate a cache key to check if we've already processed this exact combination
+					const cacheKey = JSON.stringify({
+						originalDataIds: state.originalData.map((item) => item.id || item._id),
+						filters: state.filters,
+						sort: { field: state.sortField, direction: state.sortDirection }
+					});
+
+					// Skip processing if nothing has changed
+					if (cacheKey === state.lastProcessedCacheKey) {
+						console.log('Data, filters, and sort unchanged, skipping update');
+						state.processing = false;
+						return state;
+					}
+
+					// Save the cache key for next time
+					state.lastProcessedCacheKey = cacheKey;
+
 					// Process the data with current filter settings
 					const processedData = processData(
 						state.originalData,
@@ -447,12 +473,17 @@ function createFilterStore() {
 						state.filters
 					);
 
-					// Only update if the result is different
-					if (
-						JSON.stringify(processedData.map((item) => item.id)) !==
-						JSON.stringify(state.filteredData.map((item) => item.id))
-					) {
+					// Only update if the result is different - compare just the IDs for efficiency
+					const currentIds = state.filteredData.map((item) => item.id || item._id);
+					const newIds = processedData.map((item) => item.id || item._id);
+					const idsEqual =
+						currentIds.length === newIds.length &&
+						currentIds.every((id, index) => id === newIds[index]);
+
+					if (!idsEqual) {
 						state.filteredData = processedData;
+					} else {
+						console.log('Filtered data IDs unchanged, skipping update');
 					}
 				} catch (err) {
 					console.error('Error processing data:', err);
@@ -463,7 +494,7 @@ function createFilterStore() {
 
 				return state;
 			});
-		}, 100); // 100ms debounce
+		}, 150); // Slightly longer 150ms debounce for better batching
 
 		// Store the debounce timer ID
 		update((state) => {

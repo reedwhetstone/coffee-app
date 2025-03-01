@@ -13,6 +13,7 @@
 	let editedBean = $state({ ...selectedBean });
 	let currentPage = $state(0);
 	const totalPages = 2;
+	let processingUpdate = $state(false);
 
 	let previousPage = $state(0);
 
@@ -48,8 +49,21 @@
 		}
 	}
 
+	$effect(() => {
+		if (!processingUpdate && selectedBean) {
+			processingUpdate = true;
+			setTimeout(() => {
+				editedBean = { ...selectedBean };
+				processingUpdate = false;
+			}, 0);
+		}
+	});
+
 	async function saveChanges() {
+		if (processingUpdate) return;
+
 		try {
+			processingUpdate = true;
 			const dataForAPI = {
 				...editedBean,
 				purchase_date: prepareDateForAPI(editedBean.purchase_date),
@@ -66,27 +80,41 @@
 
 			if (response.ok) {
 				const updatedBean = await response.json();
-				selectedBean = updatedBean;
 				isEditing = false;
-				onUpdate(updatedBean);
+				setTimeout(() => {
+					onUpdate(updatedBean);
+					processingUpdate = false;
+				}, 50);
 			} else {
 				const data = await response.json();
 				alert(`Failed to update bean: ${data.error}`);
+				processingUpdate = false;
 			}
 		} catch (error) {
 			console.error('Error updating bean:', error);
+			processingUpdate = false;
 		}
 	}
 
 	// Function to handle deletion
 	async function deleteBean() {
+		if (processingUpdate) return;
+
 		if (
 			confirm(
 				'Are you sure you want to delete this bean? This will also delete all associated roast profiles and logs.'
 			)
 		) {
-			// Just call the parent's onDelete handler and let it handle the actual deletion
-			onDelete(selectedBean.id);
+			try {
+				processingUpdate = true;
+				onDelete(selectedBean.id);
+				setTimeout(() => {
+					processingUpdate = false;
+				}, 50);
+			} catch (error) {
+				console.error('Error during bean deletion:', error);
+				processingUpdate = false;
+			}
 		}
 	}
 
@@ -95,14 +123,14 @@
 	});
 </script>
 
-<div class="bg-background-secondary-light rounded-lg p-6">
+<div class="rounded-lg bg-background-secondary-light p-6">
 	<div class="mb-4">
 		<div class="flex items-center justify-between">
 			<h2 class="text-xl font-bold text-zinc-300">{selectedBean.name}</h2>
 			<div class="space-x-2">
 				{#if role === 'admin' || role === 'member'}
 					<button
-						class="hover:bg-background-primary-light rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500"
+						class="rounded border-2 border-zinc-500 px-3 py-1 text-zinc-500 hover:bg-background-primary-light"
 						onclick={() => {
 							goto(
 								`/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.name)}`,
@@ -144,7 +172,7 @@
 					{#each ['score_value', 'rank', 'description_short', 'notes', 'purchase_date', 'arrival_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'last_updated'] as key}
 						{#if selectedBean[key] !== undefined}
 							<div
-								class="bg-background-tertiary-light rounded p-2 {[
+								class="rounded bg-background-tertiary-light p-2 {[
 									'notes',
 									'description_short'
 								].includes(key)
@@ -157,7 +185,7 @@
 								{#if isEditing && key !== 'id' && key !== 'last_updated'}
 									{#if key === 'notes'}
 										<textarea
-											class="bg-background-primary-light ml-2 w-full rounded px-2 py-1 text-zinc-300"
+											class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 											rows="4"
 											bind:value={editedBean[key]}
 										></textarea>
@@ -167,13 +195,13 @@
 											min="1"
 											max="10"
 											step="1"
-											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
+											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else if key === 'link'}
 										<input
 											type="url"
-											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
+											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else if key === 'bean_cost' || key === 'tax_ship_cost'}
@@ -181,13 +209,13 @@
 											type="number"
 											step="0.01"
 											min="0"
-											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
+											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else}
 										<input
 											type={typeof selectedBean[key] === 'number' ? 'number' : 'text'}
-											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
+											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{/if}
@@ -224,14 +252,14 @@
 				{:else}
 					{#each Object.entries(selectedBean) as [key, value]}
 						{#if !['score_value', 'rank', 'notes', 'purchase_date', 'arrival_date', 'last_updated', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'description_short', 'id'].includes(key)}
-							<div class="bg-background-tertiary-light rounded p-2">
+							<div class="rounded bg-background-tertiary-light p-2">
 								<span class="text-primary-light font-medium"
 									>{key.replace(/_/g, ' ').toUpperCase()}:</span
 								>
 								{#if isEditing && key !== 'id' && key !== 'last_updated'}
 									{#if key === 'notes'}
 										<textarea
-											class="bg-background-primary-light ml-2 w-full rounded px-2 py-1 text-zinc-300"
+											class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 											rows="4"
 											bind:value={editedBean[key]}
 										></textarea>
@@ -241,13 +269,13 @@
 											min="1"
 											max="10"
 											step="1"
-											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
+											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else if key === 'link'}
 										<input
 											type="url"
-											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
+											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else if key === 'bean_cost' || key === 'tax_ship_cost'}
@@ -255,13 +283,13 @@
 											type="number"
 											step="0.01"
 											min="0"
-											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
+											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{:else}
 										<input
 											type={typeof value === 'number' ? 'number' : 'text'}
-											class="bg-background-primary-light ml-2 rounded px-2 py-1 text-zinc-300"
+											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 											bind:value={editedBean[key]}
 										/>
 									{/if}

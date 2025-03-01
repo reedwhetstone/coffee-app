@@ -53,6 +53,7 @@
 
 	// Track initialization and processing
 	let updatingProfileGroups = $state(false);
+	let initializing = $state(false);
 
 	// Debug: Log the data
 	$effect(() => {
@@ -66,10 +67,16 @@
 		// If we have page data but filtered data is empty, initialize it
 		if (
 			data?.data?.length > 0 &&
-			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
+			(!$filterStore.initialized || $filterStore.routeId !== currentRoute) &&
+			!initializing
 		) {
 			console.log('Initializing filter store with roast page data:', data.data.length, 'items');
-			filterStore.initializeForRoute(currentRoute, data.data);
+			initializing = true;
+			// Use setTimeout to break potential update cycles
+			setTimeout(() => {
+				filterStore.initializeForRoute(currentRoute, data.data);
+				initializing = false;
+			}, 0);
 		}
 	});
 
@@ -119,11 +126,14 @@
 	$effect(() => {
 		if ($filteredData.length && !updatingProfileGroups) {
 			updatingProfileGroups = true;
-			try {
-				updateGroupedProfiles($filteredData);
-			} finally {
-				updatingProfileGroups = false;
-			}
+			// Use setTimeout to break potential update cycles
+			setTimeout(() => {
+				try {
+					updateGroupedProfiles($filteredData);
+				} finally {
+					updatingProfileGroups = false;
+				}
+			}, 0);
 		}
 	});
 
@@ -132,21 +142,29 @@
 	$effect(() => {
 		if ((sortField !== null || sortDirection !== null) && !processing && $filteredData.length > 0) {
 			processing = true;
-			try {
-				updateGroupedProfiles($filteredData);
-			} finally {
-				processing = false;
-			}
+			// Use setTimeout to break potential update cycles
+			setTimeout(() => {
+				try {
+					updateGroupedProfiles($filteredData);
+				} finally {
+					processing = false;
+				}
+			}, 0);
 		}
 	});
 
 	// Update selectedBean when currentRoastProfile changes
 	$effect(() => {
-		if (currentRoastProfile) {
-			selectedBean = {
-				id: currentRoastProfile.coffee_id,
-				name: currentRoastProfile.coffee_name
-			};
+		if (currentRoastProfile && !processing) {
+			processing = true;
+			try {
+				selectedBean = {
+					id: currentRoastProfile.coffee_id,
+					name: currentRoastProfile.coffee_name
+				};
+			} finally {
+				processing = false;
+			}
 		}
 	});
 

@@ -33,6 +33,7 @@
 	let { data, children } = $props<{ data: LayoutData; children: any }>();
 	let lastRoute = $state('');
 	let initializedRoutes = $state<Set<string>>(new Set());
+	let processingInit = $state(false);
 
 	// Debug data in the layout
 	$effect(() => {
@@ -44,27 +45,35 @@
 		const currentRoute = $page.url.pathname;
 
 		// Only initialize if the route changed and hasn't been initialized yet
-		if (currentRoute !== lastRoute && !initializedRoutes.has(currentRoute)) {
+		if (currentRoute !== lastRoute && !initializedRoutes.has(currentRoute) && !processingInit) {
 			console.log(`Route changed to ${currentRoute}, checking if data needs initialization`);
 			lastRoute = currentRoute;
+			processingInit = true;
 
-			// Only initialize if we have data and the filter store isn't already initialized for this route
-			if (
-				data?.data &&
-				Array.isArray(data.data) &&
-				data.data.length > 0 &&
-				!$filterStore.initialized
-			) {
-				console.log('Initializing filter store with layout data:', data.data.length, 'items');
-				// Mark this route as initialized to prevent repeated initialization
-				initializedRoutes.add(currentRoute);
-				// Initialize the filter store
-				filterStore.initializeForRoute(currentRoute, data.data);
-			} else {
-				console.log(
-					'No layout data available for filter store initialization or already initialized, will defer to page component'
-				);
-			}
+			// Use setTimeout to break potential update cycles
+			setTimeout(() => {
+				try {
+					// Only initialize if we have data and the filter store isn't already initialized for this route
+					if (
+						data?.data &&
+						Array.isArray(data.data) &&
+						data.data.length > 0 &&
+						!$filterStore.initialized
+					) {
+						console.log('Initializing filter store with layout data:', data.data.length, 'items');
+						// Mark this route as initialized to prevent repeated initialization
+						initializedRoutes.add(currentRoute);
+						// Initialize the filter store
+						filterStore.initializeForRoute(currentRoute, data.data);
+					} else {
+						console.log(
+							'No layout data available for filter store initialization or already initialized, will defer to page component'
+						);
+					}
+				} finally {
+					processingInit = false;
+				}
+			}, 0);
 		}
 	});
 
