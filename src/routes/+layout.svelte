@@ -6,6 +6,8 @@
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { filterStore, filteredData } from '$lib/stores/filterStore';
 
 	interface LayoutData {
 		session: {
@@ -30,12 +32,15 @@
 
 	let { data, children } = $props<{ data: LayoutData }>();
 
-	// Global filtered data state
-	let filteredData = $state<any[]>([]);
+	// Track route changes and initialize data for new routes
+	$effect(() => {
+		const currentRoute = $page.url.pathname;
 
-	function handleFilteredData(newFilteredData: any[]) {
-		filteredData = newFilteredData;
-	}
+		// Initialize the filter store with the current route and data
+		if (data?.data && data.data.length > 0) {
+			filterStore.initializeForRoute(currentRoute, data.data);
+		}
+	});
 
 	onMount(() => {
 		injectSpeedInsights();
@@ -44,7 +49,7 @@
 </script>
 
 <Navbar {data} />
-<Settingsbar data={data.data ?? []} {filteredData} onFilteredData={handleFilteredData} />
+<Settingsbar {data} />
 <div class="">
 	{@render children()}
 </div>

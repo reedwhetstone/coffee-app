@@ -19,35 +19,145 @@
 	import { get } from 'svelte/store';
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import RoastChartInterface from './RoastChartInterface.svelte';
+	import { filteredData } from '$lib/stores/filterStore';
 
 	// Roast profile state management
-	let currentRoastProfile: any = null;
+	let currentRoastProfile = $state<any>(null);
 
 	// Main state variables
-	let selectedBean: { id?: number; name: string } = currentRoastProfile
-		? {
-				id: currentRoastProfile.coffee_id,
-				name: currentRoastProfile.coffee_name
-			}
-		: { name: 'No Bean Selected' };
-	let isRoasting = false;
-	let isPaused = false;
-	let fanValue = 8;
-	let heatValue = 1;
-	let selectedEvent: string | null = null;
-	let isFormVisible = ($page.state as any)?.showRoastForm || false;
+	let isFormVisible = $state(false);
+	let selectedBean = $state<{ id?: number; name: string }>({ name: 'No Bean Selected' });
+	let isRoasting = $state(false);
+	let isPaused = $state(false);
+	let fanValue = $state(8);
+	let heatValue = $state(1);
+	let selectedEvent = $state<string | null>(null);
 
 	// Roast profile state management
-	let allRoastProfiles: any[] = [];
-	let sortField: string | null = 'roast_id';
-	let sortDirection: 'asc' | 'desc' | null = 'asc';
+	let allRoastProfiles = $state<any[]>([]);
+	let sortField = $state<string | null>('roast_id');
+	let sortDirection = $state<'asc' | 'desc' | null>('asc');
 
 	// Profile grouping and sorting state
-	let groupedProfiles: Record<string, any[]> = {};
-	let sortedBatchNames: string[] = [];
-	let sortedGroupedProfiles: Record<string, any[]> = {};
-	let expandedBatches: Set<string> = new Set();
-	let currentProfileIndex = 0;
+	let groupedProfiles = $state<Record<string, any[]>>({});
+	let sortedBatchNames = $state<string[]>([]);
+	let sortedGroupedProfiles = $state<Record<string, any[]>>({});
+	let expandedBatches = $state<Set<string>>(new Set());
+	let currentProfileIndex = $state<number>(0);
+
+	type PageData = {
+		data: any[];
+	};
+
+	let { data } = $props<{ data: PageData }>();
+
+	// Track initialization and processing
+	let updatingProfileGroups = $state(false);
+
+	// Function to update grouped profiles from filtered data
+	function updateGroupedProfiles(profiles: any[]) {
+		if (!profiles.length || updatingProfileGroups) return;
+
+		try {
+			updatingProfileGroups = true;
+
+			// Group profiles by batch_name
+			const localGroupedProfiles: Record<string, any[]> = {};
+
+			// Group profiles by batch_name
+			profiles.forEach((profile) => {
+				const batchName = profile.batch_name || 'No Batch';
+				if (!localGroupedProfiles[batchName]) {
+					localGroupedProfiles[batchName] = [];
+				}
+				localGroupedProfiles[batchName].push(profile);
+			});
+
+			// Sort batch names by most recent roast date
+			const localSortedBatchNames = Object.keys(localGroupedProfiles).sort((a, b) => {
+				const latestA = Math.max(
+					...localGroupedProfiles[a].map((p) => new Date(p.roast_date).getTime())
+				);
+				const latestB = Math.max(
+					...localGroupedProfiles[b].map((p) => new Date(p.roast_date).getTime())
+				);
+				return sortDirection === 'desc' ? latestA - latestB : latestB - latestA;
+			});
+
+			// Sort profiles within each batch group
+			const localSortedGroupedProfiles: Record<string, any[]> = {};
+			localSortedBatchNames.forEach((batch) => {
+				localSortedGroupedProfiles[batch] = [...localGroupedProfiles[batch]].sort((a, b) => {
+					if (!sortField) return 0;
+
+					const aVal = a[sortField];
+					const bVal = b[sortField];
+
+					if (sortField === 'roast_id') {
+						// For roast_id, always sort in ascending order (oldest first)
+						return Number(aVal) - Number(bVal);
+					} else if (sortField === 'roast_date' || sortField === 'last_updated') {
+						return sortDirection === 'asc'
+							? new Date(aVal).getTime() - new Date(bVal).getTime()
+							: new Date(bVal).getTime() - new Date(aVal).getTime();
+					}
+
+					if (typeof aVal === 'string' && typeof bVal === 'string') {
+						return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+					}
+
+					return sortDirection === 'asc'
+						? Number(aVal) - Number(bVal)
+						: Number(bVal) - Number(aVal);
+				});
+			});
+
+			// Update state variables all at once to reduce cascading effects
+			groupedProfiles = localGroupedProfiles;
+			sortedBatchNames = localSortedBatchNames;
+			sortedGroupedProfiles = localSortedGroupedProfiles;
+
+			// If we have a current roast profile, make sure it's still in the filtered data
+			if (currentRoastProfile) {
+				const stillExists = profiles.some((profile) => profile.id === currentRoastProfile.id);
+				if (!stillExists) {
+					currentRoastProfile = null;
+				}
+			}
+		} finally {
+			updatingProfileGroups = false;
+		}
+	}
+
+	// Update grouped profiles when filtered data changes
+	$effect(() => {
+		if ($filteredData.length) {
+			updateGroupedProfiles($filteredData);
+		}
+	});
+
+	// Effect to handle sort changes
+	let processing = $state(false);
+	$effect(() => {
+		if ((sortField !== null || sortDirection !== null) && !processing && $filteredData.length > 0) {
+			processing = true;
+			try {
+				updateGroupedProfiles($filteredData);
+			} finally {
+				processing = false;
+			}
+		}
+	});
+
+	// Update selectedBean when currentRoastProfile changes
+	$effect(() => {
+		if (currentRoastProfile) {
+			selectedBean = {
+				id: currentRoastProfile.coffee_id,
+				name: currentRoastProfile.coffee_name
+			};
+		}
+	});
 
 	// Fetches all roast profiles from the API and sets the current profile
 	async function loadRoastProfiles() {
@@ -55,8 +165,7 @@
 			const response = await fetch('/api/roast-profiles');
 			if (response.ok) {
 				const data = await response.json();
-				allRoastProfiles = data.data;
-				console.log('Fetched Roast Profiles:', allRoastProfiles); // Debugging line
+				allRoastProfiles = data.data || [];
 
 				// Only set currentRoastProfile if we have a selectedBean
 				if (selectedBean?.id) {
@@ -131,52 +240,6 @@
 			});
 		};
 	});
-
-	// Reactive statement to handle profile grouping and sorting
-	$: {
-		// Group profiles by batch_name
-		groupedProfiles = allRoastProfiles.reduce((groups: Record<string, any[]>, profile) => {
-			const batchName = profile.batch_name || 'No Batch';
-			if (!groups[batchName]) {
-				groups[batchName] = [];
-			}
-			groups[batchName].push(profile);
-			return groups;
-		}, {});
-
-		// Sort batch names by most recent roast date
-		sortedBatchNames = Object.keys(groupedProfiles).sort((a, b) => {
-			const latestA = Math.max(...groupedProfiles[a].map((p) => new Date(p.roast_date).getTime()));
-			const latestB = Math.max(...groupedProfiles[b].map((p) => new Date(p.roast_date).getTime()));
-			return sortDirection === 'desc' ? latestA - latestB : latestB - latestA;
-		});
-
-		// Sort profiles within each batch group
-		sortedGroupedProfiles = {};
-		sortedBatchNames.forEach((batch) => {
-			sortedGroupedProfiles[batch] = [...groupedProfiles[batch]].sort((a, b) => {
-				if (!sortField) return 0;
-
-				const aVal = a[sortField];
-				const bVal = b[sortField];
-
-				if (sortField === 'roast_id') {
-					// For roast_id, always sort in ascending order (oldest first)
-					return Number(aVal) - Number(bVal);
-				} else if (sortField === 'roast_date' || sortField === 'last_updated') {
-					return sortDirection === 'asc'
-						? new Date(aVal).getTime() - new Date(bVal).getTime()
-						: new Date(bVal).getTime() - new Date(aVal).getTime();
-				}
-
-				if (typeof aVal === 'string' && typeof bVal === 'string') {
-					return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-				}
-
-				return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
-			});
-		});
-	}
 
 	// Form submission handler for new roast profiles
 	async function handleFormSubmit(profileData: any) {
@@ -586,7 +649,7 @@
 
 {#if isFormVisible}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 p-4">
-		<div class="bg-background-secondary-light w-full max-w-2xl rounded-lg p-4 shadow-xl sm:p-6">
+		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 shadow-xl sm:p-6">
 			<RoastProfileForm {selectedBean} onClose={hideRoastForm} onSubmit={handleFormSubmit} />
 		</div>
 	</div>
@@ -598,7 +661,7 @@
 	<div class="mb-4 flex justify-center sm:justify-end">
 		<button
 			class="w-full rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900 sm:w-auto"
-			on:click={() => (isFormVisible = true)}
+			onclick={() => (isFormVisible = true)}
 		>
 			New Roast
 		</button>
@@ -618,7 +681,7 @@
 
 <!-- Main roasting interface -->
 {#if currentRoastProfile}
-	<div class="bg-background-secondary-light mx-4 my-6 rounded-lg p-4 sm:m-8 sm:p-8">
+	<div class="mx-4 my-6 rounded-lg bg-background-secondary-light p-4 sm:m-8 sm:p-8">
 		<RoastChartInterface
 			{isPaused}
 			{currentRoastProfile}

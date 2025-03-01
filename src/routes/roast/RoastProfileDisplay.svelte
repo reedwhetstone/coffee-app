@@ -6,7 +6,7 @@
 
 	export let profile: any;
 	export let onUpdate: (profile: any) => void;
-	export let onDelete: (id: number) => void;
+	export const onDelete = () => {};
 	export let profiles: any[] = [];
 	export let currentIndex: number = 0;
 

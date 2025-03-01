@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { onMount, tick } from 'svelte';
-	import Settingsbar from '../Settingsbar.svelte';
+	import { filteredData } from '$lib/stores/filterStore';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -10,9 +10,6 @@
 	let chatResponse = $state('');
 	let isLoading = $state(false);
 
-	// State for filtered data
-	let filteredData = $state<any[]>([]);
-
 	// Pagination state
 	let displayLimit = $state(15);
 	let isLoadingMore = $state(false);
@@ -20,21 +17,46 @@
 	// Add recommendation state
 	let recommendedCoffees = $state<any[]>([]);
 	let isLoadingRecommendations = $state(false);
+	let updatingRecommendations = $state(false);
 
-	// Handle receiving filtered data from Settingsbar
-	function handleFilteredData(newFilteredData: any[]) {
-		filteredData = newFilteredData;
-	}
+	// Update recommendations when filtered data changes with guard
+	$effect(() => {
+		if ($filteredData.length && recommendedCoffees.length > 0 && !updatingRecommendations) {
+			updatingRecommendations = true;
+			try {
+				// Filter recommendations to only include items that are in the filtered data
+				const newRecommendations = recommendedCoffees.filter((coffee) =>
+					$filteredData.some((item) => item.id === coffee.id)
+				);
 
-	// Pagination computation
-	let paginatedData = $derived(filteredData.slice(0, displayLimit));
+				// Only update if there's a change
+				if (JSON.stringify(newRecommendations) !== JSON.stringify(recommendedCoffees)) {
+					recommendedCoffees = newRecommendations;
+				}
+			} finally {
+				updatingRecommendations = false;
+			}
+		}
+	});
+
+	// Pagination computation with memoization to prevent unnecessary updates
+	let lastFilteredDataLength = $state(-1);
+	let paginatedData = $state<any[]>([]);
+
+	$effect(() => {
+		// Only update if filtered data length has changed or display limit has changed
+		if ($filteredData.length !== lastFilteredDataLength || displayLimit) {
+			lastFilteredDataLength = $filteredData.length;
+			paginatedData = $filteredData.slice(0, displayLimit);
+		}
+	});
 
 	// Update infinite scroll handler
 	async function handleScroll() {
 		const scrollPosition = window.innerHeight + window.scrollY;
 		const bottomOfPage = document.documentElement.offsetHeight - 200;
 
-		if (scrollPosition >= bottomOfPage && !isLoadingMore && displayLimit < filteredData.length) {
+		if (scrollPosition >= bottomOfPage && !isLoadingMore && displayLimit < $filteredData.length) {
 			isLoadingMore = true;
 			await new Promise((resolve) => setTimeout(resolve, 300));
 			displayLimit += 15;
@@ -45,13 +67,6 @@
 	// Add default query constant
 	const DEFAULT_QUERY =
 		'Recommend the most distinctive coffee from each source (bodhi_leaf, sweet_maria, captain_coffee), highlighting what makes it special to the supplier.';
-
-	// Initialize data when component mounts
-	$effect(() => {
-		if (data?.data && filteredData.length === 0) {
-			filteredData = data.data;
-		}
-	});
 
 	// Load initial recommendations only once
 	onMount(() => {
@@ -139,7 +154,7 @@
 <div class="mx-2 mt-4 space-y-4 md:mx-8 md:mt-8">
 	<div class="space-y-4">
 		<!-- Integrated chat interface -->
-		<div class="bg-background-tertiary-light rounded-2xl">
+		<div class="rounded-2xl bg-background-tertiary-light">
 			<form
 				onsubmit={(e) => {
 					e.preventDefault();
@@ -148,7 +163,7 @@
 				class="space-y-4"
 			>
 				<!-- Query/Input area with wrapping textarea -->
-				<div class="bg-background-secondary-light relative rounded-2xl p-4">
+				<div class="relative rounded-2xl bg-background-secondary-light p-4">
 					<span class="text-primary-light text-sm">Query:</span>
 					<div>
 						<div class="flex items-center gap-2">
@@ -205,14 +220,14 @@
 					<div class="px-4 pb-4">
 						<!-- Add divider here -->
 						<div class="flex items-center gap-2 py-2">
-							<hr class="border-background-primary-light flex-1" />
+							<hr class="flex-1 border-background-primary-light" />
 						</div>
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 							{#each recommendedCoffees as coffee}
 								<a
 									href={coffee.link}
 									target="_blank"
-									class="hover:bg-background-secondary-light bg-background-tertiary-light group block rounded-lg p-4 transition-all hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+									class="group block rounded-lg bg-background-tertiary-light p-4 transition-all hover:scale-[1.02] hover:bg-background-secondary-light hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 								>
 									<div class="flex items-center justify-between">
 										<h4 class="text-secondary-light font-semibold">{coffee.name}</h4>
@@ -246,14 +261,14 @@
 
 		<!-- Coffee Cards -->
 		<div class="flex-1">
-			{#if !filteredData || filteredData.length === 0}
+			{#if !$filteredData || $filteredData.length === 0}
 				<p class="p-4 text-zinc-300">No coffee data available</p>
 			{:else}
 				<div class="space-y-2 md:space-y-4">
 					{#each paginatedData as coffee}
 						<button
 							type="button"
-							class="bg-background-secondary-light hover:bg-background-tertiary-light w-full cursor-pointer rounded-lg p-3 text-left transition-colors md:p-4"
+							class="w-full cursor-pointer rounded-lg bg-background-secondary-light p-3 text-left transition-colors hover:bg-background-tertiary-light md:p-4"
 							onclick={() => {
 								if (coffee.link) window.open(coffee.link, '_blank');
 							}}
@@ -306,13 +321,13 @@
 						</div>
 					{/if}
 
-					{#if !isLoadingMore && displayLimit < filteredData.length}
+					{#if !isLoadingMore && displayLimit < $filteredData.length}
 						<div class="flex justify-center p-4">
 							<p class="text-primary-light text-sm">Scroll for more coffees...</p>
 						</div>
 					{/if}
 
-					{#if displayLimit >= filteredData.length}
+					{#if displayLimit >= $filteredData.length}
 						<div class="flex justify-center p-4">
 							<p class="text-primary-light text-sm">No more coffees to load</p>
 						</div>

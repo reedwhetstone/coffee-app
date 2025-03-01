@@ -1,36 +1,21 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { clickOutside } from '$lib/utils/clickOutside';
+	import { filterStore, filteredData } from '$lib/stores/filterStore';
 
 	// Props for filter configuration and data
-	let { data, filteredData, onFilteredData } = $props<{
-		data: any[];
-		filteredData: any[];
-		onFilteredData: (filteredData: any[]) => void;
+	let { data } = $props<{
+		data: any;
 	}>();
 
-	// State
+	// State for UI
 	let isOpen = $state(false);
 	let expandedFilters = $state(true);
 
-	// Get current route to determine which filters to show
-	let routeId = $derived($page.url.pathname);
-
-	// Local state for filters
-	let filters = $state<Record<string, any>>({
-		sortField: 'arrival_date',
-		sortDirection: 'desc',
-		source: [],
-		name: '',
-		processing: '',
-		region: '',
-		cost_lb: '',
-		score_value: { min: '', max: '' },
-		arrival_date: '',
-		harvest_date: '',
-		cultivar_detail: '',
-		uniqueSources: [],
-		uniqueDates: {}
+	// Access store state
+	$effect(() => {
+		// Subscribe to the current route
+		const currentRoute = $page.url.pathname;
 	});
 
 	// Helper function to format column names
@@ -38,206 +23,16 @@
 		return column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 	}
 
-	// Get filterable columns based on route
-	function getFilterableColumns(): string[] {
-		switch (routeId) {
-			case '/':
-				return [
-					'source',
-					'name',
-					'processing',
-					'region',
-					'cost_lb',
-					'score_value',
-					'arrival_date',
-					'harvest_date',
-					'cultivar_detail'
-				];
-			case '/beans':
-				return [
-					'name',
-					'purchase_date',
-					'score_value',
-					'rank',
-					'cultivar_detail',
-					'processing',
-					'vendor',
-					'price_per_lb',
-					'arrival_date'
-				];
-			case '/roast':
-				return ['coffee_name', 'batch_name', 'roast_date', 'notes'];
-			default:
-				return [];
-		}
-	}
-
-	// Initialize unique values for filters
-	function initializeFilters() {
-		switch (routeId) {
-			case '/':
-				filters.uniqueSources = [...new Set(data.map((item: { source: string }) => item.source))];
-				break;
-			case '/beans':
-				filters.uniqueDates = {
-					purchase_date: Array.from(
-						new Set(data.map((item: { purchase_date: string }) => item.purchase_date))
-					)
-						.filter((date): date is string => typeof date === 'string')
-						.sort((a, b) => b.localeCompare(a))
-				};
-				break;
-			case '/roast':
-				filters.uniqueDates = {
-					roast_date: Array.from(
-						new Set(data.map((item: { roast_date: string }) => item.roast_date))
-					)
-						.filter((date): date is string => typeof date === 'string')
-						.sort((a, b) => b.localeCompare(a))
-				};
-				break;
-		}
-	}
-
-	// Helper function to parse month/year dates
-	function parseMonthYear(dateStr: string | null): Date {
-		if (!dateStr) return new Date(0);
-		const [month, year] = dateStr.split(' ');
-		const monthIndex = new Date(Date.parse(month + ' 1, 2000')).getMonth();
-		return new Date(parseInt(year), monthIndex);
-	}
-
-	// Filter data based on current filters
-	function filterData(data: any[]): any[] {
-		return data.filter((item) => {
-			return Object.entries(filters).every(([key, value]) => {
-				if (
-					key === 'sortField' ||
-					key === 'sortDirection' ||
-					key === 'uniqueSources' ||
-					key === 'uniqueDates'
-				)
-					return true;
-				if (!value) return true;
-				const itemValue = item[key as keyof typeof item];
-
-				// Special handling for source
-				if (key === 'source') {
-					return value.length === 0 || value.includes(itemValue);
-				}
-
-				// Special handling for score_value
-				if (key === 'score_value') {
-					const score = Number(itemValue);
-					return (
-						(!value.min || score >= Number(value.min)) && (!value.max || score <= Number(value.max))
-					);
-				}
-
-				// Default string filtering
-				if (typeof value === 'string') {
-					return String(itemValue).toLowerCase().includes(value.toLowerCase());
-				}
-				return true;
-			});
-		});
-	}
-
-	// Sort data based on current sort settings
-	function sortData(data: any[]): any[] {
-		if (!filters.sortField || !filters.sortDirection) return data;
-
-		return [...data].sort((a, b) => {
-			const aVal = a[filters.sortField];
-			const bVal = b[filters.sortField];
-
-			// Special handling for dates
-			if (
-				filters.sortField === 'arrival_date' ||
-				filters.sortField === 'purchase_date' ||
-				filters.sortField === 'roast_date'
-			) {
-				if (!aVal && !bVal) return 0;
-				if (!aVal) return filters.sortDirection === 'asc' ? -1 : 1;
-				if (!bVal) return filters.sortDirection === 'asc' ? 1 : -1;
-
-				if (filters.sortField === 'arrival_date') {
-					const dateA = parseMonthYear(aVal as string);
-					const dateB = parseMonthYear(bVal as string);
-					return filters.sortDirection === 'asc'
-						? dateA.getTime() - dateB.getTime()
-						: dateB.getTime() - dateA.getTime();
-				} else {
-					const aStr = String(aVal);
-					const bStr = String(bVal);
-					return filters.sortDirection === 'asc'
-						? aStr.localeCompare(bStr)
-						: bStr.localeCompare(aStr);
-				}
-			}
-
-			// String comparison
-			if (typeof aVal === 'string' && typeof bVal === 'string') {
-				return filters.sortDirection === 'asc'
-					? aVal.localeCompare(bVal)
-					: bVal.localeCompare(aVal);
-			}
-
-			// Number comparison
-			return filters.sortDirection === 'asc'
-				? Number(aVal) - Number(bVal)
-				: Number(bVal) - Number(aVal);
-		});
-	}
-
-	// Process and emit filtered data
-	function processData(): void {
-		const filteredData = filterData(data);
-		const sortedData = sortData(filteredData);
-		onFilteredData(sortedData);
-	}
-
 	function closePanel() {
 		isOpen = false;
 	}
-
-	// Initialize filters when data changes
-	$effect(() => {
-		if (data?.length > 0) {
-			initializeFilters();
-			processData();
-		}
-	});
-
-	// Reset filters when route changes
-	$effect(() => {
-		const currentRoute = $page.url.pathname;
-		if (currentRoute !== routeId) {
-			filters = {
-				sortField: 'arrival_date',
-				sortDirection: 'desc',
-				source: [],
-				name: '',
-				processing: '',
-				region: '',
-				cost_lb: '',
-				score_value: { min: '', max: '' },
-				arrival_date: '',
-				harvest_date: '',
-				cultivar_detail: '',
-				uniqueSources: [],
-				uniqueDates: {}
-			};
-			processData();
-		}
-	});
 </script>
 
 <!-- Settings button -->
 <div class="fixed left-4 top-4 z-50">
 	<button
 		onclick={() => (isOpen = !isOpen)}
-		class="bg-background-secondary-light text-background-primary-light hover:bg-background-secondary-light/90 rounded-full p-2 shadow-lg"
+		class="rounded-full bg-background-secondary-light p-2 text-background-primary-light shadow-lg hover:bg-background-secondary-light/90"
 		aria-label="Toggle settings"
 	>
 		<svg
@@ -265,7 +60,7 @@
 	{#if isOpen}
 		<!-- Settings panel -->
 		<div
-			class="bg-background-secondary-light fixed left-0 top-0 h-full w-64 transform shadow-xl transition-transform"
+			class="fixed left-0 top-0 h-full w-64 transform bg-background-secondary-light shadow-xl transition-transform"
 			class:translate-x-0={isOpen}
 			class:-translate-x-full={!isOpen}
 			use:clickOutside={{ handler: closePanel }}
@@ -275,8 +70,8 @@
 				<div class="flex items-center justify-between p-4">
 					<h3 class="text-secondary-light text-lg font-semibold">Filters</h3>
 					<button
-						class="text-primary-light hover:text-secondary-light text-sm"
 						onclick={() => (expandedFilters = !expandedFilters)}
+						class="text-primary-light hover:text-secondary-light text-sm"
 					>
 						{expandedFilters ? 'Hide Filters' : 'Show Filters'}
 					</button>
@@ -290,24 +85,25 @@
 							<label for="sort-field" class="text-primary-light block text-sm">Sort by</label>
 							<select
 								id="sort-field"
-								bind:value={filters.sortField}
-								onchange={processData}
-								class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
+								value={$filterStore.sortField}
+								onchange={(e) => filterStore.setSortField(e.currentTarget.value)}
+								class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 							>
-								<option value={null}>None</option>
-								{#each getFilterableColumns() as column}
+								<option value="">None</option>
+								{#each filterStore.getFilterableColumns($page.url.pathname) as column}
 									<option value={column}>
 										{formatColumnName(column)}
 									</option>
 								{/each}
 							</select>
 
-							{#if filters.sortField}
+							{#if $filterStore.sortField}
 								<select
 									id="sort-direction"
-									bind:value={filters.sortDirection}
-									onchange={processData}
-									class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
+									value={$filterStore.sortDirection}
+									onchange={(e) =>
+										filterStore.setSortDirection(e.currentTarget.value as 'asc' | 'desc')}
+									class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 								>
 									<option value="asc">Ascending</option>
 									<option value="desc">Descending</option>
@@ -318,21 +114,30 @@
 						<!-- Filter Controls -->
 						<div class="space-y-2">
 							<h4 class="text-primary-light block text-sm">Filters</h4>
-							{#each getFilterableColumns() as column}
+							{#each filterStore.getFilterableColumns($page.url.pathname) as column}
 								<div class="space-y-1">
 									<label for={column} class="text-primary-light block text-xs">
 										{formatColumnName(column)}
 									</label>
-									{#if column === 'source' && filters.uniqueSources}
+									{#if column === 'source' && $filterStore.uniqueValues?.sources?.length}
 										<div class="space-y-2">
-											{#each filters.uniqueSources.map((item: any) => item.source) as source}
+											{#each $filterStore.uniqueValues.sources as source}
 												<label class="flex items-center gap-2">
 													<input
 														type="checkbox"
-														bind:group={filters.source}
-														value={source}
-														onchange={processData}
-														class="border-background-primary-light bg-background-tertiary-light rounded text-blue-600"
+														checked={$filterStore.filters.source?.includes(source)}
+														onchange={(e) => {
+															const currentSources = $filterStore.filters.source || [];
+															if (e.currentTarget.checked) {
+																filterStore.setFilter('source', [...currentSources, source]);
+															} else {
+																filterStore.setFilter(
+																	'source',
+																	currentSources.filter((s: string) => s !== source)
+																);
+															}
+														}}
+														class="rounded border-background-primary-light bg-background-tertiary-light text-blue-600"
 													/>
 													<span class="text-secondary-light text-sm">{source}</span>
 												</label>
@@ -342,9 +147,15 @@
 										<div class="flex gap-2">
 											<input
 												type="number"
-												bind:value={filters[column].min}
-												oninput={processData}
-												class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
+												value={$filterStore.filters.score_value?.min || ''}
+												oninput={(e) => {
+													const currentValue = $filterStore.filters.score_value || {};
+													filterStore.setFilter('score_value', {
+														...currentValue,
+														min: e.currentTarget.value
+													});
+												}}
+												class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 												placeholder="Min"
 												min="0"
 												max="100"
@@ -352,37 +163,74 @@
 											/>
 											<input
 												type="number"
-												bind:value={filters[column].max}
-												oninput={processData}
-												class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
+												value={$filterStore.filters.score_value?.max || ''}
+												oninput={(e) => {
+													const currentValue = $filterStore.filters.score_value || {};
+													filterStore.setFilter('score_value', {
+														...currentValue,
+														max: e.currentTarget.value
+													});
+												}}
+												class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 												placeholder="Max"
 												min="0"
 												max="100"
 												step="0.1"
 											/>
 										</div>
-									{:else if (column === 'purchase_date' || column === 'roast_date') && filters.uniqueDates?.[column]}
+									{:else if column === 'purchase_date' && $filterStore.uniqueValues?.purchaseDates?.length}
 										<select
-											bind:value={filters[column]}
-											onchange={processData}
-											class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
+											value={$filterStore.filters.purchase_date || ''}
+											onchange={(e) =>
+												filterStore.setFilter('purchase_date', e.currentTarget.value)}
+											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 										>
 											<option value="">All Dates</option>
-											{#each filters.uniqueDates[column].map((item: any) => item.date) as date}
+											{#each $filterStore.uniqueValues.purchaseDates as date}
 												<option value={date}>{date}</option>
+											{/each}
+										</select>
+									{:else if column === 'roast_date' && $filterStore.uniqueValues?.roastDates?.length}
+										<select
+											value={$filterStore.filters.roast_date || ''}
+											onchange={(e) => filterStore.setFilter('roast_date', e.currentTarget.value)}
+											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
+										>
+											<option value="">All Dates</option>
+											{#each $filterStore.uniqueValues.roastDates as date}
+												<option value={date}>{date}</option>
+											{/each}
+										</select>
+									{:else if column === 'batch_name' && $filterStore.uniqueValues?.batchNames?.length}
+										<select
+											value={$filterStore.filters.batch_name || ''}
+											onchange={(e) => filterStore.setFilter('batch_name', e.currentTarget.value)}
+											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
+										>
+											<option value="">All Batches</option>
+											{#each $filterStore.uniqueValues.batchNames as batchName}
+												<option value={batchName}>{batchName}</option>
 											{/each}
 										</select>
 									{:else}
 										<input
 											type="text"
-											bind:value={filters[column]}
-											oninput={processData}
-											class="bg-background-tertiary-light text-secondary-light w-full rounded p-2 text-sm"
+											value={$filterStore.filters[column] || ''}
+											oninput={(e) => filterStore.setFilter(column, e.currentTarget.value)}
+											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 											placeholder={`Filter by ${column.replace(/_/g, ' ')}`}
 										/>
 									{/if}
 								</div>
 							{/each}
+
+							<!-- Clear filters button -->
+							<button
+								class="mt-4 w-full rounded bg-blue-600 px-3 py-2 text-white hover:bg-blue-700"
+								onclick={() => filterStore.clearFilters()}
+							>
+								Clear Filters
+							</button>
 						</div>
 					</div>
 				</div>
