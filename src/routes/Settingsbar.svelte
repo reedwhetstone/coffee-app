@@ -11,11 +11,14 @@
 	// State for UI
 	let isOpen = $state(false);
 	let expandedFilters = $state(true);
+	let processingFilterChange = $state(false);
 
-	// Access store state
+	// Debug info
 	$effect(() => {
+		console.log('Settingsbar mounted, isOpen:', isOpen);
 		// Subscribe to the current route
 		const currentRoute = $page.url.pathname;
+		console.log('Settingsbar current route:', currentRoute);
 	});
 
 	// Helper function to format column names
@@ -24,14 +27,74 @@
 	}
 
 	function closePanel() {
+		console.log('Closing settings panel');
 		isOpen = false;
+	}
+
+	function togglePanel() {
+		console.log('Toggling settings panel, current state:', isOpen);
+		isOpen = !isOpen;
+	}
+
+	// Safe filter update methods
+	function safeSetFilter(key: string, value: any) {
+		if (processingFilterChange) return;
+
+		try {
+			processingFilterChange = true;
+			filterStore.setFilter(key, value);
+		} finally {
+			// Use setTimeout to ensure we don't get into an update loop
+			setTimeout(() => {
+				processingFilterChange = false;
+			}, 50);
+		}
+	}
+
+	function safeSetSortField(field: string | null) {
+		if (processingFilterChange) return;
+
+		try {
+			processingFilterChange = true;
+			filterStore.setSortField(field);
+		} finally {
+			setTimeout(() => {
+				processingFilterChange = false;
+			}, 50);
+		}
+	}
+
+	function safeSetSortDirection(direction: 'asc' | 'desc' | null) {
+		if (processingFilterChange) return;
+
+		try {
+			processingFilterChange = true;
+			filterStore.setSortDirection(direction);
+		} finally {
+			setTimeout(() => {
+				processingFilterChange = false;
+			}, 50);
+		}
+	}
+
+	function safeClearFilters() {
+		if (processingFilterChange) return;
+
+		try {
+			processingFilterChange = true;
+			filterStore.clearFilters();
+		} finally {
+			setTimeout(() => {
+				processingFilterChange = false;
+			}, 50);
+		}
 	}
 </script>
 
 <!-- Settings button -->
 <div class="fixed left-4 top-4 z-50">
 	<button
-		onclick={() => (isOpen = !isOpen)}
+		onclick={togglePanel}
 		class="rounded-full bg-background-secondary-light p-2 text-background-primary-light shadow-lg hover:bg-background-secondary-light/90"
 		aria-label="Toggle settings"
 	>
@@ -86,7 +149,7 @@
 							<select
 								id="sort-field"
 								value={$filterStore.sortField}
-								onchange={(e) => filterStore.setSortField(e.currentTarget.value)}
+								onchange={(e) => safeSetSortField(e.currentTarget.value)}
 								class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 							>
 								<option value="">None</option>
@@ -101,8 +164,7 @@
 								<select
 									id="sort-direction"
 									value={$filterStore.sortDirection}
-									onchange={(e) =>
-										filterStore.setSortDirection(e.currentTarget.value as 'asc' | 'desc')}
+									onchange={(e) => safeSetSortDirection(e.currentTarget.value as 'asc' | 'desc')}
 									class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 								>
 									<option value="asc">Ascending</option>
@@ -129,9 +191,9 @@
 														onchange={(e) => {
 															const currentSources = $filterStore.filters.source || [];
 															if (e.currentTarget.checked) {
-																filterStore.setFilter('source', [...currentSources, source]);
+																safeSetFilter('source', [...currentSources, source]);
 															} else {
-																filterStore.setFilter(
+																safeSetFilter(
 																	'source',
 																	currentSources.filter((s: string) => s !== source)
 																);
@@ -150,7 +212,7 @@
 												value={$filterStore.filters.score_value?.min || ''}
 												oninput={(e) => {
 													const currentValue = $filterStore.filters.score_value || {};
-													filterStore.setFilter('score_value', {
+													safeSetFilter('score_value', {
 														...currentValue,
 														min: e.currentTarget.value
 													});
@@ -166,7 +228,7 @@
 												value={$filterStore.filters.score_value?.max || ''}
 												oninput={(e) => {
 													const currentValue = $filterStore.filters.score_value || {};
-													filterStore.setFilter('score_value', {
+													safeSetFilter('score_value', {
 														...currentValue,
 														max: e.currentTarget.value
 													});
@@ -181,8 +243,7 @@
 									{:else if column === 'purchase_date' && $filterStore.uniqueValues?.purchaseDates?.length}
 										<select
 											value={$filterStore.filters.purchase_date || ''}
-											onchange={(e) =>
-												filterStore.setFilter('purchase_date', e.currentTarget.value)}
+											onchange={(e) => safeSetFilter('purchase_date', e.currentTarget.value)}
 											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 										>
 											<option value="">All Dates</option>
@@ -193,7 +254,7 @@
 									{:else if column === 'roast_date' && $filterStore.uniqueValues?.roastDates?.length}
 										<select
 											value={$filterStore.filters.roast_date || ''}
-											onchange={(e) => filterStore.setFilter('roast_date', e.currentTarget.value)}
+											onchange={(e) => safeSetFilter('roast_date', e.currentTarget.value)}
 											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 										>
 											<option value="">All Dates</option>
@@ -204,7 +265,7 @@
 									{:else if column === 'batch_name' && $filterStore.uniqueValues?.batchNames?.length}
 										<select
 											value={$filterStore.filters.batch_name || ''}
-											onchange={(e) => filterStore.setFilter('batch_name', e.currentTarget.value)}
+											onchange={(e) => safeSetFilter('batch_name', e.currentTarget.value)}
 											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 										>
 											<option value="">All Batches</option>
@@ -216,7 +277,7 @@
 										<input
 											type="text"
 											value={$filterStore.filters[column] || ''}
-											oninput={(e) => filterStore.setFilter(column, e.currentTarget.value)}
+											oninput={(e) => safeSetFilter(column, e.currentTarget.value)}
 											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 											placeholder={`Filter by ${column.replace(/_/g, ' ')}`}
 										/>
@@ -227,7 +288,7 @@
 							<!-- Clear filters button -->
 							<button
 								class="mt-4 w-full rounded bg-blue-600 px-3 py-2 text-white hover:bg-blue-700"
-								onclick={() => filterStore.clearFilters()}
+								onclick={() => safeClearFilters()}
 							>
 								Clear Filters
 							</button>

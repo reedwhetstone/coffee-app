@@ -28,10 +28,17 @@
 
 	// Only initialize filtered data if needed - most of the time the filter store should handle this
 	$effect(() => {
+		const currentRoute = $page.url.pathname;
+
 		// If we have page data but filtered data is empty, initialize it manually
-		if (data?.data?.length > 0 && $filteredData.length === 0) {
+		if (
+			data?.data?.length > 0 &&
+			($filteredData.length === 0 ||
+				!$filterStore.initialized ||
+				$filterStore.routeId !== currentRoute)
+		) {
 			console.log('Manually initializing filtered data with page data');
-			filterStore.initializeForRoute($page.url.pathname, data.data);
+			filterStore.initializeForRoute(currentRoute, data.data);
 		}
 	});
 

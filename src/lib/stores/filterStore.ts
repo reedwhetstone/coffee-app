@@ -12,6 +12,9 @@ type FilterState = {
 	filteredData: any[];
 	lastProcessedString: string;
 	processing: boolean;
+	initialized: boolean; // Flag to track if store is initialized
+	initializingRoute: string | null; // Flag to track route being initialized
+	lastDebounceId: NodeJS.Timeout | null; // Track the last debounce timer
 };
 
 // Initialize default state
@@ -24,215 +27,305 @@ const initialState: FilterState = {
 	originalData: [],
 	filteredData: [],
 	lastProcessedString: '',
-	processing: false
+	processing: false,
+	initialized: false,
+	initializingRoute: null,
+	lastDebounceId: null
 };
 
 // Create the store
 function createFilterStore() {
 	const { subscribe, set, update } = writable<FilterState>(initialState);
 
-	// Initialize filters for a specific route
+	// Initialize the filter store for a specific route
 	function initializeForRoute(routeId: string, data: any[]) {
-		console.log(`Initializing filter store for route: ${routeId} with data:`, data);
-
 		update((state) => {
-			// Reset state if route has changed
-			if (state.routeId !== routeId) {
-				console.log(`Route changed from ${state.routeId} to ${routeId}, resetting state`);
-				return {
-					...initialState,
-					routeId,
-					originalData: data,
-					filteredData: data
-				};
+			// If we're already initialized for this route and the data is the same length,
+			// don't reinitialize unless forced
+			if (
+				state.initialized &&
+				state.routeId === routeId &&
+				state.originalData.length === data.length &&
+				state.initializingRoute !== routeId
+			) {
+				return state;
 			}
 
-			// If same route but new data
-			console.log(`Same route (${routeId}), updating data`);
-			return {
-				...state,
-				originalData: data,
-				filteredData: processData(data, state.sortField, state.sortDirection, state.filters)
-			};
+			// If we're in the process of initializing this route, prevent duplicates
+			if (state.initializingRoute === routeId) {
+				return state;
+			}
+
+			// Mark that we're initializing this route
+			state.initializingRoute = routeId;
+			state.processing = true;
+
+			// If the route changed, reset filters and sorting
+			if (state.routeId !== routeId) {
+				state.filters = {};
+				state.sortField = null;
+				state.sortDirection = null;
+
+				// Set default sort for the new route if available
+				const defaultSort = getDefaultSortSettings(routeId);
+				if (defaultSort) {
+					state.sortField = defaultSort.field;
+					state.sortDirection = defaultSort.direction;
+				}
+			}
+
+			// Update the route and data
+			state.routeId = routeId;
+
+			// Only update originalData if it's different to avoid unnecessary processing
+			const dataString = JSON.stringify(data.map((item) => item.id || item._id));
+			if (dataString !== state.lastProcessedString) {
+				state.originalData = [...data];
+				state.lastProcessedString = dataString;
+
+				// Process the data to update filteredData
+				state.filteredData = processData(
+					state.originalData,
+					state.sortField,
+					state.sortDirection,
+					state.filters
+				);
+
+				// Update unique values
+				const uniqueValues: Record<string, any[]> = {};
+
+				// Get unique sources
+				if (state.originalData.some((item) => item.source || item.vendor)) {
+					uniqueValues.sources = Array.from(
+						new Set(state.originalData.map((item) => item.source || item.vendor).filter(Boolean))
+					).sort((a, b) => a.localeCompare(b));
+				}
+
+				// Get unique purchase dates
+				if (state.originalData.some((item) => item.purchase_date)) {
+					uniqueValues.purchaseDates = Array.from(
+						new Set(state.originalData.map((item) => item.purchase_date).filter(Boolean))
+					).sort((a, b) => a.localeCompare(b));
+				}
+
+				// Get unique roast dates
+				if (state.originalData.some((item) => item.roast_date)) {
+					uniqueValues.roastDates = Array.from(
+						new Set(state.originalData.map((item) => item.roast_date).filter(Boolean))
+					).sort((a, b) => a.localeCompare(b));
+				}
+
+				// Get unique batch names
+				if (state.originalData.some((item) => item.batch_name)) {
+					uniqueValues.batchNames = Array.from(
+						new Set(state.originalData.map((item) => item.batch_name).filter(Boolean))
+					).sort((a, b) => a.localeCompare(b));
+				}
+
+				state.uniqueValues = uniqueValues;
+			}
+
+			state.initialized = true;
+			state.processing = false;
+			state.initializingRoute = null;
+
+			return state;
 		});
-
-		// Set default sort for the route
-		setDefaultSort(routeId);
-
-		// Initialize unique values for filters
-		updateUniqueFilterValues();
 	}
 
-	// Set default sort based on route
-	function setDefaultSort(routeId: string) {
-		const defaultSorts: Record<string, { field: string; direction: 'asc' | 'desc' }> = {
-			'/': { field: 'arrival_date', direction: 'desc' },
-			'/beans': { field: 'purchase_date', direction: 'desc' },
-			'/roast': { field: 'roast_date', direction: 'desc' }
-		};
-
-		const defaultSort = defaultSorts[routeId] || null;
-		if (defaultSort) {
-			console.log(
-				`Setting default sort for ${routeId}: ${defaultSort.field} ${defaultSort.direction}`
-			);
-			setSortField(defaultSort.field);
-			setSortDirection(defaultSort.direction);
+	// Get default sort settings for each route
+	function getDefaultSortSettings(routeId: string) {
+		if (routeId.includes('beans')) {
+			return { field: 'purchase_date', direction: 'desc' as const };
+		} else if (routeId.includes('roast')) {
+			return { field: 'roast_date', direction: 'desc' as const };
+		} else {
+			return { field: null, direction: null } as const;
 		}
+	}
+
+	// Set the default sort for a route
+	function setDefaultSort(routeId: string) {
+		const { field, direction } = getDefaultSortSettings(routeId);
+		update((state) => {
+			state.sortField = field;
+			state.sortDirection = direction;
+			return state;
+		});
+		processAndUpdateFilteredData();
 	}
 
 	// Set sort field
 	function setSortField(field: string | null) {
-		update((state) => ({
-			...state,
-			sortField: field
-		}));
-
-		// Process data with new sort
+		update((state) => {
+			state.sortField = field;
+			return state;
+		});
 		processAndUpdateFilteredData();
 	}
 
 	// Set sort direction
 	function setSortDirection(direction: 'asc' | 'desc' | null) {
-		update((state) => ({
-			...state,
-			sortDirection: direction
-		}));
-
-		// Process data with new direction
+		update((state) => {
+			state.sortDirection = direction;
+			return state;
+		});
 		processAndUpdateFilteredData();
 	}
 
-	// Set a specific filter value
+	// Set filter value
 	function setFilter(key: string, value: any) {
-		update((state) => ({
-			...state,
-			filters: {
-				...state.filters,
-				[key]: value
-			}
-		}));
-
-		// Process data with new filter
+		update((state) => {
+			state.filters = { ...state.filters, [key]: value };
+			return state;
+		});
 		processAndUpdateFilteredData();
 	}
 
-	// Toggle sort between asc, desc, and null
+	// Toggle sort field or direction
 	function toggleSort(field: string) {
 		update((state) => {
-			let newDirection: 'asc' | 'desc' | null = null;
-			let newField: string | null = null;
-
+			// If the field is the same, toggle direction
 			if (state.sortField === field) {
-				if (state.sortDirection === 'asc') {
-					newDirection = 'desc';
-					newField = field;
-				} else if (state.sortDirection === 'desc') {
-					newDirection = null;
-					newField = null;
+				// None -> Asc -> Desc -> None
+				if (state.sortDirection === null) {
+					state.sortDirection = 'asc';
+				} else if (state.sortDirection === 'asc') {
+					state.sortDirection = 'desc';
+				} else {
+					state.sortField = null;
+					state.sortDirection = null;
 				}
 			} else {
-				newDirection = 'asc';
-				newField = field;
+				// If the field is different, set sort field and direction to asc
+				state.sortField = field;
+				state.sortDirection = 'asc';
 			}
-
-			return {
-				...state,
-				sortField: newField,
-				sortDirection: newDirection
-			};
+			return state;
 		});
-
-		// Process data with new sort
 		processAndUpdateFilteredData();
 	}
 
 	// Clear all filters
 	function clearFilters() {
-		update((state) => ({
-			...state,
-			filters: {}
-		}));
-
-		// Process data with cleared filters
+		update((state) => {
+			state.filters = {};
+			return state;
+		});
 		processAndUpdateFilteredData();
 	}
 
-	// Update unique values for filters based on current data
+	// Update unique filter values based on original data
 	function updateUniqueFilterValues() {
-		update((state) => {
-			const uniqueValues: Record<string, any[]> = {};
+		try {
+			update((state) => {
+				// If already processing, don't start another update
+				if (state.processing) {
+					return state;
+				}
 
-			if (!state.originalData?.length) {
-				console.log('No original data found for generating unique filter values');
-				return { ...state, uniqueValues };
-			}
+				state.processing = true;
 
-			console.log(`Updating unique filter values for route: ${state.routeId}`);
+				// Don't process if there's no data
+				if (!state.originalData?.length) {
+					state.processing = false;
+					return state;
+				}
 
-			switch (state.routeId) {
-				case '/':
-					uniqueValues.sources = [
-						...new Set(state.originalData.map((item: any) => item.source))
-					].filter(Boolean);
-					break;
-				case '/beans':
-					uniqueValues.purchaseDates = [
-						...new Set(state.originalData.map((item: any) => item.purchase_date))
-					]
-						.filter(Boolean)
-						.sort((a, b) => b.localeCompare(a));
-					break;
-				case '/roast':
-					uniqueValues.roastDates = [
-						...new Set(state.originalData.map((item: any) => item.roast_date))
-					]
-						.filter(Boolean)
-						.sort((a, b) => b.localeCompare(a));
+				// Check if we've already processed this exact data set
+				const dataString = JSON.stringify(state.originalData.map((item) => item.id || item._id));
+				if (dataString === state.lastProcessedString) {
+					state.processing = false;
+					return state;
+				}
 
-					uniqueValues.batchNames = [
-						...new Set(state.originalData.map((item: any) => item.batch_name))
-					].filter(Boolean);
-					break;
-			}
+				// Save the string representation of IDs to avoid reprocessing
+				state.lastProcessedString = dataString;
 
-			console.log('Generated unique values:', uniqueValues);
+				// Now process the unique values
+				const uniqueValues: Record<string, any[]> = {};
 
-			return {
-				...state,
-				uniqueValues
-			};
-		});
+				// Get unique sources
+				if (state.originalData.some((item) => item.source || item.vendor)) {
+					uniqueValues.sources = Array.from(
+						new Set(state.originalData.map((item) => item.source || item.vendor).filter(Boolean))
+					).sort((a, b) => a.localeCompare(b));
+				}
+
+				// Get unique purchase dates
+				if (state.originalData.some((item) => item.purchase_date)) {
+					uniqueValues.purchaseDates = Array.from(
+						new Set(state.originalData.map((item) => item.purchase_date).filter(Boolean))
+					).sort((a, b) => a.localeCompare(b));
+				}
+
+				// Get unique roast dates
+				if (state.originalData.some((item) => item.roast_date)) {
+					uniqueValues.roastDates = Array.from(
+						new Set(state.originalData.map((item) => item.roast_date).filter(Boolean))
+					).sort((a, b) => a.localeCompare(b));
+				}
+
+				// Get unique batch names
+				if (state.originalData.some((item) => item.batch_name)) {
+					uniqueValues.batchNames = Array.from(
+						new Set(state.originalData.map((item) => item.batch_name).filter(Boolean))
+					).sort((a, b) => a.localeCompare(b));
+				}
+
+				// Only update uniqueValues if they've actually changed
+				if (JSON.stringify(uniqueValues) !== JSON.stringify(state.uniqueValues)) {
+					state.uniqueValues = uniqueValues;
+				}
+
+				state.processing = false;
+				return state;
+			});
+		} catch (error) {
+			console.error('Error updating unique filter values:', error);
+			update((state) => {
+				state.processing = false;
+				return state;
+			});
+		}
 	}
 
-	// Filter data based on current filters
+	// Filter data based on filters
 	function filterData(data: any[], filters: Record<string, any>): any[] {
-		if (!data?.length || !filters) return data;
+		// Skip if no filters
+		if (!Object.keys(filters).length) return data;
 
 		console.log('Filtering data with filters:', filters);
 
 		return data.filter((item) => {
+			// Check each filter
 			return Object.entries(filters).every(([key, value]) => {
-				if (!value) return true;
+				// Skip empty filters
+				if (value === undefined || value === null || value === '') return true;
+
+				// Get item value
 				const itemValue = item[key];
 
-				// Handle special cases for different filter types
-				if (key === 'source' && Array.isArray(value)) {
-					return value.length === 0 || value.includes(itemValue);
-				}
+				// Handle different filter types
+				if (typeof value === 'object') {
+					// Range filter
+					if (value.min !== undefined && value.max !== undefined) {
+						return (
+							(value.min === '' || itemValue >= parseFloat(value.min)) &&
+							(value.max === '' || itemValue <= parseFloat(value.max))
+						);
+					}
 
-				if (key === 'score_value' && typeof value === 'object') {
-					const score = Number(itemValue);
-					return (
-						(!value.min || score >= Number(value.min)) && (!value.max || score <= Number(value.max))
-					);
-				}
-
-				// Default string filtering
-				if (typeof value === 'string') {
-					return String(itemValue || '')
-						.toLowerCase()
-						.includes(value.toLowerCase());
+					// Array filter
+					if (Array.isArray(value)) {
+						return value.includes(itemValue);
+					}
+				} else if (typeof itemValue === 'string' && typeof value === 'string') {
+					// Case-insensitive string search
+					return itemValue.toLowerCase().includes(value.toLowerCase());
+				} else {
+					// Exact match
+					return itemValue === value;
 				}
 
 				return true;
@@ -240,176 +333,177 @@ function createFilterStore() {
 		});
 	}
 
-	// Sort data based on current sort settings
+	// Sort data based on sortField and sortDirection
 	function sortData(
 		data: any[],
 		sortField: string | null,
 		sortDirection: 'asc' | 'desc' | null
 	): any[] {
-		if (!sortField || !sortDirection || !data?.length) return data;
+		// Skip if no sort field or direction
+		if (!sortField || !sortDirection) return data;
 
-		console.log(`Sorting data by ${sortField} ${sortDirection}`);
+		console.log('Sorting data by', sortField, sortDirection);
 
 		return [...data].sort((a, b) => {
-			const aVal = a[sortField];
-			const bVal = b[sortField];
+			const aValue = a[sortField];
+			const bValue = b[sortField];
 
-			// Special handling for dates
+			// Handle date fields specially
 			if (
-				sortField === 'arrival_date' ||
 				sortField === 'purchase_date' ||
+				sortField === 'arrival_date' ||
 				sortField === 'roast_date'
 			) {
-				if (!aVal && !bVal) return 0;
-				if (!aVal) return sortDirection === 'asc' ? -1 : 1;
-				if (!bVal) return sortDirection === 'asc' ? 1 : -1;
+				// Custom date parsing function for handling YYYY-MM format
+				const parseMonthYear = (dateStr: string): Date => {
+					if (!dateStr) return new Date(0);
 
-				if (sortField === 'arrival_date') {
-					// Parse month/year format
-					const parseMonthYear = (dateStr: string): Date => {
-						const [month, year] = dateStr.split(' ');
-						const monthIndex = new Date(Date.parse(month + ' 1, 2000')).getMonth();
-						return new Date(parseInt(year), monthIndex);
-					};
+					// Check if it's in the YYYY-MM format
+					if (/^\d{4}-\d{2}$/.test(dateStr)) {
+						const [year, month] = dateStr.split('-').map(Number);
+						return new Date(year, month - 1);
+					}
 
-					const dateA = parseMonthYear(aVal as string);
-					const dateB = parseMonthYear(bVal as string);
+					// If it's a database date/time format
+					if (dateStr.includes(' ')) {
+						// Convert MySQL datetime to JS Date
+						return new Date(dateStr.replace(' ', 'T') + 'Z');
+					}
 
-					return sortDirection === 'asc'
-						? dateA.getTime() - dateB.getTime()
-						: dateB.getTime() - dateA.getTime();
-				} else {
-					const aStr = String(aVal);
-					const bStr = String(bVal);
+					// Standard date format
+					return new Date(dateStr);
+				};
 
-					return sortDirection === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
-				}
+				const dateA = parseMonthYear(aValue);
+				const dateB = parseMonthYear(bValue);
+
+				return sortDirection === 'asc'
+					? dateA.getTime() - dateB.getTime()
+					: dateB.getTime() - dateA.getTime();
 			}
 
-			// String comparison
-			if (typeof aVal === 'string' && typeof bVal === 'string') {
-				return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+			// Handle string fields
+			if (typeof aValue === 'string' && typeof bValue === 'string') {
+				return sortDirection === 'asc'
+					? aValue.localeCompare(bValue)
+					: bValue.localeCompare(aValue);
 			}
 
-			// Number comparison
-			return sortDirection === 'asc' ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
+			// Handle numeric fields
+			return sortDirection === 'asc'
+				? (aValue || 0) - (bValue || 0)
+				: (bValue || 0) - (aValue || 0);
 		});
 	}
 
-	// Process data through filtering and sorting
+	// Process data with filters and sorting
 	function processData(
 		data: any[],
 		sortField: string | null,
 		sortDirection: 'asc' | 'desc' | null,
 		filters: Record<string, any>
 	): any[] {
-		if (!data?.length) {
-			console.log('No data to process');
-			return [];
-		}
+		// Start by filtering
+		const filtered = filterData(data, filters);
+		console.log('After filtering:', filtered.length, 'items');
 
-		console.log(`Processing data: ${data.length} items`);
+		// Then sort
+		const sorted = sortData(filtered, sortField, sortDirection);
+		console.log('After sorting:', sorted.length, 'items');
 
-		const filteredResults = filterData(data, filters);
-		console.log(`After filtering: ${filteredResults.length} items`);
-
-		const sortedResults = sortData(filteredResults, sortField, sortDirection);
-		console.log(`After sorting: ${sortedResults.length} items`);
-
-		return sortedResults;
+		return sorted;
 	}
 
-	// Process and update filtered data with debounce
-	let processTimeout: ReturnType<typeof setTimeout> | null = null;
+	// Process and update filtered data, with debounce to avoid rapid updates
 	function processAndUpdateFilteredData() {
-		if (processTimeout) {
-			clearTimeout(processTimeout);
+		// If a debounce timer exists, clear it
+		const currentState = get({ subscribe });
+		if (currentState.lastDebounceId) {
+			clearTimeout(currentState.lastDebounceId);
 		}
 
-		console.log('Scheduling data processing...');
-
-		processTimeout = setTimeout(() => {
+		// Set a new debounce timer
+		const debounceId = setTimeout(() => {
 			update((state) => {
+				// If already processing, skip this update
 				if (state.processing) {
-					console.log('Already processing, skipping update');
 					return state;
 				}
 
-				console.log('Starting data processing');
 				state.processing = true;
 
 				try {
-					const newFilteredData = processData(
+					if (!state.originalData || !state.originalData.length) {
+						state.filteredData = [];
+						state.processing = false;
+						return state;
+					}
+
+					// Process the data with current filter settings
+					const processedData = processData(
 						state.originalData,
 						state.sortField,
 						state.sortDirection,
 						state.filters
 					);
 
-					// Check if the data has actually changed
-					const newDataString = JSON.stringify(newFilteredData);
-
-					if (state.lastProcessedString !== newDataString) {
-						console.log(`Data changed, updating filtered data (${newFilteredData.length} items)`);
-						return {
-							...state,
-							filteredData: newFilteredData,
-							lastProcessedString: newDataString,
-							processing: false
-						};
+					// Only update if the result is different
+					if (
+						JSON.stringify(processedData.map((item) => item.id)) !==
+						JSON.stringify(state.filteredData.map((item) => item.id))
+					) {
+						state.filteredData = processedData;
 					}
-
-					console.log('Data unchanged, skipping update');
-					return {
-						...state,
-						processing: false
-					};
-				} catch (error) {
-					console.error('Error processing data:', error);
-					return {
-						...state,
-						processing: false
-					};
+				} catch (err) {
+					console.error('Error processing data:', err);
+				} finally {
+					state.processing = false;
+					state.lastDebounceId = null;
 				}
-			});
 
-			processTimeout = null;
-		}, 50);
+				return state;
+			});
+		}, 100); // 100ms debounce
+
+		// Store the debounce timer ID
+		update((state) => {
+			state.lastDebounceId = debounceId;
+			return state;
+		});
 	}
 
 	// Get filterable columns based on route
 	function getFilterableColumns(routeId: string): string[] {
-		switch (routeId) {
-			case '/':
-				return [
-					'source',
-					'name',
-					'processing',
-					'region',
-					'cost_lb',
-					'score_value',
-					'arrival_date',
-					'harvest_date',
-					'cultivar_detail'
-				];
-			case '/beans':
-				return [
-					'name',
-					'purchase_date',
-					'score_value',
-					'rank',
-					'cultivar_detail',
-					'processing',
-					'vendor',
-					'price_per_lb',
-					'arrival_date'
-				];
-			case '/roast':
-				return ['coffee_name', 'batch_name', 'roast_date', 'notes'];
-			default:
-				return [];
+		if (routeId.includes('beans')) {
+			return [
+				'name',
+				'vendor',
+				'source',
+				'score_value',
+				'purchase_date',
+				'type',
+				'region',
+				'processing',
+				'cultivar_detail'
+			];
+		} else if (routeId.includes('roast')) {
+			return [
+				'batch_name',
+				'coffee_name',
+				'roast_date',
+				'roast_notes',
+				'roast_targets',
+				'oz_in',
+				'oz_out'
+			];
+		} else if (routeId === '/') {
+			return ['name', 'source', 'region', 'processing', 'score_value', 'cost_lb'];
 		}
+		return [];
 	}
+
+	// Create a filtered data derived store
+	const filteredData = derived({ subscribe }, ($state) => $state.filteredData);
 
 	return {
 		subscribe,
@@ -419,12 +513,12 @@ function createFilterStore() {
 		setFilter,
 		toggleSort,
 		clearFilters,
-		getFilterableColumns
+		setDefaultSort,
+		getFilterableColumns,
+		filteredData
 	};
 }
 
-// Create and export the store instance
+// Export the created store
 export const filterStore = createFilterStore();
-
-// Derived store for filtered data only
-export const filteredData = derived(filterStore, ($filterStore) => $filterStore.filteredData);
+export const filteredData = filterStore.filteredData;

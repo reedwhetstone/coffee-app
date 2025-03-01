@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { onMount, tick } from 'svelte';
-	import { filteredData } from '$lib/stores/filterStore';
+	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import { page } from '$app/stores';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -25,12 +26,17 @@
 	let isLoadingRecommendations = $state(false);
 	let updatingRecommendations = $state(false);
 
-	// Only initialize filtered data if needed - most of the time the filter store should handle this
+	// Initialize filter store when page mounts
 	$effect(() => {
-		// If we have page data but filtered data is empty, initialize it manually
-		if (data?.data?.length > 0 && $filteredData.length === 0) {
-			console.log('Manually initializing filtered data with page data');
-			// This shouldn't be needed once the filterStore is fixed
+		const currentRoute = $page.url.pathname;
+
+		// If we have data and filter store isn't initialized for this route yet, initialize it
+		if (
+			data?.data?.length > 0 &&
+			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
+		) {
+			console.log('Initializing filter store with home page data:', data.data.length, 'items');
+			filterStore.initializeForRoute(currentRoute, data.data);
 		}
 	});
 

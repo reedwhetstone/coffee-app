@@ -19,8 +19,10 @@
 	import { get } from 'svelte/store';
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import RoastChartInterface from './RoastChartInterface.svelte';
-	import { filteredData } from '$lib/stores/filterStore';
-	import { filterStore } from '$lib/stores/filterStore';
+	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import type { PageData } from './$types';
+	import { goto } from '$app/navigation';
+	import { formatDateForDisplay } from '$lib/utils/dates';
 
 	// Roast profile state management
 	let currentRoastProfile = $state<any>(null);
@@ -46,10 +48,7 @@
 	let expandedBatches = $state<Set<string>>(new Set());
 	let currentProfileIndex = $state<number>(0);
 
-	type PageData = {
-		data: any[];
-	};
-
+	// Page data
 	let { data } = $props<{ data: PageData }>();
 
 	// Track initialization and processing
@@ -61,94 +60,70 @@
 		console.log('FilteredData store value:', $filteredData);
 	});
 
-	// Only initialize filtered data if needed - most of the time the filter store should handle this
+	// Initialize filter store
 	$effect(() => {
-		// If we have page data but filtered data is empty, initialize it manually
-		if (data?.data?.length > 0 && $filteredData.length === 0) {
-			console.log('Manually initializing filtered data with page data');
-			filterStore.initializeForRoute($page.url.pathname, data.data);
+		const currentRoute = $page.url.pathname;
+		// If we have page data but filtered data is empty, initialize it
+		if (
+			data?.data?.length > 0 &&
+			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
+		) {
+			console.log('Initializing filter store with roast page data:', data.data.length, 'items');
+			filterStore.initializeForRoute(currentRoute, data.data);
 		}
 	});
 
 	// Function to update grouped profiles from filtered data
 	function updateGroupedProfiles(profiles: any[]) {
-		if (!profiles.length || updatingProfileGroups) return;
+		console.log('Updating grouped profiles with', profiles.length, 'profiles');
 
-		try {
-			updatingProfileGroups = true;
+		// Group profiles by batch name
+		const groupedProfiles: Record<string, any[]> = {};
 
-			// Group profiles by batch_name
-			const localGroupedProfiles: Record<string, any[]> = {};
-
-			// Group profiles by batch_name
-			profiles.forEach((profile) => {
-				const batchName = profile.batch_name || 'No Batch';
-				if (!localGroupedProfiles[batchName]) {
-					localGroupedProfiles[batchName] = [];
-				}
-				localGroupedProfiles[batchName].push(profile);
-			});
-
-			// Sort batch names by most recent roast date
-			const localSortedBatchNames = Object.keys(localGroupedProfiles).sort((a, b) => {
-				const latestA = Math.max(
-					...localGroupedProfiles[a].map((p) => new Date(p.roast_date).getTime())
-				);
-				const latestB = Math.max(
-					...localGroupedProfiles[b].map((p) => new Date(p.roast_date).getTime())
-				);
-				return sortDirection === 'desc' ? latestA - latestB : latestB - latestA;
-			});
-
-			// Sort profiles within each batch group
-			const localSortedGroupedProfiles: Record<string, any[]> = {};
-			localSortedBatchNames.forEach((batch) => {
-				localSortedGroupedProfiles[batch] = [...localGroupedProfiles[batch]].sort((a, b) => {
-					if (!sortField) return 0;
-
-					const aVal = a[sortField];
-					const bVal = b[sortField];
-
-					if (sortField === 'roast_id') {
-						// For roast_id, always sort in ascending order (oldest first)
-						return Number(aVal) - Number(bVal);
-					} else if (sortField === 'roast_date' || sortField === 'last_updated') {
-						return sortDirection === 'asc'
-							? new Date(aVal).getTime() - new Date(bVal).getTime()
-							: new Date(bVal).getTime() - new Date(aVal).getTime();
-					}
-
-					if (typeof aVal === 'string' && typeof bVal === 'string') {
-						return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-					}
-
-					return sortDirection === 'asc'
-						? Number(aVal) - Number(bVal)
-						: Number(bVal) - Number(aVal);
-				});
-			});
-
-			// Update state variables all at once to reduce cascading effects
-			groupedProfiles = localGroupedProfiles;
-			sortedBatchNames = localSortedBatchNames;
-			sortedGroupedProfiles = localSortedGroupedProfiles;
-
-			// If we have a current roast profile, make sure it's still in the filtered data
-			if (currentRoastProfile) {
-				const stillExists = profiles.some((profile) => profile.id === currentRoastProfile.id);
-				if (!stillExists) {
-					currentRoastProfile = null;
-				}
+		// Process each profile
+		profiles.forEach((profile) => {
+			const batchName = profile.batch_name || 'Unknown Batch';
+			if (!groupedProfiles[batchName]) {
+				groupedProfiles[batchName] = [];
 			}
-		} finally {
-			updatingProfileGroups = false;
-		}
+			groupedProfiles[batchName].push(profile);
+		});
+
+		// Sort profiles within each batch by date (newest first)
+		Object.keys(groupedProfiles).forEach((batchName) => {
+			groupedProfiles[batchName].sort((a, b) => {
+				const dateA = new Date(a.roast_date);
+				const dateB = new Date(b.roast_date);
+				return dateB.getTime() - dateA.getTime();
+			});
+		});
+
+		// Get sorted batch names
+		const batchNames = Object.keys(groupedProfiles).sort((a, b) => {
+			// Get the latest date from each batch
+			const latestA = groupedProfiles[a][0]?.roast_date
+				? new Date(groupedProfiles[a][0].roast_date)
+				: new Date(0);
+			const latestB = groupedProfiles[b][0]?.roast_date
+				? new Date(groupedProfiles[b][0].roast_date)
+				: new Date(0);
+			return latestB.getTime() - latestA.getTime();
+		});
+
+		// Update state
+		sortedBatchNames = batchNames;
+		sortedGroupedProfiles = groupedProfiles;
 	}
 
 	// Update grouped profiles when filtered data changes
 	$effect(() => {
-		if ($filteredData.length) {
-			updateGroupedProfiles($filteredData);
+		if ($filteredData.length && !updatingProfileGroups) {
+			updatingProfileGroups = true;
+			try {
+				updateGroupedProfiles($filteredData);
+			} finally {
+				updatingProfileGroups = false;
+			}
 		}
 	});
 
@@ -180,21 +155,19 @@
 		try {
 			const response = await fetch('/api/roast-profiles');
 			if (response.ok) {
-				const data = await response.json();
-				allRoastProfiles = data.data || [];
-
-				// Only set currentRoastProfile if we have a selectedBean
-				if (selectedBean?.id) {
-					const matchingProfiles = allRoastProfiles
-						.filter((profile: any) => profile.coffee_id === selectedBean.id)
-						.sort((a: any, b: any) => a.roast_id - b.roast_id);
-					currentRoastProfile = matchingProfiles.length > 0 ? matchingProfiles[0] : null;
-				} else {
-					currentRoastProfile = null;
+				const result = await response.json();
+				if (result.data && Array.isArray(result.data)) {
+					// Update the page data
+					data.data = result.data;
+					// Re-initialize filter store with new data
+					filterStore.initializeForRoute($page.url.pathname, result.data);
+					return true;
 				}
 			}
+			return false;
 		} catch (error) {
 			console.error('Error loading roast profiles:', error);
+			return false;
 		}
 	}
 
@@ -214,12 +187,22 @@
 
 		loadRoastProfiles();
 
+		// Initialize filter store with roast data if needed
+		const currentRoute = $page.url.pathname;
+		if (
+			data?.data?.length > 0 &&
+			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
+		) {
+			console.log('Initializing filter store with roast page data:', data.data.length, 'items');
+			filterStore.initializeForRoute(currentRoute, data.data);
+		}
+
 		// Add search navigation handling
 		const searchState = $page.state as any;
 		if (searchState?.searchType === 'roast' && searchState?.searchId) {
 			loadRoastProfiles().then(() => {
-				const foundProfile = allRoastProfiles.find(
-					(profile) => profile.roast_id === searchState.searchId
+				const foundProfile = data.data.find(
+					(profile: { roast_id: number }) => profile.roast_id === searchState.searchId
 				);
 				if (foundProfile) {
 					// Set the selectedBean first
@@ -240,7 +223,9 @@
 			onSearchSelect: async (type, id) => {
 				if (type === 'roast') {
 					await loadRoastProfiles();
-					const foundProfile = allRoastProfiles.find((profile) => profile.roast_id === id);
+					const foundProfile = data.data.find(
+						(profile: { roast_id: number }) => profile.roast_id === id
+					);
 					if (foundProfile) {
 						selectProfile(foundProfile);
 					}
@@ -298,7 +283,9 @@
 				await loadRoastProfiles();
 
 				// Then find and select the newly created profile
-				const newProfile = allRoastProfiles.find((p) => p.roast_id === profiles[0].roast_id);
+				const newProfile = data.data.find(
+					(p: { roast_id: number }) => p.roast_id === profiles[0].roast_id
+				);
 				if (newProfile) {
 					await selectProfile(newProfile);
 				}
@@ -355,7 +342,9 @@
 	async function handleProfileUpdate(updatedProfile: any) {
 		try {
 			await loadRoastProfiles(); // Refresh the profiles list first
-			const profile = allRoastProfiles.find((p) => p.roast_id === updatedProfile.roast_id);
+			const profile = data.data.find(
+				(p: { roast_id: number }) => p.roast_id === updatedProfile.roast_id
+			);
 			if (profile) {
 				await selectProfile(profile);
 			} else {
@@ -589,7 +578,9 @@
 
 			// Reload profiles and select the saved one
 			await loadRoastProfiles();
-			const savedProfile = allRoastProfiles.find((p) => p.roast_id === profile.roast_id);
+			const savedProfile = data.data.find(
+				(p: { roast_id: number }) => p.roast_id === profile.roast_id
+			);
 			if (savedProfile) {
 				await selectProfile(savedProfile);
 			}
