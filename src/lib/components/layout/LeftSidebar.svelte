@@ -31,7 +31,7 @@
 	});
 </script>
 
-<div class="fixed left-0 top-0 z-50 h-full w-12 bg-background-primary-light/5 shadow-sm">
+<div class="fixed left-0 top-0 z-50 h-full w-16 bg-transparent">
 	<div class="flex h-full flex-col items-center space-y-4 py-4">
 		<!-- User/Navigation Menu -->
 		<div class="relative">
