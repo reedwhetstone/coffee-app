@@ -148,14 +148,28 @@
 	// Update selectedBean when currentRoastProfile changes
 	$effect(() => {
 		if (currentRoastProfile && !processing) {
-			processing = true;
-			try {
-				selectedBean = {
-					id: currentRoastProfile.coffee_id,
-					name: currentRoastProfile.coffee_name
-				};
-			} finally {
-				processing = false;
+			// Check if the selectedBean actually needs to be updated
+			if (
+				!selectedBean ||
+				selectedBean.id !== currentRoastProfile.coffee_id ||
+				selectedBean.name !== currentRoastProfile.coffee_name
+			) {
+				processing = true;
+				try {
+					console.log(
+						'Updating selectedBean from currentRoastProfile:',
+						currentRoastProfile.coffee_id
+					);
+					selectedBean = {
+						id: currentRoastProfile.coffee_id,
+						name: currentRoastProfile.coffee_name
+					};
+				} finally {
+					// Use setTimeout to break potential update cycles
+					setTimeout(() => {
+						processing = false;
+					}, 50);
+				}
 			}
 		}
 	});
