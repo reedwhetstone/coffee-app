@@ -9,8 +9,6 @@
 	import { checkRole } from '$lib/types/auth.types';
 	const { debounce } = pkg;
 
-	import { clickOutside } from '$lib/utils/clickOutside';
-
 	// Update the props declaration to include isOpen and onClose
 	let {
 		data,
@@ -85,71 +83,105 @@
 	});
 </script>
 
-<!-- Navigation menu panel - positioned relative to the parent in LeftSidebar -->
-<div
-	class="absolute left-12 mt-0 w-48 rounded-lg bg-white shadow-xl"
-	use:clickOutside={{ handler: onClose }}
->
-	<div class="p-2">
+<!-- Navigation menu panel - full height -->
+<div class="flex h-full flex-col">
+	<!-- Header with close button that handles keyboard events -->
+	<header
+		class="border-text-primary-dark flex items-center justify-between border-b border-opacity-20 p-4"
+	>
+		<h2 class="text-xl font-semibold" id="nav-dialog-title">Navigation</h2>
+		<button
+			onclick={(e) => {
+				e.stopPropagation();
+				onClose();
+			}}
+			onkeydown={(e) => e.key === 'Escape' && onClose()}
+			class="p-2 hover:opacity-80"
+			aria-label="Close navigation panel"
+		>
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				class="h-5 w-5"
+				viewBox="0 0 20 20"
+				fill="currentColor"
+			>
+				<path
+					fill-rule="evenodd"
+					d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+					clip-rule="evenodd"
+				/>
+			</svg>
+		</button>
+	</header>
+
+	<main class="flex-grow overflow-y-auto p-4">
 		{#if session?.user}
-			<div class="mb-2 border-b border-gray-200 pb-2 text-sm text-gray-600">
+			<div class="border-text-primary-dark mb-4 border-b border-opacity-20 pb-3 text-sm opacity-80">
 				{session.user.email}
 			</div>
 		{/if}
 
 		{#if hasRequiredRole('member')}
-			<nav class="space-y-1">
-				<a
-					href="/"
-					class="block rounded px-3 py-2 text-sm {routeId === '/'
-						? 'bg-background-secondary-light/10 text-background-secondary-light'
-						: 'text-gray-700'} hover:bg-background-secondary-light/10"
-				>
-					Catalog
-				</a>
-				<a
-					href="/beans"
-					class="block rounded px-3 py-2 text-sm {routeId === '/beans'
-						? 'bg-background-secondary-light/10 text-background-secondary-light'
-						: 'text-gray-700'} hover:bg-background-secondary-light/10"
-				>
-					Beans
-				</a>
-				<a
-					href="/roast"
-					class="block rounded px-3 py-2 text-sm {routeId === '/roast'
-						? 'bg-background-secondary-light/10 text-background-secondary-light'
-						: 'text-gray-700'} hover:bg-background-secondary-light/10"
-				>
-					Roast
-				</a>
-				<a
-					href="/profit"
-					class="block rounded px-3 py-2 text-sm {routeId === '/profit'
-						? 'bg-background-secondary-light/10 text-background-secondary-light'
-						: 'text-gray-700'} hover:bg-background-secondary-light/10"
-				>
-					Profit
-				</a>
-			</nav>
+			<ul class="space-y-2">
+				<li>
+					<a
+						href="/"
+						class="block px-3 py-2 text-sm {routeId === '/'
+							? 'text-text-primary-dark bg-background-secondary-light/20'
+							: 'text-text-primary-dark hover:bg-background-secondary-light/10'}"
+					>
+						Catalog
+					</a>
+				</li>
+				<li>
+					<a
+						href="/beans"
+						class="block px-3 py-2 text-sm {routeId === '/beans'
+							? 'text-text-primary-dark bg-background-secondary-light/20'
+							: 'text-text-primary-dark hover:bg-background-secondary-light/10'}"
+					>
+						Beans
+					</a>
+				</li>
+				<li>
+					<a
+						href="/roast"
+						class="block px-3 py-2 text-sm {routeId === '/roast'
+							? 'text-text-primary-dark bg-background-secondary-light/20'
+							: 'text-text-primary-dark hover:bg-background-secondary-light/10'}"
+					>
+						Roast
+					</a>
+				</li>
+				<li>
+					<a
+						href="/profit"
+						class="block px-3 py-2 text-sm {routeId === '/profit'
+							? 'text-text-primary-dark bg-background-secondary-light/20'
+							: 'text-text-primary-dark hover:bg-background-secondary-light/10'}"
+					>
+						Profit
+					</a>
+				</li>
+			</ul>
 		{/if}
+	</main>
 
-		<div class="mt-2 border-t border-gray-200 pt-2">
-			{#if session?.user}
-				<button
-					onclick={handleSignOut}
-					class="block w-full rounded px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-				>
-					Sign Out
-				</button>
-			{:else}
-				<button
-					onclick={handleSignIn}
-					class="block w-full rounded px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50"
-				>
-					Sign In
-				</button>
-			{/if}
-		</div>
-	</div>
+	<footer class="border-text-primary-dark mt-auto border-t border-opacity-20 p-4">
+		{#if session?.user}
+			<button
+				onclick={handleSignOut}
+				class="block w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/20"
+			>
+				Sign Out
+			</button>
+		{:else}
+			<button
+				onclick={handleSignIn}
+				class="block w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20"
+			>
+				Sign In
+			</button>
+		{/if}
+	</footer>
 </div>

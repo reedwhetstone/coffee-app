@@ -1,10 +1,14 @@
 <!-- src/lib/components/layout/LeftSidebar.svelte -->
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
+	import { slide } from 'svelte/transition';
+	import { quintOut } from 'svelte/easing';
+	import { onMount } from 'svelte';
 
 	// Props for the sidebar
-	let { data } = $props<{
+	let { data, onMenuChange = () => {} } = $props<{
 		data: any;
+		onMenuChange?: (menu: string | null) => void;
 	}>();
 
 	// Import the menu components
@@ -14,29 +18,84 @@
 	// State for tracking which menu is open
 	let activeMenu = $state<string | null>(null);
 
+	// Reference to the menu container as reactive state
+	let menuContainer = $state<HTMLElement | null>(null);
+
+	// Close menus when route changes, but store the current route to prevent unnecessary closing
+	let currentRoute = $state(page.url.pathname);
+
 	// Function to toggle a menu
 	function toggleMenu(menuId: string) {
+		console.log('toggleMenu called with menuId:', menuId);
+		console.log('Current activeMenu:', activeMenu);
+
+		// Simple toggle: if the same menu is clicked, close it; otherwise open the new one
 		activeMenu = activeMenu === menuId ? null : menuId;
+
+		console.log('New activeMenu:', activeMenu);
+		// Notify parent components about the menu state change
+		onMenuChange(activeMenu);
+	}
+
+	// Function to toggle the nav menu
+	function toggleNavMenu() {
+		toggleMenu('nav');
+	}
+
+	// Function to toggle the settings menu
+	function toggleSettingsMenu() {
+		toggleMenu('settings');
 	}
 
 	// Function to close all menus
 	function closeAllMenus() {
 		activeMenu = null;
+		// Notify parent components about the menu state change
+		onMenuChange(activeMenu);
+	}
+
+	// Handle clicks on the document to close menus when clicking outside
+	function handleDocumentClick(event: MouseEvent) {
+		// If no menu is open or the click is inside the menu container, do nothing
+		if (!activeMenu || !menuContainer) return;
+
+		// Check if the click is outside the menu container
+		if (!menuContainer.contains(event.target as Node)) {
+			closeAllMenus();
+		}
 	}
 
 	// Close menus when route changes
 	$effect(() => {
-		const currentRoute = $page.url.pathname;
-		closeAllMenus();
+		const newRoute = page.url.pathname;
+		// Only close menus if the route actually changed
+		if (newRoute !== currentRoute) {
+			currentRoute = newRoute;
+			closeAllMenus();
+		}
 	});
+
+	// Set up and clean up document click handler
+	onMount(() => {
+		// Add click handler to the document
+		document.addEventListener('mousedown', handleDocumentClick);
+
+		// Clean up on component destruction
+		return () => {
+			document.removeEventListener('mousedown', handleDocumentClick);
+		};
+	});
+
+	// Calculate sidebar position based on active menu
+	let sidebarPosition = $derived(activeMenu ? 'left-64' : 'left-0');
 </script>
 
-<div class="fixed left-0 top-0 z-50 h-full w-16 bg-transparent">
-	<div class="flex h-full flex-col items-center space-y-4 py-4">
+<div class="fixed top-0 z-50 h-full {sidebarPosition} transition-all duration-300 ease-out">
+	<div class="flex h-full w-16 flex-col items-center space-y-4 bg-transparent py-4">
 		<!-- User/Navigation Menu -->
 		<div class="relative">
 			<button
-				onclick={() => toggleMenu('nav')}
+				onclick={toggleNavMenu}
 				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:opacity-80"
 				aria-label="Toggle navigation menu"
 			>
@@ -65,19 +124,12 @@
 					</svg>
 				{/if}
 			</button>
-
-			<!-- Navigation Menu Panel -->
-			{#if activeMenu === 'nav'}
-				<div class="absolute left-0">
-					<NavbarButton {data} isOpen={true} onClose={() => closeAllMenus()} />
-				</div>
-			{/if}
 		</div>
 
 		<!-- Settings Menu -->
 		<div class="relative">
 			<button
-				onclick={() => toggleMenu('settings')}
+				onclick={toggleSettingsMenu}
 				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:opacity-80"
 				aria-label="Toggle filters"
 			>
@@ -94,20 +146,37 @@
 					/>
 				</svg>
 			</button>
-
-			<!-- Settings Menu Panel -->
-			{#if activeMenu === 'settings'}
-				<div class="absolute left-0">
-					<SettingsButton {data} isOpen={true} onClose={() => closeAllMenus()} />
-				</div>
-			{/if}
 		</div>
-
-		<!-- Add more menu buttons here as needed -->
 
 		<!-- Spacer to push potential future buttons to the bottom -->
 		<div class="flex-grow"></div>
-
-		<!-- You can add bottom-aligned buttons here if needed -->
 	</div>
 </div>
+
+<!-- Menu panels container - positioned fixed to the left of the screen -->
+{#if activeMenu}
+	<div class="fixed left-0 top-0 z-40 h-full" bind:this={menuContainer}>
+		<!-- Navigation Menu Panel -->
+		{#if activeMenu === 'nav'}
+			<aside
+				class="bg-background-primary-dark text-text-primary-dark h-full w-64"
+				transition:slide={{ duration: 300, easing: quintOut, axis: 'x' }}
+				role="navigation"
+				aria-label="Main navigation menu"
+			>
+				<NavbarButton {data} isOpen={true} onClose={closeAllMenus} />
+			</aside>
+		{/if}
+
+		<!-- Settings Menu Panel -->
+		{#if activeMenu === 'settings'}
+			<aside
+				class="bg-background-primary-dark text-text-primary-dark h-full w-64"
+				transition:slide={{ duration: 300, easing: quintOut, axis: 'x' }}
+				aria-label="Settings menu"
+			>
+				<SettingsButton {data} isOpen={true} onClose={closeAllMenus} />
+			</aside>
+		{/if}
+	</div>
+{/if}

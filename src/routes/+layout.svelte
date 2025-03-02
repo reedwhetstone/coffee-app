@@ -5,7 +5,7 @@
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { filterStore, filteredData } from '$lib/stores/filterStore';
 
 	interface LayoutData {
@@ -33,6 +33,14 @@
 	let lastRoute = $state('');
 	let initializedRoutes = $state<Set<string>>(new Set());
 	let processingInit = $state(false);
+	let activeMenu = $state<string | null>(null);
+
+	// Handle menu change from the sidebar
+	function handleMenuChange(menu: string | null) {
+		console.log('Layout handleMenuChange called with menu:', menu);
+		activeMenu = menu;
+		console.log('Layout activeMenu set to:', activeMenu);
+	}
 
 	// Debug data in the layout
 	$effect(() => {
@@ -41,7 +49,7 @@
 
 	// Track route changes and initialize data for new routes only when necessary
 	$effect(() => {
-		const currentRoute = $page.url.pathname;
+		const currentRoute = page.url.pathname;
 
 		// Only initialize if the route changed and hasn't been initialized yet
 		if (currentRoute !== lastRoute && !initializedRoutes.has(currentRoute) && !processingInit) {
@@ -80,9 +88,12 @@
 		injectSpeedInsights();
 		injectAnalytics();
 	});
+
+	// Calculate content margin based on active menu
+	let contentMargin = $derived(activeMenu ? 'ml-80' : 'ml-16');
 </script>
 
-<LeftSidebar {data} />
-<div class="ml-12">
+<LeftSidebar {data} onMenuChange={handleMenuChange} />
+<div class="{contentMargin} transition-all duration-300 ease-out">
 	{@render children()}
 </div>
