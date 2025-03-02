@@ -93,7 +93,9 @@
 	let contentMargin = $derived(activeMenu ? 'ml-80' : 'ml-16');
 </script>
 
-<LeftSidebar {data} onMenuChange={handleMenuChange} />
-<div class="{contentMargin} transition-all duration-300 ease-out">
-	{@render children()}
+<div class="my-4 mr-2">
+	<LeftSidebar {data} onMenuChange={handleMenuChange} />
+	<div class="{contentMargin} transition-all duration-300 ease-out">
+		{@render children()}
+	</div>
 </div>

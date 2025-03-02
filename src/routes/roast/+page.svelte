@@ -862,10 +862,10 @@
 
 <!-- Current roast profile display -->
 
-<div class="mx-4 my-6 sm:m-8">
+<div class=" mb-6">
 	<div class="mb-4 flex justify-center sm:justify-end">
 		<button
-			class="w-full rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900 sm:w-auto"
+			class="w-full rounded border-2 border-green-800 px-3 py-1 text-text-primary-light hover:bg-green-900 sm:w-auto"
 			onclick={() => (isFormVisible = true)}
 		>
 			New Roast
@@ -888,7 +888,7 @@
 
 <!-- Main roasting interface -->
 {#if currentRoastProfile}
-	<div class="mx-4 my-6 rounded-lg bg-background-secondary-light p-4 sm:m-8 sm:p-8">
+	<div class=" mb-6 rounded-lg bg-background-secondary-light p-4">
 		<RoastChartInterface
 			{isPaused}
 			{currentRoastProfile}
@@ -917,7 +917,7 @@
 />
 
 {#if !$filteredData || $filteredData.length === 0}
-	<p class="p-4 text-zinc-300">
+	<p class="p-4 text-text-primary-light">
 		No roast profiles available ({data?.data?.length || 0} items in raw data)
 	</p>
 {:else}

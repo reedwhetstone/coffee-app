@@ -702,7 +702,9 @@
 <div>
 	<!-- Roast session header -->
 	<div class="mb-3 flex flex-wrap justify-between">
-		<h1 class="text-xl font-bold text-zinc-300 sm:text-2xl">Roast Session: {selectedBean.name}</h1>
+		<h1 class="text-xl font-bold text-text-primary-light sm:text-2xl">
+			Roast Session: {selectedBean.name}
+		</h1>
 	</div>
 
 	<!-- Main roasting controls: fan, chart, and heat -->
@@ -711,19 +713,19 @@
 		{#if isBeforeRoasting || isDuringRoasting}
 			<div class="flex flex-row justify-center gap-2 sm:my-5 sm:flex-col">
 				<button
-					class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
+					class="rounded border-2 border-indigo-800 px-3 py-1 text-text-primary-light hover:bg-indigo-900"
 					on:click={() => handleFanChange(Math.min(10, fanValue + 1))}
 					disabled={fanValue >= 10}
 				>
 					▲
 				</button>
 				<div
-					class="flex h-10 w-20 items-center justify-center rounded border-2 border-indigo-800 px-3 text-xl text-zinc-300 sm:w-auto"
+					class="flex h-10 w-20 items-center justify-center rounded border-2 border-indigo-800 px-3 text-xl text-text-primary-light sm:w-auto"
 				>
 					{fanValue}
 				</div>
 				<button
-					class="rounded border-2 border-indigo-800 px-3 py-1 text-zinc-300 hover:bg-indigo-900"
+					class="rounded border-2 border-indigo-800 px-3 py-1 text-text-primary-light hover:bg-indigo-900"
 					on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
 					disabled={fanValue <= 0}
 				>
@@ -741,19 +743,19 @@
 		{#if isBeforeRoasting || isDuringRoasting}
 			<div class="flex flex-row justify-center gap-2 sm:my-5 sm:flex-col">
 				<button
-					class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
+					class="rounded border-2 border-amber-800 px-3 py-1 text-text-primary-light hover:bg-amber-900"
 					on:click={() => handleHeatChange(Math.min(10, heatValue + 1))}
 					disabled={heatValue >= 10}
 				>
 					▲
 				</button>
 				<div
-					class="flex h-10 w-20 items-center justify-center rounded border-2 border-amber-800 px-3 text-xl text-zinc-300 sm:w-auto"
+					class="flex h-10 w-20 items-center justify-center rounded border-2 border-amber-800 px-3 text-xl text-text-primary-light sm:w-auto"
 				>
 					{heatValue}
 				</div>
 				<button
-					class="rounded border-2 border-amber-800 px-3 py-1 text-zinc-300 hover:bg-amber-900"
+					class="rounded border-2 border-amber-800 px-3 py-1 text-text-primary-light hover:bg-amber-900"
 					on:click={() => handleHeatChange(Math.max(0, heatValue - 1))}
 					disabled={heatValue <= 0}
 				>
@@ -766,11 +768,13 @@
 	<!-- Roast event controls and timer -->
 	<div class="z-0 mt-4 flex flex-col flex-wrap items-center justify-center gap-4 sm:flex-row">
 		<div class="flex items-center gap-4">
-			<div class="w-36 text-3xl font-bold text-zinc-300 sm:w-48 sm:text-5xl">{formattedTime}</div>
+			<div class="w-36 text-3xl font-bold text-text-primary-light sm:w-48 sm:text-5xl">
+				{formattedTime}
+			</div>
 			{#if isBeforeRoasting || isDuringRoasting}
 				<button
 					id="start-end-roast"
-					class="rounded border-2 border-green-800 px-3 py-1 text-zinc-300 hover:bg-green-900"
+					class="rounded border-2 border-green-800 px-3 py-1 text-text-primary-light hover:bg-green-900"
 					on:mousedown={(e) => {
 						if (isRoasting) {
 							isLongPressing = true;
@@ -819,7 +823,7 @@
 			<div class="flex flex-wrap justify-center gap-2">
 				{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event}
 					<label
-						class="flex items-center rounded border-2 border-green-800 px-3 py-1 text-sm text-zinc-300 hover:bg-green-900 sm:text-base"
+						class="flex items-center rounded border-2 border-green-800 px-3 py-1 text-sm text-text-primary-light hover:bg-green-900 sm:text-base"
 						class:bg-green-900={selectedEvent === event}
 						class:opacity-50={!isRoasting}
 						class:cursor-not-allowed={!isRoasting}
@@ -843,18 +847,18 @@
 
 	<!-- Roast milestone timestamps -->
 	<div class="mt-4 flex flex-wrap justify-center space-x-2 sm:justify-end sm:space-x-4">
-		<div class="text-lg font-bold text-zinc-300 sm:text-2xl">DRYING %: --:--</div>
-		<div class="text-lg font-bold text-zinc-300 sm:text-2xl">TP: --:--</div>
-		<div class="text-lg font-bold text-zinc-300 sm:text-2xl">MAILLARD %: --:--</div>
-		<div class="text-lg font-bold text-zinc-300 sm:text-2xl">FC: --:--</div>
-		<div class="text-lg font-bold text-zinc-300 sm:text-2xl">DEV %: --:--</div>
+		<div class="text-lg font-bold text-text-primary-light sm:text-2xl">DRYING %: --:--</div>
+		<div class="text-lg font-bold text-text-primary-light sm:text-2xl">TP: --:--</div>
+		<div class="text-lg font-bold text-text-primary-light sm:text-2xl">MAILLARD %: --:--</div>
+		<div class="text-lg font-bold text-text-primary-light sm:text-2xl">FC: --:--</div>
+		<div class="text-lg font-bold text-text-primary-light sm:text-2xl">DEV %: --:--</div>
 	</div>
 
 	<!-- Save and Clear roast buttons -->
 	<div class="mt-4 flex justify-end gap-4">
 		{#if isBeforeRoasting || isDuringRoasting}
 			<button
-				class="hover:bg-background-primary-light rounded border-2 border-zinc-500 px-3 py-1 text-zinc-300"
+				class="rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light"
 				on:click={() => {
 					prepareProfileLogsForSave();
 					saveRoastProfile();
@@ -866,7 +870,7 @@
 		{/if}
 		{#if !isBeforeRoasting}
 			<button
-				class="rounded border-2 border-red-800 px-3 py-1 text-zinc-300 hover:bg-red-950"
+				class="rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-950"
 				on:click={() => {
 					if (
 						confirm('Are you sure you want to clear this roast data? This action cannot be undone.')

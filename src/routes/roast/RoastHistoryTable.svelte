@@ -17,9 +17,9 @@
 	}
 </script>
 
-<div class="mx-2 mt-4 flex flex-col gap-4 md:mx-8 md:mt-8">
+<div class="flex flex-col gap-4">
 	{#if !sortedBatchNames || sortedBatchNames.length === 0}
-		<p class="p-4 text-zinc-300">No roast profiles available</p>
+		<p class="p-4 text-text-primary-light">No roast profiles available</p>
 	{:else}
 		<div class="space-y-4">
 			{#each sortedBatchNames as batchName}
@@ -60,7 +60,7 @@
 											</p>
 										</div>
 										{#if profile.notes}
-											<div class="text-left text-sm text-zinc-300 sm:text-right">
+											<div class="text-left text-sm text-text-primary-light sm:text-right">
 												{profile.notes}
 											</div>
 										{/if}

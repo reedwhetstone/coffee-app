@@ -74,11 +74,11 @@
 </script>
 
 <div class="mt-8 overflow-hidden overflow-x-auto rounded-lg">
-	<table class="bg-background-secondary-light w-full table-auto">
-		<thead class="bg-background-tertiary-light text-primary-light text-xs uppercase">
+	<table class="w-full table-auto bg-background-secondary-light">
+		<thead class="text-primary-light bg-background-tertiary-light text-xs uppercase">
 			<tr>
 				<th
-					class="hover:bg-background-primary-light group cursor-pointer px-6 py-3"
+					class="group cursor-pointer px-6 py-3 hover:bg-background-primary-light"
 					on:click={() => toggleSort('sell_date')}
 				>
 					<div class="flex items-center gap-2">
@@ -95,7 +95,7 @@
 					</div>
 				</th>
 				<th
-					class="hover:bg-background-primary-light group cursor-pointer px-6 py-3"
+					class="group cursor-pointer px-6 py-3 hover:bg-background-primary-light"
 					on:click={() => toggleSort('coffee_name')}
 				>
 					<div class="flex items-center gap-2">
@@ -112,7 +112,7 @@
 					</div>
 				</th>
 				<th
-					class="hover:bg-background-primary-light group cursor-pointer px-6 py-3"
+					class="group cursor-pointer px-6 py-3 hover:bg-background-primary-light"
 					on:click={() => toggleSort('batch_name')}
 				>
 					<div class="flex items-center gap-2">
@@ -129,7 +129,7 @@
 					</div>
 				</th>
 				<th
-					class="hover:bg-background-primary-light group cursor-pointer px-6 py-3"
+					class="group cursor-pointer px-6 py-3 hover:bg-background-primary-light"
 					on:click={() => toggleSort('buyer')}
 				>
 					<div class="flex items-center gap-2">
@@ -146,7 +146,7 @@
 					</div>
 				</th>
 				<th
-					class="hover:bg-background-primary-light group cursor-pointer px-6 py-3"
+					class="group cursor-pointer px-6 py-3 hover:bg-background-primary-light"
 					on:click={() => toggleSort('oz_sold')}
 				>
 					<div class="flex items-center gap-2">
@@ -163,7 +163,7 @@
 					</div>
 				</th>
 				<th
-					class="hover:bg-background-primary-light group cursor-pointer px-6 py-3"
+					class="group cursor-pointer px-6 py-3 hover:bg-background-primary-light"
 					on:click={() => toggleSort('price')}
 				>
 					<div class="flex items-center gap-2">
@@ -180,7 +180,7 @@
 					</div>
 				</th>
 				<th
-					class="hover:bg-background-primary-light group cursor-pointer px-6 py-3"
+					class="group cursor-pointer px-6 py-3 hover:bg-background-primary-light"
 					on:click={() => toggleSort('purchase_date')}
 				>
 					<div class="flex items-center gap-2">
@@ -201,30 +201,30 @@
 		<tbody>
 			{#each sortedSales as sale}
 				<tr
-					class="bg-background-secondary-light border-background-tertiary-light hover:bg-background-tertiary-light border-b transition-colors"
+					class="border-b border-background-tertiary-light bg-background-secondary-light transition-colors hover:bg-background-tertiary-light"
 				>
-					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
+					<td class="whitespace-nowrap px-6 py-4 text-xs text-text-primary-light">
 						{formatDateForDisplay(sale.sell_date)}
 					</td>
-					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
+					<td class="whitespace-nowrap px-6 py-4 text-xs text-text-primary-light">
 						{sale.coffee_name || '-'}
 					</td>
-					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
+					<td class="whitespace-nowrap px-6 py-4 text-xs text-text-primary-light">
 						{sale.batch_name}
 					</td>
-					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
+					<td class="whitespace-nowrap px-6 py-4 text-xs text-text-primary-light">
 						{sale.buyer}
 					</td>
-					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
+					<td class="whitespace-nowrap px-6 py-4 text-xs text-text-primary-light">
 						{sale.oz_sold}
 					</td>
-					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
+					<td class="whitespace-nowrap px-6 py-4 text-xs text-text-primary-light">
 						${sale.price}
 					</td>
-					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
+					<td class="whitespace-nowrap px-6 py-4 text-xs text-text-primary-light">
 						{new Date(sale.purchase_date).toLocaleDateString()}
 					</td>
-					<td class="whitespace-nowrap px-6 py-4 text-xs text-zinc-300">
+					<td class="whitespace-nowrap px-6 py-4 text-xs text-text-primary-light">
 						<div class="flex gap-2">
 							<button
 								class="rounded border border-blue-800 px-2 py-1 hover:bg-blue-900"

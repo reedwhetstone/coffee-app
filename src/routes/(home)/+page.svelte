@@ -181,7 +181,7 @@
 	}
 </script>
 
-<div class="mx-2 mt-4 space-y-4 md:mx-8 md:mt-8">
+<div class="space-y-4">
 	<div class="space-y-4">
 		<!-- Integrated chat interface -->
 		<div class="rounded-2xl bg-background-tertiary-light shadow-sm">
@@ -288,7 +288,7 @@
 		<!-- Coffee Cards -->
 		<div class="flex-1">
 			{#if !$filteredData || $filteredData.length === 0}
-				<p class="p-4 text-zinc-300">
+				<p class="p-4 text-text-primary-light">
 					No coffee data available ({data?.data?.length || 0} items in raw data)
 				</p>
 			{:else}

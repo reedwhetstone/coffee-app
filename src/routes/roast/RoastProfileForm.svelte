@@ -118,20 +118,21 @@
 	></button>
 	<div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
 		<div
-			class="bg-background-secondary-light relative w-full max-w-2xl rounded-lg p-2 shadow-xl sm:p-4"
+			class="relative w-full max-w-2xl rounded-lg bg-background-secondary-light p-2 shadow-xl sm:p-4"
 			role="dialog"
 			aria-modal="true"
 		>
 			<!-- Fixed Header -->
-			<div class="border-background-tertiary-light border-b p-2 sm:p-4">
-				<label for="batch_name" class="block text-base font-medium text-zinc-300 sm:text-lg"
-					>Batch Name</label
+			<div class="border-b border-background-tertiary-light p-2 sm:p-4">
+				<label
+					for="batch_name"
+					class="block text-base font-medium text-text-primary-light sm:text-lg">Batch Name</label
 				>
 				<input
 					id="batch_name"
 					type="text"
 					bind:value={formData.batch_name}
-					class="bg-background-tertiary-light mt-1 block w-full rounded text-lg text-zinc-300 sm:text-xl"
+					class="mt-1 block w-full rounded bg-background-tertiary-light text-lg text-text-primary-light sm:text-xl"
 					required
 				/>
 			</div>
@@ -147,14 +148,14 @@
 				<div class="space-y-4">
 					<!-- Roast Date -->
 					<div class="w-full">
-						<label for="roast_date" class="block text-sm font-medium text-zinc-300"
+						<label for="roast_date" class="block text-sm font-medium text-text-primary-light"
 							>Roast Date</label
 						>
 						<input
 							id="roast_date"
 							type="date"
 							bind:value={formData.roast_date}
-							class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+							class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 							required
 						/>
 					</div>
@@ -162,12 +163,12 @@
 					<!-- Beans in Batch -->
 					<div class="space-y-2 sm:space-y-4">
 						{#each batchBeans as bean, index}
-							<div class="border-background-tertiary-light relative rounded border p-2 sm:p-4">
+							<div class="relative rounded border border-background-tertiary-light p-2 sm:p-4">
 								<!-- Remove bean button (except for first bean) -->
 								{#if index > 0}
 									<button
 										type="button"
-										class="absolute right-2 top-2 text-zinc-500 hover:text-zinc-300"
+										class="absolute right-2 top-2 text-text-primary-light hover:text-text-primary-light"
 										onclick={() => removeBeanFromBatch(index)}
 									>
 										✕
@@ -178,11 +179,11 @@
 									<div class="col-span-1 sm:col-span-2">
 										<label
 											for="coffee_select_{index}"
-											class="block text-sm font-medium text-zinc-300">Select Coffee</label
+											class="block text-sm font-medium text-text-primary-light">Select Coffee</label
 										>
 										<select
 											id="coffee_select_{index}"
-											class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+											class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 											value={bean.coffee_id}
 											onchange={(e) => handleCoffeeChange(e, index)}
 											required
@@ -197,29 +198,31 @@
 									</div>
 
 									<div>
-										<label for="oz_in_{index}" class="block text-sm font-medium text-zinc-300"
-											>Ounces In</label
+										<label
+											for="oz_in_{index}"
+											class="block text-sm font-medium text-text-primary-light">Ounces In</label
 										>
 										<input
 											id="oz_in_{index}"
 											type="number"
 											step="1"
 											bind:value={bean.oz_in}
-											class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+											class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 											required
 										/>
 									</div>
 
 									<div>
-										<label for="oz_out_{index}" class="block text-sm font-medium text-zinc-300"
-											>Ounces Out</label
+										<label
+											for="oz_out_{index}"
+											class="block text-sm font-medium text-text-primary-light">Ounces Out</label
 										>
 										<input
 											id="oz_out_{index}"
 											type="number"
 											step="1"
 											bind:value={bean.oz_out}
-											class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+											class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 										/>
 									</div>
 								</div>
@@ -229,7 +232,7 @@
 						<!-- Add Bean Button -->
 						<button
 							type="button"
-							class="border-background-tertiary-light hover:bg-background-tertiary-light flex items-center gap-2 rounded border px-4 py-2 text-zinc-500 hover:text-zinc-300"
+							class="flex items-center gap-2 rounded border border-background-tertiary-light px-4 py-2 text-text-primary-light hover:bg-background-tertiary-light hover:text-text-primary-light"
 							onclick={addBeanToBatch}
 						>
 							<span class="text-xl">+</span>
@@ -240,26 +243,26 @@
 					<!-- Notes and Targets -->
 					<div class="grid grid-cols-1 gap-2 sm:gap-4">
 						<div>
-							<label for="roast_targets" class="block text-sm font-medium text-zinc-300"
+							<label for="roast_targets" class="block text-sm font-medium text-text-primary-light"
 								>Roast Targets</label
 							>
 							<textarea
 								id="roast_targets"
 								bind:value={formData.roast_targets}
 								rows="3"
-								class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+								class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 							></textarea>
 						</div>
 
 						<div>
-							<label for="roast_notes" class="block text-sm font-medium text-zinc-300"
+							<label for="roast_notes" class="block text-sm font-medium text-text-primary-light"
 								>Roast Notes</label
 							>
 							<textarea
 								id="roast_notes"
 								bind:value={formData.roast_notes}
 								rows="3"
-								class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+								class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 							></textarea>
 						</div>
 					</div>
@@ -267,18 +270,18 @@
 			</form>
 
 			<!-- Footer -->
-			<div class="border-background-tertiary-light border-t p-2 sm:p-4">
+			<div class="border-t border-background-tertiary-light p-2 sm:p-4">
 				<div class="flex justify-end space-x-2">
 					<button
 						type="button"
-						class="bg-background-primary-light rounded px-3 py-1.5 text-zinc-300 sm:px-4 sm:py-2"
+						class="rounded bg-background-primary-light px-3 py-1.5 text-text-primary-light sm:px-4 sm:py-2"
 						onclick={onClose}
 					>
 						Cancel
 					</button>
 					<button
 						type="submit"
-						class="rounded bg-green-600 px-3 py-1.5 text-zinc-300 sm:px-4 sm:py-2"
+						class="rounded bg-green-600 px-3 py-1.5 text-text-primary-light sm:px-4 sm:py-2"
 						onclick={handleSubmit}
 					>
 						Create

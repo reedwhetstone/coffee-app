@@ -208,7 +208,7 @@
 	}}
 	class="space-y-4"
 >
-	<h2 class="mb-4 text-xl font-bold text-zinc-300">
+	<h2 class="mb-4 text-xl font-bold text-text-primary-light">
 		{bean ? 'Edit Bean' : 'Add New Bean'}
 	</h2>
 
@@ -234,12 +234,14 @@
 		<!-- Catalog Selection -->
 		<div class="space-y-4">
 			<div>
-				<label for="source" class="block text-sm font-medium text-zinc-300">Filter by Source</label>
+				<label for="source" class="block text-sm font-medium text-text-primary-light"
+					>Filter by Source</label
+				>
 				<select
 					id="source"
 					bind:value={sourceFilter}
 					onchange={handleSourceChange}
-					class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+					class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				>
 					<option value="">All Sources</option>
 					{#each [...new Set(catalogBeans.map((b) => b.source))] as source}
@@ -249,11 +251,12 @@
 			</div>
 
 			<div>
-				<label for="catalog-bean" class="block text-sm font-medium text-zinc-300">Select Bean</label
+				<label for="catalog-bean" class="block text-sm font-medium text-text-primary-light"
+					>Select Bean</label
 				>
 				<select
 					id="catalog-bean"
-					class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+					class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 					required={!isManualEntry}
 					onchange={handleBeanSelect}
 				>
@@ -269,31 +272,31 @@
 	<!-- Existing form fields -->
 	<div class="grid grid-cols-2 gap-4">
 		<div>
-			<label for="name" class="block text-sm font-medium text-zinc-300">Name</label>
+			<label for="name" class="block text-sm font-medium text-text-primary-light">Name</label>
 			<input
 				id="name"
 				type="text"
 				bind:value={formData.name}
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="purchase_date" class="block text-sm font-medium text-zinc-300"
+			<label for="purchase_date" class="block text-sm font-medium text-text-primary-light"
 				>Purchase Date</label
 			>
 			<input
 				id="purchase_date"
 				type="date"
 				bind:value={formData.purchase_date}
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="purchased_qty" class="block text-sm font-medium text-zinc-300"
+			<label for="purchased_qty" class="block text-sm font-medium text-text-primary-light"
 				>Purchased Quantity (lbs)</label
 			>
 			<input
@@ -301,13 +304,15 @@
 				type="number"
 				step="1"
 				bind:value={formData.purchased_qty_lbs}
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="bean_cost" class="block text-sm font-medium text-zinc-300">Bean Cost</label>
+			<label for="bean_cost" class="block text-sm font-medium text-text-primary-light"
+				>Bean Cost</label
+			>
 			<input
 				id="bean_cost"
 				type="number"
@@ -315,13 +320,13 @@
 				min="0"
 				placeholder="0.00"
 				bind:value={formData.bean_cost}
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="tax_ship_cost" class="block text-sm font-medium text-zinc-300"
+			<label for="tax_ship_cost" class="block text-sm font-medium text-text-primary-light"
 				>Tax & Shipping Cost</label
 			>
 			<input
@@ -331,28 +336,28 @@
 				min="0"
 				placeholder="0.00"
 				bind:value={formData.tax_ship_cost}
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				required
 			/>
 		</div>
 
 		<div class="col-span-2">
-			<label for="link" class="block text-sm font-medium text-zinc-300">Link</label>
+			<label for="link" class="block text-sm font-medium text-text-primary-light">Link</label>
 			<input
 				id="link"
 				type="url"
 				bind:value={formData.link}
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 			/>
 		</div>
 
 		<div class="col-span-2">
-			<label for="notes" class="block text-sm font-medium text-zinc-300">Notes</label>
+			<label for="notes" class="block text-sm font-medium text-text-primary-light">Notes</label>
 			<textarea
 				id="notes"
 				bind:value={formData.notes}
 				rows="3"
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 			></textarea>
 		</div>
 	</div>
@@ -360,12 +365,12 @@
 	<div class="mt-4 flex justify-end space-x-2">
 		<button
 			type="button"
-			class="bg-background-primary-light rounded px-4 py-2 text-zinc-300"
+			class="rounded bg-background-primary-light px-4 py-2 text-text-primary-light"
 			onclick={onClose}
 		>
 			Cancel
 		</button>
-		<button type="submit" class="rounded bg-green-600 px-4 py-2 text-zinc-300">
+		<button type="submit" class="rounded bg-green-600 px-4 py-2 text-text-primary-light">
 			{bean ? 'Update' : 'Create'}
 		</button>
 	</div>

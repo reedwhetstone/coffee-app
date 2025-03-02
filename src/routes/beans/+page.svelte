@@ -240,18 +240,18 @@
 	}
 </script>
 
-<div class="m-2 md:m-4">
+<div class="">
 	<!-- Bean Profile Section -->
 	{#if data.role === 'admin' || data.role === 'member'}
 		<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
 			<button
-				class="rounded border-2 border-green-800 px-3 py-1 text-zinc-500 hover:bg-green-900"
+				class="rounded border-2 border-green-800 px-3 py-1 text-text-primary-light hover:bg-green-900"
 				onclick={handleAddNewBean}
 			>
 				New Bean
 			</button>
 			<button
-				class="rounded border-2 border-blue-800 px-3 py-1 text-zinc-500 hover:bg-blue-900"
+				class="rounded border-2 border-blue-800 px-3 py-1 text-text-primary-light hover:bg-blue-900"
 				onclick={async () => {
 					try {
 						const response = await fetch('/api/share', {
@@ -329,7 +329,7 @@
 	<!-- Coffee Cards -->
 	<div class="flex-1">
 		{#if !$filteredData || $filteredData.length === 0}
-			<p class="p-4 text-zinc-300">
+			<p class="p-4 text-text-primary-light">
 				No coffee data available ({data?.data?.length || 0} items in raw data)
 			</p>
 		{:else}
@@ -354,7 +354,9 @@
 								<p class="text-primary-light text-sm">Score: {bean.score_value}</p>
 							</div>
 						</div>
-						<div class="mt-2 grid grid-cols-1 gap-2 text-sm text-zinc-300 sm:grid-cols-2 sm:gap-4">
+						<div
+							class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-2 sm:gap-4"
+						>
 							<div>
 								<span class="text-primary-light">Cultivar:</span>
 								{bean.cultivar_detail || '-'}

@@ -163,14 +163,14 @@
 				</h1>
 			</div>
 			<button
-				class="w-full rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900 sm:w-auto"
+				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900 sm:w-auto"
 				on:click={deleteBatch}
 			>
 				Delete Batch
 			</button>
 		</div>
 		<div class="mt-2 flex items-center justify-center sm:justify-start">
-			<h3 class="text-l font-bold text-zinc-500">
+			<h3 class="text-l font-bold text-text-primary-light">
 				{profile.coffee_name}
 			</h3>
 		</div>
@@ -200,7 +200,7 @@
 									{#if isEditing && key !== 'last_updated'}
 										{#if ['roast_notes', 'roast_targets'].includes(key)}
 											<textarea
-												class="relative z-0 min-h-[80px] w-full rounded bg-background-primary-light px-2 py-1 text-zinc-300"
+												class="relative z-0 min-h-[80px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												rows="4"
 												bind:value={editedProfile[key]}
 											></textarea>
@@ -209,13 +209,13 @@
 												type="number"
 												step="0.1"
 												min="0"
-												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-zinc-300"
+												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												bind:value={editedProfile[key]}
 											/>
 										{:else if key === 'roast_date'}
 											<input
 												type="date"
-												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-zinc-300"
+												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												value={formatDateForInput(editedProfile[key])}
 												on:input={(e) =>
 													(editedProfile[key] = prepareDateForAPI(e.currentTarget.value))}
@@ -223,13 +223,13 @@
 										{:else}
 											<input
 												type="text"
-												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-zinc-300"
+												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												bind:value={editedProfile[key]}
 											/>
 										{/if}
 									{:else}
 										<span
-											class="text-zinc-300 {['roast_notes', 'roast_targets'].includes(key)
+											class="text-text-primary-light {['roast_notes', 'roast_targets'].includes(key)
 												? 'space-pre-wrap block'
 												: ''}"
 										>
@@ -262,13 +262,13 @@
 			<button
 				class="w-full rounded sm:w-auto {isEditing
 					? 'border-2 border-green-800 hover:bg-green-900'
-					: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-zinc-500"
+					: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-text-primary-light"
 				on:click={toggleEdit}
 			>
 				{isEditing ? 'Save' : 'Edit'}
 			</button>
 			<button
-				class="w-full rounded border-2 border-red-800 px-3 py-1 text-zinc-500 hover:bg-red-900 sm:w-auto"
+				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900 sm:w-auto"
 				on:click={deleteProfile}
 			>
 				Delete

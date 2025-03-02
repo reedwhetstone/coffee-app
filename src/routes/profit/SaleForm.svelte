@@ -104,16 +104,18 @@
 </script>
 
 <form on:submit|preventDefault={handleSubmit} class="space-y-4">
-	<h2 class="mb-4 text-xl font-bold text-zinc-300">
+	<h2 class="mb-4 text-xl font-bold text-text-primary-light">
 		{sale ? 'Edit Sale' : 'Add New Sale'}
 	</h2>
 
 	<div class="grid grid-cols-2 gap-4">
 		<div>
-			<label for="coffee_name" class="block text-sm font-medium text-zinc-300">Coffee Name</label>
+			<label for="coffee_name" class="block text-sm font-medium text-text-primary-light"
+				>Coffee Name</label
+			>
 			<select
 				id="coffee_name"
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				value={formData.coffee_name}
 				on:change={handleCoffeeChange}
 				required
@@ -126,10 +128,12 @@
 		</div>
 
 		<div>
-			<label for="batch_name" class="block text-sm font-medium text-zinc-300">Batch Name</label>
+			<label for="batch_name" class="block text-sm font-medium text-text-primary-light"
+				>Batch Name</label
+			>
 			<select
 				id="batch_name"
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				bind:value={formData.batch_name}
 				required
 			>
@@ -141,47 +145,51 @@
 		</div>
 
 		<div>
-			<label for="sell_date" class="block text-sm font-medium text-zinc-300">Sell Date</label>
+			<label for="sell_date" class="block text-sm font-medium text-text-primary-light"
+				>Sell Date</label
+			>
 			<input
 				id="sell_date"
 				type="date"
 				bind:value={formData.sell_date}
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="buyer" class="block text-sm font-medium text-zinc-300">Buyer</label>
+			<label for="buyer" class="block text-sm font-medium text-text-primary-light">Buyer</label>
 			<input
 				id="buyer"
 				type="text"
 				bind:value={formData.buyer}
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="oz_sold" class="block text-sm font-medium text-zinc-300">Amount (oz)</label>
+			<label for="oz_sold" class="block text-sm font-medium text-text-primary-light"
+				>Amount (oz)</label
+			>
 			<input
 				id="oz_sold"
 				type="number"
 				step="0.1"
 				bind:value={formData.oz_sold}
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				required
 			/>
 		</div>
 
 		<div>
-			<label for="price" class="block text-sm font-medium text-zinc-300">Price</label>
+			<label for="price" class="block text-sm font-medium text-text-primary-light">Price</label>
 			<input
 				id="price"
 				type="number"
 				step="0.01"
 				bind:value={formData.price}
-				class="bg-background-tertiary-light mt-1 block w-full rounded text-zinc-300"
+				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 				required
 			/>
 		</div>
@@ -190,12 +198,12 @@
 	<div class="mt-4 flex justify-end space-x-2">
 		<button
 			type="button"
-			class="bg-background-primary-light rounded px-4 py-2 text-zinc-300"
+			class="rounded bg-background-primary-light px-4 py-2 text-text-primary-light"
 			on:click={onClose}
 		>
 			Cancel
 		</button>
-		<button type="submit" class="rounded bg-green-600 px-4 py-2 text-zinc-300">
+		<button type="submit" class="rounded bg-green-600 px-4 py-2 text-text-primary-light">
 			{sale ? 'Update' : 'Create'}
 		</button>
 	</div>
