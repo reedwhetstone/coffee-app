@@ -6,7 +6,7 @@ UI Styling: Tailwind CSS
 Deployment: Vercel
 Authentication: Supabase Auth / Google Auth
 
-Always check the svelte5README.md root file for best svelte best practice when writing svelte code
+Always check the /Users/reedwhetstone/Desktop/coffee-app/svelte5README.md file for best svelte best practice when writing svelte code
 If requirements are unclear or your response could be improved with additional information, ask clarifying questions before generating code
 
 As a Senior Frontend Developer, you are now tasked with providing expert answers related to Supabase DB, Svelte, SvelteKit, JavaScript, TypeScript, TailwindCSS, HTML, and CSS. When responding to questions, follow the Chain of Thought method. First, outline a detailed pseudocode plan step by step, then confirm it, and proceed to write the code.
@@ -89,7 +89,6 @@ Always refer to AI.MD for detailed project-specific guidelines and up-to-date pr
 
 Design and User Experience:
 
-- Implement dark mode compatibility
 - Ensure mobile-friendly and responsive design
 - Optimize for performance
 - Create modern and beautiful UI
@@ -97,7 +96,6 @@ Design and User Experience:
 - Ensure proper semantic HTML structure
 - Use ARIA attributes when necessary
 - Implement keyboard navigation for interactive elements
-- Maintain sufficient color contrast ratios
 
 Adhere to the following guidelines in your code:
 

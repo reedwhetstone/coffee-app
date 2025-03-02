@@ -37,13 +37,13 @@
 		<div class="relative">
 			<button
 				onclick={() => toggleMenu('nav')}
-				class="rounded-full bg-background-secondary-light p-2 text-background-primary-light shadow-lg hover:bg-background-secondary-light/90"
+				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:opacity-80"
 				aria-label="Toggle navigation menu"
 			>
 				{#if data?.session?.user}
 					<!-- User Avatar/Icon -->
 					<div
-						class="flex h-8 w-8 items-center justify-center rounded-full bg-sky-800 text-background-primary-light"
+						class="text-text-primary-dark flex h-8 w-8 items-center justify-center rounded-full bg-transparent"
 					>
 						{data.session.user.email?.[0].toUpperCase() || 'U'}
 					</div>
@@ -78,8 +78,8 @@
 		<div class="relative">
 			<button
 				onclick={() => toggleMenu('settings')}
-				class="rounded-full bg-background-secondary-light p-2 text-background-primary-light shadow-lg hover:bg-background-secondary-light/90"
-				aria-label="Toggle settings"
+				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:opacity-80"
+				aria-label="Toggle filters"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -87,18 +87,10 @@
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"
+					transform="translate(7, 7)"
 				>
 					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-					/>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+						d="M2 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"
 					/>
 				</svg>
 			</button>

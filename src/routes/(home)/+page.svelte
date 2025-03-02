@@ -184,7 +184,7 @@
 <div class="mx-2 mt-4 space-y-4 md:mx-8 md:mt-8">
 	<div class="space-y-4">
 		<!-- Integrated chat interface -->
-		<div class="rounded-2xl bg-background-tertiary-light">
+		<div class="rounded-2xl bg-background-tertiary-light shadow-sm">
 			<form
 				onsubmit={(e) => {
 					e.preventDefault();
@@ -193,7 +193,7 @@
 				class="space-y-4"
 			>
 				<!-- Query/Input area with wrapping textarea -->
-				<div class="relative rounded-2xl bg-background-secondary-light p-4">
+				<div class="relative rounded-2xl bg-background-secondary-light p-4 shadow-sm">
 					<span class="text-primary-light text-sm">Query:</span>
 					<div>
 						<div class="flex items-center gap-2">
@@ -248,10 +248,6 @@
 				<!-- Recommendations-->
 				{#if recommendedCoffees.length > 0}
 					<div class="px-4 pb-4">
-						<!-- Add divider here -->
-						<div class="flex items-center gap-2 py-2">
-							<hr class="flex-1 border-background-primary-light" />
-						</div>
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 							{#each recommendedCoffees as coffee}
 								<a

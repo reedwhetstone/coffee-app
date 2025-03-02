@@ -17,15 +17,18 @@ export default {
 				// text on light background - #302f2a
 
 				// do a burnt orange? #CC5500
-				'background-primary-light': '#f0ead6', //faf8f3
+				'background-primary-light': '#E8E2CE', //faf8f3
 				'background-secondary-light': '#f0ead6',
 				'background-tertiary-light': '#f78c58',
+				'background-primary-dark': '#292522',
 
-				'border-light': '#292522',
+				'border-light': '#A09D8D',
 
 				//text colors
 				'text-primary-light': '#302f2a', //dark brown
 				'text-secondary-light': '#695c4d', //light brown
+				'text-primary-dark': '#dfdaca',
+
 				'link-light': '#a07d50',
 
 				//accent colors
