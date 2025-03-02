@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { error } from '@sveltejs/kit';
 	import '../app.css';
-	import Navbar from './Navbar.svelte';
-	import Settingsbar from './Settingsbar.svelte';
+	import LeftSidebar from '$lib/components/layout/LeftSidebar.svelte';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { onMount } from 'svelte';
@@ -83,8 +82,7 @@
 	});
 </script>
 
-<Navbar {data} />
-<Settingsbar {data} />
-<div class="">
+<LeftSidebar {data} />
+<div class="ml-12">
 	{@render children()}
 </div>
