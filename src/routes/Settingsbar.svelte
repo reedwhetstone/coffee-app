@@ -10,7 +10,6 @@
 
 	// State for UI
 	let isOpen = $state(false);
-	let expandedFilters = $state(true);
 	let processingFilterChange = $state(false);
 	let lastFilterChange = $state(Date.now());
 	let filterQueueId: NodeJS.Timeout | null = $state(null);
@@ -143,16 +142,28 @@
 				<div class="flex items-center justify-between p-4">
 					<h3 class="text-secondary-light text-lg font-semibold">Filters</h3>
 					<button
-						onclick={() => (expandedFilters = !expandedFilters)}
-						class="text-primary-light hover:text-secondary-light text-sm"
+						onclick={closePanel}
+						class="text-primary-light hover:text-secondary-light p-2"
+						aria-label="Close settings panel"
 					>
-						{expandedFilters ? 'Hide Filters' : 'Show Filters'}
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+								clip-rule="evenodd"
+							/>
+						</svg>
 					</button>
 				</div>
 
 				<!-- Filter content -->
 				<div class="flex-1 overflow-y-auto p-4">
-					<div class={`space-y-4 ${expandedFilters ? 'block' : 'hidden'}`}>
+					<div class="space-y-4">
 						<!-- Sort Controls -->
 						<div class="space-y-2">
 							<label for="sort-field" class="text-primary-light block text-sm">Sort by</label>
