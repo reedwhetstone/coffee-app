@@ -41,94 +41,35 @@ function createFilterStore() {
 
 	// Initialize the filter store for a specific route
 	function initializeForRoute(routeId: string, data: any[]) {
+		// Skip if already initializing this route
+		const currentState = get({ subscribe });
+		if (currentState.initializingRoute === routeId) {
+			console.log(`Already initializing route ${routeId}, skipping duplicate call`);
+			return;
+		}
+
+		console.log(`Initializing filter store for route: ${routeId} with ${data.length} items`);
+
 		update((state) => {
-			// If we're already initialized for this route and the data is the same length,
-			// don't reinitialize unless forced
-			if (
-				state.initialized &&
-				state.routeId === routeId &&
-				state.originalData.length === data.length &&
-				state.initializingRoute !== routeId
-			) {
-				return state;
-			}
-
-			// If we're in the process of initializing this route, prevent duplicates
-			if (state.initializingRoute === routeId) {
-				return state;
-			}
-
 			// Mark that we're initializing this route
 			state.initializingRoute = routeId;
-			state.processing = true;
-
-			// If the route changed, reset filters and sorting
-			if (state.routeId !== routeId) {
-				state.filters = {};
-				state.sortField = null;
-				state.sortDirection = null;
-
-				// Set default sort for the new route if available
-				const defaultSort = getDefaultSortSettings(routeId);
-				if (defaultSort) {
-					state.sortField = defaultSort.field;
-					state.sortDirection = defaultSort.direction;
-				}
-			}
-
-			// Update the route and data
 			state.routeId = routeId;
-
-			// Only update originalData if it's different to avoid unnecessary processing
-			const dataString = JSON.stringify(data.map((item) => item.id || item._id));
-			if (dataString !== state.lastProcessedString) {
-				state.originalData = [...data];
-				state.lastProcessedString = dataString;
-
-				// Process the data to update filteredData
-				state.filteredData = processData(
-					state.originalData,
-					state.sortField,
-					state.sortDirection,
-					state.filters
-				);
-
-				// Update unique values
-				const uniqueValues: Record<string, any[]> = {};
-
-				// Get unique sources
-				if (state.originalData.some((item) => item.source || item.vendor)) {
-					uniqueValues.sources = Array.from(
-						new Set(state.originalData.map((item) => item.source || item.vendor).filter(Boolean))
-					).sort((a, b) => a.localeCompare(b));
-				}
-
-				// Get unique purchase dates
-				if (state.originalData.some((item) => item.purchase_date)) {
-					uniqueValues.purchaseDates = Array.from(
-						new Set(state.originalData.map((item) => item.purchase_date).filter(Boolean))
-					).sort((a, b) => a.localeCompare(b));
-				}
-
-				// Get unique roast dates
-				if (state.originalData.some((item) => item.roast_date)) {
-					uniqueValues.roastDates = Array.from(
-						new Set(state.originalData.map((item) => item.roast_date).filter(Boolean))
-					).sort((a, b) => a.localeCompare(b));
-				}
-
-				// Get unique batch names
-				if (state.originalData.some((item) => item.batch_name)) {
-					uniqueValues.batchNames = Array.from(
-						new Set(state.originalData.map((item) => item.batch_name).filter(Boolean))
-					).sort((a, b) => a.localeCompare(b));
-				}
-
-				state.uniqueValues = uniqueValues;
-			}
-
-			state.initialized = true;
+			state.originalData = data;
+			state.filters = {};
 			state.processing = false;
+			state.lastProcessedCacheKey = null;
+
+			// Set default sort settings for this route
+			const { field, direction } = getDefaultSortSettings(routeId);
+			state.sortField = field;
+			state.sortDirection = direction;
+
+			// Update unique filter values
+			updateUniqueFilterValues();
+
+			// Process the data with initial settings
+			state.filteredData = processData(data, state.sortField, state.sortDirection, state.filters);
+			state.initialized = true;
 			state.initializingRoute = null;
 
 			return state;
@@ -430,7 +371,7 @@ function createFilterStore() {
 			return;
 		}
 
-		// Set a new debounce timer with a slightly longer delay to allow for batching of updates
+		// Set a new debounce timer with a longer delay to allow for batching of updates
 		const debounceId = setTimeout(() => {
 			update((state) => {
 				// If already processing, skip this update
@@ -476,11 +417,14 @@ function createFilterStore() {
 					// Only update if the result is different - compare just the IDs for efficiency
 					const currentIds = state.filteredData.map((item) => item.id || item._id);
 					const newIds = processedData.map((item) => item.id || item._id);
+
+					// Check if arrays are equal in length and content
 					const idsEqual =
 						currentIds.length === newIds.length &&
 						currentIds.every((id, index) => id === newIds[index]);
 
 					if (!idsEqual) {
+						console.log('Filtered data changed, updating state');
 						state.filteredData = processedData;
 					} else {
 						console.log('Filtered data IDs unchanged, skipping update');
@@ -494,7 +438,7 @@ function createFilterStore() {
 
 				return state;
 			});
-		}, 150); // Slightly longer 150ms debounce for better batching
+		}, 200); // Longer 200ms debounce for better batching
 
 		// Store the debounce timer ID
 		update((state) => {

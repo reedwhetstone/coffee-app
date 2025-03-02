@@ -56,19 +56,35 @@
 	let selectedBean = $state<any>(null);
 	let processingUpdate = $state(false);
 	let lastSelectedBeanId = $state<number | null>(null);
+	let lastFilteredDataHash = $state<string | null>(null);
 
 	// Reset selected bean if it's filtered out with guard to prevent loops
 	$effect(() => {
 		if ($filteredData.length && selectedBean && !processingUpdate) {
+			// Create a hash of the current filtered data IDs
+			const currentFilteredDataHash = JSON.stringify($filteredData.map((bean) => bean.id));
+
+			// Skip if we've already processed this exact filtered data set
+			if (currentFilteredDataHash === lastFilteredDataHash) {
+				return;
+			}
+
+			// Update the hash
+			lastFilteredDataHash = currentFilteredDataHash;
+
 			processingUpdate = true;
 			try {
 				// Check if the selected bean still exists in the filtered data
 				const stillExists = $filteredData.some((bean) => bean.id === selectedBean.id);
 				if (!stillExists && selectedBean.id !== lastSelectedBeanId) {
+					console.log('Selected bean was filtered out, resetting selection');
 					selectedBean = null;
 				}
 			} finally {
-				processingUpdate = false;
+				// Use setTimeout to break potential update cycles
+				setTimeout(() => {
+					processingUpdate = false;
+				}, 50);
 			}
 		}
 	});
@@ -81,8 +97,10 @@
 		try {
 			// Only update if different to avoid unnecessary re-renders
 			if (!selectedBean || selectedBean.id !== bean.id) {
-				selectedBean = bean;
+				console.log('Selecting bean:', bean.id);
 				lastSelectedBeanId = bean.id;
+				selectedBean = bean;
+				window.scrollTo({ top: 0, behavior: 'smooth' });
 			}
 		} finally {
 			// Use setTimeout to break potential update cycles

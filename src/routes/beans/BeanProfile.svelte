@@ -14,6 +14,7 @@
 	let currentPage = $state(0);
 	const totalPages = 2;
 	let processingUpdate = $state(false);
+	let lastSelectedBeanId = $state<number | null>(null);
 
 	let previousPage = $state(0);
 
@@ -49,13 +50,33 @@
 		}
 	}
 
+	// Add safe update function with guard and memoization
 	$effect(() => {
-		if (!processingUpdate && selectedBean) {
+		// Skip if we're already processing or if the bean hasn't changed
+		if (
+			processingUpdate ||
+			(lastSelectedBeanId === selectedBean?.id && lastSelectedBeanId !== null)
+		) {
+			return;
+		}
+
+		// Only update editedBean when selectedBean changes
+		if (selectedBean) {
 			processingUpdate = true;
+			console.log('BeanProfile: Updating from selectedBean change:', selectedBean.id);
+
+			// Track the bean ID we're processing
+			lastSelectedBeanId = selectedBean.id;
+
+			// Use setTimeout to break potential update cycles
 			setTimeout(() => {
-				editedBean = { ...selectedBean };
-				processingUpdate = false;
-			}, 0);
+				try {
+					// Deep clone to avoid reference issues
+					editedBean = JSON.parse(JSON.stringify(selectedBean));
+				} finally {
+					processingUpdate = false;
+				}
+			}, 50);
 		}
 	});
 
