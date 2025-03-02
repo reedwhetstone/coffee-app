@@ -118,6 +118,22 @@
 		{#if session?.user}
 			<div class="border-text-primary-dark mb-4 border-b border-opacity-20 pb-3 text-sm opacity-80">
 				{session.user.email}
+
+				<button
+					onclick={handleSignOut}
+					class="block w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/20"
+				>
+					Sign Out
+				</button>
+			</div>
+		{:else}
+			<div class="border-text-primary-dark mb-4 border-b border-opacity-20 pb-3 text-sm opacity-80">
+				<button
+					onclick={handleSignIn}
+					class="block w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20"
+				>
+					Sign In
+				</button>
 			</div>
 		{/if}
 
@@ -166,22 +182,4 @@
 			</ul>
 		{/if}
 	</main>
-
-	<footer class="border-text-primary-dark mt-auto border-t border-opacity-20 p-4">
-		{#if session?.user}
-			<button
-				onclick={handleSignOut}
-				class="block w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/20"
-			>
-				Sign Out
-			</button>
-		{:else}
-			<button
-				onclick={handleSignIn}
-				class="block w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20"
-			>
-				Sign In
-			</button>
-		{/if}
-	</footer>
 </div>
