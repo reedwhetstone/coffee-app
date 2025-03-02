@@ -96,9 +96,26 @@
 	}
 
 	function goToProfile(index: number) {
+		if (index < 0 || index >= profiles.length) {
+			console.error('Invalid profile index:', index, 'profiles length:', profiles.length);
+			return;
+		}
+
 		previousIndex = currentIndex;
 		currentIndex = index;
-		profile = profiles[currentIndex];
+
+		// Get the profile at the new index
+		const newProfile = profiles[currentIndex];
+		if (!newProfile) {
+			console.error('No profile found at index:', currentIndex);
+			return;
+		}
+
+		// Update the local profile
+		profile = { ...newProfile };
+
+		// Notify the parent component
+		console.log('Switching to profile:', profile.roast_id);
 		onUpdate(profile);
 	}
 
@@ -137,7 +154,7 @@
 	$: slideDirection = currentIndex > previousIndex ? 1 : -1;
 </script>
 
-<div class="bg-background-secondary-light mx-2 mt-4 rounded-lg p-3 sm:mx-8 sm:mt-8 sm:p-6">
+<div class="mx-2 mt-4 rounded-lg bg-background-secondary-light p-3 sm:mx-8 sm:mt-8 sm:p-6">
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center sm:text-left">
@@ -169,7 +186,7 @@
 					{#each Object.entries(profile) as [key, value]}
 						{#if !['roast_id', 'coffee_id'].includes(key)}
 							<div
-								class="bg-background-tertiary-light rounded p-3 {[
+								class="rounded bg-background-tertiary-light p-3 {[
 									'roast_notes',
 									'roast_targets'
 								].includes(key)
@@ -183,7 +200,7 @@
 									{#if isEditing && key !== 'last_updated'}
 										{#if ['roast_notes', 'roast_targets'].includes(key)}
 											<textarea
-												class="bg-background-primary-light relative z-0 min-h-[80px] w-full rounded px-2 py-1 text-zinc-300"
+												class="relative z-0 min-h-[80px] w-full rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 												rows="4"
 												bind:value={editedProfile[key]}
 											></textarea>
@@ -192,13 +209,13 @@
 												type="number"
 												step="0.1"
 												min="0"
-												class="bg-background-primary-light relative z-0 h-[36px] w-full rounded px-2 py-1 text-zinc-300"
+												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 												bind:value={editedProfile[key]}
 											/>
 										{:else if key === 'roast_date'}
 											<input
 												type="date"
-												class="bg-background-primary-light relative z-0 h-[36px] w-full rounded px-2 py-1 text-zinc-300"
+												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 												value={formatDateForInput(editedProfile[key])}
 												on:input={(e) =>
 													(editedProfile[key] = prepareDateForAPI(e.currentTarget.value))}
@@ -206,7 +223,7 @@
 										{:else}
 											<input
 												type="text"
-												class="bg-background-primary-light relative z-0 h-[36px] w-full rounded px-2 py-1 text-zinc-300"
+												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-zinc-300"
 												bind:value={editedProfile[key]}
 											/>
 										{/if}

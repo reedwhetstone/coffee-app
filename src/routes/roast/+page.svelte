@@ -874,7 +874,9 @@
 	{#if currentRoastProfile}
 		<RoastProfileDisplay
 			profile={currentRoastProfile}
-			profiles={currentRoastProfile ? groupedProfiles[currentRoastProfile.batch_name] || [] : []}
+			profiles={currentRoastProfile
+				? sortedGroupedProfiles[currentRoastProfile.batch_name] || []
+				: []}
 			currentIndex={currentProfileIndex}
 			onUpdate={handleProfileUpdate}
 			onDelete={handleProfileDelete}
