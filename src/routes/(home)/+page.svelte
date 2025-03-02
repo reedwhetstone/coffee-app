@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { onMount, tick } from 'svelte';
-	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
 	import { page } from '$app/stores';
 
 	let { data } = $props<{ data: PageData }>();
@@ -49,22 +49,35 @@
 	});
 
 	// Pagination computation with memoization to prevent unnecessary updates
-	let lastFilteredDataLength = $state(-1);
 	let paginatedData = $state<any[]>([]);
 	let updatingPagination = $state(false);
+	let lastFilteredDataLength = $state(0);
 
 	$effect(() => {
-		// Only update if filtered data length has changed or display limit has changed
-		if (($filteredData.length !== lastFilteredDataLength || displayLimit) && !updatingPagination) {
-			updatingPagination = true;
-			setTimeout(() => {
-				try {
-					lastFilteredDataLength = $filteredData.length;
-					paginatedData = $filteredData.slice(0, displayLimit);
-				} finally {
-					updatingPagination = false;
-				}
-			}, 0);
+		// This will run whenever the filter change notifier changes
+		const changeCount = $filterChangeNotifier;
+
+		// Only process if the filtered data length has actually changed
+		if (lastFilteredDataLength !== $filteredData.length) {
+			console.log(
+				'Filtered data changed in home page, from',
+				lastFilteredDataLength,
+				'to',
+				$filteredData.length
+			);
+			lastFilteredDataLength = $filteredData.length;
+
+			// Update pagination when filtered data changes
+			if (!updatingPagination) {
+				updatingPagination = true;
+				setTimeout(() => {
+					try {
+						paginatedData = $filteredData.slice(0, displayLimit);
+					} finally {
+						updatingPagination = false;
+					}
+				}, 0);
+			}
 		}
 	});
 

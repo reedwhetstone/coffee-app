@@ -16,6 +16,7 @@ type FilterState = {
 	initializingRoute: string | null; // Flag to track route being initialized
 	lastDebounceId: NodeJS.Timeout | null; // Track the last debounce timer
 	lastProcessedCacheKey: string | null; // Track the last processed cache key
+	changeCounter: number; // Counter to track filter changes
 };
 
 // Initialize default state
@@ -32,7 +33,8 @@ const initialState: FilterState = {
 	initialized: false,
 	initializingRoute: null,
 	lastDebounceId: null,
-	lastProcessedCacheKey: null
+	lastProcessedCacheKey: null,
+	changeCounter: 0
 };
 
 // Create the store
@@ -365,13 +367,7 @@ function createFilterStore() {
 			clearTimeout(currentState.lastDebounceId);
 		}
 
-		// Skip processing if already processing - this prevents update loops
-		if (currentState.processing) {
-			console.log('Already processing, skipping update');
-			return;
-		}
-
-		// Set a new debounce timer with a longer delay to allow for batching of updates
+		// Set a new debounce timer with a shorter delay for better responsiveness
 		const debounceId = setTimeout(() => {
 			update((state) => {
 				// If already processing, skip this update
@@ -384,27 +380,17 @@ function createFilterStore() {
 
 				try {
 					if (!state.originalData || !state.originalData.length) {
+						const hadData = state.filteredData.length > 0;
 						state.filteredData = [];
 						state.processing = false;
+
+						// Only increment counter if data changed
+						if (hadData) {
+							state.changeCounter++;
+							console.log('Filtered data cleared, change counter:', state.changeCounter);
+						}
 						return state;
 					}
-
-					// Generate a cache key to check if we've already processed this exact combination
-					const cacheKey = JSON.stringify({
-						originalDataIds: state.originalData.map((item) => item.id || item._id),
-						filters: state.filters,
-						sort: { field: state.sortField, direction: state.sortDirection }
-					});
-
-					// Skip processing if nothing has changed
-					if (cacheKey === state.lastProcessedCacheKey) {
-						console.log('Data, filters, and sort unchanged, skipping update');
-						state.processing = false;
-						return state;
-					}
-
-					// Save the cache key for next time
-					state.lastProcessedCacheKey = cacheKey;
 
 					// Process the data with current filter settings
 					const processedData = processData(
@@ -414,20 +400,19 @@ function createFilterStore() {
 						state.filters
 					);
 
-					// Only update if the result is different - compare just the IDs for efficiency
-					const currentIds = state.filteredData.map((item) => item.id || item._id);
-					const newIds = processedData.map((item) => item.id || item._id);
+					// Check if the data actually changed
+					const dataChanged =
+						state.filteredData.length !== processedData.length ||
+						JSON.stringify(processedData.map((item) => item.id).sort()) !==
+							JSON.stringify(state.filteredData.map((item) => item.id).sort());
 
-					// Check if arrays are equal in length and content
-					const idsEqual =
-						currentIds.length === newIds.length &&
-						currentIds.every((id, index) => id === newIds[index]);
+					// Update the filtered data
+					state.filteredData = processedData;
 
-					if (!idsEqual) {
-						console.log('Filtered data changed, updating state');
-						state.filteredData = processedData;
-					} else {
-						console.log('Filtered data IDs unchanged, skipping update');
+					// Only increment the change counter if data actually changed
+					if (dataChanged) {
+						state.changeCounter++;
+						console.log('Filtered data updated, change counter:', state.changeCounter);
 					}
 				} catch (err) {
 					console.error('Error processing data:', err);
@@ -438,7 +423,7 @@ function createFilterStore() {
 
 				return state;
 			});
-		}, 200); // Longer 200ms debounce for better batching
+		}, 50); // Shorter 50ms debounce for better responsiveness
 
 		// Store the debounce timer ID
 		update((state) => {
@@ -483,17 +468,25 @@ function createFilterStore() {
 	return {
 		subscribe,
 		initializeForRoute,
+		setDefaultSort,
 		setSortField,
 		setSortDirection,
 		setFilter,
 		toggleSort,
 		clearFilters,
-		setDefaultSort,
 		getFilterableColumns,
 		filteredData
 	};
 }
 
-// Export the created store
+// Create the filter store instance
 export const filterStore = createFilterStore();
-export const filteredData = filterStore.filteredData;
+
+// Create a derived store for the filtered data
+export const filteredData = derived(filterStore, ($filterStore) => $filterStore.filteredData);
+
+// Create a derived store that emits a notification when filters change
+export const filterChangeNotifier = derived(
+	filterStore,
+	($filterStore) => $filterStore.changeCounter
+);

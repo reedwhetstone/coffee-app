@@ -6,7 +6,7 @@
 	import { navbarActions } from '$lib/stores/navbarStore';
 	import { get } from 'svelte/store';
 	import { page } from '$app/stores';
-	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
 
 	// Define the type for the page data
 	type PageData = {
@@ -56,35 +56,39 @@
 	let selectedBean = $state<any>(null);
 	let processingUpdate = $state(false);
 	let lastSelectedBeanId = $state<number | null>(null);
-	let lastFilteredDataHash = $state<string | null>(null);
 
 	// Reset selected bean if it's filtered out with guard to prevent loops
+	let lastFilteredDataLength = $state(0);
+
 	$effect(() => {
-		if ($filteredData.length && selectedBean && !processingUpdate) {
-			// Create a hash of the current filtered data IDs
-			const currentFilteredDataHash = JSON.stringify($filteredData.map((bean) => bean.id));
+		// This will run whenever the filter change notifier changes
+		const changeCount = $filterChangeNotifier;
 
-			// Skip if we've already processed this exact filtered data set
-			if (currentFilteredDataHash === lastFilteredDataHash) {
-				return;
-			}
+		// Only process if the filtered data length has actually changed
+		if (lastFilteredDataLength !== $filteredData.length) {
+			console.log(
+				'Filtered data changed in beans page, from',
+				lastFilteredDataLength,
+				'to',
+				$filteredData.length
+			);
+			lastFilteredDataLength = $filteredData.length;
 
-			// Update the hash
-			lastFilteredDataHash = currentFilteredDataHash;
-
-			processingUpdate = true;
-			try {
-				// Check if the selected bean still exists in the filtered data
-				const stillExists = $filteredData.some((bean) => bean.id === selectedBean.id);
-				if (!stillExists && selectedBean.id !== lastSelectedBeanId) {
-					console.log('Selected bean was filtered out, resetting selection');
-					selectedBean = null;
+			if ($filteredData.length && selectedBean && !processingUpdate) {
+				processingUpdate = true;
+				try {
+					// Check if the selected bean still exists in the filtered data
+					const stillExists = $filteredData.some((bean) => bean.id === selectedBean.id);
+					if (!stillExists && selectedBean.id !== lastSelectedBeanId) {
+						console.log('Selected bean was filtered out, resetting selection');
+						selectedBean = null;
+					}
+				} finally {
+					// Use setTimeout to break potential update cycles
+					setTimeout(() => {
+						processingUpdate = false;
+					}, 50);
 				}
-			} finally {
-				// Use setTimeout to break potential update cycles
-				setTimeout(() => {
-					processingUpdate = false;
-				}, 50);
 			}
 		}
 	});
