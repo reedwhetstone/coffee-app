@@ -200,7 +200,7 @@
 							<textarea
 								bind:value={searchQuery}
 								placeholder={'Search coffees or ask a question'}
-								class="text-secondary-light flex-1 resize-none border-none bg-transparent font-medium placeholder-zinc-400 focus:border-none focus:outline-none focus:ring-0"
+								class="text-primary-light flex-1 resize-none border-none bg-transparent font-medium placeholder-zinc-400 focus:border-none focus:outline-none focus:ring-0"
 								disabled={isLoading}
 								onfocus={(e) => (e.target as HTMLTextAreaElement).select()}
 								oninput={(e) => {
@@ -212,7 +212,7 @@
 							></textarea>
 							<button
 								type="submit"
-								class="flex h-8 w-8 items-center justify-center rounded-full border-none bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+								class="flex h-8 w-8 items-center justify-center rounded-full border-none bg-background-tertiary-light text-text-primary-light hover:opacity-80 disabled:opacity-50"
 								disabled={isLoading || !searchQuery.trim()}
 							>
 								{#if isLoading}
@@ -242,7 +242,7 @@
 				{#if chatResponse}
 					<div class="px-4 pb-1">
 						<span class="text-primary-light text-sm">Response:</span>
-						<p class="text-secondary-light mx-4 mt-1 whitespace-pre-wrap">{chatResponse}</p>
+						<p class="text-primary-light mx-4 mt-1 whitespace-pre-wrap">{chatResponse}</p>
 					</div>
 				{/if}
 				<!-- Recommendations-->
@@ -260,9 +260,9 @@
 									class="group block rounded-lg bg-background-tertiary-light p-4 transition-all hover:scale-[1.02] hover:bg-background-secondary-light hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 								>
 									<div class="flex items-center justify-between">
-										<h4 class="text-secondary-light font-semibold">{coffee.name}</h4>
+										<h4 class="text-primary-light font-semibold">{coffee.name}</h4>
 										<svg
-											class="text-primary-light h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:text-blue-400"
+											class="text-primary-light h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
 											fill="none"
 											stroke="currentColor"
 											viewBox="0 0 24 24"
@@ -276,11 +276,11 @@
 										</svg>
 									</div>
 									<div class="mb-2">
-										<h3 class="text-secondary-light">{coffee.source}</h3>
-										<span class="text-secondary-light text-sm">Score: {coffee.score_value}</span>
-										<span class="text-secondary-light ml-4 text-sm">${coffee.cost_lb}/lb</span>
+										<h3 class="text-primary-light">{coffee.source}</h3>
+										<span class="text-primary-light text-sm">Score: {coffee.score_value}</span>
+										<span class="text-primary-light ml-4 text-sm">${coffee.cost_lb}/lb</span>
 									</div>
-									<p class="text-secondary-light mt-2 text-sm">{coffee.reason}</p>
+									<p class="text-primary-light mt-2 text-sm">{coffee.reason}</p>
 								</a>
 							{/each}
 						</div>
@@ -310,20 +310,20 @@
 						>
 							<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
 								<div>
-									<h3 class="text-secondary-light text-base font-semibold md:text-lg">
+									<h3 class="text-primary-light text-base font-semibold md:text-lg">
 										{coffee.name}
 									</h3>
 									<p class="text-primary-light text-sm">{coffee.source}</p>
 								</div>
 								<div class="text-left sm:text-right">
-									<p class="text-secondary-light text-base font-bold md:text-lg">
+									<p class="text-primary-light text-base font-bold md:text-lg">
 										${coffee.cost_lb}/lb
 									</p>
 									<p class="text-primary-light text-sm">Score: {coffee.score_value}</p>
 								</div>
 							</div>
 							<div
-								class="mt-2 grid grid-cols-1 gap-2 text-sm text-zinc-300 sm:grid-cols-2 sm:gap-4"
+								class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-2 sm:gap-4"
 							>
 								<div>
 									<span class="text-primary-light">Region:</span>

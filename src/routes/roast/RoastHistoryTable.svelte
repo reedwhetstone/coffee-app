@@ -30,7 +30,7 @@
 						class="flex w-full items-center justify-between"
 						on:click={() => onToggleBatch(batchName)}
 					>
-						<h3 class="text-secondary-light text-lg font-semibold">
+						<h3 class="text-primary-light text-lg font-semibold">
 							{isBatchExpanded(batchName) ? '▼' : '▶'}
 							{batchName}
 						</h3>
@@ -52,7 +52,7 @@
 								>
 									<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
 										<div>
-											<h4 class="text-secondary-light text-base font-semibold">
+											<h4 class="text-primary-light text-base font-semibold">
 												{profile.coffee_name}
 											</h4>
 											<p class="text-primary-light text-sm">

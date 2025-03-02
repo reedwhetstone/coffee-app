@@ -75,10 +75,10 @@
 			<div class="flex h-full flex-col">
 				<!-- Header -->
 				<div class="flex items-center justify-between p-4">
-					<h3 class="text-secondary-light text-lg font-semibold">Filters</h3>
+					<h3 class="text-primary-light text-lg font-semibold">Filters</h3>
 					<button
 						onclick={closePanel}
-						class="text-primary-light hover:text-secondary-light p-2"
+						class="text-primary-light hover:text-primary-light p-2"
 						aria-label="Close settings panel"
 					>
 						<svg
@@ -106,7 +106,7 @@
 								id="sort-field"
 								value={$filterStore.sortField}
 								onchange={(e) => filterStore.setSortField(e.currentTarget.value)}
-								class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
+								class="text-primary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 							>
 								<option value="">None</option>
 								{#each filterStore.getFilterableColumns($page.url.pathname) as column}
@@ -122,7 +122,7 @@
 									value={$filterStore.sortDirection}
 									onchange={(e) =>
 										filterStore.setSortDirection(e.currentTarget.value as 'asc' | 'desc')}
-									class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
+									class="text-primary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 								>
 									<option value="asc">Ascending</option>
 									<option value="desc">Descending</option>
@@ -158,7 +158,7 @@
 														}}
 														class="rounded border-background-primary-light bg-background-tertiary-light text-blue-600"
 													/>
-													<span class="text-secondary-light text-sm">{source}</span>
+													<span class="text-primary-light text-sm">{source}</span>
 												</label>
 											{/each}
 										</div>
@@ -174,7 +174,7 @@
 														min: e.currentTarget.value
 													});
 												}}
-												class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
+												class="text-primary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 												placeholder="Min"
 												min="0"
 												max="100"
@@ -190,7 +190,7 @@
 														max: e.currentTarget.value
 													});
 												}}
-												class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
+												class="text-primary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 												placeholder="Max"
 												min="0"
 												max="100"
@@ -202,7 +202,7 @@
 											value={$filterStore.filters.purchase_date || ''}
 											onchange={(e) =>
 												filterStore.setFilter('purchase_date', e.currentTarget.value)}
-											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
+											class="text-primary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 										>
 											<option value="">All Dates</option>
 											{#each $filterStore.uniqueValues.purchaseDates as date}
@@ -213,7 +213,7 @@
 										<select
 											value={$filterStore.filters.roast_date || ''}
 											onchange={(e) => filterStore.setFilter('roast_date', e.currentTarget.value)}
-											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
+											class="text-primary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 										>
 											<option value="">All Dates</option>
 											{#each $filterStore.uniqueValues.roastDates as date}
@@ -224,7 +224,7 @@
 										<select
 											value={$filterStore.filters.batch_name || ''}
 											onchange={(e) => filterStore.setFilter('batch_name', e.currentTarget.value)}
-											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
+											class="text-primary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 										>
 											<option value="">All Batches</option>
 											{#each $filterStore.uniqueValues.batchNames as batchName}
@@ -236,7 +236,7 @@
 											type="text"
 											value={$filterStore.filters[column] || ''}
 											oninput={(e) => filterStore.setFilter(column, e.currentTarget.value)}
-											class="text-secondary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
+											class="text-primary-light w-full rounded bg-background-tertiary-light p-2 text-sm"
 											placeholder={`Filter by ${column.replace(/_/g, ' ')}`}
 										/>
 									{/if}

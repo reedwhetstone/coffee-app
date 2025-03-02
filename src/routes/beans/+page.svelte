@@ -342,13 +342,13 @@
 					>
 						<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
 							<div>
-								<h3 class="text-secondary-light text-base font-semibold md:text-lg">
+								<h3 class="text-primary-light text-base font-semibold md:text-lg">
 									{bean.name}
 								</h3>
 								<p class="text-primary-light text-sm">{bean.vendor}</p>
 							</div>
 							<div class="text-left sm:text-right">
-								<p class="text-secondary-light text-base font-bold md:text-lg">
+								<p class="text-primary-light text-base font-bold md:text-lg">
 									${bean.price_per_lb}/lb
 								</p>
 								<p class="text-primary-light text-sm">Score: {bean.score_value}</p>

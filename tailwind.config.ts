@@ -9,15 +9,28 @@ export default {
 	theme: {
 		extend: {
 			colors: {
-				'background-secondary-light': '#faf8f3',
-				'background-tertiary-light': '#f4dbae',
+				//ian's color pallet
+				//  #f0ead6, egshell.. lighter option
+				// #292522, dark brown
+				// #f78c58 and orange creamsicle sort of color
+				// text on dark background - #dfdaca
+				// text on light background - #302f2a
+
+				// do a burnt orange? #CC5500
+				'background-primary-light': '#f0ead6', //faf8f3
+				'background-secondary-light': '#f0ead6',
+				'background-tertiary-light': '#f78c58',
+
+				'border-light': '#292522',
+
+				//text colors
+				'text-primary-light': '#302f2a', //dark brown
+				'text-secondary-light': '#695c4d', //light brown
+				'link-light': '#a07d50',
+
+				//accent colors
 				'growth-green': '#7FB069',
-				'background-primary-light': '#f4ece0',
-				'harvest-gold': '#7FB069',
-				'border-light': '#e0d7c5',
-				'text-primary-light': '#3b3024',
-				'text-secondary-light': '#695c4d',
-				'link-light': '#a07d50'
+				'harvest-gold': '#7FB069'
 			}
 		}
 	},
