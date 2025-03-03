@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { error } from '@sveltejs/kit';
 	import '../app.css';
 	import LeftSidebar from '$lib/components/layout/LeftSidebar.svelte';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { filterStore, filteredData } from '$lib/stores/filterStore';
+	import { filterStore } from '$lib/stores/filterStore';
 
 	interface LayoutData {
 		session: {

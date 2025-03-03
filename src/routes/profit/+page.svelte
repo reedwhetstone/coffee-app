@@ -45,7 +45,6 @@
 
 	let profitData: ProfitData[] = [];
 	let roastProfileData: RoastProfileData[] = [];
-	let selectedDateRange: 'all' | '30' | '90' | '180' | '365' = 'all';
 	let chartContainer: HTMLDivElement;
 	let expandedDates = new Set<string>();
 	let salesData: SaleData[] = [];

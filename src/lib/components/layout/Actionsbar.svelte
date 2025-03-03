@@ -3,7 +3,6 @@
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
 	import { checkRole } from '$lib/types/auth.types';
 
 	// Props declaration

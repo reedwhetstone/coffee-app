@@ -472,19 +472,19 @@
 
 	// Function to toggle batch expansion
 	function toggleBatch(batchName: string) {
-		console.log('Toggling batch:', batchName);
-		console.log('Current expanded batches:', Array.from(expandedBatches));
+		//console.log('Toggling batch:', batchName);
+		//console.log('Current expanded batches:', Array.from(expandedBatches));
 
 		// Validate batch name
 		if (!batchName || typeof batchName !== 'string') {
-			console.error('Invalid batch name:', batchName);
+			//console.error('Invalid batch name:', batchName);
 			return;
 		}
 
 		// Ensure the batch exists in the sorted grouped profiles
 		if (!sortedGroupedProfiles[batchName]) {
-			console.error('Batch not found in sorted grouped profiles:', batchName);
-			console.log('Available batches:', Object.keys(sortedGroupedProfiles));
+			//console.error('Batch not found in sorted grouped profiles:', batchName);
+			//console.log('Available batches:', Object.keys(sortedGroupedProfiles));
 			return;
 		}
 
@@ -493,16 +493,16 @@
 
 		// Toggle the batch expansion
 		if (newExpandedBatches.has(batchName)) {
-			console.log('Collapsing batch:', batchName);
+			//console.log('Collapsing batch:', batchName);
 			newExpandedBatches.delete(batchName);
 		} else {
-			console.log('Expanding batch:', batchName);
+			//console.log('Expanding batch:', batchName);
 			newExpandedBatches.add(batchName);
 		}
 
 		// Update the state with the new Set
 		expandedBatches = newExpandedBatches;
-		console.log('Updated expanded batches:', Array.from(expandedBatches));
+		//console.log('Updated expanded batches:', Array.from(expandedBatches));
 
 		// Force a UI update by triggering a state change
 		// This ensures Svelte recognizes the change to the Set
@@ -510,7 +510,7 @@
 			// Create a temporary copy to force reactivity
 			const tempSet = new Set(expandedBatches);
 			expandedBatches = tempSet;
-			console.log('Batch toggle complete, expanded batches:', Array.from(expandedBatches));
+			//console.log('Batch toggle complete, expanded batches:', Array.from(expandedBatches));
 		}, 10);
 	}
 

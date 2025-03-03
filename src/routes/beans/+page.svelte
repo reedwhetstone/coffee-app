@@ -4,7 +4,7 @@
 	import BeanProfile from './BeanProfile.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
+	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
 	// Define the type for the page data
 	type PageData = {
@@ -59,9 +59,6 @@
 	let lastFilteredDataLength = $state(0);
 
 	$effect(() => {
-		// This will run whenever the filter change notifier changes
-		const changeCount = $filterChangeNotifier;
-
 		// Only process if the filtered data length has actually changed
 		if (lastFilteredDataLength !== $filteredData.length) {
 			// console.log(
@@ -140,7 +137,7 @@
 			}
 			return false;
 		} catch (error) {
-			//console.error('Error loading data:', error);
+			console.error('Error loading data:', error);
 			return false;
 		}
 	}
@@ -157,7 +154,7 @@
 				await loadData();
 			} else {
 				const errorData = await response.json();
-				//console.error('Failed to delete bean:', errorData.error || 'Unknown error');
+				console.error('Failed to delete bean:', errorData.error || 'Unknown error');
 				await loadData();
 			}
 		} catch (error) {

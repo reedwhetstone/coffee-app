@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { formatDateForDisplay, prepareDateForAPI } from '$lib/utils/dates';
+	import { prepareDateForAPI } from '$lib/utils/dates';
 
 	let { selectedBean, role, onUpdate, onDelete } = $props<{
 		selectedBean: any;
@@ -63,7 +62,7 @@
 		// Only update editedBean when selectedBean changes
 		if (selectedBean) {
 			processingUpdate = true;
-			console.log('BeanProfile: Updating from selectedBean change:', selectedBean.id);
+			//	console.log('BeanProfile: Updating from selectedBean change:', selectedBean.id);
 
 			// Track the bean ID we're processing
 			lastSelectedBeanId = selectedBean.id;
@@ -138,10 +137,6 @@
 			}
 		}
 	}
-
-	$effect(() => {
-		console.log('Role in BeanProfile:', role);
-	});
 </script>
 
 <div class="rounded-lg bg-background-secondary-light p-6">
