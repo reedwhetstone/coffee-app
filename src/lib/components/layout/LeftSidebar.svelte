@@ -14,6 +14,7 @@
 	// Import the menu components
 	import NavbarButton from '$lib/components/layout/Navbar.svelte';
 	import SettingsButton from '$lib/components/layout/Settingsbar.svelte';
+	import ActionsButton from '$lib/components/layout/Actionsbar.svelte';
 
 	// State for tracking which menu is open
 	let activeMenu = $state<string | null>(null);
@@ -45,6 +46,11 @@
 	// Function to toggle the settings menu
 	function toggleSettingsMenu() {
 		toggleMenu('settings');
+	}
+
+	// Function to toggle the actions menu
+	function toggleActionsMenu() {
+		toggleMenu('actions');
 	}
 
 	// Function to close all menus
@@ -126,6 +132,30 @@
 			</button>
 		</div>
 
+		<!-- Actions Menu -->
+		<div class="relative">
+			<button
+				onclick={toggleActionsMenu}
+				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:opacity-80"
+				aria-label="Toggle actions"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-8 w-8"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+					/>
+				</svg>
+			</button>
+		</div>
+
 		<!-- Settings Menu -->
 		<div class="relative">
 			<button
@@ -165,6 +195,18 @@
 				aria-label="Main navigation menu"
 			>
 				<NavbarButton {data} isOpen={true} onClose={closeAllMenus} />
+			</aside>
+		{/if}
+
+		<!-- Actions Menu Panel -->
+		{#if activeMenu === 'actions'}
+			<aside
+				class="bg-background-primary-dark text-text-primary-dark h-full w-64"
+				transition:slide={{ duration: 300, easing: quintOut, axis: 'x' }}
+				role="complementary"
+				aria-label="Actions menu"
+			>
+				<ActionsButton {data} isOpen={true} onClose={closeAllMenus} />
 			</aside>
 		{/if}
 

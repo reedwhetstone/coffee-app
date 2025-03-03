@@ -864,12 +864,7 @@
 
 <div class=" mb-6">
 	<div class="mb-4 flex justify-center sm:justify-end">
-		<button
-			class="w-full rounded border-2 border-green-800 px-3 py-1 text-text-primary-light hover:bg-green-900 sm:w-auto"
-			onclick={() => (isFormVisible = true)}
-		>
-			New Roast
-		</button>
+		<!-- Remove New Roast button since it is now in Actionsbar -->
 	</div>
 	{#if currentRoastProfile}
 		<RoastProfileDisplay

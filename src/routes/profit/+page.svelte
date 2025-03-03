@@ -519,15 +519,6 @@
 	}
 </script>
 
-<button
-	class="rounded border-2 border-green-800 px-3 py-1 text-text-primary-light hover:bg-green-900"
-	on:click={() => {
-		selectedSale = null;
-		isFormVisible = true;
-	}}
->
-	New Sale
-</button>
 <!-- Add form modal -->
 {#if isFormVisible}
 	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75">
