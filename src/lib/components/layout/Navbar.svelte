@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
-	import { navbarActions } from '$lib/stores/navbarStore';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import pkg from 'lodash';
@@ -28,17 +27,17 @@
 	let userRole: UserRole = $derived(role as UserRole);
 
 	// Add more detailed debug logging
-	$effect(() => {
-		console.log('Navbar data:', data);
-		console.log('Destructured role:', role);
-		console.log('Parsed userRole:', userRole);
-		console.log('data.role:', data.role);
-	});
+	// $effect(() => {
+	// 	console.log('Navbar data:', data);
+	// 	console.log('Destructured role:', role);
+	// 	console.log('Parsed userRole:', userRole);
+	// 	console.log('data.role:', data.role);
+	// });
 
 	// Use the imported checkRole function
 	function hasRequiredRole(requiredRole: UserRole): boolean {
 		const hasRole = checkRole(userRole, requiredRole);
-		console.log(`Role check: ${userRole} >= ${requiredRole} = ${hasRole}`);
+		//console.log(`Role check: ${userRole} >= ${requiredRole} = ${hasRole}`);
 		return hasRole;
 	}
 
@@ -49,13 +48,6 @@
 	afterNavigate(() => {
 		routeId = page.route.id;
 	});
-
-	// Function to handle Add New Bean click
-	function handleAddNewBean() {
-		goto('/').then(() => {
-			$navbarActions.onAddNewBean();
-		});
-	}
 
 	async function handleSignIn() {
 		try {

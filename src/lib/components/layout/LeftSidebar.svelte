@@ -27,13 +27,13 @@
 
 	// Function to toggle a menu
 	function toggleMenu(menuId: string) {
-		console.log('toggleMenu called with menuId:', menuId);
-		console.log('Current activeMenu:', activeMenu);
+		//console.log('toggleMenu called with menuId:', menuId);
+		//console.log('Current activeMenu:', activeMenu);
 
 		// Simple toggle: if the same menu is clicked, close it; otherwise open the new one
 		activeMenu = activeMenu === menuId ? null : menuId;
 
-		console.log('New activeMenu:', activeMenu);
+		//console.log('New activeMenu:', activeMenu);
 		// Notify parent components about the menu state change
 		onMenuChange(activeMenu);
 	}
@@ -203,7 +203,6 @@
 			<aside
 				class="bg-background-primary-dark text-text-primary-dark h-full w-64"
 				transition:slide={{ duration: 300, easing: quintOut, axis: 'x' }}
-				role="complementary"
 				aria-label="Actions menu"
 			>
 				<ActionsButton {data} isOpen={true} onClose={closeAllMenus} />

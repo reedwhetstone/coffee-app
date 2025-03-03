@@ -2,7 +2,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
-	import { navbarActions } from '$lib/stores/navbarStore';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { checkRole } from '$lib/types/auth.types';
@@ -43,17 +42,45 @@
 
 	// Action handlers
 	function handleNewBean() {
-		$navbarActions.onAddNewBean?.();
+		// Set state to show the form
+		if (data?.onAddNewBean) {
+			data.onAddNewBean();
+		}
 		onClose();
 	}
 
 	function handleNewRoast() {
-		$navbarActions.onAddNewRoast?.();
-		onClose();
+		if (routeId === '/beans') {
+			// If on beans page, navigate to roast page with form flag
+			// Check if we have a selected bean from the data prop
+			const selectedBean = data?.selectedBean;
+			if (selectedBean) {
+				goto(`/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.name)}`, {
+					state: {
+						showRoastForm: true
+					}
+				});
+			} else {
+				goto('/roast', {
+					state: {
+						showRoastForm: true
+					}
+				});
+			}
+			onClose();
+		} else {
+			// If already on roast page, just show the form
+			if (data?.onAddNewRoast) {
+				data.onAddNewRoast();
+			}
+			onClose();
+		}
 	}
 
 	function handleNewSale() {
-		$navbarActions.onAddNewSale?.();
+		if (data?.onAddNewSale) {
+			data.onAddNewSale();
+		}
 		onClose();
 	}
 

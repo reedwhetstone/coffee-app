@@ -1,16 +1,16 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { onMount, tick } from 'svelte';
-	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
+	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import { page } from '$app/stores';
 
 	let { data } = $props<{ data: PageData }>();
 
 	// Debug: Log the data
-	$effect(() => {
-		console.log('Home page data:', data);
-		console.log('FilteredData store value:', $filteredData);
-	});
+	// $effect(() => {
+	// 	console.log('Home page data:', data);
+	// 	console.log('FilteredData store value:', $filteredData);
+	// });
 
 	// Add search functionality
 	let searchQuery = $state('');
@@ -24,7 +24,6 @@
 	// Add recommendation state
 	let recommendedCoffees = $state<any[]>([]);
 	let isLoadingRecommendations = $state(false);
-	let updatingRecommendations = $state(false);
 
 	// Track initialization to prevent loops
 	let initializing = $state(false);
@@ -39,7 +38,7 @@
 			(!$filterStore.initialized || $filterStore.routeId !== currentRoute) &&
 			!initializing
 		) {
-			console.log('Initializing filter store with home page data:', data.data.length, 'items');
+			// console.log('Initializing filter store with home page data:', data.data.length, 'items');
 			initializing = true;
 			setTimeout(() => {
 				filterStore.initializeForRoute(currentRoute, data.data);
@@ -54,17 +53,14 @@
 	let lastFilteredDataLength = $state(0);
 
 	$effect(() => {
-		// This will run whenever the filter change notifier changes
-		const changeCount = $filterChangeNotifier;
-
 		// Only process if the filtered data length has actually changed
 		if (lastFilteredDataLength !== $filteredData.length) {
-			console.log(
-				'Filtered data changed in home page, from',
-				lastFilteredDataLength,
-				'to',
-				$filteredData.length
-			);
+			// console.log(
+			// 	'Filtered data changed in home page, from',
+			// 	lastFilteredDataLength,
+			// 	'to',
+			// 	$filteredData.length
+			//);
 			lastFilteredDataLength = $filteredData.length;
 
 			// Update pagination when filtered data changes

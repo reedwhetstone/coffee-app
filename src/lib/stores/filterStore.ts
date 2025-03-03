@@ -50,7 +50,7 @@ function createFilterStore() {
 			return;
 		}
 
-		console.log(`Initializing filter store for route: ${routeId} with ${data.length} items`);
+		//console.log(`Initializing filter store for route: ${routeId} with ${data.length} items`);
 
 		update((state) => {
 			// Mark that we're initializing this route
@@ -240,7 +240,7 @@ function createFilterStore() {
 		// Skip if no filters
 		if (!Object.keys(filters).length) return data;
 
-		console.log('Filtering data with filters:', filters);
+		//console.log('Filtering data with filters:', filters);
 
 		return data.filter((item) => {
 			// Check each filter
@@ -287,7 +287,7 @@ function createFilterStore() {
 		// Skip if no sort field or direction
 		if (!sortField || !sortDirection) return data;
 
-		console.log('Sorting data by', sortField, sortDirection);
+		//console.log('Sorting data by', sortField, sortDirection);
 
 		return [...data].sort((a, b) => {
 			const aValue = a[sortField];
@@ -350,11 +350,11 @@ function createFilterStore() {
 	): any[] {
 		// Start by filtering
 		const filtered = filterData(data, filters);
-		console.log('After filtering:', filtered.length, 'items');
+		//	console.log('After filtering:', filtered.length, 'items');
 
 		// Then sort
 		const sorted = sortData(filtered, sortField, sortDirection);
-		console.log('After sorting:', sorted.length, 'items');
+		//console.log('After sorting:', sorted.length, 'items');
 
 		return sorted;
 	}

@@ -37,15 +37,10 @@
 
 	// Handle menu change from the sidebar
 	function handleMenuChange(menu: string | null) {
-		console.log('Layout handleMenuChange called with menu:', menu);
+		//console.log('Layout handleMenuChange called with menu:', menu);
 		activeMenu = menu;
-		console.log('Layout activeMenu set to:', activeMenu);
+		//console.log('Layout activeMenu set to:', activeMenu);
 	}
-
-	// Debug data in the layout
-	$effect(() => {
-		console.log('Layout data:', data);
-	});
 
 	// Track route changes and initialize data for new routes only when necessary
 	$effect(() => {
@@ -53,7 +48,7 @@
 
 		// Only initialize if the route changed and hasn't been initialized yet
 		if (currentRoute !== lastRoute && !initializedRoutes.has(currentRoute) && !processingInit) {
-			console.log(`Route changed to ${currentRoute}, checking if data needs initialization`);
+			//console.log(`Route changed to ${currentRoute}, checking if data needs initialization`);
 			lastRoute = currentRoute;
 			processingInit = true;
 
@@ -67,15 +62,15 @@
 						data.data.length > 0 &&
 						!$filterStore.initialized
 					) {
-						console.log('Initializing filter store with layout data:', data.data.length, 'items');
+						//console.log('Initializing filter store with layout data:', data.data.length, 'items');
 						// Mark this route as initialized to prevent repeated initialization
 						initializedRoutes.add(currentRoute);
 						// Initialize the filter store
 						filterStore.initializeForRoute(currentRoute, data.data);
 					} else {
-						console.log(
-							'No layout data available for filter store initialization or already initialized, will defer to page component'
-						);
+						//console.log(
+						//	'No layout data available for filter store initialization or already initialized, will defer to page component'
+						//);
 					}
 				} finally {
 					processingInit = false;

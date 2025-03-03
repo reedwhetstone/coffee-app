@@ -15,8 +15,7 @@
 		msToMySQLTime,
 		mysqlTimeToMs
 	} from './stores';
-	import { navbarActions } from '$lib/stores/navbarStore';
-	import { get } from 'svelte/store';
+
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import RoastChartInterface from './RoastChartInterface.svelte';
 	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
@@ -55,17 +54,17 @@
 	let updatingProfileGroups = $state(false);
 	let initializing = $state(false);
 
-	// Debug data in the component
-	$effect(() => {
-		console.log('Roast page data:', data);
-		console.log('FilteredData store value:', $filteredData.length, 'items');
-		console.log('Sorted batch names:', sortedBatchNames.length, 'batches');
-		console.log(
-			'Sorted grouped profiles:',
-			Object.keys(sortedGroupedProfiles).length,
-			'batch keys'
-		);
-	});
+	// // Debug data in the component
+	// $effect(() => {
+	// 	//console.log('Roast page data:', data);
+	// 	//console.log('FilteredData store value:', $filteredData.length, 'items');
+	// 	//console.log('Sorted batch names:', sortedBatchNames.length, 'batches');
+	// 	//console.log(
+	// 		'Sorted grouped profiles:',
+	// 		Object.keys(sortedGroupedProfiles).length,
+	// 		'batch keys'
+	// 	);
+	// });
 
 	// Initialize filter store
 	$effect(() => {
@@ -76,7 +75,7 @@
 			(!$filterStore.initialized || $filterStore.routeId !== currentRoute) &&
 			!initializing
 		) {
-			console.log('Initializing filter store with roast page data:', data.data.length, 'items');
+			//console.log('Initializing filter store with roast page data:', data.data.length, 'items');
 			initializing = true;
 			// Use setTimeout to break potential update cycles
 			setTimeout(() => {
@@ -86,7 +85,7 @@
 				// Force an update of grouped profiles after initialization
 				setTimeout(() => {
 					if ($filteredData.length > 0 && !updatingProfileGroups) {
-						console.log('Forcing update of grouped profiles after filter store initialization');
+						//console.log('Forcing update of grouped profiles after filter store initialization');
 						updateGroupedProfiles([...$filteredData]);
 					}
 				}, 100);
@@ -95,29 +94,26 @@
 	});
 
 	// Update grouped profiles when filtered data changes - completely restructured to prevent loops
-	let lastFilteredDataHash = $state<string | null>(null);
+
 	let initialLoadComplete = $state(false);
 
 	// Replace the existing effect with a more robust version that uses the filterChangeNotifier
 	let lastFilteredDataLength = $state(0);
 
 	$effect(() => {
-		// This will run whenever the filter change notifier changes
-		const changeCount = $filterChangeNotifier;
-
 		// Only process if the filtered data length has actually changed
 		if (lastFilteredDataLength !== $filteredData.length) {
-			console.log(
-				'Filtered data changed in roast page, from',
-				lastFilteredDataLength,
-				'to',
-				$filteredData.length
-			);
+			// console.log(
+			// 	'Filtered data changed in roast page, from',
+			// 	lastFilteredDataLength,
+			// 	'to',
+			// 	$filteredData.length
+			// );
 			lastFilteredDataLength = $filteredData.length;
 
 			// Skip if we're already updating
 			if (updatingProfileGroups) {
-				console.log('Already updating profile groups, skipping');
+				//console.log('Already updating profile groups, skipping');
 				return;
 			}
 
@@ -125,7 +121,7 @@
 			if (!$filteredData.length) {
 				// Clear the sorted batch names and grouped profiles when there's no data
 				if (sortedBatchNames.length > 0 || Object.keys(sortedGroupedProfiles).length > 0) {
-					console.log('No filtered data, clearing sorted batch names and grouped profiles');
+					//console.log('No filtered data, clearing sorted batch names and grouped profiles');
 					sortedBatchNames = [];
 					sortedGroupedProfiles = {};
 				}
@@ -133,7 +129,7 @@
 			}
 
 			// Process the data with a guard to prevent loops
-			console.log('Filter change detected, updating grouped profiles');
+			//console.log('Filter change detected, updating grouped profiles');
 			updatingProfileGroups = true;
 			try {
 				// Create a snapshot of the current filtered data to avoid reactivity issues
@@ -156,10 +152,10 @@
 			) {
 				processing = true;
 				try {
-					console.log(
-						'Updating selectedBean from currentRoastProfile:',
-						currentRoastProfile.coffee_id
-					);
+					// console.log(
+					// 	'Updating selectedBean from currentRoastProfile:',
+					// 	currentRoastProfile.coffee_id
+					// );
 					selectedBean = {
 						id: currentRoastProfile.coffee_id,
 						name: currentRoastProfile.coffee_name
@@ -176,11 +172,11 @@
 
 	// Function to update grouped profiles from filtered data
 	function updateGroupedProfiles(profiles: any[]) {
-		console.log('Updating grouped profiles with', profiles.length, 'profiles');
+		//	console.log('Updating grouped profiles with', profiles.length, 'profiles');
 
 		// Skip update if profiles array is empty
 		if (!profiles.length) {
-			console.log('No profiles to update, clearing groupings');
+			//	console.log('No profiles to update, clearing groupings');
 			sortedBatchNames = [];
 			sortedGroupedProfiles = {};
 			return;
@@ -243,9 +239,9 @@
 		// Update the expanded batches
 		expandedBatches = newExpandedBatches;
 
-		console.log('Updated sorted batch names:', batchNames);
-		console.log('Updated sorted grouped profiles keys:', Object.keys(sortedGroupedProfiles));
-		console.log('Updated expanded batches:', Array.from(expandedBatches));
+		//console.log('Updated sorted batch names:', batchNames);
+		//console.log('Updated sorted grouped profiles keys:', Object.keys(sortedGroupedProfiles));
+		//console.log('Updated expanded batches:', Array.from(expandedBatches));
 	}
 
 	// Effect to handle sort changes - make this more efficient
@@ -269,7 +265,7 @@
 					// Force an update of grouped profiles after a short delay
 					setTimeout(() => {
 						if ($filteredData.length > 0) {
-							console.log('Forcing update of grouped profiles after loading roast profiles');
+							//console.log('Forcing update of grouped profiles after loading roast profiles');
 							updateGroupedProfiles([...$filteredData]);
 						}
 					}, 150);
@@ -294,11 +290,17 @@
 			}
 		}
 
+		// Check if we should show the roast form based on navigation state
+		const state = $page.state as any;
+		if (state?.showRoastForm) {
+			isFormVisible = true;
+		}
+
 		// Load roast profiles and ensure they're displayed
 		loadRoastProfiles().then(() => {
 			// Force an update of the grouped profiles if they're not already populated
 			if (sortedBatchNames.length === 0 && $filteredData.length > 0) {
-				console.log('Forcing update of grouped profiles on mount');
+				//console.log('Forcing update of grouped profiles on mount');
 				updateGroupedProfiles([...$filteredData]);
 			}
 		});
@@ -309,86 +311,27 @@
 			data?.data?.length > 0 &&
 			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
 		) {
-			console.log('Initializing filter store with roast page data:', data.data.length, 'items');
+			//console.log('Initializing filter store with roast page data:', data.data.length, 'items');
 			filterStore.initializeForRoute(currentRoute, data.data);
 
 			// Force an update of the grouped profiles after initialization
 			setTimeout(() => {
 				if ($filteredData.length > 0 && sortedBatchNames.length === 0) {
-					console.log('Forcing update of grouped profiles after filter store initialization');
+					//console.log('Forcing update of grouped profiles after filter store initialization');
 					updateGroupedProfiles([...$filteredData]);
 				}
 			}, 150);
-		}
-
-		// Set up navbar actions
-		navbarActions.set({
-			onAddNewBean: () => {},
-			onAddNewRoast: () => {
-				isFormVisible = true;
-			},
-			onAddNewSale: () => {},
-			onShowRoastForm: () => {
-				isFormVisible = true;
-			},
-			onSearchSelect: (type, id) => {
-				if (type === 'roast' && id) {
-					loadRoastProfiles().then(() => {
-						const foundProfile = data.data.find(
-							(profile: { roast_id: number }) => profile.roast_id === id
-						);
-						if (foundProfile) {
-							selectProfile(foundProfile);
-						}
-					});
-				}
-			}
-		});
-
-		// Check if we should show the roast form based on URL state
-		const state = window.history.state;
-		if (state && state.showRoastForm) {
-			isFormVisible = true;
-		}
-
-		// Add search navigation handling
-		const searchState = $page.state as any;
-		if (searchState?.searchType === 'roast' && searchState?.searchId) {
-			loadRoastProfiles().then(() => {
-				const foundProfile = data.data.find(
-					(profile: { roast_id: number }) => profile.roast_id === searchState.searchId
-				);
-				if (foundProfile) {
-					// Set the selectedBean first
-					selectedBean = {
-						id: foundProfile.coffee_id,
-						name: foundProfile.coffee_name
-					};
-					// Then select the profile
-					selectProfile(foundProfile);
-				}
-			});
 		}
 
 		// Add a final check to ensure the batch names are always interactive
 		setTimeout(() => {
 			// If we still don't have any batch names but we have filtered data, force an update
 			if (sortedBatchNames.length === 0 && $filteredData.length > 0) {
-				console.log('Final check: Forcing update of grouped profiles');
+				//	console.log('Final check: Forcing update of grouped profiles');
 				initialLoadComplete = true; // Ensure we're marked as loaded
 				updateGroupedProfiles([...$filteredData]);
 			}
 		}, 500);
-
-		return () => {
-			navbarActions.set({
-				onAddNewBean: () => {},
-				onAddNewRoast: () => {},
-				onAddNewSale: () => {},
-				onShowRoastForm: () => {},
-				onSearchSelect: () => {}
-			});
-		};
 	});
 
 	// Form submission handler for new roast profiles

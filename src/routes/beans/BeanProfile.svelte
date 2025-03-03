@@ -148,25 +148,6 @@
 	<div class="mb-4">
 		<div class="flex items-center justify-between">
 			<h2 class="text-xl font-bold text-text-primary-light">{selectedBean.name}</h2>
-			<div class="space-x-2">
-				{#if role === 'admin' || role === 'member'}
-					<button
-						class="rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light"
-						onclick={() => {
-							goto(
-								`/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.name)}`,
-								{
-									state: {
-										showRoastForm: true
-									}
-								}
-							);
-						}}
-					>
-						New Roast
-					</button>
-				{/if}
-			</div>
 		</div>
 
 		<!-- Moved page selection dots here -->

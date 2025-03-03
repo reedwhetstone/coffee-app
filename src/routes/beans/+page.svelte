@@ -3,8 +3,6 @@
 	import BeanForm from './BeanForm.svelte';
 	import BeanProfile from './BeanProfile.svelte';
 	import { onMount } from 'svelte';
-	import { navbarActions } from '$lib/stores/navbarStore';
-	import { get } from 'svelte/store';
 	import { page } from '$app/stores';
 	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
 
@@ -21,10 +19,10 @@
 	let { data } = $props<{ data: PageData }>();
 
 	// Debug: Log the data
-	$effect(() => {
-		console.log('Beans page data:', data);
-		console.log('FilteredData store value:', $filteredData);
-	});
+	// $effect(() => {
+	// 	console.log('Beans page data:', data);
+	// 	console.log('FilteredData store value:', $filteredData);
+	// });
 
 	// Track initialization state
 	let initializing = $state(false);
@@ -41,7 +39,7 @@
 				$filterStore.routeId !== currentRoute) &&
 			!initializing
 		) {
-			console.log('Manually initializing filtered data with page data');
+			// console.log('Manually initializing filtered data with page data');
 			initializing = true;
 			// Use setTimeout to break the update cycle
 			setTimeout(() => {
@@ -66,12 +64,12 @@
 
 		// Only process if the filtered data length has actually changed
 		if (lastFilteredDataLength !== $filteredData.length) {
-			console.log(
-				'Filtered data changed in beans page, from',
-				lastFilteredDataLength,
-				'to',
-				$filteredData.length
-			);
+			// console.log(
+			// 	'Filtered data changed in beans page, from',
+			// 	lastFilteredDataLength,
+			// 	'to',
+			// 	$filteredData.length
+			// );
 			lastFilteredDataLength = $filteredData.length;
 
 			if ($filteredData.length && selectedBean && !processingUpdate) {
@@ -80,7 +78,7 @@
 					// Check if the selected bean still exists in the filtered data
 					const stillExists = $filteredData.some((bean) => bean.id === selectedBean.id);
 					if (!stillExists && selectedBean.id !== lastSelectedBeanId) {
-						console.log('Selected bean was filtered out, resetting selection');
+						// console.log('Selected bean was filtered out, resetting selection');
 						selectedBean = null;
 					}
 				} finally {
@@ -101,7 +99,7 @@
 		try {
 			// Only update if different to avoid unnecessary re-renders
 			if (!selectedBean || selectedBean.id !== bean.id) {
-				console.log('Selecting bean:', bean.id);
+				// console.log('Selecting bean:', bean.id);
 				lastSelectedBeanId = bean.id;
 				selectedBean = bean;
 				window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -142,7 +140,7 @@
 			}
 			return false;
 		} catch (error) {
-			console.error('Error loading data:', error);
+			//console.error('Error loading data:', error);
 			return false;
 		}
 	}
@@ -159,7 +157,7 @@
 				await loadData();
 			} else {
 				const errorData = await response.json();
-				console.error('Failed to delete bean:', errorData.error || 'Unknown error');
+				//console.error('Failed to delete bean:', errorData.error || 'Unknown error');
 				await loadData();
 			}
 		} catch (error) {
@@ -205,39 +203,23 @@
 				}
 			}
 		});
-
-		navbarActions.set({
-			...get(navbarActions),
-			onAddNewBean: handleAddNewBean,
-			onSearchSelect: async (type, id) => {
-				if (type === 'green') {
-					await loadData();
-					const foundBean = data.data.find(
-						(bean: Database['public']['Tables']['green_coffee_inv']['Row']) => bean.id === id
-					);
-					if (foundBean) {
-						selectedBean = null;
-						await Promise.resolve();
-						selectedBean = foundBean;
-						window.scrollTo({ top: 0, behavior: 'smooth' });
-					}
-				}
-			}
-		});
-
-		return () => {
-			navbarActions.set({
-				...get(navbarActions),
-				onAddNewBean: () => {},
-				onSearchSelect: () => {}
-			});
-		};
 	});
 
 	function handleAddNewBean() {
 		selectedBean = null;
 		isFormVisible = true;
 	}
+
+	// Update the data object when selectedBean changes
+	$effect(() => {
+		if (data) {
+			data = {
+				...data,
+				selectedBean: selectedBean,
+				onAddNewBean: handleAddNewBean
+			};
+		}
+	});
 </script>
 
 <div class="">
