@@ -17,8 +17,8 @@ export default {
 				// text on light background - #302f2a
 
 				// do a burnt orange? #CC5500
-				'background-primary-light': '#E8E2CE', //faf8f3
-				'background-secondary-light': '#f0ead6',
+				'background-primary-light': '#FCFAF8', //faf8f3
+				'background-secondary-light': '#F4F0E7',
 				'background-tertiary-light': '#f78c58',
 				'background-primary-dark': '#292522',
 

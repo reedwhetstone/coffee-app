@@ -154,7 +154,7 @@
 	$: slideDirection = currentIndex > previousIndex ? 1 : -1;
 </script>
 
-<div class="mx-2 mt-4 rounded-lg bg-background-secondary-light p-3 sm:mx-8 sm:mt-8 sm:p-6">
+<div class=" rounded-lg bg-background-secondary-light p-3 sm:p-6">
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center sm:text-left">
@@ -186,7 +186,7 @@
 					{#each Object.entries(profile) as [key, value]}
 						{#if !['roast_id', 'coffee_id'].includes(key)}
 							<div
-								class="rounded bg-background-tertiary-light p-3 {[
+								class="rounded border border-background-tertiary-light p-3 {[
 									'roast_notes',
 									'roast_targets'
 								].includes(key)

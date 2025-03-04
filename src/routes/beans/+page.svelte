@@ -241,11 +241,6 @@
 
 <div class="">
 	<!-- Bean Profile Section -->
-	{#if data.role === 'admin' || data.role === 'member'}
-		<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-			<!-- Remove action buttons since they are now in Actionsbar -->
-		</div>
-	{/if}
 
 	{#if selectedBean}
 		<div class="mb-4">
@@ -304,7 +299,7 @@
 				{#each $filteredData as bean}
 					<button
 						type="button"
-						class="w-full cursor-pointer rounded-lg bg-background-secondary-light p-3 text-left transition-colors hover:bg-background-tertiary-light md:p-4"
+						class="w-full cursor-pointer rounded-lg bg-background-secondary-light p-3 text-left shadow-sm transition-colors hover:border hover:border-background-tertiary-light md:p-4"
 						onclick={() => selectBean(bean)}
 					>
 						<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">

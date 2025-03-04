@@ -24,7 +24,7 @@
 		<div class="space-y-4">
 			{#each sortedBatchNames as batchName}
 				<!-- Batch Header -->
-				<div class="rounded-lg bg-background-tertiary-light p-4">
+				<div class="rounded-lg bg-background-secondary-light p-4">
 					<button
 						type="button"
 						class="flex w-full items-center justify-between"
@@ -44,9 +44,9 @@
 							{#each sortedGroupedProfiles[batchName] as profile}
 								<button
 									type="button"
-									class="w-full cursor-pointer rounded-lg bg-background-secondary-light p-3 text-left transition-colors hover:bg-background-tertiary-light {currentRoastProfile?.roast_id ===
+									class="w-full cursor-pointer rounded-lg bg-background-secondary-light p-3 text-left transition-colors hover:border hover:border-background-tertiary-light {currentRoastProfile?.roast_id ===
 									profile.roast_id
-										? 'bg-background-tertiary-light'
+										? 'bg-background-tertiary-light opacity-80'
 										: ''}"
 									on:click={() => onSelectProfile(profile)}
 								>

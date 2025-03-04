@@ -824,12 +824,8 @@
 {/if}
 
 <!-- Current roast profile display -->
-
-<div class=" mb-6">
-	<div class="mb-4 flex justify-center sm:justify-end">
-		<!-- Remove New Roast button since it is now in Actionsbar -->
-	</div>
-	{#if currentRoastProfile}
+{#if currentRoastProfile}
+	<div class=" mb-6">
 		<RoastProfileDisplay
 			profile={currentRoastProfile}
 			profiles={currentRoastProfile
@@ -841,9 +837,8 @@
 			on:profileDeleted={handleProfileDelete}
 			on:batchDeleted={handleBatchDelete}
 		/>
-	{/if}
-</div>
-
+	</div>
+{/if}
 <!-- Main roasting interface -->
 {#if currentRoastProfile}
 	<div class=" mb-6 rounded-lg bg-background-secondary-light p-4">
