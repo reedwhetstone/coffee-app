@@ -1,10 +1,10 @@
 <script lang="ts">
 	import * as d3 from 'd3';
 	import { formatDateForDisplay } from '$lib/utils/dates';
-	import SalesTable from './SalesTable.svelte';
 	import SaleForm from './SaleForm.svelte';
 	import { page } from '$app/stores';
 	import type { PageData } from './$types';
+	import ProfitCards from './ProfitCards.svelte';
 
 	interface ProfitData {
 		id: number;
@@ -113,8 +113,6 @@
 		// Calculate loss rate if we have valid data
 		return totalOzIn > 0 ? ((totalOzIn - totalOzOut) / totalOzIn) * 100 : 0;
 	});
-
-	let groupedProfitData = $derived(d3.group(profitData, (d) => d.purchase_date));
 
 	// Add sales chart related functions
 	function createSalesChart() {
@@ -445,13 +443,19 @@
 		} else {
 			expandedDates.add(date);
 			// Get the first coffee for this date
-			const items = groupedProfitData.get(date) || [];
+			const items = d3.group(profitData, (d) => d.purchase_date).get(date) || [];
 			if (items.length > 0) {
 				selectedCoffee = items[0].coffee_name; // Set selected coffee
 				fetchSalesForCoffee(items[0].coffee_name);
 			}
 		}
-		expandedDates = expandedDates;
+		// Create a new Set to trigger reactivity in Svelte 5
+		expandedDates = new Set(expandedDates);
+	}
+
+	function handleSelectCoffee({ coffeeName, date }: { coffeeName: string; date: string }) {
+		selectedCoffee = coffeeName;
+		fetchSalesForCoffee(coffeeName);
 	}
 
 	function handleSaleEdit(sale: SaleData) {
@@ -460,8 +464,20 @@
 	}
 
 	async function handleSaleDelete(id: number) {
-		if (salesData.length > 0) {
-			await fetchSalesForCoffee(salesData[0].coffee_name || '');
+		try {
+			const response = await fetch(`/api/profit?id=${id}`, {
+				method: 'DELETE'
+			});
+
+			if (response.ok) {
+				if (selectedCoffee) {
+					await fetchSalesForCoffee(selectedCoffee);
+				}
+			} else {
+				alert('Failed to delete sale');
+			}
+		} catch (error) {
+			console.error('Error deleting sale:', error);
 		}
 	}
 
@@ -627,107 +643,18 @@
 		<div bind:this={chartContainer} class="w-full"></div>
 	</div>
 
-	<!-- Detailed Profit Table -->
-	<div class="mt-8 overflow-x-auto">
-		<table class="w-full table-auto bg-background-secondary-light">
-			<thead class="text-primary-light bg-background-tertiary-light text-xs uppercase">
-				<tr>
-					<th class="px-6 py-3">Purchase Date</th>
-					<th class="px-6 py-3">Details</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each [...groupedProfitData] as [date, items]}
-					<!-- Purchase Date Group Header -->
-					<tr
-						class="cursor-pointer bg-background-tertiary-light hover:bg-background-primary-light"
-						onclick={() => toggleDate(date)}
-					>
-						<td class="px-6 py-2 text-left text-xs font-semibold text-text-primary-light">
-							{expandedDates.has(date) ? '▼' : '▶'}
-							{formatDateForDisplay(date)}
-						</td>
-						<td class="px-6 py-2 text-left text-xs font-semibold text-text-primary-light">
-							<div class="flex gap-4">
-								<span>{items.length} items</span>
-								<span
-									>Total Cost: ${items
-										.reduce(
-											(sum, item) => sum + Number(item.bean_cost) + Number(item.tax_ship_cost),
-											0
-										)
-										.toFixed(2)}</span
-								>
-								<span
-									>Total Sales: ${items
-										.reduce((sum, item) => sum + Number(item.total_sales), 0)
-										.toFixed(2)}</span
-								>
-								<span
-									>Total Profit: ${items
-										.reduce((sum, item) => sum + Number(item.profit), 0)
-										.toFixed(2)}</span
-								>
-								<span
-									>Avg Margin: {(
-										items.reduce((sum, item) => sum + Number(item.profit_margin), 0) / items.length
-									).toFixed(1)}%</span
-								>
-							</div>
-						</td>
-					</tr>
-					<!-- Items for this purchase date -->
-					{#if expandedDates.has(date)}
-						{#each items as item}
-							<tr
-								class="border-b border-background-tertiary-light bg-background-secondary-light transition-colors hover:bg-background-tertiary-light"
-							>
-								<td
-									class="cursor-pointer px-6 py-4 pl-12 text-xs text-text-primary-light hover:text-blue-400"
-									onclick={() => {
-										selectedCoffee = item.coffee_name;
-										fetchSalesForCoffee(item.coffee_name);
-									}}
-								>
-									<span class={selectedCoffee === item.coffee_name ? 'text-blue-400' : ''}>
-										{item.coffee_name}
-									</span>
-								</td>
-								<td class="px-6 py-4 text-xs text-text-primary-light">
-									<div class="flex gap-4">
-										<span>Qty: {item.purchased_qty_lbs.toFixed(2)} lbs</span>
-										<span
-											>Cost: ${(Number(item.bean_cost) + Number(item.tax_ship_cost)).toFixed(
-												2
-											)}</span
-										>
-										<span>Sales: ${Number(item.total_sales).toFixed(2)}</span>
-										<span>Profit: ${Number(item.profit).toFixed(2)}</span>
-										<span>Margin: {Number(item.profit_margin).toFixed(1)}%</span>
-									</div>
-								</td>
-							</tr>
-						{/each}
-					{/if}
-				{/each}
-			</tbody>
-		</table>
+	<!-- Replace the detailed profit table and SalesTable with ProfitCards -->
+	<div class="mt-8">
+		<ProfitCards
+			{profitData}
+			{salesData}
+			{expandedDates}
+			{selectedCoffee}
+			onToggleDate={toggleDate}
+			onSelectCoffee={handleSelectCoffee}
+			onEditSale={handleSaleEdit}
+			onDeleteSale={handleSaleDelete}
+			onAddSale={showSaleForm}
+		/>
 	</div>
-
-	<!-- Modify the sales content section -->
-	{#if salesData.length > 0 && selectedCoffee}
-		<div class="mt-8">
-			<div class="mb-4 flex items-center justify-between">
-				<h2 class="text-primary-light text-xl font-bold">
-					Sales for {selectedCoffee}
-				</h2>
-			</div>
-
-			<SalesTable
-				salesData={salesData.filter((sale) => sale.coffee_name === selectedCoffee)}
-				onEdit={handleSaleEdit}
-				onDelete={handleSaleDelete}
-			/>
-		</div>
-	{/if}
 </div>
