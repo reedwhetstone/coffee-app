@@ -129,7 +129,7 @@
 		<div class="space-y-4">
 			{#each [...groupedProfitData] as [date, items]}
 				<!-- Purchase Date Group Card -->
-				<div class="rounded-lg bg-background-tertiary-light p-4 shadow-sm">
+				<div class="rounded-lg bg-background-tertiary-light p-4 shadow-md">
 					<button
 						type="button"
 						class="flex w-full items-center justify-between"

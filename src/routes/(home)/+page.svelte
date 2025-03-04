@@ -180,7 +180,7 @@
 <div class="space-y-4">
 	<div class="space-y-4">
 		<!-- Integrated chat interface -->
-		<div class="rounded-2xl bg-background-tertiary-light shadow-sm">
+		<div class="rounded-2xl bg-background-tertiary-light shadow-md">
 			<form
 				onsubmit={(e) => {
 					e.preventDefault();
@@ -189,14 +189,14 @@
 				class="space-y-4"
 			>
 				<!-- Query/Input area with wrapping textarea -->
-				<div class="relative rounded-2xl bg-background-secondary-light p-4 shadow-sm">
+				<div class="relative rounded-2xl bg-background-secondary-light p-4 shadow-md">
 					<span class="text-primary-light text-sm">Query:</span>
 					<div>
 						<div class="flex items-center gap-2">
 							<textarea
 								bind:value={searchQuery}
 								placeholder={'Search coffees or ask a question'}
-								class="text-primary-light flex-1 resize-none border-none bg-transparent font-medium placeholder-zinc-400 focus:border-none focus:outline-none focus:ring-0"
+								class="text-primary-light flex-1 resize-none border-none bg-transparent font-medium placeholder-text-secondary-light focus:border-none focus:outline-none focus:ring-0"
 								disabled={isLoading}
 								onfocus={(e) => (e.target as HTMLTextAreaElement).select()}
 								oninput={(e) => {
@@ -249,7 +249,7 @@
 								<a
 									href={coffee.link}
 									target="_blank"
-									class="group block rounded-lg bg-background-secondary-light p-4 shadow-sm transition-all hover:scale-[1.02] hover:border hover:border-background-tertiary-light hover:bg-background-secondary-light hover:shadow-lg focus:outline-none"
+									class="group block rounded-lg bg-background-secondary-light p-4 shadow-md transition-all hover:scale-[1.02] hover:border hover:border-background-tertiary-light hover:bg-background-secondary-light focus:outline-none"
 								>
 									<div class="flex items-center justify-between">
 										<h4 class="text-primary-light font-semibold">{coffee.name}</h4>
@@ -292,7 +292,7 @@
 					{#each paginatedData as coffee}
 						<button
 							type="button"
-							class="w-full cursor-pointer rounded-lg bg-background-secondary-light p-3 text-left shadow-sm transition-colors hover:border hover:border-background-tertiary-light md:p-4"
+							class="w-full cursor-pointer rounded-lg border border-border-light bg-background-secondary-light p-3 text-left shadow-md transition-colors hover:border hover:border-background-tertiary-light md:p-4"
 							onclick={() => {
 								if (coffee.link) window.open(coffee.link, '_blank');
 							}}

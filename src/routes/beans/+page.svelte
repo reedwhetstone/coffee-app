@@ -299,7 +299,7 @@
 				{#each $filteredData as bean}
 					<button
 						type="button"
-						class="w-full cursor-pointer rounded-lg bg-background-secondary-light p-3 text-left shadow-sm transition-colors hover:border hover:border-background-tertiary-light md:p-4"
+						class="w-full cursor-pointer rounded-lg border border-border-light bg-background-secondary-light p-3 text-left shadow-md transition-colors hover:border hover:border-background-tertiary-light md:p-4"
 						onclick={() => selectBean(bean)}
 					>
 						<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">

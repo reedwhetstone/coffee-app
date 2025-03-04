@@ -68,7 +68,7 @@
 					id="sort-field"
 					value={$filterStore.sortField}
 					onchange={(e) => filterStore.setSortField(e.currentTarget.value)}
-					class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-sm"
+					class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
 				>
 					<option value="">None</option>
 					{#each filterStore.getFilterableColumns(page.url.pathname) as column}
@@ -83,7 +83,7 @@
 						id="sort-direction"
 						value={$filterStore.sortDirection}
 						onchange={(e) => filterStore.setSortDirection(e.currentTarget.value as 'asc' | 'desc')}
-						class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-sm"
+						class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
 					>
 						<option value="asc">Ascending</option>
 						<option value="desc">Descending</option>
@@ -135,7 +135,7 @@
 											min: e.currentTarget.value
 										});
 									}}
-									class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-sm"
+									class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
 									placeholder="Min"
 									min="0"
 									max="100"
@@ -151,7 +151,7 @@
 											max: e.currentTarget.value
 										});
 									}}
-									class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-sm"
+									class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
 									placeholder="Max"
 									min="0"
 									max="100"
@@ -162,7 +162,7 @@
 							<select
 								value={$filterStore.filters.purchase_date || ''}
 								onchange={(e) => filterStore.setFilter('purchase_date', e.currentTarget.value)}
-								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-sm"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
 							>
 								<option value="">All Dates</option>
 								{#each $filterStore.uniqueValues.purchaseDates as date}
@@ -173,7 +173,7 @@
 							<select
 								value={$filterStore.filters.roast_date || ''}
 								onchange={(e) => filterStore.setFilter('roast_date', e.currentTarget.value)}
-								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-sm"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
 							>
 								<option value="">All Dates</option>
 								{#each $filterStore.uniqueValues.roastDates as date}
@@ -184,7 +184,7 @@
 							<select
 								value={$filterStore.filters.batch_name || ''}
 								onchange={(e) => filterStore.setFilter('batch_name', e.currentTarget.value)}
-								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-sm"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
 							>
 								<option value="">All Batches</option>
 								{#each $filterStore.uniqueValues.batchNames as batchName}
@@ -196,7 +196,7 @@
 								type="text"
 								value={$filterStore.filters[column] || ''}
 								oninput={(e) => filterStore.setFilter(column, e.currentTarget.value)}
-								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-sm"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
 								placeholder={`Filter by ${column.replace(/_/g, ' ')}`}
 							/>
 						{/if}

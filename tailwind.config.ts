@@ -18,11 +18,11 @@ export default {
 
 				// do a burnt orange? #CC5500
 				'background-primary-light': '#FCFAF8', //faf8f3
-				'background-secondary-light': '#F4F0E7',
-				'background-tertiary-light': '#f78c58',
+				'background-secondary-light': '#FCFAF8', // used to be darker - #F4F0E7
+				'background-tertiary-light': '#F9A57B',
 				'background-primary-dark': '#292522',
 
-				'border-light': '#A09D8D',
+				'border-light': '#E4E4E2',
 
 				//text colors
 				'text-primary-light': '#302f2a', //dark brown

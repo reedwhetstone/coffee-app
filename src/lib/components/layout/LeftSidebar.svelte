@@ -19,8 +19,10 @@
 	// State for tracking which menu is open
 	let activeMenu = $state<string | null>(null);
 
-	// Reference to the menu container as reactive state
-	let menuContainer = $state<HTMLElement | null>(null);
+	// Reference to the sidebar buttons container
+	let sidebarButtonsContainer = $state<HTMLElement | null>(null);
+	// Reference to the menu panels container
+	let menuPanelsContainer = $state<HTMLElement | null>(null);
 
 	// Close menus when route changes, but store the current route to prevent unnecessary closing
 	let currentRoute = $state(page.url.pathname);
@@ -28,8 +30,8 @@
 	// Debug data object to see what's being passed to the ActionsButton
 	$effect(() => {
 		if (activeMenu === 'actions') {
-			console.log('LeftSidebar data passed to ActionsButton:', data);
-			console.log('Route ID when opening actions menu:', page.route.id);
+			//console.log('LeftSidebar data passed to ActionsButton:', data);
+			//console.log('Route ID when opening actions menu:', page.route.id);
 		}
 	});
 
@@ -70,13 +72,25 @@
 
 	// Handle clicks on the document to close menus when clicking outside
 	function handleDocumentClick(event: MouseEvent) {
-		// If no menu is open or the click is inside the menu container, do nothing
-		if (!activeMenu || !menuContainer) return;
+		// If no menu is open, do nothing
+		if (!activeMenu) return;
 
-		// Check if the click is outside the menu container
-		if (!menuContainer.contains(event.target as Node)) {
-			closeAllMenus();
+		const target = event.target as HTMLElement;
+
+		// Check if the click is on an element with data-menu-toggle attribute or its descendant
+		// This covers the sidebar buttons that toggle the menus
+		if (sidebarButtonsContainer && sidebarButtonsContainer.contains(target)) {
+			return;
 		}
+
+		// Check if the click is on an element with data-menu-panel attribute or its descendant
+		// This covers the menu panels
+		if (menuPanelsContainer && menuPanelsContainer.contains(target)) {
+			return;
+		}
+
+		// If we get here, the click was outside both the sidebar buttons and menu panels
+		closeAllMenus();
 	}
 
 	// Close menus when route changes
@@ -104,19 +118,22 @@
 	let sidebarPosition = $derived(activeMenu ? 'left-64' : 'left-0');
 </script>
 
-<div class="fixed top-0 z-50 h-full {sidebarPosition} transition-all duration-300 ease-out">
+<div
+	class="fixed top-0 z-50 h-full {sidebarPosition} transition-all duration-300 ease-out"
+	bind:this={sidebarButtonsContainer}
+>
 	<div class="flex h-full w-16 flex-col items-center space-y-4 bg-transparent py-4">
 		<!-- User/Navigation Menu -->
 		<div class="relative">
 			<button
 				onclick={toggleNavMenu}
-				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:opacity-80"
+				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:opacity-90"
 				aria-label="Toggle navigation menu"
 			>
 				{#if data?.session?.user}
 					<!-- User Avatar/Icon -->
 					<div
-						class="text-text-primary-dark flex h-8 w-8 items-center justify-center rounded-full bg-transparent"
+						class="text-text-primary-dark flex h-8 w-8 items-center justify-center rounded-full bg-transparent hover:text-background-tertiary-light"
 					>
 						{data.session.user.email?.[0].toUpperCase() || 'U'}
 					</div>
@@ -144,7 +161,7 @@
 		<div class="relative">
 			<button
 				onclick={toggleActionsMenu}
-				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:opacity-80"
+				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:text-background-tertiary-light hover:opacity-90"
 				aria-label="Toggle actions"
 			>
 				<svg
@@ -168,7 +185,7 @@
 		<div class="relative">
 			<button
 				onclick={toggleSettingsMenu}
-				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:opacity-80"
+				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:text-background-tertiary-light hover:opacity-90"
 				aria-label="Toggle filters"
 			>
 				<svg
@@ -193,12 +210,16 @@
 
 <!-- Menu panels container - positioned fixed to the left of the screen -->
 {#if activeMenu}
-	<div class="fixed left-0 top-0 z-40 h-full" bind:this={menuContainer}>
+	<div
+		class="fixed left-0 top-0 z-40 h-full"
+		transition:slide={{ duration: 300, easing: quintOut, axis: 'x' }}
+		bind:this={menuPanelsContainer}
+		data-menu-panel="true"
+	>
 		<!-- Navigation Menu Panel -->
 		{#if activeMenu === 'nav'}
 			<aside
 				class="bg-background-primary-dark text-text-primary-dark h-full w-64"
-				transition:slide={{ duration: 300, easing: quintOut, axis: 'x' }}
 				role="navigation"
 				aria-label="Main navigation menu"
 			>
@@ -210,7 +231,6 @@
 		{#if activeMenu === 'actions'}
 			<aside
 				class="bg-background-primary-dark text-text-primary-dark h-full w-64"
-				transition:slide={{ duration: 300, easing: quintOut, axis: 'x' }}
 				aria-label="Actions menu"
 			>
 				<ActionsButton {data} isOpen={true} onClose={closeAllMenus} />
@@ -221,7 +241,6 @@
 		{#if activeMenu === 'settings'}
 			<aside
 				class="bg-background-primary-dark text-text-primary-dark h-full w-64"
-				transition:slide={{ duration: 300, easing: quintOut, axis: 'x' }}
 				aria-label="Settings menu"
 			>
 				<SettingsButton {data} isOpen={true} onClose={closeAllMenus} />

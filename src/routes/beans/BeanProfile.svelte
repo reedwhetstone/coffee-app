@@ -139,7 +139,7 @@
 	}
 </script>
 
-<div class="rounded-lg bg-background-secondary-light p-6">
+<div class="rounded-lg border border-border-light bg-background-secondary-light p-6 shadow-md">
 	<div class="mb-4">
 		<div class="flex items-center justify-between">
 			<h2 class="text-xl font-bold text-text-primary-light">{selectedBean.name}</h2>
@@ -150,8 +150,8 @@
 			{#each Array(totalPages) as _, i}
 				<button
 					class="h-3 w-3 rounded-full transition-all duration-300 {i === currentPage
-						? 'scale-110 bg-blue-500'
-						: 'bg-background-primary-light hover:bg-zinc-500'}"
+						? 'scale-110 bg-background-tertiary-light'
+						: 'border border-border-light bg-background-primary-light hover:bg-border-light'}"
 					onclick={() => goToPage(i)}
 					aria-label="Go to page {i + 1}"
 				></button>
@@ -169,7 +169,7 @@
 					{#each ['score_value', 'rank', 'description_short', 'notes', 'purchase_date', 'arrival_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'last_updated'] as key}
 						{#if selectedBean[key] !== undefined}
 							<div
-								class="rounded bg-background-tertiary-light p-2 {[
+								class="rounded border border-border-light bg-background-secondary-light p-2 {[
 									'notes',
 									'description_short'
 								].includes(key)
@@ -219,7 +219,7 @@
 								{:else}
 									<span
 										class="ml-2 text-text-primary-light {key === 'notes'
-											? 'zinc-300space-pre-wrap block'
+											? 'zinc-300 space-pre-wrap block'
 											: ''}"
 									>
 										{#if key === 'bean_cost' || key === 'tax_ship_cost'}
@@ -249,7 +249,7 @@
 				{:else}
 					{#each Object.entries(selectedBean) as [key, value]}
 						{#if !['score_value', 'rank', 'notes', 'purchase_date', 'arrival_date', 'last_updated', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'description_short', 'id'].includes(key)}
-							<div class="rounded bg-background-tertiary-light p-2">
+							<div class="rounded border border-border-light bg-background-secondary-light p-2">
 								<span class="text-primary-light font-medium"
 									>{key.replace(/_/g, ' ').toUpperCase()}:</span
 								>
