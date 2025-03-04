@@ -103,9 +103,7 @@
 	<LeftSidebar data={pageData || data} onMenuChange={handleMenuChange} />
 
 	<!-- Main Content Container -->
-	<main
-		class="{activeMenu ? 'pl-16 lg:pl-16' : 'pl-16'} w-full transition-all duration-300 ease-out"
-	>
+	<main class="{contentMargin} transition-all duration-300 ease-out">
 		<div class="p-0">
 			<!-- Page Content -->
 			{@render children()}
