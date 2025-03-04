@@ -17,7 +17,7 @@
 	}>();
 
 	// Destructure with default values
-	let { role = 'viewer', selectedBean } = $derived(data);
+	let { role = 'viewer' } = $derived(data);
 
 	// Add type checking for role
 	type UserRole = 'viewer' | 'member' | 'admin';
@@ -41,22 +41,48 @@
 
 	// Action handlers
 	function handleNewBean() {
+		// Log what we're about to do
+		console.log('handleNewBean called, routeId:', routeId);
+		console.log('data object properties:', Object.keys(data || {}));
+
 		// Set state to show the form
 		if (data?.onAddNewBean) {
+			console.log('Calling onAddNewBean from Actionsbar');
 			data.onAddNewBean();
+		} else {
+			console.error('onAddNewBean not available in data object');
+			// If we're not on the beans page, navigate there
+			if (routeId !== '/beans') {
+				goto('/beans', {
+					state: {
+						showBeanForm: true
+					}
+				});
+			} else {
+				// We are on the beans page but the callback isn't available
+				// Try a direct approach - use window to access the global scope
+				window.dispatchEvent(new CustomEvent('show-bean-form'));
+				console.log('Dispatched show-bean-form event');
+			}
 		}
 		onClose();
 	}
 
 	function handleNewRoast() {
+		console.log('handleNewRoast called, routeId:', routeId);
+		console.log('data available keys:', Object.keys(data || {}));
+
 		if (routeId === '/beans') {
 			// If on beans page, navigate to roast page with form flag
 			// Check if we have a selected bean from the data prop
 			const selectedBean = data?.selectedBean;
+			console.log('Selected bean from beans page:', selectedBean);
+
 			if (selectedBean) {
 				goto(`/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.name)}`, {
 					state: {
-						showRoastForm: true
+						showRoastForm: true,
+						selectedBean: selectedBean
 					}
 				});
 			} else {
@@ -66,19 +92,45 @@
 					}
 				});
 			}
-			onClose();
 		} else {
 			// If already on roast page, just show the form
 			if (data?.onAddNewRoast) {
+				console.log('Calling onAddNewRoast from Actionsbar');
 				data.onAddNewRoast();
+			} else {
+				console.error('onAddNewRoast not available in data object');
+				// We are on the roast page but the callback isn't available
+				// Try a direct approach - use window to access the global scope
+				window.dispatchEvent(new CustomEvent('show-roast-form'));
+				console.log('Dispatched show-roast-form event');
 			}
-			onClose();
 		}
+		onClose();
 	}
 
 	function handleNewSale() {
+		// Use the callback from data prop to show the form
+		console.log('handleNewSale called, routeId:', routeId);
+		console.log('data available keys:', Object.keys(data || {}));
+
 		if (data?.onAddNewSale) {
+			console.log('Calling onAddNewSale from Actionsbar');
 			data.onAddNewSale();
+		} else {
+			console.error('onAddNewSale not available in data object');
+			// If we're not on the profit page, navigate there
+			if (routeId !== '/profit') {
+				goto('/profit', {
+					state: {
+						showSaleForm: true
+					}
+				});
+			} else {
+				// We are on the profit page but the callback isn't available
+				// Try a direct approach - use window to access the global scope
+				window.dispatchEvent(new CustomEvent('show-sale-form'));
+				console.log('Dispatched show-sale-form event');
+			}
 		}
 		onClose();
 	}
@@ -143,33 +195,33 @@
 			<div class="space-y-2">
 				{#if routeId === '/beans'}
 					<button
-						class="block w-full rounded border-2 border-green-800 px-3 py-2 text-left text-sm text-text-primary-light hover:bg-green-900"
+						class="text-text-primary-dark block w-full rounded border-2 border-background-tertiary-light px-3 py-2 text-left text-sm hover:bg-background-tertiary-light hover:opacity-80"
 						onclick={handleNewBean}
 					>
 						New Bean
 					</button>
 					<button
-						class="block w-full rounded border-2 border-blue-800 px-3 py-2 text-left text-sm text-text-primary-light hover:bg-blue-900"
+						class="text-text-primary-dark block w-full rounded border-2 border-background-tertiary-light px-3 py-2 text-left text-sm hover:bg-background-tertiary-light hover:opacity-80"
 						onclick={handleNewRoast}
 					>
 						New Roast
 					</button>
 					<button
-						class="block w-full rounded border-2 border-purple-800 px-3 py-2 text-left text-sm text-text-primary-light hover:bg-purple-900"
+						class="text-text-primary-dark block w-full rounded border-2 border-background-tertiary-light px-3 py-2 text-left text-sm hover:bg-background-tertiary-light hover:opacity-80"
 						onclick={handleShareAllBeans}
 					>
 						Share All Beans
 					</button>
 				{:else if routeId === '/roast'}
 					<button
-						class="block w-full rounded border-2 border-green-800 px-3 py-2 text-left text-sm text-text-primary-light hover:bg-green-900"
+						class="text-text-primary-dark block w-full rounded border-2 border-background-tertiary-light px-3 py-2 text-left text-sm hover:bg-background-tertiary-light hover:opacity-80"
 						onclick={handleNewRoast}
 					>
 						New Roast
 					</button>
 				{:else if routeId === '/profit'}
 					<button
-						class="block w-full rounded border-2 border-green-800 px-3 py-2 text-left text-sm text-text-primary-light hover:bg-green-900"
+						class="text-text-primary-dark block w-full rounded border-2 border-background-tertiary-light px-3 py-2 text-left text-sm hover:bg-background-tertiary-light hover:opacity-80"
 						onclick={handleNewSale}
 					>
 						New Sale

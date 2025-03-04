@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 	import { formatDateForDisplay } from '$lib/utils/dates';
 	import SalesTable from './SalesTable.svelte';
 	import SaleForm from './SaleForm.svelte';
 	import { page } from '$app/stores';
+	import type { PageData } from './$types';
 
 	interface ProfitData {
 		id: number;
@@ -43,20 +43,29 @@
 		totalCost?: number;
 	}
 
-	let profitData: ProfitData[] = [];
-	let roastProfileData: RoastProfileData[] = [];
+	// Convert state variables to use $state
+	let profitData = $state<ProfitData[]>([]);
+	let roastProfileData = $state<RoastProfileData[]>([]);
 	let chartContainer: HTMLDivElement;
-	let expandedDates = new Set<string>();
-	let salesData: SaleData[] = [];
-	let isFormVisible = false;
-	let selectedSale: SaleData | null = null;
-	let selectedCoffee: string | null = null;
+	let expandedDates = $state(new Set<string>());
+	let salesData = $state<SaleData[]>([]);
+	let isFormVisible = $state(false);
+	let selectedSale = $state<SaleData | null>(null);
+	let selectedCoffee = $state<string | null>(null);
+	let width: number;
+	let height = 400;
+	let margin = { top: 20, right: 20, bottom: 50, left: 60 };
 
-	// Updated aggregate metrics
-	$: totalRevenue = d3.sum(profitData, (d) => +d.total_sales || 0);
-	$: totalCost = d3.sum(profitData, (d) => (+d.bean_cost || 0) + (+d.tax_ship_cost || 0));
-	$: totalProfit = d3.sum(profitData, (d) => +d.profit || 0);
-	$: averageMargin = (() => {
+	let { data } = $props<{ data: PageData }>();
+
+	// Convert reactive statements to use $derived
+	let totalRevenue = $derived(d3.sum(profitData, (d) => +d.total_sales || 0));
+	let totalCost = $derived(
+		d3.sum(profitData, (d) => (+d.bean_cost || 0) + (+d.tax_ship_cost || 0))
+	);
+	let totalProfit = $derived(d3.sum(profitData, (d) => +d.profit || 0));
+
+	let averageMargin = $derived(() => {
 		// Calculate cost per oz for each item
 		const margins = profitData.map((d) => {
 			const totalOz = (+d.purchased_qty_lbs || 0) * 16 + (+d.purchased_qty_oz || 0);
@@ -71,20 +80,24 @@
 		return totalSales > 0
 			? d3.sum(margins.map((margin, i) => margin * (+profitData[i].total_sales || 0))) / totalSales
 			: 0;
-	})();
-	$: totalPoundsRoasted = d3.sum(profitData, (d) => +d.purchased_qty_lbs || 0);
+	});
 
-	// Add these reactive declarations after your existing ones
-	$: sellThroughRate = (() => {
+	let totalPoundsRoasted = $derived(d3.sum(profitData, (d) => +d.purchased_qty_lbs || 0));
+	let sellThroughRate = $derived(() => {
 		const totalOzSold = d3.sum(profitData, (d) => +d.oz_sold || 0);
 		const totalOzPurchased = d3.sum(profitData, (d) => (+d.purchased_qty_lbs || 0) * 16);
 		return totalOzPurchased > 0 ? (totalOzSold / totalOzPurchased) * 100 : 0;
-	})();
-	$: avgCostPerPound = totalPoundsRoasted ? totalCost / totalPoundsRoasted : 0;
-	$: avgRevenuePerPound = totalPoundsRoasted ? totalRevenue / totalPoundsRoasted : 0;
-	$: avgProfitPerPound = totalPoundsRoasted ? totalProfit / totalPoundsRoasted : 0;
+	});
 
-	$: roastLossRate = (() => {
+	let avgCostPerPound = $derived(() => (totalPoundsRoasted ? totalCost / totalPoundsRoasted : 0));
+	let avgRevenuePerPound = $derived(() =>
+		totalPoundsRoasted ? totalRevenue / totalPoundsRoasted : 0
+	);
+	let avgProfitPerPound = $derived(() =>
+		totalPoundsRoasted ? totalProfit / totalPoundsRoasted : 0
+	);
+
+	let roastLossRate = $derived(() => {
 		// Group roast data by coffee_id
 		const roastsByBean = d3.group(roastProfileData, (d) => d.coffee_id);
 
@@ -99,10 +112,9 @@
 
 		// Calculate loss rate if we have valid data
 		return totalOzIn > 0 ? ((totalOzIn - totalOzOut) / totalOzIn) * 100 : 0;
-	})();
+	});
 
-	// Add this reactive declaration after your existing ones
-	$: groupedProfitData = d3.group(profitData, (d) => d.purchase_date);
+	let groupedProfitData = $derived(d3.group(profitData, (d) => d.purchase_date));
 
 	// Add sales chart related functions
 	function createSalesChart() {
@@ -387,11 +399,6 @@
 		d3.select('.tooltip').remove();
 	}
 
-	// Also add these variables at the top of your script with other variables
-	let width: number;
-	let height = 400;
-	let margin = { top: 20, right: 20, bottom: 50, left: 60 };
-
 	// Add sales form handlers
 	async function handleFormSubmit(saleData: any) {
 		try {
@@ -458,14 +465,28 @@
 		}
 	}
 
-	// Modify onMount to include fetching sales data
-	onMount(() => {
+	// Convert onMount to use $effect
+	$effect(() => {
 		const fetchData = async () => {
 			await Promise.all([fetchProfitData(), fetchRoastProfileData(), fetchInitialSalesData()]);
 			createSalesChart();
+
+			// Check if we should show the sale form based on the page state
+			const state = $page.state as any;
+			console.log('Profit page state:', state);
+
+			if (state?.showSaleForm) {
+				console.log('Should show sale form based on state flag');
+				setTimeout(() => {
+					showSaleForm();
+				}, 100);
+			}
 		};
 
-		fetchData(); // Call the async function
+		fetchData();
+
+		// Add event listener for the custom show-sale-form event
+		window.addEventListener('show-sale-form', showSaleForm);
 
 		const handleResize = () => {
 			createSalesChart();
@@ -475,6 +496,7 @@
 
 		return () => {
 			window.removeEventListener('resize', handleResize);
+			window.removeEventListener('show-sale-form', showSaleForm);
 		};
 	});
 
@@ -516,6 +538,26 @@
 			console.error('Error fetching sales data:', error);
 		}
 	}
+
+	// Add function to show sale form
+	function showSaleForm() {
+		console.log('showSaleForm called');
+		isFormVisible = true;
+		selectedSale = null;
+	}
+
+	// Expose the showSaleForm function to the template
+	let onAddNewSale = showSaleForm;
+
+	// Update the data object to include the showSaleForm function
+	$effect(() => {
+		if (data) {
+			data = {
+				...data,
+				onAddNewSale: showSaleForm
+			};
+		}
+	});
 </script>
 
 <!-- Add form modal -->
@@ -553,7 +595,7 @@
 		</div>
 		<div class="rounded-lg bg-background-secondary-light p-4">
 			<h3 class="text-primary-light text-sm">Average Sales Margin</h3>
-			<p class="text-xl font-bold text-purple-500">{averageMargin.toFixed(1)}%</p>
+			<p class="text-xl font-bold text-purple-500">{averageMargin().toFixed(1)}%</p>
 		</div>
 		<div class="rounded-lg bg-background-secondary-light p-4">
 			<h3 class="text-primary-light text-sm">Total Pounds Roasted</h3>
@@ -561,23 +603,23 @@
 		</div>
 		<div class="rounded-lg bg-background-secondary-light p-4">
 			<h3 class="text-primary-light text-sm">Avg. Sell-Through Rate</h3>
-			<p class="text-xl font-bold text-yellow-500">{sellThroughRate.toFixed(1)}%</p>
+			<p class="text-xl font-bold text-yellow-500">{sellThroughRate().toFixed(1)}%</p>
 		</div>
 		<div class="rounded-lg bg-background-secondary-light p-4">
 			<h3 class="text-primary-light text-sm">Avg. Profit/lb</h3>
-			<p class="text-xl font-bold text-emerald-500">${avgProfitPerPound.toFixed(2)}</p>
+			<p class="text-xl font-bold text-emerald-500">${avgProfitPerPound().toFixed(2)}</p>
 		</div>
 		<div class="rounded-lg bg-background-secondary-light p-4">
 			<h3 class="text-primary-light text-sm">Avg. Cost/lb</h3>
-			<p class="text-xl font-bold text-pink-500">${avgCostPerPound.toFixed(2)}</p>
+			<p class="text-xl font-bold text-pink-500">${avgCostPerPound().toFixed(2)}</p>
 		</div>
 		<div class="rounded-lg bg-background-secondary-light p-4">
 			<h3 class="text-primary-light text-sm">Avg. Revenue/lb</h3>
-			<p class="text-xl font-bold text-indigo-500">${avgRevenuePerPound.toFixed(2)}</p>
+			<p class="text-xl font-bold text-indigo-500">${avgRevenuePerPound().toFixed(2)}</p>
 		</div>
 		<div class="rounded-lg bg-background-secondary-light p-4">
 			<h3 class="text-primary-light text-sm">Avg. Roast Loss</h3>
-			<p class="text-xl font-bold text-cyan-500">{roastLossRate.toFixed(2)}%</p>
+			<p class="text-xl font-bold text-cyan-500">{roastLossRate().toFixed(2)}%</p>
 		</div>
 	</div>
 
@@ -599,7 +641,7 @@
 					<!-- Purchase Date Group Header -->
 					<tr
 						class="cursor-pointer bg-background-tertiary-light hover:bg-background-primary-light"
-						on:click={() => toggleDate(date)}
+						onclick={() => toggleDate(date)}
 					>
 						<td class="px-6 py-2 text-left text-xs font-semibold text-text-primary-light">
 							{expandedDates.has(date) ? '▼' : '▶'}
@@ -642,7 +684,7 @@
 							>
 								<td
 									class="cursor-pointer px-6 py-4 pl-12 text-xs text-text-primary-light hover:text-blue-400"
-									on:click={() => {
+									onclick={() => {
 										selectedCoffee = item.coffee_name;
 										fetchSalesForCoffee(item.coffee_name);
 									}}

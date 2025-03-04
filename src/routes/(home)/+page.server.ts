@@ -1,4 +1,3 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from '../(home)/$types';
 
 export const load: PageServerLoad = async ({ locals }) => {

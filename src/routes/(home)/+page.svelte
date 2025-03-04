@@ -213,7 +213,7 @@
 							>
 								{#if isLoading}
 									<div
-										class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+										class="h-4 w-4 animate-spin rounded-full border-2 border-text-primary-light border-t-transparent"
 									></div>
 								{:else}
 									<svg
@@ -249,7 +249,7 @@
 								<a
 									href={coffee.link}
 									target="_blank"
-									class="group block rounded-lg bg-background-tertiary-light p-4 transition-all hover:scale-[1.02] hover:bg-background-secondary-light hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+									class="group block rounded-lg bg-background-secondary-light p-4 shadow-sm transition-all hover:scale-[1.02] hover:border hover:border-background-tertiary-light hover:bg-background-secondary-light hover:shadow-lg focus:outline-none"
 								>
 									<div class="flex items-center justify-between">
 										<h4 class="text-primary-light font-semibold">{coffee.name}</h4>
@@ -292,7 +292,7 @@
 					{#each paginatedData as coffee}
 						<button
 							type="button"
-							class="w-full cursor-pointer rounded-lg bg-background-secondary-light p-3 text-left transition-colors hover:bg-background-tertiary-light md:p-4"
+							class="w-full cursor-pointer rounded-lg bg-background-secondary-light p-3 text-left shadow-sm transition-colors hover:border hover:border-background-tertiary-light md:p-4"
 							onclick={() => {
 								if (coffee.link) window.open(coffee.link, '_blank');
 							}}

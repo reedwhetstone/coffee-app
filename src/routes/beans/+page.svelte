@@ -189,6 +189,9 @@
 	onMount(() => {
 		loadData().then(() => {
 			const searchState = $page.state as any;
+			console.log('Beans page searchState:', searchState);
+
+			// Check if we should show a bean based on the search state
 			if (searchState?.searchType === 'green' && searchState?.searchId) {
 				const foundBean = data.data.find(
 					(bean: Database['public']['Tables']['green_coffee_inv']['Row']) =>
@@ -199,10 +202,27 @@
 					window.scrollTo({ top: 0, behavior: 'smooth' });
 				}
 			}
+
+			// Check if we should show the bean form
+			if (searchState?.showBeanForm) {
+				console.log('Should show bean form based on state flag');
+				setTimeout(() => {
+					handleAddNewBean();
+				}, 100);
+			}
 		});
+
+		// Add event listener for the custom show-bean-form event
+		window.addEventListener('show-bean-form', handleAddNewBean);
+
+		// Clean up the event listener when the component is destroyed
+		return () => {
+			window.removeEventListener('show-bean-form', handleAddNewBean);
+		};
 	});
 
 	function handleAddNewBean() {
+		console.log('handleAddNewBean called');
 		selectedBean = null;
 		isFormVisible = true;
 	}

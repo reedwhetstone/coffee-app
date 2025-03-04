@@ -25,6 +25,14 @@
 	// Close menus when route changes, but store the current route to prevent unnecessary closing
 	let currentRoute = $state(page.url.pathname);
 
+	// Debug data object to see what's being passed to the ActionsButton
+	$effect(() => {
+		if (activeMenu === 'actions') {
+			console.log('LeftSidebar data passed to ActionsButton:', data);
+			console.log('Route ID when opening actions menu:', page.route.id);
+		}
+	});
+
 	// Function to toggle a menu
 	function toggleMenu(menuId: string) {
 		//console.log('toggleMenu called with menuId:', menuId);

@@ -18,10 +18,8 @@
 
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import RoastChartInterface from './RoastChartInterface.svelte';
-	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
+	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import type { PageData } from './$types';
-	import { goto } from '$app/navigation';
-	import { formatDateForDisplay } from '$lib/utils/dates';
 
 	// Roast profile state management
 	let currentRoastProfile = $state<any>(null);
@@ -36,12 +34,10 @@
 	let selectedEvent = $state<string | null>(null);
 
 	// Roast profile state management
-	let allRoastProfiles = $state<any[]>([]);
 	let sortField = $state<string | null>('roast_id');
 	let sortDirection = $state<'asc' | 'desc' | null>('asc');
 
 	// Profile grouping and sorting state
-	let groupedProfiles = $state<Record<string, any[]>>({});
 	let sortedBatchNames = $state<string[]>([]);
 	let sortedGroupedProfiles = $state<Record<string, any[]>>({});
 	let expandedBatches = $state<Set<string>>(new Set());
@@ -170,6 +166,17 @@
 		}
 	});
 
+	// Update the data object when selectedBean changes
+	$effect(() => {
+		if (data) {
+			data = {
+				...data,
+				selectedBean: selectedBean,
+				onAddNewRoast: showRoastForm
+			};
+		}
+	});
+
 	// Function to update grouped profiles from filtered data
 	function updateGroupedProfiles(profiles: any[]) {
 		//	console.log('Updating grouped profiles with', profiles.length, 'profiles');
@@ -287,13 +294,27 @@
 					id: parseInt(beanId),
 					name: decodeURIComponent(beanName)
 				};
+				console.log('Set selectedBean from URL params:', selectedBean);
 			}
 		}
 
 		// Check if we should show the roast form based on navigation state
 		const state = $page.state as any;
+		console.log('Page state on mount:', state);
+
 		if (state?.showRoastForm) {
-			isFormVisible = true;
+			console.log('Should show roast form based on state flag');
+
+			// If a bean was passed in the state, use it
+			if (state.selectedBean) {
+				console.log('Found selectedBean in state:', state.selectedBean);
+				selectedBean = state.selectedBean;
+			}
+
+			// Show the form after a short delay to ensure the bean is set
+			setTimeout(() => {
+				isFormVisible = true;
+			}, 100);
 		}
 
 		// Load roast profiles and ensure they're displayed
@@ -323,15 +344,13 @@
 			}, 150);
 		}
 
-		// Add a final check to ensure the batch names are always interactive
-		setTimeout(() => {
-			// If we still don't have any batch names but we have filtered data, force an update
-			if (sortedBatchNames.length === 0 && $filteredData.length > 0) {
-				//	console.log('Final check: Forcing update of grouped profiles');
-				initialLoadComplete = true; // Ensure we're marked as loaded
-				updateGroupedProfiles([...$filteredData]);
-			}
-		}, 500);
+		// Add event listener for the custom show-roast-form event
+		window.addEventListener('show-roast-form', showRoastForm);
+
+		// Clean up the event listener when the component is destroyed
+		return () => {
+			window.removeEventListener('show-roast-form', showRoastForm);
+		};
 	});
 
 	// Form submission handler for new roast profiles
@@ -734,6 +753,7 @@
 	}
 
 	function showRoastForm() {
+		console.log('showRoastForm called with selectedBean:', selectedBean);
 		isFormVisible = true;
 	}
 

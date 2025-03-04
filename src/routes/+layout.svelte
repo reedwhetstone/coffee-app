@@ -34,11 +34,21 @@
 	let processingInit = $state(false);
 	let activeMenu = $state<string | null>(null);
 
+	// Create a container to store the page data for Actionsbar
+	let pageData = $state<any>(null);
+
+	// Update pageData when children changes
+	$effect(() => {
+		if (children?.slots?.default?.[0]?.data) {
+			pageData = children.slots.default[0].data;
+			console.log('Layout detected updated pageData:', pageData);
+		}
+	});
+
 	// Handle menu change from the sidebar
 	function handleMenuChange(menu: string | null) {
 		//console.log('Layout handleMenuChange called with menu:', menu);
 		activeMenu = menu;
-		//console.log('Layout activeMenu set to:', activeMenu);
 	}
 
 	// Track route changes and initialize data for new routes only when necessary
@@ -87,9 +97,18 @@
 	let contentMargin = $derived(activeMenu ? 'ml-80' : 'ml-16');
 </script>
 
-<div class="my-4 mr-2">
-	<LeftSidebar {data} onMenuChange={handleMenuChange} />
-	<div class="{contentMargin} transition-all duration-300 ease-out">
-		{@render children()}
-	</div>
+<!-- The app layout structure -->
+<div class="flex min-h-screen">
+	<!-- Left Sidebar Component -->
+	<LeftSidebar data={pageData || data} onMenuChange={handleMenuChange} />
+
+	<!-- Main Content Container -->
+	<main
+		class="{activeMenu ? 'pl-16 lg:pl-16' : 'pl-16'} w-full transition-all duration-300 ease-out"
+	>
+		<div class="p-0">
+			<!-- Page Content -->
+			{@render children()}
+		</div>
+	</main>
 </div>
