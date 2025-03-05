@@ -127,7 +127,7 @@
 		<div class="relative">
 			<button
 				onclick={toggleNavMenu}
-				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:opacity-90"
+				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:text-background-tertiary-light hover:opacity-90"
 				aria-label="Toggle navigation menu"
 			>
 				{#if data?.session?.user}
@@ -156,31 +156,31 @@
 				{/if}
 			</button>
 		</div>
-
-		<!-- Actions Menu -->
-		<div class="relative">
-			<button
-				onclick={toggleActionsMenu}
-				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:text-background-tertiary-light hover:opacity-90"
-				aria-label="Toggle actions"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-8 w-8"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
+		{#if data?.session?.user}
+			<!-- Actions Menu -->
+			<div class="relative">
+				<button
+					onclick={toggleActionsMenu}
+					class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+					aria-label="Toggle actions"
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-					/>
-				</svg>
-			</button>
-		</div>
-
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-8 w-8"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+						/>
+					</svg>
+				</button>
+			</div>
+		{/if}
 		<!-- Settings Menu -->
 		<div class="relative">
 			<button
@@ -192,12 +192,12 @@
 					xmlns="http://www.w3.org/2000/svg"
 					class="h-8 w-8"
 					fill="none"
-					viewBox="0 0 24 24"
+					viewBox="0 0 18 18"
 					stroke="currentColor"
-					transform="translate(7, 7)"
+					transform="translate(2, 3)"
 				>
 					<path
-						d="M2 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"
+						d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5zm1 .5v1.308l4.372 4.858A.5.5 0 0 1 7 8.5v5.306l2-.666V8.5a.5.5 0 0 1 .128-.334L13.5 3.308V2z"
 					/>
 				</svg>
 			</button>
