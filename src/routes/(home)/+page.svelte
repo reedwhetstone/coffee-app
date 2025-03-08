@@ -100,8 +100,11 @@
 		if (!isLoading && !chatResponse && searchQuery === '') {
 			(async () => {
 				searchQuery = DEFAULT_QUERY;
+				// Don't update the displayed query
 				await tick();
 				await handleSearch();
+				// Reset searchQuery to empty after search completes
+				searchQuery = '';
 			})();
 		}
 
