@@ -319,7 +319,7 @@
 		{/key}
 	</div>
 	{#if role === 'admin' || role === 'member'}
-		<div class="mb-4 flex justify-end space-x-2">
+		<div class="my-4 flex justify-end space-x-2">
 			<button
 				class="rounded {isEditing
 					? 'border-2 border-green-800 hover:bg-green-900'

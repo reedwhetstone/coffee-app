@@ -340,7 +340,7 @@
 					{#if isLoadingMore}
 						<div class="flex justify-center p-4">
 							<div
-								class="h-8 w-8 animate-spin rounded-full border-4 border-zinc-400 border-t-blue-500"
+								class="border-background-primary-dark h-8 w-8 animate-spin rounded-full border-4 border-t-background-tertiary-light"
 							></div>
 						</div>
 					{/if}
