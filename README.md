@@ -9,30 +9,44 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
-- need to add user managment of tables - adding user_id when they make a submission and only showing their own data
-- the roast chart interface is poorly scaling with page loads between charts in the different states. It is keeping the sizing of the prior chart, causing the controls and other aspecs to be misaligned.
+- Scroll isn't working correctly. Not rendering complete list of products.
+- Auto filter isn't working right on the home page. No suppliers are selected & it does not show all suppliers until you select them all.
+- Improve the rating/notes function by bean. Select the roast specific to the bean, populate a date, make a rating scale that is more comprehensive
+- Trends and analysis charting page- all sources price, stock, distribution of locations, process, etc over time.
+- Roast charting timer turns off if phone closes
+- Roast profile/ bean profile looks like shit on mobile. Hard to edit, etc
+- Fix real experience score, content paint, etc
+- Summary/rewrite of the front end descriptions.
+- Collect tasting notes and convert them into a cupping score chart.
+- H and f buttons disappear when start
+- Check /no-cookies.. maybe remove
+- Remove roast chart y axis lines
+- Add y axis shade lines
+- Make arrows up down just work with the temp and fan the same.
+- Move the fan settings to below the chart on mobile
+- Search takes you to new page on home but doesn't open the bean unless already on the home page
+- Dig deep into the web scraping idea. Create website functionality that compares all online dealers of green coffee and ranks their coffee by the best deal you can get. Almost like a stock picking app or something like that like OverWatch or Yahoo finance
+- Need an ambient temps setting in the profiler so I know how hot it was outside
+- Need a charge setting- like was the machine hot or not
+- Cupping/ tasting notes per profile that will be pulled when I click on the roast profiles on the main profile page.
+- profile page is not refreshing on save on the beans page. You have to manual refresh in order to see changes.
+- Theta Ridge Coffee Good beans, but they don’t provide lots of bean/farm information. Theta Ridge has some of the lowest prices you’ll find on beans.
+- Burman Coffee Traders Good quality beans.
+- Bodhi Leaf ongoing `SHIP59` coupon code which gets you free shipping if you buy $59 or more beans.
+- work with the roast chart buttons on mobile to improve usability. 
 - lot share platform to divvy up lots - like a kickstarter for high quality coffee lots
 - overhaul green_coffee_inv structure:
   - green_coffe_inv should join / xref coffee_catalog.id and should no longer duplicate that data.
     - create a foreign key on green_coffee_inv.coffee_catalog_id that references coffee_catalog.id
-  - coffee_catalog should have a column for source website - Sweet Marias, etc.
-  - New coffee form should select the source website, coffee name -> should just xref the coffee_catalog.id
-- the sweet scripts need to be fixed with the new db structure
-- debug db issues with updating the db - green_coffee_inv, roast_profiles, roast_sessions etc
-- fix the search with new db
-- set up the entire app for mobile use
-- fix the navbar to be mobile friendly
 - correct rank formatting to allow two decimal places
-- fix db structure to retain paragraph formatting
+- fix db structure or front end interpretation of text to retain paragraph formatting
 - add an average curve that takes the average of heat and fan settings and plots it on the chart
-- add additional details to the new coffee script and create an algo to recommend purchases based on freshness, cost, and rating
-- get #product-price-27637 > span "price per lb bean" into the coffee_catalog table
-- restructure the green_coffee_inv table to pull coffee data from the coffee_catalog table
+- desperately need to fix the filter functions so that they all work correctly. 
+- add an option to add a bean based on a url - if the url is a supported url, it will trigger a scrape function that can add the new bean on command. 
 - need roast id on the roast profile page
 - ghost roast - follow a template roast profile
 - TP, FC, DROP times in roast profile
 - color shading phases on the chart
-
 - Add loading states
 - Add form validation
 - Style components to match your design system
