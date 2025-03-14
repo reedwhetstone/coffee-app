@@ -164,7 +164,7 @@
 			</div>
 			<button
 				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900 sm:w-auto"
-				on:click={deleteBatch}
+				onclick={deleteBatch}
 			>
 				Delete Batch
 			</button>
@@ -217,7 +217,7 @@
 												type="date"
 												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												value={formatDateForInput(editedProfile[key])}
-												on:input={(e) =>
+												oninput={(e) =>
 													(editedProfile[key] = prepareDateForAPI(e.currentTarget.value))}
 											/>
 										{:else}
@@ -251,9 +251,9 @@
 			{#each profiles as _, i}
 				<button
 					class="h-3 w-3 rounded-full transition-all duration-300 {i === currentIndex
-						? 'scale-110 bg-blue-500'
-						: 'bg-background-primary-light hover:bg-zinc-500'}"
-					on:click={() => goToProfile(i)}
+						? 'scale-110 bg-background-tertiary-light'
+						: 'border border-border-light bg-background-primary-light hover:bg-border-light'}"
+					onclick={() => goToProfile(i)}
 					aria-label="Go to profile {i + 1}"
 				></button>
 			{/each}
@@ -263,13 +263,13 @@
 				class="w-full rounded sm:w-auto {isEditing
 					? 'border-2 border-green-800 hover:bg-green-900'
 					: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-text-primary-light"
-				on:click={toggleEdit}
+				onclick={toggleEdit}
 			>
 				{isEditing ? 'Save' : 'Edit'}
 			</button>
 			<button
 				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900 sm:w-auto"
-				on:click={deleteProfile}
+				onclick={deleteProfile}
 			>
 				Delete
 			</button>
