@@ -1,7 +1,10 @@
 # Notes
 
-CoffeeApp is an all in one coffee management system.
+"Democratizing coffee"
 
+- coffee trends & green supply analysis
+- micro-lots crowd funding
+- green coffee marketplace
 - Manage coffee inventory
 - Track coffee roasting
 - Track coffee sales
@@ -46,6 +49,7 @@ CoffeeApp is an all in one coffee management system.
 
 ### Filtering & Navigation
 
+- Move user login/logout & user settings management to its own leftbar & menu & set up nav as its own menu with the purveyors icon
 - Fix auto filter on home page (suppliers selection issue)
 - Fix all filter functions to work correctly
 - Fix profile page not refreshing on save (beans page)
@@ -92,6 +96,7 @@ CoffeeApp is an all in one coffee management system.
 
 ## Content & Catalog Management
 
+- Clean up roast page UI to align with beans page UI
 - Clean up beans catalog profiles and remove user
 - Summarize/rewrite front-end descriptions for fair use
 - Add supplier information:

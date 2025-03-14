@@ -699,7 +699,7 @@
 	$: isAfterRoasting = $roastData.length > 0 && !isRoasting;
 </script>
 
-<div>
+<div class="">
 	<!-- Roast session header -->
 	<div class="mb-3 flex flex-wrap justify-between">
 		<h1 class="text-xl font-bold text-text-primary-light sm:text-2xl">

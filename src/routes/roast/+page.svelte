@@ -825,36 +825,39 @@
 
 <!-- Current roast profile display -->
 {#if currentRoastProfile}
-	<div class=" mb-6">
-		<RoastProfileDisplay
-			profile={currentRoastProfile}
-			profiles={currentRoastProfile
-				? sortedGroupedProfiles[currentRoastProfile.batch_name] || []
-				: []}
-			currentIndex={currentProfileIndex}
-			onUpdate={handleProfileUpdate}
-			onDelete={handleProfileDelete}
-			on:profileDeleted={handleProfileDelete}
-			on:batchDeleted={handleBatchDelete}
-		/>
-	</div>
-{/if}
-<!-- Main roasting interface -->
-{#if currentRoastProfile}
-	<div class=" mb-6 rounded-lg bg-background-secondary-light p-4">
-		<RoastChartInterface
-			{isPaused}
-			{currentRoastProfile}
-			{fanValue}
-			{heatValue}
-			{isRoasting}
-			{selectedEvent}
-			{updateFan}
-			{updateHeat}
-			{saveRoastProfile}
-			{selectedBean}
-			clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
-		/>
+	<div
+		class="mb-3 rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
+	>
+		<div class=" mb-6">
+			<RoastProfileDisplay
+				profile={currentRoastProfile}
+				profiles={currentRoastProfile
+					? sortedGroupedProfiles[currentRoastProfile.batch_name] || []
+					: []}
+				currentIndex={currentProfileIndex}
+				onUpdate={handleProfileUpdate}
+				onDelete={handleProfileDelete}
+				on:profileDeleted={handleProfileDelete}
+				on:batchDeleted={handleBatchDelete}
+			/>
+		</div>
+
+		<!-- Main roasting interface -->
+		<div class=" mb-6 rounded-lg bg-background-secondary-light p-4">
+			<RoastChartInterface
+				{isPaused}
+				{currentRoastProfile}
+				{fanValue}
+				{heatValue}
+				{isRoasting}
+				{selectedEvent}
+				{updateFan}
+				{updateHeat}
+				{saveRoastProfile}
+				{selectedBean}
+				clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
+			/>
+		</div>
 	</div>
 {/if}
 

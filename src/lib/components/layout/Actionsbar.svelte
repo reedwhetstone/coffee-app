@@ -163,7 +163,7 @@
 <div class="flex h-full flex-col">
 	<!-- Header with close button -->
 	<header
-		class="border-text-primary-dark flex items-center justify-between border-b border-opacity-20 p-4"
+		class="flex items-center justify-between border-b border-text-primary-dark border-opacity-20 p-4"
 	>
 		<h2 class="text-xl font-semibold" id="actions-dialog-title">Actions</h2>
 		<button
@@ -195,33 +195,33 @@
 			<div class="space-y-2">
 				{#if routeId === '/beans'}
 					<button
-						class="text-text-primary-dark block w-full rounded border-2 border-background-tertiary-light px-3 py-2 text-left text-sm hover:bg-background-tertiary-light hover:opacity-80"
+						class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
 						onclick={handleNewBean}
 					>
 						New Bean
 					</button>
 					<button
-						class="text-text-primary-dark block w-full rounded border-2 border-background-tertiary-light px-3 py-2 text-left text-sm hover:bg-background-tertiary-light hover:opacity-80"
+						class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
 						onclick={handleNewRoast}
 					>
 						New Roast
 					</button>
 					<button
-						class="text-text-primary-dark block w-full rounded border-2 border-background-tertiary-light px-3 py-2 text-left text-sm hover:bg-background-tertiary-light hover:opacity-80"
+						class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
 						onclick={handleShareAllBeans}
 					>
 						Share All Beans
 					</button>
 				{:else if routeId === '/roast'}
 					<button
-						class="text-text-primary-dark block w-full rounded border-2 border-background-tertiary-light px-3 py-2 text-left text-sm hover:bg-background-tertiary-light hover:opacity-80"
+						class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
 						onclick={handleNewRoast}
 					>
 						New Roast
 					</button>
 				{:else if routeId === '/profit'}
 					<button
-						class="text-text-primary-dark block w-full rounded border-2 border-background-tertiary-light px-3 py-2 text-left text-sm hover:bg-background-tertiary-light hover:opacity-80"
+						class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
 						onclick={handleNewSale}
 					>
 						New Sale

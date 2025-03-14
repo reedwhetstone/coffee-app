@@ -24,7 +24,9 @@
 		<div class="space-y-4">
 			{#each sortedBatchNames as batchName}
 				<!-- Batch Header -->
-				<div class="rounded-lg bg-background-secondary-light p-4">
+				<div
+					class="rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
+				>
 					<button
 						type="button"
 						class="flex w-full items-center justify-between"

@@ -77,7 +77,7 @@
 <div class="flex h-full flex-col">
 	<!-- Header with close button that handles keyboard events -->
 	<header
-		class="border-text-primary-dark flex items-center justify-between border-b border-opacity-20 p-4"
+		class="flex items-center justify-between border-b border-text-primary-dark border-opacity-20 p-4"
 	>
 		<h2 class="text-xl font-semibold" id="nav-dialog-title">Navigation</h2>
 		<button
@@ -106,7 +106,7 @@
 
 	<main class="flex-grow overflow-y-auto p-4">
 		{#if session?.user}
-			<div class="border-text-primary-dark mb-4 border-b border-opacity-20 pb-3 text-sm opacity-80">
+			<div class="mb-4 border-b border-text-primary-dark border-opacity-20 pb-3 text-sm opacity-80">
 				{session.user.email}
 
 				<button
@@ -117,7 +117,7 @@
 				</button>
 			</div>
 		{:else}
-			<div class="border-text-primary-dark mb-4 border-b border-opacity-20 pb-3 text-sm opacity-80">
+			<div class="mb-4 border-b border-text-primary-dark border-opacity-20 pb-3 text-sm opacity-80">
 				<button
 					onclick={handleSignIn}
 					class="block w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20"
@@ -132,9 +132,10 @@
 				<li>
 					<a
 						href="/"
-						class="block px-3 py-2 text-sm {routeId === '/'
-							? 'text-text-primary-dark bg-background-secondary-light/20'
-							: 'text-text-primary-dark hover:bg-background-secondary-light/10'}"
+						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+						'/'
+							? ' border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
+							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
 					>
 						Catalog
 					</a>
@@ -142,9 +143,10 @@
 				<li>
 					<a
 						href="/beans"
-						class="block px-3 py-2 text-sm {routeId === '/beans'
-							? 'text-text-primary-dark bg-background-secondary-light/20'
-							: 'text-text-primary-dark hover:bg-background-secondary-light/10'}"
+						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+						'/beans'
+							? ' border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
+							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
 					>
 						Beans
 					</a>
@@ -152,9 +154,10 @@
 				<li>
 					<a
 						href="/roast"
-						class="block px-3 py-2 text-sm {routeId === '/roast'
-							? 'text-text-primary-dark bg-background-secondary-light/20'
-							: 'text-text-primary-dark hover:bg-background-secondary-light/10'}"
+						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+						'/roast'
+							? ' border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
+							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
 					>
 						Roast
 					</a>
@@ -162,9 +165,10 @@
 				<li>
 					<a
 						href="/profit"
-						class="block px-3 py-2 text-sm {routeId === '/profit'
-							? 'text-text-primary-dark bg-background-secondary-light/20'
-							: 'text-text-primary-dark hover:bg-background-secondary-light/10'}"
+						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+						'/profit'
+							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
+							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
 					>
 						Profit
 					</a>
