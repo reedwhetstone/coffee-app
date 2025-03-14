@@ -17,6 +17,15 @@
 
 	let previousPage = $state(0);
 
+	// List of fields that are allowed to be edited
+	const editableFields = [
+		'notes',
+		'purchase_date',
+		'purchased_qty_lbs',
+		'bean_cost',
+		'tax_ship_cost'
+	];
+
 	function slideTransition(_: Element, { duration = 300, direction = 1, delay = 0 }) {
 		return {
 			duration,
@@ -85,7 +94,10 @@
 		try {
 			processingUpdate = true;
 			const dataForAPI = {
-				...editedBean,
+				...selectedBean, // Start with the original bean to preserve non-editable fields
+				...Object.fromEntries(
+					Object.entries(editedBean).filter(([key]) => editableFields.includes(key))
+				), // Only include editable fields from editedBean
 				purchase_date: prepareDateForAPI(editedBean.purchase_date),
 				last_updated: new Date().toISOString()
 			};
@@ -137,12 +149,55 @@
 			}
 		}
 	}
+
+	// Helper function to get coffee bean icon based on rank
+	function getBeanIcon(rank: number) {
+		if (!rank) return '☕';
+		const normalizedRank = typeof rank === 'number' ? Math.round(rank) : 1;
+		return '☕'.repeat(Math.min(normalizedRank, 5));
+	}
+
+	// Helper function to get color class based on score
+	function getScoreColorClass(score: number) {
+		if (!score) return 'text-gray-400';
+		if (score >= 90) return 'text-emerald-500';
+		if (score >= 80) return 'text-green-500';
+		if (score >= 70) return 'text-yellow-500';
+		if (score >= 60) return 'text-orange-500';
+		return 'text-red-500';
+	}
 </script>
 
 <div class="rounded-lg border border-border-light bg-background-secondary-light p-6 shadow-md">
 	<div class="mb-4">
-		<div class="flex items-center justify-between">
-			<h2 class="text-xl font-bold text-text-primary-light">{selectedBean.name}</h2>
+		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+			<div class="flex items-center gap-2">
+				<h2 class="text-xl font-bold text-text-primary-light">{selectedBean.name}</h2>
+
+				{#if selectedBean.score_value !== undefined || selectedBean.rank !== undefined}
+					<div class="ml-2 flex items-center gap-3">
+						{#if selectedBean.score_value !== undefined}
+							<div class="flex flex-col items-center">
+								<span class="text-primary-light text-xs">SCORE</span>
+								<span class="text-lg font-bold {getScoreColorClass(selectedBean.score_value)}">
+									{selectedBean.score_value}
+								</span>
+							</div>
+						{/if}
+
+						{#if selectedBean.rank !== undefined}
+							<div class="flex flex-col items-center">
+								<span class="text-primary-light text-xs">RANK</span>
+								<div class="flex items-center">
+									<span class="text-lg text-amber-500" title="Rank: {selectedBean.rank}">
+										{getBeanIcon(selectedBean.rank)}
+									</span>
+								</div>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Moved page selection dots here -->
@@ -166,7 +221,7 @@
 				in:slideTransition={{ direction: slideDirection, delay: 50 }}
 			>
 				{#if currentPage === 0}
-					{#each ['score_value', 'rank', 'description_short', 'notes', 'purchase_date', 'arrival_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'last_updated'] as key}
+					{#each ['description_short', 'notes', 'purchase_date', 'arrival_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'last_updated'] as key}
 						{#if selectedBean[key] !== undefined}
 							<div
 								class="rounded border border-border-light bg-background-secondary-light p-2 {[
@@ -179,28 +234,13 @@
 								<span class="text-primary-light font-medium"
 									>{key.replace(/_/g, ' ').toUpperCase()}:</span
 								>
-								{#if isEditing && key !== 'id' && key !== 'last_updated'}
+								{#if isEditing && editableFields.includes(key) && key !== 'last_updated'}
 									{#if key === 'notes'}
 										<textarea
 											class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 											rows="4"
 											bind:value={editedBean[key]}
 										></textarea>
-									{:else if key === 'rank'}
-										<input
-											type="number"
-											min="1"
-											max="10"
-											step="1"
-											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-											bind:value={editedBean[key]}
-										/>
-									{:else if key === 'link'}
-										<input
-											type="url"
-											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-											bind:value={editedBean[key]}
-										/>
 									{:else if key === 'bean_cost' || key === 'tax_ship_cost'}
 										<input
 											type="number"
@@ -209,9 +249,17 @@
 											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 											bind:value={editedBean[key]}
 										/>
-									{:else}
+									{:else if key === 'purchased_qty_lbs'}
 										<input
-											type={typeof selectedBean[key] === 'number' ? 'number' : 'text'}
+											type="number"
+											step="0.1"
+											min="0"
+											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
+											bind:value={editedBean[key]}
+										/>
+									{:else if key === 'purchase_date'}
+										<input
+											type="date"
 											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 											bind:value={editedBean[key]}
 										/>
@@ -234,10 +282,6 @@
 													class="text-blue-400 hover:underline">{selectedBean[key]}</a
 												>
 											{/if}
-										{:else if key === 'rank'}
-											{typeof selectedBean[key] === 'number'
-												? Math.round(selectedBean[key])
-												: selectedBean[key]}
 										{:else}
 											{selectedBean[key]}
 										{/if}
@@ -253,64 +297,25 @@
 								<span class="text-primary-light font-medium"
 									>{key.replace(/_/g, ' ').toUpperCase()}:</span
 								>
-								{#if isEditing && key !== 'id' && key !== 'last_updated'}
-									{#if key === 'notes'}
-										<textarea
-											class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-											rows="4"
-											bind:value={editedBean[key]}
-										></textarea>
-									{:else if key === 'rank'}
-										<input
-											type="number"
-											min="1"
-											max="10"
-											step="1"
-											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-											bind:value={editedBean[key]}
-										/>
+								<span
+									class="ml-2 text-text-primary-light {key === 'notes'
+										? 'zinc-300space-pre-wrap block'
+										: ''}"
+								>
+									{#if key === 'bean_cost' || key === 'tax_ship_cost'}
+										${typeof value === 'number' ? value.toFixed(2) : value}
 									{:else if key === 'link'}
-										<input
-											type="url"
-											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-											bind:value={editedBean[key]}
-										/>
-									{:else if key === 'bean_cost' || key === 'tax_ship_cost'}
-										<input
-											type="number"
-											step="0.01"
-											min="0"
-											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-											bind:value={editedBean[key]}
-										/>
-									{:else}
-										<input
-											type={typeof value === 'number' ? 'number' : 'text'}
-											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-											bind:value={editedBean[key]}
-										/>
-									{/if}
-								{:else}
-									<span
-										class="ml-2 text-text-primary-light {key === 'notes'
-											? 'zinc-300space-pre-wrap block'
-											: ''}"
-									>
-										{#if key === 'bean_cost' || key === 'tax_ship_cost'}
-											${typeof value === 'number' ? value.toFixed(2) : value}
-										{:else if key === 'link'}
-											{#if value && typeof value === 'string'}
-												<a href={value} target="_blank" class="text-blue-400 hover:underline"
-													>{value}</a
-												>
-											{/if}
-										{:else if key === 'rank'}
-											{typeof value === 'number' ? Math.round(value) : value}
-										{:else}
-											{value}
+										{#if value && typeof value === 'string'}
+											<a href={value} target="_blank" class="text-blue-400 hover:underline"
+												>{value}</a
+											>
 										{/if}
-									</span>
-								{/if}
+									{:else if key === 'rank'}
+										{typeof value === 'number' ? Math.round(value) : value}
+									{:else}
+										{value}
+									{/if}
+								</span>
 							</div>
 						{/if}
 					{/each}
