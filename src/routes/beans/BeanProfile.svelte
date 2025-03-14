@@ -23,7 +23,8 @@
 		'purchase_date',
 		'purchased_qty_lbs',
 		'bean_cost',
-		'tax_ship_cost'
+		'tax_ship_cost',
+		'rank'
 	];
 
 	function slideTransition(_: Element, { duration = 300, direction = 1, delay = 0 }) {
@@ -166,6 +167,31 @@
 		if (score >= 60) return 'text-orange-500';
 		return 'text-red-500';
 	}
+
+	// Helper function to calculate the percentage for the crescent meter
+	function getScorePercentage(score: number, min: number, max: number) {
+		if (!score) return 0;
+		const normalizedScore = Math.max(min, Math.min(max, score));
+		return ((normalizedScore - min) / (max - min)) * 100;
+	}
+
+	// Helper function to get the stroke color for the crescent meter
+	function getStrokeColor(value: number, isScore: boolean) {
+		if (isScore) {
+			if (value >= 90) return '#10b981'; // emerald-500
+			if (value >= 80) return '#22c55e'; // green-500
+			if (value >= 70) return '#eab308'; // yellow-500
+			if (value >= 60) return '#f97316'; // orange-500
+			return '#ef4444'; // red-500
+		} else {
+			// For rank
+			if (value >= 8) return '#10b981'; // emerald-500
+			if (value >= 6) return '#22c55e'; // green-500
+			if (value >= 4) return '#eab308'; // yellow-500
+			if (value >= 2) return '#f97316'; // orange-500
+			return '#ef4444'; // red-500
+		}
+	}
 </script>
 
 <div class="rounded-lg border border-border-light bg-background-secondary-light p-6 shadow-md">
@@ -175,24 +201,89 @@
 				<h2 class="text-xl font-bold text-text-primary-light">{selectedBean.name}</h2>
 
 				{#if selectedBean.score_value !== undefined || selectedBean.rank !== undefined}
-					<div class="ml-2 flex items-center gap-3">
+					<div class="ml-2 flex items-center gap-6">
 						{#if selectedBean.score_value !== undefined}
 							<div class="flex flex-col items-center">
 								<span class="text-primary-light text-xs">SCORE</span>
-								<span class="text-lg font-bold {getScoreColorClass(selectedBean.score_value)}">
-									{selectedBean.score_value}
-								</span>
+								<div class="relative h-16 w-16">
+									<!-- Background arc -->
+									<svg class="absolute inset-0" viewBox="0 0 100 100">
+										<path
+											d="M10,50 A40,40 0 1,1 90,50"
+											fill="none"
+											stroke="#e5e7eb"
+											stroke-width="8"
+											stroke-linecap="round"
+										/>
+										<!-- Foreground arc (dynamic based on score) -->
+										<path
+											d="M10,50 A40,40 0 1,1 90,50"
+											fill="none"
+											stroke={getStrokeColor(selectedBean.score_value, true)}
+											stroke-width="8"
+											stroke-linecap="round"
+											stroke-dasharray="126"
+											stroke-dashoffset={126 -
+												(126 * getScorePercentage(selectedBean.score_value, 85, 100)) / 100}
+										/>
+									</svg>
+									<!-- Score value in the center -->
+									<div class="absolute inset-0 flex items-center justify-center">
+										<span class="text-2xl font-bold {getScoreColorClass(selectedBean.score_value)}">
+											{selectedBean.score_value}
+										</span>
+									</div>
+								</div>
 							</div>
 						{/if}
 
 						{#if selectedBean.rank !== undefined}
 							<div class="flex flex-col items-center">
 								<span class="text-primary-light text-xs">RANK</span>
-								<div class="flex items-center">
-									<span class="text-lg text-amber-500" title="Rank: {selectedBean.rank}">
-										{getBeanIcon(selectedBean.rank)}
-									</span>
-								</div>
+								{#if isEditing}
+									<div class="flex flex-col items-center">
+										<input
+											type="number"
+											min="1"
+											max="10"
+											step="1"
+											class="w-16 rounded bg-background-primary-light px-2 py-1 text-center text-lg font-bold text-text-primary-light"
+											bind:value={editedBean.rank}
+										/>
+									</div>
+								{:else}
+									<div class="relative h-16 w-16">
+										<!-- Background arc -->
+										<svg class="absolute inset-0" viewBox="0 0 100 100">
+											<path
+												d="M10,50 A40,40 0 1,1 90,50"
+												fill="none"
+												stroke="#e5e7eb"
+												stroke-width="8"
+												stroke-linecap="round"
+											/>
+											<!-- Foreground arc (dynamic based on rank) -->
+											<path
+												d="M10,50 A40,40 0 1,1 90,50"
+												fill="none"
+												stroke={getStrokeColor(selectedBean.rank, false)}
+												stroke-width="8"
+												stroke-linecap="round"
+												stroke-dasharray="126"
+												stroke-dashoffset={126 -
+													(126 * getScorePercentage(selectedBean.rank, 0, 10)) / 100}
+											/>
+										</svg>
+										<!-- Rank value in the center -->
+										<div class="absolute inset-0 flex items-center justify-center">
+											<span class="text-2xl font-bold text-amber-500">
+												{typeof selectedBean.rank === 'number'
+													? Math.round(selectedBean.rank)
+													: selectedBean.rank}
+											</span>
+										</div>
+									</div>
+								{/if}
 							</div>
 						{/if}
 					</div>
