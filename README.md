@@ -9,6 +9,8 @@ CoffeeApp is an all in one coffee management system.
 
 # Todo:
 
+- the new roast form bean selection should be based on stocked beans.. either most recent batch or add a stocked column to green_coffee_inv and manage it in the profiles. 
+- clean up beans catalog profiles. remove user.
 - sweet marias scraping issue - need to correct scrape function to not wipe the stocked beans if it finds 0 beans that day
 - Scroll isn't working correctly. Not rendering complete list of products.
 - Auto filter isn't working right on the home page. No suppliers are selected & it does not show all suppliers until you select them all.
