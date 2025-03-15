@@ -237,6 +237,30 @@
 			};
 		}
 	});
+
+	// Helper functions for score meter (copied from BeanProfile)
+	function getScoreColorClass(score: number) {
+		if (!score) return 'text-gray-400';
+		if (score >= 91) return 'text-emerald-500';
+		if (score >= 90) return 'text-green-500';
+		if (score >= 87) return 'text-yellow-500';
+		if (score >= 85) return 'text-orange-500';
+		return 'text-red-500';
+	}
+
+	function getScorePercentage(score: number, min: number, max: number) {
+		if (!score) return 0;
+		const normalizedScore = Math.max(min, Math.min(max, score));
+		return ((normalizedScore - min) / (max - min)) * 100;
+	}
+
+	function getStrokeColor(value: number) {
+		if (value >= 91) return '#10b981'; // emerald-500
+		if (value >= 90) return '#22c55e'; // green-500
+		if (value >= 87) return '#eab308'; // yellow-500
+		if (value >= 85) return '#f97316'; // orange-500
+		return '#ef4444'; // red-500
+	}
 </script>
 
 <div class="">
@@ -307,34 +331,83 @@
 								<h3 class="text-primary-light text-base font-semibold md:text-lg">
 									{bean.name}
 								</h3>
-								<p class="text-primary-light text-sm">{bean.vendor}</p>
+								<p class="text-primary-light text-sm">{bean.source}</p>
 							</div>
 							<div class="text-left sm:text-right">
 								<p class="text-primary-light text-base font-bold md:text-lg">
-									${bean.price_per_lb}/lb
+									${(bean.purchased_qty_lbs
+										? ((bean.tax_ship_cost || 0) + (bean.bean_cost || 0)) / bean.purchased_qty_lbs
+										: 0
+									).toFixed(2)}/lb
 								</p>
-								<p class="text-primary-light text-sm">Score: {bean.score_value}</p>
 							</div>
 						</div>
-						<div
-							class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-2 sm:gap-4"
-						>
-							<div>
-								<span class="text-primary-light">Cultivar:</span>
-								{bean.cultivar_detail || '-'}
+						<div>
+							<div
+								class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-2 sm:gap-4"
+							>
+								<div>
+									<span class="text-primary-light">Cultivar:</span>
+									{bean.cultivar_detail || '-'}
+								</div>
+								<div>
+									<span class="text-primary-light">Processing:</span>
+									{bean.processing || '-'}
+								</div>
+								<div>
+									<span class="text-primary-light">Purchase:</span>
+									{bean.purchase_date || '-'}
+								</div>
+								<div>
+									<span class="text-primary-light">Arrival:</span>
+									{bean.arrival_date || '-'}
+								</div>
 							</div>
-							<div>
-								<span class="text-primary-light">Processing:</span>
-								{bean.processing || '-'}
-							</div>
-							<div>
-								<span class="text-primary-light">Purchase:</span>
-								{bean.purchase_date || '-'}
-							</div>
-							<div>
-								<span class="text-primary-light">Arrival:</span>
-								{bean.arrival_date || '-'}
-							</div>
+							{#if bean.score_value}
+								<div class="mt-1 flex justify-end">
+									<div class="flex flex-col items-center">
+										<div class="relative h-8 w-8 sm:h-10 sm:w-10">
+											<!-- Background arc -->
+											<svg class="absolute inset-0" viewBox="0 0 100 100">
+												<path
+													d="M10,50 A40,40 0 1,1 90,50"
+													fill="none"
+													stroke="#e5e7eb"
+													stroke-width="8"
+													stroke-linecap="round"
+												/>
+												<!-- Foreground arc (dynamic based on score) -->
+												<path
+													d="M10,50 A40,40 0 1,1 90,50"
+													fill="none"
+													stroke={getStrokeColor(bean.score_value)}
+													stroke-width="8"
+													stroke-linecap="round"
+													stroke-dasharray="126"
+													stroke-dashoffset={126 -
+														(126 * getScorePercentage(bean.score_value, 0, 100)) / 100}
+												/>
+											</svg>
+											<!-- Score value in the center -->
+											<div class="absolute inset-0 flex items-center justify-center">
+												<span
+													class="text-xs font-bold sm:text-sm {getScoreColorClass(
+														bean.score_value
+													)}"
+												>
+													{bean.score_value}
+												</span>
+											</div>
+											<span
+												class="text-primary-light absolute bottom-0 left-0 right-0 text-center text-[6px] sm:text-[8px]"
+												>SCORE</span
+											>
+										</div>
+									</div>
+								</div>
+							{:else}
+								<p class="text-primary-light text-sm">Score: -</p>
+							{/if}
 						</div>
 					</button>
 				{/each}
