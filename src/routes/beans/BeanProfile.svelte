@@ -151,20 +151,13 @@
 		}
 	}
 
-	// Helper function to get coffee bean icon based on rank
-	function getBeanIcon(rank: number) {
-		if (!rank) return '☕';
-		const normalizedRank = typeof rank === 'number' ? Math.round(rank) : 1;
-		return '☕'.repeat(Math.min(normalizedRank, 5));
-	}
-
 	// Helper function to get color class based on score
 	function getScoreColorClass(score: number) {
 		if (!score) return 'text-gray-400';
-		if (score >= 90) return 'text-emerald-500';
-		if (score >= 80) return 'text-green-500';
-		if (score >= 70) return 'text-yellow-500';
-		if (score >= 60) return 'text-orange-500';
+		if (score >= 91) return 'text-emerald-500';
+		if (score >= 90) return 'text-green-500';
+		if (score >= 87) return 'text-yellow-500';
+		if (score >= 85) return 'text-orange-500';
 		return 'text-red-500';
 	}
 
@@ -178,10 +171,10 @@
 	// Helper function to get the stroke color for the crescent meter
 	function getStrokeColor(value: number, isScore: boolean) {
 		if (isScore) {
-			if (value >= 90) return '#10b981'; // emerald-500
-			if (value >= 80) return '#22c55e'; // green-500
-			if (value >= 70) return '#eab308'; // yellow-500
-			if (value >= 60) return '#f97316'; // orange-500
+			if (value >= 91) return '#10b981'; // emerald-500
+			if (value >= 90) return '#22c55e'; // green-500
+			if (value >= 87) return '#eab308'; // yellow-500
+			if (value >= 85) return '#f97316'; // orange-500
 			return '#ef4444'; // red-500
 		} else {
 			// For rank
@@ -196,15 +189,13 @@
 
 <div class="rounded-lg border border-border-light bg-background-secondary-light p-6 shadow-md">
 	<div class="mb-4">
-		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-			<div class="flex items-center gap-2">
-				<h2 class="text-xl font-bold text-text-primary-light">{selectedBean.name}</h2>
-
+		<div class="flex items-center justify-between">
+			<h2 class="text-xl font-bold text-text-primary-light">{selectedBean.name}</h2>
+			<div>
 				{#if selectedBean.score_value !== undefined || selectedBean.rank !== undefined}
 					<div class="ml-2 flex items-center gap-6">
 						{#if selectedBean.score_value !== undefined}
 							<div class="flex flex-col items-center">
-								<span class="text-primary-light text-xs">SCORE</span>
 								<div class="relative h-16 w-16">
 									<!-- Background arc -->
 									<svg class="absolute inset-0" viewBox="0 0 100 100">
@@ -224,7 +215,7 @@
 											stroke-linecap="round"
 											stroke-dasharray="126"
 											stroke-dashoffset={126 -
-												(126 * getScorePercentage(selectedBean.score_value, 85, 100)) / 100}
+												(126 * getScorePercentage(selectedBean.score_value, 0, 100)) / 100}
 										/>
 									</svg>
 									<!-- Score value in the center -->
@@ -233,13 +224,16 @@
 											{selectedBean.score_value}
 										</span>
 									</div>
+									<span
+										class="text-primary-light absolute bottom-0 left-0 right-0 text-center text-xs"
+										>SCORE</span
+									>
 								</div>
 							</div>
 						{/if}
 
 						{#if selectedBean.rank !== undefined}
 							<div class="flex flex-col items-center">
-								<span class="text-primary-light text-xs">RANK</span>
 								{#if isEditing}
 									<div class="flex flex-col items-center">
 										<input
@@ -282,6 +276,10 @@
 													: selectedBean.rank}
 											</span>
 										</div>
+										<span
+											class="text-primary-light absolute bottom-0 left-0 right-0 text-center text-xs"
+											>RATING</span
+										>
 									</div>
 								{/if}
 							</div>
