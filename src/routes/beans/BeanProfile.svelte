@@ -187,16 +187,18 @@
 	}
 </script>
 
-<div class="rounded-lg border border-border-light bg-background-secondary-light p-6 shadow-md">
+<div
+	class="rounded-lg border border-border-light bg-background-secondary-light p-4 shadow-md md:p-6"
+>
 	<div class="mb-4">
-		<div class="flex items-center justify-between">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<h2 class="text-xl font-bold text-text-primary-light">{selectedBean.name}</h2>
 			<div>
 				{#if selectedBean.score_value !== undefined || selectedBean.rank !== undefined}
-					<div class="ml-2 flex items-center gap-6">
+					<div class="flex items-center justify-center gap-4 sm:justify-end md:gap-6">
 						{#if selectedBean.score_value !== undefined}
 							<div class="flex flex-col items-center">
-								<div class="relative h-16 w-16">
+								<div class="relative h-14 w-14 md:h-16 md:w-16">
 									<!-- Background arc -->
 									<svg class="absolute inset-0" viewBox="0 0 100 100">
 										<path
@@ -220,7 +222,11 @@
 									</svg>
 									<!-- Score value in the center -->
 									<div class="absolute inset-0 flex items-center justify-center">
-										<span class="text-2xl font-bold {getScoreColorClass(selectedBean.score_value)}">
+										<span
+											class="text-xl font-bold md:text-2xl {getScoreColorClass(
+												selectedBean.score_value
+											)}"
+										>
 											{selectedBean.score_value}
 										</span>
 									</div>
@@ -246,7 +252,7 @@
 										/>
 									</div>
 								{:else}
-									<div class="relative h-16 w-16">
+									<div class="relative h-14 w-14 md:h-16 md:w-16">
 										<!-- Background arc -->
 										<svg class="absolute inset-0" viewBox="0 0 100 100">
 											<path
@@ -270,7 +276,7 @@
 										</svg>
 										<!-- Rank value in the center -->
 										<div class="absolute inset-0 flex items-center justify-center">
-											<span class="text-2xl font-bold text-amber-500">
+											<span class="text-xl font-bold text-amber-500 md:text-2xl">
 												{typeof selectedBean.rank === 'number'
 													? Math.round(selectedBean.rank)
 													: selectedBean.rank}
@@ -303,10 +309,10 @@
 		</div>
 	</div>
 
-	<div class="relative min-h-[400px]">
+	<div class="relative min-h-[300px] md:min-h-[400px]">
 		{#key currentPage}
 			<div
-				class="grid grid-cols-2 gap-4"
+				class="grid grid-cols-1 gap-4 sm:grid-cols-2"
 				in:slideTransition={{ direction: slideDirection, delay: 50 }}
 			>
 				{#if currentPage === 0}
@@ -317,7 +323,7 @@
 									'notes',
 									'description_short'
 								].includes(key)
-									? 'col-span-2'
+									? 'col-span-1 sm:col-span-2'
 									: ''}"
 							>
 								<span class="text-primary-light font-medium"
@@ -335,7 +341,7 @@
 											type="number"
 											step="0.01"
 											min="0"
-											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
+											class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light sm:w-auto"
 											bind:value={editedBean[key]}
 										/>
 									{:else if key === 'purchased_qty_lbs'}
@@ -343,13 +349,13 @@
 											type="number"
 											step="0.1"
 											min="0"
-											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
+											class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light sm:w-auto"
 											bind:value={editedBean[key]}
 										/>
 									{:else if key === 'purchase_date'}
 										<input
 											type="date"
-											class="ml-2 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
+											class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light sm:w-auto"
 											bind:value={editedBean[key]}
 										/>
 									{/if}
@@ -388,7 +394,7 @@
 								>
 								<span
 									class="ml-2 text-text-primary-light {key === 'notes'
-										? 'zinc-300space-pre-wrap block'
+										? 'zinc-300 space-pre-wrap block'
 										: ''}"
 								>
 									{#if key === 'bean_cost' || key === 'tax_ship_cost'}
@@ -413,17 +419,17 @@
 		{/key}
 	</div>
 	{#if role === 'admin' || role === 'member'}
-		<div class="my-4 flex justify-end space-x-2">
+		<div class="my-4 flex flex-wrap justify-end gap-2">
 			<button
 				class="rounded {isEditing
 					? 'border-2 border-green-800 hover:bg-green-900'
-					: 'border-2 border-blue-800 hover:bg-blue-900'} px-3 py-1 text-text-primary-light"
+					: 'border-2 border-blue-800 hover:bg-blue-900'} min-w-[80px] px-3 py-1 text-text-primary-light"
 				onclick={toggleEdit}
 			>
 				{isEditing ? 'Save' : 'Edit'}
 			</button>
 			<button
-				class="rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900"
+				class="min-w-[80px] rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900"
 				onclick={deleteBean}
 			>
 				Delete
