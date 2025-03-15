@@ -1,20 +1,27 @@
 <script lang="ts">
+	let {
+		sortedBatchNames,
+		sortedGroupedProfiles,
+		expandedBatches,
+		currentRoastProfile,
+		onToggleBatch,
+		onSelectProfile
+	} = $props<{
+		sortedBatchNames: string[];
+		sortedGroupedProfiles: Record<string, any[]>;
+		expandedBatches: Set<string>;
+		currentRoastProfile: any;
+		onToggleBatch: (batchName: string) => void;
+		onSelectProfile: (profile: any) => void;
+	}>();
+
+	// Set defaults after destructuring
+	sortedBatchNames = sortedBatchNames ?? [];
+	sortedGroupedProfiles = sortedGroupedProfiles ?? {};
+
 	import { formatDateForDisplay } from '$lib/utils/dates';
 
-	export let sortedBatchNames: string[] = [];
-	export let sortedGroupedProfiles: Record<string, any[]> = {};
-	export let expandedBatches: Set<string>;
-	export let currentRoastProfile: any;
-	export let onToggleBatch: (batchName: string) => void;
-	export let onSelectProfile: (profile: any) => void;
-
-	import { createEventDispatcher } from 'svelte';
-	const dispatch = createEventDispatcher();
-
-	// Helper function to check if a batch is expanded
-	function isBatchExpanded(batchName: string): boolean {
-		return expandedBatches.has(batchName);
-	}
+	let isBatchExpanded = $derived((batchName: string) => expandedBatches.has(batchName));
 </script>
 
 <div class="flex flex-col gap-4">
@@ -23,17 +30,15 @@
 	{:else}
 		<div class="space-y-4">
 			{#each sortedBatchNames as batchName}
-				<!-- Batch Header -->
-				<div
-					class="rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
-				>
+				<div class="rounded-lg border border-border-light bg-background-secondary-light shadow-md">
+					<!-- Batch Header - Consistent padding -->
 					<button
 						type="button"
-						class="flex w-full items-center justify-between"
-						on:click={() => onToggleBatch(batchName)}
+						class="flex w-full items-center justify-between p-4"
+						onclick={() => onToggleBatch(batchName)}
 					>
-						<h3 class="text-primary-light text-lg font-semibold">
-							{isBatchExpanded(batchName) ? '▼' : '▶'}
+						<h3 class="text-primary-light flex items-center gap-2 text-lg font-semibold">
+							<span class="w-4">{isBatchExpanded(batchName) ? '▼' : '▶'}</span>
 							{batchName}
 						</h3>
 						<span class="text-primary-light text-sm">
@@ -42,15 +47,15 @@
 					</button>
 
 					{#if isBatchExpanded(batchName) && sortedGroupedProfiles[batchName]}
-						<div class="mt-4 space-y-2">
+						<div class="border-t border-border-light">
 							{#each sortedGroupedProfiles[batchName] as profile}
 								<button
 									type="button"
-									class="w-full cursor-pointer rounded-lg bg-background-secondary-light p-3 text-left transition-colors hover:border hover:border-background-tertiary-light {currentRoastProfile?.roast_id ===
+									class="w-full cursor-pointer p-4 text-left transition-colors hover:bg-background-tertiary-light/10 {currentRoastProfile?.roast_id ===
 									profile.roast_id
 										? 'bg-background-tertiary-light opacity-80'
-										: ''}"
-									on:click={() => onSelectProfile(profile)}
+										: ''} border-b border-border-light last:border-b-0"
+									onclick={() => onSelectProfile(profile)}
 								>
 									<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
 										<div>

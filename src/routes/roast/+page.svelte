@@ -869,7 +869,6 @@
 	{currentRoastProfile}
 	onToggleBatch={toggleBatch}
 	onSelectProfile={selectProfile}
-	on:deleteBatch={handleBatchDelete}
 />
 
 {#if !$filteredData || $filteredData.length === 0}
