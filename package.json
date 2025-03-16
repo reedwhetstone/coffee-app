@@ -17,8 +17,7 @@
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run",
-		"vercel-dev": "vercel dev",
-		"postinstall": "svelte-kit sync"
+		"vercel-dev": "vercel dev"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.3",
@@ -65,7 +64,6 @@
 		"jose": "^5.9.6",
 		"jwt-decode": "^4.0.0",
 		"lodash": "^4.17.21",
-		"uuid": "^9.0.1",
-		"zimmerframe": "^1.1.2"
+		"uuid": "^9.0.1"
 	}
 }
