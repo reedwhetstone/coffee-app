@@ -2,7 +2,7 @@
 	import { signOut } from '$lib/supabase';
 	import type { LayoutData } from './$types';
 
-	let { data } = $props<{ data: LayoutData }>();
+	let { data, children } = $props<{ data: LayoutData; children: any }>();
 	let { supabase } = $derived(data);
 
 	async function handleSignOut() {
@@ -15,3 +15,5 @@
 </script>
 
 <button onclick={handleSignOut}>Sign Out</button>
+
+{@render children()}

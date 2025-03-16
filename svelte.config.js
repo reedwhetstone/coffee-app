@@ -20,7 +20,7 @@ const config = {
 			maxDuration: 60,
 			isr: {
 				expiration: 60,
-				allowQuery: true
+				allowQuery: []
 			}
 		})
 	},
