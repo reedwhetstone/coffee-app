@@ -98,13 +98,13 @@
 </script>
 
 <!-- The app layout structure -->
-<div class="my-4 mr-2 flex min-h-screen">
+<div class="flex min-h-screen">
 	<!-- Left Sidebar Component -->
 	<LeftSidebar data={pageData || data} onMenuChange={handleMenuChange} />
 
 	<!-- Main Content Container -->
-	<main class="{contentMargin} transition-all duration-300 ease-out">
-		<div class="p-0">
+	<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
+		<div class="h-full p-4">
 			<!-- Page Content -->
 			{@render children()}
 		</div>
