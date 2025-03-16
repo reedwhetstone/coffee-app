@@ -104,7 +104,7 @@
 
 	<!-- Main Content Container -->
 	<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
-		<div class="h-full p-4">
+		<div class="h-full py-4 pr-4">
 			<!-- Page Content -->
 			{@render children()}
 		</div>
