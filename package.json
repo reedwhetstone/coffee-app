@@ -9,7 +9,7 @@
 	"scripts": {
 		"sync": "svelte-kit sync",
 		"dev": "vite dev",
-		"build": "npm run sync && vite build",
+		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -17,7 +17,8 @@
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run",
-		"vercel-dev": "vercel dev"
+		"vercel-dev": "vercel dev",
+		"postinstall": "svelte-kit sync"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.3",
