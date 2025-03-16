@@ -14,7 +14,14 @@ const config = {
 		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
 		adapter: vercelAdapter({
 			runtime: 'nodejs22.x',
-			split: false
+			split: true,
+			regions: ['iad1'],
+			memory: 1024,
+			maxDuration: 60,
+			isr: {
+				expiration: 60,
+				allowQuery: true
+			}
 		})
 	},
 
