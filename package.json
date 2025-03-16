@@ -9,14 +9,14 @@
 	"scripts": {
 		"sync": "svelte-kit sync",
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "pnpm run sync && vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
-		"test": "npm run test:unit -- --run",
+		"test": "pnpm run test:unit -- --run",
 		"vercel-dev": "vercel dev"
 	},
 	"devDependencies": {
