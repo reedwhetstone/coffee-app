@@ -749,7 +749,7 @@
 				<button
 					id="start-end-roast"
 					class="w-full rounded-md border-2 border-green-800 px-3 py-1 text-base font-medium text-text-primary-light transition-colors hover:bg-green-900 sm:w-auto sm:px-4 sm:py-2 sm:text-lg"
-					on:mousedown={(e) => {
+					onmousedown={(e) => {
 						if (isRoasting) {
 							isLongPressing = true;
 							pressTimer = setTimeout(() => {
@@ -764,19 +764,19 @@
 							}, LONG_PRESS_DURATION);
 						}
 					}}
-					on:click={() => {
+					onclick={() => {
 						if (!isLongPressing) {
 							toggleTimer();
 						}
 					}}
-					on:mouseup={() => {
+					onmouseup={() => {
 						if (pressTimer) {
 							clearTimeout(pressTimer);
 							pressTimer = null;
 						}
 						isLongPressing = false;
 					}}
-					on:mouseleave={() => {
+					onmouseleave={() => {
 						if (pressTimer) {
 							clearTimeout(pressTimer);
 							pressTimer = null;
@@ -805,7 +805,7 @@
 						<div class="flex flex-col items-center rounded-lg border-2 border-indigo-800">
 							<button
 								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-indigo-900/80 hover:text-white"
-								on:click={() => handleFanChange(Math.min(10, fanValue + 1))}
+								onclick={() => handleFanChange(Math.min(10, fanValue + 1))}
 								disabled={fanValue >= 10}
 							>
 								+
@@ -817,7 +817,7 @@
 							</div>
 							<button
 								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-indigo-900/80 hover:text-white"
-								on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
+								onclick={() => handleFanChange(Math.max(0, fanValue - 1))}
 								disabled={fanValue <= 0}
 							>
 								-
@@ -831,7 +831,7 @@
 						<div class="flex flex-col items-center rounded-lg border-2 border-amber-800">
 							<button
 								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-amber-900/80 hover:text-white"
-								on:click={() => handleHeatChange(Math.min(10, heatValue + 1))}
+								onclick={() => handleHeatChange(Math.min(10, heatValue + 1))}
 								disabled={heatValue >= 10}
 							>
 								+
@@ -843,7 +843,7 @@
 							</div>
 							<button
 								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-amber-900/80 hover:text-white"
-								on:click={() => handleHeatChange(Math.max(0, heatValue - 1))}
+								onclick={() => handleHeatChange(Math.max(0, heatValue - 1))}
 								disabled={heatValue <= 0}
 							>
 								-
@@ -862,20 +862,42 @@
 							<div
 								class="rounded-lg border border-border-light bg-background-primary-light shadow-sm"
 							>
-								<div class="flex w-full min-w-[500px] sm:min-w-0">
+								<!-- Mobile view: Grid layout with 2 buttons per row -->
+								<div class="grid grid-cols-2 sm:hidden">
 									{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event, i}
 										<button
 											type="button"
-											class="flex-1 cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 sm:p-3 {selectedEvent ===
+											class="cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
+											event
+												? 'bg-background-tertiary-light text-text-primary-light'
+												: 'text-text-primary-light'} {!isRoasting
+												? 'cursor-not-allowed opacity-50'
+												: ''} {i % 2 !== 0 ? 'border-l border-border-light' : ''} {i > 1
+												? 'border-t border-border-light'
+												: ''}"
+											onclick={() => isRoasting && handleEventLog(event)}
+											disabled={!isRoasting}
+										>
+											<span class="block text-xs font-medium">{event}</span>
+										</button>
+									{/each}
+								</div>
+
+								<!-- Desktop view: Flex layout with all buttons in one row -->
+								<div class="hidden w-full sm:flex">
+									{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event, i}
+										<button
+											type="button"
+											class="flex-1 cursor-pointer whitespace-nowrap p-3 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
 											event
 												? 'bg-background-tertiary-light text-text-primary-light'
 												: 'text-text-primary-light'} {!isRoasting
 												? 'cursor-not-allowed opacity-50'
 												: ''} {i !== 0 ? 'border-l border-border-light' : ''}"
-											on:click={() => isRoasting && handleEventLog(event)}
+											onclick={() => isRoasting && handleEventLog(event)}
 											disabled={!isRoasting}
 										>
-											<span class="block text-xs font-medium sm:text-sm">{event}</span>
+											<span class="block text-sm font-medium">{event}</span>
 										</button>
 									{/each}
 								</div>
@@ -926,7 +948,7 @@
 		{#if isBeforeRoasting || isDuringRoasting}
 			<button
 				class="w-full rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light sm:w-auto"
-				on:click={() => {
+				onclick={() => {
 					prepareProfileLogsForSave();
 					saveRoastProfile();
 				}}
@@ -938,7 +960,7 @@
 		{#if !isBeforeRoasting}
 			<button
 				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-950 sm:w-auto"
-				on:click={() => {
+				onclick={() => {
 					if (
 						confirm('Are you sure you want to clear this roast data? This action cannot be undone.')
 					) {
