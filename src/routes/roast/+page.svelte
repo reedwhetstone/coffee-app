@@ -826,9 +826,9 @@
 <!-- Current roast profile display -->
 {#if currentRoastProfile}
 	<div
-		class="mb-3 rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
+		class="mb-3 w-full overflow-x-hidden rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
 	>
-		<div class=" mb-6">
+		<div class="mb-6">
 			<RoastProfileDisplay
 				profile={currentRoastProfile}
 				profiles={currentRoastProfile
@@ -843,7 +843,7 @@
 		</div>
 
 		<!-- Main roasting interface -->
-		<div class=" mb-6 rounded-lg bg-background-secondary-light p-4">
+		<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
 			<RoastChartInterface
 				{isPaused}
 				{currentRoastProfile}

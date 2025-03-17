@@ -154,11 +154,11 @@
 	$: slideDirection = currentIndex > previousIndex ? 1 : -1;
 </script>
 
-<div class=" rounded-lg bg-background-secondary-light p-3 sm:p-6">
+<div class="overflow-hidden rounded-lg bg-background-secondary-light p-3 sm:p-6">
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center sm:text-left">
-				<h1 class="text-primary-light text-xl font-bold sm:text-2xl">
+				<h1 class="text-primary-light break-words text-xl font-bold sm:text-2xl">
 					{profile.batch_name} // {formatDateForDisplay(profile.roast_date)}
 				</h1>
 			</div>
@@ -170,7 +170,7 @@
 			</button>
 		</div>
 		<div class="mt-2 flex items-center justify-center sm:justify-start">
-			<h3 class="text-l font-bold text-text-primary-light">
+			<h3 class="text-l break-words font-bold text-text-primary-light">
 				{profile.coffee_name}
 			</h3>
 		</div>
@@ -221,7 +221,10 @@
 										{/if}
 									{:else}
 										<span
-											class="text-text-primary-light {['roast_notes', 'roast_targets'].includes(key)
+											class="break-words text-text-primary-light {[
+												'roast_notes',
+												'roast_targets'
+											].includes(key)
 												? 'space-pre-wrap block'
 												: ''}"
 										>

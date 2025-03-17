@@ -392,14 +392,21 @@
 	function updateChartDimensions() {
 		if (!chartContainer || !svg) return;
 
-		width = chartContainer.clientWidth - margin.left - margin.right;
+		// Get the actual available width and ensure we don't exceed it
+		const containerWidth = chartContainer.clientWidth;
+		width = Math.min(containerWidth - margin.left - margin.right, 1200);
 		height = chartContainer.clientHeight - margin.top - margin.bottom;
 
 		// Update SVG dimensions
 		d3.select(chartContainer)
 			.select('svg')
 			.attr('width', width + margin.left + margin.right)
-			.attr('height', height + margin.top + margin.bottom);
+			.attr('height', height + margin.top + margin.bottom)
+			.attr(
+				'viewBox',
+				`0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`
+			)
+			.attr('preserveAspectRatio', 'xMidYMid meet');
 
 		// Update scales
 		xScale.range([0, width]);
@@ -478,7 +485,8 @@
 
 	onMount(() => {
 		// Initial setup
-		width = chartContainer.clientWidth - margin.left - margin.right;
+		const containerWidth = chartContainer.clientWidth;
+		width = Math.min(containerWidth - margin.left - margin.right, 1200);
 		height = chartContainer.clientHeight - margin.top - margin.bottom;
 
 		svg = d3
@@ -486,6 +494,11 @@
 			.append('svg')
 			.attr('width', width + margin.left + margin.right)
 			.attr('height', height + margin.top + margin.bottom)
+			.attr(
+				'viewBox',
+				`0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`
+			)
+			.attr('preserveAspectRatio', 'xMidYMid meet')
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`);
 
@@ -704,7 +717,7 @@
 	$: isAfterRoasting = $roastData.length > 0 && !isRoasting;
 </script>
 
-<div class="">
+<div class="w-full overflow-x-hidden">
 	<!-- Roast session header -->
 	<div class="mb-3 flex flex-wrap justify-between">
 		<h1 class="text-xl font-bold text-text-primary-light sm:text-2xl">
@@ -715,10 +728,10 @@
 	<!-- Main roasting controls: fan, chart, and heat -->
 	<div class="flex w-full flex-col justify-center gap-4 sm:flex-row">
 		<!-- Chart -->
-		<div class="min-w-0 flex-grow overflow-x-auto">
+		<div class="w-full min-w-0 overflow-hidden">
 			<div
 				bind:this={chartContainer}
-				class="text-primary-light mx-auto h-[400px] w-full max-w-full sm:h-[500px] sm:max-w-[1200px]"
+				class="text-primary-light mx-auto h-[400px] w-full max-w-full sm:h-[500px]"
 			></div>
 		</div>
 	</div>
