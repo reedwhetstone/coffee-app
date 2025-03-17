@@ -709,72 +709,28 @@
 
 	<!-- Main roasting controls: fan, chart, and heat -->
 	<div class="flex h-[500px] w-full flex-col justify-center gap-4 sm:flex-row">
-		<!-- Fan buttons -->
-		{#if isBeforeRoasting || isDuringRoasting}
-			<div class="flex flex-row justify-center gap-2 sm:my-5 sm:flex-col">
-				<button
-					class="rounded border-2 border-indigo-800 px-3 py-1 text-text-primary-light hover:bg-indigo-900"
-					on:click={() => handleFanChange(Math.min(10, fanValue + 1))}
-					disabled={fanValue >= 10}
-				>
-					▲
-				</button>
-				<div
-					class="flex h-10 w-20 items-center justify-center rounded border-2 border-indigo-800 px-3 text-xl text-text-primary-light sm:w-auto"
-				>
-					{fanValue}
-				</div>
-				<button
-					class="rounded border-2 border-indigo-800 px-3 py-1 text-text-primary-light hover:bg-indigo-900"
-					on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
-					disabled={fanValue <= 0}
-				>
-					▼
-				</button>
-			</div>
-		{/if}
-
 		<!-- Chart -->
 		<div class="min-w-0 flex-grow">
-			<div bind:this={chartContainer} class="text-primary-light h-full w-full"></div>
+			<div
+				bind:this={chartContainer}
+				class="text-primary-light mx-auto h-full w-full max-w-[1200px]"
+			></div>
 		</div>
-
-		<!-- Heat buttons -->
-		{#if isBeforeRoasting || isDuringRoasting}
-			<div class="flex flex-row justify-center gap-2 sm:my-5 sm:flex-col">
-				<button
-					class="rounded border-2 border-amber-800 px-3 py-1 text-text-primary-light hover:bg-amber-900"
-					on:click={() => handleHeatChange(Math.min(10, heatValue + 1))}
-					disabled={heatValue >= 10}
-				>
-					▲
-				</button>
-				<div
-					class="flex h-10 w-20 items-center justify-center rounded border-2 border-amber-800 px-3 text-xl text-text-primary-light sm:w-auto"
-				>
-					{heatValue}
-				</div>
-				<button
-					class="rounded border-2 border-amber-800 px-3 py-1 text-text-primary-light hover:bg-amber-900"
-					on:click={() => handleHeatChange(Math.max(0, heatValue - 1))}
-					disabled={heatValue <= 0}
-				>
-					▼
-				</button>
-			</div>
-		{/if}
 	</div>
 
 	<!-- Roast event controls and timer -->
-	<div class="z-0 mt-4 flex flex-col flex-wrap items-center justify-center gap-4 sm:flex-row">
-		<div class="flex items-center gap-4">
-			<div class="w-36 text-3xl font-bold text-text-primary-light sm:w-48 sm:text-5xl">
+	<div
+		class="mt-6 rounded-lg border border-border-light bg-background-secondary-light p-4 shadow-sm"
+	>
+		<!-- Timer and Start/Stop button -->
+		<div class="mb-4 flex items-center justify-center gap-4">
+			<div class="text-4xl font-bold text-text-primary-light sm:text-5xl">
 				{formattedTime}
 			</div>
 			{#if isBeforeRoasting || isDuringRoasting}
 				<button
 					id="start-end-roast"
-					class="rounded border-2 border-green-800 px-3 py-1 text-text-primary-light hover:bg-green-900"
+					class="rounded-md border-2 border-green-800 px-4 py-2 text-lg font-medium text-text-primary-light transition-colors hover:bg-green-900"
 					on:mousedown={(e) => {
 						if (isRoasting) {
 							isLongPressing = true;
@@ -819,39 +775,137 @@
 			{/if}
 		</div>
 
-		{#if isBeforeRoasting || isDuringRoasting}
-			<div class="flex flex-wrap justify-center gap-2">
-				{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event}
-					<label
-						class="flex items-center rounded border-2 border-green-800 px-3 py-1 text-sm text-text-primary-light hover:bg-green-900 sm:text-base"
-						class:bg-green-900={selectedEvent === event}
-						class:opacity-50={!isRoasting}
-						class:cursor-not-allowed={!isRoasting}
-						class:hover:bg-transparent={!isRoasting}
-					>
-						<input
-							type="radio"
-							name="roastEvent"
-							value={event}
-							on:change={() => handleEventLog(event)}
-							checked={selectedEvent === event}
-							class="hidden"
-							disabled={!isRoasting}
-						/>
-						{event}
-					</label>
-				{/each}
-			</div>
-		{/if}
-	</div>
+		<div class="flex flex-col gap-6 sm:flex-row">
+			<!-- Fan and Heat controls (left side) -->
+			{#if isBeforeRoasting || isDuringRoasting}
+				<div
+					class="flex flex-row justify-center gap-8 rounded-md border border-border-light bg-background-primary-light p-4 sm:w-64"
+				>
+					<!-- Fan control -->
+					<div class="flex flex-col items-center gap-2">
+						<span class="text-sm font-medium text-text-secondary-light">FAN</span>
+						<button
+							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-indigo-800 text-text-primary-light hover:bg-indigo-900 hover:text-white"
+							on:click={() => handleFanChange(Math.min(10, fanValue + 1))}
+							disabled={fanValue >= 10}
+						>
+							+
+						</button>
+						<div
+							class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-indigo-800 text-xl font-bold text-text-primary-light"
+						>
+							{fanValue}
+						</div>
+						<button
+							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-indigo-800 text-text-primary-light hover:bg-indigo-900 hover:text-white"
+							on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
+							disabled={fanValue <= 0}
+						>
+							-
+						</button>
+					</div>
 
-	<!-- Roast milestone timestamps -->
-	<div class="mt-4 flex flex-wrap justify-center space-x-2 sm:justify-end sm:space-x-4">
-		<div class="text-lg font-bold text-text-primary-light sm:text-2xl">DRYING %: --:--</div>
-		<div class="text-lg font-bold text-text-primary-light sm:text-2xl">TP: --:--</div>
-		<div class="text-lg font-bold text-text-primary-light sm:text-2xl">MAILLARD %: --:--</div>
-		<div class="text-lg font-bold text-text-primary-light sm:text-2xl">FC: --:--</div>
-		<div class="text-lg font-bold text-text-primary-light sm:text-2xl">DEV %: --:--</div>
+					<!-- Heat control -->
+					<div class="flex flex-col items-center gap-2">
+						<span class="text-sm font-medium text-text-secondary-light">HEAT</span>
+						<button
+							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-800 text-text-primary-light hover:bg-amber-900 hover:text-white"
+							on:click={() => handleHeatChange(Math.min(10, heatValue + 1))}
+							disabled={heatValue >= 10}
+						>
+							+
+						</button>
+						<div
+							class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-amber-800 text-xl font-bold text-text-primary-light"
+						>
+							{heatValue}
+						</div>
+						<button
+							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-800 text-text-primary-light hover:bg-amber-900 hover:text-white"
+							on:click={() => handleHeatChange(Math.max(0, heatValue - 1))}
+							disabled={heatValue <= 0}
+						>
+							-
+						</button>
+					</div>
+				</div>
+			{/if}
+
+			<!-- Roast events timeline (right side) -->
+			<div class="flex-grow">
+				{#if isBeforeRoasting || isDuringRoasting}
+					<div class="mb-4">
+						<h3 class="mb-2 text-sm font-medium text-text-secondary-light">ROAST EVENTS</h3>
+						<div class="relative">
+							<!-- Timeline bar -->
+							<div class="absolute top-1/2 h-1 w-full -translate-y-1/2 bg-border-light"></div>
+
+							<!-- Event buttons positioned along timeline -->
+							<div class="relative flex justify-between">
+								{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event, i}
+									<div class="flex flex-col items-center">
+										<label
+											class="relative z-10 mb-1 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-2 border-green-800 bg-background-primary-light text-text-primary-light transition-colors hover:bg-green-900 hover:text-white"
+											class:bg-green-900={selectedEvent === event}
+											class:text-white={selectedEvent === event}
+											class:opacity-50={!isRoasting}
+											class:cursor-not-allowed={!isRoasting}
+											class:hover:bg-transparent={!isRoasting}
+										>
+											<input
+												type="radio"
+												name="roastEvent"
+												value={event}
+												on:change={() => handleEventLog(event)}
+												checked={selectedEvent === event}
+												class="hidden"
+												disabled={!isRoasting}
+											/>
+											{i + 1}
+										</label>
+										<span class="mt-1 text-xs font-medium text-text-secondary-light">{event}</span>
+									</div>
+								{/each}
+							</div>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Roast milestone timestamps -->
+				<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+					<div
+						class="rounded border border-border-light bg-background-primary-light p-2 text-center"
+					>
+						<span class="text-xs text-text-secondary-light">DRYING %</span>
+						<div class="text-lg font-bold text-text-primary-light">--:--</div>
+					</div>
+					<div
+						class="rounded border border-border-light bg-background-primary-light p-2 text-center"
+					>
+						<span class="text-xs text-text-secondary-light">TP</span>
+						<div class="text-lg font-bold text-text-primary-light">--:--</div>
+					</div>
+					<div
+						class="rounded border border-border-light bg-background-primary-light p-2 text-center"
+					>
+						<span class="text-xs text-text-secondary-light">MAILLARD %</span>
+						<div class="text-lg font-bold text-text-primary-light">--:--</div>
+					</div>
+					<div
+						class="rounded border border-border-light bg-background-primary-light p-2 text-center"
+					>
+						<span class="text-xs text-text-secondary-light">FC</span>
+						<div class="text-lg font-bold text-text-primary-light">--:--</div>
+					</div>
+					<div
+						class="rounded border border-border-light bg-background-primary-light p-2 text-center"
+					>
+						<span class="text-xs text-text-secondary-light">DEV %</span>
+						<div class="text-lg font-bold text-text-primary-light">--:--</div>
+					</div>
+				</div>
+			</div>
+		</div>
 	</div>
 
 	<!-- Save and Clear roast buttons -->
