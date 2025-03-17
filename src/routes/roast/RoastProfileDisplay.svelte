@@ -184,7 +184,7 @@
 					in:slideTransition={{ direction: slideDirection, delay: 50 }}
 				>
 					{#each Object.entries(profile) as [key, value]}
-						{#if !['roast_id', 'coffee_id'].includes(key)}
+						{#if ['oz_in', 'oz_out', 'roast_notes', 'roast_targets'].includes(key)}
 							<div
 								class="rounded border border-background-tertiary-light p-3 {[
 									'roast_notes',
@@ -197,7 +197,7 @@
 									<span class="text-primary-light mb-1 font-medium"
 										>{key.replace(/_/g, ' ').toUpperCase()}:</span
 									>
-									{#if isEditing && key !== 'last_updated'}
+									{#if isEditing}
 										{#if ['roast_notes', 'roast_targets'].includes(key)}
 											<textarea
 												class="relative z-0 min-h-[80px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
@@ -212,14 +212,6 @@
 												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												bind:value={editedProfile[key]}
 											/>
-										{:else if key === 'roast_date'}
-											<input
-												type="date"
-												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-												value={formatDateForInput(editedProfile[key])}
-												oninput={(e) =>
-													(editedProfile[key] = prepareDateForAPI(e.currentTarget.value))}
-											/>
 										{:else}
 											<input
 												type="text"
@@ -233,9 +225,7 @@
 												? 'space-pre-wrap block'
 												: ''}"
 										>
-											{key === 'roast_date' || key === 'last_updated'
-												? formatDateForDisplay(value as string)
-												: value}
+											{value}
 										</span>
 									{/if}
 								</div>
