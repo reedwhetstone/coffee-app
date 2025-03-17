@@ -176,7 +176,7 @@
 		</div>
 	</div>
 
-	<div class="relative h-auto min-h-[400px]">
+	<div class="relative">
 		<div class="overflow-hidden">
 			{#key currentIndex}
 				<div
