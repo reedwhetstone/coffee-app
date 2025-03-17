@@ -162,11 +162,9 @@
 									type="number"
 									value={$filterStore.filters.score_value?.min || ''}
 									oninput={(e) => {
-										const currentValue = $filterStore.filters.score_value || {};
-										filterStore.setFilter('score_value', {
-											...currentValue,
-											min: e.currentTarget.value
-										});
+										const min = e.currentTarget.value;
+										const max = $filterStore.filters.score_value?.max || '';
+										filterStore.setFilter('score_value', { min, max });
 									}}
 									class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 									placeholder="Min"
@@ -178,17 +176,44 @@
 									type="number"
 									value={$filterStore.filters.score_value?.max || ''}
 									oninput={(e) => {
-										const currentValue = $filterStore.filters.score_value || {};
-										filterStore.setFilter('score_value', {
-											...currentValue,
-											max: e.currentTarget.value
-										});
+										const max = e.currentTarget.value;
+										const min = $filterStore.filters.score_value?.min || '';
+										filterStore.setFilter('score_value', { min, max });
 									}}
 									class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 									placeholder="Max"
 									min="0"
 									max="100"
 									step="0.1"
+								/>
+							</div>
+						{:else if column === 'cost_lb'}
+							<div class="flex gap-2">
+								<input
+									type="number"
+									value={$filterStore.filters.cost_lb?.min || ''}
+									oninput={(e) => {
+										const min = e.currentTarget.value;
+										const max = $filterStore.filters.cost_lb?.max || '';
+										filterStore.setFilter('cost_lb', { min, max });
+									}}
+									class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+									placeholder="Min $"
+									min="0"
+									step="0.01"
+								/>
+								<input
+									type="number"
+									value={$filterStore.filters.cost_lb?.max || ''}
+									oninput={(e) => {
+										const max = e.currentTarget.value;
+										const min = $filterStore.filters.cost_lb?.min || '';
+										filterStore.setFilter('cost_lb', { min, max });
+									}}
+									class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+									placeholder="Max $"
+									min="0"
+									step="0.01"
 								/>
 							</div>
 						{:else if column === 'purchase_date' && $filterStore.uniqueValues?.purchaseDates?.length}
