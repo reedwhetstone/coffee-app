@@ -394,7 +394,8 @@
 
 		// Get the actual available width and ensure we don't exceed it
 		const containerWidth = chartContainer.clientWidth;
-		width = Math.min(containerWidth - margin.left - margin.right, containerWidth);
+		// Ensure width doesn't exceed container and account for margins properly
+		width = Math.max(0, containerWidth - margin.left - margin.right);
 		height = chartContainer.clientHeight - margin.top - margin.bottom;
 
 		// Update SVG dimensions
@@ -486,7 +487,8 @@
 	onMount(() => {
 		// Initial setup
 		const containerWidth = chartContainer.clientWidth;
-		width = Math.min(containerWidth - margin.left - margin.right, containerWidth);
+		// Ensure width doesn't exceed container and account for margins properly
+		width = Math.max(0, containerWidth - margin.left - margin.right);
 		height = chartContainer.clientHeight - margin.top - margin.bottom;
 
 		svg = d3
@@ -726,13 +728,12 @@
 	</div>
 
 	<!-- Main roasting controls: fan, chart, and heat -->
-	<div class="flex w-full flex-col justify-center gap-4 sm:flex-row" style="max-width: 100%;">
+	<div class="flex w-full flex-col justify-center gap-4 sm:flex-row">
 		<!-- Chart -->
-		<div class="w-full min-w-0 overflow-hidden" style="max-width: 100%;">
+		<div class="w-full min-w-0 overflow-hidden">
 			<div
 				bind:this={chartContainer}
 				class="text-primary-light mx-auto h-[400px] w-full sm:h-[500px]"
-				style="max-width: 100%;"
 			></div>
 		</div>
 	</div>

@@ -828,7 +828,6 @@
 	{#if currentRoastProfile}
 		<div
 			class="mb-3 w-full overflow-x-hidden rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
-			style="max-width: 100%;"
 		>
 			<div class="mb-6">
 				<RoastProfileDisplay
@@ -864,7 +863,7 @@
 	{/if}
 
 	<!-- Replace the old table with this component -->
-	<div class="w-full" style="max-width: 100%;">
+	<div class="w-full">
 		<RoastHistoryTable
 			{sortedBatchNames}
 			{sortedGroupedProfiles}

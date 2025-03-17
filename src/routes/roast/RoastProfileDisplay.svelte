@@ -154,10 +154,7 @@
 	$: slideDirection = currentIndex > previousIndex ? 1 : -1;
 </script>
 
-<div
-	class="overflow-hidden rounded-lg bg-background-secondary-light p-3 sm:p-6"
-	style="max-width: 100%;"
->
+<div class="overflow-hidden rounded-lg bg-background-secondary-light p-3 sm:p-6">
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center sm:text-left">
