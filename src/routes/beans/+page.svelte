@@ -344,70 +344,75 @@
 						</div>
 						<div>
 							<div
-								class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-2 sm:gap-4"
+								class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-3 sm:gap-4"
 							>
-								<div>
-									<span class="text-primary-light">Cultivar:</span>
-									{bean.cultivar_detail || '-'}
-								</div>
-								<div>
-									<span class="text-primary-light">Processing:</span>
-									{bean.processing || '-'}
-								</div>
-								<div>
-									<span class="text-primary-light">Purchase:</span>
-									{bean.purchase_date || '-'}
-								</div>
-								<div>
-									<span class="text-primary-light">Arrival:</span>
-									{bean.arrival_date || '-'}
-								</div>
-							</div>
-							{#if bean.score_value}
-								<div class="mt-1 flex justify-end">
-									<div class="flex flex-col items-center">
-										<div class="relative h-8 w-8 sm:h-10 sm:w-10">
-											<!-- Background arc -->
-											<svg class="absolute inset-0" viewBox="0 0 100 100">
-												<path
-													d="M10,50 A40,40 0 1,1 90,50"
-													fill="none"
-													stroke="#e5e7eb"
-													stroke-width="8"
-													stroke-linecap="round"
-												/>
-												<!-- Foreground arc (dynamic based on score) -->
-												<path
-													d="M10,50 A40,40 0 1,1 90,50"
-													fill="none"
-													stroke={getStrokeColor(bean.score_value)}
-													stroke-width="8"
-													stroke-linecap="round"
-													stroke-dasharray="126"
-													stroke-dashoffset={126 -
-														(126 * getScorePercentage(bean.score_value, 0, 100)) / 100}
-												/>
-											</svg>
-											<!-- Score value in the center -->
-											<div class="absolute inset-0 flex items-center justify-center">
-												<span
-													class="text-xs font-bold sm:text-sm {getScoreColorClass(
-														bean.score_value
-													)}"
-												>
-													{bean.score_value}
-												</span>
-											</div>
-											<span
-												class="text-primary-light absolute bottom-0 left-0 right-0 text-center text-[6px] sm:text-[8px]"
-												>SCORE</span
-											>
-										</div>
+								<div class="flex flex-col gap-2">
+									<div>
+										<span class="text-primary-light">Cultivar:</span>
+										{bean.cultivar_detail || '-'}
+									</div>
+									<div>
+										<span class="text-primary-light">Arrival:</span>
+										{bean.arrival_date || '-'}
 									</div>
 								</div>
-							{:else}
-								<p class="text-primary-light text-sm">Score: -</p>
-							{/if}
+								<div class="flex flex-col gap-2">
+									<div>
+										<span class="text-primary-light">Processing:</span>
+										{bean.processing || '-'}
+									</div>
+									<div>
+										<span class="text-primary-light">Purchase:</span>
+										{bean.purchase_date || '-'}
+									</div>
+								</div>
+								{#if bean.score_value}
+									<div class="mt-1 flex justify-end">
+										<div class="flex flex-col items-center">
+											<div class="relative h-8 w-8 sm:h-10 sm:w-10">
+												<!-- Background arc -->
+												<svg class="absolute inset-0" viewBox="0 0 100 100">
+													<path
+														d="M10,50 A40,40 0 1,1 90,50"
+														fill="none"
+														stroke="#e5e7eb"
+														stroke-width="8"
+														stroke-linecap="round"
+													/>
+													<!-- Foreground arc (dynamic based on score) -->
+													<path
+														d="M10,50 A40,40 0 1,1 90,50"
+														fill="none"
+														stroke={getStrokeColor(bean.score_value)}
+														stroke-width="8"
+														stroke-linecap="round"
+														stroke-dasharray="126"
+														stroke-dashoffset={126 -
+															(126 * getScorePercentage(bean.score_value, 0, 100)) / 100}
+													/>
+												</svg>
+												<!-- Score value in the center -->
+												<div class="absolute inset-0 flex items-center justify-center">
+													<span
+														class="text-xs font-bold sm:text-sm {getScoreColorClass(
+															bean.score_value
+														)}"
+													>
+														{bean.score_value}
+													</span>
+												</div>
+
+												<span
+													class="text-primary-light absolute bottom-0 left-0 right-0 top-7 text-center text-xs"
+													>SCORE</span
+												>
+											</div>
+										</div>
+									</div>
+								{:else}
+									<p class="text-primary-light text-sm">Score: -</p>
+								{/if}
+							</div>
 						</div>
 					</button>
 				{/each}

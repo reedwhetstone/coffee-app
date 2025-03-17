@@ -175,6 +175,25 @@
 		const result = await response.json();
 		return { response: { text: () => result.text } };
 	}
+
+	// Helper functions for score visualization
+	function getScorePercentage(score: number, min = 80, max = 100) {
+		return Math.min(100, Math.max(0, ((score - min) / (max - min)) * 100));
+	}
+
+	function getStrokeColor(score: number) {
+		if (score >= 90) return '#16a34a'; // green-600
+		if (score >= 85) return '#65a30d'; // lime-600
+		if (score >= 80) return '#ca8a04'; // yellow-600
+		return '#dc2626'; // red-600
+	}
+
+	function getScoreColorClass(score: number) {
+		if (score >= 90) return 'text-green-600';
+		if (score >= 85) return 'text-lime-600';
+		if (score >= 80) return 'text-yellow-600';
+		return 'text-red-600';
+	}
 </script>
 
 <div class="space-y-4">
@@ -311,28 +330,79 @@
 									<p class="text-primary-light text-base font-bold md:text-lg">
 										${coffee.cost_lb}/lb
 									</p>
-									<p class="text-primary-light text-sm">Score: {coffee.score_value}</p>
 								</div>
 							</div>
 							<div
-								class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-2 sm:gap-4"
+								class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-3 sm:gap-4"
 							>
-								<div>
-									<span class="text-primary-light">Region:</span>
-									{coffee.region || '-'}
+								<div class="flex flex-col gap-2">
+									<div>
+										<span class="text-primary-light">Region:</span>
+										{coffee.region || '-'}
+									</div>
+									<div>
+										<span class="text-primary-light">Arrival:</span>
+										{coffee.arrival_date || '-'}
+									</div>
 								</div>
-								<div>
-									<span class="text-primary-light">Processing:</span>
-									{coffee.processing || '-'}
+								<div class="flex flex-col gap-2">
+									<div>
+										<span class="text-primary-light">Processing:</span>
+										{coffee.processing || '-'}
+									</div>
+									<div>
+										<span class="text-primary-light">Cultivar:</span>
+										{coffee.cultivar_detail || '-'}
+									</div>
 								</div>
-								<div>
-									<span class="text-primary-light">Arrival:</span>
-									{coffee.arrival_date || '-'}
-								</div>
-								<div>
-									<span class="text-primary-light">Cultivar:</span>
-									{coffee.cultivar_detail || '-'}
-								</div>
+								{#if coffee.score_value}
+									<div class="mt-1 flex justify-end">
+										<div class="flex flex-col items-center">
+											<div class="relative h-8 w-8 sm:h-10 sm:w-10">
+												<!-- Background arc -->
+												<svg class="absolute inset-0" viewBox="0 0 100 100">
+													<path
+														d="M10,50 A40,40 0 1,1 90,50"
+														fill="none"
+														stroke="#e5e7eb"
+														stroke-width="8"
+														stroke-linecap="round"
+													/>
+													<!-- Foreground arc (dynamic based on score) -->
+													<path
+														d="M10,50 A40,40 0 1,1 90,50"
+														fill="none"
+														stroke={getStrokeColor(coffee.score_value)}
+														stroke-width="8"
+														stroke-linecap="round"
+														stroke-dasharray="126"
+														stroke-dashoffset={126 -
+															(126 * getScorePercentage(coffee.score_value, 0, 100)) / 100}
+													/>
+												</svg>
+												<!-- Score value in the center -->
+												<div class="absolute inset-0 flex items-center justify-center">
+													<span
+														class="text-xs font-bold sm:text-sm {getScoreColorClass(
+															coffee.score_value
+														)}"
+													>
+														{coffee.score_value}
+													</span>
+												</div>
+
+												<span
+													class="text-primary-light absolute bottom-0 left-0 right-0 top-7 text-center text-xs"
+													>SCORE</span
+												>
+											</div>
+										</div>
+									</div>
+								{:else}
+									<div class="mt-1 flex justify-end">
+										<p class="text-primary-light text-sm">Score: -</p>
+									</div>
+								{/if}
 							</div>
 						</button>
 					{/each}
