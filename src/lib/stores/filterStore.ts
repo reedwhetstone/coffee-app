@@ -69,6 +69,14 @@ function createFilterStore() {
 			// Update unique filter values
 			updateUniqueFilterValues();
 
+			// Get all sources and set them as selected by default
+			const sources = Array.from(
+				new Set(data.map((item) => item.source || item.vendor).filter(Boolean))
+			);
+			if (sources.length > 0) {
+				state.filters.source = sources;
+			}
+
 			// Process the data with initial settings
 			state.filteredData = processData(data, state.sortField, state.sortDirection, state.filters);
 			state.initialized = true;

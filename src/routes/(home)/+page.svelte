@@ -51,17 +51,13 @@
 	let paginatedData = $state<any[]>([]);
 	let updatingPagination = $state(false);
 	let lastFilteredDataLength = $state(0);
+	let lastDisplayLimit = $state(15);
 
 	$effect(() => {
-		// Only process if the filtered data length has actually changed
-		if (lastFilteredDataLength !== $filteredData.length) {
-			// console.log(
-			// 	'Filtered data changed in home page, from',
-			// 	lastFilteredDataLength,
-			// 	'to',
-			// 	$filteredData.length
-			//);
+		// Update pagination when filtered data changes or display limit changes
+		if (lastFilteredDataLength !== $filteredData.length || lastDisplayLimit !== displayLimit) {
 			lastFilteredDataLength = $filteredData.length;
+			lastDisplayLimit = displayLimit;
 
 			// Update pagination when filtered data changes
 			if (!updatingPagination) {
@@ -86,6 +82,7 @@
 			isLoadingMore = true;
 			await new Promise((resolve) => setTimeout(resolve, 300));
 			displayLimit += 15;
+			paginatedData = $filteredData.slice(0, displayLimit); // Immediately update paginated data
 			isLoadingMore = false;
 		}
 	}
@@ -343,7 +340,7 @@
 					{#if isLoadingMore}
 						<div class="flex justify-center p-4">
 							<div
-								class="border-background-primary-dark h-8 w-8 animate-spin rounded-full border-4 border-t-background-tertiary-light"
+								class="h-8 w-8 animate-spin rounded-full border-4 border-background-primary-dark border-t-background-tertiary-light"
 							></div>
 						</div>
 					{/if}

@@ -31,7 +31,7 @@
 <div class="flex h-full flex-col">
 	<!-- Header with close button that handles keyboard events -->
 	<header
-		class="border-text-primary-dark flex items-center justify-between border-b border-opacity-20 p-4"
+		class="flex items-center justify-between border-b border-text-primary-dark border-opacity-20 p-4"
 	>
 		<h3 class="text-xl font-semibold" id="filters-dialog-title">Filters</h3>
 		<button
@@ -68,7 +68,7 @@
 					id="sort-field"
 					value={$filterStore.sortField}
 					onchange={(e) => filterStore.setSortField(e.currentTarget.value)}
-					class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
+					class="w-full border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 				>
 					<option value="">None</option>
 					{#each filterStore.getFilterableColumns(page.url.pathname) as column}
@@ -83,7 +83,7 @@
 						id="sort-direction"
 						value={$filterStore.sortDirection}
 						onchange={(e) => filterStore.setSortDirection(e.currentTarget.value as 'asc' | 'desc')}
-						class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
+						class="w-full border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 					>
 						<option value="asc">Ascending</option>
 						<option value="desc">Descending</option>
@@ -101,6 +101,24 @@
 						</label>
 						{#if column === 'source' && $filterStore.uniqueValues?.sources?.length}
 							<div class="space-y-2">
+								<div class="mb-1 flex justify-between">
+									<button
+										class="text-xs text-blue-300 hover:text-blue-400"
+										onclick={() => {
+											filterStore.setFilter('source', [...$filterStore.uniqueValues.sources]);
+										}}
+									>
+										Select All
+									</button>
+									<button
+										class="text-xs text-blue-300 hover:text-blue-400"
+										onclick={() => {
+											filterStore.setFilter('source', []);
+										}}
+									>
+										Clear All
+									</button>
+								</div>
 								{#each $filterStore.uniqueValues.sources as source}
 									<label class="flex items-center gap-2">
 										<input
@@ -117,7 +135,7 @@
 													);
 												}
 											}}
-											class="border-text-primary-dark bg-background-primary-dark/50 border-opacity-20 text-blue-400 focus:ring-blue-400"
+											class="border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 text-blue-400 focus:ring-blue-400"
 										/>
 										<span class="text-sm">{source}</span>
 									</label>
@@ -135,7 +153,7 @@
 											min: e.currentTarget.value
 										});
 									}}
-									class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
+									class="w-full border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 									placeholder="Min"
 									min="0"
 									max="100"
@@ -151,7 +169,7 @@
 											max: e.currentTarget.value
 										});
 									}}
-									class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
+									class="w-full border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 									placeholder="Max"
 									min="0"
 									max="100"
@@ -162,7 +180,7 @@
 							<select
 								value={$filterStore.filters.purchase_date || ''}
 								onchange={(e) => filterStore.setFilter('purchase_date', e.currentTarget.value)}
-								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
+								class="w-full border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 							>
 								<option value="">All Dates</option>
 								{#each $filterStore.uniqueValues.purchaseDates as date}
@@ -173,7 +191,7 @@
 							<select
 								value={$filterStore.filters.roast_date || ''}
 								onchange={(e) => filterStore.setFilter('roast_date', e.currentTarget.value)}
-								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
+								class="w-full border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 							>
 								<option value="">All Dates</option>
 								{#each $filterStore.uniqueValues.roastDates as date}
@@ -184,7 +202,7 @@
 							<select
 								value={$filterStore.filters.batch_name || ''}
 								onchange={(e) => filterStore.setFilter('batch_name', e.currentTarget.value)}
-								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
+								class="w-full border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 							>
 								<option value="">All Batches</option>
 								{#each $filterStore.uniqueValues.batchNames as batchName}
@@ -196,7 +214,7 @@
 								type="text"
 								value={$filterStore.filters[column] || ''}
 								oninput={(e) => filterStore.setFilter(column, e.currentTarget.value)}
-								class="border-text-primary-dark bg-background-primary-dark/50 w-full border border-opacity-20 p-2 text-sm shadow-md"
+								class="w-full border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 								placeholder={`Filter by ${column.replace(/_/g, ' ')}`}
 							/>
 						{/if}
