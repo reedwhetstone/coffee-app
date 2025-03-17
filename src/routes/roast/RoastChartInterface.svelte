@@ -687,10 +687,12 @@
 	// Simplify the handlers to use props directly
 	function handleFanChange(value: number) {
 		updateFan(value);
+		handleSettingsChange();
 	}
 
 	function handleHeatChange(value: number) {
 		updateHeat(value);
+		handleSettingsChange();
 	}
 
 	// Add these computed values at the top of the script

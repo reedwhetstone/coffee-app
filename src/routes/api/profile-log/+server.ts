@@ -104,7 +104,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 						fc_end: log.fc_end ? 1 : 0,
 						sc_start: log.sc_start ? 1 : 0,
 						drop: log.drop ? 1 : 0,
-						end: log.end ? 1 : 0
+						end: log.end ? 1 : 0,
+						user: user.id
 					})
 					.select()
 					.single();
