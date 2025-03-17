@@ -15,6 +15,7 @@
 	import NavbarButton from '$lib/components/layout/Navbar.svelte';
 	import SettingsButton from '$lib/components/layout/Settingsbar.svelte';
 	import ActionsButton from '$lib/components/layout/Actionsbar.svelte';
+	import AuthSidebar from '$lib/components/layout/AuthSidebar.svelte';
 
 	// State for tracking which menu is open
 	let activeMenu = $state<string | null>(null);
@@ -46,6 +47,11 @@
 		//console.log('New activeMenu:', activeMenu);
 		// Notify parent components about the menu state change
 		onMenuChange(activeMenu);
+	}
+
+	// Function to toggle the auth menu
+	function toggleAuthMenu() {
+		toggleMenu('auth');
 	}
 
 	// Function to toggle the nav menu
@@ -123,17 +129,17 @@
 	bind:this={sidebarButtonsContainer}
 >
 	<div class="flex h-full w-16 flex-col items-center space-y-4 bg-transparent py-4">
-		<!-- User/Navigation Menu -->
+		<!-- Auth Menu Button -->
 		<div class="relative">
 			<button
-				onclick={toggleNavMenu}
-				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:text-background-tertiary-light hover:opacity-90"
-				aria-label="Toggle navigation menu"
+				onclick={toggleAuthMenu}
+				class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+				aria-label="Toggle authentication menu"
 			>
 				{#if data?.session?.user}
 					<!-- User Avatar/Icon -->
 					<div
-						class="text-text-primary-dark flex h-8 w-8 items-center justify-center rounded-full bg-transparent hover:text-background-tertiary-light"
+						class="flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-text-primary-dark hover:text-background-tertiary-light"
 					>
 						{data.session.user.email?.[0].toUpperCase() || 'U'}
 					</div>
@@ -156,12 +162,37 @@
 				{/if}
 			</button>
 		</div>
+
 		{#if data?.session?.user}
+			<!-- Navigation Menu -->
+			<div class="relative">
+				<button
+					onclick={toggleNavMenu}
+					class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+					aria-label="Toggle navigation menu"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-8 w-8"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M4 6h16M4 12h16M4 18h16"
+						/>
+					</svg>
+				</button>
+			</div>
+
 			<!-- Actions Menu -->
 			<div class="relative">
 				<button
 					onclick={toggleActionsMenu}
-					class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+					class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
 					aria-label="Toggle actions"
 				>
 					<svg
@@ -185,7 +216,7 @@
 		<div class="relative">
 			<button
 				onclick={toggleSettingsMenu}
-				class="bg-background-primary-dark text-text-primary-dark rounded-full p-2 shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+				class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
 				aria-label="Toggle filters"
 			>
 				<svg
@@ -216,10 +247,20 @@
 		bind:this={menuPanelsContainer}
 		data-menu-panel="true"
 	>
+		<!-- Auth Menu Panel -->
+		{#if activeMenu === 'auth'}
+			<aside
+				class="h-full w-64 bg-background-primary-dark text-text-primary-dark"
+				aria-label="User Login Menu"
+			>
+				<AuthSidebar {data} isOpen={true} onClose={closeAllMenus} />
+			</aside>
+		{/if}
+
 		<!-- Navigation Menu Panel -->
 		{#if activeMenu === 'nav'}
 			<aside
-				class="bg-background-primary-dark text-text-primary-dark h-full w-64"
+				class="h-full w-64 bg-background-primary-dark text-text-primary-dark"
 				role="navigation"
 				aria-label="Main navigation menu"
 			>
@@ -230,7 +271,7 @@
 		<!-- Actions Menu Panel -->
 		{#if activeMenu === 'actions'}
 			<aside
-				class="bg-background-primary-dark text-text-primary-dark h-full w-64"
+				class="h-full w-64 bg-background-primary-dark text-text-primary-dark"
 				aria-label="Actions menu"
 			>
 				<ActionsButton {data} isOpen={true} onClose={closeAllMenus} />
@@ -240,7 +281,7 @@
 		<!-- Settings Menu Panel -->
 		{#if activeMenu === 'settings'}
 			<aside
-				class="bg-background-primary-dark text-text-primary-dark h-full w-64"
+				class="h-full w-64 bg-background-primary-dark text-text-primary-dark"
 				aria-label="Settings menu"
 			>
 				<SettingsButton {data} isOpen={true} onClose={closeAllMenus} />

@@ -2,7 +2,6 @@
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
 	import pkg from 'lodash';
-	import { signInWithGoogle, signOut } from '$lib/supabase';
 	import { checkRole } from '$lib/types/auth.types';
 	const { debounce } = pkg;
 
@@ -24,18 +23,9 @@
 	type UserRole = 'viewer' | 'member' | 'admin';
 	let userRole: UserRole = $derived(role as UserRole);
 
-	// Add more detailed debug logging
-	// $effect(() => {
-	// 	console.log('Navbar data:', data);
-	// 	console.log('Destructured role:', role);
-	// 	console.log('Parsed userRole:', userRole);
-	// 	console.log('data.role:', data.role);
-	// });
-
 	// Use the imported checkRole function
 	function hasRequiredRole(requiredRole: UserRole): boolean {
 		const hasRole = checkRole(userRole, requiredRole);
-		//console.log(`Role check: ${userRole} >= ${requiredRole} = ${hasRole}`);
 		return hasRole;
 	}
 
@@ -46,25 +36,6 @@
 	afterNavigate(() => {
 		routeId = page.route.id;
 	});
-
-	async function handleSignIn() {
-		try {
-			await signInWithGoogle(supabase);
-		} catch (error) {
-			console.error('Error signing in:', error);
-		}
-	}
-
-	async function handleSignOut() {
-		try {
-			const { error } = await supabase.auth.signOut();
-			if (error) throw error;
-			// Force a page reload to clear any cached state
-			window.location.href = '/';
-		} catch (error) {
-			console.error('Error signing out:', error);
-		}
-	}
 
 	// Close menu when route changes
 	afterNavigate(() => {
@@ -105,28 +76,6 @@
 	</header>
 
 	<main class="flex-grow overflow-y-auto p-4">
-		{#if session?.user}
-			<div class="mb-4 border-b border-text-primary-dark border-opacity-20 pb-3 text-sm opacity-80">
-				{session.user.email}
-
-				<button
-					onclick={handleSignOut}
-					class="block w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/20"
-				>
-					Sign Out
-				</button>
-			</div>
-		{:else}
-			<div class="mb-4 border-b border-text-primary-dark border-opacity-20 pb-3 text-sm opacity-80">
-				<button
-					onclick={handleSignIn}
-					class="block w-full px-3 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20"
-				>
-					Sign In
-				</button>
-			</div>
-		{/if}
-
 		{#if hasRequiredRole('member')}
 			<ul class="space-y-2">
 				<li>
