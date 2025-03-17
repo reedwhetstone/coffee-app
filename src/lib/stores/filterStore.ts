@@ -445,7 +445,6 @@ function createFilterStore() {
 		if (routeId.includes('beans')) {
 			return [
 				'name',
-				'vendor',
 				'source',
 				'score_value',
 				'purchase_date',
