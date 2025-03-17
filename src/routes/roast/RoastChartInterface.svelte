@@ -726,12 +726,13 @@
 	</div>
 
 	<!-- Main roasting controls: fan, chart, and heat -->
-	<div class="flex w-full flex-col justify-center gap-4 sm:flex-row">
+	<div class="flex w-full flex-col justify-center gap-4 sm:flex-row" style="max-width: 100%;">
 		<!-- Chart -->
-		<div class="w-full min-w-0 overflow-hidden">
+		<div class="w-full min-w-0 overflow-hidden" style="max-width: 100%;">
 			<div
 				bind:this={chartContainer}
-				class="text-primary-light mx-auto h-[400px] w-full max-w-[100vw] sm:h-[500px]"
+				class="text-primary-light mx-auto h-[400px] w-full sm:h-[500px]"
+				style="max-width: 100%;"
 			></div>
 		</div>
 	</div>

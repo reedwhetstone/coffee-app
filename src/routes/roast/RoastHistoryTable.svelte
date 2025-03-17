@@ -24,7 +24,7 @@
 	let isBatchExpanded = $derived((batchName: string) => expandedBatches.has(batchName));
 </script>
 
-<div class="w-full max-w-[100vw] overflow-x-hidden">
+<div class="w-full max-w-[100vw] overflow-x-hidden" style="max-width: 100%;">
 	<div class="flex flex-col gap-4">
 		{#if !sortedBatchNames || sortedBatchNames.length === 0}
 			<p class="p-4 text-text-primary-light">No roast profiles available</p>
