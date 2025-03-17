@@ -548,33 +548,36 @@
 			}
 		}
 
-		// Add time tracker line
-		svg
-			.append('line')
-			.attr('class', 'time-tracker')
-			.attr('y1', 0)
-			.attr('y2', height)
-			.attr('stroke', '#ffffff')
-			.attr('stroke-width', 1)
-			.style('display', 'none');
-
-		// Add x-axis only
+		// Add x-axis
 		svg
 			.append('g')
 			.attr('class', 'x-axis')
 			.attr('transform', `translate(0,${height})`)
-			.call(d3.axisBottom(xScale));
+			.call(d3.axisBottom(xScale) as any);
+
+		// Add time tracker line
+		svg
+			.append('line')
+			.attr('class', 'time-tracker')
+			.attr('x1', 0)
+			.attr('x2', 0)
+			.attr('y1', 0)
+			.attr('y2', height)
+			.attr('stroke', '#ef4444')
+			.attr('stroke-width', 2)
+			.attr('stroke-dasharray', '4,4')
+			.style('display', 'none');
 
 		// Initial chart update
 		updateChart($roastData);
 
-		// Add resize listener
+		// Add window resize listener for responsiveness
 		const resizeObserver = new ResizeObserver(() => {
 			updateChartDimensions();
 		});
+
 		resizeObserver.observe(chartContainer);
 
-		// Cleanup observer on component destroy
 		return () => {
 			resizeObserver.disconnect();
 		};
@@ -710,29 +713,29 @@
 	</div>
 
 	<!-- Main roasting controls: fan, chart, and heat -->
-	<div class="flex h-[500px] w-full flex-col justify-center gap-4 sm:flex-row">
+	<div class="flex w-full flex-col justify-center gap-4 sm:flex-row">
 		<!-- Chart -->
-		<div class="min-w-0 flex-grow">
+		<div class="min-w-0 flex-grow overflow-x-auto">
 			<div
 				bind:this={chartContainer}
-				class="text-primary-light mx-auto h-full w-full max-w-[1200px]"
+				class="text-primary-light mx-auto h-[400px] w-full max-w-full sm:h-[500px] sm:max-w-[1200px]"
 			></div>
 		</div>
 	</div>
 
 	<!-- Roast event controls and timer -->
 	<div
-		class="mt-6 rounded-lg border border-border-light bg-background-secondary-light p-4 shadow-sm"
+		class="mt-6 rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-sm sm:p-4"
 	>
 		<!-- Timer and Start/Stop button -->
-		<div class="mb-4 flex items-center justify-center gap-4">
-			<div class="text-4xl font-bold text-text-primary-light sm:text-5xl">
+		<div class="mb-4 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-4">
+			<div class="text-3xl font-bold text-text-primary-light sm:text-4xl md:text-5xl">
 				{formattedTime}
 			</div>
 			{#if isBeforeRoasting || isDuringRoasting}
 				<button
 					id="start-end-roast"
-					class="rounded-md border-2 border-green-800 px-4 py-2 text-lg font-medium text-text-primary-light transition-colors hover:bg-green-900"
+					class="w-full rounded-md border-2 border-green-800 px-3 py-1 text-base font-medium text-text-primary-light transition-colors hover:bg-green-900 sm:w-auto sm:px-4 sm:py-2 sm:text-lg"
 					on:mousedown={(e) => {
 						if (isRoasting) {
 							isLongPressing = true;
@@ -777,11 +780,11 @@
 			{/if}
 		</div>
 
-		<div class="flex flex-col gap-6 sm:flex-row">
+		<div class="flex flex-col gap-4 sm:flex-row sm:gap-6">
 			<!-- Fan and Heat controls (left side) -->
 			{#if isBeforeRoasting || isDuringRoasting}
 				<div
-					class="flex flex-row justify-center gap-8 rounded-md border border-border-light bg-background-primary-light p-4 sm:w-64"
+					class="flex w-full flex-row justify-center gap-8 rounded-md border border-border-light bg-background-primary-light p-3 sm:w-64 sm:p-4"
 				>
 					<!-- Fan control -->
 					<div class="flex flex-col items-center gap-2">
@@ -794,7 +797,7 @@
 							+
 						</button>
 						<div
-							class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-indigo-800 text-xl font-bold text-text-primary-light"
+							class="flex h-10 w-10 items-center justify-center rounded-full border-2 border-indigo-800 text-lg font-bold text-text-primary-light sm:h-12 sm:w-12 sm:text-xl"
 						>
 							{fanValue}
 						</div>
@@ -818,7 +821,7 @@
 							+
 						</button>
 						<div
-							class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-amber-800 text-xl font-bold text-text-primary-light"
+							class="flex h-10 w-10 items-center justify-center rounded-full border-2 border-amber-800 text-lg font-bold text-text-primary-light sm:h-12 sm:w-12 sm:text-xl"
 						>
 							{heatValue}
 						</div>
@@ -838,16 +841,16 @@
 				{#if isBeforeRoasting || isDuringRoasting}
 					<div class="mb-4">
 						<h3 class="mb-2 text-sm font-medium text-text-secondary-light">ROAST EVENTS</h3>
-						<div class="relative">
+						<div class="relative overflow-x-auto pb-2">
 							<!-- Timeline bar -->
 							<div class="absolute top-1/2 h-1 w-full -translate-y-1/2 bg-border-light"></div>
 
 							<!-- Event buttons positioned along timeline -->
-							<div class="relative flex justify-between">
+							<div class="relative flex min-w-[500px] justify-between sm:min-w-0">
 								{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event, i}
 									<div class="flex flex-col items-center">
 										<label
-											class="relative z-10 mb-1 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-2 border-green-800 bg-background-primary-light text-text-primary-light transition-colors hover:bg-green-900 hover:text-white"
+											class="relative z-10 mb-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-2 border-green-800 bg-background-primary-light text-text-primary-light transition-colors hover:bg-green-900 hover:text-white sm:h-10 sm:w-10"
 											class:bg-green-900={selectedEvent === event}
 											class:text-white={selectedEvent === event}
 											class:opacity-50={!isRoasting}
@@ -876,34 +879,34 @@
 				<!-- Roast milestone timestamps -->
 				<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
 					<div
-						class="rounded border border-border-light bg-background-primary-light p-2 text-center"
+						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">DRYING %</span>
-						<div class="text-lg font-bold text-text-primary-light">--:--</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">--:--</div>
 					</div>
 					<div
-						class="rounded border border-border-light bg-background-primary-light p-2 text-center"
+						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">TP</span>
-						<div class="text-lg font-bold text-text-primary-light">--:--</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">--:--</div>
 					</div>
 					<div
-						class="rounded border border-border-light bg-background-primary-light p-2 text-center"
+						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">MAILLARD %</span>
-						<div class="text-lg font-bold text-text-primary-light">--:--</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">--:--</div>
 					</div>
 					<div
-						class="rounded border border-border-light bg-background-primary-light p-2 text-center"
+						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">FC</span>
-						<div class="text-lg font-bold text-text-primary-light">--:--</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">--:--</div>
 					</div>
 					<div
-						class="rounded border border-border-light bg-background-primary-light p-2 text-center"
+						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">DEV %</span>
-						<div class="text-lg font-bold text-text-primary-light">--:--</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">--:--</div>
 					</div>
 				</div>
 			</div>
@@ -911,10 +914,10 @@
 	</div>
 
 	<!-- Save and Clear roast buttons -->
-	<div class="mt-4 flex justify-end gap-4">
+	<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row sm:gap-4">
 		{#if isBeforeRoasting || isDuringRoasting}
 			<button
-				class="rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light"
+				class="w-full rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light sm:w-auto"
 				on:click={() => {
 					prepareProfileLogsForSave();
 					saveRoastProfile();
@@ -926,7 +929,7 @@
 		{/if}
 		{#if !isBeforeRoasting}
 			<button
-				class="rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-950"
+				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-950 sm:w-auto"
 				on:click={() => {
 					if (
 						confirm('Are you sure you want to clear this roast data? This action cannot be undone.')
