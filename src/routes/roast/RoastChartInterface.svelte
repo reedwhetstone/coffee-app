@@ -799,54 +799,58 @@
 			<!-- Fan and Heat controls (left side) -->
 			{#if isBeforeRoasting || isDuringRoasting}
 				<div
-					class="flex w-full flex-row justify-center gap-8 rounded-md border border-border-light bg-background-primary-light p-3 sm:w-64 sm:p-4"
+					class="flex w-full flex-row justify-center gap-8 bg-background-primary-light p-3 sm:w-64 sm:p-4 md:mr-4 md:border-r md:border-border-light lg:mr-4 lg:border-r lg:border-border-light"
 				>
 					<!-- Fan control -->
 					<div class="flex flex-col items-center gap-2">
 						<span class="text-sm font-medium text-text-secondary-light">FAN</span>
-						<button
-							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-indigo-800 text-text-primary-light hover:bg-indigo-900 hover:text-white"
-							on:click={() => handleFanChange(Math.min(10, fanValue + 1))}
-							disabled={fanValue >= 10}
-						>
-							+
-						</button>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-full border-2 border-indigo-800 text-lg font-bold text-text-primary-light sm:h-12 sm:w-12 sm:text-xl"
-						>
-							{fanValue}
+						<div class="flex flex-col items-center rounded-lg border-2 border-indigo-800">
+							<button
+								class="flex h-8 w-8 items-center justify-center text-text-primary-light hover:bg-indigo-900 hover:text-white"
+								on:click={() => handleFanChange(Math.min(10, fanValue + 1))}
+								disabled={fanValue >= 10}
+							>
+								+
+							</button>
+							<div
+								class="flex h-10 w-10 items-center justify-center text-lg font-bold text-text-primary-light sm:h-12 sm:w-12 sm:text-xl"
+							>
+								{fanValue}
+							</div>
+							<button
+								class="flex h-8 w-8 items-center justify-center text-text-primary-light hover:bg-indigo-900 hover:text-white"
+								on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
+								disabled={fanValue <= 0}
+							>
+								-
+							</button>
 						</div>
-						<button
-							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-indigo-800 text-text-primary-light hover:bg-indigo-900 hover:text-white"
-							on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
-							disabled={fanValue <= 0}
-						>
-							-
-						</button>
 					</div>
 
 					<!-- Heat control -->
 					<div class="flex flex-col items-center gap-2">
 						<span class="text-sm font-medium text-text-secondary-light">HEAT</span>
-						<button
-							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-800 text-text-primary-light hover:bg-amber-900 hover:text-white"
-							on:click={() => handleHeatChange(Math.min(10, heatValue + 1))}
-							disabled={heatValue >= 10}
-						>
-							+
-						</button>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-full border-2 border-amber-800 text-lg font-bold text-text-primary-light sm:h-12 sm:w-12 sm:text-xl"
-						>
-							{heatValue}
+						<div class="flex flex-col items-center rounded-lg border-2 border-amber-800">
+							<button
+								class="flex h-8 w-8 items-center justify-center text-text-primary-light hover:bg-amber-900 hover:text-white"
+								on:click={() => handleHeatChange(Math.min(10, heatValue + 1))}
+								disabled={heatValue >= 10}
+							>
+								+
+							</button>
+							<div
+								class="flex h-10 w-10 items-center justify-center text-lg font-bold text-text-primary-light sm:h-12 sm:w-12 sm:text-xl"
+							>
+								{heatValue}
+							</div>
+							<button
+								class="flex h-8 w-8 items-center justify-center text-text-primary-light hover:bg-amber-900 hover:text-white"
+								on:click={() => handleHeatChange(Math.max(0, heatValue - 1))}
+								disabled={heatValue <= 0}
+							>
+								-
+							</button>
 						</div>
-						<button
-							class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-800 text-text-primary-light hover:bg-amber-900 hover:text-white"
-							on:click={() => handleHeatChange(Math.max(0, heatValue - 1))}
-							disabled={heatValue <= 0}
-						>
-							-
-						</button>
 					</div>
 				</div>
 			{/if}
@@ -866,7 +870,7 @@
 											type="button"
 											class="flex-1 cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 sm:p-3 {selectedEvent ===
 											event
-												? 'bg-green-800 text-white'
+												? 'bg-background-tertiary-light text-text-primary-light'
 												: 'text-text-primary-light'} {!isRoasting
 												? 'cursor-not-allowed opacity-50'
 												: ''} {i !== 0 ? 'border-l border-border-light' : ''}"
