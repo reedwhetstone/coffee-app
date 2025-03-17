@@ -394,7 +394,7 @@
 
 		// Get the actual available width and ensure we don't exceed it
 		const containerWidth = chartContainer.clientWidth;
-		width = Math.min(containerWidth - margin.left - margin.right, 1200);
+		width = Math.min(containerWidth - margin.left - margin.right, containerWidth);
 		height = chartContainer.clientHeight - margin.top - margin.bottom;
 
 		// Update SVG dimensions
@@ -486,7 +486,7 @@
 	onMount(() => {
 		// Initial setup
 		const containerWidth = chartContainer.clientWidth;
-		width = Math.min(containerWidth - margin.left - margin.right, 1200);
+		width = Math.min(containerWidth - margin.left - margin.right, containerWidth);
 		height = chartContainer.clientHeight - margin.top - margin.bottom;
 
 		svg = d3
@@ -731,7 +731,7 @@
 		<div class="w-full min-w-0 overflow-hidden">
 			<div
 				bind:this={chartContainer}
-				class="text-primary-light mx-auto h-[400px] w-full max-w-full sm:h-[500px]"
+				class="text-primary-light mx-auto h-[400px] w-full max-w-[100vw] sm:h-[500px]"
 			></div>
 		</div>
 	</div>
@@ -854,36 +854,27 @@
 				{#if isBeforeRoasting || isDuringRoasting}
 					<div class="mb-4">
 						<h3 class="mb-2 text-sm font-medium text-text-secondary-light">ROAST EVENTS</h3>
-						<div class="relative overflow-x-auto pb-2">
-							<!-- Timeline bar -->
-							<div class="absolute top-1/2 h-1 w-full -translate-y-1/2 bg-border-light"></div>
-
-							<!-- Event buttons positioned along timeline -->
-							<div class="relative flex min-w-[500px] justify-between sm:min-w-0">
-								{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event, i}
-									<div class="flex flex-col items-center">
-										<label
-											class="relative z-10 mb-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-2 border-green-800 bg-background-primary-light text-text-primary-light transition-colors hover:bg-green-900 hover:text-white sm:h-10 sm:w-10"
-											class:bg-green-900={selectedEvent === event}
-											class:text-white={selectedEvent === event}
-											class:opacity-50={!isRoasting}
-											class:cursor-not-allowed={!isRoasting}
-											class:hover:bg-transparent={!isRoasting}
+						<div class="relative overflow-x-auto">
+							<div
+								class="rounded-lg border border-border-light bg-background-primary-light shadow-sm"
+							>
+								<div class="flex w-full min-w-[500px] sm:min-w-0">
+									{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event, i}
+										<button
+											type="button"
+											class="flex-1 cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 sm:p-3 {selectedEvent ===
+											event
+												? 'bg-green-800 text-white'
+												: 'text-text-primary-light'} {!isRoasting
+												? 'cursor-not-allowed opacity-50'
+												: ''} {i !== 0 ? 'border-l border-border-light' : ''}"
+											on:click={() => isRoasting && handleEventLog(event)}
+											disabled={!isRoasting}
 										>
-											<input
-												type="radio"
-												name="roastEvent"
-												value={event}
-												on:change={() => handleEventLog(event)}
-												checked={selectedEvent === event}
-												class="hidden"
-												disabled={!isRoasting}
-											/>
-											{i + 1}
-										</label>
-										<span class="mt-1 text-xs font-medium text-text-secondary-light">{event}</span>
-									</div>
-								{/each}
+											<span class="block text-xs font-medium sm:text-sm">{event}</span>
+										</button>
+									{/each}
+								</div>
 							</div>
 						</div>
 					</div>

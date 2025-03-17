@@ -823,58 +823,62 @@
 	</div>
 {/if}
 
-<!-- Current roast profile display -->
-{#if currentRoastProfile}
-	<div
-		class="mb-3 w-full overflow-x-hidden rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
-	>
-		<div class="mb-6">
-			<RoastProfileDisplay
-				profile={currentRoastProfile}
-				profiles={currentRoastProfile
-					? sortedGroupedProfiles[currentRoastProfile.batch_name] || []
-					: []}
-				currentIndex={currentProfileIndex}
-				onUpdate={handleProfileUpdate}
-				onDelete={handleProfileDelete}
-				on:profileDeleted={handleProfileDelete}
-				on:batchDeleted={handleBatchDelete}
-			/>
-		</div>
+<div class="mx-auto w-full max-w-[100vw] overflow-x-hidden">
+	<!-- Current roast profile display -->
+	{#if currentRoastProfile}
+		<div
+			class="mb-3 w-full overflow-x-hidden rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
+		>
+			<div class="mb-6">
+				<RoastProfileDisplay
+					profile={currentRoastProfile}
+					profiles={currentRoastProfile
+						? sortedGroupedProfiles[currentRoastProfile.batch_name] || []
+						: []}
+					currentIndex={currentProfileIndex}
+					onUpdate={handleProfileUpdate}
+					onDelete={handleProfileDelete}
+					on:profileDeleted={handleProfileDelete}
+					on:batchDeleted={handleBatchDelete}
+				/>
+			</div>
 
-		<!-- Main roasting interface -->
-		<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
-			<RoastChartInterface
-				{isPaused}
-				{currentRoastProfile}
-				{fanValue}
-				{heatValue}
-				{isRoasting}
-				{selectedEvent}
-				{updateFan}
-				{updateHeat}
-				{saveRoastProfile}
-				{selectedBean}
-				clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
-			/>
+			<!-- Main roasting interface -->
+			<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
+				<RoastChartInterface
+					{isPaused}
+					{currentRoastProfile}
+					{fanValue}
+					{heatValue}
+					{isRoasting}
+					{selectedEvent}
+					{updateFan}
+					{updateHeat}
+					{saveRoastProfile}
+					{selectedBean}
+					clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
+				/>
+			</div>
 		</div>
+	{/if}
+
+	<!-- Replace the old table with this component -->
+	<div class="w-full">
+		<RoastHistoryTable
+			{sortedBatchNames}
+			{sortedGroupedProfiles}
+			{expandedBatches}
+			{currentRoastProfile}
+			onToggleBatch={toggleBatch}
+			onSelectProfile={selectProfile}
+		/>
 	</div>
-{/if}
 
-<!-- Replace the old table with this component -->
-<RoastHistoryTable
-	{sortedBatchNames}
-	{sortedGroupedProfiles}
-	{expandedBatches}
-	{currentRoastProfile}
-	onToggleBatch={toggleBatch}
-	onSelectProfile={selectProfile}
-/>
-
-{#if !$filteredData || $filteredData.length === 0}
-	<p class="p-4 text-text-primary-light">
-		No roast profiles available ({data?.data?.length || 0} items in raw data)
-	</p>
-{:else}
-	<!-- Existing content -->
-{/if}
+	{#if !$filteredData || $filteredData.length === 0}
+		<p class="p-4 text-text-primary-light">
+			No roast profiles available ({data?.data?.length || 0} items in raw data)
+		</p>
+	{:else}
+		<!-- Existing content -->
+	{/if}
+</div>
