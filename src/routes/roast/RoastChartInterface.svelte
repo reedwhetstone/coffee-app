@@ -739,9 +739,7 @@
 	</div>
 
 	<!-- Roast event controls and timer -->
-	<div
-		class="mt-6 rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-sm sm:p-4"
-	>
+	<div class="mt-6 bg-background-secondary-light p-3 sm:p-4">
 		<!-- Timer and Start/Stop button -->
 		<div class="mb-4 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-4">
 			<div class="text-3xl font-bold text-text-primary-light sm:text-4xl md:text-5xl">
@@ -806,7 +804,7 @@
 						<span class="text-sm font-medium text-text-secondary-light">FAN</span>
 						<div class="flex flex-col items-center rounded-lg border-2 border-indigo-800">
 							<button
-								class="flex h-8 w-8 items-center justify-center text-text-primary-light hover:bg-indigo-900 hover:text-white"
+								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-indigo-900/80 hover:text-white"
 								on:click={() => handleFanChange(Math.min(10, fanValue + 1))}
 								disabled={fanValue >= 10}
 							>
@@ -818,7 +816,7 @@
 								{fanValue}
 							</div>
 							<button
-								class="flex h-8 w-8 items-center justify-center text-text-primary-light hover:bg-indigo-900 hover:text-white"
+								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-indigo-900/80 hover:text-white"
 								on:click={() => handleFanChange(Math.max(0, fanValue - 1))}
 								disabled={fanValue <= 0}
 							>
@@ -832,7 +830,7 @@
 						<span class="text-sm font-medium text-text-secondary-light">HEAT</span>
 						<div class="flex flex-col items-center rounded-lg border-2 border-amber-800">
 							<button
-								class="flex h-8 w-8 items-center justify-center text-text-primary-light hover:bg-amber-900 hover:text-white"
+								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-amber-900/80 hover:text-white"
 								on:click={() => handleHeatChange(Math.min(10, heatValue + 1))}
 								disabled={heatValue >= 10}
 							>
@@ -844,7 +842,7 @@
 								{heatValue}
 							</div>
 							<button
-								class="flex h-8 w-8 items-center justify-center text-text-primary-light hover:bg-amber-900 hover:text-white"
+								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-amber-900/80 hover:text-white"
 								on:click={() => handleHeatChange(Math.max(0, heatValue - 1))}
 								disabled={heatValue <= 0}
 							>
