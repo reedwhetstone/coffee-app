@@ -14,6 +14,8 @@
 
 ## Database & Data Structure
 
+Create a stocked coffees col in green coffee inv- create stocked coffees management functionality
+
 - **Green Coffee Inventory Structure Overhaul**
   - Create a foreign key on green_coffee_inv.coffee_catalog_id that references coffee_catalog.id
   - Remove duplication of data between green_coffee_inv and coffee_catalog
