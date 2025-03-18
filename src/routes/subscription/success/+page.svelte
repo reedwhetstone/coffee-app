@@ -7,7 +7,7 @@
 	let loading = $state(true);
 	let error = $state('');
 	let success = $state(false);
-
+	//updated webhook
 	onMount(async () => {
 		// Check if user is authenticated
 		if (!data?.session?.user) {
