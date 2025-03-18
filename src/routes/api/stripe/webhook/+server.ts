@@ -64,6 +64,31 @@ export async function POST({ request }: RequestEvent) {
 				console.log('🧑 Customer ID:', session.customer);
 				console.log('📝 Subscription ID:', session.subscription);
 
+				// Check if client_reference_id contains a Supabase user ID
+				if (session.client_reference_id && session.customer) {
+					console.log('🔑 Client reference ID found:', session.client_reference_id);
+
+					// Store this ID as supabaseUserId in the customer metadata
+					try {
+						const stripe = new Stripe(STRIPE_SECRET_KEY, {
+							apiVersion: '2025-02-24.acacia'
+						});
+
+						const customerId =
+							typeof session.customer === 'string' ? session.customer : session.customer.id;
+
+						await stripe.customers.update(customerId, {
+							metadata: {
+								supabaseUserId: session.client_reference_id
+							}
+						});
+
+						console.log('✅ Updated customer metadata with user ID');
+					} catch (err) {
+						console.error('❌ Error updating customer metadata:', err);
+					}
+				}
+
 				// If this created a subscription, handle it
 				if (session.mode === 'subscription' && session.subscription) {
 					console.log('✅ Subscription created in checkout, retrieving details');
@@ -159,8 +184,61 @@ async function handleSubscriptionActive(subscription: any, supabase: any) {
 			) {
 				userId = customer.metadata.supabaseUserId;
 				console.log('✅ Found user ID in Stripe metadata:', userId);
+			} else {
+				console.log('❌ No supabaseUserId found in customer metadata');
 
-				// Create the mapping in our database
+				// Try to find the user by email address instead
+				if (customer && 'email' in customer && customer.email) {
+					const customerEmail = customer.email;
+					console.log('🔍 Searching for user by email:', customerEmail);
+
+					type User = { id: string; email: string | null };
+					type ListUsersResponse = {
+						data: { users: User[] };
+						error: Error | null;
+					};
+
+					// Query the auth.users table using the service role
+					// The service role in Supabase can access auth tables
+					const { data: userData, error: userError } = await supabase.auth.admin
+						.listUsers()
+						.then((response: ListUsersResponse) => {
+							if (response.error) return { data: null, error: response.error };
+
+							// Find the user with the matching email
+							const matchedUser = response.data.users.find(
+								(user: User) => user.email?.toLowerCase() === customerEmail.toLowerCase()
+							);
+
+							return {
+								data: matchedUser || null,
+								error: null
+							};
+						})
+						.catch((err: Error) => ({ data: null, error: err }));
+
+					console.log('🔍 User lookup result:', userData ? 'User found' : 'No user found');
+
+					if (userError) {
+						console.error('❌ Error querying users:', userError);
+						return;
+					}
+
+					if (userData) {
+						userId = userData.id;
+						console.log('✅ Found user ID by email lookup:', userId);
+					} else {
+						console.error('❌ No user found with email:', customer.email);
+						return;
+					}
+				} else {
+					console.error('❌ No email found in Stripe customer data');
+					return;
+				}
+			}
+
+			// Create the mapping in our database
+			if (userId) {
 				const { error: insertError } = await supabase.from('stripe_customers').upsert({
 					user_id: userId,
 					customer_id: customerId,
@@ -173,15 +251,7 @@ async function handleSubscriptionActive(subscription: any, supabase: any) {
 					console.log('✅ Created customer mapping in database');
 				}
 			} else {
-				console.error('❌ No supabaseUserId found in customer metadata');
-				// Additional debugging - check if customer exists at all
-				const { data: allCustomers, error: listError } = await supabase
-					.from('stripe_customers')
-					.select('customer_id, user_id')
-					.limit(5);
-
-				console.log('🔍 First few stripe_customers records:', allCustomers);
-				console.log('🔍 List error:', listError);
+				console.error('❌ Could not determine user ID from Stripe customer');
 				return;
 			}
 		} catch (err) {
