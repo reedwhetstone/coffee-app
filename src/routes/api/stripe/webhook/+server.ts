@@ -192,43 +192,36 @@ async function handleSubscriptionActive(subscription: any, supabase: any) {
 					const customerEmail = customer.email;
 					console.log('🔍 Searching for user by email:', customerEmail);
 
-					type User = { id: string; email: string | null };
-					type ListUsersResponse = {
-						data: { users: User[] };
-						error: Error | null;
-					};
+					// Direct query to the user_roles table which already contains emails
+					try {
+						const { data: userRole, error: userRoleError } = await supabase
+							.from('user_roles')
+							.select('id, email')
+							.eq('email', customerEmail)
+							.maybeSingle();
 
-					// Query the auth.users table using the service role
-					// The service role in Supabase can access auth tables
-					const { data: userData, error: userError } = await supabase.auth.admin
-						.listUsers()
-						.then((response: ListUsersResponse) => {
-							if (response.error) return { data: null, error: response.error };
+						if (userRoleError) {
+							console.error('❌ Error querying user_roles table:', userRoleError);
+							return;
+						}
 
-							// Find the user with the matching email
-							const matchedUser = response.data.users.find(
-								(user: User) => user.email?.toLowerCase() === customerEmail.toLowerCase()
-							);
+						if (userRole) {
+							userId = userRole.id;
+							console.log('✅ Found user ID in user_roles table:', userId);
+						} else {
+							console.error('❌ No user found with email:', customerEmail);
 
-							return {
-								data: matchedUser || null,
-								error: null
-							};
-						})
-						.catch((err: Error) => ({ data: null, error: err }));
+							// Log existing user_roles entries for debugging
+							const { data: allRoles } = await supabase
+								.from('user_roles')
+								.select('id, email')
+								.limit(5);
 
-					console.log('🔍 User lookup result:', userData ? 'User found' : 'No user found');
-
-					if (userError) {
-						console.error('❌ Error querying users:', userError);
-						return;
-					}
-
-					if (userData) {
-						userId = userData.id;
-						console.log('✅ Found user ID by email lookup:', userId);
-					} else {
-						console.error('❌ No user found with email:', customer.email);
+							console.log('🔍 Sample user_roles entries:', allRoles);
+							return;
+						}
+					} catch (err) {
+						console.error('❌ Error searching for user by email:', err);
 						return;
 					}
 				} else {
@@ -324,8 +317,54 @@ async function handleSubscriptionInactive(subscription: any, supabase: any) {
 			) {
 				userId = customer.metadata.supabaseUserId;
 				console.log('✅ Found user ID in Stripe metadata (inactive):', userId);
+			} else {
+				console.log('❌ No supabaseUserId found in customer metadata (inactive)');
 
-				// Create the mapping in our database
+				// Try to find the user by email address instead
+				if (customer && 'email' in customer && customer.email) {
+					const customerEmail = customer.email;
+					console.log('🔍 Searching for user by email (inactive):', customerEmail);
+
+					// Direct query to the user_roles table which already contains emails
+					try {
+						const { data: userRole, error: userRoleError } = await supabase
+							.from('user_roles')
+							.select('id, email')
+							.eq('email', customerEmail)
+							.maybeSingle();
+
+						if (userRoleError) {
+							console.error('❌ Error querying user_roles table (inactive):', userRoleError);
+							return;
+						}
+
+						if (userRole) {
+							userId = userRole.id;
+							console.log('✅ Found user ID in user_roles table (inactive):', userId);
+						} else {
+							console.error('❌ No user found with email (inactive):', customerEmail);
+
+							// Log existing user_roles entries for debugging
+							const { data: allRoles } = await supabase
+								.from('user_roles')
+								.select('id, email')
+								.limit(5);
+
+							console.log('🔍 Sample user_roles entries (inactive):', allRoles);
+							return;
+						}
+					} catch (err) {
+						console.error('❌ Error searching for user by email (inactive):', err);
+						return;
+					}
+				} else {
+					console.error('❌ No email found in Stripe customer data (inactive)');
+					return;
+				}
+			}
+
+			// Create the mapping in our database if we have a user ID
+			if (userId) {
 				const { error: insertError } = await supabase.from('stripe_customers').upsert({
 					user_id: userId,
 					customer_id: customerId,
@@ -338,7 +377,7 @@ async function handleSubscriptionInactive(subscription: any, supabase: any) {
 					console.log('✅ Created customer mapping in database (inactive)');
 				}
 			} else {
-				console.error('❌ No supabaseUserId found in customer metadata (inactive)');
+				console.error('❌ Could not determine user ID from Stripe customer (inactive)');
 				return;
 			}
 		} catch (err) {
