@@ -4,12 +4,21 @@
 	import { onMount } from 'svelte';
 
 	let { data } = $props<{ data: PageData }>();
+	const siteUrl =
+		typeof window !== 'undefined' ? window.location.origin : 'https://www.purveyors.io/';
 
 	// Check if user is authenticated when component mounts
 	onMount(() => {
 		if (!data?.session?.user) {
 			// Redirect to home page if not authenticated
 			goto('/');
+		}
+
+		// Check if redirected from Stripe with success flag
+		const url = new URL(window.location.href);
+		const stripeSuccess = url.searchParams.get('stripe_success');
+		if (stripeSuccess === 'true') {
+			goto('/subscription/success');
 		}
 	});
 </script>
@@ -39,6 +48,8 @@
 					publishable-key="pk_test_51R3ltgKwI9NkGqAnh6PER9cKR2gXZuBKEIb8oIQpSbOQ6qo13ivw2694cCoGWNvqUu2hG5z91rLBsupkwz92kAfY00arRRkkIc"
 					client-reference-id={data.session.user.id}
 					customer-email={data.session.user.email}
+					success-url={`${siteUrl}/subscription?stripe_success=true`}
+					cancel-url={`${siteUrl}/subscription`}
 				>
 				</stripe-pricing-table>
 			{:else}
