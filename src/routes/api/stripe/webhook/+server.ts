@@ -57,6 +57,34 @@ export async function POST({ request }: RequestEvent) {
 
 		// Handle specific events
 		switch (event.type) {
+			case 'checkout.session.completed':
+				// Handle successful checkout
+				const session = event.data.object;
+				console.log('💰 Checkout session completed');
+				console.log('🧑 Customer ID:', session.customer);
+				console.log('📝 Subscription ID:', session.subscription);
+
+				// If this created a subscription, handle it
+				if (session.mode === 'subscription' && session.subscription) {
+					console.log('✅ Subscription created in checkout, retrieving details');
+					try {
+						const stripe = new Stripe(STRIPE_SECRET_KEY, {
+							apiVersion: '2025-02-24.acacia'
+						});
+
+						const subscriptionId =
+							typeof session.subscription === 'string'
+								? session.subscription
+								: session.subscription.id;
+
+						const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+						await handleSubscriptionActive(subscription, supabase);
+					} catch (err) {
+						console.error('❌ Error retrieving subscription details:', err);
+					}
+				}
+				break;
+
 			case 'customer.subscription.created':
 			case 'customer.subscription.updated':
 				// Handle subscription creation or update
