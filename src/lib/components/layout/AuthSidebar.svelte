@@ -1,6 +1,7 @@
 <!-- src/lib/components/layout/AuthSidebar.svelte -->
 <script lang="ts">
 	import { signInWithGoogle, signOut } from '$lib/supabase';
+	import { goto } from '$app/navigation';
 
 	// Props with default values to prevent undefined errors
 	let {
@@ -33,6 +34,11 @@
 		} catch (error) {
 			console.error('Error signing out:', error);
 		}
+	}
+
+	function navigateToSubscription() {
+		onClose();
+		goto('/subscription');
 	}
 </script>
 
@@ -72,6 +78,13 @@
 			<div class="mb-4">
 				<h3 class="mb-2 font-medium">Signed in as:</h3>
 				<p class="mb-4 text-sm opacity-80">{session.user.email}</p>
+
+				<button
+					onclick={navigateToSubscription}
+					class="mb-3 w-full rounded bg-blue-500/10 px-4 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20"
+				>
+					Manage Subscription
+				</button>
 
 				<button
 					onclick={handleSignOut}
