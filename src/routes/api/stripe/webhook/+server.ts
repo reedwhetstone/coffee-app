@@ -1,14 +1,27 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '$lib/supabase';
-import { STRIPE_WEBHOOK_SECRET, STRIPE_SECRET_KEY } from '$env/static/private';
+import {
+	STRIPE_WEBHOOK_SECRET,
+	STRIPE_SECRET_KEY,
+	SUPABASE_SERVICE_ROLE_KEY
+} from '$env/static/private';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import Stripe from 'stripe';
 import type { RequestEvent } from '@sveltejs/kit';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export async function POST({ request }: RequestEvent) {
 	console.log('🔔 Webhook endpoint called');
 
-	// Create Supabase admin client with server-side privileges
-	const supabase = createClient();
+	// Create Supabase admin client with service role privileges
+	// This bypasses RLS policies for admin operations
+	const supabase = createAdminClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+		auth: {
+			persistSession: false,
+			autoRefreshToken: false
+		}
+	});
+	console.log('📊 Using service role client for database operations');
 
 	// Get the signature from the headers
 	const signature = request.headers.get('stripe-signature');
