@@ -35,8 +35,8 @@
 			{#if data?.session?.user}
 				<!-- Show pricing table for logged-in users -->
 				<stripe-pricing-table
-					pricing-table-id="prctbl_1R3mbGKwI9NkGqAnICwmE85F"
-					publishable-key="pk_live_51R3ltgKwI9NkGqAnzQHOmPvkVfxCdAFGf4fwDKw9tGMtv1AcEYLONo8It8dnPTBHoZHY6gmHj6zZhtbPRgrYOrII006S1GdaWO"
+					pricing-table-id="prctbl_1R3q5qKwI9NkGqAnQSER8dSB"
+					publishable-key="pk_test_51R3ltgKwI9NkGqAnh6PER9cKR2gXZuBKEIb8oIQpSbOQ6qo13ivw2694cCoGWNvqUu2hG5z91rLBsupkwz92kAfY00arRRkkIc"
 					client-reference-id={data.session.user.id}
 					customer-email={data.session.user.email}
 				>
