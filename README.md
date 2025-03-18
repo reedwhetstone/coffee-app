@@ -38,6 +38,7 @@ Create a stocked coffees col in green coffee inv- create stocked coffees managem
 
 ### General
 
+- add lot buys for large orders like 22lb crown jewels
 - Add loading states
 - Fix real experience score and content paint
 - Set up no-cookies banner at the bottom of the page
