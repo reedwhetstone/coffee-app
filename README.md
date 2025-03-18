@@ -30,6 +30,7 @@ Create a stocked coffees col in green coffee inv- create stocked coffees managem
 
 - add Showroom Coffee, Royal Coffee, Genuine Origin
 - https://www.coffeebeancorral.com/categories/Green-Coffee-Beans/All-Coffees.aspx?q=&o=1&i=200&d=200
+- https://haceacoffee.com/collections/green-coffee
 - **Sweet Marias Scraping Fix**
   - Correct scrape function to not wipe stocked beans if it finds 0 beans that day
 - **Bean Import Feature**
