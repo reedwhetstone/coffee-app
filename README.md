@@ -28,6 +28,8 @@ Create a stocked coffees col in green coffee inv- create stocked coffees managem
 
 ## Web Scraping & Data Import
 
+-fix the stocked coffees procedure so that it only adds and removes the new changes- will allow you to track trends in stockings. 
+- add a stocked calculation that marks a coffee's total time in stock when it gets marked to false. 
 - add Showroom Coffee, Royal Coffee, Genuine Origin
 - https://www.coffeebeancorral.com/categories/Green-Coffee-Beans/All-Coffees.aspx?q=&o=1&i=200&d=200
 - https://haceacoffee.com/collections/green-coffee
