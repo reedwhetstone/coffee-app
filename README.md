@@ -12,6 +12,8 @@
 
 # Todo List
 
+BUG: when a new user with no data accesses their bean page from the catalog page it displays all catalog data and makes it look like you can edit the profiles for random coffees
+
 ## Database & Data Structure
 
 Create a stocked coffees col in green coffee inv- create stocked coffees management functionality
@@ -28,8 +30,9 @@ Create a stocked coffees col in green coffee inv- create stocked coffees managem
 
 ## Web Scraping & Data Import
 
--fix the stocked coffees procedure so that it only adds and removes the new changes- will allow you to track trends in stockings. 
-- add a stocked calculation that marks a coffee's total time in stock when it gets marked to false. 
+-fix the stocked coffees procedure so that it only adds and removes the new changes- will allow you to track trends in stockings.
+
+- add a stocked calculation that marks a coffee's total time in stock when it gets marked to false.
 - add Showroom Coffee, Royal Coffee, Genuine Origin
 - https://www.coffeebeancorral.com/categories/Green-Coffee-Beans/All-Coffees.aspx?q=&o=1&i=200&d=200
 - https://haceacoffee.com/collections/green-coffee
@@ -43,6 +46,7 @@ Create a stocked coffees col in green coffee inv- create stocked coffees managem
 
 ### General
 
+- comprehensive ratings form - roast batch, brew method, nose, flavor, etc - will need a new table to manage this data.
 - add lot buys for large orders like 22lb crown jewels
 - Add loading states
 - Fix real experience score and content paint
