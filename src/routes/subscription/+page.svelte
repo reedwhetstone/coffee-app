@@ -5,7 +5,11 @@
 
 	let { data } = $props<{ data: PageData }>();
 	const siteUrl =
-		typeof window !== 'undefined' ? window.location.origin : 'https://www.purveyors.io/';
+		typeof window !== 'undefined'
+			? window.location.origin.includes('localhost')
+				? 'http://localhost:5173'
+				: 'https://www.purveyors.io'
+			: 'https://www.purveyors.io';
 
 	// Check if user is authenticated when component mounts
 	onMount(() => {
@@ -14,10 +18,10 @@
 			goto('/');
 		}
 
-		// Check if redirected from Stripe with success flag
+		// Alternative approach: check URL for Stripe session ID
 		const url = new URL(window.location.href);
-		const stripeSuccess = url.searchParams.get('stripe_success');
-		if (stripeSuccess === 'true') {
+		if (url.searchParams.has('checkout_session_id')) {
+			// Redirect to success page with the session ID
 			goto('/subscription/success');
 		}
 	});
@@ -42,16 +46,32 @@
 		<!-- Stripe Pricing Table -->
 		<div class="stripe-container mt-6">
 			{#if data?.session?.user}
-				<!-- Show pricing table for logged-in users -->
-				<stripe-pricing-table
-					pricing-table-id="prctbl_1R3q5qKwI9NkGqAnQSER8dSB"
-					publishable-key="pk_test_51R3ltgKwI9NkGqAnh6PER9cKR2gXZuBKEIb8oIQpSbOQ6qo13ivw2694cCoGWNvqUu2hG5z91rLBsupkwz92kAfY00arRRkkIc"
-					client-reference-id={data.session.user.id}
-					customer-email={data.session.user.email}
-					success-url={`${siteUrl}/subscription?stripe_success=true`}
-					cancel-url={`${siteUrl}/subscription`}
-				>
-				</stripe-pricing-table>
+				{#if data.role === 'member' || data.role === 'admin'}
+					<!-- Show message for users who are already members -->
+					<div class="rounded-lg bg-green-500/10 p-6 text-center">
+						<h3 class="mb-3 text-lg font-medium text-green-400">You're a Member!</h3>
+						<p class="text-primary-light mb-6 text-sm">
+							You already have an active subscription. Thank you for your support!
+						</p>
+						<button
+							onclick={() => goto('/')}
+							class="rounded bg-blue-500/10 px-4 py-2 text-sm text-blue-400 hover:bg-blue-500/20"
+						>
+							Return to Homepage
+						</button>
+					</div>
+				{:else}
+					<!-- Show pricing table for logged-in users who are not members -->
+					<stripe-pricing-table
+						pricing-table-id="prctbl_1R3q5qKwI9NkGqAnQSER8dSB"
+						publishable-key="pk_test_51R3ltgKwI9NkGqAnh6PER9cKR2gXZuBKEIb8oIQpSbOQ6qo13ivw2694cCoGWNvqUu2hG5z91rLBsupkwz92kAfY00arRRkkIc"
+						client-reference-id={data.session.user.id}
+						customer-email={data.session.user.email}
+						success-url={`${siteUrl}/subscription/success?checkout_session_id={CHECKOUT_SESSION_ID}`}
+						cancel-url={`${siteUrl}/subscription`}
+					>
+					</stripe-pricing-table>
+				{/if}
 			{:else}
 				<!-- Loading or redirect state -->
 				<div class="rounded-lg bg-background-tertiary-light p-6 text-center">

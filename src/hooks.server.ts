@@ -7,6 +7,20 @@ import { handleCookieCheck } from '$lib/middleware/cookieCheck';
 import { getUserRole } from '$lib/server/auth';
 import { requireRole } from '$lib/server/auth';
 
+// Handle Stripe checkout success redirects
+const handleStripeRedirects: Handle = async ({ event, resolve }) => {
+	const url = event.url;
+
+	// Check for Stripe checkout success
+	if (url.searchParams.has('checkout_session_id') && url.pathname === '/subscription') {
+		// Stripe has redirected with checkout_session_id which means successful payment
+		console.log('Detected Stripe checkout success, redirecting to success page');
+		throw redirect(303, '/subscription/success');
+	}
+
+	return resolve(event);
+};
+
 const handleSupabase: Handle = async ({ event, resolve }) => {
 	event.locals.supabase = createServerClient<Database>(
 		PUBLIC_SUPABASE_URL,
@@ -107,4 +121,5 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-export const handle = sequence(handleCookieCheck, handleSupabase, authGuard);
+// Add handleStripeRedirects to the sequence, before the other handlers
+export const handle = sequence(handleStripeRedirects, handleCookieCheck, handleSupabase, authGuard);

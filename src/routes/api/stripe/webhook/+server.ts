@@ -291,6 +291,28 @@ async function handleSubscriptionActive(subscription: any, supabase: any) {
 
 				if (insertError) {
 					console.error('❌ Error creating customer mapping:', insertError);
+					console.error('Error details:', {
+						code: insertError.code,
+						details: insertError.details,
+						hint: insertError.hint,
+						message: insertError.message
+					});
+
+					// Try to log the RLS policies on the stripe_customers table
+					try {
+						const { data: rlsPolicies, error: rlsError } = await supabase.rpc(
+							'get_policies_for_table',
+							{ table_name: 'stripe_customers' }
+						);
+
+						if (rlsError) {
+							console.error('Failed to query RLS policies:', rlsError);
+						} else {
+							console.log('RLS policies for stripe_customers:', rlsPolicies);
+						}
+					} catch (err) {
+						console.error('Error checking RLS policies:', err);
+					}
 				} else {
 					console.log('✅ Created customer mapping in database');
 				}
@@ -489,6 +511,28 @@ async function handleSubscriptionInactive(subscription: any, supabase: any) {
 
 				if (insertError) {
 					console.error('❌ Error creating customer mapping (inactive):', insertError);
+					console.error('Error details:', {
+						code: insertError.code,
+						details: insertError.details,
+						hint: insertError.hint,
+						message: insertError.message
+					});
+
+					// Try to log the RLS policies on the stripe_customers table
+					try {
+						const { data: rlsPolicies, error: rlsError } = await supabase.rpc(
+							'get_policies_for_table',
+							{ table_name: 'stripe_customers' }
+						);
+
+						if (rlsError) {
+							console.error('Failed to query RLS policies:', rlsError);
+						} else {
+							console.log('RLS policies for stripe_customers:', rlsPolicies);
+						}
+					} catch (err) {
+						console.error('Error checking RLS policies:', err);
+					}
 				} else {
 					console.log('✅ Created customer mapping in database (inactive)');
 				}
