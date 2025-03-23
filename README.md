@@ -46,6 +46,8 @@ Create a stocked coffees col in green coffee inv- create stocked coffees managem
 
 ### General
 
+- need a purchased qty remaining data set in beans category to add to the stocked functionality
+- add % loss to the roast area displayed per roast.
 - comprehensive ratings form - roast batch, brew method, nose, flavor, etc - will need a new table to manage this data.
 - add lot buys for large orders like 22lb crown jewels
 - Add loading states
