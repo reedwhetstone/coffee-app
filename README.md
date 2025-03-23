@@ -46,6 +46,7 @@ Create a stocked coffees col in green coffee inv- create stocked coffees managem
 
 ### General
 
+- roast insights view that shows the roasts organized by bean so you can compare how each actual roast went with the beans instead of by batch.
 - need a purchased qty remaining data set in beans category to add to the stocked functionality
 - add % loss to the roast area displayed per roast.
 - comprehensive ratings form - roast batch, brew method, nose, flavor, etc - will need a new table to manage this data.
