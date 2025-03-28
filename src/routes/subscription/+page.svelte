@@ -36,21 +36,14 @@
 	<div
 		class="rounded-2xl border border-background-tertiary-light bg-background-secondary-light p-6 shadow-md"
 	>
-		<div class="mb-4">
-			<h2 class="text-primary-light mb-2 text-xl font-semibold">Choose Your Plan</h2>
-			<p class="text-primary-light text-sm">
-				Select the plan that works best for you. All plans include a 30 day free trial.
-			</p>
-		</div>
-
 		<!-- Stripe Pricing Table -->
 		<div class="stripe-container mt-6">
 			{#if data?.session?.user}
 				{#if data.role === 'member' || data.role === 'admin'}
 					<!-- Show message for users who are already members -->
-					<div class="rounded-lg bg-green-500/10 p-6 text-center">
-						<h3 class="mb-3 text-lg font-medium text-green-400">You're a Member!</h3>
-						<p class="text-primary-light mb-6 text-sm">
+					<div class="flex flex-col items-center rounded-lg p-6 text-center">
+						<h3 class="text-primary-light mb-2 text-xl font-semibold">You're a Member!</h3>
+						<p class="text-primary-light mb-4 text-sm">
 							You already have an active subscription. Thank you for your support!
 						</p>
 						<button
@@ -61,6 +54,12 @@
 						</button>
 					</div>
 				{:else}
+					<div class="mb-4">
+						<h2 class="text-primary-light mb-2 text-xl font-semibold">Choose Your Plan</h2>
+						<p class="text-primary-light text-sm">
+							Select the plan that works best for you. All plans include a 30 day free trial.
+						</p>
+					</div>
 					<!-- Show pricing table for logged-in users who are not members -->
 					<stripe-pricing-table
 						pricing-table-id="prctbl_1R3q5qKwI9NkGqAnQSER8dSB"
