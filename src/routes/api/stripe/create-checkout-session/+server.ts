@@ -1,9 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { STRIPE_SECRET_KEY } from '$env/static/private';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(STRIPE_SECRET_KEY);
+import { createCheckoutSession } from '$lib/services/stripe';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -19,23 +16,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Missing required fields' }, { status: 400 });
 		}
 
-		// Create a Stripe Checkout Session for embedded checkout
-		const checkoutSession = await stripe.checkout.sessions.create({
-			payment_method_types: ['card'],
-			line_items: [
-				{
-					price: priceId,
-					quantity: 1
-				}
-			],
-			mode: 'subscription',
-			ui_mode: 'embedded', // This is what makes it embedded
-			return_url: `${request.headers.get('origin') || 'http://localhost:5173'}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-			customer_email: customerEmail || session.user.email,
-			client_reference_id: clientReferenceId || session.user.id
-		});
+		// Get the origin for the return URL
+		const origin = request.headers.get('origin') || 'http://localhost:5173';
 
-		return json({ clientSecret: checkoutSession.client_secret });
+		// Create a checkout session using our service
+		const clientSecret = await createCheckoutSession(
+			priceId,
+			null, // We don't pass customerId here since we want to capture email for new customers
+			clientReferenceId || session.user.id,
+			customerEmail || session.user.email || '',
+			origin
+		);
+
+		if (!clientSecret) {
+			return json({ error: 'Failed to create checkout session' }, { status: 500 });
+		}
+
+		return json({ clientSecret });
 	} catch (error: any) {
 		console.error('Error creating checkout session:', error);
 		return json({ error: error.message }, { status: 500 });

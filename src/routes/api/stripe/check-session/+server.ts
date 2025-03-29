@@ -1,9 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { STRIPE_SECRET_KEY } from '$env/static/private';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(STRIPE_SECRET_KEY);
+import { getStripe } from '$lib/services/stripe';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
@@ -18,7 +15,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			return json({ error: 'Missing session_id parameter' }, { status: 400 });
 		}
 
-		// Retrieve the Checkout Session
+		// Get Stripe instance and retrieve the Checkout Session
+		const stripe = getStripe();
 		const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
 
 		// Return the status of the checkout session
