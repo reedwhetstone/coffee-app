@@ -15,6 +15,12 @@
 	let showCheckout = $state(false);
 	let selectedPriceId = $state('');
 	let selectedPlanName = $state('');
+	let cancelLoading = $state(false);
+	let cancelError = $state('');
+	let cancelSuccess = $state(false);
+	let resumeLoading = $state(false);
+	let resumeError = $state('');
+	let resumeSuccess = $state(false);
 
 	// Available subscription plans
 	const plans = [
@@ -39,6 +45,86 @@
 
 	const handleCheckoutCancel = () => {
 		showCheckout = false;
+	};
+
+	// Function to format date from unix timestamp
+	const formatDate = (unixTimestamp: number) => {
+		const date = new Date(unixTimestamp * 1000);
+		return date.toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric'
+		});
+	};
+
+	// Function to cancel subscription
+	const cancelSubscription = async () => {
+		if (!data.subscription?.id) return;
+
+		cancelLoading = true;
+		cancelError = '';
+		cancelSuccess = false;
+
+		try {
+			const response = await fetch('/api/stripe/cancel-subscription', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					subscriptionId: data.subscription.id
+				})
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				throw new Error(result.error || 'Failed to cancel subscription');
+			}
+
+			cancelSuccess = true;
+			// Update local data to show cancellation status
+			data.subscription.cancel_at_period_end = true;
+		} catch (error) {
+			cancelError = error instanceof Error ? error.message : 'An unknown error occurred';
+		} finally {
+			cancelLoading = false;
+		}
+	};
+
+	// Function to resume subscription
+	const resumeSubscription = async () => {
+		if (!data.subscription?.id) return;
+
+		resumeLoading = true;
+		resumeError = '';
+		resumeSuccess = false;
+
+		try {
+			const response = await fetch('/api/stripe/resume-subscription', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					subscriptionId: data.subscription.id
+				})
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				throw new Error(result.error || 'Failed to resume subscription');
+			}
+
+			resumeSuccess = true;
+			// Update local data to show resumed status
+			data.subscription.cancel_at_period_end = false;
+		} catch (error) {
+			resumeError = error instanceof Error ? error.message : 'An unknown error occurred';
+		} finally {
+			resumeLoading = false;
+		}
 	};
 
 	// Check if user is authenticated when component mounts
@@ -68,18 +154,127 @@
 		>
 			{#if data?.session?.user}
 				{#if data.role === 'member' || data.role === 'admin'}
-					<!-- Show message for users who are already members -->
-					<div class="flex flex-col items-center rounded-lg p-6 text-center">
-						<h3 class="text-primary-light mb-2 text-xl font-semibold">You're a Member!</h3>
-						<p class="text-primary-light mb-4 text-sm">
-							You already have an active subscription. Thank you for your support!
-						</p>
-						<button
-							onclick={() => goto('/')}
-							class="rounded bg-blue-500/10 px-4 py-2 text-sm text-blue-400 hover:bg-blue-500/20"
-						>
-							Return to Homepage
-						</button>
+					<!-- Show subscription management UI for existing members -->
+					<div class="flex flex-col items-center rounded-lg p-6">
+						<h3 class="text-primary-light mb-2 text-xl font-semibold">Subscription Management</h3>
+
+						{#if data.subscription}
+							<div class="text-primary-light w-full max-w-md space-y-4">
+								<!-- Subscription Details -->
+								<div class="rounded-lg bg-background-tertiary-light/50 p-4 shadow-sm">
+									<h4 class="text-primary-light mb-2 font-medium">Your Plan</h4>
+									<div class="text-primary-light/80 grid grid-cols-2 gap-2 text-sm">
+										<span>Status:</span>
+										<span class="font-medium capitalize">
+											{data.subscription.status}
+											{#if data.subscription.cancel_at_period_end}
+												<span class="text-orange-400">(Cancels at period end)</span>
+											{/if}
+										</span>
+
+										<span>Plan:</span>
+										<span class="font-medium">
+											{data.subscription.plan?.name || 'Premium Plan'}
+										</span>
+
+										<span>Price:</span>
+										<span class="font-medium">
+											${(data.subscription.plan?.amount || 0) / 100}/
+											{data.subscription.plan?.interval || 'month'}
+										</span>
+
+										<span>Current period ends:</span>
+										<span class="font-medium">
+											{data.subscription.current_period_end
+												? formatDate(data.subscription.current_period_end)
+												: 'N/A'}
+										</span>
+									</div>
+								</div>
+
+								<!-- Action Buttons -->
+								<div class="mt-4 flex flex-col items-center space-y-3">
+									{#if data.subscription.cancel_at_period_end}
+										<div class="text-primary-light/80 text-center text-sm">
+											<p>
+												Your subscription will end on {formatDate(
+													data.subscription.current_period_end
+												)}.
+											</p>
+											<p>You'll continue to have access until that date.</p>
+										</div>
+
+										<button
+											onclick={() => resumeSubscription()}
+											disabled={resumeLoading}
+											class="mt-2 w-full rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-400 transition-colors hover:bg-blue-500/20 disabled:opacity-50"
+										>
+											{resumeLoading ? 'Processing...' : 'Resume Subscription'}
+										</button>
+
+										{#if resumeSuccess}
+											<div class="mt-2 text-sm text-green-400">
+												Your subscription has been resumed and will continue automatically.
+											</div>
+										{/if}
+
+										{#if resumeError}
+											<div class="mt-2 text-sm text-red-400">
+												Error: {resumeError}
+											</div>
+										{/if}
+									{:else}
+										<button
+											onclick={() => cancelSubscription()}
+											disabled={cancelLoading}
+											class="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+										>
+											{cancelLoading ? 'Processing...' : 'Cancel Subscription'}
+										</button>
+										<p class="text-primary-light/70 mt-1 text-xs">
+											Your subscription will continue until the end of the current billing period.
+										</p>
+
+										{#if cancelSuccess}
+											<div class="mt-2 text-sm text-green-400">
+												Your subscription has been canceled and will end on {formatDate(
+													data.subscription.current_period_end
+												)}.
+											</div>
+										{/if}
+
+										{#if cancelError}
+											<div class="mt-2 text-sm text-red-400">
+												Error: {cancelError}
+											</div>
+										{/if}
+									{/if}
+								</div>
+
+								<div class="mt-6 text-center">
+									<button
+										onclick={() => goto('/')}
+										class="rounded bg-blue-500/10 px-4 py-2 text-sm text-blue-400 hover:bg-blue-500/20"
+									>
+										Return to Homepage
+									</button>
+								</div>
+							</div>
+						{:else}
+							<!-- Fallback if we couldn't load subscription details -->
+							<div class="text-primary-light text-center">
+								<p class="mb-4">You're a member with active benefits!</p>
+								<p class="text-primary-light/70 text-sm">
+									We couldn't load your subscription details at the moment.
+								</p>
+								<button
+									onclick={() => goto('/')}
+									class="mt-4 rounded bg-blue-500/10 px-4 py-2 text-sm text-blue-400 hover:bg-blue-500/20"
+								>
+									Return to Homepage
+								</button>
+							</div>
+						{/if}
 					</div>
 				{:else if showCheckout && selectedPriceId}
 					<!-- Checkout Form (replaces plan selection when a plan is selected) -->

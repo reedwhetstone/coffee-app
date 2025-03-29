@@ -3,6 +3,7 @@ import { createClient } from '$lib/supabase';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const session = locals.session;
+	const role = locals.role || 'viewer';
 
 	// If user is logged in, check if they already have a Stripe customer ID
 	if (session?.user) {
@@ -21,11 +22,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 		return {
 			session,
+			role,
 			stripeCustomerId: customerData?.customer_id || null
 		};
 	}
 
 	return {
-		session
+		session,
+		role
 	};
 };
