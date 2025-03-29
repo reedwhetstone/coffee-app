@@ -1,6 +1,7 @@
 import { STRIPE_SECRET_KEY } from '$env/static/private';
 import Stripe from 'stripe';
 import { createClient } from '$lib/supabase';
+import { createAdminClient } from '$lib/supabase-admin';
 import type { Session } from '@supabase/supabase-js';
 
 // Initialize Stripe with the latest API version
@@ -37,7 +38,9 @@ export interface SubscriptionDetails {
  * Get Stripe customer ID for a user
  */
 export async function getStripeCustomerId(userId: string): Promise<string | null> {
-	const supabase = createClient();
+	// Use the admin client to bypass RLS
+	const supabase = createAdminClient();
+
 	const { data, error } = await supabase
 		.from('stripe_customers')
 		.select('customer_id')
@@ -48,7 +51,7 @@ export async function getStripeCustomerId(userId: string): Promise<string | null
 		console.error('Error fetching Stripe customer ID:', error);
 		return null;
 	}
-
+	console.log('data', data);
 	return data?.customer_id || null;
 }
 
@@ -61,23 +64,44 @@ export async function createStripeCustomer(
 	name?: string
 ): Promise<string | null> {
 	const stripe = getStripe();
-	const supabase = createClient();
+	const supabase = createAdminClient();
 
 	try {
-		// Create customer in Stripe
-		const customer = await stripe.customers.create({
-			email,
-			name: name || undefined,
-			metadata: {
-				supabaseUserId: userId
-			}
+		// First, check if this user had any previous customers in Stripe
+		// by searching for customers with this email
+		const existingCustomers = await stripe.customers.list({
+			email: email,
+			limit: 10
 		});
 
-		// Store the customer ID in Supabase
+		// If there are existing customers with metadata matching this user,
+		// we'll use the most recent one instead of creating a new one
+		const existingCustomer = existingCustomers.data.find(
+			(cust) => cust.metadata?.supabaseUserId === userId
+		);
+
+		let customerId;
+
+		if (existingCustomer) {
+			console.log('Using existing Stripe customer:', existingCustomer.id);
+			customerId = existingCustomer.id;
+		} else {
+			// Create a new customer in Stripe
+			const newCustomer = await stripe.customers.create({
+				email,
+				name: name || undefined,
+				metadata: {
+					supabaseUserId: userId
+				}
+			});
+			customerId = newCustomer.id;
+		}
+
+		// Store or update the customer ID in Supabase
 		const { error } = await supabase.from('stripe_customers').upsert(
 			{
 				user_id: userId,
-				customer_id: customer.id,
+				customer_id: customerId,
 				email
 			},
 			{
@@ -90,7 +114,7 @@ export async function createStripeCustomer(
 			return null;
 		}
 
-		return customer.id;
+		return customerId;
 	} catch (error) {
 		console.error('Error creating Stripe customer:', error);
 		return null;
@@ -113,30 +137,33 @@ export async function getSubscriptionDetails(
 			expand: ['data.default_payment_method']
 		});
 
-		// Get the most recent active subscription
-		const activeSubscription = subscriptions.data.find(
-			(sub) => sub.status === 'active' || sub.status === 'trialing'
-		);
+		console.log('subscriptions', subscriptions);
 
-		if (activeSubscription) {
-			const priceItem = activeSubscription.items.data[0]?.price;
-
-			return {
-				id: activeSubscription.id,
-				status: activeSubscription.status as SubscriptionStatus,
-				current_period_end: activeSubscription.current_period_end,
-				cancel_at_period_end: activeSubscription.cancel_at_period_end,
-				plan: {
-					name: typeof priceItem?.product === 'string' ? priceItem.product : 'Premium Plan',
-					amount: priceItem?.unit_amount,
-					interval: priceItem?.recurring?.interval || null,
-					interval_count: priceItem?.recurring?.interval_count || null
-				},
-				payment_method: activeSubscription.default_payment_method as Stripe.PaymentMethod | null
-			};
+		// If no subscriptions found
+		if (subscriptions.data.length === 0) {
+			return null;
 		}
 
-		return null;
+		// Get the most recent subscription (regardless of status)
+		// Sort by created date descending to get most recent first
+		const sortedSubscriptions = [...subscriptions.data].sort((a, b) => b.created - a.created);
+		const latestSubscription = sortedSubscriptions[0];
+
+		const priceItem = latestSubscription.items.data[0]?.price;
+
+		return {
+			id: latestSubscription.id,
+			status: latestSubscription.status as SubscriptionStatus,
+			current_period_end: latestSubscription.current_period_end,
+			cancel_at_period_end: latestSubscription.cancel_at_period_end,
+			plan: {
+				name: typeof priceItem?.product === 'string' ? priceItem.product : 'Premium Plan',
+				amount: priceItem?.unit_amount,
+				interval: priceItem?.recurring?.interval || null,
+				interval_count: priceItem?.recurring?.interval_count || null
+			},
+			payment_method: latestSubscription.default_payment_method as Stripe.PaymentMethod | null
+		};
 	} catch (error) {
 		console.error('Error fetching subscription data:', error);
 		return null;
@@ -214,5 +241,57 @@ export async function createCheckoutSession(
 	} catch (error) {
 		console.error('Error creating checkout session:', error);
 		return null;
+	}
+}
+
+/**
+ * Clean up and reset a user's Stripe customer data
+ * This is useful for fixing misaligned customer IDs
+ */
+export async function cleanupStripeCustomer(userId: string, email: string): Promise<boolean> {
+	const stripe = getStripe();
+	const supabase = createAdminClient();
+
+	try {
+		console.log(`Cleaning up Stripe customer data for user ${userId}`);
+
+		// 1. Delete the mapping in Supabase
+		const { error: deleteError } = await supabase
+			.from('stripe_customers')
+			.delete()
+			.eq('user_id', userId);
+
+		if (deleteError) {
+			console.error('Error deleting Stripe customer from Supabase:', deleteError);
+			return false;
+		}
+
+		// 2. Find all customers in Stripe with this email or supabaseUserId
+		const existingCustomers = await stripe.customers.list({
+			email: email,
+			limit: 10
+		});
+
+		// Find customers linked to this user ID
+		const linkedCustomers = existingCustomers.data.filter(
+			(cust) => cust.metadata?.supabaseUserId === userId
+		);
+
+		// 3. Optional: Update all these customers to clear the link
+		for (const customer of linkedCustomers) {
+			console.log(`Removing user link from Stripe customer ${customer.id}`);
+			await stripe.customers.update(customer.id, {
+				metadata: {
+					supabaseUserId: '', // Clear the link
+					cleanedAt: new Date().toISOString()
+				}
+			});
+		}
+
+		console.log('Stripe customer data cleanup completed');
+		return true;
+	} catch (error) {
+		console.error('Error cleaning up Stripe customer:', error);
+		return false;
 	}
 }

@@ -13,11 +13,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 		// Get Stripe customer ID from our database
 		const stripeCustomerId = await getStripeCustomerId(session.user.id);
+		console.log('stripeCustomerId', stripeCustomerId);
+		console.log('session', session.user.id);
 
 		// Fetch subscription details if customer ID exists
 		let subscription = null;
 		if (stripeCustomerId) {
 			subscription = await getSubscriptionDetails(stripeCustomerId);
+			console.log('subscription', subscription);
 		}
 
 		return {
