@@ -46,6 +46,10 @@ Create a stocked coffees col in green coffee inv- create stocked coffees managem
 
 ### General
 
+'Supplier & Origin Comparison Tools',
+'Real-time Coffee Market Pricing Analysis',
+'Price Trend Monitoring for Green Coffee',
+
 - roast insights view that shows the roasts organized by bean so you can compare how each actual roast went with the beans instead of by batch.
 - need a purchased qty remaining data set in beans category to add to the stocked functionality
 - add % loss to the roast area displayed per roast.

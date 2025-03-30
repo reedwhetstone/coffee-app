@@ -29,7 +29,17 @@
 			name: 'Monthly Subscription',
 			price: '$5.00',
 			interval: 'month',
-			description: 'Full access to all premium features'
+			description: 'Full access to all premium features',
+			features: [
+				'Complete Coffee Bean Inventory Management',
+				'Advanced Roast Profile Creation & Tracking',
+				'Mobile Optimized Roasting Interface',
+				'Sales & Profitability Analytics',
+				'Cupping/Tasting Notes & Scoring System',
+				'Custom Roast Charting with Phase Visualization',
+				'Unlimited Bean Catalog Access',
+				'Priority Support & Feature Requests'
+			]
 		}
 	];
 
@@ -149,9 +159,7 @@
 
 <div class="min-h-[calc(100vh-80px)] px-4 py-10 md:px-6">
 	<div class="mx-auto max-w-3xl">
-		<div
-			class="rounded-2xl border border-background-tertiary-light bg-background-secondary-light p-6 shadow-md"
-		>
+		<div class="">
 			{#if data?.session?.user}
 				{#if data.role === 'member' || data.role === 'admin'}
 					<!-- Show subscription management UI for existing members -->
@@ -314,35 +322,57 @@
 					</div>
 				{:else}
 					<!-- Plan Selection UI -->
-					<div class="flex flex-col items-center">
-						<div class="mb-4">
-							<h2 class="text-primary-light mb-2 text-xl font-semibold">Choose Your Plan</h2>
-							<p class="text-primary-light text-sm">
-								Select the plan that works best for you. All plans include a 30 day free trial.
-							</p>
-						</div>
 
-						<!-- Plan Selection Cards -->
-						<div class="flex flex-col items-center">
-							{#each plans as plan}
-								<div
-									class="flex flex-col rounded-lg border border-background-tertiary-light p-4 shadow-md hover:border-blue-400"
-								>
-									<h3 class="text-primary-light mb-1 text-lg font-semibold">{plan.name}</h3>
-									<div class="text-primary-light mb-2 flex items-end">
-										<span class="text-2xl font-bold">{plan.price}</span>
-										<span class="ml-1 text-sm">/{plan.interval}</span>
-									</div>
-									<p class="text-primary-light mb-4 text-sm">{plan.description}</p>
-									<button
-										onclick={() => handlePlanSelect(plan)}
-										class="mt-auto rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
-									>
-										Select Plan
-									</button>
+					<!-- Plan Selection Cards -->
+					<div class="flex flex-col items-center">
+						{#each plans as plan}
+							<div
+								class="flex w-full max-w-md flex-col rounded-lg border border-background-tertiary-light p-6 shadow-md transition-all hover:border-blue-400"
+							>
+								<h3 class="text-primary-light mb-2 text-xl font-semibold">{plan.name}</h3>
+								<div class="text-primary-light mb-4 flex items-end">
+									<span class="text-3xl font-bold">{plan.price}</span>
+									<span class="ml-1 text-sm">/{plan.interval}</span>
 								</div>
-							{/each}
-						</div>
+
+								<!-- Feature list -->
+								<ul class="text-primary-light/90 mb-6 space-y-2">
+									{#each plan.features as feature}
+										<li class="flex items-start">
+											<svg
+												class="mr-2 h-5 w-5 flex-shrink-0 text-green-400"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M5 13l4 4L19 7"
+												></path>
+											</svg>
+											<span>{feature}</span>
+										</li>
+									{/each}
+								</ul>
+
+								<div class="text-primary-light/70 mb-4 text-sm">
+									<p>
+										Perfect for home roasters, and enthusiasts who want to track their coffee
+										journey.
+									</p>
+									<p class="mt-2">Includes a 30-day free trial - cancel anytime.</p>
+								</div>
+
+								<button
+									onclick={() => handlePlanSelect(plan)}
+									class="mt-auto w-full rounded-lg bg-blue-500 px-4 py-3 font-medium text-white transition-colors hover:bg-blue-600"
+								>
+									Start Free Trial
+								</button>
+							</div>
+						{/each}
 					</div>
 				{/if}
 			{:else}
