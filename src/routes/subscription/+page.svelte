@@ -25,7 +25,7 @@
 	// Available subscription plans
 	const plans = [
 		{
-			id: 'price_1R3q5OKwI9NkGqAnQfBhW83g',
+			id: 'price_1R3mAWKwI9NkGqAnCpzhDtvx',
 			name: 'Monthly Subscription',
 			price: '$5.00',
 			interval: 'month',

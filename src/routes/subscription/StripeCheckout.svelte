@@ -65,7 +65,7 @@
 			if (!stripe) {
 				// @ts-ignore - Stripe will be loaded from external script
 				stripe = Stripe(
-					'pk_test_51R3ltgKwI9NkGqAnh6PER9cKR2gXZuBKEIb8oIQpSbOQ6qo13ivw2694cCoGWNvqUu2hG5z91rLBsupkwz92kAfY00arRRkkIc'
+					'pk_live_51R3ltgKwI9NkGqAnzQHOmPvkVfxCdAFGf4fwDKw9tGMtv1AcEYLONo8It8dnPTBHoZHY6gmHj6zZhtbPRgrYOrII006S1GdaWO'
 				);
 			}
 
