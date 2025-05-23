@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const { prompt, coffeeData } = await request.json();
 
 		const model = genAI.getGenerativeModel({
-			model: 'gemini-2.0-flash-exp',
+			model: 'gemini-2.5-flash-preview-05-20',
 			generationConfig: {
 				temperature: 0.1,
 				topP: 0.95,
@@ -25,9 +25,10 @@ export const POST: RequestHandler = async ({ request }) => {
 					role: 'user',
 					parts: [
 						{
-							text: `You are an expert coffee consultant with deep knowledge of coffee varieties, processing methods, and flavor profiles. Your task is to analyze coffee data and make personalized recommendations using this precise scoring system:
+							text: `You are an expert coffee consultant with deep knowledge of contemporary coffee best practices, Cup of Excellence, Specialty Coffee Association Q-Grading, varieties, processing methods, flavor profiles, and more.
+							Your task is to analyze offered coffee data and make personalized recommendations based on the user's query. You may also offer feedback and knowledge pertaining to coffee.
 
-SCORING RUBRIC (Total 100 points):
+If you are making a recommendation, use the following SCORING RUBRIC (Total 100 points):
 
 1. Flavor Profile Match (35 points):
    - Cupping Notes (15 points): Match with requested flavor profiles
@@ -83,9 +84,10 @@ RECOMMENDATION INSTRUCTIONS:
 2. Select the highest scoring matches
 
 OUTPUT FORMAT REQUIREMENTS:
-1. Start with a conversational response addressing the user's query 
-2. Unless otherwise requested, recommend 3 coffees
-3. Follow with recommendations in this exact JSON structure:
+1. Start with a conversational response addressing the user's query and why you are making the recommendation.
+2. Unless otherwise requested, recommend 3 coffees.
+3. Do not include the grading ruberic in your answer. Opt for a natural explanation of your reccomendations.
+3. Make recommendations in this exact JSON structure:
 
 {
     "recommendations": [
@@ -102,7 +104,7 @@ OUTPUT FORMAT REQUIREMENTS:
 					role: 'model',
 					parts: [
 						{
-							text: "I understand my role and will use the detailed scoring rubric to evaluate coffees systematically. I'll provide scored recommendations with clear explanations of how each coffee earned its selection, following the specified output format."
+							text: "I understand my role as a coffee expert. When asked for recommendations, I will use the detailed scoring rubric to evaluate in stock coffees systematically. I'll provide recommendations with clear explanations of how each coffee earned its selection in a conversational tone, following the specified output format."
 						}
 					]
 				}
