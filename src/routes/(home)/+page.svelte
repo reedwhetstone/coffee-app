@@ -89,7 +89,7 @@
 
 	// Add default query constant
 	const DEFAULT_QUERY =
-		'Recommend the most distinctive coffee from each source (bodhi_leaf, sweet_maria, captain_coffee), highlighting what makes it special to the supplier.';
+		'Recommend the most distinctive coffee from each source, highlighting what makes it special to the supplier.';
 
 	// Load initial recommendations only once
 	onMount(() => {
