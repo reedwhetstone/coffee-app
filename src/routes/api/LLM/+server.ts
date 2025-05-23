@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const { prompt, coffeeData } = await request.json();
 
 		const model = genAI.getGenerativeModel({
-			model: 'gemini-2.5-flash-preview-05-20',
+			model: 'gemini-2.0-flash-exp',
 			generationConfig: {
 				temperature: 0.1,
 				topP: 0.95,
@@ -86,7 +86,7 @@ RECOMMENDATION INSTRUCTIONS:
 OUTPUT FORMAT REQUIREMENTS:
 1. Start with a conversational response addressing the user's query and why you are making the recommendation.
 2. Unless otherwise requested, recommend 3 coffees.
-3. Do not include the grading ruberic in your answer. Opt for a natural explanation of your reccomendations.
+3. Do not include the grading rubric in your answer. Opt for a natural explanation of your recommendations.
 3. Make recommendations in this exact JSON structure:
 
 {
