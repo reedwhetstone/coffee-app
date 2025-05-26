@@ -110,17 +110,28 @@ function createFilterStore() {
 
 	// Set sort field
 	function setSortField(field: string | null) {
+		// Convert empty string to null for consistency
+		const normalizedField = field === '' ? null : field;
+		console.log('Setting sort field to:', normalizedField);
 		update((state) => {
-			state.sortField = field;
+			state.sortField = normalizedField;
+			// Reset sort direction if field is cleared
+			if (!normalizedField) {
+				state.sortDirection = null;
+			}
 			return state;
 		});
 		processAndUpdateFilteredData();
 	}
 
 	// Set sort direction
-	function setSortDirection(direction: 'asc' | 'desc' | null) {
+	function setSortDirection(direction: 'asc' | 'desc' | null | string) {
+		// Convert empty string to null for consistency
+		const normalizedDirection =
+			direction === '' || direction === null ? null : (direction as 'asc' | 'desc');
+		console.log('Setting sort direction to:', normalizedDirection);
 		update((state) => {
-			state.sortDirection = direction;
+			state.sortDirection = normalizedDirection;
 			return state;
 		});
 		processAndUpdateFilteredData();
@@ -293,9 +304,12 @@ function createFilterStore() {
 		sortDirection: 'asc' | 'desc' | null
 	): any[] {
 		// Skip if no sort field or direction
-		if (!sortField || !sortDirection) return data;
+		if (!sortField || !sortDirection) {
+			console.log('Skipping sort - no field or direction:', { sortField, sortDirection });
+			return data;
+		}
 
-		//console.log('Sorting data by', sortField, sortDirection);
+		console.log('Sorting data by', sortField, sortDirection, 'with', data.length, 'items');
 
 		return [...data].sort((a, b) => {
 			const aValue = a[sortField];
@@ -408,11 +422,19 @@ function createFilterStore() {
 						state.filters
 					);
 
-					// Check if the data actually changed
+					// Check if the data actually changed (order matters for sorting)
 					const dataChanged =
 						state.filteredData.length !== processedData.length ||
-						JSON.stringify(processedData.map((item) => item.id).sort()) !==
-							JSON.stringify(state.filteredData.map((item) => item.id).sort());
+						JSON.stringify(processedData.map((item) => item.id)) !==
+							JSON.stringify(state.filteredData.map((item) => item.id));
+
+					console.log('Data change check:', {
+						lengthChanged: state.filteredData.length !== processedData.length,
+						orderChanged:
+							JSON.stringify(processedData.map((item) => item.id)) !==
+							JSON.stringify(state.filteredData.map((item) => item.id)),
+						dataChanged
+					});
 
 					// Update the filtered data
 					state.filteredData = processedData;
@@ -421,6 +443,8 @@ function createFilterStore() {
 					if (dataChanged) {
 						state.changeCounter++;
 						console.log('Filtered data updated, change counter:', state.changeCounter);
+					} else {
+						console.log('No data change detected, not updating counter');
 					}
 				} catch (err) {
 					console.error('Error processing data:', err);

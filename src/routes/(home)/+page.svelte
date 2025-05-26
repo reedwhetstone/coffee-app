@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { onMount, tick } from 'svelte';
-	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
 	import { page } from '$app/stores';
 
 	let { data } = $props<{ data: PageData }>();
@@ -52,12 +52,24 @@
 	let updatingPagination = $state(false);
 	let lastFilteredDataLength = $state(0);
 	let lastDisplayLimit = $state(15);
+	let lastChangeCounter = $state(0);
 
 	$effect(() => {
-		// Update pagination when filtered data changes or display limit changes
-		if (lastFilteredDataLength !== $filteredData.length || lastDisplayLimit !== displayLimit) {
+		// Update pagination when filtered data changes, display limit changes, or filter/sort changes
+		if (
+			lastFilteredDataLength !== $filteredData.length ||
+			lastDisplayLimit !== displayLimit ||
+			lastChangeCounter !== $filterChangeNotifier
+		) {
+			console.log('Updating pagination due to change:', {
+				lengthChanged: lastFilteredDataLength !== $filteredData.length,
+				limitChanged: lastDisplayLimit !== displayLimit,
+				filterChanged: lastChangeCounter !== $filterChangeNotifier
+			});
+
 			lastFilteredDataLength = $filteredData.length;
 			lastDisplayLimit = displayLimit;
+			lastChangeCounter = $filterChangeNotifier;
 
 			// Update pagination when filtered data changes
 			if (!updatingPagination) {

@@ -77,8 +77,11 @@
 				<label for="sort-field" class="block text-sm font-medium">Sort by</label>
 				<select
 					id="sort-field"
-					value={$filterStore.sortField}
-					onchange={(e) => filterStore.setSortField(e.currentTarget.value)}
+					value={$filterStore.sortField || ''}
+					onchange={(e) => {
+						filterStore.setSortField(e.currentTarget.value);
+						console.log('Sort field changed to:', e.currentTarget.value);
+					}}
 					class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 				>
 					<option value="">None</option>
@@ -92,8 +95,11 @@
 				{#if $filterStore.sortField}
 					<select
 						id="sort-direction"
-						value={$filterStore.sortDirection}
-						onchange={(e) => filterStore.setSortDirection(e.currentTarget.value as 'asc' | 'desc')}
+						value={$filterStore.sortDirection || ''}
+						onchange={(e) => {
+							filterStore.setSortDirection(e.currentTarget.value as 'asc' | 'desc');
+							console.log('Sort direction changed to:', e.currentTarget.value);
+						}}
 						class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 					>
 						<option value="asc">Ascending</option>
