@@ -41,7 +41,12 @@ const initialState: FilterState = {
 function createFilterStore() {
 	const { subscribe, set, update } = writable<FilterState>(initialState);
 
-	// Initialize the filter store for a specific route
+	/**
+	 * Initializes the filter store for a specific route with data
+	 * Sets up default sorting, filters, and processes the initial data
+	 * @param routeId - The route identifier (e.g., '/beans', '/roast', '/')
+	 * @param data - Array of data items to initialize with
+	 */
 	function initializeForRoute(routeId: string, data: any[]) {
 		// Skip if already initializing this route
 		const currentState = get({ subscribe });
@@ -86,7 +91,11 @@ function createFilterStore() {
 		});
 	}
 
-	// Get default sort settings for each route
+	/**
+	 * Returns default sort settings for different routes
+	 * @param routeId - The route identifier
+	 * @returns Object with field and direction properties
+	 */
 	function getDefaultSortSettings(routeId: string) {
 		if (routeId.includes('beans')) {
 			return { field: 'purchase_date', direction: 'desc' as const };
@@ -108,14 +117,17 @@ function createFilterStore() {
 		processAndUpdateFilteredData();
 	}
 
-	// Set sort field
+	/**
+	 * Sets the sort field for the current route
+	 * @param field - The field name to sort by, or null to clear sorting
+	 */
 	function setSortField(field: string | null) {
-		// Convert empty string to null for consistency
+		// Convert empty string to null for consistency with internal state
 		const normalizedField = field === '' ? null : field;
-		console.log('Setting sort field to:', normalizedField);
+
 		update((state) => {
 			state.sortField = normalizedField;
-			// Reset sort direction if field is cleared
+			// Reset sort direction if field is cleared to maintain consistent state
 			if (!normalizedField) {
 				state.sortDirection = null;
 			}
@@ -124,12 +136,15 @@ function createFilterStore() {
 		processAndUpdateFilteredData();
 	}
 
-	// Set sort direction
+	/**
+	 * Sets the sort direction for the current route
+	 * @param direction - 'asc', 'desc', or null to clear direction
+	 */
 	function setSortDirection(direction: 'asc' | 'desc' | null | string) {
-		// Convert empty string to null for consistency
+		// Convert empty string to null for consistency with internal state
 		const normalizedDirection =
 			direction === '' || direction === null ? null : (direction as 'asc' | 'desc');
-		console.log('Setting sort direction to:', normalizedDirection);
+
 		update((state) => {
 			state.sortDirection = normalizedDirection;
 			return state;
@@ -137,7 +152,11 @@ function createFilterStore() {
 		processAndUpdateFilteredData();
 	}
 
-	// Set filter value
+	/**
+	 * Sets a filter value for a specific field
+	 * @param key - The field name to filter on
+	 * @param value - The filter value (can be string, array, object with min/max, etc.)
+	 */
 	function setFilter(key: string, value: any) {
 		update((state) => {
 			state.filters = { ...state.filters, [key]: value };
@@ -297,19 +316,22 @@ function createFilterStore() {
 		});
 	}
 
-	// Sort data based on sortField and sortDirection
+	/**
+	 * Sorts data based on the specified field and direction
+	 * @param data - Array of data items to sort
+	 * @param sortField - Field name to sort by
+	 * @param sortDirection - Sort direction ('asc' or 'desc')
+	 * @returns Sorted array of data items
+	 */
 	function sortData(
 		data: any[],
 		sortField: string | null,
 		sortDirection: 'asc' | 'desc' | null
 	): any[] {
-		// Skip if no sort field or direction
+		// Return unsorted data if no sort criteria specified
 		if (!sortField || !sortDirection) {
-			console.log('Skipping sort - no field or direction:', { sortField, sortDirection });
 			return data;
 		}
-
-		console.log('Sorting data by', sortField, sortDirection, 'with', data.length, 'items');
 
 		return [...data].sort((a, b) => {
 			const aValue = a[sortField];
@@ -392,9 +414,8 @@ function createFilterStore() {
 		// Set a new debounce timer with a shorter delay for better responsiveness
 		const debounceId = setTimeout(() => {
 			update((state) => {
-				// If already processing, skip this update
+				// If already processing, skip this update to prevent race conditions
 				if (state.processing) {
-					console.log('Already processing in timeout, skipping update');
 					return state;
 				}
 
@@ -409,7 +430,6 @@ function createFilterStore() {
 						// Only increment counter if data changed
 						if (hadData) {
 							state.changeCounter++;
-							console.log('Filtered data cleared, change counter:', state.changeCounter);
 						}
 						return state;
 					}
@@ -428,23 +448,13 @@ function createFilterStore() {
 						JSON.stringify(processedData.map((item) => item.id)) !==
 							JSON.stringify(state.filteredData.map((item) => item.id));
 
-					console.log('Data change check:', {
-						lengthChanged: state.filteredData.length !== processedData.length,
-						orderChanged:
-							JSON.stringify(processedData.map((item) => item.id)) !==
-							JSON.stringify(state.filteredData.map((item) => item.id)),
-						dataChanged
-					});
-
-					// Update the filtered data
+					// Update the filtered data with the newly processed results
 					state.filteredData = processedData;
 
-					// Only increment the change counter if data actually changed
+					// Increment change counter only if data actually changed
+					// This triggers reactive updates in components that depend on the change counter
 					if (dataChanged) {
 						state.changeCounter++;
-						console.log('Filtered data updated, change counter:', state.changeCounter);
-					} else {
-						console.log('No data change detected, not updating counter');
 					}
 				} catch (err) {
 					console.error('Error processing data:', err);
@@ -464,7 +474,11 @@ function createFilterStore() {
 		});
 	}
 
-	// Get filterable columns based on route
+	/**
+	 * Returns the list of filterable columns for a specific route
+	 * @param routeId - The route identifier
+	 * @returns Array of column names that can be filtered
+	 */
 	function getFilterableColumns(routeId: string): string[] {
 		if (routeId.includes('beans')) {
 			return [

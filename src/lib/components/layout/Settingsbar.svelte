@@ -1,10 +1,15 @@
 <!-- src/lib/components/layout/Settingsbar.svelte -->
+<!--
+	Settings sidebar component that provides filtering and sorting controls
+	Dynamically shows relevant filter options based on the current route
+	Integrates with the global filter store to manage data filtering and sorting
+-->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { filterStore, filteredData } from '$lib/stores/filterStore';
 	import { afterNavigate } from '$app/navigation';
 
-	// Props for filter configuration and data
+	// Component props interface
 	let {
 		data,
 		isOpen = false,
@@ -15,24 +20,27 @@
 		onClose?: () => void;
 	}>();
 
-	// Update routeId to use the store value directly
+	// Track current route for dynamic filter options
 	let routeId = $state(page.url.pathname);
 
-	// Update `routeId` after each navigation
+	// Update route tracking and close sidebar on navigation
 	afterNavigate(() => {
 		routeId = page.url.pathname;
 		onClose();
 	});
 
-	// Debug info
+	// Monitor route changes to ensure filter store stays synchronized
 	$effect(() => {
-		console.log('Settingsbar mounted, isOpen:', isOpen);
-		// Subscribe to the current route
 		const currentRoute = page.url.pathname;
-		console.log('Settingsbar current route:', currentRoute);
+		// This ensures the filter store is aware of route changes for proper column filtering
 	});
 
-	// Helper function to format column names
+	/**
+	 * Formats database column names for display in the UI
+	 * Converts snake_case to Title Case
+	 * @param column - The column name to format
+	 * @returns Formatted column name
+	 */
 	function formatColumnName(column: string): string {
 		return column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 	}
@@ -78,10 +86,7 @@
 				<select
 					id="sort-field"
 					value={$filterStore.sortField || ''}
-					onchange={(e) => {
-						filterStore.setSortField(e.currentTarget.value);
-						console.log('Sort field changed to:', e.currentTarget.value);
-					}}
+					onchange={(e) => filterStore.setSortField(e.currentTarget.value)}
 					class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 				>
 					<option value="">None</option>
@@ -96,10 +101,7 @@
 					<select
 						id="sort-direction"
 						value={$filterStore.sortDirection || ''}
-						onchange={(e) => {
-							filterStore.setSortDirection(e.currentTarget.value as 'asc' | 'desc');
-							console.log('Sort direction changed to:', e.currentTarget.value);
-						}}
+						onchange={(e) => filterStore.setSortDirection(e.currentTarget.value as 'asc' | 'desc')}
 						class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
 					>
 						<option value="asc">Ascending</option>

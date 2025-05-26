@@ -6,39 +6,35 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	// Debug: Log the data
-	// $effect(() => {
-	// 	console.log('Home page data:', data);
-	// 	console.log('FilteredData store value:', $filteredData);
-	// });
-
-	// Add search functionality
+	// Search and AI recommendation functionality
 	let searchQuery = $state('');
 	let chatResponse = $state('');
 	let isLoading = $state(false);
 
-	// Pagination state
+	// Pagination state management
 	let displayLimit = $state(15);
 	let isLoadingMore = $state(false);
 
-	// Add recommendation state
+	// AI recommendation state
 	let recommendedCoffees = $state<any[]>([]);
 	let isLoadingRecommendations = $state(false);
 
-	// Track initialization to prevent loops
+	// Initialization tracking to prevent duplicate filter store setup
 	let initializing = $state(false);
 
-	// Initialize filter store when page mounts
+	/**
+	 * Initialize filter store when page loads
+	 * Ensures the filter store is properly set up for the home route
+	 */
 	$effect(() => {
 		const currentRoute = $page.url.pathname;
 
-		// If we have data and filter store isn't initialized for this route yet, initialize it
+		// Initialize filter store if we have data and it's not already initialized for this route
 		if (
 			data?.data?.length > 0 &&
 			(!$filterStore.initialized || $filterStore.routeId !== currentRoute) &&
 			!initializing
 		) {
-			// console.log('Initializing filter store with home page data:', data.data.length, 'items');
 			initializing = true;
 			setTimeout(() => {
 				filterStore.initializeForRoute(currentRoute, data.data);
@@ -47,7 +43,11 @@
 		}
 	});
 
-	// Pagination computation with memoization to prevent unnecessary updates
+	/**
+	 * Pagination state and reactive updates
+	 * Manages the subset of filtered data to display based on current limit
+	 * Reacts to changes in filtered data, display limit, and filter/sort operations
+	 */
 	let paginatedData = $state<any[]>([]);
 	let updatingPagination = $state(false);
 	let lastFilteredDataLength = $state(0);
@@ -61,17 +61,12 @@
 			lastDisplayLimit !== displayLimit ||
 			lastChangeCounter !== $filterChangeNotifier
 		) {
-			console.log('Updating pagination due to change:', {
-				lengthChanged: lastFilteredDataLength !== $filteredData.length,
-				limitChanged: lastDisplayLimit !== displayLimit,
-				filterChanged: lastChangeCounter !== $filterChangeNotifier
-			});
-
+			// Update tracking variables to prevent unnecessary re-renders
 			lastFilteredDataLength = $filteredData.length;
 			lastDisplayLimit = displayLimit;
 			lastChangeCounter = $filterChangeNotifier;
 
-			// Update pagination when filtered data changes
+			// Update paginated data slice with debouncing to prevent rapid updates
 			if (!updatingPagination) {
 				updatingPagination = true;
 				setTimeout(() => {
@@ -85,7 +80,10 @@
 		}
 	});
 
-	// Update infinite scroll handler
+	/**
+	 * Handles infinite scroll functionality
+	 * Loads more items when user scrolls near the bottom of the page
+	 */
 	async function handleScroll() {
 		const scrollPosition = window.innerHeight + window.scrollY;
 		const bottomOfPage = document.documentElement.offsetHeight - 200;
@@ -99,11 +97,14 @@
 		}
 	}
 
-	// Add default query constant
+	// Default AI query for initial recommendations
 	const DEFAULT_QUERY =
 		'Recommend the most distinctive coffee from each source, highlighting what makes it special to the supplier.';
 
-	// Load initial recommendations only once
+	/**
+	 * Component initialization
+	 * Sets up initial AI recommendations and scroll event listeners
+	 */
 	onMount(() => {
 		// Initialize recommendations
 		if (!isLoading && !chatResponse && searchQuery === '') {
@@ -122,6 +123,10 @@
 		return () => window.removeEventListener('scroll', handleScroll);
 	});
 
+	/**
+	 * Handles AI-powered search and recommendation generation
+	 * Processes user queries and returns relevant coffee recommendations
+	 */
 	async function handleSearch() {
 		if (!searchQuery.trim()) return;
 
@@ -168,6 +173,11 @@
 		}
 	}
 
+	/**
+	 * Makes API call to get AI recommendations
+	 * @param query - The user's search query
+	 * @returns Promise with AI response
+	 */
 	async function getRecommendations(query: string) {
 		const response = await fetch('/api/LLM', {
 			method: 'POST',
@@ -188,11 +198,27 @@
 		return { response: { text: () => result.text } };
 	}
 
-	// Helper functions for score visualization
+	/**
+	 * Helper functions for coffee score visualization
+	 * These functions handle the visual representation of coffee quality scores
+	 */
+
+	/**
+	 * Calculates percentage for score visualization
+	 * @param score - Coffee quality score
+	 * @param min - Minimum score value
+	 * @param max - Maximum score value
+	 * @returns Percentage value for visual representation
+	 */
 	function getScorePercentage(score: number, min = 80, max = 100) {
 		return Math.min(100, Math.max(0, ((score - min) / (max - min)) * 100));
 	}
 
+	/**
+	 * Returns appropriate color for score arc based on quality
+	 * @param score - Coffee quality score
+	 * @returns Hex color code
+	 */
 	function getStrokeColor(score: number) {
 		if (score >= 90) return '#16a34a'; // green-600
 		if (score >= 85) return '#65a30d'; // lime-600
@@ -200,6 +226,11 @@
 		return '#dc2626'; // red-600
 	}
 
+	/**
+	 * Returns appropriate CSS class for score text color
+	 * @param score - Coffee quality score
+	 * @returns Tailwind CSS class name
+	 */
 	function getScoreColorClass(score: number) {
 		if (score >= 90) return 'text-green-600';
 		if (score >= 85) return 'text-lime-600';
