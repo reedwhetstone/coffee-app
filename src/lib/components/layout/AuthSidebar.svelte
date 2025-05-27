@@ -80,13 +80,6 @@
 				<p class="mb-4 text-sm opacity-80">{session.user.email}</p>
 
 				<button
-					onclick={navigateToSubscription}
-					class="mb-3 w-full rounded bg-blue-500/10 px-4 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20"
-				>
-					Manage Subscription
-				</button>
-
-				<button
 					onclick={handleSignOut}
 					class="w-full rounded bg-red-500/10 px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/20"
 				>
@@ -106,5 +99,11 @@
 				</button>
 			</div>
 		{/if}
+		<button
+			onclick={navigateToSubscription}
+			class="mb-3 w-full rounded bg-blue-500/10 px-4 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20"
+		>
+			Subscription
+		</button>
 	</main>
 </div>
