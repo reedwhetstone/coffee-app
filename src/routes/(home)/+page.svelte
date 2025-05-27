@@ -3,8 +3,22 @@
 	import { onMount, tick } from 'svelte';
 	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
 	import { page } from '$app/stores';
+	import { checkRole } from '$lib/types/auth.types';
 
 	let { data } = $props<{ data: PageData }>();
+
+	// Destructure with default values to prevent undefined errors
+	let { supabase, session, role = 'viewer' } = $derived(data);
+
+	// Add type checking for role
+	type UserRole = 'viewer' | 'member' | 'admin';
+	let userRole: UserRole = $derived(role as UserRole);
+
+	// Use the imported checkRole function
+	function hasRequiredRole(requiredRole: UserRole): boolean {
+		const hasRole = checkRole(userRole, requiredRole);
+		return hasRole;
+	}
 
 	// Search and AI recommendation functionality
 	let searchQuery = $state('');
@@ -106,8 +120,8 @@
 	 * Sets up initial AI recommendations and scroll event listeners
 	 */
 	onMount(() => {
-		// Initialize recommendations
-		if (!isLoading && !chatResponse && searchQuery === '') {
+		// Initialize recommendations only for members
+		if (hasRequiredRole('member') && !isLoading && !chatResponse && searchQuery === '') {
 			(async () => {
 				searchQuery = DEFAULT_QUERY;
 				// Don't update the displayed query
@@ -241,107 +255,109 @@
 
 <div class="space-y-4">
 	<div class="space-y-4">
-		<!-- Integrated chat interface -->
-		<div class="rounded-2xl bg-background-tertiary-light shadow-md">
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					handleSearch();
-				}}
-				class="space-y-4"
-			>
-				<!-- Query/Input area with wrapping textarea -->
-				<div class="relative rounded-2xl bg-background-secondary-light p-4 shadow-md">
-					<span class="text-primary-light text-sm">Query:</span>
-					<div>
-						<div class="flex items-center gap-2">
-							<textarea
-								bind:value={searchQuery}
-								placeholder={'Search coffees or ask a question'}
-								class="text-primary-light flex-1 resize-none border-none bg-transparent font-medium placeholder-text-secondary-light focus:border-none focus:outline-none focus:ring-0"
-								disabled={isLoading}
-								onfocus={(e) => (e.target as HTMLTextAreaElement).select()}
-								oninput={(e) => {
-									const textarea = e.target as HTMLTextAreaElement;
-									textarea.style.height = 'auto';
-									textarea.style.height = textarea.scrollHeight + 'px';
-								}}
-								style=" overflow-y: hidden;"
-							></textarea>
-							<button
-								type="submit"
-								class="flex h-8 w-8 items-center justify-center rounded-full border-none bg-background-tertiary-light text-text-primary-light hover:opacity-80 disabled:opacity-50"
-								disabled={isLoading || !searchQuery.trim()}
-							>
-								{#if isLoading}
-									<div
-										class="h-4 w-4 animate-spin rounded-full border-2 border-text-primary-light border-t-transparent"
-									></div>
-								{:else}
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-4 w-4"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-								{/if}
-							</button>
-						</div>
-					</div>
-				</div>
-
-				<!-- Chat response -->
-				{#if chatResponse}
-					<div class="px-4 pb-1">
-						<span class="text-primary-light text-sm">Response:</span>
-						<p class="text-primary-light mx-4 mt-1 whitespace-pre-wrap">{chatResponse}</p>
-					</div>
-				{/if}
-				<!-- Recommendations-->
-				{#if recommendedCoffees.length > 0}
-					<div class="px-4 pb-4">
-						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-							{#each recommendedCoffees as coffee}
-								<a
-									href={coffee.link}
-									target="_blank"
-									class="group block rounded-lg bg-background-secondary-light p-4 shadow-md transition-all hover:scale-[1.02] hover:border hover:border-background-tertiary-light hover:bg-background-secondary-light focus:outline-none"
+		{#if hasRequiredRole('member')}
+			<!-- Integrated chat interface -->
+			<div class="rounded-2xl bg-background-tertiary-light shadow-md">
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						handleSearch();
+					}}
+					class="space-y-4"
+				>
+					<!-- Query/Input area with wrapping textarea -->
+					<div class="relative rounded-2xl bg-background-secondary-light p-4 shadow-md">
+						<span class="text-primary-light text-sm">Query:</span>
+						<div>
+							<div class="flex items-center gap-2">
+								<textarea
+									bind:value={searchQuery}
+									placeholder={'Search coffees or ask a question'}
+									class="text-primary-light flex-1 resize-none border-none bg-transparent font-medium placeholder-text-secondary-light focus:border-none focus:outline-none focus:ring-0"
+									disabled={isLoading}
+									onfocus={(e) => (e.target as HTMLTextAreaElement).select()}
+									oninput={(e) => {
+										const textarea = e.target as HTMLTextAreaElement;
+										textarea.style.height = 'auto';
+										textarea.style.height = textarea.scrollHeight + 'px';
+									}}
+									style=" overflow-y: hidden;"
+								></textarea>
+								<button
+									type="submit"
+									class="flex h-8 w-8 items-center justify-center rounded-full border-none bg-background-tertiary-light text-text-primary-light hover:opacity-80 disabled:opacity-50"
+									disabled={isLoading || !searchQuery.trim()}
 								>
-									<div class="flex items-center justify-between">
-										<h4 class="text-primary-light font-semibold">{coffee.name}</h4>
+									{#if isLoading}
+										<div
+											class="h-4 w-4 animate-spin rounded-full border-2 border-text-primary-light border-t-transparent"
+										></div>
+									{:else}
 										<svg
-											class="text-primary-light h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
+											xmlns="http://www.w3.org/2000/svg"
+											class="h-4 w-4"
+											viewBox="0 0 20 20"
+											fill="currentColor"
 										>
 											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+												fill-rule="evenodd"
+												d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z"
+												clip-rule="evenodd"
 											/>
 										</svg>
-									</div>
-									<div class="mb-2">
-										<h3 class="text-primary-light">{coffee.source}</h3>
-										<span class="text-primary-light text-sm">Score: {coffee.score_value}</span>
-										<span class="text-primary-light ml-4 text-sm">${coffee.cost_lb}/lb</span>
-									</div>
-									<p class="text-primary-light mt-2 text-sm">{coffee.reason}</p>
-								</a>
-							{/each}
+									{/if}
+								</button>
+							</div>
 						</div>
 					</div>
-				{/if}
-			</form>
-		</div>
+
+					<!-- Chat response -->
+					{#if chatResponse}
+						<div class="px-4 pb-1">
+							<span class="text-primary-light text-sm">Response:</span>
+							<p class="text-primary-light mx-4 mt-1 whitespace-pre-wrap">{chatResponse}</p>
+						</div>
+					{/if}
+					<!-- Recommendations-->
+					{#if recommendedCoffees.length > 0}
+						<div class="px-4 pb-4">
+							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+								{#each recommendedCoffees as coffee}
+									<a
+										href={coffee.link}
+										target="_blank"
+										class="group block rounded-lg bg-background-secondary-light p-4 shadow-md transition-all hover:scale-[1.02] hover:border hover:border-background-tertiary-light hover:bg-background-secondary-light focus:outline-none"
+									>
+										<div class="flex items-center justify-between">
+											<h4 class="text-primary-light font-semibold">{coffee.name}</h4>
+											<svg
+												class="text-primary-light h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+												/>
+											</svg>
+										</div>
+										<div class="mb-2">
+											<h3 class="text-primary-light">{coffee.source}</h3>
+											<span class="text-primary-light text-sm">Score: {coffee.score_value}</span>
+											<span class="text-primary-light ml-4 text-sm">${coffee.cost_lb}/lb</span>
+										</div>
+										<p class="text-primary-light mt-2 text-sm">{coffee.reason}</p>
+									</a>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</form>
+			</div>
+		{/if}
 
 		<!-- Coffee Cards -->
 		<div class="flex-1">
