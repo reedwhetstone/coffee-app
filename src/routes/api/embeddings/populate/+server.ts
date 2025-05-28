@@ -10,11 +10,10 @@ export const POST: RequestHandler = async () => {
 	try {
 		const embeddingService = new EmbeddingService(OPENAI_API_KEY);
 
-		// Get all coffee_catalog records without embeddings (limit to 1 for testing)
+		// Get all coffee_catalog records to regenerate embeddings
 		const { data: catalogCoffees, error: fetchError } = await supabase
 			.from('coffee_catalog')
-			.select('*')
-			.is('embedding', null);
+			.select('*');
 
 		if (fetchError) {
 			throw new Error(`Failed to fetch coffees: ${fetchError.message}`);

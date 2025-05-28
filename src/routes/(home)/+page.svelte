@@ -111,27 +111,11 @@
 		}
 	}
 
-	// Default AI query for initial recommendations
-	const DEFAULT_QUERY =
-		'Recommend the most distinctive coffee from each source, highlighting what makes it special to the supplier.';
-
 	/**
 	 * Component initialization
-	 * Sets up initial AI recommendations and scroll event listeners
+	 * Sets up scroll event listeners
 	 */
 	onMount(() => {
-		// Initialize recommendations only for members
-		if (hasRequiredRole('member') && !isLoading && !chatResponse && searchQuery === '') {
-			(async () => {
-				searchQuery = DEFAULT_QUERY;
-				// Don't update the displayed query
-				await tick();
-				await handleSearch();
-				// Reset searchQuery to empty after search completes
-				searchQuery = '';
-			})();
-		}
-
 		// Setup scroll handler
 		window.addEventListener('scroll', handleScroll);
 		return () => window.removeEventListener('scroll', handleScroll);
@@ -139,7 +123,7 @@
 
 	/**
 	 * Handles AI-powered search and recommendation generation
-	 * Processes user queries and returns relevant coffee recommendations
+	 * Processes user queries and returns relevant coffee recommendations or analysis
 	 */
 	async function handleSearch() {
 		if (!searchQuery.trim()) return;
@@ -149,12 +133,14 @@
 		try {
 			const result = await getRecommendations(searchQuery);
 			const responseText = result.response.text();
+			const queryType = result.metadata?.queryType || 'recommendation';
 
 			// Find JSON content between ```json and ``` markers
 			const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/);
 			chatResponse = responseText.split('```json')[0].trim();
 
-			if (jsonMatch && jsonMatch[1]) {
+			// Only process recommendations if this is a recommendation query and JSON is found
+			if (queryType === 'recommendation' && jsonMatch && jsonMatch[1]) {
 				try {
 					const parsedJson = JSON.parse(jsonMatch[1].trim());
 					const { recommendations } = parsedJson;
@@ -174,7 +160,7 @@
 					recommendedCoffees = [];
 				}
 			} else {
-				console.log('No JSON match found in response');
+				// For analysis queries or when no JSON is found, don't show recommendations
 				recommendedCoffees = [];
 			}
 		} catch (error) {
@@ -188,9 +174,9 @@
 	}
 
 	/**
-	 * Makes API call to get AI recommendations
+	 * Makes API call to get AI recommendations or analysis
 	 * @param query - The user's search query
-	 * @returns Promise with AI response
+	 * @returns Promise with AI response and metadata
 	 */
 	async function getRecommendations(query: string) {
 		const response = await fetch('/api/LLM', {
@@ -209,7 +195,10 @@
 		}
 
 		const result = await response.json();
-		return { response: { text: () => result.text } };
+		return {
+			response: { text: () => result.text },
+			metadata: result.metadata
+		};
 	}
 
 	/**
@@ -272,7 +261,7 @@
 							<div class="flex items-center gap-2">
 								<textarea
 									bind:value={searchQuery}
-									placeholder={'Search coffees or ask a question'}
+									placeholder={'Ask for coffee recommendations or request data analysis (e.g., "analyze price trends over time")'}
 									class="text-primary-light flex-1 resize-none border-none bg-transparent font-medium placeholder-text-secondary-light focus:border-none focus:outline-none focus:ring-0"
 									disabled={isLoading}
 									onfocus={(e) => (e.target as HTMLTextAreaElement).select()}
@@ -314,7 +303,9 @@
 					<!-- Chat response -->
 					{#if chatResponse}
 						<div class="px-4 pb-1">
-							<span class="text-primary-light text-sm">Response:</span>
+							<span class="text-primary-light text-sm">
+								{recommendedCoffees.length > 0 ? 'Recommendations:' : 'Analysis:'}
+							</span>
 							<p class="text-primary-light mx-4 mt-1 whitespace-pre-wrap">{chatResponse}</p>
 						</div>
 					{/if}
