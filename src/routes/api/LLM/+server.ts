@@ -1,13 +1,30 @@
 import { json } from '@sveltejs/kit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { AI_API_KEY } from '$env/static/private';
+import { AI_API_KEY, OPENAI_API_KEY } from '$env/static/private';
+import { RAGService } from '$lib/services/ragService';
 import type { RequestHandler } from './$types';
 
 const genAI = new GoogleGenerativeAI(AI_API_KEY);
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
 	try {
 		const { prompt, coffeeData } = await request.json();
+
+		// Initialize RAG service
+		const ragService = new RAGService(supabase, OPENAI_API_KEY);
+
+		// Retrieve relevant coffee data using semantic search
+		const retrievalResult = await ragService.retrieveRelevantCoffees(prompt, {
+			maxCurrentInventory: 15,
+			maxHistorical: 25,
+			similarityThreshold: 0.3 // Lowered threshold to be more inclusive
+		});
+
+		console.log('RAG Service Results:', {
+			currentInventoryCount: retrievalResult.currentInventory.length,
+			historicalDataCount: retrievalResult.historicalData.length,
+			prompt: prompt
+		});
 
 		const model = genAI.getGenerativeModel({
 			model: 'gemini-2.0-flash-exp',
@@ -26,7 +43,17 @@ export const POST: RequestHandler = async ({ request }) => {
 					parts: [
 						{
 							text: `You are an expert coffee consultant with deep knowledge of contemporary coffee best practices, Cup of Excellence, Specialty Coffee Association Q-Grading, varieties, processing methods, flavor profiles, and more.
-							Your task is to analyze offered coffee data and make personalized recommendations based on the user's query. You may also offer feedback and knowledge pertaining to coffee.
+
+Your task is to analyze coffee data and make personalized recommendations based on the user's query. You have access to:
+
+1. CURRENT INVENTORY: Currently stocked coffees available for purchase
+2. HISTORICAL DATA: Past coffees for context, trends, and comparison
+
+Use the same scoring rubric as before, but now you can reference historical patterns, seasonal availability, and make more informed recommendations based on the broader context.
+
+When making recommendations:
+- Prioritize CURRENT INVENTORY for actual recommendations
+- Use HISTORICAL DATA to provide context, explain trends, or suggest alternatives
 
 If you are making a recommendation, use the following SCORING RUBRIC (Total 100 points):
 
@@ -104,19 +131,35 @@ OUTPUT FORMAT REQUIREMENTS:
 					role: 'model',
 					parts: [
 						{
-							text: "I understand my role as a coffee expert. When asked for recommendations, I will use the detailed scoring rubric to evaluate in stock coffees systematically. I'll provide recommendations with clear explanations of how each coffee earned its selection in a conversational tone, following the specified output format."
+							text: "I understand my enhanced role as a coffee expert with access to both current inventory and historical context. I'll use semantic search results to provide more informed recommendations, drawing on patterns from historical data while prioritizing currently available coffees."
 						}
 					]
 				}
 			]
 		});
 
-		const result = await chatSession.sendMessage(
-			`AVAILABLE COFFEE INVENTORY:\n${JSON.stringify(coffeeData, null, 2)}\n\nUSER QUERY: ${prompt}\n\n`
-		);
+		const contextualPrompt = `
+CURRENT INVENTORY (Available for Purchase):
+${JSON.stringify(retrievalResult.currentInventory, null, 2)}
 
+HISTORICAL CONTEXT (For Reference & Trends):
+${JSON.stringify(retrievalResult.historicalData, null, 2)}
+
+USER QUERY: ${prompt}
+
+Please provide recommendations prioritizing CURRENT INVENTORY, but use the historical coffee data to provide richer context and explanations.
+`;
+
+		const result = await chatSession.sendMessage(contextualPrompt);
 		const response = await result.response;
-		return json({ text: response.text() });
+
+		return json({
+			text: response.text(),
+			metadata: {
+				currentInventoryCount: retrievalResult.currentInventory.length,
+				historicalDataCount: retrievalResult.historicalData.length
+			}
+		});
 	} catch (error) {
 		console.error('Server error:', error);
 		return json(
