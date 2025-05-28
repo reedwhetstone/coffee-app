@@ -3,14 +3,31 @@ import { OPENAI_API_KEY } from '$env/static/private';
 interface CoffeeData {
 	id: number;
 	name: string;
-	cupping_notes?: string;
-	description_short?: string;
-	description_long?: string;
-	farm_notes?: string;
+	score_value?: number;
+	arrival_date?: string;
 	region?: string;
 	processing?: string;
+	drying_method?: string;
+	roast_recs?: string;
+	lot_size?: string;
+	bag_size?: string;
+	packaging?: string;
 	cultivar_detail?: string;
-	score_value?: number;
+	grade?: string;
+	appearance?: string;
+	description_short?: string;
+	farm_notes?: string;
+	type?: string;
+	description_long?: string;
+	link?: string;
+	cost_lb?: number;
+	last_updated?: string;
+	source?: string;
+	stocked?: boolean;
+	cupping_notes?: string;
+	unstocked_date?: string;
+	stocked_date?: string;
+	// Note: embedding column excluded as it's the output, not input
 }
 
 export class EmbeddingService {
@@ -22,18 +39,47 @@ export class EmbeddingService {
 
 	/**
 	 * Create a rich text representation for embedding
+	 * Includes all relevant coffee data for comprehensive semantic search
 	 */
 	private createEmbeddingText(coffee: CoffeeData): string {
 		const parts = [
+			// Core identification
 			`Coffee: ${coffee.name}`,
+			coffee.type && `Type: ${coffee.type}`,
+
+			// Origin and processing
 			coffee.region && `Region: ${coffee.region}`,
 			coffee.processing && `Processing: ${coffee.processing}`,
+			coffee.drying_method && `Drying Method: ${coffee.drying_method}`,
 			coffee.cultivar_detail && `Variety: ${coffee.cultivar_detail}`,
+
+			// Quality and characteristics
 			coffee.score_value && `Score: ${coffee.score_value}`,
+			coffee.grade && `Grade: ${coffee.grade}`,
+			coffee.appearance && `Appearance: ${coffee.appearance}`,
+
+			// Flavor and tasting notes
 			coffee.cupping_notes && `Cupping Notes: ${coffee.cupping_notes}`,
 			coffee.description_short && `Description: ${coffee.description_short}`,
 			coffee.description_long && `Details: ${coffee.description_long}`,
-			coffee.farm_notes && `Farm Notes: ${coffee.farm_notes}`
+			coffee.roast_recs && `Roast Recommendations: ${coffee.roast_recs}`,
+
+			// Farm and sourcing
+			coffee.farm_notes && `Farm Notes: ${coffee.farm_notes}`,
+			coffee.source && `Source: ${coffee.source}`,
+
+			// Commercial details
+			coffee.lot_size && `Lot Size: ${coffee.lot_size}`,
+			coffee.bag_size && `Bag Size: ${coffee.bag_size}`,
+			coffee.packaging && `Packaging: ${coffee.packaging}`,
+			coffee.cost_lb && `Cost per lb: $${coffee.cost_lb}`,
+
+			// Availability
+			coffee.stocked !== undefined && `Stocked: ${coffee.stocked ? 'Yes' : 'No'}`,
+			coffee.arrival_date && `Arrival Date: ${coffee.arrival_date}`,
+			coffee.stocked_date && `Stocked Date: ${coffee.stocked_date}`,
+			coffee.unstocked_date && `Unstocked Date: ${coffee.unstocked_date}`,
+			coffee.last_updated && `Last Updated: ${coffee.last_updated}`
 		].filter(Boolean);
 
 		return parts.join('. ');
