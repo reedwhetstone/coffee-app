@@ -405,55 +405,66 @@
 										{coffee.cultivar_detail || '-'}
 									</div>
 								</div>
-								{#if coffee.score_value}
-									<div class="mt-1 flex justify-end">
-										<div class="flex flex-col items-center">
-											<div class="relative h-8 w-8 sm:h-10 sm:w-10">
-												<!-- Background arc -->
-												<svg class="absolute inset-0" viewBox="0 0 100 100">
-													<path
-														d="M10,50 A40,40 0 1,1 90,50"
-														fill="none"
-														stroke="#e5e7eb"
-														stroke-width="8"
-														stroke-linecap="round"
-													/>
-													<!-- Foreground arc (dynamic based on score) -->
-													<path
-														d="M10,50 A40,40 0 1,1 90,50"
-														fill="none"
-														stroke={getStrokeColor(coffee.score_value)}
-														stroke-width="8"
-														stroke-linecap="round"
-														stroke-dasharray="126"
-														stroke-dashoffset={126 -
-															(126 * getScorePercentage(coffee.score_value, 0, 100)) / 100}
-													/>
-												</svg>
-												<!-- Score value in the center -->
-												<div class="absolute inset-0 flex items-center justify-center">
-													<span
-														class="text-xs font-bold sm:text-sm {getScoreColorClass(
-															coffee.score_value
-														)}"
-													>
-														{coffee.score_value}
-													</span>
-												</div>
 
+								<div class="flex flex-col gap-2">
+									<div>
+										<span class="text-primary-light">Drying Method:</span>
+										{coffee.drying_method || '-'}
+									</div>
+									<div>
+										<span class="text-primary-light">Roast Recs:</span>
+										{coffee.roast_recs || '-'}
+									</div>
+								</div>
+							</div>
+							{#if coffee.score_value}
+								<div class="mt-1 flex justify-end">
+									<div class="flex flex-col items-center">
+										<div class="relative h-8 w-8 sm:h-10 sm:w-10">
+											<!-- Background arc -->
+											<svg class="absolute inset-0" viewBox="0 0 100 100">
+												<path
+													d="M10,50 A40,40 0 1,1 90,50"
+													fill="none"
+													stroke="#e5e7eb"
+													stroke-width="8"
+													stroke-linecap="round"
+												/>
+												<!-- Foreground arc (dynamic based on score) -->
+												<path
+													d="M10,50 A40,40 0 1,1 90,50"
+													fill="none"
+													stroke={getStrokeColor(coffee.score_value)}
+													stroke-width="8"
+													stroke-linecap="round"
+													stroke-dasharray="126"
+													stroke-dashoffset={126 -
+														(126 * getScorePercentage(coffee.score_value, 0, 100)) / 100}
+												/>
+											</svg>
+											<!-- Score value in the center -->
+											<div class="absolute inset-0 flex items-center justify-center">
 												<span
-													class="text-primary-light absolute bottom-0 left-0 right-0 top-7 text-center text-xs"
-													>SCORE</span
+													class="text-xs font-bold sm:text-sm {getScoreColorClass(
+														coffee.score_value
+													)}"
 												>
+													{coffee.score_value}
+												</span>
 											</div>
+
+											<span
+												class="text-primary-light absolute bottom-0 left-0 right-0 top-7 text-center text-xs"
+												>SCORE</span
+											>
 										</div>
 									</div>
-								{:else}
-									<div class="mt-1 flex justify-end">
-										<p class="text-primary-light text-sm">Score: -</p>
-									</div>
-								{/if}
-							</div>
+								</div>
+							{:else}
+								<div class="mt-1 flex justify-end">
+									<p class="text-primary-light text-sm">Score: -</p>
+								</div>
+							{/if}
 						</button>
 					{/each}
 
