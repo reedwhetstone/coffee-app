@@ -502,7 +502,15 @@ function createFilterStore() {
 				'oz_out'
 			];
 		} else if (routeId === '/') {
-			return ['name', 'source', 'region', 'processing', 'score_value', 'cost_lb'];
+			return [
+				'name',
+				'source',
+				'region',
+				'processing',
+				'cultivar_detail',
+				'score_value',
+				'cost_lb'
+			];
 		}
 		return [];
 	}
