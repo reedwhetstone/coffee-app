@@ -73,34 +73,25 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		let retrievalResult;
 
 		if (queryType === 'analysis') {
-			// For analysis queries, get more comprehensive historical data
+			// For analysis queries, get more current inventory data
 			retrievalResult = await ragService.retrieveRelevantCoffees(prompt, {
 				maxCurrentInventory: 50, // More current data for analysis
-				maxHistorical: 100, // Much more historical data
-				similarityThreshold: 0.1 // Lower threshold to be more inclusive
+				similarityThreshold: 0.06 // Lower threshold to be more inclusive
 			});
-
-			// Also get all historical data for comprehensive analysis
-			const { data: allHistoricalData } = await supabase
-				.from('coffee_catalog')
-				.select('*')
-				.order('last_updated', { ascending: true });
-
-			// Merge with comprehensive historical data
-			retrievalResult.historicalData = allHistoricalData || [];
 		} else {
 			// For recommendations, use the existing focused approach
 			retrievalResult = await ragService.retrieveRelevantCoffees(prompt, {
-				maxCurrentInventory: 15,
-				maxHistorical: 25,
-				similarityThreshold: 0.3
+				maxCurrentInventory: 50,
+				similarityThreshold: 0.06
 			});
 		}
 
 		console.log('RAG Service Results:', {
 			queryType,
 			currentInventoryCount: retrievalResult.currentInventory.length,
-			historicalDataCount: retrievalResult.historicalData.length,
+			currentInventorySource: retrievalResult.currentInventory.map((c) => c.source),
+			currentInventoryNames: retrievalResult.currentInventory.map((c) => c.name),
+			currentInventorySimilarity: retrievalResult.currentInventory.map((c) => c.similarity),
 			prompt: prompt
 		});
 
@@ -130,8 +121,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 						{
 							text:
 								queryType === 'analysis'
-									? "I understand my role as a coffee data analyst. I'll provide comprehensive analysis using all available historical data, focusing on trends, patterns, and insights rather than recommendations."
-									: "I understand my enhanced role as a coffee expert with access to both current inventory and historical context. I'll use semantic search results to provide more informed recommendations, drawing on patterns from historical data while prioritizing currently available coffees."
+									? "I understand my role as a coffee data analyst. I'll provide comprehensive analysis using available current inventory data, focusing on trends, patterns, and insights rather than recommendations."
+									: "I understand my role as a coffee expert with access to current inventory. I'll use semantic search results to provide informed recommendations based on currently available coffees."
 						}
 					]
 				}
@@ -141,26 +132,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		const contextualPrompt =
 			queryType === 'analysis'
 				? `
-COMPREHENSIVE HISTORICAL DATA (All Available Records):
-${JSON.stringify(retrievalResult.historicalData, null, 2)}
-
-CURRENT INVENTORY (For Reference):
+CURRENT INVENTORY DATA (All Available Records):
 ${JSON.stringify(retrievalResult.currentInventory, null, 2)}
 
 ANALYSIS REQUEST: ${prompt}
 
-Please provide a comprehensive analysis of the data. Focus on trends, patterns, and insights. Do not make recommendations unless specifically requested.
+Please provide a comprehensive analysis of the current inventory data. Focus on trends, patterns, and insights. Do not make recommendations unless specifically requested.
 `
 				: `
 CURRENT INVENTORY (Available for Purchase):
 ${JSON.stringify(retrievalResult.currentInventory, null, 2)}
 
-HISTORICAL CONTEXT (For Reference & Trends):
-${JSON.stringify(retrievalResult.historicalData, null, 2)}
-
 USER QUERY: ${prompt}
 
-Please provide recommendations prioritizing CURRENT INVENTORY, but use the historical coffee data to provide richer context and explanations.
+Please provide recommendations based on the current inventory.
 `;
 
 		const result = await chatSession.sendMessage(contextualPrompt);
@@ -170,8 +155,7 @@ Please provide recommendations prioritizing CURRENT INVENTORY, but use the histo
 			text: response.text(),
 			metadata: {
 				queryType,
-				currentInventoryCount: retrievalResult.currentInventory.length,
-				historicalDataCount: retrievalResult.historicalData.length
+				currentInventoryCount: retrievalResult.currentInventory.length
 			}
 		});
 	} catch (error) {
@@ -188,22 +172,20 @@ function getAnalysisSystemPrompt(): string {
 
 Your task is to analyze coffee data and provide comprehensive insights, trends, and patterns. You have access to:
 
-1. COMPREHENSIVE HISTORICAL DATA: All available coffee records for trend analysis
-2. CURRENT INVENTORY: Current market offerings for context
+CURRENT INVENTORY: Current market offerings and available coffee data
 
 When conducting analysis:
-- Focus on data-driven insights and patterns
-- Identify trends over time (price changes, availability patterns, regional shifts)
+- Focus on data-driven insights and patterns from current inventory
+- Identify patterns in pricing, regions, processing methods, and quality scores
 - Provide statistical summaries when relevant
-- Compare different time periods, regions, or suppliers
-- Highlight significant changes or anomalies
+- Compare different regions, processing methods, or suppliers within current data
+- Highlight significant variations or notable characteristics
 - Use specific data points to support your analysis
 
 For price analysis specifically:
-- Calculate price changes over time
-- Identify seasonal patterns
 - Compare pricing across regions, processing methods, or suppliers
-- Note any significant market shifts or trends
+- Identify value opportunities and premium offerings
+- Note any significant price variations or patterns
 
 OUTPUT FORMAT:
 - Provide clear, structured analysis
@@ -220,16 +202,9 @@ function getRecommendationSystemPrompt(): string {
 
 Your task is to analyze coffee data and make personalized recommendations based on the user's query. You have access to:
 
-1. CURRENT INVENTORY: Currently stocked coffees available for purchase
-2. HISTORICAL DATA: Past coffees for context, trends, and comparison
+CURRENT INVENTORY: Currently stocked coffees available for purchase
 
-Use the same scoring rubric as before, but now you can reference historical patterns, seasonal availability, and make more informed recommendations based on the broader context.
-
-When making recommendations:
-- Prioritize CURRENT INVENTORY for actual recommendations
-- Use HISTORICAL DATA to provide context, explain trends, or suggest alternatives
-
-If you are making a recommendation, use the following SCORING RUBRIC (Total 100 points):
+When making recommendations, use the following SCORING RUBRIC (Total 100 points):
 
 1. Flavor Profile Match (35 points):
    - Cupping Notes (15 points): Match with requested flavor profiles

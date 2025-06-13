@@ -1,7 +1,6 @@
 import { OPENAI_API_KEY } from '$env/static/private';
 
 interface CoffeeData {
-	id: number;
 	name: string;
 	score_value?: number;
 	arrival_date?: string;
@@ -21,11 +20,8 @@ interface CoffeeData {
 	description_long?: string;
 	link?: string;
 	cost_lb?: number;
-	last_updated?: string;
 	source?: string;
-	stocked?: boolean;
 	cupping_notes?: string;
-	unstocked_date?: string;
 	stocked_date?: string;
 	// Note: embedding column excluded as it's the output, not input
 }
@@ -45,7 +41,6 @@ export class EmbeddingService {
 		const parts = [
 			// Core identification
 			`Coffee: ${coffee.name}`,
-			coffee.type && `Type: ${coffee.type}`,
 
 			// Origin and processing
 			coffee.region && `Region: ${coffee.region}`,
@@ -66,6 +61,8 @@ export class EmbeddingService {
 
 			// Farm and sourcing
 			coffee.farm_notes && `Farm Notes: ${coffee.farm_notes}`,
+			coffee.arrival_date && `Arrival Date: ${coffee.arrival_date}`,
+			coffee.type && `Type: ${coffee.type}`,
 			coffee.source && `Source: ${coffee.source}`,
 
 			// Commercial details
@@ -75,11 +72,7 @@ export class EmbeddingService {
 			coffee.cost_lb && `Cost per lb: $${coffee.cost_lb}`,
 
 			// Availability
-			coffee.stocked !== undefined && `Stocked: ${coffee.stocked ? 'Yes' : 'No'}`,
-			coffee.arrival_date && `Arrival Date: ${coffee.arrival_date}`,
-			coffee.stocked_date && `Stocked Date: ${coffee.stocked_date}`,
-			coffee.unstocked_date && `Unstocked Date: ${coffee.unstocked_date}`,
-			coffee.last_updated && `Last Updated: ${coffee.last_updated}`
+			coffee.stocked_date && `Stocked Date: ${coffee.stocked_date}`
 		].filter(Boolean);
 
 		return parts.join('. ');

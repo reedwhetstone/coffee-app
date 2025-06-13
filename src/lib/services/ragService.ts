@@ -3,7 +3,6 @@ import { EmbeddingService } from './embeddingService';
 
 interface RetrievalResult {
 	currentInventory: any[];
-	historicalData: any[];
 }
 
 export class RAGService {
@@ -16,17 +15,23 @@ export class RAGService {
 	}
 
 	/**
+	 * Remove embedding from coffee data to avoid sending large vectors to LLM
+	 */
+	private cleanCoffeeData(coffees: any[]): any[] {
+		return coffees.map(({ embedding, ...coffee }) => coffee);
+	}
+
+	/**
 	 * Retrieve relevant coffee data using semantic search
 	 */
 	async retrieveRelevantCoffees(
 		query: string,
 		options: {
 			maxCurrentInventory?: number;
-			maxHistorical?: number;
 			similarityThreshold?: number;
 		} = {}
 	): Promise<RetrievalResult> {
-		const { maxCurrentInventory = 10, maxHistorical = 20, similarityThreshold = 0.7 } = options;
+		const { maxCurrentInventory = 10, similarityThreshold = 0.7 } = options;
 
 		// Generate embedding for the user query
 		const queryEmbedding = await this.embeddingService.generateQueryEmbedding(query);
@@ -60,42 +65,24 @@ export class RAGService {
 			threshold: similarityThreshold
 		});
 
-		// Search historical data (all coffees for context)
-		const { data: historicalData, error: historicalError } = await this.supabase.rpc(
-			'match_coffee_historical',
-			{
-				query_embedding: queryEmbedding,
-				match_threshold: similarityThreshold,
-				match_count: maxHistorical
-			}
-		);
-
-		console.log('Historical data search result:', {
-			data: historicalData?.length || 0,
-			error: historicalError,
-			threshold: similarityThreshold
-		});
-
 		// If no results with semantic search, fall back to simple stocked query
 		if (!currentInventory || currentInventory.length === 0) {
 			console.log('No semantic results, falling back to simple stocked query');
 			const { data: fallbackInventory } = await this.supabase
 				.from('coffee_catalog')
-				.select('*')
+				.select('*, embedding')
 				.eq('stocked', true)
 				.limit(maxCurrentInventory);
 
 			console.log('Fallback inventory:', fallbackInventory?.length || 0);
 
 			return {
-				currentInventory: fallbackInventory || [],
-				historicalData: historicalData || []
+				currentInventory: this.cleanCoffeeData(fallbackInventory || [])
 			};
 		}
 
 		return {
-			currentInventory: currentInventory || [],
-			historicalData: historicalData || []
+			currentInventory: this.cleanCoffeeData(currentInventory || [])
 		};
 	}
 }

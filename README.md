@@ -46,6 +46,9 @@ Create a stocked coffees col in green coffee inv- create stocked coffees managem
 
 ### General
 
+Modified RAG -
+Instead of straight vector searching, use the filter tool in a more prominent way on the main search platform, then dial in the reccomendation based on the filtered results. Pass through the result the user filters into the seach LLM bot.
+
 'Supplier & Origin Comparison Tools',
 'Real-time Coffee Market Pricing Analysis',
 'Price Trend Monitoring for Green Coffee',
