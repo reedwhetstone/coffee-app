@@ -118,6 +118,8 @@ Instead of straight vector searching, use the filter tool in a more prominent wa
 
 ## Content & Catalog Management
 
+https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
+
 - Clean up roast page UI to align with beans page UI
 - Clean up beans catalog profiles and remove user
 - Summarize/rewrite front-end descriptions for fair use
@@ -125,6 +127,62 @@ Instead of straight vector searching, use the filter tool in a more prominent wa
   - Theta Ridge Coffee: Good beans with low prices but limited bean/farm information
   - Burman Coffee Traders: Good quality beans
   - Bodhi Leaf: Ongoing `SHIP59` coupon code for free shipping on orders $59+
+  - prime green coffee
+  - hacea
+  - onyx green coffee
+
+Hacea Coffee Source - Excellent packaging and quality greens; great service.
+Royal Coffee Crown Jewels - selling 22 and 1lb bags of their Royal Crown Jewels. My preferred source of decaf.
+Genuine Origin - 65lb in grain pro bags in boxes shipping included; 300 gram samples $7.50 each
+Showroom Coffee - Solid selection of greens; sells Huky and ARC roasters.
+Prime Green Coffee - High end offerings; Jim is easy to work with
+
+Direct from Farm - Limited Varieties
+These providers usually have both green and roasted in limited varieties and quantities.
+Aida Batlle Direct
+Primos Nicaragua
+Cafe Juan Ana
+
+Other US Choices
+WHEN YOU ORDER FROM THESE PLEASE ASK THEM TO JOIN THE ARTISAN COLLABORATION
+
+In no particular order:
+
+Theta Ridge Importers of Brazil Daterra
+Coffee Bean Corral - Best matrix for filtering choices.
+Café Kreyol
+Green Coffee Buying Club
+Java Beans Plus
+Len's Coffee
+Leverhead Coffee
+Lost Dutchman
+The Coffee Project
+Roast Coffee Company
+Blazing Bean Roasters
+Smokin' Beans Coffee Co.
+The Captain's Coffee
+Invalsa
+CopanTrade
+Rhodes Roast 5lbs bags; free shipping.
+Yellow Rooster
+Mill City Roasters
+Sweet Maria's
+Roastmasters
+Burman Coffee Traders
+
+Larger Quantities-
+
+Onyx Box (20 or 40lbs) of Guatemala - with $10 Fedex Shipping
+Genuine Origin 65lb in grain pro bags in boxes shipping included; 300 gram samples $7.50 each
+Royal Coffee Crown Jewels 22lb Crown Royal boxes (free shipping) or 100lb bags shipped freight. Occasional 50lb Crown Jewels as well.
+Royal New York 22lb boxes
+Showroom Coffee offers 33 and 66lb choices. Free shipping for orders over 60lbs.
+Coffee Shrub 50lb bags; shipping calculated (example to CO was $25 or 50 cents a pound NY was $35); 200
+gram samples (up to 10 for $7.55) for wholesale customers only. Wholesale side of Sweet Marias.
+Roastmasters 50lb gain pro bags; $22 flat rate shipping
+Ally Open Core Coffees (50lb boxes) are consistently available regional community lots. Microlots (50lb boxes) are limited edition coffees from our partner farms. Reserve Lots (25lb boxes) are super-special coffees ideal for competitions and showcase occasions.
+Coffee Crafters Green 10 and 20 pound bags plus see larger quantities too.
+Crop to Cup
 
 ## Future Features
 
