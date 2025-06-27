@@ -49,13 +49,14 @@ export class EnhancedEmbeddingService {
 	createSemanticChunks(coffee: CoffeeData): CoffeeChunk[] {
 		const chunks: CoffeeChunk[] = [];
 
-		// 1. PROFILE CHUNK - Core identification and quality
+		// 1. PROFILE CHUNK - Core identification and quality (SUPPLIER NAME FIRST)
 		const profileContent = [
-			`Coffee: ${coffee.name}`,
+			`${coffee.source} - Coffee: ${coffee.name}`,
 			coffee.score_value && `Quality Score: ${coffee.score_value}`,
 			coffee.grade && `Grade: ${coffee.grade}`,
 			coffee.appearance && `Appearance: ${coffee.appearance}`,
-			coffee.type && `Type: ${coffee.type}`
+			coffee.type && `Type: ${coffee.type}`,
+			coffee.source && `Supplier: ${coffee.source}`
 		]
 			.filter(Boolean)
 			.join('. ');
@@ -69,6 +70,7 @@ export class EnhancedEmbeddingService {
 				content: profileContent,
 				metadata: {
 					name: coffee.name,
+					source: coffee.source,
 					score: coffee.score_value,
 					grade: coffee.grade,
 					stocked: coffee.stocked,
@@ -77,7 +79,7 @@ export class EnhancedEmbeddingService {
 			});
 		}
 
-		// 2. TASTING CHUNK - Flavor profile and cupping notes
+		// 2. TASTING CHUNK - Flavor profile and cupping notes (SUPPLIER PROMINENT)
 		const tastingContent = [
 			coffee.cupping_notes && `Cupping Notes: ${coffee.cupping_notes}`,
 			coffee.description_short && `Description: ${coffee.description_short}`,
@@ -92,9 +94,10 @@ export class EnhancedEmbeddingService {
 				id: `${coffee.id}_tasting`,
 				coffee_id: coffee.id,
 				chunk_type: 'tasting',
-				content: `${coffee.name} - ${tastingContent}`,
+				content: `${coffee.source} - ${coffee.name} - ${tastingContent}`,
 				metadata: {
 					name: coffee.name,
+					source: coffee.source,
 					score: coffee.score_value,
 					stocked: coffee.stocked,
 					has_cupping_notes: !!coffee.cupping_notes,
@@ -103,7 +106,7 @@ export class EnhancedEmbeddingService {
 			});
 		}
 
-		// 3. ORIGIN CHUNK - Geographic and farm information
+		// 3. ORIGIN CHUNK - Geographic and farm information (SUPPLIER PROMINENT)
 		const originContent = [
 			coffee.region && `Region: ${coffee.region}`,
 			coffee.cultivar_detail && `Variety: ${coffee.cultivar_detail}`,
@@ -118,18 +121,18 @@ export class EnhancedEmbeddingService {
 				id: `${coffee.id}_origin`,
 				coffee_id: coffee.id,
 				chunk_type: 'origin',
-				content: `${coffee.name} - ${originContent}`,
+				content: `${coffee.source} - ${coffee.name} - ${originContent}`,
 				metadata: {
 					name: coffee.name,
+					source: coffee.source,
 					region: coffee.region,
 					cultivar: coffee.cultivar_detail,
-					source: coffee.source,
 					stocked: coffee.stocked
 				}
 			});
 		}
 
-		// 4. PROCESSING CHUNK - Processing methods and preparation
+		// 4. PROCESSING CHUNK - Processing methods and preparation (SUPPLIER PROMINENT)
 		const processingContent = [
 			coffee.processing && `Processing: ${coffee.processing}`,
 			coffee.drying_method && `Drying Method: ${coffee.drying_method}`,
@@ -143,9 +146,10 @@ export class EnhancedEmbeddingService {
 				id: `${coffee.id}_processing`,
 				coffee_id: coffee.id,
 				chunk_type: 'processing',
-				content: `${coffee.name} - ${processingContent}`,
+				content: `${coffee.source} - ${coffee.name} - ${processingContent}`,
 				metadata: {
 					name: coffee.name,
+					source: coffee.source,
 					processing: coffee.processing,
 					drying_method: coffee.drying_method,
 					stocked: coffee.stocked
@@ -153,7 +157,7 @@ export class EnhancedEmbeddingService {
 			});
 		}
 
-		// 5. COMMERCIAL CHUNK - Pricing and availability
+		// 5. COMMERCIAL CHUNK - Pricing and availability (SUPPLIER MOST PROMINENT)
 		const commercialContent = [
 			coffee.cost_lb && `Cost per lb: $${coffee.cost_lb}`,
 			coffee.lot_size && `Lot Size: ${coffee.lot_size}`,
@@ -169,9 +173,10 @@ export class EnhancedEmbeddingService {
 				id: `${coffee.id}_commercial`,
 				coffee_id: coffee.id,
 				chunk_type: 'commercial',
-				content: `${coffee.name} - ${commercialContent}`,
+				content: `${coffee.source} - ${coffee.name} - Supplier: ${coffee.source} - ${commercialContent}`,
 				metadata: {
 					name: coffee.name,
+					source: coffee.source,
 					cost_lb: coffee.cost_lb,
 					lot_size: coffee.lot_size,
 					stocked: coffee.stocked,
