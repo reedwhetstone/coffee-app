@@ -130,6 +130,7 @@ https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
   - prime green coffee
   - hacea
   - onyx green coffee
+  - https://sleepymangocoffee.com/collections/frontpage
 
 Hacea Coffee Source - Excellent packaging and quality greens; great service.
 Royal Coffee Crown Jewels - selling 22 and 1lb bags of their Royal Crown Jewels. My preferred source of decaf.
