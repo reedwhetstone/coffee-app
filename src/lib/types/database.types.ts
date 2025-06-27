@@ -1,6 +1,20 @@
 export interface Database {
 	public: {
 		Tables: {
+			coffee_chunks: {
+				Row: {
+					id: string;
+					coffee_id: number;
+					chunk_type: 'profile' | 'tasting' | 'origin' | 'commercial' | 'processing';
+					content: string;
+					metadata: Record<string, any>;
+					embedding: number[];
+					created_at: string;
+					updated_at: string;
+				};
+				Insert: Omit<Database['public']['Tables']['coffee_chunks']['Row'], 'created_at' | 'updated_at'>;
+				Update: Partial<Database['public']['Tables']['coffee_chunks']['Row']>;
+			};
 			green_coffee_inv: {
 				Row: {
 					id: number;

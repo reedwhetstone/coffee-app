@@ -184,22 +184,43 @@ export class EnhancedEmbeddingService {
 	}
 
 	/**
-	 * Generate embeddings for all chunks
+	 * Generate embeddings for all chunks with rate limiting
 	 */
 	async generateChunkEmbeddings(chunks: CoffeeChunk[]): Promise<CoffeeChunk[]> {
-		const embeddings = await Promise.all(
-			chunks.map((chunk) => this.generateEmbedding(chunk.content))
-		);
-
-		return chunks.map((chunk, index) => ({
-			...chunk,
-			embedding: embeddings[index]
-		}));
+		const chunksWithEmbeddings: CoffeeChunk[] = [];
+		
+		for (let i = 0; i < chunks.length; i++) {
+			const chunk = chunks[i];
+			try {
+				const embedding = await this.generateEmbedding(chunk.content);
+				chunksWithEmbeddings.push({
+					...chunk,
+					embedding
+				});
+				
+				// Rate limiting - wait 100ms between requests
+				if (i < chunks.length - 1) {
+					await new Promise(resolve => setTimeout(resolve, 100));
+				}
+			} catch (error) {
+				console.error(`Failed to generate embedding for chunk ${chunk.id}:`, error);
+				// Continue with other chunks even if one fails
+			}
+		}
+		
+		return chunksWithEmbeddings;
 	}
 
 	/**
 	 * Generate embedding for text
 	 */
+	/**
+	 * Generate embedding for user query
+	 */
+	async generateQueryEmbedding(query: string): Promise<number[]> {
+		return this.generateEmbedding(query);
+	}
+
 	private async generateEmbedding(text: string): Promise<number[]> {
 		const response = await fetch('https://api.openai.com/v1/embeddings', {
 			method: 'POST',

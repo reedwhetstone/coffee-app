@@ -44,7 +44,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		} = await event.locals.supabase.auth.getSession();
 
 		if (!session) {
-			return { session: null, user: null };
+			return { session: null, user: null, role: 'viewer' };
 		}
 
 		// Always validate the user with getUser() to ensure the JWT is valid
@@ -55,24 +55,22 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 		if (userError) {
 			// JWT validation has failed
-			return { session: null, user: null };
+			return { session: null, user: null, role: 'viewer' };
 		}
 
-		return { session, user };
+		// Get user role
+		const role = user ? await getUserRole(event.locals.supabase, user.id) : 'viewer';
+
+		return { session, user, role };
 	};
 
 	// Get validated session and user data
-	const { session, user } = await event.locals.safeGetSession();
+	const { session, user, role } = await event.locals.safeGetSession();
 
 	// Set initial state
 	event.locals.session = session;
 	event.locals.user = user;
-	event.locals.role = 'viewer'; // default role
-
-	if (user) {
-		// Use the getUserRole utility function instead of duplicating the logic
-		event.locals.role = await getUserRole(event.locals.supabase, user.id);
-	}
+	event.locals.role = role;
 
 	// Make data available to the frontend
 	event.locals.data = {
@@ -94,17 +92,12 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
 
 	// Get session and verified user data
-	const { session, user } = await event.locals.safeGetSession();
+	const { session, user, role } = await event.locals.safeGetSession();
 
 	// Set default values
 	event.locals.session = session;
 	event.locals.user = user;
-	event.locals.role = 'viewer'; // default role
-
-	if (user) {
-		// Use the getUserRole utility here as well
-		event.locals.role = await getUserRole(event.locals.supabase, user.id);
-	}
+	event.locals.role = role;
 
 	// Make sure these values are available to the frontend
 	event.locals.data = {

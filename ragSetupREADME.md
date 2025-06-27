@@ -1,478 +1,319 @@
-To implement true RAG with your entire coffee dataset (both current inventory and historical data), you'd need to set up a vector database and semantic search system. Here's how you could approach this:
+# Coffee RAG System - Complete Implementation Guide
 
-## 1. Vector Database Setup
+This document describes our enhanced RAG (Retrieval-Augmented Generation) system that uses chunked embeddings for semantic coffee search and recommendations.
 
-First, you'd need to choose a vector database. For your use case, I'd recommend:
+## 🎯 Overview
 
-- **Supabase Vector/pgvector** (since you're already using Supabase)
-- **Pinecone** (managed service)
-- **Weaviate** (open source)
+Our RAG system combines traditional single-embedding search with advanced chunked embeddings to provide:
 
-## 2. Data Preparation & Embedding
+- **Semantic Understanding**: Finds coffees based on meaning, not just keywords
+- **Targeted Search**: Separate chunks for tasting notes, origin info, processing, etc.
+- **Historical Context**: LLM can reference past trends and seasonal patterns
+- **Better Recommendations**: More nuanced suggestions based on broader coffee knowledge
+- **Scalable Performance**: Works efficiently with large datasets
+- **Contextual Awareness**: Can explain why certain coffees work well together
 
-Search files...
-Perfect! Now I can see your data structure. Here's how you'd implement true RAG with both current inventory and historical coffee data:
+## 🏗️ Architecture
 
-## Implementation Plan
+### Database Schema
 
-### 1. **Database Schema Extension**
+Our system uses two approaches:
 
-First, add a vector column to store embeddings:
+1. **Legacy Single Embeddings**: `coffee_catalog.embedding` column
+2. **Enhanced Chunked Embeddings**: `coffee_chunks` table
 
-```sql:supabase/migrations/add_vector_embeddings.sql
--- Enable the vector extension
-CREATE EXTENSION IF NOT EXISTS vector;
+```sql
+-- Main chunked embeddings table
+CREATE TABLE coffee_chunks (
+    id TEXT PRIMARY KEY,
+    coffee_id INTEGER REFERENCES coffee_catalog(id) ON DELETE CASCADE,
+    chunk_type TEXT NOT NULL, -- 'profile' | 'tasting' | 'origin' | 'commercial' | 'processing'
+    content TEXT NOT NULL,
+    metadata JSONB NOT NULL,
+    embedding VECTOR(1536) NOT NULL, -- OpenAI text-embedding-3-small dimension
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- Add embedding column to coffee_catalog (your main historical data)
-ALTER TABLE coffee_catalog
-ADD COLUMN embedding vector(1536); -- OpenAI ada-002 dimension
+-- Performance indexes
+CREATE INDEX idx_coffee_chunks_coffee_id ON coffee_chunks(coffee_id);
+CREATE INDEX idx_coffee_chunks_type ON coffee_chunks(chunk_type);
+CREATE INDEX idx_coffee_chunks_embedding ON coffee_chunks USING ivfflat (embedding vector_cosine_ops);
 
+-- Vector search function
+CREATE OR REPLACE FUNCTION match_coffee_chunks(
+  query_embedding vector(1536),
+  match_threshold float DEFAULT 0.7,
+  match_count int DEFAULT 10,
+  chunk_types text[] DEFAULT NULL
+)
+RETURNS TABLE (
+  id text,
+  coffee_id integer,
+  chunk_type text,
+  content text,
+  metadata jsonb,
+  similarity float
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT 
+    c.id,
+    c.coffee_id,
+    c.chunk_type,
+    c.content,
+    c.metadata,
+    1 - (c.embedding <=> query_embedding) as similarity
+  FROM coffee_chunks c
+  JOIN coffee_catalog cc ON c.coffee_id = cc.id
+  WHERE 
+    1 - (c.embedding <=> query_embedding) > match_threshold
+    AND (chunk_types IS NULL OR c.chunk_type = ANY(chunk_types))
+    AND cc.stocked = true
+  ORDER BY c.embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+```
 
--- Create indexes for vector similarity search
-CREATE INDEX ON coffee_catalog USING ivfflat (embedding vector_cosine_ops);
+### Chunking Strategy
 
--- Only create this index
-CREATE INDEX coffee_catalog_embedding_idx
-ON coffee_catalog
+Each coffee is broken into semantic chunks:
+
+1. **Profile Chunk**: Core identification, quality scores, grades
+2. **Tasting Chunk**: Cupping notes, flavor descriptions, roast recommendations  
+3. **Origin Chunk**: Region, variety, farm information, sourcing details
+4. **Processing Chunk**: Processing methods, drying techniques, packaging
+5. **Commercial Chunk**: Pricing, lot sizes, availability, arrival dates
+
+## 🔧 Services
+
+### EnhancedEmbeddingService
+
+Handles chunked embedding generation with:
+- Semantic chunking by content type
+- Rate limiting (100ms between API calls)
+- Error handling for individual chunks
+- Rich metadata for each chunk
+
+```typescript
+// Example usage
+const service = new EnhancedEmbeddingService(OPENAI_API_KEY);
+const chunks = service.createSemanticChunks(coffeeData);
+const chunksWithEmbeddings = await service.generateChunkEmbeddings(chunks);
+```
+
+### RAGService
+
+Unified search service supporting both approaches:
+
+```typescript
+// Chunked search (default)
+const result = await ragService.retrieveRelevantCoffees("fruity Ethiopian beans", {
+  useChunkedSearch: true,
+  chunkTypes: ['tasting', 'origin'], // Optional filtering
+  maxCurrentInventory: 10,
+  similarityThreshold: 0.7
+});
+
+// Legacy search (fallback)
+const result = await ragService.retrieveRelevantCoffees("fruity Ethiopian beans", {
+  useChunkedSearch: false
+});
+```
+
+## 🚀 API Endpoints
+
+### Generate Embeddings
+
+**Chunked Embeddings (Recommended)**
+```bash
+# Generate chunked embeddings for all coffees
+curl -X POST "http://localhost:5173/api/embeddings/populate?chunked=true"
+
+# Force regenerate all chunks  
+curl -X POST "http://localhost:5173/api/embeddings/populate?chunked=true&force=true"
+```
+
+**Legacy Embeddings**
+```bash
+# Generate single embeddings per coffee
+curl -X POST "http://localhost:5173/api/embeddings/populate"
+
+# Force regenerate existing embeddings
+curl -X POST "http://localhost:5173/api/embeddings/populate?force=true"
+```
+
+### Search Capabilities
+
+Our chunked approach enables targeted queries:
+
+- **Tasting-focused**: "fruity and bright coffees" → matches tasting chunks
+- **Origin-focused**: "Ethiopian highlands beans" → matches origin chunks  
+- **Processing-focused**: "natural process coffees" → matches processing chunks
+- **Commercial-focused**: "under $6 per pound" → matches commercial chunks
+
+## 🎯 Search Quality Benefits
+
+### Before (Single Embeddings)
+- One embedding per coffee containing all information
+- Limited precision for specific aspects
+- Mixed relevance signals
+
+### After (Chunked Embeddings)
+- 3-5 focused embeddings per coffee
+- Precise matching for specific queries
+- Better ranking and relevance
+- Chunk-type filtering capabilities
+
+## 🔄 Implementation Workflow
+
+### 1. Database Setup
+```sql
+-- Already implemented in your Supabase instance
+-- coffee_chunks table and match_coffee_chunks function
+```
+
+### 2. Generate Initial Embeddings
+```bash
+# Start with chunked embeddings for better search quality
+curl -X POST "http://localhost:5173/api/embeddings/populate?chunked=true"
+```
+
+### 3. Monitor Progress
+```javascript
+// API returns detailed progress information
+{
+  "success": true,
+  "processed": { 
+    "coffees": 150, 
+    "chunks": 650 
+  },
+  "message": "Successfully processed 150 coffees with 650 chunks"
+}
+```
+
+### 4. Test Search Quality
+```javascript
+// Test various query types
+await ragService.retrieveRelevantCoffees("bright acidic coffee");
+await ragService.retrieveRelevantCoffees("Ethiopian natural process");
+await ragService.retrieveRelevantCoffees("chocolatey notes under $5");
+```
+
+## ⚙️ Configuration Options
+
+### Chunked Search Options
+```typescript
+interface ChunkSearchOptions {
+  maxCurrentInventory?: number;     // Default: 10
+  similarityThreshold?: number;     // Default: 0.7
+  chunkTypes?: string[];           // Optional: filter by chunk types
+  useChunkedSearch?: boolean;      // Default: true
+}
+```
+
+### Embedding Models
+- **Current**: `text-embedding-3-small` (1536 dimensions)
+- **Rate Limiting**: 100ms between API calls
+- **Cost**: ~$0.02 per 1M tokens
+
+## 📊 Performance Considerations
+
+### Index Management
+```sql
+-- Monitor index performance
+SELECT schemaname, tablename, indexname, idx_tup_read, idx_tup_fetch 
+FROM pg_stat_user_indexes 
+WHERE tablename = 'coffee_chunks';
+
+-- Rebuild index if needed (after bulk data changes)
+DROP INDEX idx_coffee_chunks_embedding;
+CREATE INDEX idx_coffee_chunks_embedding ON coffee_chunks 
 USING ivfflat (embedding vector_cosine_ops);
-
-⚠️ But Here’s the Catch with ivfflat (Approximate Vector Indexing):
-Unlike standard B-tree indexes, IVFFlat uses a clustering approach, and new vectors may be poorly indexed unless conditions are right.
-
-Key Implications:
-Insertions after index creation go into a fixed set of clusters.
-
-If the original clustering (done during index creation) doesn't suit the new data well, query performance or accuracy can degrade.
-
-Best practice: bulk insert → create index
-
-It’s better to:
-
-Load most of your data
-
-Then run CREATE INDEX
-
-This allows the clustering algorithm to build a good representation of your dataset.
-
-For optimal performance over time:
-
-You may need to periodically drop and recreate the index if your data distribution changes significantly.
-
-Or consider a hybrid approach: use IVFFlat for historical data + brute force for recent entries.
-
-
 ```
 
-### 2. **Embedding Generation Service**
+### Best Practices
+1. **Bulk Load Then Index**: Load data first, create vector indexes after
+2. **Monitor Similarity Thresholds**: Adjust based on search quality
+3. **Periodic Index Rebuilds**: For changing data distributions
+4. **Fallback Strategy**: Always maintain legacy search as backup
 
-```typescript:src/lib/services/embeddingService.ts
-// src/lib/services/embeddingService.ts
-import { OPENAI_API_KEY } from '$env/static/private';
+## 🔍 Search Examples
 
-interface CoffeeData {
-  id: number;
-  name: string;
-  cupping_notes?: string;
-  description_short?: string;
-  description_long?: string;
-  farm_notes?: string;
-  region?: string;
-  processing?: string;
-  cultivar_detail?: string;
-  score_value?: number;
-}
+### Targeted Chunk Searches
+```typescript
+// Only search tasting notes
+await ragService.retrieveRelevantCoffees("chocolate and caramel", {
+  chunkTypes: ['tasting']
+});
 
-export class EmbeddingService {
-  private openaiApiKey: string;
+// Only search origin information
+await ragService.retrieveRelevantCoffees("high altitude Colombian", {
+  chunkTypes: ['origin']
+});
 
-  constructor(apiKey: string) {
-    this.openaiApiKey = apiKey;
-  }
-
-  /**
-   * Create a rich text representation for embedding
-   */
-  private createEmbeddingText(coffee: CoffeeData): string {
-    const parts = [
-      `Coffee: ${coffee.name}`,
-      coffee.region && `Region: ${coffee.region}`,
-      coffee.processing && `Processing: ${coffee.processing}`,
-      coffee.cultivar_detail && `Variety: ${coffee.cultivar_detail}`,
-      coffee.score_value && `Score: ${coffee.score_value}`,
-      coffee.cupping_notes && `Cupping Notes: ${coffee.cupping_notes}`,
-      coffee.description_short && `Description: ${coffee.description_short}`,
-      coffee.description_long && `Details: ${coffee.description_long}`,
-      coffee.farm_notes && `Farm Notes: ${coffee.farm_notes}`
-    ].filter(Boolean);
-
-    return parts.join('. ');
-  }
-
-  /**
-   * Generate embedding for a single coffee
-   */
-  async generateEmbedding(coffee: CoffeeData): Promise<number[]> {
-    const text = this.createEmbeddingText(coffee);
-
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.openaiApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        input: text,
-        model: 'text-embedding-ada-002'
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.data[0].embedding;
-  }
-
-  /**
-   * Generate embedding for user query
-   */
-  async generateQueryEmbedding(query: string): Promise<number[]> {
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.openaiApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        input: query,
-        model: 'text-embedding-ada-002'
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.data[0].embedding;
-  }
-}
+// Commercial queries
+await ragService.retrieveRelevantCoffees("budget friendly options", {
+  chunkTypes: ['commercial']
+});
 ```
 
-### 3. **RAG Service**
-
-```typescript:src/lib/services/ragService.ts
-// src/lib/services/ragService.ts
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { EmbeddingService } from './embeddingService';
-
-interface RetrievalResult {
-  currentInventory: any[];
-  historicalData: any[];
-  similarCoffees: any[];
-}
-
-export class RAGService {
-  private supabase: SupabaseClient;
-  private embeddingService: EmbeddingService;
-
-  constructor(supabase: SupabaseClient, openaiApiKey: string) {
-    this.supabase = supabase;
-    this.embeddingService = new EmbeddingService(openaiApiKey);
-  }
-
-  /**
-   * Retrieve relevant coffee data using semantic search
-   */
-  async retrieveRelevantCoffees(
-    query: string,
-    options: {
-      maxCurrentInventory?: number;
-      maxHistorical?: number;
-      similarityThreshold?: number;
-    } = {}
-  ): Promise<RetrievalResult> {
-    const {
-      maxCurrentInventory = 10,
-      maxHistorical = 20,
-      similarityThreshold = 0.7
-    } = options;
-
-    // Generate embedding for the user query
-    const queryEmbedding = await this.embeddingService.generateQueryEmbedding(query);
-
-    // Search current inventory (stocked items)
-    const { data: currentInventory } = await this.supabase
-      .from('coffee_catalog')
-      .select('*')
-      .eq('stocked', true)
-      .not('embedding', 'is', null)
-      .order(
-        this.supabase.rpc('similarity', {
-          query_embedding: queryEmbedding,
-          match_threshold: similarityThreshold
-        }),
-        { ascending: false }
-      )
-      .limit(maxCurrentInventory);
-
-    // Search historical data (all coffees for context)
-    const { data: historicalData } = await this.supabase
-      .from('coffee_catalog')
-      .select('*')
-      .not('embedding', 'is', null)
-      .order(
-        this.supabase.rpc('similarity', {
-          query_embedding: queryEmbedding,
-          match_threshold: similarityThreshold
-        }),
-        { ascending: false }
-      )
-      .limit(maxHistorical);
-
-    // Also search user's personal inventory for additional context
-    const { data: personalInventory } = await this.supabase
-      .from('green_coffee_inv')
-      .select('*')
-      .not('embedding', 'is', null)
-      .order(
-        this.supabase.rpc('similarity_personal', {
-          query_embedding: queryEmbedding,
-          match_threshold: similarityThreshold
-        }),
-        { ascending: false }
-      )
-      .limit(5);
-
-    return {
-      currentInventory: currentInventory || [],
-      historicalData: historicalData || [],
-      similarCoffees: personalInventory || []
-    };
-  }
-}
+### Multi-Aspect Queries
+```typescript
+// Let the system search all chunk types
+await ragService.retrieveRelevantCoffees("bright Ethiopian with floral notes");
+// → Matches both origin ('Ethiopian') and tasting ('bright', 'floral') chunks
 ```
 
-### 4. **Database Functions for Similarity Search**
+## 🔧 Troubleshooting
 
-```sql:supabase/migrations/similarity_functions.sql
--- Function for coffee_catalog similarity search
-CREATE OR REPLACE FUNCTION similarity(query_embedding vector(1536), match_threshold float)
-RETURNS float
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RETURN 1 - (embedding <=> query_embedding);
-END;
-$$;
+### Common Issues
 
--- Function for green_coffee_inv similarity search
-CREATE OR REPLACE FUNCTION similarity_personal(query_embedding vector(1536), match_threshold float)
-RETURNS float
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RETURN 1 - (embedding <=> query_embedding);
-END;
-$$;
+1. **No Search Results**
+   - Check if embeddings exist: `SELECT COUNT(*) FROM coffee_chunks;`
+   - Verify similarity threshold isn't too high
+   - Ensure `stocked = true` in coffee_catalog
+
+2. **Poor Search Quality**
+   - Try lowering similarity threshold (0.6 instead of 0.7)
+   - Check chunk content quality
+   - Consider rebuilding embeddings
+
+3. **Performance Issues**
+   - Monitor vector index usage
+   - Consider hybrid approach for large datasets
+   - Adjust `match_count` parameter
+
+### Debug Commands
+```sql
+-- Check chunk distribution
+SELECT chunk_type, COUNT(*) FROM coffee_chunks GROUP BY chunk_type;
+
+-- Test similarity function
+SELECT * FROM match_coffee_chunks('[your_query_embedding]', 0.7, 5);
+
+-- Check stocked coffees
+SELECT COUNT(*) FROM coffee_catalog WHERE stocked = true;
 ```
 
-### 5. **Updated LLM API with RAG**
+## 🎯 Future Enhancements
 
-```typescript:src/routes/api/LLM/+server.ts
-import { json } from '@sveltejs/kit';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { AI_API_KEY, OPENAI_API_KEY } from '$env/static/private';
-import { RAGService } from '$lib/services/ragService';
-import type { RequestHandler } from './$types';
+1. **Hybrid Search**: Combine vector and keyword search
+2. **User Preferences**: Personalized embeddings based on purchase history
+3. **Seasonal Adjustment**: Time-weighted relevance scoring
+4. **Multi-Modal**: Image embeddings for coffee bag photos
+5. **Real-Time Updates**: Streaming embedding updates for new coffees
 
-const genAI = new GoogleGenerativeAI(AI_API_KEY);
+## 📈 Success Metrics
 
-export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
-  try {
-    const { prompt, coffeeData } = await request.json();
+Monitor these to evaluate RAG performance:
 
-    // Initialize RAG service
-    const ragService = new RAGService(supabase, OPENAI_API_KEY);
+- **Search Relevance**: User click-through rates on recommendations
+- **Query Coverage**: Percentage of queries returning results
+- **Response Time**: End-to-end search latency
+- **Embedding Quality**: Manual evaluation of chunk relevance
+- **User Satisfaction**: Feedback on recommendation quality
 
-    // Retrieve relevant coffee data using semantic search
-    const retrievalResult = await ragService.retrieveRelevantCoffees(prompt, {
-      maxCurrentInventory: 15,
-      maxHistorical: 25,
-      similarityThreshold: 0.6
-    });
+---
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: {
-        temperature: 0.1,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192
-      }
-    });
-
-    let chatSession = model.startChat({
-      history: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: `You are an expert coffee consultant with deep knowledge of contemporary coffee best practices, Cup of Excellence, Specialty Coffee Association Q-Grading, varieties, processing methods, flavor profiles, and more.
-
-Your task is to analyze coffee data and make personalized recommendations based on the user's query. You have access to:
-
-1. CURRENT INVENTORY: Currently stocked coffees available for purchase
-2. HISTORICAL DATA: Past coffees for context, trends, and comparison
-3. SIMILAR COFFEES: Related coffees from our database
-
-Use the same scoring rubric as before, but now you can reference historical patterns, seasonal availability, and make more informed recommendations based on the broader context.
-
-When making recommendations:
-- Prioritize CURRENT INVENTORY for actual recommendations
-- Use HISTORICAL DATA to provide context, explain trends, or suggest alternatives
-- Reference SIMILAR COFFEES to explain why certain characteristics work well
-
-[Same scoring rubric as before...]`
-            }
-          ]
-        },
-        {
-          role: 'model',
-          parts: [
-            {
-              text: "I understand my enhanced role as a coffee expert with access to both current inventory and historical context. I'll use semantic search results to provide more informed recommendations, drawing on patterns from historical data while prioritizing currently available coffees."
-            }
-          ]
-        }
-      ]
-    });
-
-    const contextualPrompt = `
-CURRENT INVENTORY (Available for Purchase):
-${JSON.stringify(retrievalResult.currentInventory, null, 2)}
-
-HISTORICAL CONTEXT (For Reference & Trends):
-${JSON.stringify(retrievalResult.historicalData, null, 2)}
-
-SIMILAR COFFEES (Additional Context):
-${JSON.stringify(retrievalResult.similarCoffees, null, 2)}
-
-USER QUERY: ${prompt}
-
-Please provide recommendations prioritizing CURRENT INVENTORY, but use the historical and similar coffee data to provide richer context and explanations.
-`;
-
-    const result = await chatSession.sendMessage(contextualPrompt);
-    const response = await result.response;
-
-    return json({
-      text: response.text(),
-      metadata: {
-        currentInventoryCount: retrievalResult.currentInventory.length,
-        historicalDataCount: retrievalResult.historicalData.length,
-        similarCoffeesCount: retrievalResult.similarCoffees.length
-      }
-    });
-  } catch (error) {
-    console.error('Server error:', error);
-    return json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
-};
-```
-
-### 6. **Embedding Population Script**
-
-```typescript:src/routes/api/embeddings/populate/+server.ts
-// src/routes/api/embeddings/populate/+server.ts
-import { json } from '@sveltejs/kit';
-import { EmbeddingService } from '$lib/services/embeddingService';
-import { OPENAI_API_KEY } from '$env/static/private';
-import type { RequestHandler } from './$types';
-
-export const POST: RequestHandler = async ({ locals: { supabase } }) => {
-  try {
-    const embeddingService = new EmbeddingService(OPENAI_API_KEY);
-
-    // Process coffee_catalog
-    const { data: catalogCoffees } = await supabase
-      .from('coffee_catalog')
-      .select('*')
-      .is('embedding', null);
-
-    let processedCatalog = 0;
-    for (const coffee of catalogCoffees || []) {
-      const embedding = await embeddingService.generateEmbedding(coffee);
-
-      await supabase
-        .from('coffee_catalog')
-        .update({ embedding })
-        .eq('id', coffee.id);
-
-      processedCatalog++;
-
-      // Rate limiting - wait 100ms between requests
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    // Process green_coffee_inv
-    const { data: inventoryCoffees } = await supabase
-      .from('green_coffee_inv')
-      .select('*')
-      .is('embedding', null);
-
-    let processedInventory = 0;
-    for (const coffee of inventoryCoffees || []) {
-      const embedding = await embeddingService.generateEmbedding(coffee);
-
-      await supabase
-        .from('green_coffee_inv')
-        .update({ embedding })
-        .eq('id', coffee.id);
-
-      processedInventory++;
-
-      // Rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    return json({
-      success: true,
-      processed: {
-        catalog: processedCatalog,
-        inventory: processedInventory
-      }
-    });
-  } catch (error) {
-    console.error('Embedding population error:', error);
-    return json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
-};
-```
-
-## Benefits of This RAG Implementation
-
-1. **Semantic Understanding**: Finds coffees based on meaning, not just keywords
-2. **Historical Context**: LLM can reference past trends and seasonal patterns
-3. **Better Recommendations**: More nuanced suggestions based on broader coffee knowledge
-4. **Scalable**: Works efficiently even with large datasets
-5. **Contextual Awareness**: Can explain why certain coffees work well together
-
-## Usage
-
-1. Run the embedding population script once to generate initial embeddings
-
-curl -X POST http://localhost:5173/api/embeddings/populate \
- -H "Content-Type: application/json"
-
-2. Set up a cron job to generate embeddings for new coffees
-3. Your LLM will now have access to semantically relevant coffee data rather than the entire dataset
-
-This gives you true RAG with rich historical context while maintaining performance and relevance!
+This RAG implementation provides a solid foundation for semantic coffee search while maintaining flexibility for future enhancements and optimizations.

@@ -22,6 +22,7 @@ declare global {
 			safeGetSession(): Promise<{
 				session: Session | null;
 				user: User | null;
+				role: 'viewer' | 'member' | 'admin';
 			}>;
 		}
 		interface PageData {
