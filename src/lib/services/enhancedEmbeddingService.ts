@@ -1,4 +1,4 @@
-import { OPENAI_API_KEY } from '$env/static/private';
+// Note: OPENAI_API_KEY is passed via constructor parameter
 
 interface CoffeeChunk {
 	id: string;

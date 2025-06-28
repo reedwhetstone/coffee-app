@@ -1,26 +1,22 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { EmbeddingService } from './embeddingService';
 import { EnhancedEmbeddingService } from './enhancedEmbeddingService';
 
 interface RetrievalResult {
 	currentInventory: any[];
 }
 
-interface ChunkSearchOptions {
+interface SearchOptions {
 	maxCurrentInventory?: number;
 	similarityThreshold?: number;
 	chunkTypes?: ('profile' | 'tasting' | 'origin' | 'commercial' | 'processing')[];
-	useChunkedSearch?: boolean;
 }
 
 export class RAGService {
 	private supabase: SupabaseClient;
-	private embeddingService: EmbeddingService;
 	private enhancedEmbeddingService: EnhancedEmbeddingService;
 
 	constructor(supabase: SupabaseClient, openaiApiKey: string) {
 		this.supabase = supabase;
-		this.embeddingService = new EmbeddingService(openaiApiKey);
 		this.enhancedEmbeddingService = new EnhancedEmbeddingService(openaiApiKey);
 	}
 
@@ -30,6 +26,68 @@ export class RAGService {
 	 */
 	private cleanCoffeeData(coffees: any[]): any[] {
 		return coffees.map(({ embedding, ...coffee }) => coffee);
+	}
+
+	/**
+	 * Preprocess query to enhance coffee-specific term recognition
+	 */
+	private preprocessQuery(query: string): string {
+		let processedQuery = query.toLowerCase();
+		
+		// Coffee processing method mappings
+		const processingMappings = {
+			'wet hulled': 'wet-hulled giling basah processing',
+			'wet-hulled': 'wet-hulled giling basah processing',
+			'giling basah': 'wet-hulled giling basah processing',
+			'anaerobic': 'anaerobic fermentation processing',
+			'carbonic': 'carbonic maceration anaerobic fermentation',
+			'black honey': 'black honey process natural processing',
+			'red honey': 'red honey process semi-washed',
+			'yellow honey': 'yellow honey process honey processing',
+			'white honey': 'white honey process washed honey',
+			'natural': 'natural dry process processing',
+			'washed': 'washed wet process processing',
+			'honey': 'honey process semi-washed processing'
+		};
+		
+		// Variety/cultivar mappings
+		const varietyMappings = {
+			'geisha': 'gesha geisha variety cultivar',
+			'bourbon': 'bourbon variety cultivar heirloom',
+			'typica': 'typica variety cultivar heirloom',
+			'caturra': 'caturra variety cultivar bourbon mutation',
+			'catuai': 'catuai variety cultivar bourbon caturra hybrid',
+			'pacamara': 'pacamara variety cultivar pacas maragogipe hybrid'
+		};
+		
+		// Origin/region mappings
+		const regionMappings = {
+			'yirgacheffe': 'yirgacheffe ethiopia sidamo gedeo',
+			'huehuetenango': 'huehuetenango guatemala antigua highlands',
+			'blue mountain': 'blue mountain jamaica caribbean',
+			'kona': 'kona hawaii volcanic'
+		};
+		
+		// Apply mappings
+		for (const [term, expansion] of Object.entries(processingMappings)) {
+			if (processedQuery.includes(term)) {
+				processedQuery = processedQuery.replace(new RegExp(term, 'g'), expansion);
+			}
+		}
+		
+		for (const [term, expansion] of Object.entries(varietyMappings)) {
+			if (processedQuery.includes(term)) {
+				processedQuery = processedQuery.replace(new RegExp(term, 'g'), expansion);
+			}
+		}
+		
+		for (const [term, expansion] of Object.entries(regionMappings)) {
+			if (processedQuery.includes(term)) {
+				processedQuery = processedQuery.replace(new RegExp(term, 'g'), expansion);
+			}
+		}
+		
+		return processedQuery;
 	}
 
 	/**
@@ -71,7 +129,9 @@ export class RAGService {
 		// Processing keywords
 		const processingKeywords = [
 			'natural', 'washed', 'honey', 'anaerobic', 'fermentation', 'dry process', 
-			'wet process', 'pulped natural', 'processing', 'method'
+			'wet process', 'pulped natural', 'processing', 'method', 'wet hulled', 
+			'wet-hulled', 'giling basah', 'semi-washed', 'semi washed', 'carbonic maceration',
+			'extended fermentation', 'black honey', 'red honey', 'yellow honey', 'white honey'
 		];
 		
 		// Commercial keywords
@@ -108,47 +168,33 @@ export class RAGService {
 	}
 
 	/**
-	 * Retrieve relevant coffee data using semantic search (chunked or legacy)
+	 * Retrieve relevant coffee data using semantic search
 	 */
 	async retrieveRelevantCoffees(
 		query: string,
-		options: ChunkSearchOptions = {}
+		options: SearchOptions = {}
 	): Promise<RetrievalResult> {
 		const { 
 			maxCurrentInventory = 10, 
 			similarityThreshold = 0.7, 
-			chunkTypes: explicitChunkTypes,
-			useChunkedSearch = true 
+			chunkTypes: explicitChunkTypes 
 		} = options;
 
 		// Analyze query intent if chunk types not explicitly provided
 		const queryIntent = this.analyzeQueryIntent(query);
 		const chunkTypes = explicitChunkTypes || queryIntent.chunkTypes;
 
-		// Use chunked search if enabled and chunks exist
-		if (useChunkedSearch) {
-			try {
-				return await this.retrieveWithChunkedSearch(query, {
-					maxCurrentInventory,
-					similarityThreshold,
-					chunkTypes: chunkTypes || undefined
-				});
-			} catch (error) {
-				console.warn('Chunked search failed, falling back to legacy search:', error);
-			}
-		}
-
-		// Fallback to legacy search
-		return await this.retrieveWithLegacySearch(query, {
+		return await this.performSemanticSearch(query, {
 			maxCurrentInventory,
-			similarityThreshold
+			similarityThreshold,
+			chunkTypes: chunkTypes || undefined
 		});
 	}
 
 	/**
-	 * New chunked search method
+	 * Perform semantic search using chunked embeddings
 	 */
-	private async retrieveWithChunkedSearch(
+	private async performSemanticSearch(
 		query: string,
 		options: {
 			maxCurrentInventory: number;
@@ -161,8 +207,9 @@ export class RAGService {
 		// Analyze query intent for logging
 		const queryIntent = this.analyzeQueryIntent(query);
 
-		// Generate embedding for the user query
-		const queryEmbedding = await this.enhancedEmbeddingService.generateQueryEmbedding(query);
+		// Preprocess and generate embedding for the user query
+		const processedQuery = this.preprocessQuery(query);
+		const queryEmbedding = await this.enhancedEmbeddingService.generateQueryEmbedding(processedQuery);
 
 		// Search chunks with optional type filtering
 		// For supplier queries, lower the threshold to be more inclusive since supplier name is now prominent
@@ -219,7 +266,8 @@ export class RAGService {
 			.sort((a, b) => b.similarity - a.similarity);
 
 		console.log('Chunked search results:', {
-			query,
+			originalQuery: query,
+			processedQuery,
 			queryIntent: {
 				detectedChunkTypes: chunkTypes || 'all',
 				isSupplierQuery: queryIntent.isSupplierQuery,
@@ -242,68 +290,4 @@ export class RAGService {
 		};
 	}
 
-	/**
-	 * Legacy search method (existing implementation)
-	 */
-	private async retrieveWithLegacySearch(
-		query: string,
-		options: {
-			maxCurrentInventory: number;
-			similarityThreshold: number;
-		}
-	): Promise<RetrievalResult> {
-		const { maxCurrentInventory, similarityThreshold } = options;
-
-		// Generate embedding for the user query
-		const queryEmbedding = await this.embeddingService.generateQueryEmbedding(query);
-
-		// Debug: Check database state first
-		const { data: dbStats } = await this.supabase
-			.from('coffee_catalog')
-			.select('id, stocked, embedding')
-			.limit(1000);
-
-		console.log('Database stats:', {
-			total: dbStats?.length || 0,
-			stocked: dbStats?.filter((c) => c.stocked).length || 0,
-			withEmbeddings: dbStats?.filter((c) => c.embedding).length || 0,
-			stockedWithEmbeddings: dbStats?.filter((c) => c.stocked && c.embedding).length || 0
-		});
-
-		// Search current inventory (stocked items) with similarity search
-		const { data: currentInventory, error: currentError } = await this.supabase.rpc(
-			'match_coffee_current_inventory',
-			{
-				query_embedding: queryEmbedding,
-				match_threshold: similarityThreshold,
-				match_count: maxCurrentInventory
-			}
-		);
-
-		console.log('Current inventory search result:', {
-			data: currentInventory?.length || 0,
-			error: currentError,
-			threshold: similarityThreshold
-		});
-
-		// If no results with semantic search, fall back to simple stocked query
-		if (!currentInventory || currentInventory.length === 0) {
-			console.log('No semantic results, falling back to simple stocked query');
-			const { data: fallbackInventory } = await this.supabase
-				.from('coffee_catalog')
-				.select('*, embedding')
-				.eq('stocked', true)
-				.limit(maxCurrentInventory);
-
-			console.log('Fallback inventory:', fallbackInventory?.length || 0);
-
-			return {
-				currentInventory: this.cleanCoffeeData(fallbackInventory || [])
-			};
-		}
-
-		return {
-			currentInventory: this.cleanCoffeeData(currentInventory || [])
-		};
-	}
 }
