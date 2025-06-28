@@ -138,6 +138,9 @@ importers:
       vite:
         specifier: ^5.1.0
         version: 5.4.14(@types/node@22.13.10)
+      vite-bundle-analyzer:
+        specifier: ^0.23.0
+        version: 0.23.0
       vitest:
         specifier: ^2.0.4
         version: 2.1.9(@types/node@22.13.10)
@@ -2547,6 +2550,10 @@ packages:
   vfile-message@2.0.4:
     resolution: {integrity: sha512-DjssxRGkMvifUOJre00juHoP9DPWuzjxKuMDrhNbk2TdaYYBNMStsNhEOt3idrtI12VQYM/1+iM0KOzXi4pxwQ==}
 
+  vite-bundle-analyzer@0.23.0:
+    resolution: {integrity: sha512-G5chWCtFS546c7c6MCNdzXVWIMDfeUdJHA3LvCwTrhzdfwqbf6ppsIcNW4CnNrpdEAHQ9KgmdkNFV4u3UurXtQ==}
+    hasBin: true
+
   vite-node@2.1.9:
     resolution: {integrity: sha512-AM9aQ/IPrW/6ENLQg3AGY4K1N2TGZdR5e4gu/MmmR2xR3Ll1+dib+nook92g4TV3PXVyeyxdWwtaCAiUL0hMxA==}
     engines: {node: ^18.0.0 || >=20.0.0}
@@ -4886,6 +4893,8 @@ snapshots:
     dependencies:
       '@types/unist': 2.0.11
       unist-util-stringify-position: 2.0.3
+
+  vite-bundle-analyzer@0.23.0: {}
 
   vite-node@2.1.9(@types/node@22.13.10):
     dependencies:

@@ -10,6 +10,7 @@
 		"sync": "svelte-kit sync",
 		"dev": "vite dev",
 		"build": "pnpm run sync && vite build",
+		"build:analyze": "pnpm run build && vite-bundle-analyzer dist/",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -47,6 +48,7 @@
 		"typescript-eslint": "^8.0.0",
 		"utf-8-validate": "^6.0.5",
 		"vite": "^5.1.0",
+		"vite-bundle-analyzer": "^0.23.0",
 		"vitest": "^2.0.4"
 	},
 	"dependencies": {

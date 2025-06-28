@@ -1,6 +1,14 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import * as d3 from 'd3';
+	import { 
+		select, 
+		scaleLinear, 
+		axisBottom, 
+		line,
+		type Selection, 
+		type ScaleLinear 
+	} from 'd3';
+	import { curveStepAfter } from 'd3-shape';
 	import {
 		roastData,
 		roastEvents,
@@ -10,7 +18,6 @@
 		type RoastPoint,
 		type ProfileLogEntry
 	} from './stores';
-	import { curveStepAfter } from 'd3-shape';
 
 	export let isRoasting = false;
 	export let isPaused = false;
@@ -34,10 +41,10 @@
 	const LONG_PRESS_DURATION = 1000;
 
 	let chartContainer: HTMLDivElement;
-	let svg: d3.Selection<SVGGElement, unknown, null, undefined>;
-	let xScale: d3.ScaleLinear<number, number>;
-	let yScaleFan: d3.ScaleLinear<number, number>;
-	let yScaleHeat: d3.ScaleLinear<number, number>;
+	let svg: Selection<SVGGElement, unknown, null, undefined>;
+	let xScale: ScaleLinear<number, number>;
+	let yScaleFan: ScaleLinear<number, number>;
+	let yScaleHeat: ScaleLinear<number, number>;
 	let height: number;
 	let width: number;
 	let margin = { top: 20, right: 60, bottom: 30, left: 60 };
@@ -198,14 +205,12 @@
 	}
 
 	// Create line generators
-	const heatLine = d3
-		.line<RoastPoint>()
+	const heatLine = line<RoastPoint>()
 		.x((d) => xScale(d.time / (1000 * 60)))
 		.y((d) => yScaleHeat(d.heat))
 		.curve(curveStepAfter);
 
-	const fanLine = d3
-		.line<RoastPoint>()
+	const fanLine = line<RoastPoint>()
 		.x((d) => xScale(d.time / (1000 * 60)))
 		.y((d) => yScaleFan(d.fan))
 		.curve(curveStepAfter);
@@ -283,7 +288,7 @@
 		}
 
 		// Update x-axis with type assertion
-		svg.select('.x-axis').call(d3.axisBottom(xScale) as any);
+		svg.select('.x-axis').call(axisBottom(xScale) as any);
 
 		// Add heat line
 		svg
@@ -399,7 +404,7 @@
 		height = chartContainer.clientHeight - margin.top - margin.bottom;
 
 		// Update SVG dimensions
-		d3.select(chartContainer)
+		select(chartContainer)
 			.select('svg')
 			.attr('width', width + margin.left + margin.right)
 			.attr('height', height + margin.top + margin.bottom)
@@ -478,7 +483,7 @@
 		svg
 			.select('.x-axis')
 			.attr('transform', `translate(0,${height})`)
-			.call(d3.axisBottom(xScale) as any);
+			.call(axisBottom(xScale) as any);
 
 		// Update chart with new dimensions
 		updateChart($roastData);
@@ -491,8 +496,7 @@
 		width = Math.max(0, containerWidth - margin.left - margin.right);
 		height = chartContainer.clientHeight - margin.top - margin.bottom;
 
-		svg = d3
-			.select(chartContainer)
+		svg = select(chartContainer)
 			.append('svg')
 			.attr('width', width + margin.left + margin.right)
 			.attr('height', height + margin.top + margin.bottom)
@@ -504,9 +508,9 @@
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`);
 
-		xScale = d3.scaleLinear().domain([0, 12]).range([0, width]);
-		yScaleFan = d3.scaleLinear().domain([10, 0]).range([height, 0]);
-		yScaleHeat = d3.scaleLinear().domain([0, 10]).range([height, 0]);
+		xScale = scaleLinear().domain([0, 12]).range([0, width]);
+		yScaleFan = scaleLinear().domain([10, 0]).range([height, 0]);
+		yScaleHeat = scaleLinear().domain([0, 10]).range([height, 0]);
 
 		// Add background grid shading for values 1-10
 		for (let i = 0; i <= 10; i++) {
@@ -568,7 +572,7 @@
 			.append('g')
 			.attr('class', 'x-axis')
 			.attr('transform', `translate(0,${height})`)
-			.call(d3.axisBottom(xScale) as any);
+			.call(axisBottom(xScale) as any);
 
 		// Add time tracker line
 		svg

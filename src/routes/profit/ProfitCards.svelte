@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatDateForDisplay } from '$lib/utils/dates';
-	import * as d3 from 'd3';
+	import { group } from 'd3';
 
 	// Define interfaces for type safety
 	interface ProfitData {
@@ -56,7 +56,7 @@
 	}>();
 
 	// Group profit data by purchase date - using $derived instead of $:
-	let groupedProfitData = $derived(d3.group(profitData, (d: ProfitData) => d.purchase_date));
+	let groupedProfitData = $derived(group(profitData, (d: ProfitData) => d.purchase_date));
 
 	// Sort sales data
 	let sortField: string | null = $state('sell_date');

@@ -1,10 +1,26 @@
 <script lang="ts">
-	import * as d3 from 'd3';
+	import { 
+		sum, 
+		group, 
+		select, 
+		extent, 
+		max, 
+		axisBottom, 
+		axisLeft, 
+		scaleLinear, 
+		scaleTime,
+		curveMonotoneX,
+		line
+	} from 'd3';
+	import { onMount } from 'svelte';
 	import { formatDateForDisplay } from '$lib/utils/dates';
 	import SaleForm from './SaleForm.svelte';
 	import { page } from '$app/stores';
 	import type { PageData } from './$types';
-	import ProfitCards from './ProfitCards.svelte';
+	
+	// Lazy load the profit cards component
+	let ProfitCards = $state<any>(null);
+	let profitCardsLoading = $state(true);
 
 	interface ProfitData {
 		id: number;
@@ -59,11 +75,11 @@
 	let { data } = $props<{ data: PageData }>();
 
 	// Convert reactive statements to use $derived
-	let totalRevenue = $derived(d3.sum(profitData, (d) => +d.total_sales || 0));
+	let totalRevenue = $derived(sum(profitData, (d) => +d.total_sales || 0));
 	let totalCost = $derived(
-		d3.sum(profitData, (d) => (+d.bean_cost || 0) + (+d.tax_ship_cost || 0))
+		sum(profitData, (d) => (+d.bean_cost || 0) + (+d.tax_ship_cost || 0))
 	);
-	let totalProfit = $derived(d3.sum(profitData, (d) => +d.profit || 0));
+	let totalProfit = $derived(sum(profitData, (d) => +d.profit || 0));
 
 	let averageMargin = $derived(() => {
 		// Calculate cost per oz for each item
@@ -76,16 +92,16 @@
 		});
 
 		// Calculate weighted average margin based on sales
-		const totalSales = d3.sum(profitData, (d) => +d.total_sales || 0);
+		const totalSales = sum(profitData, (d) => +d.total_sales || 0);
 		return totalSales > 0
-			? d3.sum(margins.map((margin, i) => margin * (+profitData[i].total_sales || 0))) / totalSales
+			? sum(margins.map((margin, i) => margin * (+profitData[i].total_sales || 0))) / totalSales
 			: 0;
 	});
 
-	let totalPoundsRoasted = $derived(d3.sum(profitData, (d) => +d.purchased_qty_lbs || 0));
+	let totalPoundsRoasted = $derived(sum(profitData, (d) => +d.purchased_qty_lbs || 0));
 	let sellThroughRate = $derived(() => {
-		const totalOzSold = d3.sum(profitData, (d) => +d.oz_sold || 0);
-		const totalOzPurchased = d3.sum(profitData, (d) => (+d.purchased_qty_lbs || 0) * 16);
+		const totalOzSold = sum(profitData, (d) => +d.oz_sold || 0);
+		const totalOzPurchased = sum(profitData, (d) => (+d.purchased_qty_lbs || 0) * 16);
 		return totalOzPurchased > 0 ? (totalOzSold / totalOzPurchased) * 100 : 0;
 	});
 
@@ -99,15 +115,15 @@
 
 	let roastLossRate = $derived(() => {
 		// Group roast data by coffee_id
-		const roastsByBean = d3.group(roastProfileData, (d) => d.coffee_id);
+		const roastsByBean = group(roastProfileData, (d) => d.coffee_id);
 
 		// Sum up oz_in and oz_out for each coffee
 		let totalOzIn = 0;
 		let totalOzOut = 0;
 
 		roastsByBean.forEach((roasts) => {
-			totalOzIn += d3.sum(roasts, (d) => Number(d.oz_in) || 0);
-			totalOzOut += d3.sum(roasts, (d) => Number(d.oz_out) || 0);
+			totalOzIn += sum(roasts, (d) => Number(d.oz_in) || 0);
+			totalOzOut += sum(roasts, (d) => Number(d.oz_out) || 0);
 		});
 
 		// Calculate loss rate if we have valid data
@@ -120,7 +136,7 @@
 		width = chartContainer.clientWidth - margin.left - margin.right;
 
 		// Clear existing chart
-		d3.select(chartContainer).selectAll('*').remove();
+		select(chartContainer).selectAll('*').remove();
 
 		// Sort data by date and calculate running totals
 		const sortedSales = [...salesData].sort(
@@ -136,7 +152,7 @@
 		const cumulativeData = sortedSales.map((sale) => {
 			runningTotal += sale.price;
 			// Find all costs up to this sale date
-			runningCost = d3.sum(
+			runningCost = sum(
 				sortedProfitData.filter((p) => new Date(p.purchase_date) <= new Date(sale.sell_date)),
 				(p) => (+p.bean_cost || 0) + (+p.tax_ship_cost || 0)
 			);
@@ -151,13 +167,13 @@
 		// Calculate trend line data
 		const trendData = sortedSales.map((sale) => {
 			// Calculate total lbs purchased up to this date
-			const lbsPurchased = d3.sum(
+			const lbsPurchased = sum(
 				sortedProfitData.filter((p) => new Date(p.purchase_date) <= new Date(sale.sell_date)),
 				(p) => +p.purchased_qty_lbs || 0
 			);
 
 			// Calculate total lbs sold up to this date
-			const lbsSold = d3.sum(
+			const lbsSold = sum(
 				sortedSales.filter((s) => new Date(s.sell_date) <= new Date(sale.sell_date)),
 				(s) => (+s.oz_sold || 0) / 16
 			);
@@ -172,8 +188,7 @@
 		});
 
 		// Create SVG
-		const svg = d3
-			.select(chartContainer)
+		const svg = select(chartContainer)
 			.append('svg')
 			.attr('width', '100%')
 			.attr('height', height + margin.top + margin.bottom)
@@ -181,25 +196,23 @@
 			.attr('transform', `translate(${margin.left},${margin.top})`);
 
 		// Update scales with cumulative data
-		const xScale = d3
-			.scaleTime()
-			.domain(d3.extent(cumulativeData, (d) => new Date(d.sell_date)) as [Date, Date])
+		const xScale = scaleTime()
+			.domain(extent(cumulativeData, (d) => new Date(d.sell_date)) as [Date, Date])
 			.range([0, width]);
 
-		const yScale = d3
-			.scaleLinear()
+		const yScale = scaleLinear()
 			.domain([
 				0,
 				Math.max(
-					d3.max(cumulativeData, (d) => d.cumulativeTotal) || 0,
-					d3.max(cumulativeData, (d) => d.cumulativeCost) || 0
+					max(cumulativeData, (d) => d.cumulativeTotal) || 0,
+					max(cumulativeData, (d) => d.cumulativeCost) || 0
 				)
 			])
 			.range([height, 0]);
 
 		// Create axes with white text
-		const xAxis = d3.axisBottom(xScale).tickFormat((d) => (d as Date).toLocaleDateString());
-		const yAxis = d3.axisLeft(yScale).tickFormat((d) => `$${d}`);
+		const xAxis = axisBottom(xScale).tickFormat((d) => (d as Date).toLocaleDateString());
+		const yAxis = axisLeft(yScale).tickFormat((d) => `$${d}`);
 
 		// Add axes to chart with white text styling
 		svg
@@ -213,17 +226,15 @@
 		svg.append('g').call(yAxis).attr('color', 'white').selectAll('text').style('fill', 'white');
 
 		// Create line generators for cumulative totals
-		const salesLine = d3
-			.line<(typeof cumulativeData)[0]>()
+		const salesLine = line<(typeof cumulativeData)[0]>()
 			.x((d) => xScale(new Date(d.sell_date)))
 			.y((d) => yScale(d.cumulativeTotal))
-			.curve(d3.curveMonotoneX);
+			.curve(curveMonotoneX);
 
-		const costLine = d3
-			.line<(typeof cumulativeData)[0]>()
+		const costLine = line<(typeof cumulativeData)[0]>()
 			.x((d) => xScale(new Date(d.sell_date)))
 			.y((d) => yScale(d.cumulativeCost))
-			.curve(d3.curveMonotoneX);
+			.curve(curveMonotoneX);
 
 		// Add the cumulative cost line (red)
 		svg
@@ -253,11 +264,10 @@
 			.attr('stroke-dasharray', '5,5')
 			.attr(
 				'd',
-				d3
-					.line<(typeof trendData)[0]>()
+				line<(typeof trendData)[0]>()
 					.x((d) => xScale(new Date(d.sell_date)))
 					.y((d) => yScale(d.trendValue))
-					.curve(d3.curveMonotoneX)
+					.curve(curveMonotoneX)
 			);
 
 		// Add trend line to legend
@@ -361,8 +371,7 @@
 		event: MouseEvent,
 		d: SaleData & { cumulativeTotal?: number; cumulativeCost?: number }
 	) {
-		const tooltip = d3
-			.select('body')
+		const tooltip = select('body')
 			.append('div')
 			.attr('class', 'tooltip')
 			.style('position', 'absolute')
@@ -394,7 +403,7 @@
 	}
 
 	function hideTooltip() {
-		d3.select('.tooltip').remove();
+		select('.tooltip').remove();
 	}
 
 	// Add sales form handlers
@@ -443,7 +452,7 @@
 		} else {
 			expandedDates.add(date);
 			// Get the first coffee for this date
-			const items = d3.group(profitData, (d) => d.purchase_date).get(date) || [];
+			const items = group(profitData, (d) => d.purchase_date).get(date) || [];
 			if (items.length > 0) {
 				selectedCoffee = items[0].coffee_name; // Set selected coffee
 				fetchSalesForCoffee(items[0].coffee_name);
@@ -565,6 +574,13 @@
 	// Expose the showSaleForm function to the template
 	let onAddNewSale = showSaleForm;
 
+	// Lazy load ProfitCards component
+	onMount(async () => {
+		const module = await import('./ProfitCards.svelte');
+		ProfitCards = module.default;
+		profitCardsLoading = false;
+	});
+
 	// Update the data object to include the showSaleForm function
 	$effect(() => {
 		if (data) {
@@ -645,16 +661,23 @@
 
 	<!-- Replace the detailed profit table and SalesTable with ProfitCards -->
 	<div class="mt-8">
-		<ProfitCards
-			{profitData}
-			{salesData}
-			{expandedDates}
-			{selectedCoffee}
-			onToggleDate={toggleDate}
-			onSelectCoffee={handleSelectCoffee}
-			onEditSale={handleSaleEdit}
-			onDeleteSale={handleSaleDelete}
-			onAddSale={showSaleForm}
-		/>
+		{#if profitCardsLoading}
+			<div class="flex items-center justify-center p-8">
+				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+				<span class="ml-2 text-sm text-gray-600">Loading profit analysis...</span>
+			</div>
+		{:else if ProfitCards}
+			<ProfitCards
+				{profitData}
+				{salesData}
+				{expandedDates}
+				{selectedCoffee}
+				onToggleDate={toggleDate}
+				onSelectCoffee={handleSelectCoffee}
+				onEditSale={handleSaleEdit}
+				onDeleteSale={handleSaleDelete}
+				onAddSale={showSaleForm}
+			/>
+		{/if}
 	</div>
 </div>

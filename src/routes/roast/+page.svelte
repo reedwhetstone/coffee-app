@@ -17,8 +17,18 @@
 	} from './stores';
 
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
-	import RoastChartInterface from './RoastChartInterface.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	
+	// Lazy load the heavy chart component
+	let RoastChartInterface = $state<any>(null);
+	let chartComponentLoading = $state(true);
+	
+	onMount(async () => {
+		// Dynamically import the chart component to reduce initial bundle size
+		const module = await import('./RoastChartInterface.svelte');
+		RoastChartInterface = module.default;
+		chartComponentLoading = false;
+	});
 	import type { PageData } from './$types';
 
 	// Roast profile state management
@@ -845,19 +855,26 @@
 
 			<!-- Main roasting interface -->
 			<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
-				<RoastChartInterface
-					{isPaused}
-					{currentRoastProfile}
-					{fanValue}
-					{heatValue}
-					{isRoasting}
-					{selectedEvent}
-					{updateFan}
-					{updateHeat}
-					{saveRoastProfile}
-					{selectedBean}
-					clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
-				/>
+				{#if chartComponentLoading}
+					<div class="flex items-center justify-center p-8">
+						<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+						<span class="ml-2 text-sm text-gray-600">Loading chart interface...</span>
+					</div>
+				{:else if RoastChartInterface}
+					<RoastChartInterface
+						{isPaused}
+						{currentRoastProfile}
+						{fanValue}
+						{heatValue}
+						{isRoasting}
+						{selectedEvent}
+						{updateFan}
+						{updateHeat}
+						{saveRoastProfile}
+						{selectedBean}
+						clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
+					/>
+				{/if}
 			</div>
 		</div>
 	{/if}
