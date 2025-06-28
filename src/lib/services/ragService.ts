@@ -310,12 +310,17 @@ export class RAGService {
 			? Math.max(0.1, similarityThreshold - 0.1)
 			: similarityThreshold;
 
-		const { data: chunks, error: chunksError } = await this.supabase.rpc('match_coffee_chunks', {
-			query_embedding: queryEmbedding,
-			match_threshold: adjustedThreshold,
-			match_count: maxCurrentInventory * 3, // Get more results for supplier queries
-			chunk_types: chunkTypes || null
-		});
+		const { data: chunksData, error: chunksError } = await this.supabase.rpc(
+			'match_coffee_chunks',
+			{
+				query_embedding: queryEmbedding,
+				match_threshold: adjustedThreshold,
+				match_count: maxCurrentInventory * 3, // Get more results for supplier queries
+				chunk_types: chunkTypes || null
+			}
+		);
+
+		let chunks = chunksData;
 
 		if (chunksError) {
 			throw new Error(`Chunk search error: ${chunksError.message}`);
