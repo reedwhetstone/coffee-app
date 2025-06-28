@@ -59,7 +59,7 @@
 		"@tailwindcss/forms": "^0.5.9",
 		"@tailwindcss/typography": "^0.5.15",
 		"@vercel/analytics": "^1.4.1",
-		"@vercel/speed-insights": "^1.1.0",
+		"@vercel/speed-insights": "^1.2.0",
 		"d3": "^7.9.0",
 		"dotenv": "^16.4.7",
 		"glob": "^10.3.10",
