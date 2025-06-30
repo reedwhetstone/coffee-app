@@ -4,6 +4,7 @@ export interface RoastPoint {
 	time: number;
 	heat: number;
 	fan: number;
+	bean_temp?: number | null;
 }
 
 export interface RoastEvent {
@@ -24,6 +25,9 @@ export interface ProfileLogEntry {
 	drop: boolean;
 	end: boolean;
 	time: number;
+	bean_temp?: number | null;
+	charge?: boolean;
+	cool?: boolean;
 }
 
 export const roastData = writable<RoastPoint[]>([]);
