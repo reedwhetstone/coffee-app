@@ -24,6 +24,10 @@
 	export let selectedBean: { id?: number; name: string };
 	export let clearRoastData: () => void;
 
+	// Artisan import state
+	let artisanImportFile: File | null = null;
+	let showArtisanImport = false;
+
 	let seconds = 0;
 	let milliseconds = 0;
 	let timerInterval: ReturnType<typeof setInterval> | null = null;
@@ -777,6 +781,78 @@
 	$: isBeforeRoasting = !currentRoastProfile?.roast_id || $roastData.length === 0;
 	$: isDuringRoasting = isRoasting;
 	$: isAfterRoasting = $roastData.length > 0 && !isRoasting;
+
+	// Artisan import functions
+	function handleArtisanFileSelect(event: Event) {
+		const file = (event.target as HTMLInputElement).files?.[0];
+		if (file) {
+			artisanImportFile = file;
+		}
+	}
+
+	function showArtisanImportDialog() {
+		if (!currentRoastProfile?.roast_id) {
+			alert('Please select a roast profile first');
+			return;
+		}
+		
+		// Check if there's existing data
+		if ($roastData.length > 0) {
+			const confirmed = confirm(
+				'Warning: Importing an Artisan file will replace all existing roast data for this profile. This action cannot be undone. Continue?'
+			);
+			if (!confirmed) {
+				return;
+			}
+		}
+		
+		showArtisanImport = true;
+	}
+
+	async function importArtisanFile() {
+		if (!artisanImportFile || !currentRoastProfile?.roast_id) {
+			alert('Please select a file and roast profile');
+			return;
+		}
+
+		try {
+			console.log(`Importing Artisan file ${artisanImportFile.name} for roast ID ${currentRoastProfile.roast_id}`);
+			
+			const formData = new FormData();
+			formData.append('file', artisanImportFile);
+			formData.append('roastId', currentRoastProfile.roast_id.toString());
+
+			const response = await fetch('/api/artisan-import', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Failed to import Artisan file');
+			}
+
+			const result = await response.json();
+			console.log('Artisan import successful:', result);
+			
+			// Reload the profile data to show the imported data
+			window.location.reload();
+			
+			alert(`Successfully imported ${result.dataPointsCount} data points from ${artisanImportFile.name}`);
+		} catch (error) {
+			console.error('Artisan import failed:', error);
+			alert(`Failed to import Artisan file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		} finally {
+			// Reset the import state
+			showArtisanImport = false;
+			artisanImportFile = null;
+		}
+	}
+
+	function cancelArtisanImport() {
+		showArtisanImport = false;
+		artisanImportFile = null;
+	}
 </script>
 
 <div class="w-full overflow-x-hidden">
@@ -1017,6 +1093,17 @@
 				Save Roast
 			</button>
 		{/if}
+		
+		<!-- Import Artisan File button - only show when profile exists -->
+		{#if currentRoastProfile?.roast_id}
+			<button
+				class="w-full rounded border-2 border-blue-600 px-3 py-1 text-text-primary-light hover:bg-blue-900 sm:w-auto"
+				onclick={showArtisanImportDialog}
+			>
+				Import Artisan File
+			</button>
+		{/if}
+		
 		{#if !isBeforeRoasting}
 			<button
 				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-950 sm:w-auto"
@@ -1033,3 +1120,69 @@
 		{/if}
 	</div>
 </div>
+
+<!-- Artisan Import Modal -->
+{#if showArtisanImport}
+	<div class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+		<button
+			type="button"
+			class="fixed inset-0 bg-black/50"
+			onclick={cancelArtisanImport}
+			aria-label="Close modal"
+		></button>
+		<div class="flex min-h-screen items-center justify-center p-4">
+			<div
+				class="relative w-full max-w-md rounded-lg bg-background-secondary-light p-6 shadow-xl"
+				role="dialog"
+				aria-modal="true"
+			>
+				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">
+					Import Artisan Roast File
+				</h3>
+				
+				<div class="mb-4">
+					<label
+						for="artisan-file-input"
+						class="block text-sm font-medium text-text-primary-light mb-2"
+					>
+						Select Artisan CSV or XLSX file:
+					</label>
+					<input
+						id="artisan-file-input"
+						type="file"
+						accept=".csv,.xlsx"
+						onchange={handleArtisanFileSelect}
+						class="block w-full text-sm text-text-primary-light file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-background-tertiary-light file:text-text-primary-light hover:file:bg-background-primary-light"
+					/>
+					<p class="mt-2 text-xs text-text-secondary-light">
+						This will replace all existing roast data for this profile.
+					</p>
+				</div>
+
+				{#if artisanImportFile}
+					<p class="mb-4 text-sm text-green-600">
+						Selected: {artisanImportFile.name}
+					</p>
+				{/if}
+
+				<div class="flex justify-end space-x-3">
+					<button
+						type="button"
+						class="rounded bg-background-primary-light px-4 py-2 text-text-primary-light hover:bg-background-tertiary-light"
+						onclick={cancelArtisanImport}
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+						onclick={importArtisanFile}
+						disabled={!artisanImportFile}
+					>
+						Import File
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
