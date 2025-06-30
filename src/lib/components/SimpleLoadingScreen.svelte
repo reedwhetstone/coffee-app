@@ -1,8 +1,5 @@
 <script lang="ts">
-	let { 
-		show = true, 
-		message = 'Loading...' 
-	} = $props<{
+	let { show = true, message = 'Loading...' } = $props<{
 		show?: boolean;
 		message?: string;
 	}>();
@@ -12,10 +9,12 @@
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-background-primary-light">
 		<div class="flex flex-col items-center space-y-4">
 			<!-- Simple spinning circle using your color scheme -->
-			<div class="h-12 w-12 animate-spin rounded-full border-4 border-background-secondary-light border-t-primary-light"></div>
-			
+			<div
+				class="border-t-primary-light h-12 w-12 animate-spin rounded-full border-4 border-background-secondary-light"
+			></div>
+
 			<!-- Loading message -->
-			<p class="text-lg font-medium text-primary-light">{message}</p>
+			<p class="text-primary-light text-lg font-medium">{message}</p>
 		</div>
 	</div>
 {/if}

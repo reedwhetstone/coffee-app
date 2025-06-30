@@ -29,6 +29,7 @@
 		"@types/d3": "^7.4.3",
 		"@types/lodash": "^4.17.14",
 		"@types/node": "^22.10.5",
+		"@types/papaparse": "^5.3.16",
 		"autoprefixer": "^10.4.20",
 		"bufferutil": "^4.0.9",
 		"eslint": "^9.7.0",
@@ -66,7 +67,9 @@
 		"jose": "^5.9.6",
 		"jwt-decode": "^4.0.0",
 		"lodash": "^4.17.21",
+		"papaparse": "^5.5.3",
 		"stripe": "^17.7.0",
-		"uuid": "^9.0.1"
+		"uuid": "^9.0.1",
+		"xlsx": "^0.18.5"
 	}
 }

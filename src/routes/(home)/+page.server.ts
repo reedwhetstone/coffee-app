@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.limit(500); // Reasonable limit for performance while maintaining functionality
 
 	// Filter stocked coffees client-side to avoid duplicate query
-	const stockedData = allData?.filter(coffee => coffee.stocked) || [];
+	const stockedData = allData?.filter((coffee) => coffee.stocked) || [];
 
 	return {
 		data: stockedData,

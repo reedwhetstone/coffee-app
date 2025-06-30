@@ -27,7 +27,6 @@ export interface ProfileLogEntry {
 	time: number;
 	bean_temp?: number | null;
 	charge?: boolean;
-	cool?: boolean;
 }
 
 export const roastData = writable<RoastPoint[]>([]);

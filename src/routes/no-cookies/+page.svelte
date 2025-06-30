@@ -1,5 +1,5 @@
-<div class="bg-background-secondary-light flex min-h-screen items-center justify-center text-white">
-	<div class="bg-background-secondary-light max-w-md rounded-lg p-8 text-center">
+<div class="flex min-h-screen items-center justify-center bg-background-secondary-light text-white">
+	<div class="max-w-md rounded-lg bg-background-secondary-light p-8 text-center">
 		<h1 class="mb-4 text-2xl font-bold">Cookies Required</h1>
 		<p class="mb-4">
 			This application requires cookies to function properly. Please enable cookies in your browser

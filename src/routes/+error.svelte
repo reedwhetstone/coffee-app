@@ -7,7 +7,7 @@
 		<h1 class="text-4xl font-bold text-red-600">
 			{$page.status}: {$page.error?.message || 'Error'}
 		</h1>
-		<p class="text-background-primary-light mt-4">
+		<p class="mt-4 text-background-primary-light">
 			{#if $page.status === 404}
 				The page you're looking for doesn't exist.
 			{:else if $page.status === 403}

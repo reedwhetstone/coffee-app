@@ -105,6 +105,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 						sc_start: log.sc_start ? 1 : 0,
 						drop: log.drop ? 1 : 0,
 						end: log.end ? 1 : 0,
+						charge: log.charge ? 1 : 0,
+						bean_temp: log.bean_temp || null,
 						user: user.id
 					})
 					.select()

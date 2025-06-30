@@ -18,11 +18,11 @@
 
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
-	
+
 	// Lazy load the heavy chart component
 	let RoastChartInterface = $state<any>(null);
 	let chartComponentLoading = $state(true);
-	
+
 	onMount(async () => {
 		// Dynamically import the chart component to reduce initial bundle size
 		const module = await import('./RoastChartInterface.svelte');
@@ -412,6 +412,12 @@
 				}
 
 				isFormVisible = false;
+
+				// Return the profiles with roast_ids for Artisan file upload
+				return {
+					roast_ids: profiles.map((p: any) => p.roast_id),
+					profiles: profiles
+				};
 			} else {
 				throw new Error('No profiles were created');
 			}
@@ -586,7 +592,8 @@
 				$roastData = data.data.map((log: any) => ({
 					time: mysqlTimeToMs(log.time),
 					heat: log.heat_setting,
-					fan: log.fan_setting
+					fan: log.fan_setting,
+					bean_temp: log.bean_temp
 				}));
 
 				// Convert profile log entries to roast events
@@ -594,6 +601,7 @@
 					.filter(
 						(log: any) =>
 							log.start ||
+							log.charge ||
 							log.maillard ||
 							log.fc_start ||
 							log.fc_rolling ||
@@ -606,19 +614,23 @@
 						time: mysqlTimeToMs(log.time),
 						name: log.start
 							? 'Start'
-							: log.maillard
-								? 'Maillard'
-								: log.fc_start
-									? 'FC Start'
-									: log.fc_rolling
-										? 'FC Rolling'
-										: log.fc_end
-											? 'FC End'
-											: log.sc_start
-												? 'SC Start'
-												: log.drop
-													? 'Drop'
-													: 'End'
+							: log.charge
+								? 'Charge'
+								: log.maillard
+									? 'Maillard'
+									: log.fc_start
+										? 'FC Start'
+										: log.fc_rolling
+											? 'FC Rolling'
+											: log.fc_end
+												? 'FC End'
+												: log.sc_start
+													? 'SC Start'
+													: log.drop
+														? 'Drop'
+														: log.end
+															? 'Cool End'
+															: 'Unknown'
 					}));
 			} else {
 				// Clear all data for new roast
@@ -857,7 +869,7 @@
 			<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
 				{#if chartComponentLoading}
 					<div class="flex items-center justify-center p-8">
-						<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+						<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500"></div>
 						<span class="ml-2 text-sm text-gray-600">Loading chart interface...</span>
 					</div>
 				{:else if RoastChartInterface}

@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { 
-		sum, 
-		group, 
-		select, 
-		extent, 
-		max, 
-		axisBottom, 
-		axisLeft, 
-		scaleLinear, 
+	import {
+		sum,
+		group,
+		select,
+		extent,
+		max,
+		axisBottom,
+		axisLeft,
+		scaleLinear,
 		scaleTime,
 		curveMonotoneX,
 		line
@@ -17,7 +17,7 @@
 	import SaleForm from './SaleForm.svelte';
 	import { page } from '$app/stores';
 	import type { PageData } from './$types';
-	
+
 	// Lazy load the profit cards component
 	let ProfitCards = $state<any>(null);
 	let profitCardsLoading = $state(true);
@@ -76,9 +76,7 @@
 
 	// Convert reactive statements to use $derived
 	let totalRevenue = $derived(sum(profitData, (d) => +d.total_sales || 0));
-	let totalCost = $derived(
-		sum(profitData, (d) => (+d.bean_cost || 0) + (+d.tax_ship_cost || 0))
-	);
+	let totalCost = $derived(sum(profitData, (d) => (+d.bean_cost || 0) + (+d.tax_ship_cost || 0)));
 	let totalProfit = $derived(sum(profitData, (d) => +d.profit || 0));
 
 	let averageMargin = $derived(() => {
@@ -663,7 +661,7 @@
 	<div class="mt-8">
 		{#if profitCardsLoading}
 			<div class="flex items-center justify-center p-8">
-				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+				<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500"></div>
 				<span class="ml-2 text-sm text-gray-600">Loading profit analysis...</span>
 			</div>
 		{:else if ProfitCards}

@@ -193,7 +193,7 @@ export class EnhancedEmbeddingService {
 	 */
 	async generateChunkEmbeddings(chunks: CoffeeChunk[]): Promise<CoffeeChunk[]> {
 		const chunksWithEmbeddings: CoffeeChunk[] = [];
-		
+
 		for (let i = 0; i < chunks.length; i++) {
 			const chunk = chunks[i];
 			try {
@@ -202,17 +202,17 @@ export class EnhancedEmbeddingService {
 					...chunk,
 					embedding
 				});
-				
+
 				// Rate limiting - wait 100ms between requests
 				if (i < chunks.length - 1) {
-					await new Promise(resolve => setTimeout(resolve, 100));
+					await new Promise((resolve) => setTimeout(resolve, 100));
 				}
 			} catch (error) {
 				console.error(`Failed to generate embedding for chunk ${chunk.id}:`, error);
 				// Continue with other chunks even if one fails
 			}
 		}
-		
+
 		return chunksWithEmbeddings;
 	}
 

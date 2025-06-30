@@ -1,13 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { 
-		select, 
-		scaleLinear, 
-		axisBottom, 
-		line,
-		type Selection, 
-		type ScaleLinear 
-	} from 'd3';
+	import { select, scaleLinear, axisBottom, line, type Selection, type ScaleLinear } from 'd3';
 	import { curveStepAfter } from 'd3-shape';
 	import {
 		roastData,
@@ -45,9 +38,10 @@
 	let xScale: ScaleLinear<number, number>;
 	let yScaleFan: ScaleLinear<number, number>;
 	let yScaleHeat: ScaleLinear<number, number>;
+	let yScaleTemp: ScaleLinear<number, number>;
 	let height: number;
 	let width: number;
-	let margin = { top: 20, right: 60, bottom: 30, left: 60 };
+	let margin = { top: 20, right: 60, bottom: 30, left: 80 };
 
 	// Handle profile changes
 	$: if (currentRoastProfile) {
@@ -215,8 +209,14 @@
 		.y((d) => yScaleFan(d.fan))
 		.curve(curveStepAfter);
 
+	const tempLine = line<RoastPoint>()
+		.x((d) => xScale(d.time / (1000 * 60)))
+		.y((d) => (d.bean_temp !== null && d.bean_temp !== undefined ? yScaleTemp(d.bean_temp) : 0))
+		.defined((d) => d.bean_temp !== null && d.bean_temp !== undefined)
+		.curve(curveStepAfter);
+
 	function updateChart(data: RoastPoint[]) {
-		if (!svg || !xScale || !yScaleFan || !yScaleHeat) return;
+		if (!svg || !xScale || !yScaleFan || !yScaleHeat || !yScaleTemp) return;
 
 		// Sort data by time first
 		const sortedData = [...data].sort((a, b) => a.time - b.time);
@@ -232,15 +232,18 @@
 			return {
 				time: point.time,
 				heat: point.heat ?? lastHeat,
-				fan: point.fan ?? lastFan
+				fan: point.fan ?? lastFan,
+				bean_temp: point.bean_temp
 			};
 		});
 
 		// Clear existing elements
 		svg.selectAll('.heat-line').remove();
 		svg.selectAll('.fan-line').remove();
+		svg.selectAll('.temp-line').remove();
 		svg.selectAll('.heat-label').remove();
 		svg.selectAll('.fan-label').remove();
+		svg.selectAll('.temp-label').remove();
 		svg.selectAll('.event-marker').remove();
 		svg.selectAll('.event-label').remove();
 
@@ -309,6 +312,19 @@
 			.attr('stroke', '#3730a3')
 			.attr('stroke-width', 2)
 			.attr('d', fanLine);
+
+		// Add temperature line if data exists
+		const tempData = processedData.filter((d) => d.bean_temp !== null && d.bean_temp !== undefined);
+		if (tempData.length > 0) {
+			svg
+				.append('path')
+				.attr('class', 'temp-line')
+				.datum(tempData)
+				.attr('fill', 'none')
+				.attr('stroke', '#dc2626')
+				.attr('stroke-width', 3)
+				.attr('d', tempLine);
+		}
 
 		// Add heat value labels with improved legibility
 		const heatChanges = processedData.filter(
@@ -418,11 +434,14 @@
 		xScale.range([0, width]);
 		yScaleFan.range([height, 0]);
 		yScaleHeat.range([height, 0]);
+		yScaleTemp.range([height, 0]);
 
 		// Clear and redraw background grid
 		svg.selectAll('.heat-zone').remove();
 		svg.selectAll('.fan-zone').remove();
+		svg.selectAll('.temp-grid').remove();
 		svg.selectAll('.y-value-indicator').remove();
+		svg.selectAll('.temp-axis-label').remove();
 
 		// Redraw background grid shading for values 1-10
 		for (let i = 0; i <= 10; i++) {
@@ -479,6 +498,31 @@
 			}
 		}
 
+		// Add temperature grid lines and labels on the left
+		for (let temp = 100; temp <= 500; temp += 50) {
+			svg
+				.append('line')
+				.attr('class', 'temp-grid')
+				.attr('x1', 0)
+				.attr('x2', width)
+				.attr('y1', yScaleTemp(temp))
+				.attr('y2', yScaleTemp(temp))
+				.attr('stroke', '#dc2626')
+				.attr('stroke-width', 0.5)
+				.attr('opacity', 0.2);
+
+			svg
+				.append('text')
+				.attr('class', 'temp-axis-label')
+				.attr('x', -50)
+				.attr('y', yScaleTemp(temp))
+				.attr('dy', '0.3em')
+				.attr('text-anchor', 'end')
+				.attr('fill', '#dc2626')
+				.attr('font-size', '10px')
+				.text(`${temp}°F`);
+		}
+
 		// Update x-axis only
 		svg
 			.select('.x-axis')
@@ -511,6 +555,7 @@
 		xScale = scaleLinear().domain([0, 12]).range([0, width]);
 		yScaleFan = scaleLinear().domain([10, 0]).range([height, 0]);
 		yScaleHeat = scaleLinear().domain([0, 10]).range([height, 0]);
+		yScaleTemp = scaleLinear().domain([0, 500]).range([height, 0]); // Temperature scale in Fahrenheit
 
 		// Add background grid shading for values 1-10
 		for (let i = 0; i <= 10; i++) {
@@ -654,10 +699,20 @@
 				}
 			];
 
-			// Special handling for Drop event
+			// Special handling for Drop and Cool End events
 			if (event === 'Drop') {
 				heatValue = 0; // Set heat to 0 when Drop is logged
 				updateHeat(0);
+			} else if (event === 'Cool End') {
+				// Stop the roast timer and save the log
+				if (timerInterval) clearInterval(timerInterval);
+				if (dataLoggingInterval) clearInterval(dataLoggingInterval);
+				isRoasting = false;
+				isPaused = false;
+
+				// Automatically save the roast profile
+				prepareProfileLogsForSave();
+				saveRoastProfile();
 			}
 
 			// Create profile log entry
@@ -671,8 +726,9 @@
 				fc_end: event === 'FC End',
 				sc_start: event === 'SC Start',
 				drop: event === 'Drop',
-				end: false, // End is handled in prepareProfileLogsForSave
-				time: currentTime
+				end: event === 'Cool End', // End is set for Cool End event
+				time: currentTime,
+				charge: event === 'Charge'
 			};
 
 			$profileLogs = [...$profileLogs, logEntry];
@@ -868,7 +924,7 @@
 							>
 								<!-- Mobile view: Grid layout with 2 buttons per row -->
 								<div class="grid grid-cols-2 sm:hidden">
-									{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event, i}
+									{#each ['Charge', 'Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop', 'Cool End'] as event, i}
 										<button
 											type="button"
 											class="cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
@@ -889,7 +945,7 @@
 
 								<!-- Desktop view: Flex layout with all buttons in one row -->
 								<div class="hidden w-full sm:flex">
-									{#each ['Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop'] as event, i}
+									{#each ['Charge', 'Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop', 'Cool End'] as event, i}
 										<button
 											type="button"
 											class="flex-1 cursor-pointer whitespace-nowrap p-3 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===

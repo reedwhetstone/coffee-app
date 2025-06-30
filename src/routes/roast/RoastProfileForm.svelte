@@ -46,12 +46,16 @@
 			coffee_id: selectedBean?.id || '',
 			coffee_name: selectedBean?.name || '',
 			oz_in: '',
-			oz_out: ''
+			oz_out: '',
+			artisan_file: null as File | null
 		}
 	]);
 
 	function addBeanToBatch() {
-		batchBeans = [...batchBeans, { coffee_id: '', coffee_name: '', oz_in: '', oz_out: '' }];
+		batchBeans = [
+			...batchBeans,
+			{ coffee_id: '', coffee_name: '', oz_in: '', oz_out: '', artisan_file: null }
+		];
 	}
 
 	function removeBeanFromBatch(index: number) {
@@ -69,6 +73,37 @@
 			}
 			batchBeans = [...batchBeans];
 		}
+	}
+
+	function handleFileUpload(event: Event, index: number) {
+		const file = (event.target as HTMLInputElement).files?.[0];
+		if (file) {
+			batchBeans[index].artisan_file = file;
+			batchBeans = [...batchBeans];
+		}
+	}
+
+	async function uploadArtisanFile(roastId: number, file: File) {
+		console.log(`Uploading Artisan file ${file.name} for roast ID ${roastId}`);
+
+		const formData = new FormData();
+		formData.append('file', file);
+		formData.append('roastId', roastId.toString());
+
+		const response = await fetch('/api/artisan-import', {
+			method: 'POST',
+			body: formData
+		});
+
+		if (!response.ok) {
+			const errorData = await response.json();
+			console.error('Artisan upload failed:', errorData);
+			throw new Error(errorData.error || 'Failed to upload Artisan file');
+		}
+
+		const result = await response.json();
+		console.log('Artisan upload successful:', result);
+		return result;
 	}
 
 	async function handleSubmit() {
@@ -91,7 +126,35 @@
 				roast_targets: formData.roast_targets
 			};
 
-			onSubmit(dataForAPI);
+			// Submit the roast profile data first
+			const roastProfilesResponse = await onSubmit(dataForAPI);
+			console.log('Roast profiles response:', roastProfilesResponse);
+
+			// If there are Artisan files to upload, handle them after profile creation
+			if (roastProfilesResponse?.roast_ids && roastProfilesResponse?.profiles) {
+				console.log(`Processing ${batchBeans.length} beans for Artisan file uploads`);
+
+				for (let i = 0; i < batchBeans.length; i++) {
+					const bean = batchBeans[i];
+					const roastId = roastProfilesResponse.roast_ids[i];
+
+					console.log(`Bean ${i}: has file = ${!!bean.artisan_file}, roastId = ${roastId}`);
+
+					if (bean.artisan_file && roastId) {
+						try {
+							await uploadArtisanFile(roastId, bean.artisan_file);
+							console.log(`Successfully uploaded Artisan file for roast ${roastId}`);
+						} catch (fileError) {
+							console.error(`Failed to upload Artisan file for roast ${roastId}:`, fileError);
+							alert(
+								`Warning: Roast profile created but Artisan file upload failed: ${fileError instanceof Error ? fileError.message : 'Unknown error'}`
+							);
+						}
+					}
+				}
+			} else {
+				console.log('No roast IDs returned or no profiles found:', roastProfilesResponse);
+			}
 		} catch (error) {
 			console.error('Error submitting profile:', error);
 			alert(error instanceof Error ? error.message : 'Failed to save roast profiles');
@@ -224,6 +287,34 @@
 											bind:value={bean.oz_out}
 											class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
 										/>
+									</div>
+
+									<!-- Artisan File Upload -->
+									<div class="col-span-1 sm:col-span-2">
+										<label
+											for="artisan_file_{index}"
+											class="block text-sm font-medium text-text-primary-light"
+										>
+											Artisan Roast Log (Optional)
+										</label>
+										<div class="mt-1">
+											<input
+												id="artisan_file_{index}"
+												type="file"
+												accept=".csv,.xlsx"
+												onchange={(e) => handleFileUpload(e, index)}
+												class="block w-full text-sm text-text-primary-light file:mr-4 file:rounded file:border-0 file:bg-background-tertiary-light file:px-4 file:py-2 file:text-sm file:font-semibold file:text-text-primary-light hover:file:bg-background-secondary-light"
+											/>
+											<p class="mt-1 text-xs text-text-secondary-light">
+												Upload CSV or XLSX exported from Artisan to import roast data and
+												temperature curves
+											</p>
+											{#if bean.artisan_file}
+												<p class="mt-1 text-xs text-green-600">
+													Selected: {bean.artisan_file.name}
+												</p>
+											{/if}
+										</div>
 									</div>
 								</div>
 							</div>

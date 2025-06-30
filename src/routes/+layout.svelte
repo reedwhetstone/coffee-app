@@ -95,7 +95,7 @@
 		try {
 			// Load core components with simple progress messages
 			loadingMessage = 'Loading components...';
-			
+
 			const [sidebarModule, filterModule] = await Promise.all([
 				import('$lib/components/layout/LeftSidebar.svelte'),
 				import('$lib/stores/filterStore')
@@ -110,12 +110,11 @@
 			await initializeRoute();
 
 			// Load analytics in background (non-blocking)
-			import('@vercel/speed-insights/sveltekit').then(m => m.injectSpeedInsights());
-			import('@vercel/analytics/sveltekit').then(m => m.injectAnalytics());
-			
+			import('@vercel/speed-insights/sveltekit').then((m) => m.injectSpeedInsights());
+			import('@vercel/analytics/sveltekit').then((m) => m.injectAnalytics());
+
 			// Complete loading
 			componentsLoaded = true;
-
 		} catch (error) {
 			console.error('Error loading components:', error);
 			// Still show the app even if some components fail
@@ -126,7 +125,7 @@
 	// Initialize route data
 	async function initializeRoute() {
 		const currentRoute = page.url.pathname;
-		
+
 		if (data?.data && Array.isArray(data.data) && data.data.length > 0 && filterStore) {
 			filterStore.initializeForRoute(currentRoute, data.data);
 		}

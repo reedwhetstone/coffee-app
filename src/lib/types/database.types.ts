@@ -12,7 +12,10 @@ export interface Database {
 					created_at: string;
 					updated_at: string;
 				};
-				Insert: Omit<Database['public']['Tables']['coffee_chunks']['Row'], 'created_at' | 'updated_at'>;
+				Insert: Omit<
+					Database['public']['Tables']['coffee_chunks']['Row'],
+					'created_at' | 'updated_at'
+				>;
 				Update: Partial<Database['public']['Tables']['coffee_chunks']['Row']>;
 			};
 			green_coffee_inv: {
@@ -88,6 +91,8 @@ export interface Database {
 					drop: boolean;
 					end: boolean;
 					time: string;
+					bean_temp: number | null;
+					charge: boolean;
 				};
 				Insert: Omit<Database['public']['Tables']['profile_log']['Row'], 'log_id'>;
 				Update: Partial<Database['public']['Tables']['profile_log']['Row']>;
