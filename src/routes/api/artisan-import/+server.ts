@@ -141,7 +141,7 @@ function parseArtisanXLSX(buffer: ArrayBuffer): ParsedArtisanData {
 	// Row 1: Event times and metadata
 	// Row 2: (blank)
 	// Row 3: Time series column headers (Time1, Time2, ET, BT, Δ BT, Event)
-	// Row 4+: Time series data
+	// Row 4+: Time series data (Time2 is the actual timeline when events are logged)
 
 	const headerLabels = data[0] as string[];
 	const eventTimes = data[1] as string[];
@@ -176,7 +176,7 @@ function parseArtisanXLSX(buffer: ArrayBuffer): ParsedArtisanData {
 	});
 
 	// Find column indices in the time series headers (row 3)
-	const timeIndex = timeSeriesHeaders.findIndex((h) => h && h.toString().trim() === 'Time1');
+	const timeIndex = timeSeriesHeaders.findIndex((h) => h && h.toString().trim() === 'Time2');
 	const btIndex = timeSeriesHeaders.findIndex((h) => h && h.toString().trim() === 'BT');
 	const eventIndex = timeSeriesHeaders.findIndex((h) => h && h.toString().trim() === 'Event');
 	const fanIndex = timeSeriesHeaders.findIndex(
@@ -188,7 +188,7 @@ function parseArtisanXLSX(buffer: ArrayBuffer): ParsedArtisanData {
 
 	if (timeIndex === -1 || btIndex === -1) {
 		console.log('Available time series headers:', timeSeriesHeaders);
-		throw new Error('Required columns (Time1, BT) not found in XLSX time series headers');
+		throw new Error('Required columns (Time2, BT) not found in XLSX time series headers');
 	}
 
 	// Parse data rows (starting from row 4)
