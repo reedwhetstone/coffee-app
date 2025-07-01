@@ -154,7 +154,7 @@ function parseArtisanXLSX(buffer: ArrayBuffer): ParsedArtisanData {
 		if (typeof label === 'string' && eventTimes[index]) {
 			const labelStr = label.toString().trim();
 			const timeStr = eventTimes[index]?.toString().trim();
-			
+
 			if (timeStr && timeStr !== '' && timeStr !== '0') {
 				if (labelStr === 'CHARGE') {
 					events.charge = timeStr;

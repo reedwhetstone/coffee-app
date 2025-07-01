@@ -335,8 +335,22 @@
 					<div class="mb-8 text-center">
 						<h1 class="text-primary-light mb-4 text-3xl font-bold">Choose Your Plan</h1>
 						<p class="text-primary-light/80 text-lg">
-							Get access to all premium features and start your coffee journey
+							Unlock AI-powered coffee insights and professional roasting tools
 						</p>
+						{#if !data?.user}
+							<div class="mt-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+								<p class="text-sm text-blue-400">
+									🎉 <strong>New users:</strong> Browse our free coffee marketplace first, then upgrade
+									when you're ready!
+								</p>
+								<button
+									onclick={() => goto('/')}
+									class="mt-2 text-sm text-blue-400 underline hover:text-blue-300"
+								>
+									← Explore the marketplace first
+								</button>
+							</div>
+						{/if}
 					</div>
 
 					{#each plans as plan}

@@ -29,6 +29,19 @@
 		} | null;
 		role: 'viewer' | 'member' | 'admin';
 		data?: any[];
+		meta?: {
+			title?: string;
+			description?: string;
+			keywords?: string;
+			ogTitle?: string;
+			ogDescription?: string;
+			ogImage?: string;
+			ogUrl?: string;
+			twitterCard?: string;
+			twitterTitle?: string;
+			twitterDescription?: string;
+			structuredData?: any;
+		};
 	}
 
 	let { data, children } = $props<{ data: LayoutData; children: any }>();
@@ -133,25 +146,82 @@
 
 	// Calculate content margin based on active menu
 	let contentMargin = $derived(activeMenu ? 'ml-80' : 'ml-16');
+
+	// Determine if we should show marketing layout (no sidebar)
+	let isMarketingPage = $derived(!data.session && page.url.pathname === '/');
 </script>
+
+<!-- SEO Meta Tags -->
+<svelte:head>
+	{#if data.meta}
+		<title>{data.meta.title || 'Purveyors'}</title>
+		{#if data.meta.description}
+			<meta name="description" content={data.meta.description} />
+		{/if}
+		{#if data.meta.keywords}
+			<meta name="keywords" content={data.meta.keywords} />
+		{/if}
+
+		<!-- Open Graph -->
+		{#if data.meta.ogTitle}
+			<meta property="og:title" content={data.meta.ogTitle} />
+		{/if}
+		{#if data.meta.ogDescription}
+			<meta property="og:description" content={data.meta.ogDescription} />
+		{/if}
+		{#if data.meta.ogImage}
+			<meta property="og:image" content={data.meta.ogImage} />
+		{/if}
+		{#if data.meta.ogUrl}
+			<meta property="og:url" content={data.meta.ogUrl} />
+		{/if}
+		<meta property="og:type" content="website" />
+
+		<!-- Twitter -->
+		{#if data.meta.twitterCard}
+			<meta name="twitter:card" content={data.meta.twitterCard} />
+		{/if}
+		{#if data.meta.twitterTitle}
+			<meta name="twitter:title" content={data.meta.twitterTitle} />
+		{/if}
+		{#if data.meta.twitterDescription}
+			<meta name="twitter:description" content={data.meta.twitterDescription} />
+		{/if}
+
+		<!-- Structured Data -->
+		{#if data.meta.structuredData}
+			{@html `<script type="application/ld+json">${JSON.stringify(data.meta.structuredData)}</script>`}
+		{/if}
+	{:else}
+		<title>Purveyors</title>
+		<meta name="description" content="Professional coffee roasting platform" />
+	{/if}
+</svelte:head>
 
 <!-- Simple loading screen for improved FCP -->
 {#if !componentsLoaded}
 	<SimpleLoadingScreen show={true} message={loadingMessage} />
 {/if}
 
-<!-- Main App - Only renders after components are loaded -->
-{#if componentsLoaded && LeftSidebar}
-	<div class="flex min-h-screen">
-		<!-- Left Sidebar Component -->
-		<LeftSidebar data={pageData || data} onMenuChange={handleMenuChange} />
-
-		<!-- Main Content Container -->
-		<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
-			<div class="h-full py-4 pr-4">
-				<!-- Page Content -->
-				{@render children()}
-			</div>
-		</main>
+<!-- Marketing Layout (No Sidebar) -->
+{#if isMarketingPage}
+	<div class="min-h-screen">
+		{@render children()}
 	</div>
+{:else}
+	<!-- Main App - Only renders after components are loaded -->
+	{#if componentsLoaded && LeftSidebar}
+		<div class="flex min-h-screen">
+			<!-- Left Sidebar Component -->
+			<LeftSidebar data={pageData || data} onMenuChange={handleMenuChange} />
+
+			<!-- Main Content Container -->
+			<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
+				<div class="h-full py-4 pr-4">
+					<!-- Page Content -->
+					{@render children()}
+				</div>
+			</main>
+		</div>
+	{/if}
 {/if}

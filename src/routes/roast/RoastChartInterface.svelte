@@ -795,7 +795,7 @@
 			alert('Please select a roast profile first');
 			return;
 		}
-		
+
 		// Check if there's existing data
 		if ($roastData.length > 0) {
 			const confirmed = confirm(
@@ -805,7 +805,7 @@
 				return;
 			}
 		}
-		
+
 		showArtisanImport = true;
 	}
 
@@ -816,8 +816,10 @@
 		}
 
 		try {
-			console.log(`Importing Artisan file ${artisanImportFile.name} for roast ID ${currentRoastProfile.roast_id}`);
-			
+			console.log(
+				`Importing Artisan file ${artisanImportFile.name} for roast ID ${currentRoastProfile.roast_id}`
+			);
+
 			const formData = new FormData();
 			formData.append('file', artisanImportFile);
 			formData.append('roastId', currentRoastProfile.roast_id.toString());
@@ -834,14 +836,18 @@
 
 			const result = await response.json();
 			console.log('Artisan import successful:', result);
-			
+
 			// Reload the profile data to show the imported data
 			window.location.reload();
-			
-			alert(`Successfully imported ${result.dataPointsCount} data points from ${artisanImportFile.name}`);
+
+			alert(
+				`Successfully imported ${result.dataPointsCount} data points from ${artisanImportFile.name}`
+			);
 		} catch (error) {
 			console.error('Artisan import failed:', error);
-			alert(`Failed to import Artisan file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			alert(
+				`Failed to import Artisan file: ${error instanceof Error ? error.message : 'Unknown error'}`
+			);
 		} finally {
 			// Reset the import state
 			showArtisanImport = false;
@@ -1093,7 +1099,7 @@
 				Save Roast
 			</button>
 		{/if}
-		
+
 		<!-- Import Artisan File button - only show when profile exists -->
 		{#if currentRoastProfile?.roast_id}
 			<button
@@ -1103,7 +1109,7 @@
 				Import Artisan File
 			</button>
 		{/if}
-		
+
 		{#if !isBeforeRoasting}
 			<button
 				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-950 sm:w-auto"
@@ -1139,11 +1145,11 @@
 				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">
 					Import Artisan Roast File
 				</h3>
-				
+
 				<div class="mb-4">
 					<label
 						for="artisan-file-input"
-						class="block text-sm font-medium text-text-primary-light mb-2"
+						class="mb-2 block text-sm font-medium text-text-primary-light"
 					>
 						Select Artisan CSV or XLSX file:
 					</label>
@@ -1152,7 +1158,7 @@
 						type="file"
 						accept=".csv,.xlsx"
 						onchange={handleArtisanFileSelect}
-						class="block w-full text-sm text-text-primary-light file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-background-tertiary-light file:text-text-primary-light hover:file:bg-background-primary-light"
+						class="block w-full text-sm text-text-primary-light file:mr-4 file:rounded file:border-0 file:bg-background-tertiary-light file:px-4 file:py-2 file:text-sm file:font-semibold file:text-text-primary-light hover:file:bg-background-primary-light"
 					/>
 					<p class="mt-2 text-xs text-text-secondary-light">
 						This will replace all existing roast data for this profile.
@@ -1175,7 +1181,7 @@
 					</button>
 					<button
 						type="button"
-						class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+						class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
 						onclick={importArtisanFile}
 						disabled={!artisanImportFile}
 					>
