@@ -1,12 +1,15 @@
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async ({ parent, url }) => {
-	const data = await parent();
+export const load: PageLoad = async ({ parent, url, data: serverData }) => {
+	const layoutData = await parent();
+
+	// Combine layout data with server data
+	const combinedData = { ...layoutData, ...serverData };
 
 	// If user is not authenticated, return marketing page metadata
-	if (!data.session) {
+	if (!combinedData.session) {
 		return {
-			...data,
+			...combinedData,
 			meta: {
 				title: 'Purveyors - Master Your Coffee Roasting Journey',
 				description:
@@ -48,7 +51,7 @@ export const load: PageLoad = async ({ parent, url }) => {
 
 	// For authenticated users, return standard app metadata
 	return {
-		...data,
+		...combinedData,
 		meta: {
 			title: 'Coffee Catalog - Purveyors',
 			description:
