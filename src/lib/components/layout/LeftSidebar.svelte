@@ -136,12 +136,12 @@
 				class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
 				aria-label="Toggle authentication menu"
 			>
-				{#if data?.session?.user}
+				{#if data?.user}
 					<!-- User Avatar/Icon -->
 					<div
 						class="flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-text-primary-dark hover:text-background-tertiary-light"
 					>
-						{data.session.user.email?.[0].toUpperCase() || 'U'}
+						{data.user.email?.[0].toUpperCase() || 'U'}
 					</div>
 				{:else}
 					<!-- Default Profile Icon -->

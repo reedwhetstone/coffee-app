@@ -15,7 +15,7 @@
 	}>();
 
 	// Destructure with default values
-	let { supabase, session } = $derived(data);
+	let { supabase, user } = $derived(data);
 
 	async function handleSignIn() {
 		try {
@@ -74,10 +74,10 @@
 	</header>
 
 	<main class="flex-grow overflow-y-auto p-4">
-		{#if session?.user}
+		{#if user}
 			<div class="mb-4">
 				<h3 class="mb-2 font-medium">Signed in as:</h3>
-				<p class="mb-4 text-sm opacity-80">{session.user.email}</p>
+				<p class="mb-4 text-sm opacity-80">{user.email}</p>
 
 				<button
 					onclick={handleSignOut}

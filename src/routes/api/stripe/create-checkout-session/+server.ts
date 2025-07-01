@@ -5,8 +5,8 @@ import { createCheckoutSession } from '$lib/services/stripe';
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		// Verify that the user is authenticated
-		const session = locals.session;
-		if (!session?.user) {
+		const { session, user } = await locals.safeGetSession();
+		if (!user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -23,8 +23,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const clientSecret = await createCheckoutSession(
 			priceId,
 			null, // We don't pass customerId here since we want to capture email for new customers
-			clientReferenceId || session.user.id,
-			customerEmail || session.user.email || '',
+			clientReferenceId || user.id,
+			customerEmail || user.email || '',
 			origin
 		);
 

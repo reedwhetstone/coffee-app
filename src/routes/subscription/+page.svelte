@@ -170,7 +170,7 @@
 <div class="min-h-[calc(100vh-80px)] px-4 py-10 md:px-6">
 	<div class="mx-auto max-w-3xl">
 		<div class="">
-			{#if data?.session?.user && (data.role === 'member' || data.role === 'admin')}
+			{#if data?.user && (data.role === 'member' || data.role === 'admin')}
 				<!-- Show subscription management UI for existing members -->
 				<div class="flex flex-col items-center rounded-lg p-6">
 					<h3 class="text-primary-light mb-2 text-xl font-semibold">Subscription Management</h3>
@@ -293,7 +293,7 @@
 						</div>
 					{/if}
 				</div>
-			{:else if data?.session?.user && showCheckout && selectedPriceId}
+			{:else if data?.user && showCheckout && selectedPriceId}
 				<!-- Checkout Form (for authenticated users who selected a plan) -->
 				<div>
 					<div class="mb-4 flex items-center justify-between">
@@ -323,8 +323,8 @@
 					</div>
 					<StripeCheckout
 						priceId={selectedPriceId}
-						clientReferenceId={data.session.user.id}
-						customerEmail={data.session.user.email}
+						clientReferenceId={data.user.id}
+						customerEmail={data.user.email}
 						onSuccess={handleCheckoutSuccess}
 						onCancel={handleCheckoutCancel}
 					/>
@@ -378,7 +378,7 @@
 								<p class="mt-2">Includes a 30-day free trial - cancel anytime.</p>
 							</div>
 
-							{#if data?.session?.user}
+							{#if data?.user}
 								<!-- User is authenticated - show subscription button -->
 								<button
 									onclick={() => handlePlanSelect(plan)}

@@ -26,8 +26,22 @@ declare global {
 			}>;
 		}
 		interface PageData {
-			session: Session | null;
-			user: User | null;
+			session: {
+				access_token: string;
+				refresh_token: string;
+				expires_in: number;
+				expires_at: number | undefined;
+				user: {
+					id: string;
+					email: string | undefined;
+					role: string | undefined;
+				};
+			} | null;
+			user: {
+				id: string;
+				email: string | undefined;
+				role: string | undefined;
+			} | null;
 			role: 'viewer' | 'member' | 'admin';
 		}
 		// interface PageState {}

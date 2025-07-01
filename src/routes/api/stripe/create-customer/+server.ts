@@ -4,8 +4,8 @@ import type { RequestEvent } from '@sveltejs/kit';
 
 export async function POST({ request, locals }: RequestEvent) {
 	// Ensure the user is authenticated
-	const session = locals.session;
-	if (!session?.user) {
+	const { session, user } = await locals.safeGetSession();
+	if (!user) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
@@ -17,7 +17,7 @@ export async function POST({ request, locals }: RequestEvent) {
 		}
 
 		// Check if user already has a Stripe customer ID
-		const existingCustomerId = await getStripeCustomerId(session.user.id);
+		const existingCustomerId = await getStripeCustomerId(user.id);
 
 		if (existingCustomerId) {
 			return json({
@@ -27,7 +27,7 @@ export async function POST({ request, locals }: RequestEvent) {
 		}
 
 		// Create a new Stripe customer
-		const customerId = await createStripeCustomer(session.user.id, email, name);
+		const customerId = await createStripeCustomer(user.id, email, name);
 
 		if (!customerId) {
 			return json({ error: 'Failed to create customer' }, { status: 500 });

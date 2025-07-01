@@ -11,7 +11,7 @@
 
 	onMount(async () => {
 		try {
-			if (!data?.session?.user) {
+			if (!data?.user) {
 				goto('/');
 				return;
 			}
