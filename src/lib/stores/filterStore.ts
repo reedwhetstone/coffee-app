@@ -289,6 +289,20 @@ function createFilterStore() {
 				// Get item value
 				const itemValue = item[key];
 
+				// Handle stocked_date "last n days" filter
+				if (key === 'stocked_date' && typeof value === 'string' && value !== '') {
+					// Skip items with null/undefined stocked_date
+					if (!itemValue) return false;
+					
+					const daysBack = parseInt(value);
+					const cutoffDate = new Date();
+					cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+					
+					// Parse the stocked_date (format: YYYY-MM-DD)
+					const stockedDate = new Date(itemValue);
+					return stockedDate >= cutoffDate;
+				}
+
 				// Handle different filter types
 				if (typeof value === 'object') {
 					// Range filter
@@ -337,11 +351,17 @@ function createFilterStore() {
 			const aValue = a[sortField];
 			const bValue = b[sortField];
 
+			// Handle null/undefined values - always sort them to the end
+			if (aValue == null && bValue == null) return 0;
+			if (aValue == null) return 1;
+			if (bValue == null) return -1;
+
 			// Handle date fields specially
 			if (
 				sortField === 'purchase_date' ||
 				sortField === 'arrival_date' ||
-				sortField === 'roast_date'
+				sortField === 'roast_date' ||
+				sortField === 'stocked_date'
 			) {
 				// Custom date parsing function for handling YYYY-MM format
 				const parseMonthYear = (dateStr: string): Date => {
@@ -359,7 +379,7 @@ function createFilterStore() {
 						return new Date(dateStr.replace(' ', 'T') + 'Z');
 					}
 
-					// Standard date format
+					// Standard date format (YYYY-MM-DD)
 					return new Date(dateStr);
 				};
 
@@ -371,17 +391,30 @@ function createFilterStore() {
 					: dateB.getTime() - dateA.getTime();
 			}
 
-			// Handle string fields
-			if (typeof aValue === 'string' && typeof bValue === 'string') {
+			// Handle score_value and other numeric fields
+			if (sortField === 'score_value' || sortField === 'cost_lb') {
+				const numA = parseFloat(aValue) || 0;
+				const numB = parseFloat(bValue) || 0;
+				
 				return sortDirection === 'asc'
-					? aValue.localeCompare(bValue)
-					: bValue.localeCompare(aValue);
+					? numA - numB
+					: numB - numA;
 			}
 
-			// Handle numeric fields
+			// Handle string fields (processing, cultivar_detail, name, source, region, etc.)
+			if (typeof aValue === 'string' && typeof bValue === 'string') {
+				return sortDirection === 'asc'
+					? aValue.toLowerCase().localeCompare(bValue.toLowerCase())
+					: bValue.toLowerCase().localeCompare(aValue.toLowerCase());
+			}
+
+			// Fallback for other types - convert to string and compare
+			const strA = String(aValue || '').toLowerCase();
+			const strB = String(bValue || '').toLowerCase();
+			
 			return sortDirection === 'asc'
-				? (aValue || 0) - (bValue || 0)
-				: (bValue || 0) - (aValue || 0);
+				? strA.localeCompare(strB)
+				: strB.localeCompare(strA);
 		});
 	}
 
@@ -509,7 +542,8 @@ function createFilterStore() {
 				'processing',
 				'cultivar_detail',
 				'score_value',
-				'cost_lb'
+				'cost_lb',
+				'stocked_date'
 			];
 		}
 		return [];

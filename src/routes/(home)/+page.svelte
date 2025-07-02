@@ -586,6 +586,10 @@
 											<span class="text-primary-light">Roast Recs:</span>
 											{coffee.roast_recs || '-'}
 										</div>
+										<div>
+											<span class="text-primary-light">Stocked:</span>
+											{coffee.stocked_date || '-'}
+										</div>
 									</div>
 								</div>
 								{#if coffee.score_value}

@@ -6,15 +6,11 @@
 -->
 <script lang="ts">
 	import { page } from '$app/state';
-	import { filterStore, filteredData } from '$lib/stores/filterStore';
+	import { filterStore } from '$lib/stores/filterStore';
 	import { afterNavigate } from '$app/navigation';
 
 	// Component props interface
-	let {
-		data,
-		isOpen = false,
-		onClose = () => {}
-	} = $props<{
+	let { onClose = () => {} } = $props<{
 		data: any;
 		isOpen?: boolean;
 		onClose?: () => void;
@@ -27,12 +23,6 @@
 	afterNavigate(() => {
 		routeId = page.url.pathname;
 		onClose();
-	});
-
-	// Monitor route changes to ensure filter store stays synchronized
-	$effect(() => {
-		const currentRoute = page.url.pathname;
-		// This ensures the filter store is aware of route changes for proper column filtering
 	});
 
 	/**
@@ -245,6 +235,19 @@
 								{#each $filterStore.uniqueValues.roastDates as date}
 									<option value={date}>{date}</option>
 								{/each}
+							</select>
+						{:else if column === 'stocked_date'}
+							<select
+								value={$filterStore.filters.stocked_date || ''}
+								onchange={(e) => filterStore.setFilter('stocked_date', e.currentTarget.value)}
+								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+							>
+								<option value="">All Dates</option>
+								<option value="7">Last 7 days</option>
+								<option value="14">Last 14 days</option>
+								<option value="30">Last 30 days</option>
+								<option value="60">Last 60 days</option>
+								<option value="90">Last 90 days</option>
 							</select>
 						{:else if column === 'batch_name' && $filterStore.uniqueValues?.batchNames?.length}
 							<select
