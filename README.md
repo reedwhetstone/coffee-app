@@ -14,9 +14,9 @@
 # Todo List
 
 - [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row; may also be linked to roast. Needs cascade delete function.
-<br>
+- [ ] 
 - [ ] **Form Validation** - Limit bean selection in forms to stocked items only (beans, roast, sales)
-<br>
+- [ ] 
 - [ ] **UI/UX** - Correct rank formatting to two decimal places and improve visual layout
 - [ ] **UI/UX** - Redesign roast, bean, and profit pages to match landing/catalog aesthetic; reduce table formatting; emphasize profile & analytics
 - [ ] **UI/UX** - Clean up roast page UI to align with beans page UI
