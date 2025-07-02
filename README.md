@@ -14,48 +14,48 @@
 # Todo List
 
 - [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row; may also be linked to roast. Needs cascade delete function.
---
+---
 - [ ] **Form Validation** - Limit bean selection in forms to stocked items only (beans, roast, sales)
---
+---
 - [ ] **UI/UX** - Correct rank formatting to two decimal places and improve visual layout
 - [ ] **UI/UX** - Redesign roast, bean, and profit pages to match landing/catalog aesthetic; reduce table formatting; emphasize profile & analytics
 - [ ] **UI/UX** - Clean up roast page UI to align with beans page UI
 - [ ] **UI/UX** - Clean up beans catalog profiles and remove user reference
---
+---
 - [ ] **Web Scraping** - Add option to add a bean based on a URL
 - [ ] **Web Scraping** - Implement automatic scraping for supported URLs
 - [ ] **Web Scraping** - Summarize/rewrite front-end descriptions for fair use
 - [ ] **Web Scraping** - Automate vector embeding in the scrape workflow
 - [ ] **Web Scraping** - Automate data cleaning of columns with Gemini when we scrape
 - [ ] **Web Scraping** - Automate llm interpretation of the text into an AI blurb column - claims extraction & cleaning of data columns during scrape
---
+---
 - [ ] **AI** - Hybrid RAG: Use tool calls for structured lookups: filters, search, pricing, transactions. Use RAG for unstructured knowledge: guides, tips, reviews, roast advice.  
       - “Find Ethiopian naturals under $10/lb rated 88+” 🔧 Tool Call Clear filters → use MySQL API  
       - “What’s a good coffee for a chocolatey espresso profile?” 📚 RAG Requires semantic matching and taste context  
       - “Compare these two coffees side by side” 🔧 Tool Call Deterministic, tabular output  
       - “How does fermentation impact acidity in natural processed beans?” 📚 RAG Explanatory, doc-based  
---
+---
 - [ ] **Performance** - Fix real experience score and content paint
---
+---
 - [ ] **General** - Set up no-cookies banner at the bottom of the page
 - [ ] **General** - Remove some / all of the user reviews?
 - [ ] **Forms** - date popilation is inconsistent and poor across form completions
---
+---
 - [ ] **Mobile** - Improve roast profile/bean profile appearance on mobile
 - [ ] **Mobile** - Improve usability of roast chart buttons on mobile
 - [ ] **Mobile** - Move fan settings below the chart on mobile
---
+---
 - [ ] **Navigation** - Improve manu UI - the icons are really hard to understand
 - [ ] **Navigation** - move manu bar to bottom bar for mobile
 - [ ] **Navigation** - only display relevant active menu options for each page. Currently showing all of them, indescriminantly
 - [ ] *Navigation** - make it easier to navigate back to landing page fromt the pricing page
 - [ ] **Navigation** - improve sales funnel & clickthrough to make it more seamless
 - [ ] **Navigation** - simplify main page? Really long scrolling
---
+---
 - [ ] **Roast Insights** - Organize roasts by bean for roast comparison, instead of by batch
 - [ ] **Roast Insights** - Add % weight loss display per roast
 - [ ] **Roast Insights** - Add remaining purchased quantity data to bean inventory
---
+---
 - [ ] **Roast Chart** - Remove y-axis lines
 - [ ] **Roast Chart** - Add average curve for heat and fan settings
 - [ ] **Roast Chart** - Add color shading for roast phases
@@ -63,20 +63,20 @@
 - [ ] **Roast Chart** - Make up/down arrows work consistently for temp and fan
 - [ ] **Roast Chart** - Smooth out temp curve for cleaner display
 - [ ] **Roast Chart** - Remove fan and heat Y-axis labels; keep only external temp labels
---
+---
 - [ ] **Roast Data** - Add ambient temperature setting
 - [ ] **Roast Data** - Add charge setting (machine hot or not)
 - [ ] **Roast Data** - Add TP, FC, DROP times in roast profile
 - [ ] **Roast Data** - Fix roast charting timer turning off when phone closes
 - [ ] **Roast Data** - Implement TP, FC, and development % calculations and display them in the roast chart interface
 - [ ] **Roast Data Import** - Parse fan and heat settings from Artisan import file
---  
+---
 - [ ] **Text Handling** - Fix DB structure or front-end interpretation to preserve paragraph formatting in text fields
---    
+---   
 - [ ] **Database** - Add `stocked` column to `green_coffee_inv` and manage it through profiles
 - [ ] **Database** - Need a purchased qty remaining data set in beans category to add to the stocked functionality
 - [ ] **Database Optimization** - Reduce duplication between `green_coffee_inv` and `coffee_catalog` — only duplicate for original, unreferenced coffees
---
+---
 - [ ] **Tasting Notes** - Improve rating/notes function by bean
 - [ ] **Tasting Notes** - Allow roast selection specific to the bean
 - [ ] **Tasting Notes** - Create more comprehensive rating scale (brew method, nose, flavor, etc.)
@@ -84,10 +84,10 @@
 - [ ] **Tasting Notes** - Display cupping/tasting notes per profile on main profile page
 - [ ] **Tasting Notes** - Create new table to manage comprehensive rating form data
 - [ ] **Tasting Notes** - comprehensive ratings form - roast batch, brew method, nose, flavor, etc - will need a new table to manage this data.
---
+---
 - [ ] **Analytics** - Track all source pricing, stock, location distribution, and processing methods over time
 - [ ] **Analytics** - Create trends and analysis charting page; prioritize fun and informational roasting insights
--- 
+--- 
 - [ ] **Feature Ideation** - Explore tools for Supplier & Origin Comparison
 - [ ] **Feature Ideation** - Develop Real-time Coffee Market Pricing Analysis
 - [ ] **Feature Ideation** - Implement Price Trend Monitoring for Green Coffee
