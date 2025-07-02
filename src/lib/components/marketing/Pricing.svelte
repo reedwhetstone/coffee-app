@@ -4,6 +4,8 @@
 	function handleSelectPlan(plan: string) {
 		if (plan === 'free') {
 			goto('/auth');
+		} else if (plan === 'enterprise') {
+			goto('/contact');
 		} else {
 			goto('/subscription');
 		}
@@ -357,7 +359,7 @@
 					</ul>
 				</div>
 				<button
-					onclick={() => handleSelectPlan('enterprise')}
+					onclick={() => goto('/contact')}
 					class="mt-8 block w-full rounded-md bg-text-primary-light px-3 py-2 text-center text-sm font-semibold text-background-primary-light shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-primary-light"
 				>
 					Schedule consultation

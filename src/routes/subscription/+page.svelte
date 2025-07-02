@@ -718,7 +718,7 @@
 							</ul>
 						</div>
 						<button
-							onclick={() => goto('/')}
+							onclick={() => goto('/contact')}
 							class="mt-8 block w-full rounded-md bg-text-primary-light px-3 py-2 text-center text-sm font-semibold text-background-primary-light shadow-sm transition-all duration-200 hover:bg-opacity-90"
 						>
 							Schedule consultation
