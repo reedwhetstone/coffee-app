@@ -1,6 +1,7 @@
 # Notes
 
 "Democratizing coffee"
+"Make coffee roasting fun, accesable, and informational"
 
 - coffee trends & green supply analysis
 - micro-lots crowd funding
@@ -25,10 +26,14 @@
 - [ ] **Web Scraping** - Implement automatic scraping for supported URLs
 - [ ] **Web Scraping** - Summarize/rewrite front-end descriptions for fair use
 - [ ] **Web Scraping** - Automate vector embeding in the scrape workflow
-- [ ]  **Web Scraping** - Automate data cleaning of columns with Gemini when we scrape
+- [ ] **Web Scraping** - Automate data cleaning of columns with Gemini when we scrape
 - [ ] **Web Scraping** - Automate llm interpretation of the text into an AI blurb column - claims extraction & cleaning of data columns during scrape
 
 - [ ] **AI** - Hybrid RAG: Use tool calls for structured lookups: filters, search, pricing, transactions. Use RAG for unstructured knowledge: guides, tips, reviews, roast advice.
+      - “Find Ethiopian naturals under $10/lb rated 88+” 🔧 Tool Call Clear filters → use MySQL API
+      - “What’s a good coffee for a chocolatey espresso profile?” 📚 RAG Requires semantic matching and taste context
+      - “Compare these two coffees side by side” 🔧 Tool Call Deterministic, tabular output
+      - “How does fermentation impact acidity in natural processed beans?” 📚 RAG Explanatory, doc-based       
 
 - [ ] **Performance** - Fix real experience score and content paint
       
@@ -96,7 +101,6 @@ https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 -   [ ] Burman Coffee Traders: Good quality beans
 -   [x] Bodhi Leaf: Ongoing `SHIP59` coupon code for free shipping on orders $59+
 -   [ ] prime green coffee
--   [ ] hacea
 -   [ ] onyx green coffee - Onyx Box (20 or 40lbs) of Guatemala - with $10 Fedex Shipping
 -   [ ] https://sleepymangocoffee.com/collections/frontpage
 -   [ ] Royal Coffee Crown Jewels - selling 22 and 1lb bags of their Royal Crown Jewels. My preferred source of decaf.
@@ -134,13 +138,17 @@ https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 -   [ ] Ally Open Core Coffees (50lb boxes) are consistently available regional community lots. Microlots (50lb boxes) are limited edition coffees from our partner farms. Reserve Lots (25lb boxes) are super-special coffees ideal for competitions and showcase occasions.
 -   [ ] Coffee Crafters Green 10 and 20 pound bags plus see larger quantities too.
 -   [ ] Crop to Cup
+-   [ ] Covoya
+-   [ ] https://coffeegreenbeans.com/collections/greencoffeestore
 
 ## Thoughts & references
 
   - Allio bullet roasting software
   - Openroast - https://github.com/Roastero/Openroast
   - Artisan - https://github.com/artisan-roaster-scope/artisan
-
+  - Home-barista.com
+  - Cupofexcellence.org
+    
 ## Stack
 
 - Playwright to webcrawl data (used in a seperate script hosted on Oracle Cloud) - https://playwright.dev/docs/intro
