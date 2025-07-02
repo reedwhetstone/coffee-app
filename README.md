@@ -12,97 +12,82 @@
 
 # Todo List
 
-- [ ] BUG: cannot delete a bean from green coffee inventory if it is referencing a row from sales. May also be an issue from roast as well. Need a cascade function.
-- [ ] Clean up roast page UI to align with beans page UI
-- [ ] Clean up beans catalog profiles and remove user
-- [ ] Summarize/rewrite front-end descriptions for fair use
-- [ ] Form bean selection should be limited to stocked items - beans, roast, sales forms should all cater to active items.
-- [ ] Add stocked column to green_coffee_inv and manage it in profiles
-- [ ] Optimize duplication of data between green_coffee_inv and coffee_catalog - only need diplication on original, unreferenced coffees (not in catalog)
-- [ ] Correct rank formatting to be two decimal places. Restructure UI to look better
-- [ ] Fix database structure or front-end interpretation of text to retain paragraph formatting
-- [ ] Analysis & Reporting - Create trends and analysis charting page. analysis first - priority is to make roasting fun and informational - not to run a business.
-- [ ] remove fan and heat Y axis labels - leave the outside to temp labels
-- [ ] get import data on fan and heat settings from artisan import file
-- [ ] clean up temp curve so it doesn't look jagged
-- [ ] clean up roast, bean, and profit UI to be more aligned with landing page and catalog page. Make it more interactive and less table format - profile & analytics first. 
-- [ ] **TP, FC, dev % data calculations & population in roast chart interface!!**
+- [ ] *Bug* - Cannot delete a bean from green coffee inventory if it references a sales row; may also be linked to roast. Needs cascade delete function.
 
-## Web Scraping & Data Import
+- [ ] *Form Validation* - Limit bean selection in forms to stocked items only (beans, roast, sales)
 
+- [ ] *UI/UX* - Correct rank formatting to two decimal places and improve visual layout
+- [ ] *UI/UX* - Redesign roast, bean, and profit pages to match landing/catalog aesthetic; reduce table formatting; emphasize profile & analytics
+- [ ] *UI/UX* - Clean up roast page UI to align with beans page UI
+- [ ] *UI/UX* - Clean up beans catalog profiles and remove user reference
 
-- **Bean Import Feature**
-  - Add option to add a bean based on a URL
-  - Implement automatic scraping for supported URLs
+- [ ] *Web Scraping* - Add option to add a bean based on a URL
+- [ ] *Web Scraping* - Implement automatic scraping for supported URLs
+- [ ] *Web Scraping* - Summarize/rewrite front-end descriptions for fair use
+      
+- [ ] *Bean Import* - Add lot buys for large orders like 22lb crown jewels
 
-## UI/UX Improvements
+- [ ] *AI* - Hybrid RAG: Use tool calls for structured lookups: filters, search, pricing, transactions. Use RAG for unstructured knowledge: guides, tips, reviews, roast advice.
+      
+- [ ] *Performance* - Fix real experience score and content paint
+      
+- [ ] *General* - Set up no-cookies banner at the bottom of the page
+- [ ] *General* - Remove some / all of the user reviews?
+- [ ] *Forms* - date popilation is inconsistent and poor across form completions
 
-### General
+- [ ] *Mobile* - Improve roast profile/bean profile appearance on mobile
+- [ ] *Mobile* - Improve usability of roast chart buttons on mobile
+- [ ] *Mobile* - Move fan settings below the chart on mobile
 
-Modified RAG -
-Instead of straight vector searching, use the filter tool in a more prominent way on the main search platform, then dial in the reccomendation based on the filtered results. Pass through the result the user filters into the seach LLM bot.
+- [ ] *Navigation* - Improve manu UI - the icons are really hard to understand
+- [ ] *Navigation* - move manu bar to bottom bar for mobile
+- [ ] *Navigation* - only display relevant active menu options for each page. Currently showing all of them, indescriminantly
+- [ ] *Navigation* - make it easier to navigate back to landing page fromt the pricing page
+- [ ] *Navigation* - improve sales funnel & clickthrough to make it more seamless
+- [ ] *Navigation* - simplify main page? Really long scrolling
 
-'Supplier & Origin Comparison Tools',
-'Real-time Coffee Market Pricing Analysis',
-'Price Trend Monitoring for Green Coffee',
+- [ ] *Roast Insights* - Organize roasts by bean for roast comparison, instead of by batch
+- [ ] *Roast Insights* - Add % weight loss display per roast
+- [ ] *Roast Insights* - Add remaining purchased quantity data to bean inventory
 
-- roast insights view that shows the roasts organized by bean so you can compare how each actual roast went with the beans instead of by batch.
-- need a purchased qty remaining data set in beans category to add to the stocked functionality
-- add % loss to the roast area displayed per roast.
-- comprehensive ratings form - roast batch, brew method, nose, flavor, etc - will need a new table to manage this data.
-- add lot buys for large orders like 22lb crown jewels
-- Add loading states
-- Fix real experience score and content paint
-- Set up no-cookies banner at the bottom of the page
-- Fix scroll issues (not rendering complete list of products)
+- [ ] *Roast Chart* - Remove y-axis lines
+- [ ] *Roast Chart* - Add average curve for heat and fan settings
+- [ ] *Roast Chart* - Add color shading for roast phases
+- [ ] *Roast Chart* - Add roast ID to roast profile page
+- [ ] *Roast Chart* - Make up/down arrows work consistently for temp and fan
+- [ ] *Roast Chart* - Smooth out temp curve for cleaner display
+- [ ] *Roast Chart* - Remove fan and heat Y-axis labels; keep only external temp labels
 
-### Mobile Optimization
+- [ ] *Roast Data* - Add ambient temperature setting
+- [ ] *Roast Data* - Add charge setting (machine hot or not)
+- [ ] *Roast Data* - Add TP, FC, DROP times in roast profile
+- [ ] *Roast Data* - Fix roast charting timer turning off when phone closes
+- [ ] *Roast Data* - Implement TP, FC, and development % calculations and display them in the roast chart interface
+- [ ] *Roast Data Import* - Parse fan and heat settings from Artisan import file
+      
+- [ ] *Text Handling* - Fix DB structure or front-end interpretation to preserve paragraph formatting in text fields
+           
+- [ ] *Database* - Add `stocked` column to `green_coffee_inv` and manage it through profiles
+- [ ] *Database* - Need a purchased qty remaining data set in beans category to add to the stocked functionality
+- [ ] *Database Optimization* - Reduce duplication between `green_coffee_inv` and `coffee_catalog` — only duplicate for original, unreferenced coffees
 
-- Improve roast profile/bean profile appearance on mobile
-- Work with roast chart buttons on mobile to improve usability
-- Move fan settings below the chart on mobile
-
-### Filtering & Navigation
-
-- Move user login/logout & user settings management to its own leftbar & menu & set up nav as its own menu with the purveyors icon
-- Fix auto filter on home page (suppliers selection issue)
-- Fix all filter functions to work correctly
-- Fix profile page not refreshing on save (beans page)
-
-## Roasting Features
-
-### Roast Chart Improvements
-
-- Remove roast chart y-axis lines
-- Add average curve (average of heat and fan settings)
-- Color shading for roast phases
-- Add roast ID on the roast profile page
-- Make arrows up/down work consistently with temp and fan
-
-### Roast Data Collection
-
-- Add ambient temperature setting in profiler
-- Add charge setting (machine hot or not)
-- Add TP, FC, DROP times in roast profile
-- Fix roast charting timer turning off when phone closes
-
-### Advanced Roasting Features
-
-- Implement "ghost roast" to follow a template roast profile
-
-## Coffee Evaluation & Analysis
-
-- **Tasting Notes System**
-  - Improve rating/notes function by bean
-  - Select roast specific to the bean
-  - Populate date automatically
-  - Create more comprehensive rating scale
-  - Collect tasting notes and convert them into a cupping score chart
-  - Add cupping/tasting notes per profile for display on main profile page
-
-- **Analytics & Reporting**
-  
-  - Track all sources price, stock, distribution of locations, process, etc. over time
+- [ ] *Tasting Notes* - Improve rating/notes function by bean
+- [ ] *Tasting Notes* - Allow roast selection specific to the bean
+- [ ] *Tasting Notes* - Create more comprehensive rating scale (brew method, nose, flavor, etc.)
+- [ ] *Tasting Notes* - Collect tasting notes and convert to cupping score chart
+- [ ] *Tasting Notes* - Display cupping/tasting notes per profile on main profile page
+- [ ] *Tasting Notes* - Create new table to manage comprehensive rating form data
+- [ ] *Tasting Notes* - comprehensive ratings form - roast batch, brew method, nose, flavor, etc - will need a new table to manage this data.
+      
+- [ ] *Analytics* - Track all source pricing, stock, location distribution, and processing methods over time
+- [ ] *Analytics & Reporting* - Create trends and analysis charting page; prioritize fun and informational roasting insights
+            
+- [ ] *Feature Ideation* - Explore tools for Supplier & Origin Comparison
+- [ ] *Feature Ideation* - Develop Real-time Coffee Market Pricing Analysis
+- [ ] *Feature Ideation* - Implement Price Trend Monitoring for Green Coffee
+- [ ] *Feature Ideation* - Add option to add a bean based on a URL - Implement automatic scraping for supported URLs
+- [ ] *Feature Ideation* - Lot share platform to divide up lots (like Kickstarter for high-quality coffee lots)
+- [ ] *Feature Ideation* - Ghost Roast - Implement “ghost roast” to follow a template roast profile
 
 ## Suppliers:
 https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
@@ -148,10 +133,6 @@ https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 -   [ ] Ally Open Core Coffees (50lb boxes) are consistently available regional community lots. Microlots (50lb boxes) are limited edition coffees from our partner farms. Reserve Lots (25lb boxes) are super-special coffees ideal for competitions and showcase occasions.
 -   [ ] Coffee Crafters Green 10 and 20 pound bags plus see larger quantities too.
 -   [ ] Crop to Cup
-
-## Future Features
-
-- Lot share platform to divide up lots (like Kickstarter for high-quality coffee lots)
 
 ## Thoughts & references
 
