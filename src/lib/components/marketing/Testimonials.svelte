@@ -3,7 +3,7 @@
 		<div class="mx-auto max-w-xl text-center">
 			<h2 class="text-lg font-semibold leading-8 text-background-tertiary-light">Testimonials</h2>
 			<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-				Trusted by coffee roasters worldwide
+				Loved by home roasters everywhere
 			</p>
 		</div>
 		<div class="mx-auto mt-16 flow-root max-w-2xl sm:mt-20 lg:mx-0 lg:max-w-none">
@@ -15,10 +15,7 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"The AI recommendations have completely transformed how I source coffee. I've
-								discovered beans I never would have considered before, and they've become some of my
-								best sellers. The profit tracking helps me understand exactly which coffees drive
-								the most value."
+								"I asked the AI for a fruity Ethiopian under $8 and it recommended three amazing options in 2lb bags. I never would have found these small vendors on my own. It's like having a coffee expert friend who knows every roaster."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -29,7 +26,7 @@
 							</div>
 							<div>
 								<div class="font-semibold text-text-primary-light">Sarah Martinez</div>
-								<div class="text-text-secondary-light">Founder, Blue Mountain Roasters</div>
+								<div class="text-text-secondary-light">Home Roaster, Portland</div>
 							</div>
 						</figcaption>
 					</figure>
@@ -42,9 +39,7 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"The roasting profile analytics are incredible. Being able to visualize my curves
-								and compare different roasts has helped me achieve more consistent results. My
-								customers have definitely noticed the improvement in quality."
+								"Importing my Artisan logs was seamless, and seeing my roast curves visualized so beautifully has been game-changing. I can finally see patterns in my roasting and the AI actually helped me understand why my last batch was underdeveloped."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -55,7 +50,7 @@
 							</div>
 							<div>
 								<div class="font-semibold text-text-primary-light">Michael Chen</div>
-								<div class="text-text-secondary-light">Head Roaster, Urban Bean Co.</div>
+								<div class="text-text-secondary-light">Weekend Roaster, San Francisco</div>
 							</div>
 						</figcaption>
 					</figure>
@@ -68,9 +63,7 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"I love how I can search for coffees by flavor profile instead of just name. When a
-								customer asks for something 'bright and floral', I can actually find exactly what
-								they're looking for. The semantic search is a game-changer."
+								"As someone new to roasting, being able to describe what I want - 'chocolatey with low acidity' - and get real recommendations has been amazing. I'm discovering so many coffees I would never have found otherwise."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -81,7 +74,7 @@
 							</div>
 							<div>
 								<div class="font-semibold text-text-primary-light">Alex Rodriguez</div>
-								<div class="text-text-secondary-light">Owner, Craft Coffee Corner</div>
+								<div class="text-text-secondary-light">Beginner Home Roaster, Denver</div>
 							</div>
 						</figcaption>
 					</figure>
@@ -94,9 +87,7 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"The inventory management has saved me from running out of popular beans multiple
-								times. The alerts are perfectly timed, and I love being able to track costs and
-								margins for each coffee. It's like having a CFO for my coffee business."
+								"I used to keep notes in random places and could never remember which vendors I liked. Now I track everything - my purchases, remaining inventory, and which coffees were hits. The reorder reminders are perfect."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -107,7 +98,7 @@
 							</div>
 							<div>
 								<div class="font-semibold text-text-primary-light">Jennifer Wong</div>
-								<div class="text-text-secondary-light">Coffee Director, Artisan Roastery</div>
+								<div class="text-text-secondary-light">Home Roaster, Austin</div>
 							</div>
 						</figcaption>
 					</figure>
@@ -120,9 +111,7 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"As someone who roasts for multiple locations, the enterprise features are exactly
-								what I needed. The API integration with our POS system and the multi-location
-								inventory tracking have streamlined our entire operation."
+								"I started selling my roasts at the farmers market and needed to track costs and profits. The sales tracking feature helps me understand which coffees are worth the effort, and I love sharing my roast profiles with customers."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -133,7 +122,7 @@
 							</div>
 							<div>
 								<div class="font-semibold text-text-primary-light">David Kim</div>
-								<div class="text-text-secondary-light">Operations Manager, Regional Coffee Co.</div>
+								<div class="text-text-secondary-light">Micro-Roaster, Seattle</div>
 							</div>
 						</figcaption>
 					</figure>
@@ -146,9 +135,7 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"The platform's design is beautiful and intuitive. I actually enjoy using it, which
-								is rare for business software. The D3.js charts are particularly impressive - they
-								make complex roasting data easy to understand at a glance."
+								"I love that I can start logging a roast on my laptop in the garage, then add tasting notes from my phone while I'm drinking the coffee at work. The cross-device experience is seamless and the charts actually make sense to me."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -159,7 +146,7 @@
 							</div>
 							<div>
 								<div class="font-semibold text-text-primary-light">Emma Thompson</div>
-								<div class="text-text-secondary-light">Roaster, Highland Coffee Works</div>
+								<div class="text-text-secondary-light">Home Roaster, Nashville</div>
 							</div>
 						</figcaption>
 					</figure>

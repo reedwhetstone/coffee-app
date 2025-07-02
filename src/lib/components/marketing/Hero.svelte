@@ -16,11 +16,10 @@
 	<div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
 		<div class="mx-auto max-w-2xl text-center">
 			<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
-				Master Your Coffee Roasting Journey
+				Discover. Roast. Perfect.
 			</h1>
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				Transform your coffee business with AI-powered recommendations, comprehensive inventory
-				tracking, and data-driven insights. From bean selection to profit optimization.
+				The only platform built for modern home roasters. Find top-tier green coffees in hobbyist quantities, track your roasting journey, and improve your craft—all from one beautifully integrated tool.
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
 				<button
@@ -74,11 +73,10 @@
 						>
 							<div class="mb-2 flex items-center gap-2">
 								<div class="h-2 w-2 rounded-full bg-growth-green"></div>
-								<span class="text-xs text-text-secondary-light">AI Assistant</span>
+								<span class="text-xs text-text-secondary-light">Coffee AI Concierge</span>
 							</div>
 							<p class="text-sm text-text-primary-light">
-								"Based on your preference for bright, fruity coffees, I recommend the Ethiopian
-								Sidamo. It has citrus notes that pair well with your light roast profile."
+								"I found 3 washed Ethiopians under $8/lb with floral notes perfect for light roasting. The Sidamo from Sweet Shop Coffee is available in 2lb bags and has amazing citrus brightness."
 							</p>
 						</div>
 					</div>

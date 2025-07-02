@@ -2,14 +2,13 @@
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-2xl lg:text-center">
 			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
-				Everything you need
+				Built for home roasters
 			</h2>
 			<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-				Professional Coffee Roasting Tools
+				From Curious to Confident
 			</p>
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				From sourcing to selling, manage every aspect of your coffee business with precision and
-				insight.
+				Whether you're roasting for fun or profit, Purveyors grows with you. Discover small-lot green coffees, track your roasting journey, and perfect your craft.
 			</p>
 		</div>
 		<div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
@@ -36,13 +35,11 @@
 								/>
 							</svg>
 						</div>
-						AI-Powered Recommendations
+						Coffee AI Concierge
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Get intelligent coffee recommendations based on your taste preferences, roasting
-							history, and market trends. Our AI analyzes thousands of coffee profiles to suggest
-							the perfect beans for your next roast.
+							Ask "What's a good washed Ethiopian under $8/lb with floral notes?" and get curated recommendations instantly. Your friendly AI assistant understands coffee like you do and helps you discover perfect beans for your roasting goals.
 						</p>
 					</dd>
 				</div>
@@ -69,13 +66,11 @@
 								/>
 							</svg>
 						</div>
-						Smart Inventory Tracking
+						Green Coffee Marketplace
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Never run out of your favorite beans again. Track inventory levels, monitor arrival
-							dates, and get alerts when stock is running low. Full integration with supplier
-							catalogs and pricing.
+							Discover unique, small-lot coffees from vetted sellers offering 1-5 lb bags perfect for home roasters. Filter by origin, processing method, flavor notes, and price to find exactly what you're looking for.
 						</p>
 					</dd>
 				</div>
@@ -107,13 +102,11 @@
 								/>
 							</svg>
 						</div>
-						Roasting Profile Analytics
+						Roast Anywhere
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Visualize your roasting curves with interactive D3.js charts. Track temperature, time,
-							and development ratios. Compare profiles and perfect your roasting technique with
-							data-driven insights.
+							Seamless cross-device experience. Start your roast log on laptop, import Artisan data, add tasting notes from mobile while sipping. Beautiful D3.js charts make your roasting data easy to understand.
 						</p>
 					</dd>
 				</div>
@@ -140,13 +133,11 @@
 								/>
 							</svg>
 						</div>
-						Profit Optimization
+						Inventory & Purchase Tracking
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Track your costs, sales, and margins with precision. Understand which beans and roasts
-							are most profitable. Make data-driven decisions to optimize your coffee business
-							bottom line.
+							Track your green coffee purchases, remaining quantities, and favorite vendors. Set reorder thresholds and get reminders for coffees you loved. Perfect for managing your home roasting inventory.
 						</p>
 					</dd>
 				</div>
@@ -173,13 +164,11 @@
 								/>
 							</svg>
 						</div>
-						Semantic Coffee Search
+						Tasting Journal & Analytics
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Find coffees by taste, not just name. Search for "bright and citrusy" or "chocolatey
-							with low acidity" and discover beans that match your exact flavor profile using
-							advanced vector embeddings.
+							Log each cup you taste, link it to your roast profile, and track what works. AI helps you understand your roast data - "Why was this roast underdeveloped?" - so you improve faster.
 						</p>
 					</dd>
 				</div>
@@ -206,13 +195,11 @@
 								/>
 							</svg>
 						</div>
-						Seamless Integration
+						Artisan Integration
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Connect with your existing tools and workflows. Import data from Excel, integrate with
-							suppliers, and export reports. Built with modern APIs for maximum flexibility and
-							scalability.
+							Seamlessly sync with Artisan roasting software. Import your roast logs automatically, generate beautiful curves, and identify trends. Fits perfectly into your existing roasting workflow.
 						</p>
 					</dd>
 				</div>
