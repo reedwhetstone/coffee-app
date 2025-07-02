@@ -295,11 +295,11 @@ function createFilterStore() {
 				if (key === 'stocked_date' && typeof value === 'string' && value !== '') {
 					// Skip items with null/undefined stocked_date
 					if (!itemValue) return false;
-					
+
 					const daysBack = parseInt(value);
 					const cutoffDate = new Date();
 					cutoffDate.setDate(cutoffDate.getDate() - daysBack);
-					
+
 					// Parse the stocked_date (format: YYYY-MM-DD)
 					const stockedDate = new Date(itemValue);
 					return stockedDate >= cutoffDate;
@@ -397,10 +397,8 @@ function createFilterStore() {
 			if (sortField === 'score_value' || sortField === 'cost_lb') {
 				const numA = parseFloat(aValue) || 0;
 				const numB = parseFloat(bValue) || 0;
-				
-				return sortDirection === 'asc'
-					? numA - numB
-					: numB - numA;
+
+				return sortDirection === 'asc' ? numA - numB : numB - numA;
 			}
 
 			// Handle string fields (processing, cultivar_detail, name, source, region, etc.)
@@ -413,10 +411,8 @@ function createFilterStore() {
 			// Fallback for other types - convert to string and compare
 			const strA = String(aValue || '').toLowerCase();
 			const strB = String(bValue || '').toLowerCase();
-			
-			return sortDirection === 'asc'
-				? strA.localeCompare(strB)
-				: strB.localeCompare(strA);
+
+			return sortDirection === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
 		});
 	}
 

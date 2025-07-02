@@ -124,5 +124,22 @@
 				</li>
 			</ul>
 		{/if}
+
+		<!-- Contact link for all users -->
+		<div class="mt-6 border-t border-background-tertiary-light/20 pt-4">
+			<ul class="space-y-2">
+				<li>
+					<a
+						href="/contact"
+						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+						'/contact'
+							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
+							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+					>
+						Contact
+					</a>
+				</li>
+			</ul>
+		</div>
 	</main>
 </div>

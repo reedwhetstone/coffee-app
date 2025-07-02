@@ -8,7 +8,8 @@
 				From Curious to Confident
 			</p>
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				Whether you're roasting for fun or profit, Purveyors grows with you. Discover small-lot green coffees, track your roasting journey, and perfect your craft.
+				Whether you're roasting for fun or profit, Purveyors grows with you. Discover small-lot
+				green coffees, track your roasting journey, and perfect your craft.
 			</p>
 		</div>
 		<div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
@@ -39,7 +40,9 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Ask "What's a good washed Ethiopian under $8/lb with floral notes?" and get curated recommendations instantly. Your friendly AI assistant understands coffee like you do and helps you discover perfect beans for your roasting goals.
+							Ask "What's a good washed Ethiopian under $8/lb with floral notes?" and get curated
+							recommendations instantly. Your friendly AI assistant understands coffee like you do
+							and helps you discover perfect beans for your roasting goals.
 						</p>
 					</dd>
 				</div>
@@ -70,7 +73,9 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Discover unique, small-lot coffees from vetted sellers offering 1-5 lb bags perfect for home roasters. Filter by origin, processing method, flavor notes, and price to find exactly what you're looking for.
+							Discover unique, small-lot coffees from vetted sellers offering 1-5 lb bags perfect
+							for home roasters. Filter by origin, processing method, flavor notes, and price to
+							find exactly what you're looking for.
 						</p>
 					</dd>
 				</div>
@@ -106,7 +111,9 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Seamless cross-device experience. Start your roast log on laptop, import Artisan data, add tasting notes from mobile while sipping. Beautiful D3.js charts make your roasting data easy to understand.
+							Seamless cross-device experience. Start your roast log on laptop, import Artisan data,
+							add tasting notes from mobile while sipping. Beautiful D3.js charts make your roasting
+							data easy to understand.
 						</p>
 					</dd>
 				</div>
@@ -137,7 +144,9 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Track your green coffee purchases, remaining quantities, and favorite vendors. Set reorder thresholds and get reminders for coffees you loved. Perfect for managing your home roasting inventory.
+							Track your green coffee purchases, remaining quantities, and favorite vendors. Set
+							reorder thresholds and get reminders for coffees you loved. Perfect for managing your
+							home roasting inventory.
 						</p>
 					</dd>
 				</div>
@@ -168,7 +177,9 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Log each cup you taste, link it to your roast profile, and track what works. AI helps you understand your roast data - "Why was this roast underdeveloped?" - so you improve faster.
+							Log each cup you taste, link it to your roast profile, and track what works. AI helps
+							you understand your roast data - "Why was this roast underdeveloped?" - so you improve
+							faster.
 						</p>
 					</dd>
 				</div>
@@ -199,7 +210,9 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Seamlessly sync with Artisan roasting software. Import your roast logs automatically, generate beautiful curves, and identify trends. Fits perfectly into your existing roasting workflow.
+							Seamlessly sync with Artisan roasting software. Import your roast logs automatically,
+							generate beautiful curves, and identify trends. Fits perfectly into your existing
+							roasting workflow.
 						</p>
 					</dd>
 				</div>

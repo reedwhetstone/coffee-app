@@ -35,6 +35,12 @@
 				>
 					Learn more <span aria-hidden="true">→</span>
 				</a>
+				<a
+					href="/contact"
+					class="text-sm font-semibold leading-6 text-orange-100 transition-colors duration-200 hover:text-white"
+				>
+					Contact us
+				</a>
 			</div>
 			<div class="mt-8 flex items-center justify-center gap-x-8 text-sm text-orange-100">
 				<div class="flex items-center gap-x-2">

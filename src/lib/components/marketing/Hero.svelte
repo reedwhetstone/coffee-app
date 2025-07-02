@@ -19,7 +19,9 @@
 				Discover. Roast. Perfect.
 			</h1>
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				The only platform built for modern home roasters. Find top-tier green coffees in hobbyist quantities, track your roasting journey, and improve your craft—all from one beautifully integrated tool.
+				The only platform built for modern home roasters. Find top-tier green coffees in hobbyist
+				quantities, track your roasting journey, and improve your craft—all from one beautifully
+				integrated tool.
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
 				<button
@@ -76,7 +78,9 @@
 								<span class="text-xs text-text-secondary-light">Coffee AI Concierge</span>
 							</div>
 							<p class="text-sm text-text-primary-light">
-								"I found 3 washed Ethiopians under $8/lb with floral notes perfect for light roasting. The Sidamo from Sweet Shop Coffee is available in 2lb bags and has amazing citrus brightness."
+								"I found 3 washed Ethiopians under $8/lb with floral notes perfect for light
+								roasting. The Sidamo from Sweet Shop Coffee is available in 2lb bags and has amazing
+								citrus brightness."
 							</p>
 						</div>
 					</div>

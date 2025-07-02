@@ -15,7 +15,9 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"I asked the AI for a fruity Ethiopian under $8 and it recommended three amazing options in 2lb bags. I never would have found these small vendors on my own. It's like having a coffee expert friend who knows every roaster."
+								"I asked the AI for a fruity Ethiopian under $8 and it recommended three amazing
+								options in 2lb bags. I never would have found these small vendors on my own. It's
+								like having a coffee expert friend who knows every roaster."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -39,7 +41,9 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"Importing my Artisan logs was seamless, and seeing my roast curves visualized so beautifully has been game-changing. I can finally see patterns in my roasting and the AI actually helped me understand why my last batch was underdeveloped."
+								"Importing my Artisan logs was seamless, and seeing my roast curves visualized so
+								beautifully has been game-changing. I can finally see patterns in my roasting and
+								the AI actually helped me understand why my last batch was underdeveloped."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -63,7 +67,9 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"As someone new to roasting, being able to describe what I want - 'chocolatey with low acidity' - and get real recommendations has been amazing. I'm discovering so many coffees I would never have found otherwise."
+								"As someone new to roasting, being able to describe what I want - 'chocolatey with
+								low acidity' - and get real recommendations has been amazing. I'm discovering so
+								many coffees I would never have found otherwise."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -87,7 +93,9 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"I used to keep notes in random places and could never remember which vendors I liked. Now I track everything - my purchases, remaining inventory, and which coffees were hits. The reorder reminders are perfect."
+								"I used to keep notes in random places and could never remember which vendors I
+								liked. Now I track everything - my purchases, remaining inventory, and which coffees
+								were hits. The reorder reminders are perfect."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -111,7 +119,9 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"I started selling my roasts at the farmers market and needed to track costs and profits. The sales tracking feature helps me understand which coffees are worth the effort, and I love sharing my roast profiles with customers."
+								"I started selling my roasts at the farmers market and needed to track costs and
+								profits. The sales tracking feature helps me understand which coffees are worth the
+								effort, and I love sharing my roast profiles with customers."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">
@@ -135,7 +145,9 @@
 					>
 						<blockquote class="text-text-primary-light">
 							<p>
-								"I love that I can start logging a roast on my laptop in the garage, then add tasting notes from my phone while I'm drinking the coffee at work. The cross-device experience is seamless and the charts actually make sense to me."
+								"I love that I can start logging a roast on my laptop in the garage, then add
+								tasting notes from my phone while I'm drinking the coffee at work. The cross-device
+								experience is seamless and the charts actually make sense to me."
 							</p>
 						</blockquote>
 						<figcaption class="mt-6 flex items-center gap-x-4">

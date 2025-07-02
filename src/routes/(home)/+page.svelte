@@ -12,6 +12,7 @@
 	import Pricing from '$lib/components/marketing/Pricing.svelte';
 	import Testimonials from '$lib/components/marketing/Testimonials.svelte';
 	import CTA from '$lib/components/marketing/CTA.svelte';
+	import Footer from '$lib/components/marketing/Footer.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -258,6 +259,7 @@
 		<Testimonials />
 		<Pricing />
 		<CTA />
+		<Footer />
 
 		<!-- Marketplace Preview for Unauthenticated Users -->
 		{#if data?.data?.length > 0}
