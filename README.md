@@ -12,8 +12,6 @@
 
 # Todo List
 
-BUG: when a new user with no green coffees in their beans page accesses their bean page from the catalog page it retains all catalog data on the page and makes it look like you can edit the profiles for random coffees
-
 BUG: cannot delete a bean from green coffee inventory if it is referencing a row from sales. May also be an issue from roast as well. Need a cascade function.
 
 ## Database & Data Structure
@@ -32,14 +30,9 @@ Create a stocked coffees col in green coffee inv- create stocked coffees managem
 
 ## Web Scraping & Data Import
 
--fix the stocked coffees procedure so that it only adds and removes the new changes- will allow you to track trends in stockings.
-
-- add a stocked calculation that marks a coffee's total time in stock when it gets marked to false.
-- add Showroom Coffee, Royal Coffee, Genuine Origin
+- add Royal Coffee, Genuine Origin
 - https://www.coffeebeancorral.com/categories/Green-Coffee-Beans/All-Coffees.aspx?q=&o=1&i=200&d=200
 - https://haceacoffee.com/collections/green-coffee
-- **Sweet Marias Scraping Fix**
-  - Correct scrape function to not wipe stocked beans if it finds 0 beans that day
 - **Bean Import Feature**
   - Add option to add a bean based on a URL
   - Implement automatic scraping for supported URLs

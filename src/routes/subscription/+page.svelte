@@ -16,6 +16,8 @@
 	let showCheckout = $state(false);
 	let selectedPriceId = $state('');
 	let selectedPlanName = $state('');
+	let selectedInterval = $state('');
+	let isAnnual = $state(false);
 	let cancelLoading = $state(false);
 	let cancelError = $state('');
 	let cancelSuccess = $state(false);
@@ -24,31 +26,70 @@
 	let resumeSuccess = $state(false);
 
 	// Available subscription plans
-	const plans = [
-		{
-			id: 'price_1R3mAWKwI9NkGqAnCpzhDtvx',
-			name: 'Monthly Subscription',
-			price: '$5.00',
+	const plans: {
+		monthly: {
+			id: string;
+			name: string;
+			price: string;
+			interval: string;
+			description: string;
+			features: string[];
+		};
+		annual: {
+			id: string;
+			name: string;
+			price: string;
+			interval: string;
+			description: string;
+			features: string[];
+			savings: string;
+		};
+	} = {
+		monthly: {
+			id: 'price_1RgGYuKwI9NkGqAnm4oiHpbx',
+			name: 'Roaster Plan',
+			price: '$9',
 			interval: 'month',
-			description: 'Full access to all premium features',
+			description: 'For active home roasters ready to track their journey and improve their craft with AI-powered insights.',
 			features: [
-				'AI chatbot for coffee recommendations',
-				'Coffee Bean Inventory Management',
-				'Roast Profile Creation & Tracking',
-				'Mobile Optimized Roasting Interface',
-				'Sales & Profitability Analytics',
-				'Cupping/Tasting Notes & Scoring System',
-				'Roast Charting with Phase Visualization',
-				'Unlimited Bean Catalog Access',
-				'Priority Support & Feature Requests'
+				'All Curious features',
+				'Full Coffee AI Concierge',
+				'Personal inventory & purchase tracking',
+				'Artisan integration & roast logging',
+				'Tasting journal & cupping notes',
+				'Roast analytics & improvement tips',
+				'Priority email support'
 			]
+		},
+		annual: {
+			id: 'price_1RgGZvKwI9NkGqAnzYJbJkXU',
+			name: 'Roaster Plan',
+			price: '$80',
+			interval: 'year',
+			description: 'For active home roasters ready to track their journey and improve their craft with AI-powered insights.',
+			features: [
+				'All Curious features',
+				'Full Coffee AI Concierge',
+				'Personal inventory & purchase tracking',
+				'Artisan integration & roast logging',
+				'Tasting journal & cupping notes',
+				'Roast analytics & improvement tips',
+				'Priority email support'
+			],
+			savings: 'Save $28/year'
 		}
-	];
+	};
 
-	const handlePlanSelect = (plan: (typeof plans)[0]) => {
+	const handlePlanSelect = (interval: 'monthly' | 'annual') => {
+		const plan = plans[interval];
 		selectedPriceId = plan.id;
 		selectedPlanName = plan.name;
+		selectedInterval = interval;
 		showCheckout = true;
+	};
+
+	const toggleBilling = () => {
+		isAnnual = !isAnnual;
 	};
 
 	async function handleSignIn() {
@@ -167,11 +208,11 @@
 	<script async src="https://js.stripe.com/v3/pricing-table.js"></script>
 </svelte:head>
 
-<div class="min-h-[calc(100vh-80px)] px-4 py-10 md:px-6">
-	<div class="mx-auto max-w-3xl">
-		<div class="">
-			{#if data?.user && (data.role === 'member' || data.role === 'admin')}
-				<!-- Show subscription management UI for existing members -->
+<div class="min-h-[calc(100vh-80px)]">
+	{#if data?.user && (data.role === 'member' || data.role === 'admin')}
+		<!-- Show subscription management UI for existing members -->
+		<div class="px-4 py-10 md:px-6">
+			<div class="mx-auto max-w-3xl">
 				<div class="flex flex-col items-center rounded-lg p-6">
 					<h3 class="text-primary-light mb-2 text-xl font-semibold">Subscription Management</h3>
 
@@ -293,12 +334,16 @@
 						</div>
 					{/if}
 				</div>
-			{:else if data?.user && showCheckout && selectedPriceId}
-				<!-- Checkout Form (for authenticated users who selected a plan) -->
+			</div>
+		</div>
+	{:else if data?.user && showCheckout && selectedPriceId}
+		<!-- Checkout Form (for authenticated users who selected a plan) -->
+		<div class="px-4 py-10 md:px-6">
+			<div class="mx-auto max-w-3xl">
 				<div>
 					<div class="mb-4 flex items-center justify-between">
 						<h2 class="text-primary-light text-xl font-semibold">
-							Subscribe to {selectedPlanName}
+							Subscribe to {selectedPlanName} ({selectedInterval === 'annual' ? '$80/year' : '$9/month'})
 						</h2>
 						<button
 							onclick={handleCheckoutCancel}
@@ -329,16 +374,24 @@
 						onCancel={handleCheckoutCancel}
 					/>
 				</div>
+			</div>
+		</div>
 			{:else}
 				<!-- Plan Selection UI - Always show plans, but change button based on auth status -->
-				<div class="flex flex-col items-center">
-					<div class="mb-8 text-center">
-						<h1 class="text-primary-light mb-4 text-3xl font-bold">Choose Your Plan</h1>
-						<p class="text-primary-light/80 text-lg">
-							Unlock AI-powered coffee insights and professional roasting tools
+				<section class="bg-background-secondary-light px-6 py-16">
+					<div class="mx-auto max-w-7xl">
+						<div class="mx-auto max-w-4xl text-center">
+							<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Pricing</h2>
+							<p class="mt-2 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
+								Grow from curious to confident
+							</p>
+						</div>
+						<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-text-secondary-light">
+							Whether you're just starting or roasting for profit, we have the right plan for your journey.
+							Start free, upgrade anytime.
 						</p>
 						{#if !data?.user}
-							<div class="mt-4 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
+							<div class="mx-auto mt-8 max-w-md rounded-lg border border-blue-500/20 bg-blue-500/10 p-4">
 								<p class="text-sm text-blue-400">
 									🎉 <strong>New users:</strong> Browse our free coffee marketplace first, then upgrade
 									when you're ready!
@@ -351,73 +404,193 @@
 								</button>
 							</div>
 						{/if}
-					</div>
 
-					{#each plans as plan}
-						<div
-							class="flex w-full max-w-md flex-col rounded-lg border border-background-tertiary-light p-6 shadow-md transition-all hover:border-blue-400"
-						>
-							<h3 class="text-primary-light mb-2 text-xl font-semibold">{plan.name}</h3>
-							<div class="text-primary-light mb-4 flex items-end">
-								<span class="text-3xl font-bold">{plan.price}</span>
-								<span class="ml-1 text-sm">/{plan.interval}</span>
-							</div>
-
-							<!-- Feature list -->
-							<ul class="text-primary-light/90 mb-6 space-y-2">
-								{#each plan.features as feature}
-									<li class="flex items-start">
-										<svg
-											class="mr-2 h-5 w-5 flex-shrink-0 text-green-400"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M5 13l4 4L19 7"
-											></path>
-										</svg>
-										<span>{feature}</span>
-									</li>
-								{/each}
-							</ul>
-
-							<div class="text-primary-light/70 mb-4 text-sm">
-								<p>
-									Perfect for home roasters, and enthusiasts who want to track their coffee journey.
-								</p>
-								<p class="mt-2">Includes a 30-day free trial - cancel anytime.</p>
-							</div>
-
-							{#if data?.user}
-								<!-- User is authenticated - show subscription button -->
+						<!-- Billing Toggle -->
+						<div class="mx-auto mt-12 flex items-center justify-center">
+							<div class="flex items-center rounded-full bg-background-primary-light p-1 ring-1 ring-border-light">
 								<button
-									onclick={() => handlePlanSelect(plan)}
-									class="mt-auto w-full rounded-lg bg-blue-500 px-4 py-3 font-medium text-white transition-colors hover:bg-blue-600"
+									onclick={() => (isAnnual = false)}
+									class="rounded-full px-4 py-2 text-sm font-medium transition-all {!isAnnual
+										? 'bg-background-tertiary-light text-white'
+										: 'text-text-secondary-light hover:text-text-primary-light'}"
 								>
-									Start Free Trial
+									Monthly
 								</button>
-							{:else}
-								<!-- User is not authenticated - show sign in button -->
 								<button
-									onclick={handleSignIn}
-									class="mt-auto w-full rounded-lg bg-blue-500 px-4 py-3 font-medium text-white transition-colors hover:bg-blue-600"
+									onclick={() => (isAnnual = true)}
+									class="rounded-full px-4 py-2 text-sm font-medium transition-all {isAnnual
+										? 'bg-background-tertiary-light text-white'
+										: 'text-text-secondary-light hover:text-text-primary-light'}"
 								>
-									Create an Account
+									Annual
+									{#if !isAnnual}
+										<span class="ml-1 rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-400">
+											Save $28
+										</span>
+									{/if}
 								</button>
-								<p class="text-primary-light/70 mt-2 text-center text-xs">
-									Sign in to start your free trial
-								</p>
-							{/if}
+							</div>
 						</div>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	</div>
+
+						<div class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-y-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3">
+							<!-- Free Plan -->
+							<div class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10">
+								<div>
+									<div class="flex items-center justify-between gap-x-4">
+										<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Curious</h3>
+									</div>
+									<p class="mt-4 text-sm leading-6 text-text-secondary-light">Perfect for coffee enthusiasts discovering the world of home roasting and exploring green coffee options.</p>
+									<p class="mt-6 flex items-baseline gap-x-1">
+										<span class="text-4xl font-bold tracking-tight text-text-primary-light">Free</span>
+									</p>
+									<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Browse green coffee marketplace
+										</li>
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Filter by origin, process, and flavor
+										</li>
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Basic coffee recommendations
+										</li>
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Community support
+										</li>
+									</ul>
+								</div>
+								<button
+									onclick={() => goto('/')}
+									class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
+								>
+									Get started free
+								</button>
+							</div>
+
+							<!-- Professional Plan -->
+							{#if true}
+								{@const currentPlan = isAnnual ? plans.annual : plans.monthly}
+								<div class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-2 ring-background-tertiary-light xl:p-10">
+									<div>
+									<div class="flex items-center justify-between gap-x-4">
+										<h3 class="text-lg font-semibold leading-8 text-background-tertiary-light">{currentPlan.name}</h3>
+										<p class="rounded-full bg-background-tertiary-light/10 px-2.5 py-1 text-xs font-semibold leading-5 text-background-tertiary-light">Most popular</p>
+									</div>
+									<p class="mt-4 text-sm leading-6 text-text-secondary-light">{currentPlan.description}</p>
+									<p class="mt-6 flex items-baseline gap-x-1">
+										<span class="text-4xl font-bold tracking-tight text-text-primary-light">{currentPlan.price}</span>
+										<span class="text-sm font-semibold leading-6 text-text-secondary-light">/{currentPlan.interval}</span>
+										{#if isAnnual && 'savings' in currentPlan}
+											<span class="ml-2 rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-400">{currentPlan.savings}</span>
+										{/if}
+									</p>
+									<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
+										{#each currentPlan.features as feature}
+											<li class="flex gap-x-3">
+												<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+													<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+												</svg>
+												{feature}
+											</li>
+										{/each}
+									</ul>
+								</div>
+								{#if data?.user}
+									<button
+										onclick={() => handlePlanSelect(isAnnual ? 'annual' : 'monthly')}
+										class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
+									>
+										Start professional trial
+									</button>
+								{:else}
+									<button
+										onclick={handleSignIn}
+										class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
+									>
+										Create an Account
+									</button>
+									<p class="text-text-secondary-light mt-2 text-center text-xs">Sign in to start your free trial</p>
+								{/if}
+								</div>
+							{/if}
+
+							<!-- Enterprise Plan -->
+							<div class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10">
+								<div>
+									<div class="flex items-center justify-between gap-x-4">
+										<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Enterprise</h3>
+									</div>
+									<p class="mt-4 text-sm leading-6 text-text-secondary-light">Business & operations consulting for coffee companies looking to scale their analytics, QA systems, and digital operations infrastructure.</p>
+									<p class="mt-6 flex items-baseline gap-x-1">
+										<span class="text-2xl font-bold tracking-tight text-text-primary-light">Custom Solutions</span>
+									</p>
+									<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Digital operations strategy & implementation
+										</li>
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Quality assurance system design
+										</li>
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Analytics & business intelligence setup
+										</li>
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Process optimization & workflow design
+										</li>
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Team training & knowledge transfer
+										</li>
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Technology integration consulting
+										</li>
+										<li class="flex gap-x-3">
+											<svg class="h-6 w-5 flex-none text-background-tertiary-light" viewBox="0 0 20 20" fill="currentColor">
+												<path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+											</svg>
+											Dedicated strategic partnership
+										</li>
+									</ul>
+								</div>
+								<button
+									onclick={() => goto('/')}
+									class="mt-8 block w-full rounded-md bg-text-primary-light px-3 py-2 text-center text-sm font-semibold text-background-primary-light shadow-sm transition-all duration-200 hover:bg-opacity-90"
+								>
+									Schedule consultation
+								</button>
+							</div>
+						</div>
+					</div>
+				</section>
+	{/if}
 </div>
 
 <style>
