@@ -12,7 +12,9 @@
 
 # Todo List
 
-BUG: when a new user with no data accesses their bean page from the catalog page it displays all catalog data and makes it look like you can edit the profiles for random coffees
+BUG: when a new user with no green coffees in their beans page accesses their bean page from the catalog page it retains all catalog data on the page and makes it look like you can edit the profiles for random coffees
+
+BUG: cannot delete a bean from green coffee inventory if it is referencing a row from sales. May also be an issue from roast as well. Need a cascade function.
 
 ## Database & Data Structure
 

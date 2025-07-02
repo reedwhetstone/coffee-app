@@ -27,21 +27,32 @@
 	// Track initialization state
 	let initializing = $state(false);
 
-	// Only initialize filtered data if needed - most of the time the filter store should handle this
+	// Initialize or clear filtered data based on current route and data
 	$effect(() => {
 		const currentRoute = $page.url.pathname;
 
-		// If we have page data but filtered data is empty, initialize it manually
+		// If we're on the beans route but have no data and filter store has data from another route, clear it
 		if (
+			currentRoute.includes('/beans') &&
+			(!data?.data || data.data.length === 0) &&
+			$filteredData.length > 0 &&
+			!initializing
+		) {
+			initializing = true;
+			setTimeout(() => {
+				filterStore.initializeForRoute(currentRoute, []);
+				initializing = false;
+			}, 0);
+		}
+		// If we have page data but filtered data is empty or from a different route, initialize it
+		else if (
 			data?.data?.length > 0 &&
 			($filteredData.length === 0 ||
 				!$filterStore.initialized ||
 				$filterStore.routeId !== currentRoute) &&
 			!initializing
 		) {
-			// console.log('Manually initializing filtered data with page data');
 			initializing = true;
-			// Use setTimeout to break the update cycle
 			setTimeout(() => {
 				filterStore.initializeForRoute(currentRoute, data.data);
 				initializing = false;
@@ -315,9 +326,19 @@
 	<!-- Coffee Cards -->
 	<div class="flex-1">
 		{#if !$filteredData || $filteredData.length === 0}
-			<p class="p-4 text-text-primary-light">
-				No coffee data available ({data?.data?.length || 0} items in raw data)
-			</p>
+			<div class="flex flex-col items-center justify-center p-8 text-center">
+				<div class="mb-4 text-6xl opacity-50">☕</div>
+				<h3 class="mb-2 text-lg font-semibold text-text-primary-light">No Coffee Beans Yet</h3>
+				<p class="mb-4 text-text-secondary-light">
+					Start building your coffee inventory by adding your first green coffee bean.
+				</p>
+				<button
+					onclick={() => handleAddNewBean()}
+					class="rounded-md bg-background-tertiary-light px-4 py-2 text-white transition-all duration-200 hover:bg-opacity-90"
+				>
+					Add Your First Bean
+				</button>
+			</div>
 		{:else}
 			<div class="space-y-2 md:space-y-4">
 				{#each $filteredData as bean}
