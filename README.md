@@ -14,21 +14,21 @@
 # Todo List
 
 - [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row; may also be linked to roast. Needs cascade delete function.
-&nbsp;
+-
 - [ ] **Form Validation** - Limit bean selection in forms to stocked items only (beans, roast, sales)
-- [ ] 
+-
 - [ ] **UI/UX** - Correct rank formatting to two decimal places and improve visual layout
 - [ ] **UI/UX** - Redesign roast, bean, and profit pages to match landing/catalog aesthetic; reduce table formatting; emphasize profile & analytics
 - [ ] **UI/UX** - Clean up roast page UI to align with beans page UI
 - [ ] **UI/UX** - Clean up beans catalog profiles and remove user reference
-&nbsp;
+-
 - [ ] **Web Scraping** - Add option to add a bean based on a URL
 - [ ] **Web Scraping** - Implement automatic scraping for supported URLs
 - [ ] **Web Scraping** - Summarize/rewrite front-end descriptions for fair use
 - [ ] **Web Scraping** - Automate vector embeding in the scrape workflow
 - [ ] **Web Scraping** - Automate data cleaning of columns with Gemini when we scrape
 - [ ] **Web Scraping** - Automate llm interpretation of the text into an AI blurb column - claims extraction & cleaning of data columns during scrape
-&nbsp;
+-
 - [ ] **AI** - Hybrid RAG: Use tool calls for structured lookups: filters, search, pricing, transactions. Use RAG for unstructured knowledge: guides, tips, reviews, roast advice.  
       - “Find Ethiopian naturals under $10/lb rated 88+” 🔧 Tool Call Clear filters → use MySQL API  
       - “What’s a good coffee for a chocolatey espresso profile?” 📚 RAG Requires semantic matching and taste context  
