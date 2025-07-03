@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
+	import CookieConsent from '$lib/components/CookieConsent.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 
@@ -225,3 +226,6 @@
 		</div>
 	{/if}
 {/if}
+
+<!-- Cookie Consent Component - Global across all pages -->
+<CookieConsent />
