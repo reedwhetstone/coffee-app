@@ -625,6 +625,29 @@
 												{coffee.ai_description}
 											</p>
 										{/if}
+										<div class="mt-3 grid grid-cols-1 gap-2 text-xs text-text-secondary-light">
+											<div><span class="font-medium">Region:</span> {coffee.region || '-'}</div>
+											<div>
+												<span class="font-medium">Processing:</span>
+												{coffee.processing || '-'}
+											</div>
+
+											<div>
+												<span class="font-medium">Cultivar:</span>
+												{coffee.cultivar_detail || '-'}
+											</div>
+										</div>
+
+										{#if coffee.arrival_date || coffee.stocked_date}
+											<div class="mt-2 flex justify-between text-xs text-text-secondary-light">
+												{#if coffee.arrival_date}
+													<span>Arrival: {coffee.arrival_date}</span>
+												{/if}
+												{#if coffee.stocked_date}
+													<span>Stocked: {coffee.stocked_date}</span>
+												{/if}
+											</div>
+										{/if}
 									</div>
 									<div class="flex flex-col items-end space-y-2">
 										<div class="text-right">
@@ -642,37 +665,6 @@
 										{/if}
 									</div>
 								</div>
-
-								<div class="mt-3 grid grid-cols-2 gap-2 text-xs text-text-secondary-light">
-									<div class="space-y-1">
-										<div><span class="font-medium">Region:</span> {coffee.region || '-'}</div>
-										<div>
-											<span class="font-medium">Processing:</span>
-											{coffee.processing || '-'}
-										</div>
-									</div>
-									<div class="space-y-1">
-										<div>
-											<span class="font-medium">Cultivar:</span>
-											{coffee.cultivar_detail || '-'}
-										</div>
-										<div>
-											<span class="font-medium">Roast Recs:</span>
-											{coffee.roast_recs || '-'}
-										</div>
-									</div>
-								</div>
-
-								{#if coffee.arrival_date || coffee.stocked_date}
-									<div class="mt-2 flex justify-between text-xs text-text-secondary-light">
-										{#if coffee.arrival_date}
-											<span>Arrival: {coffee.arrival_date}</span>
-										{/if}
-										{#if coffee.stocked_date}
-											<span>Stocked: {coffee.stocked_date}</span>
-										{/if}
-									</div>
-								{/if}
 
 								<div class="mt-3 flex items-center justify-end">
 									<svg
