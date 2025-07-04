@@ -84,26 +84,27 @@
 				.text(d.axis);
 		});
 
-		// Draw expanding circles centered at 2.5 on each axis
+		// Draw expanding circles converging at center (Venn diagram style)
 		radarData.forEach((d, i) => {
 			if (d.value > 0) {
 				const angle = angleSlice * i - Math.PI / 2;
-				// Position circle centers at 2.5 on the radial axis
-				const centerR = (2.5 / 5) * radius;
+				// Position circle centers closer to center for convergence
+				const centerR = (1.5 / 5) * radius; // Moved closer to center
 				const centerX = center + centerR * Math.cos(angle);
 				const centerY = center + centerR * Math.sin(angle);
 
-				// Circle radius proportional to score
-				const circleRadius = (d.value / 5) * 15; // Max radius of 15px for score of 5
+				// Much larger circle radius for overlap (2-3x larger)
+				const circleRadius = (d.value / 5) * 40; // Max radius of 40px for score of 5
 
 				g.append('circle')
 					.attr('cx', centerX)
 					.attr('cy', centerY)
 					.attr('r', circleRadius)
 					.attr('fill', d.color)
+					.attr('fill-opacity', 0.5)
 					.attr('stroke', d.color)
-					.attr('stroke-width', 2)
-					.attr('opacity', 1)
+					.attr('stroke-width', 1)
+					.attr('stroke-opacity', 1)
 					.style('cursor', 'pointer')
 					.append('title')
 					.text(`${d.axis}: ${d.tag} (${d.value}/5)`);
