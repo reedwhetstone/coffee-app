@@ -84,17 +84,19 @@
 				.text(d.axis);
 		});
 
-		// Draw expanding circles converging at center (Venn diagram style)
+		// Draw circles with fixed diameters (1-5) tangent at center, expanding outward
 		radarData.forEach((d, i) => {
 			if (d.value > 0) {
 				const angle = angleSlice * i - Math.PI / 2;
-				// Position circle centers closer to center for convergence
-				const centerR = (1.5 / 5) * radius; // Moved closer to center
-				const centerX = center + centerR * Math.cos(angle);
-				const centerY = center + centerR * Math.sin(angle);
-
-				// Much larger circle radius for overlap (2-3x larger)
-				const circleRadius = (d.value / 5) * 40; // Max radius of 40px for score of 5
+				
+				// Circle radius based on score (diameter = score, so radius = score/2)
+				// Scale to fit within the radar chart sections
+				const circleRadius = (d.value / 2) * (radius / 5); // Each unit fills 1/5 of the radius
+				
+				// Position circle center so it's tangent at the center axis
+				// Circle extends outward from center by its radius
+				const centerX = center + circleRadius * Math.cos(angle);
+				const centerY = center + circleRadius * Math.sin(angle);
 
 				g.append('circle')
 					.attr('cx', centerX)
