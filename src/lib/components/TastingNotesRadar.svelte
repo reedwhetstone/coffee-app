@@ -32,25 +32,6 @@
 		});
 	}
 
-	function getRadarPath(data: RadarDataPoint[]): string {
-		const angleSlice = (Math.PI * 2) / data.length;
-
-		const pathCoords = data.map((d, i) => {
-			const angle = angleSlice * i - Math.PI / 2; // Start from top
-			const r = (d.value / 5) * radius; // Scale to radius
-			const x = center + r * Math.cos(angle);
-			const y = center + r * Math.sin(angle);
-			return [x, y];
-		});
-
-		// Close the path
-		if (pathCoords.length > 0) {
-			pathCoords.push(pathCoords[0]);
-		}
-
-		return 'M' + pathCoords.map((d) => d.join(',')).join('L');
-	}
-
 	function drawChart() {
 		if (!mounted || !svgElement || radarData.length === 0) return;
 
@@ -71,7 +52,7 @@
 				.attr('opacity', 0.3);
 		}
 
-		// Draw axis lines
+		// Draw axis lines (neutral color)
 		const angleSlice = (Math.PI * 2) / radarData.length;
 		radarData.forEach((d, i) => {
 			const angle = angleSlice * i - Math.PI / 2;
@@ -103,62 +84,31 @@
 				.text(d.axis);
 		});
 
-		// Create gradient for area fill
-		const defs = svg.append('defs');
-		const gradientColors = [...new Set(radarData.map((d) => d.color))];
+		// Draw expanding circles centered at 2.5 on each axis
+		radarData.forEach((d, i) => {
+			if (d.value > 0) {
+				const angle = angleSlice * i - Math.PI / 2;
+				// Position circle centers at 2.5 on the radial axis
+				const centerR = (2.5 / 5) * radius;
+				const centerX = center + centerR * Math.cos(angle);
+				const centerY = center + centerR * Math.sin(angle);
 
-		gradientColors.forEach((color, index) => {
-			const gradient = defs
-				.append('radialGradient')
-				.attr('id', `radar-gradient-${index}`)
-				.attr('cx', '50%')
-				.attr('cy', '50%')
-				.attr('r', '50%');
+				// Circle radius proportional to score
+				const circleRadius = (d.value / 5) * 15; // Max radius of 15px for score of 5
 
-			gradient
-				.append('stop')
-				.attr('offset', '0%')
-				.attr('stop-color', color)
-				.attr('stop-opacity', 0.3);
-
-			gradient
-				.append('stop')
-				.attr('offset', '100%')
-				.attr('stop-color', color)
-				.attr('stop-opacity', 0.1);
+				g.append('circle')
+					.attr('cx', centerX)
+					.attr('cy', centerY)
+					.attr('r', circleRadius)
+					.attr('fill', d.color)
+					.attr('stroke', d.color)
+					.attr('stroke-width', 2)
+					.attr('opacity', 1)
+					.style('cursor', 'pointer')
+					.append('title')
+					.text(`${d.axis}: ${d.tag} (${d.value}/5)`);
+			}
 		});
-
-		// Draw radar area
-		if (radarData.some((d) => d.value > 0)) {
-			g.append('path')
-				.attr('d', getRadarPath(radarData))
-				.attr('fill', `url(#radar-gradient-0)`)
-				.attr('fill-opacity', 0.3)
-				.attr('stroke', radarData[0]?.color || '#ccc')
-				.attr('stroke-width', 1.5)
-				.attr('stroke-opacity', 0.8);
-
-			// Draw data points
-			radarData.forEach((d, i) => {
-				if (d.value > 0) {
-					const angle = angleSlice * i - Math.PI / 2;
-					const r = (d.value / 5) * radius;
-					const x = center + r * Math.cos(angle);
-					const y = center + r * Math.sin(angle);
-
-					g.append('circle')
-						.attr('cx', x)
-						.attr('cy', y)
-						.attr('r', 2.5)
-						.attr('fill', d.color)
-						.attr('stroke', '#fff')
-						.attr('stroke-width', 1)
-						.style('cursor', 'pointer')
-						.append('title')
-						.text(`${d.axis}: ${d.tag} (${d.value}/5)`);
-				}
-			});
-		}
 	}
 
 	onMount(() => {
