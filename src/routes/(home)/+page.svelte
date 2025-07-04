@@ -13,6 +13,8 @@
 	import Testimonials from '$lib/components/marketing/Testimonials.svelte';
 	import CTA from '$lib/components/marketing/CTA.svelte';
 	import Footer from '$lib/components/marketing/Footer.svelte';
+	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
+	import type { TastingNotes } from '$lib/types/coffee.types';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -249,6 +251,41 @@
 		if (score >= 80) return 'text-yellow-600';
 		return 'text-red-600';
 	}
+
+	/**
+	 * Parses AI tasting notes JSON data safely
+	 * @param tastingNotesJson - JSON string from database
+	 * @returns Parsed tasting notes or null if invalid
+	 */
+	function parseTastingNotes(tastingNotesJson: string | null | object): TastingNotes | null {
+		if (!tastingNotesJson) return null;
+
+		try {
+			// Handle both string and object formats (Supabase jsonb can return either)
+			let parsed: any;
+			if (typeof tastingNotesJson === 'string') {
+				parsed = JSON.parse(tastingNotesJson);
+			} else if (typeof tastingNotesJson === 'object') {
+				parsed = tastingNotesJson;
+			} else {
+				return null;
+			}
+
+			// Validate that required properties exist
+			if (
+				parsed.body &&
+				parsed.flavor &&
+				parsed.acidity &&
+				parsed.sweetness &&
+				parsed.fragrance_aroma
+			) {
+				return parsed as TastingNotes;
+			}
+		} catch (error) {
+			console.warn('Failed to parse tasting notes:', error, 'Input:', tastingNotesJson);
+		}
+		return null;
+	}
 </script>
 
 <!-- Marketing Landing Page for Non-Authenticated Users -->
@@ -307,6 +344,7 @@
 					<!-- Coffee Cards Preview (Limited) -->
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 						{#each data.data.slice(0, 6) as coffee}
+							{@const tastingNotes = parseTastingNotes(coffee.ai_tasting_notes)}
 							<div
 								class="rounded-lg bg-background-primary-light p-4 opacity-90 shadow-sm ring-1 ring-border-light"
 							>
@@ -322,12 +360,19 @@
 											<p class="mt-2 text-xs text-text-secondary-light">{coffee.ai_description}</p>
 										{/if}
 									</div>
-									<div class="text-right">
-										<div class="font-bold text-background-tertiary-light">${coffee.cost_lb}/lb</div>
-										{#if coffee.score_value}
-											<div class="mt-1 text-xs text-text-secondary-light">
-												Score: {Math.round(coffee.score_value)}
+									<div class="flex flex-col items-end space-y-2">
+										<div class="text-right">
+											<div class="font-bold text-background-tertiary-light">
+												${coffee.cost_lb}/lb
 											</div>
+											{#if coffee.score_value}
+												<div class="mt-1 text-xs text-text-secondary-light">
+													Score: {Math.round(coffee.score_value)}
+												</div>
+											{/if}
+										</div>
+										{#if tastingNotes}
+											<TastingNotesRadar {tastingNotes} size={80} />
 										{/if}
 									</div>
 								</div>
@@ -469,6 +514,7 @@
 							<div class="px-4 pb-4">
 								<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 									{#each recommendedCoffees as coffee}
+										{@const tastingNotes = parseTastingNotes(coffee.ai_tasting_notes)}
 										<a
 											href={coffee.link}
 											target="_blank"
@@ -493,14 +539,22 @@
 														{coffee.reason}
 													</p>
 												</div>
-												<div class="text-right">
-													<div class="font-bold text-background-tertiary-light">
-														${coffee.cost_lb}/lb
-													</div>
-													{#if coffee.score_value}
-														<div class="mt-1 text-xs text-text-secondary-light">
-															Score: {Math.round(coffee.score_value)}
+												<div class="flex flex-col items-end space-y-2">
+													<div class="text-right">
+														<div class="font-bold text-background-tertiary-light">
+															${coffee.cost_lb}/lb
 														</div>
+														{#if coffee.score_value}
+															<div class="mt-1 text-xs text-text-secondary-light">
+																Score: {Math.round(coffee.score_value)}
+															</div>
+														{/if}
+													</div>
+													{#if coffee.ai_tasting_notes}
+														<TastingNotesRadar
+															tastingNotes={parseTastingNotes(coffee.ai_tasting_notes)}
+															size={80}
+														/>
 													{/if}
 												</div>
 											</div>
@@ -535,8 +589,17 @@
 						No coffee data available ({data?.data?.length || 0} items in raw data)
 					</p>
 				{:else}
-					<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 						{#each paginatedData as coffee}
+							{@const tastingNotes = parseTastingNotes(coffee.ai_tasting_notes)}
+							{#if coffee.ai_tasting_notes && !tastingNotes}
+								{console.log(
+									'Debug - Raw ai_tasting_notes:',
+									coffee.ai_tasting_notes,
+									'Type:',
+									typeof coffee.ai_tasting_notes
+								)}
+							{/if}
 							<button
 								type="button"
 								class="group rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
@@ -563,12 +626,19 @@
 											</p>
 										{/if}
 									</div>
-									<div class="text-right">
-										<div class="font-bold text-background-tertiary-light">${coffee.cost_lb}/lb</div>
-										{#if coffee.score_value}
-											<div class="mt-1 text-xs text-text-secondary-light">
-												Score: {Math.round(coffee.score_value)}
+									<div class="flex flex-col items-end space-y-2">
+										<div class="text-right">
+											<div class="font-bold text-background-tertiary-light">
+												${coffee.cost_lb}/lb
 											</div>
+											{#if coffee.score_value}
+												<div class="mt-1 text-xs text-text-secondary-light">
+													Score: {Math.round(coffee.score_value)}
+												</div>
+											{/if}
+										</div>
+										{#if tastingNotes}
+											<TastingNotesRadar {tastingNotes} size={200} />
 										{/if}
 									</div>
 								</div>
