@@ -305,75 +305,57 @@
 					</div>
 
 					<!-- Coffee Cards Preview (Limited) -->
-					<div class="space-y-2 md:space-y-4">
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 						{#each data.data.slice(0, 6) as coffee}
 							<div
-								class="rounded-lg border border-border-light bg-background-primary-light p-3 opacity-90 shadow-md md:p-4"
+								class="rounded-lg bg-background-primary-light p-4 opacity-90 shadow-sm ring-1 ring-border-light"
 							>
-								<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
-									<div>
-										<h3 class="text-primary-light text-base font-semibold md:text-lg">
+								<div class="flex items-start justify-between">
+									<div class="flex-1">
+										<h3 class="font-semibold text-text-primary-light">
 											{coffee.name}
 										</h3>
-										<p class="text-primary-light text-sm">{coffee.source}</p>
-									</div>
-									<div class="text-left sm:text-right">
-										<p class="text-primary-light text-base font-bold md:text-lg">
-											${coffee.cost_lb}/lb
+										<p class="mt-1 text-sm font-medium text-background-tertiary-light">
+											{coffee.source}
 										</p>
+										{#if coffee.ai_description}
+											<p class="mt-2 text-xs text-text-secondary-light">{coffee.ai_description}</p>
+										{/if}
+									</div>
+									<div class="text-right">
+										<div class="font-bold text-background-tertiary-light">${coffee.cost_lb}/lb</div>
+										{#if coffee.score_value}
+											<div class="mt-1 text-xs text-text-secondary-light">
+												Score: {Math.round(coffee.score_value)}
+											</div>
+										{/if}
 									</div>
 								</div>
 								<div
-									class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-3 sm:gap-4"
+									class="mt-3 flex items-center justify-between text-xs text-text-secondary-light"
 								>
-									<div class="flex flex-col gap-2">
-										<div>
-											<span class="text-primary-light">Region:</span>
-											{coffee.region || '-'}
-										</div>
-										<div>
-											<span class="text-primary-light">Processing:</span>
-											{coffee.processing || '-'}
-										</div>
-									</div>
-									<div class="flex flex-col gap-2">
-										<div>
-											<span class="text-primary-light">Cultivar:</span>
-											{coffee.cultivar_detail || '-'}
-										</div>
-										<div>
-											<span class="text-primary-light">Score:</span>
-											{coffee.score_value || '-'}
-										</div>
-									</div>
-									<div class="flex flex-col gap-2">
-										<div>
-											<span class="text-primary-light">Roast Recs:</span>
-											{coffee.roast_recs || '-'}
-										</div>
-									</div>
+									<span>{coffee.region || '-'}</span>
+									<span>{coffee.processing || '-'}</span>
 								</div>
 							</div>
 						{/each}
+					</div>
 
-						<!-- Sign Up Prompt -->
-						<div class="py-8 text-center">
-							<div
-								class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-8"
+					<!-- Sign Up Prompt -->
+					<div class="py-8 text-center">
+						<div
+							class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-8"
+						>
+							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">Want to see more?</h3>
+							<p class="mb-4 text-text-secondary-light">
+								Sign up to browse our full catalog of {data.data.length}+ premium coffee beans
+							</p>
+							<button
+								onclick={() => goto('/auth')}
+								class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 							>
-								<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
-									Want to see more?
-								</h3>
-								<p class="mb-4 text-text-secondary-light">
-									Sign up to browse our full catalog of {data.data.length}+ premium coffee beans
-								</p>
-								<button
-									onclick={() => goto('/auth')}
-									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
-								>
-									Sign Up Free - No Credit Card Required
-								</button>
-							</div>
+								Sign Up Free - No Credit Card Required
+							</button>
 						</div>
 					</div>
 				</div>
@@ -485,17 +467,46 @@
 						<!-- Recommendations-->
 						{#if recommendedCoffees.length > 0}
 							<div class="px-4 pb-4">
-								<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+								<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 									{#each recommendedCoffees as coffee}
 										<a
 											href={coffee.link}
 											target="_blank"
-											class="group block rounded-lg bg-background-secondary-light p-4 shadow-md transition-all hover:scale-[1.02] hover:border hover:border-background-tertiary-light hover:bg-background-secondary-light focus:outline-none"
+											class="group block rounded-lg bg-background-primary-light p-4 shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light focus:outline-none"
 										>
-											<div class="flex items-center justify-between">
-												<h4 class="text-primary-light font-semibold">{coffee.name}</h4>
+											<div class="flex items-start justify-between">
+												<div class="flex-1">
+													<h4
+														class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
+													>
+														{coffee.name}
+													</h4>
+													<p class="mt-1 text-sm font-medium text-background-tertiary-light">
+														{coffee.source}
+													</p>
+													{#if coffee.ai_description}
+														<p class="mt-2 text-xs text-text-secondary-light">
+															{coffee.ai_description}
+														</p>
+													{/if}
+													<p class="mt-2 text-xs italic text-text-secondary-light">
+														{coffee.reason}
+													</p>
+												</div>
+												<div class="text-right">
+													<div class="font-bold text-background-tertiary-light">
+														${coffee.cost_lb}/lb
+													</div>
+													{#if coffee.score_value}
+														<div class="mt-1 text-xs text-text-secondary-light">
+															Score: {Math.round(coffee.score_value)}
+														</div>
+													{/if}
+												</div>
+											</div>
+											<div class="mt-3 flex items-center justify-end">
 												<svg
-													class="text-primary-light h-4 w-4 transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
+													class="h-4 w-4 text-text-secondary-light transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
 													fill="none"
 													stroke="currentColor"
 													viewBox="0 0 24 24"
@@ -508,12 +519,6 @@
 													/>
 												</svg>
 											</div>
-											<div class="mb-2">
-												<h3 class="text-primary-light">{coffee.source}</h3>
-												<span class="text-primary-light text-sm">Score: {coffee.score_value}</span>
-												<span class="text-primary-light ml-4 text-sm">${coffee.cost_lb}/lb</span>
-											</div>
-											<p class="text-primary-light mt-2 text-sm">{coffee.reason}</p>
 										</a>
 									{/each}
 								</div>
@@ -530,11 +535,11 @@
 						No coffee data available ({data?.data?.length || 0} items in raw data)
 					</p>
 				{:else}
-					<div class="space-y-2 md:space-y-4">
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 						{#each paginatedData as coffee}
 							<button
 								type="button"
-								class="w-full cursor-pointer rounded-lg border border-border-light bg-background-secondary-light p-3 text-left shadow-md transition-colors hover:border hover:border-background-tertiary-light md:p-4"
+								class="group rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
 								onclick={() => {
 									if (coffee.link) window.open(coffee.link, '_blank');
 								}}
@@ -542,106 +547,78 @@
 									if (e.key === 'Enter' && coffee.link) window.open(coffee.link, '_blank');
 								}}
 							>
-								<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
-									<div>
-										<h3 class="text-primary-light text-base font-semibold md:text-lg">
+								<div class="flex items-start justify-between">
+									<div class="flex-1">
+										<h3
+											class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
+										>
 											{coffee.name}
 										</h3>
-										<p class="text-primary-light text-sm">{coffee.source}</p>
-									</div>
-									<div class="text-left sm:text-right">
-										<p class="text-primary-light text-base font-bold md:text-lg">
-											${coffee.cost_lb}/lb
+										<p class="mt-1 text-sm font-medium text-background-tertiary-light">
+											{coffee.source}
 										</p>
+										{#if coffee.ai_description}
+											<p class="mt-2 text-xs text-text-secondary-light">
+												{coffee.ai_description}
+											</p>
+										{/if}
+									</div>
+									<div class="text-right">
+										<div class="font-bold text-background-tertiary-light">${coffee.cost_lb}/lb</div>
+										{#if coffee.score_value}
+											<div class="mt-1 text-xs text-text-secondary-light">
+												Score: {Math.round(coffee.score_value)}
+											</div>
+										{/if}
 									</div>
 								</div>
-								<div
-									class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-3 sm:gap-4"
-								>
-									<div class="flex flex-col gap-2">
+
+								<div class="mt-3 grid grid-cols-2 gap-2 text-xs text-text-secondary-light">
+									<div class="space-y-1">
+										<div><span class="font-medium">Region:</span> {coffee.region || '-'}</div>
 										<div>
-											<span class="text-primary-light">Region:</span>
-											{coffee.region || '-'}
-										</div>
-										<div>
-											<span class="text-primary-light">Arrival:</span>
-											{coffee.arrival_date || '-'}
-										</div>
-									</div>
-									<div class="flex flex-col gap-2">
-										<div>
-											<span class="text-primary-light">Processing:</span>
+											<span class="font-medium">Processing:</span>
 											{coffee.processing || '-'}
 										</div>
+									</div>
+									<div class="space-y-1">
 										<div>
-											<span class="text-primary-light">Cultivar:</span>
+											<span class="font-medium">Cultivar:</span>
 											{coffee.cultivar_detail || '-'}
 										</div>
-									</div>
-
-									<div class="flex flex-col gap-2">
 										<div>
-											<span class="text-primary-light">Drying Method:</span>
-											{coffee.drying_method || '-'}
-										</div>
-										<div>
-											<span class="text-primary-light">Roast Recs:</span>
+											<span class="font-medium">Roast Recs:</span>
 											{coffee.roast_recs || '-'}
-										</div>
-										<div>
-											<span class="text-primary-light">Stocked:</span>
-											{coffee.stocked_date || '-'}
 										</div>
 									</div>
 								</div>
-								{#if coffee.score_value}
-									<div class="mt-1 flex justify-end">
-										<div class="flex flex-col items-center">
-											<div class="relative h-8 w-8 sm:h-10 sm:w-10">
-												<!-- Background arc -->
-												<svg class="absolute inset-0" viewBox="0 0 100 100">
-													<path
-														d="M10,50 A40,40 0 1,1 90,50"
-														fill="none"
-														stroke="#e5e7eb"
-														stroke-width="8"
-														stroke-linecap="round"
-													/>
-													<!-- Foreground arc (dynamic based on score) -->
-													<path
-														d="M10,50 A40,40 0 1,1 90,50"
-														fill="none"
-														stroke={getStrokeColor(coffee.score_value)}
-														stroke-width="8"
-														stroke-linecap="round"
-														stroke-dasharray="126"
-														stroke-dashoffset={126 -
-															(126 * getScorePercentage(coffee.score_value, 0, 100)) / 100}
-													/>
-												</svg>
-												<!-- Score value in the center -->
-												<div class="absolute inset-0 flex items-center justify-center">
-													<span
-														class="text-xs font-bold sm:text-sm {getScoreColorClass(
-															coffee.score_value
-														)}"
-													>
-														{coffee.score_value}
-													</span>
-												</div>
 
-												<span
-													class="text-primary-light absolute bottom-0 left-0 right-0 top-7 text-center text-xs"
-													>SCORE</span
-												>
-											</div>
-										</div>
-									</div>
-								{:else}
-									<div class="mt-1 flex justify-end">
-										<p class="text-primary-light text-sm">Score: -</p>
+								{#if coffee.arrival_date || coffee.stocked_date}
+									<div class="mt-2 flex justify-between text-xs text-text-secondary-light">
+										{#if coffee.arrival_date}
+											<span>Arrival: {coffee.arrival_date}</span>
+										{/if}
+										{#if coffee.stocked_date}
+											<span>Stocked: {coffee.stocked_date}</span>
+										{/if}
 									</div>
 								{/if}
+
+								<div class="mt-3 flex items-center justify-end">
+									<svg
+										class="h-4 w-4 text-text-secondary-light transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+										/>
+									</svg>
+								</div>
 							</button>
 						{/each}
 
