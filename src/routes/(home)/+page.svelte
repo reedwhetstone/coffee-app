@@ -610,36 +610,64 @@
 									if (e.key === 'Enter' && coffee.link) window.open(coffee.link, '_blank');
 								}}
 							>
-								<div class="flex items-start justify-between">
+								<!-- Mobile-optimized layout -->
+								<div
+									class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0"
+								>
+									<!-- Content section -->
 									<div class="flex-1">
 										<h3
 											class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
 										>
 											{coffee.name}
 										</h3>
-										<p class="mt-1 text-sm font-medium text-background-tertiary-light">
-											{coffee.source}
-										</p>
+										<div class="mt-1 flex items-center justify-between">
+											<p class="text-sm font-medium text-background-tertiary-light">
+												{coffee.source}
+											</p>
+											<!-- Mobile: Price and score next to supplier name -->
+											<div class="text-right sm:hidden">
+												<div class="font-bold text-background-tertiary-light">
+													${coffee.cost_lb}/lb
+												</div>
+												{#if coffee.score_value}
+													<div class="text-xs text-text-secondary-light">
+														Score: {Math.round(coffee.score_value)}
+													</div>
+												{/if}
+											</div>
+										</div>
 										{#if coffee.ai_description}
-											<p class="mt-2 text-xs text-text-secondary-light">
+											<p class="my-4 text-xs text-text-secondary-light">
 												{coffee.ai_description}
 											</p>
 										{/if}
-										<div class="mt-3 grid grid-cols-1 gap-2 text-xs text-text-secondary-light">
+
+										<!-- Mobile: Chart full width -->
+										{#if tastingNotes}
+											<div class="mt-2 px-6 sm:hidden">
+												<TastingNotesRadar {tastingNotes} size={300} responsive={true} />
+											</div>
+										{/if}
+
+										<div
+											class="mt-3 grid grid-cols-1 gap-2 text-xs text-text-secondary-light sm:grid-cols-2"
+										>
 											<div><span class="font-medium">Region:</span> {coffee.region || '-'}</div>
 											<div>
 												<span class="font-medium">Processing:</span>
 												{coffee.processing || '-'}
 											</div>
-
-											<div>
+											<div class="sm:col-span-2">
 												<span class="font-medium">Cultivar:</span>
 												{coffee.cultivar_detail || '-'}
 											</div>
 										</div>
 
 										{#if coffee.arrival_date || coffee.stocked_date}
-											<div class="mt-2 flex justify-between text-xs text-text-secondary-light">
+											<div
+												class="mt-2 flex flex-col gap-1 text-xs text-text-secondary-light sm:flex-row sm:justify-between"
+											>
 												{#if coffee.arrival_date}
 													<span>Arrival: {coffee.arrival_date}</span>
 												{/if}
@@ -649,7 +677,9 @@
 											</div>
 										{/if}
 									</div>
-									<div class="flex flex-col items-end space-y-2">
+
+									<!-- Desktop: Price, score, and chart in sidebar -->
+									<div class="hidden flex-col items-end space-y-2 sm:flex">
 										<div class="text-right">
 											<div class="font-bold text-background-tertiary-light">
 												${coffee.cost_lb}/lb
@@ -661,7 +691,7 @@
 											{/if}
 										</div>
 										{#if tastingNotes}
-											<TastingNotesRadar {tastingNotes} size={200} />
+											<TastingNotesRadar {tastingNotes} size={180} />
 										{/if}
 									</div>
 								</div>

@@ -5,6 +5,7 @@
 
 	export let tastingNotes: TastingNotes | null = null;
 	export let size: number = 120;
+	export let responsive: boolean = false;
 
 	let svgElement: SVGSVGElement;
 	let mounted = false;
@@ -128,16 +129,16 @@
 	{#if tastingNotes && radarData.length > 0}
 		<svg
 			bind:this={svgElement}
-			width={size}
-			height={size}
+			width={responsive ? '100%' : size}
+			height={responsive ? '100%' : size}
 			viewBox="0 0 {size} {size}"
-			class="overflow-visible"
+			class="overflow-visible {responsive ? 'aspect-square' : ''}"
 		></svg>
 	{:else}
 		<!-- Fallback for missing data -->
 		<div
-			class="flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50"
-			style="width: {size}px; height: {size}px;"
+			class="flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 {responsive ? 'aspect-square' : ''}"
+			style="{responsive ? '' : `width: ${size}px; height: ${size}px;`}"
 		>
 			<span class="text-xs text-gray-400">No tasting data</span>
 		</div>
