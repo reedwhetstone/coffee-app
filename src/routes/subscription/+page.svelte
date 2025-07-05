@@ -403,7 +403,7 @@
 							you're ready!
 						</p>
 						<button
-							onclick={() => goto('/')}
+							onclick={() => goto('/auth')}
 							class="mt-2 text-sm text-blue-400 underline hover:text-blue-300"
 						>
 							← Explore the marketplace first
@@ -418,8 +418,8 @@
 					<!-- Free Plan -->
 					<div
 						class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10 cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-background-tertiary-light hover:scale-105"
-						onclick={() => goto('/')}
-						onkeydown={(e) => e.key === 'Enter' && goto('/')}
+						onclick={() => goto('/auth')}
+						onkeydown={(e) => e.key === 'Enter' && goto('/auth')}
 						tabindex="0"
 						role="button"
 						aria-label="Select Free Plan"
@@ -495,7 +495,7 @@
 							</ul>
 						</div>
 						<button
-							onclick={(e) => { e.stopPropagation(); goto('/'); }}
+							onclick={(e) => { e.stopPropagation(); goto('/auth'); }}
 							class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
 						>
 							Get started free
