@@ -293,7 +293,7 @@
 	<div class="min-h-screen">
 		<Hero />
 		<Features />
-		<Testimonials />
+		<!-- <Testimonials /> -->
 		<Pricing />
 		<CTA />
 		<Footer />
