@@ -26,11 +26,16 @@
 		</p>
 
 		<div
-			class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-y-8 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-3"
+			class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-6 sm:mt-20 sm:gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-3 lg:gap-12"
 		>
 			<!-- Free Plan -->
 			<div
-				class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10"
+				class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10 cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-background-tertiary-light hover:scale-105"
+				onclick={() => handleSelectPlan('free')}
+				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('free')}
+				tabindex="0"
+				role="button"
+				aria-label="Select Free Plan"
 			>
 				<div>
 					<div class="flex items-center justify-between gap-x-4">
@@ -103,7 +108,7 @@
 					</ul>
 				</div>
 				<button
-					onclick={() => handleSelectPlan('free')}
+					onclick={(e) => { e.stopPropagation(); handleSelectPlan('free'); }}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
 					Get started free
@@ -112,7 +117,12 @@
 
 			<!-- Professional Plan -->
 			<div
-				class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-2 ring-background-tertiary-light xl:p-10"
+				class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-2 ring-background-tertiary-light xl:p-10 cursor-pointer transition-all duration-200 hover:ring-background-tertiary-light hover:scale-105 hover:shadow-lg"
+				onclick={() => handleSelectPlan('professional')}
+				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('professional')}
+				tabindex="0"
+				role="button"
+				aria-label="Select Professional Plan"
 			>
 				<div>
 					<div class="flex items-center justify-between gap-x-4">
@@ -233,7 +243,7 @@
 					</ul>
 				</div>
 				<button
-					onclick={() => handleSelectPlan('professional')}
+					onclick={(e) => { e.stopPropagation(); handleSelectPlan('professional'); }}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
 					Start professional trial
@@ -242,7 +252,12 @@
 
 			<!-- Enterprise Plan -->
 			<div
-				class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10"
+				class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10 cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-background-tertiary-light hover:scale-105"
+				onclick={() => handleSelectPlan('enterprise')}
+				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('enterprise')}
+				tabindex="0"
+				role="button"
+				aria-label="Select Enterprise Plan"
 			>
 				<div>
 					<div class="flex items-center justify-between gap-x-4">
@@ -359,7 +374,7 @@
 					</ul>
 				</div>
 				<button
-					onclick={() => goto('/contact')}
+					onclick={(e) => { e.stopPropagation(); goto('/contact'); }}
 					class="mt-8 block w-full rounded-md bg-text-primary-light px-3 py-2 text-center text-sm font-semibold text-background-primary-light shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-primary-light"
 				>
 					Schedule consultation
