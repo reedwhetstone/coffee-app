@@ -630,11 +630,11 @@
 												<div class="font-bold text-background-tertiary-light">
 													${coffee.cost_lb}/lb
 												</div>
-												{#if coffee.score_value}
+												<!-- {#if coffee.score_value}
 													<div class="text-xs text-text-secondary-light">
 														Score: {Math.round(coffee.score_value)}
 													</div>
-												{/if}
+												{/if} -->
 											</div>
 										</div>
 										{#if coffee.ai_description}
@@ -684,14 +684,16 @@
 											<div class="font-bold text-background-tertiary-light">
 												${coffee.cost_lb}/lb
 											</div>
-											{#if coffee.score_value}
+											<!-- {#if coffee.score_value}
 												<div class="mt-1 text-xs text-text-secondary-light">
 													Score: {Math.round(coffee.score_value)}
 												</div>
-											{/if}
+											{/if} -->
 										</div>
 										{#if tastingNotes}
-											<TastingNotesRadar {tastingNotes} size={180} />
+											<div class="pt-4">
+												<TastingNotesRadar {tastingNotes} size={180} />
+											</div>
 										{/if}
 									</div>
 								</div>
