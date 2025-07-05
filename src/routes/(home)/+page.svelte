@@ -651,31 +651,31 @@
 										{/if}
 
 										<div
-											class="mt-3 grid grid-cols-1 gap-2 text-xs text-text-secondary-light sm:grid-cols-2"
+											class="mt-3 flex-col gap-2 text-xs text-text-secondary-light sm:grid-cols-2"
 										>
 											<div><span class="font-medium">Region:</span> {coffee.region || '-'}</div>
 											<div>
-												<span class="font-medium">Processing:</span>
-												{coffee.processing || '-'}
+												{#if coffee.processing}
+													<span>Processing: {coffee.processing}</span>
+												{/if}
 											</div>
-											<div class="sm:col-span-2">
-												<span class="font-medium">Cultivar:</span>
-												{coffee.cultivar_detail || '-'}
+											<div>
+												{#if coffee.cultivar_detail}
+													<span>Cultivar: {coffee.cultivar_detail}</span>
+												{/if}
 											</div>
-										</div>
 
-										{#if coffee.arrival_date || coffee.stocked_date}
-											<div
-												class="mt-2 flex flex-col gap-1 text-xs text-text-secondary-light sm:flex-row sm:justify-between"
-											>
+											<div>
 												{#if coffee.arrival_date}
 													<span>Arrival: {coffee.arrival_date}</span>
 												{/if}
+											</div>
+											<div>
 												{#if coffee.stocked_date}
 													<span>Stocked: {coffee.stocked_date}</span>
 												{/if}
 											</div>
-										{/if}
+										</div>
 									</div>
 
 									<!-- Desktop: Price, score, and chart in sidebar -->
