@@ -91,6 +91,11 @@ function createFilterStore() {
 				state.filters.source = sources;
 			}
 
+			// Auto-filter beans by green_coffee_inv.stocked = 'TRUE' for beans route (user can change this)
+			if (routeId.includes('beans')) {
+				state.filters.stocked = 'TRUE';
+			}
+
 			// Process the data with initial settings
 			state.filteredData = processData(data, state.sortField, state.sortDirection, state.filters);
 			state.initialized = true;
@@ -365,6 +370,13 @@ function createFilterStore() {
 					return stockedDate >= cutoffDate;
 				}
 
+				// Handle stocked boolean filter
+				if (key === 'stocked') {
+					// Convert string to boolean for comparison
+					const boolValue = value === 'TRUE' || value === 'true' || value === true;
+					return itemValue === boolValue;
+				}
+
 				// Handle different filter types
 				if (typeof value === 'object') {
 					// Range filter
@@ -581,7 +593,8 @@ function createFilterStore() {
 				'type',
 				'region',
 				'processing',
-				'cultivar_detail'
+				'cultivar_detail',
+				'stocked'
 			];
 		} else if (routeId.includes('roast')) {
 			return [

@@ -18,6 +18,17 @@ interface Row {
 	purchased_qty_lbs: number | null;
 	bean_cost: number | null;
 	tax_ship_cost: number | null;
+	coffee_catalog?: {
+		name: string;
+		score_value: number | null;
+		arrival_date: string | null;
+		region: string | null;
+		processing: string | null;
+		cultivar_detail: string | null;
+		cost_lb: number | null;
+		source: string | null;
+		stocked: boolean | null;
+	} | null;
 	sales?: Sale[];
 	roast_profiles?: RoastProfile[];
 }
@@ -47,19 +58,28 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			return json({ error: salesError.message }, { status: 500 });
 		}
 
-		// Fetch profit data
+		// Fetch profit data with coffee catalog details
 		const { data: profitData, error: profitError } = await supabase
 			.from('green_coffee_inv')
 			.select(
 				`
 				id,
-				name:name,
-				coffee_name:name,
+				name,
 				purchase_date,
 				purchased_qty_lbs,
-				purchased_qty_oz:purchased_qty_lbs,
 				bean_cost,
 				tax_ship_cost,
+				coffee_catalog (
+					name,
+					score_value,
+					arrival_date,
+					region,
+					processing,
+					cultivar_detail,
+					cost_lb,
+					source,
+					stocked
+				),
 				sales(
 					price,
 					oz_sold
@@ -93,9 +113,12 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			const profit = totalSales - totalCost;
 			const profitMargin = totalCost > 0 ? (profit / totalCost) * 100 : 0;
 
+			// Use coffee catalog name if available, fallback to green_coffee_inv name
+			const displayName = row.coffee_catalog?.name || row.name;
+
 			return {
 				id: row.id,
-				coffee_name: row.name,
+				coffee_name: displayName,
 				purchase_date: row.purchase_date?.split('T')[0],
 				purchased_qty_lbs: row.purchased_qty_lbs,
 				purchased_qty_oz: (row.purchased_qty_lbs || 0) * 16,

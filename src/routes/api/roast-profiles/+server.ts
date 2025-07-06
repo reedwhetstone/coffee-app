@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
@@ -75,6 +76,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					.single();
 
 				if (error) throw error;
+
+				// Update stocked status for this coffee after roasting
+				await updateStockedStatus(supabase, profileData.coffee_id, user.id);
+
 				return newRoast;
 			})
 		);
@@ -97,10 +102,10 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		const batchName = url.searchParams.get('name');
 
 		if (id) {
-			// Verify ownership
+			// Verify ownership and get coffee_id for stocked status update
 			const { data: existing } = await supabase
 				.from('roast_profiles')
-				.select('user')
+				.select('user, coffee_id')
 				.eq('roast_id', id)
 				.single();
 
@@ -108,20 +113,27 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 				return json({ error: 'Unauthorized' }, { status: 403 });
 			}
 
+			const coffee_id = existing.coffee_id;
+
 			// Delete associated logs first
 			await supabase.from('profile_log').delete().eq('roast_id', id);
 			// Then delete the profile
 			await supabase.from('roast_profiles').delete().eq('roast_id', id).eq('user', user.id);
+
+			// Update stocked status for this coffee after deletion
+			await updateStockedStatus(supabase, coffee_id, user.id);
 		} else if (batchName) {
-			// Get all profile IDs in the batch that belong to the user
+			// Get all profile IDs and coffee_ids in the batch that belong to the user
 			const { data: profiles } = await supabase
 				.from('roast_profiles')
-				.select('roast_id')
+				.select('roast_id, coffee_id')
 				.eq('batch_name', batchName)
 				.eq('user', user.id);
 
 			if (profiles && profiles.length > 0) {
-				const roastIds = profiles.map((p: { roast_id: number }) => p.roast_id);
+				const roastIds = profiles.map((p: { roast_id: number; coffee_id: number }) => p.roast_id);
+				const coffeeIds = [...new Set(profiles.map((p: { roast_id: number; coffee_id: number }) => p.coffee_id))];
+				
 				// Delete associated logs first
 				await supabase.from('profile_log').delete().in('roast_id', roastIds);
 				// Then delete all profiles in the batch
@@ -130,6 +142,11 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 					.delete()
 					.eq('batch_name', batchName)
 					.eq('user', user.id);
+
+				// Update stocked status for all affected coffees after batch deletion
+				for (const coffee_id of coffeeIds) {
+					await updateStockedStatus(supabase, coffee_id, user.id);
+				}
 			}
 		} else {
 			return json({ error: 'No ID or batch name provided' }, { status: 400 });
@@ -161,16 +178,18 @@ export const PUT: RequestHandler = async ({
 
 		const data = await request.json();
 
-		// Verify ownership
+		// Verify ownership and get coffee_id for stocked status update
 		const { data: existing } = await supabase
 			.from('roast_profiles')
-			.select('user')
+			.select('user, coffee_id')
 			.eq('roast_id', id)
 			.single();
 
 		if (!existing || existing.user !== user.id) {
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
+
+		const coffee_id = existing.coffee_id;
 
 		const { data: updated, error } = await supabase
 			.from('roast_profiles')
@@ -181,6 +200,10 @@ export const PUT: RequestHandler = async ({
 			.single();
 
 		if (error) throw error;
+
+		// Update stocked status for this coffee after updating roast profile
+		await updateStockedStatus(supabase, coffee_id, user.id);
+
 		return json(updated);
 	} catch (error) {
 		console.error('Error updating roast profile:', error);
