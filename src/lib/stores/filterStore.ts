@@ -75,8 +75,18 @@ function createFilterStore() {
 			updateUniqueFilterValues();
 
 			// Get all sources and set them as selected by default
+			// Handle both direct source field and coffee_catalog.source for joined data
 			const sources = Array.from(
-				new Set(data.map((item) => item.source || item.vendor).filter(Boolean))
+				new Set(
+					data
+						.map((item) => {
+							// For beans page with joined data, check coffee_catalog.source first
+							if (item.coffee_catalog?.source) return item.coffee_catalog.source;
+							// Fallback to direct fields
+							return item.source || item.vendor;
+						})
+						.filter(Boolean)
+				)
 			);
 			if (sources.length > 0) {
 				state.filters.source = sources;
@@ -101,7 +111,7 @@ function createFilterStore() {
 			return { field: 'purchase_date', direction: 'desc' as const };
 		} else if (routeId.includes('roast')) {
 			return { field: 'roast_date', direction: 'desc' as const };
-		} else if (routeId === '/') {
+		} else if (routeId === '/' || routeId === '') {
 			return { field: 'stocked_date', direction: 'desc' as const };
 		} else {
 			return { field: null, direction: null } as const;
@@ -230,10 +240,22 @@ function createFilterStore() {
 				// Now process the unique values
 				const uniqueValues: Record<string, any[]> = {};
 
-				// Get unique sources
-				if (state.originalData.some((item) => item.source || item.vendor)) {
+				// Get unique sources - handle joined data structure
+				const sourcesExist = state.originalData.some(
+					(item) => item.coffee_catalog?.source || item.source || item.vendor
+				);
+				if (sourcesExist) {
 					uniqueValues.sources = Array.from(
-						new Set(state.originalData.map((item) => item.source || item.vendor).filter(Boolean))
+						new Set(
+							state.originalData
+								.map((item) => {
+									// For beans page with joined data, check coffee_catalog.source first
+									if (item.coffee_catalog?.source) return item.coffee_catalog.source;
+									// Fallback to direct fields
+									return item.source || item.vendor;
+								})
+								.filter(Boolean)
+						)
 					).sort((a, b) => a.localeCompare(b));
 				}
 
@@ -241,6 +263,15 @@ function createFilterStore() {
 				if (state.originalData.some((item) => item.purchase_date)) {
 					uniqueValues.purchaseDates = Array.from(
 						new Set(state.originalData.map((item) => item.purchase_date).filter(Boolean))
+					).sort((a, b) => a.localeCompare(b));
+				}
+
+				// Get unique arrival dates from catalog data
+				if (state.originalData.some((item) => getFieldValue(item, 'arrival_date'))) {
+					uniqueValues.arrivalDates = Array.from(
+						new Set(
+							state.originalData.map((item) => getFieldValue(item, 'arrival_date')).filter(Boolean)
+						)
 					).sort((a, b) => a.localeCompare(b));
 				}
 
@@ -275,6 +306,36 @@ function createFilterStore() {
 		}
 	}
 
+	/**
+	 * Helper function to get field value from item, handling joined data structure
+	 * @param item - The data item
+	 * @param field - The field name to get
+	 * @returns The field value
+	 */
+	function getFieldValue(item: any, field: string): any {
+		// Fields that might be in coffee_catalog for joined beans data
+		const catalogFields = [
+			'name',
+			'source',
+			'score_value',
+			'region',
+			'processing',
+			'cultivar_detail',
+			'arrival_date',
+			'cost_lb',
+			'stocked_date',
+			'type'
+		];
+
+		// For beans page joined data, check coffee_catalog first for these fields
+		if (catalogFields.includes(field) && item.coffee_catalog?.[field] !== undefined) {
+			return item.coffee_catalog[field];
+		}
+
+		// Fallback to direct field access
+		return item[field];
+	}
+
 	// Filter data based on filters
 	function filterData(data: any[], filters: Record<string, any>): any[] {
 		// Skip if no filters
@@ -288,8 +349,8 @@ function createFilterStore() {
 				// Skip empty filters
 				if (value === undefined || value === null || value === '') return true;
 
-				// Get item value
-				const itemValue = item[key];
+				// Get item value using helper function
+				const itemValue = getFieldValue(item, key);
 
 				// Handle stocked_date "last n days" filter
 				if (key === 'stocked_date' && typeof value === 'string' && value !== '') {
@@ -350,8 +411,8 @@ function createFilterStore() {
 		}
 
 		return [...data].sort((a, b) => {
-			const aValue = a[sortField];
-			const bValue = b[sortField];
+			const aValue = getFieldValue(a, sortField);
+			const bValue = getFieldValue(b, sortField);
 
 			// Handle null/undefined values - always sort them to the end
 			if (aValue == null && bValue == null) return 0;
@@ -517,6 +578,7 @@ function createFilterStore() {
 				'source',
 				'score_value',
 				'purchase_date',
+				'arrival_date',
 				'type',
 				'region',
 				'processing',

@@ -214,6 +214,17 @@
 									step="0.01"
 								/>
 							</div>
+						{:else if column === 'arrival_date' && $filterStore.uniqueValues?.arrivalDates?.length}
+							<select
+								value={$filterStore.filters.arrival_date || ''}
+								onchange={(e) => filterStore.setFilter('arrival_date', e.currentTarget.value)}
+								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+							>
+								<option value="">All Dates</option>
+								{#each $filterStore.uniqueValues.arrivalDates as date}
+									<option value={date}>{date}</option>
+								{/each}
+							</select>
 						{:else if column === 'purchase_date' && $filterStore.uniqueValues?.purchaseDates?.length}
 							<select
 								value={$filterStore.filters.purchase_date || ''}

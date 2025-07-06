@@ -89,11 +89,11 @@
 		radarData.forEach((d, i) => {
 			if (d.value > 0) {
 				const angle = angleSlice * i - Math.PI / 2;
-				
+
 				// Circle radius based on score (diameter = score, so radius = score/2)
 				// Scale to fit within the radar chart sections
 				const circleRadius = (d.value / 2) * (radius / 5); // Each unit fills 1/5 of the radius
-				
+
 				// Position circle center so it's tangent at the center axis
 				// Circle extends outward from center by its radius
 				const centerX = center + circleRadius * Math.cos(angle);
@@ -137,8 +137,10 @@
 	{:else}
 		<!-- Fallback for missing data -->
 		<div
-			class="flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 {responsive ? 'aspect-square' : ''}"
-			style="{responsive ? '' : `width: ${size}px; height: ${size}px;`}"
+			class="flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 {responsive
+				? 'aspect-square'
+				: ''}"
+			style={responsive ? '' : `width: ${size}px; height: ${size}px;`}
 		>
 			<span class="text-xs text-gray-400">No tasting data</span>
 		</div>

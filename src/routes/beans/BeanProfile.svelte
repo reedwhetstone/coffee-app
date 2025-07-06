@@ -192,11 +192,14 @@
 >
 	<div class="mb-4">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<h2 class="text-xl font-bold text-text-primary-light">{selectedBean.name}</h2>
+			<h2 class="text-xl font-bold text-text-primary-light">
+				{selectedBean.coffee_catalog?.name || selectedBean.name}
+			</h2>
 			<div>
-				{#if selectedBean.score_value !== undefined || selectedBean.rank !== undefined}
+				{#if selectedBean.coffee_catalog?.score_value !== undefined || selectedBean.rank !== undefined}
+					{@const catalogScore = selectedBean.coffee_catalog?.score_value}
 					<div class="flex items-center justify-center gap-4 sm:justify-end md:gap-6">
-						{#if selectedBean.score_value !== undefined}
+						{#if catalogScore !== undefined}
 							<div class="flex flex-col items-center">
 								<div class="relative h-14 w-14 md:h-16 md:w-16">
 									<!-- Background arc -->
@@ -212,22 +215,18 @@
 										<path
 											d="M10,50 A40,40 0 1,1 90,50"
 											fill="none"
-											stroke={getStrokeColor(selectedBean.score_value, true)}
+											stroke={getStrokeColor(catalogScore, true)}
 											stroke-width="8"
 											stroke-linecap="round"
 											stroke-dasharray="126"
 											stroke-dashoffset={126 -
-												(126 * getScorePercentage(selectedBean.score_value, 0, 100)) / 100}
+												(126 * getScorePercentage(catalogScore, 0, 100)) / 100}
 										/>
 									</svg>
 									<!-- Score value in the center -->
 									<div class="absolute inset-0 flex items-center justify-center">
-										<span
-											class="text-xl font-bold md:text-2xl {getScoreColorClass(
-												selectedBean.score_value
-											)}"
-										>
-											{selectedBean.score_value}
+										<span class="text-xl font-bold md:text-2xl {getScoreColorClass(catalogScore)}">
+											{catalogScore}
 										</span>
 									</div>
 									<span
@@ -316,13 +315,12 @@
 				in:slideTransition={{ direction: slideDirection, delay: 50 }}
 			>
 				{#if currentPage === 0}
-					{#each ['description_short', 'notes', 'purchase_date', 'arrival_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'last_updated'] as key}
+					<!-- User-specific inventory data (always from selectedBean) -->
+					{#each ['notes', 'purchase_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'last_updated'] as key}
 						{#if selectedBean[key] !== undefined}
 							<div
-								class="rounded border border-border-light bg-background-secondary-light p-2 {[
-									'notes',
-									'description_short'
-								].includes(key)
+								class="rounded border border-border-light bg-background-secondary-light p-2 {key ===
+								'notes'
 									? 'col-span-1 sm:col-span-2'
 									: ''}"
 							>
@@ -369,14 +367,6 @@
 											${typeof selectedBean[key] === 'number'
 												? selectedBean[key].toFixed(2)
 												: selectedBean[key]}
-										{:else if key === 'link'}
-											{#if selectedBean[key] && typeof selectedBean[key] === 'string'}
-												<a
-													href={selectedBean[key]}
-													target="_blank"
-													class="text-blue-400 hover:underline">{selectedBean[key]}</a
-												>
-											{/if}
 										{:else}
 											{selectedBean[key]}
 										{/if}
@@ -385,27 +375,99 @@
 							</div>
 						{/if}
 					{/each}
+
+					<!-- Catalog data fields (from coffee_catalog) -->
+					{@const catalogData = selectedBean.coffee_catalog}
+					{#if catalogData}
+						{#each ['ai_description', 'arrival_date', 'region', 'processing', 'cultivar_detail'] as key}
+							{#if catalogData[key] !== undefined}
+								<div
+									class="rounded border border-border-light bg-background-secondary-light p-2 {key ===
+									'ai_description'
+										? 'col-span-1 sm:col-span-2'
+										: ''}"
+								>
+									<span class="text-primary-light font-medium"
+										>{key.replace(/_/g, ' ').toUpperCase()}:</span
+									>
+									<span
+										class="ml-2 text-text-primary-light {key === 'ai_description'
+											? 'zinc-300 space-pre-wrap block'
+											: ''}"
+									>
+										{catalogData[key]}
+									</span>
+								</div>
+							{/if}
+						{/each}
+
+						{#if catalogData.link}
+							<div class="rounded border border-border-light bg-background-secondary-light p-2">
+								<span class="text-primary-light font-medium">LINK:</span>
+								<a
+									href={catalogData.link}
+									target="_blank"
+									class="ml-2 text-blue-400 hover:underline"
+								>
+									{catalogData.link}
+								</a>
+							</div>
+						{/if}
+					{/if}
 				{:else}
+					<!-- Page 2: Additional catalog details -->
+					{@const catalogData = selectedBean.coffee_catalog}
+					{#if catalogData}
+						{#each ['grade', 'appearance', 'roast_recs', 'type', 'lot_size', 'bag_size', 'packaging', 'drying_method', 'farm_notes', 'cupping_notes', 'stocked_date', 'unstocked_date'] as key}
+							{#if catalogData[key] !== undefined && catalogData[key] !== null && catalogData[key] !== ''}
+								<div
+									class="rounded border border-border-light bg-background-secondary-light p-2 {[
+										'farm_notes',
+										'cupping_notes',
+										'roast_recs'
+									].includes(key)
+										? 'col-span-1 sm:col-span-2'
+										: ''}"
+								>
+									<span class="text-primary-light font-medium"
+										>{key.replace(/_/g, ' ').toUpperCase()}:</span
+									>
+									<span
+										class="ml-2 text-text-primary-light {[
+											'farm_notes',
+											'cupping_notes',
+											'roast_recs'
+										].includes(key)
+											? 'zinc-300 space-pre-wrap block'
+											: ''}"
+									>
+										{catalogData[key]}
+									</span>
+								</div>
+							{/if}
+						{/each}
+
+						{#if catalogData.cost_lb}
+							<div class="rounded border border-border-light bg-background-secondary-light p-2">
+								<span class="text-primary-light font-medium">CATALOG COST:</span>
+								<span class="ml-2 text-text-primary-light">
+									${typeof catalogData.cost_lb === 'number'
+										? catalogData.cost_lb.toFixed(2)
+										: catalogData.cost_lb}/lb
+								</span>
+							</div>
+						{/if}
+					{/if}
+
+					<!-- Show other inventory fields that aren't shown on page 1 -->
 					{#each Object.entries(selectedBean) as [key, value]}
-						{#if !['score_value', 'rank', 'notes', 'purchase_date', 'arrival_date', 'last_updated', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'description_short', 'id'].includes(key)}
+						{#if !['notes', 'purchase_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'last_updated', 'rank', 'id', 'user', 'catalog_id', 'coffee_catalog'].includes(key) && value !== undefined && value !== null && value !== ''}
 							<div class="rounded border border-border-light bg-background-secondary-light p-2">
 								<span class="text-primary-light font-medium"
 									>{key.replace(/_/g, ' ').toUpperCase()}:</span
 								>
-								<span
-									class="ml-2 text-text-primary-light {key === 'notes'
-										? 'zinc-300 space-pre-wrap block'
-										: ''}"
-								>
-									{#if key === 'bean_cost' || key === 'tax_ship_cost'}
-										${typeof value === 'number' ? value.toFixed(2) : value}
-									{:else if key === 'link'}
-										{#if value && typeof value === 'string'}
-											<a href={value} target="_blank" class="text-blue-400 hover:underline"
-												>{value}</a
-											>
-										{/if}
-									{:else if key === 'rank'}
+								<span class="ml-2 text-text-primary-light">
+									{#if key === 'rank'}
 										{typeof value === 'number' ? Math.round(value) : value}
 									{:else}
 										{value}

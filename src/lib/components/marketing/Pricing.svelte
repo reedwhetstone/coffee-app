@@ -30,7 +30,7 @@
 		>
 			<!-- Free Plan -->
 			<div
-				class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10 cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-background-tertiary-light hover:scale-105"
+				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-background-tertiary-light xl:p-10"
 				onclick={() => handleSelectPlan('free')}
 				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('free')}
 				tabindex="0"
@@ -108,7 +108,10 @@
 					</ul>
 				</div>
 				<button
-					onclick={(e) => { e.stopPropagation(); handleSelectPlan('free'); }}
+					onclick={(e) => {
+						e.stopPropagation();
+						handleSelectPlan('free');
+					}}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
 					Get started free
@@ -117,7 +120,7 @@
 
 			<!-- Professional Plan -->
 			<div
-				class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-2 ring-background-tertiary-light xl:p-10 cursor-pointer transition-all duration-200 hover:ring-background-tertiary-light hover:scale-105 hover:shadow-lg"
+				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-2 ring-background-tertiary-light transition-all duration-200 hover:scale-105 hover:shadow-lg hover:ring-background-tertiary-light xl:p-10"
 				onclick={() => handleSelectPlan('professional')}
 				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('professional')}
 				tabindex="0"
@@ -243,7 +246,10 @@
 					</ul>
 				</div>
 				<button
-					onclick={(e) => { e.stopPropagation(); handleSelectPlan('professional'); }}
+					onclick={(e) => {
+						e.stopPropagation();
+						handleSelectPlan('professional');
+					}}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
 					Start professional trial
@@ -252,7 +258,7 @@
 
 			<!-- Enterprise Plan -->
 			<div
-				class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10 cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-background-tertiary-light hover:scale-105"
+				class="flex cursor-pointer flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-background-tertiary-light xl:p-10"
 				onclick={() => handleSelectPlan('enterprise')}
 				onkeydown={(e) => e.key === 'Enter' && handleSelectPlan('enterprise')}
 				tabindex="0"
@@ -374,7 +380,10 @@
 					</ul>
 				</div>
 				<button
-					onclick={(e) => { e.stopPropagation(); goto('/contact'); }}
+					onclick={(e) => {
+						e.stopPropagation();
+						goto('/contact');
+					}}
 					class="mt-8 block w-full rounded-md bg-text-primary-light px-3 py-2 text-center text-sm font-semibold text-background-primary-light shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-primary-light"
 				>
 					Schedule consultation

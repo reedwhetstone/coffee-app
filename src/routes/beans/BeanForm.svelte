@@ -21,63 +21,30 @@
 		bean
 			? { ...bean }
 			: {
-					name: '',
+					// User-specific inventory fields only
+					manual_name: '',
 					rank: null,
 					notes: '',
 					purchase_date: '',
 					purchased_qty_lbs: 0,
 					bean_cost: 0.0,
 					tax_ship_cost: 0.0,
-					link: '',
 					last_updated: new Date().toISOString(),
-					// Add all the new fields that match coffee_catalog
-					score_value: null,
-					arrival_date: '',
-					region: '',
-					processing: '',
-					drying_method: '',
-					lot_size: '',
-					bag_size: '',
-					packaging: '',
-					cultivar_detail: '',
-					grade: '',
-					appearance: '',
-					roast_recs: '',
-					type: '',
-					description_short: '',
-					description_long: '',
-					farm_notes: '',
 					catalog_id: null
 				}
 	);
 
 	function resetFormData() {
 		formData = {
-			name: '',
+			// User-specific inventory fields only
+			manual_name: '',
 			rank: null,
 			notes: '',
 			purchase_date: '',
 			purchased_qty_lbs: 0,
 			bean_cost: 0.0,
 			tax_ship_cost: 0.0,
-			link: '',
 			last_updated: new Date().toISOString(),
-			score_value: null,
-			arrival_date: '',
-			region: '',
-			processing: '',
-			drying_method: '',
-			lot_size: '',
-			bag_size: '',
-			packaging: '',
-			cultivar_detail: '',
-			grade: '',
-			appearance: '',
-			roast_recs: '',
-			type: '',
-			description_short: '',
-			description_long: '',
-			farm_notes: '',
 			catalog_id: null
 		};
 	}
@@ -97,49 +64,45 @@
 	function populateFromCatalog(catalogBean: any) {
 		if (!catalogBean) return;
 
-		// Create a comprehensive mapping from coffee_catalog to green_coffee_inv
+		// Only set catalog_id and default cost from catalog
 		formData = {
-			...formData, // Keep existing fields like purchase_date that aren't from catalog
-
-			// Map catalog fields to form fields
-			name: catalogBean.name,
-			score_value: catalogBean.score_value,
-			arrival_date: catalogBean.arrival_date || '',
-			region: catalogBean.region || '',
-			processing: catalogBean.processing || '',
-			drying_method: catalogBean.drying_method || '',
-			lot_size: catalogBean.lot_size || '',
-			bag_size: catalogBean.bag_size || '',
-			packaging: catalogBean.packaging || '',
-			cultivar_detail: catalogBean.cultivar_detail || '',
-			grade: catalogBean.grade || '',
-			appearance: catalogBean.appearance || '',
-			roast_recs: catalogBean.roast_recs || '',
-			type: catalogBean.type || '',
-			description_short: catalogBean.description_short || '',
-			description_long: catalogBean.description_long || '',
-			farm_notes: catalogBean.farm_notes || '',
-			link: catalogBean.link || '',
-			// Format bean_cost to ensure it's a proper decimal number
-			bean_cost:
-				typeof catalogBean.cost_lb === 'number' ? parseFloat(catalogBean.cost_lb.toFixed(2)) : 0.0,
+			...formData, // Keep existing user fields
 			catalog_id: catalogBean.id,
-			cupping_notes: catalogBean.cupping_notes || '',
-			source: catalogBean.source || ''
+			// Set default bean cost from catalog cost if available
+			bean_cost:
+				typeof catalogBean.cost_lb === 'number'
+					? parseFloat(catalogBean.cost_lb.toFixed(2))
+					: formData.bean_cost
 		};
 
-		// Log to ensure we're mapping everything correctly
-		console.log('Populated form from catalog bean:', { catalogBean, formData });
+		console.log('Set catalog reference:', { catalogId: catalogBean.id, catalogBean, formData });
 	}
 
 	async function handleSubmit() {
 		try {
+			// Validate required fields based on mode
+			if (!isManualEntry && !selectedCatalogBean) {
+				alert('Please select a coffee from the catalog');
+				return;
+			}
+
+			if (isManualEntry && !formData.manual_name?.trim()) {
+				alert('Please enter a coffee name');
+				return;
+			}
+
 			const cleanedBean = Object.fromEntries(
 				Object.entries(formData).map(([key, value]) => [
 					key,
 					value === '' || value === undefined ? null : value
 				])
 			);
+
+			// For manual entry, use the manual_name as the name
+			if (isManualEntry && formData.manual_name) {
+				cleanedBean.name = formData.manual_name;
+				cleanedBean.catalog_id = null; // No catalog reference for manual entries
+			}
 
 			cleanedBean.last_updated = new Date().toISOString();
 
@@ -269,18 +232,35 @@
 		</div>
 	{/if}
 
-	<!-- Existing form fields -->
-	<div class="grid grid-cols-2 gap-4">
-		<div>
-			<label for="name" class="block text-sm font-medium text-text-primary-light">Name</label>
-			<input
-				id="name"
-				type="text"
-				bind:value={formData.name}
-				class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
-				required
-			/>
+	<!-- Selected bean display (catalog selection shows name) -->
+	{#if !isManualEntry && selectedCatalogBean}
+		<div
+			class="mb-4 rounded border border-background-tertiary-light/20 bg-background-tertiary-light/10 p-4"
+		>
+			<h3 class="font-semibold text-text-primary-light">Selected Coffee:</h3>
+			<p class="text-sm text-text-secondary-light">{selectedCatalogBean.name}</p>
+			<p class="text-xs text-text-secondary-light">From: {selectedCatalogBean.source}</p>
 		</div>
+	{/if}
+
+	<!-- User-specific form fields -->
+	<div class="grid grid-cols-2 gap-4">
+		<!-- Manual entry name field -->
+		{#if isManualEntry}
+			<div class="col-span-2">
+				<label for="manual-name" class="block text-sm font-medium text-text-primary-light"
+					>Coffee Name</label
+				>
+				<input
+					id="manual-name"
+					type="text"
+					bind:value={formData.manual_name}
+					class="mt-1 block w-full rounded bg-background-tertiary-light text-text-primary-light"
+					required
+					placeholder="Enter coffee name for manual entry"
+				/>
+			</div>
+		{/if}
 
 		<div>
 			<label for="purchase_date" class="block text-sm font-medium text-text-primary-light"

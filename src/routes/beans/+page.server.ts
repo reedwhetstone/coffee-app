@@ -13,7 +13,38 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
 			.single();
 
 		if (shareData) {
-			let query = supabase.from('green_coffee_inv').select('*');
+			let query = supabase.from('green_coffee_inv').select(`
+				*,
+				coffee_catalog (
+					name,
+					score_value,
+					arrival_date,
+					region,
+					processing,
+					drying_method,
+					lot_size,
+					bag_size,
+					packaging,
+					cultivar_detail,
+					grade,
+					appearance,
+					roast_recs,
+					type,
+					description_short,
+					description_long,
+					farm_notes,
+					link,
+					cost_lb,
+					source,
+					stocked,
+					cupping_notes,
+					stocked_date,
+					unstocked_date,
+					ai_description,
+					ai_tasting_notes,
+					public_coffee
+				)
+			`);
 
 			if (shareData.resource_id === 'all') {
 				query = query.eq('user', shareData.user_id);
@@ -46,7 +77,40 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
 
 	const { data: greenCoffeeData, error } = await supabase
 		.from('green_coffee_inv')
-		.select('*')
+		.select(
+			`
+			*,
+			coffee_catalog (
+				name,
+				score_value,
+				arrival_date,
+				region,
+				processing,
+				drying_method,
+				lot_size,
+				bag_size,
+				packaging,
+				cultivar_detail,
+				grade,
+				appearance,
+				roast_recs,
+				type,
+				description_short,
+				description_long,
+				farm_notes,
+				link,
+				cost_lb,
+				source,
+				stocked,
+				cupping_notes,
+				stocked_date,
+				unstocked_date,
+				ai_description,
+				ai_tasting_notes,
+				public_coffee
+			)
+		`
+		)
 		.order('purchase_date', { ascending: false });
 
 	if (error) throw error;

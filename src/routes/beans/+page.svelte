@@ -5,6 +5,8 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
+	import type { TastingNotes } from '$lib/types/coffee.types';
 
 	// Define the type for the page data
 	type PageData = {
@@ -272,6 +274,41 @@
 		if (value >= 85) return '#f97316'; // orange-500
 		return '#ef4444'; // red-500
 	}
+
+	/**
+	 * Parses AI tasting notes JSON data safely
+	 * @param tastingNotesJson - JSON string from database
+	 * @returns Parsed tasting notes or null if invalid
+	 */
+	function parseTastingNotes(tastingNotesJson: string | null | object): TastingNotes | null {
+		if (!tastingNotesJson) return null;
+
+		try {
+			// Handle both string and object formats (Supabase jsonb can return either)
+			let parsed: any;
+			if (typeof tastingNotesJson === 'string') {
+				parsed = JSON.parse(tastingNotesJson);
+			} else if (typeof tastingNotesJson === 'object') {
+				parsed = tastingNotesJson;
+			} else {
+				return null;
+			}
+
+			// Validate that required properties exist
+			if (
+				parsed.body &&
+				parsed.flavor &&
+				parsed.acidity &&
+				parsed.sweetness &&
+				parsed.fragrance_aroma
+			) {
+				return parsed as TastingNotes;
+			}
+		} catch (error) {
+			console.warn('Failed to parse tasting notes:', error, 'Input:', tastingNotesJson);
+		}
+		return null;
+	}
 </script>
 
 <div class="">
@@ -342,6 +379,16 @@
 		{:else}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 				{#each $filteredData as bean}
+					{@const catalogData = bean.coffee_catalog}
+					{@const displayName = catalogData?.name || bean.name}
+					{@const displaySource = catalogData?.source || 'Unknown Source'}
+					{@const displayAiDescription = catalogData?.ai_description}
+					{@const displayRegion = catalogData?.region}
+					{@const displayProcessing = catalogData?.processing}
+					{@const displayCultivar = catalogData?.cultivar_detail}
+					{@const displayArrival = catalogData?.arrival_date}
+					{@const displayScore = catalogData?.score_value}
+					{@const tastingNotes = parseTastingNotes(catalogData?.ai_tasting_notes)}
 					<button
 						type="button"
 						class="group rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
@@ -356,35 +403,51 @@
 								<h3
 									class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
 								>
-									{bean.name}
+									{displayName}
 								</h3>
 								<div class="mt-1 flex items-center justify-between">
 									<p class="text-sm font-medium text-background-tertiary-light">
-										{bean.source}
+										{displaySource}
 									</p>
 									<!-- Mobile: Price next to supplier name -->
 									<div class="text-right sm:hidden">
 										<div class="font-bold text-background-tertiary-light">
 											${(bean.purchased_qty_lbs
-												? ((bean.tax_ship_cost || 0) + (bean.bean_cost || 0)) / bean.purchased_qty_lbs
+												? ((bean.tax_ship_cost || 0) + (bean.bean_cost || 0)) /
+													bean.purchased_qty_lbs
 												: 0
 											).toFixed(2)}/lb
 										</div>
 									</div>
 								</div>
+								{#if displayAiDescription}
+									<p class="my-4 text-xs text-text-secondary-light">
+										{displayAiDescription}
+									</p>
+								{/if}
 
-								<div
-									class="mt-3 flex-col gap-2 text-xs text-text-secondary-light sm:grid-cols-2"
-								>
-									<div><span class="font-medium">Cultivar:</span> {bean.cultivar_detail || '-'}</div>
+								<!-- Mobile: Chart full width -->
+								{#if tastingNotes}
+									<div class="mt-2 px-6 sm:hidden">
+										<TastingNotesRadar {tastingNotes} size={300} responsive={true} />
+									</div>
+								{/if}
+
+								<div class="mt-3 flex-col gap-2 text-xs text-text-secondary-light sm:grid-cols-2">
+									<div><span class="font-medium">Region:</span> {displayRegion || '-'}</div>
 									<div>
-										{#if bean.processing}
-											<span>Processing: {bean.processing}</span>
+										{#if displayProcessing}
+											<span>Processing: {displayProcessing}</span>
 										{/if}
 									</div>
 									<div>
-										{#if bean.arrival_date}
-											<span>Arrival: {bean.arrival_date}</span>
+										{#if displayCultivar}
+											<span>Cultivar: {displayCultivar}</span>
+										{/if}
+									</div>
+									<div>
+										{#if displayArrival}
+											<span>Arrival: {displayArrival}</span>
 										{/if}
 									</div>
 									<div>
@@ -395,7 +458,7 @@
 								</div>
 							</div>
 
-							<!-- Desktop: Price and score in sidebar -->
+							<!-- Desktop: Price, score, and chart in sidebar -->
 							<div class="hidden flex-col items-end space-y-2 sm:flex">
 								<div class="text-right">
 									<div class="font-bold text-background-tertiary-light">
@@ -404,12 +467,17 @@
 											: 0
 										).toFixed(2)}/lb
 									</div>
-									{#if bean.score_value}
+									{#if displayScore}
 										<div class="mt-1 text-xs text-text-secondary-light">
-											Score: {Math.round(bean.score_value)}
+											Score: {Math.round(displayScore)}
 										</div>
 									{/if}
 								</div>
+								{#if tastingNotes}
+									<div class="pt-4">
+										<TastingNotesRadar {tastingNotes} size={180} />
+									</div>
+								{/if}
 							</div>
 						</div>
 

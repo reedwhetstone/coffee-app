@@ -411,13 +411,12 @@
 					</div>
 				{/if}
 
-
 				<div
 					class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-6 sm:mt-20 sm:gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-3 lg:gap-12"
 				>
 					<!-- Free Plan -->
 					<div
-						class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10 cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-background-tertiary-light hover:scale-105"
+						class="flex cursor-pointer flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-background-tertiary-light xl:p-10"
 						onclick={() => goto('/auth')}
 						onkeydown={(e) => e.key === 'Enter' && goto('/auth')}
 						tabindex="0"
@@ -495,7 +494,10 @@
 							</ul>
 						</div>
 						<button
-							onclick={(e) => { e.stopPropagation(); goto('/auth'); }}
+							onclick={(e) => {
+								e.stopPropagation();
+								goto('/auth');
+							}}
 							class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
 						>
 							Get started free
@@ -506,9 +508,10 @@
 					{#if true}
 						{@const currentPlan = isAnnual ? plans.annual : plans.monthly}
 						<div
-							class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-2 ring-background-tertiary-light xl:p-10 cursor-pointer transition-all duration-200 hover:ring-background-tertiary-light hover:scale-105 hover:shadow-lg"
+							class="flex cursor-pointer flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-2 ring-background-tertiary-light transition-all duration-200 hover:scale-105 hover:shadow-lg hover:ring-background-tertiary-light xl:p-10"
 							onclick={() => handlePlanSelect(isAnnual ? 'annual' : 'monthly')}
-							onkeydown={(e) => e.key === 'Enter' && handlePlanSelect(isAnnual ? 'annual' : 'monthly')}
+							onkeydown={(e) =>
+								e.key === 'Enter' && handlePlanSelect(isAnnual ? 'annual' : 'monthly')}
 							tabindex="0"
 							role="button"
 							aria-label="Select Professional Plan"
@@ -520,7 +523,10 @@
 										class="flex items-center rounded-full bg-background-secondary-light p-1 ring-1 ring-border-light"
 									>
 										<button
-											onclick={(e) => { e.stopPropagation(); isAnnual = false; }}
+											onclick={(e) => {
+												e.stopPropagation();
+												isAnnual = false;
+											}}
 											class="rounded-full px-3 py-1.5 text-xs font-medium transition-all {!isAnnual
 												? 'bg-background-tertiary-light text-white'
 												: 'text-text-secondary-light hover:text-text-primary-light'}"
@@ -528,14 +534,19 @@
 											Monthly
 										</button>
 										<button
-											onclick={(e) => { e.stopPropagation(); isAnnual = true; }}
+											onclick={(e) => {
+												e.stopPropagation();
+												isAnnual = true;
+											}}
 											class="rounded-full px-3 py-1.5 text-xs font-medium transition-all {isAnnual
 												? 'bg-background-tertiary-light text-white'
 												: 'text-text-secondary-light hover:text-text-primary-light'}"
 										>
 											Annual
 											{#if !isAnnual}
-												<span class="ml-1 rounded-full bg-green-500/20 px-1.5 py-0.5 text-xs text-green-400">
+												<span
+													class="ml-1 rounded-full bg-green-500/20 px-1.5 py-0.5 text-xs text-green-400"
+												>
 													Save $28
 												</span>
 											{/if}
@@ -590,14 +601,20 @@
 							</div>
 							{#if data?.user}
 								<button
-									onclick={(e) => { e.stopPropagation(); handlePlanSelect(isAnnual ? 'annual' : 'monthly'); }}
+									onclick={(e) => {
+										e.stopPropagation();
+										handlePlanSelect(isAnnual ? 'annual' : 'monthly');
+									}}
 									class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
 								>
 									Start professional trial
 								</button>
 							{:else}
 								<button
-									onclick={(e) => { e.stopPropagation(); handleSignIn(); }}
+									onclick={(e) => {
+										e.stopPropagation();
+										handleSignIn();
+									}}
 									class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
 								>
 									Create an Account
@@ -611,7 +628,7 @@
 
 					<!-- Enterprise Plan -->
 					<div
-						class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10 cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-background-tertiary-light hover:scale-105"
+						class="flex cursor-pointer flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-background-tertiary-light xl:p-10"
 						onclick={() => goto('/contact')}
 						onkeydown={(e) => e.key === 'Enter' && goto('/contact')}
 						tabindex="0"
@@ -733,7 +750,10 @@
 							</ul>
 						</div>
 						<button
-							onclick={(e) => { e.stopPropagation(); goto('/contact'); }}
+							onclick={(e) => {
+								e.stopPropagation();
+								goto('/contact');
+							}}
 							class="mt-8 block w-full rounded-md bg-text-primary-light px-3 py-2 text-center text-sm font-semibold text-background-primary-light shadow-sm transition-all duration-200 hover:bg-opacity-90"
 						>
 							Schedule consultation
