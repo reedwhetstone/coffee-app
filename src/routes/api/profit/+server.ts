@@ -13,11 +13,11 @@ interface RoastProfile {
 
 interface Row {
 	id: number;
-	name: string;
 	purchase_date: string | null;
 	purchased_qty_lbs: number | null;
 	bean_cost: number | null;
 	tax_ship_cost: number | null;
+	catalog_id: number | null;
 	coffee_catalog?: {
 		name: string;
 		score_value: number | null;
@@ -40,14 +40,18 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		// Fetch sales data
+		// Fetch sales data with coffee catalog details
 		const { data: sales, error: salesError } = await supabase
 			.from('sales')
 			.select(
 				`
 				*,
 				green_coffee_inv!inner (
-					name
+					id,
+					catalog_id,
+					coffee_catalog!catalog_id (
+						name
+					)
 				)
 			`
 			)
@@ -64,12 +68,12 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			.select(
 				`
 				id,
-				name,
 				purchase_date,
 				purchased_qty_lbs,
 				bean_cost,
 				tax_ship_cost,
-				coffee_catalog (
+				catalog_id,
+				coffee_catalog!catalog_id (
 					name,
 					score_value,
 					arrival_date,
@@ -99,7 +103,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		const formattedSales = sales.map((sale) => ({
 			...sale,
-			coffee_name: sale.green_coffee_inv?.name || null
+			coffee_name: sale.green_coffee_inv?.coffee_catalog?.name || null
 		}));
 
 		const formattedProfitRows = profitData.map((row: Row) => {
@@ -113,8 +117,8 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			const profit = totalSales - totalCost;
 			const profitMargin = totalCost > 0 ? (profit / totalCost) * 100 : 0;
 
-			// Use coffee catalog name if available, fallback to green_coffee_inv name
-			const displayName = row.coffee_catalog?.name || row.name;
+			// Use coffee catalog name if available
+			const displayName = row.coffee_catalog?.name;
 
 			return {
 				id: row.id,
@@ -221,8 +225,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				`
                 *,
                 green_coffee_inv (
-                    name,
-                    purchase_date
+                    id,
+                    purchase_date,
+                    catalog_id,
+                    coffee_catalog!catalog_id (
+                        name
+                    )
                 )
             `
 			)
@@ -235,7 +243,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// Format the response to match the expected structure
 		const formattedSale = {
 			...newSale,
-			coffee_name: newSale.green_coffee_inv?.name || null,
+			coffee_name: newSale.green_coffee_inv?.coffee_catalog?.name || null,
 			purchase_date: newSale.green_coffee_inv?.purchase_date || null
 		};
 

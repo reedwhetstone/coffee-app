@@ -117,3 +117,68 @@ For tasks involving multiple file changes or system-wide updates:
 - Clean up unused imports/variables when they're introduced by your changes
 - For pre-existing warnings, only fix if they're in files you're actively modifying
 - Run type checking after significant changes: `pnpm check`
+
+## Database Schema Awareness
+
+Before writing any database queries:
+- ALWAYS verify column existence in the target table
+- Understand foreign key relationships (e.g., `green_coffee_inv.catalog_id` → `coffee_catalog.id`)
+- Use proper Supabase join syntax: `table!foreign_key_column (columns...)`
+- Test queries with actual data to ensure joins work correctly
+- When modifying existing APIs, check all related queries for consistency
+
+### Key Relationships in This Project
+- `green_coffee_inv.catalog_id` → `coffee_catalog.id` (coffee details)
+- `roast_profiles.coffee_id` → `green_coffee_inv.id` (user's coffee inventory)
+- `sales.green_coffee_inv_id` → `green_coffee_inv.id` (sales tracking)
+
+## Todo List Usage Guidelines
+
+Use TodoWrite for complex tasks that meet any of these criteria:
+- **Multi-step tasks**: 3+ distinct operations or phases
+- **Multiple file changes**: Affects 3+ files across different directories
+- **System-wide updates**: Changes that impact multiple features/routes
+- **Data structure changes**: Database schema modifications or API restructuring
+- **User-requested features**: When user provides multiple requirements or a feature list
+
+Do NOT use TodoWrite for:
+- Single file edits or simple bug fixes
+- Straightforward operations (single API call, simple component update)
+- Immediate tasks that can be completed in 1-2 steps
+- Pure research or informational requests
+
+## API Design Pattern Guidelines
+
+Follow these patterns for consistent code organization:
+
+### When to Create API Endpoints (`/api/*/+server.ts`)
+- External data operations (CRUD for database entities)
+- Operations that require authentication/authorization
+- Features that might be called from multiple places
+- Complex business logic that belongs on the server
+
+### When to Create Shared Utilities (`src/lib/server/*.ts`)
+- Reusable logic used by multiple API endpoints
+- Database operation helpers
+- Complex calculations or data transformations
+- Authentication/validation functions
+
+### When to Use Inline Functions
+- Simple, endpoint-specific operations
+- One-time transformations within a single file
+- Basic data formatting or validation
+
+### Example Pattern
+```typescript
+// ✅ Good: Shared utility for common operation
+// src/lib/server/stockedStatusUtils.ts
+export async function updateStockedStatus(supabase, coffee_id, user_id) { ... }
+
+// ✅ Good: API endpoint uses shared utility
+// src/routes/api/update-stocked-status/+server.ts
+import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
+
+// ✅ Good: Other APIs also use the same utility
+// src/routes/api/roast-profiles/+server.ts
+import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
+```
