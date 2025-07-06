@@ -1,7 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
 
 // Define types
-type RouteFilters = Record<string, any>;
 type FilterState = {
 	routeId: string;
 	sortField: string | null;
@@ -39,7 +38,7 @@ const initialState: FilterState = {
 
 // Create the store
 function createFilterStore() {
-	const { subscribe, set, update } = writable<FilterState>(initialState);
+	const { subscribe, update } = writable<FilterState>(initialState);
 
 	/**
 	 * Initializes the filter store for a specific route with data

@@ -84,3 +84,36 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - API routes follow `/api/{feature}/+server.ts` pattern
 - Components use stores for shared state (`auth.ts`, `filterStore.ts`)
 - Database operations go through Supabase client with proper type safety
+
+## Database Schema Changes
+
+When database structure changes (table splits, joins, field moves):
+1. Identify all affected queries, components, and stores
+2. Update server-side queries first (*.server.ts files)
+3. Update client-side components that consume the data
+4. Update filter/search logic to handle new data structure
+5. Test that all CRUD operations work with new structure
+6. Update TypeScript types if needed
+
+## Joined Data Structure Patterns
+
+When working with joined database queries (table relationships):
+- Check if filter/search stores need updates for nested data access
+- Update helper functions to handle both direct and nested field access
+- Ensure sorting and filtering work with the new data structure
+- Test that unique value extraction works with joined data
+
+## Complex Task Management
+
+For tasks involving multiple file changes or system-wide updates:
+- ALWAYS use TodoWrite to break down the task into phases
+- Mark todos as in_progress before starting work
+- Complete todos immediately after finishing each step
+- For data structure changes, create separate todos for: server queries, client components, stores/services, and testing
+
+## TypeScript Diagnostics
+
+- Address TypeScript errors immediately during development
+- Clean up unused imports/variables when they're introduced by your changes
+- For pre-existing warnings, only fix if they're in files you're actively modifying
+- Run type checking after significant changes: `pnpm check`
