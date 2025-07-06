@@ -399,41 +399,6 @@
 			</div>
 		</div>
 
-		<!-- Recent Purchases -->
-		<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light mb-4 text-lg font-semibold">Recent Purchases</h3>
-			<div class="space-y-2">
-				{#each $filteredData
-					.filter(bean => bean.purchase_date)
-					.sort((a, b) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime())
-					.slice(0, 5) as recentBean}
-					<button
-						type="button"
-						class="w-full rounded-lg bg-background-primary-light p-3 text-left transition-colors hover:bg-background-tertiary-light/20"
-						onclick={() => selectBean(recentBean)}
-					>
-						<div class="flex items-center justify-between">
-							<div>
-								<h4 class="text-primary-light font-medium">
-									{recentBean.coffee_catalog?.name || recentBean.name}
-								</h4>
-								<p class="text-sm text-text-secondary-light">
-									{recentBean.coffee_catalog?.source || recentBean.source} • {recentBean.purchase_date}
-								</p>
-							</div>
-							<div class="text-right">
-								<div class="text-background-tertiary-light font-medium">
-									{recentBean.purchased_qty_lbs?.toFixed(1)} lbs
-								</div>
-								<div class="text-sm text-text-secondary-light">
-									${((recentBean.bean_cost || 0) + (recentBean.tax_ship_cost || 0)).toFixed(2)}
-								</div>
-							</div>
-						</div>
-					</button>
-				{/each}
-			</div>
-		</div>
 	{/if}
 
 	<!-- Bean Profile Section -->
@@ -487,23 +452,7 @@
 	<!-- Quick Actions -->
 	{#if $filteredData && $filteredData.length > 0}
 		<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-			<div class="flex flex-wrap gap-3">
-				<button
-					onclick={() => handleAddNewBean()}
-					class="rounded-lg bg-background-tertiary-light px-4 py-2 text-white transition-all duration-200 hover:bg-opacity-90"
-				>
-					Add New Coffee
-				</button>
-				<button
-					onclick={() => {
-						// Trigger filter to show only stocked items
-						filterStore.setFilter('stocked', true);
-					}}
-					class="rounded-lg border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-				>
-					View Stocked Only
-				</button>
-			</div>
+			
 			<div class="text-sm text-text-secondary-light">
 				Showing {$filteredData.length} of {data?.data?.length || 0} coffees
 			</div>
