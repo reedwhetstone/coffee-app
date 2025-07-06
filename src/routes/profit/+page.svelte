@@ -13,7 +13,6 @@
 		line
 	} from 'd3';
 	import { onMount } from 'svelte';
-	import { formatDateForDisplay } from '$lib/utils/dates';
 	import SaleForm from './SaleForm.svelte';
 	import { page } from '$app/state';
 	import type { PageData } from './$types';
