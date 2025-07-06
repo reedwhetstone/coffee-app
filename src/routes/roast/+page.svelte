@@ -5,7 +5,7 @@
 	// import RoastChart from './RoastChart.svelte';
 	import RoastProfileForm from './RoastProfileForm.svelte';
 	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import {
 		roastData,
 		roastEvents,
@@ -74,7 +74,7 @@
 
 	// Initialize filter store
 	$effect(() => {
-		const currentRoute = $page.url.pathname;
+		const currentRoute = page.url.pathname;
 		// If we have page data but filtered data is empty, initialize it
 		if (
 			data?.data?.length > 0 &&
@@ -276,7 +276,7 @@
 					data.data = result.data;
 
 					// Force an update of the filter store
-					const currentRoute = $page.url.pathname;
+					const currentRoute = page.url.pathname;
 					filterStore.initializeForRoute(currentRoute, result.data);
 
 					// Force an update of grouped profiles after a short delay
@@ -309,7 +309,7 @@
 		}
 
 		// Check if we should show the roast form based on navigation state
-		const state = $page.state as any;
+		const state = page.state as any;
 		console.log('Page state on mount:', state);
 
 		if (state?.showRoastForm) {
@@ -337,7 +337,7 @@
 		});
 
 		// Initialize filter store with roast data if needed
-		const currentRoute = $page.url.pathname;
+		const currentRoute = page.url.pathname;
 		if (
 			data?.data?.length > 0 &&
 			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)

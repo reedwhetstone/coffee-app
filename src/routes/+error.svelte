@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 </script>
 
 <div class="flex min-h-[50vh] items-center justify-center">
 	<div class="text-center">
 		<h1 class="text-4xl font-bold text-red-600">
-			{$page.status}: {$page.error?.message || 'Error'}
+			{page.status}: {page.error?.message || 'Error'}
 		</h1>
 		<p class="mt-4 text-background-primary-light">
-			{#if $page.status === 404}
+			{#if page.status === 404}
 				The page you're looking for doesn't exist.
-			{:else if $page.status === 403}
+			{:else if page.status === 403}
 				You don't have permission to access this page.
 			{:else}
 				Something went wrong. Please try again later.

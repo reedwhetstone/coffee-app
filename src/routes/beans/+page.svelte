@@ -3,7 +3,7 @@
 	import BeanForm from './BeanForm.svelte';
 	import BeanProfile from './BeanProfile.svelte';
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
@@ -31,7 +31,7 @@
 
 	// Initialize or clear filtered data based on current route and data
 	$effect(() => {
-		const currentRoute = $page.url.pathname;
+		const currentRoute = page.url.pathname;
 
 		// If we're on the beans route but have no data and filter store has data from another route, clear it
 		if (
@@ -125,7 +125,7 @@
 	// Function to load data
 	async function loadData() {
 		try {
-			const shareToken = $page.url.searchParams.get('share');
+			const shareToken = page.url.searchParams.get('share');
 			const url = shareToken ? `/api/data?share=${shareToken}` : '/api/data';
 
 			const response = await fetch(url);
@@ -141,7 +141,7 @@
 				if (data.data.length > 0 && !initializing) {
 					initializing = true;
 					setTimeout(() => {
-						filterStore.initializeForRoute($page.url.pathname, data.data);
+						filterStore.initializeForRoute(page.url.pathname, data.data);
 						initializing = false;
 					}, 0);
 				}
@@ -201,7 +201,7 @@
 
 	onMount(() => {
 		loadData().then(() => {
-			const searchState = $page.state as any;
+			const searchState = page.state as any;
 			console.log('Beans page searchState:', searchState);
 
 			// Check if we should show a bean based on the search state
@@ -384,8 +384,9 @@
 						acc[source].weight += bean.purchased_qty_lbs || 0;
 						acc[source].value += (bean.bean_cost || 0) + (bean.tax_ship_cost || 0);
 						return acc;
-					}, {})
-				) as [source, stats]}
+					}, {} as Record<string, { count: number; weight: number; value: number }>)
+				) as entry}
+					{@const [source, stats] = entry as [string, { count: number; weight: number; value: number }]}
 					<div class="rounded-lg bg-background-primary-light p-3">
 						<h4 class="text-primary-light font-medium">{source}</h4>
 						<div class="mt-2 space-y-1 text-sm text-text-secondary-light">

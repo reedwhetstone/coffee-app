@@ -172,17 +172,108 @@ const { data } = await supabase
 // Don't use: coffee_catalog!coffee_id - this field doesn't exist
 ```
 
+## SvelteKit Development Guidelines
+
+### Framework-Specific Patterns
+
+When working with SvelteKit 5 applications, follow these specific patterns:
+
+**Reactive State Management:**
+- Use `$state()` for component-local reactive variables
+- Use `$derived()` for computed values that depend on reactive state
+- Use `$effect()` for side effects that should run when dependencies change
+- Avoid `$:` reactive statements (Svelte 4 pattern) in favor of `$derived()` and `$effect()`
+
+**Page Store Migration (SvelteKit 2+):**
+- Replace `import { page } from '$app/stores'` with `import { page } from '$app/state'`
+- Remove `$` prefix from page references: `$page.url` becomes `page.url`
+- Update all reactive statements that depend on page to use `$effect()` or `$derived()`
+
+**Component Lifecycle:**
+- Use `onMount()` for initialization that needs DOM access
+- Use `$effect()` for reactive side effects
+- Use cleanup functions returned from `onMount()` or `$effect()` for teardown
+
+### Migration Workflows
+
+When migrating deprecated SvelteKit features:
+
+1. **Identify all usages** of the deprecated feature across the codebase
+2. **Create a TodoWrite list** breaking down the migration into phases:
+   - Search and catalog all usage locations
+   - Update imports and syntax
+   - Test functionality after each major change
+   - Run TypeScript and build verification
+3. **Update systematically** - one pattern at a time, not mixing multiple changes
+4. **Verify after each step** with `pnpm check` and `pnpm build`
+
+### SvelteKit-Specific Verification Steps
+
+After making changes to SvelteKit components:
+- Run `pnpm check` to verify TypeScript compliance
+- Run `pnpm build` to ensure SSR compatibility
+- Test reactive behavior in development mode
+- Verify that `$effect()` dependencies are properly captured
+
+## TypeScript Error Resolution
+
+### Systematic Approach to Type Safety
+
+When encountering TypeScript errors, follow this systematic approach:
+
+1. **Identify the root cause**: Understand why TypeScript cannot infer the correct type
+2. **Choose the appropriate solution**:
+   - Add explicit type annotations for complex destructuring
+   - Use type assertions when you know the type but TypeScript cannot infer it
+   - Create proper interfaces for complex object structures
+   - Use generic constraints for reusable functions
+
+### Common TypeScript Patterns in SvelteKit
+
+**Complex Destructuring with Type Safety:**
+```typescript
+// ❌ Problematic: TypeScript cannot infer stats type
+{#each Object.entries(data) as [key, stats]}
+
+// ✅ Correct: Explicit type annotation
+{#each Object.entries(data) as entry}
+  {@const [key, stats] = entry as [string, { count: number; weight: number }]}
+```
+
+**Reactive Computations with Proper Typing:**
+```typescript
+// ✅ Type-safe reactive computation
+let totalValue = $derived(
+  $filteredData.reduce((sum: number, item: Item) => sum + (item.value || 0), 0)
+);
+```
+
+**Safe Property Access:**
+```typescript
+// ✅ Handle both direct and nested property access
+const displayName = item.coffee_catalog?.name || item.name || 'Unknown';
+```
+
+### TypeScript Error Prevention
+
+- Always provide type annotations for reduce() accumulators
+- Use proper typing for Object.entries() when destructuring
+- Add null checks for optional chaining operations
+- Define interfaces for complex objects passed between components
+
 ## Todo List Usage Guidelines
 
-### Decision Tree for TodoWrite Usage
+### Enhanced Decision Tree for TodoWrite Usage
 
 **ALWAYS use TodoWrite when:**
+- Framework migrations or version updates (e.g., SvelteKit page store migration)
 - Task involves 3+ distinct operations or phases
 - Changes affect 3+ files across different directories
 - System-wide updates impact multiple features/routes
 - Database schema modifications or API restructuring
 - User provides multiple requirements or a feature list
 - Task requires planning implementation steps before coding
+- TypeScript errors span multiple files or require systematic resolution
 
 **NEVER use TodoWrite when:**
 - Single file edits or simple bug fixes
@@ -190,6 +281,7 @@ const { data } = await supabase
 - Immediate tasks completed in 1-2 steps
 - Pure research or informational requests
 - Reading files or understanding codebase
+- Simple TypeScript errors in a single location
 
 ### Examples of When to Use TodoWrite
 
@@ -223,6 +315,9 @@ Reason: Research/informational request
 - Only have ONE todo in `in_progress` at a time
 - Break complex tasks into specific, actionable items
 - Use descriptive task names that clearly indicate the work required
+- **Always include verification steps** as separate todos (e.g., "Run TypeScript check", "Test build")
+- For migration tasks, include separate todos for each phase of the migration
+- When fixing TypeScript errors, create separate todos for each affected file or error type
 
 ## API Design Pattern Guidelines
 

@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import { onMount, tick } from 'svelte';
 	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';
 
@@ -52,7 +52,7 @@
 	 * Ensures the filter store is properly set up for the home route
 	 */
 	$effect(() => {
-		const currentRoute = $page.url.pathname;
+		const currentRoute = page.url.pathname;
 
 		// Initialize filter store if we have data and it's not already initialized for this route
 		if (
