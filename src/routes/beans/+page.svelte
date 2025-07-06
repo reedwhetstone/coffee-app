@@ -340,100 +340,93 @@
 				</button>
 			</div>
 		{:else}
-			<div class="space-y-2 md:space-y-4">
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 				{#each $filteredData as bean}
 					<button
 						type="button"
-						class="w-full cursor-pointer rounded-lg border border-border-light bg-background-secondary-light p-3 text-left shadow-md transition-colors hover:border hover:border-background-tertiary-light md:p-4"
+						class="group rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
 						onclick={() => selectBean(bean)}
 					>
-						<div class="flex flex-col gap-2 sm:flex-row sm:justify-between">
-							<div>
-								<h3 class="text-primary-light text-base font-semibold md:text-lg">
+						<!-- Mobile-optimized layout -->
+						<div
+							class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0"
+						>
+							<!-- Content section -->
+							<div class="flex-1">
+								<h3
+									class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
+								>
 									{bean.name}
 								</h3>
-								<p class="text-primary-light text-sm">{bean.source}</p>
-							</div>
-							<div class="text-left sm:text-right">
-								<p class="text-primary-light text-base font-bold md:text-lg">
-									${(bean.purchased_qty_lbs
-										? ((bean.tax_ship_cost || 0) + (bean.bean_cost || 0)) / bean.purchased_qty_lbs
-										: 0
-									).toFixed(2)}/lb
-								</p>
-							</div>
-						</div>
-						<div>
-							<div
-								class="mt-2 grid grid-cols-1 gap-2 text-sm text-text-primary-light sm:grid-cols-3 sm:gap-4"
-							>
-								<div class="flex flex-col gap-2">
-									<div>
-										<span class="text-primary-light">Cultivar:</span>
-										{bean.cultivar_detail || '-'}
-									</div>
-									<div>
-										<span class="text-primary-light">Arrival:</span>
-										{bean.arrival_date || '-'}
-									</div>
-								</div>
-								<div class="flex flex-col gap-2">
-									<div>
-										<span class="text-primary-light">Processing:</span>
-										{bean.processing || '-'}
-									</div>
-									<div>
-										<span class="text-primary-light">Purchase:</span>
-										{bean.purchase_date || '-'}
-									</div>
-								</div>
-								{#if bean.score_value}
-									<div class="mt-1 flex justify-end">
-										<div class="flex flex-col items-center">
-											<div class="relative h-8 w-8 sm:h-10 sm:w-10">
-												<!-- Background arc -->
-												<svg class="absolute inset-0" viewBox="0 0 100 100">
-													<path
-														d="M10,50 A40,40 0 1,1 90,50"
-														fill="none"
-														stroke="#e5e7eb"
-														stroke-width="8"
-														stroke-linecap="round"
-													/>
-													<!-- Foreground arc (dynamic based on score) -->
-													<path
-														d="M10,50 A40,40 0 1,1 90,50"
-														fill="none"
-														stroke={getStrokeColor(bean.score_value)}
-														stroke-width="8"
-														stroke-linecap="round"
-														stroke-dasharray="126"
-														stroke-dashoffset={126 -
-															(126 * getScorePercentage(bean.score_value, 0, 100)) / 100}
-													/>
-												</svg>
-												<!-- Score value in the center -->
-												<div class="absolute inset-0 flex items-center justify-center">
-													<span
-														class="text-xs font-bold sm:text-sm {getScoreColorClass(
-															bean.score_value
-														)}"
-													>
-														{bean.score_value}
-													</span>
-												</div>
-
-												<span
-													class="text-primary-light absolute bottom-0 left-0 right-0 top-7 text-center text-xs"
-													>SCORE</span
-												>
-											</div>
+								<div class="mt-1 flex items-center justify-between">
+									<p class="text-sm font-medium text-background-tertiary-light">
+										{bean.source}
+									</p>
+									<!-- Mobile: Price next to supplier name -->
+									<div class="text-right sm:hidden">
+										<div class="font-bold text-background-tertiary-light">
+											${(bean.purchased_qty_lbs
+												? ((bean.tax_ship_cost || 0) + (bean.bean_cost || 0)) / bean.purchased_qty_lbs
+												: 0
+											).toFixed(2)}/lb
 										</div>
 									</div>
-								{:else}
-									<p class="text-primary-light text-sm">Score: -</p>
-								{/if}
+								</div>
+
+								<div
+									class="mt-3 flex-col gap-2 text-xs text-text-secondary-light sm:grid-cols-2"
+								>
+									<div><span class="font-medium">Cultivar:</span> {bean.cultivar_detail || '-'}</div>
+									<div>
+										{#if bean.processing}
+											<span>Processing: {bean.processing}</span>
+										{/if}
+									</div>
+									<div>
+										{#if bean.arrival_date}
+											<span>Arrival: {bean.arrival_date}</span>
+										{/if}
+									</div>
+									<div>
+										{#if bean.purchase_date}
+											<span>Purchase: {bean.purchase_date}</span>
+										{/if}
+									</div>
+								</div>
 							</div>
+
+							<!-- Desktop: Price and score in sidebar -->
+							<div class="hidden flex-col items-end space-y-2 sm:flex">
+								<div class="text-right">
+									<div class="font-bold text-background-tertiary-light">
+										${(bean.purchased_qty_lbs
+											? ((bean.tax_ship_cost || 0) + (bean.bean_cost || 0)) / bean.purchased_qty_lbs
+											: 0
+										).toFixed(2)}/lb
+									</div>
+									{#if bean.score_value}
+										<div class="mt-1 text-xs text-text-secondary-light">
+											Score: {Math.round(bean.score_value)}
+										</div>
+									{/if}
+								</div>
+							</div>
+						</div>
+
+						<div class="mt-3 flex items-center justify-end">
+							<svg
+								class="h-4 w-4 text-text-secondary-light transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+								/>
+							</svg>
 						</div>
 					</button>
 				{/each}
