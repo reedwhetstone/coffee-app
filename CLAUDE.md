@@ -122,7 +122,7 @@ For tasks involving multiple file changes or system-wide updates:
 
 Before writing any database queries:
 - ALWAYS verify column existence in the target table
-- Understand foreign key relationships (e.g., `green_coffee_inv.catalog_id` → `coffee_catalog.id`)
+- Understand foreign key relationships and their directions
 - Use proper Supabase join syntax: `table!foreign_key_column (columns...)`
 - Test queries with actual data to ensure joins work correctly
 - When modifying existing APIs, check all related queries for consistency
@@ -132,20 +132,97 @@ Before writing any database queries:
 - `roast_profiles.coffee_id` → `green_coffee_inv.id` (user's coffee inventory)
 - `sales.green_coffee_inv_id` → `green_coffee_inv.id` (sales tracking)
 
+### Systematic Query Validation Process
+1. **Identify the base table** you're querying from
+2. **Map the join path** - which foreign keys connect to related tables
+3. **Verify field existence** in each table involved in the query
+4. **Use correct Supabase syntax** for joins: `related_table!foreign_key (field1, field2)`
+5. **Test with sample data** to ensure the join returns expected results
+6. **Handle null relationships** gracefully in your application logic
+
+### Common Query Patterns
+```typescript
+// ✅ Correct: Join from green_coffee_inv to coffee_catalog
+const { data } = await supabase
+  .from('green_coffee_inv')
+  .select(`
+    id,
+    purchased_qty_lbs,
+    coffee_catalog!catalog_id (
+      name,
+      source,
+      score_value
+    )
+  `)
+  .eq('user', user.id);
+
+// ✅ Correct: Multiple joins for profit analysis
+const { data } = await supabase
+  .from('green_coffee_inv')
+  .select(`
+    id,
+    purchased_qty_lbs,
+    coffee_catalog!catalog_id (name, source),
+    sales(price, oz_sold),
+    roast_profiles(oz_in, oz_out)
+  `)
+  .eq('user', user.id);
+
+// ❌ Incorrect: Wrong foreign key reference
+// Don't use: coffee_catalog!coffee_id - this field doesn't exist
+```
+
 ## Todo List Usage Guidelines
 
-Use TodoWrite for complex tasks that meet any of these criteria:
-- **Multi-step tasks**: 3+ distinct operations or phases
-- **Multiple file changes**: Affects 3+ files across different directories
-- **System-wide updates**: Changes that impact multiple features/routes
-- **Data structure changes**: Database schema modifications or API restructuring
-- **User-requested features**: When user provides multiple requirements or a feature list
+### Decision Tree for TodoWrite Usage
 
-Do NOT use TodoWrite for:
+**ALWAYS use TodoWrite when:**
+- Task involves 3+ distinct operations or phases
+- Changes affect 3+ files across different directories
+- System-wide updates impact multiple features/routes
+- Database schema modifications or API restructuring
+- User provides multiple requirements or a feature list
+- Task requires planning implementation steps before coding
+
+**NEVER use TodoWrite when:**
 - Single file edits or simple bug fixes
 - Straightforward operations (single API call, simple component update)
-- Immediate tasks that can be completed in 1-2 steps
+- Immediate tasks completed in 1-2 steps
 - Pure research or informational requests
+- Reading files or understanding codebase
+
+### Examples of When to Use TodoWrite
+
+**✅ USE TodoWrite:**
+```
+User: "Add a dark mode toggle with settings persistence and update all components"
+Reason: Multi-step (UI, state management, component updates, persistence)
+
+User: "Create a dashboard with KPI cards, charts, and data filtering"
+Reason: Multiple components, data processing, UI layout
+
+User: "Fix the profit calculation across all pages and update the database schema"
+Reason: Multiple files, database changes, API updates
+```
+
+**❌ DON'T use TodoWrite:**
+```
+User: "Fix this TypeScript error in the component"
+Reason: Single file fix
+
+User: "Add a comment to this function"
+Reason: Simple one-step task
+
+User: "How does the authentication system work?"
+Reason: Research/informational request
+```
+
+### Todo Management Best Practices
+- Mark todos as `in_progress` BEFORE starting work
+- Complete todos IMMEDIATELY after finishing each step
+- Only have ONE todo in `in_progress` at a time
+- Break complex tasks into specific, actionable items
+- Use descriptive task names that clearly indicate the work required
 
 ## API Design Pattern Guidelines
 
@@ -181,4 +258,135 @@ import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
 // ✅ Good: Other APIs also use the same utility
 // src/routes/api/roast-profiles/+server.ts
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
+```
+
+## UI/Dashboard Component Creation Guidelines
+
+### Design System Consistency
+
+When creating new UI components, especially dashboards, follow these patterns:
+
+**Color Scheme:**
+- Primary backgrounds: `bg-background-primary-light`, `bg-background-secondary-light`
+- Accent elements: `bg-background-tertiary-light`
+- Text colors: `text-text-primary-light`, `text-text-secondary-light`
+- KPI values: Use semantic colors (`text-green-500`, `text-blue-500`, etc.)
+
+**Layout Patterns:**
+- Page headers: Title + subtitle with consistent spacing
+- Grid layouts: `grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4`
+- Card components: `rounded-lg bg-background-secondary-light p-4`
+- Responsive design: Mobile-first with sm/lg breakpoints
+
+### Dashboard Component Structure
+
+```typescript
+// ✅ Standard dashboard layout pattern
+<div class="">
+  <!-- Header Section -->
+  <div class="mb-6">
+    <h1 class="text-primary-light mb-2 text-2xl font-bold">Page Title</h1>
+    <p class="text-text-secondary-light">Page description</p>
+  </div>
+
+  <!-- KPI Cards Section -->
+  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Individual KPI cards -->
+    <div class="rounded-lg bg-background-secondary-light p-4">
+      <h3 class="text-primary-light text-sm font-medium">Metric Name</h3>
+      <p class="text-2xl font-bold text-green-500">Value</p>
+      <p class="text-xs text-text-secondary-light mt-1">Context info</p>
+    </div>
+  </div>
+
+  <!-- Charts/Analysis Section -->
+  <div class="mb-6 rounded-lg bg-background-secondary-light p-4">
+    <h3 class="text-primary-light mb-4 text-lg font-semibold">Chart Title</h3>
+    <!-- Chart content -->
+  </div>
+
+  <!-- Data Tables/Cards -->
+  <!-- Existing component content -->
+</div>
+```
+
+### KPI Card Guidelines
+- **Header**: Descriptive name in small text
+- **Value**: Large, bold text with semantic color
+- **Context**: Small supplementary text below value
+- **Calculations**: Handle edge cases (division by zero, null values)
+- **Responsive**: Stack on mobile, grid on larger screens
+
+## Filter Store Integration Patterns
+
+### Proper Integration with FilterStore
+
+When creating components that work with filtered data:
+
+**Required Imports:**
+```typescript
+import { filteredData, filterStore } from '$lib/stores/filterStore';
+```
+
+**Reactive Data Usage:**
+```typescript
+// ✅ Use $filteredData for reactive filtered data
+{#if $filteredData && $filteredData.length > 0}
+  <!-- Component content using filtered data -->
+{/if}
+
+// ✅ Calculations that react to filter changes
+let totalValue = $derived(
+  $filteredData.reduce((sum, item) => sum + (item.value || 0), 0)
+);
+```
+
+**Filter Integration:**
+```typescript
+// ✅ Proper filter setting
+filterStore.setFilter('stocked', true);
+
+// ✅ Clear filters action
+filterStore.clearFilters();
+
+// ✅ Handle both filtered and unfiltered states
+<div class="text-sm text-text-secondary-light">
+  Showing {$filteredData.length} of {data?.data?.length || 0} items
+</div>
+```
+
+### Data Structure Handling
+
+**Joined Data Access:**
+```typescript
+// ✅ Handle both direct and joined data structures
+const displayName = item.coffee_catalog?.name || item.name;
+const displaySource = item.coffee_catalog?.source || item.source;
+```
+
+**Safe Calculations:**
+```typescript
+// ✅ Handle null/undefined values in calculations
+const totalCost = items.reduce((sum, item) => {
+  return sum + ((item.bean_cost || 0) + (item.tax_ship_cost || 0));
+}, 0);
+
+// ✅ Safe division with fallback
+const avgCost = totalWeight > 0 ? (totalCost / totalWeight).toFixed(2) : '0.00';
+```
+
+### Component State Management
+
+**Reactive Updates:**
+```typescript
+// ✅ Components should react to filter changes automatically
+// No manual data fetching needed - use $filteredData
+
+// ✅ Handle empty states properly
+{#if !$filteredData || $filteredData.length === 0}
+  <!-- Handle both no data and filtered-out scenarios -->
+  <div class="text-center">
+    {data?.data?.length > 0 ? 'No items match filters' : 'No data available'}
+  </div>
+{/if}
 ```

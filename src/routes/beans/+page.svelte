@@ -312,6 +312,129 @@
 </script>
 
 <div class="">
+	<!-- Header Section -->
+	<div class="mb-6">
+		<h1 class="text-primary-light mb-2 text-2xl font-bold">Coffee Inventory</h1>
+		<p class="text-text-secondary-light">Manage your green coffee bean inventory and track purchases</p>
+	</div>
+
+	<!-- Dashboard Cards Section -->
+	{#if $filteredData && $filteredData.length > 0}
+		<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			<!-- Total Inventory Value -->
+			<div class="rounded-lg bg-background-secondary-light p-4">
+				<h3 class="text-primary-light text-sm font-medium">Total Inventory Value</h3>
+				<p class="text-2xl font-bold text-green-500">
+					${$filteredData.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0).toFixed(2)}
+				</p>
+				<p class="text-xs text-text-secondary-light mt-1">
+					{$filteredData.length} coffee{$filteredData.length !== 1 ? 's' : ''}
+				</p>
+			</div>
+
+			<!-- Total Weight -->
+			<div class="rounded-lg bg-background-secondary-light p-4">
+				<h3 class="text-primary-light text-sm font-medium">Total Weight</h3>
+				<p class="text-2xl font-bold text-blue-500">
+					{$filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0).toFixed(1)} lbs
+				</p>
+				<p class="text-xs text-text-secondary-light mt-1">
+					{($filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0) * 16).toFixed(0)} oz total
+				</p>
+			</div>
+
+			<!-- Average Cost Per Pound -->
+			<div class="rounded-lg bg-background-secondary-light p-4">
+				<h3 class="text-primary-light text-sm font-medium">Avg Cost/lb</h3>
+				<p class="text-2xl font-bold text-orange-500">
+					${(() => {
+						const totalCost = $filteredData.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0);
+						const totalWeight = $filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0);
+						return totalWeight > 0 ? (totalCost / totalWeight).toFixed(2) : '0.00';
+					})()}
+				</p>
+				<p class="text-xs text-text-secondary-light mt-1">
+					Including shipping & tax
+				</p>
+			</div>
+
+			<!-- Stocked Count -->
+			<div class="rounded-lg bg-background-secondary-light p-4">
+				<h3 class="text-primary-light text-sm font-medium">Currently Stocked</h3>
+				<p class="text-2xl font-bold text-purple-500">
+					{$filteredData.filter(bean => bean.stocked).length}
+				</p>
+				<p class="text-xs text-text-secondary-light mt-1">
+					of {$filteredData.length} total
+				</p>
+			</div>
+		</div>
+
+		<!-- Source Distribution Chart -->
+		<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
+			<h3 class="text-primary-light mb-4 text-lg font-semibold">Inventory by Source</h3>
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{#each Object.entries(
+					$filteredData.reduce((acc, bean) => {
+						const source = bean.coffee_catalog?.source || bean.source || 'Unknown';
+						if (!acc[source]) {
+							acc[source] = { count: 0, weight: 0, value: 0 };
+						}
+						acc[source].count += 1;
+						acc[source].weight += bean.purchased_qty_lbs || 0;
+						acc[source].value += (bean.bean_cost || 0) + (bean.tax_ship_cost || 0);
+						return acc;
+					}, {})
+				) as [source, stats]}
+					<div class="rounded-lg bg-background-primary-light p-3">
+						<h4 class="text-primary-light font-medium">{source}</h4>
+						<div class="mt-2 space-y-1 text-sm text-text-secondary-light">
+							<div>{stats.count} coffee{stats.count !== 1 ? 's' : ''}</div>
+							<div>{stats.weight.toFixed(1)} lbs</div>
+							<div class="font-medium text-background-tertiary-light">${stats.value.toFixed(2)}</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+
+		<!-- Recent Purchases -->
+		<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
+			<h3 class="text-primary-light mb-4 text-lg font-semibold">Recent Purchases</h3>
+			<div class="space-y-2">
+				{#each $filteredData
+					.filter(bean => bean.purchase_date)
+					.sort((a, b) => new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime())
+					.slice(0, 5) as recentBean}
+					<button
+						type="button"
+						class="w-full rounded-lg bg-background-primary-light p-3 text-left transition-colors hover:bg-background-tertiary-light/20"
+						onclick={() => selectBean(recentBean)}
+					>
+						<div class="flex items-center justify-between">
+							<div>
+								<h4 class="text-primary-light font-medium">
+									{recentBean.coffee_catalog?.name || recentBean.name}
+								</h4>
+								<p class="text-sm text-text-secondary-light">
+									{recentBean.coffee_catalog?.source || recentBean.source} • {recentBean.purchase_date}
+								</p>
+							</div>
+							<div class="text-right">
+								<div class="text-background-tertiary-light font-medium">
+									{recentBean.purchased_qty_lbs?.toFixed(1)} lbs
+								</div>
+								<div class="text-sm text-text-secondary-light">
+									${((recentBean.bean_cost || 0) + (recentBean.tax_ship_cost || 0)).toFixed(2)}
+								</div>
+							</div>
+						</div>
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	<!-- Bean Profile Section -->
 
 	{#if selectedBean}
@@ -360,21 +483,62 @@
 		</div>
 	{/if}
 
+	<!-- Quick Actions -->
+	{#if $filteredData && $filteredData.length > 0}
+		<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+			<div class="flex flex-wrap gap-3">
+				<button
+					onclick={() => handleAddNewBean()}
+					class="rounded-lg bg-background-tertiary-light px-4 py-2 text-white transition-all duration-200 hover:bg-opacity-90"
+				>
+					Add New Coffee
+				</button>
+				<button
+					onclick={() => {
+						// Trigger filter to show only stocked items
+						filterStore.setFilter('stocked', true);
+					}}
+					class="rounded-lg border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+				>
+					View Stocked Only
+				</button>
+			</div>
+			<div class="text-sm text-text-secondary-light">
+				Showing {$filteredData.length} of {data?.data?.length || 0} coffees
+			</div>
+		</div>
+	{/if}
+
 	<!-- Coffee Cards -->
 	<div class="flex-1">
 		{#if !$filteredData || $filteredData.length === 0}
-			<div class="flex flex-col items-center justify-center p-8 text-center">
+			<div class="rounded-lg bg-background-secondary-light p-8 text-center">
 				<div class="mb-4 text-6xl opacity-50">☕</div>
-				<h3 class="mb-2 text-lg font-semibold text-text-primary-light">No Coffee Beans Yet</h3>
+				<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
+					{data?.data?.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
+				</h3>
 				<p class="mb-4 text-text-secondary-light">
-					Start building your coffee inventory by adding your first green coffee bean.
+					{data?.data?.length > 0 
+						? 'Try adjusting your filters to see more coffees, or add a new coffee to your inventory.'
+						: 'Start building your coffee inventory by adding your first green coffee bean.'
+					}
 				</p>
-				<button
-					onclick={() => handleAddNewBean()}
-					class="rounded-md bg-background-tertiary-light px-4 py-2 text-white transition-all duration-200 hover:bg-opacity-90"
-				>
-					Add Your First Bean
-				</button>
+				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
+					<button
+						onclick={() => handleAddNewBean()}
+						class="rounded-md bg-background-tertiary-light px-4 py-2 text-white transition-all duration-200 hover:bg-opacity-90"
+					>
+						{data?.data?.length > 0 ? 'Add New Coffee' : 'Add Your First Bean'}
+					</button>
+					{#if data?.data?.length > 0}
+						<button
+							onclick={() => filterStore.clearFilters()}
+							class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						>
+							Clear Filters
+						</button>
+					{/if}
+				</div>
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
