@@ -310,6 +310,14 @@ When encountering complex issues:
 4. **Use Plan Mode**: For multi-step debugging scenarios requiring systematic investigation
 5. **Document and Clean Up**: Remove debug code after resolution
 
+### Debugging Code Management
+
+When adding debug logging:
+- Use clear, descriptive log messages that identify the context
+- Remove debug code once the issue is resolved unless it provides ongoing value
+- For complex debugging sessions, create a separate todo item for "Remove debug logging"
+- Focus debug efforts on data structure validation and API response analysis
+
 ### Data Flow Issues
 
 When data isn't reaching the frontend:
