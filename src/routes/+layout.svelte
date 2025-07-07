@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
+	import CookieBanner from '$lib/components/CookieBanner.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 
@@ -207,6 +208,7 @@
 {#if isMarketingPage}
 	<div class="min-h-screen">
 		{@render children()}
+		<CookieBanner />
 	</div>
 {:else}
 	<!-- Main App - Only renders after components are loaded -->
