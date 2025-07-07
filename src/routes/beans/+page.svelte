@@ -102,6 +102,7 @@
 	let selectedBean = $state<any>(null);
 	let processingUpdate = $state(false);
 	let lastSelectedBeanId = $state<number | null>(null);
+	let beanProfileElement: HTMLElement | null = null;
 
 	// Reset selected bean if it's filtered out with guard to prevent loops
 	let lastFilteredDataLength = $state(0);
@@ -147,14 +148,19 @@
 				// console.log('Selecting bean:', bean.id);
 				lastSelectedBeanId = bean.id;
 				selectedBean = bean;
-				window.scrollTo({ top: 0, behavior: 'smooth' });
+				// Scroll to bean profile after it renders
+				setTimeout(() => {
+					if (beanProfileElement) {
+						beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					}
+				}, 100);
 			}
 		} finally {
 			// Use setTimeout to break potential update cycles
 			setTimeout(() => {
 				processingUpdate = false;
 			}, 50);
-		}
+			}
 	}
 
 	// Function to refresh data using SvelteKit invalidation
@@ -252,7 +258,12 @@
 				);
 				if (foundBean) {
 					selectedBean = foundBean;
-					window.scrollTo({ top: 0, behavior: 'smooth' });
+					// Scroll to bean profile after it renders
+					setTimeout(() => {
+						if (beanProfileElement) {
+							beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+						}
+					}, 100);
 				}
 			}
 
@@ -449,7 +460,7 @@
 	<!-- Bean Profile Section -->
 
 	{#if selectedBean}
-		<div class="mb-4">
+		<div class="mb-4" bind:this={beanProfileElement}>
 			<BeanProfile
 				{selectedBean}
 				role={data.role}
