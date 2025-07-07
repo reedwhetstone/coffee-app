@@ -9,19 +9,29 @@
 		onSubmit: (sale: any) => void;
 	}>();
 
+	// Extract defaultBean from sale if it exists
+	let defaultBean = sale?.defaultBean || null;
+
 	let availableCoffees = $state<any[]>([]);
 	let availableBatches = $state<any[]>([]);
+	let catalogBeans = $state<any[]>([]);
 
 	// Fetch available coffees and batches on component mount
 	async function loadData() {
 		try {
-			// Fetch coffees from green_coffee_inv
+			// Fetch coffees from green_coffee_inv with catalog cross-reference (similar to BeanForm)
 			const coffeeResponse = await fetch('/api/data');
 			if (coffeeResponse.ok) {
 				const coffeeData = await coffeeResponse.json();
-				// Get unique coffee names
-				const uniqueBeans = [...new Set(coffeeData.data.map((profile: any) => profile.name))];
-				availableCoffees = uniqueBeans.map((name) => ({ name: name }));
+				// Store the full coffee data with catalog information
+				availableCoffees = coffeeData.data.filter((coffee: any) => coffee.stocked);
+			}
+
+			// Fetch catalog data for rich information
+			const catalogResponse = await fetch('/api/catalog');
+			if (catalogResponse.ok) {
+				const catalogData = await catalogResponse.json();
+				catalogBeans = catalogData.filter((bean: any) => bean.stocked);
 			}
 
 			// Fetch batches from roast_profiles
@@ -42,17 +52,17 @@
 	loadData();
 
 	let formData = $state(
-		sale
+		sale?.id
 			? { ...sale }
 			: {
-					green_coffee_inv_id: '',
+					green_coffee_inv_id: defaultBean?.id || '',
 					oz_sold: 0,
 					price: 0,
 					buyer: '',
 					batch_name: '',
 					sell_date: new Date().toISOString().split('T')[0],
-					purchase_date: new Date().toISOString().split('T')[0],
-					coffee_name: ''
+					purchase_date: defaultBean?.purchase_date || new Date().toISOString().split('T')[0],
+					coffee_name: defaultBean?.coffee_name || ''
 				}
 	);
 
@@ -65,8 +75,8 @@
 				])
 			);
 
-			const response = await fetch(sale ? `/api/profit?id=${sale.id}` : '/api/profit', {
-				method: sale ? 'PUT' : 'POST',
+			const response = await fetch(sale?.id ? `/api/profit?id=${sale.id}` : '/api/profit', {
+				method: sale?.id ? 'PUT' : 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
@@ -79,34 +89,22 @@
 				onClose();
 			} else {
 				const data = await response.json();
-				alert(`Failed to ${sale ? 'update' : 'create'} sale: ${data.error}`);
+				alert(`Failed to ${sale?.id ? 'update' : 'create'} sale: ${data.error}`);
 			}
 		} catch (error) {
-			console.error(`Error ${sale ? 'updating' : 'creating'} sale:`, error);
+			console.error(`Error ${sale?.id ? 'updating' : 'creating'} sale:`, error);
 		}
 	}
 
-	// Handle coffee selection
-	async function handleCoffeeChange(event: Event) {
-		try {
-			const selectedCoffeeName = (event.target as HTMLSelectElement).value;
+	// Handle coffee selection  
+	function handleCoffeeChange(event: Event) {
+		const selectedCoffeeId = (event.target as HTMLSelectElement).value;
+		const selectedCoffee = availableCoffees.find((coffee: any) => coffee.id.toString() === selectedCoffeeId);
 
-			// Fetch the coffee data to get the ID
-			const response = await fetch('/api/data');
-			if (!response.ok) {
-				throw new Error('Failed to fetch coffee data');
-			}
-
-			const data = await response.json();
-			const selectedCoffee = data.data.find((coffee: any) => coffee.name === selectedCoffeeName);
-
-			if (selectedCoffee) {
-				formData.coffee_name = selectedCoffee.name;
-				formData.green_coffee_inv_id = selectedCoffee.id;
-				formData.purchase_date = selectedCoffee.purchase_date;
-			}
-		} catch (error) {
-			console.error('Error updating coffee selection:', error);
+		if (selectedCoffee) {
+			formData.coffee_name = selectedCoffee.name || selectedCoffee.coffee_catalog?.name || 'Unknown Coffee';
+			formData.green_coffee_inv_id = selectedCoffee.id;
+			formData.purchase_date = selectedCoffee.purchase_date;
 		}
 	}
 </script>
@@ -115,7 +113,7 @@
 <div class="rounded-lg bg-background-secondary-light p-6 shadow-sm">
 	<div class="mb-6">
 		<h2 class="text-2xl font-bold text-text-primary-light">
-			{sale ? 'Edit Sale' : 'Add New Sale'}
+			{sale?.id ? 'Edit Sale' : 'Add New Sale'}
 		</h2>
 		<p class="mt-2 text-text-secondary-light">Record a coffee sale and track your profit</p>
 	</div>
@@ -138,13 +136,13 @@
 					<select
 						id="coffee_name"
 						class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
-						value={formData.coffee_name}
+						value={formData.green_coffee_inv_id}
 						onchange={handleCoffeeChange}
 						required
 					>
 						<option value="">Select a coffee...</option>
 						{#each availableCoffees as coffee}
-							<option value={coffee.name}>{coffee.name}</option>
+							<option value={coffee.id}>{coffee.name || coffee.coffee_catalog?.name || 'Unknown Coffee'}</option>
 						{/each}
 					</select>
 				</div>
@@ -246,7 +244,7 @@
 				type="submit" 
 				class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 			>
-				{sale ? 'Update Sale' : 'Create Sale'}
+				{sale?.id ? 'Update Sale' : 'Create Sale'}
 			</button>
 		</div>
 	</form>

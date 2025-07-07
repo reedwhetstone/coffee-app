@@ -460,8 +460,14 @@
 	}
 
 	function handleSelectCoffee({ coffeeName, date }: { coffeeName: string; date: string }) {
-		selectedCoffee = coffeeName;
-		fetchSalesForCoffee(coffeeName);
+		// If coffeeName is empty, hide sales
+		if (coffeeName === '') {
+			selectedCoffee = null;
+			salesData = [];
+		} else {
+			selectedCoffee = coffeeName;
+			fetchSalesForCoffee(coffeeName);
+		}
 	}
 
 	function handleSaleEdit(sale: SaleData) {
@@ -562,10 +568,17 @@
 	}
 
 	// Add function to show sale form
-	function showSaleForm() {
-		console.log('showSaleForm called');
+	function showSaleForm(selectedBean?: any) {
+		console.log('showSaleForm called with bean:', selectedBean);
 		isFormVisible = true;
 		selectedSale = null;
+		// Store the selected bean data for the form
+		if (selectedBean) {
+			selectedSale = {
+				...selectedSale,
+				defaultBean: selectedBean
+			};
+		}
 	}
 
 	// Expose the showSaleForm function to the template
@@ -591,8 +604,8 @@
 
 <!-- Add form modal -->
 {#if isFormVisible}
-	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75">
-		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-6">
+	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm">
+		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-6 shadow-2xl">
 			<SaleForm
 				sale={selectedSale}
 				onClose={() => {
@@ -605,63 +618,91 @@
 	</div>
 {/if}
 
-<div class="m-8 p-8">
-	<h1 class="text-primary-light mb-4 text-2xl font-bold">Profit Dashboard</h1>
+<div class="space-y-6">
+	<!-- Header Section -->
+	<div class="mb-6">
+		<h1 class="text-primary-light mb-2 text-2xl font-bold">Coffee Sales & Profit</h1>
+		<p class="text-text-secondary-light">Track your coffee sales performance and profitability</p>
+	</div>
 
-	<!-- KPI Cards -->
-	<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-		<div class="rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light text-sm">Total Revenue</h3>
-			<p class="text-xl font-bold text-green-500">${totalRevenue.toFixed(2)}</p>
+	<!-- KPI Cards Grid -->
+	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		<!-- Primary Metrics -->
+		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Total Revenue</h3>
+			<p class="mt-1 text-2xl font-bold text-green-500">${totalRevenue.toFixed(2)}</p>
+			<p class="text-xs text-text-secondary-light mt-1">From all coffee sales</p>
 		</div>
-		<div class="rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light text-sm">Total Cost</h3>
-			<p class="text-xl font-bold text-red-500">${totalCost.toFixed(2)}</p>
+
+		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Total Profit</h3>
+			<p class="mt-1 text-2xl font-bold text-blue-500">${totalProfit.toFixed(2)}</p>
+			<p class="text-xs text-text-secondary-light mt-1">Net profit after costs</p>
 		</div>
-		<div class="rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light text-sm">Total Profit</h3>
-			<p class="text-xl font-bold text-blue-500">${totalProfit.toFixed(2)}</p>
+
+		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Average Margin</h3>
+			<p class="mt-1 text-2xl font-bold text-purple-500">{averageMargin().toFixed(1)}%</p>
+			<p class="text-xs text-text-secondary-light mt-1">Weighted by sales volume</p>
 		</div>
-		<div class="rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light text-sm">Average Sales Margin</h3>
-			<p class="text-xl font-bold text-purple-500">{averageMargin().toFixed(1)}%</p>
-		</div>
-		<div class="rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light text-sm">Total Pounds Roasted</h3>
-			<p class="text-xl font-bold text-orange-500">{totalPoundsRoasted.toFixed(1)} lbs</p>
-		</div>
-		<div class="rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light text-sm">Avg. Sell-Through Rate</h3>
-			<p class="text-xl font-bold text-yellow-500">{sellThroughRate().toFixed(1)}%</p>
-		</div>
-		<div class="rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light text-sm">Avg. Profit/lb</h3>
-			<p class="text-xl font-bold text-emerald-500">${avgProfitPerPound().toFixed(2)}</p>
-		</div>
-		<div class="rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light text-sm">Avg. Cost/lb</h3>
-			<p class="text-xl font-bold text-pink-500">${avgCostPerPound().toFixed(2)}</p>
-		</div>
-		<div class="rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light text-sm">Avg. Revenue/lb</h3>
-			<p class="text-xl font-bold text-indigo-500">${avgRevenuePerPound().toFixed(2)}</p>
-		</div>
-		<div class="rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light text-sm">Avg. Roast Loss</h3>
-			<p class="text-xl font-bold text-cyan-500">{roastLossRate().toFixed(2)}%</p>
+
+		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Sell-Through Rate</h3>
+			<p class="mt-1 text-2xl font-bold text-orange-500">{sellThroughRate().toFixed(1)}%</p>
+			<p class="text-xs text-text-secondary-light mt-1">Inventory sold vs purchased</p>
 		</div>
 	</div>
 
-	<div class="mb-8 w-full rounded-lg bg-background-secondary-light p-6">
+	<!-- Secondary Metrics -->
+	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Total Investment</h3>
+			<p class="mt-1 text-2xl font-bold text-red-500">${totalCost.toFixed(2)}</p>
+			<p class="text-xs text-text-secondary-light mt-1">Bean cost + shipping & tax</p>
+		</div>
+
+		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Coffee Purchased</h3>
+			<p class="mt-1 text-2xl font-bold text-indigo-500">{totalPoundsRoasted.toFixed(1)} lbs</p>
+			<p class="text-xs text-text-secondary-light mt-1">Total green coffee inventory</p>
+		</div>
+
+		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Roast Loss Rate</h3>
+			<p class="mt-1 text-2xl font-bold text-cyan-500">{roastLossRate().toFixed(1)}%</p>
+			<p class="text-xs text-text-secondary-light mt-1">Weight loss during roasting</p>
+		</div>
+	</div>
+
+	<!-- Performance Chart -->
+	<div class="mb-8 rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
+		<div class="mb-4">
+			<h3 class="text-lg font-semibold text-text-primary-light">Sales Performance Over Time</h3>
+			<p class="text-sm text-text-secondary-light">Cumulative revenue, costs, and target performance</p>
+		</div>
 		<div bind:this={chartContainer} class="w-full"></div>
 	</div>
 
-	<!-- Replace the detailed profit table and SalesTable with ProfitCards -->
-	<div class="mt-8">
+	<!-- Coffee Sales Analysis -->
+	<div class="space-y-4">
+		<div class="flex items-center justify-between">
+			<div>
+				<h2 class="text-xl font-semibold text-text-primary-light">Coffee Sales Analysis</h2>
+				<p class="text-sm text-text-secondary-light">Detailed breakdown by purchase date and coffee</p>
+			</div>
+			<button
+				type="button"
+				class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+				onclick={showSaleForm}
+			>
+				Add New Sale
+			</button>
+		</div>
+
 		{#if profitCardsLoading}
-			<div class="flex items-center justify-center p-8">
-				<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500"></div>
-				<span class="ml-2 text-sm text-gray-600">Loading profit analysis...</span>
+			<div class="flex items-center justify-center rounded-lg bg-background-secondary-light p-8 ring-1 ring-border-light">
+				<div class="h-8 w-8 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"></div>
+				<span class="ml-3 text-sm text-text-secondary-light">Loading profit analysis...</span>
 			</div>
 		{:else if ProfitCards}
 			<ProfitCards
@@ -675,6 +716,19 @@
 				onDeleteSale={handleSaleDelete}
 				onAddSale={showSaleForm}
 			/>
+		{:else}
+			<div class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light">
+				<div class="mb-4 text-6xl opacity-50">📊</div>
+				<h3 class="mb-2 text-lg font-semibold text-text-primary-light">No Sales Data Yet</h3>
+				<p class="mb-4 text-text-secondary-light">Start tracking your coffee sales to see detailed profit analysis.</p>
+				<button
+					type="button"
+					class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+					onclick={showSaleForm}
+				>
+					Record Your First Sale
+				</button>
+			</div>
 		{/if}
 	</div>
 </div>
