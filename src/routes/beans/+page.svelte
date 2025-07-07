@@ -360,35 +360,10 @@
 				</p>
 			</div>
 
-			<!-- Average Cost Per Pound -->
-			<div class="rounded-lg bg-background-secondary-light p-4">
-				<h3 class="text-primary-light text-sm font-medium">Avg Cost/lb</h3>
-				<p class="text-2xl font-bold text-orange-500">
-					${(() => {
-						const totalCost = $filteredData.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0);
-						const totalWeight = $filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0);
-						return totalWeight > 0 ? (totalCost / totalWeight).toFixed(2) : '0.00';
-					})()}
-				</p>
-				<p class="text-xs text-text-secondary-light mt-1">
-					Including shipping & tax
-				</p>
-			</div>
-
-			<!-- Stocked Count -->
-			<div class="rounded-lg bg-background-secondary-light p-4">
-				<h3 class="text-primary-light text-sm font-medium">Currently Stocked</h3>
-				<p class="text-2xl font-bold text-purple-500">
-					{$filteredData.filter(bean => bean.stocked).length}
-				</p>
-				<p class="text-xs text-text-secondary-light mt-1">
-					of {$filteredData.length} total
-				</p>
-			</div>
 
 			<!-- Stocked Inventory -->
 			<div class="rounded-lg bg-background-secondary-light p-4">
-				<h3 class="text-primary-light text-sm font-medium">Stocked Inventory</h3>
+				<h3 class="text-primary-light text-sm font-medium">Raw Inventory</h3>
 				<p class="text-2xl font-bold text-indigo-500">
 					{(() => {
 						const totalStockedLbs = $filteredData
@@ -412,6 +387,33 @@
 					Available for roasting
 				</p>
 			</div>
+
+			<!-- Average Cost Per Pound -->
+			<div class="rounded-lg bg-background-secondary-light p-4">
+				<h3 class="text-primary-light text-sm font-medium">Avg Cost/lb</h3>
+				<p class="text-2xl font-bold text-orange-500">
+					${(() => {
+						const totalCost = $filteredData.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0);
+						const totalWeight = $filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0);
+						return totalWeight > 0 ? (totalCost / totalWeight).toFixed(2) : '0.00';
+					})()}
+				</p>
+				<p class="text-xs text-text-secondary-light mt-1">
+					Including shipping & tax
+				</p>
+			</div>
+
+			<!-- Stocked Count -->
+			<div class="rounded-lg bg-background-secondary-light p-4">
+				<h3 class="text-primary-light text-sm font-medium">Currently Stocked</h3>
+				<p class="text-2xl font-bold text-purple-500">
+					{$filteredData.filter(bean => bean.stocked).length}
+				</p>
+				<p class="text-xs text-text-secondary-light mt-1">
+					of {$filteredData.length} selected coffees
+				</p>
+			</div>
+
 		</div>
 
 		<!-- Source Distribution Chart -->
