@@ -43,7 +43,7 @@
 		console.log('Raw data from server:', data?.data?.length);
 		if (data?.data?.length > 0) {
 			console.log('First bean raw data:', data.data[0]);
-			const beanWithProfiles = data.data.find(bean => bean.roast_profiles && bean.roast_profiles.length > 0);
+			const beanWithProfiles = data.data.find((bean: PageData['data'][0]) => bean.roast_profiles && bean.roast_profiles.length > 0);
 			if (beanWithProfiles) {
 				console.log('Bean with profiles found in raw data:', beanWithProfiles.coffee_catalog?.name, beanWithProfiles.roast_profiles);
 			} else {

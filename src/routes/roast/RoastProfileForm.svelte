@@ -17,7 +17,13 @@
 			const response = await fetch('/api/data');
 			if (response.ok) {
 				const data = await response.json();
-				availableCoffees = data.data;
+				// Filter and transform the data to only show stocked beans with direct name property
+				availableCoffees = data.data
+					?.filter((coffee: any) => coffee.stocked === true)
+					?.map((coffee: any) => ({
+						...coffee,
+						name: coffee.coffee_catalog?.name || coffee.name || 'Unknown Coffee'
+					})) || [];
 			}
 		} catch (error) {
 			console.error('Error loading coffees:', error);
@@ -67,7 +73,7 @@
 		const selected = availableCoffees.find((coffee) => coffee.id.toString() === selectedId);
 		if (selected) {
 			batchBeans[index].coffee_id = selected.id;
-			batchBeans[index].coffee_name = selected.name;
+			batchBeans[index].coffee_name = selected.name; // Now uses the transformed name property
 			if (index === 0 && formData.batch_name === '') {
 				formData.batch_name = `${selected.name} Batch - ${new Date().toLocaleDateString()}`;
 			}
