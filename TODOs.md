@@ -20,24 +20,23 @@
 -
 - [ ] **Performance** - Fix real experience score and content paint
 -
-- [ ] **General** - Set up no-cookies banner at the bottom of the page
-- [ ] **General** - Remove some / all of the user reviews?
-- [ ] **COOKIE notifications** - implement a cookie accept popup
-- [ ] **Forms** - date population is inconsistent and poor across form completions
+- [ ] **COOKIE notifications** - implement a cookie accept popup / Set up no-cookies banner at the bottom of the page
 -
 - [ ] **Mobile** - Improve roast profile/bean profile appearance on mobile
 - [ ] **Mobile** - Improve usability of roast chart buttons on mobile
 - [ ] **Mobile** - Move fan settings below the chart on mobile
 -
 - [ ] **Navigation** - Improve menu UI - the icons are really hard to understand
-- [ ] **Navigation** - Highlight the page you are on in the navigation menu
+- [ ] **Navigation** - Highlight the catalog page when you are on it in the navigation menu
 - [ ] **Navigation** - move menu bar to bottom bar for mobile
 - [ ] **Navigation** - only display relevant active menu options for each page. Currently showing all of them, indescriminantly
+- [ ] **Navigation** - simplify nav bar area, have less going on. Make it easier to understand what icons mean what.
 - [ ] **Navigation** - make it easier to navigate back to landing page from the pricing page
 - [ ] **Navigation** - improve sales funnel & clickthrough to make it more seamless
 - [ ] **Navigation** - simplify main page? Really long scrolling
 -
-- [ ] **Roast Insights** - Organize roasts by bean for roast comparison, instead of by batch
+- [ ] **Roast Insights** - make the roast comparison on bean profile show the actual roast names and allow you to navigate directly to those roast profiles
+
 - [ ] **Roast Insights** - Add % weight loss display per roast
 - [ ] **Roast Insights** - Add remaining purchased quantity data to bean inventory
 -
@@ -62,13 +61,9 @@
 - [ ] **Database** - Need a purchased qty remaining data set in beans category to add to the stocked functionality
 - [ ] **Database Optimization** - Reduce duplication between `green_coffee_inv` and `coffee_catalog` — only duplicate for original, unreferenced coffees
 -
-- [ ] **Tasting Notes** - Improve rating/notes function by bean
-- [ ] **Tasting Notes** - Allow roast selection specific to the bean
-- [ ] **Tasting Notes** - Create more comprehensive rating scale (brew method, nose, flavor, etc.)
-- [ ] **Tasting Notes** - Collect tasting notes and convert to cupping score chart
-- [ ] **Tasting Notes** - Display cupping/tasting notes per profile on main profile page
-- [ ] **Tasting Notes** - Create new table to manage comprehensive rating form data
-- [ ] **Tasting Notes** - comprehensive ratings form - roast batch, brew method, nose, flavor, etc - will need a new table to manage this data.
+
+- [ ] **Tasting Notes** - brew method?
+- [ ] **Tasting Notes** - add back the ability to edit user rating
 -
 - [ ] **Analytics** - Track all source pricing, stock, location distribution, and processing methods over time
 - [ ] **Analytics** - Create trends and analysis charting page; prioritize fun and informational roasting insights
@@ -86,6 +81,14 @@
 - [x] **Web Scraping** - Automate data cleaning of NULL columns with Gemini when we scrape
 - [x] **Web Scraping** - Automate llm interpretation of the text into an AI blurb column - claims extraction & cleaning of data columns during scrape
 - [x] **UI/UX** - Correct rank formatting to two decimal places and improve visual layout
+- [x] **Tasting Notes** - Create new table to manage comprehensive rating form data
+- [x] **Tasting Notes** - Improve rating/notes function by bean
+- [x] **Tasting Notes** - Allow roast selection specific to the bean
+- [x] **Tasting Notes** - Create more comprehensive rating scale (brew method, nose, flavor, etc.)
+- [x] **Tasting Notes** - Collect tasting notes and convert to cupping score chart
+- [x] **Forms** - date population is inconsistent and poor across form completions
+- [x] **Tasting Notes** - Display cupping/tasting notes per profile on main profile page
+- [x] **Roast Insights** - Organize roasts by bean for roast comparison, instead of by batch
 
 # Suppliers:
 

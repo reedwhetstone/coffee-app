@@ -107,24 +107,35 @@
 						.attr('cx', centerX)
 						.attr('cy', centerY)
 						.attr('r', circleRadius)
-						.attr('fill', d.color)
 						.style('cursor', 'pointer');
 
 					if (isUser) {
 						// User data styling: lighter fill, dashed stroke
 						circle
-							.attr('fill-opacity', 0.3)
-							.attr('stroke', d.color)
-							.attr('stroke-width', 2)
-							.attr('stroke-dasharray', '4,4')
-							.attr('stroke-opacity', 0.8);
-					} else {
-						// AI data styling: existing solid style
-						circle
+							.attr('fill', d.color)
 							.attr('fill-opacity', 0.5)
 							.attr('stroke', d.color)
 							.attr('stroke-width', 1)
 							.attr('stroke-opacity', 1);
+					} else {
+						// AI data styling: Single color orange dotted, no fill
+						if (showOverlay && userRadarData.length > 0) {
+							circle
+								 
+								.attr('fill-opacity', 0) // % opacity
+								.attr('stroke', '#f9a57b')
+								.attr('stroke-width', 2)
+								.attr('stroke-opacity', 1)
+								.attr('stroke-dasharray', '4,4');
+						} else {
+							// Original AI styling when no overlay
+							circle
+								.attr('fill', d.color)
+								.attr('fill-opacity', 0.5)
+								.attr('stroke', d.color)
+								.attr('stroke-width', 1)
+								.attr('stroke-opacity', 1);
+						}
 					}
 
 					circle.append('title')
@@ -147,34 +158,33 @@
 				.attr('class', 'legend')
 				.attr('transform', `translate(${size - 60}, 10)`);
 
-			// AI legend item
+			// AI legend item - orange dotted line with no fill
 			legend.append('circle')
 				.attr('cx', 8)
 				.attr('cy', 0)
 				.attr('r', 6)
-				.attr('fill', '#6b7280')
-				.attr('fill-opacity', 0.5)
-				.attr('stroke', '#6b7280')
-				.attr('stroke-width', 1);
+				.attr('fill-opacity', 0)
+				.attr('stroke', '#f9a57b')
+				.attr('stroke-width', 2)
+				.attr('stroke-dasharray', '4,4');
 
 			legend.append('text')
 				.attr('x', 20)
 				.attr('y', 4)
-				.text('AI')
+				.text('Supplier')
 				.attr('font-size', '8px')
 				.attr('fill', '#6b7280')
 				.attr('font-weight', '500');
 
-			// User legend item
+			// User legend item - solid fill with stroke
 			legend.append('circle')
 				.attr('cx', 8)
 				.attr('cy', 15)
 				.attr('r', 6)
 				.attr('fill', '#6b7280')
-				.attr('fill-opacity', 0.3)
+				.attr('fill-opacity', 0.5)
 				.attr('stroke', '#6b7280')
-				.attr('stroke-width', 2)
-				.attr('stroke-dasharray', '4,4');
+				.attr('stroke-width', 1);
 
 			legend.append('text')
 				.attr('x', 20)
