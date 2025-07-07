@@ -200,6 +200,9 @@ const combined = mainData?.map(item => ({
 - Database schema modifications or API restructuring
 - User provides multiple requirements or a feature list
 - Task requires planning implementation steps before coding
+- Non-trivial and complex tasks requiring careful planning
+- User explicitly requests todo list usage
+- User provides numbered or comma-separated task lists
 
 **NEVER use TodoWrite when:**
 - Single file edits or simple bug fixes
@@ -207,15 +210,51 @@ const combined = mainData?.map(item => ({
 - Immediate tasks completed in 1-2 steps
 - Pure research or informational requests
 - Reading files or understanding codebase
+- Only one trivial task to complete
+- Purely conversational or informational requests
 
 ### Todo Management Best Practices
-- Mark todos as `in_progress` BEFORE starting work
-- Complete todos IMMEDIATELY after finishing each step
-- Only have ONE todo in `in_progress` at a time
-- Break complex tasks into specific, actionable items
+
+**Task Creation and Organization:**
+- Create specific, actionable items with clear deliverables
+- Break complex tasks into smaller, manageable steps (3-5 subtasks max per main task)
 - Use descriptive task names that clearly indicate the work required
-- Always include verification steps as separate todos
-- For migration tasks, include separate todos for each phase
+- Include verification/testing steps as separate todos when applicable
+- Set appropriate priority levels (high for critical path, medium for important, low for nice-to-have)
+
+**Task Execution Workflow:**
+- Mark todos as `in_progress` BEFORE starting work on them
+- Complete todos IMMEDIATELY after finishing each step (don't batch completions)
+- Only have ONE todo in `in_progress` at any given time
+- Update todo status in real-time as work progresses
+
+**Task Completion Criteria:**
+- ONLY mark a task as completed when you have FULLY accomplished it
+- If you encounter errors, blockers, or cannot finish, keep the task as `in_progress`
+- When blocked, create a new task describing what needs to be resolved
+- Never mark a task as completed if:
+  - Tests are failing
+  - Implementation is partial
+  - You encountered unresolved errors
+  - You couldn't find necessary files or dependencies
+
+**Examples of Proper Todo Usage:**
+
+*Complex Multi-Step Task (USE TodoWrite):*
+```
+User: "Add dark mode toggle to application settings and make sure tests pass"
+✅ Creates todos: 
+1. Create dark mode toggle component
+2. Add state management for theme
+3. Update CSS for dark theme
+4. Run tests and fix any failures
+```
+
+*Simple Single Task (DON'T use TodoWrite):*
+```
+User: "Add a comment to the calculateTotal function"
+❌ Don't create todos - just do it directly
+```
 
 ## API Design Patterns
 
@@ -262,6 +301,108 @@ When creating new UI components, especially dashboards:
 - **Context**: Small supplementary text below value
 - **Calculations**: Handle edge cases (division by zero, null values)
 - **Responsive**: Stack on mobile, grid on larger screens
+
+## UI/Form Consistency Patterns
+
+### Identifying Existing Design Patterns
+
+Before creating or modifying UI components, systematically analyze existing patterns:
+
+**Step 1: Pattern Discovery**
+- Read similar existing components to understand established patterns
+- Look for repeated class combinations (e.g., `rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light`)
+- Identify consistent spacing, typography, and color usage
+- Note layout patterns (grid structures, responsive breakpoints)
+
+**Step 2: Design Language Analysis**
+- Compare target component with reference pages (e.g., /(home), /beans, /profit)
+- Extract common elements: card styling, button designs, form layouts, typography hierarchy
+- Document spacing patterns (`mt-1`, `mb-4`, `p-4`, etc.)
+- Note semantic color usage (`text-green-500` for positive values, `text-red-500` for costs)
+
+### Applying Consistent Design Patterns
+
+**Form Restructuring Workflow:**
+1. **Read reference components** to understand established patterns
+2. **Identify design inconsistencies** in the target component
+3. **Extract reusable patterns** from well-designed components
+4. **Apply systematically** across all similar components
+5. **Verify consistency** by comparing final results
+
+**Common Pattern Applications:**
+
+*Card-Based Design:*
+```svelte
+<!-- ✅ Consistent card pattern -->
+<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+  <h3 class="text-sm font-medium text-text-primary-light">Card Title</h3>
+  <p class="mt-1 text-2xl font-bold text-green-500">$123.45</p>
+  <p class="text-xs text-text-secondary-light mt-1">Descriptive context</p>
+</div>
+```
+
+*Form Section Organization:*
+```svelte
+<!-- ✅ Consistent form section pattern -->
+<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+  <h3 class="mb-4 text-lg font-semibold text-text-primary-light">Section Title</h3>
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <!-- Form fields -->
+  </div>
+</div>
+```
+
+*Button Consistency:*
+```svelte
+<!-- ✅ Primary action button -->
+<button class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90">
+  Primary Action
+</button>
+
+<!-- ✅ Secondary action button -->
+<button class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white">
+  Secondary Action
+</button>
+```
+
+### Multi-Component Consistency Approach
+
+**When updating multiple similar components:**
+
+1. **Establish Reference Component**: Choose the best-designed component as the pattern source
+2. **Create Checklist**: Document all design elements to be applied consistently
+3. **Update Systematically**: Apply changes to each component following the same pattern
+4. **Cross-Reference**: Ensure all components now follow the same design language
+
+**Design Checklist for Form Components:**
+- [ ] Card-based layout with `ring-1 ring-border-light`
+- [ ] Consistent typography hierarchy (`text-sm font-medium`, `text-lg font-semibold`)
+- [ ] Proper spacing patterns (`mt-1`, `mb-4`, `p-4`)
+- [ ] Semantic color usage for different value types
+- [ ] Responsive grid layouts (`grid grid-cols-1 gap-4 sm:grid-cols-2`)
+- [ ] Consistent button styling and hover states
+- [ ] Proper input field styling with focus states
+
+### SvelteKit 5 Specific UI Patterns
+
+**Modern Reactive Patterns for UI:**
+```svelte
+<!-- ✅ Use $derived for computed display values -->
+let displayValue = $derived(
+  data.reduce((sum, item) => sum + (item.value || 0), 0).toFixed(2)
+);
+
+<!-- ✅ Use $state for form data -->
+let formData = $state({
+  name: '',
+  value: 0
+});
+```
+
+**Component Integration Patterns:**
+- Follow `$props<{}>()` pattern for prop definitions
+- Use callback props instead of event dispatching for SvelteKit 5
+- Maintain consistent prop naming across similar components
 
 ## Filter Store Integration
 
