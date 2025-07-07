@@ -339,9 +339,9 @@
 	{#if $filteredData && $filteredData.length > 0}
 		<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 			<!-- Total Inventory Value -->
-			<div class="rounded-lg bg-background-secondary-light p-4">
-				<h3 class="text-primary-light text-sm font-medium">Total Inventory Value</h3>
-				<p class="text-2xl font-bold text-green-500">
+			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+				<h3 class="text-sm font-medium text-text-primary-light">Total Inventory Value</h3>
+				<p class="mt-1 text-2xl font-bold text-green-500">
 					${$filteredData.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0).toFixed(2)}
 				</p>
 				<p class="text-xs text-text-secondary-light mt-1">
@@ -350,9 +350,9 @@
 			</div>
 
 			<!-- Total Weight -->
-			<div class="rounded-lg bg-background-secondary-light p-4">
-				<h3 class="text-primary-light text-sm font-medium">Total Weight</h3>
-				<p class="text-2xl font-bold text-blue-500">
+			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+				<h3 class="text-sm font-medium text-text-primary-light">Total Weight</h3>
+				<p class="mt-1 text-2xl font-bold text-blue-500">
 					{$filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0).toFixed(1)} lbs
 				</p>
 				<p class="text-xs text-text-secondary-light mt-1">
@@ -360,11 +360,10 @@
 				</p>
 			</div>
 
-
 			<!-- Stocked Inventory -->
-			<div class="rounded-lg bg-background-secondary-light p-4">
-				<h3 class="text-primary-light text-sm font-medium">Raw Inventory</h3>
-				<p class="text-2xl font-bold text-indigo-500">
+			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+				<h3 class="text-sm font-medium text-text-primary-light">Raw Inventory</h3>
+				<p class="mt-1 text-2xl font-bold text-indigo-500">
 					{(() => {
 						const totalStockedLbs = $filteredData
 							.reduce((sum: number, bean: any) => {
@@ -389,9 +388,9 @@
 			</div>
 
 			<!-- Average Cost Per Pound -->
-			<div class="rounded-lg bg-background-secondary-light p-4">
-				<h3 class="text-primary-light text-sm font-medium">Avg Cost/lb</h3>
-				<p class="text-2xl font-bold text-orange-500">
+			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+				<h3 class="text-sm font-medium text-text-primary-light">Avg Cost/lb</h3>
+				<p class="mt-1 text-2xl font-bold text-orange-500">
 					${(() => {
 						const totalCost = $filteredData.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0);
 						const totalWeight = $filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0);
@@ -404,9 +403,9 @@
 			</div>
 
 			<!-- Stocked Count -->
-			<div class="rounded-lg bg-background-secondary-light p-4">
-				<h3 class="text-primary-light text-sm font-medium">Currently Stocked</h3>
-				<p class="text-2xl font-bold text-purple-500">
+			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+				<h3 class="text-sm font-medium text-text-primary-light">Currently Stocked</h3>
+				<p class="mt-1 text-2xl font-bold text-purple-500">
 					{$filteredData.filter(bean => bean.stocked).length}
 				</p>
 				<p class="text-xs text-text-secondary-light mt-1">
@@ -417,8 +416,8 @@
 		</div>
 
 		<!-- Source Distribution Chart -->
-		<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
-			<h3 class="text-primary-light mb-4 text-lg font-semibold">Inventory by Source</h3>
+		<div class="mb-6 rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+			<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Inventory by Source</h3>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{#each Object.entries(
 					$filteredData.reduce((acc, bean) => {
@@ -508,7 +507,7 @@
 	<!-- Coffee Cards -->
 	<div class="flex-1">
 		{#if !$filteredData || $filteredData.length === 0}
-			<div class="rounded-lg bg-background-secondary-light p-8 text-center">
+			<div class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light">
 				<div class="mb-4 text-6xl opacity-50">☕</div>
 				<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
 					{data?.data?.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
