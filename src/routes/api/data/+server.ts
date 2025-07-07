@@ -87,8 +87,34 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const { data: rows, error } = await query;
 		if (error) throw error;
 
+		// Get roast profiles for the coffee data (only if we have data and user)
+		let enrichedData = rows || [];
+		if (rows && rows.length > 0) {
+			const { session, user } = await safeGetSession();
+			if (user) {
+				const coffeeIds = rows.map(bean => bean.id);
+				const { data: roastProfilesData } = await supabase
+					.from('roast_profiles')
+					.select('coffee_id, oz_in, oz_out')
+					.in('coffee_id', coffeeIds)
+					.eq('user', user.id);
+
+				// Manually join roast profiles data
+				enrichedData = rows.map(bean => {
+					const profiles = roastProfilesData?.filter(profile => profile.coffee_id === bean.id) || [];
+					return {
+						...bean,
+						roast_profiles: profiles.map(profile => ({
+							oz_in: profile.oz_in,
+							oz_out: profile.oz_out
+						}))
+					};
+				});
+			}
+		}
+
 		return json({
-			data: rows || [],
+			data: enrichedData,
 			searchState: Object.fromEntries(url.searchParams.entries())
 		});
 	} catch (error) {

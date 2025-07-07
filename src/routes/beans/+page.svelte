@@ -4,6 +4,7 @@
 	import BeanProfile from './BeanProfile.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { invalidateAll } from '$app/navigation';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
@@ -14,17 +15,51 @@
 			searchType?: 'green';
 			searchId?: number;
 		};
-		data: Database['public']['Tables']['green_coffee_inv']['Row'][];
+		data: Array<{
+			id: number;
+			rank: number | null;
+			notes: string | null;
+			purchase_date: string | null;
+			purchased_qty_lbs: number | null;
+			bean_cost: number | null;
+			tax_ship_cost: number | null;
+			last_updated: string;
+			user: string;
+			catalog_id: number | null;
+			stocked: boolean | null;
+			coffee_catalog?: any;
+			roast_profiles?: Array<{
+				oz_in: number | null;
+				oz_out: number | null;
+			}>;
+		}>;
 		role?: 'viewer' | 'member' | 'admin';
 	};
 
 	let { data } = $props<{ data: PageData }>();
 
 	// Debug: Log the data
-	// $effect(() => {
-	// 	console.log('Beans page data:', data);
-	// 	console.log('FilteredData store value:', $filteredData);
-	// });
+	$effect(() => {
+		console.log('Raw data from server:', data?.data?.length);
+		if (data?.data?.length > 0) {
+			console.log('First bean raw data:', data.data[0]);
+			const beanWithProfiles = data.data.find(bean => bean.roast_profiles && bean.roast_profiles.length > 0);
+			if (beanWithProfiles) {
+				console.log('Bean with profiles found in raw data:', beanWithProfiles.coffee_catalog?.name, beanWithProfiles.roast_profiles);
+			} else {
+				console.log('No beans with roast_profiles found in raw data');
+			}
+		}
+		
+		if ($filteredData.length > 0) {
+			const sampleBean = $filteredData.find(bean => bean.roast_profiles && bean.roast_profiles.length > 0);
+			if (sampleBean) {
+				console.log('Sample bean with roast profiles in filtered data:', sampleBean.coffee_catalog?.name, sampleBean.roast_profiles);
+			} else {
+				console.log('No beans with roast_profiles found in filtered data');
+			}
+		}
+	});
 
 	// Track initialization state
 	let initializing = $state(false);
@@ -122,7 +157,12 @@
 		}
 	}
 
-	// Function to load data
+	// Function to refresh data using SvelteKit invalidation
+	async function refreshData() {
+		await invalidateAll();
+	}
+
+	// Function to load data from API
 	async function loadData() {
 		try {
 			const shareToken = page.url.searchParams.get('share');
@@ -251,29 +291,6 @@
 		}
 	});
 
-	// Helper functions for score meter (copied from BeanProfile)
-	function getScoreColorClass(score: number) {
-		if (!score) return 'text-gray-400';
-		if (score >= 91) return 'text-emerald-500';
-		if (score >= 90) return 'text-green-500';
-		if (score >= 87) return 'text-yellow-500';
-		if (score >= 85) return 'text-orange-500';
-		return 'text-red-500';
-	}
-
-	function getScorePercentage(score: number, min: number, max: number) {
-		if (!score) return 0;
-		const normalizedScore = Math.max(min, Math.min(max, score));
-		return ((normalizedScore - min) / (max - min)) * 100;
-	}
-
-	function getStrokeColor(value: number) {
-		if (value >= 91) return '#10b981'; // emerald-500
-		if (value >= 90) return '#22c55e'; // green-500
-		if (value >= 87) return '#eab308'; // yellow-500
-		if (value >= 85) return '#f97316'; // orange-500
-		return '#ef4444'; // red-500
-	}
 
 	/**
 	 * Parses AI tasting notes JSON data safely
@@ -320,7 +337,7 @@
 
 	<!-- Dashboard Cards Section -->
 	{#if $filteredData && $filteredData.length > 0}
-		<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 			<!-- Total Inventory Value -->
 			<div class="rounded-lg bg-background-secondary-light p-4">
 				<h3 class="text-primary-light text-sm font-medium">Total Inventory Value</h3>
@@ -366,6 +383,33 @@
 				</p>
 				<p class="text-xs text-text-secondary-light mt-1">
 					of {$filteredData.length} total
+				</p>
+			</div>
+
+			<!-- Stocked Inventory -->
+			<div class="rounded-lg bg-background-secondary-light p-4">
+				<h3 class="text-primary-light text-sm font-medium">Stocked Inventory</h3>
+				<p class="text-2xl font-bold text-indigo-500">
+					{(() => {
+						const totalStockedLbs = $filteredData
+							.reduce((sum: number, bean: any) => {
+								const purchasedOz = (bean.purchased_qty_lbs || 0) * 16;
+								const roastedOz = bean.roast_profiles?.reduce((ozSum: number, profile: any) => ozSum + (profile.oz_in || 0), 0) || 0;
+								const remainingOz = purchasedOz - roastedOz;
+								const shouldBeStocked = remainingOz >= 8; // 0.5 lb threshold logic from stockedStatusUtils
+								
+								
+								// Only count remaining inventory for coffees that should be stocked
+								if (shouldBeStocked) {
+									return sum + (remainingOz / 16);
+								}
+								return sum;
+							}, 0);
+						return totalStockedLbs.toFixed(1);
+					})()} lbs
+				</p>
+				<p class="text-xs text-text-secondary-light mt-1">
+					Available for roasting
 				</p>
 			</div>
 		</div>
@@ -503,6 +547,9 @@
 					{@const displayArrival = catalogData?.arrival_date}
 					{@const displayScore = catalogData?.score_value}
 					{@const tastingNotes = parseTastingNotes(catalogData?.ai_tasting_notes)}
+					{@const purchasedOz = (bean.purchased_qty_lbs || 0) * 16}
+					{@const roastedOz = bean.roast_profiles?.reduce((ozSum: number, profile: any) => ozSum + (profile.oz_in || 0), 0) || 0}
+					{@const remainingLbs = (purchasedOz - roastedOz) / 16}
 					<button
 						type="button"
 						class="group rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
@@ -567,6 +614,17 @@
 									<div>
 										{#if bean.purchase_date}
 											<span>Purchase: {bean.purchase_date}</span>
+										{/if}
+									</div>
+									<div>
+										<span class="font-medium">Stocked:</span> 
+										<span class={remainingLbs > 0 ? 'text-green-500' : 'text-red-500'}>
+											{remainingLbs.toFixed(1)} lbs
+										</span>
+										{#if roastedOz > 0}
+											<span class="text-text-secondary-light">
+												({roastedOz.toFixed(0)} oz roasted)
+											</span>
 										{/if}
 									</div>
 								</div>
