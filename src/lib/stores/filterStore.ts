@@ -372,9 +372,16 @@ function createFilterStore() {
 
 				// Handle stocked boolean filter
 				if (key === 'stocked') {
+					// Skip filtering if value is empty string (All option)
+					if (value === '') return true;
 					// Convert string to boolean for comparison
-					const boolValue = value === 'TRUE' || value === 'true' || value === true;
-					return itemValue === boolValue;
+					if (value === 'TRUE' || value === 'true') {
+						return itemValue === true;
+					} else if (value === 'FALSE' || value === 'false') {
+						return itemValue === false;
+					}
+					// For other boolean values, use direct comparison
+					return itemValue === value;
 				}
 
 				// Handle different filter types

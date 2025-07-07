@@ -271,6 +271,16 @@
 									<option value={batchName}>{batchName}</option>
 								{/each}
 							</select>
+						{:else if column === 'stocked'}
+							<select
+								value={$filterStore.filters.stocked || ''}
+								onchange={(e) => filterStore.setFilter('stocked', e.currentTarget.value)}
+								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+							>
+								<option value="">All</option>
+								<option value="TRUE">Stocked</option>
+								<option value="FALSE">Unstocked</option>
+							</select>
 						{:else}
 							<input
 								type="text"
