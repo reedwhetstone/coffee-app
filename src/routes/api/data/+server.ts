@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		let query = supabase.from('green_coffee_inv').select(`
 			*,
-			coffee_catalog (
+			coffee_catalog!catalog_id (
 				name,
 				score_value,
 				arrival_date,
@@ -162,7 +162,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			.select(
 				`
 				*,
-				coffee_catalog (
+				coffee_catalog!catalog_id (
 					name,
 					score_value,
 					arrival_date,
@@ -293,7 +293,23 @@ export const PUT: RequestHandler = async ({
 		}
 
 		const updates = await request.json();
-		const { id: _, ...updateData } = updates;
+		const { id: _, ...rawUpdateData } = updates;
+		
+		console.log('PUT request - updating bean ID:', id);
+		console.log('Raw update data keys:', Object.keys(rawUpdateData));
+		
+		// Filter to only include actual green_coffee_inv table columns
+		const validColumns = [
+			'rank', 'notes', 'purchase_date', 'purchased_qty_lbs', 
+			'bean_cost', 'tax_ship_cost', 'last_updated', 'user', 
+			'catalog_id', 'stocked', 'cupping_notes'
+		];
+		
+		const updateData = Object.fromEntries(
+			Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
+		);
+		
+		console.log('Filtered update data:', JSON.stringify(updateData, null, 2));
 
 		// First, verify the record exists
 		const { data: existingBean, error: checkError } = await supabase
@@ -312,12 +328,23 @@ export const PUT: RequestHandler = async ({
 			return json({ success: false, error: 'Bean not found' }, { status: 404 });
 		}
 
-		const { data: updatedBeans, error } = await supabase
+		// First do the update without the join to avoid schema cache issues
+		const { error: updateError } = await supabase
 			.from('green_coffee_inv')
 			.update(updateData)
-			.eq('id', id).select(`
+			.eq('id', id);
+
+		if (updateError) {
+			console.error('Update error:', updateError);
+			throw updateError;
+		}
+
+		// Then fetch the updated data with the join
+		const { data: updatedBeans, error } = await supabase
+			.from('green_coffee_inv')
+			.select(`
 				*,
-				coffee_catalog (
+				coffee_catalog!catalog_id (
 					name,
 					score_value,
 					arrival_date,
@@ -346,9 +373,21 @@ export const PUT: RequestHandler = async ({
 					ai_tasting_notes,
 					public_coffee
 				)
-			`);
+			`)
+			.eq('id', id);
 
-		if (error) throw error;
+		if (error) {
+			console.warn('Join query failed, falling back to basic select:', error);
+			// Fallback: just return the basic updated record without the join
+			const { data: basicData, error: basicError } = await supabase
+				.from('green_coffee_inv')
+				.select('*')
+				.eq('id', id)
+				.single();
+			
+			if (basicError) throw basicError;
+			return json(basicData);
+		}
 
 		if (!updatedBeans || updatedBeans.length === 0) {
 			return json({ success: false, error: 'Update failed' }, { status: 500 });

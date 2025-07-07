@@ -67,7 +67,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		if (shareData) {
 			let query = supabase.from('green_coffee_inv').select(`
 				*,
-				coffee_catalog (
+				coffee_catalog!catalog_id (
 					name,
 					score_value,
 					arrival_date,
@@ -148,7 +148,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.select(
 			`
 			*,
-			coffee_catalog (
+			coffee_catalog!catalog_id (
 				name,
 				score_value,
 				arrival_date,

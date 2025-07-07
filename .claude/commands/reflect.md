@@ -53,7 +53,8 @@ Wait for feedback from the human on each suggestion before proceeding. If the hu
 </improvements>
 
 <final_instructions>
-[Present the complete, updated set of instructions for Claude, incorporating all approved changes]
+[Update CLAUDE.md with the complete set of instructions that have been approved]
 </final_instructions>
 
-Remember, your goal is to enhance Claude's performance and consistency while maintaining the core functionality and purpose of the AI assistant. Be thorough in your analysis, clear in your explanations, and precise in your implementations.
+Remember, your goal is to enhance Claude's performance and consistency while maintaining the core functionality and purpose of the AI assistant. Be thorough in your analysis, clear in your explanations, and precise in your implementations. Avoid including implementation details that may change over time
+(specific database queries, current bugs, temporary workarounds, etc.). Keep guidance general and architectural.

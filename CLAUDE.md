@@ -4,6 +4,62 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > **Note**: This documentation focuses on stable architectural patterns and development guidelines. Avoid including implementation details that may change over time (specific database queries, current bugs, temporary workarounds, etc.). Keep guidance general and architectural.
 
+## CRITICAL REQUIREMENTS
+
+### SvelteKit 5 Syntax Enforcement
+
+**MANDATORY**: This project uses SvelteKit 5 with runes. The following patterns are REQUIRED and violations will cause runtime errors:
+
+**✅ REQUIRED SvelteKit 5 Patterns:**
+```typescript
+// Props definition
+let { propName, optionalProp = defaultValue } = $props<{ propName: Type; optionalProp?: Type }>();
+
+// Reactive state
+let reactiveVar = $state(initialValue);
+
+// Computed values
+let computedValue = $derived(reactiveVar * 2);
+
+// Side effects
+$effect(() => {
+  // Side effect logic
+});
+```
+
+**❌ FORBIDDEN SvelteKit 4 Patterns:**
+```typescript
+// Never use export let
+export let propName; // ❌ WILL CAUSE ERROR
+
+// Never use $: reactive statements
+$: computedValue = reactiveVar * 2; // ❌ WILL CAUSE ERROR
+
+// Never use page store with $
+import { page } from '$app/stores'; // ❌ WILL CAUSE ERROR
+console.log($page.url); // ❌ WILL CAUSE ERROR
+```
+
+**IMMEDIATE VERIFICATION**: Before writing any Svelte component, verify you are using SvelteKit 5 patterns. Any use of `export let` or `$:` reactive statements will fail at runtime.
+
+### Database Schema Validation Requirements
+
+**MANDATORY**: Before any database operation, you must:
+
+1. **Verify Column Existence**: Confirm all referenced columns exist in the target table
+2. **Validate Foreign Key Syntax**: Use explicit foreign key syntax: `related_table!foreign_key_column`
+3. **Filter API Data**: Only send columns that exist in the target table to update/insert operations
+4. **Test Query Structure**: Ensure joins work with actual data before implementation
+
+**Required Data Filtering Pattern:**
+```typescript
+// ✅ Always filter data for API operations
+const validColumns = ['column1', 'column2', 'column3']; // Define valid table columns
+const updateData = Object.fromEntries(
+  Object.entries(rawData).filter(([key]) => validColumns.includes(key))
+);
+```
+
 ## Development Commands
 
 ### Core Development
@@ -142,14 +198,68 @@ const displayName = item.nested_object?.name || item.name || 'Unknown';
 
 ## Database Development Guidelines
 
-### Schema Awareness
+### Schema Validation Requirements
 
-Before writing any database queries:
-- ALWAYS verify column existence in the target table
-- Understand foreign key relationships and their directions
-- Use proper Supabase join syntax
-- Test queries with actual data to ensure joins work correctly
-- When modifying existing APIs, check all related queries for consistency
+**MANDATORY Pre-Operation Checklist:**
+
+Before any database query or API operation:
+
+1. **Column Verification**: Confirm all referenced columns exist in target table
+2. **Foreign Key Validation**: Use explicit syntax: `table!foreign_key_column`
+3. **Data Structure Validation**: Ensure data matches table schema
+4. **Join Testing**: Test complex joins with actual data before implementation
+
+### API Data Filtering Patterns
+
+**Required for Update/Insert Operations:**
+
+```typescript
+// ✅ Define valid columns for each table
+const greenCoffeeInvColumns = [
+  'rank', 'notes', 'purchase_date', 'purchased_qty_lbs', 
+  'bean_cost', 'tax_ship_cost', 'last_updated', 'user', 
+  'catalog_id', 'stocked', 'cupping_notes'
+];
+
+// ✅ Filter incoming data to prevent schema cache errors
+const updateData = Object.fromEntries(
+  Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
+);
+
+// ✅ Separate update and select operations
+// First: Update without joins
+const { error: updateError } = await supabase
+  .from('table_name')
+  .update(filteredData)
+  .eq('id', id);
+
+// Then: Select with joins
+const { data: updatedData } = await supabase
+  .from('table_name')
+  .select('*, related_table!foreign_key(*)')
+  .eq('id', id);
+```
+
+### Schema Cache Error Prevention
+
+**Common Causes and Solutions:**
+
+1. **Joined Data in Updates**: Never send complete objects with joined data to update endpoints
+2. **Invalid Column References**: Always validate column names against actual table schema
+3. **Foreign Key Syntax**: Use explicit syntax for relationships
+
+**Debugging Approach:**
+```typescript
+// ✅ Add comprehensive logging for schema issues
+console.log('Update data keys:', Object.keys(updateData));
+console.log('Filtered update data:', JSON.stringify(updateData, null, 2));
+
+// ✅ Implement fallback queries
+if (error) {
+  console.warn('Join query failed, falling back to basic select:', error);
+  // Fallback to simple query without joins
+}
+```
 
 ### Query Troubleshooting Approach
 
@@ -170,12 +280,12 @@ const { data } = await supabase
   .select('*')
   .eq('user', user.id);
 
-// ✅ Simple join pattern
+// ✅ Simple join pattern with explicit foreign key
 const { data } = await supabase
   .from('main_table')
   .select(`
     *,
-    related_table (field1, field2)
+    related_table!foreign_key_column (field1, field2)
   `)
   .eq('user', user.id);
 
@@ -190,19 +300,34 @@ const combined = mainData?.map(item => ({
 
 ## Todo List Usage Guidelines
 
-### When to Use TodoWrite
+### Mandatory TodoWrite Usage
 
-**ALWAYS use TodoWrite when:**
+**REQUIRED - Use TodoWrite IMMEDIATELY when:**
+- Feature requests affecting multiple files or components
+- Any task requiring more than 2 distinct implementation steps
+- Complex refactoring or architectural changes
+- User provides multiple requirements (even if mentioned casually)
 - Framework migrations or version updates
-- Task involves 3+ distinct operations or phases
-- Changes affect 3+ files across different directories
-- System-wide updates impact multiple features/routes
 - Database schema modifications or API restructuring
-- User provides multiple requirements or a feature list
-- Task requires planning implementation steps before coding
+- System-wide updates impacting multiple features/routes
 - Non-trivial and complex tasks requiring careful planning
-- User explicitly requests todo list usage
-- User provides numbered or comma-separated task lists
+
+**Enhanced Trigger Recognition:**
+- **Keywords**: "add feature", "implement", "create", "update", "refactor", "improve"
+- **Multiple Actions**: Any sentence containing "and" linking different actions
+- **Scope Indicators**: "across", "throughout", "all", "multiple"
+- **Quality Gates**: "make sure", "ensure", "test", "validate"
+
+### Proactive Todo Management
+
+**IMMEDIATE Action Required:**
+```typescript
+// Example recognition patterns:
+"Add dark mode and make sure tests pass" → CREATE TODOS IMMEDIATELY
+"Implement user authentication with role-based access" → CREATE TODOS IMMEDIATELY  
+"Update the design to be more consistent" → CREATE TODOS IMMEDIATELY
+"Create a new dashboard with charts and data" → CREATE TODOS IMMEDIATELY
+```
 
 **NEVER use TodoWrite when:**
 - Single file edits or simple bug fixes
@@ -302,23 +427,30 @@ When creating new UI components, especially dashboards:
 - **Calculations**: Handle edge cases (division by zero, null values)
 - **Responsive**: Stack on mobile, grid on larger screens
 
-## UI/Form Consistency Patterns
+## Component Design Pattern Guidelines
 
-### Identifying Existing Design Patterns
+### Systematic Design Consistency
 
-Before creating or modifying UI components, systematically analyze existing patterns:
+**MANDATORY Pattern Extraction Process:**
 
-**Step 1: Pattern Discovery**
-- Read similar existing components to understand established patterns
-- Look for repeated class combinations (e.g., `rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light`)
-- Identify consistent spacing, typography, and color usage
-- Note layout patterns (grid structures, responsive breakpoints)
+Before creating or modifying any UI component:
 
-**Step 2: Design Language Analysis**
-- Compare target component with reference pages (e.g., /(home), /beans, /profit)
-- Extract common elements: card styling, button designs, form layouts, typography hierarchy
-- Document spacing patterns (`mt-1`, `mb-4`, `p-4`, etc.)
-- Note semantic color usage (`text-green-500` for positive values, `text-red-500` for costs)
+1. **Pattern Discovery Phase**:
+   - Read 2-3 similar existing components to understand established patterns
+   - Document repeated class combinations (e.g., `rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light`)
+   - Identify consistent spacing, typography, and color usage
+   - Note layout patterns (grid structures, responsive breakpoints)
+
+2. **Design Language Analysis**:
+   - Compare target component with reference pages (e.g., /(home), /beans, /profit)
+   - Extract common elements: card styling, button designs, form layouts, typography hierarchy
+   - Document spacing patterns (`mt-1`, `mb-4`, `p-4`, etc.)
+   - Note semantic color usage (`text-green-500` for positive values, `text-red-500` for costs)
+
+3. **Systematic Application**:
+   - Apply discovered patterns consistently across all similar elements
+   - Create component-specific pattern checklist
+   - Verify final implementation matches established design language
 
 ### Applying Consistent Design Patterns
 
