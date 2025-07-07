@@ -1,0 +1,763 @@
+<script lang="ts">
+	import { prepareDateForAPI } from '$lib/utils/dates';
+	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
+	import CuppingNotesForm from './CuppingNotesForm.svelte';
+	import type { TastingNotes } from '$lib/types/coffee.types';
+
+	let { selectedBean, role, onUpdate, onDelete } = $props<{
+		selectedBean: any;
+		role?: 'viewer' | 'member' | 'admin';
+		onUpdate: (bean: any) => void;
+		onDelete: (id: number) => void;
+	}>();
+
+	let currentTab = $state('overview');
+	let isEditing = $state(false);
+	let editedBean = $state({ ...selectedBean });
+	let processingUpdate = $state(false);
+	let lastSelectedBeanId = $state<number | null>(null);
+	let showCuppingForm = $state(false);
+
+	// Parse AI tasting notes
+	let aiTastingNotes = $derived((): TastingNotes | null => {
+		if (selectedBean.coffee_catalog?.ai_tasting_notes) {
+			try {
+				const parsed = typeof selectedBean.coffee_catalog.ai_tasting_notes === 'string' 
+					? JSON.parse(selectedBean.coffee_catalog.ai_tasting_notes)
+					: selectedBean.coffee_catalog.ai_tasting_notes;
+				
+				// Validate structure
+				if (parsed.body && parsed.flavor && parsed.acidity && parsed.sweetness && parsed.fragrance_aroma) {
+					return parsed as TastingNotes;
+				}
+			} catch (error) {
+				console.warn('Failed to parse AI tasting notes:', error);
+			}
+		}
+		return null;
+	});
+
+	// Parse user cupping notes
+	let userTastingNotes = $derived((): TastingNotes | null => {
+		if (selectedBean.cupping_notes) {
+			try {
+				const parsed = typeof selectedBean.cupping_notes === 'string'
+					? JSON.parse(selectedBean.cupping_notes)
+					: selectedBean.cupping_notes;
+				
+				// Validate structure
+				if (parsed.body && parsed.flavor && parsed.acidity && parsed.sweetness && parsed.fragrance_aroma) {
+					return parsed as TastingNotes;
+				}
+			} catch (error) {
+				console.warn('Failed to parse user cupping notes:', error);
+			}
+		}
+		return null;
+	});
+
+	// List of fields that are allowed to be edited
+	const editableFields = [
+		'notes',
+		'purchase_date',
+		'purchased_qty_lbs',
+		'bean_cost',
+		'tax_ship_cost',
+		'rank'
+	];
+
+	const tabs = [
+		{ id: 'overview', label: 'Overview', icon: '📊' },
+		{ id: 'cupping', label: 'Cupping', icon: '👃' },
+		{ id: 'roasting', label: 'Roasting', icon: '🔥' },
+		{ id: 'analytics', label: 'Analytics', icon: '📈' }
+	];
+
+	// Function to handle editing
+	function toggleEdit() {
+		if (isEditing) {
+			// Save changes
+			saveChanges();
+		} else {
+			// Enter edit mode
+			editedBean = { ...selectedBean };
+			isEditing = true;
+		}
+	}
+
+	// Add safe update function with guard and memoization
+	$effect(() => {
+		// Skip if we're already processing or if the bean hasn't changed
+		if (
+			processingUpdate ||
+			(lastSelectedBeanId === selectedBean?.id && lastSelectedBeanId !== null)
+		) {
+			return;
+		}
+
+		// Only update editedBean when selectedBean changes
+		if (selectedBean) {
+			processingUpdate = true;
+
+			// Track the bean ID we're processing
+			lastSelectedBeanId = selectedBean.id;
+
+			// Use setTimeout to break potential update cycles
+			setTimeout(() => {
+				try {
+					// Deep clone to avoid reference issues
+					editedBean = JSON.parse(JSON.stringify(selectedBean));
+				} finally {
+					processingUpdate = false;
+				}
+			}, 50);
+		}
+	});
+
+	async function saveChanges() {
+		if (processingUpdate) return;
+
+		try {
+			processingUpdate = true;
+			const dataForAPI = {
+				...selectedBean, // Start with the original bean to preserve non-editable fields
+				...Object.fromEntries(
+					Object.entries(editedBean).filter(([key]) => editableFields.includes(key))
+				), // Only include editable fields from editedBean
+				purchase_date: prepareDateForAPI(editedBean.purchase_date),
+				last_updated: new Date().toISOString()
+			};
+
+			const response = await fetch(`/api/data?id=${selectedBean.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(dataForAPI)
+			});
+
+			if (response.ok) {
+				const updatedBean = await response.json();
+				isEditing = false;
+				setTimeout(() => {
+					onUpdate(updatedBean);
+					processingUpdate = false;
+				}, 50);
+			} else {
+				const data = await response.json();
+				alert(`Failed to update bean: ${data.error}`);
+				processingUpdate = false;
+			}
+		} catch (error) {
+			console.error('Error updating bean:', error);
+			processingUpdate = false;
+		}
+	}
+
+	// Function to handle deletion
+	async function deleteBean() {
+		if (processingUpdate) return;
+
+		if (
+			confirm(
+				'Are you sure you want to delete this bean? This will also delete all associated roast profiles and logs.'
+			)
+		) {
+			try {
+				processingUpdate = true;
+				onDelete(selectedBean.id);
+				setTimeout(() => {
+					processingUpdate = false;
+				}, 50);
+			} catch (error) {
+				console.error('Error during bean deletion:', error);
+				processingUpdate = false;
+			}
+		}
+	}
+
+	// Handle cupping notes save
+	async function handleCuppingSave(notes: TastingNotes) {
+		try {
+			const dataForAPI = {
+				...selectedBean,
+				cupping_notes: JSON.stringify(notes),
+				last_updated: new Date().toISOString()
+			};
+
+			const response = await fetch(`/api/data?id=${selectedBean.id}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(dataForAPI)
+			});
+
+			if (response.ok) {
+				const updatedBean = await response.json();
+				showCuppingForm = false;
+				onUpdate(updatedBean);
+			} else {
+				const data = await response.json();
+				alert(`Failed to save cupping notes: ${data.error}`);
+			}
+		} catch (error) {
+			console.error('Error saving cupping notes:', error);
+			alert('Error saving cupping notes');
+		}
+	}
+
+	// Helper function to get color class based on score
+	function getScoreColorClass(score: number) {
+		if (!score) return 'text-gray-400';
+		if (score >= 91) return 'text-emerald-500';
+		if (score >= 90) return 'text-green-500';
+		if (score >= 87) return 'text-yellow-500';
+		if (score >= 85) return 'text-orange-500';
+		return 'text-red-500';
+	}
+
+	// Helper function to calculate the percentage for the crescent meter
+	function getScorePercentage(score: number, min: number, max: number) {
+		if (!score) return 0;
+		const normalizedScore = Math.max(min, Math.min(max, score));
+		return ((normalizedScore - min) / (max - min)) * 100;
+	}
+
+	// Helper function to get the stroke color for the crescent meter
+	function getStrokeColor(value: number, isScore: boolean) {
+		if (isScore) {
+			if (value >= 91) return '#10b981'; // emerald-500
+			if (value >= 90) return '#22c55e'; // green-500
+			if (value >= 87) return '#eab308'; // yellow-500
+			if (value >= 85) return '#f97316'; // orange-500
+			return '#ef4444'; // red-500
+		} else {
+			// For rank
+			if (value >= 8) return '#10b981'; // emerald-500
+			if (value >= 6) return '#22c55e'; // green-500
+			if (value >= 4) return '#eab308'; // yellow-500
+			if (value >= 2) return '#f97316'; // orange-500
+			return '#ef4444'; // red-500
+		}
+	}
+</script>
+
+<div class="rounded-lg border border-border-light bg-background-secondary-light p-4 shadow-md md:p-6">
+	<!-- Header with Title and Scores -->
+	<div class="mb-6">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+			<h2 class="text-xl font-bold text-text-primary-light">
+				{selectedBean.coffee_catalog?.name || selectedBean.name}
+			</h2>
+			<div>
+				{#if selectedBean.coffee_catalog?.score_value !== undefined || selectedBean.rank !== undefined}
+					{@const catalogScore = selectedBean.coffee_catalog?.score_value}
+					<div class="flex items-center justify-center gap-4 sm:justify-end md:gap-6">
+						{#if catalogScore !== undefined}
+							<div class="flex flex-col items-center">
+								<div class="relative h-14 w-14 md:h-16 md:w-16">
+									<!-- Background arc -->
+									<svg class="absolute inset-0" viewBox="0 0 100 100">
+										<path
+											d="M10,50 A40,40 0 1,1 90,50"
+											fill="none"
+											stroke="#e5e7eb"
+											stroke-width="8"
+											stroke-linecap="round"
+										/>
+										<!-- Foreground arc (dynamic based on score) -->
+										<path
+											d="M10,50 A40,40 0 1,1 90,50"
+											fill="none"
+											stroke={getStrokeColor(catalogScore, true)}
+											stroke-width="8"
+											stroke-linecap="round"
+											stroke-dasharray="126"
+											stroke-dashoffset={126 -
+												(126 * getScorePercentage(catalogScore, 0, 100)) / 100}
+										/>
+									</svg>
+									<!-- Score value in the center -->
+									<div class="absolute inset-0 flex items-center justify-center">
+										<span class="text-xl font-bold md:text-2xl {getScoreColorClass(catalogScore)}">
+											{catalogScore}
+										</span>
+									</div>
+									<span
+										class="text-primary-light absolute bottom-0 left-0 right-0 text-center text-xs"
+										>SCORE</span
+									>
+								</div>
+							</div>
+						{/if}
+
+						{#if selectedBean.rank !== undefined}
+							<div class="flex flex-col items-center">
+								<div class="relative h-14 w-14 md:h-16 md:w-16">
+									<!-- Background arc -->
+									<svg class="absolute inset-0" viewBox="0 0 100 100">
+										<path
+											d="M10,50 A40,40 0 1,1 90,50"
+											fill="none"
+											stroke="#e5e7eb"
+											stroke-width="8"
+											stroke-linecap="round"
+										/>
+										<!-- Foreground arc (dynamic based on rank) -->
+										<path
+											d="M10,50 A40,40 0 1,1 90,50"
+											fill="none"
+											stroke={getStrokeColor(selectedBean.rank, false)}
+											stroke-width="8"
+											stroke-linecap="round"
+											stroke-dasharray="126"
+											stroke-dashoffset={126 -
+												(126 * getScorePercentage(selectedBean.rank, 0, 10)) / 100}
+										/>
+									</svg>
+									<!-- Rank value in the center -->
+									<div class="absolute inset-0 flex items-center justify-center">
+										<span class="text-xl font-bold text-amber-500 md:text-2xl">
+											{typeof selectedBean.rank === 'number'
+												? Math.round(selectedBean.rank)
+												: selectedBean.rank}
+										</span>
+									</div>
+									<span
+										class="text-primary-light absolute bottom-0 left-0 right-0 text-center text-xs"
+										>RATING</span
+									>
+								</div>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Tab Navigation -->
+		<div class="mt-6 border-b border-border-light">
+			<div class="flex space-x-8">
+				{#each tabs as tab}
+					<button
+						class="flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 {currentTab === tab.id
+							? 'border-background-tertiary-light text-background-tertiary-light'
+							: 'border-transparent text-text-secondary-light hover:text-text-primary-light hover:border-border-light'}"
+						onclick={() => (currentTab = tab.id)}
+					>
+						<span>{tab.icon}</span>
+						{tab.label}
+					</button>
+				{/each}
+			</div>
+		</div>
+	</div>
+
+	<!-- Tab Content -->
+	<div class="min-h-[400px]">
+		{#if currentTab === 'overview'}
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+				<!-- User-specific inventory data (always from selectedBean) -->
+				{#each ['notes', 'purchase_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'last_updated'] as key}
+					{#if selectedBean[key] !== undefined}
+						<div
+							class="rounded border border-border-light bg-background-secondary-light p-2 {key ===
+							'notes'
+								? 'col-span-1 sm:col-span-2'
+								: ''}"
+						>
+							<span class="text-primary-light font-medium"
+								>{key.replace(/_/g, ' ').toUpperCase()}:</span
+							>
+							{#if isEditing && editableFields.includes(key) && key !== 'last_updated'}
+								{#if key === 'notes'}
+									<textarea
+										class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
+										rows="4"
+										bind:value={editedBean[key]}
+									></textarea>
+								{:else if key === 'bean_cost' || key === 'tax_ship_cost'}
+									<input
+										type="number"
+										step="0.01"
+										min="0"
+										class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light sm:w-auto"
+										bind:value={editedBean[key]}
+									/>
+								{:else if key === 'purchased_qty_lbs'}
+									<input
+										type="number"
+										step="0.1"
+										min="0"
+										class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light sm:w-auto"
+										bind:value={editedBean[key]}
+									/>
+								{:else if key === 'purchase_date'}
+									<input
+										type="date"
+										class="ml-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light sm:w-auto"
+										bind:value={editedBean[key]}
+									/>
+								{/if}
+							{:else}
+								<span
+									class="ml-2 text-text-primary-light {key === 'notes'
+										? 'zinc-300 space-pre-wrap block'
+										: ''}"
+								>
+									{#if key === 'bean_cost' || key === 'tax_ship_cost'}
+										${typeof selectedBean[key] === 'number'
+											? selectedBean[key].toFixed(2)
+											: selectedBean[key]}
+									{:else}
+										{selectedBean[key]}
+									{/if}
+								</span>
+							{/if}
+						</div>
+					{/if}
+				{/each}
+
+				<!-- Stocked Inventory Calculation -->
+				{#if selectedBean.purchased_qty_lbs !== undefined}
+					{@const purchasedOz = (selectedBean.purchased_qty_lbs || 0) * 16}
+					{@const roastedOz = selectedBean.roast_profiles?.reduce((ozSum: number, profile: any) => ozSum + (profile.oz_in || 0), 0) || 0}
+					{@const remainingLbs = (purchasedOz - roastedOz) / 16}
+					<div class="rounded border border-border-light bg-background-secondary-light p-2">
+						<span class="text-primary-light font-medium">STOCKED INVENTORY:</span>
+						<div class="ml-2 text-text-primary-light">
+							<span class={remainingLbs > 0 ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
+								{remainingLbs.toFixed(1)} lbs
+							</span>
+							<span class="text-text-secondary-light text-sm">
+								({purchasedOz.toFixed(0)} oz purchased - {roastedOz.toFixed(0)} oz roasted)
+							</span>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Catalog data fields (from coffee_catalog) -->
+				{#if selectedBean.coffee_catalog}
+					{@const catalogData = selectedBean.coffee_catalog}
+					{#each ['ai_description', 'arrival_date', 'region', 'processing', 'cultivar_detail'] as key}
+						{#if catalogData[key] !== undefined}
+							<div
+								class="rounded border border-border-light bg-background-secondary-light p-2 {key ===
+								'ai_description'
+									? 'col-span-1 sm:col-span-2'
+									: ''}"
+							>
+								<span class="text-primary-light font-medium"
+									>{key.replace(/_/g, ' ').toUpperCase()}:</span
+								>
+								<span
+									class="ml-2 text-text-primary-light {key === 'ai_description'
+										? 'zinc-300 space-pre-wrap block'
+										: ''}"
+								>
+									{catalogData[key]}
+								</span>
+							</div>
+						{/if}
+					{/each}
+
+					{#if catalogData.link}
+						<div class="rounded border border-border-light bg-background-secondary-light p-2">
+							<span class="text-primary-light font-medium">LINK:</span>
+							<a
+								href={catalogData.link}
+								target="_blank"
+								class="ml-2 text-blue-400 hover:underline"
+							>
+								{catalogData.link}
+							</a>
+						</div>
+					{/if}
+				{/if}
+			</div>
+
+		{:else if currentTab === 'cupping'}
+			<div class="space-y-6">
+				{#if showCuppingForm}
+					<CuppingNotesForm
+						initialNotes={userTastingNotes()}
+						aiTastingNotes={aiTastingNotes()}
+						onSave={handleCuppingSave}
+						onCancel={() => (showCuppingForm = false)}
+					/>
+				{:else}
+					<!-- Cupping Overview -->
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+						<!-- Radar Chart Section -->
+						<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+							<div class="flex items-center justify-between mb-4">
+								<h3 class="font-semibold text-text-primary-light">Tasting Profile</h3>
+								{#if role === 'admin' || role === 'member'}
+									<button
+										onclick={() => (showCuppingForm = true)}
+										class="px-3 py-1 bg-background-tertiary-light text-white rounded text-sm hover:bg-opacity-90 transition-colors duration-200"
+									>
+										{userTastingNotes() ? 'Edit' : 'Add'} Cupping Notes
+									</button>
+								{/if}
+							</div>
+							
+							<div class="flex justify-center">
+								{#if aiTastingNotes() || userTastingNotes()}
+									<TastingNotesRadar
+										tastingNotes={aiTastingNotes()}
+										userTastingNotes={userTastingNotes()}
+										showOverlay={!!(aiTastingNotes() && userTastingNotes())}
+										size={300}
+										responsive={false}
+									/>
+								{:else}
+									<div class="w-[300px] h-[300px] flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50">
+										<span class="text-sm text-gray-400">No tasting data available</span>
+									</div>
+								{/if}
+							</div>
+							
+							{#if aiTastingNotes() && userTastingNotes()}
+								<p class="text-xs text-text-secondary-light text-center mt-2">
+									Solid circles: AI assessment • Dashed circles: Your assessment
+								</p>
+							{/if}
+						</div>
+
+						<!-- Rating & Notes Section -->
+						<div class="space-y-4">
+							<!-- User Rating -->
+							<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+								<h4 class="font-medium text-text-primary-light mb-2">Your Rating</h4>
+								{#if selectedBean.rank !== undefined}
+									<div class="flex items-center gap-3">
+										<span class="text-2xl font-bold text-background-tertiary-light">
+											{selectedBean.rank}
+										</span>
+										<span class="text-text-secondary-light">/10</span>
+									</div>
+								{:else}
+									<p class="text-text-secondary-light text-sm">No rating yet</p>
+								{/if}
+							</div>
+
+							<!-- Cupping Notes Summary -->
+							{#if userTastingNotes()}
+								{@const notes = userTastingNotes()}
+								{#if notes}
+									<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+										<h4 class="font-medium text-text-primary-light mb-3">Your Cupping Notes</h4>
+										<div class="space-y-2">
+											{#each Object.entries(notes) as [key, note]}
+												<div class="flex items-center justify-between">
+													<span class="text-sm text-text-secondary-light capitalize">
+														{key.replace('_', ' ')}:
+													</span>
+													<div class="flex items-center gap-2">
+														<div
+															class="w-3 h-3 rounded-full"
+															style="background-color: {note.color}"
+														></div>
+														<span class="text-sm text-text-primary-light font-medium">
+															{note.tag}
+														</span>
+														<span class="text-xs text-text-secondary-light">
+															({note.score}/5)
+														</span>
+													</div>
+												</div>
+											{/each}
+										</div>
+									</div>
+								{/if}
+							{:else}
+								<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+									<h4 class="font-medium text-text-primary-light mb-2">Your Cupping Notes</h4>
+									<p class="text-text-secondary-light text-sm">No cupping notes yet</p>
+									{#if role === 'admin' || role === 'member'}
+										<button
+											onclick={() => (showCuppingForm = true)}
+											class="mt-2 px-3 py-1 bg-background-tertiary-light text-white rounded text-sm hover:bg-opacity-90 transition-colors duration-200"
+										>
+											Add Cupping Assessment
+										</button>
+									{/if}
+								</div>
+							{/if}
+						</div>
+					</div>
+				{/if}
+			</div>
+
+		{:else if currentTab === 'roasting'}
+			<div class="space-y-4">
+				<div class="flex items-center justify-between">
+					<h3 class="text-lg font-semibold text-text-primary-light">Roasting History</h3>
+					{#if role === 'admin' || role === 'member'}
+						<button
+							onclick={() => {
+								window.location.href = `/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
+							}}
+							class="px-4 py-2 bg-background-tertiary-light text-white rounded-md font-medium hover:bg-opacity-90 transition-all duration-200"
+						>
+							Start New Roast
+						</button>
+					{/if}
+				</div>
+
+				{#if selectedBean.roast_profiles && selectedBean.roast_profiles.length > 0}
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+						{#each selectedBean.roast_profiles as profile, index}
+							<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+								<div class="flex items-center justify-between mb-2">
+									<h4 class="font-medium text-text-primary-light">Roast #{index + 1}</h4>
+									<span class="text-xs text-text-secondary-light">
+										{profile.oz_in || 0} oz → {profile.oz_out || 0} oz
+									</span>
+								</div>
+								<div class="text-sm text-text-secondary-light">
+									Loss: {profile.oz_in && profile.oz_out 
+										? ((profile.oz_in - profile.oz_out) / profile.oz_in * 100).toFixed(1)
+										: 0}%
+								</div>
+							</div>
+						{/each}
+					</div>
+
+					<!-- Summary Stats -->
+					{@const totalOzIn = selectedBean.roast_profiles.reduce((sum: number, p: any) => sum + (p.oz_in || 0), 0)}
+					{@const totalOzOut = selectedBean.roast_profiles.reduce((sum: number, p: any) => sum + (p.oz_out || 0), 0)}
+					{@const avgLoss = totalOzIn > 0 ? ((totalOzIn - totalOzOut) / totalOzIn * 100) : 0}
+					
+					<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+							<h4 class="text-sm font-medium text-text-primary-light">Total Roasted</h4>
+							<p class="text-2xl font-bold text-blue-500">{totalOzIn.toFixed(1)} oz</p>
+						</div>
+						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+							<h4 class="text-sm font-medium text-text-primary-light">Total Output</h4>
+							<p class="text-2xl font-bold text-green-500">{totalOzOut.toFixed(1)} oz</p>
+						</div>
+						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+							<h4 class="text-sm font-medium text-text-primary-light">Avg Loss Rate</h4>
+							<p class="text-2xl font-bold text-orange-500">{avgLoss.toFixed(1)}%</p>
+						</div>
+					</div>
+				{:else}
+					<div class="rounded-lg bg-background-primary-light p-8 text-center ring-1 ring-border-light">
+						<div class="mb-4 text-4xl opacity-50">🔥</div>
+						<h4 class="mb-2 text-lg font-semibold text-text-primary-light">No Roasts Yet</h4>
+						<p class="mb-4 text-text-secondary-light">Start your first roast with this coffee to see roasting history and analytics.</p>
+						{#if role === 'admin' || role === 'member'}
+							<button
+								onclick={() => {
+									window.location.href = `/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
+								}}
+								class="px-4 py-2 bg-background-tertiary-light text-white rounded-md font-medium hover:bg-opacity-90 transition-all duration-200"
+							>
+								Start First Roast
+							</button>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
+		{:else if currentTab === 'analytics'}
+			<div class="space-y-6">
+				<h3 class="text-lg font-semibold text-text-primary-light">Coffee Analytics</h3>
+				
+				<!-- Cost Analysis -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+						<h4 class="text-sm font-medium text-text-primary-light">Cost per Pound</h4>
+						<p class="text-2xl font-bold text-green-500">
+							${selectedBean.purchased_qty_lbs 
+								? (((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)) / selectedBean.purchased_qty_lbs).toFixed(2)
+								: '0.00'}
+						</p>
+					</div>
+					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+						<h4 class="text-sm font-medium text-text-primary-light">Total Investment</h4>
+						<p class="text-2xl font-bold text-blue-500">
+							${((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)).toFixed(2)}
+						</p>
+					</div>
+					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+						<h4 class="text-sm font-medium text-text-primary-light">Remaining Value</h4>
+						{#if selectedBean.purchased_qty_lbs}
+							{@const remainingLbs = ((selectedBean.purchased_qty_lbs || 0) * 16 - (selectedBean.roast_profiles?.reduce((sum: number, p: any) => sum + (p.oz_in || 0), 0) || 0)) / 16}
+							{@const costPerLb = selectedBean.purchased_qty_lbs ? ((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)) / selectedBean.purchased_qty_lbs : 0}
+							<p class="text-2xl font-bold text-purple-500">
+								${(remainingLbs * costPerLb).toFixed(2)}
+							</p>
+						{:else}
+							<p class="text-2xl font-bold text-purple-500">$0.00</p>
+						{/if}
+					</div>
+					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+						<h4 class="text-sm font-medium text-text-primary-light">Utilization</h4>
+						{#if selectedBean.purchased_qty_lbs}
+							{@const totalPurchased = (selectedBean.purchased_qty_lbs || 0) * 16}
+							{@const totalRoasted = selectedBean.roast_profiles?.reduce((sum: number, p: any) => sum + (p.oz_in || 0), 0) || 0}
+							<p class="text-2xl font-bold text-orange-500">
+								{totalPurchased > 0 ? ((totalRoasted / totalPurchased) * 100).toFixed(1) : 0}%
+							</p>
+						{:else}
+							<p class="text-2xl font-bold text-orange-500">0%</p>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Purchase vs Current Market -->
+				{#if selectedBean.coffee_catalog?.cost_lb}
+					{@const paidPerLb = selectedBean.purchased_qty_lbs ? ((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)) / selectedBean.purchased_qty_lbs : 0}
+					{@const marketPrice = selectedBean.coffee_catalog.cost_lb}
+					{@const savings = marketPrice - paidPerLb}
+					<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+						<h4 class="font-medium text-text-primary-light mb-3">Market Comparison</h4>
+						<div class="flex items-center justify-between">
+							<span class="text-text-secondary-light">You paid: ${paidPerLb.toFixed(2)}/lb</span>
+							<span class="text-text-secondary-light">Market price: ${marketPrice.toFixed(2)}/lb</span>
+						</div>
+						<div class="mt-2 text-center">
+							<span class="text-lg font-medium {savings > 0 ? 'text-green-500' : 'text-red-500'}">
+								{savings > 0 ? 'Saved' : 'Premium'}: ${Math.abs(savings).toFixed(2)}/lb
+							</span>
+						</div>
+					</div>
+				{/if}
+
+				<!-- Future placeholder for more analytics -->
+				<div class="rounded-lg bg-background-primary-light p-8 text-center ring-1 ring-border-light border-dashed">
+					<div class="mb-4 text-4xl opacity-50">📊</div>
+					<h4 class="mb-2 text-lg font-semibold text-text-primary-light">More Analytics Coming Soon</h4>
+					<p class="text-text-secondary-light">Advanced analytics like roast performance trends, flavor profile evolution, and profitability analysis.</p>
+				</div>
+			</div>
+		{/if}
+	</div>
+
+	<!-- Action Buttons -->
+	{#if role === 'admin' || role === 'member'}
+		<div class="flex flex-wrap justify-end gap-2 mt-6 pt-4 border-t border-border-light">
+			{#if currentTab === 'overview'}
+				<button
+					class="rounded {isEditing
+						? 'border-2 border-green-800 hover:bg-green-900'
+						: 'border-2 border-blue-800 hover:bg-blue-900'} min-w-[80px] px-3 py-1 text-text-primary-light"
+					onclick={toggleEdit}
+				>
+					{isEditing ? 'Save' : 'Edit'}
+				</button>
+			{/if}
+			<button
+				class="min-w-[80px] rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900"
+				onclick={deleteBean}
+			>
+				Delete
+			</button>
+		</div>
+	{/if}
+</div>

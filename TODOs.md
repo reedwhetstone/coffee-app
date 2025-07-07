@@ -22,6 +22,7 @@
 -
 - [ ] **General** - Set up no-cookies banner at the bottom of the page
 - [ ] **General** - Remove some / all of the user reviews?
+- [ ] **COOKIE notifications** - implement a cookie accept popup
 - [ ] **Forms** - date population is inconsistent and poor across form completions
 -
 - [ ] **Mobile** - Improve roast profile/bean profile appearance on mobile

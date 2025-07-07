@@ -4,6 +4,8 @@
 	import type { TastingNotes, RadarDataPoint } from '$lib/types/coffee.types';
 
 	export let tastingNotes: TastingNotes | null = null;
+	export let userTastingNotes: TastingNotes | null = null;
+	export let showOverlay: boolean = false;
 	export let size: number = 120;
 	export let responsive: boolean = false;
 
@@ -16,6 +18,7 @@
 
 	// Transform tasting notes to radar data
 	$: radarData = tastingNotes ? transformToRadarData(tastingNotes) : [];
+	$: userRadarData = userTastingNotes ? transformToRadarData(userTastingNotes) : [];
 
 	function transformToRadarData(notes: TastingNotes): RadarDataPoint[] {
 		const axes = ['Body', 'Flavor', 'Acidity', 'Sweetness', 'Aroma'];
@@ -85,34 +88,102 @@
 				.text(d.axis);
 		});
 
-		// Draw circles with fixed diameters (1-5) tangent at center, expanding outward
-		radarData.forEach((d, i) => {
-			if (d.value > 0) {
-				const angle = angleSlice * i - Math.PI / 2;
+		// Helper function to draw circles for a dataset
+		function drawCircles(data: RadarDataPoint[], isUser: boolean = false) {
+			data.forEach((d, i) => {
+				if (d.value > 0) {
+					const angle = angleSlice * i - Math.PI / 2;
 
-				// Circle radius based on score (diameter = score, so radius = score/2)
-				// Scale to fit within the radar chart sections
-				const circleRadius = (d.value / 2) * (radius / 5); // Each unit fills 1/5 of the radius
+					// Circle radius based on score (diameter = score, so radius = score/2)
+					// Scale to fit within the radar chart sections
+					const circleRadius = (d.value / 2) * (radius / 5); // Each unit fills 1/5 of the radius
 
-				// Position circle center so it's tangent at the center axis
-				// Circle extends outward from center by its radius
-				const centerX = center + circleRadius * Math.cos(angle);
-				const centerY = center + circleRadius * Math.sin(angle);
+					// Position circle center so it's tangent at the center axis
+					// Circle extends outward from center by its radius
+					const centerX = center + circleRadius * Math.cos(angle);
+					const centerY = center + circleRadius * Math.sin(angle);
 
-				g.append('circle')
-					.attr('cx', centerX)
-					.attr('cy', centerY)
-					.attr('r', circleRadius)
-					.attr('fill', d.color)
-					.attr('fill-opacity', 0.5)
-					.attr('stroke', d.color)
-					.attr('stroke-width', 1)
-					.attr('stroke-opacity', 1)
-					.style('cursor', 'pointer')
-					.append('title')
-					.text(`${d.axis}: ${d.tag} (${d.value}/5)`);
-			}
-		});
+					const circle = g.append('circle')
+						.attr('cx', centerX)
+						.attr('cy', centerY)
+						.attr('r', circleRadius)
+						.attr('fill', d.color)
+						.style('cursor', 'pointer');
+
+					if (isUser) {
+						// User data styling: lighter fill, dashed stroke
+						circle
+							.attr('fill-opacity', 0.3)
+							.attr('stroke', d.color)
+							.attr('stroke-width', 2)
+							.attr('stroke-dasharray', '4,4')
+							.attr('stroke-opacity', 0.8);
+					} else {
+						// AI data styling: existing solid style
+						circle
+							.attr('fill-opacity', 0.5)
+							.attr('stroke', d.color)
+							.attr('stroke-width', 1)
+							.attr('stroke-opacity', 1);
+					}
+
+					circle.append('title')
+						.text(`${isUser ? 'User' : 'AI'} ${d.axis}: ${d.tag} (${d.value}/5)`);
+				}
+			});
+		}
+
+		// Draw AI circles first (underneath)
+		drawCircles(radarData, false);
+
+		// Draw user circles on top if overlay is enabled and user data exists
+		if (showOverlay && userRadarData.length > 0) {
+			drawCircles(userRadarData, true);
+		}
+
+		// Add legend if showing overlay
+		if (showOverlay && userRadarData.length > 0) {
+			const legend = g.append('g')
+				.attr('class', 'legend')
+				.attr('transform', `translate(${size - 60}, 10)`);
+
+			// AI legend item
+			legend.append('circle')
+				.attr('cx', 8)
+				.attr('cy', 0)
+				.attr('r', 6)
+				.attr('fill', '#6b7280')
+				.attr('fill-opacity', 0.5)
+				.attr('stroke', '#6b7280')
+				.attr('stroke-width', 1);
+
+			legend.append('text')
+				.attr('x', 20)
+				.attr('y', 4)
+				.text('AI')
+				.attr('font-size', '8px')
+				.attr('fill', '#6b7280')
+				.attr('font-weight', '500');
+
+			// User legend item
+			legend.append('circle')
+				.attr('cx', 8)
+				.attr('cy', 15)
+				.attr('r', 6)
+				.attr('fill', '#6b7280')
+				.attr('fill-opacity', 0.3)
+				.attr('stroke', '#6b7280')
+				.attr('stroke-width', 2)
+				.attr('stroke-dasharray', '4,4');
+
+			legend.append('text')
+				.attr('x', 20)
+				.attr('y', 19)
+				.text('User')
+				.attr('font-size', '8px')
+				.attr('fill', '#6b7280')
+				.attr('font-weight', '500');
+		}
 	}
 
 	onMount(() => {
@@ -120,13 +191,13 @@
 		drawChart();
 	});
 
-	$: if (mounted && radarData) {
+	$: if (mounted && (radarData || userRadarData)) {
 		drawChart();
 	}
 </script>
 
 <div class="tasting-radar">
-	{#if tastingNotes && radarData.length > 0}
+	{#if (tastingNotes && radarData.length > 0) || (userTastingNotes && userRadarData.length > 0)}
 		<svg
 			bind:this={svgElement}
 			width={responsive ? '100%' : size}

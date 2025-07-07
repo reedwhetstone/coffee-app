@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Database } from '$lib/types/database.types';
 	import BeanForm from './BeanForm.svelte';
-	import BeanProfile from './BeanProfile.svelte';
+	import BeanProfileTabs from './BeanProfileTabs.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
@@ -102,7 +102,7 @@
 	let selectedBean = $state<any>(null);
 	let processingUpdate = $state(false);
 	let lastSelectedBeanId = $state<number | null>(null);
-	let beanProfileElement: HTMLElement | null = null;
+	let beanProfileElement = $state<HTMLElement | null>(null);
 
 	// Reset selected bean if it's filtered out with guard to prevent loops
 	let lastFilteredDataLength = $state(0);
@@ -461,7 +461,7 @@
 
 	{#if selectedBean}
 		<div class="mb-4" bind:this={beanProfileElement}>
-			<BeanProfile
+			<BeanProfileTabs
 				{selectedBean}
 				role={data.role}
 				onUpdate={async (updatedBean) => {
@@ -559,14 +559,39 @@
 					{@const displayArrival = catalogData?.arrival_date}
 					{@const displayScore = catalogData?.score_value}
 					{@const tastingNotes = parseTastingNotes(catalogData?.ai_tasting_notes)}
+					{@const userCuppingNotes = parseTastingNotes(bean.cupping_notes)}
+					{@const hasUserRating = bean.rank !== undefined && bean.rank !== null}
+					{@const hasUserCupping = userCuppingNotes !== null}
 					{@const purchasedOz = (bean.purchased_qty_lbs || 0) * 16}
 					{@const roastedOz = bean.roast_profiles?.reduce((ozSum: number, profile: any) => ozSum + (profile.oz_in || 0), 0) || 0}
 					{@const remainingLbs = (purchasedOz - roastedOz) / 16}
 					<button
 						type="button"
-						class="group rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
+						class="group rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light relative"
 						onclick={() => selectBean(bean)}
 					>
+						<!-- User Assessment Indicators -->
+						{#if hasUserRating || hasUserCupping}
+							<div class="absolute top-2 right-2 flex gap-1">
+								{#if hasUserRating}
+									<div 
+										class="bg-amber-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold"
+										title="User rating: {bean.rank}/10"
+									>
+										{bean.rank}
+									</div>
+								{/if}
+								{#if hasUserCupping}
+									<div 
+										class="bg-purple-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center"
+										title="Has user cupping notes"
+									>
+										👃
+									</div>
+								{/if}
+							</div>
+						{/if}
+						
 						<!-- Mobile-optimized layout -->
 						<div
 							class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0"
@@ -574,14 +599,30 @@
 							<!-- Content section -->
 							<div class="flex-1">
 								<h3
-									class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
+									class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light {hasUserRating || hasUserCupping ? 'pr-16 sm:pr-0' : ''}"
 								>
 									{displayName}
 								</h3>
 								<div class="mt-1 flex items-center justify-between">
-									<p class="text-sm font-medium text-background-tertiary-light">
-										{displaySource}
-									</p>
+									<div class="flex items-center gap-2">
+										<p class="text-sm font-medium text-background-tertiary-light">
+											{displaySource}
+										</p>
+										{#if hasUserRating || hasUserCupping}
+											<div class="hidden sm:flex gap-1">
+												{#if hasUserRating}
+													<span class="text-xs bg-amber-100 text-amber-800 px-1 rounded">
+														⭐ {bean.rank}
+													</span>
+												{/if}
+												{#if hasUserCupping}
+													<span class="text-xs bg-purple-100 text-purple-800 px-1 rounded">
+														👃 Cupped
+													</span>
+												{/if}
+											</div>
+										{/if}
+									</div>
 									<!-- Mobile: Price next to supplier name -->
 									<div class="text-right sm:hidden">
 										<div class="font-bold text-background-tertiary-light">
