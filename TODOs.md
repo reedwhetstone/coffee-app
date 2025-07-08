@@ -10,7 +10,6 @@
 -
 - [ ] **Web Scraping** - Add option to add a bean based on a URL
 - [ ] **Web Scraping** - Implement automatic scraping for supported URLs
-- [ ] **Web Scraping** - Automate vector embeding in the scrape workflow
 -
 - [ ] **AI** - Hybrid RAG: Use tool calls for structured lookups: filters, search, pricing, transactions. Use RAG for unstructured knowledge: guides, tips, reviews, roast advice.  
        - “Find Ethiopian naturals under $10/lb rated 88+” 🔧 Tool Call Clear filters → use MySQL API  
@@ -77,6 +76,7 @@
 
 # Done List
 
+- [x] **Web Scraping** - Automate vector embeding in the scrape workflow
 - [x] **Web Scraping** - Summarize/rewrite front-end descriptions for fair use
 - [x] **Web Scraping** - Automate data cleaning of NULL columns with Gemini when we scrape
 - [x] **Web Scraping** - Automate llm interpretation of the text into an AI blurb column - claims extraction & cleaning of data columns during scrape
