@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { EnhancedEmbeddingService } from './enhancedEmbeddingService';
+import { QueryEmbeddingService } from './queryEmbeddingService';
 
 interface RetrievalResult {
 	currentInventory: any[];
@@ -13,11 +13,11 @@ interface SearchOptions {
 
 export class RAGService {
 	private supabase: SupabaseClient;
-	private enhancedEmbeddingService: EnhancedEmbeddingService;
+	private queryEmbeddingService: QueryEmbeddingService;
 
 	constructor(supabase: SupabaseClient, openaiApiKey: string) {
 		this.supabase = supabase;
-		this.enhancedEmbeddingService = new EnhancedEmbeddingService(openaiApiKey);
+		this.queryEmbeddingService = new QueryEmbeddingService(openaiApiKey);
 	}
 
 	/**
@@ -302,7 +302,7 @@ export class RAGService {
 		// Preprocess and generate embedding for the user query
 		const processedQuery = this.preprocessQuery(query);
 		const queryEmbedding =
-			await this.enhancedEmbeddingService.generateQueryEmbedding(processedQuery);
+			await this.queryEmbeddingService.generateQueryEmbedding(processedQuery);
 
 		// Search chunks with optional type filtering
 		// For supplier queries, lower the threshold to be more inclusive since supplier name is now prominent
