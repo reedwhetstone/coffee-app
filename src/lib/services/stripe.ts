@@ -226,7 +226,10 @@ export async function createCheckoutSession(
 			mode: 'subscription',
 			ui_mode: 'embedded',
 			return_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-			client_reference_id: clientReferenceId
+			client_reference_id: clientReferenceId,
+			subscription_data: {
+				trial_period_days: 14
+			}
 		};
 
 		// Add customer info

@@ -6,12 +6,7 @@
 	import { signInWithGoogle } from '$lib/supabase';
 
 	let { data } = $props<{ data: PageData }>();
-	const siteUrl =
-		typeof window !== 'undefined'
-			? window.location.origin.includes('localhost')
-				? 'http://localhost:5173'
-				: 'https://www.purveyors.io'
-			: 'https://www.purveyors.io';
+	
 
 	let showCheckout = $state(false);
 	let selectedPriceId = $state('');
@@ -90,9 +85,6 @@
 		showCheckout = true;
 	};
 
-	const toggleBilling = () => {
-		isAnnual = !isAnnual;
-	};
 
 	async function handleSignIn() {
 		try {
@@ -500,7 +492,7 @@
 							}}
 							class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
 						>
-							Get started free
+							Browse green coffees
 						</button>
 					</div>
 
@@ -607,7 +599,7 @@
 									}}
 									class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
 								>
-									Start professional trial
+									Start a free trial
 								</button>
 							{:else}
 								<button
