@@ -1,8 +1,10 @@
 # Todo List
 
 - [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row; may also be linked to roast. Needs cascade delete function.
--
-- [ ] **Form Validation** - Limit bean selection in forms to stocked items only (beans, roast, sales)
+- [ ] **Bug** - Bring forms to front, they are beneath the card layers on the beans page. Check each page -/profit and /roast. Have to click profile to get the cards out of the way.
+- [ ] **Bug** - Links to new roast on bean page doesn't take you to the roast form
+- [ ] **Bug** - The loading screen shows "No Beans" dialog before the db returns data - should be looking for a NULL return from table before rendering no beans. Otherwise should be rendering a loading screen - much earlier in the load.
+- [ ] - [ ] **Bug** - roast form doesn't fit on the page
 -
 - [ ] **UI/UX** - Redesign roast, bean, and profit pages to match landing/catalog aesthetic; reduce table formatting; emphasize profile & analytics
 - [ ] **UI/UX** - Clean up roast page UI to align with beans page UI
@@ -16,10 +18,10 @@
        - “What’s a good coffee for a chocolatey espresso profile?” 📚 RAG Requires semantic matching and taste context  
        - “Compare these two coffees side by side” 🔧 Tool Call Deterministic, tabular output  
        - “How does fermentation impact acidity in natural processed beans?” 📚 RAG Explanatory, doc-based
+- [ ] **AI** - Extremely comprehensive synonym table to bolser RAG
+- [ ] **AI** - add bean filter context button to chat bot
 -
 - [ ] **Performance** - Fix real experience score and content paint
--
-- [ ] **COOKIE notifications** - implement a cookie accept popup / Set up no-cookies banner at the bottom of the page
 -
 - [ ] **Mobile** - Improve roast profile/bean profile appearance on mobile
 - [ ] **Mobile** - Improve usability of roast chart buttons on mobile
@@ -60,7 +62,6 @@
 - [ ] **Database** - Need a purchased qty remaining data set in beans category to add to the stocked functionality
 - [ ] **Database Optimization** - Reduce duplication between `green_coffee_inv` and `coffee_catalog` — only duplicate for original, unreferenced coffees
 -
-
 - [ ] **Tasting Notes** - brew method?
 - [ ] **Tasting Notes** - add back the ability to edit user rating
 -
@@ -76,6 +77,7 @@
 
 # Done List
 
+- [x] **Form Validation** - Limit bean selection in forms to stocked items only (beans, roast, sales)
 - [x] **Web Scraping** - Automate vector embeding in the scrape workflow
 - [x] **Web Scraping** - Summarize/rewrite front-end descriptions for fair use
 - [x] **Web Scraping** - Automate data cleaning of NULL columns with Gemini when we scrape
@@ -89,6 +91,7 @@
 - [x] **Forms** - date population is inconsistent and poor across form completions
 - [x] **Tasting Notes** - Display cupping/tasting notes per profile on main profile page
 - [x] **Roast Insights** - Organize roasts by bean for roast comparison, instead of by batch
+- [x] **COOKIE notifications** - implement a cookie accept popup / Set up no-cookies banner at the bottom of the page
 
 # Suppliers:
 
