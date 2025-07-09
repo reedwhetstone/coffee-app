@@ -74,6 +74,8 @@
 - [ ] **Feature Ideation** - Add option to add a bean based on a URL - Implement automatic scraping for supported URLs
 - [ ] **Feature Ideation** - Lot share platform to divide up lots (like Kickstarter for high-quality coffee lots)
 - [ ] **Feature Ideation** - Ghost Roast - Implement “ghost roast” to follow a template roast profile
+- 
+- [ ] **License / Open Source** - USE N8N framework for open source. Add github project to main page. https://github.com/n8n-io/n8n?tab=readme-ov-file#readme
 
 # Done List
 
