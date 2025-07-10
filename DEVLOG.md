@@ -1,4 +1,4 @@
-# Todo List
+## Todo List
 
 - [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row; may also be linked to roast. Needs cascade delete function.
 - [ ] **Bug** - Bring forms to front, they are beneath the card layers on the beans page. Check each page -/profit and /roast. Have to click profile to get the cards out of the way.
@@ -74,10 +74,10 @@
 - [ ] **Feature Ideation** - Add option to add a bean based on a URL - Implement automatic scraping for supported URLs
 - [ ] **Feature Ideation** - Lot share platform to divide up lots (like Kickstarter for high-quality coffee lots)
 - [ ] **Feature Ideation** - Ghost Roast - Implement “ghost roast” to follow a template roast profile
-- 
+-
 - [ ] **License / Open Source** - USE N8N framework for open source. Add github project to main page. https://github.com/n8n-io/n8n?tab=readme-ov-file#readme
 
-# Done List
+## Done List
 
 - [x] **Form Validation** - Limit bean selection in forms to stocked items only (beans, roast, sales)
 - [x] **Web Scraping** - Automate vector embeding in the scrape workflow
@@ -95,7 +95,7 @@
 - [x] **Roast Insights** - Organize roasts by bean for roast comparison, instead of by batch
 - [x] **COOKIE notifications** - implement a cookie accept popup / Set up no-cookies banner at the bottom of the page
 
-# Suppliers:
+## Suppliers:
 
 https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 
@@ -144,3 +144,21 @@ https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 - [ ] https://coffeegreenbeans.com/collections/greencoffeestore
 - [ ] klatch https://www.klatchcoffee.com/collections/green-coffee
 - [ ] Cofinet - 52.5 lb units - https://www.cofinet.com.au/store/
+
+## Thoughts & references
+
+- Allio bullet roasting software
+- Openroast - https://github.com/Roastero/Openroast
+- Artisan - https://github.com/artisan-roaster-scope/artisan
+- Home-barista.com
+- Cupofexcellence.org
+
+## Stack
+
+- Playwright to webcrawl data (used in a seperate script hosted on Oracle Cloud) - https://playwright.dev/docs/intro
+- Sveltekit @sveltejs/kit@2.15.1 - https://svelte.dev/docs/kit/introduction
+- Node
+- TypeScript, JS
+- TailwindCSS
+- Vite
+- D3.js for charts
