@@ -1,12 +1,12 @@
-## Key Tennants
+## Key Tenets
 
 - Democratize coffee sourcing
 - Make coffee roasting fun, accessible, and informational
 
 ## Features
 
-- coffee trends & green supply analysis
-- green coffee marketplace
+- Coffee trends & green supply analysis
+- Green coffee marketplace
 - Manage coffee inventory
 - Track coffee roasting
 - Track coffee sales

@@ -14,10 +14,13 @@
 	class="relative overflow-hidden bg-gradient-to-br from-background-primary-light to-background-secondary-light"
 >
 	<div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
-		<div class="mx-auto max-w-2xl text-center">
+		<div class="flex flex-col items-center justify-center">
 			<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
-				Discover. Roast. Perfect.
+				Smarter Sourcing. Better Roasting.
 			</h1>
+		</div>
+		<div class="mx-auto max-w-2xl text-center">
+			
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 				The only platform built for modern home roasters. Find top-tier green coffees in hobbyist
 				quantities, track your roasting journey, and improve your craft—all from one beautifully

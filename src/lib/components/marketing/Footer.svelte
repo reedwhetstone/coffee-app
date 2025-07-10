@@ -6,8 +6,8 @@
 				<div>
 					<h3 class="text-lg font-semibold text-text-primary-light">Purveyors</h3>
 					<p class="mt-2 text-sm text-text-secondary-light">
-						Professional coffee roasting platform helping roasters track inventory, manage roast
-						profiles, and grow their business.
+						green coffee & roasting platform helping roasters discover coffee, track inventory, manage roast
+						profiles, and grow their passion.
 					</p>
 				</div>
 				<div class="flex space-x-6">
