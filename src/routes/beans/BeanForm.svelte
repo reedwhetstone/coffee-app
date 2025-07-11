@@ -123,13 +123,21 @@
 				])
 			);
 
-			// For manual entry, use the manual_name as the name
+			// For manual entry, include optional catalog fields
 			if (isManualEntry && formData.manual_name) {
-				cleanedBean.name = formData.manual_name;
-				cleanedBean.catalog_id = null; // No catalog reference for manual entries
+				// Add selected optional fields to the submission
+				selectedOptionalFields.forEach(fieldName => {
+					if (optionalFields[fieldName] !== '' && optionalFields[fieldName] !== null) {
+						cleanedBean[fieldName] = optionalFields[fieldName];
+					}
+				});
+				// Don't set catalog_id for manual entries - let the API create it
+				delete cleanedBean.catalog_id;
 			}
 
 			cleanedBean.last_updated = new Date().toISOString();
+
+			console.log('Submitting bean data:', JSON.stringify(cleanedBean, null, 2));
 
 			const response = await fetch('/api/data', {
 				method: 'POST',
