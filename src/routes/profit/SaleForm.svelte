@@ -96,13 +96,16 @@
 		}
 	}
 
-	// Handle coffee selection  
+	// Handle coffee selection
 	function handleCoffeeChange(event: Event) {
 		const selectedCoffeeId = (event.target as HTMLSelectElement).value;
-		const selectedCoffee = availableCoffees.find((coffee: any) => coffee.id.toString() === selectedCoffeeId);
+		const selectedCoffee = availableCoffees.find(
+			(coffee: any) => coffee.id.toString() === selectedCoffeeId
+		);
 
 		if (selectedCoffee) {
-			formData.coffee_name = selectedCoffee.name || selectedCoffee.coffee_catalog?.name || 'Unknown Coffee';
+			formData.coffee_name =
+				selectedCoffee.name || selectedCoffee.coffee_catalog?.name || 'Unknown Coffee';
 			formData.green_coffee_inv_id = selectedCoffee.id;
 			formData.purchase_date = selectedCoffee.purchase_date;
 		}
@@ -142,7 +145,9 @@
 					>
 						<option value="">Select a coffee...</option>
 						{#each availableCoffees as coffee}
-							<option value={coffee.id}>{coffee.name || coffee.coffee_catalog?.name || 'Unknown Coffee'}</option>
+							<option value={coffee.id}
+								>{coffee.name || coffee.coffee_catalog?.name || 'Unknown Coffee'}</option
+							>
 						{/each}
 					</select>
 				</div>
@@ -240,8 +245,8 @@
 			>
 				Cancel
 			</button>
-			<button 
-				type="submit" 
+			<button
+				type="submit"
 				class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 			>
 				{sale?.id ? 'Update Sale' : 'Create Sale'}

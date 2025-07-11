@@ -43,18 +43,30 @@
 		console.log('Raw data from server:', data?.data?.length);
 		if (data?.data?.length > 0) {
 			console.log('First bean raw data:', data.data[0]);
-			const beanWithProfiles = data.data.find((bean: PageData['data'][0]) => bean.roast_profiles && bean.roast_profiles.length > 0);
+			const beanWithProfiles = data.data.find(
+				(bean: PageData['data'][0]) => bean.roast_profiles && bean.roast_profiles.length > 0
+			);
 			if (beanWithProfiles) {
-				console.log('Bean with profiles found in raw data:', beanWithProfiles.coffee_catalog?.name, beanWithProfiles.roast_profiles);
+				console.log(
+					'Bean with profiles found in raw data:',
+					beanWithProfiles.coffee_catalog?.name,
+					beanWithProfiles.roast_profiles
+				);
 			} else {
 				console.log('No beans with roast_profiles found in raw data');
 			}
 		}
-		
+
 		if ($filteredData.length > 0) {
-			const sampleBean = $filteredData.find(bean => bean.roast_profiles && bean.roast_profiles.length > 0);
+			const sampleBean = $filteredData.find(
+				(bean) => bean.roast_profiles && bean.roast_profiles.length > 0
+			);
 			if (sampleBean) {
-				console.log('Sample bean with roast profiles in filtered data:', sampleBean.coffee_catalog?.name, sampleBean.roast_profiles);
+				console.log(
+					'Sample bean with roast profiles in filtered data:',
+					sampleBean.coffee_catalog?.name,
+					sampleBean.roast_profiles
+				);
 			} else {
 				console.log('No beans with roast_profiles found in filtered data');
 			}
@@ -160,7 +172,7 @@
 			setTimeout(() => {
 				processingUpdate = false;
 			}, 50);
-			}
+		}
 	}
 
 	// Function to refresh data using SvelteKit invalidation
@@ -302,7 +314,6 @@
 		}
 	});
 
-
 	/**
 	 * Parses AI tasting notes JSON data safely
 	 * @param tastingNotesJson - JSON string from database
@@ -343,7 +354,9 @@
 	<!-- Header Section -->
 	<div class="mb-6">
 		<h1 class="text-primary-light mb-2 text-2xl font-bold">Coffee Inventory</h1>
-		<p class="text-text-secondary-light">Manage your green coffee bean inventory and track purchases</p>
+		<p class="text-text-secondary-light">
+			Manage your green coffee bean inventory and track purchases
+		</p>
 	</div>
 
 	<!-- Dashboard Cards Section -->
@@ -353,9 +366,11 @@
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 				<h3 class="text-sm font-medium text-text-primary-light">Total Inventory Value</h3>
 				<p class="mt-1 text-2xl font-bold text-green-500">
-					${$filteredData.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0).toFixed(2)}
+					${$filteredData
+						.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0)
+						.toFixed(2)}
 				</p>
-				<p class="text-xs text-text-secondary-light mt-1">
+				<p class="mt-1 text-xs text-text-secondary-light">
 					{$filteredData.length} coffee{$filteredData.length !== 1 ? 's' : ''}
 				</p>
 			</div>
@@ -366,8 +381,10 @@
 				<p class="mt-1 text-2xl font-bold text-blue-500">
 					{$filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0).toFixed(1)} lbs
 				</p>
-				<p class="text-xs text-text-secondary-light mt-1">
-					{($filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0) * 16).toFixed(0)} oz total
+				<p class="mt-1 text-xs text-text-secondary-light">
+					{(
+						$filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0) * 16
+					).toFixed(0)} oz total
 				</p>
 			</div>
 
@@ -376,26 +393,26 @@
 				<h3 class="text-sm font-medium text-text-primary-light">Raw Inventory</h3>
 				<p class="mt-1 text-2xl font-bold text-indigo-500">
 					{(() => {
-						const totalStockedLbs = $filteredData
-							.reduce((sum: number, bean: any) => {
-								const purchasedOz = (bean.purchased_qty_lbs || 0) * 16;
-								const roastedOz = bean.roast_profiles?.reduce((ozSum: number, profile: any) => ozSum + (profile.oz_in || 0), 0) || 0;
-								const remainingOz = purchasedOz - roastedOz;
-								const shouldBeStocked = remainingOz >= 8; // 0.5 lb threshold logic from stockedStatusUtils
-								
-								
-								// Only count remaining inventory for coffees that should be stocked
-								if (shouldBeStocked) {
-									return sum + (remainingOz / 16);
-								}
-								return sum;
-							}, 0);
+						const totalStockedLbs = $filteredData.reduce((sum: number, bean: any) => {
+							const purchasedOz = (bean.purchased_qty_lbs || 0) * 16;
+							const roastedOz =
+								bean.roast_profiles?.reduce(
+									(ozSum: number, profile: any) => ozSum + (profile.oz_in || 0),
+									0
+								) || 0;
+							const remainingOz = purchasedOz - roastedOz;
+							const shouldBeStocked = remainingOz >= 8; // 0.5 lb threshold logic from stockedStatusUtils
+
+							// Only count remaining inventory for coffees that should be stocked
+							if (shouldBeStocked) {
+								return sum + remainingOz / 16;
+							}
+							return sum;
+						}, 0);
 						return totalStockedLbs.toFixed(1);
 					})()} lbs
 				</p>
-				<p class="text-xs text-text-secondary-light mt-1">
-					Available for roasting
-				</p>
+				<p class="mt-1 text-xs text-text-secondary-light">Available for roasting</p>
 			</div>
 
 			<!-- Average Cost Per Pound -->
@@ -403,58 +420,63 @@
 				<h3 class="text-sm font-medium text-text-primary-light">Avg Cost/lb</h3>
 				<p class="mt-1 text-2xl font-bold text-orange-500">
 					${(() => {
-						const totalCost = $filteredData.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0);
-						const totalWeight = $filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0);
+						const totalCost = $filteredData.reduce(
+							(sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)),
+							0
+						);
+						const totalWeight = $filteredData.reduce(
+							(sum, bean) => sum + (bean.purchased_qty_lbs || 0),
+							0
+						);
 						return totalWeight > 0 ? (totalCost / totalWeight).toFixed(2) : '0.00';
 					})()}
 				</p>
-				<p class="text-xs text-text-secondary-light mt-1">
-					Including shipping & tax
-				</p>
+				<p class="mt-1 text-xs text-text-secondary-light">Including shipping & tax</p>
 			</div>
 
 			<!-- Stocked Count -->
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 				<h3 class="text-sm font-medium text-text-primary-light">Currently Stocked</h3>
 				<p class="mt-1 text-2xl font-bold text-purple-500">
-					{$filteredData.filter(bean => bean.stocked).length}
+					{$filteredData.filter((bean) => bean.stocked).length}
 				</p>
-				<p class="text-xs text-text-secondary-light mt-1">
+				<p class="mt-1 text-xs text-text-secondary-light">
 					of {$filteredData.length} selected coffees
 				</p>
 			</div>
-
 		</div>
 
 		<!-- Source Distribution Chart -->
 		<div class="mb-6 rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 			<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Inventory by Source</h3>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{#each Object.entries(
-					$filteredData.reduce((acc, bean) => {
-						const source = bean.coffee_catalog?.source || bean.source || 'Unknown';
-						if (!acc[source]) {
-							acc[source] = { count: 0, weight: 0, value: 0 };
-						}
-						acc[source].count += 1;
-						acc[source].weight += bean.purchased_qty_lbs || 0;
-						acc[source].value += (bean.bean_cost || 0) + (bean.tax_ship_cost || 0);
-						return acc;
-					}, {} as Record<string, { count: number; weight: number; value: number }>)
-				) as entry}
-					{@const [source, stats] = entry as [string, { count: number; weight: number; value: number }]}
+				{#each Object.entries($filteredData.reduce((acc, bean) => {
+							const source = bean.coffee_catalog?.source || bean.source || 'Unknown';
+							if (!acc[source]) {
+								acc[source] = { count: 0, weight: 0, value: 0 };
+							}
+							acc[source].count += 1;
+							acc[source].weight += bean.purchased_qty_lbs || 0;
+							acc[source].value += (bean.bean_cost || 0) + (bean.tax_ship_cost || 0);
+							return acc;
+						}, {} as Record<string, { count: number; weight: number; value: number }>)) as entry}
+					{@const [source, stats] = entry as [
+						string,
+						{ count: number; weight: number; value: number }
+					]}
 					<div class="rounded-lg bg-background-primary-light p-3">
 						<h4 class="text-primary-light font-medium">{source}</h4>
 						<div class="mt-2 space-y-1 text-sm text-text-secondary-light">
 							<div>{stats.count} coffee{stats.count !== 1 ? 's' : ''}</div>
 							<div>{stats.weight.toFixed(1)} lbs</div>
-							<div class="font-medium text-background-tertiary-light">${stats.value.toFixed(2)}</div>
+							<div class="font-medium text-background-tertiary-light">
+								${stats.value.toFixed(2)}
+							</div>
 						</div>
 					</div>
 				{/each}
 			</div>
 		</div>
-
 	{/if}
 
 	<!-- Bean Profile Section -->
@@ -508,7 +530,6 @@
 	<!-- Quick Actions -->
 	{#if $filteredData && $filteredData.length > 0}
 		<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-			
 			<div class="text-sm text-text-secondary-light">
 				Showing {$filteredData.length} of {data?.data?.length || 0} coffees
 			</div>
@@ -518,16 +539,17 @@
 	<!-- Coffee Cards -->
 	<div class="flex-1">
 		{#if !$filteredData || $filteredData.length === 0}
-			<div class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light">
+			<div
+				class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light"
+			>
 				<div class="mb-4 text-6xl opacity-50">☕</div>
 				<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
 					{data?.data?.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
 				</h3>
 				<p class="mb-4 text-text-secondary-light">
-					{data?.data?.length > 0 
+					{data?.data?.length > 0
 						? 'Try adjusting your filters to see more coffees, or add a new coffee to your inventory.'
-						: 'Start building your coffee inventory by adding your first green coffee bean.'
-					}
+						: 'Start building your coffee inventory by adding your first green coffee bean.'}
 				</p>
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					<button
@@ -563,27 +585,31 @@
 					{@const hasUserRating = bean.rank !== undefined && bean.rank !== null}
 					{@const hasUserCupping = userCuppingNotes !== null}
 					{@const purchasedOz = (bean.purchased_qty_lbs || 0) * 16}
-					{@const roastedOz = bean.roast_profiles?.reduce((ozSum: number, profile: any) => ozSum + (profile.oz_in || 0), 0) || 0}
+					{@const roastedOz =
+						bean.roast_profiles?.reduce(
+							(ozSum: number, profile: any) => ozSum + (profile.oz_in || 0),
+							0
+						) || 0}
 					{@const remainingLbs = (purchasedOz - roastedOz) / 16}
 					<button
 						type="button"
-						class="group rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light relative"
+						class="group relative rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
 						onclick={() => selectBean(bean)}
 					>
 						<!-- User Assessment Indicators -->
 						{#if hasUserRating || hasUserCupping}
-							<div class="absolute top-2 right-2 flex gap-1">
+							<div class="absolute right-2 top-2 flex gap-1">
 								{#if hasUserRating}
-									<div 
-										class="bg-amber-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold"
+									<div
+										class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white"
 										title="User rating: {bean.rank}/10"
 									>
 										{bean.rank}
 									</div>
 								{/if}
 								{#if hasUserCupping}
-									<div 
-										class="bg-purple-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center"
+									<div
+										class="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-xs text-white"
 										title="Has user cupping notes"
 									>
 										👃
@@ -591,7 +617,7 @@
 								{/if}
 							</div>
 						{/if}
-						
+
 						<!-- Mobile-optimized layout -->
 						<div
 							class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0"
@@ -599,7 +625,10 @@
 							<!-- Content section -->
 							<div class="flex-1">
 								<h3
-									class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light {hasUserRating || hasUserCupping ? 'pr-16 sm:pr-0' : ''}"
+									class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light {hasUserRating ||
+									hasUserCupping
+										? 'pr-16 sm:pr-0'
+										: ''}"
 								>
 									{displayName}
 								</h3>
@@ -609,14 +638,14 @@
 											{displaySource}
 										</p>
 										{#if hasUserRating || hasUserCupping}
-											<div class="hidden sm:flex gap-1">
+											<div class="hidden gap-1 sm:flex">
 												{#if hasUserRating}
-													<span class="text-xs bg-amber-100 text-amber-800 px-1 rounded">
+													<span class="rounded bg-amber-100 px-1 text-xs text-amber-800">
 														⭐ {bean.rank}
 													</span>
 												{/if}
 												{#if hasUserCupping}
-													<span class="text-xs bg-purple-100 text-purple-800 px-1 rounded">
+													<span class="rounded bg-purple-100 px-1 text-xs text-purple-800">
 														👃 Cupped
 													</span>
 												{/if}
@@ -670,7 +699,7 @@
 										{/if}
 									</div>
 									<div>
-										<span class="font-medium">Stocked:</span> 
+										<span class="font-medium">Stocked:</span>
 										<span class={remainingLbs > 0 ? 'text-green-500' : 'text-red-500'}>
 											{remainingLbs.toFixed(1)} lbs
 										</span>

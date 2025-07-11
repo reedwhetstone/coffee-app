@@ -20,7 +20,6 @@
 			</h1>
 		</div>
 		<div class="mx-auto max-w-2xl text-center">
-			
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 				The only platform built for modern home roasters. Find top-tier green coffees in hobbyist
 				quantities, track your roasting journey, and improve your craft—all from one beautifully

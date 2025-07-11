@@ -51,10 +51,7 @@
 						>
 							We use essential cookies for authentication and core functionality. No tracking or
 							analytics data is collected.
-							<a
-								href="/contact"
-								class="font-medium text-background-tertiary-light hover:underline"
-							>
+							<a href="/contact" class="font-medium text-background-tertiary-light hover:underline">
 								Learn more
 							</a>
 						</p>

@@ -27,13 +27,14 @@ export async function updateStockedStatus(supabase: any, coffee_id: number, user
 		}
 
 		// Calculate remaining quantity
-		const totalOzIn = roastProfiles?.reduce((sum: number, profile: any) => sum + (profile.oz_in || 0), 0) || 0;
+		const totalOzIn =
+			roastProfiles?.reduce((sum: number, profile: any) => sum + (profile.oz_in || 0), 0) || 0;
 		const purchasedOz = (coffee.purchased_qty_lbs || 0) * 16;
 		const remainingOz = purchasedOz - totalOzIn;
 
 		// Update stocked status if remaining quantity is below 8 oz (0.5 lb)
 		const shouldBeStocked = remainingOz >= 8;
-		
+
 		const { error: updateError } = await supabase
 			.from('green_coffee_inv')
 			.update({ stocked: shouldBeStocked })

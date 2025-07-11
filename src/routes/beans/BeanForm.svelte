@@ -184,7 +184,7 @@
 		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 			<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Entry Type</h3>
 			<div class="flex flex-wrap gap-4">
-				<label class="inline-flex items-center cursor-pointer">
+				<label class="inline-flex cursor-pointer items-center">
 					<input
 						type="radio"
 						bind:group={isManualEntry}
@@ -192,23 +192,27 @@
 						onchange={resetFormData}
 						class="sr-only"
 					/>
-					<div class="flex items-center gap-2 px-4 py-2 rounded-md border transition-all duration-200" 
-						 class:bg-background-tertiary-light={isManualEntry}
-						 class:text-white={isManualEntry}
-						 class:border-background-tertiary-light={isManualEntry}
-						 class:border-border-light={!isManualEntry}
-						 class:text-text-primary-light={!isManualEntry}>
+					<div
+						class="flex items-center gap-2 rounded-md border px-4 py-2 transition-all duration-200"
+						class:bg-background-tertiary-light={isManualEntry}
+						class:text-white={isManualEntry}
+						class:border-background-tertiary-light={isManualEntry}
+						class:border-border-light={!isManualEntry}
+						class:text-text-primary-light={!isManualEntry}
+					>
 						<span>Manual Entry</span>
 					</div>
 				</label>
-				<label class="inline-flex items-center cursor-pointer">
+				<label class="inline-flex cursor-pointer items-center">
 					<input type="radio" bind:group={isManualEntry} value={false} class="sr-only" />
-					<div class="flex items-center gap-2 px-4 py-2 rounded-md border transition-all duration-200"
-						 class:bg-background-tertiary-light={!isManualEntry}
-						 class:text-white={!isManualEntry}
-						 class:border-background-tertiary-light={!isManualEntry}
-						 class:border-border-light={isManualEntry}
-						 class:text-text-primary-light={isManualEntry}>
+					<div
+						class="flex items-center gap-2 rounded-md border px-4 py-2 transition-all duration-200"
+						class:bg-background-tertiary-light={!isManualEntry}
+						class:text-white={!isManualEntry}
+						class:border-background-tertiary-light={!isManualEntry}
+						class:border-border-light={isManualEntry}
+						class:text-text-primary-light={isManualEntry}
+					>
 						<span>Select from Catalog</span>
 					</div>
 				</label>
@@ -272,7 +276,7 @@
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<!-- Manual entry name field -->
 				{#if isManualEntry}
-					<div class="sm:col-span-2 space-y-2">
+					<div class="space-y-2 sm:col-span-2">
 						<label for="manual-name" class="block text-sm font-medium text-text-primary-light">
 							Coffee Name
 						</label>
@@ -391,8 +395,8 @@
 			>
 				Cancel
 			</button>
-			<button 
-				type="submit" 
+			<button
+				type="submit"
 				class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 			>
 				{bean ? 'Update Bean' : 'Add Bean'}

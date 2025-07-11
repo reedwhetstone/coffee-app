@@ -604,7 +604,9 @@
 
 <!-- Add form modal -->
 {#if isFormVisible}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm">
+	<div
+		class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm"
+	>
 		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-6 shadow-2xl">
 			<SaleForm
 				sale={selectedSale}
@@ -631,25 +633,25 @@
 		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 			<h3 class="text-sm font-medium text-text-primary-light">Total Revenue</h3>
 			<p class="mt-1 text-2xl font-bold text-green-500">${totalRevenue.toFixed(2)}</p>
-			<p class="text-xs text-text-secondary-light mt-1">From all coffee sales</p>
+			<p class="mt-1 text-xs text-text-secondary-light">From all coffee sales</p>
 		</div>
 
 		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 			<h3 class="text-sm font-medium text-text-primary-light">Total Profit</h3>
 			<p class="mt-1 text-2xl font-bold text-blue-500">${totalProfit.toFixed(2)}</p>
-			<p class="text-xs text-text-secondary-light mt-1">Net profit after costs</p>
+			<p class="mt-1 text-xs text-text-secondary-light">Net profit after costs</p>
 		</div>
 
 		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 			<h3 class="text-sm font-medium text-text-primary-light">Average Margin</h3>
 			<p class="mt-1 text-2xl font-bold text-purple-500">{averageMargin().toFixed(1)}%</p>
-			<p class="text-xs text-text-secondary-light mt-1">Weighted by sales volume</p>
+			<p class="mt-1 text-xs text-text-secondary-light">Weighted by sales volume</p>
 		</div>
 
 		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 			<h3 class="text-sm font-medium text-text-primary-light">Sell-Through Rate</h3>
 			<p class="mt-1 text-2xl font-bold text-orange-500">{sellThroughRate().toFixed(1)}%</p>
-			<p class="text-xs text-text-secondary-light mt-1">Inventory sold vs purchased</p>
+			<p class="mt-1 text-xs text-text-secondary-light">Inventory sold vs purchased</p>
 		</div>
 	</div>
 
@@ -658,19 +660,19 @@
 		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 			<h3 class="text-sm font-medium text-text-primary-light">Total Investment</h3>
 			<p class="mt-1 text-2xl font-bold text-red-500">${totalCost.toFixed(2)}</p>
-			<p class="text-xs text-text-secondary-light mt-1">Bean cost + shipping & tax</p>
+			<p class="mt-1 text-xs text-text-secondary-light">Bean cost + shipping & tax</p>
 		</div>
 
 		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 			<h3 class="text-sm font-medium text-text-primary-light">Coffee Purchased</h3>
 			<p class="mt-1 text-2xl font-bold text-indigo-500">{totalPoundsRoasted.toFixed(1)} lbs</p>
-			<p class="text-xs text-text-secondary-light mt-1">Total green coffee inventory</p>
+			<p class="mt-1 text-xs text-text-secondary-light">Total green coffee inventory</p>
 		</div>
 
 		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 			<h3 class="text-sm font-medium text-text-primary-light">Roast Loss Rate</h3>
 			<p class="mt-1 text-2xl font-bold text-cyan-500">{roastLossRate().toFixed(1)}%</p>
-			<p class="text-xs text-text-secondary-light mt-1">Weight loss during roasting</p>
+			<p class="mt-1 text-xs text-text-secondary-light">Weight loss during roasting</p>
 		</div>
 	</div>
 
@@ -678,7 +680,9 @@
 	<div class="mb-8 rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
 		<div class="mb-4">
 			<h3 class="text-lg font-semibold text-text-primary-light">Sales Performance Over Time</h3>
-			<p class="text-sm text-text-secondary-light">Cumulative revenue, costs, and target performance</p>
+			<p class="text-sm text-text-secondary-light">
+				Cumulative revenue, costs, and target performance
+			</p>
 		</div>
 		<div bind:this={chartContainer} class="w-full"></div>
 	</div>
@@ -688,7 +692,9 @@
 		<div class="flex items-center justify-between">
 			<div>
 				<h2 class="text-xl font-semibold text-text-primary-light">Coffee Sales Analysis</h2>
-				<p class="text-sm text-text-secondary-light">Detailed breakdown by purchase date and coffee</p>
+				<p class="text-sm text-text-secondary-light">
+					Detailed breakdown by purchase date and coffee
+				</p>
 			</div>
 			<button
 				type="button"
@@ -700,8 +706,12 @@
 		</div>
 
 		{#if profitCardsLoading}
-			<div class="flex items-center justify-center rounded-lg bg-background-secondary-light p-8 ring-1 ring-border-light">
-				<div class="h-8 w-8 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"></div>
+			<div
+				class="flex items-center justify-center rounded-lg bg-background-secondary-light p-8 ring-1 ring-border-light"
+			>
+				<div
+					class="h-8 w-8 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"
+				></div>
 				<span class="ml-3 text-sm text-text-secondary-light">Loading profit analysis...</span>
 			</div>
 		{:else if ProfitCards}
@@ -717,10 +727,14 @@
 				onAddSale={showSaleForm}
 			/>
 		{:else}
-			<div class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light">
+			<div
+				class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light"
+			>
 				<div class="mb-4 text-6xl opacity-50">📊</div>
 				<h3 class="mb-2 text-lg font-semibold text-text-primary-light">No Sales Data Yet</h3>
-				<p class="mb-4 text-text-secondary-light">Start tracking your coffee sales to see detailed profit analysis.</p>
+				<p class="mb-4 text-text-secondary-light">
+					Start tracking your coffee sales to see detailed profit analysis.
+				</p>
 				<button
 					type="button"
 					class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"

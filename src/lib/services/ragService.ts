@@ -301,8 +301,7 @@ export class RAGService {
 
 		// Preprocess and generate embedding for the user query
 		const processedQuery = this.preprocessQuery(query);
-		const queryEmbedding =
-			await this.queryEmbeddingService.generateQueryEmbedding(processedQuery);
+		const queryEmbedding = await this.queryEmbeddingService.generateQueryEmbedding(processedQuery);
 
 		// Search chunks with optional type filtering
 		// For supplier queries, lower the threshold to be more inclusive since supplier name is now prominent

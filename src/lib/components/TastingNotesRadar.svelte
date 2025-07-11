@@ -103,7 +103,8 @@
 					const centerX = center + circleRadius * Math.cos(angle);
 					const centerY = center + circleRadius * Math.sin(angle);
 
-					const circle = g.append('circle')
+					const circle = g
+						.append('circle')
 						.attr('cx', centerX)
 						.attr('cy', centerY)
 						.attr('r', circleRadius)
@@ -121,7 +122,7 @@
 						// AI data styling: Single color orange dotted, no fill
 						if (showOverlay && userRadarData.length > 0) {
 							circle
-								 
+
 								.attr('fill-opacity', 0) // % opacity
 								.attr('stroke', '#f9a57b')
 								.attr('stroke-width', 2)
@@ -138,7 +139,8 @@
 						}
 					}
 
-					circle.append('title')
+					circle
+						.append('title')
 						.text(`${isUser ? 'User' : 'AI'} ${d.axis}: ${d.tag} (${d.value}/5)`);
 				}
 			});
@@ -154,12 +156,14 @@
 
 		// Add legend if showing overlay
 		if (showOverlay && userRadarData.length > 0) {
-			const legend = g.append('g')
+			const legend = g
+				.append('g')
 				.attr('class', 'legend')
 				.attr('transform', `translate(${size - 60}, 10)`);
 
 			// AI legend item - orange dotted line with no fill
-			legend.append('circle')
+			legend
+				.append('circle')
 				.attr('cx', 8)
 				.attr('cy', 0)
 				.attr('r', 6)
@@ -168,7 +172,8 @@
 				.attr('stroke-width', 2)
 				.attr('stroke-dasharray', '4,4');
 
-			legend.append('text')
+			legend
+				.append('text')
 				.attr('x', 20)
 				.attr('y', 4)
 				.text('Supplier')
@@ -177,7 +182,8 @@
 				.attr('font-weight', '500');
 
 			// User legend item - solid fill with stroke
-			legend.append('circle')
+			legend
+				.append('circle')
 				.attr('cx', 8)
 				.attr('cy', 15)
 				.attr('r', 6)
@@ -186,7 +192,8 @@
 				.attr('stroke', '#6b7280')
 				.attr('stroke-width', 1);
 
-			legend.append('text')
+			legend
+				.append('text')
 				.attr('x', 20)
 				.attr('y', 19)
 				.text('User')

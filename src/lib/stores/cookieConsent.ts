@@ -18,7 +18,7 @@ function createCookieConsentStore() {
 	// Load from localStorage if available
 	const loadFromStorage = (): CookieConsentState => {
 		if (!browser) return defaultState;
-		
+
 		try {
 			const stored = localStorage.getItem(STORAGE_KEY);
 			if (stored) {
@@ -39,7 +39,7 @@ function createCookieConsentStore() {
 	// Save to localStorage whenever state changes
 	const saveToStorage = (state: CookieConsentState) => {
 		if (!browser) return;
-		
+
 		try {
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 		} catch (error) {

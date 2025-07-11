@@ -103,10 +103,18 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 
 ### Database Structure (Supabase)
 
-- **coffee_catalog**: Main coffee inventory with embeddings for semantic search
-- **green_coffee_inv**: User's personal coffee inventory
-- **roast_profiles**: Roasting session data with D3.js charting
-- **Vector search**: Uses RPC functions for embeddings
+**Core Entity Relationships:**
+- **coffee_catalog**: Master coffee data (name, description, processing details)
+- **green_coffee_inv**: User's personal inventory → `catalog_id` FK to `coffee_catalog`
+- **roast_profiles**: Roasting sessions → `coffee_id` FK to `green_coffee_inv`
+- **profile_log**: Temperature/time data → `roast_id` FK to `roast_profiles`
+- **user_roles**: User auth/permissions → Referenced by all user-owned tables
+
+**Key Foreign Key Patterns:**
+- Use explicit syntax: `coffee_catalog!catalog_id` for joins
+- All user data tables reference `user_roles.id` 
+- Roast profiles link to inventory (not directly to catalog)
+- Vector embeddings stored in `coffee_catalog` for semantic search
 
 ### Key Services
 
@@ -247,6 +255,19 @@ const { data: updatedData } = await supabase
 1. **Joined Data in Updates**: Never send complete objects with joined data to update endpoints
 2. **Invalid Column References**: Always validate column names against actual table schema
 3. **Foreign Key Syntax**: Use explicit syntax for relationships
+
+**Database Schema Error Debugging Workflow:**
+
+When encountering "column does not exist" errors:
+1. **Verify Table Schema**: Check actual table columns vs code references
+2. **Fix API Endpoint**: Update database queries to use correct schema relationships
+3. **Update Frontend**: Modify forms/components to match new data structure
+4. **Test Integration**: Verify end-to-end data flow works
+
+**API vs Frontend Modification Decision Tree:**
+- **Fix API When**: Column references are incorrect, joins are malformed, schema has changed
+- **Fix Frontend When**: API is correct but component expects old data structure
+- **Fix Both When**: Schema migration requires coordinated changes
 
 **Debugging Approach:**
 ```typescript

@@ -30,64 +30,146 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const data = await request.json();
-		const profiles = Array.isArray(data) ? data : [data];
+		const requestData = await request.json();
 
-		const results = await Promise.all(
-			profiles.map(async (profileData) => {
-				if (!profileData.coffee_id) {
-					throw new Error('coffee_id is required for all profiles');
-				}
+		// Handle both single profiles and batch creation
+		if (requestData.batch_beans) {
+			// Batch creation from form
+			const { batch_name, batch_beans, roast_date, roast_notes, roast_targets } = requestData;
 
-				const { data: coffee, error: coffeeError } = await supabase
-					.from('green_coffee_inv')
-					.select('id, name')
-					.eq('id', profileData.coffee_id)
-					.single();
+			const profiles = await Promise.all(
+				batch_beans.map(async (bean: any) => {
+					if (!bean.coffee_id) {
+						throw new Error('coffee_id is required for all beans in batch');
+					}
 
-				if (coffeeError) throw coffeeError;
-				if (!coffee) {
-					throw new Error(`Invalid coffee_id - coffee not found: ${profileData.coffee_id}`);
-				}
+					// Get coffee name from coffee_catalog via green_coffee_inv
+					const { data: coffee, error: coffeeError } = await supabase
+						.from('green_coffee_inv')
+						.select(
+							`
+							id,
+							coffee_catalog!catalog_id (
+								name
+							)
+						`
+						)
+						.eq('id', bean.coffee_id)
+						.single();
 
-				const profile = {
-					...profileData,
-					user: user.id,
-					batch_name:
-						profileData.batch_name || `${coffee.name} - ${new Date().toLocaleDateString()}`,
-					coffee_id: profileData.coffee_id,
-					coffee_name: profileData.coffee_name || coffee.name,
-					roast_date: profileData.roast_date
-						? new Date(profileData.roast_date).toISOString().slice(0, 19).replace('T', ' ')
-						: new Date().toISOString().slice(0, 19).replace('T', ' '),
-					last_updated: profileData.last_updated
-						? new Date(profileData.last_updated).toISOString().slice(0, 19).replace('T', ' ')
-						: new Date().toISOString().slice(0, 19).replace('T', ' '),
-					oz_in: profileData.oz_in || null,
-					oz_out: profileData.oz_out || null,
-					roast_notes: profileData.roast_notes || null,
-					roast_targets: profileData.roast_targets || null
-				};
+					if (coffeeError) throw coffeeError;
+					if (!coffee || !coffee.coffee_catalog) {
+						throw new Error(`Invalid coffee_id - coffee not found: ${bean.coffee_id}`);
+					}
 
-				const { data: newRoast, error } = await supabase
-					.from('roast_profiles')
-					.insert(profile)
-					.select()
-					.single();
+					const profile = {
+						user: user.id,
+						batch_name:
+							batch_name || `${coffee.coffee_catalog.name} - ${new Date().toLocaleDateString()}`,
+						coffee_id: bean.coffee_id,
+						coffee_name: bean.coffee_name || coffee.coffee_catalog.name,
+						roast_date: roast_date
+							? new Date(roast_date).toISOString().slice(0, 19).replace('T', ' ')
+							: new Date().toISOString().slice(0, 19).replace('T', ' '),
+						last_updated: new Date().toISOString().slice(0, 19).replace('T', ' '),
+						oz_in: bean.oz_in || null,
+						oz_out: bean.oz_out || null,
+						roast_notes: roast_notes || null,
+						roast_targets: roast_targets || null
+					};
 
-				if (error) throw error;
+					const { data: newRoast, error } = await supabase
+						.from('roast_profiles')
+						.insert(profile)
+						.select()
+						.single();
 
-				// Update stocked status for this coffee after roasting
-				await updateStockedStatus(supabase, profileData.coffee_id, user.id);
+					if (error) throw error;
 
-				return newRoast;
-			})
-		);
+					// Update stocked status for this coffee after roasting
+					await updateStockedStatus(supabase, bean.coffee_id, user.id);
 
-		return json(results);
+					return newRoast;
+				})
+			);
+
+			// Return in format expected by form
+			return json({
+				profiles,
+				roast_ids: profiles.map((p) => p.roast_id)
+			});
+		} else {
+			// Single profile creation (legacy support)
+			const profiles = Array.isArray(requestData) ? requestData : [requestData];
+
+			const results = await Promise.all(
+				profiles.map(async (profileData) => {
+					if (!profileData.coffee_id) {
+						throw new Error('coffee_id is required for all profiles');
+					}
+
+					// Get coffee name from coffee_catalog via green_coffee_inv
+					const { data: coffee, error: coffeeError } = await supabase
+						.from('green_coffee_inv')
+						.select(
+							`
+							id,
+							coffee_catalog!catalog_id (
+								name
+							)
+						`
+						)
+						.eq('id', profileData.coffee_id)
+						.single();
+
+					if (coffeeError) throw coffeeError;
+					if (!coffee || !coffee.coffee_catalog) {
+						throw new Error(`Invalid coffee_id - coffee not found: ${profileData.coffee_id}`);
+					}
+
+					const profile = {
+						...profileData,
+						user: user.id,
+						batch_name:
+							profileData.batch_name ||
+							`${coffee.coffee_catalog.name} - ${new Date().toLocaleDateString()}`,
+						coffee_id: profileData.coffee_id,
+						coffee_name: profileData.coffee_name || coffee.coffee_catalog.name,
+						roast_date: profileData.roast_date
+							? new Date(profileData.roast_date).toISOString().slice(0, 19).replace('T', ' ')
+							: new Date().toISOString().slice(0, 19).replace('T', ' '),
+						last_updated: profileData.last_updated
+							? new Date(profileData.last_updated).toISOString().slice(0, 19).replace('T', ' ')
+							: new Date().toISOString().slice(0, 19).replace('T', ' '),
+						oz_in: profileData.oz_in || null,
+						oz_out: profileData.oz_out || null,
+						roast_notes: profileData.roast_notes || null,
+						roast_targets: profileData.roast_targets || null
+					};
+
+					const { data: newRoast, error } = await supabase
+						.from('roast_profiles')
+						.insert(profile)
+						.select()
+						.single();
+
+					if (error) throw error;
+
+					// Update stocked status for this coffee after roasting
+					await updateStockedStatus(supabase, profileData.coffee_id, user.id);
+
+					return newRoast;
+				})
+			);
+
+			return json(results);
+		}
 	} catch (error) {
 		console.error('Error creating roast profiles:', error);
-		return json({ error: 'Failed to create roast profiles' }, { status: 500 });
+		return json(
+			{ error: error instanceof Error ? error.message : 'Failed to create roast profiles' },
+			{ status: 500 }
+		);
 	}
 };
 
@@ -132,8 +214,10 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 
 			if (profiles && profiles.length > 0) {
 				const roastIds = profiles.map((p: { roast_id: number; coffee_id: number }) => p.roast_id);
-				const coffeeIds = [...new Set(profiles.map((p: { roast_id: number; coffee_id: number }) => p.coffee_id))];
-				
+				const coffeeIds = [
+					...new Set(profiles.map((p: { roast_id: number; coffee_id: number }) => p.coffee_id))
+				];
+
 				// Delete associated logs first
 				await supabase.from('profile_log').delete().in('roast_id', roastIds);
 				// Then delete all profiles in the batch

@@ -6,7 +6,6 @@
 	import { signInWithGoogle } from '$lib/supabase';
 
 	let { data } = $props<{ data: PageData }>();
-	
 
 	let showCheckout = $state(false);
 	let selectedPriceId = $state('');
@@ -84,7 +83,6 @@
 		selectedInterval = interval;
 		showCheckout = true;
 	};
-
 
 	async function handleSignIn() {
 		try {

@@ -92,7 +92,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		if (rows && rows.length > 0) {
 			const { session, user } = await safeGetSession();
 			if (user) {
-				const coffeeIds = rows.map(bean => bean.id);
+				const coffeeIds = rows.map((bean) => bean.id);
 				const { data: roastProfilesData } = await supabase
 					.from('roast_profiles')
 					.select('coffee_id, oz_in, oz_out')
@@ -100,11 +100,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					.eq('user', user.id);
 
 				// Manually join roast profiles data
-				enrichedData = rows.map(bean => {
-					const profiles = roastProfilesData?.filter(profile => profile.coffee_id === bean.id) || [];
+				enrichedData = rows.map((bean) => {
+					const profiles =
+						roastProfilesData?.filter((profile) => profile.coffee_id === bean.id) || [];
 					return {
 						...bean,
-						roast_profiles: profiles.map(profile => ({
+						roast_profiles: profiles.map((profile) => ({
 							oz_in: profile.oz_in,
 							oz_out: profile.oz_out
 						}))
@@ -294,21 +295,29 @@ export const PUT: RequestHandler = async ({
 
 		const updates = await request.json();
 		const { id: _, ...rawUpdateData } = updates;
-		
+
 		console.log('PUT request - updating bean ID:', id);
 		console.log('Raw update data keys:', Object.keys(rawUpdateData));
-		
+
 		// Filter to only include actual green_coffee_inv table columns
 		const validColumns = [
-			'rank', 'notes', 'purchase_date', 'purchased_qty_lbs', 
-			'bean_cost', 'tax_ship_cost', 'last_updated', 'user', 
-			'catalog_id', 'stocked', 'cupping_notes'
+			'rank',
+			'notes',
+			'purchase_date',
+			'purchased_qty_lbs',
+			'bean_cost',
+			'tax_ship_cost',
+			'last_updated',
+			'user',
+			'catalog_id',
+			'stocked',
+			'cupping_notes'
 		];
-		
+
 		const updateData = Object.fromEntries(
 			Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
 		);
-		
+
 		console.log('Filtered update data:', JSON.stringify(updateData, null, 2));
 
 		// First, verify the record exists
@@ -342,7 +351,8 @@ export const PUT: RequestHandler = async ({
 		// Then fetch the updated data with the join
 		const { data: updatedBeans, error } = await supabase
 			.from('green_coffee_inv')
-			.select(`
+			.select(
+				`
 				*,
 				coffee_catalog!catalog_id (
 					name,
@@ -373,7 +383,8 @@ export const PUT: RequestHandler = async ({
 					ai_tasting_notes,
 					public_coffee
 				)
-			`)
+			`
+			)
 			.eq('id', id);
 
 		if (error) {
@@ -384,7 +395,7 @@ export const PUT: RequestHandler = async ({
 				.select('*')
 				.eq('id', id)
 				.single();
-			
+
 			if (basicError) throw basicError;
 			return json(basicData);
 		}

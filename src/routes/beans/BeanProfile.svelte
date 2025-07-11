@@ -378,15 +378,21 @@
 
 					<!-- Stocked Inventory Calculation -->
 					{@const purchasedOz = (selectedBean.purchased_qty_lbs || 0) * 16}
-					{@const roastedOz = selectedBean.roast_profiles?.reduce((ozSum: number, profile: any) => ozSum + (profile.oz_in || 0), 0) || 0}
+					{@const roastedOz =
+						selectedBean.roast_profiles?.reduce(
+							(ozSum: number, profile: any) => ozSum + (profile.oz_in || 0),
+							0
+						) || 0}
 					{@const remainingLbs = (purchasedOz - roastedOz) / 16}
 					<div class="rounded border border-border-light bg-background-secondary-light p-2">
 						<span class="text-primary-light font-medium">STOCKED INVENTORY:</span>
 						<div class="ml-2 text-text-primary-light">
-							<span class={remainingLbs > 0 ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
+							<span
+								class={remainingLbs > 0 ? 'font-bold text-green-500' : 'font-bold text-red-500'}
+							>
 								{remainingLbs.toFixed(1)} lbs
 							</span>
-							<span class="text-text-secondary-light text-sm">
+							<span class="text-sm text-text-secondary-light">
 								({purchasedOz.toFixed(0)} oz purchased - {roastedOz.toFixed(0)} oz roasted)
 							</span>
 						</div>

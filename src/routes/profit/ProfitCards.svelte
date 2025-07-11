@@ -132,7 +132,9 @@
 		<div class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light">
 			<div class="mb-4 text-6xl opacity-50">☕</div>
 			<h3 class="mb-2 text-lg font-semibold text-text-primary-light">No Coffee Purchases Yet</h3>
-			<p class="text-text-secondary-light">Add coffee beans to your inventory to start tracking sales and profit.</p>
+			<p class="text-text-secondary-light">
+				Add coffee beans to your inventory to start tracking sales and profit.
+			</p>
 		</div>
 	{:else}
 		<div class="space-y-4">
@@ -152,7 +154,9 @@
 								<h3 class="text-lg font-semibold text-text-primary-light">
 									{formatDateForDisplay(date)}
 								</h3>
-								<p class="text-sm text-text-secondary-light">{items.length} coffee{items.length !== 1 ? 's' : ''} purchased</p>
+								<p class="text-sm text-text-secondary-light">
+									{items.length} coffee{items.length !== 1 ? 's' : ''} purchased
+								</p>
 							</div>
 						</div>
 						<div class="hidden text-right sm:block">
@@ -205,7 +209,9 @@
 							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 								{#each items as item}
 									<!-- Individual Coffee Card -->
-									<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light">
+									<div
+										class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
+									>
 										<div class="mb-3 flex items-start justify-between">
 											<div>
 												<h4 class="font-semibold text-text-primary-light">
@@ -234,7 +240,9 @@
 											</div>
 											<div>
 												<p class="text-text-secondary-light">Revenue</p>
-												<p class="font-semibold text-green-500">${Number(item.total_sales).toFixed(2)}</p>
+												<p class="font-semibold text-green-500">
+													${Number(item.total_sales).toFixed(2)}
+												</p>
 											</div>
 											<div>
 												<p class="text-text-secondary-light">Profit</p>
@@ -242,7 +250,9 @@
 											</div>
 											<div>
 												<p class="text-text-secondary-light">Margin</p>
-												<p class="font-semibold text-purple-500">{Number(item.profit_margin).toFixed(1)}%</p>
+												<p class="font-semibold text-purple-500">
+													{Number(item.profit_margin).toFixed(1)}%
+												</p>
 											</div>
 										</div>
 
@@ -275,21 +285,29 @@
 												{:else}
 													<div class="space-y-2">
 														{#each sortedSales.filter((sale) => sale.coffee_name === item.coffee_name) as sale}
-															<div class="rounded-md bg-background-primary-light p-3 ring-1 ring-border-light">
+															<div
+																class="rounded-md bg-background-primary-light p-3 ring-1 ring-border-light"
+															>
 																<div class="flex items-start justify-between">
 																	<div class="flex-1">
 																		<div class="flex items-center gap-4 text-sm">
 																			<div>
 																				<p class="text-text-secondary-light">Date</p>
-																				<p class="font-medium text-text-primary-light">{formatDateForDisplay(sale.sell_date)}</p>
+																				<p class="font-medium text-text-primary-light">
+																					{formatDateForDisplay(sale.sell_date)}
+																				</p>
 																			</div>
 																			<div>
 																				<p class="text-text-secondary-light">Buyer</p>
-																				<p class="font-medium text-text-primary-light">{sale.buyer}</p>
+																				<p class="font-medium text-text-primary-light">
+																					{sale.buyer}
+																				</p>
 																			</div>
 																			<div>
 																				<p class="text-text-secondary-light">Amount</p>
-																				<p class="font-medium text-text-primary-light">{sale.oz_sold} oz</p>
+																				<p class="font-medium text-text-primary-light">
+																					{sale.oz_sold} oz
+																				</p>
 																			</div>
 																			<div>
 																				<p class="text-text-secondary-light">Price</p>
@@ -297,7 +315,9 @@
 																			</div>
 																		</div>
 																		{#if sale.batch_name}
-																			<p class="mt-1 text-xs text-text-secondary-light">Batch: {sale.batch_name}</p>
+																			<p class="mt-1 text-xs text-text-secondary-light">
+																				Batch: {sale.batch_name}
+																			</p>
 																		{/if}
 																	</div>
 																	<div class="flex gap-2">

@@ -22,12 +22,19 @@
 	let aiTastingNotes = $derived((): TastingNotes | null => {
 		if (selectedBean.coffee_catalog?.ai_tasting_notes) {
 			try {
-				const parsed = typeof selectedBean.coffee_catalog.ai_tasting_notes === 'string' 
-					? JSON.parse(selectedBean.coffee_catalog.ai_tasting_notes)
-					: selectedBean.coffee_catalog.ai_tasting_notes;
-				
+				const parsed =
+					typeof selectedBean.coffee_catalog.ai_tasting_notes === 'string'
+						? JSON.parse(selectedBean.coffee_catalog.ai_tasting_notes)
+						: selectedBean.coffee_catalog.ai_tasting_notes;
+
 				// Validate structure
-				if (parsed.body && parsed.flavor && parsed.acidity && parsed.sweetness && parsed.fragrance_aroma) {
+				if (
+					parsed.body &&
+					parsed.flavor &&
+					parsed.acidity &&
+					parsed.sweetness &&
+					parsed.fragrance_aroma
+				) {
 					return parsed as TastingNotes;
 				}
 			} catch (error) {
@@ -41,12 +48,19 @@
 	let userTastingNotes = $derived((): TastingNotes | null => {
 		if (selectedBean.cupping_notes) {
 			try {
-				const parsed = typeof selectedBean.cupping_notes === 'string'
-					? JSON.parse(selectedBean.cupping_notes)
-					: selectedBean.cupping_notes;
-				
+				const parsed =
+					typeof selectedBean.cupping_notes === 'string'
+						? JSON.parse(selectedBean.cupping_notes)
+						: selectedBean.cupping_notes;
+
 				// Validate structure
-				if (parsed.body && parsed.flavor && parsed.acidity && parsed.sweetness && parsed.fragrance_aroma) {
+				if (
+					parsed.body &&
+					parsed.flavor &&
+					parsed.acidity &&
+					parsed.sweetness &&
+					parsed.fragrance_aroma
+				) {
 					return parsed as TastingNotes;
 				}
 			} catch (error) {
@@ -243,7 +257,9 @@
 	}
 </script>
 
-<div class="rounded-lg border border-border-light bg-background-secondary-light p-4 shadow-md md:p-6">
+<div
+	class="rounded-lg border border-border-light bg-background-secondary-light p-4 shadow-md md:p-6"
+>
 	<!-- Header with Title and Scores -->
 	<div class="mb-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -341,9 +357,10 @@
 			<div class="flex space-x-8">
 				{#each tabs as tab}
 					<button
-						class="flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 {currentTab === tab.id
+						class="flex items-center gap-2 border-b-2 px-1 py-2 text-sm font-medium transition-colors duration-200 {currentTab ===
+						tab.id
 							? 'border-background-tertiary-light text-background-tertiary-light'
-							: 'border-transparent text-text-secondary-light hover:text-text-primary-light hover:border-border-light'}"
+							: 'border-transparent text-text-secondary-light hover:border-border-light hover:text-text-primary-light'}"
 						onclick={() => (currentTab = tab.id)}
 					>
 						<span>{tab.icon}</span>
@@ -422,15 +439,21 @@
 				<!-- Stocked Inventory Calculation -->
 				{#if selectedBean.purchased_qty_lbs !== undefined}
 					{@const purchasedOz = (selectedBean.purchased_qty_lbs || 0) * 16}
-					{@const roastedOz = selectedBean.roast_profiles?.reduce((ozSum: number, profile: any) => ozSum + (profile.oz_in || 0), 0) || 0}
+					{@const roastedOz =
+						selectedBean.roast_profiles?.reduce(
+							(ozSum: number, profile: any) => ozSum + (profile.oz_in || 0),
+							0
+						) || 0}
 					{@const remainingLbs = (purchasedOz - roastedOz) / 16}
 					<div class="rounded border border-border-light bg-background-secondary-light p-2">
 						<span class="text-primary-light font-medium">STOCKED INVENTORY:</span>
 						<div class="ml-2 text-text-primary-light">
-							<span class={remainingLbs > 0 ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
+							<span
+								class={remainingLbs > 0 ? 'font-bold text-green-500' : 'font-bold text-red-500'}
+							>
 								{remainingLbs.toFixed(1)} lbs
 							</span>
-							<span class="text-text-secondary-light text-sm">
+							<span class="text-sm text-text-secondary-light">
 								({purchasedOz.toFixed(0)} oz purchased - {roastedOz.toFixed(0)} oz roasted)
 							</span>
 						</div>
@@ -465,18 +488,13 @@
 					{#if catalogData.link}
 						<div class="rounded border border-border-light bg-background-secondary-light p-2">
 							<span class="text-primary-light font-medium">LINK:</span>
-							<a
-								href={catalogData.link}
-								target="_blank"
-								class="ml-2 text-blue-400 hover:underline"
-							>
+							<a href={catalogData.link} target="_blank" class="ml-2 text-blue-400 hover:underline">
 								{catalogData.link}
 							</a>
 						</div>
 					{/if}
 				{/if}
 			</div>
-
 		{:else if currentTab === 'cupping'}
 			<div class="space-y-6">
 				{#if showCuppingForm}
@@ -488,21 +506,21 @@
 					/>
 				{:else}
 					<!-- Cupping Overview -->
-					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+					<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 						<!-- Radar Chart Section -->
 						<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-							<div class="flex items-center justify-between mb-4">
+							<div class="mb-4 flex items-center justify-between">
 								<h3 class="font-semibold text-text-primary-light">Tasting Profile</h3>
 								{#if role === 'admin' || role === 'member'}
 									<button
 										onclick={() => (showCuppingForm = true)}
-										class="px-3 py-1 bg-background-tertiary-light text-white rounded text-sm hover:bg-opacity-90 transition-colors duration-200"
+										class="rounded bg-background-tertiary-light px-3 py-1 text-sm text-white transition-colors duration-200 hover:bg-opacity-90"
 									>
 										{userTastingNotes() ? 'Edit' : 'Add'} Cupping Notes
 									</button>
 								{/if}
 							</div>
-							
+
 							<div class="flex justify-center">
 								{#if aiTastingNotes() || userTastingNotes()}
 									<TastingNotesRadar
@@ -513,14 +531,16 @@
 										responsive={false}
 									/>
 								{:else}
-									<div class="w-[300px] h-[300px] flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50">
+									<div
+										class="flex h-[300px] w-[300px] items-center justify-center rounded-lg border border-gray-200 bg-gray-50"
+									>
 										<span class="text-sm text-gray-400">No tasting data available</span>
 									</div>
 								{/if}
 							</div>
-							
+
 							{#if aiTastingNotes() && userTastingNotes()}
-								<p class="text-xs text-text-secondary-light text-center mt-2">
+								<p class="mt-2 text-center text-xs text-text-secondary-light">
 									Solid circles: AI assessment • Dashed circles: Your assessment
 								</p>
 							{/if}
@@ -530,7 +550,7 @@
 						<div class="space-y-4">
 							<!-- User Rating -->
 							<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-								<h4 class="font-medium text-text-primary-light mb-2">Your Rating</h4>
+								<h4 class="mb-2 font-medium text-text-primary-light">Your Rating</h4>
 								{#if selectedBean.rank !== undefined}
 									<div class="flex items-center gap-3">
 										<span class="text-2xl font-bold text-background-tertiary-light">
@@ -539,7 +559,7 @@
 										<span class="text-text-secondary-light">/10</span>
 									</div>
 								{:else}
-									<p class="text-text-secondary-light text-sm">No rating yet</p>
+									<p class="text-sm text-text-secondary-light">No rating yet</p>
 								{/if}
 							</div>
 
@@ -548,19 +568,19 @@
 								{@const notes = userTastingNotes()}
 								{#if notes}
 									<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-										<h4 class="font-medium text-text-primary-light mb-3">Your Cupping Notes</h4>
+										<h4 class="mb-3 font-medium text-text-primary-light">Your Cupping Notes</h4>
 										<div class="space-y-2">
 											{#each Object.entries(notes) as [key, note]}
 												<div class="flex items-center justify-between">
-													<span class="text-sm text-text-secondary-light capitalize">
+													<span class="text-sm capitalize text-text-secondary-light">
 														{key.replace('_', ' ')}:
 													</span>
 													<div class="flex items-center gap-2">
 														<div
-															class="w-3 h-3 rounded-full"
+															class="h-3 w-3 rounded-full"
 															style="background-color: {note.color}"
 														></div>
-														<span class="text-sm text-text-primary-light font-medium">
+														<span class="text-sm font-medium text-text-primary-light">
 															{note.tag}
 														</span>
 														<span class="text-xs text-text-secondary-light">
@@ -574,12 +594,12 @@
 								{/if}
 							{:else}
 								<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-									<h4 class="font-medium text-text-primary-light mb-2">Your Cupping Notes</h4>
-									<p class="text-text-secondary-light text-sm">No cupping notes yet</p>
+									<h4 class="mb-2 font-medium text-text-primary-light">Your Cupping Notes</h4>
+									<p class="text-sm text-text-secondary-light">No cupping notes yet</p>
 									{#if role === 'admin' || role === 'member'}
 										<button
 											onclick={() => (showCuppingForm = true)}
-											class="mt-2 px-3 py-1 bg-background-tertiary-light text-white rounded text-sm hover:bg-opacity-90 transition-colors duration-200"
+											class="mt-2 rounded bg-background-tertiary-light px-3 py-1 text-sm text-white transition-colors duration-200 hover:bg-opacity-90"
 										>
 											Add Cupping Assessment
 										</button>
@@ -590,7 +610,6 @@
 					</div>
 				{/if}
 			</div>
-
 		{:else if currentTab === 'roasting'}
 			<div class="space-y-4">
 				<div class="flex items-center justify-between">
@@ -600,7 +619,7 @@
 							onclick={() => {
 								window.location.href = `/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
 							}}
-							class="px-4 py-2 bg-background-tertiary-light text-white rounded-md font-medium hover:bg-opacity-90 transition-all duration-200"
+							class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 						>
 							Start New Roast
 						</button>
@@ -608,18 +627,18 @@
 				</div>
 
 				{#if selectedBean.roast_profiles && selectedBean.roast_profiles.length > 0}
-					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 						{#each selectedBean.roast_profiles as profile, index}
 							<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-								<div class="flex items-center justify-between mb-2">
+								<div class="mb-2 flex items-center justify-between">
 									<h4 class="font-medium text-text-primary-light">Roast #{index + 1}</h4>
 									<span class="text-xs text-text-secondary-light">
 										{profile.oz_in || 0} oz → {profile.oz_out || 0} oz
 									</span>
 								</div>
 								<div class="text-sm text-text-secondary-light">
-									Loss: {profile.oz_in && profile.oz_out 
-										? ((profile.oz_in - profile.oz_out) / profile.oz_in * 100).toFixed(1)
+									Loss: {profile.oz_in && profile.oz_out
+										? (((profile.oz_in - profile.oz_out) / profile.oz_in) * 100).toFixed(1)
 										: 0}%
 								</div>
 							</div>
@@ -627,11 +646,17 @@
 					</div>
 
 					<!-- Summary Stats -->
-					{@const totalOzIn = selectedBean.roast_profiles.reduce((sum: number, p: any) => sum + (p.oz_in || 0), 0)}
-					{@const totalOzOut = selectedBean.roast_profiles.reduce((sum: number, p: any) => sum + (p.oz_out || 0), 0)}
-					{@const avgLoss = totalOzIn > 0 ? ((totalOzIn - totalOzOut) / totalOzIn * 100) : 0}
-					
-					<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+					{@const totalOzIn = selectedBean.roast_profiles.reduce(
+						(sum: number, p: any) => sum + (p.oz_in || 0),
+						0
+					)}
+					{@const totalOzOut = selectedBean.roast_profiles.reduce(
+						(sum: number, p: any) => sum + (p.oz_out || 0),
+						0
+					)}
+					{@const avgLoss = totalOzIn > 0 ? ((totalOzIn - totalOzOut) / totalOzIn) * 100 : 0}
+
+					<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 							<h4 class="text-sm font-medium text-text-primary-light">Total Roasted</h4>
 							<p class="text-2xl font-bold text-blue-500">{totalOzIn.toFixed(1)} oz</p>
@@ -646,16 +671,20 @@
 						</div>
 					</div>
 				{:else}
-					<div class="rounded-lg bg-background-primary-light p-8 text-center ring-1 ring-border-light">
+					<div
+						class="rounded-lg bg-background-primary-light p-8 text-center ring-1 ring-border-light"
+					>
 						<div class="mb-4 text-4xl opacity-50">🔥</div>
 						<h4 class="mb-2 text-lg font-semibold text-text-primary-light">No Roasts Yet</h4>
-						<p class="mb-4 text-text-secondary-light">Start your first roast with this coffee to see roasting history and analytics.</p>
+						<p class="mb-4 text-text-secondary-light">
+							Start your first roast with this coffee to see roasting history and analytics.
+						</p>
 						{#if role === 'admin' || role === 'member'}
 							<button
 								onclick={() => {
 									window.location.href = `/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
 								}}
-								class="px-4 py-2 bg-background-tertiary-light text-white rounded-md font-medium hover:bg-opacity-90 transition-all duration-200"
+								class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 							>
 								Start First Roast
 							</button>
@@ -663,18 +692,20 @@
 					</div>
 				{/if}
 			</div>
-
 		{:else if currentTab === 'analytics'}
 			<div class="space-y-6">
 				<h3 class="text-lg font-semibold text-text-primary-light">Coffee Analytics</h3>
-				
+
 				<!-- Cost Analysis -->
-				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 						<h4 class="text-sm font-medium text-text-primary-light">Cost per Pound</h4>
 						<p class="text-2xl font-bold text-green-500">
-							${selectedBean.purchased_qty_lbs 
-								? (((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)) / selectedBean.purchased_qty_lbs).toFixed(2)
+							${selectedBean.purchased_qty_lbs
+								? (
+										((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)) /
+										selectedBean.purchased_qty_lbs
+									).toFixed(2)
 								: '0.00'}
 						</p>
 					</div>
@@ -687,8 +718,17 @@
 					<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 						<h4 class="text-sm font-medium text-text-primary-light">Remaining Value</h4>
 						{#if selectedBean.purchased_qty_lbs}
-							{@const remainingLbs = ((selectedBean.purchased_qty_lbs || 0) * 16 - (selectedBean.roast_profiles?.reduce((sum: number, p: any) => sum + (p.oz_in || 0), 0) || 0)) / 16}
-							{@const costPerLb = selectedBean.purchased_qty_lbs ? ((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)) / selectedBean.purchased_qty_lbs : 0}
+							{@const remainingLbs =
+								((selectedBean.purchased_qty_lbs || 0) * 16 -
+									(selectedBean.roast_profiles?.reduce(
+										(sum: number, p: any) => sum + (p.oz_in || 0),
+										0
+									) || 0)) /
+								16}
+							{@const costPerLb = selectedBean.purchased_qty_lbs
+								? ((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)) /
+									selectedBean.purchased_qty_lbs
+								: 0}
 							<p class="text-2xl font-bold text-purple-500">
 								${(remainingLbs * costPerLb).toFixed(2)}
 							</p>
@@ -700,7 +740,11 @@
 						<h4 class="text-sm font-medium text-text-primary-light">Utilization</h4>
 						{#if selectedBean.purchased_qty_lbs}
 							{@const totalPurchased = (selectedBean.purchased_qty_lbs || 0) * 16}
-							{@const totalRoasted = selectedBean.roast_profiles?.reduce((sum: number, p: any) => sum + (p.oz_in || 0), 0) || 0}
+							{@const totalRoasted =
+								selectedBean.roast_profiles?.reduce(
+									(sum: number, p: any) => sum + (p.oz_in || 0),
+									0
+								) || 0}
 							<p class="text-2xl font-bold text-orange-500">
 								{totalPurchased > 0 ? ((totalRoasted / totalPurchased) * 100).toFixed(1) : 0}%
 							</p>
@@ -712,14 +756,19 @@
 
 				<!-- Purchase vs Current Market -->
 				{#if selectedBean.coffee_catalog?.cost_lb}
-					{@const paidPerLb = selectedBean.purchased_qty_lbs ? ((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)) / selectedBean.purchased_qty_lbs : 0}
+					{@const paidPerLb = selectedBean.purchased_qty_lbs
+						? ((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)) /
+							selectedBean.purchased_qty_lbs
+						: 0}
 					{@const marketPrice = selectedBean.coffee_catalog.cost_lb}
 					{@const savings = marketPrice - paidPerLb}
 					<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-						<h4 class="font-medium text-text-primary-light mb-3">Market Comparison</h4>
+						<h4 class="mb-3 font-medium text-text-primary-light">Market Comparison</h4>
 						<div class="flex items-center justify-between">
 							<span class="text-text-secondary-light">You paid: ${paidPerLb.toFixed(2)}/lb</span>
-							<span class="text-text-secondary-light">Market price: ${marketPrice.toFixed(2)}/lb</span>
+							<span class="text-text-secondary-light"
+								>Market price: ${marketPrice.toFixed(2)}/lb</span
+							>
 						</div>
 						<div class="mt-2 text-center">
 							<span class="text-lg font-medium {savings > 0 ? 'text-green-500' : 'text-red-500'}">
@@ -730,10 +779,17 @@
 				{/if}
 
 				<!-- Future placeholder for more analytics -->
-				<div class="rounded-lg bg-background-primary-light p-8 text-center ring-1 ring-border-light border-dashed">
+				<div
+					class="rounded-lg border-dashed bg-background-primary-light p-8 text-center ring-1 ring-border-light"
+				>
 					<div class="mb-4 text-4xl opacity-50">📊</div>
-					<h4 class="mb-2 text-lg font-semibold text-text-primary-light">More Analytics Coming Soon</h4>
-					<p class="text-text-secondary-light">Advanced analytics like roast performance trends, flavor profile evolution, and profitability analysis.</p>
+					<h4 class="mb-2 text-lg font-semibold text-text-primary-light">
+						More Analytics Coming Soon
+					</h4>
+					<p class="text-text-secondary-light">
+						Advanced analytics like roast performance trends, flavor profile evolution, and
+						profitability analysis.
+					</p>
 				</div>
 			</div>
 		{/if}
@@ -741,7 +797,7 @@
 
 	<!-- Action Buttons -->
 	{#if role === 'admin' || role === 'member'}
-		<div class="flex flex-wrap justify-end gap-2 mt-6 pt-4 border-t border-border-light">
+		<div class="mt-6 flex flex-wrap justify-end gap-2 border-t border-border-light pt-4">
 			{#if currentTab === 'overview'}
 				<button
 					class="rounded {isEditing

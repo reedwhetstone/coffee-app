@@ -16,16 +16,26 @@
 			const response = await fetch('/api/data');
 			if (response.ok) {
 				const data = await response.json();
+				console.log('API response:', data);
+				
+				// Ensure data.data exists and is an array before processing
+				const coffeeList = Array.isArray(data.data) ? data.data : [];
+				
 				// Filter and transform the data to only show stocked beans with direct name property
-				availableCoffees = data.data
-					?.filter((coffee: any) => coffee.stocked === true)
-					?.map((coffee: any) => ({
+				availableCoffees = coffeeList
+					.filter((coffee: any) => coffee.stocked === true)
+					.map((coffee: any) => ({
 						...coffee,
 						name: coffee.coffee_catalog?.name || coffee.name || 'Unknown Coffee'
-					})) || [];
+					}));
+				
+				console.log('Available coffees:', availableCoffees);
+			} else {
+				console.error('Failed to fetch coffees:', response.status, response.statusText);
 			}
 		} catch (error) {
 			console.error('Error loading coffees:', error);
+			availableCoffees = []; // Ensure it's always an array
 		}
 	}
 
@@ -131,12 +141,12 @@
 				roast_targets: formData.roast_targets
 			};
 
-			// Submit the roast profile data first
+			// Submit the roast profile data using parent callback
 			const roastProfilesResponse = await onSubmit(dataForAPI);
 			console.log('Roast profiles response:', roastProfilesResponse);
 
 			// If there are Artisan files to upload, handle them after profile creation
-			if (roastProfilesResponse?.roast_ids && roastProfilesResponse?.profiles) {
+			if (roastProfilesResponse?.roast_ids && Array.isArray(roastProfilesResponse.roast_ids)) {
 				console.log(`Processing ${batchBeans.length} beans for Artisan file uploads`);
 
 				for (let i = 0; i < batchBeans.length; i++) {
@@ -158,7 +168,7 @@
 					}
 				}
 			} else {
-				console.log('No roast IDs returned or no profiles found:', roastProfilesResponse);
+				console.log('No roast IDs returned or roast_ids is not an array:', roastProfilesResponse);
 			}
 		} catch (error) {
 			console.error('Error submitting profile:', error);
@@ -193,7 +203,9 @@
 			<!-- Header -->
 			<div class="mb-6">
 				<h2 class="text-2xl font-bold text-text-primary-light">Add New Roast Profile</h2>
-				<p class="mt-2 text-text-secondary-light">Create a new roast batch with multiple beans and optional Artisan data</p>
+				<p class="mt-2 text-text-secondary-light">
+					Create a new roast batch with multiple beans and optional Artisan data
+				</p>
 			</div>
 
 			<!-- Scrollable Content -->
@@ -249,10 +261,12 @@
 							<span>Add Bean</span>
 						</button>
 					</div>
-					
+
 					<div class="space-y-4">
 						{#each batchBeans as bean, index}
-							<div class="relative rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+							<div
+								class="relative rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
+							>
 								<!-- Remove bean button (except for first bean) -->
 								{#if index > 0}
 									<button
@@ -265,8 +279,11 @@
 								{/if}
 
 								<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-									<div class="sm:col-span-2 space-y-2">
-										<label for="coffee_select_{index}" class="block text-sm font-medium text-text-primary-light">
+									<div class="space-y-2 sm:col-span-2">
+										<label
+											for="coffee_select_{index}"
+											class="block text-sm font-medium text-text-primary-light"
+										>
 											Select Coffee
 										</label>
 										<select
@@ -286,7 +303,10 @@
 									</div>
 
 									<div class="space-y-2">
-										<label for="oz_in_{index}" class="block text-sm font-medium text-text-primary-light">
+										<label
+											for="oz_in_{index}"
+											class="block text-sm font-medium text-text-primary-light"
+										>
 											Green Weight (oz)
 										</label>
 										<input
@@ -302,7 +322,10 @@
 									</div>
 
 									<div class="space-y-2">
-										<label for="oz_out_{index}" class="block text-sm font-medium text-text-primary-light">
+										<label
+											for="oz_out_{index}"
+											class="block text-sm font-medium text-text-primary-light"
+										>
 											Roasted Weight (oz)
 										</label>
 										<input
@@ -317,8 +340,11 @@
 									</div>
 
 									<!-- Artisan File Upload -->
-									<div class="sm:col-span-2 space-y-2">
-										<label for="artisan_file_{index}" class="block text-sm font-medium text-text-primary-light">
+									<div class="space-y-2 sm:col-span-2">
+										<label
+											for="artisan_file_{index}"
+											class="block text-sm font-medium text-text-primary-light"
+										>
 											Artisan Roast Log (Optional)
 										</label>
 										<div class="space-y-2">
@@ -333,7 +359,7 @@
 												Upload CSV or XLSX exported from Artisan to import temperature curves
 											</p>
 											{#if bean.artisan_file}
-												<p class="text-xs text-green-600 font-medium">
+												<p class="text-xs font-medium text-green-600">
 													✓ {bean.artisan_file.name}
 												</p>
 											{/if}
@@ -379,7 +405,7 @@
 			</form>
 
 			<!-- Footer -->
-			<div class="border-t border-background-tertiary-light/20 pt-6 mt-6">
+			<div class="mt-6 border-t border-background-tertiary-light/20 pt-6">
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
 					<button
 						type="button"

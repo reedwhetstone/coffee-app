@@ -366,24 +366,13 @@
 	// Form submission handler for new roast profiles
 	async function handleFormSubmit(profileData: any) {
 		try {
-			const dataForAPI = profileData.batch_beans.map((bean: any) => ({
-				batch_name: profileData.batch_name,
-				coffee_id: bean.coffee_id,
-				coffee_name: bean.coffee_name,
-				roast_date: prepareDateForAPI(profileData.roast_date),
-				last_updated: new Date().toISOString(),
-				oz_in: bean.oz_in,
-				oz_out: bean.oz_out,
-				roast_notes: profileData.roast_notes,
-				roast_targets: profileData.roast_targets
-			}));
-
+			// The form now sends data with batch_beans format, use it directly
 			const response = await fetch('/api/roast-profiles', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(dataForAPI)
+				body: JSON.stringify(profileData)
 			});
 
 			if (!response.ok) {
@@ -391,7 +380,8 @@
 				throw new Error(error.error || 'Failed to create roast profiles');
 			}
 
-			const profiles = await response.json();
+			const result = await response.json();
+			const profiles = result.profiles || result; // Handle both new and legacy response formats
 
 			if (profiles && profiles.length > 0) {
 				// Update the selected bean and current profile
@@ -413,8 +403,8 @@
 
 				isFormVisible = false;
 
-				// Return the profiles with roast_ids for Artisan file upload
-				return {
+				// Return the result for Artisan file upload (already has roast_ids if using new format)
+				return result.roast_ids ? result : {
 					roast_ids: profiles.map((p: any) => p.roast_id),
 					profiles: profiles
 				};
