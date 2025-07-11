@@ -520,7 +520,7 @@
 
 	<!-- Form Modal -->
 	{#if isFormVisible}
-		<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 p-4">
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
 			<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 md:p-6">
 				<BeanForm bean={null} onClose={() => (isFormVisible = false)} onSubmit={handleFormSubmit} />
 			</div>

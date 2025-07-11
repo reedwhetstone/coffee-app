@@ -132,24 +132,74 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		const bean = await request.json();
+		let catalogId = bean.catalog_id;
 
-		// Clean and prepare the bean data for insertion
-		const cleanedBean = {
-			...bean,
+		// If this is a manual entry (no catalog_id but has manual_name), create catalog entry first
+		if (!catalogId && bean.manual_name) {
+			const catalogData: {[key: string]: any} = {
+				name: bean.manual_name,
+				coffee_user: user.id,
+				public_coffee: false,
+				last_updated: new Date().toISOString().split('T')[0] // date format
+			};
+
+			// Add optional catalog fields if they exist
+			const optionalCatalogFields = [
+				'region', 'processing', 'drying_method', 'roast_recs', 'lot_size', 'bag_size',
+				'packaging', 'cultivar_detail', 'grade', 'appearance', 'description_short',
+				'farm_notes', 'type', 'description_long', 'cost_lb', 'source', 'cupping_notes',
+				'arrival_date', 'score_value', 'ai_description', 'ai_tasting_notes'
+			];
+
+			optionalCatalogFields.forEach(field => {
+				if (bean[field] !== undefined && bean[field] !== null && bean[field] !== '') {
+					catalogData[field] = bean[field];
+				}
+			});
+
+			const { data: newCatalogEntry, error: catalogError } = await supabase
+				.from('coffee_catalog')
+				.insert(catalogData)
+				.select('id')
+				.single();
+
+			if (catalogError) {
+				console.error('Error creating catalog entry:', catalogError);
+				return json({ error: 'Failed to create catalog entry' }, { status: 500 });
+			}
+
+			catalogId = newCatalogEntry.id;
+		}
+
+		// Clean and prepare the green_coffee_inv data for insertion
+		const validInventoryColumns = [
+			'rank', 'notes', 'purchase_date', 'purchased_qty_lbs', 'bean_cost', 
+			'tax_ship_cost', 'stocked', 'cupping_notes'
+		];
+
+		const cleanedBean: {[key: string]: any} = {
 			user: user.id,
+			catalog_id: catalogId,
+			last_updated: new Date().toISOString(),
 			// Ensure numeric fields are properly formatted
 			tax_ship_cost:
 				typeof bean.tax_ship_cost === 'number' ? parseFloat(bean.tax_ship_cost.toFixed(2)) : 0.0,
-			bean_cost: typeof bean.bean_cost === 'number' ? parseFloat(bean.bean_cost.toFixed(2)) : 0.0,
-			last_updated: bean.last_updated || new Date().toISOString()
+			bean_cost: typeof bean.bean_cost === 'number' ? parseFloat(bean.bean_cost.toFixed(2)) : 0.0
 		};
 
+		// Add only valid inventory columns
+		validInventoryColumns.forEach(field => {
+			if (bean[field] !== undefined) {
+				cleanedBean[field] = bean[field];
+			}
+		});
+
 		// If this bean references a catalog item, verify it exists
-		if (cleanedBean.catalog_id) {
+		if (catalogId) {
 			const { data: catalogBean, error: catalogError } = await supabase
 				.from('coffee_catalog')
 				.select('id')
-				.eq('id', cleanedBean.catalog_id)
+				.eq('id', catalogId)
 				.single();
 
 			if (catalogError || !catalogBean) {

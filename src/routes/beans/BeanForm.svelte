@@ -17,6 +17,31 @@
 	let sourceFilter = $state('');
 	let isUpdating = $state(false);
 
+	// Optional catalog fields for manual entry
+	let optionalFields = $state<{[key: string]: string | number | null}>({
+		region: '',
+		processing: '',
+		drying_method: '',
+		roast_recs: '',
+		lot_size: '',
+		bag_size: '',
+		packaging: '',
+		cultivar_detail: '',
+		grade: '',
+		appearance: '',
+		description_short: '',
+		farm_notes: '',
+		type: '',
+		description_long: '',
+		cost_lb: null as number | null,
+		source: '',
+		cupping_notes: '',
+		arrival_date: '',
+		score_value: null as number | null
+	});
+
+	let selectedOptionalFields = $state<string[]>([]);
+
 	let formData = $state(
 		bean
 			? { ...bean }
@@ -358,28 +383,108 @@
 		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 			<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Additional Information</h3>
 			<div class="space-y-4">
-				<div class="space-y-2">
-					<label for="link" class="block text-sm font-medium text-text-primary-light">
-						Product Link (Optional)
-					</label>
-					<input
-						id="link"
-						type="url"
-						bind:value={formData.link}
-						placeholder="https://..."
-						class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
-					/>
-				</div>
+				{#if isManualEntry}
+					<!-- Optional Field Selection for Manual Entry -->
+					<div class="space-y-2">
+						<label for="field-selector" class="block text-sm font-medium text-text-primary-light">
+							Add Optional Fields
+						</label>
+						<select
+							id="field-selector"
+							class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+							onchange={(e) => {
+								const target = e.target as HTMLSelectElement;
+								const field = target.value;
+								if (field && !selectedOptionalFields.includes(field)) {
+									selectedOptionalFields = [...selectedOptionalFields, field];
+									target.value = '';
+								}
+							}}
+						>
+							<option value="">Select field to add...</option>
+							<option value="region">Region</option>
+							<option value="processing">Processing Method</option>
+							<option value="drying_method">Drying Method</option>
+							<option value="roast_recs">Roast Recommendations</option>
+							<option value="lot_size">Lot Size</option>
+							<option value="bag_size">Bag Size</option>
+							<option value="packaging">Packaging</option>
+							<option value="cultivar_detail">Cultivar Detail</option>
+							<option value="grade">Grade</option>
+							<option value="appearance">Appearance</option>
+							<option value="description_short">Short Description</option>
+							<option value="farm_notes">Farm Notes</option>
+							<option value="type">Type</option>
+							<option value="description_long">Long Description</option>
+							<option value="cost_lb">Cost per Lb</option>
+							<option value="source">Source</option>
+							<option value="cupping_notes">Cupping Notes</option>
+							<option value="arrival_date">Arrival Date</option>
+							<option value="score_value">Score Value</option>
+						</select>
+					</div>
+
+					<!-- Dynamic Optional Fields -->
+					{#each selectedOptionalFields as fieldName}
+						<div class="flex gap-2">
+							<div class="flex-1 space-y-2">
+								<label for={`field-${fieldName}`} class="block text-sm font-medium text-text-primary-light">
+									{fieldName.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+								</label>
+								{#if fieldName === 'description_long' || fieldName === 'farm_notes' || fieldName === 'cupping_notes'}
+									<textarea
+										id={`field-${fieldName}`}
+										bind:value={optionalFields[fieldName]}
+										rows="3"
+										class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+									></textarea>
+								{:else if fieldName === 'cost_lb' || fieldName === 'score_value'}
+									<input
+										id={`field-${fieldName}`}
+										type="number"
+										step="0.01"
+										bind:value={optionalFields[fieldName]}
+										class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+									/>
+								{:else if fieldName === 'arrival_date'}
+									<input
+										id={`field-${fieldName}`}
+										type="date"
+										bind:value={optionalFields[fieldName]}
+										class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+									/>
+								{:else}
+									<input
+										id={`field-${fieldName}`}
+										type="text"
+										bind:value={optionalFields[fieldName]}
+										class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
+									/>
+								{/if}
+							</div>
+							<button
+								type="button"
+								class="mt-6 rounded-md bg-red-500 px-2 py-1 text-xs text-white hover:bg-red-600"
+								onclick={() => {
+									selectedOptionalFields = selectedOptionalFields.filter((f: string) => f !== fieldName);
+									optionalFields[fieldName] = '';
+								}}
+							>
+								Remove
+							</button>
+						</div>
+					{/each}
+				{/if}
 
 				<div class="space-y-2">
 					<label for="notes" class="block text-sm font-medium text-text-primary-light">
-						Notes (Optional)
+						Inventory Notes (Optional)
 					</label>
 					<textarea
 						id="notes"
 						bind:value={formData.notes}
 						rows="3"
-						placeholder="Add any additional notes about this coffee..."
+						placeholder="Add any notes about your purchase of this coffee..."
 						class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 					></textarea>
 				</div>
