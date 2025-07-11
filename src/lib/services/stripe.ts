@@ -227,6 +227,7 @@ export async function createCheckoutSession(
 			ui_mode: 'embedded',
 			return_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
 			client_reference_id: clientReferenceId,
+			allow_promotion_codes: true,
 			subscription_data: {
 				trial_period_days: 14
 			}
