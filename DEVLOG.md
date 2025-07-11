@@ -4,7 +4,8 @@
 - [ ] **Bug** - Bring forms to front, they are beneath the card layers on the beans page. Check each page -/profit and /roast. Have to click profile to get the cards out of the way.
 - [ ] **Bug** - Links to new roast on bean page doesn't take you to the roast form
 - [ ] **Bug** - The loading screen shows "No Beans" dialog before the db returns data - should be looking for a NULL return from table before rendering no beans. Otherwise should be rendering a loading screen - much earlier in the load.
-- [ ] - [ ] **Bug** - roast form doesn't fit on the page
+- [ ] **Bug** - roast form doesn't fit on the page
+- [ ] **Bug** - /beans profile just needs to pull not null data into the form in an organized way so it collects everything.
 -
 - [ ] **UI/UX** - Redesign roast, bean, and profit pages to match landing/catalog aesthetic; reduce table formatting; emphasize profile & analytics
 - [ ] **UI/UX** - Clean up roast page UI to align with beans page UI
