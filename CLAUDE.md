@@ -151,6 +151,20 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - Components use stores for shared state
 - Database operations go through Supabase client with proper type safety
 
+### Component Architecture Guidelines
+
+**Form Component Responsibilities:**
+- Handle UI state and validation only
+- Delegate all data operations to parent components
+- Never make direct API calls - use callback props
+- Return processed form data to parent via callbacks
+
+**Data Flow Pattern:**
+- Parent component handles API calls and data management
+- Form component receives data via props, returns data via callbacks
+- Use centralized stores/services for complex shared state
+- Avoid dual submission flows (component + parent both calling APIs)
+
 ## SvelteKit Development Guidelines
 
 ### Framework-Specific Patterns
@@ -202,6 +216,20 @@ Use **API Endpoints** (`/api/*/+server.ts`) when:
 ```typescript
 // ✅ Handle both direct and nested property access
 const displayName = item.nested_object?.name || item.name || 'Unknown';
+```
+
+**Defensive Programming Requirements:**
+```typescript
+// ✅ MANDATORY array validation before operations
+const safeArray = Array.isArray(data) ? data : [];
+const results = safeArray.map(item => processItem(item));
+
+// ✅ MANDATORY API response validation
+const responseData = response.data || [];
+const validatedResponse = Array.isArray(responseData) ? responseData : [];
+
+// ✅ MANDATORY fallback for undefined/null arrays
+availableItems = data?.items?.filter(item => item.active) || [];
 ```
 
 ## Database Development Guidelines
@@ -268,6 +296,13 @@ When encountering "column does not exist" errors:
 - **Fix API When**: Column references are incorrect, joins are malformed, schema has changed
 - **Fix Frontend When**: API is correct but component expects old data structure
 - **Fix Both When**: Schema migration requires coordinated changes
+
+**Submission Flow Conflict Resolution:**
+When components and parents both handle data operations:
+1. **Identify Conflict**: Look for dual API calls (component + parent)
+2. **Choose Single Responsibility**: Form components delegate to parents
+3. **Update Data Flow**: Remove component API calls, use callback props
+4. **Validate Response Handling**: Ensure parent handles all response formats
 
 **Debugging Approach:**
 ```typescript
@@ -620,6 +655,42 @@ When data isn't reaching the frontend:
 2. **Check Serialization**: Complex objects may not serialize properly for client transmission
 3. **Test Client Reception**: Verify data reaches the frontend correctly
 4. **Consider Alternative Approaches**: Manual joins, API endpoints, simplified data structures
+
+### Error Handling Strategy
+
+**Route & Load Errors:**
+- Use SvelteKit's `+error.svelte` for route and load function errors
+- Implement proper error boundaries at page level
+
+**Component-Level Errors:**
+- Use local try-catch blocks with fallback UI inside components
+- Always provide fallback states for failed operations
+- Never let component errors crash the entire page
+
+**Global Error Management:**
+- Implement comprehensive error logging in `hooks.server.ts`
+- Log client-side errors via API endpoints for monitoring
+- Use consistent error message formatting across the application
+
+### API Response Validation Patterns
+
+**MANDATORY for all API responses:**
+```typescript
+// ✅ Always validate API response structure
+const result = await response.json();
+const profiles = result.profiles || result; // Handle format variations
+const validatedData = Array.isArray(profiles) ? profiles : [];
+
+// ✅ Handle both new and legacy response formats
+const roastIds = result.roast_ids ? result.roast_ids : 
+  profiles.map((p: any) => p.roast_id);
+
+// ✅ Provide meaningful fallbacks
+if (!response.ok) {
+  const errorData = await response.json();
+  throw new Error(errorData.error || 'Operation failed');
+}
+```
 
 ### Performance Considerations
 
