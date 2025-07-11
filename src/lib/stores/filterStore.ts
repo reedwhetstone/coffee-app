@@ -73,23 +73,8 @@ function createFilterStore() {
 			// Update unique filter values
 			updateUniqueFilterValues();
 
-			// Get all sources and set them as selected by default
-			// Handle both direct source field and coffee_catalog.source for joined data
-			const sources = Array.from(
-				new Set(
-					data
-						.map((item) => {
-							// For beans page with joined data, check coffee_catalog.source first
-							if (item.coffee_catalog?.source) return item.coffee_catalog.source;
-							// Fallback to direct fields
-							return item.source || item.vendor;
-						})
-						.filter(Boolean)
-				)
-			);
-			if (sources.length > 0) {
-				state.filters.source = sources;
-			}
+			// Don't auto-filter by source - let users see all beans including manual entries with no source
+			// This ensures manually created beans with NULL sources are visible by default
 
 			// Auto-filter beans by green_coffee_inv.stocked = 'TRUE' for beans route (user can change this)
 			if (routeId.includes('beans')) {
@@ -244,23 +229,18 @@ function createFilterStore() {
 				// Now process the unique values
 				const uniqueValues: Record<string, any[]> = {};
 
-				// Get unique sources - handle joined data structure
-				const sourcesExist = state.originalData.some(
-					(item) => item.coffee_catalog?.source || item.source || item.vendor
-				);
-				if (sourcesExist) {
-					uniqueValues.sources = Array.from(
-						new Set(
-							state.originalData
-								.map((item) => {
-									// For beans page with joined data, check coffee_catalog.source first
-									if (item.coffee_catalog?.source) return item.coffee_catalog.source;
-									// Fallback to direct fields
-									return item.source || item.vendor;
-								})
-								.filter(Boolean)
-						)
-					).sort((a, b) => a.localeCompare(b));
+				// Get unique sources - handle joined data structure and include items with sources
+				const allSources = state.originalData.map((item) => {
+					// For beans page with joined data, check coffee_catalog.source first
+					if (item.coffee_catalog?.source) return item.coffee_catalog.source;
+					// Fallback to direct fields
+					return item.source || item.vendor;
+				});
+				
+				// Only include this if there are any non-null sources
+				const validSources = allSources.filter(Boolean);
+				if (validSources.length > 0) {
+					uniqueValues.sources = Array.from(new Set(validSources)).sort((a, b) => a.localeCompare(b));
 				}
 
 				// Get unique purchase dates
@@ -394,8 +374,13 @@ function createFilterStore() {
 						);
 					}
 
-					// Array filter
+					// Array filter - special handling for source to include null/undefined values
 					if (Array.isArray(value)) {
+						// For source filtering, if no specific sources are selected (empty array), 
+						// show all items including those with null sources
+						if (key === 'source' && value.length === 0) {
+							return true;
+						}
 						return value.includes(itemValue);
 					}
 				} else if (typeof itemValue === 'string' && typeof value === 'string') {

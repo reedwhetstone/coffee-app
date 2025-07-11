@@ -132,7 +132,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		const bean = await request.json();
-		console.log('Received bean data:', JSON.stringify(bean, null, 2));
 		let catalogId = bean.catalog_id;
 
 		// If this is a manual entry (no catalog_id but has manual_name), create catalog entry first
@@ -170,7 +169,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			}
 
 			catalogId = newCatalogEntry.id;
-			console.log('Created catalog entry with ID:', catalogId);
 		}
 
 		// Clean and prepare the green_coffee_inv data for insertion
@@ -195,8 +193,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				cleanedBean[field] = bean[field];
 			}
 		});
-
-		console.log('Final cleanedBean for green_coffee_inv:', JSON.stringify(cleanedBean, null, 2));
 
 		// If this bean references a catalog item, verify it exists
 		if (catalogId) {

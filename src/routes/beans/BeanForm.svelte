@@ -137,7 +137,6 @@
 
 			cleanedBean.last_updated = new Date().toISOString();
 
-			console.log('Submitting bean data:', JSON.stringify(cleanedBean, null, 2));
 
 			const response = await fetch('/api/data', {
 				method: 'POST',
