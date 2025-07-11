@@ -266,10 +266,10 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			return json({ success: false, error: 'No ID provided' }, { status: 400 });
 		}
 
-		// Verify ownership
+		// Verify ownership and get catalog_id for potential cascade deletion
 		const { data: existing } = await supabase
 			.from('green_coffee_inv')
-			.select('user')
+			.select('user, catalog_id')
 			.eq('id', id)
 			.single();
 
@@ -308,6 +308,29 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		const { error: deleteError } = await supabase.from('green_coffee_inv').delete().eq('id', id);
 
 		if (deleteError) throw deleteError;
+
+		// Check if we need to cascade delete the coffee_catalog entry
+		// Only delete if the catalog entry is user-owned (coffee_user = user.id)
+		if (existing.catalog_id) {
+			const { data: catalogEntry } = await supabase
+				.from('coffee_catalog')
+				.select('coffee_user, public_coffee')
+				.eq('id', existing.catalog_id)
+				.single();
+
+			// Delete catalog entry if it's user-owned and private (manual entry)
+			if (catalogEntry && catalogEntry.coffee_user === user.id && catalogEntry.public_coffee === false) {
+				const { error: catalogDeleteError } = await supabase
+					.from('coffee_catalog')
+					.delete()
+					.eq('id', existing.catalog_id);
+
+				if (catalogDeleteError) {
+					console.error('Error deleting user-owned catalog entry:', catalogDeleteError);
+					// Don't fail the whole operation if catalog deletion fails
+				}
+			}
+		}
 
 		return json({ success: true });
 	} catch (error) {
