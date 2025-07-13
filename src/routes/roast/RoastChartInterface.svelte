@@ -62,10 +62,14 @@
 		return milestones;
 	}
 
-	function calculateMilestones(milestones: MilestoneData): MilestoneCalculations {
+	function calculateMilestones(milestones: MilestoneData, currentTime?: number): MilestoneCalculations {
 		const start = milestones.start || 0;
 		const drop = milestones.drop || milestones.end || 0;
-		const totalTime = drop - start;
+		
+		// For live calculations, use current elapsed time if roast is ongoing
+		// For completed roasts, use actual drop time
+		const effectiveEndTime = currentTime && currentTime > 0 && !drop ? currentTime : drop;
+		const totalTime = effectiveEndTime - start;
 		
 		const tpTime = milestones.maillard || 0;
 		const fcTime = milestones.fc_start || 0;
@@ -85,9 +89,12 @@
 				maillardPercent = ((fcTime - tpTime) / totalTime) * 100;
 			}
 			
-			// DEV % = time from first crack to drop
-			if (drop > fcTime && fcTime > 0) {
-				devPercent = ((drop - fcTime) / totalTime) * 100;
+			// DEV % = time from first crack to current time (live) or drop (completed)
+			if (fcTime > 0) {
+				const devEndTime = effectiveEndTime;
+				if (devEndTime > fcTime) {
+					devPercent = ((devEndTime - fcTime) / totalTime) * 100;
+				}
 			}
 		}
 		
@@ -900,6 +907,10 @@
 		const logs = isDuringRoasting ? $profileLogs : savedProfileLogs;
 		const isLiveData = isDuringRoasting;
 		
+		// Include seconds and milliseconds in dependency to trigger updates every tick
+		const currentSeconds = seconds;
+		const currentMilliseconds = milliseconds;
+		
 		if (logs.length === 0) {
 			return {
 				totalTime: 0,
@@ -912,7 +923,16 @@
 		}
 		
 		const milestones = extractMilestones(logs, isLiveData);
-		return calculateMilestones(milestones);
+		
+		// For live calculations, pass current elapsed time
+		let currentElapsedTime = 0;
+		if (isDuringRoasting && $startTime !== null) {
+			currentElapsedTime = isPaused 
+				? $accumulatedTime
+				: performance.now() - $startTime + $accumulatedTime;
+		}
+		
+		return calculateMilestones(milestones, isDuringRoasting ? currentElapsedTime : undefined);
 	});
 
 	// Formatted display values
