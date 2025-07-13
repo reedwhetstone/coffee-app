@@ -12,35 +12,59 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **✅ REQUIRED SvelteKit 5 Patterns:**
 ```typescript
-// Props definition
+// Props definition - MANDATORY for all components
 let { propName, optionalProp = defaultValue } = $props<{ propName: Type; optionalProp?: Type }>();
 
-// Reactive state
+// Bindable props for two-way binding
+let { value = $bindable() } = $props<{ value: number }>();
+
+// Reactive state - MANDATORY for mutable variables
 let reactiveVar = $state(initialValue);
+let objectState = $state({ key: 'value' });
+let arrayState = $state<Type[]>([]);
 
-// Computed values
+// Computed values - MANDATORY for derived calculations
 let computedValue = $derived(reactiveVar * 2);
+let derivedFromMultiple = $derived(() => {
+  return complexCalculation(reactiveVar, otherState);
+});
 
-// Side effects
+// Side effects - MANDATORY for reactive side effects
 $effect(() => {
-  // Side effect logic
+  // Side effect logic that runs when dependencies change
+  console.log('reactiveVar changed:', reactiveVar);
+});
+
+// Cleanup in effects
+$effect(() => {
+  const timer = setInterval(() => {}, 1000);
+  return () => clearInterval(timer); // Cleanup function
 });
 ```
 
 **❌ FORBIDDEN SvelteKit 4 Patterns:**
 ```typescript
-// Never use export let
-export let propName; // ❌ WILL CAUSE ERROR
+// NEVER use export let - will cause runtime errors
+export let propName; // ❌ CAUSES RUNTIME ERROR
 
-// Never use $: reactive statements
-$: computedValue = reactiveVar * 2; // ❌ WILL CAUSE ERROR
+// NEVER use $: reactive statements - will cause runtime errors  
+$: computedValue = reactiveVar * 2; // ❌ CAUSES RUNTIME ERROR
+$: console.log(reactiveVar); // ❌ CAUSES RUNTIME ERROR
 
-// Never use page store with $
-import { page } from '$app/stores'; // ❌ WILL CAUSE ERROR
-console.log($page.url); // ❌ WILL CAUSE ERROR
+// NEVER use old store patterns
+import { page } from '$app/stores'; // ❌ USE $app/state instead
+console.log($page.url); // ❌ CAUSES RUNTIME ERROR
+
+// NEVER mutate non-$state variables expecting reactivity
+let count = 0;
+count++; // ❌ Won't trigger updates - use $state instead
 ```
 
-**IMMEDIATE VERIFICATION**: Before writing any Svelte component, verify you are using SvelteKit 5 patterns. Any use of `export let` or `$:` reactive statements will fail at runtime.
+**IMMEDIATE VERIFICATION**: Before writing ANY Svelte component:
+1. **Props**: Use `$props<{}>()` pattern exclusively
+2. **State**: Use `$state()` for any variable that changes
+3. **Computed**: Use `$derived()` instead of `$:` reactive statements
+4. **Effects**: Use `$effect()` instead of `$:` side effects
 
 ### Database Schema Validation Requirements
 
@@ -167,15 +191,91 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 
 ## SvelteKit Development Guidelines
 
-### Framework-Specific Patterns
+### Reactive State Management Patterns
 
-When working with SvelteKit 5 applications, follow these specific patterns:
+**MANDATORY for SvelteKit 5 applications:**
 
-**Reactive State Management:**
-- Use `$state()` for component-local reactive variables
-- Use `$derived()` for computed values that depend on reactive state
-- Use `$effect()` for side effects that should run when dependencies change
-- Avoid `$:` reactive statements (Svelte 4 pattern) in favor of `$derived()` and `$effect()`
+**State Variable Guidelines:**
+- **Use `$state()` for ALL mutable variables** that need to trigger reactivity
+- **Use `$derived()` for ALL computed values** that depend on reactive state
+- **Use `$effect()` for ALL side effects** that should run when dependencies change
+- **NEVER use `$:` reactive statements** - they will cause runtime errors
+
+**Dependency Management for $derived() and $effect():**
+```typescript
+// ✅ CORRECT: Include dependencies that should trigger recalculation
+let currentTime = $state(Date.now());
+let isActive = $state(true);
+
+// ✅ Dependencies automatically tracked
+let displayTime = $derived(() => {
+  if (!isActive) return '--:--';
+  return formatTime(currentTime);
+});
+
+// ✅ Effect runs when currentTime or isActive changes
+$effect(() => {
+  if (isActive) {
+    console.log('Time updated:', currentTime);
+  }
+});
+
+// ✅ Manual dependency control with untrack()
+import { untrack } from 'svelte';
+let calculation = $derived(() => {
+  const time = currentTime; // Tracked
+  const config = untrack(() => expensiveConfig); // Not tracked
+  return processTime(time, config);
+});
+```
+
+**Timer and Interval Patterns:**
+```typescript
+// ✅ CORRECT: Timer state updates trigger reactive recalculations
+let seconds = $state(0);
+let minutes = $derived(Math.floor(seconds / 60));
+
+// ✅ Include timer values as dependencies for live updates
+let milestoneCalc = $derived(() => {
+  const currentSeconds = seconds; // Dependency for live updates
+  return calculateMilestones(data, currentSeconds * 1000);
+});
+
+// ✅ Proper timer cleanup
+$effect(() => {
+  if (isRunning) {
+    const timer = setInterval(() => {
+      seconds++;
+    }, 1000);
+    return () => clearInterval(timer);
+  }
+});
+```
+
+**Common Reactive Patterns:**
+```typescript
+// ✅ Loading states
+let loading = $state(false);
+let data = $state(null);
+let error = $state(null);
+
+// ✅ Form validation
+let formData = $state({ name: '', email: '' });
+let isValid = $derived(formData.name.length > 0 && formData.email.includes('@'));
+
+// ✅ Conditional rendering data
+let showAdvanced = $state(false);
+let visibleItems = $derived(() => {
+  return showAdvanced ? allItems : basicItems;
+});
+
+// ✅ API calls triggered by state changes
+$effect(() => {
+  if (selectedId) {
+    loadDetails(selectedId);
+  }
+});
+```
 
 **Page Store Migration (SvelteKit 2+):**
 - Replace `import { page } from '$app/stores'` with `import { page } from '$app/state'`
