@@ -186,30 +186,7 @@
 						</div>
 					</div>
 
-					<!-- Tech Stack -->
-					<div class="flex items-start">
-						<div class="flex-shrink-0">
-							<svg
-								class="h-6 w-6 text-background-tertiary-light"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-								/>
-							</svg>
-						</div>
-						<div class="ml-3">
-							<p class="text-sm font-medium text-text-primary-light">Built With</p>
-							<p class="mt-1 text-sm text-text-secondary-light">
-								SvelteKit 5, TypeScript, Supabase, OpenAI
-							</p>
-						</div>
-					</div>
+					
 					</div>
 				</div>
 			</div>

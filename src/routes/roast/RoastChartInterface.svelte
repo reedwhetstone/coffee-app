@@ -63,7 +63,8 @@
 	}
 
 	function calculateMilestones(milestones: MilestoneData, currentTime?: number): MilestoneCalculations {
-		const start = milestones.start || 0;
+		// Use charge time if available, otherwise fall back to start time
+		const start = milestones.charge || milestones.start || 0;
 		const drop = milestones.drop || milestones.end || 0;
 		
 		// For live calculations, use current elapsed time if roast is ongoing
@@ -79,7 +80,7 @@
 		let devPercent = 0;
 		
 		if (totalTime > 0) {
-			// DRYING % = time from start to turning point (maillard)
+			// DRYING % = time from start/charge to turning point (maillard)
 			if (tpTime > start) {
 				dryingPercent = ((tpTime - start) / totalTime) * 100;
 			}
@@ -101,9 +102,9 @@
 		return {
 			totalTime,
 			dryingPercent,
-			tpTime: tpTime - start, // Relative time from start
+			tpTime: tpTime - start, // Relative time from start/charge
 			maillardPercent,
-			fcTime: fcTime - start, // Relative time from start
+			fcTime: fcTime - start, // Relative time from start/charge
 			devPercent
 		};
 	}
