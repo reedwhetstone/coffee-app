@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, untrack } from 'svelte';
 	import { select, scaleLinear, axisBottom, line, type Selection, type ScaleLinear } from 'd3';
 	import { curveStepAfter } from 'd3-shape';
 	import {
@@ -9,32 +9,135 @@
 		accumulatedTime,
 		profileLogs,
 		type RoastPoint,
-		type ProfileLogEntry
+		type ProfileLogEntry,
+		mysqlTimeToMs
 	} from './stores';
+	
+	// Define milestone interfaces locally to avoid import issues
+	interface MilestoneData {
+		start?: number;
+		charge?: number;
+		maillard?: number;
+		fc_start?: number;
+		fc_end?: number;
+		sc_start?: number;
+		drop?: number;
+		end?: number;
+	}
 
-	export let isRoasting = false;
-	export let isPaused = false;
-	export let fanValue: number;
-	export let heatValue: number;
-	export let currentRoastProfile: any | null = null;
-	export let selectedEvent: string | null;
-	export let updateFan: (value: number) => void;
-	export let updateHeat: (value: number) => void;
-	export let saveRoastProfile: () => void;
-	export let selectedBean: { id?: number; name: string };
-	export let clearRoastData: () => void;
+	interface MilestoneCalculations {
+		totalTime: number;
+		dryingPercent: number;
+		tpTime: number;
+		maillardPercent: number;
+		fcTime: number;
+		devPercent: number;
+	}
+	
+	// Define the functions locally to avoid import issues
+	function formatTimeDisplay(ms: number): string {
+		if (!ms || ms <= 0) return '--:--';
+		const totalSeconds = Math.floor(ms / 1000);
+		const minutes = Math.floor(totalSeconds / 60);
+		const seconds = totalSeconds % 60;
+		return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+	}
+
+	function extractMilestones(logs: ProfileLogEntry[], isLiveData = true): MilestoneData {
+		const milestones: MilestoneData = {};
+		
+		for (const log of logs) {
+			const time = isLiveData ? log.time : mysqlTimeToMs(log.time as unknown as string);
+			
+			if (log.start) milestones.start = time;
+			if (log.charge) milestones.charge = time;
+			if (log.maillard) milestones.maillard = time;
+			if (log.fc_start) milestones.fc_start = time;
+			if (log.fc_end) milestones.fc_end = time;
+			if (log.sc_start) milestones.sc_start = time;
+			if (log.drop) milestones.drop = time;
+			if (log.end) milestones.end = time;
+		}
+		
+		return milestones;
+	}
+
+	function calculateMilestones(milestones: MilestoneData): MilestoneCalculations {
+		const start = milestones.start || 0;
+		const drop = milestones.drop || milestones.end || 0;
+		const totalTime = drop - start;
+		
+		const tpTime = milestones.maillard || 0;
+		const fcTime = milestones.fc_start || 0;
+		
+		let dryingPercent = 0;
+		let maillardPercent = 0;
+		let devPercent = 0;
+		
+		if (totalTime > 0) {
+			// DRYING % = time from start to turning point (maillard)
+			if (tpTime > start) {
+				dryingPercent = ((tpTime - start) / totalTime) * 100;
+			}
+			
+			// MAILLARD % = time from turning point to first crack
+			if (fcTime > tpTime && tpTime > 0) {
+				maillardPercent = ((fcTime - tpTime) / totalTime) * 100;
+			}
+			
+			// DEV % = time from first crack to drop
+			if (drop > fcTime && fcTime > 0) {
+				devPercent = ((drop - fcTime) / totalTime) * 100;
+			}
+		}
+		
+		return {
+			totalTime,
+			dryingPercent,
+			tpTime: tpTime - start, // Relative time from start
+			maillardPercent,
+			fcTime: fcTime - start, // Relative time from start
+			devPercent
+		};
+	}
+
+	let {
+		isRoasting = $bindable(false),
+		isPaused = $bindable(false),
+		fanValue = $bindable(),
+		heatValue = $bindable(),
+		currentRoastProfile = $bindable(null),
+		selectedEvent = $bindable(null),
+		updateFan,
+		updateHeat,
+		saveRoastProfile,
+		selectedBean,
+		clearRoastData
+	}: {
+		isRoasting?: boolean;
+		isPaused?: boolean;
+		fanValue: number;
+		heatValue: number;
+		currentRoastProfile?: any | null;
+		selectedEvent?: string | null;
+		updateFan: (value: number) => void;
+		updateHeat: (value: number) => void;
+		saveRoastProfile: () => void;
+		selectedBean: { id?: number; name: string };
+		clearRoastData: () => void;
+	} = $props();
 
 	// Artisan import state
-	let artisanImportFile: File | null = null;
-	let showArtisanImport = false;
+	let artisanImportFile = $state<File | null>(null);
+	let showArtisanImport = $state(false);
 
-	let seconds = 0;
-	let milliseconds = 0;
+	let seconds = $state(0);
+	let milliseconds = $state(0);
 	let timerInterval: ReturnType<typeof setInterval> | null = null;
 	let dataLoggingInterval: ReturnType<typeof setInterval> | null = null;
 
 	let pressTimer: ReturnType<typeof setTimeout> | null = null;
-	let isLongPressing = false;
+	let isLongPressing = $state(false);
 	const LONG_PRESS_DURATION = 1000;
 
 	let chartContainer: HTMLDivElement;
@@ -47,12 +150,17 @@
 	let width: number;
 	let margin = { top: 20, right: 60, bottom: 30, left: 80 };
 
+	// Add these computed values
+	let isBeforeRoasting = $derived(!currentRoastProfile?.roast_id || $roastData.length === 0);
+	let isDuringRoasting = $derived(isRoasting);
+	let isAfterRoasting = $derived($roastData.length > 0 && !isRoasting);
+
 	// Handle profile changes
-	$: if (currentRoastProfile) {
-		if (isBeforeRoasting) {
-			resetTimer();
+	$effect(() => {
+		if (currentRoastProfile && isBeforeRoasting) {
+			untrack(() => resetTimer());
 		}
-	}
+	});
 
 	// Timer function
 	function toggleTimer() {
@@ -149,58 +257,60 @@
 		isPaused = false;
 	}
 
-	$: formattedTime = isAfterRoasting
-		? (() => {
-				// Create a copy of events and handle Drop/End renaming
-				const events = $roastEvents.map((event) => ({
-					time: event.time,
-					name: event.name
-				}));
+	let formattedTime = $derived(
+		isAfterRoasting
+			? (() => {
+					// Create a copy of events and handle Drop/End renaming
+					const events = $roastEvents.map((event) => ({
+						time: event.time,
+						name: event.name
+					}));
 
-				// Check for duplicate 'Drop' events and rename second occurrence to 'End'
-				let dropCount = 0;
-				events.forEach((event) => {
-					if (event.name === 'Drop') {
-						dropCount++;
-						if (dropCount > 1) {
-							event.name = 'End';
+					// Check for duplicate 'Drop' events and rename second occurrence to 'End'
+					let dropCount = 0;
+					events.forEach((event) => {
+						if (event.name === 'Drop') {
+							dropCount++;
+							if (dropCount > 1) {
+								event.name = 'End';
+							}
 						}
+					});
+
+					// Sort events by time and find the End event
+					events.sort((a, b) => a.time - b.time);
+					const endEvent = events.find((event) => event.name === 'End');
+
+					if (endEvent) {
+						const endSeconds = Math.floor(endEvent.time / 1000);
+						const endMilliseconds = endEvent.time % 1000;
+						return `${Math.floor(endSeconds / 60)}:${(endSeconds % 60)
+							.toString()
+							.padStart(2, '0')}.${Math.floor(endMilliseconds / 10)
+							.toString()
+							.padStart(2, '0')}`;
 					}
-				});
-
-				// Sort events by time and find the End event
-				events.sort((a, b) => a.time - b.time);
-				const endEvent = events.find((event) => event.name === 'End');
-
-				if (endEvent) {
-					const endSeconds = Math.floor(endEvent.time / 1000);
-					const endMilliseconds = endEvent.time % 1000;
-					return `${Math.floor(endSeconds / 60)}:${(endSeconds % 60)
+					return `${Math.floor(seconds / 60)}:${(seconds % 60)
 						.toString()
-						.padStart(2, '0')}.${Math.floor(endMilliseconds / 10)
+						.padStart(2, '0')}.${Math.floor(milliseconds / 10)
 						.toString()
 						.padStart(2, '0')}`;
-				}
-				return `${Math.floor(seconds / 60)}:${(seconds % 60)
+				})()
+			: `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}.${Math.floor(
+					milliseconds / 10
+				)
 					.toString()
-					.padStart(2, '0')}.${Math.floor(milliseconds / 10)
-					.toString()
-					.padStart(2, '0')}`;
-			})()
-		: `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}.${Math.floor(
-				milliseconds / 10
-			)
-				.toString()
-				.padStart(2, '0')}`;
+					.padStart(2, '0')}`
+	);
 
 	// Update current values when roastData changes
-	$: {
+	$effect(() => {
 		if ($roastData.length > 0 && isDuringRoasting) {
 			const lastDataPoint = $roastData[$roastData.length - 1];
 			fanValue = lastDataPoint.fan;
 			heatValue = lastDataPoint.heat;
 		}
-	}
+	});
 
 	// Create line generators
 	const heatLine = line<RoastPoint>()
@@ -405,14 +515,17 @@
 	}
 
 	// Update chart when roastData changes
-	$: if (
-		svg !== undefined &&
-		xScale !== undefined &&
-		yScaleFan !== undefined &&
-		yScaleHeat !== undefined
-	) {
-		updateChart($roastData);
-	}
+	$effect(() => {
+		const data = $roastData;
+		if (
+			svg !== undefined &&
+			xScale !== undefined &&
+			yScaleFan !== undefined &&
+			yScaleHeat !== undefined
+		) {
+			untrack(() => updateChart(data));
+		}
+	});
 
 	function updateChartDimensions() {
 		if (!chartContainer || !svg) return;
@@ -777,10 +890,63 @@
 		handleSettingsChange();
 	}
 
-	// Add these computed values at the top of the script
-	$: isBeforeRoasting = !currentRoastProfile?.roast_id || $roastData.length === 0;
-	$: isDuringRoasting = isRoasting;
-	$: isAfterRoasting = $roastData.length > 0 && !isRoasting;
+
+	// Saved profile data for milestone calculations
+	let savedProfileLogs = $state<ProfileLogEntry[]>([]);
+
+	// Reactive milestone calculations using SvelteKit 5 syntax
+	let milestoneCalculations = $derived(() => {
+		// Use live data during roasting, saved data when viewing completed profiles
+		const logs = isDuringRoasting ? $profileLogs : savedProfileLogs;
+		const isLiveData = isDuringRoasting;
+		
+		if (logs.length === 0) {
+			return {
+				totalTime: 0,
+				dryingPercent: 0,
+				tpTime: 0,
+				maillardPercent: 0,
+				fcTime: 0,
+				devPercent: 0
+			};
+		}
+		
+		const milestones = extractMilestones(logs, isLiveData);
+		return calculateMilestones(milestones);
+	});
+
+	// Formatted display values
+	let dryingDisplay = $derived(milestoneCalculations().dryingPercent > 0 ? `${milestoneCalculations().dryingPercent.toFixed(1)}%` : '--:--');
+	let tpDisplay = $derived(formatTimeDisplay(milestoneCalculations().tpTime));
+	let maillardDisplay = $derived(milestoneCalculations().maillardPercent > 0 ? `${milestoneCalculations().maillardPercent.toFixed(1)}%` : '--:--');
+	let fcDisplay = $derived(formatTimeDisplay(milestoneCalculations().fcTime));
+	let devDisplay = $derived(milestoneCalculations().devPercent > 0 ? `${milestoneCalculations().devPercent.toFixed(1)}%` : '--:--');
+
+	// Load saved profile logs when a roast profile is selected
+	async function loadSavedProfileLogs(roastId: number) {
+		try {
+			const response = await fetch(`/api/profile-log?roast_id=${roastId}`);
+			if (response.ok) {
+				const result = await response.json();
+				savedProfileLogs = result.data || [];
+			} else {
+				console.warn('Failed to load profile logs:', response.statusText);
+				savedProfileLogs = [];
+			}
+		} catch (error) {
+			console.error('Error loading profile logs:', error);
+			savedProfileLogs = [];
+		}
+	}
+
+	// Effect to load saved data when currentRoastProfile changes
+	$effect(() => {
+		if (currentRoastProfile?.roast_id && !isDuringRoasting) {
+			untrack(() => loadSavedProfileLogs(currentRoastProfile.roast_id));
+		} else if (!currentRoastProfile?.roast_id) {
+			savedProfileLogs = [];
+		}
+	});
 
 	// Artisan import functions
 	function handleArtisanFileSelect(event: Event) {
@@ -1054,31 +1220,31 @@
 						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">DRYING %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">--:--</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">{dryingDisplay}</div>
 					</div>
 					<div
 						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">TP</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">--:--</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">{tpDisplay}</div>
 					</div>
 					<div
 						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">MAILLARD %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">--:--</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">{maillardDisplay}</div>
 					</div>
 					<div
 						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">FC</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">--:--</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">{fcDisplay}</div>
 					</div>
 					<div
 						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">DEV %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">--:--</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">{devDisplay}</div>
 					</div>
 				</div>
 			</div>
