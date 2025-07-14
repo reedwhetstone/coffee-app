@@ -19,15 +19,15 @@
 		try {
 			loadingStore.start(operationId, 'Loading available coffees...');
 			coffeesLoading = true;
-			
+
 			const response = await fetch('/api/data');
 			if (response.ok) {
 				const data = await response.json();
 				console.log('API response:', data);
-				
+
 				// Ensure data.data exists and is an array before processing
 				const coffeeList = Array.isArray(data.data) ? data.data : [];
-				
+
 				// Filter and transform the data to only show stocked beans with direct name property
 				availableCoffees = coffeeList
 					.filter((coffee: any) => coffee.stocked === true)
@@ -35,7 +35,7 @@
 						...coffee,
 						name: coffee.coffee_catalog?.name || coffee.name || 'Unknown Coffee'
 					}));
-				
+
 				console.log('Available coffees:', availableCoffees);
 			} else {
 				console.error('Failed to fetch coffees:', response.status, response.statusText);
@@ -109,9 +109,14 @@
 		}
 	}
 
-	async function uploadArtisanFile(roastId: number, file: File, operationId: string, beanIndex: number) {
+	async function uploadArtisanFile(
+		roastId: number,
+		file: File,
+		operationId: string,
+		beanIndex: number
+	) {
 		console.log(`Uploading Artisan file ${file.name} for roast ID ${roastId}`);
-		
+
 		loadingStore.update(operationId, `Uploading Artisan file for bean ${beanIndex + 1}...`);
 
 		const formData = new FormData();
@@ -143,7 +148,7 @@
 		}
 
 		const operationId = 'create-roast-profiles';
-		
+
 		try {
 			isSubmitting = true;
 			loadingStore.start(operationId, 'Creating roast profiles...');
@@ -170,13 +175,13 @@
 			if (roastProfilesResponse?.roast_ids && Array.isArray(roastProfilesResponse.roast_ids)) {
 				console.log(`Processing ${batchBeans.length} beans for Artisan file uploads`);
 
-				const filesToUpload = batchBeans.filter((bean, i) => 
-					bean.artisan_file && roastProfilesResponse.roast_ids[i]
+				const filesToUpload = batchBeans.filter(
+					(bean, i) => bean.artisan_file && roastProfilesResponse.roast_ids[i]
 				);
 
 				if (filesToUpload.length > 0) {
 					loadingStore.update(operationId, 'Uploading Artisan files...');
-					
+
 					for (let i = 0; i < batchBeans.length; i++) {
 						const bean = batchBeans[i];
 						const roastId = roastProfilesResponse.roast_ids[i];
@@ -202,9 +207,8 @@
 
 			loadingStore.update(operationId, 'Finalizing roast profiles...');
 			// Small delay to show completion message
-			await new Promise(resolve => setTimeout(resolve, 500));
+			await new Promise((resolve) => setTimeout(resolve, 500));
 			loadingStore.complete(operationId);
-			
 		} catch (error) {
 			loadingStore.complete(operationId);
 			console.error('Error submitting profile:', error);
@@ -451,7 +455,7 @@
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
 					<button
 						type="button"
-						class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+						class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 						onclick={onClose}
 						disabled={isSubmitting}
 					>

@@ -21,7 +21,7 @@
 	let catalogLoading = $state(false);
 
 	// Optional catalog fields for manual entry
-	let optionalFields = $state<{[key: string]: string | number | null}>({
+	let optionalFields = $state<{ [key: string]: string | number | null }>({
 		region: '',
 		processing: '',
 		drying_method: '',
@@ -112,7 +112,7 @@
 	async function handleSubmit() {
 		try {
 			isSubmitting = true;
-			
+
 			// Validate required fields based on mode
 			if (!isManualEntry && !selectedCatalogBean) {
 				alert('Please select a coffee from the catalog');
@@ -134,7 +134,7 @@
 			// For manual entry, include optional catalog fields
 			if (isManualEntry && formData.manual_name) {
 				// Add selected optional fields to the submission
-				selectedOptionalFields.forEach(fieldName => {
+				selectedOptionalFields.forEach((fieldName) => {
 					if (optionalFields[fieldName] !== '' && optionalFields[fieldName] !== null) {
 						cleanedBean[fieldName] = optionalFields[fieldName];
 					}
@@ -144,7 +144,6 @@
 			}
 
 			cleanedBean.last_updated = new Date().toISOString();
-
 
 			const response = await fetch('/api/data', {
 				method: 'POST',
@@ -445,7 +444,10 @@
 					{#each selectedOptionalFields as fieldName}
 						<div class="flex gap-2">
 							<div class="flex-1 space-y-2">
-								<label for={`field-${fieldName}`} class="block text-sm font-medium text-text-primary-light">
+								<label
+									for={`field-${fieldName}`}
+									class="block text-sm font-medium text-text-primary-light"
+								>
 									{fieldName.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
 								</label>
 								{#if fieldName === 'description_long' || fieldName === 'farm_notes' || fieldName === 'cupping_notes'}
@@ -483,7 +485,9 @@
 								type="button"
 								class="mt-6 rounded-md bg-red-500 px-2 py-1 text-xs text-white hover:bg-red-600"
 								onclick={() => {
-									selectedOptionalFields = selectedOptionalFields.filter((f: string) => f !== fieldName);
+									selectedOptionalFields = selectedOptionalFields.filter(
+										(f: string) => f !== fieldName
+									);
 									optionalFields[fieldName] = '';
 								}}
 							>

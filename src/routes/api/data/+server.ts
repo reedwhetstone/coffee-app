@@ -137,7 +137,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// If this is a manual entry (no catalog_id but has manual_name), create catalog entry first
 		if (!catalogId && bean.manual_name) {
-			const catalogData: {[key: string]: any} = {
+			const catalogData: { [key: string]: any } = {
 				name: bean.manual_name,
 				coffee_user: user.id,
 				public_coffee: false,
@@ -146,13 +146,30 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 			// Add optional catalog fields if they exist
 			const optionalCatalogFields = [
-				'region', 'processing', 'drying_method', 'roast_recs', 'lot_size', 'bag_size',
-				'packaging', 'cultivar_detail', 'grade', 'appearance', 'description_short',
-				'farm_notes', 'type', 'description_long', 'cost_lb', 'source', 'cupping_notes',
-				'arrival_date', 'score_value', 'ai_description', 'ai_tasting_notes'
+				'region',
+				'processing',
+				'drying_method',
+				'roast_recs',
+				'lot_size',
+				'bag_size',
+				'packaging',
+				'cultivar_detail',
+				'grade',
+				'appearance',
+				'description_short',
+				'farm_notes',
+				'type',
+				'description_long',
+				'cost_lb',
+				'source',
+				'cupping_notes',
+				'arrival_date',
+				'score_value',
+				'ai_description',
+				'ai_tasting_notes'
 			];
 
-			optionalCatalogFields.forEach(field => {
+			optionalCatalogFields.forEach((field) => {
 				if (bean[field] !== undefined && bean[field] !== null && bean[field] !== '') {
 					catalogData[field] = bean[field];
 				}
@@ -174,11 +191,17 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// Clean and prepare the green_coffee_inv data for insertion
 		const validInventoryColumns = [
-			'rank', 'notes', 'purchase_date', 'purchased_qty_lbs', 'bean_cost', 
-			'tax_ship_cost', 'stocked', 'cupping_notes'
+			'rank',
+			'notes',
+			'purchase_date',
+			'purchased_qty_lbs',
+			'bean_cost',
+			'tax_ship_cost',
+			'stocked',
+			'cupping_notes'
 		];
 
-		const cleanedBean: {[key: string]: any} = {
+		const cleanedBean: { [key: string]: any } = {
 			user: user.id,
 			catalog_id: catalogId,
 			last_updated: new Date().toISOString(),
@@ -189,7 +212,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		};
 
 		// Add only valid inventory columns
-		validInventoryColumns.forEach(field => {
+		validInventoryColumns.forEach((field) => {
 			if (bean[field] !== undefined) {
 				cleanedBean[field] = bean[field];
 			}
@@ -320,7 +343,11 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 				.single();
 
 			// Delete catalog entry if it's user-owned and private (manual entry)
-			if (catalogEntry && catalogEntry.coffee_user === user.id && catalogEntry.public_coffee === false) {
+			if (
+				catalogEntry &&
+				catalogEntry.coffee_user === user.id &&
+				catalogEntry.public_coffee === false
+			) {
 				const { error: catalogDeleteError } = await supabase
 					.from('coffee_catalog')
 					.delete()

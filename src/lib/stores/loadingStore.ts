@@ -22,38 +22,32 @@ const loadingStoreData = writable<LoadingStoreData>({
 });
 
 // Derived stores for computed values
-export const isAnyLoading = derived(
-	loadingStoreData,
-	($store) => $store.operations.size > 0
-);
+export const isAnyLoading = derived(loadingStoreData, ($store) => $store.operations.size > 0);
 
-export const primaryOperation = derived(
-	loadingStoreData,
-	($store) => {
-		// Return the most recently started operation
-		const operations = Array.from($store.operations.values());
-		return operations.length > 0 ? operations[operations.length - 1] : null;
-	}
-);
+export const primaryOperation = derived(loadingStoreData, ($store) => {
+	// Return the most recently started operation
+	const operations = Array.from($store.operations.values());
+	return operations.length > 0 ? operations[operations.length - 1] : null;
+});
 
 export const loadingStore = {
 	// Subscribe to the store (for reactive usage)
 	subscribe: loadingStoreData.subscribe,
 
 	// Reactive getters
-	get isAnyLoading() { 
-		return get(isAnyLoading); 
+	get isAnyLoading() {
+		return get(isAnyLoading);
 	},
-	get primaryOperation() { 
-		return get(primaryOperation); 
+	get primaryOperation() {
+		return get(primaryOperation);
 	},
-	get operations() { 
-		return Array.from(get(loadingStoreData).operations.values()); 
+	get operations() {
+		return Array.from(get(loadingStoreData).operations.values());
 	},
 
 	// Start a loading operation
 	start(operationId: string, message: string, progress?: number) {
-		loadingStoreData.update($store => {
+		loadingStoreData.update(($store) => {
 			const newOperations = new Map($store.operations);
 			newOperations.set(operationId, {
 				isLoading: true,
@@ -70,7 +64,7 @@ export const loadingStore = {
 
 	// Update an existing loading operation
 	update(operationId: string, message: string, progress?: number) {
-		loadingStoreData.update($store => {
+		loadingStoreData.update(($store) => {
 			const currentState = $store.operations.get(operationId);
 			if (currentState) {
 				const newOperations = new Map($store.operations);
@@ -90,7 +84,7 @@ export const loadingStore = {
 
 	// Complete and remove a loading operation
 	complete(operationId: string) {
-		loadingStoreData.update($store => {
+		loadingStoreData.update(($store) => {
 			const newOperations = new Map($store.operations);
 			newOperations.delete(operationId);
 			return {

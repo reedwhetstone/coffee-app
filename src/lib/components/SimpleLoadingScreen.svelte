@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { loadingStore } from '$lib/stores/loadingStore';
 
-	let { 
-		show = true, 
-		message = 'Loading...', 
+	let {
+		show = true,
+		message = 'Loading...',
 		progress,
 		showProgress = false,
 		overlay = true,
@@ -31,27 +31,35 @@
 </script>
 
 {#if shouldShow}
-	<div class="{overlay ? 'fixed inset-0 z-50' : 'relative'} flex items-center justify-center {overlay ? 'bg-background-primary-light' : ''}">
+	<div
+		class="{overlay ? 'fixed inset-0 z-50' : 'relative'} flex items-center justify-center {overlay
+			? 'bg-background-primary-light'
+			: ''}"
+	>
 		<div class="flex flex-col items-center space-y-4">
 			<!-- Spinning circle with configurable size -->
 			<div
-				class="border-t-background-tertiary-light {sizeConfig[size as keyof typeof sizeConfig].spinner} animate-spin rounded-full border-4 border-background-secondary-light"
+				class="border-t-background-tertiary-light {sizeConfig[size as keyof typeof sizeConfig]
+					.spinner} animate-spin rounded-full border-4 border-background-secondary-light"
 			></div>
 
 			<!-- Loading message -->
-			<p class="text-text-primary-light {sizeConfig[size as keyof typeof sizeConfig].text} font-medium text-center max-w-xs">
+			<p
+				class="text-text-primary-light {sizeConfig[size as keyof typeof sizeConfig]
+					.text} max-w-xs text-center font-medium"
+			>
 				{displayMessage}
 			</p>
 
 			<!-- Progress bar (optional) -->
 			{#if showProgress && displayProgress !== undefined}
-				<div class="w-64 bg-background-secondary-light rounded-full h-2">
-					<div 
-						class="bg-background-tertiary-light h-2 rounded-full transition-all duration-300"
+				<div class="h-2 w-64 rounded-full bg-background-secondary-light">
+					<div
+						class="h-2 rounded-full bg-background-tertiary-light transition-all duration-300"
 						style="width: {Math.max(0, Math.min(100, displayProgress))}%"
 					></div>
 				</div>
-				<p class="text-text-secondary-light text-sm">
+				<p class="text-sm text-text-secondary-light">
 					{Math.round(displayProgress)}%
 				</p>
 			{/if}

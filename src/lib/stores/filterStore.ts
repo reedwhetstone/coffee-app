@@ -236,11 +236,13 @@ function createFilterStore() {
 					// Fallback to direct fields
 					return item.source || item.vendor;
 				});
-				
+
 				// Only include this if there are any non-null sources
 				const validSources = allSources.filter(Boolean);
 				if (validSources.length > 0) {
-					uniqueValues.sources = Array.from(new Set(validSources)).sort((a, b) => a.localeCompare(b));
+					uniqueValues.sources = Array.from(new Set(validSources)).sort((a, b) =>
+						a.localeCompare(b)
+					);
 				}
 
 				// Get unique purchase dates
@@ -376,7 +378,7 @@ function createFilterStore() {
 
 					// Array filter - special handling for source to include null/undefined values
 					if (Array.isArray(value)) {
-						// For source filtering, if no specific sources are selected (empty array), 
+						// For source filtering, if no specific sources are selected (empty array),
 						// show all items including those with null sources
 						if (key === 'source' && value.length === 0) {
 							return true;

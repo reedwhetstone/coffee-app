@@ -411,10 +411,12 @@
 				isFormVisible = false;
 
 				// Return the result for Artisan file upload (already has roast_ids if using new format)
-				return result.roast_ids ? result : {
-					roast_ids: profiles.map((p: any) => p.roast_id),
-					profiles: profiles
-				};
+				return result.roast_ids
+					? result
+					: {
+							roast_ids: profiles.map((p: any) => p.roast_id),
+							profiles: profiles
+						};
 			} else {
 				throw new Error('No profiles were created');
 			}
@@ -655,7 +657,7 @@
 		// Import the loading store
 		const { loadingStore } = await import('$lib/stores/loadingStore');
 		const operationId = 'save-roast-profile';
-		
+
 		try {
 			// Start loading state
 			loadingStore.start(operationId, 'Preparing roast profile...');

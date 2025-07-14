@@ -11,6 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **MANDATORY**: This project uses SvelteKit 5 with runes. The following patterns are REQUIRED and violations will cause runtime errors:
 
 **✅ REQUIRED SvelteKit 5 Patterns:**
+
 ```typescript
 // Props definition - MANDATORY for all components
 let { propName, optionalProp = defaultValue } = $props<{ propName: Type; optionalProp?: Type }>();
@@ -26,28 +27,29 @@ let arrayState = $state<Type[]>([]);
 // Computed values - MANDATORY for derived calculations
 let computedValue = $derived(reactiveVar * 2);
 let derivedFromMultiple = $derived(() => {
-  return complexCalculation(reactiveVar, otherState);
+	return complexCalculation(reactiveVar, otherState);
 });
 
 // Side effects - MANDATORY for reactive side effects
 $effect(() => {
-  // Side effect logic that runs when dependencies change
-  console.log('reactiveVar changed:', reactiveVar);
+	// Side effect logic that runs when dependencies change
+	console.log('reactiveVar changed:', reactiveVar);
 });
 
 // Cleanup in effects
 $effect(() => {
-  const timer = setInterval(() => {}, 1000);
-  return () => clearInterval(timer); // Cleanup function
+	const timer = setInterval(() => {}, 1000);
+	return () => clearInterval(timer); // Cleanup function
 });
 ```
 
 **❌ FORBIDDEN SvelteKit 4 Patterns:**
+
 ```typescript
 // NEVER use export let - will cause runtime errors
 export let propName; // ❌ CAUSES RUNTIME ERROR
 
-// NEVER use $: reactive statements - will cause runtime errors  
+// NEVER use $: reactive statements - will cause runtime errors
 $: computedValue = reactiveVar * 2; // ❌ CAUSES RUNTIME ERROR
 $: console.log(reactiveVar); // ❌ CAUSES RUNTIME ERROR
 
@@ -61,6 +63,7 @@ count++; // ❌ Won't trigger updates - use $state instead
 ```
 
 **IMMEDIATE VERIFICATION**: Before writing ANY Svelte component:
+
 1. **Props**: Use `$props<{}>()` pattern exclusively
 2. **State**: Use `$state()` for any variable that changes
 3. **Computed**: Use `$derived()` instead of `$:` reactive statements
@@ -76,11 +79,12 @@ count++; // ❌ Won't trigger updates - use $state instead
 4. **Test Query Structure**: Ensure joins work with actual data before implementation
 
 **Required Data Filtering Pattern:**
+
 ```typescript
 // ✅ Always filter data for API operations
 const validColumns = ['column1', 'column2', 'column3']; // Define valid table columns
 const updateData = Object.fromEntries(
-  Object.entries(rawData).filter(([key]) => validColumns.includes(key))
+	Object.entries(rawData).filter(([key]) => validColumns.includes(key))
 );
 ```
 
@@ -128,6 +132,7 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 ### Database Structure (Supabase)
 
 **Core Entity Relationships:**
+
 - **coffee_catalog**: Master coffee data (name, description, processing details)
 - **green_coffee_inv**: User's personal inventory → `catalog_id` FK to `coffee_catalog`
 - **roast_profiles**: Roasting sessions → `coffee_id` FK to `green_coffee_inv`
@@ -135,8 +140,9 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - **user_roles**: User auth/permissions → Referenced by all user-owned tables
 
 **Key Foreign Key Patterns:**
+
 - Use explicit syntax: `coffee_catalog!catalog_id` for joins
-- All user data tables reference `user_roles.id` 
+- All user data tables reference `user_roles.id`
 - Roast profiles link to inventory (not directly to catalog)
 - Vector embeddings stored in `coffee_catalog` for semantic search
 
@@ -178,12 +184,14 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 ### Component Architecture Guidelines
 
 **Form Component Responsibilities:**
+
 - Handle UI state and validation only
 - Delegate all data operations to parent components
 - Never make direct API calls - use callback props
 - Return processed form data to parent via callbacks
 
 **Data Flow Pattern:**
+
 - Parent component handles API calls and data management
 - Form component receives data via props, returns data via callbacks
 - Use centralized stores/services for complex shared state
@@ -196,12 +204,14 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 **MANDATORY for SvelteKit 5 applications:**
 
 **State Variable Guidelines:**
+
 - **Use `$state()` for ALL mutable variables** that need to trigger reactivity
 - **Use `$derived()` for ALL computed values** that depend on reactive state
 - **Use `$effect()` for ALL side effects** that should run when dependencies change
 - **NEVER use `$:` reactive statements** - they will cause runtime errors
 
 **Dependency Management for $derived() and $effect():**
+
 ```typescript
 // ✅ CORRECT: Include dependencies that should trigger recalculation
 let currentTime = $state(Date.now());
@@ -209,27 +219,28 @@ let isActive = $state(true);
 
 // ✅ Dependencies automatically tracked
 let displayTime = $derived(() => {
-  if (!isActive) return '--:--';
-  return formatTime(currentTime);
+	if (!isActive) return '--:--';
+	return formatTime(currentTime);
 });
 
 // ✅ Effect runs when currentTime or isActive changes
 $effect(() => {
-  if (isActive) {
-    console.log('Time updated:', currentTime);
-  }
+	if (isActive) {
+		console.log('Time updated:', currentTime);
+	}
 });
 
 // ✅ Manual dependency control with untrack()
 import { untrack } from 'svelte';
 let calculation = $derived(() => {
-  const time = currentTime; // Tracked
-  const config = untrack(() => expensiveConfig); // Not tracked
-  return processTime(time, config);
+	const time = currentTime; // Tracked
+	const config = untrack(() => expensiveConfig); // Not tracked
+	return processTime(time, config);
 });
 ```
 
 **Timer and Interval Patterns:**
+
 ```typescript
 // ✅ CORRECT: Timer state updates trigger reactive recalculations
 let seconds = $state(0);
@@ -237,22 +248,23 @@ let minutes = $derived(Math.floor(seconds / 60));
 
 // ✅ Include timer values as dependencies for live updates
 let milestoneCalc = $derived(() => {
-  const currentSeconds = seconds; // Dependency for live updates
-  return calculateMilestones(data, currentSeconds * 1000);
+	const currentSeconds = seconds; // Dependency for live updates
+	return calculateMilestones(data, currentSeconds * 1000);
 });
 
 // ✅ Proper timer cleanup
 $effect(() => {
-  if (isRunning) {
-    const timer = setInterval(() => {
-      seconds++;
-    }, 1000);
-    return () => clearInterval(timer);
-  }
+	if (isRunning) {
+		const timer = setInterval(() => {
+			seconds++;
+		}, 1000);
+		return () => clearInterval(timer);
+	}
 });
 ```
 
 **Common Reactive Patterns:**
+
 ```typescript
 // ✅ Loading states
 let loading = $state(false);
@@ -266,23 +278,25 @@ let isValid = $derived(formData.name.length > 0 && formData.email.includes('@'))
 // ✅ Conditional rendering data
 let showAdvanced = $state(false);
 let visibleItems = $derived(() => {
-  return showAdvanced ? allItems : basicItems;
+	return showAdvanced ? allItems : basicItems;
 });
 
 // ✅ API calls triggered by state changes
 $effect(() => {
-  if (selectedId) {
-    loadDetails(selectedId);
-  }
+	if (selectedId) {
+		loadDetails(selectedId);
+	}
 });
 ```
 
 **Page Store Migration (SvelteKit 2+):**
+
 - Replace `import { page } from '$app/stores'` with `import { page } from '$app/state'`
 - Remove `$` prefix from page references: `$page.url` becomes `page.url`
 - Update all reactive statements that depend on page to use `$effect()` or `$derived()`
 
 **Component Lifecycle:**
+
 - Use `onMount()` for initialization that needs DOM access
 - Use `$effect()` for reactive side effects
 - Use cleanup functions returned from `onMount()` or `$effect()` for teardown
@@ -292,12 +306,14 @@ $effect(() => {
 **Server Load vs API Endpoints:**
 
 Use **Server Load Functions** (`+page.server.ts`) when:
+
 - Initial page data loading
 - SEO/SSR requirements
 - Simple, static data that doesn't change frequently
 - Data needed for page rendering
 
 Use **API Endpoints** (`/api/*/+server.ts`) when:
+
 - Dynamic data updates
 - CRUD operations
 - Data shared across multiple pages
@@ -307,29 +323,32 @@ Use **API Endpoints** (`/api/*/+server.ts`) when:
 ### TypeScript Best Practices
 
 **Common TypeScript Patterns:**
+
 - Always provide type annotations for reduce() accumulators
 - Use proper typing for Object.entries() when destructuring
 - Add null checks for optional chaining operations
 - Define interfaces for complex objects passed between components
 
 **Safe Property Access:**
+
 ```typescript
 // ✅ Handle both direct and nested property access
 const displayName = item.nested_object?.name || item.name || 'Unknown';
 ```
 
 **Defensive Programming Requirements:**
+
 ```typescript
 // ✅ MANDATORY array validation before operations
 const safeArray = Array.isArray(data) ? data : [];
-const results = safeArray.map(item => processItem(item));
+const results = safeArray.map((item) => processItem(item));
 
 // ✅ MANDATORY API response validation
 const responseData = response.data || [];
 const validatedResponse = Array.isArray(responseData) ? responseData : [];
 
 // ✅ MANDATORY fallback for undefined/null arrays
-availableItems = data?.items?.filter(item => item.active) || [];
+availableItems = data?.items?.filter((item) => item.active) || [];
 ```
 
 ## Database Development Guidelines
@@ -352,28 +371,33 @@ Before any database query or API operation:
 ```typescript
 // ✅ Define valid columns for each table
 const greenCoffeeInvColumns = [
-  'rank', 'notes', 'purchase_date', 'purchased_qty_lbs', 
-  'bean_cost', 'tax_ship_cost', 'last_updated', 'user', 
-  'catalog_id', 'stocked', 'cupping_notes'
+	'rank',
+	'notes',
+	'purchase_date',
+	'purchased_qty_lbs',
+	'bean_cost',
+	'tax_ship_cost',
+	'last_updated',
+	'user',
+	'catalog_id',
+	'stocked',
+	'cupping_notes'
 ];
 
 // ✅ Filter incoming data to prevent schema cache errors
 const updateData = Object.fromEntries(
-  Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
+	Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
 );
 
 // ✅ Separate update and select operations
 // First: Update without joins
-const { error: updateError } = await supabase
-  .from('table_name')
-  .update(filteredData)
-  .eq('id', id);
+const { error: updateError } = await supabase.from('table_name').update(filteredData).eq('id', id);
 
 // Then: Select with joins
 const { data: updatedData } = await supabase
-  .from('table_name')
-  .select('*, related_table!foreign_key(*)')
-  .eq('id', id);
+	.from('table_name')
+	.select('*, related_table!foreign_key(*)')
+	.eq('id', id);
 ```
 
 ### Schema Cache Error Prevention
@@ -387,24 +411,28 @@ const { data: updatedData } = await supabase
 **Database Schema Error Debugging Workflow:**
 
 When encountering "column does not exist" errors:
+
 1. **Verify Table Schema**: Check actual table columns vs code references
 2. **Fix API Endpoint**: Update database queries to use correct schema relationships
 3. **Update Frontend**: Modify forms/components to match new data structure
 4. **Test Integration**: Verify end-to-end data flow works
 
 **API vs Frontend Modification Decision Tree:**
+
 - **Fix API When**: Column references are incorrect, joins are malformed, schema has changed
 - **Fix Frontend When**: API is correct but component expects old data structure
 - **Fix Both When**: Schema migration requires coordinated changes
 
 **Submission Flow Conflict Resolution:**
 When components and parents both handle data operations:
+
 1. **Identify Conflict**: Look for dual API calls (component + parent)
 2. **Choose Single Responsibility**: Form components delegate to parents
 3. **Update Data Flow**: Remove component API calls, use callback props
 4. **Validate Response Handling**: Ensure parent handles all response formats
 
 **Debugging Approach:**
+
 ```typescript
 // ✅ Add comprehensive logging for schema issues
 console.log('Update data keys:', Object.keys(updateData));
@@ -412,8 +440,8 @@ console.log('Filtered update data:', JSON.stringify(updateData, null, 2));
 
 // ✅ Implement fallback queries
 if (error) {
-  console.warn('Join query failed, falling back to basic select:', error);
-  // Fallback to simple query without joins
+	console.warn('Join query failed, falling back to basic select:', error);
+	// Fallback to simple query without joins
 }
 ```
 
@@ -431,26 +459,25 @@ When database queries aren't working as expected:
 
 ```typescript
 // ✅ Basic query pattern
-const { data } = await supabase
-  .from('main_table')
-  .select('*')
-  .eq('user', user.id);
+const { data } = await supabase.from('main_table').select('*').eq('user', user.id);
 
 // ✅ Simple join pattern with explicit foreign key
 const { data } = await supabase
-  .from('main_table')
-  .select(`
+	.from('main_table')
+	.select(
+		`
     *,
     related_table!foreign_key_column (field1, field2)
-  `)
-  .eq('user', user.id);
+  `
+	)
+	.eq('user', user.id);
 
 // ✅ Manual join for complex cases
 const { data: mainData } = await supabase.from('main_table').select('*');
 const { data: relatedData } = await supabase.from('related_table').select('*');
-const combined = mainData?.map(item => ({
-  ...item,
-  related: relatedData?.filter(rel => rel.main_id === item.id) || []
+const combined = mainData?.map((item) => ({
+	...item,
+	related: relatedData?.filter((rel) => rel.main_id === item.id) || []
 }));
 ```
 
@@ -459,6 +486,7 @@ const combined = mainData?.map(item => ({
 ### Mandatory TodoWrite Usage
 
 **REQUIRED - Use TodoWrite IMMEDIATELY when:**
+
 - Feature requests affecting multiple files or components
 - Any task requiring more than 2 distinct implementation steps
 - Complex refactoring or architectural changes
@@ -469,6 +497,7 @@ const combined = mainData?.map(item => ({
 - Non-trivial and complex tasks requiring careful planning
 
 **Enhanced Trigger Recognition:**
+
 - **Keywords**: "add feature", "implement", "create", "update", "refactor", "improve"
 - **Multiple Actions**: Any sentence containing "and" linking different actions
 - **Scope Indicators**: "across", "throughout", "all", "multiple"
@@ -477,15 +506,17 @@ const combined = mainData?.map(item => ({
 ### Proactive Todo Management
 
 **IMMEDIATE Action Required:**
+
 ```typescript
 // Example recognition patterns:
 "Add dark mode and make sure tests pass" → CREATE TODOS IMMEDIATELY
-"Implement user authentication with role-based access" → CREATE TODOS IMMEDIATELY  
+"Implement user authentication with role-based access" → CREATE TODOS IMMEDIATELY
 "Update the design to be more consistent" → CREATE TODOS IMMEDIATELY
 "Create a new dashboard with charts and data" → CREATE TODOS IMMEDIATELY
 ```
 
 **NEVER use TodoWrite when:**
+
 - Single file edits or simple bug fixes
 - Straightforward operations (single API call, simple component update)
 - Immediate tasks completed in 1-2 steps
@@ -497,6 +528,7 @@ const combined = mainData?.map(item => ({
 ### Todo Management Best Practices
 
 **Task Creation and Organization:**
+
 - Create specific, actionable items with clear deliverables
 - Break complex tasks into smaller, manageable steps (3-5 subtasks max per main task)
 - Use descriptive task names that clearly indicate the work required
@@ -504,12 +536,14 @@ const combined = mainData?.map(item => ({
 - Set appropriate priority levels (high for critical path, medium for important, low for nice-to-have)
 
 **Task Execution Workflow:**
+
 - Mark todos as `in_progress` BEFORE starting work on them
 - Complete todos IMMEDIATELY after finishing each step (don't batch completions)
 - Only have ONE todo in `in_progress` at any given time
 - Update todo status in real-time as work progresses
 
 **Task Completion Criteria:**
+
 - ONLY mark a task as completed when you have FULLY accomplished it
 - If you encounter errors, blockers, or cannot finish, keep the task as `in_progress`
 - When blocked, create a new task describing what needs to be resolved
@@ -521,17 +555,19 @@ const combined = mainData?.map(item => ({
 
 **Examples of Proper Todo Usage:**
 
-*Complex Multi-Step Task (USE TodoWrite):*
+_Complex Multi-Step Task (USE TodoWrite):_
+
 ```
 User: "Add dark mode toggle to application settings and make sure tests pass"
-✅ Creates todos: 
+✅ Creates todos:
 1. Create dark mode toggle component
 2. Add state management for theme
 3. Update CSS for dark theme
 4. Run tests and fix any failures
 ```
 
-*Simple Single Task (DON'T use TodoWrite):*
+_Simple Single Task (DON'T use TodoWrite):_
+
 ```
 User: "Add a comment to the calculateTotal function"
 ❌ Don't create todos - just do it directly
@@ -542,18 +578,21 @@ User: "Add a comment to the calculateTotal function"
 ### When to Create Different Components
 
 **API Endpoints** (`/api/*/+server.ts`):
+
 - External data operations (CRUD for database entities)
 - Operations that require authentication/authorization
 - Features that might be called from multiple places
 - Complex business logic that belongs on the server
 
 **Shared Utilities** (`src/lib/server/*.ts`):
+
 - Reusable logic used by multiple API endpoints
 - Database operation helpers
 - Complex calculations or data transformations
 - Authentication/validation functions
 
 **Inline Functions**:
+
 - Simple, endpoint-specific operations
 - One-time transformations within a single file
 - Basic data formatting or validation
@@ -565,18 +604,21 @@ User: "Add a comment to the calculateTotal function"
 When creating new UI components, especially dashboards:
 
 **Color Scheme:**
+
 - Primary backgrounds: `bg-background-primary-light`, `bg-background-secondary-light`
 - Accent elements: `bg-background-tertiary-light`
 - Text colors: `text-text-primary-light`, `text-text-secondary-light`
 - KPI values: Use semantic colors (`text-green-500`, `text-blue-500`, etc.)
 
 **Layout Patterns:**
+
 - Page headers: Title + subtitle with consistent spacing
 - Grid layouts: `grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4`
 - Card components: `rounded-lg bg-background-secondary-light p-4`
 - Responsive design: Mobile-first with sm/lg breakpoints
 
 ### KPI Card Guidelines
+
 - **Header**: Descriptive name in small text
 - **Value**: Large, bold text with semantic color
 - **Context**: Small supplementary text below value
@@ -592,12 +634,14 @@ When creating new UI components, especially dashboards:
 Before creating or modifying any UI component:
 
 1. **Pattern Discovery Phase**:
+
    - Read 2-3 similar existing components to understand established patterns
    - Document repeated class combinations (e.g., `rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light`)
    - Identify consistent spacing, typography, and color usage
    - Note layout patterns (grid structures, responsive breakpoints)
 
 2. **Design Language Analysis**:
+
    - Compare target component with reference pages (e.g., /(home), /beans, /profit)
    - Extract common elements: card styling, button designs, form layouts, typography hierarchy
    - Document spacing patterns (`mt-1`, `mb-4`, `p-4`, etc.)
@@ -611,6 +655,7 @@ Before creating or modifying any UI component:
 ### Applying Consistent Design Patterns
 
 **Form Restructuring Workflow:**
+
 1. **Read reference components** to understand established patterns
 2. **Identify design inconsistencies** in the target component
 3. **Extract reusable patterns** from well-designed components
@@ -619,37 +664,44 @@ Before creating or modifying any UI component:
 
 **Common Pattern Applications:**
 
-*Card-Based Design:*
+_Card-Based Design:_
+
 ```svelte
 <!-- ✅ Consistent card pattern -->
 <div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-  <h3 class="text-sm font-medium text-text-primary-light">Card Title</h3>
-  <p class="mt-1 text-2xl font-bold text-green-500">$123.45</p>
-  <p class="text-xs text-text-secondary-light mt-1">Descriptive context</p>
+	<h3 class="text-sm font-medium text-text-primary-light">Card Title</h3>
+	<p class="mt-1 text-2xl font-bold text-green-500">$123.45</p>
+	<p class="mt-1 text-xs text-text-secondary-light">Descriptive context</p>
 </div>
 ```
 
-*Form Section Organization:*
+_Form Section Organization:_
+
 ```svelte
 <!-- ✅ Consistent form section pattern -->
 <div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-  <h3 class="mb-4 text-lg font-semibold text-text-primary-light">Section Title</h3>
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-    <!-- Form fields -->
-  </div>
+	<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Section Title</h3>
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<!-- Form fields -->
+	</div>
 </div>
 ```
 
-*Button Consistency:*
+_Button Consistency:_
+
 ```svelte
 <!-- ✅ Primary action button -->
-<button class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90">
-  Primary Action
+<button
+	class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+>
+	Primary Action
 </button>
 
 <!-- ✅ Secondary action button -->
-<button class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white">
-  Secondary Action
+<button
+	class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+>
+	Secondary Action
 </button>
 ```
 
@@ -663,6 +715,7 @@ Before creating or modifying any UI component:
 4. **Cross-Reference**: Ensure all components now follow the same design language
 
 **Design Checklist for Form Components:**
+
 - [ ] Card-based layout with `ring-1 ring-border-light`
 - [ ] Consistent typography hierarchy (`text-sm font-medium`, `text-lg font-semibold`)
 - [ ] Proper spacing patterns (`mt-1`, `mb-4`, `p-4`)
@@ -674,6 +727,7 @@ Before creating or modifying any UI component:
 ### SvelteKit 5 Specific UI Patterns
 
 **Modern Reactive Patterns for UI:**
+
 ```svelte
 <!-- ✅ Use $derived for computed display values -->
 let displayValue = $derived(
@@ -688,6 +742,7 @@ let formData = $state({
 ```
 
 **Component Integration Patterns:**
+
 - Follow `$props<{}>()` pattern for prop definitions
 - Use callback props instead of event dispatching for SvelteKit 5
 - Maintain consistent prop naming across similar components
@@ -699,11 +754,13 @@ let formData = $state({
 When creating components that work with filtered data:
 
 **Required Imports:**
+
 ```typescript
 import { filteredData, filterStore } from '$lib/stores/filterStore';
 ```
 
 **Reactive Data Usage:**
+
 ```typescript
 // ✅ Use $filteredData for reactive filtered data
 {#if $filteredData && $filteredData.length > 0}
@@ -717,10 +774,11 @@ let totalValue = $derived(
 ```
 
 **Safe Calculations:**
+
 ```typescript
 // ✅ Handle null/undefined values in calculations
 const totalCost = items.reduce((sum, item) => {
-  return sum + ((item.cost1 || 0) + (item.cost2 || 0));
+	return sum + ((item.cost1 || 0) + (item.cost2 || 0));
 }, 0);
 
 // ✅ Safe division with fallback
@@ -734,7 +792,7 @@ const avgCost = totalWeight > 0 ? (totalCost / totalWeight).toFixed(2) : '0.00';
 When encountering complex issues:
 
 1. **Add Comprehensive Logging**: Log at each step to identify where the issue occurs
-2. **Start Simple**: Remove complexity and add it back incrementally  
+2. **Start Simple**: Remove complexity and add it back incrementally
 3. **Test Edge Cases**: Empty data, authentication failures, network errors
 4. **Use Plan Mode**: For multi-step debugging scenarios requiring systematic investigation
 5. **Document and Clean Up**: Remove debug code after resolution
@@ -742,6 +800,7 @@ When encountering complex issues:
 ### Debugging Code Management
 
 When adding debug logging:
+
 - Use clear, descriptive log messages that identify the context
 - Remove debug code once the issue is resolved unless it provides ongoing value
 - For complex debugging sessions, create a separate todo item for "Remove debug logging"
@@ -759,15 +818,18 @@ When data isn't reaching the frontend:
 ### Error Handling Strategy
 
 **Route & Load Errors:**
+
 - Use SvelteKit's `+error.svelte` for route and load function errors
 - Implement proper error boundaries at page level
 
 **Component-Level Errors:**
+
 - Use local try-catch blocks with fallback UI inside components
 - Always provide fallback states for failed operations
 - Never let component errors crash the entire page
 
 **Global Error Management:**
+
 - Implement comprehensive error logging in `hooks.server.ts`
 - Log client-side errors via API endpoints for monitoring
 - Use consistent error message formatting across the application
@@ -775,6 +837,7 @@ When data isn't reaching the frontend:
 ### API Response Validation Patterns
 
 **MANDATORY for all API responses:**
+
 ```typescript
 // ✅ Always validate API response structure
 const result = await response.json();
@@ -782,13 +845,12 @@ const profiles = result.profiles || result; // Handle format variations
 const validatedData = Array.isArray(profiles) ? profiles : [];
 
 // ✅ Handle both new and legacy response formats
-const roastIds = result.roast_ids ? result.roast_ids : 
-  profiles.map((p: any) => p.roast_id);
+const roastIds = result.roast_ids ? result.roast_ids : profiles.map((p: any) => p.roast_id);
 
 // ✅ Provide meaningful fallbacks
 if (!response.ok) {
-  const errorData = await response.json();
-  throw new Error(errorData.error || 'Operation failed');
+	const errorData = await response.json();
+	throw new Error(errorData.error || 'Operation failed');
 }
 ```
 

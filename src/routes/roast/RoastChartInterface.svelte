@@ -12,7 +12,7 @@
 		type ProfileLogEntry,
 		mysqlTimeToMs
 	} from './stores';
-	
+
 	// Define milestone interfaces locally to avoid import issues
 	interface MilestoneData {
 		start?: number;
@@ -33,7 +33,7 @@
 		fcTime: number;
 		devPercent: number;
 	}
-	
+
 	// Define the functions locally to avoid import issues
 	function formatTimeDisplay(ms: number): string {
 		if (!ms || ms <= 0) return '--:--';
@@ -45,10 +45,10 @@
 
 	function extractMilestones(logs: ProfileLogEntry[], isLiveData = true): MilestoneData {
 		const milestones: MilestoneData = {};
-		
+
 		for (const log of logs) {
 			const time = isLiveData ? log.time : mysqlTimeToMs(log.time as unknown as string);
-			
+
 			if (log.start) milestones.start = time;
 			if (log.charge) milestones.charge = time;
 			if (log.maillard) milestones.maillard = time;
@@ -58,38 +58,41 @@
 			if (log.drop) milestones.drop = time;
 			if (log.end) milestones.end = time;
 		}
-		
+
 		return milestones;
 	}
 
-	function calculateMilestones(milestones: MilestoneData, currentTime?: number): MilestoneCalculations {
+	function calculateMilestones(
+		milestones: MilestoneData,
+		currentTime?: number
+	): MilestoneCalculations {
 		// Use charge time if available, otherwise fall back to start time
 		const start = milestones.charge || milestones.start || 0;
 		const drop = milestones.drop || milestones.end || 0;
-		
+
 		// For live calculations, use current elapsed time if roast is ongoing
 		// For completed roasts, use actual drop time
 		const effectiveEndTime = currentTime && currentTime > 0 && !drop ? currentTime : drop;
 		const totalTime = effectiveEndTime - start;
-		
+
 		const tpTime = milestones.maillard || 0;
 		const fcTime = milestones.fc_start || 0;
-		
+
 		let dryingPercent = 0;
 		let maillardPercent = 0;
 		let devPercent = 0;
-		
+
 		if (totalTime > 0) {
 			// DRYING % = time from start/charge to turning point (maillard)
 			if (tpTime > start) {
 				dryingPercent = ((tpTime - start) / totalTime) * 100;
 			}
-			
+
 			// MAILLARD % = time from turning point to first crack
 			if (fcTime > tpTime && tpTime > 0) {
 				maillardPercent = ((fcTime - tpTime) / totalTime) * 100;
 			}
-			
+
 			// DEV % = time from first crack to current time (live) or drop (completed)
 			if (fcTime > 0) {
 				const devEndTime = effectiveEndTime;
@@ -98,7 +101,7 @@
 				}
 			}
 		}
-		
+
 		return {
 			totalTime,
 			dryingPercent,
@@ -907,7 +910,6 @@
 		handleSettingsChange();
 	}
 
-
 	// Saved profile data for milestone calculations
 	let savedProfileLogs = $state<ProfileLogEntry[]>([]);
 
@@ -916,11 +918,11 @@
 		// Use live data during roasting, saved data when viewing completed profiles
 		const logs = isDuringRoasting ? $profileLogs : savedProfileLogs;
 		const isLiveData = isDuringRoasting;
-		
+
 		// Include seconds and milliseconds in dependency to trigger updates every tick
 		const currentSeconds = seconds;
 		const currentMilliseconds = milliseconds;
-		
+
 		if (logs.length === 0) {
 			return {
 				totalTime: 0,
@@ -931,26 +933,38 @@
 				devPercent: 0
 			};
 		}
-		
+
 		const milestones = extractMilestones(logs, isLiveData);
-		
+
 		// For live calculations, pass current elapsed time
 		let currentElapsedTime = 0;
 		if (isDuringRoasting && $startTime !== null) {
-			currentElapsedTime = isPaused 
+			currentElapsedTime = isPaused
 				? $accumulatedTime
 				: performance.now() - $startTime + $accumulatedTime;
 		}
-		
+
 		return calculateMilestones(milestones, isDuringRoasting ? currentElapsedTime : undefined);
 	});
 
 	// Formatted display values
-	let dryingDisplay = $derived(milestoneCalculations().dryingPercent > 0 ? `${milestoneCalculations().dryingPercent.toFixed(1)}%` : '--:--');
+	let dryingDisplay = $derived(
+		milestoneCalculations().dryingPercent > 0
+			? `${milestoneCalculations().dryingPercent.toFixed(1)}%`
+			: '--:--'
+	);
 	let tpDisplay = $derived(formatTimeDisplay(milestoneCalculations().tpTime));
-	let maillardDisplay = $derived(milestoneCalculations().maillardPercent > 0 ? `${milestoneCalculations().maillardPercent.toFixed(1)}%` : '--:--');
+	let maillardDisplay = $derived(
+		milestoneCalculations().maillardPercent > 0
+			? `${milestoneCalculations().maillardPercent.toFixed(1)}%`
+			: '--:--'
+	);
 	let fcDisplay = $derived(formatTimeDisplay(milestoneCalculations().fcTime));
-	let devDisplay = $derived(milestoneCalculations().devPercent > 0 ? `${milestoneCalculations().devPercent.toFixed(1)}%` : '--:--');
+	let devDisplay = $derived(
+		milestoneCalculations().devPercent > 0
+			? `${milestoneCalculations().devPercent.toFixed(1)}%`
+			: '--:--'
+	);
 
 	// Load saved profile logs when a roast profile is selected
 	async function loadSavedProfileLogs(roastId: number) {
@@ -1208,7 +1222,8 @@
 											class="cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
 											event
 												? 'bg-background-tertiary-light text-text-primary-light'
-												: 'text-text-primary-light'} {!isRoasting || (event === 'Cool End' && isCoolEndSaving)
+												: 'text-text-primary-light'} {!isRoasting ||
+											(event === 'Cool End' && isCoolEndSaving)
 												? 'cursor-not-allowed opacity-50'
 												: ''} {i % 2 !== 0 ? 'border-l border-border-light' : ''} {i > 1
 												? 'border-t border-border-light'
@@ -1218,7 +1233,9 @@
 										>
 											{#if event === 'Cool End' && isCoolEndSaving}
 												<div class="flex items-center justify-center gap-1">
-													<div class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"></div>
+													<div
+														class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
+													></div>
 													<span class="block text-xs font-medium">Saving...</span>
 												</div>
 											{:else}
@@ -1236,7 +1253,8 @@
 											class="flex-1 cursor-pointer whitespace-nowrap p-3 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
 											event
 												? 'bg-background-tertiary-light text-text-primary-light'
-												: 'text-text-primary-light'} {!isRoasting || (event === 'Cool End' && isCoolEndSaving)
+												: 'text-text-primary-light'} {!isRoasting ||
+											(event === 'Cool End' && isCoolEndSaving)
 												? 'cursor-not-allowed opacity-50'
 												: ''} {i !== 0 ? 'border-l border-border-light' : ''}"
 											onclick={() => isRoasting && !isCoolEndSaving && handleEventLog(event)}
@@ -1244,7 +1262,9 @@
 										>
 											{#if event === 'Cool End' && isCoolEndSaving}
 												<div class="flex items-center justify-center gap-2">
-													<div class="h-4 w-4 animate-spin rounded-full border border-white border-t-transparent"></div>
+													<div
+														class="h-4 w-4 animate-spin rounded-full border border-white border-t-transparent"
+													></div>
 													<span class="block text-sm font-medium">Saving...</span>
 												</div>
 											{:else}
@@ -1264,7 +1284,9 @@
 						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">DRYING %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">{dryingDisplay}</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">
+							{dryingDisplay}
+						</div>
 					</div>
 					<div
 						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
@@ -1276,7 +1298,9 @@
 						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
 					>
 						<span class="text-xs text-text-secondary-light">MAILLARD %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">{maillardDisplay}</div>
+						<div class="text-base font-bold text-text-primary-light sm:text-lg">
+							{maillardDisplay}
+						</div>
 					</div>
 					<div
 						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"

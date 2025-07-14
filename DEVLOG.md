@@ -4,7 +4,7 @@
 - [ ] **Bug** - can't edit user rating
 
 - [ ] **Bug** - Links to new roast on bean page doesn't take you to the roast form
-- [ ] **Bug** - The loading screen shows "No Beans" dialog before the db returns data - should be looking for a NULL return from table before rendering no beans. Otherwise should be rendering a loading screen - much earlier in the load.
+
 - [ ] **Bug** - roast form doesn't fit on the page
 - [ ] **Bug** - /beans profile just needs to pull not null data into the form in an organized way so it collects everything.
 -
@@ -83,6 +83,7 @@
 
 ## Done List
 
+- [x] **Bug** - The loading screen shows "No Beans" dialog before the db returns data
 - [x] **Form Validation** - Limit bean selection in forms to stocked items only (beans, roast, sales)
 - [x] **Web Scraping** - Automate vector embeding in the scrape workflow
 - [x] **Web Scraping** - Summarize/rewrite front-end descriptions for fair use
