@@ -84,7 +84,7 @@
 
 	const tabs = [
 		{ id: 'overview', label: 'Overview', icon: '📊' },
-		{ id: 'cupping', label: 'Cupping', icon: '👃' },
+		{ id: 'cupping', label: 'Cupping', icon: '☕' },
 		{ id: 'roasting', label: 'Roasting', icon: '🔥' },
 		{ id: 'analytics', label: 'Analytics', icon: '📈' }
 	];

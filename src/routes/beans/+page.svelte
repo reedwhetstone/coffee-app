@@ -633,27 +633,6 @@
 						class="group relative rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
 						onclick={() => selectBean(bean)}
 					>
-						<!-- User Assessment Indicators -->
-						{#if hasUserRating || hasUserCupping}
-							<div class="absolute right-2 top-2 flex gap-1">
-								{#if hasUserRating}
-									<div
-										class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-white"
-										title="User rating: {bean.rank}/10"
-									>
-										{bean.rank}
-									</div>
-								{/if}
-								{#if hasUserCupping}
-									<div
-										class="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-xs text-white"
-										title="Has user cupping notes"
-									>
-										👃
-									</div>
-								{/if}
-							</div>
-						{/if}
 
 						<!-- Mobile-optimized layout -->
 						<div
@@ -683,7 +662,7 @@
 												{/if}
 												{#if hasUserCupping}
 													<span class="rounded bg-purple-100 px-1 text-xs text-purple-800">
-														👃 Cupped
+														☕ Cupped
 													</span>
 												{/if}
 											</div>
@@ -758,11 +737,6 @@
 											: 0
 										).toFixed(2)}/lb
 									</div>
-									{#if displayRating}
-										<div class="mt-1 text-xs text-text-secondary-light">
-											Rating: {displayRating}/10
-										</div>
-									{/if}
 								</div>
 								{#if tastingNotes}
 									<div class="pt-4">
