@@ -59,7 +59,7 @@ export const PUT: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		for (const coffee of coffeeData || []) {
 			const totalOzIn =
-				coffee.roast_profiles?.reduce((sum, profile) => sum + (profile.oz_in || 0), 0) || 0;
+				coffee.roast_profiles?.reduce((sum: number, profile: any) => sum + (profile.oz_in || 0), 0) || 0;
 			const purchasedOz = (coffee.purchased_qty_lbs || 0) * 16;
 			const remainingOz = purchasedOz - totalOzIn;
 			const shouldBeStocked = remainingOz >= 8;

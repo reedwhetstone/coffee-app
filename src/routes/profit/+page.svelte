@@ -575,9 +575,9 @@
 		// Store the selected bean data for the form
 		if (selectedBean) {
 			selectedSale = {
-				...selectedSale,
+				...(selectedSale || {}),
 				defaultBean: selectedBean
-			};
+			} as any;
 		}
 	}
 

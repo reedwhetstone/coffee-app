@@ -71,7 +71,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			}
 		} else {
 			// Regular authorization logic
-			const { session, user, role } = await safeGetSession();
+			const sessionData = await safeGetSession();
+			const { session, user, role } = sessionData as { session: any; user: any; role: string };
 			if (role !== 'admin') {
 				if (session && user) {
 					query = query.eq('user', user.id);

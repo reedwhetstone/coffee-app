@@ -5,7 +5,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
 	//	console.log('Layout server data:', JSON.stringify(data, null, 2));
 
 	return {
-		session: session
+		session: session && user
 			? {
 					access_token: session.access_token,
 					refresh_token: session.refresh_token,

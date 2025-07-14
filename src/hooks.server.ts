@@ -65,12 +65,13 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	};
 
 	// Get validated session and user data
-	const { session, user, role } = await event.locals.safeGetSession();
+	const sessionData = await event.locals.safeGetSession();
+	const { session, user, role } = sessionData as { session: any; user: any; role: string };
 
 	// Set initial state
 	event.locals.session = session;
 	event.locals.user = user;
-	event.locals.role = role;
+	event.locals.role = role as 'viewer' | 'member' | 'admin';
 
 	// Make data available to the frontend
 	event.locals.data = {
@@ -92,12 +93,13 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
 
 	// Get session and verified user data
-	const { session, user, role } = await event.locals.safeGetSession();
+	const sessionData2 = await event.locals.safeGetSession();
+	const { session, user, role } = sessionData2 as { session: any; user: any; role: string };
 
 	// Set default values
 	event.locals.session = session;
 	event.locals.user = user;
-	event.locals.role = role;
+	event.locals.role = role as 'viewer' | 'member' | 'admin';
 
 	// Make sure these values are available to the frontend
 	event.locals.data = {
