@@ -294,13 +294,21 @@
 
 	onMount(() => {
 		let shouldShowForm = false;
+		let profileIdToLoad: string | null = null;
 
 		if (typeof window !== 'undefined' && !currentRoastProfile) {
 			const params = new URLSearchParams(window.location.search);
 			const beanId = params.get('beanId');
 			const beanName = params.get('beanName');
+			const profileId = params.get('profileId');
 
-			if (beanId && beanName) {
+			// Check for profileId parameter to load existing profile
+			if (profileId) {
+				profileIdToLoad = profileId;
+				console.log('Found profileId in URL params:', profileId);
+			}
+			// Check for beanId/beanName to create new roast
+			else if (beanId && beanName) {
 				selectedBean = {
 					id: parseInt(beanId),
 					name: decodeURIComponent(beanName)
@@ -339,6 +347,19 @@
 				//console.log('Forcing update of grouped profiles on mount');
 				updateGroupedProfiles([...$filteredData]);
 			}
+
+			// Load specific profile if profileId was provided in URL
+			if (profileIdToLoad && data?.data?.length > 0) {
+				const targetProfile = data.data.find(
+					(p: { roast_id: number }) => p.roast_id === parseInt(profileIdToLoad)
+				);
+				if (targetProfile) {
+					console.log('Loading profile from URL parameter:', targetProfile);
+					selectProfile(targetProfile);
+				} else {
+					console.warn(`Profile with ID ${profileIdToLoad} not found`);
+				}
+			}
 		});
 
 		// Initialize filter store with roast data if needed
@@ -355,6 +376,17 @@
 				if ($filteredData.length > 0 && sortedBatchNames.length === 0) {
 					//console.log('Forcing update of grouped profiles after filter store initialization');
 					updateGroupedProfiles([...$filteredData]);
+				}
+
+				// Also check for profileId to load after filter store initialization
+				if (profileIdToLoad && data?.data?.length > 0 && !currentRoastProfile) {
+					const targetProfile = data.data.find(
+						(p: { roast_id: number }) => p.roast_id === parseInt(profileIdToLoad)
+					);
+					if (targetProfile) {
+						console.log('Loading profile from URL parameter (delayed):', targetProfile);
+						selectProfile(targetProfile);
+					}
 				}
 			}, 150);
 		}

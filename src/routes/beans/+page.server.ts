@@ -98,7 +98,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				),
 				roast_profiles!coffee_id (
 					oz_in,
-					oz_out
+					oz_out,
+					roast_id,
+					batch_name,
+					roast_date
 				)
 			`);
 
@@ -193,7 +196,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const coffeeIds = greenCoffeeData?.map((bean) => bean.id) || [];
 	const { data: roastProfilesData, error: roastError } = await supabase
 		.from('roast_profiles')
-		.select('coffee_id, oz_in, oz_out')
+		.select('coffee_id, oz_in, oz_out, roast_id, batch_name, roast_date')
 		.in('coffee_id', coffeeIds)
 		.eq('user', user.id);
 

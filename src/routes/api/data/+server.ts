@@ -96,7 +96,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				const coffeeIds = rows.map((bean) => bean.id);
 				const { data: roastProfilesData } = await supabase
 					.from('roast_profiles')
-					.select('coffee_id, oz_in, oz_out')
+					.select('coffee_id, oz_in, oz_out, roast_id, batch_name, roast_date')
 					.in('coffee_id', coffeeIds)
 					.eq('user', user.id);
 
@@ -108,7 +108,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 						...bean,
 						roast_profiles: profiles.map((profile) => ({
 							oz_in: profile.oz_in,
-							oz_out: profile.oz_out
+							oz_out: profile.oz_out,
+							roast_id: profile.roast_id,
+							batch_name: profile.batch_name,
+							roast_date: profile.roast_date
 						}))
 					};
 				});
