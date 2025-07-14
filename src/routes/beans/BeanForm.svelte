@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import LoadingButton from '$lib/components/LoadingButton.svelte';
 
 	const {
 		bean = null,
@@ -16,6 +17,8 @@
 	let selectedCatalogBean = $state<any>(null);
 	let sourceFilter = $state('');
 	let isUpdating = $state(false);
+	let isSubmitting = $state(false);
+	let catalogLoading = $state(false);
 
 	// Optional catalog fields for manual entry
 	let optionalFields = $state<{[key: string]: string | number | null}>({
@@ -76,6 +79,7 @@
 
 	async function loadCatalogBeans() {
 		try {
+			catalogLoading = true;
 			const response = await fetch('/api/catalog');
 			if (response.ok) {
 				const data = await response.json();
@@ -83,6 +87,8 @@
 			}
 		} catch (error) {
 			console.error('Error loading catalog beans:', error);
+		} finally {
+			catalogLoading = false;
 		}
 	}
 
@@ -105,6 +111,8 @@
 
 	async function handleSubmit() {
 		try {
+			isSubmitting = true;
+			
 			// Validate required fields based on mode
 			if (!isManualEntry && !selectedCatalogBean) {
 				alert('Please select a coffee from the catalog');
@@ -156,6 +164,8 @@
 			}
 		} catch (error) {
 			console.error('Error creating bean:', error);
+		} finally {
+			isSubmitting = false;
 		}
 	}
 
@@ -507,12 +517,15 @@
 			>
 				Cancel
 			</button>
-			<button
-				type="submit"
-				class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+			<LoadingButton
+				variant="primary"
+				loading={isSubmitting}
+				loadingText="Saving Bean..."
+				onclick={handleSubmit}
+				disabled={catalogLoading}
 			>
 				{bean ? 'Update Bean' : 'Add Bean'}
-			</button>
+			</LoadingButton>
 		</div>
 	</form>
 </div>

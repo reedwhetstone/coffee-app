@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { formatDateForDisplay, prepareDateForAPI } from '$lib/utils/dates';
+	import { loadingStore } from '$lib/stores/loadingStore';
+	import LoadingButton from '$lib/components/LoadingButton.svelte';
 
 	const { onClose, onSubmit, selectedBean } = $props<{
 		onClose: () => void;
@@ -9,10 +11,15 @@
 	}>();
 
 	let availableCoffees = $state<any[]>([]);
+	let coffeesLoading = $state(true);
 
 	// Fetch available coffees on component mount
 	async function loadCoffees() {
+		const operationId = 'load-coffees';
 		try {
+			loadingStore.start(operationId, 'Loading available coffees...');
+			coffeesLoading = true;
+			
 			const response = await fetch('/api/data');
 			if (response.ok) {
 				const data = await response.json();
@@ -32,10 +39,14 @@
 				console.log('Available coffees:', availableCoffees);
 			} else {
 				console.error('Failed to fetch coffees:', response.status, response.statusText);
+				throw new Error('Failed to load available coffees');
 			}
 		} catch (error) {
 			console.error('Error loading coffees:', error);
 			availableCoffees = []; // Ensure it's always an array
+		} finally {
+			loadingStore.complete(operationId);
+			coffeesLoading = false;
 		}
 	}
 
@@ -98,8 +109,10 @@
 		}
 	}
 
-	async function uploadArtisanFile(roastId: number, file: File) {
+	async function uploadArtisanFile(roastId: number, file: File, operationId: string, beanIndex: number) {
 		console.log(`Uploading Artisan file ${file.name} for roast ID ${roastId}`);
+		
+		loadingStore.update(operationId, `Uploading Artisan file for bean ${beanIndex + 1}...`);
 
 		const formData = new FormData();
 		formData.append('file', file);
@@ -121,13 +134,20 @@
 		return result;
 	}
 
+	let isSubmitting = $state(false);
+
 	async function handleSubmit() {
 		if (!batchBeans || !batchBeans.length) {
 			alert('Please add at least one bean to the batch');
 			return;
 		}
 
+		const operationId = 'create-roast-profiles';
+		
 		try {
+			isSubmitting = true;
+			loadingStore.start(operationId, 'Creating roast profiles...');
+
 			const dataForAPI = {
 				batch_name: formData.batch_name,
 				batch_beans: batchBeans.map((bean) => ({
@@ -142,6 +162,7 @@
 			};
 
 			// Submit the roast profile data using parent callback
+			loadingStore.update(operationId, 'Saving roast profiles to database...');
 			const roastProfilesResponse = await onSubmit(dataForAPI);
 			console.log('Roast profiles response:', roastProfilesResponse);
 
@@ -149,30 +170,47 @@
 			if (roastProfilesResponse?.roast_ids && Array.isArray(roastProfilesResponse.roast_ids)) {
 				console.log(`Processing ${batchBeans.length} beans for Artisan file uploads`);
 
-				for (let i = 0; i < batchBeans.length; i++) {
-					const bean = batchBeans[i];
-					const roastId = roastProfilesResponse.roast_ids[i];
+				const filesToUpload = batchBeans.filter((bean, i) => 
+					bean.artisan_file && roastProfilesResponse.roast_ids[i]
+				);
 
-					console.log(`Bean ${i}: has file = ${!!bean.artisan_file}, roastId = ${roastId}`);
+				if (filesToUpload.length > 0) {
+					loadingStore.update(operationId, 'Uploading Artisan files...');
+					
+					for (let i = 0; i < batchBeans.length; i++) {
+						const bean = batchBeans[i];
+						const roastId = roastProfilesResponse.roast_ids[i];
 
-					if (bean.artisan_file && roastId) {
-						try {
-							await uploadArtisanFile(roastId, bean.artisan_file);
-							console.log(`Successfully uploaded Artisan file for roast ${roastId}`);
-						} catch (fileError) {
-							console.error(`Failed to upload Artisan file for roast ${roastId}:`, fileError);
-							alert(
-								`Warning: Roast profile created but Artisan file upload failed: ${fileError instanceof Error ? fileError.message : 'Unknown error'}`
-							);
+						console.log(`Bean ${i}: has file = ${!!bean.artisan_file}, roastId = ${roastId}`);
+
+						if (bean.artisan_file && roastId) {
+							try {
+								await uploadArtisanFile(roastId, bean.artisan_file, operationId, i);
+								console.log(`Successfully uploaded Artisan file for roast ${roastId}`);
+							} catch (fileError) {
+								console.error(`Failed to upload Artisan file for roast ${roastId}:`, fileError);
+								alert(
+									`Warning: Roast profile created but Artisan file upload failed: ${fileError instanceof Error ? fileError.message : 'Unknown error'}`
+								);
+							}
 						}
 					}
 				}
 			} else {
 				console.log('No roast IDs returned or roast_ids is not an array:', roastProfilesResponse);
 			}
+
+			loadingStore.update(operationId, 'Finalizing roast profiles...');
+			// Small delay to show completion message
+			await new Promise(resolve => setTimeout(resolve, 500));
+			loadingStore.complete(operationId);
+			
 		} catch (error) {
+			loadingStore.complete(operationId);
 			console.error('Error submitting profile:', error);
 			alert(error instanceof Error ? error.message : 'Failed to save roast profiles');
+		} finally {
+			isSubmitting = false;
 		}
 	}
 
@@ -293,12 +331,16 @@
 											onchange={(e) => handleCoffeeChange(e, index)}
 											required
 										>
-											<option value="">Select a coffee...</option>
-											{#each availableCoffees as coffee}
-												<option value={coffee.id} selected={coffee.id === selectedBean?.id}>
-													{coffee.name}
-												</option>
-											{/each}
+											{#if coffeesLoading}
+												<option value="">Loading coffees...</option>
+											{:else}
+												<option value="">Select a coffee...</option>
+												{#each availableCoffees as coffee}
+													<option value={coffee.id} selected={coffee.id === selectedBean?.id}>
+														{coffee.name}
+													</option>
+												{/each}
+											{/if}
 										</select>
 									</div>
 
@@ -409,18 +451,21 @@
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
 					<button
 						type="button"
-						class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
 						onclick={onClose}
+						disabled={isSubmitting}
 					>
 						Cancel
 					</button>
-					<button
-						type="submit"
-						class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+					<LoadingButton
+						variant="primary"
+						loading={isSubmitting}
+						loadingText="Creating Profiles..."
 						onclick={handleSubmit}
+						disabled={coffeesLoading}
 					>
 						Create Roast Profile
-					</button>
+					</LoadingButton>
 				</div>
 			</div>
 		</div>

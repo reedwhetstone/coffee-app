@@ -7,6 +7,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
+	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 
 	// Define the type for the page data
@@ -73,8 +74,10 @@
 		}
 	});
 
-	// Track initialization state
+	// Track initialization and loading states
 	let initializing = $state(false);
+	let isLoading = $state(true);
+	let hasAttemptedLoad = $state(false);
 
 	// Initialize or clear filtered data based on current route and data
 	$effect(() => {
@@ -91,6 +94,10 @@
 			setTimeout(() => {
 				filterStore.initializeForRoute(currentRoute, []);
 				initializing = false;
+				// If we have no data and have attempted to load, we're done loading
+				if (hasAttemptedLoad) {
+					isLoading = false;
+				}
 			}, 0);
 		}
 		// If we have page data but filtered data is empty or from a different route, initialize it
@@ -105,6 +112,7 @@
 			setTimeout(() => {
 				filterStore.initializeForRoute(currentRoute, data.data);
 				initializing = false;
+				isLoading = false; // We have data, so we're done loading
 			}, 0);
 		}
 	});
@@ -183,6 +191,7 @@
 	// Function to load data from API
 	async function loadData() {
 		try {
+			isLoading = true;
 			const shareToken = page.url.searchParams.get('share');
 			const url = shareToken ? `/api/data?share=${shareToken}` : '/api/data';
 
@@ -195,20 +204,30 @@
 					role: data.role
 				};
 
+				hasAttemptedLoad = true;
+
 				// Re-initialize filter store with new data
 				if (data.data.length > 0 && !initializing) {
 					initializing = true;
 					setTimeout(() => {
 						filterStore.initializeForRoute(page.url.pathname, data.data);
 						initializing = false;
+						isLoading = false;
 					}, 0);
+				} else {
+					// No data received, but loading is complete
+					isLoading = false;
 				}
 
 				return true;
 			}
+			hasAttemptedLoad = true;
+			isLoading = false;
 			return false;
 		} catch (error) {
 			console.error('Error loading data:', error);
+			hasAttemptedLoad = true;
+			isLoading = false;
 			return false;
 		}
 	}
@@ -258,6 +277,12 @@
 	}
 
 	onMount(() => {
+		// If we have server-side data, we're not loading
+		if (data?.data?.length > 0) {
+			isLoading = false;
+			hasAttemptedLoad = true;
+		}
+
 		loadData().then(() => {
 			const searchState = page.state as any;
 			console.log('Beans page searchState:', searchState);
@@ -360,7 +385,7 @@
 	</div>
 
 	<!-- Dashboard Cards Section -->
-	{#if $filteredData && $filteredData.length > 0}
+	{#if !isLoading && $filteredData && $filteredData.length > 0}
 		<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 			<!-- Total Inventory Value -->
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
@@ -528,7 +553,7 @@
 	{/if}
 
 	<!-- Quick Actions -->
-	{#if $filteredData && $filteredData.length > 0}
+	{#if !isLoading && $filteredData && $filteredData.length > 0}
 		<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 			<div class="text-sm text-text-secondary-light">
 				Showing {$filteredData.length} of {data?.data?.length || 0} coffees
@@ -538,7 +563,9 @@
 
 	<!-- Coffee Cards -->
 	<div class="flex-1">
-		{#if !$filteredData || $filteredData.length === 0}
+		{#if isLoading}
+			<SimpleLoadingScreen show={true} message="Loading your coffee inventory..." overlay={false} />
+		{:else if !$filteredData || $filteredData.length === 0}
 			<div
 				class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light"
 			>

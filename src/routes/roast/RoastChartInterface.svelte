@@ -146,6 +146,7 @@
 
 	let pressTimer: ReturnType<typeof setTimeout> | null = null;
 	let isLongPressing = $state(false);
+	let isCoolEndSaving = $state(false);
 	const LONG_PRESS_DURATION = 1000;
 
 	let chartContainer: HTMLDivElement;
@@ -835,9 +836,17 @@
 				isRoasting = false;
 				isPaused = false;
 
-				// Automatically save the roast profile
+				// Automatically save the roast profile with loading indication
 				prepareProfileLogsForSave();
-				saveRoastProfile();
+				// Set loading state and save asynchronously
+				isCoolEndSaving = true;
+				(async () => {
+					try {
+						await saveRoastProfile();
+					} finally {
+						isCoolEndSaving = false;
+					}
+				})();
 			}
 
 			// Create profile log entry
@@ -1199,15 +1208,22 @@
 											class="cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
 											event
 												? 'bg-background-tertiary-light text-text-primary-light'
-												: 'text-text-primary-light'} {!isRoasting
+												: 'text-text-primary-light'} {!isRoasting || (event === 'Cool End' && isCoolEndSaving)
 												? 'cursor-not-allowed opacity-50'
 												: ''} {i % 2 !== 0 ? 'border-l border-border-light' : ''} {i > 1
 												? 'border-t border-border-light'
 												: ''}"
-											onclick={() => isRoasting && handleEventLog(event)}
-											disabled={!isRoasting}
+											onclick={() => isRoasting && !isCoolEndSaving && handleEventLog(event)}
+											disabled={!isRoasting || (event === 'Cool End' && isCoolEndSaving)}
 										>
-											<span class="block text-xs font-medium">{event}</span>
+											{#if event === 'Cool End' && isCoolEndSaving}
+												<div class="flex items-center justify-center gap-1">
+													<div class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"></div>
+													<span class="block text-xs font-medium">Saving...</span>
+												</div>
+											{:else}
+												<span class="block text-xs font-medium">{event}</span>
+											{/if}
 										</button>
 									{/each}
 								</div>
@@ -1220,13 +1236,20 @@
 											class="flex-1 cursor-pointer whitespace-nowrap p-3 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
 											event
 												? 'bg-background-tertiary-light text-text-primary-light'
-												: 'text-text-primary-light'} {!isRoasting
+												: 'text-text-primary-light'} {!isRoasting || (event === 'Cool End' && isCoolEndSaving)
 												? 'cursor-not-allowed opacity-50'
 												: ''} {i !== 0 ? 'border-l border-border-light' : ''}"
-											onclick={() => isRoasting && handleEventLog(event)}
-											disabled={!isRoasting}
+											onclick={() => isRoasting && !isCoolEndSaving && handleEventLog(event)}
+											disabled={!isRoasting || (event === 'Cool End' && isCoolEndSaving)}
 										>
-											<span class="block text-sm font-medium">{event}</span>
+											{#if event === 'Cool End' && isCoolEndSaving}
+												<div class="flex items-center justify-center gap-2">
+													<div class="h-4 w-4 animate-spin rounded-full border border-white border-t-transparent"></div>
+													<span class="block text-sm font-medium">Saving...</span>
+												</div>
+											{:else}
+												<span class="block text-sm font-medium">{event}</span>
+											{/if}
 										</button>
 									{/each}
 								</div>
@@ -1275,16 +1298,32 @@
 	<!-- Save and Clear roast buttons -->
 	<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row sm:gap-4">
 		{#if isBeforeRoasting || isDuringRoasting}
-			<button
-				class="w-full rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light sm:w-auto"
-				onclick={() => {
-					prepareProfileLogsForSave();
-					saveRoastProfile();
-				}}
-				disabled={!isRoasting && $profileLogs.length === 0}
-			>
-				Save Roast
-			</button>
+			{#await import('$lib/components/LoadingButton.svelte') then { default: LoadingButton }}
+				<LoadingButton
+					variant="secondary"
+					class="w-full sm:w-auto"
+					onclick={() => {
+						prepareProfileLogsForSave();
+						return saveRoastProfile();
+					}}
+					disabled={!isRoasting && $profileLogs.length === 0}
+					loadingText="Saving Roast..."
+				>
+					Save Roast
+				</LoadingButton>
+			{:catch}
+				<!-- Fallback button if LoadingButton fails to load -->
+				<button
+					class="w-full rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light sm:w-auto"
+					onclick={() => {
+						prepareProfileLogsForSave();
+						saveRoastProfile();
+					}}
+					disabled={!isRoasting && $profileLogs.length === 0}
+				>
+					Save Roast
+				</button>
+			{/await}
 		{/if}
 
 		<!-- Import Artisan File button - only show when profile exists -->

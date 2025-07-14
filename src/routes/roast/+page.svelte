@@ -18,6 +18,7 @@
 
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 
 	// Lazy load the heavy chart component
 	let RoastChartInterface = $state<any>(null);
@@ -643,9 +644,16 @@
 		}
 	}
 
-	// Add saveRoastProfile function
+	// Add saveRoastProfile function with comprehensive loading states
 	async function saveRoastProfile() {
+		// Import the loading store
+		const { loadingStore } = await import('$lib/stores/loadingStore');
+		const operationId = 'save-roast-profile';
+		
 		try {
+			// Start loading state
+			loadingStore.start(operationId, 'Preparing roast profile...');
+
 			if (!selectedBean?.id) {
 				throw new Error(
 					'No coffee selected. Please select a coffee before saving the roast profile.'
@@ -657,6 +665,7 @@
 			}
 
 			// Prepare the logs with end time before saving
+			loadingStore.update(operationId, 'Preparing roast data...');
 			const preparedLogs = prepareProfileLogsForSave();
 
 			let profileResponse;
@@ -664,6 +673,7 @@
 
 			if (currentRoastProfile?.roast_id) {
 				// Update existing profile
+				loadingStore.update(operationId, 'Updating roast profile...');
 				profileResponse = await fetch(`/api/roast-profiles?id=${currentRoastProfile.roast_id}`, {
 					method: 'PUT',
 					headers: {
@@ -682,6 +692,7 @@
 				profile = await profileResponse.json();
 			} else {
 				// Create new profile
+				loadingStore.update(operationId, 'Creating new roast profile...');
 				profileResponse = await fetch('/api/roast-profiles', {
 					method: 'POST',
 					headers: {
@@ -709,12 +720,14 @@
 
 			// Delete existing log entries if updating
 			if (currentRoastProfile?.roast_id) {
+				loadingStore.update(operationId, 'Clearing old roast data...');
 				await fetch(`/api/profile-log?roast_id=${currentRoastProfile.roast_id}`, {
 					method: 'DELETE'
 				});
 			}
 
 			// Save new log entries with prepared logs
+			loadingStore.update(operationId, 'Saving roast timeline data...');
 			const logEntries = preparedLogs.map(
 				(entry: {
 					time: number;
@@ -749,16 +762,22 @@
 			}
 
 			// Reload profiles and select the saved one
+			loadingStore.update(operationId, 'Refreshing profile list...');
 			await loadRoastProfiles();
 			const savedProfile = data.data.find(
 				(p: { roast_id: number }) => p.roast_id === profile.roast_id
 			);
 			if (savedProfile) {
+				loadingStore.update(operationId, 'Loading saved profile...');
 				await selectProfile(savedProfile);
 			}
 
+			// Complete the loading operation
+			loadingStore.complete(operationId);
 			alert('Roast profile saved successfully!');
 		} catch (error: unknown) {
+			// Complete loading even on error
+			loadingStore.complete(operationId);
 			console.error('Error saving roast profile:', error);
 			alert(error instanceof Error ? error.message : 'Failed to save roast profile');
 		}
@@ -834,6 +853,9 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Global Loading Overlay -->
+<SimpleLoadingScreen show={false} overlay={true} />
 
 <div class="mx-auto w-full max-w-[100vw] overflow-x-hidden">
 	<!-- Current roast profile display -->
