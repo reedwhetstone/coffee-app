@@ -46,12 +46,14 @@
 
 	// Parse user cupping notes
 	let userTastingNotes = $derived((): TastingNotes | null => {
-		if (selectedBean.cupping_notes) {
+		// Ensure this derives from selectedBean to trigger updates
+		const bean = selectedBean;
+		if (bean?.cupping_notes) {
 			try {
 				const parsed =
-					typeof selectedBean.cupping_notes === 'string'
-						? JSON.parse(selectedBean.cupping_notes)
-						: selectedBean.cupping_notes;
+					typeof bean.cupping_notes === 'string'
+						? JSON.parse(bean.cupping_notes)
+						: bean.cupping_notes;
 
 				// Validate structure
 				if (
@@ -99,32 +101,20 @@
 		}
 	}
 
-	// Add safe update function with guard and memoization
+	// Update editedBean when selectedBean changes
 	$effect(() => {
-		// Skip if we're already processing or if the bean hasn't changed
-		if (
-			processingUpdate ||
-			(lastSelectedBeanId === selectedBean?.id && lastSelectedBeanId !== null)
-		) {
-			return;
-		}
-
-		// Only update editedBean when selectedBean changes
+		// Update editedBean whenever selectedBean changes
 		if (selectedBean) {
-			processingUpdate = true;
+			// Skip if we're processing an update from this component to avoid cycles
+			if (processingUpdate && lastSelectedBeanId === selectedBean.id) {
+				return;
+			}
 
-			// Track the bean ID we're processing
+			// Update the last processed ID
 			lastSelectedBeanId = selectedBean.id;
 
-			// Use setTimeout to break potential update cycles
-			setTimeout(() => {
-				try {
-					// Deep clone to avoid reference issues
-					editedBean = JSON.parse(JSON.stringify(selectedBean));
-				} finally {
-					processingUpdate = false;
-				}
-			}, 50);
+			// Deep clone to avoid reference issues
+			editedBean = JSON.parse(JSON.stringify(selectedBean));
 		}
 	});
 
@@ -191,11 +181,12 @@
 	}
 
 	// Handle cupping notes save
-	async function handleCuppingSave(notes: TastingNotes) {
+	async function handleCuppingSave(notes: TastingNotes, rating: number | null) {
 		try {
 			const dataForAPI = {
 				...selectedBean,
 				cupping_notes: JSON.stringify(notes),
+				rank: rating,
 				last_updated: new Date().toISOString()
 			};
 
@@ -221,16 +212,6 @@
 		}
 	}
 
-	// Helper function to get color class based on score
-	function getScoreColorClass(score: number) {
-		if (!score) return 'text-gray-400';
-		if (score >= 91) return 'text-emerald-500';
-		if (score >= 90) return 'text-green-500';
-		if (score >= 87) return 'text-yellow-500';
-		if (score >= 85) return 'text-orange-500';
-		return 'text-red-500';
-	}
-
 	// Helper function to calculate the percentage for the crescent meter
 	function getScorePercentage(score: number, min: number, max: number) {
 		if (!score) return 0;
@@ -238,22 +219,13 @@
 		return ((normalizedScore - min) / (max - min)) * 100;
 	}
 
-	// Helper function to get the stroke color for the crescent meter
-	function getStrokeColor(value: number, isScore: boolean) {
-		if (isScore) {
-			if (value >= 91) return '#10b981'; // emerald-500
-			if (value >= 90) return '#22c55e'; // green-500
-			if (value >= 87) return '#eab308'; // yellow-500
-			if (value >= 85) return '#f97316'; // orange-500
-			return '#ef4444'; // red-500
-		} else {
-			// For rank
-			if (value >= 8) return '#10b981'; // emerald-500
-			if (value >= 6) return '#22c55e'; // green-500
-			if (value >= 4) return '#eab308'; // yellow-500
-			if (value >= 2) return '#f97316'; // orange-500
-			return '#ef4444'; // red-500
-		}
+	// Helper function to get the stroke color for the rating crescent meter
+	function getRatingStrokeColor(value: number) {
+		if (value >= 8) return '#10b981'; // emerald-500
+		if (value >= 6) return '#22c55e'; // green-500
+		if (value >= 4) return '#eab308'; // yellow-500
+		if (value >= 2) return '#f97316'; // orange-500
+		return '#ef4444'; // red-500
 	}
 </script>
 
@@ -267,86 +239,45 @@
 				{selectedBean.coffee_catalog?.name || selectedBean.name}
 			</h2>
 			<div>
-				{#if selectedBean.coffee_catalog?.score_value !== undefined || selectedBean.rank !== undefined}
-					{@const catalogScore = selectedBean.coffee_catalog?.score_value}
+				{#if selectedBean.rank !== undefined}
 					<div class="flex items-center justify-center gap-4 sm:justify-end md:gap-6">
-						{#if catalogScore !== undefined}
-							<div class="flex flex-col items-center">
-								<div class="relative h-14 w-14 md:h-16 md:w-16">
-									<!-- Background arc -->
-									<svg class="absolute inset-0" viewBox="0 0 100 100">
-										<path
-											d="M10,50 A40,40 0 1,1 90,50"
-											fill="none"
-											stroke="#e5e7eb"
-											stroke-width="8"
-											stroke-linecap="round"
-										/>
-										<!-- Foreground arc (dynamic based on score) -->
-										<path
-											d="M10,50 A40,40 0 1,1 90,50"
-											fill="none"
-											stroke={getStrokeColor(catalogScore, true)}
-											stroke-width="8"
-											stroke-linecap="round"
-											stroke-dasharray="126"
-											stroke-dashoffset={126 -
-												(126 * getScorePercentage(catalogScore, 0, 100)) / 100}
-										/>
-									</svg>
-									<!-- Score value in the center -->
-									<div class="absolute inset-0 flex items-center justify-center">
-										<span class="text-xl font-bold md:text-2xl {getScoreColorClass(catalogScore)}">
-											{catalogScore}
-										</span>
-									</div>
-									<span
-										class="text-primary-light absolute bottom-0 left-0 right-0 text-center text-xs"
-										>SCORE</span
-									>
+						<div class="flex flex-col items-center">
+							<div class="relative h-14 w-14 md:h-16 md:w-16">
+								<!-- Background arc -->
+								<svg class="absolute inset-0" viewBox="0 0 100 100">
+									<path
+										d="M10,50 A40,40 0 1,1 90,50"
+										fill="none"
+										stroke="#e5e7eb"
+										stroke-width="8"
+										stroke-linecap="round"
+									/>
+									<!-- Foreground arc (dynamic based on rank) -->
+									<path
+										d="M10,50 A40,40 0 1,1 90,50"
+										fill="none"
+										stroke={getRatingStrokeColor(selectedBean.rank)}
+										stroke-width="8"
+										stroke-linecap="round"
+										stroke-dasharray="126"
+										stroke-dashoffset={126 -
+											(126 * getScorePercentage(selectedBean.rank, 0, 10)) / 100}
+									/>
+								</svg>
+								<!-- Rank value in the center -->
+								<div class="absolute inset-0 flex items-center justify-center">
+									<span class="text-xl font-bold text-amber-500 md:text-2xl">
+										{typeof selectedBean.rank === 'number'
+											? Math.round(selectedBean.rank)
+											: selectedBean.rank}
+									</span>
 								</div>
+								<span
+									class="text-primary-light absolute bottom-0 left-0 right-0 text-center text-xs"
+									>RATING</span
+								>
 							</div>
-						{/if}
-
-						{#if selectedBean.rank !== undefined}
-							<div class="flex flex-col items-center">
-								<div class="relative h-14 w-14 md:h-16 md:w-16">
-									<!-- Background arc -->
-									<svg class="absolute inset-0" viewBox="0 0 100 100">
-										<path
-											d="M10,50 A40,40 0 1,1 90,50"
-											fill="none"
-											stroke="#e5e7eb"
-											stroke-width="8"
-											stroke-linecap="round"
-										/>
-										<!-- Foreground arc (dynamic based on rank) -->
-										<path
-											d="M10,50 A40,40 0 1,1 90,50"
-											fill="none"
-											stroke={getStrokeColor(selectedBean.rank, false)}
-											stroke-width="8"
-											stroke-linecap="round"
-											stroke-dasharray="126"
-											stroke-dashoffset={126 -
-												(126 * getScorePercentage(selectedBean.rank, 0, 10)) / 100}
-										/>
-									</svg>
-									<!-- Rank value in the center -->
-									<div class="absolute inset-0 flex items-center justify-center">
-										<span class="text-xl font-bold text-amber-500 md:text-2xl">
-											{typeof selectedBean.rank === 'number'
-												? Math.round(selectedBean.rank)
-												: selectedBean.rank}
-										</span>
-									</div>
-									<span
-										class="text-primary-light absolute bottom-0 left-0 right-0 text-center text-xs"
-										>RATING</span
-									>
-								</div>
-							</div>
-						{/if}
+						</div>
 					</div>
 				{/if}
 			</div>
@@ -378,26 +309,26 @@
 				<!-- User Inventory Data Section -->
 				<div>
 					<h3 class="mb-4 font-semibold text-text-primary-light">Your Inventory</h3>
-					
+
 					<!-- Notes field without border -->
 					{#if selectedBean.notes !== undefined && selectedBean.notes !== null && selectedBean.notes !== ''}
 						<div class="mb-4">
 							{#if isEditing && editableFields.includes('notes')}
 								<textarea
-									class="w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light border border-border-light"
+									class="w-full rounded border border-border-light bg-background-primary-light px-2 py-1 text-text-primary-light"
 									rows="4"
 									bind:value={editedBean.notes}
 								></textarea>
 							{:else}
-								<div class="text-text-primary-light whitespace-pre-wrap">
+								<div class="whitespace-pre-wrap text-text-primary-light">
 									{selectedBean.notes}
 								</div>
 							{/if}
 						</div>
 					{/if}
-					
+
 					<!-- Inventory details in single row -->
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+					<div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 						{#each ['purchase_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost'] as key}
 							{#if selectedBean[key] !== undefined && selectedBean[key] !== null && selectedBean[key] !== ''}
 								<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
@@ -443,7 +374,7 @@
 							{/if}
 						{/each}
 					</div>
-					
+
 					<!-- Stocked Inventory Calculation -->
 					{#if selectedBean.purchased_qty_lbs !== undefined}
 						{@const purchasedOz = (selectedBean.purchased_qty_lbs || 0) * 16}
@@ -457,9 +388,7 @@
 							<h4 class="text-sm font-medium text-text-primary-light">STOCKED INVENTORY</h4>
 							<div class="mt-2 flex items-center gap-3">
 								<span
-									class="text-2xl font-bold {remainingLbs > 0
-										? 'text-green-500'
-										: 'text-red-500'}"
+									class="text-2xl font-bold {remainingLbs > 0 ? 'text-green-500' : 'text-red-500'}"
 								>
 									{remainingLbs.toFixed(1)} lbs
 								</span>
@@ -506,14 +435,19 @@
 					)}
 					{@const formatSupplierName = (source: string) => {
 						if (!source) return '';
-						return source.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+						return source
+							.split('_')
+							.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+							.join(' ');
 					}}
 
 					{#if displayFields.length > 0 || catalogData.source || catalogData.ai_description}
 						<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 							<div class="mb-4 flex items-center justify-between">
 								<h3 class="font-semibold text-text-primary-light">
-									{catalogData.source ? formatSupplierName(catalogData.source) + ' Bean Information' : 'Supplier Information'}
+									{catalogData.source
+										? formatSupplierName(catalogData.source) + ' Bean Information'
+										: 'Supplier Information'}
 								</h3>
 								{#if catalogData.link}
 									<a
@@ -522,22 +456,32 @@
 										class="inline-flex items-center rounded-md bg-background-tertiary-light px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 									>
 										View Product Page
-										<svg class="ml-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+										<svg
+											class="ml-1.5 h-3.5 w-3.5"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+											/>
 										</svg>
 									</a>
 								{/if}
 							</div>
-							
+
 							<!-- AI Description without border -->
 							{#if catalogData.ai_description}
 								<div class="mb-4">
-									<div class="text-text-primary-light whitespace-pre-wrap">
+									<div class="whitespace-pre-wrap text-text-primary-light">
 										{catalogData.ai_description}
 									</div>
 								</div>
 							{/if}
-							
+
 							<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 								{#each displayFields as key}
 									<div
@@ -573,7 +517,6 @@
 										</div>
 									</div>
 								{/each}
-
 							</div>
 						</div>
 					{/if}
@@ -584,6 +527,7 @@
 				{#if showCuppingForm}
 					<CuppingNotesForm
 						initialNotes={userTastingNotes()}
+						initialRating={selectedBean.rank}
 						aiTastingNotes={aiTastingNotes()}
 						onSave={handleCuppingSave}
 						onCancel={() => (showCuppingForm = false)}

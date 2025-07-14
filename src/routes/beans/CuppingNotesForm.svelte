@@ -4,12 +4,14 @@
 
 	let {
 		initialNotes = null,
+		initialRating = null,
 		onSave,
 		onCancel,
 		aiTastingNotes = null
 	} = $props<{
 		initialNotes?: TastingNotes | null;
-		onSave: (notes: TastingNotes) => void;
+		initialRating?: number | null;
+		onSave: (notes: TastingNotes, rating: number | null) => void;
 		onCancel: () => void;
 		aiTastingNotes?: TastingNotes | null;
 	}>();
@@ -22,10 +24,15 @@
 		fragrance_aroma: { tag: '', color: '#DDA0DD', score: 3 }
 	});
 
+	let overallRating = $state<number | null>(initialRating);
+
 	// Initialize form data with existing notes if provided
 	$effect(() => {
 		if (initialNotes) {
 			formData = JSON.parse(JSON.stringify(initialNotes));
+		}
+		if (initialRating !== null) {
+			overallRating = initialRating;
 		}
 	});
 
@@ -38,7 +45,7 @@
 	] as const;
 
 	function handleSave() {
-		onSave(formData);
+		onSave(formData, overallRating);
 	}
 
 	function handleReset() {
@@ -49,6 +56,7 @@
 			sweetness: { tag: '', color: '#DEB887', score: 3 },
 			fragrance_aroma: { tag: '', color: '#DDA0DD', score: 3 }
 		};
+		overallRating = null;
 	}
 
 	// Validation - check if form has meaningful data
@@ -61,9 +69,60 @@
 	<div class="mb-6">
 		<h3 class="mb-2 text-lg font-semibold text-text-primary-light">Your Cupping Assessment</h3>
 		<p class="text-sm text-text-secondary-light">
-			Rate each dimension from 1-5, add descriptive tags, and choose colors that represent your
-			experience.
+			Give an overall rating and rate each dimension from 1-5, add descriptive tags, and choose
+			colors that represent your experience.
 		</p>
+	</div>
+
+	<!-- Overall Rating Section -->
+	<div class="mb-6 rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+		<div class="flex items-center justify-between">
+			<div class="flex-1">
+				<h4 class="mb-1 font-medium text-text-primary-light">Overall Rating</h4>
+				<p class="text-xs text-text-secondary-light">
+					Your overall impression of this coffee (1-10)
+				</p>
+			</div>
+			<div class="flex items-center gap-4">
+				{#if overallRating !== null}
+					<span class="text-2xl font-bold text-amber-500">{overallRating}</span>
+					<span class="text-sm text-text-secondary-light">/10</span>
+				{:else}
+					<span class="text-sm text-text-secondary-light">No rating</span>
+				{/if}
+			</div>
+		</div>
+		<div class="mt-4">
+			<input
+				type="range"
+				min="1"
+				max="10"
+				step="1"
+				bind:value={overallRating}
+				class="slider h-2 w-full cursor-pointer appearance-none rounded-lg bg-background-primary-light"
+			/>
+			<div class="mt-1 flex justify-between text-xs text-text-secondary-light">
+				<span>1</span>
+				<span>2</span>
+				<span>3</span>
+				<span>4</span>
+				<span>5</span>
+				<span>6</span>
+				<span>7</span>
+				<span>8</span>
+				<span>9</span>
+				<span>10</span>
+			</div>
+		</div>
+		<div class="mt-2 text-center">
+			<button
+				type="button"
+				onclick={() => (overallRating = null)}
+				class="text-xs text-text-secondary-light underline hover:text-text-primary-light"
+			>
+				Clear Rating
+			</button>
+		</div>
 	</div>
 
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">

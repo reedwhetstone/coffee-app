@@ -515,11 +515,21 @@
 					if (processingUpdate) return;
 					processingUpdate = true;
 					try {
+						// Update selectedBean immediately with the response from the API
+						selectedBean = updatedBean;
+						// Then refresh the data in the background to keep everything in sync
 						await loadData();
-						// Find the updated bean in the filtered data
+						// Only update selectedBean from refreshed data if it has newer or additional data
+						// Keep the updated cupping notes and rank from the API response
 						const refreshedBean = $filteredData.find((bean) => bean.id === updatedBean.id);
 						if (refreshedBean) {
-							selectedBean = refreshedBean;
+							// Merge the fresh API data with any additional fields from the refreshed bean
+							selectedBean = {
+								...refreshedBean,
+								cupping_notes: updatedBean.cupping_notes, // Keep the fresh cupping notes
+								rank: updatedBean.rank, // Keep the fresh rank
+								last_updated: updatedBean.last_updated // Keep the fresh timestamp
+							};
 						}
 					} finally {
 						setTimeout(() => {
@@ -606,7 +616,7 @@
 					{@const displayProcessing = catalogData?.processing}
 					{@const displayCultivar = catalogData?.cultivar_detail}
 					{@const displayArrival = catalogData?.arrival_date}
-					{@const displayScore = catalogData?.score_value}
+					{@const displayRating = bean.rank}
 					{@const tastingNotes = parseTastingNotes(catalogData?.ai_tasting_notes)}
 					{@const userCuppingNotes = parseTastingNotes(bean.cupping_notes)}
 					{@const hasUserRating = bean.rank !== undefined && bean.rank !== null}
@@ -748,9 +758,9 @@
 											: 0
 										).toFixed(2)}/lb
 									</div>
-									{#if displayScore}
+									{#if displayRating}
 										<div class="mt-1 text-xs text-text-secondary-light">
-											Score: {Math.round(displayScore)}
+											Rating: {displayRating}/10
 										</div>
 									{/if}
 								</div>
