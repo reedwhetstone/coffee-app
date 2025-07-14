@@ -1,14 +1,17 @@
 ## Todo List
 
 - [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row; may also be linked to roast. Needs cascade delete function.
-- [ ] **Bug** - Bring forms to front, they are beneath the card layers on the beans page. Check each page -/profit and /roast. Have to click profile to get the cards out of the way.
+- [ ] **Bug** - can't edit user rating
+
 - [ ] **Bug** - Links to new roast on bean page doesn't take you to the roast form
 - [ ] **Bug** - The loading screen shows "No Beans" dialog before the db returns data - should be looking for a NULL return from table before rendering no beans. Otherwise should be rendering a loading screen - much earlier in the load.
 - [ ] **Bug** - roast form doesn't fit on the page
 - [ ] **Bug** - /beans profile just needs to pull not null data into the form in an organized way so it collects everything.
 -
-- [ ] **UI/UX** - Redesign roast, bean, and profit pages to match landing/catalog aesthetic; reduce table formatting; emphasize profile & analytics
-- [ ] **UI/UX** - Clean up roast page UI to align with beans page UI
+- [ ] **UI/UX** - the supplier cupping note dashed lines are way too dark, distracting
+- [ ] **UI/UX** - fix score & rating display
+- [ ] **UI/UX** - saving the cupping notes doesn't retrigger the page to render the new data saved to the db
+- [ ] **UI/UX** - improve linking to roast logs from the bean page
 - [ ] **UI/UX** - Clean up beans catalog profiles and remove user reference
 -
 - [ ] **Web Scraping** - Add option to add a bean based on a URL
@@ -95,6 +98,9 @@
 - [x] **Tasting Notes** - Display cupping/tasting notes per profile on main profile page
 - [x] **Roast Insights** - Organize roasts by bean for roast comparison, instead of by batch
 - [x] **COOKIE notifications** - implement a cookie accept popup / Set up no-cookies banner at the bottom of the page
+- [x] **UI/UX** - Redesign roast, bean, and profit pages to match landing/catalog aesthetic; reduce table formatting;
+- [x] **UI/UX** - Clean up roast page UI to align with beans page UI
+- [x] **Bug** - Bring forms to front, they are beneath the card layers on the beans page. Check each page -/profit and /roast. Have to click profile to get the cards out of the way.
 
 ## Suppliers:
 
@@ -142,9 +148,9 @@ https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 - [ ] Coffee Crafters Green 10 and 20 pound bags plus see larger quantities too.
 - [ ] Crop to Cup
 - [ ] Covoya
-- [ ] https://coffeegreenbeans.com/collections/greencoffeestore
 - [ ] klatch https://www.klatchcoffee.com/collections/green-coffee
 - [ ] Cofinet - 52.5 lb units - https://www.cofinet.com.au/store/
+- [ ] Forest Coffee - https://coffeegreenbeans.com/collections/greencoffeestore
 
 ## Thoughts & references
 

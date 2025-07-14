@@ -295,6 +295,8 @@
 	}
 
 	onMount(() => {
+		let shouldShowForm = false;
+
 		if (typeof window !== 'undefined' && !currentRoastProfile) {
 			const params = new URLSearchParams(window.location.search);
 			const beanId = params.get('beanId');
@@ -306,6 +308,7 @@
 					name: decodeURIComponent(beanName)
 				};
 				console.log('Set selectedBean from URL params:', selectedBean);
+				shouldShowForm = true; // Auto-show form when URL params are present
 			}
 		}
 
@@ -321,8 +324,11 @@
 				console.log('Found selectedBean in state:', state.selectedBean);
 				selectedBean = state.selectedBean;
 			}
+			shouldShowForm = true;
+		}
 
-			// Show the form after a short delay to ensure the bean is set
+		// Show the form if either URL params or state indicate we should
+		if (shouldShowForm) {
 			setTimeout(() => {
 				isFormVisible = true;
 			}, 100);
