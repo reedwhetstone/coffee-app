@@ -177,14 +177,12 @@
 		}
 	});
 
-	// Update the data object when selectedBean changes
+	// Ensure the data object always has the callback and selectedBean
 	$effect(() => {
 		if (data) {
-			data = {
-				...data,
-				selectedBean: selectedBean,
-				onAddNewRoast: showRoastForm
-			};
+			// Always ensure the callback is attached
+			data.selectedBean = selectedBean;
+			data.onAddNewRoast = showRoastForm;
 		}
 	});
 

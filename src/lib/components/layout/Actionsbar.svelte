@@ -41,42 +41,36 @@
 
 	// Action handlers
 	function handleNewBean() {
-		// Log what we're about to do
 		console.log('handleNewBean called, routeId:', routeId);
-		console.log('data object properties:', Object.keys(data || {}));
 
-		// Set state to show the form
-		if (data?.onAddNewBean) {
-			console.log('Calling onAddNewBean from Actionsbar');
-			data.onAddNewBean();
+		// If we're on the beans page, use the custom event
+		if (routeId === '/beans') {
+			console.log('Dispatching show-bean-form event');
+			window.dispatchEvent(new CustomEvent('show-bean-form'));
 		} else {
-			console.error('onAddNewBean not available in data object');
-			// If we're not on the beans page, navigate there
-			if (routeId !== '/beans') {
-				goto('/beans', {
-					state: {
-						showBeanForm: true
-					}
-				});
-			} else {
-				// We are on the beans page but the callback isn't available
-				// Try a direct approach - use window to access the global scope
-				window.dispatchEvent(new CustomEvent('show-bean-form'));
-				console.log('Dispatched show-bean-form event');
-			}
+			// Navigate to beans page with form state
+			console.log('Navigating to beans page with showBeanForm state');
+			goto('/beans', {
+				state: {
+					showBeanForm: true
+				}
+			});
 		}
 		onClose();
 	}
 
 	function handleNewRoast() {
 		console.log('handleNewRoast called, routeId:', routeId);
-		console.log('data available keys:', Object.keys(data || {}));
 
-		if (routeId === '/beans') {
-			// If on beans page, navigate to roast page with form flag
-			// Check if we have a selected bean from the data prop
+		// If we're on the roast page, use the custom event
+		if (routeId === '/roast') {
+			console.log('Dispatching show-roast-form event');
+			window.dispatchEvent(new CustomEvent('show-roast-form'));
+		} else {
+			// Navigate to roast page with form state
+			// Check if we have a selected bean from the current page
 			const selectedBean = data?.selectedBean;
-			console.log('Selected bean from beans page:', selectedBean);
+			console.log('Selected bean for roast:', selectedBean);
 
 			if (selectedBean) {
 				goto(`/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.name)}`, {
@@ -92,45 +86,25 @@
 					}
 				});
 			}
-		} else {
-			// If already on roast page, just show the form
-			if (data?.onAddNewRoast) {
-				console.log('Calling onAddNewRoast from Actionsbar');
-				data.onAddNewRoast();
-			} else {
-				console.error('onAddNewRoast not available in data object');
-				// We are on the roast page but the callback isn't available
-				// Try a direct approach - use window to access the global scope
-				window.dispatchEvent(new CustomEvent('show-roast-form'));
-				console.log('Dispatched show-roast-form event');
-			}
 		}
 		onClose();
 	}
 
 	function handleNewSale() {
-		// Use the callback from data prop to show the form
 		console.log('handleNewSale called, routeId:', routeId);
-		console.log('data available keys:', Object.keys(data || {}));
 
-		if (data?.onAddNewSale) {
-			console.log('Calling onAddNewSale from Actionsbar');
-			data.onAddNewSale();
+		// If we're on the profit page, use the custom event
+		if (routeId === '/profit') {
+			console.log('Dispatching show-sale-form event');
+			window.dispatchEvent(new CustomEvent('show-sale-form'));
 		} else {
-			console.error('onAddNewSale not available in data object');
-			// If we're not on the profit page, navigate there
-			if (routeId !== '/profit') {
-				goto('/profit', {
-					state: {
-						showSaleForm: true
-					}
-				});
-			} else {
-				// We are on the profit page but the callback isn't available
-				// Try a direct approach - use window to access the global scope
-				window.dispatchEvent(new CustomEvent('show-sale-form'));
-				console.log('Dispatched show-sale-form event');
-			}
+			// Navigate to profit page with form state
+			console.log('Navigating to profit page with showSaleForm state');
+			goto('/profit', {
+				state: {
+					showSaleForm: true
+				}
+			});
 		}
 		onClose();
 	}
@@ -193,40 +167,31 @@
 	<main class="flex-grow overflow-y-auto p-4">
 		{#if hasRequiredRole('member')}
 			<div class="space-y-2">
-				{#if routeId === '/beans'}
-					<button
-						class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
-						onclick={handleNewBean}
-					>
-						New Bean
-					</button>
-					<button
-						class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
-						onclick={handleNewRoast}
-					>
-						New Roast
-					</button>
-					<button
-						class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
-						onclick={handleShareAllBeans}
-					>
-						Share All Beans
-					</button>
-				{:else if routeId === '/roast'}
-					<button
-						class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
-						onclick={handleNewRoast}
-					>
-						New Roast
-					</button>
-				{:else if routeId === '/profit'}
-					<button
-						class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
-						onclick={handleNewSale}
-					>
-						New Sale
-					</button>
-				{/if}
+				<!-- Always show all functions regardless of current page -->
+				<button
+					class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
+					onclick={handleNewBean}
+				>
+					New Bean
+				</button>
+				<button
+					class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
+					onclick={handleNewRoast}
+				>
+					New Roast
+				</button>
+				<button
+					class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
+					onclick={handleNewSale}
+				>
+					New Sale
+				</button>
+				<button
+					class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
+					onclick={handleShareAllBeans}
+				>
+					Share All Beans
+				</button>
 			</div>
 		{/if}
 	</main>

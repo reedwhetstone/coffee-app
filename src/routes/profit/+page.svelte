@@ -591,13 +591,11 @@
 		profitCardsLoading = false;
 	});
 
-	// Update the data object to include the showSaleForm function
+	// Ensure the data object always has the callback
 	$effect(() => {
 		if (data) {
-			data = {
-				...data,
-				onAddNewSale: showSaleForm
-			};
+			// Always ensure the callback is attached
+			data.onAddNewSale = showSaleForm;
 		}
 	});
 </script>

@@ -328,14 +328,12 @@
 		isFormVisible = true;
 	}
 
-	// Update the data object when selectedBean changes
+	// Ensure the data object always has the callback and selectedBean
 	$effect(() => {
 		if (data) {
-			data = {
-				...data,
-				selectedBean: selectedBean,
-				onAddNewBean: handleAddNewBean
-			};
+			// Always ensure the callback is attached
+			data.selectedBean = selectedBean;
+			data.onAddNewBean = handleAddNewBean;
 		}
 	});
 
@@ -633,7 +631,6 @@
 						class="group relative rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
 						onclick={() => selectBean(bean)}
 					>
-
 						<!-- Mobile-optimized layout -->
 						<div
 							class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0"
