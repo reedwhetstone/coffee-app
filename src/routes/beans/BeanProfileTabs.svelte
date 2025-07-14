@@ -376,33 +376,41 @@
 		{#if currentTab === 'overview'}
 			<div class="space-y-6">
 				<!-- User Inventory Data Section -->
-				<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-green-500/20">
-					<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Your Inventory</h3>
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-						{#each ['notes', 'purchase_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost', 'last_updated'] as key}
+				<div>
+					<h3 class="mb-4 font-semibold text-text-primary-light">Your Inventory</h3>
+					
+					<!-- Notes field without border -->
+					{#if selectedBean.notes !== undefined && selectedBean.notes !== null && selectedBean.notes !== ''}
+						<div class="mb-4">
+							{#if isEditing && editableFields.includes('notes')}
+								<textarea
+									class="w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light border border-border-light"
+									rows="4"
+									bind:value={editedBean.notes}
+								></textarea>
+							{:else}
+								<div class="text-text-primary-light whitespace-pre-wrap">
+									{selectedBean.notes}
+								</div>
+							{/if}
+						</div>
+					{/if}
+					
+					<!-- Inventory details in single row -->
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+						{#each ['purchase_date', 'purchased_qty_lbs', 'bean_cost', 'tax_ship_cost'] as key}
 							{#if selectedBean[key] !== undefined && selectedBean[key] !== null && selectedBean[key] !== ''}
-								<div
-									class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light {key ===
-									'notes'
-										? 'col-span-1 sm:col-span-2'
-										: ''}"
-								>
-									<span class="text-sm font-medium text-text-primary-light"
-										>{key.replace(/_/g, ' ').toUpperCase()}:</span
-									>
-									{#if isEditing && editableFields.includes(key) && key !== 'last_updated'}
-										{#if key === 'notes'}
-											<textarea
-												class="mt-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-												rows="4"
-												bind:value={editedBean[key]}
-											></textarea>
-										{:else if key === 'bean_cost' || key === 'tax_ship_cost'}
+								<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+									<h4 class="text-sm font-medium text-text-primary-light">
+										{key.replace(/_/g, ' ').toUpperCase()}
+									</h4>
+									{#if isEditing && editableFields.includes(key)}
+										{#if key === 'bean_cost' || key === 'tax_ship_cost'}
 											<input
 												type="number"
 												step="0.01"
 												min="0"
-												class="mt-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light sm:w-auto"
+												class="mt-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												bind:value={editedBean[key]}
 											/>
 										{:else if key === 'purchased_qty_lbs'}
@@ -410,22 +418,18 @@
 												type="number"
 												step="0.1"
 												min="0"
-												class="mt-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light sm:w-auto"
+												class="mt-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												bind:value={editedBean[key]}
 											/>
 										{:else if key === 'purchase_date'}
 											<input
 												type="date"
-												class="mt-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light sm:w-auto"
+												class="mt-2 w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												bind:value={editedBean[key]}
 											/>
 										{/if}
 									{:else}
-										<div
-											class="mt-2 text-text-primary-light {key === 'notes'
-												? 'whitespace-pre-wrap'
-												: ''}"
-										>
+										<div class="mt-2 text-text-primary-light">
 											{#if key === 'bean_cost' || key === 'tax_ship_cost'}
 												${typeof selectedBean[key] === 'number'
 													? selectedBean[key].toFixed(2)
@@ -438,41 +442,40 @@
 								</div>
 							{/if}
 						{/each}
-
-						<!-- Stocked Inventory Calculation -->
-						{#if selectedBean.purchased_qty_lbs !== undefined}
-							{@const purchasedOz = (selectedBean.purchased_qty_lbs || 0) * 16}
-							{@const roastedOz =
-								selectedBean.roast_profiles?.reduce(
-									(ozSum: number, profile: any) => ozSum + (profile.oz_in || 0),
-									0
-								) || 0}
-							{@const remainingLbs = (purchasedOz - roastedOz) / 16}
-							<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-								<span class="text-sm font-medium text-text-primary-light">STOCKED INVENTORY:</span>
-								<div class="mt-2 text-text-primary-light">
-									<span
-										class={remainingLbs > 0 ? 'font-bold text-green-500' : 'font-bold text-red-500'}
-									>
-										{remainingLbs.toFixed(1)} lbs
-									</span>
-									<span class="text-sm text-text-secondary-light">
-										({purchasedOz.toFixed(0)} oz purchased - {roastedOz.toFixed(0)} oz roasted)
-									</span>
-								</div>
-							</div>
-						{/if}
 					</div>
+					
+					<!-- Stocked Inventory Calculation -->
+					{#if selectedBean.purchased_qty_lbs !== undefined}
+						{@const purchasedOz = (selectedBean.purchased_qty_lbs || 0) * 16}
+						{@const roastedOz =
+							selectedBean.roast_profiles?.reduce(
+								(ozSum: number, profile: any) => ozSum + (profile.oz_in || 0),
+								0
+							) || 0}
+						{@const remainingLbs = (purchasedOz - roastedOz) / 16}
+						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+							<h4 class="text-sm font-medium text-text-primary-light">STOCKED INVENTORY</h4>
+							<div class="mt-2 flex items-center gap-3">
+								<span
+									class="text-2xl font-bold {remainingLbs > 0
+										? 'text-green-500'
+										: 'text-red-500'}"
+								>
+									{remainingLbs.toFixed(1)} lbs
+								</span>
+								<span class="text-sm text-text-secondary-light">
+									({purchasedOz.toFixed(0)} oz purchased - {roastedOz.toFixed(0)} oz roasted)
+								</span>
+							</div>
+						</div>
+					{/if}
 				</div>
 
 				<!-- Supplier Information Section -->
 				{#if selectedBean.coffee_catalog}
 					{@const catalogData = selectedBean.coffee_catalog}
-					{@const availableFields = [
-						'ai_description',
-						//'description_short', // this is the uncleaned version of ai_description
-						//'description_long', // this is the uncleaned version of  ai_description
-						//'farm_notes', // this is the uncleaned version of  ai_description
+					{@const isPrivateCoffee = catalogData.public_coffee === false}
+					{@const baseFields = [
 						'arrival_date',
 						'region',
 						'processing',
@@ -480,75 +483,97 @@
 						'cultivar_detail',
 						'grade',
 						'appearance',
-						//'roast_recs', // this is the uncleaned version of ai_description
 						'type',
 						'lot_size',
 						'bag_size',
 						'packaging',
-						'cost_lb',
-						'source'
+						'cost_lb'
 					]}
+					{@const privateFields = [
+						'description_short',
+						'description_long',
+						'farm_notes',
+						'roast_recs'
+					]}
+					{@const availableFields = isPrivateCoffee
+						? [...baseFields, ...privateFields]
+						: baseFields}
 					{@const displayFields = availableFields.filter(
 						(field) =>
 							catalogData[field] !== undefined &&
 							catalogData[field] !== null &&
 							catalogData[field] !== ''
 					)}
+					{@const formatSupplierName = (source: string) => {
+						if (!source) return '';
+						return source.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+					}}
 
-					{#if displayFields.length > 0}
-						<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-blue-500/20">
-							<h3 class="mb-4 text-lg font-semibold text-text-primary-light">
-								Supplier Information
-							</h3>
-							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					{#if displayFields.length > 0 || catalogData.source || catalogData.ai_description}
+						<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+							<div class="mb-4 flex items-center justify-between">
+								<h3 class="font-semibold text-text-primary-light">
+									{catalogData.source ? formatSupplierName(catalogData.source) + ' Bean Information' : 'Supplier Information'}
+								</h3>
+								{#if catalogData.link}
+									<a
+										href={catalogData.link}
+										target="_blank"
+										class="inline-flex items-center rounded-md bg-background-tertiary-light px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+									>
+										View Product Page
+										<svg class="ml-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+										</svg>
+									</a>
+								{/if}
+							</div>
+							
+							<!-- AI Description without border -->
+							{#if catalogData.ai_description}
+								<div class="mb-4">
+									<div class="text-text-primary-light whitespace-pre-wrap">
+										{catalogData.ai_description}
+									</div>
+								</div>
+							{/if}
+							
+							<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 								{#each displayFields as key}
 									<div
-										class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light {key ===
-											'ai_description' ||
-										key === 'description_short' ||
+										class={key === 'description_short' ||
 										key === 'description_long' ||
-										key === 'farm_notes'
-											? 'col-span-1 sm:col-span-2'
-											: ''}"
+										key === 'farm_notes' ||
+										key === 'roast_recs'
+											? 'lg:col-span-2'
+											: ''}
 									>
-										<span class="text-sm font-medium text-text-primary-light"
-											>{key.replace(/_/g, ' ').toUpperCase()}:</span
-										>
 										<div
-											class="mt-2 text-text-primary-light {key === 'ai_description' ||
-											key === 'description_short' ||
-											key === 'description_long' ||
-											key === 'farm_notes'
-												? 'whitespace-pre-wrap'
-												: ''}"
+											class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
 										>
-											{#if key === 'cost_lb'}
-												${typeof catalogData[key] === 'number'
-													? catalogData[key].toFixed(2)
-													: catalogData[key]}/lb
-											{:else}
-												{catalogData[key]}
-											{/if}
+											<h4 class="text-sm font-medium text-text-primary-light">
+												{key.replace(/_/g, ' ').toUpperCase()}
+											</h4>
+											<div
+												class="mt-2 text-text-primary-light {key === 'description_short' ||
+												key === 'description_long' ||
+												key === 'farm_notes' ||
+												key === 'roast_recs'
+													? 'whitespace-pre-wrap'
+													: ''}"
+											>
+												{#if key === 'cost_lb'}
+													${typeof catalogData[key] === 'number'
+														? catalogData[key].toFixed(2)
+														: catalogData[key]}/lb
+												{:else}
+													{catalogData[key]}
+												{/if}
+											</div>
 										</div>
 									</div>
 								{/each}
 
-								{#if catalogData.link}
-									<div
-										class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
-									>
-										<span class="text-sm font-medium text-text-primary-light">PRODUCT LINK:</span>
-										<div class="mt-2">
-											<a
-												href={catalogData.link}
-												target="_blank"
-												class="text-blue-400 hover:underline"
-											>
-												{catalogData.link}
-											</a>
-										</div>
-									</div>
-								{/if}
 							</div>
 						</div>
 					{/if}
