@@ -110,25 +110,22 @@
 - [x] Showroom Coffee - Solid selection of greens; sells Huky and ARC roasters.
 - [x] The Captain's Coffee
 - [x] Sweet Maria's
-- [ ] https://www.coffeebeancorral.com/categories/Green-Coffee-Beans/All-Coffees.aspx?q=&o=1&i=200&d=200
+- [x] https://www.coffeebeancorral.com/categories/Green-Coffee-Beans/All-Coffees.aspx?q=&o=1&i=200&d=200
+- [ ] Burman Coffee Traders: Good quality beans
 
 https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 
 - [ ] Theta Ridge Coffee: Good beans with low prices but limited bean/farm information,Importers of Brazil Daterra
-- [ ] Burman Coffee Traders: Good quality beans
-
 - [ ] prime green coffee - https://primegreencoffee.org/shop/ have coferments
 - [ ] onyx green coffee - Onyx Box (20 or 40lbs) of Guatemala - with $10 Fedex Shipping
 - [ ] https://sleepymangocoffee.com/collections/frontpage
 - [ ] Royal Coffee Crown Jewels - selling 22 and 1lb bags of their Royal Crown Jewels. My preferred source of decaf.
 - [ ] Genuine Origin - 65lb in grain pro bags in boxes shipping included; 300 gram samples $7.50 each
-
 - [ ] Hacea Coffee Source - Excellent packaging and quality greens; great service. - https://haceacoffee.com/collections/green-coffee
 - [ ] Prime Green Coffee - High end offerings; Jim is easy to work with
 - [ ] Aida Batlle Direct
 - [ ] Primos Nicaragua
 - [ ] Cafe Juan Ana
-- [ ] Coffee Bean Corral - Best matrix for filtering choices.
 - [ ] Café Kreyol
 - [ ] Green Coffee Buying Club
 - [ ] Java Beans Plus
