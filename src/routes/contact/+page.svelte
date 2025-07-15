@@ -20,8 +20,8 @@
 				About Purveyors
 			</h1>
 			<p class="mt-4 text-lg text-text-secondary-light">
-				Learn about our mission to democratize coffee sourcing and meet the team behind the
-				platform.
+				Democratizing Coffee. Purveyors is an open source coffee platform built to democratize coffee sourcing and
+						make roast management more accessible for hobbyist & SMB roasters.
 			</p>
 		</div>
 
@@ -32,8 +32,7 @@
 				<div>
 					<h2 class="text-2xl font-bold text-text-primary-light">Get in Touch</h2>
 					<p class="mt-4 text-text-secondary-light">
-						Have questions about our coffee roasting platform? Want to learn more about our
-						features? I'd love to hear from you.
+						Have questions about our coffee roasting platform? Want a feature added? I'd love to hear from you.
 					</p>
 
 					<div class="mt-8 space-y-6">
@@ -120,10 +119,10 @@
 				<!-- Open Source Project -->
 				<div>
 					<h2 class="text-2xl font-bold text-text-primary-light">Open Source Project</h2>
-					<p class="mt-4 text-text-secondary-light">
-						Purveyors is an open source coffee platform built to democratize coffee sourcing and
-						make roasting more accessible.
-					</p>
+					<!-- <p class="mt-4 text-text-secondary-light">
+						Democratizing Coffee. Purveyors is an open source coffee platform built to democratize coffee sourcing and
+						make roast management more accessible for hobbyist & SMB roasters.
+					</p> -->
 
 					<div class="mt-8 space-y-6">
 						<!-- GitHub -->
