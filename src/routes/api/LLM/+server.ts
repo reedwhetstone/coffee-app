@@ -96,7 +96,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		});
 
 		const model = genAI.getGenerativeModel({
-			model: 'gemini-2.0-flash-exp',
+			model: 'gemini-2.5-flash',
 			generationConfig: {
 				temperature: queryType === 'analysis' ? 0.05 : 0.1, // Lower temperature for analysis
 				topP: 0.95,

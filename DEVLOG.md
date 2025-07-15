@@ -72,6 +72,7 @@
 - [ ] **Analytics** - Track all source pricing, stock, location distribution, and processing methods over time
 - [ ] **Analytics** - Create trends and analysis charting page; prioritize fun and informational roasting insights
 -
+- [ ] **Feature Ideation** - expand share function - allow roasters to send a full roast report with bean details, tasting notes, roast profile, etc.
 - [ ] **Feature Ideation** - Explore tools for Supplier & Origin Comparison
 - [ ] **Feature Ideation** - Develop Real-time Coffee Market Pricing Analysis
 - [ ] **Feature Ideation** - Implement Price Trend Monitoring for Green Coffee
@@ -105,19 +106,24 @@
 
 ## Suppliers:
 
+- [x] Bodhi Leaf: Ongoing `SHIP59` coupon code for free shipping on orders $59+
+- [x] Showroom Coffee - Solid selection of greens; sells Huky and ARC roasters.
+- [x] The Captain's Coffee
+- [x] Sweet Maria's
+- [ ] https://www.coffeebeancorral.com/categories/Green-Coffee-Beans/All-Coffees.aspx?q=&o=1&i=200&d=200
+
 https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 
 - [ ] Theta Ridge Coffee: Good beans with low prices but limited bean/farm information,Importers of Brazil Daterra
 - [ ] Burman Coffee Traders: Good quality beans
-- [x] Bodhi Leaf: Ongoing `SHIP59` coupon code for free shipping on orders $59+
+
 - [ ] prime green coffee - https://primegreencoffee.org/shop/ have coferments
 - [ ] onyx green coffee - Onyx Box (20 or 40lbs) of Guatemala - with $10 Fedex Shipping
 - [ ] https://sleepymangocoffee.com/collections/frontpage
 - [ ] Royal Coffee Crown Jewels - selling 22 and 1lb bags of their Royal Crown Jewels. My preferred source of decaf.
 - [ ] Genuine Origin - 65lb in grain pro bags in boxes shipping included; 300 gram samples $7.50 each
-- [ ] https://www.coffeebeancorral.com/categories/Green-Coffee-Beans/All-Coffees.aspx?q=&o=1&i=200&d=200
+
 - [ ] Hacea Coffee Source - Excellent packaging and quality greens; great service. - https://haceacoffee.com/collections/green-coffee
-- [x] Showroom Coffee - Solid selection of greens; sells Huky and ARC roasters.
 - [ ] Prime Green Coffee - High end offerings; Jim is easy to work with
 - [ ] Aida Batlle Direct
 - [ ] Primos Nicaragua
@@ -133,13 +139,11 @@ https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 - [ ] Roast Coffee Company
 - [ ] Blazing Bean Roasters
 - [ ] Smokin' Beans Coffee Co.
-- [x] The Captain's Coffee
 - [ ] Invalsa
 - [ ] CopanTrade
 - [ ] Rhodes Roast 5lbs bags; free shipping.
 - [ ] Yellow Rooster
 - [ ] Mill City Roasters
-- [x] Sweet Maria's
 - [ ] Roastmasters
 - [ ] Burman Coffee Traders
 - [ ] Royal New York 22lb boxes
