@@ -17,4 +17,4 @@ Allow: /contact
 Allow: /no-cookies
 
 # Sitemap location
-Sitemap: https://purveyors.io/sitemap.xml
+Sitemap: /sitemap.xml
