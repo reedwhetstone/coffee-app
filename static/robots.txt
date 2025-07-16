@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Block API routes and authentication callbacks
+Disallow: /api/
+Disallow: /auth/callback
+
+# Block private authenticated pages for crawlers
+Disallow: /beans*
+Disallow: /roast*
+Disallow: /profit*
+
+# Allow public marketing and authentication pages
+Allow: /auth
+Allow: /subscription
+Allow: /contact
+Allow: /no-cookies
+
+# Sitemap location
+Sitemap: https://purveyors.io/sitemap.xml
