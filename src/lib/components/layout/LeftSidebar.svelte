@@ -4,6 +4,7 @@
 	import { slide } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { onMount } from 'svelte';
+	import { checkRole } from '$lib/types/auth.types';
 
 	// Props for the sidebar
 	let { data, onMenuChange = () => {} } = $props<{
@@ -27,6 +28,16 @@
 
 	// Close menus when route changes, but store the current route to prevent unnecessary closing
 	let currentRoute = $state(page.url.pathname);
+
+	// Role checking logic
+	let userRole = $derived(data?.role || 'viewer');
+	let isMember = $derived(checkRole(userRole, 'member'));
+
+	// Pages where settings (filters) should be shown
+	let showSettings = $derived(() => {
+		const filterPages = ['/', '/beans', '/roast', '/profit'];
+		return filterPages.includes(currentRoute);
+	});
 
 	// Debug data object to see what's being passed to the ActionsButton
 	$effect(() => {
@@ -128,42 +139,42 @@
 	class="fixed top-0 z-50 h-full {sidebarPosition} transition-all duration-300 ease-out"
 	bind:this={sidebarButtonsContainer}
 >
-	<div class="flex h-full w-16 flex-col items-center space-y-4 bg-transparent py-4">
-		<!-- Auth Menu Button -->
-		<div class="relative">
-			<button
-				onclick={toggleAuthMenu}
-				class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
-				aria-label="Toggle authentication menu"
-			>
-				{#if data?.user}
-					<!-- User Avatar/Icon -->
-					<div
-						class="flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-text-primary-dark hover:text-background-tertiary-light"
-					>
-						{data.user.email?.[0].toUpperCase() || 'U'}
-					</div>
-				{:else}
-					<!-- Default Profile Icon -->
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-8 w-8"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-						/>
-					</svg>
-				{/if}
-			</button>
-		</div>
+	{#if data?.session?.user}
+		<div class="flex h-full w-16 flex-col items-center space-y-4 bg-transparent py-4">
+			<!-- Auth Menu Button -->
+			<div class="relative">
+				<button
+					onclick={toggleAuthMenu}
+					class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+					aria-label="Toggle authentication menu"
+				>
+					{#if data?.user}
+						<!-- User Avatar/Icon -->
+						<div
+							class="flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-text-primary-dark hover:text-background-tertiary-light"
+						>
+							{data.user.email?.[0].toUpperCase() || 'U'}
+						</div>
+					{:else}
+						<!-- Default Profile Icon -->
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-8 w-8"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+							/>
+						</svg>
+					{/if}
+				</button>
+			</div>
 
-		{#if data?.session?.user}
 			<!-- Navigation Menu -->
 			<div class="relative">
 				<button
@@ -188,55 +199,60 @@
 				</button>
 			</div>
 
-			<!-- Actions Menu -->
-			<div class="relative">
-				<button
-					onclick={toggleActionsMenu}
-					class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
-					aria-label="Toggle actions"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-8 w-8"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
+			<!-- Actions Menu - Only for member users -->
+			{#if isMember}
+				<div class="relative">
+					<button
+						onclick={toggleActionsMenu}
+						class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+						aria-label="Toggle actions"
 					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-						/>
-					</svg>
-				</button>
-			</div>
-		{/if}
-		<!-- Settings Menu -->
-		<div class="relative">
-			<button
-				onclick={toggleSettingsMenu}
-				class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
-				aria-label="Toggle filters"
-			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-8 w-8"
-					fill="none"
-					viewBox="0 0 18 18"
-					stroke="currentColor"
-					transform="translate(2, 3)"
-				>
-					<path
-						d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5zm1 .5v1.308l4.372 4.858A.5.5 0 0 1 7 8.5v5.306l2-.666V8.5a.5.5 0 0 1 .128-.334L13.5 3.308V2z"
-					/>
-				</svg>
-			</button>
-		</div>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-8 w-8"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+							/>
+						</svg>
+					</button>
+				</div>
+			{/if}
 
-		<!-- Spacer to push potential future buttons to the bottom -->
-		<div class="flex-grow"></div>
-	</div>
+			<!-- Settings Menu - Only on specific pages -->
+			{#if showSettings()}
+				<div class="relative">
+					<button
+						onclick={toggleSettingsMenu}
+						class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+						aria-label="Toggle filters"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-8 w-8"
+							fill="none"
+							viewBox="0 0 18 18"
+							stroke="currentColor"
+							transform="translate(2, 3)"
+						>
+							<path
+								d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5zm1 .5v1.308l4.372 4.858A.5.5 0 0 1 7 8.5v5.306l2-.666V8.5a.5.5 0 0 1 .128-.334L13.5 3.308V2z"
+							/>
+						</svg>
+					</button>
+				</div>
+			{/if}
+
+			<!-- Spacer to push potential future buttons to the bottom -->
+			<div class="flex-grow"></div>
+		</div>
+	{/if}
 </div>
 
 <!-- Menu panels container - positioned fixed to the left of the screen -->

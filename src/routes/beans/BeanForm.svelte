@@ -63,7 +63,7 @@
 						bean_cost: bean.bean_cost || 0.0,
 						catalog_id: bean.catalog_id || null
 					}
-			  ]
+				]
 			: [
 					{
 						// User-specific inventory fields only
@@ -73,7 +73,7 @@
 						bean_cost: 0.0,
 						catalog_id: null
 					}
-			  ]
+				]
 	);
 
 	// Initialize shared data from existing bean if editing
@@ -149,7 +149,11 @@
 		};
 		batchBeans = [...batchBeans]; // Trigger reactivity
 
-		console.log('Set catalog reference:', { catalogId: catalogBean.id, catalogBean, beanData: batchBeans[beanIndex] });
+		console.log('Set catalog reference:', {
+			catalogId: catalogBean.id,
+			catalogBean,
+			beanData: batchBeans[beanIndex]
+		});
 	}
 
 	async function handleSubmit() {
@@ -340,8 +344,6 @@
 			</div>
 		</div>
 
-		
-
 		<!-- Purchase Details -->
 		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 			<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Purchase Details</h3>
@@ -419,7 +421,9 @@
 
 			<div class="space-y-4">
 				{#each batchBeans as beanData, index}
-					<div class="relative rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+					<div
+						class="relative rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
+					>
 						<!-- Remove bean button (except for first bean) -->
 						{#if index > 0}
 							<button
@@ -435,7 +439,10 @@
 							<!-- Bean selection or manual entry -->
 							{#if isManualEntry}
 								<div class="space-y-2 sm:col-span-2">
-									<label for="manual-name-{index}" class="block text-sm font-medium text-text-primary-light">
+									<label
+										for="manual-name-{index}"
+										class="block text-sm font-medium text-text-primary-light"
+									>
 										Coffee Name
 									</label>
 									<input
@@ -449,7 +456,10 @@
 								</div>
 							{:else}
 								<div class="space-y-2 sm:col-span-2">
-									<label for="catalog-bean-{index}" class="block text-sm font-medium text-text-primary-light">
+									<label
+										for="catalog-bean-{index}"
+										class="block text-sm font-medium text-text-primary-light"
+									>
 										Select Coffee Bean
 									</label>
 									<select
@@ -468,7 +478,10 @@
 							{/if}
 
 							<div class="space-y-2">
-								<label for="purchased_qty-{index}" class="block text-sm font-medium text-text-primary-light">
+								<label
+									for="purchased_qty-{index}"
+									class="block text-sm font-medium text-text-primary-light"
+								>
 									Purchased Quantity (lbs)
 								</label>
 								<input
@@ -484,7 +497,10 @@
 							</div>
 
 							<div class="space-y-2">
-								<label for="bean_cost-{index}" class="block text-sm font-medium text-text-primary-light">
+								<label
+									for="bean_cost-{index}"
+									class="block text-sm font-medium text-text-primary-light"
+								>
 									Bean Cost ($)
 								</label>
 								<input
@@ -633,11 +649,17 @@
 			<LoadingButton
 				variant="primary"
 				loading={isSubmitting}
-				loadingText={batchBeans.length === 1 ? 'Saving Bean...' : `Saving ${batchBeans.length} Beans...`}
+				loadingText={batchBeans.length === 1
+					? 'Saving Bean...'
+					: `Saving ${batchBeans.length} Beans...`}
 				onclick={handleSubmit}
 				disabled={catalogLoading}
 			>
-				{bean ? 'Update Bean' : batchBeans.length === 1 ? 'Add Bean' : `Add ${batchBeans.length} Beans`}
+				{bean
+					? 'Update Bean'
+					: batchBeans.length === 1
+						? 'Add Bean'
+						: `Add ${batchBeans.length} Beans`}
 			</LoadingButton>
 		</div>
 	</form>

@@ -76,19 +76,22 @@
 	</header>
 
 	<main class="flex-grow overflow-y-auto p-4">
-		{#if hasRequiredRole('member')}
-			<ul class="space-y-2">
-				<li>
-					<a
-						href="/"
-						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
-						'/'
-							? ' border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
-							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
-					>
-						Catalog
-					</a>
-				</li>
+		<ul class="space-y-2">
+			<!-- Home/Catalog - Available to all logged in users -->
+			<li>
+				<a
+					href="/"
+					class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+					'/'
+						? ' border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
+						: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+				>
+					Catalog
+				</a>
+			</li>
+
+			<!-- Member-only navigation -->
+			{#if hasRequiredRole('member')}
 				<li>
 					<a
 						href="/beans"
@@ -122,8 +125,8 @@
 						Profit
 					</a>
 				</li>
-			</ul>
-		{/if}
+			{/if}
+		</ul>
 
 		<!-- Contact link for all users -->
 		<div class="mt-6 border-t border-background-tertiary-light/20 pt-4">

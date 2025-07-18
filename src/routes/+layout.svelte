@@ -213,17 +213,30 @@
 {:else}
 	<!-- Main App - Only renders after components are loaded -->
 	{#if componentsLoaded && LeftSidebar}
-		<div class="flex min-h-screen">
-			<!-- Left Sidebar Component -->
-			<LeftSidebar data={pageData || data} onMenuChange={handleMenuChange} />
+		{#if data?.session?.user}
+			<!-- Authenticated Layout with Sidebar -->
+			<div class="flex min-h-screen">
+				<!-- Left Sidebar Component -->
+				<LeftSidebar data={pageData || data} onMenuChange={handleMenuChange} />
 
-			<!-- Main Content Container -->
-			<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
-				<div class="h-full py-4 pr-4">
-					<!-- Page Content -->
-					{@render children()}
-				</div>
-			</main>
-		</div>
+				<!-- Main Content Container -->
+				<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
+					<div class="h-full py-4 pr-4">
+						<!-- Page Content -->
+						{@render children()}
+					</div>
+				</main>
+			</div>
+		{:else}
+			<!-- Non-authenticated Layout without Sidebar -->
+			<div class="min-h-screen">
+				<main class="flex-1">
+					<div class="h-full px-4 py-4">
+						<!-- Page Content -->
+						{@render children()}
+					</div>
+				</main>
+			</div>
+		{/if}
 	{/if}
 {/if}

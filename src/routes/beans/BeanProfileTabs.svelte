@@ -103,7 +103,7 @@
 	let processingUpdate = $state(false);
 	let lastSelectedBeanId = $state<number | null>(null);
 	let showCuppingForm = $state(false);
-	
+
 	// State for roast profile calculations
 	let roastProfileCalculations = $state<Record<number, MilestoneCalculations>>({});
 
@@ -332,17 +332,17 @@
 				console.warn(`Failed to load profile logs for roast ${roastId}:`, response.statusText);
 				return null;
 			}
-			
+
 			const result = await response.json();
 			const logs = result.data || [];
-			
+
 			if (logs.length === 0) {
 				return null;
 			}
 
 			const milestones = extractMilestones(logs);
 			const calculations = calculateMilestones(milestones);
-			
+
 			return calculations;
 		} catch (error) {
 			console.error(`Error calculating metrics for roast ${roastId}:`, error);
@@ -357,7 +357,7 @@
 		}
 
 		const calculations: Record<number, MilestoneCalculations> = {};
-		
+
 		// Process each roast profile
 		for (const profile of selectedBean.roast_profiles) {
 			if (profile.roast_id) {
@@ -367,7 +367,7 @@
 				}
 			}
 		}
-		
+
 		roastProfileCalculations = calculations;
 	}
 </script>
@@ -800,7 +800,9 @@
 				{#if selectedBean.roast_profiles && selectedBean.roast_profiles.length > 0}
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 						{#each selectedBean.roast_profiles as profile, index}
-							{@const calculations = profile.roast_id ? roastProfileCalculations[profile.roast_id] : null}
+							{@const calculations = profile.roast_id
+								? roastProfileCalculations[profile.roast_id]
+								: null}
 							<button
 								class="w-full cursor-pointer rounded-lg bg-background-primary-light p-4 text-left ring-1 ring-border-light transition-all duration-200 hover:bg-background-secondary-light hover:ring-2 hover:ring-background-tertiary-light"
 								onclick={() => {

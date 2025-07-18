@@ -3,10 +3,10 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ url }) => {
 	// Use the request URL to determine the correct domain
 	const baseUrl = `${url.protocol}//${url.host}`;
-	
+
 	// Get current date in ISO format for lastmod
 	const currentDate = new Date().toISOString().split('T')[0];
-	
+
 	const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 	<!-- Homepage - Highest priority -->
