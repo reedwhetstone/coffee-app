@@ -4,6 +4,16 @@ import { AI_API_KEY, OPENAI_API_KEY } from '$env/static/private';
 import { RAGService } from '$lib/services/ragService';
 import type { RequestHandler } from './$types';
 
+// Timeout helper function
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {
+	return Promise.race([
+		promise,
+		new Promise<T>((_, reject) =>
+			setTimeout(() => reject(new Error(`${operation} timed out after ${timeoutMs}ms`)), timeoutMs)
+		)
+	]);
+}
+
 const genAI = new GoogleGenerativeAI(AI_API_KEY);
 
 // Helper function to detect query type
@@ -73,17 +83,25 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		let retrievalResult;
 
 		if (queryType === 'analysis') {
-			// For analysis queries, get more current inventory data
-			retrievalResult = await ragService.retrieveRelevantCoffees(prompt, {
-				maxCurrentInventory: 50, // More current data for analysis
-				similarityThreshold: 0.06 // Lower threshold to be more inclusive
-			});
+			// For analysis queries, get more current inventory data with timeout
+			retrievalResult = await withTimeout(
+				ragService.retrieveRelevantCoffees(prompt, {
+					maxCurrentInventory: 50, // More current data for analysis
+					similarityThreshold: 0.06 // Lower threshold to be more inclusive
+				}),
+				15000, // 15 second timeout for RAG service
+				'RAG analysis retrieval'
+			);
 		} else {
-			// For recommendations, use the existing focused approach
-			retrievalResult = await ragService.retrieveRelevantCoffees(prompt, {
-				maxCurrentInventory: 50,
-				similarityThreshold: 0.06
-			});
+			// For recommendations, use the existing focused approach with timeout
+			retrievalResult = await withTimeout(
+				ragService.retrieveRelevantCoffees(prompt, {
+					maxCurrentInventory: 50,
+					similarityThreshold: 0.06
+				}),
+				15000, // 15 second timeout for RAG service
+				'RAG recommendation retrieval'
+			);
 		}
 
 		console.log('RAG Service Results:', {
@@ -148,7 +166,11 @@ USER QUERY: ${prompt}
 Please provide recommendations based on the current inventory.
 `;
 
-		const result = await chatSession.sendMessage(contextualPrompt);
+		const result = await withTimeout(
+			chatSession.sendMessage(contextualPrompt),
+			30000, // 30 second timeout for AI generation
+			'Google AI chat completion'
+		);
 		const response = await result.response;
 
 		return json({
