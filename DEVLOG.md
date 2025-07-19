@@ -41,10 +41,11 @@
 - [ ] **Navigation** - simplify main page? Really long scrolling
 -
 - [ ] **Roast Insights** - make the roast comparison on bean profile show the actual roast names and allow you to navigate directly to those roast profiles
-
+- [ ] **Roast Insights** - improve filters - the name should be a search, not a drop down.
 - [ ] **Roast Insights** - Add % weight loss display per roast
 - [ ] **Roast Insights** - Add remaining purchased quantity data to bean inventory
 -
+- [ ] **Roast Chart** - add save response to when you click cool end so people know the software is doing something.
 - [ ] **Roast Chart** - Remove y-axis lines
 - [ ] **Roast Chart** - Add average curve for heat and fan settings
 - [ ] **Roast Chart** - Add color shading for roast phases
@@ -53,6 +54,7 @@
 - [ ] **Roast Chart** - Smooth out temp curve for cleaner display
 - [ ] **Roast Chart** - Remove fan and heat Y-axis labels; keep only external temp labels
 -
+- [ ] **Roast Data** - really improve UI - demystify the roasting process for people. "Maillard" & "FC Start" is super complicated! Make it easy to understand and give people funnels to further learning opportunities!
 - [ ] **Roast Data** - Add ambient temperature setting
 - [ ] **Roast Data** - Add charge setting (machine hot or not)
 - [ ] **Roast Data** - Add TP, FC, DROP times in roast profile
@@ -61,6 +63,10 @@
 - [ ] **Roast Data Import** - Parse fan and heat settings from Artisan import file
 -
 - [ ] **Text Handling** - Fix DB structure or front-end interpretation to preserve paragraph formatting in text fields
+-
+- [ ] **PROFIT PAGE** - page doesn't auto retrigger on submission of new sale form.
+- [ ] **PROFIT PAGE** - chart looks like shit, maybe add some dashboard dials
+- [ ] **PROFIT PAGE** - add a conditional to the new sale form so that they just select the bean and then they select from a list of roasts based on the actual roasts that have that bean.
 -
 - [ ] **Database** - Add `stocked` column to `green_coffee_inv` and manage it through profiles
 - [ ] **Database** - Need a purchased qty remaining data set in beans category to add to the stocked functionality
