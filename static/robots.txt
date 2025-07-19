@@ -1,8 +1,9 @@
 User-agent: *
 Allow: /
 
-# Block API routes and authentication callbacks
-Disallow: /api/
+# Block API routes and authentication callbacks (but allow /api page)
+Disallow: /api/*
+Allow: /api$
 Disallow: /auth/callback
 
 # Block private authenticated pages for crawlers
@@ -15,6 +16,7 @@ Allow: /auth
 Allow: /subscription
 Allow: /contact
 Allow: /no-cookies
+Allow: /api
 
 # Sitemap location
 Sitemap: /sitemap.xml

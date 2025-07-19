@@ -17,6 +17,14 @@ export const GET: RequestHandler = async ({ url }) => {
 		<priority>1.0</priority>
 	</url>
 	
+	<!-- API page - High priority marketing page -->
+	<url>
+		<loc>${baseUrl}/api</loc>
+		<lastmod>${currentDate}</lastmod>
+		<changefreq>weekly</changefreq>
+		<priority>0.9</priority>
+	</url>
+	
 	<!-- Contact page - High priority marketing page -->
 	<url>
 		<loc>${baseUrl}/contact</loc>
