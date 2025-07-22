@@ -261,6 +261,24 @@ function createFilterStore() {
 					).sort((a, b) => a.localeCompare(b));
 				}
 
+				// Get unique continents
+				if (state.originalData.some((item) => getFieldValue(item, 'continent'))) {
+					uniqueValues.continents = Array.from(
+						new Set(
+							state.originalData.map((item) => getFieldValue(item, 'continent')).filter(Boolean)
+						)
+					).sort((a, b) => a.localeCompare(b));
+				}
+
+				// Get unique countries
+				if (state.originalData.some((item) => getFieldValue(item, 'country'))) {
+					uniqueValues.countries = Array.from(
+						new Set(
+							state.originalData.map((item) => getFieldValue(item, 'country')).filter(Boolean)
+						)
+					).sort((a, b) => a.localeCompare(b));
+				}
+
 				// Get unique roast dates
 				if (state.originalData.some((item) => item.roast_date)) {
 					uniqueValues.roastDates = Array.from(
@@ -305,12 +323,16 @@ function createFilterStore() {
 			'source',
 			'score_value',
 			'region',
+			'country',
+			'continent',
 			'processing',
 			'cultivar_detail',
 			'arrival_date',
 			'cost_lb',
 			'stocked_date',
-			'type'
+			'type',
+			'grade',
+			'appearance'
 		];
 
 		// For beans page joined data, check coffee_catalog first for these fields
@@ -431,9 +453,15 @@ function createFilterStore() {
 				sortField === 'roast_date' ||
 				sortField === 'stocked_date'
 			) {
-				// Custom date parsing function for handling YYYY-MM format
+				// Custom date parsing function for handling various date formats
 				const parseMonthYear = (dateStr: string): Date => {
 					if (!dateStr) return new Date(0);
+
+					// Check if it's in the DD-MM-YYYY format
+					if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+						const [day, month, year] = dateStr.split('-').map(Number);
+						return new Date(year, month - 1, day);
+					}
 
 					// Check if it's in the YYYY-MM format
 					if (/^\d{4}-\d{2}$/.test(dateStr)) {
@@ -585,6 +613,10 @@ function createFilterStore() {
 				'purchase_date',
 				'arrival_date',
 				'type',
+				'grade',
+				'appearance',
+				'continent',
+				'country',
 				'region',
 				'processing',
 				'cultivar_detail',
@@ -604,9 +636,14 @@ function createFilterStore() {
 			return [
 				'name',
 				'source',
+				'continent',
+				'country',
 				'region',
 				'processing',
 				'cultivar_detail',
+				'type',
+				'grade',
+				'appearance',
 				'score_value',
 				'cost_lb',
 				'stocked_date'

@@ -610,9 +610,12 @@
 					{@const displayName = catalogData?.name || bean.name}
 					{@const displaySource = catalogData?.source || 'Unknown Source'}
 					{@const displayAiDescription = catalogData?.ai_description}
-					{@const displayRegion = catalogData?.region}
+					{@const displayLocation = [catalogData?.continent, catalogData?.country, catalogData?.region].filter(Boolean).join(' > ') || '-'}
 					{@const displayProcessing = catalogData?.processing}
 					{@const displayCultivar = catalogData?.cultivar_detail}
+					{@const displayGrade = catalogData?.grade}
+					{@const displayAppearance = catalogData?.appearance}
+					{@const displayType = catalogData?.type}
 					{@const displayArrival = catalogData?.arrival_date}
 					{@const displayRating = bean.rank}
 					{@const tastingNotes = parseTastingNotes(catalogData?.ai_tasting_notes)}
@@ -690,7 +693,7 @@
 								{/if}
 
 								<div class="mt-3 flex-col gap-2 text-xs text-text-secondary-light sm:grid-cols-2">
-									<div><span class="font-medium">Region:</span> {displayRegion || '-'}</div>
+									<div><span class="font-medium">Location:</span> {displayLocation}</div>
 									<div>
 										{#if displayProcessing}
 											<span>Processing: {displayProcessing}</span>
@@ -699,6 +702,21 @@
 									<div>
 										{#if displayCultivar}
 											<span>Cultivar: {displayCultivar}</span>
+										{/if}
+									</div>
+									<div>
+										{#if displayGrade}
+											<span>Elevation: {displayGrade}</span>
+										{/if}
+									</div>
+									<div>
+										{#if displayAppearance}
+											<span>Appearance: {displayAppearance}</span>
+										{/if}
+									</div>
+									<div>
+										{#if displayType}
+											<span>Importer: {displayType}</span>
 										{/if}
 									</div>
 									<div>

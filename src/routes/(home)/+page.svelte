@@ -379,7 +379,7 @@
 								<div
 									class="mt-3 flex items-center justify-between text-xs text-text-secondary-light"
 								>
-									<span>{coffee.region || '-'}</span>
+									<span>{[coffee.continent, coffee.country, coffee.region].filter(Boolean).join(' > ') || '-'}</span>
 									<span>{coffee.processing || '-'}</span>
 								</div>
 							</div>
@@ -653,7 +653,7 @@
 										<div
 											class="mt-3 flex-col gap-2 text-xs text-text-secondary-light sm:grid-cols-2"
 										>
-											<div><span class="font-medium">Region:</span> {coffee.region || '-'}</div>
+											<div><span class="font-medium">Location:</span> {[coffee.continent, coffee.country, coffee.region].filter(Boolean).join(' > ') || '-'}</div>
 											<div>
 												{#if coffee.processing}
 													<span>Processing: {coffee.processing}</span>
@@ -664,7 +664,21 @@
 													<span>Cultivar: {coffee.cultivar_detail}</span>
 												{/if}
 											</div>
-
+											<div>
+												{#if coffee.grade}
+													<span>Elevation: {coffee.grade}</span>
+												{/if}
+											</div>
+											<div>
+												{#if coffee.appearance}
+													<span>Appearance: {coffee.appearance}</span>
+												{/if}
+											</div>
+											<div>
+												{#if coffee.type}
+													<span>Importer: {coffee.type}</span>
+												{/if}
+											</div>
 											<div>
 												{#if coffee.arrival_date}
 													<span>Arrival: {coffee.arrival_date}</span>

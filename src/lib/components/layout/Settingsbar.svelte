@@ -27,11 +27,23 @@
 
 	/**
 	 * Formats database column names for display in the UI
-	 * Converts snake_case to Title Case
+	 * Converts snake_case to Title Case with custom labels
 	 * @param column - The column name to format
 	 * @returns Formatted column name
 	 */
 	function formatColumnName(column: string): string {
+		// Custom field labels
+		const customLabels: Record<string, string> = {
+			grade: 'Elevation (MASL)',
+			appearance: 'Appearance',
+			type: 'Importer'
+		};
+
+		// Return custom label if available, otherwise format normally
+		if (customLabels[column]) {
+			return customLabels[column];
+		}
+
 		return column.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 	}
 </script>
@@ -40,7 +52,7 @@
 <div class="flex h-full flex-col">
 	<!-- Header with close button that handles keyboard events -->
 	<header
-		class="flex items-center justify-between border-b border-text-primary-dark border-opacity-20 p-4"
+		class="border-text-primary-dark flex items-center justify-between border-b border-opacity-20 p-4"
 	>
 		<h3 class="text-xl font-semibold" id="filters-dialog-title">Filters</h3>
 		<button
@@ -71,13 +83,13 @@
 	<main class="flex-1 overflow-y-auto p-4">
 		<div class="space-y-4">
 			<!-- Sort Controls -->
-			<section class="space-y-2 border-b border-text-primary-dark border-opacity-10 pb-4">
+			<section class="border-text-primary-dark space-y-2 border-b border-opacity-10 pb-4">
 				<label for="sort-field" class="block text-sm font-medium">Sort by</label>
 				<select
 					id="sort-field"
 					value={$filterStore.sortField || ''}
 					onchange={(e) => filterStore.setSortField(e.currentTarget.value)}
-					class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+					class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 				>
 					<option value="">None</option>
 					{#each filterStore.getFilterableColumns(routeId) as column}
@@ -92,7 +104,7 @@
 						id="sort-direction"
 						value={$filterStore.sortDirection || ''}
 						onchange={(e) => filterStore.setSortDirection(e.currentTarget.value as 'asc' | 'desc')}
-						class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+						class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 					>
 						<option value="asc">Ascending</option>
 						<option value="desc">Descending</option>
@@ -129,7 +141,7 @@
 									</button>
 								</div>
 								<div
-									class="max-h-40 overflow-y-auto rounded border border-text-primary-dark border-opacity-20 p-2"
+									class="border-text-primary-dark max-h-40 overflow-y-auto rounded border border-opacity-20 p-2"
 								>
 									{#each $filterStore.uniqueValues.sources as source}
 										<label class="flex items-center gap-2 py-1">
@@ -147,9 +159,66 @@
 														);
 													}
 												}}
-												class="border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 text-blue-400 focus:ring-blue-400"
+												class="border-text-primary-dark bg-background-primary-dark/50 border-opacity-20 text-blue-400 focus:ring-blue-400"
 											/>
 											<span class="text-sm">{source}</span>
+										</label>
+									{/each}
+								</div>
+							</div>
+						{:else if column === 'continent' && $filterStore.uniqueValues?.continents?.length}
+							<select
+								value={$filterStore.filters.continent || ''}
+								onchange={(e) => filterStore.setFilter('continent', e.currentTarget.value)}
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
+							>
+								<option value="">All Continents</option>
+								{#each $filterStore.uniqueValues.continents as continent}
+									<option value={continent}>{continent}</option>
+								{/each}
+							</select>
+						{:else if column === 'country' && $filterStore.uniqueValues?.countries?.length}
+							<div class="space-y-2">
+								<div class="mb-1 flex justify-between">
+									<button
+										class="text-xs text-blue-400 hover:text-blue-300"
+										onclick={() => {
+											filterStore.setFilter('country', [...$filterStore.uniqueValues.countries]);
+										}}
+									>
+										Select All
+									</button>
+									<button
+										class="text-xs text-blue-400 hover:text-blue-300"
+										onclick={() => {
+											filterStore.setFilter('country', []);
+										}}
+									>
+										Clear All
+									</button>
+								</div>
+								<div
+									class="border-text-primary-dark max-h-40 overflow-y-auto rounded border border-opacity-20 p-2"
+								>
+									{#each $filterStore.uniqueValues.countries as country}
+										<label class="flex items-center gap-2 py-1">
+											<input
+												type="checkbox"
+												checked={$filterStore.filters.country?.includes(country)}
+												onchange={(e) => {
+													const currentCountries = $filterStore.filters.country || [];
+													if (e.currentTarget.checked) {
+														filterStore.setFilter('country', [...currentCountries, country]);
+													} else {
+														filterStore.setFilter(
+															'country',
+															currentCountries.filter((c: string) => c !== country)
+														);
+													}
+												}}
+												class="border-text-primary-dark bg-background-primary-dark/50 border-opacity-20 text-blue-400 focus:ring-blue-400"
+											/>
+											<span class="text-sm">{country}</span>
 										</label>
 									{/each}
 								</div>
@@ -164,7 +233,7 @@
 										const max = $filterStore.filters.score_value?.max || '';
 										filterStore.setFilter('score_value', { min, max });
 									}}
-									class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+									class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 									placeholder="Min"
 									min="0"
 									max="100"
@@ -178,7 +247,7 @@
 										const min = $filterStore.filters.score_value?.min || '';
 										filterStore.setFilter('score_value', { min, max });
 									}}
-									class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+									class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 									placeholder="Max"
 									min="0"
 									max="100"
@@ -195,7 +264,7 @@
 										const max = $filterStore.filters.cost_lb?.max || '';
 										filterStore.setFilter('cost_lb', { min, max });
 									}}
-									class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+									class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 									placeholder="Min $"
 									min="0"
 									step="0.01"
@@ -208,7 +277,7 @@
 										const min = $filterStore.filters.cost_lb?.min || '';
 										filterStore.setFilter('cost_lb', { min, max });
 									}}
-									class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+									class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 									placeholder="Max $"
 									min="0"
 									step="0.01"
@@ -218,7 +287,7 @@
 							<select
 								value={$filterStore.filters.arrival_date || ''}
 								onchange={(e) => filterStore.setFilter('arrival_date', e.currentTarget.value)}
-								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 							>
 								<option value="">All Dates</option>
 								{#each $filterStore.uniqueValues.arrivalDates as date}
@@ -229,7 +298,7 @@
 							<select
 								value={$filterStore.filters.purchase_date || ''}
 								onchange={(e) => filterStore.setFilter('purchase_date', e.currentTarget.value)}
-								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 							>
 								<option value="">All Dates</option>
 								{#each $filterStore.uniqueValues.purchaseDates as date}
@@ -240,7 +309,7 @@
 							<select
 								value={$filterStore.filters.roast_date || ''}
 								onchange={(e) => filterStore.setFilter('roast_date', e.currentTarget.value)}
-								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 							>
 								<option value="">All Dates</option>
 								{#each $filterStore.uniqueValues.roastDates as date}
@@ -251,7 +320,7 @@
 							<select
 								value={$filterStore.filters.stocked_date || ''}
 								onchange={(e) => filterStore.setFilter('stocked_date', e.currentTarget.value)}
-								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 							>
 								<option value="">All Dates</option>
 								<option value="7">Last 7 days</option>
@@ -264,7 +333,7 @@
 							<select
 								value={$filterStore.filters.batch_name || ''}
 								onchange={(e) => filterStore.setFilter('batch_name', e.currentTarget.value)}
-								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 							>
 								<option value="">All Batches</option>
 								{#each $filterStore.uniqueValues.batchNames as batchName}
@@ -275,7 +344,7 @@
 							<select
 								value={$filterStore.filters.stocked || ''}
 								onchange={(e) => filterStore.setFilter('stocked', e.currentTarget.value)}
-								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 							>
 								<option value="">All</option>
 								<option value="TRUE">Stocked</option>
@@ -286,7 +355,7 @@
 								type="text"
 								value={$filterStore.filters[column] || ''}
 								oninput={(e) => filterStore.setFilter(column, e.currentTarget.value)}
-								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+								class="border-text-primary-dark bg-background-primary-dark/50 w-full rounded border border-opacity-20 p-2 text-sm shadow-md"
 								placeholder={`Filter by ${column.replace(/_/g, ' ')}`}
 							/>
 						{/if}
@@ -295,7 +364,7 @@
 
 				<!-- Clear filters button -->
 				<button
-					class="mt-4 w-full rounded border border-background-tertiary-light px-3 py-2 text-sm text-blue-400 hover:bg-background-tertiary-light/10"
+					class="border-background-tertiary-light hover:bg-background-tertiary-light/10 mt-4 w-full rounded border px-3 py-2 text-sm text-blue-400"
 					onclick={filterStore.clearFilters}
 				>
 					Clear All Filters
