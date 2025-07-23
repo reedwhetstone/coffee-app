@@ -4,6 +4,39 @@ import Stripe from 'stripe';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { getStripe } from './stripe';
 
+interface RoleAuditLog {
+	user_id: string;
+	old_role: string | null;
+	new_role: string;
+	trigger_type: 'checkout_success' | 'webhook_processing' | 'manual_verification' | 'admin_change';
+	stripe_customer_id?: string;
+	stripe_subscription_id?: string;
+	session_id?: string;
+	metadata?: Record<string, any>;
+}
+
+/**
+ * Log role changes for audit trail
+ */
+async function logRoleChange(supabase: any, auditData: RoleAuditLog) {
+	try {
+		const { error } = await supabase
+			.from('role_audit_logs')
+			.insert({
+				...auditData,
+				created_at: new Date().toISOString()
+			});
+		
+		if (error) {
+			console.error('❌ Failed to log role change:', error);
+		} else {
+			console.log('📝 Role change logged:', auditData.user_id, auditData.old_role, '→', auditData.new_role);
+		}
+	} catch (err) {
+		console.error('❌ Error logging role change:', err);
+	}
+}
+
 /**
  * Create Supabase admin client that bypasses RLS for webhook operations
  */
@@ -79,15 +112,49 @@ export async function handleSubscriptionActive(subscription: Stripe.Subscription
 		return;
 	}
 
-	// Update user role to 'member'
-	const { error } = await supabase
+	// Get current role for audit logging
+	const { data: currentRoleData } = await supabase
 		.from('user_roles')
-		.upsert({ id: userId, role: 'member' }, { onConflict: 'id' });
+		.select('role')
+		.eq('id', userId)
+		.maybeSingle();
 
-	if (error) {
-		console.error('❌ Error updating user role:', error);
+	const currentRole = currentRoleData?.role || null;
+
+	// Only update if role is different to avoid unnecessary operations
+	if (currentRole !== 'member') {
+		// Update user role to 'member'
+		const { error } = await supabase
+			.from('user_roles')
+			.upsert({ 
+				id: userId, 
+				role: 'member',
+				updated_at: new Date().toISOString()
+			}, { onConflict: 'id' });
+
+		if (error) {
+			console.error('❌ Error updating user role:', error);
+		} else {
+			console.log(`✅ Updated user ${userId} to member role`);
+			
+			// Log the role change
+			await logRoleChange(supabase, {
+				user_id: userId,
+				old_role: currentRole,
+				new_role: 'member',
+				trigger_type: 'webhook_processing',
+				stripe_customer_id: customerId,
+				stripe_subscription_id: subscription.id,
+				metadata: {
+					subscription_status: subscription.status,
+					webhook_event: 'subscription_active',
+					subscription_created: subscription.created,
+					subscription_current_period_end: subscription.current_period_end
+				}
+			});
+		}
 	} else {
-		console.log(`✅ Updated user ${userId} to member role`);
+		console.log(`ℹ️ User ${userId} already has member role, no update needed`);
 	}
 }
 
@@ -137,14 +204,49 @@ export async function handleSubscriptionInactive(subscription: Stripe.Subscripti
 		return;
 	}
 
-	// Update user role to 'viewer'
-	const { error } = await supabase
+	// Get current role for audit logging
+	const { data: currentRoleData } = await supabase
 		.from('user_roles')
-		.upsert({ id: userId, role: 'viewer' }, { onConflict: 'id' });
+		.select('role')
+		.eq('id', userId)
+		.maybeSingle();
 
-	if (error) {
-		console.error('❌ Error updating user role:', error);
+	const currentRole = currentRoleData?.role || null;
+
+	// Only update if role is different to avoid unnecessary operations
+	if (currentRole !== 'viewer') {
+		// Update user role to 'viewer'
+		const { error } = await supabase
+			.from('user_roles')
+			.upsert({ 
+				id: userId, 
+				role: 'viewer',
+				updated_at: new Date().toISOString()
+			}, { onConflict: 'id' });
+
+		if (error) {
+			console.error('❌ Error updating user role:', error);
+		} else {
+			console.log(`✅ Updated user ${userId} to viewer role`);
+			
+			// Log the role change
+			await logRoleChange(supabase, {
+				user_id: userId,
+				old_role: currentRole,
+				new_role: 'viewer',
+				trigger_type: 'webhook_processing',
+				stripe_customer_id: customerId,
+				stripe_subscription_id: subscription.id,
+				metadata: {
+					subscription_status: subscription.status,
+					webhook_event: 'subscription_inactive',
+					subscription_created: subscription.created,
+					subscription_ended_at: subscription.ended_at || subscription.canceled_at,
+					cancel_reason: subscription.cancellation_details?.reason
+				}
+			});
+		}
 	} else {
-		console.log(`✅ Updated user ${userId} to viewer role`);
+		console.log(`ℹ️ User ${userId} already has viewer role, no update needed`);
 	}
 }

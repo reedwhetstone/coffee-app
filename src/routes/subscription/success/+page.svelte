@@ -8,6 +8,8 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let sessionStatus = $state<'complete' | 'open' | 'expired' | null>(null);
+	let roleVerificationComplete = $state(false);
+	let roleVerificationMessage = $state<string>('');
 
 	onMount(async () => {
 		try {
@@ -42,8 +44,42 @@
 			const { status } = await response.json();
 			sessionStatus = status;
 
-			// If payment is successful, invalidate all data to refresh auth state
+			// If payment is successful, verify and update role as backup to webhooks
 			if (status === 'complete') {
+				try {
+					// Call backup role verification API
+					const roleResponse = await fetch('/api/stripe/verify-and-update-role', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify({ sessionId })
+					});
+
+					if (roleResponse.ok) {
+						const roleResult = await roleResponse.json();
+						roleVerificationComplete = true;
+						
+						if (roleResult.roleUpdated) {
+							roleVerificationMessage = 'Your account has been upgraded to premium!';
+						} else if (roleResult.alreadyProcessed) {
+							roleVerificationMessage = 'Your account is already up to date.';
+						} else {
+							roleVerificationMessage = roleResult.message || 'Payment verified successfully.';
+						}
+						
+						console.log('✅ Role verification completed:', roleResult);
+					} else {
+						// Role verification failed, but don't block the user - webhooks may still work
+						console.warn('⚠️ Role verification failed, relying on webhooks:', await roleResponse.text());
+						roleVerificationMessage = 'Payment confirmed. Your account upgrade is being processed.';
+					}
+				} catch (roleError) {
+					console.warn('⚠️ Role verification error, relying on webhooks:', roleError);
+					roleVerificationMessage = 'Payment confirmed. Your account upgrade is being processed.';
+				}
+
+				// Invalidate all data to refresh auth state regardless of role verification outcome
 				await invalidateAll();
 			}
 		} catch (err: any) {
@@ -116,8 +152,17 @@
 				</svg>
 				<h2 class="text-primary-light mt-4 text-xl font-bold">Payment Successful!</h2>
 				<p class="text-primary-light mt-2">
-					Thank you for your subscription. Your account has been upgraded to premium.
+					Thank you for your subscription! {roleVerificationMessage || 'Your account upgrade is being processed.'}
 				</p>
+				{#if roleVerificationComplete}
+					<p class="text-green-600 mt-1 text-sm">
+						✅ Account verification completed
+					</p>
+				{:else}
+					<p class="text-blue-600 mt-1 text-sm">
+						⏳ Account upgrade in progress...
+					</p>
+				{/if}
 				<button
 					onclick={returnToHomepage}
 					class="mt-6 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
