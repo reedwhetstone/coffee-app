@@ -88,7 +88,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
-	const protectedRoutes = ['/roast', '/profit'];
+	const protectedRoutes = ['/roast', '/profit', '/beans'];
 	const currentPath = event.url.pathname;
 	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
 

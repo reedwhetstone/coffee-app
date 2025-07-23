@@ -224,9 +224,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				old_role: currentRole,
 				new_role: 'member',
 				trigger_type: 'checkout_success',
-				stripe_customer_id: customerId,
-				stripe_subscription_id: subscriptionId,
-				session_id: sessionId,
+				stripe_customer_id: customerId || undefined,
+				stripe_subscription_id: subscriptionId || undefined,
+				session_id: sessionId || undefined,
 				metadata: {
 					subscription_status: subscriptionStatus,
 					payment_amount: checkoutSession.amount_total,

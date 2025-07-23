@@ -64,10 +64,18 @@ CREATE POLICY "Users can view own audit logs" ON public.role_audit_logs
 CREATE POLICY "Service role can manage all audit logs" ON public.role_audit_logs
     FOR ALL USING (auth.role() = 'service_role');
 
--- Admin users can view all audit logs (add this policy if you have admin role)
--- CREATE POLICY "Admins can view all audit logs" ON public.role_audit_logs
---     FOR SELECT USING (
---         auth.uid() IN (
---             SELECT id FROM public.user_roles WHERE role = 'admin'
---         )
---     );
+-- Admin users can view all audit logs
+CREATE POLICY "Admins can view all audit logs" ON public.role_audit_logs
+    FOR SELECT USING (
+        auth.uid() IN (
+            SELECT id FROM public.user_roles WHERE role = 'admin'
+        )
+    );
+    
+-- Admin users can manage all audit logs for administrative purposes
+CREATE POLICY "Admins can manage all audit logs" ON public.role_audit_logs
+    FOR ALL USING (
+        auth.uid() IN (
+            SELECT id FROM public.user_roles WHERE role = 'admin'
+        )
+    );

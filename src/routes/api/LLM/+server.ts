@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { AI_API_KEY, OPENAI_API_KEY } from '$env/static/private';
 import { RAGService } from '$lib/services/ragService';
+import { requireMemberRole } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
 // Timeout helper function
@@ -69,9 +70,13 @@ function detectQueryType(prompt: string): 'analysis' | 'recommendation' {
 	return analysisScore > recommendationScore ? 'analysis' : 'recommendation';
 }
 
-export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
+export const POST: RequestHandler = async (event) => {
 	try {
-		const { prompt, coffeeData } = await request.json();
+		// Require member role for AI features
+		const { user } = await requireMemberRole(event);
+		const { supabase } = event.locals;
+		
+		const { prompt, coffeeData } = await event.request.json();
 
 		// Detect query type
 		const queryType = detectQueryType(prompt);

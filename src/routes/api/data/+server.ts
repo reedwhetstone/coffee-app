@@ -1,5 +1,6 @@
 // src/routes/api/data/+server.ts
 import { json } from '@sveltejs/kit';
+import { requireUserAuth, validateAdminAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
 interface GreenCoffeeRow {
@@ -11,12 +12,12 @@ interface RoastProfile {
 	roast_id: string;
 }
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
 		const id = url.searchParams.get('id');
 		const shareToken = url.searchParams.get('share');
 
-		let query = supabase.from('green_coffee_inv').select(`
+		let query = locals.supabase.from('green_coffee_inv').select(`
 			*,
 			coffee_catalog!catalog_id (
 				name,
@@ -58,7 +59,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		// If share token is provided, verify it and show shared data
 		if (shareToken) {
-			const { data: shareData } = await supabase
+			const { data: shareData } = await locals.supabase
 				.from('shared_links')
 				.select('user_id, resource_id')
 				.eq('share_token', shareToken)
@@ -77,16 +78,23 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				return json({ data: [] });
 			}
 		} else {
-			// Regular authorization logic
-			const sessionData = await safeGetSession();
-			const { session, user, role } = sessionData as { session: any; user: any; role: string };
-			if (role !== 'admin') {
-				if (session && user) {
-					query = query.eq('user', user.id);
-				} else {
+			// Regular authorization logic with improved admin check
+			try {
+				// Try admin access first
+				await validateAdminAccess(locals);
+				// Admin users can see all data - no filtering needed
+			} catch (adminError) {
+				// Not admin, require regular user auth
+				const sessionData = await locals.safeGetSession();
+				const { session, user } = sessionData as { session: any; user: any };
+				
+				if (!session || !user) {
 					return json({ data: [] });
 				}
+				
+				query = query.eq('user', user.id);
 			}
+			
 			if (id) {
 				query = query.eq('id', id);
 			}
@@ -108,14 +116,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 };
 
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async (event) => {
 	try {
-		const { session, user } = await safeGetSession();
-		if (!session || !user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
+		const { user } = await requireUserAuth(event);
+		const { supabase } = event.locals;
 
-		const bean = await request.json();
+		const bean = await event.request.json();
 		let catalogId = bean.catalog_id;
 
 		// If this is a manual entry (no catalog_id but has manual_name), create catalog entry first
@@ -261,12 +267,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 };
 
-export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const DELETE: RequestHandler = async (event) => {
 	try {
-		const { session, user } = await safeGetSession();
-		if (!session || !user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
+		const { user } = await requireUserAuth(event);
+		const { supabase } = event.locals;
+		const { url } = event;
 
 		const id = url.searchParams.get('id');
 		if (!id) {
@@ -350,16 +355,11 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 	}
 };
 
-export const PUT: RequestHandler = async ({
-	url,
-	request,
-	locals: { supabase, safeGetSession }
-}) => {
+export const PUT: RequestHandler = async (event) => {
 	try {
-		const { session, user } = await safeGetSession();
-		if (!session || !user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
+		const { user } = await requireUserAuth(event);
+		const { supabase } = event.locals;
+		const { url, request } = event;
 
 		const id = url.searchParams.get('id');
 		if (!id) {

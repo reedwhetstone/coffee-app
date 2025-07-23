@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getStripe } from '$lib/services/stripe';
 import { createAdminClient } from '$lib/supabase-admin';
+import { validateAdminAccess } from '$lib/server/auth';
 
 interface DiscrepancyReport {
 	shouldBeMemberButArent: UserDiscrepancy[];
@@ -37,27 +38,12 @@ interface AuditLogSummary {
 	stripeCustomerId?: string;
 }
 
-// Check if user is admin (you may need to adjust this based on your admin role setup)
-async function isUserAdmin(locals: any): Promise<boolean> {
-	try {
-		const { user } = await locals.safeGetSession();
-		if (!user) return false;
-
-		// Check if user has admin role - adjust this logic based on your admin setup
-		const role = locals.role;
-		return role === 'admin'; // Or however you define admin access
-	} catch {
-		return false;
-	}
-}
+// Remove old admin check function - using centralized validation now
 
 export const GET: RequestHandler = async ({ locals }) => {
 	try {
-		// Verify admin access
-		const isAdmin = await isUserAdmin(locals);
-		if (!isAdmin) {
-			return json({ error: 'Admin access required' }, { status: 403 });
-		}
+		// Verify admin access using centralized validation
+		await validateAdminAccess(locals);
 
 		console.log('🔍 Starting Stripe/role discrepancy check');
 
@@ -188,6 +174,12 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 	} catch (error: any) {
 		console.error('❌ Error generating discrepancy report:', error);
+		
+		// Handle authentication errors specifically
+		if (error.status === 403 || error.status === 401) {
+			return json({ error: error.message }, { status: error.status });
+		}
+		
 		return json({ error: error.message || 'Internal server error' }, { status: 500 });
 	}
 };
@@ -195,11 +187,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 // POST endpoint to fix a specific discrepancy
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
-		// Verify admin access
-		const isAdmin = await isUserAdmin(locals);
-		if (!isAdmin) {
-			return json({ error: 'Admin access required' }, { status: 403 });
-		}
+		// Verify admin access using centralized validation
+		const { user: adminUser } = await validateAdminAccess(locals);
 
 		const { userId, expectedRole, reason } = await request.json();
 
@@ -246,7 +235,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				trigger_type: 'admin_change',
 				metadata: {
 					reason: reason || 'Manual fix via admin dashboard',
-					admin_user: locals.session?.user?.id
+					admin_user: adminUser.id
 				},
 				created_at: new Date().toISOString()
 			});
@@ -268,6 +257,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	} catch (error: any) {
 		console.error('❌ Error fixing role discrepancy:', error);
+		
+		// Handle authentication errors specifically
+		if (error.status === 403 || error.status === 401) {
+			return json({ error: error.message }, { status: error.status });
+		}
+		
 		return json({ error: error.message || 'Internal server error' }, { status: 500 });
 	}
 };

@@ -67,3 +67,70 @@ export async function getUserRole(supabase: SupabaseClient, userId: string): Pro
 }
 
 export { checkRole as requireRole };
+
+// Enhanced role validation utilities for API endpoints
+export async function requireMemberRole(event: RequestEvent): Promise<{ user: any; role: UserRole }> {
+	const { user, role } = await requireUserAuth(event);
+	
+	if (!checkRole(role, 'member')) {
+		throw new AuthError('Member role required', 403);
+	}
+	
+	return { user, role };
+}
+
+export async function requireAdminRole(event: RequestEvent): Promise<{ user: any; role: UserRole }> {
+	const { user, role } = await requireUserAuth(event);
+	
+	if (!checkRole(role, 'admin')) {
+		throw new AuthError('Admin role required', 403);
+	}
+	
+	return { user, role };
+}
+
+export async function requireUserAuth(event: RequestEvent): Promise<{ user: any; role: UserRole }> {
+	const sessionData = await event.locals.safeGetSession();
+	const { session, user, role } = sessionData as { session: any; user: any; role: UserRole };
+	
+	if (!session || !user) {
+		throw new AuthError('Authentication required');
+	}
+	
+	return { user, role };
+}
+
+// Utility for API endpoints to easily enforce role-based access
+export function createRoleMiddleware(requiredRole: UserRole) {
+	return async (event: RequestEvent) => {
+		const { user, role } = await requireUserAuth(event);
+		
+		if (!checkRole(role, requiredRole)) {
+			throw new AuthError(`${requiredRole} role required`, 403);
+		}
+		
+		return { user, role };
+	};
+}
+
+// Enhanced admin check for admin endpoints
+export async function validateAdminAccess(locals: any): Promise<{ user: any; role: UserRole }> {
+	try {
+		const { session, user, role } = await locals.safeGetSession();
+		
+		if (!session || !user) {
+			throw new AuthError('Authentication required');
+		}
+		
+		if (!checkRole(role, 'admin')) {
+			throw new AuthError('Admin access required', 403);
+		}
+		
+		return { user, role: role as UserRole };
+	} catch (error) {
+		if (error instanceof AuthError) {
+			throw error;
+		}
+		throw new AuthError('Authentication validation failed');
+	}
+}
