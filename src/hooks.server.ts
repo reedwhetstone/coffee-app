@@ -89,8 +89,10 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 const authGuard: Handle = async ({ event, resolve }) => {
 	const protectedRoutes = ['/roast', '/profit', '/beans'];
+	const adminRoutes = ['/admin'];
 	const currentPath = event.url.pathname;
 	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
+	const requiresAdminAccess = adminRoutes.some((route) => currentPath.startsWith(route));
 
 	// Get session and verified user data
 	const sessionData2 = await event.locals.safeGetSession();
@@ -110,6 +112,11 @@ const authGuard: Handle = async ({ event, resolve }) => {
 
 	// Use requireRole for protected route checks
 	if (requiresProtection && !requireRole(event.locals.role, 'member')) {
+		throw redirect(303, '/');
+	}
+
+	// Check admin route access
+	if (requiresAdminAccess && !requireRole(event.locals.role, 'admin')) {
 		throw redirect(303, '/');
 	}
 

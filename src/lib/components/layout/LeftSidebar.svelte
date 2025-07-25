@@ -17,6 +17,7 @@
 	import SettingsButton from '$lib/components/layout/Settingsbar.svelte';
 	import ActionsButton from '$lib/components/layout/Actionsbar.svelte';
 	import AuthSidebar from '$lib/components/layout/AuthSidebar.svelte';
+	import AdminSidebar from '$lib/components/layout/AdminSidebar.svelte';
 
 	// State for tracking which menu is open
 	let activeMenu = $state<string | null>(null);
@@ -32,6 +33,7 @@
 	// Role checking logic
 	let userRole = $derived(data?.role || 'viewer');
 	let isMember = $derived(checkRole(userRole, 'member'));
+	let isAdmin = $derived(checkRole(userRole, 'admin'));
 
 	// Pages where settings (filters) should be shown
 	let showSettings = $derived(() => {
@@ -78,6 +80,11 @@
 	// Function to toggle the actions menu
 	function toggleActionsMenu() {
 		toggleMenu('actions');
+	}
+
+	// Function to toggle the admin menu
+	function toggleAdminMenu() {
+		toggleMenu('admin');
 	}
 
 	// Function to close all menus
@@ -225,6 +232,38 @@
 				</div>
 			{/if}
 
+			<!-- Admin Menu - Only for admin users -->
+			{#if isAdmin}
+				<div class="relative">
+					<button
+						onclick={toggleAdminMenu}
+						class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+						aria-label="Toggle admin menu"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-8 w-8"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+							/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+							/>
+						</svg>
+					</button>
+				</div>
+			{/if}
+
 			<!-- Settings Menu - Only on specific pages -->
 			{#if showSettings()}
 				<div class="relative">
@@ -301,6 +340,16 @@
 				aria-label="Settings menu"
 			>
 				<SettingsButton {data} isOpen={true} onClose={closeAllMenus} />
+			</aside>
+		{/if}
+
+		<!-- Admin Menu Panel -->
+		{#if activeMenu === 'admin'}
+			<aside
+				class="h-full w-64 bg-background-primary-dark text-text-primary-dark"
+				aria-label="Admin menu"
+			>
+				<AdminSidebar {data} isOpen={true} onClose={closeAllMenus} />
 			</aside>
 		{/if}
 	</div>

@@ -53,25 +53,36 @@ export const GET: RequestHandler = async ({ locals }) => {
 		// Get all Stripe customers from our database
 		const { data: stripeCustomers, error: customersError } = await supabase
 			.from('stripe_customers')
-			.select(`
-				user_id,
-				customer_id,
-				email,
-				user_roles!inner(role, email, name, updated_at)
-			`);
+			.select('user_id, customer_id, email');
 
 		if (customersError) {
 			console.error('❌ Error fetching Stripe customers:', customersError);
-			return json({ error: 'Database error' }, { status: 500 });
+			return json({ error: 'Database error fetching customers' }, { status: 500 });
 		}
 
-		console.log(`📊 Checking ${stripeCustomers?.length || 0} Stripe customers`);
+		// Get all user roles separately
+		const { data: userRoles, error: rolesError } = await supabase
+			.from('user_roles')
+			.select('id, role, email, name, updated_at');
+
+		if (rolesError) {
+			console.error('❌ Error fetching user roles:', rolesError);
+			return json({ error: 'Database error fetching roles' }, { status: 500 });
+		}
+
+		// Manually join the data
+		const customersWithRoles = stripeCustomers?.map(customer => ({
+			...customer,
+			user_roles: userRoles?.find(role => role.id === customer.user_id) || null
+		})) || [];
+
+		console.log(`📊 Checking ${customersWithRoles?.length || 0} Stripe customers`);
 
 		const shouldBeMemberButArent: UserDiscrepancy[] = [];
 		const shouldBeViewerButArent: UserDiscrepancy[] = [];
 
 		// Check each customer's subscription status
-		for (const customer of stripeCustomers || []) {
+		for (const customer of customersWithRoles || []) {
 			try {
 				const userRole = customer.user_roles as any;
 				
@@ -137,21 +148,24 @@ export const GET: RequestHandler = async ({ locals }) => {
 				new_role,
 				trigger_type,
 				created_at,
-				stripe_customer_id,
-				user_roles!inner(email)
+				stripe_customer_id
 			`)
 			.order('created_at', { ascending: false })
 			.limit(50);
 
-		const recentAuditLogs: AuditLogSummary[] = (recentLogs || []).map(log => ({
-			userId: log.user_id,
-			email: (log.user_roles as any)?.email,
-			oldRole: log.old_role,
-			newRole: log.new_role,
-			triggerType: log.trigger_type,
-			createdAt: log.created_at,
-			stripeCustomerId: log.stripe_customer_id
-		}));
+		// Manually join audit logs with user roles for email
+		const recentAuditLogs: AuditLogSummary[] = (recentLogs || []).map(log => {
+			const userRole = userRoles?.find(role => role.id === log.user_id);
+			return {
+				userId: log.user_id,
+				email: userRole?.email,
+				oldRole: log.old_role,
+				newRole: log.new_role,
+				triggerType: log.trigger_type,
+				createdAt: log.created_at,
+				stripeCustomerId: log.stripe_customer_id
+			};
+		});
 
 		const report: DiscrepancyReport = {
 			shouldBeMemberButArent,
@@ -159,7 +173,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 			recentAuditLogs,
 			summary: {
 				totalDiscrepancies: shouldBeMemberButArent.length + shouldBeViewerButArent.length,
-				totalStripeCustomers: stripeCustomers?.length || 0,
+				totalStripeCustomers: customersWithRoles?.length || 0,
 				lastChecked: new Date().toISOString()
 			}
 		};
@@ -167,7 +181,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		console.log('📈 Discrepancy report generated:', {
 			shouldBeMember: shouldBeMemberButArent.length,
 			shouldBeViewer: shouldBeViewerButArent.length,
-			totalCustomers: stripeCustomers?.length || 0
+			totalCustomers: customersWithRoles?.length || 0
 		});
 
 		return json(report);

@@ -126,6 +126,26 @@
 					</a>
 				</li>
 			{/if}
+
+			<!-- Admin-only navigation -->
+			{#if hasRequiredRole('admin')}
+				<li class="mt-4">
+					<div class="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary-dark">
+						Administration
+					</div>
+				</li>
+				<li>
+					<a
+						href="/admin"
+						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+						'/admin'
+							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
+							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+					>
+						Admin Dashboard
+					</a>
+				</li>
+			{/if}
 		</ul>
 
 		<!-- Contact link for all users -->
