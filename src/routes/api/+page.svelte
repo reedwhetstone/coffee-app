@@ -28,22 +28,22 @@
 	/>
 </svelte:head>
 
-<div class="bg-background-primary-light min-h-screen">
+<div class="min-h-screen bg-background-primary-light">
 	<!-- Hero Section -->
 	<section
-		class="from-background-primary-light to-background-secondary-light relative overflow-hidden bg-gradient-to-br"
+		class="relative overflow-hidden bg-gradient-to-br from-background-primary-light to-background-secondary-light"
 	>
 		<div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
 			<div class="flex flex-col items-center justify-center">
-				<h1 class="text-text-primary-light text-4xl font-bold tracking-tight sm:text-6xl">
+				<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
 					Green Coffee API
 				</h1>
-				<div class="text-background-tertiary-light mt-2 text-xl font-medium">
+				<div class="mt-2 text-xl font-medium text-background-tertiary-light">
 					Transform how your platform accesses coffee data
 				</div>
 			</div>
 			<div class="mx-auto max-w-3xl text-center">
-				<p class="text-text-secondary-light mt-6 text-lg leading-8">
+				<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 					The first normalized, daily-updated API for specialty green coffee. Integrate real-time
 					inventory data from top U.S. suppliers into your roasting software, ecommerce platform, or
 					business application.
@@ -51,19 +51,19 @@
 				<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
 					<button
 						onclick={() => scrollToSection('pricing')}
-						class="bg-background-tertiary-light focus-visible:outline-background-tertiary-light w-full rounded-md px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
+						class="w-full rounded-md bg-background-tertiary-light px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light sm:w-auto"
 					>
 						View API Pricing
 					</button>
 					<button
 						onclick={handleContactUs}
-						class="border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light w-full rounded-md border px-6 py-3 text-sm font-semibold transition-all duration-200 hover:text-white sm:w-auto"
+						class="w-full rounded-md border border-background-tertiary-light px-6 py-3 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:w-auto"
 					>
 						Request Demo
 					</button>
 					<button
 						onclick={() => scrollToSection('use-cases')}
-						class="text-text-primary-light hover:text-background-tertiary-light text-sm font-semibold leading-6 transition-colors duration-200"
+						class="text-sm font-semibold leading-6 text-text-primary-light transition-colors duration-200 hover:text-background-tertiary-light"
 					>
 						Learn more <span aria-hidden="true">→</span>
 					</button>
@@ -73,21 +73,21 @@
 			<!-- API Preview -->
 			<div class="mt-16 flow-root sm:mt-24">
 				<div
-					class="bg-background-tertiary-light/5 ring-background-tertiary-light/10 -m-2 rounded-xl p-2 ring-1 ring-inset lg:-m-4 lg:rounded-2xl lg:p-4"
+					class="-m-2 rounded-xl bg-background-tertiary-light/5 p-2 ring-1 ring-inset ring-background-tertiary-light/10 lg:-m-4 lg:rounded-2xl lg:p-4"
 				>
 					<div
-						class="bg-background-secondary-light ring-border-light rounded-md p-8 shadow-2xl ring-1"
+						class="rounded-md bg-background-secondary-light p-8 shadow-2xl ring-1 ring-border-light"
 					>
 						<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 							<!-- API Request Preview -->
 							<div
-								class="bg-background-primary-light ring-border-light rounded-lg p-6 shadow-sm ring-1"
+								class="rounded-lg bg-background-primary-light p-6 shadow-sm ring-1 ring-border-light"
 							>
 								<div class="mb-4 flex items-center gap-2">
-									<div class="bg-growth-green h-2 w-2 rounded-full"></div>
-									<span class="text-text-secondary-light text-sm font-medium">GET Request</span>
+									<div class="h-2 w-2 rounded-full bg-growth-green"></div>
+									<span class="text-sm font-medium text-text-secondary-light">GET Request</span>
 								</div>
-								<pre class="text-text-primary-light text-xs"><code
+								<pre class="text-xs text-text-primary-light"><code
 										>GET /api/v1/coffee?origin=ethiopia&process=washed&in_stock=true
 
 Authorization: Bearer your_api_key
@@ -97,13 +97,13 @@ Content-Type: application/json</code
 
 							<!-- API Response Preview -->
 							<div
-								class="bg-background-primary-light ring-border-light rounded-lg p-6 shadow-sm ring-1"
+								class="rounded-lg bg-background-primary-light p-6 shadow-sm ring-1 ring-border-light"
 							>
 								<div class="mb-4 flex items-center gap-2">
-									<div class="bg-background-tertiary-light h-2 w-2 rounded-full"></div>
-									<span class="text-text-secondary-light text-sm font-medium">JSON Response</span>
+									<div class="h-2 w-2 rounded-full bg-background-tertiary-light"></div>
+									<span class="text-sm font-medium text-text-secondary-light">JSON Response</span>
 								</div>
-								<pre class="text-text-primary-light text-xs"><code
+								<pre class="text-xs text-text-primary-light"><code
 										>{`{
   "data": [{
     "name": "Ethiopia Sidamo",
@@ -131,7 +131,7 @@ Content-Type: application/json</code
 			class="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]"
 		>
 			<div
-				class="from-background-tertiary-light to-harvest-gold relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr opacity-20 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]"
+				class="relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr from-background-tertiary-light to-harvest-gold opacity-20 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]"
 				style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)"
 			></div>
 		</div>
@@ -141,13 +141,13 @@ Content-Type: application/json</code
 	<section class="bg-background-secondary-light py-24 sm:py-32">
 		<div class="mx-auto max-w-7xl px-6 lg:px-8">
 			<div class="mx-auto max-w-2xl lg:text-center">
-				<h2 class="text-background-tertiary-light text-base font-semibold leading-7">
+				<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
 					The Problem
 				</h2>
-				<p class="text-text-primary-light mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+				<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
 					Roasters waste time tracking coffee across dozens of supplier sites
 				</p>
-				<p class="text-text-secondary-light mt-6 text-lg leading-8">
+				<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 					Software platforms and roasting businesses struggle with fragmented green coffee data,
 					constant manual updates, and inconsistent product information across suppliers.
 				</p>
@@ -156,7 +156,7 @@ Content-Type: application/json</code
 				<dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2">
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500">
 								<svg
@@ -175,7 +175,7 @@ Content-Type: application/json</code
 							</div>
 							No Standard Format
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Every supplier has different product descriptions, naming conventions, and data
 								structures. Integration requires custom parsing for each vendor.
@@ -185,7 +185,7 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500">
 								<svg
@@ -204,7 +204,7 @@ Content-Type: application/json</code
 							</div>
 							Frequent Stock Changes
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Green coffee inventory changes daily. Manual tracking means outdated information and
 								missed opportunities for fresh lots.
@@ -214,7 +214,7 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500">
 								<svg
@@ -233,7 +233,7 @@ Content-Type: application/json</code
 							</div>
 							Marketing Over Facts
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Supplier descriptions focus on marketing language rather than technical
 								specifications that roasters actually need for sourcing decisions.
@@ -243,7 +243,7 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500">
 								<svg
@@ -262,7 +262,7 @@ Content-Type: application/json</code
 							</div>
 							Integration Friction
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Software platforms spend weeks building custom integrations for each supplier
 								instead of focusing on their core product features.
@@ -278,13 +278,13 @@ Content-Type: application/json</code
 	<section class="bg-background-primary-light py-24 sm:py-32">
 		<div class="mx-auto max-w-7xl px-6 lg:px-8">
 			<div class="mx-auto max-w-2xl lg:text-center">
-				<h2 class="text-background-tertiary-light text-base font-semibold leading-7">
+				<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
 					Our Solution
 				</h2>
-				<p class="text-text-primary-light mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+				<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
 					Purveyors.io Green Coffee API
 				</p>
-				<p class="text-text-secondary-light mt-6 text-lg leading-8">
+				<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 					The first normalized, daily-updated API for specialty green coffee. Clean data,
 					standardized format, and AI-enhanced metadata from multiple top U.S. suppliers.
 				</p>
@@ -293,10 +293,10 @@ Content-Type: application/json</code
 				<dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2">
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div
-								class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
+								class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
 							>
 								<svg
 									class="h-6 w-6 text-white"
@@ -314,7 +314,7 @@ Content-Type: application/json</code
 							</div>
 							Aggregated Inventory
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Access inventory from top U.S. suppliers through a single API endpoint. No more
 								custom integrations or manual data collection.
@@ -324,10 +324,10 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div
-								class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
+								class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
 							>
 								<svg
 									class="h-6 w-6 text-white"
@@ -345,7 +345,7 @@ Content-Type: application/json</code
 							</div>
 							LLM-Cleaned Metadata
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								AI processes and standardizes product descriptions, extracts key facts, and
 								generates consistent metadata across all suppliers.
@@ -355,10 +355,10 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div
-								class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
+								class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
 							>
 								<svg
 									class="h-6 w-6 text-white"
@@ -376,7 +376,7 @@ Content-Type: application/json</code
 							</div>
 							Taste Profile Generation
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Supplier-agnostic taste profiles automatically generated from descriptions, enabling
 								better matching and recommendation algorithms.
@@ -386,10 +386,10 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div
-								class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
+								class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
 							>
 								<svg
 									class="h-6 w-6 text-white"
@@ -407,7 +407,7 @@ Content-Type: application/json</code
 							</div>
 							REST API & File Export
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Choose REST API for real-time integration or flat file exports (CSV, JSON) for batch
 								processing and data warehousing.
@@ -423,11 +423,11 @@ Content-Type: application/json</code
 	<section id="use-cases" class="bg-background-secondary-light py-24 sm:py-32">
 		<div class="mx-auto max-w-7xl px-6 lg:px-8">
 			<div class="mx-auto max-w-2xl lg:text-center">
-				<h2 class="text-background-tertiary-light text-base font-semibold leading-7">Use Cases</h2>
-				<p class="text-text-primary-light mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+				<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Use Cases</h2>
+				<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
 					Seamless integration into roasting workflows
 				</p>
-				<p class="text-text-secondary-light mt-6 text-lg leading-8">
+				<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 					Power your platform with real-time green coffee data and enable new features for your
 					roasting customers.
 				</p>
@@ -436,9 +436,9 @@ Content-Type: application/json</code
 				<dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2">
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
-							<div class="bg-growth-green flex h-10 w-10 items-center justify-center rounded-lg">
+							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-growth-green">
 								<svg
 									class="h-6 w-6 text-white"
 									fill="none"
@@ -455,7 +455,7 @@ Content-Type: application/json</code
 							</div>
 							Roast Log Auto-Fill
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Automatically populate green coffee details in roast logs. Users select from current
 								inventory with accurate pricing, origins, and processing information.
@@ -465,9 +465,9 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
-							<div class="bg-growth-green flex h-10 w-10 items-center justify-center rounded-lg">
+							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-growth-green">
 								<svg
 									class="h-6 w-6 text-white"
 									fill="none"
@@ -484,7 +484,7 @@ Content-Type: application/json</code
 							</div>
 							Planning Dashboards
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Power roast planning dashboards with updated stock data. Show availability trends,
 								price changes, and seasonal patterns to help roasters make informed sourcing
@@ -495,9 +495,9 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
-							<div class="bg-growth-green flex h-10 w-10 items-center justify-center rounded-lg">
+							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-growth-green">
 								<svg
 									class="h-6 w-6 text-white"
 									fill="none"
@@ -514,7 +514,7 @@ Content-Type: application/json</code
 							</div>
 							Similar Bean Suggestions
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Use taste profile data to suggest similar beans when a favorite coffee goes out of
 								stock. Build recommendation engines based on processing, origin, and flavor
@@ -525,9 +525,9 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
-							<div class="bg-growth-green flex h-10 w-10 items-center justify-center rounded-lg">
+							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-growth-green">
 								<svg
 									class="h-6 w-6 text-white"
 									fill="none"
@@ -544,7 +544,7 @@ Content-Type: application/json</code
 							</div>
 							SKU Preloading
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Preload SKU data in ecommerce and inventory management tools. Streamline product
 								catalog updates and maintain accurate pricing across sales channels.
@@ -560,71 +560,71 @@ Content-Type: application/json</code
 	<section class="bg-background-primary-light py-24 sm:py-32">
 		<div class="mx-auto max-w-7xl px-6 lg:px-8">
 			<div class="mx-auto max-w-2xl lg:text-center">
-				<h2 class="text-background-tertiary-light text-base font-semibold leading-7">
+				<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
 					API Data Fields
 				</h2>
-				<p class="text-text-primary-light mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+				<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
 					Comprehensive coffee data structure
 				</p>
-				<p class="text-text-secondary-light mt-6 text-lg leading-8">
+				<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 					Access detailed, normalized coffee information with consistent field structure across all
 					suppliers.
 				</p>
 			</div>
 			<div class="mx-auto mt-16 max-w-4xl">
 				<div
-					class="bg-background-secondary-light ring-border-light overflow-hidden rounded-lg shadow ring-1"
+					class="overflow-hidden rounded-lg bg-background-secondary-light shadow ring-1 ring-border-light"
 				>
 					<div class="bg-background-tertiary-light px-6 py-4">
 						<h3 class="text-lg font-semibold text-white">Available Data Fields</h3>
 					</div>
-					<div class="divide-border-light divide-y">
+					<div class="divide-y divide-border-light">
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="text-text-primary-light font-medium">Name</div>
+							<div class="font-medium text-text-primary-light">Name</div>
 							<div class="text-text-secondary-light">Coffee lot name (cleaned)</div>
-							<div class="text-text-secondary-light text-sm">String</div>
+							<div class="text-sm text-text-secondary-light">String</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="text-text-primary-light font-medium">Supplier</div>
+							<div class="font-medium text-text-primary-light">Supplier</div>
 							<div class="text-text-secondary-light">Direct link to purchase</div>
-							<div class="text-text-secondary-light text-sm">String</div>
+							<div class="text-sm text-text-secondary-light">String</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="text-text-primary-light font-medium">Origin</div>
+							<div class="font-medium text-text-primary-light">Origin</div>
 							<div class="text-text-secondary-light">Region, Country, Sub-region</div>
-							<div class="text-text-secondary-light text-sm">Object</div>
+							<div class="text-sm text-text-secondary-light">Object</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="text-text-primary-light font-medium">Process</div>
+							<div class="font-medium text-text-primary-light">Process</div>
 							<div class="text-text-secondary-light">Washed, Natural, Honey, etc.</div>
-							<div class="text-text-secondary-light text-sm">String</div>
+							<div class="text-sm text-text-secondary-light">String</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="text-text-primary-light font-medium">Varietal</div>
+							<div class="font-medium text-text-primary-light">Varietal</div>
 							<div class="text-text-secondary-light">Genetic varietal information</div>
-							<div class="text-text-secondary-light text-sm">String</div>
+							<div class="text-sm text-text-secondary-light">String</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="text-text-primary-light font-medium">Price/lb</div>
+							<div class="font-medium text-text-primary-light">Price/lb</div>
 							<div class="text-text-secondary-light">USD per pound</div>
-							<div class="text-text-secondary-light text-sm">Number</div>
+							<div class="text-sm text-text-secondary-light">Number</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="text-text-primary-light font-medium">Inventory Status</div>
+							<div class="font-medium text-text-primary-light">Inventory Status</div>
 							<div class="text-text-secondary-light">In-stock, Low-stock, Sold-out</div>
-							<div class="text-text-secondary-light text-sm">Enum</div>
+							<div class="text-sm text-text-secondary-light">Enum</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="text-text-primary-light font-medium">Tasting Matrix</div>
+							<div class="font-medium text-text-primary-light">Tasting Matrix</div>
 							<div class="text-text-secondary-light">
 								Generated profile matrix (fruit, floral, nutty, etc.)
 							</div>
-							<div class="text-text-secondary-light text-sm">Object</div>
+							<div class="text-sm text-text-secondary-light">Object</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="text-text-primary-light font-medium">Description</div>
+							<div class="font-medium text-text-primary-light">Description</div>
 							<div class="text-text-secondary-light">Cleaned factual summary</div>
-							<div class="text-text-secondary-light text-sm">String</div>
+							<div class="text-sm text-text-secondary-light">String</div>
 						</div>
 					</div>
 				</div>
@@ -636,14 +636,14 @@ Content-Type: application/json</code
 	<section id="pricing" class="bg-background-secondary-light py-24 sm:py-32">
 		<div class="mx-auto max-w-7xl px-6 lg:px-8">
 			<div class="mx-auto max-w-4xl text-center">
-				<h2 class="text-background-tertiary-light text-base font-semibold leading-7">
+				<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
 					API Pricing
 				</h2>
-				<p class="text-text-primary-light mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
+				<p class="mt-2 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
 					Scale with your platform
 				</p>
 			</div>
-			<p class="text-text-secondary-light mx-auto mt-6 max-w-2xl text-center text-lg leading-8">
+			<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-text-secondary-light">
 				Subscription plans billed monthly. Cancel anytime. Custom enterprise solutions available.
 			</p>
 
@@ -652,23 +652,23 @@ Content-Type: application/json</code
 			>
 				<!-- Developer Plan -->
 				<div
-					class="bg-background-primary-light ring-border-light flex flex-col justify-between rounded-3xl p-8 ring-1 xl:p-10"
+					class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10"
 				>
 					<div>
 						<div class="flex items-center justify-between gap-x-4">
-							<h3 class="text-text-primary-light text-lg font-semibold leading-8">Developer</h3>
+							<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Developer</h3>
 						</div>
-						<p class="text-text-secondary-light mt-4 text-sm leading-6">
+						<p class="mt-4 text-sm leading-6 text-text-secondary-light">
 							Perfect for startups and small platforms testing integration capabilities.
 						</p>
 						<p class="mt-6 flex items-baseline gap-x-1">
-							<span class="text-text-primary-light text-4xl font-bold tracking-tight">$99</span>
-							<span class="text-text-secondary-light text-sm font-semibold leading-6">/month</span>
+							<span class="text-4xl font-bold tracking-tight text-text-primary-light">$99</span>
+							<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
 						</p>
-						<ul role="list" class="text-text-secondary-light mt-8 space-y-3 text-sm leading-6">
+						<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -682,7 +682,7 @@ Content-Type: application/json</code
 							</li>
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -696,7 +696,7 @@ Content-Type: application/json</code
 							</li>
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -710,7 +710,7 @@ Content-Type: application/json</code
 							</li>
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -726,7 +726,7 @@ Content-Type: application/json</code
 					</div>
 					<button
 						onclick={handleContactUs}
-						class="bg-background-tertiary-light mt-8 block w-full rounded-md px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
+						class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
 					>
 						Get started
 					</button>
@@ -734,28 +734,28 @@ Content-Type: application/json</code
 
 				<!-- Growth Plan -->
 				<div
-					class="bg-background-primary-light ring-background-tertiary-light flex flex-col justify-between rounded-3xl p-8 ring-2 xl:p-10"
+					class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-2 ring-background-tertiary-light xl:p-10"
 				>
 					<div>
 						<div class="flex items-center justify-between gap-x-4">
-							<h3 class="text-background-tertiary-light text-lg font-semibold leading-8">Growth</h3>
+							<h3 class="text-lg font-semibold leading-8 text-background-tertiary-light">Growth</h3>
 							<p
-								class="bg-background-tertiary-light/10 text-background-tertiary-light rounded-full px-2.5 py-1 text-xs font-semibold leading-5"
+								class="rounded-full bg-background-tertiary-light/10 px-2.5 py-1 text-xs font-semibold leading-5 text-background-tertiary-light"
 							>
 								Most popular
 							</p>
 						</div>
-						<p class="text-text-secondary-light mt-4 text-sm leading-6">
+						<p class="mt-4 text-sm leading-6 text-text-secondary-light">
 							For growing platforms with active user bases requiring comprehensive data access.
 						</p>
 						<p class="mt-6 flex items-baseline gap-x-1">
-							<span class="text-text-primary-light text-4xl font-bold tracking-tight">$399</span>
-							<span class="text-text-secondary-light text-sm font-semibold leading-6">/month</span>
+							<span class="text-4xl font-bold tracking-tight text-text-primary-light">$399</span>
+							<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
 						</p>
-						<ul role="list" class="text-text-secondary-light mt-8 space-y-3 text-sm leading-6">
+						<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -769,7 +769,7 @@ Content-Type: application/json</code
 							</li>
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -783,7 +783,7 @@ Content-Type: application/json</code
 							</li>
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -797,7 +797,7 @@ Content-Type: application/json</code
 							</li>
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -813,7 +813,7 @@ Content-Type: application/json</code
 					</div>
 					<button
 						onclick={handleContactUs}
-						class="bg-background-tertiary-light mt-8 block w-full rounded-md px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
+						class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
 					>
 						Get started
 					</button>
@@ -821,24 +821,24 @@ Content-Type: application/json</code
 
 				<!-- Enterprise Plan -->
 				<div
-					class="bg-background-primary-light ring-border-light flex flex-col justify-between rounded-3xl p-8 ring-1 xl:p-10"
+					class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10"
 				>
 					<div>
 						<div class="flex items-center justify-between gap-x-4">
-							<h3 class="text-text-primary-light text-lg font-semibold leading-8">Enterprise</h3>
+							<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Enterprise</h3>
 						</div>
-						<p class="text-text-secondary-light mt-4 text-sm leading-6">
+						<p class="mt-4 text-sm leading-6 text-text-secondary-light">
 							For large platforms and enterprise customers requiring high-volume access and custom
 							integrations.
 						</p>
 						<p class="mt-6 flex items-baseline gap-x-1">
-							<span class="text-text-primary-light text-4xl font-bold tracking-tight">$999</span>
-							<span class="text-text-secondary-light text-sm font-semibold leading-6">/month</span>
+							<span class="text-4xl font-bold tracking-tight text-text-primary-light">$999</span>
+							<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
 						</p>
-						<ul role="list" class="text-text-secondary-light mt-8 space-y-3 text-sm leading-6">
+						<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -852,7 +852,7 @@ Content-Type: application/json</code
 							</li>
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -866,7 +866,7 @@ Content-Type: application/json</code
 							</li>
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -880,7 +880,7 @@ Content-Type: application/json</code
 							</li>
 							<li class="flex gap-x-3">
 								<svg
-									class="text-background-tertiary-light h-6 w-5 flex-none"
+									class="h-6 w-5 flex-none text-background-tertiary-light"
 									viewBox="0 0 20 20"
 									fill="currentColor"
 								>
@@ -896,7 +896,7 @@ Content-Type: application/json</code
 					</div>
 					<button
 						onclick={handleContactUs}
-						class="bg-text-primary-light text-background-primary-light mt-8 block w-full rounded-md px-3 py-2 text-center text-sm font-semibold shadow-sm transition-all duration-200 hover:bg-opacity-90"
+						class="mt-8 block w-full rounded-md bg-text-primary-light px-3 py-2 text-center text-sm font-semibold text-background-primary-light shadow-sm transition-all duration-200 hover:bg-opacity-90"
 					>
 						Contact sales
 					</button>
@@ -905,24 +905,24 @@ Content-Type: application/json</code
 
 			<!-- Add-ons -->
 			<div class="mx-auto mt-16 max-w-4xl">
-				<div class="bg-background-primary-light ring-border-light rounded-lg p-8 ring-1">
-					<h3 class="text-text-primary-light text-lg font-semibold">Add-ons & Custom Options</h3>
+				<div class="rounded-lg bg-background-primary-light p-8 ring-1 ring-border-light">
+					<h3 class="text-lg font-semibold text-text-primary-light">Add-ons & Custom Options</h3>
 					<div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
 						<div>
-							<div class="text-text-primary-light font-medium">Overage Pricing</div>
-							<div class="text-text-secondary-light text-sm">$0.05 per 100 extra API calls</div>
+							<div class="font-medium text-text-primary-light">Overage Pricing</div>
+							<div class="text-sm text-text-secondary-light">$0.05 per 100 extra API calls</div>
 						</div>
 						<div>
-							<div class="text-text-primary-light font-medium">White-label License</div>
-							<div class="text-text-secondary-light text-sm">Starting at $5,000/year</div>
+							<div class="font-medium text-text-primary-light">White-label License</div>
+							<div class="text-sm text-text-secondary-light">Starting at $5,000/year</div>
 						</div>
 						<div>
-							<div class="text-text-primary-light font-medium">Flat Data Licensing</div>
-							<div class="text-text-secondary-light text-sm">$2,000/year (CSV exports)</div>
+							<div class="font-medium text-text-primary-light">Flat Data Licensing</div>
+							<div class="text-sm text-text-secondary-light">$2,000/year (CSV exports)</div>
 						</div>
 						<div>
-							<div class="text-text-primary-light font-medium">Custom Plans</div>
-							<div class="text-text-secondary-light text-sm">Available for unique requirements</div>
+							<div class="font-medium text-text-primary-light">Custom Plans</div>
+							<div class="text-sm text-text-secondary-light">Available for unique requirements</div>
 						</div>
 					</div>
 				</div>
@@ -934,13 +934,13 @@ Content-Type: application/json</code
 	<section class="bg-background-primary-light py-24 sm:py-32">
 		<div class="mx-auto max-w-7xl px-6 lg:px-8">
 			<div class="mx-auto max-w-2xl lg:text-center">
-				<h2 class="text-background-tertiary-light text-base font-semibold leading-7">
+				<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
 					Competitive Edge
 				</h2>
-				<p class="text-text-primary-light mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+				<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
 					Why Purveyors.io is different
 				</p>
-				<p class="text-text-secondary-light mt-6 text-lg leading-8">
+				<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 					The only neutral, AI-enhanced green coffee data API built specifically for the specialty
 					coffee industry.
 				</p>
@@ -949,9 +949,9 @@ Content-Type: application/json</code
 				<dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2">
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
-							<div class="bg-growth-green flex h-10 w-10 items-center justify-center rounded-lg">
+							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-growth-green">
 								<svg
 									class="h-6 w-6 text-white"
 									fill="none"
@@ -968,7 +968,7 @@ Content-Type: application/json</code
 							</div>
 							Only Normalized Green Coffee API
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								First and only API providing standardized green coffee data across multiple
 								suppliers. No custom parsing required for each vendor.
@@ -978,9 +978,9 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
-							<div class="bg-growth-green flex h-10 w-10 items-center justify-center rounded-lg">
+							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-growth-green">
 								<svg
 									class="h-6 w-6 text-white"
 									fill="none"
@@ -997,7 +997,7 @@ Content-Type: application/json</code
 							</div>
 							AI-Enhanced Data Cleaning
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Advanced AI processes supplier data to extract factual information, standardize
 								formats, and generate consistent taste profiles across all sources.
@@ -1007,9 +1007,9 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
-							<div class="bg-growth-green flex h-10 w-10 items-center justify-center rounded-lg">
+							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-growth-green">
 								<svg
 									class="h-6 w-6 text-white"
 									fill="none"
@@ -1026,7 +1026,7 @@ Content-Type: application/json</code
 							</div>
 							Daily Updates
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Fresh data every day. Never miss new coffee arrivals or stock changes. Automated
 								updates ensure your platform always has the latest information.
@@ -1036,9 +1036,9 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
-							<div class="bg-growth-green flex h-10 w-10 items-center justify-center rounded-lg">
+							<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-growth-green">
 								<svg
 									class="h-6 w-6 text-white"
 									fill="none"
@@ -1055,7 +1055,7 @@ Content-Type: application/json</code
 							</div>
 							Neutral Platform
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								We don't sell green coffee ourselves. Our only focus is providing the best data
 								service for software platforms and roasting businesses.
@@ -1071,13 +1071,13 @@ Content-Type: application/json</code
 	<section class="bg-background-secondary-light py-24 sm:py-32">
 		<div class="mx-auto max-w-7xl px-6 lg:px-8">
 			<div class="mx-auto max-w-2xl lg:text-center">
-				<h2 class="text-background-tertiary-light text-base font-semibold leading-7">
+				<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
 					Who It's For
 				</h2>
-				<p class="text-text-primary-light mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+				<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
 					Built for coffee technology platforms
 				</p>
-				<p class="text-text-secondary-light mt-6 text-lg leading-8">
+				<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 					Integrate our API into your existing software to provide better green coffee data to your
 					users.
 				</p>
@@ -1086,10 +1086,10 @@ Content-Type: application/json</code
 				<dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2">
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div
-								class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
+								class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
 							>
 								<svg
 									class="h-6 w-6 text-white"
@@ -1107,7 +1107,7 @@ Content-Type: application/json</code
 							</div>
 							Roasting Software Platforms
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Cropster, Artisan, Allio, Ikawa, and other roasting software platforms looking to
 								enhance their green coffee sourcing features.
@@ -1117,10 +1117,10 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div
-								class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
+								class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
 							>
 								<svg
 									class="h-6 w-6 text-white"
@@ -1138,7 +1138,7 @@ Content-Type: application/json</code
 							</div>
 							Green Coffee Buying Apps
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Mobile and web applications focused on green coffee sourcing, comparison, and
 								purchasing for home and commercial roasters.
@@ -1148,10 +1148,10 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div
-								class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
+								class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
 							>
 								<svg
 									class="h-6 w-6 text-white"
@@ -1169,7 +1169,7 @@ Content-Type: application/json</code
 							</div>
 							Coffee Equipment OEMs
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Roaster manufacturers and equipment companies wanting to integrate green coffee
 								sourcing into their hardware ecosystems.
@@ -1179,10 +1179,10 @@ Content-Type: application/json</code
 
 					<div class="flex flex-col">
 						<dt
-							class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+							class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 						>
 							<div
-								class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
+								class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
 							>
 								<svg
 									class="h-6 w-6 text-white"
@@ -1200,7 +1200,7 @@ Content-Type: application/json</code
 							</div>
 							Enterprise Roastery ERPs
 						</dt>
-						<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 							<p class="flex-auto">
 								Internal enterprise resource planning systems for larger roasteries needing
 								integrated green coffee sourcing and inventory management.
@@ -1216,23 +1216,23 @@ Content-Type: application/json</code
 	<section class="bg-background-primary-light py-24 sm:py-32">
 		<div class="mx-auto max-w-7xl px-6 lg:px-8">
 			<div class="mx-auto max-w-2xl text-center">
-				<h2 class="text-text-primary-light text-3xl font-bold tracking-tight sm:text-4xl">
+				<h2 class="text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
 					Ready to integrate or want a demo?
 				</h2>
-				<p class="text-text-secondary-light mx-auto mt-6 max-w-xl text-lg leading-8">
+				<p class="mx-auto mt-6 max-w-xl text-lg leading-8 text-text-secondary-light">
 					Start building with our Green Coffee API today. Custom plans and data trials available for
 					enterprise customers.
 				</p>
 				<div class="mt-10 flex items-center justify-center gap-x-6">
 					<button
 						onclick={handleContactUs}
-						class="bg-background-tertiary-light focus-visible:outline-background-tertiary-light rounded-md px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+						class="rounded-md bg-background-tertiary-light px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 					>
 						Contact us
 					</button>
 					<button
 						onclick={handleGetStarted}
-						class="text-text-primary-light hover:text-background-tertiary-light text-sm font-semibold leading-6 transition-colors duration-200"
+						class="text-sm font-semibold leading-6 text-text-primary-light transition-colors duration-200 hover:text-background-tertiary-light"
 					>
 						View documentation <span aria-hidden="true">→</span>
 					</button>
@@ -1245,19 +1245,19 @@ Content-Type: application/json</code
 	<footer class="bg-background-secondary-light">
 		<div class="mx-auto max-w-7xl px-6 py-12 lg:px-8">
 			<div class="text-center">
-				<p class="text-text-secondary-light text-sm">
+				<p class="text-sm text-text-secondary-light">
 					Powered by Purveyors.io — The Data Backbone of Specialty Coffee
 				</p>
 				<div class="mt-4 flex items-center justify-center space-x-6">
 					<a
 						href="mailto:contact@purveyors.io"
-						class="text-background-tertiary-light hover:text-text-primary-light text-sm transition-colors duration-200"
+						class="text-sm text-background-tertiary-light transition-colors duration-200 hover:text-text-primary-light"
 					>
 						contact@purveyors.io
 					</a>
 					<a
 						href="https://purveyors.io"
-						class="text-background-tertiary-light hover:text-text-primary-light text-sm transition-colors duration-200"
+						class="text-sm text-background-tertiary-light transition-colors duration-200 hover:text-text-primary-light"
 					>
 						purveyors.io
 					</a>

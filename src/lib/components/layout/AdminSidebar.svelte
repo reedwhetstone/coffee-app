@@ -34,28 +34,33 @@
 
 <div class="flex h-full flex-col">
 	<!-- Header -->
-	<div class="border-b border-background-secondary-dark px-4 py-4">
+	<div class="border-background-secondary-dark border-b px-4 py-4">
 		<div class="flex items-center justify-between">
 			<h2 class="text-lg font-semibold text-text-primary-dark">Admin Panel</h2>
 			<button
 				onclick={onClose}
-				class="rounded-md p-1 text-text-secondary-dark hover:bg-background-secondary-dark hover:text-text-primary-dark"
+				class="text-text-secondary-dark hover:bg-background-secondary-dark rounded-md p-1 hover:text-text-primary-dark"
 				aria-label="Close admin menu"
 			>
 				<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					></path>
 				</svg>
 			</button>
 		</div>
-		<p class="mt-1 text-sm text-text-secondary-dark">
-			System administration tools
-		</p>
+		<p class="text-text-secondary-dark mt-1 text-sm">System administration tools</p>
 	</div>
 
 	<!-- Admin User Info -->
-	<div class="border-b border-background-secondary-dark px-4 py-3">
+	<div class="border-background-secondary-dark border-b px-4 py-3">
 		<div class="flex items-center space-x-3">
-			<div class="flex h-8 w-8 items-center justify-center rounded-full bg-background-tertiary-light">
+			<div
+				class="flex h-8 w-8 items-center justify-center rounded-full bg-background-tertiary-light"
+			>
 				<span class="text-sm font-medium text-white">
 					{data?.user?.email?.charAt(0).toUpperCase() || 'A'}
 				</span>
@@ -64,7 +69,7 @@
 				<p class="text-sm font-medium text-text-primary-dark">
 					{data?.user?.email || 'Admin User'}
 				</p>
-				<p class="text-xs text-text-secondary-dark capitalize">
+				<p class="text-text-secondary-dark text-xs capitalize">
 					{data?.role || 'admin'} Role
 				</p>
 			</div>
@@ -78,10 +83,11 @@
 				<li>
 					<button
 						onclick={() => handleNavigation(item.href)}
-						class="flex w-full items-center rounded-md px-3 py-2 text-left text-sm font-medium text-text-primary-dark transition-colors hover:bg-background-secondary-dark hover:text-background-tertiary-light"
+						class="hover:bg-background-secondary-dark flex w-full items-center rounded-md px-3 py-2 text-left text-sm font-medium text-text-primary-dark transition-colors hover:text-background-tertiary-light"
 					>
 						<svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={item.icon}></path>
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={item.icon}
+							></path>
 						</svg>
 						{item.label}
 					</button>
@@ -91,26 +97,36 @@
 	</nav>
 
 	<!-- Quick Actions -->
-	<div class="border-t border-background-secondary-dark px-4 py-4">
-		<h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-text-secondary-dark">
+	<div class="border-background-secondary-dark border-t px-4 py-4">
+		<h3 class="text-text-secondary-dark mb-3 text-xs font-semibold uppercase tracking-wide">
 			Quick Actions
 		</h3>
 		<div class="space-y-2">
 			<button
 				onclick={() => handleNavigation('/admin#role-management')}
-				class="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-text-primary-dark transition-colors hover:bg-background-secondary-dark hover:text-background-tertiary-light"
+				class="hover:bg-background-secondary-dark flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-text-primary-dark transition-colors hover:text-background-tertiary-light"
 			>
 				<svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M13 10V3L4 14h7v7l9-11h-7z"
+					></path>
 				</svg>
 				Fix Role Issues
 			</button>
 			<button
 				onclick={() => handleNavigation('/admin#system-logs')}
-				class="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-text-primary-dark transition-colors hover:bg-background-secondary-dark hover:text-background-tertiary-light"
+				class="hover:bg-background-secondary-dark flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-text-primary-dark transition-colors hover:text-background-tertiary-light"
 			>
 				<svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+					></path>
 				</svg>
 				View Analytics
 			</button>

@@ -80,14 +80,14 @@ function validateSchema(schema, schemaType) {
 	}
 
 	// Check required fields
-	rules.required.forEach(field => {
+	rules.required.forEach((field) => {
 		if (!schema[field]) {
 			errors.push(`Missing required field: ${field}`);
 		}
 	});
 
 	// Check recommended fields
-	rules.recommended.forEach(field => {
+	rules.recommended.forEach((field) => {
 		if (!schema[field]) {
 			warnings.push(`Missing recommended field: ${field}`);
 		}
@@ -126,8 +126,8 @@ function extractSchemasFromHTML(htmlContent) {
 function validatePageSchemas(route, htmlContent) {
 	const schemas = extractSchemasFromHTML(htmlContent);
 	const expectedTypes = REQUIRED_SCHEMAS[route] || [];
-	const foundTypes = schemas.map(s => s['@type']).filter(Boolean);
-	
+	const foundTypes = schemas.map((s) => s['@type']).filter(Boolean);
+
 	let hasErrors = false;
 	const results = {
 		route,
@@ -137,7 +137,7 @@ function validatePageSchemas(route, htmlContent) {
 	};
 
 	// Check if all expected schema types are present
-	expectedTypes.forEach(expectedType => {
+	expectedTypes.forEach((expectedType) => {
 		if (!foundTypes.includes(expectedType)) {
 			console.error(`❌ Missing required schema type "${expectedType}" on route: ${route}`);
 			hasErrors = true;
@@ -145,7 +145,7 @@ function validatePageSchemas(route, htmlContent) {
 	});
 
 	// Validate each found schema
-	schemas.forEach(schema => {
+	schemas.forEach((schema) => {
 		const schemaType = schema['@type'];
 		if (schemaType) {
 			const validation = validateSchema(schema, schemaType);
@@ -182,7 +182,7 @@ function validateBuildSchemas() {
 	const buildDir = join(process.cwd(), '.svelte-kit/output/client');
 
 	// Test specific routes
-	Object.keys(REQUIRED_SCHEMAS).forEach(route => {
+	Object.keys(REQUIRED_SCHEMAS).forEach((route) => {
 		try {
 			// Map route to file path
 			let filePath;
@@ -207,7 +207,7 @@ function validateBuildSchemas() {
 	});
 
 	console.log('\n🏁 Schema validation complete');
-	
+
 	if (hasGlobalErrors) {
 		console.error('❌ Schema validation failed with errors');
 		process.exit(1);

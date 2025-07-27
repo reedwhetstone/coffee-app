@@ -610,7 +610,10 @@
 					{@const displayName = catalogData?.name || bean.name}
 					{@const displaySource = catalogData?.source || 'Unknown Source'}
 					{@const displayAiDescription = catalogData?.ai_description}
-					{@const displayLocation = [catalogData?.continent, catalogData?.country, catalogData?.region].filter(Boolean).join(' > ') || '-'}
+					{@const displayLocation =
+						[catalogData?.continent, catalogData?.country, catalogData?.region]
+							.filter(Boolean)
+							.join(' > ') || '-'}
 					{@const displayProcessing = catalogData?.processing}
 					{@const displayCultivar = catalogData?.cultivar_detail}
 					{@const displayGrade = catalogData?.grade}

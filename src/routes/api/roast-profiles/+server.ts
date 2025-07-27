@@ -64,13 +64,13 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				throw new Error('No valid coffee_ids found for this user');
 			}
 			if (coffees.length !== batch_beans.length) {
-				const foundIds = coffees.map(c => c.id);
+				const foundIds = coffees.map((c) => c.id);
 				const missingIds = coffeeIds.filter((id: number) => !foundIds.includes(id));
 				throw new Error(`Coffee IDs not found or not owned by user: ${missingIds.join(', ')}`);
 			}
 
 			// Create lookup map for efficient access
-			const coffeeMap = new Map(coffees.map(coffee => [coffee.id, coffee]));
+			const coffeeMap = new Map(coffees.map((coffee) => [coffee.id, coffee]));
 
 			// Create profiles with coffee data from map
 			const profilesData = batch_beans.map((bean: any) => {
@@ -145,13 +145,13 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				throw new Error('No valid coffee_ids found for this user');
 			}
 			if (coffees.length !== profiles.length) {
-				const foundIds = coffees.map(c => c.id);
+				const foundIds = coffees.map((c) => c.id);
 				const missingIds = coffeeIds.filter((id: number) => !foundIds.includes(id));
 				throw new Error(`Coffee IDs not found or not owned by user: ${missingIds.join(', ')}`);
 			}
 
 			// Create lookup map for efficient access
-			const coffeeMap = new Map(coffees.map(coffee => [coffee.id, coffee]));
+			const coffeeMap = new Map(coffees.map((coffee) => [coffee.id, coffee]));
 
 			// Create profiles with coffee data from map
 			const profilesData = profiles.map((profileData: any) => {

@@ -59,7 +59,7 @@
 					if (roleResponse.ok) {
 						const roleResult = await roleResponse.json();
 						roleVerificationComplete = true;
-						
+
 						if (roleResult.roleUpdated) {
 							roleVerificationMessage = 'Your account has been upgraded to premium!';
 						} else if (roleResult.alreadyProcessed) {
@@ -67,11 +67,14 @@
 						} else {
 							roleVerificationMessage = roleResult.message || 'Payment verified successfully.';
 						}
-						
+
 						console.log('✅ Role verification completed:', roleResult);
 					} else {
 						// Role verification failed, but don't block the user - webhooks may still work
-						console.warn('⚠️ Role verification failed, relying on webhooks:', await roleResponse.text());
+						console.warn(
+							'⚠️ Role verification failed, relying on webhooks:',
+							await roleResponse.text()
+						);
 						roleVerificationMessage = 'Payment confirmed. Your account upgrade is being processed.';
 					}
 				} catch (roleError) {
@@ -152,16 +155,13 @@
 				</svg>
 				<h2 class="text-primary-light mt-4 text-xl font-bold">Payment Successful!</h2>
 				<p class="text-primary-light mt-2">
-					Thank you for your subscription! {roleVerificationMessage || 'Your account upgrade is being processed.'}
+					Thank you for your subscription! {roleVerificationMessage ||
+						'Your account upgrade is being processed.'}
 				</p>
 				{#if roleVerificationComplete}
-					<p class="text-green-600 mt-1 text-sm">
-						✅ Account verification completed
-					</p>
+					<p class="mt-1 text-sm text-green-600">✅ Account verification completed</p>
 				{:else}
-					<p class="text-blue-600 mt-1 text-sm">
-						⏳ Account upgrade in progress...
-					</p>
+					<p class="mt-1 text-sm text-blue-600">⏳ Account upgrade in progress...</p>
 				{/if}
 				<button
 					onclick={returnToHomepage}

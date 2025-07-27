@@ -78,7 +78,8 @@ export class SchemaService {
 			'@context': 'https://schema.org',
 			'@type': 'Product',
 			name: 'Purveyors Green Coffee API',
-			description: 'The first normalized, daily-updated API for specialty green coffee. Real-time inventory data from top U.S. suppliers.',
+			description:
+				'The first normalized, daily-updated API for specialty green coffee. Real-time inventory data from top U.S. suppliers.',
 			brand: {
 				'@type': 'Organization',
 				name: this.config.organizationName
@@ -110,7 +111,8 @@ export class SchemaService {
 			'@context': 'https://schema.org',
 			'@type': 'SoftwareApplication',
 			name: 'Purveyors Coffee Platform',
-			description: 'Professional coffee roasting platform with inventory management, roast tracking, and profit analytics',
+			description:
+				'Professional coffee roasting platform with inventory management, roast tracking, and profit analytics',
 			url: this.config.baseUrl,
 			applicationCategory: 'BusinessApplication',
 			operatingSystem: 'Web Browser',
@@ -135,7 +137,8 @@ export class SchemaService {
 			'@context': 'https://schema.org',
 			'@type': 'ContactPage',
 			name: 'Contact Purveyors',
-			description: 'Get in touch with the Purveyors team for support, sales, or partnership inquiries',
+			description:
+				'Get in touch with the Purveyors team for support, sales, or partnership inquiries',
 			url: pageUrl,
 			mainEntity: {
 				'@type': 'Organization',
@@ -202,7 +205,7 @@ export class SchemaService {
 					}
 				}))
 			},
-			audience: service.audience?.map(audienceType => ({
+			audience: service.audience?.map((audienceType) => ({
 				'@type': 'Audience',
 				audienceType: audienceType
 			}))
@@ -212,15 +215,17 @@ export class SchemaService {
 	/**
 	 * Generate PriceSpecification schema for service pricing
 	 */
-	generatePricingSchema(pricingTiers: Array<{
-		name: string;
-		price: number;
-		currency: string;
-		billingDuration: string;
-		description: string;
-		features: string[];
-		popular?: boolean;
-	}>): object {
+	generatePricingSchema(
+		pricingTiers: Array<{
+			name: string;
+			price: number;
+			currency: string;
+			billingDuration: string;
+			description: string;
+			features: string[];
+			popular?: boolean;
+		}>
+	): object {
 		return {
 			'@context': 'https://schema.org',
 			'@type': 'OfferCatalog',
@@ -304,13 +309,16 @@ export class SchemaService {
 	/**
 	 * Generate AboutPage schema
 	 */
-	generateAboutPageSchema(pageUrl: string, organization: {
-		name: string;
-		description: string;
-		founder?: string;
-		foundingDate?: string;
-		mission?: string;
-	}): object {
+	generateAboutPageSchema(
+		pageUrl: string,
+		organization: {
+			name: string;
+			description: string;
+			founder?: string;
+			foundingDate?: string;
+			mission?: string;
+		}
+	): object {
 		return {
 			'@context': 'https://schema.org',
 			'@type': 'AboutPage',
@@ -342,12 +350,13 @@ export class SchemaService {
 		imageUrl?: string;
 	}): object {
 		const productUrl = `${this.config.baseUrl}/coffee/${coffee.id}`;
-		
+
 		const schema: any = {
 			'@context': 'https://schema.org',
 			'@type': 'Product',
 			name: coffee.name,
-			description: coffee.description || `Premium coffee from ${coffee.origin || 'various origins'}`,
+			description:
+				coffee.description || `Premium coffee from ${coffee.origin || 'various origins'}`,
 			category: 'Green Coffee',
 			url: productUrl,
 			brand: {
@@ -368,8 +377,8 @@ export class SchemaService {
 				'@type': 'Offer',
 				price: coffee.price.toString(),
 				priceCurrency: 'USD',
-				availability: coffee.availability 
-					? 'https://schema.org/InStock' 
+				availability: coffee.availability
+					? 'https://schema.org/InStock'
 					: 'https://schema.org/OutOfStock'
 			};
 		}
@@ -420,20 +429,23 @@ export class SchemaService {
 				item: {
 					'@type': 'Product',
 					name: coffee.name || 'Specialty Coffee',
-					description: coffee.description || `Premium coffee from ${coffee.origin || 'specialty origins'}`,
+					description:
+						coffee.description || `Premium coffee from ${coffee.origin || 'specialty origins'}`,
 					category: 'Green Coffee',
 					brand: {
 						'@type': 'Organization',
 						name: coffee.supplier || 'Specialty Coffee Supplier'
 					},
-					offers: coffee.price ? {
-						'@type': 'Offer',
-						price: coffee.price.toString(),
-						priceCurrency: 'USD',
-						availability: coffee.stocked 
-							? 'https://schema.org/InStock' 
-							: 'https://schema.org/OutOfStock'
-					} : undefined
+					offers: coffee.price
+						? {
+								'@type': 'Offer',
+								price: coffee.price.toString(),
+								priceCurrency: 'USD',
+								availability: coffee.stocked
+									? 'https://schema.org/InStock'
+									: 'https://schema.org/OutOfStock'
+							}
+						: undefined
 				}
 			}))
 		};
@@ -444,9 +456,9 @@ export class SchemaService {
 	 */
 	generateCoffeeAggregateOfferSchema(coffees: any[]): object {
 		const prices = coffees
-			.filter(coffee => coffee.price && coffee.stocked)
-			.map(coffee => parseFloat(coffee.price));
-		
+			.filter((coffee) => coffee.price && coffee.stocked)
+			.map((coffee) => parseFloat(coffee.price));
+
 		if (prices.length === 0) return {};
 
 		const lowPrice = Math.min(...prices);
@@ -477,7 +489,7 @@ export class SchemaService {
 			case 'homepage':
 				schemas.push(this.generateWebsiteSchema());
 				schemas.push(this.generateSoftwareApplicationSchema());
-				
+
 				// Add coffee collection schema if coffee data is provided (authenticated users)
 				if (additionalData?.coffees && additionalData.coffees.length > 0) {
 					schemas.push(this.generateCoffeeCollectionSchema(additionalData.coffees, pageUrl));
@@ -487,14 +499,14 @@ export class SchemaService {
 					}
 				}
 				break;
-			
+
 			case 'homepage-marketing':
 				// Marketing landing page for non-authenticated users
 				schemas.push(this.generateWebsiteSchema());
 				schemas.push(this.generateSoftwareApplicationSchema());
 				// No coffee collection data for non-authenticated users
 				break;
-			
+
 			case 'api-service':
 				// Enhanced API page schema
 				if (additionalData?.service) {
@@ -509,7 +521,7 @@ export class SchemaService {
 				// Keep legacy API product schema for compatibility
 				schemas.push(this.generateAPIProductSchema());
 				break;
-			
+
 			case 'about':
 				// About page with founder information
 				if (additionalData?.organization) {
@@ -519,11 +531,11 @@ export class SchemaService {
 					schemas.push(this.generatePersonSchema(additionalData.founder));
 				}
 				break;
-			
+
 			case 'contact':
 				schemas.push(this.generateContactPageSchema(pageUrl));
 				break;
-			
+
 			case 'coffee':
 				if (additionalData?.coffee) {
 					schemas.push(this.generateCoffeeProductSchema(additionalData.coffee));

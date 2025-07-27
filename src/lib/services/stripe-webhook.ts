@@ -20,17 +20,21 @@ interface RoleAuditLog {
  */
 async function logRoleChange(supabase: any, auditData: RoleAuditLog) {
 	try {
-		const { error } = await supabase
-			.from('role_audit_logs')
-			.insert({
-				...auditData,
-				created_at: new Date().toISOString()
-			});
-		
+		const { error } = await supabase.from('role_audit_logs').insert({
+			...auditData,
+			created_at: new Date().toISOString()
+		});
+
 		if (error) {
 			console.error('❌ Failed to log role change:', error);
 		} else {
-			console.log('📝 Role change logged:', auditData.user_id, auditData.old_role, '→', auditData.new_role);
+			console.log(
+				'📝 Role change logged:',
+				auditData.user_id,
+				auditData.old_role,
+				'→',
+				auditData.new_role
+			);
 		}
 	} catch (err) {
 		console.error('❌ Error logging role change:', err);
@@ -124,19 +128,20 @@ export async function handleSubscriptionActive(subscription: Stripe.Subscription
 	// Only update if role is different to avoid unnecessary operations
 	if (currentRole !== 'member') {
 		// Update user role to 'member'
-		const { error } = await supabase
-			.from('user_roles')
-			.upsert({ 
-				id: userId, 
+		const { error } = await supabase.from('user_roles').upsert(
+			{
+				id: userId,
 				role: 'member',
 				updated_at: new Date().toISOString()
-			}, { onConflict: 'id' });
+			},
+			{ onConflict: 'id' }
+		);
 
 		if (error) {
 			console.error('❌ Error updating user role:', error);
 		} else {
 			console.log(`✅ Updated user ${userId} to member role`);
-			
+
 			// Log the role change
 			await logRoleChange(supabase, {
 				user_id: userId,
@@ -216,19 +221,20 @@ export async function handleSubscriptionInactive(subscription: Stripe.Subscripti
 	// Only update if role is different to avoid unnecessary operations
 	if (currentRole !== 'viewer') {
 		// Update user role to 'viewer'
-		const { error } = await supabase
-			.from('user_roles')
-			.upsert({ 
-				id: userId, 
+		const { error } = await supabase.from('user_roles').upsert(
+			{
+				id: userId,
 				role: 'viewer',
 				updated_at: new Date().toISOString()
-			}, { onConflict: 'id' });
+			},
+			{ onConflict: 'id' }
+		);
 
 		if (error) {
 			console.error('❌ Error updating user role:', error);
 		} else {
 			console.log(`✅ Updated user ${userId} to viewer role`);
-			
+
 			// Log the role change
 			await logRoleChange(supabase, {
 				user_id: userId,

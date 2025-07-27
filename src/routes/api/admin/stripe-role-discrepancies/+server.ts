@@ -71,10 +71,11 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}
 
 		// Manually join the data
-		const customersWithRoles = stripeCustomers?.map(customer => ({
-			...customer,
-			user_roles: userRoles?.find(role => role.id === customer.user_id) || null
-		})) || [];
+		const customersWithRoles =
+			stripeCustomers?.map((customer) => ({
+				...customer,
+				user_roles: userRoles?.find((role) => role.id === customer.user_id) || null
+			})) || [];
 
 		console.log(`📊 Checking ${customersWithRoles?.length || 0} Stripe customers`);
 
@@ -85,7 +86,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		for (const customer of customersWithRoles || []) {
 			try {
 				const userRole = customer.user_roles as any;
-				
+
 				// Get subscriptions for this customer
 				const subscriptions = await stripe.subscriptions.list({
 					customer: customer.customer_id,
@@ -94,8 +95,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 				});
 
 				// Determine what role they should have based on active subscriptions
-				const activeSubscriptions = subscriptions.data.filter(sub => 
-					sub.status === 'active' || sub.status === 'trialing'
+				const activeSubscriptions = subscriptions.data.filter(
+					(sub) => sub.status === 'active' || sub.status === 'trialing'
 				);
 
 				const hasActiveSubscription = activeSubscriptions.length > 0;
@@ -111,14 +112,13 @@ export const GET: RequestHandler = async ({ locals }) => {
 						currentRole,
 						expectedRole,
 						stripeCustomerId: customer.customer_id,
-						subscriptionStatus: activeSubscriptions.length > 0 
-							? activeSubscriptions[0].status 
-							: 'no_active_subscription',
-						subscriptionId: activeSubscriptions.length > 0 
-							? activeSubscriptions[0].id 
-							: undefined,
+						subscriptionStatus:
+							activeSubscriptions.length > 0
+								? activeSubscriptions[0].status
+								: 'no_active_subscription',
+						subscriptionId: activeSubscriptions.length > 0 ? activeSubscriptions[0].id : undefined,
 						lastRoleUpdate: userRole?.updated_at,
-						issue: hasActiveSubscription 
+						issue: hasActiveSubscription
 							? `Has active subscription but role is ${currentRole}, should be member`
 							: `No active subscription but role is ${currentRole}, should be viewer`
 					};
@@ -131,8 +131,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 				}
 
 				// Add a small delay to avoid rate limiting
-				await new Promise(resolve => setTimeout(resolve, 100));
-
+				await new Promise((resolve) => setTimeout(resolve, 100));
 			} catch (error) {
 				console.error(`❌ Error checking customer ${customer.customer_id}:`, error);
 				// Continue with next customer rather than failing entirely
@@ -142,20 +141,22 @@ export const GET: RequestHandler = async ({ locals }) => {
 		// Get recent audit logs for context
 		const { data: recentLogs } = await supabase
 			.from('role_audit_logs')
-			.select(`
+			.select(
+				`
 				user_id,
 				old_role,
 				new_role,
 				trigger_type,
 				created_at,
 				stripe_customer_id
-			`)
+			`
+			)
 			.order('created_at', { ascending: false })
 			.limit(50);
 
 		// Manually join audit logs with user roles for email
-		const recentAuditLogs: AuditLogSummary[] = (recentLogs || []).map(log => {
-			const userRole = userRoles?.find(role => role.id === log.user_id);
+		const recentAuditLogs: AuditLogSummary[] = (recentLogs || []).map((log) => {
+			const userRole = userRoles?.find((role) => role.id === log.user_id);
 			return {
 				userId: log.user_id,
 				email: userRole?.email,
@@ -185,15 +186,14 @@ export const GET: RequestHandler = async ({ locals }) => {
 		});
 
 		return json(report);
-
 	} catch (error: any) {
 		console.error('❌ Error generating discrepancy report:', error);
-		
+
 		// Handle authentication errors specifically
 		if (error.status === 403 || error.status === 401) {
 			return json({ error: error.message }, { status: error.status });
 		}
-		
+
 		return json({ error: error.message || 'Internal server error' }, { status: 500 });
 	}
 };
@@ -228,7 +228,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Update the role
 		const { error: roleError } = await supabase
 			.from('user_roles')
-			.update({ 
+			.update({
 				role: expectedRole,
 				updated_at: new Date().toISOString()
 			})
@@ -240,19 +240,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Log the manual role change
-		const { error: auditError } = await supabase
-			.from('role_audit_logs')
-			.insert({
-				user_id: userId,
-				old_role: currentRole,
-				new_role: expectedRole,
-				trigger_type: 'admin_change',
-				metadata: {
-					reason: reason || 'Manual fix via admin dashboard',
-					admin_user: adminUser.id
-				},
-				created_at: new Date().toISOString()
-			});
+		const { error: auditError } = await supabase.from('role_audit_logs').insert({
+			user_id: userId,
+			old_role: currentRole,
+			new_role: expectedRole,
+			trigger_type: 'admin_change',
+			metadata: {
+				reason: reason || 'Manual fix via admin dashboard',
+				admin_user: adminUser.id
+			},
+			created_at: new Date().toISOString()
+		});
 
 		if (auditError) {
 			console.error('❌ Error logging role change:', auditError);
@@ -261,22 +259,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		console.log(`✅ Admin updated user ${userId} from ${currentRole} to ${expectedRole}`);
 
-		return json({ 
-			success: true, 
+		return json({
+			success: true,
 			message: `User role updated from ${currentRole} to ${expectedRole}`,
 			userId,
 			oldRole: currentRole,
 			newRole: expectedRole
 		});
-
 	} catch (error: any) {
 		console.error('❌ Error fixing role discrepancy:', error);
-		
+
 		// Handle authentication errors specifically
 		if (error.status === 403 || error.status === 401) {
 			return json({ error: error.message }, { status: error.status });
 		}
-		
+
 		return json({ error: error.message || 'Internal server error' }, { status: 500 });
 	}
 };

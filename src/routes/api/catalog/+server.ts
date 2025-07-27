@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		// Check cache first
 		const now = Date.now();
-		if (catalogCache.data && (now - catalogCache.timestamp) < CACHE_TTL) {
+		if (catalogCache.data && now - catalogCache.timestamp < CACHE_TTL) {
 			console.log('Serving catalog data from cache');
 			return json(catalogCache.data);
 		}

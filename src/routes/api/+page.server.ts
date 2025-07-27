@@ -11,7 +11,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	// Comprehensive service information matching actual API page content
 	const serviceData = {
 		name: 'Purveyors Green Coffee API',
-		description: 'The first normalized, daily-updated API for specialty green coffee. Real-time inventory data from top U.S. suppliers with comprehensive coffee details, pricing, and availability.',
+		description:
+			'The first normalized, daily-updated API for specialty green coffee. Real-time inventory data from top U.S. suppliers with comprehensive coffee details, pricing, and availability.',
 		provider: 'Purveyors',
 		serviceType: 'Data API',
 		url: pageUrl,
@@ -100,28 +101,34 @@ export const load: PageServerLoad = async ({ url }) => {
 	// Enhanced FAQ data based on actual API page content
 	const faqs = [
 		{
-			question: "What makes Purveyors API different from other coffee data sources?",
-			answer: "Purveyors is the first normalized, daily-updated API specifically for specialty green coffee. We aggregate data from multiple top U.S. suppliers and provide it in a consistent format with real-time pricing and availability."
+			question: 'What makes Purveyors API different from other coffee data sources?',
+			answer:
+				'Purveyors is the first normalized, daily-updated API specifically for specialty green coffee. We aggregate data from multiple top U.S. suppliers and provide it in a consistent format with real-time pricing and availability.'
 		},
 		{
-			question: "How fresh is the data?",
-			answer: "Our data is updated daily through automated scraping of supplier websites. This ensures you always have the most current pricing, availability, and coffee details."
+			question: 'How fresh is the data?',
+			answer:
+				'Our data is updated daily through automated scraping of supplier websites. This ensures you always have the most current pricing, availability, and coffee details.'
 		},
 		{
-			question: "What data fields are included?",
-			answer: "Each coffee entry includes origin details (country, region, farm), processing method, tasting notes, pricing per pound, availability status, arrival dates, grade information, and supplier details."
+			question: 'What data fields are included?',
+			answer:
+				'Each coffee entry includes origin details (country, region, farm), processing method, tasting notes, pricing per pound, availability status, arrival dates, grade information, and supplier details.'
 		},
 		{
-			question: "Do you offer webhook notifications?",
-			answer: "Yes, Professional and Enterprise plans include webhook notifications for price changes, new coffee arrivals, and availability updates."
+			question: 'Do you offer webhook notifications?',
+			answer:
+				'Yes, Professional and Enterprise plans include webhook notifications for price changes, new coffee arrivals, and availability updates.'
 		},
 		{
-			question: "Is there an SLA for API uptime?",
-			answer: "Enterprise customers receive SLA guarantees with 99.9% uptime commitment. All other plans benefit from our robust infrastructure but without formal SLA coverage."
+			question: 'Is there an SLA for API uptime?',
+			answer:
+				'Enterprise customers receive SLA guarantees with 99.9% uptime commitment. All other plans benefit from our robust infrastructure but without formal SLA coverage.'
 		},
 		{
-			question: "Can I get historical pricing data?",
-			answer: "Yes, Professional and Enterprise plans include access to historical pricing trends and seasonal availability patterns for market analysis."
+			question: 'Can I get historical pricing data?',
+			answer:
+				'Yes, Professional and Enterprise plans include access to historical pricing trends and seasonal availability patterns for market analysis.'
 		}
 	];
 
@@ -136,17 +143,21 @@ export const load: PageServerLoad = async ({ url }) => {
 	return {
 		meta: {
 			title: 'Purveyors.io Green Coffee API - Transform Your Roasting Platform',
-			description: 'The first normalized, daily-updated API for specialty green coffee. Integrate real-time green coffee data into your roasting software with our comprehensive REST API.',
-			keywords: 'green coffee API, coffee data API, specialty coffee API, roasting software integration, coffee inventory API, normalized coffee data',
+			description:
+				'The first normalized, daily-updated API for specialty green coffee. Integrate real-time green coffee data into your roasting software with our comprehensive REST API.',
+			keywords:
+				'green coffee API, coffee data API, specialty coffee API, roasting software integration, coffee inventory API, normalized coffee data',
 			canonical: pageUrl,
 			ogTitle: 'Purveyors Green Coffee API - Coffee Data Integration',
-			ogDescription: 'The first normalized, daily-updated API for specialty green coffee. Real-time inventory data from top U.S. suppliers.',
+			ogDescription:
+				'The first normalized, daily-updated API for specialty green coffee. Real-time inventory data from top U.S. suppliers.',
 			ogImage: `${baseUrl}/purveyors_orange.svg`,
 			ogUrl: pageUrl,
 			ogType: 'product',
 			twitterCard: 'summary_large_image',
 			twitterTitle: 'Purveyors Green Coffee API',
-			twitterDescription: 'Integrate real-time green coffee data into your roasting software with our comprehensive REST API.',
+			twitterDescription:
+				'Integrate real-time green coffee data into your roasting software with our comprehensive REST API.',
 			twitterImage: `${baseUrl}/purveyors_orange.svg`,
 			schemaData
 		}

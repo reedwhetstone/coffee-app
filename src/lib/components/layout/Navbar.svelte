@@ -130,7 +130,7 @@
 			<!-- Admin-only navigation -->
 			{#if hasRequiredRole('admin')}
 				<li class="mt-4">
-					<div class="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary-dark">
+					<div class="text-text-secondary-dark mb-2 text-xs font-semibold uppercase tracking-wide">
 						Administration
 					</div>
 				</li>

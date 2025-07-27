@@ -75,7 +75,7 @@ export const POST: RequestHandler = async (event) => {
 		// Require member role for AI features
 		const { user } = await requireMemberRole(event);
 		const { supabase } = event.locals;
-		
+
 		const { prompt, coffeeData } = await event.request.json();
 
 		// Detect query type

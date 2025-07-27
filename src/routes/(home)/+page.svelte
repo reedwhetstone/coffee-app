@@ -379,7 +379,11 @@
 								<div
 									class="mt-3 flex items-center justify-between text-xs text-text-secondary-light"
 								>
-									<span>{[coffee.continent, coffee.country, coffee.region].filter(Boolean).join(' > ') || '-'}</span>
+									<span
+										>{[coffee.continent, coffee.country, coffee.region]
+											.filter(Boolean)
+											.join(' > ') || '-'}</span
+									>
 									<span>{coffee.processing || '-'}</span>
 								</div>
 							</div>
@@ -653,7 +657,12 @@
 										<div
 											class="mt-3 flex-col gap-2 text-xs text-text-secondary-light sm:grid-cols-2"
 										>
-											<div><span class="font-medium">Location:</span> {[coffee.continent, coffee.country, coffee.region].filter(Boolean).join(' > ') || '-'}</div>
+											<div>
+												<span class="font-medium">Location:</span>
+												{[coffee.continent, coffee.country, coffee.region]
+													.filter(Boolean)
+													.join(' > ') || '-'}
+											</div>
 											<div>
 												{#if coffee.processing}
 													<span>Processing: {coffee.processing}</span>

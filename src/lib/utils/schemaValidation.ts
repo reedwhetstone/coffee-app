@@ -211,7 +211,7 @@ function validateItemList(schema: any, errors: string[], warnings: string[]): vo
 function validateCommonIssues(schema: any, errors: string[], warnings: string[]): void {
 	// Check for missing URLs in properties that should have them
 	const urlFields = ['url', 'sameAs', 'image'];
-	urlFields.forEach(field => {
+	urlFields.forEach((field) => {
 		if (schema[field] && typeof schema[field] === 'string') {
 			if (!isValidUrl(schema[field])) {
 				warnings.push(`Invalid URL format in "${field}": ${schema[field]}`);
@@ -221,7 +221,7 @@ function validateCommonIssues(schema: any, errors: string[], warnings: string[])
 
 	// Check for empty required string fields
 	const stringFields = ['name', 'description'];
-	stringFields.forEach(field => {
+	stringFields.forEach((field) => {
 		if (schema[field] === '') {
 			warnings.push(`Empty string in "${field}" property`);
 		}
@@ -248,7 +248,7 @@ export function generateTestingUrls(pageUrl: string): {
 	structuredDataTest: string;
 } {
 	const encodedUrl = encodeURIComponent(pageUrl);
-	
+
 	return {
 		richResultsTest: `https://search.google.com/test/rich-results?url=${encodedUrl}`,
 		structuredDataTest: `https://validator.schema.org/#url=${encodedUrl}`
@@ -260,37 +260,37 @@ export function generateTestingUrls(pageUrl: string): {
  */
 export function logSchemaValidation(schemas: any[], pageUrl: string): void {
 	if (typeof window === 'undefined') return; // Only run in browser
-	
+
 	console.group('🔍 Schema Validation Results');
 	console.log('Page URL:', pageUrl);
-	
+
 	const testingUrls = generateTestingUrls(pageUrl);
 	console.log('🧪 Testing URLs:');
 	console.log('  - Rich Results Test:', testingUrls.richResultsTest);
 	console.log('  - Schema Validator:', testingUrls.structuredDataTest);
-	
+
 	schemas.forEach((schema, index) => {
 		const result = validateSchema(schema);
 		console.group(`Schema ${index + 1}: ${schema['@type'] || 'Unknown'}`);
-		
+
 		if (result.isValid) {
 			console.log('✅ Valid schema');
 		} else {
 			console.log('❌ Invalid schema');
 		}
-		
+
 		if (result.errors.length > 0) {
 			console.log('🚨 Errors:', result.errors);
 		}
-		
+
 		if (result.warnings.length > 0) {
 			console.log('⚠️ Warnings:', result.warnings);
 		}
-		
+
 		console.log('📄 Schema:', schema);
 		console.groupEnd();
 	});
-	
+
 	console.groupEnd();
 }
 
@@ -299,11 +299,11 @@ export function logSchemaValidation(schemas: any[], pageUrl: string): void {
  */
 export function extractSchemasFromPage(): any[] {
 	if (typeof window === 'undefined') return [];
-	
+
 	const schemas: any[] = [];
 	const scriptElements = document.querySelectorAll('script[type="application/ld+json"]');
-	
-	scriptElements.forEach(script => {
+
+	scriptElements.forEach((script) => {
 		try {
 			const schema = JSON.parse(script.textContent || '');
 			if (schema['@graph']) {
@@ -315,7 +315,7 @@ export function extractSchemasFromPage(): any[] {
 			console.warn('Failed to parse schema from script tag:', error);
 		}
 	});
-	
+
 	return schemas;
 }
 

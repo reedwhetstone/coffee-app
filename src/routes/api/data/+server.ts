@@ -81,13 +81,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			// Standard user authentication - all users (including admins) see only their own data
 			const sessionData = await locals.safeGetSession();
 			const { session, user } = sessionData as { session: any; user: any };
-			
+
 			if (!session || !user) {
 				return json({ data: [] });
 			}
-			
+
 			query = query.eq('user', user.id);
-			
+
 			if (id) {
 				query = query.eq('id', id);
 			}

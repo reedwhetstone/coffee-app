@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { 
-		validateCurrentPageSchemas, 
-		extractSchemasFromPage, 
+	import {
+		validateCurrentPageSchemas,
+		extractSchemasFromPage,
 		validateSchema,
 		generateTestingUrls,
-		type ValidationResult 
+		type ValidationResult
 	} from '$lib/utils/schemaValidation';
 
 	let { show = false } = $props<{ show?: boolean }>();
@@ -24,8 +24,8 @@
 
 	function refreshSchemas() {
 		schemas = extractSchemasFromPage();
-		validationResults = schemas.map(schema => validateSchema(schema));
-		
+		validationResults = schemas.map((schema) => validateSchema(schema));
+
 		// Also log to console for debugging
 		validateCurrentPageSchemas();
 	}
@@ -35,8 +35,10 @@
 	}
 
 	let testingUrls = $derived(currentUrl ? generateTestingUrls(currentUrl) : null);
-	let hasErrors = $derived(validationResults.some(result => !result.isValid));
-	let totalWarnings = $derived(validationResults.reduce((sum, result) => sum + result.warnings.length, 0));
+	let hasErrors = $derived(validationResults.some((result) => !result.isValid));
+	let totalWarnings = $derived(
+		validationResults.reduce((sum, result) => sum + result.warnings.length, 0)
+	);
 </script>
 
 {#if show}
@@ -44,7 +46,7 @@
 		<!-- Toggle Button -->
 		<button
 			class="mb-2 flex items-center space-x-2 rounded-lg bg-gray-800 px-3 py-2 text-sm text-white shadow-lg hover:bg-gray-700"
-			onclick={() => isExpanded = !isExpanded}
+			onclick={() => (isExpanded = !isExpanded)}
 		>
 			<span>🔍</span>
 			<span>Schema Debug</span>
@@ -118,7 +120,7 @@
 
 							{#if result.errors.length > 0}
 								<div class="mb-1">
-									<div class="text-red-600 font-medium">Errors:</div>
+									<div class="font-medium text-red-600">Errors:</div>
 									{#each result.errors as error}
 										<div class="text-red-600">• {error}</div>
 									{/each}
@@ -127,7 +129,7 @@
 
 							{#if result.warnings.length > 0}
 								<div class="mb-1">
-									<div class="text-yellow-600 font-medium">Warnings:</div>
+									<div class="font-medium text-yellow-600">Warnings:</div>
 									{#each result.warnings as warning}
 										<div class="text-yellow-600">• {warning}</div>
 									{/each}
