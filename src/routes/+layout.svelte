@@ -11,6 +11,8 @@
 	let componentsLoaded = $state(false);
 	let loadingMessage = $state('Loading...');
 
+	import type { PageMeta } from '$lib/types/meta.types';
+
 	interface LayoutData {
 		session: {
 			access_token: string;
@@ -30,19 +32,7 @@
 		} | null;
 		role: 'viewer' | 'member' | 'admin';
 		data?: any[];
-		meta?: {
-			title?: string;
-			description?: string;
-			keywords?: string;
-			ogTitle?: string;
-			ogDescription?: string;
-			ogImage?: string;
-			ogUrl?: string;
-			twitterCard?: string;
-			twitterTitle?: string;
-			twitterDescription?: string;
-			structuredData?: any;
-		};
+		meta?: PageMeta;
 	}
 
 	let { data, children } = $props<{ data: LayoutData; children: any }>();
@@ -162,6 +152,21 @@
 		{#if data.meta.keywords}
 			<meta name="keywords" content={data.meta.keywords} />
 		{/if}
+		{#if data.meta.canonical}
+			<link rel="canonical" href={data.meta.canonical} />
+		{/if}
+		{#if data.meta.robots}
+			<meta name="robots" content={data.meta.robots} />
+		{/if}
+		{#if data.meta.author}
+			<meta name="author" content={data.meta.author} />
+		{/if}
+		{#if data.meta.viewport}
+			<meta name="viewport" content={data.meta.viewport} />
+		{/if}
+		{#if data.meta.themeColor}
+			<meta name="theme-color" content={data.meta.themeColor} />
+		{/if}
 
 		<!-- Open Graph -->
 		{#if data.meta.ogTitle}
@@ -176,7 +181,13 @@
 		{#if data.meta.ogUrl}
 			<meta property="og:url" content={data.meta.ogUrl} />
 		{/if}
-		<meta property="og:type" content="website" />
+		<meta property="og:type" content={data.meta.ogType || 'website'} />
+		{#if data.meta.ogSiteName}
+			<meta property="og:site_name" content={data.meta.ogSiteName} />
+		{/if}
+		{#if data.meta.ogLocale}
+			<meta property="og:locale" content={data.meta.ogLocale} />
+		{/if}
 
 		<!-- Twitter -->
 		{#if data.meta.twitterCard}
@@ -188,14 +199,53 @@
 		{#if data.meta.twitterDescription}
 			<meta name="twitter:description" content={data.meta.twitterDescription} />
 		{/if}
+		{#if data.meta.twitterImage}
+			<meta name="twitter:image" content={data.meta.twitterImage} />
+		{/if}
+		{#if data.meta.twitterSite}
+			<meta name="twitter:site" content={data.meta.twitterSite} />
+		{/if}
+		{#if data.meta.twitterCreator}
+			<meta name="twitter:creator" content={data.meta.twitterCreator} />
+		{/if}
 
 		<!-- Structured Data -->
 		{#if data.meta.structuredData}
 			{@html `<script type="application/ld+json">${JSON.stringify(data.meta.structuredData)}</script>`}
 		{/if}
+		{#if data.meta.schemaData}
+			{#if Array.isArray(data.meta.schemaData)}
+				{#each data.meta.schemaData as schema}
+					{@html `<script type="application/ld+json">${JSON.stringify(schema)}</script>`}
+				{/each}
+			{:else}
+				{@html `<script type="application/ld+json">${JSON.stringify(data.meta.schemaData)}</script>`}
+			{/if}
+		{/if}
+
+		<!-- Hreflang for international SEO -->
+		{#if data.meta.hreflang}
+			{#each data.meta.hreflang as lang}
+				<link rel="alternate" hreflang={lang.lang} href={lang.href} />
+			{/each}
+		{/if}
+
+		<!-- Performance hints -->
+		{#if data.meta.preconnect}
+			{#each data.meta.preconnect as url}
+				<link rel="preconnect" href={url} />
+			{/each}
+		{/if}
+		{#if data.meta.dnsPrefetch}
+			{#each data.meta.dnsPrefetch as url}
+				<link rel="dns-prefetch" href={url} />
+			{/each}
+		{/if}
 	{:else}
 		<title>Purveyors</title>
 		<meta name="description" content="Professional coffee roasting platform" />
+		<meta name="robots" content="index, follow" />
+		<meta name="theme-color" content="#D97706" />
 	{/if}
 </svelte:head>
 
