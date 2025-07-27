@@ -1,6 +1,6 @@
 // src/routes/api/data/+server.ts
 import { json } from '@sveltejs/kit';
-import { requireUserAuth, validateAdminAccess } from '$lib/server/auth';
+import { requireUserAuth } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
 interface GreenCoffeeRow {
@@ -78,22 +78,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				return json({ data: [] });
 			}
 		} else {
-			// Regular authorization logic with improved admin check
-			try {
-				// Try admin access first
-				await validateAdminAccess(locals);
-				// Admin users can see all data - no filtering needed
-			} catch (adminError) {
-				// Not admin, require regular user auth
-				const sessionData = await locals.safeGetSession();
-				const { session, user } = sessionData as { session: any; user: any };
-				
-				if (!session || !user) {
-					return json({ data: [] });
-				}
-				
-				query = query.eq('user', user.id);
+			// Standard user authentication - all users (including admins) see only their own data
+			const sessionData = await locals.safeGetSession();
+			const { session, user } = sessionData as { session: any; user: any };
+			
+			if (!session || !user) {
+				return json({ data: [] });
 			}
+			
+			query = query.eq('user', user.id);
 			
 			if (id) {
 				query = query.eq('id', id);
