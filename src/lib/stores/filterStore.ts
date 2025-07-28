@@ -590,7 +590,7 @@ function createFilterStore() {
 
 				return state;
 			});
-		}, 50); // Shorter 50ms debounce for better responsiveness
+		}, 16); // ~1 frame at 60fps for better responsiveness
 
 		// Store the debounce timer ID
 		update((state) => {

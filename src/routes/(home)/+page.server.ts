@@ -8,14 +8,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	} = await locals.supabase.auth.getSession();
 	const isAuthenticated = !!session;
 
-	// Get recent stocked coffees with limit to prevent large initial loads
-	// Most users will interact with recent arrivals first
+	// Get recent stocked coffees with smaller initial limit for better performance
+	// Load first 50 items quickly, implement pagination for rest
 	const { data: stockedData } = await locals.supabase
 		.from('coffee_catalog')
 		.select('*')
 		.eq('stocked', true)
-		.order('arrival_date', { ascending: false })
-		.limit(500); // Reasonable limit for performance while maintaining functionality
+		.order('arrival_date', { ascending: false });
+	//.limit(50); // temporarily no reduced limit for faster initial load, unless comprehensive fix is addressed. simply limiting the initial load doesn't address the need for all the data in the search and for infinite scroll.
 
 	// Generate conditional schema based on authentication state
 	const baseUrl = `${url.protocol}//${url.host}`;

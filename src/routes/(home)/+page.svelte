@@ -8,11 +8,7 @@
 
 	// Marketing components
 	import Hero from '$lib/components/marketing/Hero.svelte';
-	import Features from '$lib/components/marketing/Features.svelte';
-	import Pricing from '$lib/components/marketing/Pricing.svelte';
-	import Testimonials from '$lib/components/marketing/Testimonials.svelte';
-	import CTA from '$lib/components/marketing/CTA.svelte';
-	import Footer from '$lib/components/marketing/Footer.svelte';
+	import LazyLoad from '$lib/components/LazyLoad.svelte';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 
@@ -61,10 +57,19 @@
 			!initializing
 		) {
 			initializing = true;
-			setTimeout(() => {
-				filterStore.initializeForRoute(currentRoute, data.data);
-				initializing = false;
-			}, 0);
+			// Use requestIdleCallback for better performance if available
+			if (typeof requestIdleCallback !== 'undefined') {
+				requestIdleCallback(() => {
+					filterStore.initializeForRoute(currentRoute, data.data);
+					initializing = false;
+				});
+			} else {
+				// Fallback for older browsers
+				setTimeout(() => {
+					filterStore.initializeForRoute(currentRoute, data.data);
+					initializing = false;
+				}, 0);
+			}
 		}
 	});
 
@@ -292,11 +297,39 @@
 {#if !session}
 	<div class="min-h-screen">
 		<Hero />
-		<Features />
+		<LazyLoad threshold={0.1} rootMargin="100px">
+			{#snippet children()}
+				{#await import('$lib/components/marketing/Features.svelte') then module}
+					{@const Features = module.default}
+					<Features />
+				{/await}
+			{/snippet}
+		</LazyLoad>
 		<!-- <Testimonials /> -->
-		<Pricing />
-		<CTA />
-		<Footer />
+		<LazyLoad threshold={0.1} rootMargin="100px">
+			{#snippet children()}
+				{#await import('$lib/components/marketing/Pricing.svelte') then module}
+					{@const Pricing = module.default}
+					<Pricing />
+				{/await}
+			{/snippet}
+		</LazyLoad>
+		<LazyLoad threshold={0.1} rootMargin="100px">
+			{#snippet children()}
+				{#await import('$lib/components/marketing/CTA.svelte') then module}
+					{@const CTA = module.default}
+					<CTA />
+				{/await}
+			{/snippet}
+		</LazyLoad>
+		<LazyLoad threshold={0.1} rootMargin="100px">
+			{#snippet children()}
+				{#await import('$lib/components/marketing/Footer.svelte') then module}
+					{@const Footer = module.default}
+					<Footer />
+				{/await}
+			{/snippet}
+		</LazyLoad>
 
 		<!-- Marketplace Preview for Unauthenticated Users -->
 		{#if data?.data?.length > 0}
@@ -372,7 +405,7 @@
 											{/if}
 										</div>
 										{#if tastingNotes}
-											<TastingNotesRadar {tastingNotes} size={80} />
+											<TastingNotesRadar {tastingNotes} size={80} lazy={true} />
 										{/if}
 									</div>
 								</div>
@@ -558,6 +591,7 @@
 														<TastingNotesRadar
 															tastingNotes={parseTastingNotes(coffee.ai_tasting_notes)}
 															size={80}
+															lazy={true}
 														/>
 													{/if}
 												</div>
@@ -650,7 +684,7 @@
 										<!-- Mobile: Chart full width -->
 										{#if tastingNotes}
 											<div class="mt-2 px-6 sm:hidden">
-												<TastingNotesRadar {tastingNotes} size={300} responsive={true} />
+												<TastingNotesRadar {tastingNotes} size={300} responsive={true} lazy={true} />
 											</div>
 										{/if}
 
@@ -715,7 +749,7 @@
 										</div>
 										{#if tastingNotes}
 											<div class="pt-4">
-												<TastingNotesRadar {tastingNotes} size={180} />
+												<TastingNotesRadar {tastingNotes} size={180} lazy={true} />
 											</div>
 										{/if}
 									</div>

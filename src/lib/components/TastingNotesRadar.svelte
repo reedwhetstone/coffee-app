@@ -1,24 +1,29 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { select, scaleLinear, line, type Selection } from 'd3';
 	import type { TastingNotes, RadarDataPoint } from '$lib/types/coffee.types';
 
-	export let tastingNotes: TastingNotes | null = null;
-	export let userTastingNotes: TastingNotes | null = null;
-	export let showOverlay: boolean = false;
-	export let size: number = 120;
-	export let responsive: boolean = false;
+	let { tastingNotes = null, userTastingNotes = null, showOverlay = false, size = 120, responsive = false, lazy = true } = $props<{
+		tastingNotes?: TastingNotes | null;
+		userTastingNotes?: TastingNotes | null;
+		showOverlay?: boolean;
+		size?: number;
+		responsive?: boolean;
+		lazy?: boolean;
+	}>();
 
-	let svgElement: SVGSVGElement;
-	let mounted = false;
+	let svgElement = $state<SVGSVGElement>();
+	let mounted = $state(false);
+	let d3Loaded = $state(false);
+	let isVisible = $state(!lazy); // If not lazy, always visible
+	let containerElement: HTMLElement;
 
 	const radius = size / 2 - 10; // Leave margin for labels
 	const center = size / 2;
 	const levels = 5; // 1-5 scale
 
 	// Transform tasting notes to radar data
-	$: radarData = tastingNotes ? transformToRadarData(tastingNotes) : [];
-	$: userRadarData = userTastingNotes ? transformToRadarData(userTastingNotes) : [];
+	let radarData = $derived(tastingNotes ? transformToRadarData(tastingNotes) : []);
+	let userRadarData = $derived(userTastingNotes ? transformToRadarData(userTastingNotes) : []);
 
 	function transformToRadarData(notes: TastingNotes): RadarDataPoint[] {
 		const axes = ['Body', 'Flavor', 'Acidity', 'Sweetness', 'Aroma'];
@@ -36,9 +41,20 @@
 		});
 	}
 
-	function drawChart() {
-		if (!mounted || !svgElement || radarData.length === 0) return;
+	async function loadD3AndDraw() {
+		if (!d3Loaded) {
+			// Dynamically import D3 when needed
+			const d3Module = await import('d3');
+			window.d3 = d3Module; // Store for use in drawChart
+			d3Loaded = true;
+		}
+		drawChart();
+	}
 
+	function drawChart() {
+		if (!mounted || !svgElement || radarData.length === 0 || !d3Loaded || !window.d3) return;
+
+		const { select } = window.d3;
 		const svg = select(svgElement);
 		svg.selectAll('*').remove(); // Clear previous content
 
@@ -205,16 +221,53 @@
 
 	onMount(() => {
 		mounted = true;
-		drawChart();
+		
+		// Set up intersection observer if lazy loading is enabled
+		if (lazy && containerElement) {
+			const observer = new IntersectionObserver(
+				([entry]) => {
+					if (entry.isIntersecting) {
+						isVisible = true;
+						observer.unobserve(containerElement);
+						// Use requestIdleCallback for better performance
+						if (typeof requestIdleCallback !== 'undefined') {
+							requestIdleCallback(() => loadD3AndDraw());
+						} else {
+							setTimeout(() => loadD3AndDraw(), 0);
+						}
+					}
+				},
+				{ threshold: 0.1, rootMargin: '50px' }
+			);
+			observer.observe(containerElement);
+			
+			return () => observer.unobserve(containerElement);
+		} else {
+			// If not lazy, load immediately
+			isVisible = true;
+			loadD3AndDraw();
+		}
 	});
 
-	$: if (mounted && (radarData || userRadarData)) {
-		drawChart();
-	}
+	$effect(() => {
+		if (mounted && d3Loaded && isVisible && (radarData.length > 0 || userRadarData.length > 0)) {
+			drawChart();
+		}
+	});
 </script>
 
-<div class="tasting-radar">
-	{#if (tastingNotes && radarData.length > 0) || (userTastingNotes && userRadarData.length > 0)}
+<div class="tasting-radar" bind:this={containerElement}>
+	{#if !isVisible || !d3Loaded}
+		<!-- Loading skeleton -->
+		<div
+			class="flex items-center justify-center rounded-lg bg-background-secondary-light/50 animate-pulse {responsive
+				? 'aspect-square'
+				: ''}"
+			style={responsive ? '' : `width: ${size}px; height: ${size}px;`}
+		>
+			<div class="h-4 w-4 rounded-full bg-background-tertiary-light/20 animate-pulse"></div>
+		</div>
+	{:else if (tastingNotes && radarData.length > 0) || (userTastingNotes && userRadarData.length > 0)}
 		<svg
 			bind:this={svgElement}
 			width={responsive ? '100%' : size}
