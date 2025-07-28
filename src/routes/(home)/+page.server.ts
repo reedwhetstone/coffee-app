@@ -8,16 +8,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	} = await locals.supabase.auth.getSession();
 	const isAuthenticated = !!session;
 
-	// Get recent coffees with limit to prevent large initial loads
+	// Get recent stocked coffees with limit to prevent large initial loads
 	// Most users will interact with recent arrivals first
-	const { data: allData } = await locals.supabase
+	const { data: stockedData } = await locals.supabase
 		.from('coffee_catalog')
 		.select('*')
+		.eq('stocked', true)
 		.order('arrival_date', { ascending: false })
 		.limit(500); // Reasonable limit for performance while maintaining functionality
-
-	// Filter stocked coffees client-side to avoid duplicate query
-	const stockedData = allData?.filter((coffee) => coffee.stocked) || [];
 
 	// Generate conditional schema based on authentication state
 	const baseUrl = `${url.protocol}//${url.host}`;
@@ -60,8 +58,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			};
 
 	return {
-		data: stockedData,
-		trainingData: allData || [],
+		data: stockedData || [],
+		trainingData: stockedData || [],
 		meta: {
 			...metaInfo,
 			keywords:
