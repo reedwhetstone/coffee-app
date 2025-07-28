@@ -19,42 +19,57 @@
 <div class="min-h-screen bg-background-primary-light">
 	<div class="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
 		<div class="text-center">
-			<div class="mx-auto mb-8 h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+			<div class="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
 				<svg class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					/>
 				</svg>
 			</div>
-			
-			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light mb-4">
+
+			<h1 class="mb-4 text-3xl font-bold tracking-tight text-text-primary-light">
 				API Documentation Has Moved
 			</h1>
-			
-			<p class="text-lg text-text-secondary-light mb-8">
+
+			<p class="mb-8 text-lg text-text-secondary-light">
 				Our API documentation is now part of the personalized dashboard experience.
 				<br />
 				You'll be redirected automatically in a moment.
 			</p>
 
-			<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light mb-8">
-				<h2 class="text-lg font-semibold text-text-primary-light mb-4">
+			<div class="mb-8 rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
+				<h2 class="mb-4 text-lg font-semibold text-text-primary-light">
 					Enhanced Documentation Features
 				</h2>
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 text-left">
+				<div class="grid grid-cols-1 gap-4 text-left sm:grid-cols-2">
 					<div class="flex items-start space-x-3">
 						<div class="flex-shrink-0">
 							<svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+								<path
+									fill-rule="evenodd"
+									d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+									clip-rule="evenodd"
+								/>
 							</svg>
 						</div>
 						<div>
 							<p class="text-sm font-medium text-text-primary-light">Personalized Examples</p>
-							<p class="text-sm text-text-secondary-light">Code samples with your actual API keys</p>
+							<p class="text-sm text-text-secondary-light">
+								Code samples with your actual API keys
+							</p>
 						</div>
 					</div>
 					<div class="flex items-start space-x-3">
 						<div class="flex-shrink-0">
 							<svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+								<path
+									fill-rule="evenodd"
+									d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+									clip-rule="evenodd"
+								/>
 							</svg>
 						</div>
 						<div>
@@ -65,7 +80,11 @@
 					<div class="flex items-start space-x-3">
 						<div class="flex-shrink-0">
 							<svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+								<path
+									fill-rule="evenodd"
+									d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+									clip-rule="evenodd"
+								/>
 							</svg>
 						</div>
 						<div>
@@ -76,7 +95,11 @@
 					<div class="flex items-start space-x-3">
 						<div class="flex-shrink-0">
 							<svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-								<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+								<path
+									fill-rule="evenodd"
+									d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+									clip-rule="evenodd"
+								/>
 							</svg>
 						</div>
 						<div>
@@ -103,7 +126,9 @@
 			</div>
 
 			<p class="mt-6 text-sm text-text-secondary-light">
-				Need to sign in? <a href="/" class="text-background-tertiary-light hover:underline">Return to home page</a>
+				Need to sign in? <a href="/" class="text-background-tertiary-light hover:underline"
+					>Return to home page</a
+				>
 			</p>
 		</div>
 	</div>

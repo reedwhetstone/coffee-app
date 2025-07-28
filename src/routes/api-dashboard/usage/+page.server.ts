@@ -47,46 +47,52 @@ export const load: PageServerLoad = async ({ locals }) => {
 			// Get aggregated usage across all user's keys
 			const { data: summaryData, error: summaryError } = await supabase
 				.from('api_usage')
-				.select(`
+				.select(
+					`
 					timestamp,
 					status_code,
 					response_time_ms,
 					api_keys!inner(user_id)
-				`)
+				`
+				)
 				.eq('api_keys.user_id', user.id)
 				.gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
 				.order('timestamp', { ascending: false });
 
 			if (!summaryError && summaryData) {
 				// Group by day
-				const dailyGroups = summaryData.reduce((acc, record) => {
-					const date = new Date(record.timestamp).toISOString().split('T')[0];
-					if (!acc[date]) {
-						acc[date] = {
-							date,
-							total_requests: 0,
-							success_requests: 0,
-							error_requests: 0,
-							avg_response_time: 0,
-							total_response_time: 0
-						};
-					}
-					acc[date].total_requests++;
-					if (record.status_code < 400) {
-						acc[date].success_requests++;
-					} else {
-						acc[date].error_requests++;
-					}
-					acc[date].total_response_time += record.response_time_ms;
-					return acc;
-				}, {} as Record<string, any>);
+				const dailyGroups = summaryData.reduce(
+					(acc, record) => {
+						const date = new Date(record.timestamp).toISOString().split('T')[0];
+						if (!acc[date]) {
+							acc[date] = {
+								date,
+								total_requests: 0,
+								success_requests: 0,
+								error_requests: 0,
+								avg_response_time: 0,
+								total_response_time: 0
+							};
+						}
+						acc[date].total_requests++;
+						if (record.status_code < 400) {
+							acc[date].success_requests++;
+						} else {
+							acc[date].error_requests++;
+						}
+						acc[date].total_response_time += record.response_time_ms;
+						return acc;
+					},
+					{} as Record<string, any>
+				);
 
-				dailySummary = Object.values(dailyGroups).map((day: any) => ({
-					...day,
-					avg_response_time: day.total_requests > 0 
-						? Math.round(day.total_response_time / day.total_requests)
-						: 0
-				})).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+				dailySummary = Object.values(dailyGroups)
+					.map((day: any) => ({
+						...day,
+						avg_response_time:
+							day.total_requests > 0 ? Math.round(day.total_response_time / day.total_requests) : 0
+					}))
+					.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 			}
 		}
 
@@ -96,13 +102,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 		const startOfHour = new Date(now.getTime() - 60 * 60 * 1000);
 
 		const monthlyUsage = dailySummary
-			.filter(day => new Date(day.date) >= startOfMonth)
+			.filter((day) => new Date(day.date) >= startOfMonth)
 			.reduce((sum, day) => sum + day.total_requests, 0);
 
 		const hourlyUsage = usageResults
-			.flatMap(result => result.usage || [])
-			.filter(record => new Date(record.timestamp) >= startOfHour)
-			.length;
+			.flatMap((result) => result.usage || [])
+			.filter((record) => new Date(record.timestamp) >= startOfHour).length;
 
 		return {
 			apiKeys,
@@ -112,7 +117,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				monthlyUsage,
 				hourlyUsage,
 				totalKeys: apiKeys.length,
-				activeKeys: apiKeys.filter(key => key.is_active).length
+				activeKeys: apiKeys.filter((key) => key.is_active).length
 			}
 		};
 	} catch (error) {

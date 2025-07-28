@@ -40,14 +40,20 @@ export const load: PageServerLoad = async ({ locals }) => {
 			const { data: monthlyData, error: monthlyError } = await supabase
 				.from('api_usage')
 				.select('*', { count: 'exact', head: true })
-				.in('api_key_id', apiKeys.map(k => k.id))
+				.in(
+					'api_key_id',
+					apiKeys.map((k) => k.id)
+				)
 				.gte('timestamp', startOfMonth.toISOString());
 
 			// Get hourly usage
 			const { data: hourlyData, error: hourlyError } = await supabase
 				.from('api_usage')
 				.select('*', { count: 'exact', head: true })
-				.in('api_key_id', apiKeys.map(k => k.id))
+				.in(
+					'api_key_id',
+					apiKeys.map((k) => k.id)
+				)
 				.gte('timestamp', startOfHour.toISOString());
 
 			const monthlyUsage = monthlyError ? 0 : (monthlyData as any)?.count || 0;
@@ -64,8 +70,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 				hourlyLimit: HOURLY_LIMIT,
 				monthlyPercent: Math.min((monthlyUsage / MONTHLY_LIMIT) * 100, 100),
 				hourlyPercent: Math.min((hourlyUsage / HOURLY_LIMIT) * 100, 100),
-				nearLimit: (monthlyUsage / MONTHLY_LIMIT) >= 0.8 || (hourlyUsage / HOURLY_LIMIT) >= 0.8,
-				atLimit: (monthlyUsage / MONTHLY_LIMIT) >= 0.95 || (hourlyUsage / HOURLY_LIMIT) >= 0.95
+				nearLimit: monthlyUsage / MONTHLY_LIMIT >= 0.8 || hourlyUsage / HOURLY_LIMIT >= 0.8,
+				atLimit: monthlyUsage / MONTHLY_LIMIT >= 0.95 || hourlyUsage / HOURLY_LIMIT >= 0.95
 			};
 		} catch (error) {
 			console.error('Error loading usage stats:', error);

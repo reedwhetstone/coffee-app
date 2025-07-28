@@ -309,12 +309,10 @@ export async function getUsageSummary(apiKeyId: string, days: number = 30) {
 /**
  * Middleware function to validate API requests with rate limiting
  */
-export async function validateApiRequest(
-	request: Request
-): Promise<{ 
-	valid: boolean; 
-	userId?: string; 
-	keyId?: string; 
+export async function validateApiRequest(request: Request): Promise<{
+	valid: boolean;
+	userId?: string;
+	keyId?: string;
 	error?: string;
 	rateLimitExceeded?: boolean;
 	retryAfter?: number;
@@ -327,14 +325,14 @@ export async function validateApiRequest(
 
 	const apiKey = authHeader.replace('Bearer ', '');
 	const validation = await validateApiKey(apiKey);
-	
+
 	if (!validation.valid) {
 		return validation;
 	}
 
 	// Check rate limits
 	const rateLimit = await checkRateLimit(validation.keyId!, 'developer');
-	
+
 	if (!rateLimit.allowed) {
 		return {
 			valid: false,
@@ -364,14 +362,15 @@ export async function validateAndLogApiRequest(
 }> {
 	const startTime = Date.now();
 	const validation = await validateApiRequest(request);
-	
+
 	const logUsage = async (statusCode: number, responseTimeMs: number) => {
 		if (validation.keyId) {
 			const userAgent = request.headers.get('User-Agent') || undefined;
-			const ipAddress = request.headers.get('CF-Connecting-IP') || 
-							request.headers.get('X-Forwarded-For') || 
-							undefined;
-			
+			const ipAddress =
+				request.headers.get('CF-Connecting-IP') ||
+				request.headers.get('X-Forwarded-For') ||
+				undefined;
+
 			await logApiUsage(
 				validation.keyId,
 				endpoint,

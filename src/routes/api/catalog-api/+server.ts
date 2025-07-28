@@ -85,8 +85,7 @@ export const GET: RequestHandler = async ({ request }) => {
 
 		// Only API users can access the API endpoints (members get catalog data via UI)
 		const hasApiAccess =
-			userRole &&
-			(hasRole(userRole.role, 'api') || hasRole(userRole.role, 'admin')); // Admin can access for testing/support
+			userRole && (hasRole(userRole.role, 'api') || hasRole(userRole.role, 'admin')); // Admin can access for testing/support
 
 		if (roleError || !hasApiAccess) {
 			// Log failed request

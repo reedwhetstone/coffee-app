@@ -9,10 +9,12 @@
 	const HOURLY_LIMIT = 416;
 
 	// Calculate usage percentages
-	let monthlyUsagePercent = $derived(data.currentStats ? 
-		Math.min((data.currentStats.monthlyUsage / MONTHLY_LIMIT) * 100, 100) : 0);
-	let hourlyUsagePercent = $derived(data.currentStats ? 
-		Math.min((data.currentStats.hourlyUsage / HOURLY_LIMIT) * 100, 100) : 0);
+	let monthlyUsagePercent = $derived(
+		data.currentStats ? Math.min((data.currentStats.monthlyUsage / MONTHLY_LIMIT) * 100, 100) : 0
+	);
+	let hourlyUsagePercent = $derived(
+		data.currentStats ? Math.min((data.currentStats.hourlyUsage / HOURLY_LIMIT) * 100, 100) : 0
+	);
 
 	// Format numbers with commas
 	function formatNumber(num: number): string {
@@ -89,7 +91,9 @@
 						</div>
 						<div class="mt-1 h-2 w-full rounded-full bg-background-primary-light">
 							<div
-								class="h-2 rounded-full transition-all duration-300 {getProgressColor(monthlyUsagePercent)}"
+								class="h-2 rounded-full transition-all duration-300 {getProgressColor(
+									monthlyUsagePercent
+								)}"
 								style="width: {monthlyUsagePercent}%"
 							></div>
 						</div>
@@ -109,7 +113,9 @@
 						</div>
 						<div class="mt-1 h-2 w-full rounded-full bg-background-primary-light">
 							<div
-								class="h-2 rounded-full transition-all duration-300 {getProgressColor(hourlyUsagePercent)}"
+								class="h-2 rounded-full transition-all duration-300 {getProgressColor(
+									hourlyUsagePercent
+								)}"
 								style="width: {hourlyUsagePercent}%"
 							></div>
 						</div>
@@ -131,7 +137,7 @@
 				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 					<h3 class="text-sm font-medium text-text-secondary-light">Avg Response</h3>
 					<p class="mt-1 text-2xl font-bold text-purple-500">
-						{data.dailySummary && data.dailySummary.length > 0 
+						{data.dailySummary && data.dailySummary.length > 0
 							? Math.round(data.dailySummary[0]?.avg_response_time || 0)
 							: 0}ms
 					</p>
@@ -143,13 +149,15 @@
 			<div class="grid grid-cols-1 gap-8 lg:grid-cols-2">
 				<!-- Daily Usage Chart -->
 				<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
-					<h2 class="mb-4 text-lg font-semibold text-text-primary-light">Daily Usage (Last 30 Days)</h2>
+					<h2 class="mb-4 text-lg font-semibold text-text-primary-light">
+						Daily Usage (Last 30 Days)
+					</h2>
 					{#if data.dailySummary && data.dailySummary.length > 0}
 						<div class="space-y-3">
 							{#each data.dailySummary.slice(0, 10) as day}
 								<div class="flex items-center justify-between">
 									<div class="flex items-center space-x-3">
-										<span class="text-sm font-medium text-text-primary-light w-16">
+										<span class="w-16 text-sm font-medium text-text-primary-light">
 											{formatDate(day.date)}
 										</span>
 										<div class="flex-1">
@@ -175,7 +183,9 @@
 					{:else}
 						<div class="py-8 text-center">
 							<p class="text-text-secondary-light">No usage data available yet</p>
-							<p class="text-sm text-text-secondary-light">Start making API calls to see analytics</p>
+							<p class="text-sm text-text-secondary-light">
+								Start making API calls to see analytics
+							</p>
 						</div>
 					{/if}
 				</div>
@@ -187,7 +197,7 @@
 						<div class="space-y-4">
 							{#each data.usageData as keyUsage}
 								<div class="rounded-md bg-background-primary-light p-4">
-									<div class="flex items-center justify-between mb-2">
+									<div class="mb-2 flex items-center justify-between">
 										<h3 class="font-medium text-text-primary-light">{keyUsage.keyName}</h3>
 										<span class="text-sm text-text-secondary-light">
 											{keyUsage.usage?.length || 0} requests
@@ -201,13 +211,13 @@
 											<div class="flex items-center space-x-1">
 												<div class="h-2 w-2 rounded-full bg-green-500"></div>
 												<span class="text-xs text-text-secondary-light">
-													{keyUsage.usage.filter(u => u.status_code < 400).length} success
+													{keyUsage.usage.filter((u) => u.status_code < 400).length} success
 												</span>
 											</div>
 											<div class="flex items-center space-x-1">
 												<div class="h-2 w-2 rounded-full bg-red-500"></div>
 												<span class="text-xs text-text-secondary-light">
-													{keyUsage.usage.filter(u => u.status_code >= 400).length} errors
+													{keyUsage.usage.filter((u) => u.status_code >= 400).length} errors
 												</span>
 											</div>
 										</div>
@@ -237,7 +247,11 @@
 					<div class="flex">
 						<div class="flex-shrink-0">
 							<svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-								<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+								<path
+									fill-rule="evenodd"
+									d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+									clip-rule="evenodd"
+								/>
 							</svg>
 						</div>
 						<div class="ml-3">
@@ -248,7 +262,10 @@
 								{:else if hourlyUsagePercent >= 90}
 									<p>You've used {Math.round(hourlyUsagePercent)}% of your hourly API limit.</p>
 								{:else}
-									<p>You're approaching your API usage limits. Consider upgrading your plan if you need more requests.</p>
+									<p>
+										You're approaching your API usage limits. Consider upgrading your plan if you
+										need more requests.
+									</p>
 								{/if}
 							</div>
 						</div>
