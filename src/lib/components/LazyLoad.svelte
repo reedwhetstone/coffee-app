@@ -48,9 +48,9 @@
 		{@render children?.()}
 	{:else}
 		<!-- Loading placeholder -->
-		<div class="min-h-[200px] animate-pulse bg-background-secondary-light/50 rounded-lg">
-			<div class="flex items-center justify-center h-full">
-				<div class="text-text-secondary-light text-sm">Loading...</div>
+		<div class="min-h-[200px] animate-pulse rounded-lg bg-background-secondary-light/50">
+			<div class="flex h-full items-center justify-center">
+				<div class="text-sm text-text-secondary-light">Loading...</div>
 			</div>
 		</div>
 	{/if}
@@ -61,4 +61,3 @@
 		min-height: 1px; /* Ensure element has height for intersection observer */
 	}
 </style>
-

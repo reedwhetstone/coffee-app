@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 
-	let { 
-		items = [], 
-		itemHeight = 200, 
-		containerHeight = 600, 
+	let {
+		items = [],
+		itemHeight = 200,
+		containerHeight = 600,
 		overscan = 5,
-		getKey = (item: any, index: number) => item.id || index 
+		getKey = (item: any, index: number) => item.id || index
 	} = $props<{
 		items: any[];
 		itemHeight?: number;
@@ -53,13 +53,13 @@
 	});
 </script>
 
-<div 
+<div
 	bind:this={scrollContainer}
 	class="virtual-scroll-container overflow-auto"
 	style="height: {containerHeight}px;"
 >
 	<div class="virtual-scroll-spacer" style="height: {totalHeight}px; position: relative;">
-		<div 
+		<div
 			class="virtual-scroll-content"
 			style="transform: translateY({offsetY}px); position: absolute; top: 0; left: 0; right: 0;"
 		>
@@ -74,14 +74,14 @@
 
 {#snippet children({ item, index }: { item: any; index: number })}
 	<!-- Default content - should be overridden -->
-	<div class="p-4 border-b">Item {index}</div>
+	<div class="border-b p-4">Item {index}</div>
 {/snippet}
 
 <style>
 	.virtual-scroll-container {
 		width: 100%;
 	}
-	
+
 	.virtual-scroll-item {
 		width: 100%;
 	}

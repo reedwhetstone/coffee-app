@@ -20,10 +20,10 @@ export default defineConfig({
 						if (id.includes('stripe')) return 'stripe';
 						return 'vendor';
 					}
-					
+
 					// Chunk marketing components separately
 					if (id.includes('/marketing/')) return 'marketing';
-					
+
 					// Chunk chart/visualization components
 					if (id.includes('TastingNotesRadar') || id.includes('Chart')) return 'charts';
 				}

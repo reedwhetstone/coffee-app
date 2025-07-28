@@ -2,7 +2,14 @@
 	import { onMount } from 'svelte';
 	import type { TastingNotes, RadarDataPoint } from '$lib/types/coffee.types';
 
-	let { tastingNotes = null, userTastingNotes = null, showOverlay = false, size = 120, responsive = false, lazy = true } = $props<{
+	let {
+		tastingNotes = null,
+		userTastingNotes = null,
+		showOverlay = false,
+		size = 120,
+		responsive = false,
+		lazy = true
+	} = $props<{
 		tastingNotes?: TastingNotes | null;
 		userTastingNotes?: TastingNotes | null;
 		showOverlay?: boolean;
@@ -221,7 +228,7 @@
 
 	onMount(() => {
 		mounted = true;
-		
+
 		// Set up intersection observer if lazy loading is enabled
 		if (lazy && containerElement) {
 			const observer = new IntersectionObserver(
@@ -240,7 +247,7 @@
 				{ threshold: 0.1, rootMargin: '50px' }
 			);
 			observer.observe(containerElement);
-			
+
 			return () => observer.unobserve(containerElement);
 		} else {
 			// If not lazy, load immediately
@@ -260,12 +267,12 @@
 	{#if !isVisible || !d3Loaded}
 		<!-- Loading skeleton -->
 		<div
-			class="flex items-center justify-center rounded-lg bg-background-secondary-light/50 animate-pulse {responsive
+			class="flex animate-pulse items-center justify-center rounded-lg bg-background-secondary-light/50 {responsive
 				? 'aspect-square'
 				: ''}"
 			style={responsive ? '' : `width: ${size}px; height: ${size}px;`}
 		>
-			<div class="h-4 w-4 rounded-full bg-background-tertiary-light/20 animate-pulse"></div>
+			<div class="h-4 w-4 animate-pulse rounded-full bg-background-tertiary-light/20"></div>
 		</div>
 	{:else if (tastingNotes && radarData.length > 0) || (userTastingNotes && userRadarData.length > 0)}
 		<svg

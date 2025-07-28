@@ -684,7 +684,12 @@
 										<!-- Mobile: Chart full width -->
 										{#if tastingNotes}
 											<div class="mt-2 px-6 sm:hidden">
-												<TastingNotesRadar {tastingNotes} size={300} responsive={true} lazy={true} />
+												<TastingNotesRadar
+													{tastingNotes}
+													size={300}
+													responsive={true}
+													lazy={true}
+												/>
 											</div>
 										{/if}
 
