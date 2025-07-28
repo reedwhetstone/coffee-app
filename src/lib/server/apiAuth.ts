@@ -200,7 +200,10 @@ export async function logApiUsage(
 /**
  * Check rate limit for an API key (simplified sliding window)
  */
-export async function checkRateLimit(apiKeyId: string, tier: 'developer' | 'growth' | 'enterprise' = 'developer'): Promise<RateLimitResult> {
+export async function checkRateLimit(
+	apiKeyId: string,
+	tier: 'developer' | 'growth' | 'enterprise' = 'developer'
+): Promise<RateLimitResult> {
 	try {
 		const limit = RATE_LIMITS[tier];
 		const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -249,11 +252,7 @@ export async function checkRateLimit(apiKeyId: string, tier: 'developer' | 'grow
 /**
  * Get usage statistics for an API key
  */
-export async function getApiKeyUsage(
-	apiKeyId: string,
-	startDate?: Date,
-	endDate?: Date
-) {
+export async function getApiKeyUsage(apiKeyId: string, startDate?: Date, endDate?: Date) {
 	try {
 		let query = supabase
 			.from('api_usage')
@@ -286,18 +285,14 @@ export async function getApiKeyUsage(
 /**
  * Get usage summary by day for charts
  */
-export async function getUsageSummary(
-	apiKeyId: string,
-	days: number = 30
-) {
+export async function getUsageSummary(apiKeyId: string, days: number = 30) {
 	try {
 		const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-		const { data, error } = await supabase
-			.rpc('get_api_usage_summary', {
-				key_id: apiKeyId,
-				start_date: startDate.toISOString()
-			});
+		const { data, error } = await supabase.rpc('get_api_usage_summary', {
+			key_id: apiKeyId,
+			start_date: startDate.toISOString()
+		});
 
 		if (error) {
 			console.error('Error fetching usage summary:', error);

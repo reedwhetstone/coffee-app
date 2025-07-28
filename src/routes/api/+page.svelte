@@ -606,7 +606,9 @@ Content-Type: application/json</code
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
 							<div class="font-medium text-text-primary-light">processing</div>
-							<div class="text-text-secondary-light">Processing method (Washed, Natural, Honey)</div>
+							<div class="text-text-secondary-light">
+								Processing method (Washed, Natural, Honey)
+							</div>
 							<div class="text-sm text-text-secondary-light">String</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">

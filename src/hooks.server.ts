@@ -123,8 +123,12 @@ const authGuard: Handle = async ({ event, resolve }) => {
 		throw redirect(303, '/');
 	}
 
-	// Check API dashboard access - require exact 'api' role
-	if (requiresApiAccess && !hasRole(event.locals.role, 'api')) {
+	// Check API dashboard access - require 'api' role or admin
+	if (
+		requiresApiAccess &&
+		!hasRole(event.locals.role, 'api') &&
+		!hasRole(event.locals.role, 'admin')
+	) {
 		throw redirect(303, '/');
 	}
 

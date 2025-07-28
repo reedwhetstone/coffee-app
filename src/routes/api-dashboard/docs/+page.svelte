@@ -1,29 +1,45 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { onMount } from 'svelte';
 
+	let { data } = $props<{ data: PageData }>();
+
 	onMount(() => {
-		document.title = 'Purveyors.io Catalog API Documentation';
+		document.title = 'API Documentation - Purveyors Dashboard';
 	});
 </script>
 
 <svelte:head>
-	<title>Purveyors.io Catalog API Documentation</title>
-	<meta
-		name="description"
-		content="Complete documentation for the Purveyors.io Green Coffee Catalog API"
-	/>
+	<title>API Documentation - Purveyors Dashboard</title>
+	<meta name="description" content="API documentation personalized for your Purveyors account" />
 </svelte:head>
 
 <div class="min-h-screen bg-background-primary-light">
 	<div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
 		<!-- Header -->
 		<div class="mb-12">
-			<h1 class="text-4xl font-bold tracking-tight text-text-primary-light">
-				Catalog API Documentation
-			</h1>
+			<nav class="mb-4">
+				<a
+					href="/api-dashboard"
+					class="text-sm text-text-secondary-light hover:text-text-primary-light"
+				>
+					← Back to Dashboard
+				</a>
+			</nav>
+			<h1 class="text-4xl font-bold tracking-tight text-text-primary-light">API Documentation</h1>
 			<p class="mt-4 text-lg text-text-secondary-light">
 				Complete reference for the Purveyors.io Green Coffee Catalog API
 			</p>
+			{#if !data.hasApiKeys}
+				<div class="mt-4 rounded-md bg-yellow-50 p-4 ring-1 ring-yellow-200">
+					<p class="text-sm text-yellow-800">
+						<strong>Note:</strong> You haven't created any API keys yet.
+						<a href="/api-dashboard/keys" class="font-medium underline hover:no-underline">
+							Create your first API key
+						</a> to start using the API.
+					</p>
+				</div>
+			{/if}
 		</div>
 
 		<div class="grid grid-cols-1 gap-8 lg:grid-cols-4">
@@ -126,7 +142,7 @@
 							<div>
 								<h4 class="mb-2 font-medium text-text-primary-light">Authentication Method</h4>
 								<div class="mb-3 rounded-md bg-background-primary-light p-4">
-									<pre class="text-sm"><code>Authorization: Bearer your_api_key</code></pre>
+									<pre class="text-sm"><code>Authorization: Bearer {data.exampleApiKey}</code></pre>
 								</div>
 								<ul class="list-inside list-disc space-y-1 text-text-secondary-light">
 									<li>Include the Authorization header in all API requests</li>
@@ -338,7 +354,7 @@
 const response = await fetch('https://purveyors.io/api/catalog-api', {
   method: 'GET',
   headers: {
-    'Authorization': 'Bearer your_api_key',
+    'Authorization': 'Bearer {data.exampleApiKey}',
     'Content-Type': 'application/json'
   }
 });
@@ -361,7 +377,7 @@ if (response.ok) {
 							<div class="rounded-md bg-background-primary-light p-4">
 								<pre class="text-sm"><code
 										>{`curl -X GET "https://purveyors.io/api/catalog-api" \\
-  -H "Authorization: Bearer your_api_key" \\
+  -H "Authorization: Bearer {data.exampleApiKey}" \\
   -H "Content-Type: application/json"`}</code
 									></pre>
 							</div>
