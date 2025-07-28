@@ -88,8 +88,7 @@
 									<span class="text-sm font-medium text-text-secondary-light">GET Request</span>
 								</div>
 								<pre class="text-xs text-text-primary-light"><code
-										>GET /api/v1/coffee?origin=ethiopia&process=washed&in_stock=true
-
+										>GET /api/catalog-api
 Authorization: Bearer your_api_key
 Content-Type: application/json</code
 									></pre>
@@ -106,17 +105,23 @@ Content-Type: application/json</code
 								<pre class="text-xs text-text-primary-light"><code
 										>{`{
   "data": [{
-    "name": "Ethiopia Sidamo",
-    "supplier": "sweet_shop_coffee",
-    "origin": "Ethiopia",
+    "id": 1,
+    "name": "Ethiopia Sidamo Grade 1",
+    "score_value": 87.5,
     "region": "Sidamo",
-    "process": "Washed",
-    "price_per_lb": 7.50,
-    "stocked": "TRUE",
-    "tasting_profile": {
+    "processing": "Washed",
+    "cost_lb": 7.50,
+    "stocked": true,
+    "source": "sweet_maria",
+    "ai_tasting_notes": {
       "fruity": 8, "floral": 6, "nutty": 2
-    }
-  }]
+    },
+    "country": "Ethiopia",
+    "continent": "Africa"
+  }],
+  "total": 1,
+  "cached": false,
+  "api_version": "1.0"
 }`}</code
 									></pre>
 							</div>
@@ -580,50 +585,60 @@ Content-Type: application/json</code
 					</div>
 					<div class="divide-y divide-border-light">
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">Name</div>
-							<div class="text-text-secondary-light">Coffee lot name (cleaned)</div>
+							<div class="font-medium text-text-primary-light">id</div>
+							<div class="text-text-secondary-light">Unique coffee identifier</div>
+							<div class="text-sm text-text-secondary-light">Integer</div>
+						</div>
+						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
+							<div class="font-medium text-text-primary-light">name</div>
+							<div class="text-text-secondary-light">Coffee lot name (normalized)</div>
 							<div class="text-sm text-text-secondary-light">String</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">Supplier</div>
-							<div class="text-text-secondary-light">Direct link to purchase</div>
-							<div class="text-sm text-text-secondary-light">String</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">Origin</div>
-							<div class="text-text-secondary-light">Region, Country, Sub-region</div>
-							<div class="text-sm text-text-secondary-light">Object</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">Process</div>
-							<div class="text-text-secondary-light">Washed, Natural, Honey, etc.</div>
-							<div class="text-sm text-text-secondary-light">String</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">Varietal</div>
-							<div class="text-text-secondary-light">Genetic varietal information</div>
-							<div class="text-sm text-text-secondary-light">String</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">Price/lb</div>
-							<div class="text-text-secondary-light">USD per pound</div>
+							<div class="font-medium text-text-primary-light">score_value</div>
+							<div class="text-text-secondary-light">Cupping score (0-100)</div>
 							<div class="text-sm text-text-secondary-light">Number</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">Inventory Status</div>
-							<div class="text-text-secondary-light">In-stock, Low-stock, Sold-out</div>
-							<div class="text-sm text-text-secondary-light">Enum</div>
+							<div class="font-medium text-text-primary-light">region</div>
+							<div class="text-text-secondary-light">Growing region</div>
+							<div class="text-sm text-text-secondary-light">String</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">Tasting Matrix</div>
+							<div class="font-medium text-text-primary-light">processing</div>
+							<div class="text-text-secondary-light">Processing method (Washed, Natural, Honey)</div>
+							<div class="text-sm text-text-secondary-light">String</div>
+						</div>
+						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
+							<div class="font-medium text-text-primary-light">cost_lb</div>
+							<div class="text-text-secondary-light">Cost per pound (USD)</div>
+							<div class="text-sm text-text-secondary-light">Number</div>
+						</div>
+						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
+							<div class="font-medium text-text-primary-light">stocked</div>
+							<div class="text-text-secondary-light">Current availability status</div>
+							<div class="text-sm text-text-secondary-light">Boolean</div>
+						</div>
+						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
+							<div class="font-medium text-text-primary-light">ai_tasting_notes</div>
 							<div class="text-text-secondary-light">
-								Generated profile matrix (fruit, floral, nutty, etc.)
+								AI-generated taste profile matrix (fruity, floral, nutty, etc.)
 							</div>
 							<div class="text-sm text-text-secondary-light">Object</div>
 						</div>
 						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">Description</div>
-							<div class="text-text-secondary-light">Cleaned factual summary</div>
+							<div class="font-medium text-text-primary-light">source</div>
+							<div class="text-text-secondary-light">Supplier identifier</div>
+							<div class="text-sm text-text-secondary-light">String</div>
+						</div>
+						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
+							<div class="font-medium text-text-primary-light">country</div>
+							<div class="text-text-secondary-light">Country of origin</div>
+							<div class="text-sm text-text-secondary-light">String</div>
+						</div>
+						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
+							<div class="font-medium text-text-primary-light">continent</div>
+							<div class="text-text-secondary-light">Continent of origin</div>
 							<div class="text-sm text-text-secondary-light">String</div>
 						</div>
 					</div>
@@ -1230,12 +1245,12 @@ Content-Type: application/json</code
 					>
 						Contact us
 					</button>
-					<button
-						onclick={handleGetStarted}
+					<a
+						href="/api/docs"
 						class="text-sm font-semibold leading-6 text-text-primary-light transition-colors duration-200 hover:text-background-tertiary-light"
 					>
 						View documentation <span aria-hidden="true">→</span>
-					</button>
+					</a>
 				</div>
 			</div>
 		</div>
