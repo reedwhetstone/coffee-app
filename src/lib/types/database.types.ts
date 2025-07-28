@@ -109,6 +109,34 @@ export interface Database {
 				Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'id' | 'updated_at'>;
 				Update: Partial<Database['public']['Tables']['profiles']['Row']>;
 			};
+			api_keys: {
+				Row: {
+					id: string;
+					user_id: string;
+					key_hash: string;
+					name: string;
+					created_at: string;
+					last_used_at: string | null;
+					is_active: boolean;
+					permissions: Record<string, any>;
+				};
+				Insert: Omit<Database['public']['Tables']['api_keys']['Row'], 'id' | 'created_at'>;
+				Update: Partial<Database['public']['Tables']['api_keys']['Row']>;
+			};
+			api_usage: {
+				Row: {
+					id: string;
+					api_key_id: string;
+					endpoint: string;
+					timestamp: string;
+					response_time_ms: number | null;
+					status_code: number | null;
+					user_agent: string | null;
+					ip_address: string | null;
+				};
+				Insert: Omit<Database['public']['Tables']['api_usage']['Row'], 'id' | 'timestamp'>;
+				Update: Partial<Database['public']['Tables']['api_usage']['Row']>;
+			};
 		};
 	};
 }

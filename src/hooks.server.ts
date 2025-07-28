@@ -6,6 +6,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { handleCookieCheck } from '$lib/middleware/cookieCheck';
 import { getUserRole } from '$lib/server/auth';
 import { requireRole } from '$lib/server/auth';
+import { hasRole } from '$lib/types/auth.types';
 
 // Handle Stripe checkout success redirects
 const handleStripeRedirects: Handle = async ({ event, resolve }) => {
@@ -44,7 +45,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		} = await event.locals.supabase.auth.getSession();
 
 		if (!session) {
-			return { session: null, user: null, role: 'viewer' };
+			return { session: null, user: null, role: 'viewer' as const };
 		}
 
 		// Always validate the user with getUser() to ensure the JWT is valid
@@ -55,7 +56,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 		if (userError) {
 			// JWT validation has failed
-			return { session: null, user: null, role: 'viewer' };
+			return { session: null, user: null, role: 'viewer' as const };
 		}
 
 		// Get user role
@@ -71,7 +72,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	// Set initial state
 	event.locals.session = session;
 	event.locals.user = user;
-	event.locals.role = role as 'viewer' | 'member' | 'admin';
+	event.locals.role = role as 'viewer' | 'member' | 'admin' | 'api';
 
 	// Make data available to the frontend
 	event.locals.data = {
@@ -90,9 +91,11 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 const authGuard: Handle = async ({ event, resolve }) => {
 	const protectedRoutes = ['/roast', '/profit', '/beans'];
 	const adminRoutes = ['/admin'];
+	const apiRoutes = ['/api-dashboard'];
 	const currentPath = event.url.pathname;
 	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
 	const requiresAdminAccess = adminRoutes.some((route) => currentPath.startsWith(route));
+	const requiresApiAccess = apiRoutes.some((route) => currentPath.startsWith(route));
 
 	// Get session and verified user data
 	const sessionData2 = await event.locals.safeGetSession();
@@ -101,7 +104,7 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	// Set default values
 	event.locals.session = session;
 	event.locals.user = user;
-	event.locals.role = role as 'viewer' | 'member' | 'admin';
+	event.locals.role = role as 'viewer' | 'member' | 'admin' | 'api';
 
 	// Make sure these values are available to the frontend
 	event.locals.data = {
@@ -117,6 +120,11 @@ const authGuard: Handle = async ({ event, resolve }) => {
 
 	// Check admin route access
 	if (requiresAdminAccess && !requireRole(event.locals.role, 'admin')) {
+		throw redirect(303, '/');
+	}
+
+	// Check API dashboard access - require exact 'api' role
+	if (requiresApiAccess && !hasRole(event.locals.role, 'api')) {
 		throw redirect(303, '/');
 	}
 
