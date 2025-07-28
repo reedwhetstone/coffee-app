@@ -117,8 +117,8 @@
 - [x] Showroom Coffee - Solid selection of greens; sells Huky and ARC roasters.
 - [x] The Captain's Coffee
 - [x] Sweet Maria's
-- [x] https://www.coffeebeancorral.com/categories/Green-Coffee-Beans/All-Coffees.aspx?q=&o=1&i=200&d=200
-- [ ] Burman Coffee Traders: Good quality beans
+- [x] coffee bean corral
+- [x] Burman Coffee Traders
 
 https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 
@@ -139,8 +139,10 @@ https://www.home-barista.com/roasting/green-coffee-sources-list-2024-t91583.html
 - [ ] Len's Coffee
 - [ ] Leverhead Coffee
 - [ ] Lost Dutchman
+- [ ] lavanta coffee - has kopi luwak - its on amazon ... https://lavantacoffee.com/product-category/green-coffee/
 - [ ] The Coffee Project
 - [ ] Roast Coffee Company
+- [ ] sea island coffee - potentially interesting ultra premiums https://seaislandcoffee.com/collections/unroasted?filter.v.availability=1
 - [ ] Blazing Bean Roasters
 - [ ] Smokin' Beans Coffee Co.
 - [ ] Invalsa
