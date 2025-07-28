@@ -31,6 +31,7 @@
 - [ ] **Mobile** - Improve usability of roast chart buttons on mobile
 - [ ] **Mobile** - Move fan settings below the chart on mobile
 -
+- [ ] **Navigation** - expand on the share functionality - so you can share filtered results from the catalog view
 - [ ] **Navigation** - Improve menu UI - the icons are really hard to understand
 - [ ] **Navigation** - Highlight the catalog page when you are on it in the navigation menu
 - [ ] **Navigation** - move menu bar to bottom bar for mobile
