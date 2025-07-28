@@ -17,8 +17,15 @@ export default defineConfig({
 						if (id.includes('d3')) return 'd3';
 						if (id.includes('@supabase')) return 'supabase';
 						if (id.includes('generative-ai') || id.includes('openai')) return 'ai';
+						if (id.includes('stripe')) return 'stripe';
 						return 'vendor';
 					}
+					
+					// Chunk marketing components separately
+					if (id.includes('/marketing/')) return 'marketing';
+					
+					// Chunk chart/visualization components
+					if (id.includes('TastingNotesRadar') || id.includes('Chart')) return 'charts';
 				}
 			}
 		}

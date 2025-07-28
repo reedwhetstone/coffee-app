@@ -47,6 +47,11 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+
+	// Global window interface for D3
+	interface Window {
+		d3?: any;
+	}
 }
 
 export {};
