@@ -307,11 +307,18 @@ export async function getUsageSummary(apiKeyId: string, days: number = 30) {
 }
 
 /**
- * Middleware function to validate API requests
+ * Middleware function to validate API requests with rate limiting
  */
 export async function validateApiRequest(
 	request: Request
-): Promise<{ valid: boolean; userId?: string; keyId?: string; error?: string }> {
+): Promise<{ 
+	valid: boolean; 
+	userId?: string; 
+	keyId?: string; 
+	error?: string;
+	rateLimitExceeded?: boolean;
+	retryAfter?: number;
+}> {
 	const authHeader = request.headers.get('Authorization');
 
 	if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -319,5 +326,65 @@ export async function validateApiRequest(
 	}
 
 	const apiKey = authHeader.replace('Bearer ', '');
-	return await validateApiKey(apiKey);
+	const validation = await validateApiKey(apiKey);
+	
+	if (!validation.valid) {
+		return validation;
+	}
+
+	// Check rate limits
+	const rateLimit = await checkRateLimit(validation.keyId!, 'developer');
+	
+	if (!rateLimit.allowed) {
+		return {
+			valid: false,
+			error: 'Rate limit exceeded',
+			rateLimitExceeded: true,
+			retryAfter: rateLimit.retryAfter
+		};
+	}
+
+	return validation;
+}
+
+/**
+ * Enhanced API middleware with automatic usage logging and rate limiting
+ */
+export async function validateAndLogApiRequest(
+	request: Request,
+	endpoint: string
+): Promise<{
+	valid: boolean;
+	userId?: string;
+	keyId?: string;
+	error?: string;
+	rateLimitExceeded?: boolean;
+	retryAfter?: number;
+	logUsage: (statusCode: number, responseTimeMs: number) => Promise<void>;
+}> {
+	const startTime = Date.now();
+	const validation = await validateApiRequest(request);
+	
+	const logUsage = async (statusCode: number, responseTimeMs: number) => {
+		if (validation.keyId) {
+			const userAgent = request.headers.get('User-Agent') || undefined;
+			const ipAddress = request.headers.get('CF-Connecting-IP') || 
+							request.headers.get('X-Forwarded-For') || 
+							undefined;
+			
+			await logApiUsage(
+				validation.keyId,
+				endpoint,
+				statusCode,
+				responseTimeMs,
+				userAgent,
+				ipAddress
+			);
+		}
+	};
+
+	return {
+		...validation,
+		logUsage
+	};
 }
