@@ -1,8 +1,6 @@
-import { createClient } from '$lib/supabase';
 import { createAdminClient } from '$lib/supabase-admin';
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
-import type { Database } from '$lib/types/database.types';
 
 const supabase = createAdminClient();
 
@@ -11,12 +9,26 @@ const API_KEY_PREFIX = 'pk_live_';
 const API_KEY_LENGTH = 32;
 const HASH_ROUNDS = 12;
 
-// Rate limiting configuration (requests per hour)
+// Rate limiting configuration (requests per month based on APITIER.md)
 const RATE_LIMITS = {
-	developer: 416, // ~10K/month (10,000 / 24 hours)
-	growth: 4166, // ~100K/month (100,000 / 24 hours)
-	enterprise: 41666 // ~1M/month (1,000,000 / 24 hours)
+	viewer: 200, // Explorer (Free Tier) - basic API access
+	'api-member': 10000, // Roaster+ (Pro Tier) - enhanced API access
+	'api-enterprise': -1 // Integrate (Enterprise Tier) - unlimited API access
 } as const;
+
+// Legacy mapping for backward compatibility
+const LEGACY_TIER_MAPPING = {
+	api_viewer: 'viewer',
+	api_member: 'api-member',
+	api_enterprise: 'api-enterprise',
+	developer: 'api-member',
+	growth: 'api-member', 
+	enterprise: 'api-enterprise',
+	api: 'api-member' // Migrate old 'api' role to 'api-member'
+} as const;
+
+// Export rate limits for use in other modules
+export const API_RATE_LIMITS = RATE_LIMITS;
 
 export interface ApiKeyValidationResult {
 	valid: boolean;
@@ -198,22 +210,39 @@ export async function logApiUsage(
 }
 
 /**
- * Check rate limit for an API key (simplified sliding window)
+ * Check rate limit for an API key (monthly sliding window)
  */
 export async function checkRateLimit(
 	apiKeyId: string,
-	tier: 'developer' | 'growth' | 'enterprise' = 'developer'
+	tier: 'api_viewer' | 'api_member' | 'api_enterprise' | 'developer' | 'growth' | 'enterprise' = 'api_member'
 ): Promise<RateLimitResult> {
 	try {
-		const limit = RATE_LIMITS[tier];
-		const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+		// Handle legacy tier mapping
+		const actualTier = (tier in LEGACY_TIER_MAPPING) 
+			? LEGACY_TIER_MAPPING[tier as keyof typeof LEGACY_TIER_MAPPING]
+			: tier as keyof typeof RATE_LIMITS;
 
-		// Count requests in the last hour
-		const { data, error, count } = await supabase
+		const limit = RATE_LIMITS[actualTier];
+		
+		// Enterprise tier has unlimited requests
+		if (limit === -1) {
+			return {
+				allowed: true,
+				limit: -1,
+				remaining: -1,
+				resetTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Next month
+			};
+		}
+
+		// Count requests in the current month
+		const now = new Date();
+		const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+		const { error, count } = await supabase
 			.from('api_usage')
 			.select('*', { count: 'exact', head: true })
 			.eq('api_key_id', apiKeyId)
-			.gte('timestamp', hourAgo.toISOString());
+			.gte('timestamp', startOfMonth.toISOString());
 
 		if (error) {
 			console.error('Error checking rate limit:', error);
@@ -222,7 +251,7 @@ export async function checkRateLimit(
 				allowed: true,
 				limit,
 				remaining: limit,
-				resetTime: new Date(Date.now() + 60 * 60 * 1000)
+				resetTime: new Date(now.getFullYear(), now.getMonth() + 1, 1) // Start of next month
 			};
 		}
 
@@ -230,21 +259,30 @@ export async function checkRateLimit(
 		const remaining = Math.max(0, limit - requestCount);
 		const allowed = requestCount < limit;
 
+		// Calculate seconds until start of next month for retryAfter
+		const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+		const retryAfterSeconds = allowed ? undefined : Math.ceil((nextMonth.getTime() - now.getTime()) / 1000);
+
 		return {
 			allowed,
 			limit,
 			remaining,
-			resetTime: new Date(Date.now() + 60 * 60 * 1000),
-			retryAfter: allowed ? undefined : 3600 // 1 hour in seconds
+			resetTime: nextMonth,
+			retryAfter: retryAfterSeconds
 		};
 	} catch (error) {
 		console.error('Rate limit check error:', error);
 		// On error, allow the request
+		// Handle legacy tier mapping for error fallback
+		const actualTier = (tier in LEGACY_TIER_MAPPING) 
+			? LEGACY_TIER_MAPPING[tier as keyof typeof LEGACY_TIER_MAPPING]
+			: tier as keyof typeof RATE_LIMITS;
+		const fallbackLimit = RATE_LIMITS[actualTier] === -1 ? -1 : RATE_LIMITS[actualTier];
 		return {
 			allowed: true,
-			limit: RATE_LIMITS[tier],
-			remaining: RATE_LIMITS[tier],
-			resetTime: new Date(Date.now() + 60 * 60 * 1000)
+			limit: fallbackLimit,
+			remaining: fallbackLimit,
+			resetTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 		};
 	}
 }
@@ -330,8 +368,8 @@ export async function validateApiRequest(request: Request): Promise<{
 		return validation;
 	}
 
-	// Check rate limits
-	const rateLimit = await checkRateLimit(validation.keyId!, 'developer');
+	// Check rate limits (default to member tier)
+	const rateLimit = await checkRateLimit(validation.keyId!, 'api_member');
 
 	if (!rateLimit.allowed) {
 		return {
@@ -343,6 +381,34 @@ export async function validateApiRequest(request: Request): Promise<{
 	}
 
 	return validation;
+}
+
+/**
+ * Get user's API subscription tier from their role
+ */
+export function getUserApiTier(role: string | null): 'viewer' | 'api-member' | 'api-enterprise' {
+	if (!role) return 'viewer';
+	
+	// Parse role (could be array or single role)
+	const roles = Array.isArray(role) ? role : role.split(',').map(r => r.trim());
+	
+	// Check for enterprise/admin roles (highest priority)
+	if (roles.some(r => r.includes('admin') || r === 'api-enterprise')) {
+		return 'api-enterprise';
+	}
+	
+	// Check for enhanced API access
+	if (roles.some(r => r === 'api-member')) {
+		return 'api-member';
+	}
+	
+	// Legacy API role mapping
+	if (roles.some(r => r === 'api')) {
+		return 'api-member';
+	}
+	
+	// Default to viewer (free) tier - includes basic API access
+	return 'viewer';
 }
 
 /**
@@ -360,7 +426,6 @@ export async function validateAndLogApiRequest(
 	retryAfter?: number;
 	logUsage: (statusCode: number, responseTimeMs: number) => Promise<void>;
 }> {
-	const startTime = Date.now();
 	const validation = await validateApiRequest(request);
 
 	const logUsage = async (statusCode: number, responseTimeMs: number) => {

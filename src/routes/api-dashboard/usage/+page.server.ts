@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { getUserApiKeys, getApiKeyUsage, getUsageSummary } from '$lib/server/apiAuth';
+import { getUserApiKeys, getApiKeyUsage, getUsageSummary, getUserApiTier, API_RATE_LIMITS } from '$lib/server/apiAuth';
 import { hasRole } from '$lib/types/auth.types';
 import { createAdminClient } from '$lib/supabase-admin';
 
@@ -10,8 +10,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// Get authenticated session
 	const { session, user, role } = await locals.safeGetSession();
 
-	// Require API role or admin access
-	if (!session || !user || (!hasRole(role, 'api') && !hasRole(role, 'admin'))) {
+	// Allow authenticated users (free tier defaults to api_viewer)
+	if (!session || !user) {
 		throw redirect(303, '/');
 	}
 
@@ -96,7 +96,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 			}
 		}
 
-		// Calculate current usage stats
+		// Calculate current usage stats with dynamic limits
+		const userTier = getUserApiTier(role);
+		const monthlyLimit = API_RATE_LIMITS[userTier];
+		
 		const now = new Date();
 		const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 		const startOfHour = new Date(now.getTime() - 60 * 60 * 1000);
@@ -116,6 +119,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			currentStats: {
 				monthlyUsage,
 				hourlyUsage,
+				monthlyLimit,
+				userTier,
 				totalKeys: apiKeys.length,
 				activeKeys: apiKeys.filter((key) => key.is_active).length
 			}

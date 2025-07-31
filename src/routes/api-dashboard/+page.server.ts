@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { getUserApiKeys } from '$lib/server/apiAuth';
+import { getUserApiKeys, getUserApiTier, API_RATE_LIMITS } from '$lib/server/apiAuth';
 import { hasRole } from '$lib/types/auth.types';
 import { createAdminClient } from '$lib/supabase-admin';
 
@@ -8,8 +8,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// Get authenticated session
 	const { session, user, role } = await locals.safeGetSession();
 
-	// Require API role or admin access
-	if (!session || !user || (!hasRole(role, 'api') && !hasRole(role, 'admin'))) {
+	// Allow authenticated users (free tier defaults to api_viewer)
+	// Require API role, admin access, or allow any authenticated user for free tier
+	if (!session || !user) {
 		throw redirect(303, '/');
 	}
 
@@ -32,46 +33,68 @@ export const load: PageServerLoad = async ({ locals }) => {
 	let usageStats = null;
 	if (apiKeys.length > 0) {
 		try {
+			// Get user's API tier based on their role
+			const userTier = getUserApiTier(role);
+			const monthlyLimit = API_RATE_LIMITS[userTier];
+			
 			const now = new Date();
 			const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 			const startOfHour = new Date(now.getTime() - 60 * 60 * 1000);
 
-			// Get monthly usage
-			const { data: monthlyData, error: monthlyError } = await supabase
+			// Get usage data using the same method as usage analytics page
+			const { data: usageData, error: usageError } = await supabase
 				.from('api_usage')
-				.select('*', { count: 'exact', head: true })
-				.in(
-					'api_key_id',
-					apiKeys.map((k) => k.id)
+				.select(
+					`
+					timestamp,
+					status_code,
+					response_time_ms,
+					api_keys!inner(user_id)
+				`
 				)
-				.gte('timestamp', startOfMonth.toISOString());
+				.eq('api_keys.user_id', user.id)
+				.gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+				.order('timestamp', { ascending: false });
 
-			// Get hourly usage
-			const { data: hourlyData, error: hourlyError } = await supabase
-				.from('api_usage')
-				.select('*', { count: 'exact', head: true })
-				.in(
-					'api_key_id',
-					apiKeys.map((k) => k.id)
-				)
-				.gte('timestamp', startOfHour.toISOString());
+			let monthlyUsage = 0;
+			let hourlyUsage = 0;
 
-			const monthlyUsage = monthlyError ? 0 : (monthlyData as any)?.count || 0;
-			const hourlyUsage = hourlyError ? 0 : (hourlyData as any)?.count || 0;
+			if (!usageError && usageData) {
+				// Calculate monthly usage (same method as usage analytics)
+				monthlyUsage = usageData.filter(
+					(record) => new Date(record.timestamp) >= startOfMonth
+				).length;
 
-			// Rate limits (assuming developer tier)
-			const MONTHLY_LIMIT = 10000;
-			const HOURLY_LIMIT = 416;
+				// Calculate hourly usage
+				hourlyUsage = usageData.filter(
+					(record) => new Date(record.timestamp) >= startOfHour
+				).length;
+			}
+
+			// Calculate percentages (handle unlimited tier)
+			let monthlyPercent = 0;
+			let nearLimit = false;
+			let atLimit = false;
+
+			if (monthlyLimit === -1) {
+				// Enterprise unlimited tier
+				monthlyPercent = 0;
+				nearLimit = false;
+				atLimit = false;
+			} else {
+				monthlyPercent = Math.min((monthlyUsage / monthlyLimit) * 100, 100);
+				nearLimit = monthlyUsage / monthlyLimit >= 0.8;
+				atLimit = monthlyUsage / monthlyLimit >= 0.95;
+			}
 
 			usageStats = {
 				monthlyUsage,
 				hourlyUsage,
-				monthlyLimit: MONTHLY_LIMIT,
-				hourlyLimit: HOURLY_LIMIT,
-				monthlyPercent: Math.min((monthlyUsage / MONTHLY_LIMIT) * 100, 100),
-				hourlyPercent: Math.min((hourlyUsage / HOURLY_LIMIT) * 100, 100),
-				nearLimit: monthlyUsage / MONTHLY_LIMIT >= 0.8 || hourlyUsage / HOURLY_LIMIT >= 0.8,
-				atLimit: monthlyUsage / MONTHLY_LIMIT >= 0.95 || hourlyUsage / HOURLY_LIMIT >= 0.95
+				monthlyLimit,
+				userTier,
+				monthlyPercent,
+				nearLimit,
+				atLimit
 			};
 		} catch (error) {
 			console.error('Error loading usage stats:', error);

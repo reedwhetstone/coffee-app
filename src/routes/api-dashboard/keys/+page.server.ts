@@ -7,8 +7,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// Get authenticated session
 	const { session, user, role } = await locals.safeGetSession();
 
-	// Require API role or admin access
-	if (!session || !user || (!hasRole(role, 'api') && !hasRole(role, 'admin'))) {
+	// Allow authenticated users (free tier defaults to api_viewer)
+	if (!session || !user) {
 		throw redirect(303, '/');
 	}
 

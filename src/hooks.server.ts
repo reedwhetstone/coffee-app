@@ -72,7 +72,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	// Set initial state
 	event.locals.session = session;
 	event.locals.user = user;
-	event.locals.role = role as 'viewer' | 'member' | 'admin' | 'api';
+	event.locals.role = role as 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
 
 	// Make data available to the frontend
 	event.locals.data = {
@@ -104,7 +104,7 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	// Set default values
 	event.locals.session = session;
 	event.locals.user = user;
-	event.locals.role = role as 'viewer' | 'member' | 'admin' | 'api';
+	event.locals.role = role as 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
 
 	// Make sure these values are available to the frontend
 	event.locals.data = {
@@ -123,12 +123,8 @@ const authGuard: Handle = async ({ event, resolve }) => {
 		throw redirect(303, '/');
 	}
 
-	// Check API dashboard access - require 'api' role or admin
-	if (
-		requiresApiAccess &&
-		!hasRole(event.locals.role, 'api') &&
-		!hasRole(event.locals.role, 'admin')
-	) {
+	// Check API dashboard access - allow any authenticated user (viewer gets free tier API access)
+	if (requiresApiAccess && !session) {
 		throw redirect(303, '/');
 	}
 

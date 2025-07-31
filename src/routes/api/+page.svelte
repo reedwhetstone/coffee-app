@@ -667,19 +667,24 @@ Content-Type: application/json</code
 			<div
 				class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-6 sm:mt-20 sm:gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-3 lg:gap-12"
 			>
-				<!-- Developer Plan -->
+				<!-- Explorer Plan (Free) -->
 				<div
 					class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10"
 				>
 					<div>
 						<div class="flex items-center justify-between gap-x-4">
-							<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Developer</h3>
+							<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Explorer</h3>
+							<p
+								class="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold leading-5 text-green-800"
+							>
+								Free
+							</p>
 						</div>
 						<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-							Perfect for startups and small platforms testing integration capabilities.
+							Perfect for hobbyists and developers testing integration capabilities.
 						</p>
 						<p class="mt-6 flex items-baseline gap-x-1">
-							<span class="text-4xl font-bold tracking-tight text-text-primary-light">$99</span>
+							<span class="text-4xl font-bold tracking-tight text-text-primary-light">$0</span>
 							<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
 						</p>
 						<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
@@ -695,7 +700,7 @@ Content-Type: application/json</code
 										clip-rule="evenodd"
 									/>
 								</svg>
-								1,000 API calls/month
+								200 API calls/month
 							</li>
 							<li class="flex gap-x-3">
 								<svg
@@ -709,7 +714,7 @@ Content-Type: application/json</code
 										clip-rule="evenodd"
 									/>
 								</svg>
-								Basic data fields
+								Live inventory feed (daily cache)
 							</li>
 							<li class="flex gap-x-3">
 								<svg
@@ -723,7 +728,7 @@ Content-Type: application/json</code
 										clip-rule="evenodd"
 									/>
 								</svg>
-								REST API access
+								Basic filters (origin, price, process)
 							</li>
 							<li class="flex gap-x-3">
 								<svg
@@ -742,20 +747,20 @@ Content-Type: application/json</code
 						</ul>
 					</div>
 					<button
-						onclick={handleContactUs}
+						onclick={handleGetStarted}
 						class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
 					>
-						Get started
+						Get started free
 					</button>
 				</div>
 
-				<!-- Growth Plan -->
+				<!-- Roaster+ Plan -->
 				<div
 					class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-2 ring-background-tertiary-light xl:p-10"
 				>
 					<div>
 						<div class="flex items-center justify-between gap-x-4">
-							<h3 class="text-lg font-semibold leading-8 text-background-tertiary-light">Growth</h3>
+							<h3 class="text-lg font-semibold leading-8 text-background-tertiary-light">Roaster+</h3>
 							<p
 								class="rounded-full bg-background-tertiary-light/10 px-2.5 py-1 text-xs font-semibold leading-5 text-background-tertiary-light"
 							>
@@ -763,10 +768,10 @@ Content-Type: application/json</code
 							</p>
 						</div>
 						<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-							For growing platforms with active user bases requiring comprehensive data access.
+							For active roasters and professional platforms requiring comprehensive data access.
 						</p>
 						<p class="mt-6 flex items-baseline gap-x-1">
-							<span class="text-4xl font-bold tracking-tight text-text-primary-light">$399</span>
+							<span class="text-4xl font-bold tracking-tight text-text-primary-light">$99</span>
 							<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
 						</p>
 						<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
@@ -796,7 +801,7 @@ Content-Type: application/json</code
 										clip-rule="evenodd"
 									/>
 								</svg>
-								All metadata & full taste matrix
+								Full real-time supplier inventory
 							</li>
 							<li class="flex gap-x-3">
 								<svg
@@ -810,7 +815,21 @@ Content-Type: application/json</code
 										clip-rule="evenodd"
 									/>
 								</svg>
-								Priority rate limiting
+								All filter options & cupping scores
+							</li>
+							<li class="flex gap-x-3">
+								<svg
+									class="h-6 w-5 flex-none text-background-tertiary-light"
+									viewBox="0 0 20 20"
+									fill="currentColor"
+								>
+									<path
+										fill-rule="evenodd"
+										d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+										clip-rule="evenodd"
+									/>
+								</svg>
+								CSV/JSON export & alerts
 							</li>
 							<li class="flex gap-x-3">
 								<svg
@@ -836,20 +855,22 @@ Content-Type: application/json</code
 					</button>
 				</div>
 
-				<!-- Enterprise Plan -->
+				<!-- Integrate Plan (Enterprise) -->
 				<div
 					class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10"
 				>
 					<div>
 						<div class="flex items-center justify-between gap-x-4">
-							<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Enterprise</h3>
+							<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Integrate</h3>
 						</div>
 						<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-							For large platforms and enterprise customers requiring high-volume access and custom
-							integrations.
+							For B2B platforms, ERPs, and enterprises requiring unlimited access and custom integrations.
 						</p>
 						<p class="mt-6 flex items-baseline gap-x-1">
-							<span class="text-4xl font-bold tracking-tight text-text-primary-light">$999</span>
+							<span class="text-2xl font-bold tracking-tight text-text-primary-light">Starting at</span>
+						</p>
+						<p class="flex items-baseline gap-x-1">
+							<span class="text-4xl font-bold tracking-tight text-text-primary-light">$1,500</span>
 							<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
 						</p>
 						<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
@@ -865,7 +886,7 @@ Content-Type: application/json</code
 										clip-rule="evenodd"
 									/>
 								</svg>
-								100,000 API calls/month
+								Unlimited API calls
 							</li>
 							<li class="flex gap-x-3">
 								<svg
@@ -879,7 +900,7 @@ Content-Type: application/json</code
 										clip-rule="evenodd"
 									/>
 								</svg>
-								CSV/S3 data dumps
+								White-labeled endpoints
 							</li>
 							<li class="flex gap-x-3">
 								<svg
@@ -893,7 +914,7 @@ Content-Type: application/json</code
 										clip-rule="evenodd"
 									/>
 								</svg>
-								Premium support & SLA
+								Webhook support & live data
 							</li>
 							<li class="flex gap-x-3">
 								<svg
@@ -907,7 +928,21 @@ Content-Type: application/json</code
 										clip-rule="evenodd"
 									/>
 								</svg>
-								Custom integration support
+								SLAs & dedicated account manager
+							</li>
+							<li class="flex gap-x-3">
+								<svg
+									class="h-6 w-5 flex-none text-background-tertiary-light"
+									viewBox="0 0 20 20"
+									fill="currentColor"
+								>
+									<path
+										fill-rule="evenodd"
+										d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+										clip-rule="evenodd"
+									/>
+								</svg>
+								Multi-user access & team API keys
 							</li>
 						</ul>
 					</div>

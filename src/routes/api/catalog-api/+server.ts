@@ -83,9 +83,8 @@ export const GET: RequestHandler = async ({ request }) => {
 			.eq('id', userId)
 			.single();
 
-		// Only API users can access the API endpoints (members get catalog data via UI)
-		const hasApiAccess =
-			userRole && (hasRole(userRole.role, 'api') || hasRole(userRole.role, 'admin')); // Admin can access for testing/support
+		// Any authenticated user can access API endpoints (viewer gets free tier, others get enhanced access)
+		const hasApiAccess = userRole && !roleError;
 
 		if (roleError || !hasApiAccess) {
 			// Log failed request

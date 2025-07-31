@@ -13,16 +13,16 @@ declare global {
 			supabase: SupabaseClient<Database>;
 			session: Session | null;
 			user: User | null;
-			role: 'viewer' | 'member' | 'admin' | 'api';
+			role: 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
 			data: {
 				session: Session | null;
 				user: User | null;
-				role: 'viewer' | 'member' | 'admin' | 'api';
+				role: 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
 			};
 			safeGetSession(): Promise<{
 				session: Session | null;
 				user: User | null;
-				role: 'viewer' | 'member' | 'admin' | 'api';
+				role: 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
 			}>;
 		}
 		interface PageData {
@@ -42,7 +42,7 @@ declare global {
 				email: string | undefined;
 				role: string | undefined;
 			} | null;
-			role: 'viewer' | 'member' | 'admin' | 'api';
+			role: 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
 		}
 		// interface PageState {}
 		// interface Platform {}

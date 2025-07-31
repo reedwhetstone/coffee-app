@@ -49,10 +49,14 @@
 				</p>
 				<div class="mt-1">
 					<p class="text-xs text-text-secondary-light">
-						of {data.usageStats?.monthlyLimit?.toLocaleString() || '10,000'}
-						({Math.round(data.usageStats?.monthlyPercent || 0)}%)
+						{#if data.usageStats?.monthlyLimit === -1}
+							Unlimited (Enterprise)
+						{:else}
+							of {data.usageStats?.monthlyLimit?.toLocaleString() || '200'}
+							({Math.round(data.usageStats?.monthlyPercent || 0)}%)
+						{/if}
 					</p>
-					{#if data.usageStats}
+					{#if data.usageStats && data.usageStats.monthlyLimit !== -1}
 						<div class="mt-1 h-1 w-full rounded-full bg-background-primary-light">
 							<div
 								class="h-1 rounded-full transition-all duration-300 {data.usageStats.atLimit
@@ -63,40 +67,34 @@
 								style="width: {data.usageStats.monthlyPercent}%"
 							></div>
 						</div>
+					{:else if data.usageStats?.monthlyLimit === -1}
+						<div class="mt-1 h-1 w-full rounded-full bg-background-primary-light">
+							<div class="h-1 w-full rounded-full bg-blue-500"></div>
+						</div>
 					{/if}
 				</div>
 			</div>
 
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h3 class="text-sm font-medium text-text-secondary-light">Past Hour</h3>
-				<p
-					class="mt-1 text-2xl font-bold {data.usageStats?.hourlyPercent >= 80
-						? 'text-yellow-500'
-						: data.usageStats?.hourlyPercent >= 95
-							? 'text-red-500'
-							: 'text-blue-500'}"
-				>
-					{data.usageStats?.hourlyUsage || 0}
-				</p>
-				<div class="mt-1">
-					<p class="text-xs text-text-secondary-light">
-						of {data.usageStats?.hourlyLimit || 416}
-						({Math.round(data.usageStats?.hourlyPercent || 0)}%)
-					</p>
-					{#if data.usageStats}
-						<div class="mt-1 h-1 w-full rounded-full bg-background-primary-light">
-							<div
-								class="h-1 rounded-full transition-all duration-300 {data.usageStats
-									.hourlyPercent >= 95
-									? 'bg-red-500'
-									: data.usageStats.hourlyPercent >= 80
-										? 'bg-yellow-500'
-										: 'bg-blue-500'}"
-								style="width: {data.usageStats.hourlyPercent}%"
-							></div>
-						</div>
+				<h3 class="text-sm font-medium text-text-secondary-light">Current Plan</h3>
+				<p class="mt-1 text-2xl font-bold text-blue-500">
+					{#if data.usageStats?.userTier === 'api-enterprise'}
+						Enterprise
+					{:else if data.usageStats?.userTier === 'api-member'}
+						Roaster+
+					{:else}
+						Explorer
 					{/if}
-				</div>
+				</p>
+				<p class="mt-1 text-xs text-text-secondary-light">
+					{#if data.usageStats?.userTier === 'api-enterprise'}
+						Unlimited API calls
+					{:else if data.usageStats?.userTier === 'api-member'}
+						$99/month
+					{:else}
+						Free tier
+					{/if}
+				</p>
 			</div>
 
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
@@ -108,11 +106,15 @@
 							? 'text-yellow-500'
 							: 'text-green-500'}"
 				>
-					{data.usageStats?.atLimit
-						? 'At Limit'
-						: data.usageStats?.nearLimit
-							? 'Near Limit'
-							: 'Active'}
+					{#if data.usageStats?.userTier === 'api-enterprise'}
+						Unlimited
+					{:else if data.usageStats?.atLimit}
+						At Limit
+					{:else if data.usageStats?.nearLimit}
+						Near Limit
+					{:else}
+						Active
+					{/if}
 				</p>
 				<p class="mt-1 text-xs text-text-secondary-light">API subscription</p>
 			</div>
@@ -268,8 +270,8 @@
 			</div>
 		{/if}
 
-		<!-- Usage Accountability Alerts -->
-		{#if data.usageStats}
+		<!-- Usage Accountability Alerts with Upgrade CTAs -->
+		{#if data.usageStats && data.usageStats.userTier !== 'api-enterprise'}
 			{#if data.usageStats.atLimit}
 				<div class="mt-8 rounded-md bg-red-50 p-4 ring-1 ring-red-200">
 					<div class="flex">
@@ -286,15 +288,25 @@
 							<h3 class="text-sm font-medium text-red-800">Rate Limit Reached</h3>
 							<div class="mt-2 text-sm text-red-700">
 								<p>
-									You have reached your API usage limits. Further requests may be throttled or
-									rejected.
+									You have reached your {data.usageStats.monthlyLimit.toLocaleString()} monthly API call limit. 
+									{#if data.usageStats.userTier === 'viewer'}
+										Upgrade to Roaster+ for 10,000 calls/month.
+									{:else}
+										Upgrade to Enterprise for unlimited calls.
+									{/if}
 								</p>
-								<div class="mt-3">
+								<div class="mt-3 flex space-x-4">
+									<a
+										href="/subscription"
+										class="font-medium text-red-800 underline hover:text-red-600"
+									>
+										Upgrade Plan →
+									</a>
 									<a
 										href="/api-dashboard/usage"
 										class="font-medium text-red-800 underline hover:text-red-600"
 									>
-										View detailed usage analytics →
+										View usage analytics
 									</a>
 								</div>
 							</div>
@@ -317,11 +329,22 @@
 							<h3 class="text-sm font-medium text-yellow-800">Approaching Rate Limit</h3>
 							<div class="mt-2 text-sm text-yellow-700">
 								<p>
-									You're using {Math.round(
-										Math.max(data.usageStats.monthlyPercent, data.usageStats.hourlyPercent)
-									)}% of your API limit. Consider monitoring your usage more closely.
+									You're using {Math.round(data.usageStats.monthlyPercent)}% of your {data.usageStats.monthlyLimit.toLocaleString()} monthly API calls.
+									{#if data.usageStats.userTier === 'viewer'}
+										Consider upgrading to Roaster+ for 10,000 calls/month.
+									{:else}
+										Consider upgrading to Enterprise for unlimited calls.
+									{/if}
 								</p>
 								<div class="mt-3 flex space-x-4">
+									{#if data.usageStats.monthlyPercent >= 75}
+										<a
+											href="/subscription"
+											class="font-medium text-yellow-800 underline hover:text-yellow-600"
+										>
+											Upgrade Plan
+										</a>
+									{/if}
 									<a
 										href="/api-dashboard/usage"
 										class="font-medium text-yellow-800 underline hover:text-yellow-600"
@@ -333,6 +356,42 @@
 										class="font-medium text-yellow-800 underline hover:text-yellow-600"
 									>
 										Rate limit documentation
+									</a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			{:else if data.usageStats.monthlyPercent >= 75}
+				<!-- Upgrade CTA at 75% usage as specified in APITIER.md -->
+				<div class="mt-8 rounded-md bg-blue-50 p-4 ring-1 ring-blue-200">
+					<div class="flex">
+						<div class="flex-shrink-0">
+							<svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+								<path
+									fill-rule="evenodd"
+									d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+						</div>
+						<div class="ml-3">
+							<h3 class="text-sm font-medium text-blue-800">Consider Upgrading</h3>
+							<div class="mt-2 text-sm text-blue-700">
+								<p>
+									You've used {Math.round(data.usageStats.monthlyPercent)}% of your monthly API calls.
+									{#if data.usageStats.userTier === 'viewer'}
+										Upgrade to Roaster+ for 50x more calls and advanced features.
+									{:else}
+										Upgrade to Enterprise for unlimited calls and premium support.
+									{/if}
+								</p>
+								<div class="mt-3">
+									<a
+										href="/subscription"
+										class="font-medium text-blue-800 underline hover:text-blue-600"
+									>
+										View upgrade options →
 									</a>
 								</div>
 							</div>

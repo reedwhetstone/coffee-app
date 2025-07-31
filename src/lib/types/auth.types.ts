@@ -1,11 +1,12 @@
-export type UserRole = 'viewer' | 'member' | 'admin' | 'api';
+export type UserRole = 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
 
 // Support for multiple roles per user
 export type UserRoles = UserRole | UserRole[];
 
 export const roleHierarchy = {
 	viewer: 0,
-	api: 0, // Same level as viewer - API users have basic access only
+	'api-member': 0, // Same level as viewer - enhanced API access only
+	'api-enterprise': 0, // Same level as viewer - unlimited API access only  
 	member: 1,
 	admin: 2
 } as const;
@@ -16,7 +17,7 @@ export function checkRole(
 ): boolean {
 	if (!userRole) return false;
 
-	// Special handling for API role - it should not inherit member permissions
+	// Special handling for member role - API roles should not inherit member permissions
 	if (requiredRole === 'member') {
 		if (Array.isArray(userRole)) {
 			return userRole.includes('member') || userRole.includes('admin');

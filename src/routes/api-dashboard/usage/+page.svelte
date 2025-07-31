@@ -4,17 +4,21 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	// Rate limits based on tier (assuming developer tier for now)
-	const MONTHLY_LIMIT = 10000;
-	const HOURLY_LIMIT = 416;
-
-	// Calculate usage percentages
-	let monthlyUsagePercent = $derived(
-		data.currentStats ? Math.min((data.currentStats.monthlyUsage / MONTHLY_LIMIT) * 100, 100) : 0
-	);
-	let hourlyUsagePercent = $derived(
-		data.currentStats ? Math.min((data.currentStats.hourlyUsage / HOURLY_LIMIT) * 100, 100) : 0
-	);
+	// Calculate usage percentages based on user's actual tier
+	let monthlyUsagePercent = $derived(() => {
+		if (!data.currentStats || data.currentStats.monthlyLimit === -1) return 0;
+		return Math.min((data.currentStats.monthlyUsage / data.currentStats.monthlyLimit) * 100, 100);
+	});
+	
+	let tierDisplayName = $derived(() => {
+		if (!data.currentStats) return 'Explorer';
+		switch (data.currentStats.userTier) {
+			case 'api-enterprise': return 'Enterprise';
+			case 'api-member': return 'Roaster+';
+			case 'viewer': return 'Explorer';
+			default: return 'Explorer';
+		}
+	});
 
 	// Format numbers with commas
 	function formatNumber(num: number): string {
@@ -81,43 +85,49 @@
 				<!-- Monthly Usage -->
 				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 					<h3 class="text-sm font-medium text-text-secondary-light">Monthly Usage</h3>
-					<p class="mt-1 text-2xl font-bold {getUsageColor(monthlyUsagePercent)}">
+					<p class="mt-1 text-2xl font-bold {getUsageColor(monthlyUsagePercent())}">
 						{formatNumber(data.currentStats?.monthlyUsage || 0)}
 					</p>
 					<div class="mt-2">
 						<div class="flex items-center justify-between text-xs text-text-secondary-light">
-							<span>of {formatNumber(MONTHLY_LIMIT)}</span>
-							<span>{Math.round(monthlyUsagePercent)}%</span>
+							{#if data.currentStats?.monthlyLimit === -1}
+								<span>Unlimited (Enterprise)</span>
+								<span>∞</span>
+							{:else}
+								<span>of {formatNumber(data.currentStats?.monthlyLimit || 200)}</span>
+								<span>{Math.round(monthlyUsagePercent())}%</span>
+							{/if}
 						</div>
 						<div class="mt-1 h-2 w-full rounded-full bg-background-primary-light">
-							<div
-								class="h-2 rounded-full transition-all duration-300 {getProgressColor(
-									monthlyUsagePercent
-								)}"
-								style="width: {monthlyUsagePercent}%"
-							></div>
+							{#if data.currentStats?.monthlyLimit === -1}
+								<div class="h-2 w-full rounded-full bg-blue-500"></div>
+							{:else}
+								<div
+									class="h-2 rounded-full transition-all duration-300 {getProgressColor(
+										monthlyUsagePercent()
+									)}"
+									style="width: {monthlyUsagePercent()}%"
+								></div>
+							{/if}
 						</div>
 					</div>
 				</div>
 
-				<!-- Hourly Usage -->
+				<!-- Current Plan -->
 				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-					<h3 class="text-sm font-medium text-text-secondary-light">Past Hour</h3>
-					<p class="mt-1 text-2xl font-bold {getUsageColor(hourlyUsagePercent)}">
-						{formatNumber(data.currentStats?.hourlyUsage || 0)}
+					<h3 class="text-sm font-medium text-text-secondary-light">Current Plan</h3>
+					<p class="mt-1 text-2xl font-bold text-blue-500">
+						{tierDisplayName()}
 					</p>
 					<div class="mt-2">
-						<div class="flex items-center justify-between text-xs text-text-secondary-light">
-							<span>of {formatNumber(HOURLY_LIMIT)}</span>
-							<span>{Math.round(hourlyUsagePercent)}%</span>
-						</div>
-						<div class="mt-1 h-2 w-full rounded-full bg-background-primary-light">
-							<div
-								class="h-2 rounded-full transition-all duration-300 {getProgressColor(
-									hourlyUsagePercent
-								)}"
-								style="width: {hourlyUsagePercent}%"
-							></div>
+						<div class="text-xs text-text-secondary-light">
+							{#if data.currentStats?.userTier === 'api-enterprise'}
+								Unlimited API calls
+							{:else if data.currentStats?.userTier === 'api-member'}
+								$99/month
+							{:else}
+								Free tier
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -211,13 +221,13 @@
 											<div class="flex items-center space-x-1">
 												<div class="h-2 w-2 rounded-full bg-green-500"></div>
 												<span class="text-xs text-text-secondary-light">
-													{keyUsage.usage.filter((u) => u.status_code < 400).length} success
+													{keyUsage.usage.filter((u: any) => u.status_code < 400).length} success
 												</span>
 											</div>
 											<div class="flex items-center space-x-1">
 												<div class="h-2 w-2 rounded-full bg-red-500"></div>
 												<span class="text-xs text-text-secondary-light">
-													{keyUsage.usage.filter((u) => u.status_code >= 400).length} errors
+													{keyUsage.usage.filter((u: any) => u.status_code >= 400).length} errors
 												</span>
 											</div>
 										</div>
@@ -241,8 +251,8 @@
 				</div>
 			</div>
 
-			<!-- Rate Limit Status -->
-			{#if monthlyUsagePercent >= 75 || hourlyUsagePercent >= 75}
+			<!-- Rate Limit Status with Upgrade CTAs -->
+			{#if data.currentStats?.userTier !== 'api-enterprise' && monthlyUsagePercent() >= 75}
 				<div class="mt-8 rounded-md bg-yellow-50 p-4 ring-1 ring-yellow-200">
 					<div class="flex">
 						<div class="flex-shrink-0">
@@ -255,18 +265,36 @@
 							</svg>
 						</div>
 						<div class="ml-3">
-							<h3 class="text-sm font-medium text-yellow-800">Rate Limit Warning</h3>
-							<div class="mt-2 text-sm text-yellow-700">
-								{#if monthlyUsagePercent >= 90}
-									<p>You've used {Math.round(monthlyUsagePercent)}% of your monthly API limit.</p>
-								{:else if hourlyUsagePercent >= 90}
-									<p>You've used {Math.round(hourlyUsagePercent)}% of your hourly API limit.</p>
+							<h3 class="text-sm font-medium text-yellow-800">
+								{#if monthlyUsagePercent() >= 95}
+									Rate Limit Reached
 								{:else}
-									<p>
-										You're approaching your API usage limits. Consider upgrading your plan if you
-										need more requests.
-									</p>
+									Approaching Rate Limit
 								{/if}
+							</h3>
+							<div class="mt-2 text-sm text-yellow-700">
+								<p>
+									You've used {Math.round(monthlyUsagePercent())}% of your {formatNumber(data.currentStats?.monthlyLimit || 200)} monthly API calls.
+									{#if data.currentStats?.userTier === 'viewer'}
+										Upgrade to Roaster+ for 10,000 calls/month and advanced features.
+									{:else}
+										Upgrade to Enterprise for unlimited calls and premium support.
+									{/if}
+								</p>
+								<div class="mt-3 flex space-x-4">
+									<a
+										href="/subscription"
+										class="font-medium text-yellow-800 underline hover:text-yellow-600"
+									>
+										Upgrade Plan
+									</a>
+									<a
+										href="/api-dashboard"
+										class="font-medium text-yellow-800 underline hover:text-yellow-600"
+									>
+										Back to Dashboard
+									</a>
+								</div>
 							</div>
 						</div>
 					</div>

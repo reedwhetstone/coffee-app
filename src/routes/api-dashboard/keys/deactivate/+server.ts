@@ -8,14 +8,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Get authenticated session
 		const { session, user, role } = await locals.safeGetSession();
 
-		// Require API role or admin access
-		if (!session || !user || (!hasRole(role, 'api') && !hasRole(role, 'admin'))) {
+		// Allow authenticated users (free tier defaults to api_viewer)
+		if (!session || !user) {
 			return json(
 				{
 					success: false,
-					error: 'API access required'
+					error: 'Authentication required'
 				},
-				{ status: 403 }
+				{ status: 401 }
 			);
 		}
 
