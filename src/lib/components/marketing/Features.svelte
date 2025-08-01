@@ -216,6 +216,39 @@
 						</p>
 					</dd>
 				</div>
+
+				<!-- Developer API -->
+				<div class="flex flex-col">
+					<dt
+						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
+					>
+						<div
+							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
+						>
+							<svg
+								class="h-6 w-6 text-white"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="1.5"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"
+								/>
+							</svg>
+						</div>
+						Developer API Access
+					</dt>
+					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+						<p class="flex-auto">
+							Programmatic access to our comprehensive coffee catalog. Integrate our curated green
+							coffee data into your applications, build custom tools, or create specialized
+							workflows with our REST API and detailed documentation.
+						</p>
+					</dd>
+				</div>
 			</dl>
 		</div>
 	</div>

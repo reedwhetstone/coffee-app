@@ -31,15 +31,18 @@
 
 	// Update routeId to use the store value directly
 	let routeId = $state(page.route.id);
+	let currentPath = $state(page.url.pathname);
 
 	// Update `routeId` after each navigation
 	afterNavigate(() => {
 		routeId = page.route.id;
+		currentPath = page.url.pathname;
 	});
 
 	// Close menu when route changes
 	afterNavigate(() => {
 		routeId = page.route.id;
+		currentPath = page.url.pathname;
 		onClose();
 	});
 </script>
@@ -81,8 +84,7 @@
 			<li>
 				<a
 					href="/"
-					class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
-					'/'
+					class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath === '/'
 						? ' border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
 						: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
 				>
@@ -148,14 +150,23 @@
 			{/if}
 		</ul>
 
-		<!-- Contact link for all users -->
+		<!-- API Dashboard and Contact links for all users -->
 		<div class="mt-6 border-t border-background-tertiary-light/20 pt-4">
 			<ul class="space-y-2">
 				<li>
 					<a
+						href="/api-dashboard"
+						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath.startsWith('/api-dashboard')
+							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
+							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+					>
+						API Dashboard
+					</a>
+				</li>
+				<li>
+					<a
 						href="/contact"
-						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
-						'/contact'
+						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath === '/contact'
 							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
 							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
 					>
