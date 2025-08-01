@@ -2,6 +2,7 @@
 	import '../app.css';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 	import CookieBanner from '$lib/components/CookieBanner.svelte';
+	import UnifiedHeader from '$lib/components/layout/UnifiedHeader.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 
@@ -140,6 +141,9 @@
 
 	// Determine if we should show marketing layout (no sidebar)
 	let isMarketingPage = $derived(!data.session && page.url.pathname === '/');
+	
+	// Determine if we should show the unified header (unauthenticated users on home or api pages)
+	let shouldShowUnifiedHeader = $derived(!data.session && (page.url.pathname === '/' || page.url.pathname === '/api'));
 </script>
 
 <!-- SEO Meta Tags -->
@@ -252,6 +256,11 @@
 <!-- Simple loading screen for improved FCP -->
 {#if !componentsLoaded}
 	<SimpleLoadingScreen show={true} message={loadingMessage} />
+{/if}
+
+<!-- Show Unified Header for unauthenticated users on home/api pages -->
+{#if shouldShowUnifiedHeader}
+	<UnifiedHeader />
 {/if}
 
 <!-- Marketing Layout (No Sidebar) -->

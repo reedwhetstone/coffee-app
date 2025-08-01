@@ -344,34 +344,11 @@
 						</p>
 					</div>
 
-					<!-- Authentication Prompt Banner -->
-					<div
-						class="mb-8 rounded-lg border border-background-tertiary-light/20 bg-background-tertiary-light/10 p-6"
-					>
-						<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
-							<div class="text-center sm:text-left">
-								<h3 class="text-lg font-semibold text-text-primary-light">
-									Sign up to unlock full features
-								</h3>
-								<p class="text-sm text-text-secondary-light">
-									Get AI recommendations, inventory tracking, and more
-								</p>
-							</div>
-							<div class="flex flex-col gap-3 sm:flex-row">
-								<button
-									onclick={() => goto('/auth')}
-									class="rounded-md bg-background-tertiary-light px-6 py-2 text-white transition-all duration-200 hover:bg-opacity-90"
-								>
-									Sign Up Free
-								</button>
-								<button
-									onclick={() => goto('/auth')}
-									class="rounded-md border border-background-tertiary-light px-6 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-								>
-									Sign In
-								</button>
-							</div>
-						</div>
+					<!-- Coffee catalog preview message -->
+					<div class="mb-8 text-center">
+						<p class="text-text-secondary-light">
+							Sign in with the header above to access AI recommendations, inventory tracking, and full catalog search
+						</p>
 					</div>
 
 					<!-- Coffee Cards Preview (Limited) -->
@@ -423,21 +400,29 @@
 						{/each}
 					</div>
 
-					<!-- Sign Up Prompt -->
+					<!-- Sign Up Prompt with API Cross-Reference -->
 					<div class="py-8 text-center">
 						<div
 							class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-8"
 						>
 							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">Want to see more?</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Sign up to browse our full catalog of {data.data.length}+ premium coffee beans
+								Sign up to browse our full catalog of {data.data.length}+ premium coffee beans and access AI recommendations
 							</p>
-							<button
-								onclick={() => goto('/auth')}
-								class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
-							>
-								Sign Up Free - No Credit Card Required
-							</button>
+							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+								<button
+									onclick={() => goto('/auth')}
+									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+								>
+									Sign Up Free - No Credit Card Required
+								</button>
+								<button
+									onclick={() => goto('/api')}
+									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+								>
+									View API Documentation
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>

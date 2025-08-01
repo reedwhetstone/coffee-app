@@ -56,8 +56,14 @@
 						View API Pricing
 					</button>
 					<button
-						onclick={handleContactUs}
+						onclick={() => goto('/')}
 						class="w-full rounded-md border border-background-tertiary-light px-6 py-3 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:w-auto"
+					>
+						Try Coffee App
+					</button>
+					<button
+						onclick={handleContactUs}
+						class="w-full rounded-md border border-text-secondary-light px-6 py-3 text-sm font-semibold text-text-secondary-light transition-all duration-200 hover:bg-text-secondary-light hover:text-white sm:w-auto"
 					>
 						Request Demo
 					</button>
@@ -1140,12 +1146,18 @@ Content-Type: application/json</code
 					Start building with our Parchment API today. Custom plans and data trials available for
 					enterprise customers.
 				</p>
-				<div class="mt-10 flex items-center justify-center gap-x-6">
+				<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
 					<button
 						onclick={handleContactUs}
 						class="rounded-md bg-background-tertiary-light px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 					>
 						Contact us
+					</button>
+					<button
+						onclick={() => goto('/')}
+						class="rounded-md border border-background-tertiary-light px-6 py-3 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+					>
+						Try Our Coffee App
 					</button>
 					<a
 						href="/api/docs"
