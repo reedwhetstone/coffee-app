@@ -17,8 +17,8 @@
 	// Destructure with default values to prevent undefined errors
 	let { supabase, session, role = 'viewer' } = $derived(data);
 
-	// Add type checking for role
-	type UserRole = 'viewer' | 'member' | 'admin';
+	// Import global UserRole type
+	import type { UserRole } from '$lib/types/auth.types';
 	let userRole: UserRole = $derived(role as UserRole);
 
 	// Use the imported checkRole function

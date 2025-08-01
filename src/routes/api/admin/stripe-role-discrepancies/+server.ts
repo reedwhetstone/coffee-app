@@ -63,7 +63,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		// Get all user roles separately
 		const { data: userRoles, error: rolesError } = await supabase
 			.from('user_roles')
-			.select('id, role, email, name, updated_at');
+			.select('id, user_role, email, name, updated_at');
 
 		if (rolesError) {
 			console.error('❌ Error fetching user roles:', rolesError);
@@ -101,15 +101,22 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 				const hasActiveSubscription = activeSubscriptions.length > 0;
 				const expectedRole = hasActiveSubscription ? 'member' : 'viewer';
-				const currentRole = userRole?.role || 'viewer';
+				
+				// Get role array and format for display
+				const userRoleArray = userRole?.user_role || ['viewer'];
+				const currentRoleDisplay = userRoleArray.join(', '); // Show all roles for admin debugging
 
-				// Check for discrepancies
-				if (expectedRole !== currentRole) {
+				// Check for discrepancies - for member, check if array includes member
+				const hasDiscrepancy = expectedRole === 'member' 
+					? !userRoleArray.includes('member')
+					: userRoleArray.includes('member'); // Should be viewer but has member
+				
+				if (hasDiscrepancy) {
 					const discrepancy: UserDiscrepancy = {
 						userId: customer.user_id,
 						email: userRole?.email || customer.email || 'Unknown',
 						name: userRole?.name,
-						currentRole,
+						currentRole: currentRoleDisplay,
 						expectedRole,
 						stripeCustomerId: customer.customer_id,
 						subscriptionStatus:
@@ -119,13 +126,13 @@ export const GET: RequestHandler = async ({ locals }) => {
 						subscriptionId: activeSubscriptions.length > 0 ? activeSubscriptions[0].id : undefined,
 						lastRoleUpdate: userRole?.updated_at,
 						issue: hasActiveSubscription
-							? `Has active subscription but role is ${currentRole}, should be member`
-							: `No active subscription but role is ${currentRole}, should be viewer`
+							? `Has active subscription but roles are [${userRoleArray.join(', ')}], should include member`
+							: `No active subscription but roles are [${userRoleArray.join(', ')}], should be viewer only`
 					};
 
-					if (expectedRole === 'member' && currentRole !== 'member') {
+					if (expectedRole === 'member' && !userRoleArray.includes('member')) {
 						shouldBeMemberButArent.push(discrepancy);
-					} else if (expectedRole === 'viewer' && currentRole !== 'viewer') {
+					} else if (expectedRole === 'viewer' && userRoleArray.includes('member')) {
 						shouldBeViewerButArent.push(discrepancy);
 					}
 				}
@@ -212,10 +219,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const supabase = createAdminClient();
 
-		// Get current role
+		// Get current roles
 		const { data: currentRoleData } = await supabase
 			.from('user_roles')
-			.select('role, email')
+			.select('user_role, email')
 			.eq('id', userId)
 			.maybeSingle();
 
@@ -223,13 +230,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'User not found in user_roles' }, { status: 404 });
 		}
 
-		const currentRole = currentRoleData.role;
+		const currentRoles = currentRoleData.user_role || ['viewer'];
 
-		// Update the role
+		// Update the role array based on expected role
+		let updatedRoles: string[];
+		if (expectedRole === 'member') {
+			// Add member, remove viewer if present
+			updatedRoles = currentRoles.filter((role: string) => role !== 'viewer');
+			if (!updatedRoles.includes('member')) {
+				updatedRoles.push('member');
+			}
+		} else if (expectedRole === 'viewer') {
+			// Remove member, keep API roles, or default to viewer
+			updatedRoles = currentRoles.filter((role: string) => role !== 'member');
+			if (updatedRoles.length === 0) {
+				updatedRoles = ['viewer'];
+			}
+		} else {
+			updatedRoles = [expectedRole];
+		}
+
 		const { error: roleError } = await supabase
 			.from('user_roles')
 			.update({
-				role: expectedRole,
+				user_role: updatedRoles,
 				updated_at: new Date().toISOString()
 			})
 			.eq('id', userId);
@@ -242,8 +266,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Log the manual role change
 		const { error: auditError } = await supabase.from('role_audit_logs').insert({
 			user_id: userId,
-			old_role: currentRole,
-			new_role: expectedRole,
+			old_role: currentRoles.join(','),
+			new_role: updatedRoles.join(','),
 			trigger_type: 'admin_change',
 			metadata: {
 				reason: reason || 'Manual fix via admin dashboard',
@@ -257,14 +281,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Don't fail the request, just log the error
 		}
 
-		console.log(`✅ Admin updated user ${userId} from ${currentRole} to ${expectedRole}`);
+		console.log(`✅ Admin updated user ${userId} from [${currentRoles.join(',')}] to [${updatedRoles.join(',')}]`);
 
 		return json({
 			success: true,
-			message: `User role updated from ${currentRole} to ${expectedRole}`,
+			message: `User roles updated from [${currentRoles.join(',')}] to [${updatedRoles.join(',')}]`,
 			userId,
-			oldRole: currentRole,
-			newRole: expectedRole
+			oldRole: currentRoles.join(','),
+			newRole: updatedRoles.join(',')
 		});
 	} catch (error: any) {
 		console.error('❌ Error fixing role discrepancy:', error);

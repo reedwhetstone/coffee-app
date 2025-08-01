@@ -16,6 +16,33 @@ interface RoleAuditLog {
 }
 
 /**
+ * Helper function to manage role arrays for subscription changes
+ */
+function updateRoleArray(currentRoles: string[], roleToAdd: string, roleToRemove?: string[]): string[] {
+	let updatedRoles = [...currentRoles];
+	
+	// Remove old roles if specified
+	if (roleToRemove) {
+		updatedRoles = updatedRoles.filter(role => !roleToRemove.includes(role));
+	}
+	
+	// Add new role if not already present
+	if (!updatedRoles.includes(roleToAdd)) {
+		updatedRoles.push(roleToAdd);
+	}
+	
+	// Handle base tier mutual exclusivity: viewer and member cannot coexist
+	if (roleToAdd === 'member' && updatedRoles.includes('viewer')) {
+		updatedRoles = updatedRoles.filter(role => role !== 'viewer');
+	}
+	if (roleToAdd === 'viewer' && updatedRoles.includes('member')) {
+		updatedRoles = updatedRoles.filter(role => role !== 'member');
+	}
+	
+	return updatedRoles;
+}
+
+/**
  * Log role changes for audit trail
  */
 async function logRoleChange(supabase: any, auditData: RoleAuditLog) {
@@ -116,22 +143,24 @@ export async function handleSubscriptionActive(subscription: Stripe.Subscription
 		return;
 	}
 
-	// Get current role for audit logging
+	// Get current roles for audit logging
 	const { data: currentRoleData } = await supabase
 		.from('user_roles')
-		.select('role')
+		.select('user_role')
 		.eq('id', userId)
 		.maybeSingle();
 
-	const currentRole = currentRoleData?.role || null;
+	const currentRoles = currentRoleData?.user_role || ['viewer'];
+	const currentRole = Array.isArray(currentRoles) ? currentRoles[0] : currentRoles;
 
-	// Only update if role is different to avoid unnecessary operations
-	if (currentRole !== 'member') {
-		// Update user role to 'member'
+	// Only update if user doesn't already have member role
+	if (!currentRoles.includes('member')) {
+		// Update user role array to include 'member'
+		const updatedRoles = updateRoleArray(currentRoles, 'member');
 		const { error } = await supabase.from('user_roles').upsert(
 			{
 				id: userId,
-				role: 'member',
+				user_role: updatedRoles,
 				updated_at: new Date().toISOString()
 			},
 			{ onConflict: 'id' }
@@ -140,13 +169,13 @@ export async function handleSubscriptionActive(subscription: Stripe.Subscription
 		if (error) {
 			console.error('❌ Error updating user role:', error);
 		} else {
-			console.log(`✅ Updated user ${userId} to member role`);
+			console.log(`✅ Updated user ${userId} roles to include member:`, updatedRoles);
 
 			// Log the role change
 			await logRoleChange(supabase, {
 				user_id: userId,
-				old_role: currentRole,
-				new_role: 'member',
+				old_role: currentRoles.join(','),
+				new_role: updatedRoles.join(','),
 				trigger_type: 'webhook_processing',
 				stripe_customer_id: customerId,
 				stripe_subscription_id: subscription.id,
@@ -209,22 +238,27 @@ export async function handleSubscriptionInactive(subscription: Stripe.Subscripti
 		return;
 	}
 
-	// Get current role for audit logging
+	// Get current roles for audit logging
 	const { data: currentRoleData } = await supabase
 		.from('user_roles')
-		.select('role')
+		.select('user_role')
 		.eq('id', userId)
 		.maybeSingle();
 
-	const currentRole = currentRoleData?.role || null;
+	const currentRoles = currentRoleData?.user_role || ['viewer'];
+	const currentRole = Array.isArray(currentRoles) ? currentRoles[0] : currentRoles;
 
-	// Only update if role is different to avoid unnecessary operations
-	if (currentRole !== 'viewer') {
-		// Update user role to 'viewer'
+	// Remove member role and set to viewer (handles downgrade)
+	if (currentRoles.includes('member')) {
+		// Remove member role, keep API roles if present, otherwise default to viewer
+		let updatedRoles = currentRoles.filter((role: string) => role !== 'member');
+		if (updatedRoles.length === 0 || (updatedRoles.length === 1 && updatedRoles[0] === 'viewer')) {
+			updatedRoles = ['viewer'];
+		}
 		const { error } = await supabase.from('user_roles').upsert(
 			{
 				id: userId,
-				role: 'viewer',
+				user_role: updatedRoles,
 				updated_at: new Date().toISOString()
 			},
 			{ onConflict: 'id' }
@@ -233,13 +267,13 @@ export async function handleSubscriptionInactive(subscription: Stripe.Subscripti
 		if (error) {
 			console.error('❌ Error updating user role:', error);
 		} else {
-			console.log(`✅ Updated user ${userId} to viewer role`);
+			console.log(`✅ Updated user ${userId} roles after member cancellation:`, updatedRoles);
 
 			// Log the role change
 			await logRoleChange(supabase, {
 				user_id: userId,
-				old_role: currentRole,
-				new_role: 'viewer',
+				old_role: currentRoles.join(','),
+				new_role: updatedRoles.join(','),
 				trigger_type: 'webhook_processing',
 				stripe_customer_id: customerId,
 				stripe_subscription_id: subscription.id,
@@ -253,6 +287,6 @@ export async function handleSubscriptionInactive(subscription: Stripe.Subscripti
 			});
 		}
 	} else {
-		console.log(`ℹ️ User ${userId} already has viewer role, no update needed`);
+		console.log(`ℹ️ User ${userId} doesn't have member role, no update needed`);
 	}
 }

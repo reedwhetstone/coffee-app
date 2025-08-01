@@ -168,14 +168,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		console.log('👤 Processing role update for user:', user.id, 'Customer:', customerId);
 
-		// Get current role for audit logging
+		// Get current roles for audit logging
 		const { data: currentRoleData } = await supabase
 			.from('user_roles')
-			.select('role')
+			.select('user_role')
 			.eq('id', user.id)
 			.maybeSingle();
 
-		const currentRole = currentRoleData?.role || null;
+		const currentRoles = currentRoleData?.user_role || ['viewer'];
 
 		// Ensure customer mapping exists
 		await supabase.from('stripe_customers').upsert(
@@ -211,11 +211,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		let roleUpdated = false;
 
 		// Update user role to member if they should have it and don't already have it
-		if (shouldHaveMemberRole && currentRole !== 'member') {
+		if (shouldHaveMemberRole && !currentRoles.includes('member')) {
+			// Add member role, remove viewer if present
+			const updatedRoles = currentRoles.filter((role: string) => role !== 'viewer');
+			if (!updatedRoles.includes('member')) {
+				updatedRoles.push('member');
+			}
+			
 			const { error: roleError } = await supabase.from('user_roles').upsert(
 				{
 					id: user.id,
-					role: 'member',
+					user_role: updatedRoles,
 					updated_at: new Date().toISOString()
 				},
 				{ onConflict: 'id' }
@@ -240,8 +246,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Log the role change
 			await logRoleChange(supabase, {
 				user_id: user.id,
-				old_role: currentRole,
-				new_role: 'member',
+				old_role: currentRoles.join(','),
+				new_role: updatedRoles.join(','),
 				trigger_type: 'checkout_success',
 				stripe_customer_id: customerId || undefined,
 				stripe_subscription_id: subscriptionId || undefined,
@@ -275,7 +281,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				roleUpdated: true,
 				message: 'Role successfully updated to member'
 			});
-		} else if (shouldHaveMemberRole && currentRole === 'member') {
+		} else if (shouldHaveMemberRole && currentRoles.includes('member')) {
 			return json({
 				success: true,
 				roleUpdated: false,

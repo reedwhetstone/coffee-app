@@ -52,18 +52,41 @@ export async function getUserRole(supabase: SupabaseClient, userId: string): Pro
 	//console.log('Getting role for user:', userId);
 	const { data, error } = await supabase
 		.from('user_roles')
-		.select('role')
+		.select('user_role')
 		.eq('id', userId)
 		.single();
 
 	//console.log('Role query result:', { data, error });
 
-	if (error || !data) {
+	if (error || !data || !data.user_role) {
 		//console.log('Defaulting to viewer role due to:', error || 'no data');
 		return 'viewer';
 	}
-	//console.log('Found role:', data.role);
-	return data.role as UserRole;
+
+	// Get primary role from array based on priority: member > api-enterprise > api-member > viewer
+	const roles = data.user_role as UserRole[];
+	if (roles.includes('member')) return 'member';
+	if (roles.includes('api-enterprise')) return 'api-enterprise';
+	if (roles.includes('api-member')) return 'api-member';
+	return 'viewer';
+}
+
+export async function getUserRoles(supabase: SupabaseClient, userId: string): Promise<UserRole[]> {
+	//console.log('Getting roles for user:', userId);
+	const { data, error } = await supabase
+		.from('user_roles')
+		.select('user_role')
+		.eq('id', userId)
+		.single();
+
+	//console.log('Roles query result:', { data, error });
+
+	if (error || !data || !data.user_role) {
+		//console.log('Defaulting to viewer role due to:', error || 'no data');
+		return ['viewer'];
+	}
+
+	return data.user_role as UserRole[];
 }
 
 export { checkRole as requireRole };
