@@ -161,6 +161,11 @@
 				<h1 class="text-primary-light break-words text-xl font-bold sm:text-2xl">
 					{profile.batch_name} // {formatDateForDisplay(profile.roast_date)}
 				</h1>
+				{#if profile.roast_id}
+					<div class="mt-1 text-sm text-text-secondary-light">
+						Roast ID: {profile.roast_id}
+					</div>
+				{/if}
 			</div>
 			<button
 				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900 sm:w-auto"

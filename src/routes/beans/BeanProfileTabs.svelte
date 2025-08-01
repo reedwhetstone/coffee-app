@@ -816,9 +816,16 @@
 									<h4 class="font-medium text-text-primary-light">
 										{profile.batch_name || `Roast #${index + 1}`}
 									</h4>
-									<span class="text-xs text-text-secondary-light">
-										{profile.oz_in || 0} oz → {profile.oz_out || 0} oz
-									</span>
+									<div class="text-right">
+										<div class="text-xs text-text-secondary-light">
+											{profile.oz_in || 0} oz → {profile.oz_out || 0} oz
+										</div>
+										{#if profile.roast_id}
+											<div class="text-xs text-text-secondary-light">
+												ID: {profile.roast_id}
+											</div>
+										{/if}
+									</div>
 								</div>
 								<div class="mb-2 text-sm text-text-secondary-light">
 									Loss: {profile.oz_in && profile.oz_out
