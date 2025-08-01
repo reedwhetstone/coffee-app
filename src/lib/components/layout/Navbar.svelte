@@ -160,7 +160,7 @@
 							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
 							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
 					>
-						API Dashboard
+						Parchment API
 					</a>
 				</li>
 				<li>

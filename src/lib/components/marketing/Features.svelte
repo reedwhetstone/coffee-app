@@ -217,7 +217,7 @@
 					</dd>
 				</div>
 
-				<!-- Developer API -->
+				<!-- Parchment API -->
 				<div class="flex flex-col">
 					<dt
 						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
@@ -239,13 +239,13 @@
 								/>
 							</svg>
 						</div>
-						Developer API Access
+						Parchment API Access
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
 							Programmatic access to our comprehensive coffee catalog. Integrate our curated green
 							coffee data into your applications, build custom tools, or create specialized
-							workflows with our REST API and detailed documentation.
+							workflows with our Parchment API and detailed documentation.
 						</p>
 					</dd>
 				</div>

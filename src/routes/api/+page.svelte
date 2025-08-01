@@ -16,15 +16,15 @@
 
 	onMount(() => {
 		// Set page title for API page
-		document.title = 'Purveyors.io Green Coffee API - Transform Your Roasting Platform';
+		document.title = 'Purveyors.io Parchment API - Transform Your Roasting Platform';
 	});
 </script>
 
 <svelte:head>
-	<title>Purveyors.io Green Coffee API - Transform Your Roasting Platform</title>
+	<title>Purveyors.io Parchment API - Transform Your Roasting Platform</title>
 	<meta
 		name="description"
-		content="The first normalized, daily-updated API for specialty green coffee. Integrate real-time green coffee data into your roasting software with our comprehensive REST API."
+		content="The first normalized, daily-updated API for specialty green coffee. Integrate real-time green coffee data into your roasting software with our comprehensive Parchment API."
 	/>
 </svelte:head>
 
@@ -36,7 +36,7 @@
 		<div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
 			<div class="flex flex-col items-center justify-center">
 				<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
-					Green Coffee API
+					Parchment API
 				</h1>
 				<div class="mt-2 text-xl font-medium text-background-tertiary-light">
 					Transform how your platform accesses coffee data
@@ -287,7 +287,7 @@ Content-Type: application/json</code
 					Our Solution
 				</h2>
 				<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-					Purveyors.io Green Coffee API
+					Purveyors.io Parchment API
 				</p>
 				<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 					The first normalized, daily-updated API for specialty green coffee. Clean data,
@@ -561,93 +561,6 @@ Content-Type: application/json</code
 		</div>
 	</section>
 
-	<!-- API Data Fields Section -->
-	<section class="bg-background-primary-light py-24 sm:py-32">
-		<div class="mx-auto max-w-7xl px-6 lg:px-8">
-			<div class="mx-auto max-w-2xl lg:text-center">
-				<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
-					API Data Fields
-				</h2>
-				<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-					Comprehensive coffee data structure
-				</p>
-				<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-					Access detailed, normalized coffee information with consistent field structure across all
-					suppliers.
-				</p>
-			</div>
-			<div class="mx-auto mt-16 max-w-4xl">
-				<div
-					class="overflow-hidden rounded-lg bg-background-secondary-light shadow ring-1 ring-border-light"
-				>
-					<div class="bg-background-tertiary-light px-6 py-4">
-						<h3 class="text-lg font-semibold text-white">Available Data Fields</h3>
-					</div>
-					<div class="divide-y divide-border-light">
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">id</div>
-							<div class="text-text-secondary-light">Unique coffee identifier</div>
-							<div class="text-sm text-text-secondary-light">Integer</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">name</div>
-							<div class="text-text-secondary-light">Coffee lot name (normalized)</div>
-							<div class="text-sm text-text-secondary-light">String</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">score_value</div>
-							<div class="text-text-secondary-light">Cupping score (0-100)</div>
-							<div class="text-sm text-text-secondary-light">Number</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">region</div>
-							<div class="text-text-secondary-light">Growing region</div>
-							<div class="text-sm text-text-secondary-light">String</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">processing</div>
-							<div class="text-text-secondary-light">
-								Processing method (Washed, Natural, Honey)
-							</div>
-							<div class="text-sm text-text-secondary-light">String</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">cost_lb</div>
-							<div class="text-text-secondary-light">Cost per pound (USD)</div>
-							<div class="text-sm text-text-secondary-light">Number</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">stocked</div>
-							<div class="text-text-secondary-light">Current availability status</div>
-							<div class="text-sm text-text-secondary-light">Boolean</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">ai_tasting_notes</div>
-							<div class="text-text-secondary-light">
-								AI-generated taste profile matrix (fruity, floral, nutty, etc.)
-							</div>
-							<div class="text-sm text-text-secondary-light">Object</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">source</div>
-							<div class="text-text-secondary-light">Supplier identifier</div>
-							<div class="text-sm text-text-secondary-light">String</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">country</div>
-							<div class="text-text-secondary-light">Country of origin</div>
-							<div class="text-sm text-text-secondary-light">String</div>
-						</div>
-						<div class="grid grid-cols-1 gap-4 px-6 py-4 sm:grid-cols-3">
-							<div class="font-medium text-text-primary-light">continent</div>
-							<div class="text-text-secondary-light">Continent of origin</div>
-							<div class="text-sm text-text-secondary-light">String</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
 
 	<!-- Pricing Section -->
 	<section id="pricing" class="bg-background-secondary-light py-24 sm:py-32">
@@ -665,7 +578,7 @@ Content-Type: application/json</code
 			</p>
 
 			<div
-				class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-6 sm:mt-20 sm:gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-3 lg:gap-12"
+				class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-6 sm:mt-20 sm:gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:gap-12"
 			>
 				<!-- Explorer Plan (Free) -->
 				<div
@@ -855,103 +768,55 @@ Content-Type: application/json</code
 					</button>
 				</div>
 
-				<!-- Integrate Plan (Enterprise) -->
-				<div
-					class="flex flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light xl:p-10"
-				>
-					<div>
-						<div class="flex items-center justify-between gap-x-4">
-							<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Integrate</h3>
+			</div>
+
+			<!-- Enterprise Section -->
+			<div class="mx-auto mt-16 max-w-4xl">
+				<div class="rounded-lg bg-background-primary-light p-8 ring-1 ring-border-light text-center">
+					<h3 class="text-2xl font-bold text-text-primary-light">Need Enterprise Features?</h3>
+					<p class="mt-4 text-lg text-text-secondary-light">
+						For B2B platforms, ERPs, and enterprises requiring unlimited access, custom integrations, white-labeled endpoints, and dedicated support.
+					</p>
+					<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3 text-sm text-text-secondary-light">
+						<div class="flex items-center justify-center space-x-2">
+							<svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+								<path
+									fill-rule="evenodd"
+									d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+							<span>Unlimited API calls</span>
 						</div>
-						<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-							For B2B platforms, ERPs, and enterprises requiring unlimited access and custom integrations.
-						</p>
-						<p class="mt-6 flex items-baseline gap-x-1">
-							<span class="text-2xl font-bold tracking-tight text-text-primary-light">Starting at</span>
-						</p>
-						<p class="flex items-baseline gap-x-1">
-							<span class="text-4xl font-bold tracking-tight text-text-primary-light">$1,500</span>
-							<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
-						</p>
-						<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
-							<li class="flex gap-x-3">
-								<svg
-									class="h-6 w-5 flex-none text-background-tertiary-light"
-									viewBox="0 0 20 20"
-									fill="currentColor"
-								>
-									<path
-										fill-rule="evenodd"
-										d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-										clip-rule="evenodd"
-									/>
-								</svg>
-								Unlimited API calls
-							</li>
-							<li class="flex gap-x-3">
-								<svg
-									class="h-6 w-5 flex-none text-background-tertiary-light"
-									viewBox="0 0 20 20"
-									fill="currentColor"
-								>
-									<path
-										fill-rule="evenodd"
-										d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-										clip-rule="evenodd"
-									/>
-								</svg>
-								White-labeled endpoints
-							</li>
-							<li class="flex gap-x-3">
-								<svg
-									class="h-6 w-5 flex-none text-background-tertiary-light"
-									viewBox="0 0 20 20"
-									fill="currentColor"
-								>
-									<path
-										fill-rule="evenodd"
-										d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-										clip-rule="evenodd"
-									/>
-								</svg>
-								Webhook support & live data
-							</li>
-							<li class="flex gap-x-3">
-								<svg
-									class="h-6 w-5 flex-none text-background-tertiary-light"
-									viewBox="0 0 20 20"
-									fill="currentColor"
-								>
-									<path
-										fill-rule="evenodd"
-										d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-										clip-rule="evenodd"
-									/>
-								</svg>
-								SLAs & dedicated account manager
-							</li>
-							<li class="flex gap-x-3">
-								<svg
-									class="h-6 w-5 flex-none text-background-tertiary-light"
-									viewBox="0 0 20 20"
-									fill="currentColor"
-								>
-									<path
-										fill-rule="evenodd"
-										d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-										clip-rule="evenodd"
-									/>
-								</svg>
-								Multi-user access & team API keys
-							</li>
-						</ul>
+						<div class="flex items-center justify-center space-x-2">
+							<svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+								<path
+									fill-rule="evenodd"
+									d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+							<span>White-labeled endpoints</span>
+						</div>
+						<div class="flex items-center justify-center space-x-2">
+							<svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+								<path
+									fill-rule="evenodd"
+									d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+							<span>Dedicated support</span>
+						</div>
 					</div>
-					<button
-						onclick={handleContactUs}
-						class="mt-8 block w-full rounded-md bg-text-primary-light px-3 py-2 text-center text-sm font-semibold text-background-primary-light shadow-sm transition-all duration-200 hover:bg-opacity-90"
-					>
-						Contact sales
-					</button>
+					<div class="mt-8">
+						<button
+							onclick={handleContactUs}
+							class="rounded-md bg-background-tertiary-light px-8 py-3 text-lg font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
+						>
+							Contact Sales for Pricing
+						</button>
+					</div>
 				</div>
 			</div>
 
@@ -1272,7 +1137,7 @@ Content-Type: application/json</code
 					Ready to integrate or want a demo?
 				</h2>
 				<p class="mx-auto mt-6 max-w-xl text-lg leading-8 text-text-secondary-light">
-					Start building with our Green Coffee API today. Custom plans and data trials available for
+					Start building with our Parchment API today. Custom plans and data trials available for
 					enterprise customers.
 				</p>
 				<div class="mt-10 flex items-center justify-center gap-x-6">

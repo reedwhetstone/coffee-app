@@ -16,6 +16,13 @@ const RATE_LIMITS = {
 	'api-enterprise': -1 // Integrate (Enterprise Tier) - unlimited API access
 } as const;
 
+// Row limits per API call by tier
+const ROW_LIMITS = {
+	viewer: 25, // Explorer (Free Tier) - limited rows per call
+	'api-member': -1, // Roaster+ (Pro Tier) - unlimited rows
+	'api-enterprise': -1 // Integrate (Enterprise Tier) - unlimited rows
+} as const;
+
 // Legacy mapping for backward compatibility
 const LEGACY_TIER_MAPPING = {
 	api_viewer: 'viewer',
@@ -27,8 +34,9 @@ const LEGACY_TIER_MAPPING = {
 	api: 'api-member' // Migrate old 'api' role to 'api-member'
 } as const;
 
-// Export rate limits for use in other modules
+// Export rate limits and row limits for use in other modules
 export const API_RATE_LIMITS = RATE_LIMITS;
+export const API_ROW_LIMITS = ROW_LIMITS;
 
 export interface ApiKeyValidationResult {
 	valid: boolean;
@@ -409,6 +417,13 @@ export function getUserApiTier(role: string | null): 'viewer' | 'api-member' | '
 	
 	// Default to viewer (free) tier - includes basic API access
 	return 'viewer';
+}
+
+/**
+ * Get row limit for user's API tier
+ */
+export function getApiRowLimit(tier: 'viewer' | 'api-member' | 'api-enterprise'): number {
+	return ROW_LIMITS[tier];
 }
 
 /**

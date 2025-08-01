@@ -1,8 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { validateApiRequest, logApiUsage, checkRateLimit } from '$lib/server/apiAuth';
+import { validateApiRequest, logApiUsage, checkRateLimit, getUserApiTier, getApiRowLimit } from '$lib/server/apiAuth';
 import { createAdminClient } from '$lib/supabase-admin';
-import { hasRole } from '$lib/types/auth.types';
 
 // Cache for catalog API data
 let catalogApiCache: {
@@ -77,14 +76,14 @@ export const GET: RequestHandler = async ({ request }) => {
 		const supabase = createAdminClient();
 
 		// Check user role - require API access only
-		const { data: userRole, error: roleError } = await supabase
+		const { data: userRoleData, error: roleError } = await supabase
 			.from('user_roles')
-			.select('role')
+			.select('user_role')
 			.eq('id', userId)
 			.single();
 
 		// Any authenticated user can access API endpoints (viewer gets free tier, others get enhanced access)
-		const hasApiAccess = userRole && !roleError;
+		const hasApiAccess = userRoleData && !roleError;
 
 		if (roleError || !hasApiAccess) {
 			// Log failed request
@@ -108,8 +107,14 @@ export const GET: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		// Check rate limit
-		const rateLimitResult = await checkRateLimit(apiKeyId, 'developer'); // TODO: Get actual tier from subscription
+		// Get user's API tier and determine limits
+		const userRoles = userRoleData?.user_role || ['viewer'];
+		const userTier = getUserApiTier(userRoles.join(','));
+		const rowLimit = getApiRowLimit(userTier);
+
+		// Check rate limit (map tier to legacy format for compatibility)
+		const legacyTier = userTier === 'viewer' ? 'api_viewer' : userTier === 'api-member' ? 'api_member' : 'api_enterprise';
+		const rateLimitResult = await checkRateLimit(apiKeyId, legacyTier);
 
 		if (!rateLimitResult.allowed) {
 			// Log rate limited request
@@ -147,6 +152,14 @@ export const GET: RequestHandler = async ({ request }) => {
 		if (catalogApiCache.data && now - catalogApiCache.timestamp < CACHE_TTL) {
 			console.log('Serving catalog API data from cache');
 
+			// Apply row limiting for free tier
+			let responseData = catalogApiCache.data;
+			let isLimited = false;
+			if (rowLimit > 0 && catalogApiCache.data.length > rowLimit) {
+				responseData = catalogApiCache.data.slice(0, rowLimit);
+				isLimited = true;
+			}
+
 			// Log successful cached request
 			await logApiUsage(
 				apiKeyId,
@@ -158,8 +171,12 @@ export const GET: RequestHandler = async ({ request }) => {
 			);
 
 			const response = json({
-				data: catalogApiCache.data,
-				total: catalogApiCache.data?.length || 0,
+				data: responseData,
+				total: responseData?.length || 0,
+				total_available: catalogApiCache.data?.length || 0,
+				limited: isLimited,
+				limit: rowLimit > 0 ? rowLimit : undefined,
+				tier: userTier,
 				cached: true,
 				cache_timestamp: new Date(catalogApiCache.timestamp).toISOString(),
 				api_version: '1.0'
@@ -207,6 +224,14 @@ export const GET: RequestHandler = async ({ request }) => {
 			timestamp: now
 		};
 
+		// Apply row limiting for free tier
+		let responseData = rows || [];
+		let isLimited = false;
+		if (rowLimit > 0 && responseData.length > rowLimit) {
+			responseData = responseData.slice(0, rowLimit);
+			isLimited = true;
+		}
+
 		// Log successful request
 		await logApiUsage(
 			apiKeyId,
@@ -219,8 +244,12 @@ export const GET: RequestHandler = async ({ request }) => {
 
 		// Return API response with metadata and rate limit headers
 		const response = json({
-			data: rows || [],
-			total: rows?.length || 0,
+			data: responseData,
+			total: responseData?.length || 0,
+			total_available: rows?.length || 0,
+			limited: isLimited,
+			limit: rowLimit > 0 ? rowLimit : undefined,
+			tier: userTier,
 			cached: false,
 			last_updated: new Date().toISOString(),
 			api_version: '1.0'
