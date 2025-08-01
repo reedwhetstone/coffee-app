@@ -63,8 +63,9 @@ export async function getUserRole(supabase: SupabaseClient, userId: string): Pro
 		return 'viewer';
 	}
 
-	// Get primary role from array based on priority: member > api-enterprise > api-member > viewer
+	// Get primary role from array based on priority: admin > member > api-enterprise > api-member > viewer
 	const roles = data.user_role as UserRole[];
+	if (roles.includes('admin')) return 'admin';
 	if (roles.includes('member')) return 'member';
 	if (roles.includes('api-enterprise')) return 'api-enterprise';
 	if (roles.includes('api-member')) return 'api-member';
