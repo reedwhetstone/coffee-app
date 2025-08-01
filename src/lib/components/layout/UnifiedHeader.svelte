@@ -33,9 +33,9 @@
 			<div class="flex items-center space-x-4">
 				<button
 					onclick={navigateToHome}
-					class="text-text-primary-light hover:text-background-tertiary-light text-xl font-bold transition-colors duration-200"
+					class="flex items-center transition-opacity duration-200 hover:opacity-80"
 				>
-					Purveyors.io
+					<img src="/purveyors_logo_mark.svg" alt="purveyors.io" class="h-9 w-auto" />
 				</button>
 			</div>
 
@@ -114,7 +114,7 @@
 						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
 						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
 				>
-					Coffee App
+					Maillard Studio
 				</button>
 				<button
 					onclick={navigateToApi}
@@ -122,7 +122,7 @@
 						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
 						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
 				>
-					API Documentation
+					Parchment API
 				</button>
 			</div>
 		</div>
