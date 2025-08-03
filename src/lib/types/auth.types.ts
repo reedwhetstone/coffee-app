@@ -6,7 +6,7 @@ export type UserRoles = UserRole | UserRole[];
 export const roleHierarchy = {
 	viewer: 0,
 	'api-member': 0, // Same level as viewer - enhanced API access only
-	'api-enterprise': 0, // Same level as viewer - unlimited API access only  
+	'api-enterprise': 0, // Same level as viewer - unlimited API access only
 	member: 1,
 	admin: 2
 } as const;

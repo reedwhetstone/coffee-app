@@ -101,16 +101,17 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 				const hasActiveSubscription = activeSubscriptions.length > 0;
 				const expectedRole = hasActiveSubscription ? 'member' : 'viewer';
-				
+
 				// Get role array and format for display
 				const userRoleArray = userRole?.user_role || ['viewer'];
 				const currentRoleDisplay = userRoleArray.join(', '); // Show all roles for admin debugging
 
 				// Check for discrepancies - for member, check if array includes member
-				const hasDiscrepancy = expectedRole === 'member' 
-					? !userRoleArray.includes('member')
-					: userRoleArray.includes('member'); // Should be viewer but has member
-				
+				const hasDiscrepancy =
+					expectedRole === 'member'
+						? !userRoleArray.includes('member')
+						: userRoleArray.includes('member'); // Should be viewer but has member
+
 				if (hasDiscrepancy) {
 					const discrepancy: UserDiscrepancy = {
 						userId: customer.user_id,
@@ -281,7 +282,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Don't fail the request, just log the error
 		}
 
-		console.log(`✅ Admin updated user ${userId} from [${currentRoles.join(',')}] to [${updatedRoles.join(',')}]`);
+		console.log(
+			`✅ Admin updated user ${userId} from [${currentRoles.join(',')}] to [${updatedRoles.join(',')}]`
+		);
 
 		return json({
 			success: true,

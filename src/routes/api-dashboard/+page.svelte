@@ -288,7 +288,8 @@
 							<h3 class="text-sm font-medium text-red-800">Rate Limit Reached</h3>
 							<div class="mt-2 text-sm text-red-700">
 								<p>
-									You have reached your {data.usageStats.monthlyLimit.toLocaleString()} monthly API call limit. 
+									You have reached your {data.usageStats.monthlyLimit.toLocaleString()} monthly API call
+									limit.
 									{#if data.usageStats.userTier === 'viewer'}
 										Upgrade to Roaster+ for 10,000 calls/month.
 									{:else}
@@ -329,7 +330,8 @@
 							<h3 class="text-sm font-medium text-yellow-800">Approaching Rate Limit</h3>
 							<div class="mt-2 text-sm text-yellow-700">
 								<p>
-									You're using {Math.round(data.usageStats.monthlyPercent)}% of your {data.usageStats.monthlyLimit.toLocaleString()} monthly API calls.
+									You're using {Math.round(data.usageStats.monthlyPercent)}% of your {data.usageStats.monthlyLimit.toLocaleString()}
+									monthly API calls.
 									{#if data.usageStats.userTier === 'viewer'}
 										Consider upgrading to Roaster+ for 10,000 calls/month.
 									{:else}
@@ -379,7 +381,8 @@
 							<h3 class="text-sm font-medium text-blue-800">Consider Upgrading</h3>
 							<div class="mt-2 text-sm text-blue-700">
 								<p>
-									You've used {Math.round(data.usageStats.monthlyPercent)}% of your monthly API calls.
+									You've used {Math.round(data.usageStats.monthlyPercent)}% of your monthly API
+									calls.
 									{#if data.usageStats.userTier === 'viewer'}
 										Upgrade to Roaster+ for 50x more calls and advanced features.
 									{:else}

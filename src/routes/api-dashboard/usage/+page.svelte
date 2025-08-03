@@ -9,14 +9,18 @@
 		if (!data.currentStats || data.currentStats.monthlyLimit === -1) return 0;
 		return Math.min((data.currentStats.monthlyUsage / data.currentStats.monthlyLimit) * 100, 100);
 	});
-	
+
 	let tierDisplayName = $derived(() => {
 		if (!data.currentStats) return 'Explorer';
 		switch (data.currentStats.userTier) {
-			case 'api-enterprise': return 'Enterprise';
-			case 'api-member': return 'Roaster+';
-			case 'viewer': return 'Explorer';
-			default: return 'Explorer';
+			case 'api-enterprise':
+				return 'Enterprise';
+			case 'api-member':
+				return 'Roaster+';
+			case 'viewer':
+				return 'Explorer';
+			default:
+				return 'Explorer';
 		}
 	});
 
@@ -274,7 +278,9 @@
 							</h3>
 							<div class="mt-2 text-sm text-yellow-700">
 								<p>
-									You've used {Math.round(monthlyUsagePercent())}% of your {formatNumber(data.currentStats?.monthlyLimit || 200)} monthly API calls.
+									You've used {Math.round(monthlyUsagePercent())}% of your {formatNumber(
+										data.currentStats?.monthlyLimit || 200
+									)} monthly API calls.
 									{#if data.currentStats?.userTier === 'viewer'}
 										Upgrade to Roaster+ for 10,000 calls/month and advanced features.
 									{:else}

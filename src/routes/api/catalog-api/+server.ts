@@ -1,6 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { validateApiRequest, logApiUsage, checkRateLimit, getUserApiTier, getApiRowLimit } from '$lib/server/apiAuth';
+import {
+	validateApiRequest,
+	logApiUsage,
+	checkRateLimit,
+	getUserApiTier,
+	getApiRowLimit
+} from '$lib/server/apiAuth';
 import { createAdminClient } from '$lib/supabase-admin';
 
 // Cache for catalog API data
@@ -113,7 +119,12 @@ export const GET: RequestHandler = async ({ request }) => {
 		const rowLimit = getApiRowLimit(userTier);
 
 		// Check rate limit (map tier to legacy format for compatibility)
-		const legacyTier = userTier === 'viewer' ? 'api_viewer' : userTier === 'api-member' ? 'api_member' : 'api_enterprise';
+		const legacyTier =
+			userTier === 'viewer'
+				? 'api_viewer'
+				: userTier === 'api-member'
+					? 'api_member'
+					: 'api_enterprise';
 		const rateLimitResult = await checkRateLimit(apiKeyId, legacyTier);
 
 		if (!rateLimitResult.allowed) {

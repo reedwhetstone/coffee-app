@@ -84,7 +84,8 @@
 			<li>
 				<a
 					href="/"
-					class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath === '/'
+					class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath ===
+					'/'
 						? ' border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
 						: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
 				>
@@ -156,7 +157,9 @@
 				<li>
 					<a
 						href="/api-dashboard"
-						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath.startsWith('/api-dashboard')
+						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath.startsWith(
+							'/api-dashboard'
+						)
 							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
 							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
 					>
@@ -166,7 +169,8 @@
 				<li>
 					<a
 						href="/contact"
-						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath === '/contact'
+						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath ===
+						'/contact'
 							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
 							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
 					>

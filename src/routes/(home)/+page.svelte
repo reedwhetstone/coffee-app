@@ -347,7 +347,8 @@
 					<!-- Coffee catalog preview message -->
 					<div class="mb-8 text-center">
 						<p class="text-text-secondary-light">
-							Sign in with the header above to access AI recommendations, inventory tracking, and full catalog search
+							Sign in with the header above to access AI recommendations, inventory tracking, and
+							full catalog search
 						</p>
 					</div>
 
@@ -407,7 +408,8 @@
 						>
 							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">Want to see more?</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Sign up to browse our full catalog of {data.data.length}+ premium coffee beans and access AI recommendations
+								Sign up to browse our full catalog of {data.data.length}+ premium coffee beans and
+								access AI recommendations
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 								<button

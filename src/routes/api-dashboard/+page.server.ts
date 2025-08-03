@@ -36,7 +36,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			// Get user's API tier based on their role
 			const userTier = getUserApiTier(role);
 			const monthlyLimit = API_RATE_LIMITS[userTier];
-			
+
 			const now = new Date();
 			const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 			const startOfHour = new Date(now.getTime() - 60 * 60 * 1000);

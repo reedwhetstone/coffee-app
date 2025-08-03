@@ -18,27 +18,31 @@ interface RoleAuditLog {
 /**
  * Helper function to manage role arrays for subscription changes
  */
-function updateRoleArray(currentRoles: string[], roleToAdd: string, roleToRemove?: string[]): string[] {
+function updateRoleArray(
+	currentRoles: string[],
+	roleToAdd: string,
+	roleToRemove?: string[]
+): string[] {
 	let updatedRoles = [...currentRoles];
-	
+
 	// Remove old roles if specified
 	if (roleToRemove) {
-		updatedRoles = updatedRoles.filter(role => !roleToRemove.includes(role));
+		updatedRoles = updatedRoles.filter((role) => !roleToRemove.includes(role));
 	}
-	
+
 	// Add new role if not already present
 	if (!updatedRoles.includes(roleToAdd)) {
 		updatedRoles.push(roleToAdd);
 	}
-	
+
 	// Handle base tier mutual exclusivity: viewer and member cannot coexist
 	if (roleToAdd === 'member' && updatedRoles.includes('viewer')) {
-		updatedRoles = updatedRoles.filter(role => role !== 'viewer');
+		updatedRoles = updatedRoles.filter((role) => role !== 'viewer');
 	}
 	if (roleToAdd === 'viewer' && updatedRoles.includes('member')) {
-		updatedRoles = updatedRoles.filter(role => role !== 'member');
+		updatedRoles = updatedRoles.filter((role) => role !== 'member');
 	}
-	
+
 	return updatedRoles;
 }
 

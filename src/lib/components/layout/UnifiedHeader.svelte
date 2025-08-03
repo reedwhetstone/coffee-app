@@ -25,7 +25,7 @@
 </script>
 
 <header
-	class="bg-background-primary-light/95 border-border-light sticky top-0 z-50 border-b backdrop-blur-sm"
+	class="sticky top-0 z-50 border-b border-border-light bg-background-primary-light/95 backdrop-blur-sm"
 >
 	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 		<div class="flex items-center justify-between py-4">
@@ -63,13 +63,13 @@
 			<div class="flex items-center space-x-3">
 				<button
 					onclick={handleSignIn}
-					class="border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light hidden items-center rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 hover:text-white sm:inline-flex"
+					class="hidden items-center rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:inline-flex"
 				>
 					Sign In
 				</button>
 				<button
 					onclick={handleGetStarted}
-					class="bg-background-tertiary-light focus-visible:outline-background-tertiary-light inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+					class="inline-flex items-center rounded-md bg-background-tertiary-light px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
 					Get Started
 				</button>
@@ -78,7 +78,7 @@
 				<div class="md:hidden">
 					<button
 						type="button"
-						class="text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light focus:ring-background-tertiary-light inline-flex items-center justify-center rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-inset"
+						class="inline-flex items-center justify-center rounded-md p-2 text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light focus:outline-none focus:ring-2 focus:ring-inset focus:ring-background-tertiary-light"
 						onclick={() => {
 							const menu = document.getElementById('mobile-menu');
 							if (menu) {

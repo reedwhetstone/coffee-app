@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	
+
 	let { data } = $props<{ data: any }>();
-	
+
 	onMount(() => {
 		document.title = 'Parchment API Documentation';
-		
+
 		// If user is authenticated, redirect directly to docs
 		if (data?.session) {
 			goto('/api-dashboard/docs');
 		}
 	});
-	
+
 	function handleLogin() {
 		goto('/auth');
 	}
@@ -20,15 +20,25 @@
 
 <svelte:head>
 	<title>Parchment API Documentation</title>
-	<meta name="description" content="Access comprehensive Parchment API documentation with examples and guides" />
+	<meta
+		name="description"
+		content="Access comprehensive Parchment API documentation with examples and guides"
+	/>
 </svelte:head>
 
 {#if !data?.session}
 	<div class="min-h-screen bg-background-primary-light">
 		<div class="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
 			<div class="text-center">
-				<div class="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary-light/10">
-					<svg class="h-8 w-8 text-background-tertiary-light" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<div
+					class="mx-auto mb-8 flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary-light/10"
+				>
+					<svg
+						class="h-8 w-8 text-background-tertiary-light"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -43,7 +53,8 @@
 				</h1>
 
 				<p class="mb-8 text-lg text-text-secondary-light">
-					Please login to access the comprehensive API documentation with personalized examples and your API keys.
+					Please login to access the comprehensive API documentation with personalized examples and
+					your API keys.
 				</p>
 
 				<div class="mb-8 rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
@@ -126,8 +137,9 @@
 				</div>
 
 				<p class="mt-6 text-sm text-text-secondary-light">
-					New to Parchment API? <a href="/api" class="text-background-tertiary-light hover:underline"
-						>Learn more about our API</a
+					New to Parchment API? <a
+						href="/api"
+						class="text-background-tertiary-light hover:underline">Learn more about our API</a
 					>
 				</p>
 			</div>
@@ -135,7 +147,7 @@
 	</div>
 {:else}
 	<!-- This will never render as authenticated users are redirected in onMount -->
-	<div class="min-h-screen bg-background-primary-light flex items-center justify-center">
+	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
 		<div class="text-center">
 			<p class="text-text-secondary-light">Redirecting to documentation...</p>
 		</div>

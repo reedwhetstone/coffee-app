@@ -29,7 +29,7 @@ const LEGACY_TIER_MAPPING = {
 	api_member: 'api-member',
 	api_enterprise: 'api-enterprise',
 	developer: 'api-member',
-	growth: 'api-member', 
+	growth: 'api-member',
 	enterprise: 'api-enterprise',
 	api: 'api-member' // Migrate old 'api' role to 'api-member'
 } as const;
@@ -222,16 +222,23 @@ export async function logApiUsage(
  */
 export async function checkRateLimit(
 	apiKeyId: string,
-	tier: 'api_viewer' | 'api_member' | 'api_enterprise' | 'developer' | 'growth' | 'enterprise' = 'api_member'
+	tier:
+		| 'api_viewer'
+		| 'api_member'
+		| 'api_enterprise'
+		| 'developer'
+		| 'growth'
+		| 'enterprise' = 'api_member'
 ): Promise<RateLimitResult> {
 	try {
 		// Handle legacy tier mapping
-		const actualTier = (tier in LEGACY_TIER_MAPPING) 
-			? LEGACY_TIER_MAPPING[tier as keyof typeof LEGACY_TIER_MAPPING]
-			: tier as keyof typeof RATE_LIMITS;
+		const actualTier =
+			tier in LEGACY_TIER_MAPPING
+				? LEGACY_TIER_MAPPING[tier as keyof typeof LEGACY_TIER_MAPPING]
+				: (tier as keyof typeof RATE_LIMITS);
 
 		const limit = RATE_LIMITS[actualTier];
-		
+
 		// Enterprise tier has unlimited requests
 		if (limit === -1) {
 			return {
@@ -269,7 +276,9 @@ export async function checkRateLimit(
 
 		// Calculate seconds until start of next month for retryAfter
 		const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-		const retryAfterSeconds = allowed ? undefined : Math.ceil((nextMonth.getTime() - now.getTime()) / 1000);
+		const retryAfterSeconds = allowed
+			? undefined
+			: Math.ceil((nextMonth.getTime() - now.getTime()) / 1000);
 
 		return {
 			allowed,
@@ -282,9 +291,10 @@ export async function checkRateLimit(
 		console.error('Rate limit check error:', error);
 		// On error, allow the request
 		// Handle legacy tier mapping for error fallback
-		const actualTier = (tier in LEGACY_TIER_MAPPING) 
-			? LEGACY_TIER_MAPPING[tier as keyof typeof LEGACY_TIER_MAPPING]
-			: tier as keyof typeof RATE_LIMITS;
+		const actualTier =
+			tier in LEGACY_TIER_MAPPING
+				? LEGACY_TIER_MAPPING[tier as keyof typeof LEGACY_TIER_MAPPING]
+				: (tier as keyof typeof RATE_LIMITS);
 		const fallbackLimit = RATE_LIMITS[actualTier] === -1 ? -1 : RATE_LIMITS[actualTier];
 		return {
 			allowed: true,
@@ -396,25 +406,25 @@ export async function validateApiRequest(request: Request): Promise<{
  */
 export function getUserApiTier(role: string | null): 'viewer' | 'api-member' | 'api-enterprise' {
 	if (!role) return 'viewer';
-	
+
 	// Parse role (could be array or single role)
-	const roles = Array.isArray(role) ? role : role.split(',').map(r => r.trim());
-	
+	const roles = Array.isArray(role) ? role : role.split(',').map((r) => r.trim());
+
 	// Check for enterprise/admin roles (highest priority)
-	if (roles.some(r => r.includes('admin') || r === 'api-enterprise')) {
+	if (roles.some((r) => r.includes('admin') || r === 'api-enterprise')) {
 		return 'api-enterprise';
 	}
-	
+
 	// Check for enhanced API access
-	if (roles.some(r => r === 'api-member')) {
+	if (roles.some((r) => r === 'api-member')) {
 		return 'api-member';
 	}
-	
+
 	// Legacy API role mapping
-	if (roles.some(r => r === 'api')) {
+	if (roles.some((r) => r === 'api')) {
 		return 'api-member';
 	}
-	
+
 	// Default to viewer (free) tier - includes basic API access
 	return 'viewer';
 }

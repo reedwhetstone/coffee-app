@@ -217,7 +217,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			if (!updatedRoles.includes('member')) {
 				updatedRoles.push('member');
 			}
-			
+
 			const { error: roleError } = await supabase.from('user_roles').upsert(
 				{
 					id: user.id,

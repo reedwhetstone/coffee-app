@@ -1,6 +1,12 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { getUserApiKeys, getApiKeyUsage, getUsageSummary, getUserApiTier, API_RATE_LIMITS } from '$lib/server/apiAuth';
+import {
+	getUserApiKeys,
+	getApiKeyUsage,
+	getUsageSummary,
+	getUserApiTier,
+	API_RATE_LIMITS
+} from '$lib/server/apiAuth';
 import { hasRole } from '$lib/types/auth.types';
 import { createAdminClient } from '$lib/supabase-admin';
 
@@ -99,7 +105,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		// Calculate current usage stats with dynamic limits
 		const userTier = getUserApiTier(role);
 		const monthlyLimit = API_RATE_LIMITS[userTier];
-		
+
 		const now = new Date();
 		const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 		const startOfHour = new Date(now.getTime() - 60 * 60 * 1000);
