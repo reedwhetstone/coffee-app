@@ -2,7 +2,18 @@
 
 ## Overview
 
-This document provides a comprehensive analysis of mapping Artisan roast profile data to a structured SQL schema for web-based charting with D3.js. The analysis is based on the Costa Rica Jaguar Honey roast profile from June 3, 2025.
+This document provides a comprehensive analysis of mapping Artisan roast profile data to a **new normalized SQL schema** for web-based charting with D3.js. The analysis is based on the Costa Rica Jaguar Honey roast profile from June 3, 2025.
+
+## 🔄 **SCHEMA UPDATE - NEW NORMALIZED STRUCTURE**
+
+The roast data has been restructured into a normalized schema that separates high-volume temperature data from events, eliminates redundancy, and standardizes all event handling.
+
+### New Table Structure
+
+1. **`roast_temperatures`** - High-volume time series data with pre-calculated RoR
+2. **`roast_events`** - Normalized events (milestones, controls, machine settings) 
+3. **`roast_profiles`** - Master roast metadata with chart display settings
+4. **`profile_log`** - DEPRECATED (will be removed after migration)
 
 ## Original Roast Profile Data (User Input)
 
@@ -94,106 +105,99 @@ timeindex[6] = 444 → DROP (timex[444] = 444.713 seconds = 7:25)
 timeindex[7] = 521 → COOL (timex[521] = 521.213 seconds = 8:41)
 ```
 
-## SQL Schema Design
+## NEW NORMALIZED SQL SCHEMA
 
-### Enhanced `roast_profiles` Table
-
-```sql
-CREATE TABLE roast_profiles (
-  -- Primary keys and relationships
-  roast_id INT PRIMARY KEY AUTO_INCREMENT,
-  user VARCHAR(36) NOT NULL,
-  coffee_id INT,
-
-  -- Core roast metadata
-  title VARCHAR(255),
-  roaster_type VARCHAR(100),
-  roaster_size DECIMAL(4,2), -- kg (0.4)
-  roast_date DATETIME,
-  roast_time TIME,
-  roast_uuid VARCHAR(36),
-
-  -- Weight and yield data
-  weight_in DECIMAL(6,2), -- grams
-  weight_out DECIMAL(6,2), -- grams
-  weight_loss_percent DECIMAL(4,1), -- calculated: (in-out)/in * 100
-  weight_unit VARCHAR(5) DEFAULT 'g',
-
-  -- Milestone timings (seconds from roast start)
-  charge_time DECIMAL(8,3),
-  dry_end_time DECIMAL(8,3),
-  fc_start_time DECIMAL(8,3),
-  fc_end_time DECIMAL(8,3),
-  sc_start_time DECIMAL(8,3),
-  drop_time DECIMAL(8,3),
-  cool_time DECIMAL(8,3),
-
-  -- Milestone temperatures (Fahrenheit)
-  charge_temp DECIMAL(5,1),
-  dry_end_temp DECIMAL(5,1),
-  fc_start_temp DECIMAL(5,1),
-  fc_end_temp DECIMAL(5,1),
-  sc_start_temp DECIMAL(5,1),
-  drop_temp DECIMAL(5,1),
-  cool_temp DECIMAL(5,1),
-
-  -- Phase calculations
-  dry_percent DECIMAL(4,1), -- Drying phase %
-  maillard_percent DECIMAL(4,1), -- Maillard phase %
-  development_percent DECIMAL(4,1), -- Development phase %
-  total_roast_time DECIMAL(8,3), -- Total time in seconds
-
-  -- Additional metadata
-  roast_notes TEXT,
-  cupping_notes TEXT,
-  operator VARCHAR(100),
-  batch_number INT,
-
-  -- Timestamps
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-```
-
-### Enhanced `profile_log` Table
+### 1. `roast_temperatures` - High-Volume Time Series Data
 
 ```sql
-CREATE TABLE profile_log (
-  -- Primary keys and relationships
-  log_id INT PRIMARY KEY AUTO_INCREMENT,
-  roast_id INT NOT NULL,
-
-  -- Time data
-  time_seconds DECIMAL(8,3), -- Precise time from roast start
-  timestamp_offset VARCHAR(20), -- MySQL TIME format for compatibility
-
+CREATE TABLE roast_temperatures (
+  temp_id BIGSERIAL PRIMARY KEY,
+  roast_id INTEGER NOT NULL,
+  time_seconds DECIMAL(8,3) NOT NULL,
+  
   -- Temperature readings
-  bean_temp DECIMAL(5,1), -- BT (temp1 from Artisan)
-  environmental_temp DECIMAL(5,1), -- ET (temp2 from Artisan)
-  ambient_temp DECIMAL(5,1), -- Optional third sensor
-
-  -- Control settings (for live roasting)
-  heat_setting DECIMAL(4,1),
-  fan_setting DECIMAL(4,1),
-  damper_setting DECIMAL(4,1),
-
-  -- Event markers (boolean flags for milestones)
-  is_charge BOOLEAN DEFAULT FALSE,
-  is_dry_end BOOLEAN DEFAULT FALSE,
-  is_fc_start BOOLEAN DEFAULT FALSE,
-  is_fc_end BOOLEAN DEFAULT FALSE,
-  is_sc_start BOOLEAN DEFAULT FALSE,
-  is_drop BOOLEAN DEFAULT FALSE,
-  is_cool BOOLEAN DEFAULT FALSE,
-
+  bean_temp DECIMAL(5,1),           -- BT (temp2 from Artisan)
+  environmental_temp DECIMAL(5,1),  -- ET (temp1 from Artisan)
+  ambient_temp DECIMAL(5,1),        -- Optional third sensor
+  inlet_temp DECIMAL(5,1),          -- Optional inlet sensor
+  
+  -- Pre-calculated Rate of Rise for bean temperature only (per minute)
+  -- Only calculated during active roasting period (charge to drop)
+  ror_bean_temp DECIMAL(5,2),
+  
   -- Data source tracking
-  data_source ENUM('live', 'artisan_import', 'manual') DEFAULT 'live',
-
-  -- Index for performance
-  INDEX idx_roast_time (roast_id, time_seconds),
+  data_source TEXT DEFAULT 'live' CHECK (data_source IN ('live', 'artisan_import', 'manual')),
+  data_quality TEXT DEFAULT 'good' CHECK (data_quality IN ('good', 'interpolated', 'estimated', 'poor')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
   FOREIGN KEY (roast_id) REFERENCES roast_profiles(roast_id) ON DELETE CASCADE
 );
+
+-- Performance indexes
+CREATE INDEX idx_roast_temperatures_roast_time ON roast_temperatures(roast_id, time_seconds);
+CREATE INDEX idx_roast_temperatures_data_source ON roast_temperatures(data_source);
 ```
+
+### 2. `roast_events` - Normalized Event Data
+
+```sql
+-- roast_events table (already exists, updated for new structure)
+CREATE TABLE roast_events (
+  event_id SERIAL PRIMARY KEY,
+  roast_id INTEGER NOT NULL,
+  time_seconds DECIMAL(8,3) NOT NULL,
+  event_type INTEGER NOT NULL,
+  event_value TEXT,              -- Changed from NUMERIC to TEXT for flexibility
+  event_string TEXT,             -- Event name: 'charge', 'fc_start', 'fan_setting', etc.
+  category TEXT,                 -- 'milestone', 'control', 'machine'
+  subcategory TEXT,              -- 'roast_phase', 'machine_setting', 'artisan_device'
+  user_generated BOOLEAN DEFAULT FALSE,
+  automatic BOOLEAN DEFAULT TRUE,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Performance indexes
+CREATE INDEX idx_roast_events_category ON roast_events(roast_id, category, time_seconds);
+CREATE INDEX idx_roast_events_milestone ON roast_events(roast_id, event_string) WHERE category = 'milestone';
+```
+
+#### Event Categories:
+
+**Milestone Events (X-axis only - NULL values):**
+- `event_string`: 'charge', 'dry_end', 'fc_start', 'fc_end', 'sc_start', 'drop', 'cool'
+- `event_value`: NULL (row existence indicates event occurred)
+- `category`: 'milestone'
+
+**Control Events (Y-axis values as TEXT):**
+- `event_string`: 'fan_setting', 'heat_setting', 'damper_setting'
+- `event_value`: '8', '75%', '3.5'
+- `category`: 'control'
+
+**Machine Events from Artisan (Y-axis values as TEXT):**
+- `event_string`: 'Air', 'Drum', 'Damper', 'Burner'
+- `event_value`: '75', '85%'
+- `category`: 'machine'
+
+### 3. `roast_profiles` - Master Metadata with Chart Settings
+
+```sql
+-- Updated roast_profiles table with chart display settings
+ALTER TABLE roast_profiles
+ADD COLUMN chart_z_max DECIMAL(6,2),  -- Control range max (45)
+ADD COLUMN chart_z_min DECIMAL(6,2),  -- Control range min (0)
+ADD COLUMN chart_y_max DECIMAL(6,1),  -- Temperature range max (527)
+ADD COLUMN chart_y_min DECIMAL(6,1),  -- Temperature range min (100)
+ADD COLUMN chart_x_max DECIMAL(8,3),  -- Time range max (825 seconds)
+ADD COLUMN chart_x_min DECIMAL(8,3),  -- Time range min (-14.66 seconds)
+ADD COLUMN weight_in DECIMAL(6,2),    -- Input weight in grams
+ADD COLUMN weight_out DECIMAL(6,2),   -- Output weight in grams
+ADD COLUMN weight_unit VARCHAR(5) DEFAULT 'g';
+```
+
+### 4. `profile_log` - DEPRECATED (Legacy Support Only)
+
+The `profile_log` table is now deprecated and will be removed after migration. During the transition period, APIs write to both the legacy table and the new normalized structure to maintain backward compatibility.
 
 ## Data Transformation Logic
 
@@ -694,6 +698,112 @@ function reduceDataPoints(logs: ProfileLogEntry[], maxPoints = 200): ProfileLogE
 - Share roast profiles with other users
 - Export to standard formats (CSV, Artisan, etc.)
 
+## NEW DATA FLOW AND QUERY PATTERNS
+
+### Chart Data Retrieval (New Normalized Structure)
+
+**Temperature Curve Data:**
+```sql
+-- Get temperature data with pre-calculated bean temp RoR (charge to drop period only)
+SELECT time_seconds, bean_temp, environmental_temp, ror_bean_temp
+FROM roast_temperatures 
+WHERE roast_id = ? 
+ORDER BY time_seconds ASC;
+```
+
+**Milestone Markers:**
+```sql
+-- Get milestone events (NULL values indicate event occurrence)
+SELECT time_seconds, event_string
+FROM roast_events 
+WHERE roast_id = ? AND category = 'milestone' AND event_value IS NULL
+ORDER BY time_seconds ASC;
+```
+
+**Control Overlays:**
+```sql
+-- Get control events (fan, heat settings)
+SELECT time_seconds, event_string, event_value
+FROM roast_events 
+WHERE roast_id = ? AND category IN ('control', 'machine') AND event_value IS NOT NULL
+ORDER BY time_seconds ASC;
+```
+
+**Chart Display Settings:**
+```sql
+-- Get Artisan chart ranges for proper axis scaling
+SELECT chart_x_min, chart_x_max, chart_y_min, chart_y_max, chart_z_min, chart_z_max
+FROM roast_profiles 
+WHERE roast_id = ?;
+```
+
+### Migration Data Flow
+
+**During Transition:**
+1. **Dual-Write APIs**: Write to both `profile_log` and new structure
+2. **Feature Flag**: `ENABLE_NEW_STRUCTURE = true` controls new table population
+3. **Fallback Queries**: Chart components can read from either structure
+4. **Data Validation**: Verify data consistency between old and new structures
+
+**After Migration:**
+1. **Single Source**: All queries read from normalized structure only
+2. **Performance**: Optimized queries with proper indexing
+3. **RoR Calculations**: Pre-calculated during insert, no runtime computation
+4. **Event Flexibility**: TEXT values support any event data format
+
+### Key Benefits of New Structure
+
+#### **Performance Improvements:**
+- **Separate Temperature Table**: Optimized for high-volume time series queries
+- **Pre-calculated Bean Temp RoR**: Calculated only during active roasting (charge to drop)
+- **Targeted Indexes**: Optimized for common query patterns
+- **Reduced Event Table Size**: No temperature data in events table
+
+#### **Data Consistency:**
+- **Normalized Events**: Single structure for all event types
+- **Standardized Time**: All tables use `time_seconds` format
+- **TEXT Event Values**: Support for any value format ("75%", "8.5", etc.)
+- **Clear Separation**: Temperature vs event data clearly separated
+
+#### **Extensibility:**
+- **Easy Event Addition**: New event types require no schema changes
+- **Machine Integration**: Direct support for Artisan extradevices
+- **Chart Flexibility**: Artisan display settings preserved for accurate rendering
+- **Future Sensors**: Additional temperature sensors easily added
+
+#### **Artisan Integration:**
+- **Complete Data Preservation**: All Artisan data fields mapped and stored
+- **Chart Compatibility**: Original chart ranges preserved for accurate display
+- **Machine Events**: Full support for Air/Drum/Damper/Burner controls
+- **Milestone Accuracy**: Exact timeindex mapping preserved
+
+### Migration Verification
+
+**Data Integrity Checks:**
+```sql
+-- Compare record counts between old and new structure
+SELECT 
+    'Legacy Profile Logs' as table_name, COUNT(*) as record_count
+FROM profile_log WHERE roast_id = ?
+UNION ALL
+SELECT 
+    'New Temperature Records' as table_name, COUNT(*) as record_count
+FROM roast_temperatures WHERE roast_id = ?
+UNION ALL
+SELECT 
+    'New Event Records' as table_name, COUNT(*) as record_count
+FROM roast_events WHERE roast_id = ?;
+```
+
 ## Conclusion
 
-This mapping provides a comprehensive bridge between Artisan's rich roast profile data and a modern web application architecture. The schema preserves all critical information while making it accessible for real-time charting, analysis, and sharing. The modular design allows for future expansion while maintaining compatibility with existing roast tracking workflows.
+The new normalized schema provides a robust, scalable foundation for roast data management that:
+
+- **Eliminates Redundancy**: No more duplicate time/event columns
+- **Improves Performance**: Optimized for high-volume temperature logging and chart queries  
+- **Standardizes Events**: Unified structure for all roast events and controls
+- **Preserves Compatibility**: Full backward compatibility during migration
+- **Supports Growth**: Easy to add new sensors, events, and features
+- **Integrates Seamlessly**: Complete Artisan import with chart display fidelity
+
+This restructured approach transforms the roast data system from a legacy single-table design to a modern, normalized architecture suitable for complex roast analysis, real-time logging, and advanced charting capabilities.

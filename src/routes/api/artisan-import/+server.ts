@@ -428,7 +428,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			throw deleteError;
 		}
 
-		// Update roast profile metadata (preserve original coffee_name)
+		// Update roast profile metadata (preserve original coffee_name + add chart ranges)
 		const { error: updateError } = await supabase
 			.from('roast_profiles')
 			.update({
@@ -440,7 +440,30 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				roaster_size: artisanData.roastersize || 0,
 				oz_in: profile.oz_in || artisanData.weight?.[0] || 0, // Preserve existing input weight, use Artisan data as fallback
 				oz_out: profile.oz_out || artisanData.weight?.[1] || 0, // Preserve existing output weight, use Artisan data as fallback
+				weight_in: artisanData.weight?.[0] || 0, // New weight fields for normalized structure
+				weight_out: artisanData.weight?.[1] || 0,
+				weight_unit: artisanData.weight?.[2] || 'g',
 				temperature_unit: 'F', // Always store as Fahrenheit
+				// Chart display settings from Artisan
+				chart_x_min: (artisanData as any).xmin || null,
+				chart_x_max: (artisanData as any).xmax || null,
+				chart_y_min: (artisanData as any).ymin || null,
+				chart_y_max: (artisanData as any).ymax || null,
+				chart_z_min: (artisanData as any).zmin || null,
+				chart_z_max: (artisanData as any).zmax || null,
+				// Milestone data for quick access
+				charge_time: milestones.charge || null,
+				dry_end_time: milestones.dry_end || null,
+				fc_start_time: milestones.fc_start || null,
+				fc_end_time: milestones.fc_end || null,
+				sc_start_time: milestones.sc_start || null,
+				drop_time: milestones.drop || null,
+				cool_time: milestones.cool || null,
+				// Phase calculations
+				dry_percent: dryingPercent || null,
+				maillard_percent: maillardPercent || null,
+				development_percent: developmentPercent || null,
+				total_roast_time: totalTime || null,
 				roast_notes:
 					`Imported from Artisan\nRoaster: ${artisanData.roastertype || 'Unknown'}\nOriginal temp unit: ${artisanData.mode}\nWeight unit: ${artisanData.weight?.[2] || 'g'}` +
 					(artisanData.roastingnotes ? `\n\nNotes: ${artisanData.roastingnotes}` : ''),
@@ -476,6 +499,175 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		console.log(`Total records inserted: ${totalInserted}`);
+		
+		// ALSO POPULATE NEW TABLE STRUCTURE
+		try {
+			console.log('Populating new table structure...');
+			
+			// 1. Clear existing temperature data for this roast
+			await supabase
+				.from('roast_temperatures')
+				.delete()
+				.eq('roast_id', parseInt(roastId))
+				.eq('data_source', 'artisan_import');
+			
+			// 2. Insert temperature data to roast_temperatures table
+			const temperatureData = processedData.temperaturePoints.map(point => ({
+				roast_id: parseInt(roastId),
+				time_seconds: point.time_seconds,
+				bean_temp: point.bean_temp,
+				environmental_temp: point.environmental_temp,
+				ambient_temp: null, // Artisan doesn't typically have ambient temp
+				data_source: 'artisan_import'
+			}));
+			
+			// Insert temperature data in batches
+			for (let i = 0; i < temperatureData.length; i += batchSize) {
+				const batch = temperatureData.slice(i, i + batchSize);
+				const { error: tempError } = await supabase
+					.from('roast_temperatures')
+					.insert(batch);
+				
+				if (tempError) {
+					console.warn('Error inserting temperature batch:', tempError);
+				}
+			}
+			
+			console.log(`Inserted ${temperatureData.length} temperature points to new structure`);
+			
+			// 3. Clear existing events for this roast
+			await supabase
+				.from('roast_events')
+				.delete()
+				.eq('roast_id', parseInt(roastId))
+				.in('category', ['milestone', 'control', 'machine']);
+			
+			// 4. Insert milestone events (NULL values)
+			const milestoneEventData = [];
+			Object.entries(milestones).forEach(([eventName, timeSeconds]) => {
+				if (timeSeconds && timeSeconds > 0) {
+					milestoneEventData.push({
+						roast_id: parseInt(roastId),
+						time_seconds: timeSeconds,
+						event_type: 10, // Milestone event type
+						event_value: null, // Milestone events have NULL values
+						event_string: eventName, // 'charge', 'dry_end', 'fc_start', etc.
+						category: 'milestone',
+						subcategory: 'roast_phase',
+						user_generated: false,
+						automatic: true,
+						notes: `Imported from Artisan: ${eventName.replace('_', ' ')}`
+					});
+				}
+			});
+			
+			if (milestoneEventData.length > 0) {
+				const { error: milestoneError } = await supabase
+					.from('roast_events')
+					.insert(milestoneEventData);
+				
+				if (milestoneError) {
+					console.warn('Error inserting milestone events:', milestoneError);
+				} else {
+					console.log(`Inserted ${milestoneEventData.length} milestone events to new structure`);
+				}
+			}
+			
+			// 5. Insert control events (fan/heat settings with TEXT values)
+			const controlEventData = [];
+			processedData.temperaturePoints.forEach(point => {
+				if (point.fan_setting !== null && point.fan_setting !== undefined && point.fan_setting !== 0) {
+					controlEventData.push({
+						roast_id: parseInt(roastId),
+						time_seconds: point.time_seconds,
+						event_type: 1, // Control event type
+						event_value: point.fan_setting.toString(),
+						event_string: 'fan_setting',
+						category: 'control',
+						subcategory: 'machine_setting',
+						user_generated: false,
+						automatic: true
+					});
+				}
+				
+				if (point.heat_setting !== null && point.heat_setting !== undefined && point.heat_setting !== 0) {
+					controlEventData.push({
+						roast_id: parseInt(roastId),
+						time_seconds: point.time_seconds,
+						event_type: 1, // Control event type
+						event_value: point.heat_setting.toString(),
+						event_string: 'heat_setting',
+						category: 'control',
+						subcategory: 'machine_setting',
+						user_generated: false,
+						automatic: true
+					});
+				}
+			});
+			
+			// Insert control events in batches (may be large)
+			if (controlEventData.length > 0) {
+				for (let i = 0; i < controlEventData.length; i += batchSize) {
+					const batch = controlEventData.slice(i, i + batchSize);
+					const { error: controlError } = await supabase
+						.from('roast_events')
+						.insert(batch);
+					
+					if (controlError) {
+						console.warn('Error inserting control event batch:', controlError);
+					}
+				}
+				console.log(`Inserted ${controlEventData.length} control events to new structure`);
+			}
+			
+			// 6. Insert machine events from Artisan extradevices if available
+			if (artisanData.extradevices && artisanData.extraname1 && artisanData.extratimex) {
+				const machineEventData = [];
+				
+				artisanData.extradevices.forEach((deviceId, deviceIndex) => {
+					const deviceName = artisanData.extraname1?.[deviceIndex];
+					const deviceTimes = artisanData.extratimex?.[deviceIndex];
+					const deviceValues = artisanData.extratemp1?.[deviceIndex];
+					
+					if (deviceName && deviceTimes && deviceValues) {
+						deviceTimes.forEach((time, timeIndex) => {
+							const value = deviceValues[timeIndex];
+							if (value !== null && value !== undefined) {
+								machineEventData.push({
+									roast_id: parseInt(roastId),
+									time_seconds: time,
+									event_type: 2, // Machine event type
+									event_value: value.toString(),
+									event_string: deviceName,
+									category: 'machine',
+									subcategory: 'artisan_device',
+									user_generated: false,
+									automatic: true
+								});
+							}
+						});
+					}
+				});
+				
+				if (machineEventData.length > 0) {
+					for (let i = 0; i < machineEventData.length; i += batchSize) {
+						const batch = machineEventData.slice(i, i + batchSize);
+						const { error: machineError } = await supabase
+							.from('roast_events')
+							.insert(batch);
+						
+						if (machineError) {
+							console.warn('Error inserting machine event batch:', machineError);
+						}
+					}
+					console.log(`Inserted ${machineEventData.length} machine events to new structure`);
+				}
+			}
+			
+		} catch (newStructureError) {
+			console.warn('Failed to populate new table structure:', newStructureError);
+			// Continue - don't fail the import if new structure population fails
+		}
 
 		// Insert roast events
 		if (processedData.roastEvents.length > 0) {
