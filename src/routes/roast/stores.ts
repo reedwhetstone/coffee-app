@@ -7,6 +7,13 @@ export interface RoastPoint {
 	bean_temp?: number | null;
 	environmental_temp?: number | null;
 	data_source?: 'live' | 'artisan_import';
+	// Milestone flags for charge-relative time calculation
+	charge?: boolean;
+	start?: boolean;
+	maillard?: boolean;
+	fc_start?: boolean;
+	drop?: boolean;
+	end?: boolean;
 }
 
 export interface RoastEvent {

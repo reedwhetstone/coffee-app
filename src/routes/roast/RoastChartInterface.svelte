@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy, untrack } from 'svelte';
-	import { select, scaleLinear, axisBottom, line, type Selection, type ScaleLinear } from 'd3';
-	import { curveStepAfter } from 'd3-shape';
+	import { select, scaleLinear, axisBottom, axisLeft, axisRight, line, type Selection, type ScaleLinear } from 'd3';
+	import { curveStepAfter, curveBasis } from 'd3-shape';
 	import {
 		roastData,
 		roastEvents,
@@ -155,12 +155,11 @@
 	let chartContainer: HTMLDivElement;
 	let svg: Selection<SVGGElement, unknown, null, undefined>;
 	let xScale: ScaleLinear<number, number>;
-	let yScaleFan: ScaleLinear<number, number>;
-	let yScaleHeat: ScaleLinear<number, number>;
-	let yScaleTemp: ScaleLinear<number, number>;
+	let yScaleTemp: ScaleLinear<number, number>; // Left y-axis: Temperature (F/C)
+	let yScaleRoR: ScaleLinear<number, number>; // Right y-axis: Rate of Rise (F/min or C/min)
 	let height: number;
 	let width: number;
-	let margin = { top: 20, right: 60, bottom: 30, left: 80 };
+	let margin = { top: 20, right: 80, bottom: 40, left: 80 }; // Increased right margin for RoR axis
 
 	// Add these computed values
 	let isBeforeRoasting = $derived(!currentRoastProfile?.roast_id || $roastData.length === 0);
@@ -324,35 +323,198 @@
 		}
 	});
 
+	// Function to apply moving average smoothing to temperature data
+	function smoothTemperatureData(data: { time: number; temp: number }[], windowSize: number): { time: number; temp: number }[] {
+		if (data.length === 0) return [];
+		
+		const smoothedData: { time: number; temp: number }[] = [];
+		
+		for (let i = 0; i < data.length; i++) {
+			const start = Math.max(0, i - Math.floor(windowSize / 2));
+			const end = Math.min(data.length, i + Math.ceil(windowSize / 2));
+			
+			let sum = 0;
+			let count = 0;
+			
+			for (let j = start; j < end; j++) {
+				sum += data[j].temp;
+				count++;
+			}
+			
+			smoothedData.push({
+				time: data[i].time,
+				temp: sum / count
+			});
+		}
+		
+		return smoothedData;
+	}
+
+	// Function to calculate BT Rate of Rise (RoR/ΔBT) with ultra-smooth multi-stage processing
+	function calculateBTRoR(data: RoastPoint[]): { time: number; ror: number }[] {
+		if (data.length < 2) return [];
+		
+		// Step 1: Filter and extract valid bean temperature data
+		const validTempData = data
+			.filter(point => 
+				point.bean_temp !== null && 
+				point.bean_temp !== undefined &&
+				point.bean_temp > 0  // Exclude zero temperatures
+			)
+			.map(point => ({ time: point.time, temp: point.bean_temp! }));
+		
+		if (validTempData.length < 30) return []; // Need sufficient data for smooth calculation
+		
+		// Step 2: Pre-smooth the temperature data to reduce noise (15-point window)
+		const smoothedTempData = smoothTemperatureData(validTempData, 15);
+		
+		// Step 3: Calculate RoR using sliding 30-second windows for stability
+		const rorData: { time: number; ror: number }[] = [];
+		const windowSeconds = 30; // 30-second sliding window
+		const sampleIntervalMs = 3000; // Sample every 3 seconds for performance
+		
+		for (let i = 0; i < smoothedTempData.length; i += Math.floor(sampleIntervalMs / 1000)) {
+			const currentPoint = smoothedTempData[i];
+			const currentTime = currentPoint.time;
+			
+			// Find points within the sliding window (±15 seconds)
+			const windowStart = currentTime - (windowSeconds * 1000 / 2);
+			const windowEnd = currentTime + (windowSeconds * 1000 / 2);
+			
+			const windowPoints = smoothedTempData.filter(point => 
+				point.time >= windowStart && point.time <= windowEnd
+			);
+			
+			if (windowPoints.length >= 5) {
+				// Use linear regression over the window for most stable RoR calculation
+				const n = windowPoints.length;
+				let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+				
+				windowPoints.forEach(point => {
+					const x = (point.time - windowStart) / (1000 * 60); // Time in minutes from window start
+					const y = point.temp;
+					sumX += x;
+					sumY += y;
+					sumXY += x * y;
+					sumXX += x * x;
+				});
+				
+				// Calculate slope (RoR) using linear regression
+				const denominator = n * sumXX - sumX * sumX;
+				if (denominator !== 0) {
+					const slope = (n * sumXY - sumX * sumY) / denominator;
+					rorData.push({ time: currentTime, ror: slope });
+				}
+			}
+		}
+		
+		if (rorData.length === 0) return [];
+		
+		// Step 4: Apply final smoothing to RoR values (20-point window for ultra-smooth result)
+		const finalSmoothedData: { time: number; ror: number }[] = [];
+		const finalWindowSize = 20;
+		
+		for (let i = 0; i < rorData.length; i++) {
+			const start = Math.max(0, i - Math.floor(finalWindowSize / 2));
+			const end = Math.min(rorData.length, i + Math.ceil(finalWindowSize / 2));
+			
+			let sum = 0;
+			let count = 0;
+			
+			for (let j = start; j < end; j++) {
+				sum += rorData[j].ror;
+				count++;
+			}
+			
+			const smoothedRor = sum / count;
+			
+			// Include all reasonable RoR values for complete curve
+			if (Math.abs(smoothedRor) <= 50) { // Cap extreme values
+				finalSmoothedData.push({ 
+					time: rorData[i].time, 
+					ror: smoothedRor 
+				});
+			}
+		}
+		
+		return finalSmoothedData;
+	}
+
+	// Note: deltaBT and RoR are the same thing, so we only use calculateBTRoR
+
+	// Function to find charge time from milestones for time axis adjustment
+	function getChargeTime(data: RoastPoint[]): number {
+		// Use appropriate log source based on current state
+		const logs = isDuringRoasting ? $profileLogs : savedProfileLogs;
+		const isLiveData = isDuringRoasting;
+		
+		// Extract milestones from profile logs (either live or saved)
+		if (logs.length > 0) {
+			const milestones = extractMilestones(logs, isLiveData);
+			if (milestones.charge) {
+				return milestones.charge;
+			}
+			if (milestones.start) {
+				return milestones.start;
+			}
+		}
+
+		// For imported Artisan data, look for charge event in the data itself
+		const chargePoint = data.find(point => point.data_source === 'artisan_import' && point.charge);
+		if (chargePoint) {
+			return chargePoint.time;
+		}
+
+		// Fallback: look for any charge point in the data
+		const anyChargePoint = data.find(point => point.charge);
+		if (anyChargePoint) {
+			return anyChargePoint.time;
+		}
+
+		// Final fallback: use start of data
+		return data.length > 0 ? data[0].time : 0;
+	}
+
 	// Create line generators
-	const heatLine = line<RoastPoint>()
-		.x((d) => xScale(d.time / (1000 * 60)))
-		.y((d) => yScaleHeat(d.heat))
-		.curve(curveStepAfter);
-
-	const fanLine = line<RoastPoint>()
-		.x((d) => xScale(d.time / (1000 * 60)))
-		.y((d) => yScaleFan(d.fan))
-		.curve(curveStepAfter);
-
 	const beanTempLine = line<RoastPoint>()
-		.x((d) => xScale(d.time / (1000 * 60)))
+		.x((d) => {
+			const chargeTime = getChargeTime($roastData);
+			const adjustedTime = (d.time - chargeTime) / (1000 * 60); // Relative to charge in minutes
+			return xScale(adjustedTime);
+		})
 		.y((d) => (d.bean_temp !== null && d.bean_temp !== undefined ? yScaleTemp(d.bean_temp) : 0))
 		.defined((d) => d.bean_temp !== null && d.bean_temp !== undefined)
-		.curve(curveStepAfter);
+		.curve(curveBasis); // Smooth curve for BT temperature
 
 	const envTempLine = line<RoastPoint>()
-		.x((d) => xScale(d.time / (1000 * 60)))
+		.x((d) => {
+			const chargeTime = getChargeTime($roastData);
+			const adjustedTime = (d.time - chargeTime) / (1000 * 60); // Relative to charge in minutes
+			return xScale(adjustedTime);
+		})
 		.y((d) =>
 			d.environmental_temp !== null && d.environmental_temp !== undefined
 				? yScaleTemp(d.environmental_temp)
 				: 0
 		)
 		.defined((d) => d.environmental_temp !== null && d.environmental_temp !== undefined)
-		.curve(curveStepAfter);
+		.curve(curveBasis); // Smooth curve for ET temperature
+
+	// RoR line generator - smooth curve for Rate of Rise
+	const rorLine = line<{ time: number; ror: number }>()
+		.x((d) => {
+			const chargeTime = getChargeTime($roastData);
+			const adjustedTime = (d.time - chargeTime) / (1000 * 60); // Relative to charge in minutes
+			return xScale(adjustedTime);
+		})
+		.y((d) => yScaleRoR(d.ror))
+		.defined((d) => Math.abs(d.ror) <= 50) // Only render RoR values within scale bounds
+		.curve(curveBasis); // Smooth curve for RoR
+
+	// Note: deltaBT removed since it's the same as RoR
 
 	function updateChart(data: RoastPoint[]) {
-		if (!svg || !xScale || !yScaleFan || !yScaleHeat || !yScaleTemp) return;
+		if (!svg || !xScale || !yScaleTemp || !yScaleRoR) return;
 
 		// Sort data by time first
 		const sortedData = [...data].sort((a, b) => a.time - b.time);
@@ -376,16 +538,15 @@
 		});
 
 		// Clear existing elements
-		svg.selectAll('.heat-line').remove();
-		svg.selectAll('.fan-line').remove();
 		svg.selectAll('.bean-temp-line').remove();
 		svg.selectAll('.env-temp-line').remove();
-		svg.selectAll('.heat-label').remove();
-		svg.selectAll('.fan-label').remove();
-		svg.selectAll('.temp-label').remove();
+		svg.selectAll('.ror-line').remove();
 		svg.selectAll('.temp-legend').remove();
 		svg.selectAll('.event-marker').remove();
 		svg.selectAll('.event-label').remove();
+
+		// Get charge time for relative time calculation
+		const chargeTime = getChargeTime(data);
 
 		// Create combined events array and handle Drop/End renaming
 		const eventData = $roastEvents.map((event) => ({
@@ -407,20 +568,23 @@
 		// Sort events by time to ensure proper ordering
 		eventData.sort((a, b) => a.time - b.time);
 
-		// Update x-axis scale based on data duration or End event
+		// Update x-axis scale based on data duration (charge-relative)
 		const endEvent = eventData.find((event) => event.name === 'End');
-		const maxTime =
-			data.length > 0
-				? endEvent
-					? endEvent.time / (1000 * 60) // Convert end event time to minutes
-					: Math.max(...data.map((d) => d.time / (1000 * 60))) // Convert data time to minutes
-				: 12; // Default to 12 if no data
+		const maxTimeRelative = data.length > 0
+			? endEvent
+				? (endEvent.time - chargeTime) / (1000 * 60) // Convert end event time to minutes relative to charge
+				: Math.max(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) // Convert data time to minutes relative to charge
+			: 12; // Default to 12 if no data
 
-		xScale.domain([0, maxTime]);
+		const minTimeRelative = data.length > 0
+			? Math.min(...data.map((d) => (d.time - chargeTime) / (1000 * 60)))
+			: -2;
 
-		// Update time tracker position
+		xScale.domain([Math.min(minTimeRelative, -2), Math.max(maxTimeRelative, 12)]);
+
+		// Update time tracker position (charge-relative)
 		if (isRoasting && !isPaused) {
-			const currentTime = (performance.now() - $startTime! + $accumulatedTime) / (1000 * 60);
+			const currentTime = (performance.now() - $startTime! + $accumulatedTime - chargeTime) / (1000 * 60);
 			svg
 				.select('.time-tracker')
 				.style('display', 'block')
@@ -430,47 +594,15 @@
 			svg.select('.time-tracker').style('display', 'none');
 		}
 
-		// Update x-axis with type assertion
+		// Update x-axis and charge line position
 		svg.select('.x-axis').call(axisBottom(xScale) as any);
+		svg.select('.charge-line')
+			.attr('x1', xScale(0))
+			.attr('x2', xScale(0));
 
-		// Add heat line
-		svg
-			.append('path')
-			.attr('class', 'heat-line')
-			.datum(processedData)
-			.attr('fill', 'none')
-			.attr('stroke', '#b45309')
-			.attr('stroke-width', 2)
-			.attr('d', heatLine);
-
-		// Add fan line
-		svg
-			.append('path')
-			.attr('class', 'fan-line')
-			.datum(processedData)
-			.attr('fill', 'none')
-			.attr('stroke', '#3730a3')
-			.attr('stroke-width', 2)
-			.attr('d', fanLine);
-
-		// Add bean temperature line (BT) if data exists
-		const beanTempData = processedData.filter(
-			(d) => d.bean_temp !== null && d.bean_temp !== undefined
-		);
-		if (beanTempData.length > 0) {
-			svg
-				.append('path')
-				.attr('class', 'bean-temp-line')
-				.datum(beanTempData)
-				.attr('fill', 'none')
-				.attr('stroke', '#dc2626') // Red for bean temperature
-				.attr('stroke-width', 3)
-				.attr('d', beanTempLine);
-		}
-
-		// Add environmental temperature line (ET) if data exists
+		// Add environmental temperature line (ET) - solid line
 		const envTempData = processedData.filter(
-			(d) => d.environmental_temp !== null && d.environmental_temp !== undefined
+			(d) => d.environmental_temp !== null && d.environmental_temp !== undefined && d.environmental_temp > 0
 		);
 		if (envTempData.length > 0) {
 			svg
@@ -478,20 +610,50 @@
 				.attr('class', 'env-temp-line')
 				.datum(envTempData)
 				.attr('fill', 'none')
-				.attr('stroke', '#f59e0b') // Amber/orange for environmental temperature
+				.attr('stroke', '#dc2626') // Red solid line for environmental temperature
 				.attr('stroke-width', 2)
-				.attr('stroke-dasharray', '5,5') // Dashed line to distinguish from BT
 				.attr('d', envTempLine);
 		}
 
-		// Add temperature legend if temperature data exists
-		if (beanTempData.length > 0 || envTempData.length > 0) {
+		// Add bean temperature line (BT) - orange dashed line (as requested)
+		const beanTempData = processedData.filter(
+			(d) => d.bean_temp !== null && d.bean_temp !== undefined && d.bean_temp > 0
+		);
+		if (beanTempData.length > 0) {
+			svg
+				.append('path')
+				.attr('class', 'bean-temp-line')
+				.datum(beanTempData)
+				.attr('fill', 'none')
+				.attr('stroke', '#f59e0b') // Orange dashed line for bean temperature (as requested)
+				.attr('stroke-width', 3)
+				.attr('stroke-dasharray', '5,5')
+				.attr('d', beanTempLine);
+		}
+
+		// Calculate and add RoR line (blue)
+		const rorData = calculateBTRoR(processedData);
+		if (rorData.length > 0) {
+			svg
+				.append('path')
+				.attr('class', 'ror-line')
+				.datum(rorData)
+				.attr('fill', 'none')
+				.attr('stroke', '#2563eb') // Blue for RoR
+				.attr('stroke-width', 2)
+				.attr('d', rorLine);
+		}
+
+		// deltaBT removed - it's the same as RoR which is already displayed
+
+		// Add comprehensive legend for all data lines
+		if (beanTempData.length > 0 || envTempData.length > 0 || rorData.length > 0) {
 			const legendGroup = svg.append('g').attr('class', 'temp-legend');
 
 			let legendY = 20;
-			const legendX = width - 120;
+			const legendX = width - 160;
 
-			// Bean Temperature legend
+			// Bean Temperature legend (orange dashed)
 			if (beanTempData.length > 0) {
 				legendGroup
 					.append('line')
@@ -499,31 +661,8 @@
 					.attr('x2', legendX + 20)
 					.attr('y1', legendY)
 					.attr('y2', legendY)
-					.attr('stroke', '#dc2626')
-					.attr('stroke-width', 3);
-
-				legendGroup
-					.append('text')
-					.attr('x', legendX + 25)
-					.attr('y', legendY)
-					.attr('dy', '0.35em')
-					.attr('font-size', '12px')
-					.attr('fill', '#374151')
-					.text('Bean Temp (BT)');
-
-				legendY += 20;
-			}
-
-			// Environmental Temperature legend
-			if (envTempData.length > 0) {
-				legendGroup
-					.append('line')
-					.attr('x1', legendX)
-					.attr('x2', legendX + 20)
-					.attr('y1', legendY)
-					.attr('y2', legendY)
 					.attr('stroke', '#f59e0b')
-					.attr('stroke-width', 2)
+					.attr('stroke-width', 3)
 					.attr('stroke-dasharray', '5,5');
 
 				legendGroup
@@ -531,49 +670,62 @@
 					.attr('x', legendX + 25)
 					.attr('y', legendY)
 					.attr('dy', '0.35em')
-					.attr('font-size', '12px')
+					.attr('font-size', '10px')
+					.attr('fill', '#374151')
+					.text('Bean Temp (BT)');
+
+				legendY += 16;
+			}
+
+			// Environmental Temperature legend (red solid)
+			if (envTempData.length > 0) {
+				legendGroup
+					.append('line')
+					.attr('x1', legendX)
+					.attr('x2', legendX + 20)
+					.attr('y1', legendY)
+					.attr('y2', legendY)
+					.attr('stroke', '#dc2626')
+					.attr('stroke-width', 2);
+
+				legendGroup
+					.append('text')
+					.attr('x', legendX + 25)
+					.attr('y', legendY)
+					.attr('dy', '0.35em')
+					.attr('font-size', '10px')
 					.attr('fill', '#374151')
 					.text('Env Temp (ET)');
+
+				legendY += 16;
 			}
+
+			// RoR legend (blue solid)
+			if (rorData.length > 0) {
+				legendGroup
+					.append('line')
+					.attr('x1', legendX)
+					.attr('x2', legendX + 20)
+					.attr('y1', legendY)
+					.attr('y2', legendY)
+					.attr('stroke', '#2563eb')
+					.attr('stroke-width', 2);
+
+				legendGroup
+					.append('text')
+					.attr('x', legendX + 25)
+					.attr('y', legendY)
+					.attr('dy', '0.35em')
+					.attr('font-size', '10px')
+					.attr('fill', '#374151')
+					.text('BT RoR (°F/min)');
+
+				legendY += 16;
+			}
+
+			// Delta BT legend removed - same as RoR
 		}
 
-		// Add heat value labels with improved legibility
-		const heatChanges = processedData.filter(
-			(d, i) => i === 0 || d.heat !== processedData[i - 1].heat
-		);
-		svg
-			.selectAll('.heat-label')
-			.data(heatChanges)
-			.enter()
-			.append('text')
-			.attr('class', 'heat-label')
-			.attr('x', (d) => xScale(d.time / (1000 * 60)))
-			.attr('y', (d) => yScaleHeat(d.heat))
-			.attr('dy', -8)
-			.attr('fill', '#b45309')
-			.attr('font-size', '14px')
-			.attr('font-weight', 'bold')
-			.attr('text-shadow', '0px 0px 3px rgba(0,0,0,0.7)')
-			.text((d) => d.heat);
-
-		// Add fan value labels with improved legibility
-		const fanChanges = processedData.filter(
-			(d, i) => i === 0 || d.fan !== processedData[i - 1].fan
-		);
-		svg
-			.selectAll('.fan-label')
-			.data(fanChanges)
-			.enter()
-			.append('text')
-			.attr('class', 'fan-label')
-			.attr('x', (d) => xScale(d.time / (1000 * 60)))
-			.attr('y', (d) => yScaleFan(d.fan))
-			.attr('dy', -8)
-			.attr('fill', '#3730a3')
-			.attr('font-size', '14px')
-			.attr('font-weight', 'bold')
-			.attr('text-shadow', '0px 0px 3px rgba(0,0,0,0.7)')
-			.text((d) => d.fan);
 
 		// Update event markers - Create separate groups for each event
 		const eventGroups = svg
@@ -582,33 +734,45 @@
 			.join('g')
 			.attr('class', 'event-group');
 
-		// Add or update event lines
+		// Add or update event lines (charge-relative positioning)
 		eventGroups
 			.selectAll('.event-marker')
 			.data((d) => [d])
 			.join('line')
 			.attr('class', 'event-marker')
-			.attr('x1', (d) => xScale(d.time / (1000 * 60)))
-			.attr('x2', (d) => xScale(d.time / (1000 * 60)))
+			.attr('x1', (d) => {
+				const timeRelativeToCharge = (d.time - chargeTime) / (1000 * 60);
+				return xScale(timeRelativeToCharge);
+			})
+			.attr('x2', (d) => {
+				const timeRelativeToCharge = (d.time - chargeTime) / (1000 * 60);
+				return xScale(timeRelativeToCharge);
+			})
 			.attr('y1', 0)
 			.attr('y2', height)
 			.attr('stroke', '#4ade80')
 			.attr('stroke-width', 1)
 			.attr('stroke-dasharray', '4,4');
 
-		// Add or update event labels
+		// Add or update event labels (charge-relative positioning)
 		eventGroups
 			.selectAll('.event-label')
 			.data((d) => [d])
 			.join('text')
 			.attr('class', 'event-label')
-			.attr('x', (d) => xScale(d.time / (1000 * 60)))
+			.attr('x', (d) => {
+				const timeRelativeToCharge = (d.time - chargeTime) / (1000 * 60);
+				return xScale(timeRelativeToCharge);
+			})
 			.attr('y', 10)
 			.text((d) => d.name)
 			.attr('fill', '#4ade80')
 			.attr('font-size', '12px')
 			.attr('text-anchor', 'end')
-			.attr('transform', (d) => `rotate(-90, ${xScale(d.time / (1000 * 60))}, 10)`);
+			.attr('transform', (d) => {
+				const timeRelativeToCharge = (d.time - chargeTime) / (1000 * 60);
+				return `rotate(-90, ${xScale(timeRelativeToCharge)}, 10)`;
+			});
 	}
 
 	// Update chart when roastData changes (live roasting)
@@ -618,8 +782,8 @@
 			if (
 				svg !== undefined &&
 				xScale !== undefined &&
-				yScaleFan !== undefined &&
-				yScaleHeat !== undefined
+				yScaleTemp !== undefined &&
+				yScaleRoR !== undefined
 			) {
 				untrack(() => updateChart(data));
 			}
@@ -651,8 +815,8 @@
 			if (
 				svg !== undefined &&
 				xScale !== undefined &&
-				yScaleFan !== undefined &&
-				yScaleHeat !== undefined
+				yScaleTemp !== undefined &&
+				yScaleRoR !== undefined
 			) {
 				untrack(() => updateChart(chartData));
 			}
@@ -681,74 +845,26 @@
 
 		// Update scales
 		xScale.range([0, width]);
-		yScaleFan.range([height, 0]);
-		yScaleHeat.range([height, 0]);
 		yScaleTemp.range([height, 0]);
+		yScaleRoR.range([height, 0]);
 
-		// Clear and redraw background grid
-		svg.selectAll('.heat-zone').remove();
-		svg.selectAll('.fan-zone').remove();
+		// Clear old grid elements
 		svg.selectAll('.temp-grid').remove();
-		svg.selectAll('.y-value-indicator').remove();
-		svg.selectAll('.temp-axis-label').remove();
 
-		// Redraw background grid shading for values 1-10
-		for (let i = 0; i <= 10; i++) {
-			// Skip the first and last to avoid unnecessary borders
-			if (i > 0 && i < 10) {
-				// Calculate heights ensuring they're positive
-				const heatZoneHeight = Math.abs(yScaleHeat(i - 1) - yScaleHeat(i));
-				const fanZoneHeight = Math.abs(yScaleFan(i - 1) - yScaleFan(i));
+		// Update y-axis positions and dimensions
+		svg.select('.y-axis-left').call(axisLeft(yScaleTemp) as any);
+		svg.select('.y-axis-right')
+			.attr('transform', `translate(${width}, 0)`)
+			.call(axisRight(yScaleRoR) as any);
 
-				// Add heat zone shading (amber)
-				svg
-					.append('rect')
-					.attr('class', 'heat-zone')
-					.attr('x', 0)
-					.attr('y', Math.min(yScaleHeat(i), yScaleHeat(i - 1)))
-					.attr('width', width)
-					.attr('height', heatZoneHeight)
-					.attr('fill', i % 2 === 0 ? 'rgba(180, 83, 9, 0.05)' : 'rgba(180, 83, 9, 0.1)')
-					.attr('stroke', 'none');
+		// Update charge line position
+		svg.select('.charge-line')
+			.attr('x1', xScale(0))
+			.attr('x2', xScale(0))
+			.attr('y2', height);
 
-				// Add fan zone shading (indigo)
-				svg
-					.append('rect')
-					.attr('class', 'fan-zone')
-					.attr('x', 0)
-					.attr('y', Math.min(yScaleFan(i), yScaleFan(i - 1)))
-					.attr('width', width)
-					.attr('height', fanZoneHeight)
-					.attr('fill', i % 2 === 0 ? 'rgba(55, 48, 163, 0.05)' : 'rgba(55, 48, 163, 0.1)')
-					.attr('stroke', 'none');
-
-				// Add value indicators on both sides
-				svg
-					.append('text')
-					.attr('class', 'y-value-indicator')
-					.attr('x', -10)
-					.attr('y', yScaleFan(i))
-					.attr('dy', '0.3em')
-					.attr('text-anchor', 'end')
-					.attr('fill', '#3730a3')
-					.attr('font-size', '10px')
-					.text(i);
-
-				svg
-					.append('text')
-					.attr('class', 'y-value-indicator')
-					.attr('x', width + 10)
-					.attr('y', yScaleHeat(i))
-					.attr('dy', '0.3em')
-					.attr('text-anchor', 'start')
-					.attr('fill', '#b45309')
-					.attr('font-size', '10px')
-					.text(i);
-			}
-		}
-
-		// Add temperature grid lines and labels on the left
-		for (let temp = 100; temp <= 500; temp += 50) {
+		// Redraw light temperature grid lines
+		for (let temp = 150; temp <= 450; temp += 50) {
 			svg
 				.append('line')
 				.attr('class', 'temp-grid')
@@ -758,18 +874,7 @@
 				.attr('y2', yScaleTemp(temp))
 				.attr('stroke', '#dc2626')
 				.attr('stroke-width', 0.5)
-				.attr('opacity', 0.2);
-
-			svg
-				.append('text')
-				.attr('class', 'temp-axis-label')
-				.attr('x', -50)
-				.attr('y', yScaleTemp(temp))
-				.attr('dy', '0.3em')
-				.attr('text-anchor', 'end')
-				.attr('fill', '#dc2626')
-				.attr('font-size', '10px')
-				.text(`${temp}°F`);
+				.attr('opacity', 0.1);
 		}
 
 		// Update x-axis only
@@ -801,72 +906,103 @@
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`);
 
-		xScale = scaleLinear().domain([0, 12]).range([0, width]);
-		yScaleFan = scaleLinear().domain([10, 0]).range([height, 0]);
-		yScaleHeat = scaleLinear().domain([0, 10]).range([height, 0]);
-		yScaleTemp = scaleLinear().domain([0, 500]).range([height, 0]); // Temperature scale in Fahrenheit
+		// Setup scales with charge-relative time axis and dual y-axes
+		xScale = scaleLinear().domain([-2, 12]).range([0, width]); // -2 to 12 minutes relative to charge
+		yScaleTemp = scaleLinear().domain([100, 500]).range([height, 0]); // Left y-axis: Temperature (F)
+		yScaleRoR = scaleLinear().domain([-10, 50]).range([height, 0]); // Right y-axis: RoR (°F/min)
 
-		// Add background grid shading for values 1-10
-		for (let i = 0; i <= 10; i++) {
-			// Skip the first and last to avoid unnecessary borders
-			if (i > 0 && i < 10) {
-				// Calculate heights ensuring they're positive
-				const heatZoneHeight = Math.abs(yScaleHeat(i - 1) - yScaleHeat(i));
-				const fanZoneHeight = Math.abs(yScaleFan(i - 1) - yScaleFan(i));
+		// Add left y-axis (Temperature)
+		svg
+			.append('g')
+			.attr('class', 'y-axis-left')
+			.call(axisLeft(yScaleTemp) as any)
+			.selectAll('text')
+			.style('fill', '#dc2626')
+			.style('font-size', '10px');
 
-				// Add heat zone shading (amber)
-				svg
-					.append('rect')
-					.attr('class', 'heat-zone')
-					.attr('x', 0)
-					.attr('y', Math.min(yScaleHeat(i), yScaleHeat(i - 1)))
-					.attr('width', width)
-					.attr('height', heatZoneHeight)
-					.attr('fill', i % 2 === 0 ? 'rgba(180, 83, 9, 0.05)' : 'rgba(180, 83, 9, 0.1)')
-					.attr('stroke', 'none');
+		// Add left y-axis label
+		svg
+			.append('text')
+			.attr('class', 'y-axis-label-left')
+			.attr('transform', 'rotate(-90)')
+			.attr('y', -60)
+			.attr('x', -height / 2)
+			.attr('dy', '1em')
+			.style('text-anchor', 'middle')
+			.style('fill', '#dc2626')
+			.style('font-size', '12px')
+			.style('font-weight', 'bold')
+			.text('Temperature (°F)');
 
-				// Add fan zone shading (indigo)
-				svg
-					.append('rect')
-					.attr('class', 'fan-zone')
-					.attr('x', 0)
-					.attr('y', Math.min(yScaleFan(i), yScaleFan(i - 1)))
-					.attr('width', width)
-					.attr('height', fanZoneHeight)
-					.attr('fill', i % 2 === 0 ? 'rgba(55, 48, 163, 0.05)' : 'rgba(55, 48, 163, 0.1)')
-					.attr('stroke', 'none');
+		// Add right y-axis (RoR)  
+		svg
+			.append('g')
+			.attr('class', 'y-axis-right')
+			.attr('transform', `translate(${width}, 0)`)
+			.call(axisRight(yScaleRoR) as any)
+			.selectAll('text')
+			.style('fill', '#2563eb')
+			.style('font-size', '10px');
 
-				// Add value indicators on both sides
-				svg
-					.append('text')
-					.attr('class', 'y-value-indicator')
-					.attr('x', -10)
-					.attr('y', yScaleFan(i))
-					.attr('dy', '0.3em')
-					.attr('text-anchor', 'end')
-					.attr('fill', '#3730a3')
-					.attr('font-size', '10px')
-					.text(i);
+		// Add right y-axis label
+		svg
+			.append('text')
+			.attr('class', 'y-axis-label-right')
+			.attr('transform', 'rotate(90)')
+			.attr('y', -width - 60)
+			.attr('x', height / 2)
+			.attr('dy', '1em')
+			.style('text-anchor', 'middle')
+			.style('fill', '#2563eb')
+			.style('font-size', '12px')
+			.style('font-weight', 'bold')
+			.text('Rate of Rise (°F/min)');
 
-				svg
-					.append('text')
-					.attr('class', 'y-value-indicator')
-					.attr('x', width + 10)
-					.attr('y', yScaleHeat(i))
-					.attr('dy', '0.3em')
-					.attr('text-anchor', 'start')
-					.attr('fill', '#b45309')
-					.attr('font-size', '10px')
-					.text(i);
-			}
+		// Add light temperature grid lines
+		for (let temp = 150; temp <= 450; temp += 50) {
+			svg
+				.append('line')
+				.attr('class', 'temp-grid')
+				.attr('x1', 0)
+				.attr('x2', width)
+				.attr('y1', yScaleTemp(temp))
+				.attr('y2', yScaleTemp(temp))
+				.attr('stroke', '#dc2626')
+				.attr('stroke-width', 0.5)
+				.attr('opacity', 0.1);
 		}
 
-		// Add x-axis
+		// Add x-axis with charge-relative time
 		svg
 			.append('g')
 			.attr('class', 'x-axis')
 			.attr('transform', `translate(0,${height})`)
 			.call(axisBottom(xScale) as any);
+
+		// Add x-axis label
+		svg
+			.append('text')
+			.attr('class', 'x-axis-label')
+			.attr('x', width / 2)
+			.attr('y', height + 35)
+			.style('text-anchor', 'middle')
+			.style('fill', '#374151')
+			.style('font-size', '12px')
+			.style('font-weight', 'bold')
+			.text('Time relative to Charge (minutes)');
+
+		// Add charge line (time = 0)
+		svg
+			.append('line')
+			.attr('class', 'charge-line')
+			.attr('x1', xScale(0))
+			.attr('x2', xScale(0))
+			.attr('y1', 0)
+			.attr('y2', height)
+			.attr('stroke', '#10b981')
+			.attr('stroke-width', 2)
+			.attr('stroke-dasharray', '3,3')
+			.attr('opacity', 0.7);
 
 		// Add time tracker line
 		svg
@@ -1086,6 +1222,25 @@
 			: '--:--'
 	);
 
+	// Convert profile logs to roast data format for chart display
+	function convertProfileLogsToRoastData(logs: ProfileLogEntry[]): RoastPoint[] {
+		return logs.map(log => ({
+			time: log.time_seconds ? log.time_seconds * 1000 : (typeof log.time === 'number' ? log.time : mysqlTimeToMs(log.time as string)),
+			heat: log.heat_setting || 0,
+			fan: log.fan_setting || 0,
+			bean_temp: log.bean_temp,
+			environmental_temp: log.environmental_temp,
+			data_source: (log.data_source as 'live' | 'artisan_import') || 'live',
+			// Include milestone flags for charge detection
+			charge: log.charge || false,
+			start: log.start || false,
+			maillard: log.maillard || false,
+			fc_start: log.fc_start || false,
+			drop: log.drop || false,
+			end: log.end || false
+		}));
+	}
+
 	// Load saved profile logs when a roast profile is selected
 	async function loadSavedProfileLogs(roastId: number) {
 		try {
@@ -1093,13 +1248,20 @@
 			if (response.ok) {
 				const result = await response.json();
 				savedProfileLogs = result.data || [];
+				
+				// Convert profile logs to roast data for chart display
+				if (savedProfileLogs.length > 0) {
+					$roastData = convertProfileLogsToRoastData(savedProfileLogs);
+				}
 			} else {
 				console.warn('Failed to load profile logs:', response.statusText);
 				savedProfileLogs = [];
+				$roastData = [];
 			}
 		} catch (error) {
 			console.error('Error loading profile logs:', error);
 			savedProfileLogs = [];
+			$roastData = [];
 		}
 	}
 

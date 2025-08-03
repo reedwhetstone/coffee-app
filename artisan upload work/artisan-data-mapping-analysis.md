@@ -44,8 +44,8 @@ The Artisan JSON export contains several key sections:
 
   // TIME SERIES ARRAYS - Core temperature/time data
   "timex": [0.713, 2.213, 3.713, ...], // Time in seconds (785 data points)
-  "temp1": [333.8456, 333.1778, ...], // Bean Temperature (BT) in Fahrenheit
-  "temp2": [383.072, 382.6904, ...], // Environmental Temperature (ET)
+  "temp1": [383.072, 382.6904, ...], // Environmental Temperature (ET) in Fahrenheit
+  "temp2": [333.8456, 333.1778, ...], // Bean Temperature (BT) in Fahrenheit
 
   // MILESTONE EVENTS - Key roast phases
   "timeindex": [21, 233, 400, 0, 0, 0, 444, 521],
@@ -69,10 +69,17 @@ The Artisan JSON export contains several key sections:
 ### Key Data Arrays
 
 1. **timex**: Time values in seconds from roast start (785 data points)
-2. **temp1**: Bean Temperature readings in Fahrenheit (BT sensor)
-3. **temp2**: Environmental Temperature readings in Fahrenheit (ET sensor)
+2. **temp1**: Environmental Temperature readings in Fahrenheit (ET sensor)
+3. **temp2**: Bean Temperature readings in Fahrenheit (BT sensor)
 4. **timeindex**: Milestone event indices into the timex/temp arrays
 5. **phases**: Additional phase markers for roast progression
+
+### Important Temperature Mapping
+**CRITICAL**: In Artisan .alog files, the temperature arrays are:
+- `temp1` = Environmental Temperature (ET)
+- `temp2` = Bean Temperature (BT)
+
+This is the reverse of what might be intuitive, so proper mapping is essential.
 
 ### Milestone Mapping
 
@@ -205,8 +212,8 @@ interface ArtisanImportData {
 
 	// Time series arrays
 	timex: number[]; // Time in seconds
-	temp1: number[]; // Bean temperature (BT)
-	temp2: number[]; // Environmental temperature (ET)
+	temp1: number[]; // Environmental temperature (ET)
+	temp2: number[]; // Bean temperature (BT)
 
 	// Milestone indices
 	timeindex: number[]; // [CHARGE, DRY_END, FC_START, FC_END, SC_START, SC_END, DROP, COOL]
@@ -218,31 +225,31 @@ function extractMilestoneData(data: ArtisanImportData) {
 	const milestones = {
 		charge: {
 			time: data.timeindex[0] ? data.timex[data.timeindex[0]] : null,
-			temp: data.timeindex[0] ? data.temp1[data.timeindex[0]] : null
+			temp: data.timeindex[0] ? data.temp2[data.timeindex[0]] : null // Use BT (temp2) for milestones
 		},
 		dry_end: {
 			time: data.timeindex[1] ? data.timex[data.timeindex[1]] : null,
-			temp: data.timeindex[1] ? data.temp1[data.timeindex[1]] : null
+			temp: data.timeindex[1] ? data.temp2[data.timeindex[1]] : null // Use BT (temp2) for milestones
 		},
 		fc_start: {
 			time: data.timeindex[2] ? data.timex[data.timeindex[2]] : null,
-			temp: data.timeindex[2] ? data.temp1[data.timeindex[2]] : null
+			temp: data.timeindex[2] ? data.temp2[data.timeindex[2]] : null // Use BT (temp2) for milestones
 		},
 		fc_end: {
 			time: data.timeindex[3] ? data.timex[data.timeindex[3]] : null,
-			temp: data.timeindex[3] ? data.temp1[data.timeindex[3]] : null
+			temp: data.timeindex[3] ? data.temp2[data.timeindex[3]] : null // Use BT (temp2) for milestones
 		},
 		sc_start: {
 			time: data.timeindex[4] ? data.timex[data.timeindex[4]] : null,
-			temp: data.timeindex[4] ? data.temp1[data.timeindex[4]] : null
+			temp: data.timeindex[4] ? data.temp2[data.timeindex[4]] : null // Use BT (temp2) for milestones
 		},
 		drop: {
 			time: data.timeindex[6] ? data.timex[data.timeindex[6]] : null,
-			temp: data.timeindex[6] ? data.temp1[data.timeindex[6]] : null
+			temp: data.timeindex[6] ? data.temp2[data.timeindex[6]] : null // Use BT (temp2) for milestones
 		},
 		cool: {
 			time: data.timeindex[7] ? data.timex[data.timeindex[7]] : null,
-			temp: data.timeindex[7] ? data.temp1[data.timeindex[7]] : null
+			temp: data.timeindex[7] ? data.temp2[data.timeindex[7]] : null // Use BT (temp2) for milestones
 		}
 	};
 
@@ -285,8 +292,8 @@ function generateProfileLogEntries(data: ArtisanImportData, roastId: number) {
 		const entry = {
 			roast_id: roastId,
 			time_seconds: data.timex[i],
-			bean_temp: data.temp1[i],
-			environmental_temp: data.temp2[i],
+			bean_temp: data.temp2[i], // temp2 = BT (Bean Temperature)
+			environmental_temp: data.temp1[i], // temp1 = ET (Environmental Temperature)
 
 			// Set milestone flags
 			is_charge: i === data.timeindex[0],

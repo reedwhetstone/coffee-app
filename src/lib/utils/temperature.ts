@@ -77,10 +77,14 @@ export function getTemperatureRange(
 /**
  * Normalize temperature data to a target unit
  * This is the main function for processing Artisan data
+ * 
+ * IMPORTANT: In Artisan .alog files:
+ * - temp1 = Environmental Temperature (ET)
+ * - temp2 = Bean Temperature (BT)
  */
 export function normalizeArtisanTemperatures(
-	temp1: number[], // Bean Temperature (BT)
-	temp2: number[], // Environmental Temperature (ET)
+	temp1: number[], // Environmental Temperature (ET) - from Artisan temp1 array
+	temp2: number[], // Bean Temperature (BT) - from Artisan temp2 array
 	sourceUnit: TemperatureUnit,
 	targetUnit: TemperatureUnit = 'F'
 ): {
@@ -89,8 +93,8 @@ export function normalizeArtisanTemperatures(
 	unit: TemperatureUnit;
 } {
 	return {
-		beanTemps: temp1.map((t) => convertTemperature(t, sourceUnit, targetUnit)),
-		envTemps: temp2.map((t) => convertTemperature(t, sourceUnit, targetUnit)),
+		beanTemps: temp2.map((t) => convertTemperature(t, sourceUnit, targetUnit)), // temp2 = BT
+		envTemps: temp1.map((t) => convertTemperature(t, sourceUnit, targetUnit)), // temp1 = ET
 		unit: targetUnit
 	};
 }
