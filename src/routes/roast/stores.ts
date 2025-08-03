@@ -5,6 +5,8 @@ export interface RoastPoint {
 	heat: number;
 	fan: number;
 	bean_temp?: number | null;
+	environmental_temp?: number | null;
+	data_source?: 'live' | 'artisan_import';
 }
 
 export interface RoastEvent {
@@ -26,6 +28,9 @@ export interface ProfileLogEntry {
 	end: boolean;
 	time: number;
 	bean_temp?: number | null;
+	environmental_temp?: number | null;
+	time_seconds?: number;
+	data_source?: string;
 	charge?: boolean;
 }
 

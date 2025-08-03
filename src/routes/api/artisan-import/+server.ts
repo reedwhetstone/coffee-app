@@ -1,385 +1,353 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import type { ArtisanRoastData, ProcessedRoastData, MilestoneData } from '$lib/types/artisan.js';
+import { validateArtisanData, validateProcessedData } from '$lib/utils/artisan-validator.js';
+import { normalizeArtisanTemperatures, artisanModeToUnit } from '$lib/utils/temperature.js';
+import { processAlogFile } from '$lib/utils/alog-parser.js';
 
-interface ArtisanDataPoint {
-	time: string;
-	bean_temp: number | null;
-	fan_setting: number | null;
-	heat_setting: number | null;
+// Legacy interfaces removed - now using comprehensive types from artisan.ts
+
+// Time conversion utilities for database storage
+function secondsToMySQLTime(seconds: number): string {
+	const totalSeconds = Math.floor(seconds);
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const secs = totalSeconds % 60;
+	const milliseconds = Math.floor((seconds - totalSeconds) * 1000);
+	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
 }
 
-interface ArtisanEvents {
-	charge?: string;
-	dry_end?: string;
-	fc_start?: string;
-	fc_end?: string;
-	sc_start?: string;
-	drop?: string;
-	cool?: string;
-}
+// Parse Artisan .alog or .alog.json data
+function parseArtisanFile(fileContent: string, fileName: string): ArtisanRoastData {
+	try {
+		let data: any;
 
-interface ParsedArtisanData {
-	events: ArtisanEvents;
-	dataPoints: ArtisanDataPoint[];
-}
-
-function parseTimeToMs(timeStr: string): number {
-	// Handle formats like "00:00", "03:26", "07:58"
-	const parts = timeStr.split(':');
-	if (parts.length === 2) {
-		const minutes = parseInt(parts[0], 10);
-		const seconds = parseInt(parts[1], 10);
-		return (minutes * 60 + seconds) * 1000;
-	}
-	return 0;
-}
-
-function convertToMySQLTime(timeStr: string): string {
-	// Convert MM:SS format to HH:MM:SS format for MySQL
-	const parts = timeStr.split(':');
-	if (parts.length === 2) {
-		const minutes = parseInt(parts[0], 10);
-		const seconds = parseInt(parts[1], 10);
-		const hours = Math.floor(minutes / 60);
-		const remainingMinutes = minutes % 60;
-		return `${hours.toString().padStart(2, '0')}:${remainingMinutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-	}
-	return '00:00:00';
-}
-
-function parseArtisanCSV(csvText: string): ParsedArtisanData {
-	const lines = csvText.split('\n');
-
-	if (lines.length < 3) {
-		throw new Error('Invalid Artisan CSV format');
-	}
-
-	// Row 1: Events with times
-	const eventLine = lines[0];
-	const eventParts = eventLine.split('\t');
-
-	const events: ArtisanEvents = {};
-
-	// Parse events from first row
-	eventParts.forEach((part) => {
-		const trimmed = part.trim();
-		if (trimmed.includes('CHARGE:')) {
-			events.charge = trimmed.split('CHARGE:')[1];
-		} else if (trimmed.includes('DRYe:')) {
-			events.dry_end = trimmed.split('DRYe:')[1];
-		} else if (trimmed.includes('FCs:')) {
-			events.fc_start = trimmed.split('FCs:')[1];
-		} else if (trimmed.includes('FCe:')) {
-			events.fc_end = trimmed.split('FCe:')[1];
-		} else if (trimmed.includes('SCs:')) {
-			events.sc_start = trimmed.split('SCs:')[1];
-		} else if (trimmed.includes('DROP:')) {
-			events.drop = trimmed.split('DROP:')[1];
-		} else if (trimmed.includes('COOL:')) {
-			events.cool = trimmed.split('COOL:')[1];
+		if (fileName.toLowerCase().endsWith('.alog')) {
+			// Parse Python literal syntax (.alog file)
+			data = processAlogFile(fileContent);
+		} else {
+			// Parse standard JSON (.alog.json file)
+			data = JSON.parse(fileContent);
 		}
-	});
 
-	// Row 2: Column headers (Time1, Time2, ET, BT, Event)
-	const headerLine = lines[1];
-	const headers = headerLine.split('\t');
+		// Validate the basic structure
+		const validation = validateArtisanData(data);
+		if (!validation.valid) {
+			throw new Error(`Invalid Artisan file: ${validation.errors.join(', ')}`);
+		}
 
-	// Find column indices
-	const timeIndex = headers.findIndex((h) => h.trim() === 'Time1');
-	const btIndex = headers.findIndex((h) => h.trim() === 'BT');
+		// Map 'mode' to 'temperature_unit' for consistency
+		data.temperature_unit = artisanModeToUnit(data.mode);
 
-	if (timeIndex === -1 || btIndex === -1) {
-		throw new Error('Required columns (Time1, BT) not found in CSV');
+		return data as ArtisanRoastData;
+	} catch (error) {
+		if (error instanceof Error) {
+			throw error;
+		}
+		throw new Error('Failed to parse Artisan file');
 	}
-
-	// Parse data rows (starting from row 3)
-	const dataPoints: ArtisanDataPoint[] = [];
-
-	for (let i = 2; i < lines.length; i++) {
-		const line = lines[i].trim();
-		if (!line) continue;
-
-		const values = line.split('\t');
-
-		if (values.length <= Math.max(timeIndex, btIndex)) continue;
-
-		const timeStr = values[timeIndex]?.trim();
-		const btStr = values[btIndex]?.trim();
-
-		if (!timeStr) continue;
-
-		dataPoints.push({
-			time: timeStr,
-			bean_temp: btStr && btStr !== '-1.0' ? parseFloat(btStr) : null,
-			fan_setting: null, // CSV doesn't include fan/heat settings
-			heat_setting: null
-		});
-	}
-
-	return { events, dataPoints };
 }
 
-function parseArtisanXLSX(buffer: ArrayBuffer): ParsedArtisanData {
-	const workbook = XLSX.read(buffer, { type: 'array' });
-	const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+// Extract milestone events from Artisan timeindex array
+function extractMilestones(artisanData: ArtisanRoastData): MilestoneData {
+	const milestones: MilestoneData = {};
+	const { timex, timeindex } = artisanData;
 
-	if (!firstSheet) {
-		throw new Error('No worksheet found in XLSX file');
+	// timeindex maps: [CHARGE, DRY_END, FC_START, FC_END, SC_START, SC_END, DROP, COOL]
+	if (timeindex[0] > 0 && timeindex[0] < timex.length) {
+		milestones.charge = timex[timeindex[0]];
+	}
+	if (timeindex[1] > 0 && timeindex[1] < timex.length) {
+		milestones.dry_end = timex[timeindex[1]];
+	}
+	if (timeindex[2] > 0 && timeindex[2] < timex.length) {
+		milestones.fc_start = timex[timeindex[2]];
+	}
+	if (timeindex[3] > 0 && timeindex[3] < timex.length) {
+		milestones.fc_end = timex[timeindex[3]];
+	}
+	if (timeindex[4] > 0 && timeindex[4] < timex.length) {
+		milestones.sc_start = timex[timeindex[4]];
+	}
+	if (timeindex[5] > 0 && timeindex[5] < timex.length) {
+		milestones.sc_end = timex[timeindex[5]];
+	}
+	if (timeindex[6] > 0 && timeindex[6] < timex.length) {
+		milestones.drop = timex[timeindex[6]];
+	}
+	if (timeindex[7] > 0 && timeindex[7] < timex.length) {
+		milestones.cool = timex[timeindex[7]];
 	}
 
-	// Convert to JSON to work with the data
-	const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][];
+	return milestones;
+}
 
-	if (data.length < 5) {
-		throw new Error('Invalid Artisan XLSX format - need at least 5 rows');
-	}
+// Transform Artisan data into database format
+function transformArtisanData(
+	roastId: number,
+	artisanData: ArtisanRoastData,
+	userId: string
+): ProcessedRoastData {
+	const { timex, temp1, temp2, timeindex, extratemp1, extratemp2 } = artisanData;
 
-	// XLSX structure:
-	// Row 0: Header labels (Date, Unit, CHARGE, TP, DRYe, FCs, FCe, SCs, SCe, DROP, COOL, Time)
-	// Row 1: Event times and metadata
-	// Row 2: (blank)
-	// Row 3: Time series column headers (Time1, Time2, ET, BT, Δ BT, Event)
-	// Row 4+: Time series data (Time2 is the actual timeline when events are logged)
+	// Extract milestones
+	const milestones = extractMilestones(artisanData);
 
-	const headerLabels = data[0] as string[];
-	const eventTimes = data[1] as string[];
-	const timeSeriesHeaders = data[3] as string[];
-
-	const events: ArtisanEvents = {};
-
-	// Parse events by matching header labels with their corresponding times
-	headerLabels.forEach((label, index) => {
-		if (typeof label === 'string' && eventTimes[index]) {
-			const labelStr = label.toString().trim();
-			const timeStr = eventTimes[index]?.toString().trim();
-
-			if (timeStr && timeStr !== '' && timeStr !== '0') {
-				if (labelStr === 'CHARGE') {
-					events.charge = timeStr;
-				} else if (labelStr === 'DRYe') {
-					events.dry_end = timeStr;
-				} else if (labelStr === 'FCs') {
-					events.fc_start = timeStr;
-				} else if (labelStr === 'FCe') {
-					events.fc_end = timeStr;
-				} else if (labelStr === 'SCs') {
-					events.sc_start = timeStr;
-				} else if (labelStr === 'DROP') {
-					events.drop = timeStr;
-				} else if (labelStr === 'COOL') {
-					events.cool = timeStr;
-				}
-			}
-		}
-	});
-
-	// Find column indices in the time series headers (row 3)
-	const timeIndex = timeSeriesHeaders.findIndex((h) => h && h.toString().trim() === 'Time2');
-	const btIndex = timeSeriesHeaders.findIndex((h) => h && h.toString().trim() === 'BT');
-	const eventIndex = timeSeriesHeaders.findIndex((h) => h && h.toString().trim() === 'Event');
-	const fanIndex = timeSeriesHeaders.findIndex(
-		(h) => h && h.toString().trim().toLowerCase().includes('fan')
-	);
-	const heatIndex = timeSeriesHeaders.findIndex(
-		(h) => h && h.toString().trim().toLowerCase().includes('heat')
+	// Normalize temperatures to Fahrenheit for consistency
+	const { beanTemps, envTemps, unit } = normalizeArtisanTemperatures(
+		temp1,
+		temp2,
+		artisanData.temperature_unit,
+		'F' // Store everything in Fahrenheit
 	);
 
-	if (timeIndex === -1 || btIndex === -1) {
-		console.log('Available time series headers:', timeSeriesHeaders);
-		throw new Error('Required columns (Time2, BT) not found in XLSX time series headers');
-	}
+	// Extract fan/heat data from extra devices if available
+	const fanData = extratemp1?.[0] || [];
+	const heatData = extratemp2?.[0] || [];
 
-	// Parse data rows (starting from row 4)
-	const dataPoints: ArtisanDataPoint[] = [];
+	// Create temperature points for profile_log
+	const temperaturePoints: any[] = [];
 
-	for (let i = 4; i < data.length; i++) {
-		const row = data[i];
-		if (!row || row.length === 0) continue;
-
-		const timeCell = row[timeIndex];
-		const btCell = row[btIndex];
-		const fanCell = fanIndex >= 0 ? row[fanIndex] : null;
-		const heatCell = heatIndex >= 0 ? row[heatIndex] : null;
-
-		if (!timeCell) continue;
-
-		dataPoints.push({
-			time: timeCell.toString(),
-			bean_temp: btCell && btCell !== -1.0 ? parseFloat(btCell.toString()) : null,
-			fan_setting: fanCell ? parseFloat(fanCell.toString()) : null,
-			heat_setting: heatCell ? parseFloat(heatCell.toString()) : null
-		});
-	}
-
-	return { events, dataPoints };
-}
-
-function convertToProfileLogs(roastId: number, artisanData: ParsedArtisanData): any[] {
-	const profileLogs: any[] = [];
-
-	// Add event entries based on Artisan events
-	const { events, dataPoints } = artisanData;
-
-	// Create event entries
-	if (events.charge) {
-		profileLogs.push({
-			roast_id: roastId,
-			fan_setting: 0,
-			heat_setting: 0,
-			time: convertToMySQLTime(events.charge),
-			start: 0,
-			maillard: 0,
-			fc_start: 0,
-			fc_rolling: 0,
-			fc_end: 0,
-			sc_start: 0,
-			drop: 0,
-			end: 0,
-			charge: 1,
-			bean_temp: null
-		});
-	}
-
-	if (events.dry_end) {
-		profileLogs.push({
-			roast_id: roastId,
-			fan_setting: 0,
-			heat_setting: 0,
-			time: convertToMySQLTime(events.dry_end),
-			start: 0,
-			maillard: 1,
-			fc_start: 0,
-			fc_rolling: 0,
-			fc_end: 0,
-			sc_start: 0,
-			drop: 0,
-			end: 0,
-			charge: 0,
-			bean_temp: null
-		});
-	}
-
-	if (events.fc_start) {
-		profileLogs.push({
-			roast_id: roastId,
-			fan_setting: 0,
-			heat_setting: 0,
-			time: convertToMySQLTime(events.fc_start),
-			start: 0,
-			maillard: 0,
-			fc_start: 1,
-			fc_rolling: 0,
-			fc_end: 0,
-			sc_start: 0,
-			drop: 0,
-			end: 0,
-			charge: 0,
-			bean_temp: null
-		});
-	}
-
-	if (events.fc_end) {
-		profileLogs.push({
-			roast_id: roastId,
-			fan_setting: 0,
-			heat_setting: 0,
-			time: convertToMySQLTime(events.fc_end),
-			start: 0,
-			maillard: 0,
-			fc_start: 0,
-			fc_rolling: 0,
-			fc_end: 1,
-			sc_start: 0,
-			drop: 0,
-			end: 0,
-			charge: 0,
-			bean_temp: null
-		});
-	}
-
-	if (events.sc_start) {
-		profileLogs.push({
-			roast_id: roastId,
-			fan_setting: 0,
-			heat_setting: 0,
-			time: convertToMySQLTime(events.sc_start),
-			start: 0,
-			maillard: 0,
-			fc_start: 0,
-			fc_rolling: 0,
-			fc_end: 0,
-			sc_start: 1,
-			drop: 0,
-			end: 0,
-			charge: 0,
-			bean_temp: null
-		});
-	}
-
-	if (events.drop) {
-		profileLogs.push({
-			roast_id: roastId,
-			fan_setting: 0,
-			heat_setting: 0,
-			time: convertToMySQLTime(events.drop),
-			start: 0,
-			maillard: 0,
-			fc_start: 0,
-			fc_rolling: 0,
-			fc_end: 0,
-			sc_start: 0,
-			drop: 1,
-			end: 0,
-			charge: 0,
-			bean_temp: null
-		});
-	}
-
-	if (events.cool) {
-		profileLogs.push({
-			roast_id: roastId,
-			fan_setting: 0,
-			heat_setting: 0,
-			time: convertToMySQLTime(events.cool),
-			start: 0,
-			maillard: 0,
-			fc_start: 0,
-			fc_rolling: 0,
-			fc_end: 0,
-			sc_start: 0,
-			drop: 0,
-			end: 1,
-			charge: 0,
-			bean_temp: null
-		});
-	}
-
-	// Add temperature data points (sample every few seconds to avoid too much data)
-	dataPoints.forEach((point, index) => {
-		// Sample every 10th data point to reduce database load, or if there's temperature data
-		if (index % 10 === 0 || point.bean_temp !== null) {
-			profileLogs.push({
-				roast_id: roastId,
-				fan_setting: point.fan_setting || 0,
-				heat_setting: point.heat_setting || 0,
-				time: convertToMySQLTime(point.time),
+	// Add milestone events first
+	Object.entries(milestones).forEach(([event, timeSeconds]) => {
+		if (timeSeconds && timeSeconds > 0) {
+			const milestoneFlags = {
 				start: 0,
-				maillard: 0,
-				fc_start: 0,
+				charge: event === 'charge' ? 1 : 0,
+				maillard: event === 'dry_end' ? 1 : 0,
+				fc_start: event === 'fc_start' ? 1 : 0,
 				fc_rolling: 0,
-				fc_end: 0,
-				sc_start: 0,
-				drop: 0,
-				end: 0,
-				charge: 0,
-				bean_temp: point.bean_temp
+				fc_end: event === 'fc_end' ? 1 : 0,
+				sc_start: event === 'sc_start' ? 1 : 0,
+				drop: event === 'drop' ? 1 : 0,
+				end: event === 'cool' ? 1 : 0
+			};
+
+			// Find closest temperature reading
+			const closestIndex = timex.findIndex((t) => Math.abs(t - timeSeconds) < 1) || 0;
+			const beanTemp = beanTemps[closestIndex] || null;
+			const envTemp = envTemps[closestIndex] || null;
+			const fanSetting = fanData[closestIndex] || 0;
+			const heatSetting = heatData[closestIndex] || 0;
+
+			temperaturePoints.push({
+				roast_id: roastId,
+				user: userId,
+				time_seconds: timeSeconds,
+				time: secondsToMySQLTime(timeSeconds), // Also populate time field for compatibility
+				bean_temp: beanTemp,
+				environmental_temp: envTemp,
+				fan_setting: fanSetting,
+				heat_setting: heatSetting,
+				data_source: 'artisan_import',
+				...milestoneFlags
 			});
 		}
 	});
 
-	return profileLogs;
+	// Add temperature data points (sample to avoid overwhelming database)
+	const sampleRate = Math.max(1, Math.floor(timex.length / 1000)); // Limit to ~1000 points
+	timex.forEach((timeSeconds, index) => {
+		// Include every Nth point, or points with significant temperature changes
+		if (
+			index % sampleRate === 0 ||
+			(index > 0 && Math.abs((beanTemps[index] || 0) - (beanTemps[index - 1] || 0)) > 5)
+		) {
+			// Skip if this exact time already has a milestone event
+			const hasExistingEvent = temperaturePoints.some(
+				(p) => Math.abs(p.time_seconds - timeSeconds) < 0.5
+			);
+
+			if (!hasExistingEvent) {
+				temperaturePoints.push({
+					roast_id: roastId,
+					user: userId,
+					time_seconds: timeSeconds,
+					time: secondsToMySQLTime(timeSeconds), // Also populate time field for compatibility
+					bean_temp: beanTemps[index] || null,
+					environmental_temp: envTemps[index] || null,
+					fan_setting: fanData[index] || 0,
+					heat_setting: heatData[index] || 0,
+					data_source: 'artisan_import',
+					start: 0,
+					charge: 0,
+					maillard: 0,
+					fc_start: 0,
+					fc_rolling: 0,
+					fc_end: 0,
+					sc_start: 0,
+					drop: 0,
+					end: 0
+				});
+			}
+		}
+	});
+
+	// Calculate phase percentages
+	const chargeTime = milestones.charge || 0;
+	const dropTime = milestones.drop || timex[timex.length - 1];
+	const totalTime = dropTime - chargeTime;
+
+	let dryingPercent = 0;
+	let maillardPercent = 0;
+	let developmentPercent = 0;
+
+	if (totalTime > 0) {
+		if (milestones.dry_end && milestones.dry_end > chargeTime) {
+			dryingPercent = ((milestones.dry_end - chargeTime) / totalTime) * 100;
+		}
+		if (milestones.fc_start && milestones.dry_end && milestones.fc_start > milestones.dry_end) {
+			maillardPercent = ((milestones.fc_start - milestones.dry_end) / totalTime) * 100;
+		}
+		if (milestones.fc_start && dropTime > milestones.fc_start) {
+			developmentPercent = ((dropTime - milestones.fc_start) / totalTime) * 100;
+		}
+	}
+
+	// Prepare profile data for roast_profiles table (matching schema columns)
+	const profileData = {
+		coffee_name: artisanData.title || 'Imported Roast',
+		roaster_type: artisanData.roastertype || 'Unknown',
+		roaster_size: artisanData.roastersize || 0,
+		input_weight: artisanData.weight?.[0] || 0, // Will map to oz_in
+		output_weight: artisanData.weight?.[1] || 0, // Will map to oz_out
+		weight_unit: artisanData.weight?.[2] || 'g',
+		temperature_unit: 'F' as const, // Always store as Fahrenheit after conversion
+		roast_notes:
+			`Imported from Artisan\nRoaster: ${artisanData.roastertype || 'Unknown'}\nOriginal temp unit: ${artisanData.mode}\nWeight unit: ${artisanData.weight?.[2] || 'g'}` +
+			(artisanData.roastingnotes ? `\n\nNotes: ${artisanData.roastingnotes}` : ''),
+		roast_uuid: crypto.randomUUID(), // Generate a unique identifier
+		data_source: 'artisan_import' as const
+	};
+
+	// Create roast events data
+	const roastEvents: any[] = [];
+	Object.entries(milestones).forEach(([eventName, timeSeconds]) => {
+		if (timeSeconds && timeSeconds > 0) {
+			const eventTypeMap: { [key: string]: number } = {
+				charge: 0,
+				dry_end: 1,
+				fc_start: 2,
+				fc_end: 3,
+				sc_start: 4,
+				sc_end: 5,
+				drop: 6,
+				cool: 7
+			};
+
+			roastEvents.push({
+				roast_id: roastId,
+				time_seconds: timeSeconds,
+				event_type: eventTypeMap[eventName] || 0,
+				event_string: eventName.toUpperCase(),
+				category: 'milestone',
+				subcategory: 'artisan_import',
+				user_generated: false,
+				automatic: true,
+				notes: `Imported from Artisan: ${eventName.replace('_', ' ')}`
+			});
+		}
+	});
+
+	// Create roast phases data
+	const roastPhases: any[] = [];
+	if (totalTime > 0) {
+		// Drying phase
+		if (milestones.charge && milestones.dry_end) {
+			roastPhases.push({
+				roast_id: roastId,
+				phase_name: 'drying',
+				phase_order: 1,
+				start_time: milestones.charge,
+				end_time: milestones.dry_end,
+				duration: milestones.dry_end - milestones.charge,
+				percentage_of_total: dryingPercent,
+				calculation_method: 'artisan',
+				confidence_score: 1.0
+			});
+		}
+
+		// Maillard phase
+		if (milestones.dry_end && milestones.fc_start) {
+			roastPhases.push({
+				roast_id: roastId,
+				phase_name: 'maillard',
+				phase_order: 2,
+				start_time: milestones.dry_end,
+				end_time: milestones.fc_start,
+				duration: milestones.fc_start - milestones.dry_end,
+				percentage_of_total: maillardPercent,
+				calculation_method: 'artisan',
+				confidence_score: 1.0
+			});
+		}
+
+		// Development phase
+		if (milestones.fc_start && dropTime) {
+			roastPhases.push({
+				roast_id: roastId,
+				phase_name: 'development',
+				phase_order: 3,
+				start_time: milestones.fc_start,
+				end_time: dropTime,
+				duration: dropTime - milestones.fc_start,
+				percentage_of_total: developmentPercent,
+				calculation_method: 'artisan',
+				confidence_score: 1.0
+			});
+		}
+	}
+
+	// Create extra device data
+	const extraDeviceData: any[] = [];
+	if (fanData && fanData.length > 0) {
+		timex.forEach((timeSeconds, index) => {
+			if (fanData[index] !== undefined && index % sampleRate === 0) {
+				extraDeviceData.push({
+					roast_id: roastId,
+					device_id: 1,
+					device_name: 'Fan',
+					sensor_type: 'percentage',
+					time_seconds: timeSeconds,
+					value: fanData[index],
+					unit: '%',
+					quality: 'good'
+				});
+			}
+		});
+	}
+
+	if (heatData && heatData.length > 0) {
+		timex.forEach((timeSeconds, index) => {
+			if (heatData[index] !== undefined && index % sampleRate === 0) {
+				extraDeviceData.push({
+					roast_id: roastId,
+					device_id: 2,
+					device_name: 'Heat',
+					sensor_type: 'percentage',
+					time_seconds: timeSeconds,
+					value: heatData[index],
+					unit: '%',
+					quality: 'good'
+				});
+			}
+		});
+	}
+
+	return {
+		profileData,
+		temperaturePoints: temperaturePoints.sort((a, b) => a.time_seconds - b.time_seconds),
+		milestones,
+		phases: {
+			drying_percent: dryingPercent,
+			maillard_percent: maillardPercent,
+			development_percent: developmentPercent,
+			total_time_seconds: totalTime
+		},
+		roastEvents,
+		roastPhases,
+		extraDeviceData
+	};
 }
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
@@ -401,10 +369,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return json({ error: 'No roast ID provided' }, { status: 400 });
 		}
 
-		// Verify ownership of the roast profile
+		// Verify ownership and get existing roast profile data
 		const { data: profile } = await supabase
 			.from('roast_profiles')
-			.select('user')
+			.select('user, coffee_name, batch_name, oz_in, oz_out')
 			.eq('roast_id', roastId)
 			.single();
 
@@ -412,40 +380,85 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
-		let parsedData: ParsedArtisanData;
-
-		if (file.name.toLowerCase().endsWith('.csv')) {
-			const text = await file.text();
-			parsedData = parseArtisanCSV(text);
-		} else if (file.name.toLowerCase().endsWith('.xlsx')) {
-			const buffer = await file.arrayBuffer();
-			parsedData = parseArtisanXLSX(buffer);
-		} else {
+		// Validate file format - accept .alog, .alog.json, or .json files
+		const fileName = file.name.toLowerCase();
+		if (
+			!fileName.endsWith('.alog') &&
+			!fileName.endsWith('.alog.json') &&
+			!fileName.endsWith('.json')
+		) {
 			return json(
-				{ error: 'Unsupported file format. Please use CSV or XLSX files.' },
+				{
+					error:
+						'Unsupported file format. Please use .alog files from Artisan or .alog.json/.json files.'
+				},
 				{ status: 400 }
 			);
 		}
 
-		// Convert to profile logs format
-		const profileLogs = convertToProfileLogs(parseInt(roastId), parsedData);
-		console.log(`Generated ${profileLogs.length} profile log entries for roast ${roastId}`);
+		// Parse file content
+		const fileContent = await file.text();
+		const artisanData = parseArtisanFile(fileContent, file.name);
 
-		// Clear existing logs for this roast
+		console.log(
+			`Parsed Artisan data: ${artisanData.title} (${artisanData.timex.length} data points)`
+		);
+
+		// Transform to database format
+		const processedData = transformArtisanData(parseInt(roastId), artisanData, user.id);
+
+		// Validate processed data
+		const validation = validateProcessedData(processedData);
+		if (!validation.valid) {
+			throw new Error(`Data processing failed: ${validation.errors.join(', ')}`);
+		}
+
+		console.log(
+			`Generated ${processedData.temperaturePoints.length} temperature points for roast ${roastId}`
+		);
+
+		// Clear existing logs for this roast (imported data only)
 		const { error: deleteError } = await supabase
 			.from('profile_log')
 			.delete()
-			.eq('roast_id', parseInt(roastId));
+			.eq('roast_id', parseInt(roastId))
+			.eq('data_source', 'artisan_import');
 		if (deleteError) {
-			console.error('Error deleting existing logs:', deleteError);
+			console.error('Error deleting existing imported logs:', deleteError);
 			throw deleteError;
 		}
 
-		// Insert new logs in batches
-		const batchSize = 50;
+		// Update roast profile metadata (preserve original coffee_name)
+		const { error: updateError } = await supabase
+			.from('roast_profiles')
+			.update({
+				// Keep original coffee_name, use Artisan title for title field
+				coffee_name: profile.coffee_name, // Preserve original coffee
+				title: artisanData.title || 'Imported Roast', // Artisan title
+				batch_name: profile.batch_name, // Preserve original batch name without modification
+				roaster_type: artisanData.roastertype || 'Unknown',
+				roaster_size: artisanData.roastersize || 0,
+				oz_in: profile.oz_in || artisanData.weight?.[0] || 0, // Preserve existing input weight, use Artisan data as fallback
+				oz_out: profile.oz_out || artisanData.weight?.[1] || 0, // Preserve existing output weight, use Artisan data as fallback
+				temperature_unit: 'F', // Always store as Fahrenheit
+				roast_notes:
+					`Imported from Artisan\nRoaster: ${artisanData.roastertype || 'Unknown'}\nOriginal temp unit: ${artisanData.mode}\nWeight unit: ${artisanData.weight?.[2] || 'g'}` +
+					(artisanData.roastingnotes ? `\n\nNotes: ${artisanData.roastingnotes}` : ''),
+				roast_uuid: processedData.profileData.roast_uuid,
+				data_source: 'artisan_import'
+			})
+			.eq('roast_id', parseInt(roastId));
+
+		if (updateError) {
+			console.error('Error updating roast profile:', updateError);
+			throw updateError;
+		}
+
+		// Insert temperature points in batches
+		const batchSize = 100; // Larger batches for better performance
 		let totalInserted = 0;
-		for (let i = 0; i < profileLogs.length; i += batchSize) {
-			const batch = profileLogs.slice(i, i + batchSize);
+		for (let i = 0; i < processedData.temperaturePoints.length; i += batchSize) {
+			const batch = processedData.temperaturePoints.slice(i, i + batchSize);
 			console.log(`Inserting batch ${Math.floor(i / batchSize) + 1}, ${batch.length} records`);
 
 			const { data: insertedData, error } = await supabase
@@ -464,19 +477,105 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		console.log(`Total records inserted: ${totalInserted}`);
 
+		// Insert roast events
+		if (processedData.roastEvents.length > 0) {
+			const { error: eventsError } = await supabase
+				.from('roast_events')
+				.insert(processedData.roastEvents);
+			if (eventsError) {
+				console.error('Error inserting roast events:', eventsError);
+				// Non-critical, continue
+			} else {
+				console.log(`Inserted ${processedData.roastEvents.length} roast events`);
+			}
+		}
+
+		// Insert roast phases
+		if (processedData.roastPhases.length > 0) {
+			const { error: phasesError } = await supabase
+				.from('roast_phases')
+				.insert(processedData.roastPhases);
+			if (phasesError) {
+				console.error('Error inserting roast phases:', phasesError);
+				// Non-critical, continue
+			} else {
+				console.log(`Inserted ${processedData.roastPhases.length} roast phases`);
+			}
+		}
+
+		// Insert extra device data
+		if (processedData.extraDeviceData.length > 0) {
+			const { error: deviceError } = await supabase
+				.from('extra_device_data')
+				.insert(processedData.extraDeviceData);
+			if (deviceError) {
+				console.error('Error inserting extra device data:', deviceError);
+				// Non-critical, continue
+			} else {
+				console.log(`Inserted ${processedData.extraDeviceData.length} extra device data points`);
+			}
+		}
+
+		// Create import log entry
+		const { error: logError } = await supabase.from('artisan_import_log').insert({
+			user_id: user.id,
+			roast_id: parseInt(roastId),
+			filename: file.name,
+			file_size: file.size,
+			artisan_version: artisanData.version || 'Unknown',
+			total_data_points: processedData.temperaturePoints.length,
+			processing_status: 'success',
+			processing_messages: [
+				`Imported ${processedData.temperaturePoints.length} temperature points`,
+				`Created ${processedData.roastEvents.length} milestone events`,
+				`Generated ${processedData.roastPhases.length} roast phases`,
+				`Stored ${processedData.extraDeviceData.length} extra device data points`
+			],
+			original_data: JSON.stringify({
+				title: artisanData.title,
+				roaster: artisanData.roastertype,
+				weight: artisanData.weight,
+				temperature_unit: artisanData.mode,
+				timeindex: artisanData.timeindex,
+				data_points: artisanData.timex.length
+			})
+		});
+		if (logError) {
+			console.error('Error creating import log:', logError);
+			// Non-critical, continue
+		}
+
 		return json({
 			success: true,
-			message: `Successfully imported ${profileLogs.length} data points from ${file.name}`,
-			events: parsedData.events,
-			dataPointsCount: parsedData.dataPoints.length
+			message: `Successfully imported ${processedData.temperaturePoints.length} data points from ${file.name}`,
+			milestones: processedData.milestones,
+			phases: processedData.phases,
+			total_time: processedData.phases.total_time_seconds,
+			temperature_unit: 'F',
+			roast_events: processedData.roastEvents.length,
+			roast_phases: processedData.roastPhases.length,
+			extra_device_points: processedData.extraDeviceData.length
 		});
 	} catch (error) {
 		console.error('Error importing Artisan file:', error);
-		return json(
-			{
-				error: error instanceof Error ? error.message : 'Failed to import Artisan file'
-			},
-			{ status: 500 }
-		);
+
+		// Provide more specific error messages
+		let errorMessage = 'Failed to import Artisan file';
+		let statusCode = 500;
+
+		if (error instanceof Error) {
+			errorMessage = error.message;
+
+			// Client errors
+			if (
+				error.message.includes('Invalid Artisan file') ||
+				error.message.includes('Missing required field') ||
+				error.message.includes('Failed to parse JSON')
+			) {
+				statusCode = 400;
+			}
+		}
+
+		return json({ error: errorMessage }, { status: statusCode });
 	}
 };

@@ -618,12 +618,34 @@
 
 			if (data.data.length > 0) {
 				// Convert profile log entries to roast data points
-				$roastData = data.data.map((log: any) => ({
-					time: mysqlTimeToMs(log.time),
-					heat: log.heat_setting,
-					fan: log.fan_setting,
-					bean_temp: log.bean_temp
-				}));
+				// Handle both live data (time field) and Artisan imported data (time_seconds field)
+				$roastData = data.data.map((log: any) => {
+					let timeInMs: number;
+
+					// Determine time format based on data source and available fields
+					if (
+						log.data_source === 'artisan_import' &&
+						log.time_seconds !== null &&
+						log.time_seconds !== undefined
+					) {
+						// Artisan data: convert seconds to milliseconds
+						timeInMs = log.time_seconds * 1000;
+					} else if (log.time) {
+						// Live data: convert MySQL time format to milliseconds
+						timeInMs = mysqlTimeToMs(log.time);
+					} else {
+						// Fallback: use time_seconds if available, otherwise 0
+						timeInMs = (log.time_seconds || 0) * 1000;
+					}
+
+					return {
+						time: timeInMs,
+						heat: log.heat_setting,
+						fan: log.fan_setting,
+						bean_temp: log.bean_temp,
+						environmental_temp: log.environmental_temp
+					};
+				});
 
 				// Convert profile log entries to roast events
 				$roastEvents = data.data
@@ -639,28 +661,45 @@
 							log.drop ||
 							log.end
 					)
-					.map((log: any) => ({
-						time: mysqlTimeToMs(log.time),
-						name: log.start
-							? 'Start'
-							: log.charge
-								? 'Charge'
-								: log.maillard
-									? 'Maillard'
-									: log.fc_start
-										? 'FC Start'
-										: log.fc_rolling
-											? 'FC Rolling'
-											: log.fc_end
-												? 'FC End'
-												: log.sc_start
-													? 'SC Start'
-													: log.drop
-														? 'Drop'
-														: log.end
-															? 'Cool End'
-															: 'Unknown'
-					}));
+					.map((log: any) => {
+						let timeInMs: number;
+
+						// Handle time format same as roast data
+						if (
+							log.data_source === 'artisan_import' &&
+							log.time_seconds !== null &&
+							log.time_seconds !== undefined
+						) {
+							timeInMs = log.time_seconds * 1000;
+						} else if (log.time) {
+							timeInMs = mysqlTimeToMs(log.time);
+						} else {
+							timeInMs = (log.time_seconds || 0) * 1000;
+						}
+
+						return {
+							time: timeInMs,
+							name: log.start
+								? 'Start'
+								: log.charge
+									? 'Charge'
+									: log.maillard
+										? 'Maillard'
+										: log.fc_start
+											? 'FC Start'
+											: log.fc_rolling
+												? 'FC Rolling'
+												: log.fc_end
+													? 'FC End'
+													: log.sc_start
+														? 'SC Start'
+														: log.drop
+															? 'Drop'
+															: log.end
+																? 'Cool End'
+																: 'Unknown'
+						};
+					});
 			} else {
 				// Clear all data for new roast
 				$roastData = [];
@@ -864,13 +903,25 @@
 
 	async function handleClearRoastData(roastId: number) {
 		try {
-			await fetch(`/api/profile-log?roast_id=${currentRoastProfile.roast_id}`, {
+			const response = await fetch(`/api/clear-roast?roast_id=${currentRoastProfile.roast_id}`, {
 				method: 'DELETE'
 			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Failed to clear roast data');
+			}
+
+			const result = await response.json();
+			console.log('Clear roast result:', result);
+
+			// Show success message with details
+			alert(`Successfully cleared roast data: ${result.message}`);
+
 			await selectProfile(currentRoastProfile); // Reload the profile
 		} catch (error) {
 			console.error('Error clearing roast data:', error);
-			alert('Failed to clear roast data');
+			alert(error instanceof Error ? error.message : 'Failed to clear roast data');
 		}
 	}
 

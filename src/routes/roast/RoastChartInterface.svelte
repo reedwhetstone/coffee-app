@@ -335,10 +335,20 @@
 		.y((d) => yScaleFan(d.fan))
 		.curve(curveStepAfter);
 
-	const tempLine = line<RoastPoint>()
+	const beanTempLine = line<RoastPoint>()
 		.x((d) => xScale(d.time / (1000 * 60)))
 		.y((d) => (d.bean_temp !== null && d.bean_temp !== undefined ? yScaleTemp(d.bean_temp) : 0))
 		.defined((d) => d.bean_temp !== null && d.bean_temp !== undefined)
+		.curve(curveStepAfter);
+
+	const envTempLine = line<RoastPoint>()
+		.x((d) => xScale(d.time / (1000 * 60)))
+		.y((d) =>
+			d.environmental_temp !== null && d.environmental_temp !== undefined
+				? yScaleTemp(d.environmental_temp)
+				: 0
+		)
+		.defined((d) => d.environmental_temp !== null && d.environmental_temp !== undefined)
 		.curve(curveStepAfter);
 
 	function updateChart(data: RoastPoint[]) {
@@ -359,17 +369,21 @@
 				time: point.time,
 				heat: point.heat ?? lastHeat,
 				fan: point.fan ?? lastFan,
-				bean_temp: point.bean_temp
+				bean_temp: point.bean_temp,
+				environmental_temp: point.environmental_temp,
+				data_source: point.data_source
 			};
 		});
 
 		// Clear existing elements
 		svg.selectAll('.heat-line').remove();
 		svg.selectAll('.fan-line').remove();
-		svg.selectAll('.temp-line').remove();
+		svg.selectAll('.bean-temp-line').remove();
+		svg.selectAll('.env-temp-line').remove();
 		svg.selectAll('.heat-label').remove();
 		svg.selectAll('.fan-label').remove();
 		svg.selectAll('.temp-label').remove();
+		svg.selectAll('.temp-legend').remove();
 		svg.selectAll('.event-marker').remove();
 		svg.selectAll('.event-label').remove();
 
@@ -439,17 +453,88 @@
 			.attr('stroke-width', 2)
 			.attr('d', fanLine);
 
-		// Add temperature line if data exists
-		const tempData = processedData.filter((d) => d.bean_temp !== null && d.bean_temp !== undefined);
-		if (tempData.length > 0) {
+		// Add bean temperature line (BT) if data exists
+		const beanTempData = processedData.filter(
+			(d) => d.bean_temp !== null && d.bean_temp !== undefined
+		);
+		if (beanTempData.length > 0) {
 			svg
 				.append('path')
-				.attr('class', 'temp-line')
-				.datum(tempData)
+				.attr('class', 'bean-temp-line')
+				.datum(beanTempData)
 				.attr('fill', 'none')
-				.attr('stroke', '#dc2626')
+				.attr('stroke', '#dc2626') // Red for bean temperature
 				.attr('stroke-width', 3)
-				.attr('d', tempLine);
+				.attr('d', beanTempLine);
+		}
+
+		// Add environmental temperature line (ET) if data exists
+		const envTempData = processedData.filter(
+			(d) => d.environmental_temp !== null && d.environmental_temp !== undefined
+		);
+		if (envTempData.length > 0) {
+			svg
+				.append('path')
+				.attr('class', 'env-temp-line')
+				.datum(envTempData)
+				.attr('fill', 'none')
+				.attr('stroke', '#f59e0b') // Amber/orange for environmental temperature
+				.attr('stroke-width', 2)
+				.attr('stroke-dasharray', '5,5') // Dashed line to distinguish from BT
+				.attr('d', envTempLine);
+		}
+
+		// Add temperature legend if temperature data exists
+		if (beanTempData.length > 0 || envTempData.length > 0) {
+			const legendGroup = svg.append('g').attr('class', 'temp-legend');
+
+			let legendY = 20;
+			const legendX = width - 120;
+
+			// Bean Temperature legend
+			if (beanTempData.length > 0) {
+				legendGroup
+					.append('line')
+					.attr('x1', legendX)
+					.attr('x2', legendX + 20)
+					.attr('y1', legendY)
+					.attr('y2', legendY)
+					.attr('stroke', '#dc2626')
+					.attr('stroke-width', 3);
+
+				legendGroup
+					.append('text')
+					.attr('x', legendX + 25)
+					.attr('y', legendY)
+					.attr('dy', '0.35em')
+					.attr('font-size', '12px')
+					.attr('fill', '#374151')
+					.text('Bean Temp (BT)');
+
+				legendY += 20;
+			}
+
+			// Environmental Temperature legend
+			if (envTempData.length > 0) {
+				legendGroup
+					.append('line')
+					.attr('x1', legendX)
+					.attr('x2', legendX + 20)
+					.attr('y1', legendY)
+					.attr('y2', legendY)
+					.attr('stroke', '#f59e0b')
+					.attr('stroke-width', 2)
+					.attr('stroke-dasharray', '5,5');
+
+				legendGroup
+					.append('text')
+					.attr('x', legendX + 25)
+					.attr('y', legendY)
+					.attr('dy', '0.35em')
+					.attr('font-size', '12px')
+					.attr('fill', '#374151')
+					.text('Env Temp (ET)');
+			}
 		}
 
 		// Add heat value labels with improved legibility
@@ -526,16 +611,51 @@
 			.attr('transform', (d) => `rotate(-90, ${xScale(d.time / (1000 * 60))}, 10)`);
 	}
 
-	// Update chart when roastData changes
+	// Update chart when roastData changes (live roasting)
 	$effect(() => {
-		const data = $roastData;
-		if (
-			svg !== undefined &&
-			xScale !== undefined &&
-			yScaleFan !== undefined &&
-			yScaleHeat !== undefined
-		) {
-			untrack(() => updateChart(data));
+		if (isDuringRoasting) {
+			const data = $roastData;
+			if (
+				svg !== undefined &&
+				xScale !== undefined &&
+				yScaleFan !== undefined &&
+				yScaleHeat !== undefined
+			) {
+				untrack(() => updateChart(data));
+			}
+		}
+	});
+
+	// Update chart when savedProfileLogs changes (viewing completed profiles)
+	$effect(() => {
+		if (!isDuringRoasting && savedProfileLogs.length > 0) {
+			// Convert ProfileLogEntry[] to RoastPoint[]
+			const chartData: RoastPoint[] = savedProfileLogs.map((log) => {
+				// Handle both time formats: time_seconds (imported) vs time (live)
+				const timeMs = log.time_seconds
+					? log.time_seconds * 1000
+					: typeof log.time === 'string'
+						? mysqlTimeToMs(log.time)
+						: log.time;
+
+				return {
+					time: timeMs,
+					heat: log.heat_setting,
+					fan: log.fan_setting,
+					bean_temp: log.bean_temp,
+					environmental_temp: log.environmental_temp,
+					data_source: log.data_source as any
+				};
+			});
+
+			if (
+				svg !== undefined &&
+				xScale !== undefined &&
+				yScaleFan !== undefined &&
+				yScaleHeat !== undefined
+			) {
+				untrack(() => updateChart(chartData));
+			}
 		}
 	});
 
@@ -996,6 +1116,24 @@
 	function handleArtisanFileSelect(event: Event) {
 		const file = (event.target as HTMLInputElement).files?.[0];
 		if (file) {
+			// Validate file format
+			const fileName = file.name.toLowerCase();
+			if (
+				!fileName.endsWith('.alog') &&
+				!fileName.endsWith('.alog.json') &&
+				!fileName.endsWith('.json')
+			) {
+				alert('Please select a valid Artisan .alog file.');
+				return;
+			}
+
+			// Additional validation: check file size (reasonable limit)
+			if (file.size > 50 * 1024 * 1024) {
+				// 50MB limit
+				alert('File is too large. Please select a file smaller than 50MB.');
+				return;
+			}
+
 			artisanImportFile = file;
 		}
 	}
@@ -1047,12 +1185,29 @@
 			const result = await response.json();
 			console.log('Artisan import successful:', result);
 
+			// Show detailed success message with comprehensive import information
+			const totalMinutes = Math.floor((result.total_time || 0) / 60);
+			const totalSeconds = Math.floor((result.total_time || 0) % 60);
+			const milestoneCount = Object.keys(result.milestones || {}).filter(
+				(key) => result.milestones[key] > 0
+			).length;
+
+			const message =
+				`✅ Successfully imported Artisan roast profile!\n\n` +
+				`📁 File: ${artisanImportFile.name}\n` +
+				`📊 Temperature points: ${result.message.match(/\d+/)?.[0] || 'Unknown'}\n` +
+				`⏱️ Roast duration: ${totalMinutes}:${totalSeconds.toString().padStart(2, '0')}\n` +
+				`🌡️ Temperature unit: ${result.temperature_unit}\n` +
+				`🎯 Milestones: ${milestoneCount} detected\n` +
+				`📈 Roast events: ${result.roast_events || 0}\n` +
+				`📋 Roast phases: ${result.roast_phases || 0}\n` +
+				`⚙️ Device data points: ${result.extra_device_points || 0}\n\n` +
+				`Your coffee name has been preserved. The chart now shows both bean temperature (BT) and environmental temperature (ET) curves.`;
+
+			alert(message);
+
 			// Reload the profile data to show the imported data
 			window.location.reload();
-
-			alert(
-				`Successfully imported ${result.dataPointsCount} data points from ${artisanImportFile.name}`
-			);
 		} catch (error) {
 			console.error('Artisan import failed:', error);
 			alert(
@@ -1401,17 +1556,18 @@
 						for="artisan-file-input"
 						class="mb-2 block text-sm font-medium text-text-primary-light"
 					>
-						Select Artisan CSV or XLSX file:
+						Select Artisan .alog file:
 					</label>
 					<input
 						id="artisan-file-input"
 						type="file"
-						accept=".csv,.xlsx"
+						accept=".alog,.alog.json,.json"
 						onchange={handleArtisanFileSelect}
 						class="block w-full text-sm text-text-primary-light file:mr-4 file:rounded file:border-0 file:bg-background-tertiary-light file:px-4 file:py-2 file:text-sm file:font-semibold file:text-text-primary-light hover:file:bg-background-primary-light"
 					/>
 					<p class="mt-2 text-xs text-text-secondary-light">
-						This will replace all existing roast data for this profile.
+						Import roast profile data from Artisan roasting software. This will replace all existing
+						imported data for this profile.
 					</p>
 				</div>
 
