@@ -201,7 +201,7 @@ function transformArtisanData(
 					automatic: true
 				});
 			}
-			
+
 			if (heatData[index] !== null && heatData[index] !== undefined && heatData[index] !== 0) {
 				controlEvents.push({
 					roast_id: roastId,
@@ -437,7 +437,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// Insert data into new table structure
 		const batchSize = 100;
-		
+
 		// 1. Clear existing data for this roast
 		console.log('Clearing existing imported data...');
 		await supabase
@@ -445,49 +445,45 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			.delete()
 			.eq('roast_id', parseInt(roastId))
 			.eq('data_source', 'artisan_import');
-			
+
 		await supabase
 			.from('roast_events')
 			.delete()
 			.eq('roast_id', parseInt(roastId))
 			.in('category', ['milestone', 'control', 'machine']);
-		
+
 		// 2. Insert temperature data to roast_temperatures table
 		console.log(`Inserting ${processedData.temperatureData.length} temperature points...`);
 		for (let i = 0; i < processedData.temperatureData.length; i += batchSize) {
 			const batch = processedData.temperatureData.slice(i, i + batchSize);
-			const { error: tempError } = await supabase
-				.from('roast_temperatures')
-				.insert(batch);
-			
+			const { error: tempError } = await supabase.from('roast_temperatures').insert(batch);
+
 			if (tempError) {
 				console.error('Error inserting temperature batch:', tempError);
 				throw tempError;
 			}
 		}
-		
+
 		// 3. Insert milestone events
 		if (processedData.milestoneEvents.length > 0) {
 			console.log(`Inserting ${processedData.milestoneEvents.length} milestone events...`);
 			const { error: milestoneError } = await supabase
 				.from('roast_events')
 				.insert(processedData.milestoneEvents);
-			
+
 			if (milestoneError) {
 				console.error('Error inserting milestone events:', milestoneError);
 				throw milestoneError;
 			}
 		}
-		
+
 		// 4. Insert control events in batches
 		if (processedData.controlEvents.length > 0) {
 			console.log(`Inserting ${processedData.controlEvents.length} control events...`);
 			for (let i = 0; i < processedData.controlEvents.length; i += batchSize) {
 				const batch = processedData.controlEvents.slice(i, i + batchSize);
-				const { error: controlError } = await supabase
-					.from('roast_events')
-					.insert(batch);
-				
+				const { error: controlError } = await supabase.from('roast_events').insert(batch);
+
 				if (controlError) {
 					console.error('Error inserting control event batch:', controlError);
 					throw controlError;

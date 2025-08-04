@@ -11,7 +11,7 @@ The roast data has been restructured into a normalized schema that separates hig
 ### New Table Structure
 
 1. **`roast_temperatures`** - High-volume time series data with pre-calculated RoR
-2. **`roast_events`** - Normalized events (milestones, controls, machine settings) 
+2. **`roast_events`** - Normalized events (milestones, controls, machine settings)
 3. **`roast_profiles`** - Master roast metadata with chart display settings
 4. **`profile_log`** - DEPRECATED (will be removed after migration)
 
@@ -86,7 +86,9 @@ The Artisan JSON export contains several key sections:
 5. **phases**: Additional phase markers for roast progression
 
 ### Important Temperature Mapping
+
 **CRITICAL**: In Artisan .alog files, the temperature arrays are:
+
 - `temp1` = Environmental Temperature (ET)
 - `temp2` = Bean Temperature (BT)
 
@@ -114,22 +116,22 @@ CREATE TABLE roast_temperatures (
   temp_id BIGSERIAL PRIMARY KEY,
   roast_id INTEGER NOT NULL,
   time_seconds DECIMAL(8,3) NOT NULL,
-  
+
   -- Temperature readings
   bean_temp DECIMAL(5,1),           -- BT (temp2 from Artisan)
   environmental_temp DECIMAL(5,1),  -- ET (temp1 from Artisan)
   ambient_temp DECIMAL(5,1),        -- Optional third sensor
   inlet_temp DECIMAL(5,1),          -- Optional inlet sensor
-  
+
   -- Pre-calculated Rate of Rise for bean temperature only (per minute)
   -- Only calculated during active roasting period (charge to drop)
   ror_bean_temp DECIMAL(5,2),
-  
+
   -- Data source tracking
   data_source TEXT DEFAULT 'live' CHECK (data_source IN ('live', 'artisan_import', 'manual')),
   data_quality TEXT DEFAULT 'good' CHECK (data_quality IN ('good', 'interpolated', 'estimated', 'poor')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
+
   FOREIGN KEY (roast_id) REFERENCES roast_profiles(roast_id) ON DELETE CASCADE
 );
 
@@ -165,16 +167,19 @@ CREATE INDEX idx_roast_events_milestone ON roast_events(roast_id, event_string) 
 #### Event Categories:
 
 **Milestone Events (X-axis only - NULL values):**
+
 - `event_string`: 'charge', 'dry_end', 'fc_start', 'fc_end', 'sc_start', 'drop', 'cool'
 - `event_value`: NULL (row existence indicates event occurred)
 - `category`: 'milestone'
 
 **Control Events (Y-axis values as TEXT):**
+
 - `event_string`: 'fan_setting', 'heat_setting', 'damper_setting'
 - `event_value`: '8', '75%', '3.5'
 - `category`: 'control'
 
 **Machine Events from Artisan (Y-axis values as TEXT):**
+
 - `event_string`: 'Air', 'Drum', 'Damper', 'Burner'
 - `event_value`: '75', '85%'
 - `category`: 'machine'
@@ -703,49 +708,55 @@ function reduceDataPoints(logs: ProfileLogEntry[], maxPoints = 200): ProfileLogE
 ### Chart Data Retrieval (New Normalized Structure)
 
 **Temperature Curve Data:**
+
 ```sql
 -- Get temperature data with pre-calculated bean temp RoR (charge to drop period only)
 SELECT time_seconds, bean_temp, environmental_temp, ror_bean_temp
-FROM roast_temperatures 
-WHERE roast_id = ? 
+FROM roast_temperatures
+WHERE roast_id = ?
 ORDER BY time_seconds ASC;
 ```
 
 **Milestone Markers:**
+
 ```sql
 -- Get milestone events (NULL values indicate event occurrence)
 SELECT time_seconds, event_string
-FROM roast_events 
+FROM roast_events
 WHERE roast_id = ? AND category = 'milestone' AND event_value IS NULL
 ORDER BY time_seconds ASC;
 ```
 
 **Control Overlays:**
+
 ```sql
 -- Get control events (fan, heat settings)
 SELECT time_seconds, event_string, event_value
-FROM roast_events 
+FROM roast_events
 WHERE roast_id = ? AND category IN ('control', 'machine') AND event_value IS NOT NULL
 ORDER BY time_seconds ASC;
 ```
 
 **Chart Display Settings:**
+
 ```sql
 -- Get Artisan chart ranges for proper axis scaling
 SELECT chart_x_min, chart_x_max, chart_y_min, chart_y_max, chart_z_min, chart_z_max
-FROM roast_profiles 
+FROM roast_profiles
 WHERE roast_id = ?;
 ```
 
 ### Migration Data Flow
 
 **During Transition:**
+
 1. **Dual-Write APIs**: Write to both `profile_log` and new structure
 2. **Feature Flag**: `ENABLE_NEW_STRUCTURE = true` controls new table population
 3. **Fallback Queries**: Chart components can read from either structure
 4. **Data Validation**: Verify data consistency between old and new structures
 
 **After Migration:**
+
 1. **Single Source**: All queries read from normalized structure only
 2. **Performance**: Optimized queries with proper indexing
 3. **RoR Calculations**: Pre-calculated during insert, no runtime computation
@@ -754,24 +765,28 @@ WHERE roast_id = ?;
 ### Key Benefits of New Structure
 
 #### **Performance Improvements:**
+
 - **Separate Temperature Table**: Optimized for high-volume time series queries
 - **Pre-calculated Bean Temp RoR**: Calculated only during active roasting (charge to drop)
 - **Targeted Indexes**: Optimized for common query patterns
 - **Reduced Event Table Size**: No temperature data in events table
 
 #### **Data Consistency:**
+
 - **Normalized Events**: Single structure for all event types
 - **Standardized Time**: All tables use `time_seconds` format
 - **TEXT Event Values**: Support for any value format ("75%", "8.5", etc.)
 - **Clear Separation**: Temperature vs event data clearly separated
 
 #### **Extensibility:**
+
 - **Easy Event Addition**: New event types require no schema changes
 - **Machine Integration**: Direct support for Artisan extradevices
 - **Chart Flexibility**: Artisan display settings preserved for accurate rendering
 - **Future Sensors**: Additional temperature sensors easily added
 
 #### **Artisan Integration:**
+
 - **Complete Data Preservation**: All Artisan data fields mapped and stored
 - **Chart Compatibility**: Original chart ranges preserved for accurate display
 - **Machine Events**: Full support for Air/Drum/Damper/Burner controls
@@ -780,17 +795,18 @@ WHERE roast_id = ?;
 ### Migration Verification
 
 **Data Integrity Checks:**
+
 ```sql
 -- Compare record counts between old and new structure
-SELECT 
+SELECT
     'Legacy Profile Logs' as table_name, COUNT(*) as record_count
 FROM profile_log WHERE roast_id = ?
 UNION ALL
-SELECT 
+SELECT
     'New Temperature Records' as table_name, COUNT(*) as record_count
 FROM roast_temperatures WHERE roast_id = ?
 UNION ALL
-SELECT 
+SELECT
     'New Event Records' as table_name, COUNT(*) as record_count
 FROM roast_events WHERE roast_id = ?;
 ```
@@ -800,7 +816,7 @@ FROM roast_events WHERE roast_id = ?;
 The new normalized schema provides a robust, scalable foundation for roast data management that:
 
 - **Eliminates Redundancy**: No more duplicate time/event columns
-- **Improves Performance**: Optimized for high-volume temperature logging and chart queries  
+- **Improves Performance**: Optimized for high-volume temperature logging and chart queries
 - **Standardizes Events**: Unified structure for all roast events and controls
 - **Preserves Compatibility**: Full backward compatibility during migration
 - **Supports Growth**: Easy to add new sensors, events, and features

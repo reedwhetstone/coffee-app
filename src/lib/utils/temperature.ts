@@ -77,7 +77,7 @@ export function getTemperatureRange(
 /**
  * Normalize temperature data to a target unit
  * This is the main function for processing Artisan data
- * 
+ *
  * IMPORTANT: In Artisan .alog files:
  * - temp1 = Environmental Temperature (ET)
  * - temp2 = Bean Temperature (BT)

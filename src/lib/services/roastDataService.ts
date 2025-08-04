@@ -11,7 +11,7 @@ export interface TemperatureDataPoint {
 	bean_temp: number | null;
 	environmental_temp: number | null;
 	ambient_temp: number | null;
-	ror_bean_temp: number | null;  // Only bean temp RoR calculated
+	ror_bean_temp: number | null; // Only bean temp RoR calculated
 	data_source: 'live' | 'artisan_import' | 'manual';
 }
 
@@ -164,16 +164,19 @@ export class RoastDataService {
 		}
 
 		// Group events by event_string
-		const groupedEvents = new Map<string, Array<{time_seconds: number; value: number; category: string}>>();
-		
+		const groupedEvents = new Map<
+			string,
+			Array<{ time_seconds: number; value: number; category: string }>
+		>();
+
 		for (const event of data || []) {
 			const numericValue = parseFloat(event.event_value);
 			if (isNaN(numericValue)) continue; // Skip non-numeric values
-			
+
 			if (!groupedEvents.has(event.event_string)) {
 				groupedEvents.set(event.event_string, []);
 			}
-			
+
 			groupedEvents.get(event.event_string)!.push({
 				time_seconds: event.time_seconds,
 				value: numericValue,
@@ -183,14 +186,14 @@ export class RoastDataService {
 
 		// Create event value series with range detection
 		const eventValueSeries: EventValueSeries[] = [];
-		
+
 		for (const [eventString, values] of groupedEvents) {
 			if (values.length === 0) continue;
-			
-			const numericValues = values.map(v => v.value);
+
+			const numericValues = values.map((v) => v.value);
 			const min = Math.min(...numericValues);
 			const max = Math.max(...numericValues);
-			
+
 			// Auto-detect scale type
 			let detected_scale: 'percentage' | 'decimal' | 'custom' = 'custom';
 			if (min >= 0 && max <= 10) {
@@ -198,11 +201,11 @@ export class RoastDataService {
 			} else if (min >= 0 && max <= 100) {
 				detected_scale = 'percentage'; // 0-100 scale
 			}
-			
+
 			eventValueSeries.push({
 				event_string: eventString,
 				category: values[0].category, // Use category from first event
-				values: values.map(v => ({
+				values: values.map((v) => ({
 					time_seconds: v.time_seconds,
 					value: v.value
 				})),
@@ -230,16 +233,17 @@ export class RoastDataService {
 		]);
 
 		// Calculate metadata
-		const timeRange: [number, number] = temperatures.length > 0 
-			? [temperatures[0].time_seconds, temperatures[temperatures.length - 1].time_seconds]
-			: [0, 0];
+		const timeRange: [number, number] =
+			temperatures.length > 0
+				? [temperatures[0].time_seconds, temperatures[temperatures.length - 1].time_seconds]
+				: [0, 0];
 
-		const allTemps = temperatures.flatMap(t => [t.bean_temp, t.environmental_temp, t.ambient_temp])
-			.filter(temp => temp !== null) as number[];
-		
-		const temperatureRange: [number, number] = allTemps.length > 0
-			? [Math.min(...allTemps), Math.max(...allTemps)]
-			: [0, 0];
+		const allTemps = temperatures
+			.flatMap((t) => [t.bean_temp, t.environmental_temp, t.ambient_temp])
+			.filter((temp) => temp !== null) as number[];
+
+		const temperatureRange: [number, number] =
+			allTemps.length > 0 ? [Math.min(...allTemps), Math.max(...allTemps)] : [0, 0];
 
 		return {
 			temperatures,
@@ -260,7 +264,7 @@ export class RoastDataService {
 	 */
 	async getOptimizedChartData(roastId: number, maxPoints: number = 200): Promise<ChartData> {
 		const fullData = await this.getChartData(roastId);
-		
+
 		// If we have fewer points than the limit, return as-is
 		if (fullData.temperatures.length <= maxPoints) {
 			return fullData;
@@ -269,7 +273,7 @@ export class RoastDataService {
 		// Reduce temperature data points
 		const step = Math.ceil(fullData.temperatures.length / maxPoints);
 		const reducedTemperatures: TemperatureDataPoint[] = [];
-		
+
 		for (let i = 0; i < fullData.temperatures.length; i += step) {
 			reducedTemperatures.push(fullData.temperatures[i]);
 		}
@@ -326,13 +330,13 @@ export class RoastDataService {
 		}
 
 		// Convert legacy data to new format
-		const temperatures: TemperatureDataPoint[] = (data || []).map(row => ({
+		const temperatures: TemperatureDataPoint[] = (data || []).map((row) => ({
 			time_seconds: row.time_seconds || 0,
 			bean_temp: row.bean_temp,
 			environmental_temp: row.environmental_temp,
 			ambient_temp: null,
-			ror_bean_temp: null,  // RoR not calculated in legacy data
-			data_source: row.data_source || 'live' as 'live' | 'artisan_import' | 'manual'
+			ror_bean_temp: null, // RoR not calculated in legacy data
+			data_source: row.data_source || ('live' as 'live' | 'artisan_import' | 'manual')
 		}));
 
 		// Extract milestone events from boolean fields
@@ -344,53 +348,98 @@ export class RoastDataService {
 
 			// Milestone events
 			if (row.start === 1) {
-				milestones.push({ time_seconds: timeSeconds, event_string: 'start', temperature: row.bean_temp });
+				milestones.push({
+					time_seconds: timeSeconds,
+					event_string: 'start',
+					temperature: row.bean_temp
+				});
 			}
 			if (row.charge === 1) {
-				milestones.push({ time_seconds: timeSeconds, event_string: 'charge', temperature: row.bean_temp });
+				milestones.push({
+					time_seconds: timeSeconds,
+					event_string: 'charge',
+					temperature: row.bean_temp
+				});
 			}
 			if (row.maillard === 1) {
-				milestones.push({ time_seconds: timeSeconds, event_string: 'dry_end', temperature: row.bean_temp });
+				milestones.push({
+					time_seconds: timeSeconds,
+					event_string: 'dry_end',
+					temperature: row.bean_temp
+				});
 			}
 			if (row.fc_start === 1) {
-				milestones.push({ time_seconds: timeSeconds, event_string: 'fc_start', temperature: row.bean_temp });
+				milestones.push({
+					time_seconds: timeSeconds,
+					event_string: 'fc_start',
+					temperature: row.bean_temp
+				});
 			}
 			if (row.fc_rolling === 1) {
-				milestones.push({ time_seconds: timeSeconds, event_string: 'fc_rolling', temperature: row.bean_temp });
+				milestones.push({
+					time_seconds: timeSeconds,
+					event_string: 'fc_rolling',
+					temperature: row.bean_temp
+				});
 			}
 			if (row.fc_end === 1) {
-				milestones.push({ time_seconds: timeSeconds, event_string: 'fc_end', temperature: row.bean_temp });
+				milestones.push({
+					time_seconds: timeSeconds,
+					event_string: 'fc_end',
+					temperature: row.bean_temp
+				});
 			}
 			if (row.sc_start === 1) {
-				milestones.push({ time_seconds: timeSeconds, event_string: 'sc_start', temperature: row.bean_temp });
+				milestones.push({
+					time_seconds: timeSeconds,
+					event_string: 'sc_start',
+					temperature: row.bean_temp
+				});
 			}
 			if (row.drop === 1) {
-				milestones.push({ time_seconds: timeSeconds, event_string: 'drop', temperature: row.bean_temp });
+				milestones.push({
+					time_seconds: timeSeconds,
+					event_string: 'drop',
+					temperature: row.bean_temp
+				});
 			}
 			if (row.end === 1) {
-				milestones.push({ time_seconds: timeSeconds, event_string: 'cool', temperature: row.bean_temp });
+				milestones.push({
+					time_seconds: timeSeconds,
+					event_string: 'cool',
+					temperature: row.bean_temp
+				});
 			}
 
 			// Control events
 			if (row.fan_setting !== null) {
-				controls.push({ time_seconds: timeSeconds, event_string: 'fan_setting', event_value: row.fan_setting.toString() });
+				controls.push({
+					time_seconds: timeSeconds,
+					event_string: 'fan_setting',
+					event_value: row.fan_setting.toString()
+				});
 			}
 			if (row.heat_setting !== null) {
-				controls.push({ time_seconds: timeSeconds, event_string: 'heat_setting', event_value: row.heat_setting.toString() });
+				controls.push({
+					time_seconds: timeSeconds,
+					event_string: 'heat_setting',
+					event_value: row.heat_setting.toString()
+				});
 			}
 		}
 
 		// Calculate metadata
-		const timeRange: [number, number] = temperatures.length > 0 
-			? [temperatures[0].time_seconds, temperatures[temperatures.length - 1].time_seconds]
-			: [0, 0];
+		const timeRange: [number, number] =
+			temperatures.length > 0
+				? [temperatures[0].time_seconds, temperatures[temperatures.length - 1].time_seconds]
+				: [0, 0];
 
-		const allTemps = temperatures.flatMap(t => [t.bean_temp, t.environmental_temp])
-			.filter(temp => temp !== null) as number[];
-		
-		const temperatureRange: [number, number] = allTemps.length > 0
-			? [Math.min(...allTemps), Math.max(...allTemps)]
-			: [0, 0];
+		const allTemps = temperatures
+			.flatMap((t) => [t.bean_temp, t.environmental_temp])
+			.filter((temp) => temp !== null) as number[];
+
+		const temperatureRange: [number, number] =
+			allTemps.length > 0 ? [Math.min(...allTemps), Math.max(...allTemps)] : [0, 0];
 
 		return {
 			temperatures,

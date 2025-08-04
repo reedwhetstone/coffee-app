@@ -1,6 +1,15 @@
 <script lang="ts">
 	import { onMount, onDestroy, untrack } from 'svelte';
-	import { select, scaleLinear, axisBottom, axisLeft, axisRight, line, type Selection, type ScaleLinear } from 'd3';
+	import {
+		select,
+		scaleLinear,
+		axisBottom,
+		axisLeft,
+		axisRight,
+		line,
+		type Selection,
+		type ScaleLinear
+	} from 'd3';
 	import { curveStepAfter, curveBasis } from 'd3-shape';
 	import {
 		roastData,
@@ -194,7 +203,7 @@
 					automatic: false
 				}
 			];
-			
+
 			// Create initial temperature entry
 			$temperatureEntries = [
 				{
@@ -336,73 +345,77 @@
 	});
 
 	// Function to apply moving average smoothing to temperature data
-	function smoothTemperatureData(data: { time: number; temp: number }[], windowSize: number): { time: number; temp: number }[] {
+	function smoothTemperatureData(
+		data: { time: number; temp: number }[],
+		windowSize: number
+	): { time: number; temp: number }[] {
 		if (data.length === 0) return [];
-		
+
 		const smoothedData: { time: number; temp: number }[] = [];
-		
+
 		for (let i = 0; i < data.length; i++) {
 			const start = Math.max(0, i - Math.floor(windowSize / 2));
 			const end = Math.min(data.length, i + Math.ceil(windowSize / 2));
-			
+
 			let sum = 0;
 			let count = 0;
-			
+
 			for (let j = start; j < end; j++) {
 				sum += data[j].temp;
 				count++;
 			}
-			
+
 			smoothedData.push({
 				time: data[i].time,
 				temp: sum / count
 			});
 		}
-		
+
 		return smoothedData;
 	}
 
 	// Function to calculate BT Rate of Rise (RoR/ΔBT) with ultra-smooth multi-stage processing
 	function calculateBTRoR(data: RoastPoint[]): { time: number; ror: number }[] {
 		if (data.length < 2) return [];
-		
+
 		// Step 1: Filter and extract valid bean temperature data
 		const validTempData = data
-			.filter(point => 
-				point.bean_temp !== null && 
-				point.bean_temp !== undefined &&
-				point.bean_temp > 0  // Exclude zero temperatures
+			.filter(
+				(point) => point.bean_temp !== null && point.bean_temp !== undefined && point.bean_temp > 0 // Exclude zero temperatures
 			)
-			.map(point => ({ time: point.time, temp: point.bean_temp! }));
-		
+			.map((point) => ({ time: point.time, temp: point.bean_temp! }));
+
 		if (validTempData.length < 30) return []; // Need sufficient data for smooth calculation
-		
+
 		// Step 2: Pre-smooth the temperature data to reduce noise (15-point window)
 		const smoothedTempData = smoothTemperatureData(validTempData, 15);
-		
+
 		// Step 3: Calculate RoR using sliding 30-second windows for stability
 		const rorData: { time: number; ror: number }[] = [];
 		const windowSeconds = 30; // 30-second sliding window
 		const sampleIntervalMs = 3000; // Sample every 3 seconds for performance
-		
+
 		for (let i = 0; i < smoothedTempData.length; i += Math.floor(sampleIntervalMs / 1000)) {
 			const currentPoint = smoothedTempData[i];
 			const currentTime = currentPoint.time;
-			
+
 			// Find points within the sliding window (±15 seconds)
-			const windowStart = currentTime - (windowSeconds * 1000 / 2);
-			const windowEnd = currentTime + (windowSeconds * 1000 / 2);
-			
-			const windowPoints = smoothedTempData.filter(point => 
-				point.time >= windowStart && point.time <= windowEnd
+			const windowStart = currentTime - (windowSeconds * 1000) / 2;
+			const windowEnd = currentTime + (windowSeconds * 1000) / 2;
+
+			const windowPoints = smoothedTempData.filter(
+				(point) => point.time >= windowStart && point.time <= windowEnd
 			);
-			
+
 			if (windowPoints.length >= 5) {
 				// Use linear regression over the window for most stable RoR calculation
 				const n = windowPoints.length;
-				let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-				
-				windowPoints.forEach(point => {
+				let sumX = 0,
+					sumY = 0,
+					sumXY = 0,
+					sumXX = 0;
+
+				windowPoints.forEach((point) => {
 					const x = (point.time - windowStart) / (1000 * 60); // Time in minutes from window start
 					const y = point.temp;
 					sumX += x;
@@ -410,7 +423,7 @@
 					sumXY += x * y;
 					sumXX += x * x;
 				});
-				
+
 				// Calculate slope (RoR) using linear regression
 				const denominator = n * sumXX - sumX * sumX;
 				if (denominator !== 0) {
@@ -419,36 +432,37 @@
 				}
 			}
 		}
-		
+
 		if (rorData.length === 0) return [];
-		
+
 		// Step 4: Apply final smoothing to RoR values (20-point window for ultra-smooth result)
 		const finalSmoothedData: { time: number; ror: number }[] = [];
 		const finalWindowSize = 20;
-		
+
 		for (let i = 0; i < rorData.length; i++) {
 			const start = Math.max(0, i - Math.floor(finalWindowSize / 2));
 			const end = Math.min(rorData.length, i + Math.ceil(finalWindowSize / 2));
-			
+
 			let sum = 0;
 			let count = 0;
-			
+
 			for (let j = start; j < end; j++) {
 				sum += rorData[j].ror;
 				count++;
 			}
-			
+
 			const smoothedRor = sum / count;
-			
+
 			// Include all reasonable RoR values for complete curve
-			if (Math.abs(smoothedRor) <= 50) { // Cap extreme values
-				finalSmoothedData.push({ 
-					time: rorData[i].time, 
-					ror: smoothedRor 
+			if (Math.abs(smoothedRor) <= 50) {
+				// Cap extreme values
+				finalSmoothedData.push({
+					time: rorData[i].time,
+					ror: smoothedRor
 				});
 			}
 		}
-		
+
 		return finalSmoothedData;
 	}
 
@@ -458,7 +472,7 @@
 	function getChargeTime(data: RoastPoint[]): number {
 		// Use appropriate event source based on current state
 		const events = isDuringRoasting ? $eventEntries : savedEventEntries;
-		
+
 		// Extract milestones from event entries
 		if (events.length > 0) {
 			const milestones = extractMilestones(events);
@@ -471,13 +485,15 @@
 		}
 
 		// For imported Artisan data, look for charge event in the data itself
-		const chargePoint = data.find(point => point.data_source === 'artisan_import' && point.charge);
+		const chargePoint = data.find(
+			(point) => point.data_source === 'artisan_import' && point.charge
+		);
 		if (chargePoint) {
 			return chargePoint.time;
 		}
 
 		// Fallback: look for any charge point in the data
-		const anyChargePoint = data.find(point => point.charge);
+		const anyChargePoint = data.find((point) => point.charge);
 		if (anyChargePoint) {
 			return anyChargePoint.time;
 		}
@@ -536,7 +552,7 @@
 			'#7c2d12', // Dark red for burner events
 			'#6d28d9', // Purple for additional events
 			'#ea580c', // Orange for temperature control
-			'#0891b2'  // Teal for miscellaneous
+			'#0891b2' // Teal for miscellaneous
 		];
 
 		savedEventValueSeries.forEach((eventSeries, index) => {
@@ -550,23 +566,23 @@
 
 			// Convert event values to chart data points with carry-forward logic
 			let lastValue = eventSeries.values[0].value;
-			const eventDataPoints: Array<{time: number, value: number}> = [];
+			const eventDataPoints: Array<{ time: number; value: number }> = [];
 
 			// Find all time points that need event values
-			const allTimePoints = processedData.map(d => d.time);
-			
-			allTimePoints.forEach(timeMs => {
+			const allTimePoints = processedData.map((d) => d.time);
+
+			allTimePoints.forEach((timeMs) => {
 				const timeSeconds = timeMs / 1000;
-				
+
 				// Find the most recent event value before or at this time
 				const applicableEvent = eventSeries.values
-					.filter(v => v.time_seconds <= timeSeconds)
+					.filter((v) => v.time_seconds <= timeSeconds)
 					.pop();
-				
+
 				if (applicableEvent) {
 					lastValue = applicableEvent.value;
 				}
-				
+
 				eventDataPoints.push({
 					time: timeMs,
 					value: lastValue
@@ -574,7 +590,7 @@
 			});
 
 			// Create line generator for this event type
-			const eventLine = line<{time: number, value: number}>()
+			const eventLine = line<{ time: number; value: number }>()
 				.x((d) => {
 					const adjustedTime = (d.time - chargeTime) / (1000 * 60);
 					return xScale(adjustedTime);
@@ -594,11 +610,12 @@
 				.attr('d', eventLine);
 
 			// Add value labels at change points
-			const changePoints = eventSeries.values.filter((value, i) => 
-				i === 0 || value.value !== eventSeries.values[i - 1].value
+			const changePoints = eventSeries.values.filter(
+				(value, i) => i === 0 || value.value !== eventSeries.values[i - 1].value
 			);
 
-			svg.selectAll(`.event-value-label-${index}`)
+			svg
+				.selectAll(`.event-value-label-${index}`)
 				.data(changePoints)
 				.enter()
 				.append('text')
@@ -629,7 +646,7 @@
 
 		// Create scale based on detected scale type
 		let domain: [number, number];
-		
+
 		switch (eventSeries.value_range.detected_scale) {
 			case 'decimal': // 0-10 scale
 				domain = [0, 10];
@@ -683,14 +700,18 @@
 		svg.selectAll('.event-label').remove();
 		svg.selectAll('.event-value-line').remove(); // Clear dynamic event value lines
 		svg.selectAll('.event-value-label').remove(); // Clear dynamic event value labels
-		
+
 		// Clear any remaining event-related elements that might persist
 		svg.selectAll('[class*="event-value-label-"]').remove(); // Clear numbered event labels
 		svg.selectAll('path[stroke*="#"]').remove(); // Clear any remaining colored paths
-		svg.selectAll('text').filter(function() {
-			const text = this.textContent || '';
-			return text.includes('_setting') || text.includes('fan') || text.includes('heat');
-		}).remove(); // Clear any remaining event-related text
+		svg
+			.selectAll('text')
+			.filter(function () {
+				const element = this as any;
+				const text = element?.textContent || '';
+				return text.includes('_setting') || text.includes('fan') || text.includes('heat');
+			})
+			.remove(); // Clear any remaining event-related text
 
 		// Get charge time for relative time calculation
 		const chargeTime = getChargeTime(data);
@@ -717,21 +738,22 @@
 
 		// Update x-axis scale based on data duration (charge-relative)
 		const endEvent = eventData.find((event) => event.name === 'End');
-		const maxTimeRelative = data.length > 0
-			? endEvent
-				? (endEvent.time - chargeTime) / (1000 * 60) // Convert end event time to minutes relative to charge
-				: Math.max(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) // Convert data time to minutes relative to charge
-			: 12; // Default to 12 if no data
+		const maxTimeRelative =
+			data.length > 0
+				? endEvent
+					? (endEvent.time - chargeTime) / (1000 * 60) // Convert end event time to minutes relative to charge
+					: Math.max(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) // Convert data time to minutes relative to charge
+				: 12; // Default to 12 if no data
 
-		const minTimeRelative = data.length > 0
-			? Math.min(...data.map((d) => (d.time - chargeTime) / (1000 * 60)))
-			: -2;
+		const minTimeRelative =
+			data.length > 0 ? Math.min(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) : -2;
 
 		xScale.domain([Math.min(minTimeRelative, -2), Math.max(maxTimeRelative, 12)]);
 
 		// Update time tracker position (charge-relative)
 		if (isRoasting && !isPaused) {
-			const currentTime = (performance.now() - $startTime! + $accumulatedTime - chargeTime) / (1000 * 60);
+			const currentTime =
+				(performance.now() - $startTime! + $accumulatedTime - chargeTime) / (1000 * 60);
 			svg
 				.select('.time-tracker')
 				.style('display', 'block')
@@ -743,13 +765,14 @@
 
 		// Update x-axis and charge line position
 		svg.select('.x-axis').call(axisBottom(xScale) as any);
-		svg.select('.charge-line')
-			.attr('x1', xScale(0))
-			.attr('x2', xScale(0));
+		svg.select('.charge-line').attr('x1', xScale(0)).attr('x2', xScale(0));
 
 		// Add environmental temperature line (ET) - solid line
 		const envTempData = processedData.filter(
-			(d) => d.environmental_temp !== null && d.environmental_temp !== undefined && d.environmental_temp > 0
+			(d) =>
+				d.environmental_temp !== null &&
+				d.environmental_temp !== undefined &&
+				d.environmental_temp > 0
 		);
 		if (envTempData.length > 0) {
 			svg
@@ -876,7 +899,6 @@
 			// Delta BT legend removed - same as RoR
 		}
 
-
 		// Update event markers - Create separate groups for each event
 		const eventGroups = svg
 			.selectAll('.event-group')
@@ -999,15 +1021,13 @@
 
 		// Update y-axis positions and dimensions
 		svg.select('.y-axis-left').call(axisLeft(yScaleTemp) as any);
-		svg.select('.y-axis-right')
+		svg
+			.select('.y-axis-right')
 			.attr('transform', `translate(${width}, 0)`)
 			.call(axisRight(yScaleRoR) as any);
 
 		// Update charge line position
-		svg.select('.charge-line')
-			.attr('x1', xScale(0))
-			.attr('x2', xScale(0))
-			.attr('y2', height);
+		svg.select('.charge-line').attr('x1', xScale(0)).attr('x2', xScale(0)).attr('y2', height);
 
 		// Redraw light temperature grid lines
 		for (let temp = 150; temp <= 450; temp += 50) {
@@ -1080,7 +1100,7 @@
 			.style('font-weight', 'bold')
 			.text('Temperature (°F)');
 
-		// Add right y-axis (RoR)  
+		// Add right y-axis (RoR)
 		svg
 			.append('g')
 			.attr('class', 'y-axis-right')
@@ -1188,11 +1208,13 @@
 		const roastId = currentRoastProfile?.roast_id || 0;
 
 		// Check if we need to add an end event
-		const hasDropEvent = $eventEntries.some(e => e.event_string === 'drop');
-		const hasEndEvent = $eventEntries.some(e => e.event_string === 'cool' || e.event_string === 'end');
-		
+		const hasDropEvent = $eventEntries.some((e) => e.event_string === 'drop');
+		const hasEndEvent = $eventEntries.some(
+			(e) => e.event_string === 'cool' || e.event_string === 'end'
+		);
+
 		let finalEventEntries = [...$eventEntries];
-		
+
 		if (hasDropEvent && !hasEndEvent) {
 			// Add end event after drop
 			finalEventEntries.push({
@@ -1206,7 +1228,7 @@
 				user_generated: true,
 				automatic: false
 			});
-			
+
 			// Add final control settings
 			finalEventEntries.push({
 				roast_id: roastId,
@@ -1219,7 +1241,7 @@
 				user_generated: true,
 				automatic: false
 			});
-			
+
 			finalEventEntries.push({
 				roast_id: roastId,
 				time_seconds: timeSeconds,
@@ -1288,7 +1310,7 @@
 			// Create event entries for new structure
 			const timeSeconds = msToSeconds(currentTime);
 			const roastId = currentRoastProfile?.roast_id || 0;
-			
+
 			// Add milestone event
 			const milestoneEvent: RoastEventEntry = {
 				roast_id: roastId,
@@ -1301,10 +1323,10 @@
 				user_generated: true,
 				automatic: false
 			};
-			
+
 			// Add control events for current settings
 			const controlEvents: RoastEventEntry[] = [];
-			
+
 			controlEvents.push({
 				roast_id: roastId,
 				time_seconds: timeSeconds,
@@ -1316,7 +1338,7 @@
 				user_generated: true,
 				automatic: false
 			});
-			
+
 			controlEvents.push({
 				roast_id: roastId,
 				time_seconds: timeSeconds,
@@ -1345,9 +1367,9 @@
 		// Create control event entries for settings change
 		const timeSeconds = msToSeconds(currentTime);
 		const roastId = currentRoastProfile?.roast_id || 0;
-		
+
 		const controlEvents: RoastEventEntry[] = [];
-		
+
 		controlEvents.push({
 			roast_id: roastId,
 			time_seconds: timeSeconds,
@@ -1359,7 +1381,7 @@
 			user_generated: true,
 			automatic: false
 		});
-		
+
 		controlEvents.push({
 			roast_id: roastId,
 			time_seconds: timeSeconds,
@@ -1444,21 +1466,24 @@
 	);
 
 	// Convert temperature entries and events to roast data format for chart display
-	function convertToRoastData(temperatures: TemperatureEntry[], events: RoastEventEntry[]): RoastPoint[] {
-		return temperatures.map(temp => {
+	function convertToRoastData(
+		temperatures: TemperatureEntry[],
+		events: RoastEventEntry[]
+	): RoastPoint[] {
+		return temperatures.map((temp) => {
 			// Find control events at this time
 			const fanEvent = events.find(
-				e => e.event_string === 'fan_setting' && Math.abs(e.time_seconds - temp.time_seconds) < 1
+				(e) => e.event_string === 'fan_setting' && Math.abs(e.time_seconds - temp.time_seconds) < 1
 			);
 			const heatEvent = events.find(
-				e => e.event_string === 'heat_setting' && Math.abs(e.time_seconds - temp.time_seconds) < 1
+				(e) => e.event_string === 'heat_setting' && Math.abs(e.time_seconds - temp.time_seconds) < 1
 			);
-			
+
 			// Find milestone events at this time
 			const milestoneEvents = events.filter(
-				e => e.category === 'milestone' && Math.abs(e.time_seconds - temp.time_seconds) < 1
+				(e) => e.category === 'milestone' && Math.abs(e.time_seconds - temp.time_seconds) < 1
 			);
-			
+
 			return {
 				time: secondsToMs(temp.time_seconds),
 				heat: heatEvent ? parseInt(heatEvent.event_value || '0') : 0,
@@ -1469,12 +1494,14 @@
 				ror_bean_temp: temp.ror_bean_temp,
 				data_source: temp.data_source,
 				// Include milestone flags for charge detection
-				charge: milestoneEvents.some(e => e.event_string === 'charge'),
-				start: milestoneEvents.some(e => e.event_string === 'start'),
-				maillard: milestoneEvents.some(e => e.event_string === 'dry_end' || e.event_string === 'maillard'),
-				fc_start: milestoneEvents.some(e => e.event_string === 'fc_start'),
-				drop: milestoneEvents.some(e => e.event_string === 'drop'),
-				end: milestoneEvents.some(e => e.event_string === 'cool' || e.event_string === 'end')
+				charge: milestoneEvents.some((e) => e.event_string === 'charge'),
+				start: milestoneEvents.some((e) => e.event_string === 'start'),
+				maillard: milestoneEvents.some(
+					(e) => e.event_string === 'dry_end' || e.event_string === 'maillard'
+				),
+				fc_start: milestoneEvents.some((e) => e.event_string === 'fc_start'),
+				drop: milestoneEvents.some((e) => e.event_string === 'drop'),
+				end: milestoneEvents.some((e) => e.event_string === 'cool' || e.event_string === 'end')
 			};
 		});
 	}
@@ -1487,24 +1514,24 @@
 				fetch(`/api/profile-log?roast_id=${roastId}`),
 				fetch(`/api/event-value-series?roast_id=${roastId}`)
 			]);
-			
+
 			if (!legacyResponse.ok) {
 				throw new Error('Failed to fetch roast data');
 			}
-			
+
 			const legacyResult = await legacyResponse.json();
 			const legacyData = legacyResult.data || [];
-			
+
 			// Get event value series data (might fail if no events with values exist)
 			let eventValueSeries: EventValueSeries[] = [];
 			if (eventSeriesResponse.ok) {
 				const eventResult = await eventSeriesResponse.json();
 				eventValueSeries = eventResult.data || [];
 			}
-			
+
 			// Store event value series for dynamic chart rendering
 			savedEventValueSeries = eventValueSeries;
-			
+
 			if (legacyData.length > 0) {
 				// Convert legacy data to new structure for internal use
 				savedTemperatureEntries = legacyData.map((entry: any) => ({
@@ -1516,9 +1543,9 @@
 					ror_bean_temp: null,
 					data_source: entry.data_source as 'live' | 'artisan_import'
 				}));
-				
+
 				savedEventEntries = [];
-				
+
 				// Extract milestone events
 				legacyData.forEach((entry: any) => {
 					if (entry.start) {
@@ -1638,7 +1665,7 @@
 							automatic: true
 						});
 					}
-					
+
 					// Add control events
 					if (entry.fan_setting !== null && entry.fan_setting !== undefined) {
 						savedEventEntries.push({
@@ -1653,7 +1680,7 @@
 							automatic: true
 						});
 					}
-					
+
 					if (entry.heat_setting !== null && entry.heat_setting !== undefined) {
 						savedEventEntries.push({
 							roast_id: roastId,
@@ -1668,7 +1695,7 @@
 						});
 					}
 				});
-				
+
 				// Convert to roast data for chart display
 				$roastData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
 			} else {
@@ -1704,12 +1731,18 @@
 	// Additional effect to ensure chart clears when event value series becomes empty
 	$effect(() => {
 		// When savedEventValueSeries becomes empty but chart exists, force a refresh
-		if (savedEventValueSeries.length === 0 && svg && xScale && yScaleTemp && yScaleRoR) {
+		if (
+			savedEventValueSeries.length === 0 &&
+			svg &&
+			xScale !== undefined &&
+			yScaleTemp !== undefined &&
+			yScaleRoR !== undefined
+		) {
 			// Clear any lingering event value elements
 			svg.selectAll('.event-value-line').remove();
 			svg.selectAll('.event-value-label').remove();
 			svg.selectAll('[class*="event-value-label-"]').remove();
-			
+
 			// If we're not during roasting and have no current profile, ensure chart is clean
 			if (!isDuringRoasting && !currentRoastProfile?.roast_id) {
 				untrack(() => updateChart([]));

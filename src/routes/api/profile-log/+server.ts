@@ -13,18 +13,20 @@ function msToSeconds(ms: number): number {
  * Insert temperature data to roast_temperatures table
  */
 async function insertTemperatureData(supabase: any, roastId: number, logEntry: any) {
-	if (logEntry.bean_temp !== null || logEntry.environmental_temp !== null || logEntry.ambient_temp !== null) {
-		const { error } = await supabase
-			.from('roast_temperatures')
-			.insert({
-				roast_id: roastId,
-				time_seconds: logEntry.time_seconds,
-				bean_temp: logEntry.bean_temp || null,
-				environmental_temp: logEntry.environmental_temp || null,
-				ambient_temp: logEntry.ambient_temp || null,
-				data_source: 'live'
-			});
-		
+	if (
+		logEntry.bean_temp !== null ||
+		logEntry.environmental_temp !== null ||
+		logEntry.ambient_temp !== null
+	) {
+		const { error } = await supabase.from('roast_temperatures').insert({
+			roast_id: roastId,
+			time_seconds: logEntry.time_seconds,
+			bean_temp: logEntry.bean_temp || null,
+			environmental_temp: logEntry.environmental_temp || null,
+			ambient_temp: logEntry.ambient_temp || null,
+			data_source: 'live'
+		});
+
 		if (error) {
 			console.error('Temperature insert error:', error);
 			throw error;
@@ -37,7 +39,7 @@ async function insertTemperatureData(supabase: any, roastId: number, logEntry: a
  */
 async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 	const events = [];
-	
+
 	// Control events (fan/heat settings with values)
 	if (logEntry.fan_setting !== null && logEntry.fan_setting !== undefined) {
 		events.push({
@@ -52,7 +54,7 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	if (logEntry.heat_setting !== null && logEntry.heat_setting !== undefined) {
 		events.push({
 			roast_id: roastId,
@@ -66,7 +68,7 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	// Milestone events (boolean events with NULL values)
 	if (logEntry.start) {
 		events.push({
@@ -81,7 +83,7 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	if (logEntry.charge) {
 		events.push({
 			roast_id: roastId,
@@ -95,7 +97,7 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	if (logEntry.maillard) {
 		events.push({
 			roast_id: roastId,
@@ -109,7 +111,7 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	if (logEntry.fc_start) {
 		events.push({
 			roast_id: roastId,
@@ -123,7 +125,7 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	if (logEntry.fc_rolling) {
 		events.push({
 			roast_id: roastId,
@@ -137,7 +139,7 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	if (logEntry.fc_end) {
 		events.push({
 			roast_id: roastId,
@@ -151,7 +153,7 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	if (logEntry.sc_start) {
 		events.push({
 			roast_id: roastId,
@@ -165,7 +167,7 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	if (logEntry.drop) {
 		events.push({
 			roast_id: roastId,
@@ -179,7 +181,7 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	if (logEntry.end) {
 		events.push({
 			roast_id: roastId,
@@ -193,13 +195,11 @@ async function insertEventData(supabase: any, roastId: number, logEntry: any) {
 			automatic: false
 		});
 	}
-	
+
 	// Insert all events
 	if (events.length > 0) {
-		const { error } = await supabase
-			.from('roast_events')
-			.insert(events);
-		
+		const { error } = await supabase.from('roast_events').insert(events);
+
 		if (error) {
 			console.error('Event insert error:', error);
 			throw error;
@@ -236,22 +236,26 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// Use the roastDataService to get chart data
 		const roastDataService = createRoastDataService(supabase);
 		const chartData = await roastDataService.getChartData(parseInt(roastId));
-		
+
 		// Convert to legacy format for backward compatibility with existing components
 		// Sort control events by time for proper carry-forward logic
-		const fanEvents = chartData.controls.filter(c => c.event_string === 'fan_setting').sort((a, b) => a.time_seconds - b.time_seconds);
-		const heatEvents = chartData.controls.filter(c => c.event_string === 'heat_setting').sort((a, b) => a.time_seconds - b.time_seconds);
-		
-		const legacyData = chartData.temperatures.map(temp => {
+		const fanEvents = chartData.controls
+			.filter((c) => c.event_string === 'fan_setting')
+			.sort((a, b) => a.time_seconds - b.time_seconds);
+		const heatEvents = chartData.controls
+			.filter((c) => c.event_string === 'heat_setting')
+			.sort((a, b) => a.time_seconds - b.time_seconds);
+
+		const legacyData = chartData.temperatures.map((temp) => {
 			// Find the most recent control event before or at this time
-			const fanEvent = fanEvents.filter(c => c.time_seconds <= temp.time_seconds).pop();
-			const heatEvent = heatEvents.filter(c => c.time_seconds <= temp.time_seconds).pop();
-			
+			const fanEvent = fanEvents.filter((c) => c.time_seconds <= temp.time_seconds).pop();
+			const heatEvent = heatEvents.filter((c) => c.time_seconds <= temp.time_seconds).pop();
+
 			// Find milestone events at this exact time (within 1 second)
 			const milestoneEvents = chartData.milestones.filter(
-				m => Math.abs(m.time_seconds - temp.time_seconds) < 1
+				(m) => Math.abs(m.time_seconds - temp.time_seconds) < 1
 			);
-			
+
 			// Convert to legacy format
 			const legacyEntry: any = {
 				roast_id: parseInt(roastId),
@@ -262,17 +266,19 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				heat_setting: heatEvent ? parseInt(heatEvent.event_value) : 0,
 				data_source: temp.data_source,
 				// Convert milestone events back to boolean flags
-				start: milestoneEvents.some(m => m.event_string === 'start'),
-				charge: milestoneEvents.some(m => m.event_string === 'charge'),
-				maillard: milestoneEvents.some(m => m.event_string === 'dry_end' || m.event_string === 'maillard'),
-				fc_start: milestoneEvents.some(m => m.event_string === 'fc_start'),
-				fc_rolling: milestoneEvents.some(m => m.event_string === 'fc_rolling'),
-				fc_end: milestoneEvents.some(m => m.event_string === 'fc_end'),
-				sc_start: milestoneEvents.some(m => m.event_string === 'sc_start'),
-				drop: milestoneEvents.some(m => m.event_string === 'drop'),
-				end: milestoneEvents.some(m => m.event_string === 'cool' || m.event_string === 'end')
+				start: milestoneEvents.some((m) => m.event_string === 'start'),
+				charge: milestoneEvents.some((m) => m.event_string === 'charge'),
+				maillard: milestoneEvents.some(
+					(m) => m.event_string === 'dry_end' || m.event_string === 'maillard'
+				),
+				fc_start: milestoneEvents.some((m) => m.event_string === 'fc_start'),
+				fc_rolling: milestoneEvents.some((m) => m.event_string === 'fc_rolling'),
+				fc_end: milestoneEvents.some((m) => m.event_string === 'fc_end'),
+				sc_start: milestoneEvents.some((m) => m.event_string === 'sc_start'),
+				drop: milestoneEvents.some((m) => m.event_string === 'drop'),
+				end: milestoneEvents.some((m) => m.event_string === 'cool' || m.event_string === 'end')
 			};
-			
+
 			return legacyEntry;
 		});
 
@@ -314,7 +320,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			logsArray.map(async (log) => {
 				// Convert time to seconds if needed
 				const timeSeconds = log.time_seconds || (log.time ? msToSeconds(log.time) : 0);
-				
+
 				const logEntry = {
 					...log,
 					time_seconds: timeSeconds
@@ -322,7 +328,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 				// Insert temperature data
 				await insertTemperatureData(supabase, roastId, logEntry);
-				
+
 				// Insert event data
 				await insertEventData(supabase, roastId, logEntry);
 
@@ -361,7 +367,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		}
 
 		const parsedId = parseInt(roastId, 10);
-		
+
 		// Delete from new structure only
 		const { error: tempError } = await supabase
 			.from('roast_temperatures')
@@ -373,7 +379,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			console.error('Temperature delete error:', tempError);
 			return json({ error: tempError.message }, { status: 500 });
 		}
-		
+
 		// Delete events from new structure
 		const { error: eventError } = await supabase
 			.from('roast_events')
@@ -381,12 +387,12 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			.eq('roast_id', parsedId)
 			.in('category', ['milestone', 'control'])
 			.eq('user_generated', true); // Only delete user-generated events, preserve imported events
-		
+
 		if (eventError) {
 			console.error('Event delete error:', eventError);
 			return json({ error: eventError.message }, { status: 500 });
 		}
-		
+
 		return json({ success: true });
 	} catch (error) {
 		console.error('Error deleting profile logs:', error);

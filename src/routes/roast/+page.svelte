@@ -643,13 +643,21 @@
 
 				// Convert to roast events for chart display
 				$roastEvents = data.data
-					.filter((entry: any) => 
-						entry.start || entry.charge || entry.maillard || entry.fc_start || 
-						entry.fc_rolling || entry.fc_end || entry.sc_start || entry.drop || entry.end
+					.filter(
+						(entry: any) =>
+							entry.start ||
+							entry.charge ||
+							entry.maillard ||
+							entry.fc_start ||
+							entry.fc_rolling ||
+							entry.fc_end ||
+							entry.sc_start ||
+							entry.drop ||
+							entry.end
 					)
 					.map((entry: any) => {
 						const timeInMs = entry.time_seconds ? secondsToMs(entry.time_seconds) : 0;
-						
+
 						let eventName = 'Unknown';
 						if (entry.start) eventName = 'Start';
 						else if (entry.charge) eventName = 'Charge';
@@ -769,16 +777,16 @@
 
 			// Save new roast data with temperature and event entries
 			loadingStore.update(operationId, 'Saving roast data...');
-			
+
 			// Convert roast data to the format expected by the API
 			const logEntries = $roastData.map((point, index) => {
 				const timeSeconds = msToSeconds(point.time);
-				
+
 				// Find events at this time point
-				const eventsAtTime = $roastEvents.filter(event => 
-					Math.abs(event.time - point.time) < 1000 // Within 1 second
+				const eventsAtTime = $roastEvents.filter(
+					(event) => Math.abs(event.time - point.time) < 1000 // Within 1 second
 				);
-				
+
 				return {
 					roast_id: profile.roast_id,
 					time_seconds: timeSeconds,
@@ -788,15 +796,15 @@
 					environmental_temp: point.environmental_temp,
 					ambient_temp: point.ambient_temp,
 					// Convert events back to boolean flags for API compatibility
-					start: eventsAtTime.some(e => e.name === 'Start'),
-					charge: eventsAtTime.some(e => e.name === 'Charge'),
-					maillard: eventsAtTime.some(e => e.name === 'Maillard'),
-					fc_start: eventsAtTime.some(e => e.name === 'FC Start'),
-					fc_rolling: eventsAtTime.some(e => e.name === 'FC Rolling'),
-					fc_end: eventsAtTime.some(e => e.name === 'FC End'),
-					sc_start: eventsAtTime.some(e => e.name === 'SC Start'),
-					drop: eventsAtTime.some(e => e.name === 'Drop'),
-					end: eventsAtTime.some(e => e.name === 'Cool End')
+					start: eventsAtTime.some((e) => e.name === 'Start'),
+					charge: eventsAtTime.some((e) => e.name === 'Charge'),
+					maillard: eventsAtTime.some((e) => e.name === 'Maillard'),
+					fc_start: eventsAtTime.some((e) => e.name === 'FC Start'),
+					fc_rolling: eventsAtTime.some((e) => e.name === 'FC Rolling'),
+					fc_end: eventsAtTime.some((e) => e.name === 'FC End'),
+					sc_start: eventsAtTime.some((e) => e.name === 'SC Start'),
+					drop: eventsAtTime.some((e) => e.name === 'Drop'),
+					end: eventsAtTime.some((e) => e.name === 'Cool End')
 				};
 			});
 
@@ -850,9 +858,9 @@
 		const lastTime = $roastData[$roastData.length - 1]?.time || 0;
 
 		// Check if we need to add an end event
-		const hasDropEvent = $roastEvents.some(e => e.name === 'Drop');
-		const hasEndEvent = $roastEvents.some(e => e.name === 'Cool End');
-		
+		const hasDropEvent = $roastEvents.some((e) => e.name === 'Drop');
+		const hasEndEvent = $roastEvents.some((e) => e.name === 'Cool End');
+
 		if (hasDropEvent && !hasEndEvent) {
 			// Add end event
 			$roastEvents = [

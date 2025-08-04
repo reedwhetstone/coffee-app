@@ -1,5 +1,25 @@
 import { writable } from 'svelte/store';
-import type { TemperatureDataPoint, RoastEvent as RoastEventData } from '$lib/services/roastDataService';
+
+// Interface definitions (avoiding circular imports)
+export interface TemperatureDataPoint {
+	time_seconds: number;
+	bean_temp?: number | null;
+	environmental_temp?: number | null;
+	ambient_temp?: number | null;
+	ror_bean_temp?: number | null;
+	data_source: 'live' | 'artisan_import';
+}
+
+export interface RoastEventData {
+	time_seconds: number;
+	event_type: number;
+	event_value: string | null;
+	event_string: string;
+	category: 'milestone' | 'control' | 'machine';
+	subcategory: string;
+	user_generated: boolean;
+	automatic: boolean;
+}
 
 // Updated interfaces for new normalized structure
 export interface RoastPoint {
@@ -70,7 +90,7 @@ export function secondsToMs(seconds: number): number {
 
 // Convert TemperatureDataPoint to RoastPoint for chart compatibility
 export function temperatureDataToRoastPoint(tempData: TemperatureDataPoint[]): RoastPoint[] {
-	return tempData.map(point => ({
+	return tempData.map((point) => ({
 		time: secondsToMs(point.time_seconds),
 		heat: 0, // Will be populated from control events
 		fan: 0, // Will be populated from control events
@@ -84,10 +104,12 @@ export function temperatureDataToRoastPoint(tempData: TemperatureDataPoint[]): R
 
 // Convert RoastEventData to RoastEvent for chart compatibility
 export function roastEventDataToRoastEvent(eventData: RoastEventData[]): RoastEvent[] {
-	return eventData.filter(event => event.category === 'milestone')
-		.map(event => ({
+	return eventData
+		.filter((event) => event.category === 'milestone')
+		.map((event) => ({
 			time: secondsToMs(event.time_seconds),
-			name: event.event_string.charAt(0).toUpperCase() + event.event_string.slice(1).replace('_', ' ')
+			name:
+				event.event_string.charAt(0).toUpperCase() + event.event_string.slice(1).replace('_', ' ')
 		}));
 }
 
@@ -127,7 +149,7 @@ export function extractMilestones(eventEntries: RoastEventEntry[]): MilestoneDat
 	for (const event of eventEntries) {
 		if (event.category === 'milestone') {
 			const timeMs = secondsToMs(event.time_seconds);
-			
+
 			switch (event.event_string) {
 				case 'start':
 					milestones.start = timeMs;

@@ -8,107 +8,122 @@ export function parseAlogFile(alogContent: string): any {
 	let jsonContent = alogContent;
 
 	try {
-		console.log('Starting alog parsing...');
-
 		// Replace Python boolean values with JSON equivalents (case-sensitive, whole words only)
 		jsonContent = jsonContent.replace(/\bTrue\b/g, 'true');
 		jsonContent = jsonContent.replace(/\bFalse\b/g, 'false');
 		jsonContent = jsonContent.replace(/\bNone\b/g, 'null');
-		console.log('Replaced Python booleans');
 
 		// Handle Python-style comments (# comments) - remove them
 		// But be careful not to remove # characters inside strings (like hex colors)
 		jsonContent = removeCommentsCarefully(jsonContent);
-		console.log('Removed comments');
 
-		// For files that are already mostly JSON, skip complex single quote conversion
-		// Just handle specific cases where single quotes are used
+		// Convert single quotes to double quotes if present
 		if (jsonContent.includes("'")) {
-			console.log('File contains single quotes, applying conversion...');
-			// Debug: check problem area before conversion
-			const problemStart = 72050;
-			if (jsonContent.length > problemStart) {
-				const beforeContext = jsonContent.substring(problemStart - 50, problemStart + 50);
-				console.log('Before quote conversion:', beforeContext);
-			}
-
 			jsonContent = convertSingleQuotesToDouble(jsonContent);
-			console.log('Converted single quotes');
-
-			// Debug: check problem area after conversion
-			if (jsonContent.length > problemStart) {
-				const afterContext = jsonContent.substring(problemStart - 50, problemStart + 50);
-				console.log('After quote conversion:', afterContext);
-			}
-		} else {
-			console.log('No single quotes found, skipping conversion');
 		}
 
-		// Clean up control characters in strings - but be more careful
+		// Clean up control characters in strings
 		jsonContent = cleanControlCharacters(jsonContent);
-		console.log('Cleaned control characters');
 
 		// Fix common array/object formatting issues
 		jsonContent = fixFormattingIssues(jsonContent);
-		console.log('Fixed formatting issues');
-
-		// Final cleanup: handle any remaining problematic patterns
-		// Fix malformed arrays with trailing invalid syntax like: [], "", ""]
-		jsonContent = jsonContent.replace(/\[\]\s*,\s*""\s*,\s*""\s*\]/g, '[]');
-		
-		// Fix arrays that start with empty array followed by invalid elements like: [], "", 
-		jsonContent = jsonContent.replace(/\[\]\s*,\s*""\s*,\s*/g, '[]');
-		
-		// The debug shows we have `[""` (missing closing bracket), not `[""]`
-		// Fix the specific unterminated array pattern
-		jsonContent = jsonContent.replace(/"extradevicecolor1":\s*\[""/g, '"extradevicecolor1": []');
-		jsonContent = jsonContent.replace(/"extradevicecolor2":\s*\[""/g, '"extradevicecolor2": []');
-		// More general pattern for unterminated arrays with empty strings
-		jsonContent = jsonContent.replace(/:\s*\[""/g, ': []');
-		
-		// Handle malformed array endings - arrays that have proper start but invalid trailing elements
-		jsonContent = jsonContent.replace(/\[\]\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*\]/g, '[]');
-		
-		// Debug: Final check of problem area
-		const problemStart = 72050;
-		if (jsonContent.length > problemStart) {
-			const finalContext = jsonContent.substring(problemStart - 50, problemStart + 50);
-			console.log('Final content at problem area:', finalContext);
-		}
 
 		// Try to parse as JSON
 		const parsed = JSON.parse(jsonContent);
+
+		// Validate core temperature arrays
+		validateTemperatureArrays(parsed);
+
 		return parsed;
 	} catch (error) {
-		console.error('Failed to parse .alog file:', error);
-		// Provide more context about where the error occurred
-		if (error instanceof SyntaxError && error.message.includes('position')) {
-			const match = error.message.match(/position (\d+)/);
-			if (match) {
-				const position = parseInt(match[1]);
-				const context = getErrorContext(jsonContent, position, 150);
-				console.log('Error context (extended):', context);
+		// Enhanced error reporting with specific guidance
+		if (error instanceof Error) {
+			// If this is a validation error from our temperature array validation, re-throw as-is
+			if (
+				error.message.includes('Missing required temperature array') ||
+				error.message.includes('Invalid temperature array') ||
+				error.message.includes('No profile data found')
+			) {
+				throw error;
+			}
 
-				// Try to save the processed content to a temp file for debugging
-				console.log('Content length:', jsonContent.length);
-				console.log('Characters around error position:');
-				for (let i = position - 10; i <= position + 10; i++) {
-					if (i >= 0 && i < jsonContent.length) {
-						const char = jsonContent[i];
-						const code = char.charCodeAt(0);
-						console.log(
-							`${i}: '${char === '\n' ? '\\n' : char === '\r' ? '\\r' : char === '\t' ? '\\t' : char}' (${code})`
-						);
-					}
+			// For JSON parsing errors, provide better context
+			if (error instanceof SyntaxError && error.message.includes('position')) {
+				const match = error.message.match(/position (\d+)/);
+				if (match) {
+					const position = parseInt(match[1]);
+					const context = getErrorContext(jsonContent, position, 100);
+
+					throw new Error(
+						`Failed to parse .alog file: ${error.message}\n\n` +
+							`This typically indicates:\n` +
+							`- Malformed Python literal syntax that couldn't be converted to JSON\n` +
+							`- Unescaped characters in string values\n` +
+							`- Incomplete or corrupted file data\n\n` +
+							`Error context: ...${context}...`
+					);
 				}
-
-				throw new Error(`Invalid .alog file format: ${error.message}\nContext: ...${context}...`);
 			}
 		}
+
 		throw new Error(
-			`Invalid .alog file format: ${error instanceof Error ? error.message : 'Unknown error'}`
+			`Invalid .alog file format: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
+				`Please ensure the file is a valid Artisan .alog file with proper Python literal syntax.`
 		);
 	}
+}
+
+/**
+ * Validate that critical temperature arrays exist and are consistent
+ * Based on Artisan's validation logic in setProfile()
+ */
+function validateTemperatureArrays(parsed: any): void {
+	const requiredArrays = ['timex', 'temp1', 'temp2'];
+
+	// Check that all required arrays exist
+	for (const arrayName of requiredArrays) {
+		if (!parsed[arrayName]) {
+			throw new Error(`Missing required temperature array: ${arrayName}`);
+		}
+		if (!Array.isArray(parsed[arrayName])) {
+			throw new Error(`Invalid temperature array: ${arrayName} must be an array`);
+		}
+	}
+
+	// Check that all arrays have the same length (as enforced by Artisan)
+	const timexLength = parsed.timex.length;
+	const temp1Length = parsed.temp1.length;
+	const temp2Length = parsed.temp2.length;
+
+	if (timexLength === 0) {
+		throw new Error('No profile data found: timex array is empty');
+	}
+
+	if (timexLength !== temp1Length || timexLength !== temp2Length) {
+		console.warn(
+			`Temperature array length mismatch: timex=${timexLength}, temp1=${temp1Length}, temp2=${temp2Length}. ` +
+				'Arrays will be truncated to minimum length as per Artisan behavior.'
+		);
+
+		// Truncate to minimum length (following Artisan's behavior)
+		const minLength = Math.min(timexLength, temp1Length, temp2Length);
+		parsed.timex = parsed.timex.slice(0, minLength);
+		parsed.temp1 = parsed.temp1.slice(0, minLength);
+		parsed.temp2 = parsed.temp2.slice(0, minLength);
+	}
+
+	// Validate that arrays contain valid numeric data
+	const validateNumericArray = (array: any[], name: string): void => {
+		for (let i = 0; i < array.length; i++) {
+			if (typeof array[i] !== 'number' || isNaN(array[i])) {
+				throw new Error(`Invalid data in ${name} array at index ${i}: ${array[i]}`);
+			}
+		}
+	};
+
+	validateNumericArray(parsed.timex, 'timex');
+	validateNumericArray(parsed.temp1, 'temp1');
+	validateNumericArray(parsed.temp2, 'temp2');
 }
 
 /**
@@ -290,23 +305,37 @@ function convertSingleQuotesToDouble(content: string): string {
  * Validate that a file is likely an Artisan .alog file
  */
 export function isValidAlogFile(content: string): boolean {
-	// Check for common Artisan file markers
-	const hasArtisanMarkers =
-		content.includes('"timex"') ||
-		content.includes("'timex'") ||
-		content.includes('"temp1"') ||
-		content.includes("'temp1'") ||
-		content.includes('"timeindex"') ||
-		content.includes("'timeindex'");
+	const trimmed = content.trim();
 
+	// Must be a JSON-like object structure
+	if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+		return false;
+	}
+
+	// Must contain core temperature data arrays (the essential markers)
+	const hasTemperatureArrays =
+		(content.includes('"timex"') || content.includes("'timex'")) &&
+		(content.includes('"temp1"') || content.includes("'temp1'")) &&
+		(content.includes('"temp2"') || content.includes("'temp2'"));
+
+	if (!hasTemperatureArrays) {
+		return false;
+	}
+
+	// Should have typical Artisan profile markers
+	const hasArtisanMarkers =
+		content.includes('"version"') ||
+		content.includes("'version'") ||
+		content.includes('"roastdate"') ||
+		content.includes("'roastdate'") ||
+		content.includes('"beans"') ||
+		content.includes("'beans'");
+
+	// Should have Python literal syntax if it's an .alog file
 	const hasPythonSyntax =
 		content.includes('True') || content.includes('False') || content.includes('None');
 
-	// Should start with { and end with }
-	const trimmed = content.trim();
-	const hasObjectStructure = trimmed.startsWith('{') && trimmed.endsWith('}');
-
-	return hasArtisanMarkers && (hasPythonSyntax || hasObjectStructure);
+	return hasTemperatureArrays && (hasArtisanMarkers || hasPythonSyntax);
 }
 
 /**
@@ -329,8 +358,7 @@ export function preprocessAlogContent(content: string): string {
  * Fix common formatting issues that can cause JSON parsing errors
  */
 function fixFormattingIssues(content: string): string {
-	// Remove trailing commas in arrays and objects (more comprehensive)
-	// This regex removes commas that are followed by whitespace and then a closing bracket/brace
+	// Remove trailing commas in arrays and objects
 	content = content.replace(/,(\s*[}\]])/g, '$1');
 
 	// Fix double commas
@@ -341,29 +369,40 @@ function fixFormattingIssues(content: string): string {
 	content = content.replace(/,\s*,/g, ',');
 	content = content.replace(/,\s*\]/g, ']');
 
-	// Skip all color-related properties to avoid parsing issues
-	// Handle both complete and malformed color arrays
+	// Handle malformed arrays systematically
+	content = fixMalformedArrays(content);
+
+	return content;
+}
+
+/**
+ * Systematically fix malformed array patterns found in .alog files
+ */
+function fixMalformedArrays(content: string): string {
+	// Fix arrays that contain only empty strings: [""] -> []
+	content = content.replace(/:\s*\[\s*""\s*\]/g, ': []');
+
+	// Fix arrays that start with empty string: ["", -> [
+	content = content.replace(/:\s*\[\s*""\s*,/g, ': [');
+
+	// Fix unterminated arrays with empty strings: [" -> []
+	content = content.replace(/:\s*\["\s*$/gm, ': []');
+	content = content.replace(/:\s*\[""\s*$/gm, ': []');
+
+	// Fix arrays with mixed valid and empty elements
+	// Remove trailing empty strings: ["valid", "", ""] -> ["valid"]
+	content = content.replace(/(:\s*\[[^\]]*?)\s*,\s*""\s*,\s*""\s*\]/g, '$1]');
+	content = content.replace(/(:\s*\[[^\]]*?)\s*,\s*""\s*\]/g, '$1]');
+
+	// Fix double closing brackets: []] -> ]
+	content = content.replace(/\]\]\s*,/g, '],');
+	content = content.replace(/\]\]\s*$/gm, ']');
+
+	// Special handling for color arrays which are commonly malformed
 	content = content.replace(/"[^"]*color[^"]*":\s*\[[^\]]*\]/gi, (match) => {
-		const propertyName = match.match(/"([^"]*color[^"]*)"/i)?.[1] || 'color_property';
+		const propertyName = match.match(/"([^"]*color[^"]*)\"/i)?.[1] || 'color_property';
 		return `"${propertyName}": []`;
 	});
-
-	// Specifically handle malformed color arrays like [""]
-	content = content.replace(/"([^"]*color[^"]*)":\s*\[""\]/gi, '"$1": []');
-
-	// Handle any remaining unterminated arrays
-	content = content.replace(/\["$/gm, '[]');
-	content = content.replace(/\["\s*$/gm, '[]');
-	
-	// Fix arrays with mixed valid/invalid elements
-	// Pattern: [valid_element, "", ""] -> [valid_element]
-	content = content.replace(/(\[[^\]]*?)\s*,\s*""\s*,\s*""\s*\]/g, '$1]');
-	
-	// Pattern: [valid_element, "", ] -> [valid_element]  
-	content = content.replace(/(\[[^\]]*?)\s*,\s*""\s*,\s*\]/g, '$1]');
-	
-	// Fix standalone malformed patterns like: ], "", ""]
-	content = content.replace(/\]\s*,\s*""\s*,\s*""\s*\]/g, ']');
 
 	return content;
 }
@@ -379,16 +418,34 @@ function getErrorContext(content: string, position: number, contextLength: numbe
 
 /**
  * Main function to handle .alog file processing
+ * This is the primary entry point for parsing Artisan .alog files
  */
 export function processAlogFile(fileContent: string): any {
-	// Preprocess the content
-	const cleanContent = preprocessAlogContent(fileContent);
+	try {
+		// Preprocess the content to normalize format
+		const cleanContent = preprocessAlogContent(fileContent);
 
-	// Validate it looks like an .alog file
-	if (!isValidAlogFile(cleanContent)) {
-		throw new Error('File does not appear to be a valid Artisan .alog file');
+		// Validate it looks like an .alog file before attempting to parse
+		if (!isValidAlogFile(cleanContent)) {
+			throw new Error(
+				'File does not appear to be a valid Artisan .alog file.\n\n' +
+					'Expected: JSON-like object with timex, temp1, and temp2 temperature arrays.\n' +
+					'Please ensure this is an Artisan roast profile file (.alog format).'
+			);
+		}
+
+		// Parse the Python literal syntax to JSON and validate
+		return parseAlogFile(cleanContent);
+	} catch (error) {
+		// Re-throw with context if it's already our enhanced error
+		if (error instanceof Error && error.message.includes('This typically indicates')) {
+			throw error;
+		}
+
+		// Otherwise wrap with general guidance
+		throw new Error(
+			`Failed to process .alog file: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
+				'Please ensure the file is a valid, complete Artisan roast profile (.alog) file.'
+		);
 	}
-
-	// Parse the Python literal syntax to JSON
-	return parseAlogFile(cleanContent);
 }

@@ -244,9 +244,9 @@ export function validateProcessedData(processedData: any): ValidationResult {
 		errors.push('Missing profile data');
 	}
 
-	if (!processedData.temperaturePoints || !Array.isArray(processedData.temperaturePoints)) {
+	if (!processedData.temperatureData || !Array.isArray(processedData.temperatureData)) {
 		errors.push('Missing or invalid temperature points');
-	} else if (processedData.temperaturePoints.length === 0) {
+	} else if (processedData.temperatureData.length === 0) {
 		errors.push('No temperature points to insert');
 	}
 
