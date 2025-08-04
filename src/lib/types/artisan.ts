@@ -115,25 +115,14 @@ export interface ProcessedRoastData {
 		data_source: 'artisan_import';
 	};
 
-	// For profile_log table
-	temperaturePoints: Array<{
+	// For roast_temperatures table
+	temperatureData: Array<{
 		roast_id: number;
 		time_seconds: number;
 		bean_temp: number | null;
 		environmental_temp: number | null;
-		fan_setting: number;
-		heat_setting: number;
+		ambient_temp: number | null;
 		data_source: 'artisan_import';
-		// Milestone flags
-		start: number;
-		charge: number;
-		maillard: number;
-		fc_start: number;
-		fc_rolling: number;
-		fc_end: number;
-		sc_start: number;
-		drop: number;
-		end: number;
 	}>;
 
 	// Extracted milestones
@@ -147,17 +136,31 @@ export interface ProcessedRoastData {
 		total_time_seconds: number;
 	};
 
-	// Roast events for roast_events table
-	roastEvents: Array<{
+	// Milestone events for roast_events table
+	milestoneEvents: Array<{
 		roast_id: number;
 		time_seconds: number;
 		event_type: number;
+		event_value: string | null;
 		event_string: string;
 		category: string;
 		subcategory: string;
 		user_generated: boolean;
 		automatic: boolean;
-		notes: string;
+		notes?: string;
+	}>;
+
+	// Control events for roast_events table
+	controlEvents: Array<{
+		roast_id: number;
+		time_seconds: number;
+		event_type: number;
+		event_value: string;
+		event_string: string;
+		category: string;
+		subcategory: string;
+		user_generated: boolean;
+		automatic: boolean;
 	}>;
 
 	// Roast phases for roast_phases table
@@ -171,18 +174,6 @@ export interface ProcessedRoastData {
 		percentage_of_total: number;
 		calculation_method: string;
 		confidence_score: number;
-	}>;
-
-	// Extra device data for extra_device_data table
-	extraDeviceData: Array<{
-		roast_id: number;
-		device_id: number;
-		device_name: string;
-		sensor_type: string;
-		time_seconds: number;
-		value: number;
-		unit: string;
-		quality: string;
 	}>;
 }
 

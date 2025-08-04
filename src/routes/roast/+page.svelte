@@ -11,9 +11,10 @@
 		roastEvents,
 		startTime,
 		accumulatedTime,
-		profileLogs,
-		msToMySQLTime,
-		mysqlTimeToMs
+		temperatureEntries,
+		eventEntries,
+		msToSeconds,
+		secondsToMs
 	} from './stores';
 
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
@@ -608,103 +609,66 @@
 			isRoasting = false;
 			isPaused = false;
 
-			// Fetch and load profile log data
+			// Fetch and load roast data using new API structure
 			const response = await fetch(`/api/profile-log?roast_id=${profile.roast_id}`);
 			if (!response.ok) {
-				throw new Error('Failed to fetch profile log data');
+				throw new Error('Failed to fetch roast data');
 			}
 
 			const data = await response.json();
 
 			if (data.data.length > 0) {
-				// Convert profile log entries to roast data points
-				// Handle both live data (time field) and Artisan imported data (time_seconds field)
-				$roastData = data.data.map((log: any) => {
-					let timeInMs: number;
-
-					// Determine time format based on data source and available fields
-					if (
-						log.data_source === 'artisan_import' &&
-						log.time_seconds !== null &&
-						log.time_seconds !== undefined
-					) {
-						// Artisan data: convert seconds to milliseconds
-						timeInMs = log.time_seconds * 1000;
-					} else if (log.time) {
-						// Live data: convert MySQL time format to milliseconds
-						timeInMs = mysqlTimeToMs(log.time);
-					} else {
-						// Fallback: use time_seconds if available, otherwise 0
-						timeInMs = (log.time_seconds || 0) * 1000;
-					}
+				// Convert response data to roast data points
+				$roastData = data.data.map((entry: any) => {
+					const timeInMs = entry.time_seconds ? secondsToMs(entry.time_seconds) : 0;
 
 					return {
 						time: timeInMs,
-						heat: log.heat_setting,
-						fan: log.fan_setting,
-						bean_temp: log.bean_temp,
-						environmental_temp: log.environmental_temp
+						heat: entry.heat_setting || 0,
+						fan: entry.fan_setting || 0,
+						bean_temp: entry.bean_temp,
+						environmental_temp: entry.environmental_temp,
+						ambient_temp: entry.ambient_temp,
+						ror_bean_temp: entry.ror_bean_temp,
+						data_source: entry.data_source,
+						// Include milestone flags for charge detection
+						charge: entry.charge || false,
+						start: entry.start || false,
+						maillard: entry.maillard || false,
+						fc_start: entry.fc_start || false,
+						drop: entry.drop || false,
+						end: entry.end || false
 					};
 				});
 
-				// Convert profile log entries to roast events
+				// Convert to roast events for chart display
 				$roastEvents = data.data
-					.filter(
-						(log: any) =>
-							log.start ||
-							log.charge ||
-							log.maillard ||
-							log.fc_start ||
-							log.fc_rolling ||
-							log.fc_end ||
-							log.sc_start ||
-							log.drop ||
-							log.end
+					.filter((entry: any) => 
+						entry.start || entry.charge || entry.maillard || entry.fc_start || 
+						entry.fc_rolling || entry.fc_end || entry.sc_start || entry.drop || entry.end
 					)
-					.map((log: any) => {
-						let timeInMs: number;
+					.map((entry: any) => {
+						const timeInMs = entry.time_seconds ? secondsToMs(entry.time_seconds) : 0;
+						
+						let eventName = 'Unknown';
+						if (entry.start) eventName = 'Start';
+						else if (entry.charge) eventName = 'Charge';
+						else if (entry.maillard) eventName = 'Maillard';
+						else if (entry.fc_start) eventName = 'FC Start';
+						else if (entry.fc_rolling) eventName = 'FC Rolling';
+						else if (entry.fc_end) eventName = 'FC End';
+						else if (entry.sc_start) eventName = 'SC Start';
+						else if (entry.drop) eventName = 'Drop';
+						else if (entry.end) eventName = 'Cool End';
 
-						// Handle time format same as roast data
-						if (
-							log.data_source === 'artisan_import' &&
-							log.time_seconds !== null &&
-							log.time_seconds !== undefined
-						) {
-							timeInMs = log.time_seconds * 1000;
-						} else if (log.time) {
-							timeInMs = mysqlTimeToMs(log.time);
-						} else {
-							timeInMs = (log.time_seconds || 0) * 1000;
-						}
-
-						return {
-							time: timeInMs,
-							name: log.start
-								? 'Start'
-								: log.charge
-									? 'Charge'
-									: log.maillard
-										? 'Maillard'
-										: log.fc_start
-											? 'FC Start'
-											: log.fc_rolling
-												? 'FC Rolling'
-												: log.fc_end
-													? 'FC End'
-													: log.sc_start
-														? 'SC Start'
-														: log.drop
-															? 'Drop'
-															: log.end
-																? 'Cool End'
-																: 'Unknown'
-						};
+						return { time: timeInMs, name: eventName };
 					});
 			} else {
 				// Clear all data for new roast
 				$roastData = [];
 				$roastEvents = [];
-				$profileLogs = [];
+				$temperatureEntries = [];
+				$eventEntries = [];
 				$startTime = null;
 				$accumulatedTime = 0;
 			}
@@ -743,7 +707,7 @@
 
 			// Prepare the logs with end time before saving
 			loadingStore.update(operationId, 'Preparing roast data...');
-			const preparedLogs = prepareProfileLogsForSave();
+			const preparedLogs = prepareRoastDataForSave();
 
 			let profileResponse;
 			let profile;
@@ -803,27 +767,38 @@
 				});
 			}
 
-			// Save new log entries with prepared logs
-			loadingStore.update(operationId, 'Saving roast timeline data...');
-			const logEntries = preparedLogs.map(
-				(entry: {
-					time: number;
-					fan_setting: number;
-					heat_setting: number;
-					start: boolean;
-					maillard: boolean;
-					fc_start: boolean;
-					fc_rolling: boolean;
-					fc_end: boolean;
-					sc_start: boolean;
-					drop: boolean;
-					end: boolean;
-				}) => ({
-					...entry,
+			// Save new roast data with temperature and event entries
+			loadingStore.update(operationId, 'Saving roast data...');
+			
+			// Convert roast data to the format expected by the API
+			const logEntries = $roastData.map((point, index) => {
+				const timeSeconds = msToSeconds(point.time);
+				
+				// Find events at this time point
+				const eventsAtTime = $roastEvents.filter(event => 
+					Math.abs(event.time - point.time) < 1000 // Within 1 second
+				);
+				
+				return {
 					roast_id: profile.roast_id,
-					time: msToMySQLTime(entry.time)
-				})
-			);
+					time_seconds: timeSeconds,
+					fan_setting: point.fan || 0,
+					heat_setting: point.heat || 0,
+					bean_temp: point.bean_temp,
+					environmental_temp: point.environmental_temp,
+					ambient_temp: point.ambient_temp,
+					// Convert events back to boolean flags for API compatibility
+					start: eventsAtTime.some(e => e.name === 'Start'),
+					charge: eventsAtTime.some(e => e.name === 'Charge'),
+					maillard: eventsAtTime.some(e => e.name === 'Maillard'),
+					fc_start: eventsAtTime.some(e => e.name === 'FC Start'),
+					fc_rolling: eventsAtTime.some(e => e.name === 'FC Rolling'),
+					fc_end: eventsAtTime.some(e => e.name === 'FC End'),
+					sc_start: eventsAtTime.some(e => e.name === 'SC Start'),
+					drop: eventsAtTime.some(e => e.name === 'Drop'),
+					end: eventsAtTime.some(e => e.name === 'Cool End')
+				};
+			});
 
 			const logResponse = await fetch('/api/profile-log', {
 				method: 'POST',
@@ -835,7 +810,7 @@
 
 			if (!logResponse.ok) {
 				const errorData = await logResponse.json();
-				throw new Error(errorData.error || 'Failed to save profile logs');
+				throw new Error(errorData.error || 'Failed to save roast data');
 			}
 
 			// Reload profiles and select the saved one
@@ -869,36 +844,27 @@
 		isFormVisible = false;
 	}
 
-	function prepareProfileLogsForSave() {
-		if ($profileLogs.length === 0) return $profileLogs;
+	function prepareRoastDataForSave() {
+		if ($roastData.length === 0) return [];
 
 		const lastTime = $roastData[$roastData.length - 1]?.time || 0;
 
-		// Update the last log entry or create a new one with end=true
-		const lastLog = $profileLogs[$profileLogs.length - 1];
-		if (lastLog && lastLog.drop) {
-			lastLog.end = true;
-			lastLog.time = lastTime;
-		} else {
-			$profileLogs = [
-				...$profileLogs,
+		// Check if we need to add an end event
+		const hasDropEvent = $roastEvents.some(e => e.name === 'Drop');
+		const hasEndEvent = $roastEvents.some(e => e.name === 'Cool End');
+		
+		if (hasDropEvent && !hasEndEvent) {
+			// Add end event
+			$roastEvents = [
+				...$roastEvents,
 				{
-					fan_setting: fanValue,
-					heat_setting: heatValue,
-					start: false,
-					maillard: false,
-					fc_start: false,
-					fc_rolling: false,
-					fc_end: false,
-					sc_start: false,
-					drop: false,
-					end: true,
-					time: lastTime
+					time: lastTime,
+					name: 'Cool End'
 				}
 			];
 		}
 
-		return $profileLogs;
+		return $roastData;
 	}
 
 	async function handleClearRoastData(roastId: number) {
@@ -985,7 +951,7 @@
 						{updateHeat}
 						{saveRoastProfile}
 						{selectedBean}
-						clearRoastData={() => handleClearRoastData(currentRoastProfile.id)}
+						clearRoastData={() => handleClearRoastData(currentRoastProfile.roast_id)}
 					/>
 				{/if}
 			</div>

@@ -62,18 +62,8 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		}
 		deletedCounts.roast_events = deletedEvents?.length || 0;
 
-		// 3. Delete roast phases
-		const { data: deletedPhases, error: phasesError } = await supabase
-			.from('roast_phases')
-			.delete()
-			.eq('roast_id', parsedId)
-			.select('phase_id');
-
-		if (phasesError) {
-			console.error('Error deleting roast phases:', phasesError);
-			return json({ error: 'Failed to clear roast phases' }, { status: 500 });
-		}
-		deletedCounts.roast_phases = deletedPhases?.length || 0;
+		// 3. Note: roast_phases table no longer exists, skipping
+		deletedCounts.roast_phases = 0;
 
 		// 4. Delete extra device data
 		const { data: deletedDeviceData, error: deviceError } = await supabase
@@ -134,33 +124,18 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 				development_percent: null,
 				total_roast_time: null,
 				weight_loss_percent: null,
-				// Clear Artisan metadata
-				operator: null,
-				organization: null,
-				machine_setup: null,
-				drum_speed: null,
-				ambient_temp: null,
-				ambient_humidity: null,
-				ambient_pressure: null,
-				// Clear quality indicators
-				heavy_fc: false,
-				low_fc: false,
-				light_cut: false,
-				dark_cut: false,
-				drops: false,
-				oily: false,
-				uneven: false,
-				tipping: false,
-				scorching: false,
-				divots: false,
-				// Clear color measurements
-				whole_color: null,
-				ground_color: null,
-				color_system: null,
+				// Clear chart settings
+				chart_x_min: null,
+				chart_x_max: null,
+				chart_y_min: null,
+				chart_y_max: null,
+				chart_z_min: null,
+				chart_z_max: null,
+				// Clear weight data
+				weight_in: null,
+				weight_out: null,
 				// Reset data source
-				data_source: 'manual',
-				artisan_version: null,
-				cupping_score: null
+				data_source: 'manual'
 			})
 			.eq('roast_id', parsedId);
 

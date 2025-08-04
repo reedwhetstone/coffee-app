@@ -112,8 +112,8 @@ CREATE TABLE public.green_coffee_inv (
   stocked boolean DEFAULT true,
   cupping_notes jsonb,
   CONSTRAINT green_coffee_inv_pkey PRIMARY KEY (id),
-  CONSTRAINT green_coffee_inv_catalog_id_fkey FOREIGN KEY (catalog_id) REFERENCES public.coffee_catalog(id),
-  CONSTRAINT green_coffee_inv_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id)
+  CONSTRAINT green_coffee_inv_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id),
+  CONSTRAINT green_coffee_inv_catalog_id_fkey FOREIGN KEY (catalog_id) REFERENCES public.coffee_catalog(id)
 );
 CREATE TABLE public.profile_log (
   log_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -141,15 +141,15 @@ CREATE TABLE public.profile_log (
   is_cool boolean DEFAULT false,
   data_source text DEFAULT 'live'::text,
   CONSTRAINT profile_log_pkey PRIMARY KEY (log_id),
-  CONSTRAINT profile_log_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id),
-  CONSTRAINT profile_log_roast_id_fkey FOREIGN KEY (roast_id) REFERENCES public.roast_profiles(roast_id)
+  CONSTRAINT profile_log_roast_id_fkey FOREIGN KEY (roast_id) REFERENCES public.roast_profiles(roast_id),
+  CONSTRAINT profile_log_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id)
 );
 CREATE TABLE public.roast_events (
   event_id integer NOT NULL DEFAULT nextval('roast_events_event_id_seq'::regclass),
   roast_id integer NOT NULL,
   time_seconds numeric NOT NULL,
   event_type integer NOT NULL,
-  event_value numeric,
+  event_value text,
   event_string text,
   category text,
   subcategory text,
@@ -157,27 +157,8 @@ CREATE TABLE public.roast_events (
   automatic boolean DEFAULT true,
   notes text,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT roast_events_pkey PRIMARY KEY (event_id)
-);
-CREATE TABLE public.roast_phases (
-  phase_id integer NOT NULL DEFAULT nextval('roast_phases_phase_id_seq'::regclass),
-  roast_id integer NOT NULL,
-  phase_name text NOT NULL,
-  phase_order integer NOT NULL,
-  start_time numeric,
-  end_time numeric,
-  duration numeric,
-  percentage_of_total numeric,
-  start_temp numeric,
-  end_temp numeric,
-  max_temp numeric,
-  min_temp numeric,
-  avg_temp numeric,
-  calculation_method text DEFAULT 'artisan'::text,
-  confidence_score numeric DEFAULT 1.0,
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT roast_phases_pkey PRIMARY KEY (phase_id)
+  CONSTRAINT roast_events_pkey PRIMARY KEY (event_id),
+  CONSTRAINT roast_events_roast_id_fkey FOREIGN KEY (roast_id) REFERENCES public.roast_profiles(roast_id)
 );
 CREATE TABLE public.roast_profiles (
   roast_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -216,9 +197,33 @@ CREATE TABLE public.roast_profiles (
   total_roast_time numeric,
   weight_loss_percent numeric,
   data_source text DEFAULT 'manual'::text,
+  chart_z_max numeric,
+  chart_z_min numeric,
+  chart_y_max numeric,
+  chart_y_min numeric,
+  chart_x_max numeric,
+  chart_x_min numeric,
+  weight_in numeric,
+  weight_out numeric,
+  weight_unit character varying DEFAULT 'g'::character varying,
   CONSTRAINT roast_profiles_pkey PRIMARY KEY (roast_id),
-  CONSTRAINT roast_profiles_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id),
-  CONSTRAINT roast_profiles_coffee_id_fkey FOREIGN KEY (coffee_id) REFERENCES public.green_coffee_inv(id)
+  CONSTRAINT roast_profiles_coffee_id_fkey FOREIGN KEY (coffee_id) REFERENCES public.green_coffee_inv(id),
+  CONSTRAINT roast_profiles_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id)
+);
+CREATE TABLE public.roast_temperatures (
+  temp_id bigint NOT NULL DEFAULT nextval('roast_temperatures_temp_id_seq'::regclass),
+  roast_id integer NOT NULL,
+  time_seconds numeric NOT NULL,
+  bean_temp numeric,
+  environmental_temp numeric,
+  ambient_temp numeric,
+  inlet_temp numeric,
+  ror_bean_temp numeric,
+  data_source text DEFAULT 'live'::text CHECK (data_source = ANY (ARRAY['live'::text, 'artisan_import'::text, 'manual'::text])),
+  data_quality text DEFAULT 'good'::text CHECK (data_quality = ANY (ARRAY['good'::text, 'interpolated'::text, 'estimated'::text, 'poor'::text])),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT roast_temperatures_pkey PRIMARY KEY (temp_id),
+  CONSTRAINT roast_temperatures_roast_id_fkey FOREIGN KEY (roast_id) REFERENCES public.roast_profiles(roast_id)
 );
 CREATE TABLE public.role_audit_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

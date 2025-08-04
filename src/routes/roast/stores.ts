@@ -1,11 +1,15 @@
 import { writable } from 'svelte/store';
+import type { TemperatureDataPoint, RoastEvent as RoastEventData } from '$lib/services/roastDataService';
 
+// Updated interfaces for new normalized structure
 export interface RoastPoint {
-	time: number;
+	time: number; // Time in milliseconds for chart compatibility
 	heat: number;
 	fan: number;
 	bean_temp?: number | null;
 	environmental_temp?: number | null;
+	ambient_temp?: number | null;
+	ror_bean_temp?: number | null;
 	data_source?: 'live' | 'artisan_import';
 	// Milestone flags for charge-relative time calculation
 	charge?: boolean;
@@ -17,28 +21,33 @@ export interface RoastPoint {
 }
 
 export interface RoastEvent {
-	time: number;
+	time: number; // Time in milliseconds for chart compatibility
 	name: string;
 }
 
-export interface ProfileLogEntry {
-	roast_id?: number;
-	fan_setting: number;
-	heat_setting: number;
-	start: boolean;
-	maillard: boolean;
-	fc_start: boolean;
-	fc_rolling: boolean;
-	fc_end: boolean;
-	sc_start: boolean;
-	drop: boolean;
-	end: boolean;
-	time: number;
+// New interface for temperature data from roast_temperatures table
+export interface TemperatureEntry {
+	roast_id: number;
+	time_seconds: number;
 	bean_temp?: number | null;
 	environmental_temp?: number | null;
-	time_seconds?: number;
-	data_source?: string;
-	charge?: boolean;
+	ambient_temp?: number | null;
+	ror_bean_temp?: number | null;
+	data_source: 'live' | 'artisan_import';
+}
+
+// New interface for events from roast_events table
+export interface RoastEventEntry {
+	roast_id: number;
+	time_seconds: number;
+	event_type: number;
+	event_value: string | null;
+	event_string: string;
+	category: 'milestone' | 'control' | 'machine';
+	subcategory: string;
+	user_generated: boolean;
+	automatic: boolean;
+	notes?: string;
 }
 
 export const roastData = writable<RoastPoint[]>([]);
@@ -46,32 +55,40 @@ export const roastEvents = writable<RoastEvent[]>([]);
 export const startTime = writable<number | null>(null);
 export const isRoasting = writable(false);
 export const accumulatedTime = writable<number>(0);
-export const profileLogs = writable<ProfileLogEntry[]>([]);
+// New stores for normalized data
+export const temperatureEntries = writable<TemperatureEntry[]>([]);
+export const eventEntries = writable<RoastEventEntry[]>([]);
 
-export function msToMySQLTime(ms: number): string {
-	// Ensure we're working with a finite number
-	ms = Math.round(ms);
-
-	const totalSeconds = Math.floor(ms / 1000);
-	const hours = Math.floor(totalSeconds / 3600);
-	const minutes = Math.floor((totalSeconds % 3600) / 60);
-	const seconds = totalSeconds % 60;
-	const milliseconds = Math.floor(ms % 1000); // Round milliseconds
-
-	// Format with exactly 3 decimal places for milliseconds
-	return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+// Time conversion utilities for new structure
+export function msToSeconds(ms: number): number {
+	return ms / 1000;
 }
 
-export function mysqlTimeToMs(timeStr: string): number {
-	const [time, fraction = '0'] = timeStr.split('.');
-	const [hours, minutes, seconds] = time.split(':').map(Number);
+export function secondsToMs(seconds: number): number {
+	return seconds * 1000;
+}
 
-	return (
-		hours * 3600000 + // Convert hours to milliseconds
-		minutes * 60000 + // Convert minutes to milliseconds
-		seconds * 1000 + // Convert seconds to milliseconds
-		Number(fraction.padEnd(3, '0').slice(0, 3)) // Handle milliseconds properly
-	);
+// Convert TemperatureDataPoint to RoastPoint for chart compatibility
+export function temperatureDataToRoastPoint(tempData: TemperatureDataPoint[]): RoastPoint[] {
+	return tempData.map(point => ({
+		time: secondsToMs(point.time_seconds),
+		heat: 0, // Will be populated from control events
+		fan: 0, // Will be populated from control events
+		bean_temp: point.bean_temp,
+		environmental_temp: point.environmental_temp,
+		ambient_temp: point.ambient_temp,
+		ror_bean_temp: point.ror_bean_temp,
+		data_source: point.data_source as 'live' | 'artisan_import'
+	}));
+}
+
+// Convert RoastEventData to RoastEvent for chart compatibility
+export function roastEventDataToRoastEvent(eventData: RoastEventData[]): RoastEvent[] {
+	return eventData.filter(event => event.category === 'milestone')
+		.map(event => ({
+			time: secondsToMs(event.time_seconds),
+			name: event.event_string.charAt(0).toUpperCase() + event.event_string.slice(1).replace('_', ' ')
+		}));
 }
 
 export interface MilestoneData {
@@ -103,21 +120,43 @@ export function formatTimeDisplay(ms: number): string {
 	return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-// Extract milestone times from profile logs (handles both live and saved data)
-export function extractMilestones(logs: ProfileLogEntry[], isLiveData = true): MilestoneData {
+// Extract milestone times from event entries (new normalized structure)
+export function extractMilestones(eventEntries: RoastEventEntry[]): MilestoneData {
 	const milestones: MilestoneData = {};
 
-	for (const log of logs) {
-		const time = isLiveData ? log.time : mysqlTimeToMs(log.time as unknown as string);
-
-		if (log.start) milestones.start = time;
-		if (log.charge) milestones.charge = time;
-		if (log.maillard) milestones.maillard = time;
-		if (log.fc_start) milestones.fc_start = time;
-		if (log.fc_end) milestones.fc_end = time;
-		if (log.sc_start) milestones.sc_start = time;
-		if (log.drop) milestones.drop = time;
-		if (log.end) milestones.end = time;
+	for (const event of eventEntries) {
+		if (event.category === 'milestone') {
+			const timeMs = secondsToMs(event.time_seconds);
+			
+			switch (event.event_string) {
+				case 'start':
+					milestones.start = timeMs;
+					break;
+				case 'charge':
+					milestones.charge = timeMs;
+					break;
+				case 'dry_end':
+				case 'maillard': // Handle both naming conventions
+					milestones.maillard = timeMs;
+					break;
+				case 'fc_start':
+					milestones.fc_start = timeMs;
+					break;
+				case 'fc_end':
+					milestones.fc_end = timeMs;
+					break;
+				case 'sc_start':
+					milestones.sc_start = timeMs;
+					break;
+				case 'drop':
+					milestones.drop = timeMs;
+					break;
+				case 'cool':
+				case 'end': // Handle both naming conventions
+					milestones.end = timeMs;
+					break;
+			}
+		}
 	}
 
 	return milestones;

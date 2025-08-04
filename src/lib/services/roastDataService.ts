@@ -12,6 +12,7 @@ export interface TemperatureDataPoint {
 	environmental_temp: number | null;
 	ambient_temp: number | null;
 	ror_bean_temp: number | null;  // Only bean temp RoR calculated
+	data_source: 'live' | 'artisan_import' | 'manual';
 }
 
 export interface RoastEvent {
@@ -243,7 +244,8 @@ export class RoastDataService {
 			bean_temp: row.bean_temp,
 			environmental_temp: row.environmental_temp,
 			ambient_temp: null,
-			ror_bean_temp: null  // RoR not calculated in legacy data
+			ror_bean_temp: null,  // RoR not calculated in legacy data
+			data_source: row.data_source || 'live' as 'live' | 'artisan_import' | 'manual'
 		}));
 
 		// Extract milestone events from boolean fields
