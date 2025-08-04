@@ -53,12 +53,21 @@ export function parseAlogFile(alogContent: string): any {
 		console.log('Fixed formatting issues');
 
 		// Final cleanup: handle any remaining problematic patterns
+		// Fix malformed arrays with trailing invalid syntax like: [], "", ""]
+		jsonContent = jsonContent.replace(/\[\]\s*,\s*""\s*,\s*""\s*\]/g, '[]');
+		
+		// Fix arrays that start with empty array followed by invalid elements like: [], "", 
+		jsonContent = jsonContent.replace(/\[\]\s*,\s*""\s*,\s*/g, '[]');
+		
 		// The debug shows we have `[""` (missing closing bracket), not `[""]`
 		// Fix the specific unterminated array pattern
 		jsonContent = jsonContent.replace(/"extradevicecolor1":\s*\[""/g, '"extradevicecolor1": []');
 		jsonContent = jsonContent.replace(/"extradevicecolor2":\s*\[""/g, '"extradevicecolor2": []');
 		// More general pattern for unterminated arrays with empty strings
 		jsonContent = jsonContent.replace(/:\s*\[""/g, ': []');
+		
+		// Handle malformed array endings - arrays that have proper start but invalid trailing elements
+		jsonContent = jsonContent.replace(/\[\]\s*,\s*"[^"]*"\s*,\s*"[^"]*"\s*\]/g, '[]');
 		
 		// Debug: Final check of problem area
 		const problemStart = 72050;
@@ -345,6 +354,16 @@ function fixFormattingIssues(content: string): string {
 	// Handle any remaining unterminated arrays
 	content = content.replace(/\["$/gm, '[]');
 	content = content.replace(/\["\s*$/gm, '[]');
+	
+	// Fix arrays with mixed valid/invalid elements
+	// Pattern: [valid_element, "", ""] -> [valid_element]
+	content = content.replace(/(\[[^\]]*?)\s*,\s*""\s*,\s*""\s*\]/g, '$1]');
+	
+	// Pattern: [valid_element, "", ] -> [valid_element]  
+	content = content.replace(/(\[[^\]]*?)\s*,\s*""\s*,\s*\]/g, '$1]');
+	
+	// Fix standalone malformed patterns like: ], "", ""]
+	content = content.replace(/\]\s*,\s*""\s*,\s*""\s*\]/g, ']');
 
 	return content;
 }

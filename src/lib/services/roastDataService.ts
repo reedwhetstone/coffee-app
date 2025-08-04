@@ -36,10 +36,25 @@ export interface ControlEvent {
 	event_value: string;
 }
 
+export interface EventValueSeries {
+	event_string: string;
+	category: string;
+	values: Array<{
+		time_seconds: number;
+		value: number;
+	}>;
+	value_range: {
+		min: number;
+		max: number;
+		detected_scale: 'percentage' | 'decimal' | 'custom'; // 0-100, 0-10, or custom
+	};
+}
+
 export interface ChartData {
 	temperatures: TemperatureDataPoint[];
 	milestones: MilestoneEvent[];
 	controls: ControlEvent[];
+	eventValueSeries: EventValueSeries[]; // New: grouped event data with value ranges
 	metadata: {
 		totalDataPoints: number;
 		timeRange: [number, number];
@@ -133,14 +148,85 @@ export class RoastDataService {
 	}
 
 	/**
+	 * Get event value series grouped by event type with automatic range detection
+	 */
+	async getEventValueSeries(roastId: number): Promise<EventValueSeries[]> {
+		const { data, error } = await this.supabase
+			.from('roast_events')
+			.select('time_seconds, event_string, event_value, category')
+			.eq('roast_id', roastId)
+			.not('event_value', 'is', null)
+			.order('time_seconds', { ascending: true });
+
+		if (error) {
+			console.error('Error fetching event value series:', error);
+			throw new Error(`Failed to fetch event value series: ${error.message}`);
+		}
+
+		// Group events by event_string
+		const groupedEvents = new Map<string, Array<{time_seconds: number; value: number; category: string}>>();
+		
+		for (const event of data || []) {
+			const numericValue = parseFloat(event.event_value);
+			if (isNaN(numericValue)) continue; // Skip non-numeric values
+			
+			if (!groupedEvents.has(event.event_string)) {
+				groupedEvents.set(event.event_string, []);
+			}
+			
+			groupedEvents.get(event.event_string)!.push({
+				time_seconds: event.time_seconds,
+				value: numericValue,
+				category: event.category
+			});
+		}
+
+		// Create event value series with range detection
+		const eventValueSeries: EventValueSeries[] = [];
+		
+		for (const [eventString, values] of groupedEvents) {
+			if (values.length === 0) continue;
+			
+			const numericValues = values.map(v => v.value);
+			const min = Math.min(...numericValues);
+			const max = Math.max(...numericValues);
+			
+			// Auto-detect scale type
+			let detected_scale: 'percentage' | 'decimal' | 'custom' = 'custom';
+			if (min >= 0 && max <= 10) {
+				detected_scale = 'decimal'; // 0-10 scale
+			} else if (min >= 0 && max <= 100) {
+				detected_scale = 'percentage'; // 0-100 scale
+			}
+			
+			eventValueSeries.push({
+				event_string: eventString,
+				category: values[0].category, // Use category from first event
+				values: values.map(v => ({
+					time_seconds: v.time_seconds,
+					value: v.value
+				})),
+				value_range: {
+					min,
+					max,
+					detected_scale
+				}
+			});
+		}
+
+		return eventValueSeries;
+	}
+
+	/**
 	 * Get complete chart data for a roast
 	 */
 	async getChartData(roastId: number): Promise<ChartData> {
 		// Fetch all data in parallel
-		const [temperatures, milestones, controls] = await Promise.all([
+		const [temperatures, milestones, controls, eventValueSeries] = await Promise.all([
 			this.getTemperatureData(roastId),
 			this.getMilestoneEvents(roastId),
-			this.getControlEvents(roastId)
+			this.getControlEvents(roastId),
+			this.getEventValueSeries(roastId)
 		]);
 
 		// Calculate metadata
@@ -159,6 +245,7 @@ export class RoastDataService {
 			temperatures,
 			milestones,
 			controls,
+			eventValueSeries,
 			metadata: {
 				totalDataPoints: temperatures.length,
 				timeRange,
@@ -309,6 +396,7 @@ export class RoastDataService {
 			temperatures,
 			milestones,
 			controls,
+			eventValueSeries: [], // Legacy data doesn't have complex event value series
 			metadata: {
 				totalDataPoints: temperatures.length,
 				timeRange,

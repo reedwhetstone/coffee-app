@@ -16,7 +16,7 @@
 		secondsToMs,
 		extractMilestones
 	} from './stores';
-	import { createRoastDataService } from '$lib/services/roastDataService';
+	import { createRoastDataService, type EventValueSeries } from '$lib/services/roastDataService';
 
 	// Normalize event names for database storage
 	function normalizeEventName(eventName: string): string {
@@ -524,6 +524,132 @@
 
 	// Note: deltaBT removed since it's the same as RoR
 
+	// Function to render dynamic event value lines based on event value series
+	function renderEventValueLines(svg: any, processedData: any[], chargeTime: number) {
+		if (!svg || !xScale || !yScaleTemp || savedEventValueSeries.length === 0) return;
+
+		// Define colors for different event types
+		const eventColors = [
+			'#b45309', // Brown for heat-related events
+			'#3730a3', // Blue for air/fan-related events
+			'#059669', // Green for other control events
+			'#7c2d12', // Dark red for burner events
+			'#6d28d9', // Purple for additional events
+			'#ea580c', // Orange for temperature control
+			'#0891b2'  // Teal for miscellaneous
+		];
+
+		savedEventValueSeries.forEach((eventSeries, index) => {
+			if (eventSeries.values.length === 0) return;
+
+			const color = eventColors[index % eventColors.length];
+
+			// Create scale for this event type based on detected range
+			const yScale = createEventValueScale(eventSeries);
+			if (!yScale) return;
+
+			// Convert event values to chart data points with carry-forward logic
+			let lastValue = eventSeries.values[0].value;
+			const eventDataPoints: Array<{time: number, value: number}> = [];
+
+			// Find all time points that need event values
+			const allTimePoints = processedData.map(d => d.time);
+			
+			allTimePoints.forEach(timeMs => {
+				const timeSeconds = timeMs / 1000;
+				
+				// Find the most recent event value before or at this time
+				const applicableEvent = eventSeries.values
+					.filter(v => v.time_seconds <= timeSeconds)
+					.pop();
+				
+				if (applicableEvent) {
+					lastValue = applicableEvent.value;
+				}
+				
+				eventDataPoints.push({
+					time: timeMs,
+					value: lastValue
+				});
+			});
+
+			// Create line generator for this event type
+			const eventLine = line<{time: number, value: number}>()
+				.x((d) => {
+					const adjustedTime = (d.time - chargeTime) / (1000 * 60);
+					return xScale(adjustedTime);
+				})
+				.y((d) => yScale(d.value))
+				.curve(curveStepAfter); // Use step-after for control values
+
+			// Draw the line
+			svg
+				.append('path')
+				.attr('class', 'event-value-line')
+				.datum(eventDataPoints)
+				.attr('fill', 'none')
+				.attr('stroke', color)
+				.attr('stroke-width', 2)
+				.attr('stroke-dasharray', index % 2 === 0 ? 'none' : '3,3') // Alternate solid/dashed
+				.attr('d', eventLine);
+
+			// Add value labels at change points
+			const changePoints = eventSeries.values.filter((value, i) => 
+				i === 0 || value.value !== eventSeries.values[i - 1].value
+			);
+
+			svg.selectAll(`.event-value-label-${index}`)
+				.data(changePoints)
+				.enter()
+				.append('text')
+				.attr('class', `event-value-label event-value-label-${index}`)
+				.attr('x', (d: any) => {
+					const timeMs = d.time_seconds * 1000;
+					const adjustedTime = (timeMs - chargeTime) / (1000 * 60);
+					return xScale(adjustedTime);
+				})
+				.attr('y', (d: any) => yScale(d.value))
+				.attr('dy', -8)
+				.attr('fill', color)
+				.attr('font-size', '12px')
+				.attr('font-weight', 'bold')
+				.attr('text-shadow', '0px 0px 3px rgba(0,0,0,0.7)')
+				.text((d: any) => `${eventSeries.event_string}: ${d.value}`);
+		});
+	}
+
+	// Function to create appropriate Y-scale for an event value series
+	function createEventValueScale(eventSeries: EventValueSeries) {
+		if (!yScaleTemp) return null;
+
+		// Get the temperature scale range to map event values
+		const tempRange = yScaleTemp.range();
+		const tempDomain = yScaleTemp.domain();
+		const chartHeight = tempRange[0] - tempRange[1]; // Inverted Y axis
+
+		// Create scale based on detected scale type
+		let domain: [number, number];
+		
+		switch (eventSeries.value_range.detected_scale) {
+			case 'decimal': // 0-10 scale
+				domain = [0, 10];
+				break;
+			case 'percentage': // 0-100 scale
+				domain = [0, 100];
+				break;
+			case 'custom':
+				domain = [eventSeries.value_range.min, eventSeries.value_range.max];
+				break;
+			default:
+				domain = [0, Math.max(eventSeries.value_range.max, 10)];
+		}
+
+		// Map to the right side of the chart (temperature scale area)
+		return scaleLinear()
+			.domain(domain)
+			.range([tempRange[0], tempRange[0] - chartHeight * 0.3]); // Use 30% of chart height
+	}
+
 	function updateChart(data: RoastPoint[]) {
 		if (!svg || !xScale || !yScaleTemp || !yScaleRoR) return;
 
@@ -548,13 +674,23 @@
 			};
 		});
 
-		// Clear existing elements
+		// Clear existing elements - comprehensive cleanup
 		svg.selectAll('.bean-temp-line').remove();
 		svg.selectAll('.env-temp-line').remove();
 		svg.selectAll('.ror-line').remove();
 		svg.selectAll('.temp-legend').remove();
 		svg.selectAll('.event-marker').remove();
 		svg.selectAll('.event-label').remove();
+		svg.selectAll('.event-value-line').remove(); // Clear dynamic event value lines
+		svg.selectAll('.event-value-label').remove(); // Clear dynamic event value labels
+		
+		// Clear any remaining event-related elements that might persist
+		svg.selectAll('[class*="event-value-label-"]').remove(); // Clear numbered event labels
+		svg.selectAll('path[stroke*="#"]').remove(); // Clear any remaining colored paths
+		svg.selectAll('text').filter(function() {
+			const text = this.textContent || '';
+			return text.includes('_setting') || text.includes('fan') || text.includes('heat');
+		}).remove(); // Clear any remaining event-related text
 
 		// Get charge time for relative time calculation
 		const chargeTime = getChargeTime(data);
@@ -656,6 +792,9 @@
 		}
 
 		// deltaBT removed - it's the same as RoR which is already displayed
+
+		// Add dynamic event value lines
+		renderEventValueLines(svg, processedData, chargeTime);
 
 		// Add comprehensive legend for all data lines
 		if (beanTempData.length > 0 || envTempData.length > 0 || rorData.length > 0) {
@@ -803,17 +942,29 @@
 
 	// Update chart when saved data changes (viewing completed profiles)
 	$effect(() => {
-		if (!isDuringRoasting && savedTemperatureEntries.length > 0) {
-			// Convert to chart data format
-			const chartData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
+		if (!isDuringRoasting) {
+			if (savedTemperatureEntries.length > 0) {
+				// Convert to chart data format
+				const chartData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
 
-			if (
-				svg !== undefined &&
-				xScale !== undefined &&
-				yScaleTemp !== undefined &&
-				yScaleRoR !== undefined
-			) {
-				untrack(() => updateChart(chartData));
+				if (
+					svg !== undefined &&
+					xScale !== undefined &&
+					yScaleTemp !== undefined &&
+					yScaleRoR !== undefined
+				) {
+					untrack(() => updateChart(chartData));
+				}
+			} else {
+				// Clear the chart when there's no saved data
+				if (
+					svg !== undefined &&
+					xScale !== undefined &&
+					yScaleTemp !== undefined &&
+					yScaleRoR !== undefined
+				) {
+					untrack(() => updateChart([])); // Empty data array will clear the chart
+				}
 			}
 		}
 	});
@@ -1238,6 +1389,7 @@
 	// Saved profile data for milestone calculations
 	let savedTemperatureEntries = $state<TemperatureEntry[]>([]);
 	let savedEventEntries = $state<RoastEventEntry[]>([]);
+	let savedEventValueSeries = $state<EventValueSeries[]>([]);
 
 	// Reactive milestone calculations using SvelteKit 5 syntax
 	let milestoneCalculations = $derived(() => {
@@ -1330,14 +1482,28 @@
 	// Load saved roast data when a roast profile is selected
 	async function loadSavedRoastData(roastId: number) {
 		try {
-			// Use the existing profile-log API which now uses roastDataService internally
-			const response = await fetch(`/api/profile-log?roast_id=${roastId}`);
-			if (!response.ok) {
+			// Fetch both legacy format and new event value series data
+			const [legacyResponse, eventSeriesResponse] = await Promise.all([
+				fetch(`/api/profile-log?roast_id=${roastId}`),
+				fetch(`/api/event-value-series?roast_id=${roastId}`)
+			]);
+			
+			if (!legacyResponse.ok) {
 				throw new Error('Failed to fetch roast data');
 			}
 			
-			const result = await response.json();
-			const legacyData = result.data || [];
+			const legacyResult = await legacyResponse.json();
+			const legacyData = legacyResult.data || [];
+			
+			// Get event value series data (might fail if no events with values exist)
+			let eventValueSeries: EventValueSeries[] = [];
+			if (eventSeriesResponse.ok) {
+				const eventResult = await eventSeriesResponse.json();
+				eventValueSeries = eventResult.data || [];
+			}
+			
+			// Store event value series for dynamic chart rendering
+			savedEventValueSeries = eventValueSeries;
 			
 			if (legacyData.length > 0) {
 				// Convert legacy data to new structure for internal use
@@ -1505,12 +1671,20 @@
 				
 				// Convert to roast data for chart display
 				$roastData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
+			} else {
+				// No legacy data - clear everything to ensure chart is clean
+				savedTemperatureEntries = [];
+				savedEventEntries = [];
+				$roastData = [];
+				$roastEvents = [];
 			}
 		} catch (error) {
 			console.error('Error loading roast data:', error);
 			savedTemperatureEntries = [];
 			savedEventEntries = [];
+			savedEventValueSeries = [];
 			$roastData = [];
+			$roastEvents = [];
 		}
 	}
 
@@ -1521,6 +1695,25 @@
 		} else if (!currentRoastProfile?.roast_id) {
 			savedTemperatureEntries = [];
 			savedEventEntries = [];
+			savedEventValueSeries = [];
+			$roastData = [];
+			$roastEvents = [];
+		}
+	});
+
+	// Additional effect to ensure chart clears when event value series becomes empty
+	$effect(() => {
+		// When savedEventValueSeries becomes empty but chart exists, force a refresh
+		if (savedEventValueSeries.length === 0 && svg && xScale && yScaleTemp && yScaleRoR) {
+			// Clear any lingering event value elements
+			svg.selectAll('.event-value-line').remove();
+			svg.selectAll('.event-value-label').remove();
+			svg.selectAll('[class*="event-value-label-"]').remove();
+			
+			// If we're not during roasting and have no current profile, ensure chart is clean
+			if (!isDuringRoasting && !currentRoastProfile?.roast_id) {
+				untrack(() => updateChart([]));
+			}
 		}
 	});
 
