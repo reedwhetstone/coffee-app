@@ -29,6 +29,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			artisan_import_log: 0,
 			roast_events: 0,
 			roast_phases: 0,
+			roast_temperatures: 0,
 			extra_device_data: 0,
 			profile_log: 0
 		};
@@ -62,10 +63,23 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		}
 		deletedCounts.roast_events = deletedEvents?.length || 0;
 
-		// 3. Note: roast_phases table no longer exists, skipping
+		// 3. Delete roast temperatures
+		const { data: deletedTemperatures, error: temperaturesError } = await supabase
+			.from('roast_temperatures')
+			.delete()
+			.eq('roast_id', parsedId)
+			.select('temp_id');
+
+		if (temperaturesError) {
+			console.error('Error deleting roast temperatures:', temperaturesError);
+			return json({ error: 'Failed to clear roast temperatures' }, { status: 500 });
+		}
+		deletedCounts.roast_temperatures = deletedTemperatures?.length || 0;
+
+		// 4. Note: roast_phases table no longer exists, skipping
 		deletedCounts.roast_phases = 0;
 
-		// 4. Delete extra device data
+		// 5. Delete extra device data
 		const { data: deletedDeviceData, error: deviceError } = await supabase
 			.from('extra_device_data')
 			.delete()
@@ -78,7 +92,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		}
 		deletedCounts.extra_device_data = deletedDeviceData?.length || 0;
 
-		// 5. Delete profile log entries
+		// 6. Delete profile log entries
 		const { data: deletedProfileLog, error: profileLogError } = await supabase
 			.from('profile_log')
 			.delete()

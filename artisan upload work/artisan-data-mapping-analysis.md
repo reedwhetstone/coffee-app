@@ -823,3 +823,110 @@ The new normalized schema provides a robust, scalable foundation for roast data 
 - **Integrates Seamlessly**: Complete Artisan import with chart display fidelity
 
 This restructured approach transforms the roast data system from a legacy single-table design to a modern, normalized architecture suitable for complex roast analysis, real-time logging, and advanced charting capabilities.
+
+## Special Events System (Control Device Data)
+
+### Overview
+
+Artisan stores control device events in separate arrays from the temperature data. When `extratemp1/extratemp2` arrays are empty (common in newer Artisan versions), the actual control events are stored in the **special events system**.
+
+### Special Events Data Structure
+
+From analyzing .alog files like 275.py, the special events system consists of four parallel arrays:
+
+```python
+{
+    "specialevents": [23, 23, 67, 74, 467, 504, 513, ...],           # Timestamps (seconds)
+    "specialeventstype": [0, 3, 3, 0, 3, 0, 0, ...],                 # Event type codes
+    "specialeventsvalue": [6.0, 9.5, 10.0, 4.5, 9.0, ...],          # Control values
+    "specialeventsStrings": ["", "", "90", "35", "80", ...],         # Value strings
+    "etypes": ["Air", "Drum", "Damper", "Burner", "--"]              # Device names
+}
+```
+
+### Special Events Type Mapping
+
+**Event Type Codes:**
+- `0` = Button press/discrete event
+- `3` = Slider/continuous control event
+
+### Control Device Mapping Logic
+
+The import system maps special events to control devices using this logic:
+
+```typescript
+// Map control values to device names based on typical roasting patterns
+if (numValue >= 80) {
+    eventName = etypes[0] || 'Air';     // Air - typically high values (80-100)
+} else if (numValue >= 60) {
+    eventName = etypes[1] || 'Drum';    // Drum - medium-high values (60-79)
+} else if (numValue >= 30) {
+    eventName = etypes[2] || 'Damper';  // Damper - medium values (30-59)
+} else {
+    eventName = etypes[3] || 'Burner';  // Burner - lower values (0-29)
+}
+```
+
+### Processing Logic
+
+The updated artisan-import API now includes fallback processing:
+
+1. **Primary**: Process `extratemp1/extratemp2` arrays if populated
+2. **Fallback**: If extra temp arrays are empty, process `specialevents*` arrays instead
+3. **Event Creation**: Map each special event to a control event with:
+   - **Time**: `specialevents[i]` (timestamp in seconds)
+   - **Device**: Mapped from `etypes` array based on value ranges
+   - **Value**: `specialeventsStrings[i]` (control setting)
+
+### Database Integration
+
+Special events are converted to `roast_events` table entries:
+
+```sql
+INSERT INTO roast_events (
+    roast_id, time_seconds, event_type, event_value, 
+    event_string, category, subcategory, 
+    user_generated, automatic, notes
+) VALUES (
+    ?, -- roast_id
+    ?, -- time from specialevents array
+    1, -- Control event type
+    ?, -- value from specialeventsStrings
+    ?, -- device name (air, drum, damper, burner)
+    'control',
+    'machine_setting', 
+    false,
+    true,
+    'Imported from Artisan special events: {device} set to {value}'
+);
+```
+
+### Example Data Transformation
+
+From 275.py data:
+```python
+specialevents[2] = 67          # Time: 67 seconds
+specialeventsStrings[2] = "90" # Value: 90%
+specialeventstype[2] = 3       # Type: Slider control
+etypes[0] = "Air"              # Device: Air (90 >= 80, maps to Air)
+```
+
+Results in roast event:
+```sql
+{
+    "time_seconds": 67,
+    "event_value": "90", 
+    "event_string": "air",
+    "category": "control",
+    "notes": "Imported from Artisan special events: air set to 90"
+}
+```
+
+### Impact on Charts
+
+Control events from special events system appear as:
+- **Timeline markers** at specific timestamps
+- **Control overlay data** showing device settings over time
+- **Event annotations** with device names and values
+
+This enables full visualization of roaster control changes (Air, Drum, Damper, Burner settings) throughout the roast timeline, matching the original Artisan interface experience.

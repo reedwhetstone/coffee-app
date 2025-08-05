@@ -101,9 +101,95 @@ function transformArtisanData(
 		'F' // Store everything in Fahrenheit
 	);
 
-	// Extract fan/heat data from extra devices if available
-	const fanData = extratemp1?.[0] || [];
-	const heatData = extratemp2?.[0] || [];
+	// Extract control device data from extra devices with proper etypes mapping
+	const extraDeviceData: { name: string; data: number[] }[] = [];
+	
+	// Map extratemp1 channels to their corresponding etype names
+	if (extratemp1 && artisanData.extraname1) {
+		extratemp1.forEach((channelData, channelIndex) => {
+			if (channelData && channelData.length > 0 && artisanData.extraname1) {
+				const deviceName = artisanData.extraname1[channelIndex];
+				// Map device names to etypes if available
+				let etypeName = deviceName;
+				if (artisanData.etypes && artisanData.etypes.length > channelIndex) {
+					const etype = artisanData.etypes[channelIndex];
+					if (etype && etype !== '--') {
+						etypeName = etype.toLowerCase();
+					}
+				}
+				extraDeviceData.push({
+					name: etypeName,
+					data: channelData
+				});
+			}
+		});
+	}
+	
+	// Map extratemp2 channels to their corresponding etype names
+	if (extratemp2 && artisanData.extraname2) {
+		extratemp2.forEach((channelData, channelIndex) => {
+			if (channelData && channelData.length > 0 && artisanData.extraname2) {
+				const deviceName = artisanData.extraname2[channelIndex];
+				// Map device names to etypes if available, offset by extratemp1 length
+				let etypeName = deviceName;
+				const etypeIndex = channelIndex + (artisanData.extratemp1?.length || 0);
+				if (artisanData.etypes && artisanData.etypes.length > etypeIndex) {
+					const etype = artisanData.etypes[etypeIndex];
+					if (etype && etype !== '--') {
+						etypeName = etype.toLowerCase();
+					}
+				}
+				extraDeviceData.push({
+					name: etypeName,
+					data: channelData
+				});
+			}
+		});
+	}
+
+	// Process special events if extra temp arrays are empty (fallback for newer Artisan files)
+	const specialEvents: { time: number; name: string; value: string }[] = [];
+	if (extraDeviceData.length === 0 && artisanData.specialevents && artisanData.specialeventsStrings) {
+		artisanData.specialevents.forEach((timeSeconds: number, index: number) => {
+			const value = artisanData.specialeventsStrings?.[index];
+			const eventType = artisanData.specialeventstype?.[index];
+			
+			// Only process control events (type 3) and button events (type 0) with valid values
+			if ((eventType === 3 || eventType === 0) && value && value !== '' && value !== '0') {
+				// Determine event name based on value patterns and etypes
+				let eventName = 'control';
+				
+				// Map common control values to etype names based on typical Artisan patterns
+				if (artisanData.etypes) {
+					// For roasting controls, values often correspond to different devices
+					// Air: typically higher values (80-100)
+					// Drum: medium values (40-70) 
+					// Damper: variable values (20-90)
+					// Burner: typically lower to medium values (20-60)
+					const numValue = parseInt(value);
+					if (!isNaN(numValue)) {
+						if (numValue >= 80) {
+							eventName = artisanData.etypes[0] || 'Air'; // Air
+						} else if (numValue >= 60) {
+							eventName = artisanData.etypes[1] || 'Drum'; // Drum  
+						} else if (numValue >= 30) {
+							eventName = artisanData.etypes[2] || 'Damper'; // Damper
+						} else {
+							eventName = artisanData.etypes[3] || 'Burner'; // Burner
+						}
+						// Clean up name and make lowercase for consistency
+						eventName = eventName.toLowerCase().replace('--', 'control');
+					}
+				}
+				
+				specialEvents.push({
+					time: timeSeconds,
+					name: eventName,
+					value: value
+				});
+			}
+		});
+	}
 
 	// Create temperature data for roast_temperatures table
 	const temperatureData: any[] = [];
@@ -183,39 +269,46 @@ function transformArtisanData(
 		}
 	});
 
-	// Create control events for fan/heat settings
+	// Create control events for all extra devices using actual etypes names
 	const controlEvents: any[] = [];
+	
+	// Process extratemp device data if available
 	timex.forEach((timeSeconds, index) => {
 		// Sample control events to avoid overwhelming database
 		if (index % sampleRate === 0) {
-			if (fanData[index] !== null && fanData[index] !== undefined && fanData[index] !== 0) {
-				controlEvents.push({
-					roast_id: roastId,
-					time_seconds: timeSeconds,
-					event_type: 1, // Control event type
-					event_value: fanData[index].toString(),
-					event_string: 'fan_setting',
-					category: 'control',
-					subcategory: 'machine_setting',
-					user_generated: false,
-					automatic: true
-				});
-			}
-
-			if (heatData[index] !== null && heatData[index] !== undefined && heatData[index] !== 0) {
-				controlEvents.push({
-					roast_id: roastId,
-					time_seconds: timeSeconds,
-					event_type: 1, // Control event type
-					event_value: heatData[index].toString(),
-					event_string: 'heat_setting',
-					category: 'control',
-					subcategory: 'machine_setting',
-					user_generated: false,
-					automatic: true
-				});
-			}
+			extraDeviceData.forEach((device) => {
+				const value = device.data[index];
+				if (value !== null && value !== undefined && value !== 0) {
+					controlEvents.push({
+						roast_id: roastId,
+						time_seconds: timeSeconds,
+						event_type: 1, // Control event type
+						event_value: value.toString(),
+						event_string: device.name, // Use actual etype name from Artisan
+						category: 'control',
+						subcategory: 'machine_setting',
+						user_generated: false,
+						automatic: true
+					});
+				}
+			});
 		}
+	});
+	
+	// Add special events as control events if extratemp data was empty
+	specialEvents.forEach((event) => {
+		controlEvents.push({
+			roast_id: roastId,
+			time_seconds: event.time,
+			event_type: 1, // Control event type
+			event_value: event.value,
+			event_string: event.name, // Use mapped etype name (air, drum, damper, burner)
+			category: 'control',
+			subcategory: 'machine_setting',
+			user_generated: false,
+			automatic: true,
+			notes: `Imported from Artisan special events: ${event.name} set to ${event.value}`
+		});
 	});
 
 	// Create roast phases data
@@ -267,41 +360,24 @@ function transformArtisanData(
 		}
 	}
 
-	// Create extra device data
-	const extraDeviceData: any[] = [];
-	if (fanData && fanData.length > 0) {
+	// Create extra device data using all mapped extra devices
+	const extraDeviceDataForDB: any[] = [];
+	extraDeviceData.forEach((device, deviceIndex) => {
 		timex.forEach((timeSeconds, index) => {
-			if (fanData[index] !== undefined && index % sampleRate === 0) {
-				extraDeviceData.push({
+			if (device.data[index] !== undefined && index % sampleRate === 0) {
+				extraDeviceDataForDB.push({
 					roast_id: roastId,
-					device_id: 1,
-					device_name: 'Fan',
+					device_id: deviceIndex + 1,
+					device_name: device.name,
 					sensor_type: 'percentage',
 					time_seconds: timeSeconds,
-					value: fanData[index],
+					value: device.data[index],
 					unit: '%',
 					quality: 'good'
 				});
 			}
 		});
-	}
-
-	if (heatData && heatData.length > 0) {
-		timex.forEach((timeSeconds, index) => {
-			if (heatData[index] !== undefined && index % sampleRate === 0) {
-				extraDeviceData.push({
-					roast_id: roastId,
-					device_id: 2,
-					device_name: 'Heat',
-					sensor_type: 'percentage',
-					time_seconds: timeSeconds,
-					value: heatData[index],
-					unit: '%',
-					quality: 'good'
-				});
-			}
-		});
-	}
+	});
 
 	return {
 		profileData,

@@ -27,16 +27,10 @@
 	} from './stores';
 	import { createRoastDataService, type EventValueSeries } from '$lib/services/roastDataService';
 
-	// Normalize event names for database storage
+	// Normalize event names for database storage - minimal formatting only
 	function normalizeEventName(eventName: string): string {
-		switch (eventName) {
-			case 'Maillard':
-				return 'dry_end'; // Normalize to match API expectations
-			case 'Cool End':
-				return 'cool'; // Normalize to match API expectations
-			default:
-				return eventName.toLowerCase().replace(' ', '_');
-		}
+		// Only do basic formatting: lowercase and replace spaces with underscores
+		return eventName.toLowerCase().replace(/\s+/g, '_');
 	}
 
 	// Define milestone interfaces locally to avoid import issues
@@ -289,50 +283,13 @@
 		isPaused = false;
 	}
 
+	// Timer display - only show during active recording
 	let formattedTime = $derived(
-		isAfterRoasting
-			? (() => {
-					// Create a copy of events and handle Drop/End renaming
-					const events = $roastEvents.map((event) => ({
-						time: event.time,
-						name: event.name
-					}));
-
-					// Check for duplicate 'Drop' events and rename second occurrence to 'End'
-					let dropCount = 0;
-					events.forEach((event) => {
-						if (event.name === 'Drop') {
-							dropCount++;
-							if (dropCount > 1) {
-								event.name = 'End';
-							}
-						}
-					});
-
-					// Sort events by time and find the End event
-					events.sort((a, b) => a.time - b.time);
-					const endEvent = events.find((event) => event.name === 'End');
-
-					if (endEvent) {
-						const endSeconds = Math.floor(endEvent.time / 1000);
-						const endMilliseconds = endEvent.time % 1000;
-						return `${Math.floor(endSeconds / 60)}:${(endSeconds % 60)
-							.toString()
-							.padStart(2, '0')}.${Math.floor(endMilliseconds / 10)
-							.toString()
-							.padStart(2, '0')}`;
-					}
-					return `${Math.floor(seconds / 60)}:${(seconds % 60)
-						.toString()
-						.padStart(2, '0')}.${Math.floor(milliseconds / 10)
-						.toString()
-						.padStart(2, '0')}`;
-				})()
-			: `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}.${Math.floor(
-					milliseconds / 10
-				)
-					.toString()
-					.padStart(2, '0')}`
+		`${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}.${Math.floor(
+			milliseconds / 10
+		)
+			.toString()
+			.padStart(2, '0')}`
 	);
 
 	// Update current values when roastData changes
@@ -374,94 +331,52 @@
 		return smoothedData;
 	}
 
-	// Function to calculate BT Rate of Rise (RoR/ΔBT) with ultra-smooth multi-stage processing
+	// Function to calculate BT Rate of Rise (RoR/ΔBT) with simplified smoothing
 	function calculateBTRoR(data: RoastPoint[]): { time: number; ror: number }[] {
 		if (data.length < 2) return [];
 
 		// Step 1: Filter and extract valid bean temperature data
 		const validTempData = data
 			.filter(
-				(point) => point.bean_temp !== null && point.bean_temp !== undefined && point.bean_temp > 0 // Exclude zero temperatures
+				(point) => point.bean_temp !== null && point.bean_temp !== undefined && point.bean_temp > 0
 			)
 			.map((point) => ({ time: point.time, temp: point.bean_temp! }));
 
-		if (validTempData.length < 30) return []; // Need sufficient data for smooth calculation
+		if (validTempData.length < 15) return []; // Need sufficient data for calculation
 
 		// Step 2: Pre-smooth the temperature data to reduce noise (15-point window)
 		const smoothedTempData = smoothTemperatureData(validTempData, 15);
 
-		// Step 3: Calculate RoR using sliding 30-second windows for stability
-		const rorData: { time: number; ror: number }[] = [];
-		const windowSeconds = 30; // 30-second sliding window
-		const sampleIntervalMs = 3000; // Sample every 3 seconds for performance
-
-		for (let i = 0; i < smoothedTempData.length; i += Math.floor(sampleIntervalMs / 1000)) {
+		// Step 3: Calculate raw RoR from temperature differences
+		const rawRorData: { time: number; ror: number }[] = [];
+		
+		for (let i = 1; i < smoothedTempData.length; i++) {
 			const currentPoint = smoothedTempData[i];
-			const currentTime = currentPoint.time;
-
-			// Find points within the sliding window (±15 seconds)
-			const windowStart = currentTime - (windowSeconds * 1000) / 2;
-			const windowEnd = currentTime + (windowSeconds * 1000) / 2;
-
-			const windowPoints = smoothedTempData.filter(
-				(point) => point.time >= windowStart && point.time <= windowEnd
-			);
-
-			if (windowPoints.length >= 5) {
-				// Use linear regression over the window for most stable RoR calculation
-				const n = windowPoints.length;
-				let sumX = 0,
-					sumY = 0,
-					sumXY = 0,
-					sumXX = 0;
-
-				windowPoints.forEach((point) => {
-					const x = (point.time - windowStart) / (1000 * 60); // Time in minutes from window start
-					const y = point.temp;
-					sumX += x;
-					sumY += y;
-					sumXY += x * y;
-					sumXX += x * x;
-				});
-
-				// Calculate slope (RoR) using linear regression
-				const denominator = n * sumXX - sumX * sumX;
-				if (denominator !== 0) {
-					const slope = (n * sumXY - sumX * sumY) / denominator;
-					rorData.push({ time: currentTime, ror: slope });
+			const previousPoint = smoothedTempData[i - 1];
+			
+			const timeDiffMinutes = (currentPoint.time - previousPoint.time) / (1000 * 60);
+			const tempDiff = currentPoint.temp - previousPoint.temp;
+			
+			if (timeDiffMinutes > 0) {
+				const ror = tempDiff / timeDiffMinutes; // °F/min or °C/min
+				
+				// Only include reasonable RoR values
+				if (Math.abs(ror) <= 50) {
+					rawRorData.push({
+						time: currentPoint.time,
+						ror: ror
+					});
 				}
 			}
 		}
 
-		if (rorData.length === 0) return [];
+		if (rawRorData.length === 0) return [];
 
-		// Step 4: Apply final smoothing to RoR values (20-point window for ultra-smooth result)
-		const finalSmoothedData: { time: number; ror: number }[] = [];
-		const finalWindowSize = 20;
-
-		for (let i = 0; i < rorData.length; i++) {
-			const start = Math.max(0, i - Math.floor(finalWindowSize / 2));
-			const end = Math.min(rorData.length, i + Math.ceil(finalWindowSize / 2));
-
-			let sum = 0;
-			let count = 0;
-
-			for (let j = start; j < end; j++) {
-				sum += rorData[j].ror;
-				count++;
-			}
-
-			const smoothedRor = sum / count;
-
-			// Include all reasonable RoR values for complete curve
-			if (Math.abs(smoothedRor) <= 50) {
-				// Cap extreme values
-				finalSmoothedData.push({
-					time: rorData[i].time,
-					ror: smoothedRor
-				});
-			}
-		}
+		// Step 4: Apply smoothing to RoR values using same function as temperature (10-point window)
+		const finalSmoothedData = smoothTemperatureData(
+			rawRorData.map(point => ({ time: point.time, temp: point.ror })), 
+			10
+		).map(point => ({ time: point.time, ror: point.temp }));
 
 		return finalSmoothedData;
 	}
@@ -609,29 +524,29 @@
 				.attr('stroke-dasharray', index % 2 === 0 ? 'none' : '3,3') // Alternate solid/dashed
 				.attr('d', eventLine);
 
-			// Add value labels at change points
-			const changePoints = eventSeries.values.filter(
-				(value, i) => i === 0 || value.value !== eventSeries.values[i - 1].value
-			);
+			// Labels removed for cleaner chart display
+			// const changePoints = eventSeries.values.filter(
+			// 	(value, i) => i === 0 || value.value !== eventSeries.values[i - 1].value
+			// );
 
-			svg
-				.selectAll(`.event-value-label-${index}`)
-				.data(changePoints)
-				.enter()
-				.append('text')
-				.attr('class', `event-value-label event-value-label-${index}`)
-				.attr('x', (d: any) => {
-					const timeMs = d.time_seconds * 1000;
-					const adjustedTime = (timeMs - chargeTime) / (1000 * 60);
-					return xScale(adjustedTime);
-				})
-				.attr('y', (d: any) => yScale(d.value))
-				.attr('dy', -8)
-				.attr('fill', color)
-				.attr('font-size', '12px')
-				.attr('font-weight', 'bold')
-				.attr('text-shadow', '0px 0px 3px rgba(0,0,0,0.7)')
-				.text((d: any) => `${eventSeries.event_string}: ${d.value}`);
+			// svg
+			// 	.selectAll(`.event-value-label-${index}`)
+			// 	.data(changePoints)
+			// 	.enter()
+			// 	.append('text')
+			// 	.attr('class', `event-value-label event-value-label-${index}`)
+			// 	.attr('x', (d: any) => {
+			// 		const timeMs = d.time_seconds * 1000;
+			// 		const adjustedTime = (timeMs - chargeTime) / (1000 * 60);
+			// 		return xScale(adjustedTime);
+			// 	})
+			// 	.attr('y', (d: any) => yScale(d.value))
+			// 	.attr('dy', -8)
+			// 	.attr('fill', color)
+			// 	.attr('font-size', '12px')
+			// 	.attr('font-weight', 'bold')
+			// 	.attr('text-shadow', '0px 0px 3px rgba(0,0,0,0.7)')
+			// 	.text((d: any) => `${eventSeries.event_string}: ${d.value}`);
 		});
 	}
 
@@ -716,34 +631,19 @@
 		// Get charge time for relative time calculation
 		const chargeTime = getChargeTime(data);
 
-		// Create combined events array and handle Drop/End renaming
+		// Create combined events array - preserve ALL original event names without modification
 		const eventData = $roastEvents.map((event) => ({
 			time: event.time,
 			name: event.name
 		}));
 
-		// Check for duplicate 'drop' events and rename second occurrence to 'End'
-		let dropCount = 0;
-		eventData.forEach((event) => {
-			if (event.name === 'Drop') {
-				dropCount++;
-				if (dropCount > 1) {
-					event.name = 'End';
-				}
-			}
-		});
-
 		// Sort events by time to ensure proper ordering
 		eventData.sort((a, b) => a.time - b.time);
 
-		// Update x-axis scale based on data duration (charge-relative)
-		const endEvent = eventData.find((event) => event.name === 'End');
-		const maxTimeRelative =
-			data.length > 0
-				? endEvent
-					? (endEvent.time - chargeTime) / (1000 * 60) // Convert end event time to minutes relative to charge
-					: Math.max(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) // Convert data time to minutes relative to charge
-				: 12; // Default to 12 if no data
+		// Update x-axis scale based on roast profile chart settings or data duration
+		const maxTimeRelative = data.length > 0 
+			? Math.max(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) // Convert data time to minutes relative to charge
+			: 12; // Default to 12 if no data
 
 		const minTimeRelative =
 			data.length > 0 ? Math.min(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) : -2;
@@ -1509,18 +1409,26 @@
 	// Load saved roast data when a roast profile is selected
 	async function loadSavedRoastData(roastId: number) {
 		try {
-			// Fetch both legacy format and new event value series data
-			const [legacyResponse, eventSeriesResponse] = await Promise.all([
-				fetch(`/api/profile-log?roast_id=${roastId}`),
+			// Fetch all data directly from normalized tables
+			const [temperatureResponse, eventResponse, eventSeriesResponse] = await Promise.all([
+				fetch(`/api/roast-temperatures?roast_id=${roastId}`),
+				fetch(`/api/roast-events?roast_id=${roastId}`),
 				fetch(`/api/event-value-series?roast_id=${roastId}`)
 			]);
 
-			if (!legacyResponse.ok) {
-				throw new Error('Failed to fetch roast data');
+			// Get temperature data
+			let temperatureData: TemperatureEntry[] = [];
+			if (temperatureResponse.ok) {
+				const tempResult = await temperatureResponse.json();
+				temperatureData = tempResult.data || [];
 			}
 
-			const legacyResult = await legacyResponse.json();
-			const legacyData = legacyResult.data || [];
+			// Get ALL event data from roast_events table
+			let eventData: RoastEventEntry[] = [];
+			if (eventResponse.ok) {
+				const eventResult = await eventResponse.json();
+				eventData = eventResult.data || [];
+			}
 
 			// Get event value series data (might fail if no events with values exist)
 			let eventValueSeries: EventValueSeries[] = [];
@@ -1529,181 +1437,123 @@
 				eventValueSeries = eventResult.data || [];
 			}
 
-			// Store event value series for dynamic chart rendering
+			// Store all data for chart rendering
+			savedTemperatureEntries = temperatureData;
+			savedEventEntries = eventData; // ALL events from roast_events table
 			savedEventValueSeries = eventValueSeries;
 
-			if (legacyData.length > 0) {
-				// Convert legacy data to new structure for internal use
-				savedTemperatureEntries = legacyData.map((entry: any) => ({
-					roast_id: roastId,
-					time_seconds: entry.time_seconds,
-					bean_temp: entry.bean_temp,
-					environmental_temp: entry.environmental_temp,
-					ambient_temp: null,
-					ror_bean_temp: null,
-					data_source: entry.data_source as 'live' | 'artisan_import'
-				}));
+			// Convert milestone events to chart display format
+			if (eventData.length > 0) {
+				$roastEvents = eventData
+					.filter((event) => event.category === 'milestone')
+					.map((event) => ({
+						time: event.time_seconds * 1000, // Convert to milliseconds
+						name: event.event_string.charAt(0).toUpperCase() + 
+							  event.event_string.slice(1).replace(/_/g, ' ') // Convert snake_case to Title Case
+					}));
+			} else {
+				$roastEvents = [];
+			}
 
-				savedEventEntries = [];
-
-				// Extract milestone events
-				legacyData.forEach((entry: any) => {
-					if (entry.start) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 10,
-							event_value: null,
-							event_string: 'start',
-							category: 'milestone',
-							subcategory: 'roast_phase',
-							user_generated: false,
-							automatic: true
-						});
-					}
-					if (entry.charge) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 10,
-							event_value: null,
-							event_string: 'charge',
-							category: 'milestone',
-							subcategory: 'roast_phase',
-							user_generated: false,
-							automatic: true
-						});
-					}
-					if (entry.maillard) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 10,
-							event_value: null,
-							event_string: 'dry_end',
-							category: 'milestone',
-							subcategory: 'roast_phase',
-							user_generated: false,
-							automatic: true
-						});
-					}
-					if (entry.fc_start) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 10,
-							event_value: null,
-							event_string: 'fc_start',
-							category: 'milestone',
-							subcategory: 'roast_phase',
-							user_generated: false,
-							automatic: true
-						});
-					}
-					if (entry.fc_rolling) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 10,
-							event_value: null,
-							event_string: 'fc_rolling',
-							category: 'milestone',
-							subcategory: 'roast_phase',
-							user_generated: false,
-							automatic: true
-						});
-					}
-					if (entry.fc_end) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 10,
-							event_value: null,
-							event_string: 'fc_end',
-							category: 'milestone',
-							subcategory: 'roast_phase',
-							user_generated: false,
-							automatic: true
-						});
-					}
-					if (entry.sc_start) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 10,
-							event_value: null,
-							event_string: 'sc_start',
-							category: 'milestone',
-							subcategory: 'roast_phase',
-							user_generated: false,
-							automatic: true
-						});
-					}
-					if (entry.drop) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 10,
-							event_value: null,
-							event_string: 'drop',
-							category: 'milestone',
-							subcategory: 'roast_phase',
-							user_generated: false,
-							automatic: true
-						});
-					}
-					if (entry.end) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 10,
-							event_value: null,
-							event_string: 'cool',
-							category: 'milestone',
-							subcategory: 'roast_phase',
-							user_generated: false,
-							automatic: true
-						});
-					}
-
-					// Add control events
-					if (entry.fan_setting !== null && entry.fan_setting !== undefined) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 1,
-							event_value: entry.fan_setting.toString(),
-							event_string: 'fan_setting',
-							category: 'control',
-							subcategory: 'machine_setting',
-							user_generated: false,
-							automatic: true
-						});
-					}
-
-					if (entry.heat_setting !== null && entry.heat_setting !== undefined) {
-						savedEventEntries.push({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							event_type: 1,
-							event_value: entry.heat_setting.toString(),
-							event_string: 'heat_setting',
-							category: 'control',
-							subcategory: 'machine_setting',
-							user_generated: false,
-							automatic: true
-						});
-					}
-				});
-
-				// Convert to roast data for chart display
+			// Convert to roast data for chart display
+			if (temperatureData.length > 0) {
 				$roastData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
 			} else {
-				// No legacy data - clear everything to ensure chart is clean
-				savedTemperatureEntries = [];
-				savedEventEntries = [];
-				$roastData = [];
-				$roastEvents = [];
+				// Fallback to legacy data if no new data exists
+				const legacyResponse = await fetch(`/api/profile-log?roast_id=${roastId}`);
+				if (legacyResponse.ok) {
+					const legacyResult = await legacyResponse.json();
+					const legacyData = legacyResult.data || [];
+					
+					if (legacyData.length > 0) {
+						// Convert legacy data to new structure for internal use
+						savedTemperatureEntries = legacyData.map((entry: any) => ({
+							roast_id: roastId,
+							time_seconds: entry.time_seconds,
+							bean_temp: entry.bean_temp,
+							environmental_temp: entry.environmental_temp,
+							ambient_temp: null,
+							ror_bean_temp: null,
+							data_source: entry.data_source as 'live' | 'artisan_import'
+						}));
+
+						// Extract ALL milestone events from legacy data (preserving all event types)
+						const milestoneEventTypes = ['start', 'charge', 'maillard', 'fc_start', 'fc_rolling', 'fc_end', 'sc_start', 'drop', 'end'];
+						savedEventEntries = [];
+
+						legacyData.forEach((entry: any) => {
+							milestoneEventTypes.forEach((eventType) => {
+								if (entry[eventType]) {
+									savedEventEntries.push({
+										roast_id: roastId,
+										time_seconds: entry.time_seconds,
+										event_type: 10,
+										event_value: null,
+										event_string: eventType === 'maillard' ? 'dry_end' : 
+													  eventType === 'end' ? 'cool' : eventType,
+										category: 'milestone',
+										subcategory: 'roast_phase',
+										user_generated: false,
+										automatic: true
+									});
+								}
+							});
+
+							// Add control events
+							if (entry.fan_setting !== null && entry.fan_setting !== undefined) {
+								savedEventEntries.push({
+									roast_id: roastId,
+									time_seconds: entry.time_seconds,
+									event_type: 1,
+									event_value: entry.fan_setting.toString(),
+									event_string: 'fan_setting',
+									category: 'control',
+									subcategory: 'machine_setting',
+									user_generated: false,
+									automatic: true
+								});
+							}
+
+							if (entry.heat_setting !== null && entry.heat_setting !== undefined) {
+								savedEventEntries.push({
+									roast_id: roastId,
+									time_seconds: entry.time_seconds,
+									event_type: 1,
+									event_value: entry.heat_setting.toString(),
+									event_string: 'heat_setting',
+									category: 'control',
+									subcategory: 'machine_setting',
+									user_generated: false,
+									automatic: true
+								});
+							}
+						});
+
+						// Convert to chart display format
+						$roastEvents = savedEventEntries
+							.filter((event) => event.category === 'milestone')
+							.map((event) => ({
+								time: event.time_seconds * 1000,
+								name: event.event_string.charAt(0).toUpperCase() + 
+									  event.event_string.slice(1).replace(/_/g, ' ')
+							}));
+
+						// Convert to roast data for chart display
+						$roastData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
+					} else {
+						// No data at all - clear everything
+						savedTemperatureEntries = [];
+						savedEventEntries = [];
+						$roastData = [];
+						$roastEvents = [];
+					}
+				} else {
+					// No data at all - clear everything
+					savedTemperatureEntries = [];
+					savedEventEntries = [];
+					$roastData = [];
+					$roastEvents = [];
+				}
 			}
 		} catch (error) {
 			console.error('Error loading roast data:', error);
@@ -1887,9 +1737,11 @@
 	<div class="mt-6 bg-background-secondary-light p-3 sm:p-4">
 		<!-- Timer and Start/Stop button -->
 		<div class="mb-4 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-4">
-			<div class="text-3xl font-bold text-text-primary-light sm:text-4xl md:text-5xl">
-				{formattedTime}
-			</div>
+			{#if isBeforeRoasting || isDuringRoasting}
+				<div class="text-3xl font-bold text-text-primary-light sm:text-4xl md:text-5xl">
+					{formattedTime}
+				</div>
+			{/if}
 			{#if isBeforeRoasting || isDuringRoasting}
 				<button
 					id="start-end-roast"

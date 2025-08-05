@@ -76,6 +76,12 @@ export interface ArtisanRoastData {
 	// Environment types
 	etypes?: string[];
 
+	// Special events (control device changes)
+	specialevents?: number[]; // Timestamps of control events
+	specialeventstype?: number[]; // Event type codes (0=button, 3=slider)
+	specialeventsvalue?: number[]; // Control values
+	specialeventsStrings?: string[]; // Control device identifiers
+
 	// Locale
 	locale?: string;
 	viewerMode?: boolean;
