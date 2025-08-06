@@ -80,7 +80,10 @@ export class RoastDataService {
 			throw new Error(`Failed to fetch temperature data: ${error.message}`);
 		}
 
-		return data || [];
+		return (data || []).map((temp) => ({
+			...temp,
+			time_seconds: parseFloat(String(temp.time_seconds)) // Convert string to number
+		})).filter((temp) => !isNaN(temp.time_seconds));
 	}
 
 	/**
@@ -103,18 +106,21 @@ export class RoastDataService {
 		// Get temperatures at milestone times for chart markers
 		const milestones: MilestoneEvent[] = [];
 		for (const event of data || []) {
+			const timeSeconds = parseFloat(String(event.time_seconds));
+			if (isNaN(timeSeconds)) continue; // Skip invalid time values
+			
 			// Find temperature reading closest to this milestone time
 			const { data: tempData } = await this.supabase
 				.from('roast_temperatures')
 				.select('bean_temp')
 				.eq('roast_id', roastId)
-				.gte('time_seconds', event.time_seconds - 2) // Within 2 seconds
-				.lte('time_seconds', event.time_seconds + 2)
+				.gte('time_seconds', timeSeconds - 2) // Within 2 seconds
+				.lte('time_seconds', timeSeconds + 2)
 				.order('time_seconds', { ascending: true })
 				.limit(1);
 
 			milestones.push({
-				time_seconds: event.time_seconds,
+				time_seconds: timeSeconds, // Convert string to number
 				event_string: event.event_string,
 				temperature: tempData?.[0]?.bean_temp || null
 			});
@@ -140,11 +146,13 @@ export class RoastDataService {
 			throw new Error(`Failed to fetch control events: ${error.message}`);
 		}
 
-		return (data || []).map((event) => ({
-			time_seconds: event.time_seconds,
-			event_string: event.event_string,
-			event_value: event.event_value
-		}));
+		return (data || [])
+			.filter((event) => !isNaN(parseFloat(String(event.time_seconds))))
+			.map((event) => ({
+				time_seconds: parseFloat(String(event.time_seconds)), // Convert string to number
+				event_string: event.event_string,
+				event_value: event.event_value
+			}));
 	}
 
 	/**
@@ -172,13 +180,16 @@ export class RoastDataService {
 		for (const event of data || []) {
 			const numericValue = parseFloat(event.event_value);
 			if (isNaN(numericValue)) continue; // Skip non-numeric values
+			
+			const timeSeconds = parseFloat(String(event.time_seconds));
+			if (isNaN(timeSeconds)) continue; // Skip invalid time values
 
 			if (!groupedEvents.has(event.event_string)) {
 				groupedEvents.set(event.event_string, []);
 			}
 
 			groupedEvents.get(event.event_string)!.push({
-				time_seconds: event.time_seconds,
+				time_seconds: timeSeconds, // Convert string to number
 				value: numericValue,
 				category: event.category
 			});
@@ -186,6 +197,13 @@ export class RoastDataService {
 
 		// Create event value series with range detection
 		const eventValueSeries: EventValueSeries[] = [];
+
+		console.log('roastDataService.getEventValueSeries:', {
+			roastId,
+			rawDataCount: data?.length || 0,
+			groupedEventsCount: groupedEvents.size,
+			groupedEventsKeys: Array.from(groupedEvents.keys())
+		});
 
 		for (const [eventString, values] of groupedEvents) {
 			if (values.length === 0) continue;
@@ -202,7 +220,7 @@ export class RoastDataService {
 				detected_scale = 'percentage'; // 0-100 scale
 			}
 
-			eventValueSeries.push({
+			const series = {
 				event_string: eventString,
 				category: values[0].category, // Use category from first event
 				values: values.map((v) => ({
@@ -214,9 +232,13 @@ export class RoastDataService {
 					max,
 					detected_scale
 				}
-			});
+			};
+
+			console.log(`EventValueSeries for ${eventString}:`, series);
+			eventValueSeries.push(series);
 		}
 
+		console.log('Final eventValueSeries:', eventValueSeries);
 		return eventValueSeries;
 	}
 

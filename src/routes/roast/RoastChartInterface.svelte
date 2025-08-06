@@ -26,6 +26,7 @@
 		extractMilestones
 	} from './stores';
 	import { createRoastDataService, type EventValueSeries } from '$lib/services/roastDataService';
+	import { createClient } from '$lib/supabase';
 
 	// Normalize event names for database storage - minimal formatting only
 	function normalizeEventName(eventName: string): string {
@@ -164,10 +165,14 @@
 	let width: number;
 	let margin = { top: 20, right: 80, bottom: 40, left: 80 }; // Increased right margin for RoR axis
 
-	// Add these computed values
-	let isBeforeRoasting = $derived(!currentRoastProfile?.roast_id || $roastData.length === 0);
+	// Saved profile data for milestone calculations
+	let savedTemperatureEntries = $state<TemperatureEntry[]>([]);
+	let savedEventEntries = $state<RoastEventEntry[]>([]);
+	let savedEventValueSeries = $state<EventValueSeries[]>([]);
+
+	// Add these computed values - check for saved data to determine state
+	let isBeforeRoasting = $derived(!currentRoastProfile?.roast_id || (savedEventEntries.length === 0 && $roastData.length === 0));
 	let isDuringRoasting = $derived(isRoasting);
-	let isAfterRoasting = $derived($roastData.length > 0 && !isRoasting);
 
 	// Handle profile changes
 	$effect(() => {
@@ -457,8 +462,32 @@
 
 	// Function to render dynamic event value lines based on event value series
 	function renderEventValueLines(svg: any, processedData: any[], chargeTime: number) {
-		if (!svg || !xScale || !yScaleTemp || savedEventValueSeries.length === 0) return;
+		if (!svg || !xScale || !yScaleTemp) return;
+		
+		console.log('renderEventValueLines:', {
+			savedEventValueSeriesCount: savedEventValueSeries.length,
+			processedDataCount: processedData.length,
+			isDuringRoasting: isDuringRoasting,
+			savedEventValueSeries: savedEventValueSeries
+		});
+		
+		// If savedEventValueSeries exists, use it (for Artisan imports)
+		if (savedEventValueSeries.length > 0) {
+			console.log('Using renderSavedEventValueSeries');
+			renderSavedEventValueSeries(svg, processedData, chargeTime);
+		} 
+		// Otherwise, try to render from processedData (for legacy and live data)
+		else if (processedData.length > 0) {
+			console.log('Using renderProcessedDataControlEvents');
+			renderProcessedDataControlEvents(svg, processedData, chargeTime);
+		}
+		else {
+			console.log('No control events to render');
+		}
+	}
 
+	// Function to render savedEventValueSeries (existing logic)
+	function renderSavedEventValueSeries(svg: any, processedData: any[], chargeTime: number) {
 		// Define colors for different event types
 		const eventColors = [
 			'#b45309', // Brown for heat-related events
@@ -523,31 +552,65 @@
 				.attr('stroke-width', 2)
 				.attr('stroke-dasharray', index % 2 === 0 ? 'none' : '3,3') // Alternate solid/dashed
 				.attr('d', eventLine);
-
-			// Labels removed for cleaner chart display
-			// const changePoints = eventSeries.values.filter(
-			// 	(value, i) => i === 0 || value.value !== eventSeries.values[i - 1].value
-			// );
-
-			// svg
-			// 	.selectAll(`.event-value-label-${index}`)
-			// 	.data(changePoints)
-			// 	.enter()
-			// 	.append('text')
-			// 	.attr('class', `event-value-label event-value-label-${index}`)
-			// 	.attr('x', (d: any) => {
-			// 		const timeMs = d.time_seconds * 1000;
-			// 		const adjustedTime = (timeMs - chargeTime) / (1000 * 60);
-			// 		return xScale(adjustedTime);
-			// 	})
-			// 	.attr('y', (d: any) => yScale(d.value))
-			// 	.attr('dy', -8)
-			// 	.attr('fill', color)
-			// 	.attr('font-size', '12px')
-			// 	.attr('font-weight', 'bold')
-			// 	.attr('text-shadow', '0px 0px 3px rgba(0,0,0,0.7)')
-			// 	.text((d: any) => `${eventSeries.event_string}: ${d.value}`);
 		});
+	}
+
+	// Function to render control events from processedData (for legacy and live data)
+	function renderProcessedDataControlEvents(svg: any, processedData: any[], chargeTime: number) {
+		// Extract fan and heat data series from processed data
+		const fanData = processedData
+			.filter((d) => d.fan !== null && d.fan !== undefined)
+			.map((d) => ({ time: d.time, value: d.fan || 0 }));
+		
+		const heatData = processedData
+			.filter((d) => d.heat !== null && d.heat !== undefined)
+			.map((d) => ({ time: d.time, value: d.heat || 0 }));
+
+		// Create Y scale for control values (0-10 scale for legacy data)
+		const controlScale = scaleLinear()
+			.domain([0, 10])
+			.range([yScaleTemp.range()[0], yScaleTemp.range()[0] - (yScaleTemp.range()[0] - yScaleTemp.range()[1]) * 0.3]);
+
+		// Render fan line (blue, dashed)
+		if (fanData.length > 0 && fanData.some(d => d.value > 0)) {
+			const fanLine = line<{ time: number; value: number }>()
+				.x((d) => {
+					const adjustedTime = (d.time - chargeTime) / (1000 * 60);
+					return xScale(adjustedTime);
+				})
+				.y((d) => controlScale(d.value))
+				.curve(curveStepAfter);
+
+			svg
+				.append('path')
+				.attr('class', 'control-event-line fan-line')
+				.datum(fanData)
+				.attr('fill', 'none')
+				.attr('stroke', '#3730a3') // Blue for fan
+				.attr('stroke-width', 2)
+				.attr('stroke-dasharray', '3,3') // Dashed
+				.attr('d', fanLine);
+		}
+
+		// Render heat line (brown, solid)
+		if (heatData.length > 0 && heatData.some(d => d.value > 0)) {
+			const heatLine = line<{ time: number; value: number }>()
+				.x((d) => {
+					const adjustedTime = (d.time - chargeTime) / (1000 * 60);
+					return xScale(adjustedTime);
+				})
+				.y((d) => controlScale(d.value))
+				.curve(curveStepAfter);
+
+			svg
+				.append('path')
+				.attr('class', 'control-event-line heat-line')
+				.datum(heatData)
+				.attr('fill', 'none')
+				.attr('stroke', '#b45309') // Brown for heat
+				.attr('stroke-width', 2)
+				.attr('d', heatLine);
+		}
 	}
 
 	// Function to create appropriate Y-scale for an event value series
@@ -556,7 +619,6 @@
 
 		// Get the temperature scale range to map event values
 		const tempRange = yScaleTemp.range();
-		const tempDomain = yScaleTemp.domain();
 		const chartHeight = tempRange[0] - tempRange[1]; // Inverted Y axis
 
 		// Create scale based on detected scale type
@@ -615,6 +677,9 @@
 		svg.selectAll('.event-label').remove();
 		svg.selectAll('.event-value-line').remove(); // Clear dynamic event value lines
 		svg.selectAll('.event-value-label').remove(); // Clear dynamic event value labels
+		svg.selectAll('.control-event-line').remove(); // Clear control event lines from processed data
+		svg.selectAll('.fan-line').remove(); // Clear fan lines
+		svg.selectAll('.heat-line').remove(); // Clear heat lines
 
 		// Clear any remaining event-related elements that might persist
 		svg.selectAll('[class*="event-value-label-"]').remove(); // Clear numbered event labels
@@ -865,7 +930,7 @@
 	// Update chart when saved data changes (viewing completed profiles)
 	$effect(() => {
 		if (!isDuringRoasting) {
-			if (savedTemperatureEntries.length > 0) {
+			if (savedTemperatureEntries.length > 0 || savedEventEntries.length > 0) {
 				// Convert to chart data format
 				const chartData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
 
@@ -1195,12 +1260,21 @@
 				isPaused = false;
 
 				// Automatically save the roast profile with loading indication
-				prepareDataForSave();
 				// Set loading state and save asynchronously
+				console.log('Cool End auto-save: currentRoastProfile =', currentRoastProfile);
+				console.log('Cool End auto-save: currentRoastProfile.roast_id =', currentRoastProfile?.roast_id);
 				isCoolEndSaving = true;
 				(async () => {
 					try {
+						console.log('Cool End auto-save: About to call saveRoastProfile()');
 						await saveRoastProfile();
+						console.log('Cool End auto-save: saveRoastProfile() completed successfully');
+					} catch (error) {
+						console.error('Cool End auto-save ERROR:', error);
+						console.error('Cool End auto-save ERROR details:', {
+							message: error instanceof Error ? error.message : error,
+							stack: error instanceof Error ? error.stack : undefined
+						});
 					} finally {
 						isCoolEndSaving = false;
 					}
@@ -1210,6 +1284,10 @@
 			// Create event entries for new structure
 			const timeSeconds = msToSeconds(currentTime);
 			const roastId = currentRoastProfile?.roast_id || 0;
+			
+			console.log('handleEventLog: Creating event entries for', event);
+			console.log('handleEventLog: currentRoastProfile =', currentRoastProfile);
+			console.log('handleEventLog: roastId =', roastId);
 
 			// Add milestone event
 			const milestoneEvent: RoastEventEntry = {
@@ -1308,19 +1386,14 @@
 		handleSettingsChange();
 	}
 
-	// Saved profile data for milestone calculations
-	let savedTemperatureEntries = $state<TemperatureEntry[]>([]);
-	let savedEventEntries = $state<RoastEventEntry[]>([]);
-	let savedEventValueSeries = $state<EventValueSeries[]>([]);
-
 	// Reactive milestone calculations using SvelteKit 5 syntax
 	let milestoneCalculations = $derived(() => {
 		// Use live data during roasting, saved data when viewing completed profiles
 		const events = isDuringRoasting ? $eventEntries : savedEventEntries;
 
 		// Include seconds and milliseconds in dependency to trigger updates every tick
-		const currentSeconds = seconds;
-		const currentMilliseconds = milliseconds;
+		seconds; // Dependency for live updates
+		milliseconds; // Dependency for live updates
 
 		if (events.length === 0) {
 			return {
@@ -1370,22 +1443,67 @@
 		temperatures: TemperatureEntry[],
 		events: RoastEventEntry[]
 	): RoastPoint[] {
+		// Sort control events by time for carry-forward logic - handle string/number conversion
+		const fanEvents = events
+			.filter((e) => e.event_string === 'fan_setting')
+			.sort((a, b) => parseFloat(String(a.time_seconds)) - parseFloat(String(b.time_seconds)));
+		const heatEvents = events
+			.filter((e) => e.event_string === 'heat_setting')
+			.sort((a, b) => parseFloat(String(a.time_seconds)) - parseFloat(String(b.time_seconds)));
+
+		// If no temperature data, create minimal data points from events for timeline
+		if (temperatures.length === 0 && events.length > 0) {
+			// Get all unique time points from events
+			const allTimes = [...new Set(events.map((e) => parseFloat(String(e.time_seconds))))]
+				.sort((a, b) => a - b);
+			
+			return allTimes.map((timeSeconds) => {
+				// Find the most recent control event before or at this time (carry-forward logic)
+				const fanEvent = fanEvents.filter((e) => parseFloat(String(e.time_seconds)) <= timeSeconds).pop();
+				const heatEvent = heatEvents.filter((e) => parseFloat(String(e.time_seconds)) <= timeSeconds).pop();
+
+				// Find milestone events at this time
+				const milestoneEvents = events.filter(
+					(e) => e.category === 'milestone' && Math.abs(parseFloat(String(e.time_seconds)) - timeSeconds) < 1
+				);
+
+				return {
+					time: secondsToMs(timeSeconds),
+					heat: heatEvent ? parseInt(heatEvent.event_value || '0') : 0,
+					fan: fanEvent ? parseInt(fanEvent.event_value || '0') : 0,
+					bean_temp: null, // No temperature data for legacy app records
+					environmental_temp: null,
+					ambient_temp: null,
+					ror_bean_temp: null,
+					data_source: 'live' as const,
+					// Include milestone flags for charge detection
+					charge: milestoneEvents.some((e) => e.event_string === 'charge'),
+					start: milestoneEvents.some((e) => e.event_string === 'start'),
+					maillard: milestoneEvents.some(
+						(e) => e.event_string === 'dry_end' || e.event_string === 'maillard'
+					),
+					fc_start: milestoneEvents.some((e) => e.event_string === 'fc_start'),
+					drop: milestoneEvents.some((e) => e.event_string === 'drop'),
+					end: milestoneEvents.some((e) => e.event_string === 'cool' || e.event_string === 'end')
+				};
+			});
+		}
+
+		// Normal case: process temperature entries with event data
 		return temperatures.map((temp) => {
-			// Find control events at this time
-			const fanEvent = events.find(
-				(e) => e.event_string === 'fan_setting' && Math.abs(e.time_seconds - temp.time_seconds) < 1
-			);
-			const heatEvent = events.find(
-				(e) => e.event_string === 'heat_setting' && Math.abs(e.time_seconds - temp.time_seconds) < 1
-			);
+			const tempTimeSeconds = parseFloat(String(temp.time_seconds));
+			
+			// Find the most recent control event before or at this time (carry-forward logic)
+			const fanEvent = fanEvents.filter((e) => parseFloat(String(e.time_seconds)) <= tempTimeSeconds).pop();
+			const heatEvent = heatEvents.filter((e) => parseFloat(String(e.time_seconds)) <= tempTimeSeconds).pop();
 
 			// Find milestone events at this time
 			const milestoneEvents = events.filter(
-				(e) => e.category === 'milestone' && Math.abs(e.time_seconds - temp.time_seconds) < 1
+				(e) => e.category === 'milestone' && Math.abs(parseFloat(String(e.time_seconds)) - tempTimeSeconds) < 1
 			);
 
 			return {
-				time: secondsToMs(temp.time_seconds),
+				time: secondsToMs(tempTimeSeconds),
 				heat: heatEvent ? parseInt(heatEvent.event_value || '0') : 0,
 				fan: fanEvent ? parseInt(fanEvent.event_value || '0') : 0,
 				bean_temp: temp.bean_temp,
@@ -1406,154 +1524,93 @@
 		});
 	}
 
-	// Load saved roast data when a roast profile is selected
+	// Load saved roast data when a roast profile is selected - use roastDataService exclusively
 	async function loadSavedRoastData(roastId: number) {
 		try {
-			// Fetch all data directly from normalized tables
-			const [temperatureResponse, eventResponse, eventSeriesResponse] = await Promise.all([
-				fetch(`/api/roast-temperatures?roast_id=${roastId}`),
-				fetch(`/api/roast-events?roast_id=${roastId}`),
-				fetch(`/api/event-value-series?roast_id=${roastId}`)
-			]);
+			// Use roastDataService to get all data from normalized tables
+			const supabase = createClient();
+			const roastDataService = createRoastDataService(supabase);
+			const chartData = await roastDataService.getChartData(roastId);
+			
+			// Convert to internal format - normalize all data sources to 'live' 
+			savedTemperatureEntries = chartData.temperatures.map((temp) => ({
+				roast_id: roastId,
+				time_seconds: temp.time_seconds,
+				bean_temp: temp.bean_temp,
+				environmental_temp: temp.environmental_temp,
+				ambient_temp: temp.ambient_temp,
+				ror_bean_temp: temp.ror_bean_temp,
+				data_source: 'live' as const // Treat all data sources the same
+			}));
 
-			// Get temperature data
-			let temperatureData: TemperatureEntry[] = [];
-			if (temperatureResponse.ok) {
-				const tempResult = await temperatureResponse.json();
-				temperatureData = tempResult.data || [];
-			}
+			// Get ALL milestone and control events from the roast_events table
+			savedEventEntries = [
+				...chartData.milestones.map((milestone) => ({
+					roast_id: roastId,
+					time_seconds: milestone.time_seconds,
+					event_type: 10,
+					event_value: null,
+					event_string: milestone.event_string, // Preserve original event names
+					category: 'milestone' as const,
+					subcategory: 'roast_phase',
+					user_generated: false,
+					automatic: true
+				})),
+				...chartData.controls.map((control) => ({
+					roast_id: roastId,
+					time_seconds: control.time_seconds,
+					event_type: 1,
+					event_value: control.event_value,
+					event_string: control.event_string,
+					category: 'control' as const,
+					subcategory: 'machine_setting',
+					user_generated: false,
+					automatic: true
+				}))
+			];
 
-			// Get ALL event data from roast_events table
-			let eventData: RoastEventEntry[] = [];
-			if (eventResponse.ok) {
-				const eventResult = await eventResponse.json();
-				eventData = eventResult.data || [];
-			}
+			// Store event value series for dynamic chart rendering
+			savedEventValueSeries = chartData.eventValueSeries || [];
+			console.log('loadSavedRoastData:', {
+				roastId,
+				temperaturesCount: chartData.temperatures.length,
+				milestonesCount: chartData.milestones.length,
+				controlsCount: chartData.controls.length,
+				eventValueSeriesCount: savedEventValueSeries.length,
+				eventValueSeries: savedEventValueSeries
+			});
 
-			// Get event value series data (might fail if no events with values exist)
-			let eventValueSeries: EventValueSeries[] = [];
-			if (eventSeriesResponse.ok) {
-				const eventResult = await eventSeriesResponse.json();
-				eventValueSeries = eventResult.data || [];
-			}
+			// Convert ALL milestone events to chart display format (no filtering, no renaming)
+			$roastEvents = chartData.milestones.map((milestone) => ({
+				time: milestone.time_seconds * 1000, // Convert to milliseconds
+				name: milestone.event_string.charAt(0).toUpperCase() + 
+					  milestone.event_string.slice(1).replace(/_/g, ' ') // Convert snake_case to Title Case
+			}));
 
-			// Store all data for chart rendering
-			savedTemperatureEntries = temperatureData;
-			savedEventEntries = eventData; // ALL events from roast_events table
-			savedEventValueSeries = eventValueSeries;
-
-			// Convert milestone events to chart display format
-			if (eventData.length > 0) {
-				$roastEvents = eventData
-					.filter((event) => event.category === 'milestone')
-					.map((event) => ({
-						time: event.time_seconds * 1000, // Convert to milliseconds
-						name: event.event_string.charAt(0).toUpperCase() + 
-							  event.event_string.slice(1).replace(/_/g, ' ') // Convert snake_case to Title Case
-					}));
-			} else {
-				$roastEvents = [];
-			}
-
-			// Convert to roast data for chart display
-			if (temperatureData.length > 0) {
+			// For legacy data without temperature entries, create minimal roast data for milestones
+			// Control events will be rendered via savedEventValueSeries
+			if (savedTemperatureEntries.length > 0) {
 				$roastData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
 			} else {
-				// Fallback to legacy data if no new data exists
-				const legacyResponse = await fetch(`/api/profile-log?roast_id=${roastId}`);
-				if (legacyResponse.ok) {
-					const legacyResult = await legacyResponse.json();
-					const legacyData = legacyResult.data || [];
-					
-					if (legacyData.length > 0) {
-						// Convert legacy data to new structure for internal use
-						savedTemperatureEntries = legacyData.map((entry: any) => ({
-							roast_id: roastId,
-							time_seconds: entry.time_seconds,
-							bean_temp: entry.bean_temp,
-							environmental_temp: entry.environmental_temp,
-							ambient_temp: null,
-							ror_bean_temp: null,
-							data_source: entry.data_source as 'live' | 'artisan_import'
-						}));
-
-						// Extract ALL milestone events from legacy data (preserving all event types)
-						const milestoneEventTypes = ['start', 'charge', 'maillard', 'fc_start', 'fc_rolling', 'fc_end', 'sc_start', 'drop', 'end'];
-						savedEventEntries = [];
-
-						legacyData.forEach((entry: any) => {
-							milestoneEventTypes.forEach((eventType) => {
-								if (entry[eventType]) {
-									savedEventEntries.push({
-										roast_id: roastId,
-										time_seconds: entry.time_seconds,
-										event_type: 10,
-										event_value: null,
-										event_string: eventType === 'maillard' ? 'dry_end' : 
-													  eventType === 'end' ? 'cool' : eventType,
-										category: 'milestone',
-										subcategory: 'roast_phase',
-										user_generated: false,
-										automatic: true
-									});
-								}
-							});
-
-							// Add control events
-							if (entry.fan_setting !== null && entry.fan_setting !== undefined) {
-								savedEventEntries.push({
-									roast_id: roastId,
-									time_seconds: entry.time_seconds,
-									event_type: 1,
-									event_value: entry.fan_setting.toString(),
-									event_string: 'fan_setting',
-									category: 'control',
-									subcategory: 'machine_setting',
-									user_generated: false,
-									automatic: true
-								});
-							}
-
-							if (entry.heat_setting !== null && entry.heat_setting !== undefined) {
-								savedEventEntries.push({
-									roast_id: roastId,
-									time_seconds: entry.time_seconds,
-									event_type: 1,
-									event_value: entry.heat_setting.toString(),
-									event_string: 'heat_setting',
-									category: 'control',
-									subcategory: 'machine_setting',
-									user_generated: false,
-									automatic: true
-								});
-							}
-						});
-
-						// Convert to chart display format
-						$roastEvents = savedEventEntries
-							.filter((event) => event.category === 'milestone')
-							.map((event) => ({
-								time: event.time_seconds * 1000,
-								name: event.event_string.charAt(0).toUpperCase() + 
-									  event.event_string.slice(1).replace(/_/g, ' ')
-							}));
-
-						// Convert to roast data for chart display
-						$roastData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
-					} else {
-						// No data at all - clear everything
-						savedTemperatureEntries = [];
-						savedEventEntries = [];
-						$roastData = [];
-						$roastEvents = [];
-					}
-				} else {
-					// No data at all - clear everything
-					savedTemperatureEntries = [];
-					savedEventEntries = [];
-					$roastData = [];
-					$roastEvents = [];
-				}
+				// Create basic data points from milestones only (for legacy app data)
+				const milestoneEvents = savedEventEntries.filter((e) => e.category === 'milestone');
+				$roastData = milestoneEvents.map((event) => ({
+					time: event.time_seconds * 1000, // Convert to milliseconds
+					heat: 0, // Will be handled by savedEventValueSeries
+					fan: 0, // Will be handled by savedEventValueSeries
+					bean_temp: null,
+					environmental_temp: null,
+					ambient_temp: null,
+					ror_bean_temp: null,
+					data_source: 'live' as const,
+					// Include milestone flags for charge detection
+					charge: event.event_string === 'charge',
+					start: event.event_string === 'start',
+					maillard: event.event_string === 'dry_end' || event.event_string === 'maillard',
+					fc_start: event.event_string === 'fc_start',
+					drop: event.event_string === 'drop',
+					end: event.event_string === 'cool' || event.event_string === 'end'
+				}));
 			}
 		} catch (error) {
 			console.error('Error loading roast data:', error);
@@ -1972,8 +2029,18 @@
 					variant="secondary"
 					class="w-full sm:w-auto"
 					onclick={() => {
-						prepareDataForSave();
-						return saveRoastProfile();
+						console.log('Manual save: currentRoastProfile =', currentRoastProfile);
+						console.log('Manual save: currentRoastProfile.roast_id =', currentRoastProfile?.roast_id);
+						console.log('Manual save: About to call saveRoastProfile()');
+						return saveRoastProfile().then(() => {
+							console.log('Manual save: saveRoastProfile() completed successfully');
+						}).catch((error) => {
+							console.error('Manual save ERROR:', error);
+							console.error('Manual save ERROR details:', {
+								message: error instanceof Error ? error.message : error,
+								stack: error instanceof Error ? error.stack : undefined
+							});
+						});
 					}}
 					disabled={!isRoasting && $eventEntries.length === 0}
 					loadingText="Saving Roast..."
@@ -1985,7 +2052,8 @@
 				<button
 					class="w-full rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light sm:w-auto"
 					onclick={() => {
-						prepareDataForSave();
+						console.log('Manual save (fallback): currentRoastProfile =', currentRoastProfile);
+						console.log('Manual save (fallback): About to call saveRoastProfile()');
 						saveRoastProfile();
 					}}
 					disabled={!isRoasting && $eventEntries.length === 0}

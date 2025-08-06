@@ -86,18 +86,6 @@ CREATE TABLE public.coffee_chunks (
   CONSTRAINT coffee_chunks_pkey PRIMARY KEY (id),
   CONSTRAINT coffee_chunks_coffee_id_fkey FOREIGN KEY (coffee_id) REFERENCES public.coffee_catalog(id)
 );
-CREATE TABLE public.extra_device_data (
-  device_data_id integer NOT NULL DEFAULT nextval('extra_device_data_device_data_id_seq'::regclass),
-  roast_id integer NOT NULL,
-  device_id integer NOT NULL,
-  device_name text,
-  sensor_type text,
-  time_seconds numeric NOT NULL,
-  value numeric,
-  unit text,
-  quality text DEFAULT 'good'::text,
-  CONSTRAINT extra_device_data_pkey PRIMARY KEY (device_data_id)
-);
 CREATE TABLE public.green_coffee_inv (
   id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   rank integer,
@@ -141,8 +129,8 @@ CREATE TABLE public.profile_log (
   is_cool boolean DEFAULT false,
   data_source text DEFAULT 'live'::text,
   CONSTRAINT profile_log_pkey PRIMARY KEY (log_id),
-  CONSTRAINT profile_log_roast_id_fkey FOREIGN KEY (roast_id) REFERENCES public.roast_profiles(roast_id),
-  CONSTRAINT profile_log_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id)
+  CONSTRAINT profile_log_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id),
+  CONSTRAINT profile_log_roast_id_fkey FOREIGN KEY (roast_id) REFERENCES public.roast_profiles(roast_id)
 );
 CREATE TABLE public.roast_events (
   event_id integer NOT NULL DEFAULT nextval('roast_events_event_id_seq'::regclass),
@@ -195,7 +183,6 @@ CREATE TABLE public.roast_profiles (
   maillard_percent numeric,
   development_percent numeric,
   total_roast_time numeric,
-  weight_loss_percent numeric,
   data_source text DEFAULT 'manual'::text,
   chart_z_max numeric,
   chart_z_min numeric,
@@ -203,12 +190,9 @@ CREATE TABLE public.roast_profiles (
   chart_y_min numeric,
   chart_x_max numeric,
   chart_x_min numeric,
-  weight_in numeric,
-  weight_out numeric,
-  weight_unit character varying DEFAULT 'g'::character varying,
   CONSTRAINT roast_profiles_pkey PRIMARY KEY (roast_id),
-  CONSTRAINT roast_profiles_coffee_id_fkey FOREIGN KEY (coffee_id) REFERENCES public.green_coffee_inv(id),
-  CONSTRAINT roast_profiles_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id)
+  CONSTRAINT roast_profiles_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id),
+  CONSTRAINT roast_profiles_coffee_id_fkey FOREIGN KEY (coffee_id) REFERENCES public.green_coffee_inv(id)
 );
 CREATE TABLE public.roast_temperatures (
   temp_id bigint NOT NULL DEFAULT nextval('roast_temperatures_temp_id_seq'::regclass),
@@ -250,8 +234,8 @@ CREATE TABLE public.sales (
   purchase_date date NOT NULL,
   user uuid,
   CONSTRAINT sales_pkey PRIMARY KEY (id),
-  CONSTRAINT sales_green_coffee_inv_id_fkey FOREIGN KEY (green_coffee_inv_id) REFERENCES public.green_coffee_inv(id),
-  CONSTRAINT sales_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id)
+  CONSTRAINT sales_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id),
+  CONSTRAINT sales_green_coffee_inv_id_fkey FOREIGN KEY (green_coffee_inv_id) REFERENCES public.green_coffee_inv(id)
 );
 CREATE TABLE public.shared_links (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

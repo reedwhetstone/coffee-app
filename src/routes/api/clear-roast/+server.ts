@@ -30,7 +30,6 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			roast_events: 0,
 			roast_phases: 0,
 			roast_temperatures: 0,
-			extra_device_data: 0,
 			profile_log: 0
 		};
 
@@ -79,20 +78,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		// 4. Note: roast_phases table no longer exists, skipping
 		deletedCounts.roast_phases = 0;
 
-		// 5. Delete extra device data
-		const { data: deletedDeviceData, error: deviceError } = await supabase
-			.from('extra_device_data')
-			.delete()
-			.eq('roast_id', parsedId)
-			.select('device_data_id');
-
-		if (deviceError) {
-			console.error('Error deleting extra device data:', deviceError);
-			return json({ error: 'Failed to clear extra device data' }, { status: 500 });
-		}
-		deletedCounts.extra_device_data = deletedDeviceData?.length || 0;
-
-		// 6. Delete profile log entries
+		// 5. Delete profile log entries
 		const { data: deletedProfileLog, error: profileLogError } = await supabase
 			.from('profile_log')
 			.delete()

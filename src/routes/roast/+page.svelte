@@ -767,6 +767,16 @@
 				profile = await profileResponse.json();
 			}
 
+			// Handle API response format - single profile creation returns an array
+			const actualProfile = Array.isArray(profile) ? profile[0] : profile;
+			
+			if (!actualProfile || !actualProfile.roast_id) {
+				console.error('No valid profile with roast_id in response:', profile);
+				throw new Error('Failed to get roast_id from profile creation');
+			}
+
+			const roastId = actualProfile.roast_id;
+
 			// Delete existing log entries if updating
 			if (currentRoastProfile?.roast_id) {
 				loadingStore.update(operationId, 'Clearing old roast data...');
@@ -788,7 +798,7 @@
 				);
 
 				return {
-					roast_id: profile.roast_id,
+					roast_id: roastId,
 					time_seconds: timeSeconds,
 					fan_setting: point.fan || 0,
 					heat_setting: point.heat || 0,
@@ -825,7 +835,7 @@
 			loadingStore.update(operationId, 'Refreshing profile list...');
 			await loadRoastProfiles();
 			const savedProfile = data.data.find(
-				(p: { roast_id: number }) => p.roast_id === profile.roast_id
+				(p: { roast_id: number }) => p.roast_id === roastId
 			);
 			if (savedProfile) {
 				loadingStore.update(operationId, 'Loading saved profile...');
