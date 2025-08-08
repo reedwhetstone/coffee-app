@@ -100,7 +100,6 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 				roaster_type: null,
 				roaster_size: null,
 				roast_uuid: null,
-				weight_unit: null,
 				temperature_unit: 'F',
 				// Clear milestone timings
 				charge_time: null,
@@ -123,7 +122,6 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 				maillard_percent: null,
 				development_percent: null,
 				total_roast_time: null,
-				weight_loss_percent: null,
 				// Clear chart settings
 				chart_x_min: null,
 				chart_x_max: null,
@@ -131,9 +129,6 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 				chart_y_max: null,
 				chart_z_min: null,
 				chart_z_max: null,
-				// Clear weight data
-				weight_in: null,
-				weight_out: null,
 				// Reset data source
 				data_source: 'manual'
 			})

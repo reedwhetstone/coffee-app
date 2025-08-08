@@ -103,7 +103,7 @@ function transformArtisanData(
 
 	// Extract control device data from extra devices with proper etypes mapping
 	const extraDeviceData: { name: string; data: number[] }[] = [];
-	
+
 	// Map extratemp1 channels to their corresponding etype names
 	if (extratemp1 && artisanData.extraname1) {
 		extratemp1.forEach((channelData, channelIndex) => {
@@ -124,7 +124,7 @@ function transformArtisanData(
 			}
 		});
 	}
-	
+
 	// Map extratemp2 channels to their corresponding etype names
 	if (extratemp2 && artisanData.extraname2) {
 		extratemp2.forEach((channelData, channelIndex) => {
@@ -149,21 +149,25 @@ function transformArtisanData(
 
 	// Process special events if extra temp arrays are empty (fallback for newer Artisan files)
 	const specialEvents: { time: number; name: string; value: string }[] = [];
-	if (extraDeviceData.length === 0 && artisanData.specialevents && artisanData.specialeventsStrings) {
+	if (
+		extraDeviceData.length === 0 &&
+		artisanData.specialevents &&
+		artisanData.specialeventsStrings
+	) {
 		artisanData.specialevents.forEach((timeSeconds: number, index: number) => {
 			const value = artisanData.specialeventsStrings?.[index];
 			const eventType = artisanData.specialeventstype?.[index];
-			
+
 			// Only process control events (type 3) and button events (type 0) with valid values
 			if ((eventType === 3 || eventType === 0) && value && value !== '' && value !== '0') {
 				// Determine event name based on value patterns and etypes
 				let eventName = 'control';
-				
+
 				// Map common control values to etype names based on typical Artisan patterns
 				if (artisanData.etypes) {
 					// For roasting controls, values often correspond to different devices
 					// Air: typically higher values (80-100)
-					// Drum: medium values (40-70) 
+					// Drum: medium values (40-70)
 					// Damper: variable values (20-90)
 					// Burner: typically lower to medium values (20-60)
 					const numValue = parseInt(value);
@@ -171,7 +175,7 @@ function transformArtisanData(
 						if (numValue >= 80) {
 							eventName = artisanData.etypes[0] || 'Air'; // Air
 						} else if (numValue >= 60) {
-							eventName = artisanData.etypes[1] || 'Drum'; // Drum  
+							eventName = artisanData.etypes[1] || 'Drum'; // Drum
 						} else if (numValue >= 30) {
 							eventName = artisanData.etypes[2] || 'Damper'; // Damper
 						} else {
@@ -181,7 +185,7 @@ function transformArtisanData(
 						eventName = eventName.toLowerCase().replace('--', 'control');
 					}
 				}
-				
+
 				specialEvents.push({
 					time: timeSeconds,
 					name: eventName,
@@ -271,7 +275,7 @@ function transformArtisanData(
 
 	// Create control events for all extra devices using actual etypes names
 	const controlEvents: any[] = [];
-	
+
 	// Process extratemp device data if available
 	timex.forEach((timeSeconds, index) => {
 		// Sample control events to avoid overwhelming database
@@ -294,7 +298,7 @@ function transformArtisanData(
 			});
 		}
 	});
-	
+
 	// Add special events as control events if extratemp data was empty
 	specialEvents.forEach((event) => {
 		controlEvents.push({
@@ -417,7 +421,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// Verify ownership and get existing roast profile data
 		const { data: profile } = await supabase
 			.from('roast_profiles')
-			.select('user, coffee_name, batch_name, oz_in, oz_out')
+			.select('user, coffee_name, batch_name')
 			.eq('roast_id', roastId)
 			.single();
 
@@ -472,11 +476,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				batch_name: profile.batch_name, // Preserve original batch name without modification
 				roaster_type: artisanData.roastertype || 'Unknown',
 				roaster_size: artisanData.roastersize || 0,
-				oz_in: profile.oz_in || artisanData.weight?.[0] || 0, // Preserve existing input weight, use Artisan data as fallback
-				oz_out: profile.oz_out || artisanData.weight?.[1] || 0, // Preserve existing output weight, use Artisan data as fallback
-				weight_in: artisanData.weight?.[0] || 0, // New weight fields for normalized structure
-				weight_out: artisanData.weight?.[1] || 0,
-				weight_unit: artisanData.weight?.[2] || 'g',
 				temperature_unit: 'F', // Always store as Fahrenheit
 				// Chart display settings from Artisan
 				chart_x_min: (artisanData as any).xmin || null,
@@ -498,9 +497,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				maillard_percent: processedData.phases.maillard_percent || null,
 				development_percent: processedData.phases.development_percent || null,
 				total_roast_time: processedData.phases.total_time_seconds || null,
-				roast_notes:
-					`Imported from Artisan\nRoaster: ${artisanData.roastertype || 'Unknown'}\nOriginal temp unit: ${artisanData.mode}\nWeight unit: ${artisanData.weight?.[2] || 'g'}` +
-					(artisanData.roastingnotes ? `\n\nNotes: ${artisanData.roastingnotes}` : ''),
 				roast_uuid: processedData.profileData.roast_uuid,
 				data_source: 'artisan_import'
 			})

@@ -80,10 +80,12 @@ export class RoastDataService {
 			throw new Error(`Failed to fetch temperature data: ${error.message}`);
 		}
 
-		return (data || []).map((temp) => ({
-			...temp,
-			time_seconds: parseFloat(String(temp.time_seconds)) // Convert string to number
-		})).filter((temp) => !isNaN(temp.time_seconds));
+		return (data || [])
+			.map((temp) => ({
+				...temp,
+				time_seconds: parseFloat(String(temp.time_seconds)) // Convert string to number
+			}))
+			.filter((temp) => !isNaN(temp.time_seconds));
 	}
 
 	/**
@@ -108,7 +110,7 @@ export class RoastDataService {
 		for (const event of data || []) {
 			const timeSeconds = parseFloat(String(event.time_seconds));
 			if (isNaN(timeSeconds)) continue; // Skip invalid time values
-			
+
 			// Find temperature reading closest to this milestone time
 			const { data: tempData } = await this.supabase
 				.from('roast_temperatures')
@@ -180,7 +182,7 @@ export class RoastDataService {
 		for (const event of data || []) {
 			const numericValue = parseFloat(event.event_value);
 			if (isNaN(numericValue)) continue; // Skip non-numeric values
-			
+
 			const timeSeconds = parseFloat(String(event.time_seconds));
 			if (isNaN(timeSeconds)) continue; // Skip invalid time values
 

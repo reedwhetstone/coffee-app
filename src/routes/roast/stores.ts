@@ -78,6 +78,8 @@ export const accumulatedTime = writable<number>(0);
 // New stores for normalized data
 export const temperatureEntries = writable<TemperatureEntry[]>([]);
 export const eventEntries = writable<RoastEventEntry[]>([]);
+// Store for tracking only meaningful control changes (for backend persistence)
+export const controlChanges = writable<RoastPoint[]>([]);
 
 // Time conversion utilities for new structure
 export function msToSeconds(ms: number): number {

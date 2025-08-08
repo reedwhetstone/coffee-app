@@ -847,6 +847,7 @@ From analyzing .alog files like 275.py, the special events system consists of fo
 ### Special Events Type Mapping
 
 **Event Type Codes:**
+
 - `0` = Button press/discrete event
 - `3` = Slider/continuous control event
 
@@ -857,13 +858,13 @@ The import system maps special events to control devices using this logic:
 ```typescript
 // Map control values to device names based on typical roasting patterns
 if (numValue >= 80) {
-    eventName = etypes[0] || 'Air';     // Air - typically high values (80-100)
+	eventName = etypes[0] || 'Air'; // Air - typically high values (80-100)
 } else if (numValue >= 60) {
-    eventName = etypes[1] || 'Drum';    // Drum - medium-high values (60-79)
+	eventName = etypes[1] || 'Drum'; // Drum - medium-high values (60-79)
 } else if (numValue >= 30) {
-    eventName = etypes[2] || 'Damper';  // Damper - medium values (30-59)
+	eventName = etypes[2] || 'Damper'; // Damper - medium values (30-59)
 } else {
-    eventName = etypes[3] || 'Burner';  // Burner - lower values (0-29)
+	eventName = etypes[3] || 'Burner'; // Burner - lower values (0-29)
 }
 ```
 
@@ -884,8 +885,8 @@ Special events are converted to `roast_events` table entries:
 
 ```sql
 INSERT INTO roast_events (
-    roast_id, time_seconds, event_type, event_value, 
-    event_string, category, subcategory, 
+    roast_id, time_seconds, event_type, event_value,
+    event_string, category, subcategory,
     user_generated, automatic, notes
 ) VALUES (
     ?, -- roast_id
@@ -894,7 +895,7 @@ INSERT INTO roast_events (
     ?, -- value from specialeventsStrings
     ?, -- device name (air, drum, damper, burner)
     'control',
-    'machine_setting', 
+    'machine_setting',
     false,
     true,
     'Imported from Artisan special events: {device} set to {value}'
@@ -904,6 +905,7 @@ INSERT INTO roast_events (
 ### Example Data Transformation
 
 From 275.py data:
+
 ```python
 specialevents[2] = 67          # Time: 67 seconds
 specialeventsStrings[2] = "90" # Value: 90%
@@ -912,10 +914,11 @@ etypes[0] = "Air"              # Device: Air (90 >= 80, maps to Air)
 ```
 
 Results in roast event:
+
 ```sql
 {
     "time_seconds": 67,
-    "event_value": "90", 
+    "event_value": "90",
     "event_string": "air",
     "category": "control",
     "notes": "Imported from Artisan special events: air set to 90"
@@ -925,6 +928,7 @@ Results in roast event:
 ### Impact on Charts
 
 Control events from special events system appear as:
+
 - **Timeline markers** at specific timestamps
 - **Control overlay data** showing device settings over time
 - **Event annotations** with device names and values

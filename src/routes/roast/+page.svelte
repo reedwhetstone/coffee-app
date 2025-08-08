@@ -13,6 +13,7 @@
 		accumulatedTime,
 		temperatureEntries,
 		eventEntries,
+		controlChanges,
 		msToSeconds,
 		secondsToMs
 	} from './stores';
@@ -466,14 +467,17 @@
 			? $accumulatedTime
 			: performance.now() - $startTime + $accumulatedTime;
 
-		$roastData = [
-			...$roastData,
-			{
-				time: currentTime,
-				heat: heatValue,
-				fan: value
-			}
-		];
+		const controlPoint = {
+			time: currentTime,
+			heat: heatValue,
+			fan: value
+		};
+
+		// Add to live visualization data (for chart rendering)
+		$roastData = [...$roastData, controlPoint];
+
+		// Add to control changes (for backend persistence)
+		$controlChanges = [...$controlChanges, controlPoint];
 	}
 
 	// Update the heat control handler to work even before roasting starts
@@ -485,14 +489,17 @@
 			? $accumulatedTime
 			: performance.now() - $startTime + $accumulatedTime;
 
-		$roastData = [
-			...$roastData,
-			{
-				time: currentTime,
-				heat: value,
-				fan: fanValue
-			}
-		];
+		const controlPoint = {
+			time: currentTime,
+			heat: value,
+			fan: fanValue
+		};
+
+		// Add to live visualization data (for chart rendering)
+		$roastData = [...$roastData, controlPoint];
+
+		// Add to control changes (for backend persistence)
+		$controlChanges = [...$controlChanges, controlPoint];
 	}
 
 	// Profile management handlers
@@ -677,6 +684,7 @@
 				$roastEvents = [];
 				$temperatureEntries = [];
 				$eventEntries = [];
+				$controlChanges = [];
 				$startTime = null;
 				$accumulatedTime = 0;
 			}
@@ -769,7 +777,7 @@
 
 			// Handle API response format - single profile creation returns an array
 			const actualProfile = Array.isArray(profile) ? profile[0] : profile;
-			
+
 			if (!actualProfile || !actualProfile.roast_id) {
 				console.error('No valid profile with roast_id in response:', profile);
 				throw new Error('Failed to get roast_id from profile creation');
@@ -788,8 +796,8 @@
 			// Save new roast data with temperature and event entries
 			loadingStore.update(operationId, 'Saving roast data...');
 
-			// Convert roast data to the format expected by the API
-			const logEntries = $roastData.map((point, index) => {
+			// Convert control changes to the format expected by the API (only meaningful changes, not every-second data)
+			const logEntries = $controlChanges.map((point, index) => {
 				const timeSeconds = msToSeconds(point.time);
 
 				// Find events at this time point
@@ -834,9 +842,7 @@
 			// Reload profiles and select the saved one
 			loadingStore.update(operationId, 'Refreshing profile list...');
 			await loadRoastProfiles();
-			const savedProfile = data.data.find(
-				(p: { roast_id: number }) => p.roast_id === roastId
-			);
+			const savedProfile = data.data.find((p: { roast_id: number }) => p.roast_id === roastId);
 			if (savedProfile) {
 				loadingStore.update(operationId, 'Loading saved profile...');
 				await selectProfile(savedProfile);
@@ -863,7 +869,7 @@
 	}
 
 	function prepareRoastDataForSave() {
-		if ($roastData.length === 0) return [];
+		if ($controlChanges.length === 0) return [];
 
 		const lastTime = $roastData[$roastData.length - 1]?.time || 0;
 
@@ -882,7 +888,7 @@
 			];
 		}
 
-		return $roastData;
+		return $controlChanges;
 	}
 
 	async function handleClearRoastData(roastId: number) {

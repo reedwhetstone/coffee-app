@@ -381,37 +381,37 @@ function fixFormattingIssues(content: string): string {
 function fixMalformedArrays(content: string): string {
 	// Robust array cleanup using systematic validation and reconstruction
 	// Strategy: Nuclear option - identify and safely convert problematic arrays to empty arrays
-	
+
 	// Step 1: Handle arrays with unmatched quotes (major parsing killer)
 	content = content.replace(/:\s*\[[^\]]*"[^"\]]*$/gm, (match) => {
 		const propertyMatch = match.match(/^([^:]*:)/);
 		return propertyMatch ? propertyMatch[1] + ' []' : ': []';
 	});
-	
+
 	// Step 2: Handle arrays with incomplete elements at end of lines
 	content = content.replace(/:\s*\[[^\]]*,[^,\]"]*$/gm, (match) => {
 		const propertyMatch = match.match(/^([^:]*:)/);
 		return propertyMatch ? propertyMatch[1] + ' []' : ': []';
 	});
-	
+
 	// Step 3: Fix arrays that contain only empty strings or whitespace
 	content = content.replace(/:\s*\[\s*""\s*\]/g, ': []');
 	content = content.replace(/:\s*\[\s*\]/g, ': []');
-	
+
 	// Step 4: Nuclear option for color arrays (consistently problematic)
 	content = content.replace(/"[^"]*color[^"]*":\s*\[[^\]]*\]/gi, (match) => {
 		const propertyMatch = match.match(/"([^"]*)"/);
 		const propertyName = propertyMatch ? propertyMatch[1] : 'color_property';
 		return `"${propertyName}": []`;
 	});
-	
+
 	// Step 5: Fix trailing comma issues in arrays
 	content = content.replace(/,(\s*\])/g, '$1');
-	
+
 	// Step 6: Final safety net - any array that doesn't have proper structure gets emptied
 	// Look for arrays that start but don't properly close before next property or end
 	content = content.replace(/:\s*\[(?![^\]]*\](?:\s*,|\s*}))[^\]]*(?=\s*"[^"]*"\s*:|$)/gm, ': []');
-	
+
 	return content;
 }
 
