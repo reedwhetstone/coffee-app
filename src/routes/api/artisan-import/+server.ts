@@ -318,7 +318,6 @@ function transformArtisanData(
 	// Note: roast_phases table no longer exists in normalized schema
 	// Phase percentages are now stored directly in roast_profiles table
 
-
 	// Create extra device data using all mapped extra devices
 	const extraDeviceDataForDB: any[] = [];
 	extraDeviceData.forEach((device, deviceIndex) => {

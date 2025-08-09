@@ -357,7 +357,7 @@
 		// Step 1: Get charge and drop times to filter RoR display
 		let chargeTime: number | null = null;
 		let dropTime: number | null = null;
-		
+
 		// Extract milestone events to determine charge and drop times
 		const events = isDuringRoasting ? $eventEntries : savedEventEntries;
 		if (events.length > 0) {
@@ -756,9 +756,7 @@
 					: 12; // Default max when no data
 
 			const minTimeRelative =
-				data.length > 0
-					? Math.min(...data.map((d) => (d.time - chargeTime) / (1000 * 60)))
-					: -2; // Default min when no data
+				data.length > 0 ? Math.min(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) : -2; // Default min when no data
 
 			xScale.domain([Math.min(minTimeRelative, -2), Math.max(maxTimeRelative, 12)]);
 		}
@@ -1025,17 +1023,20 @@
 			.attr('preserveAspectRatio', 'xMidYMid meet');
 
 		// Update scales with chart boundaries if available
-		const xDomain = chartSettings?.xRange && chartSettings.xRange[0] !== null && chartSettings.xRange[1] !== null 
-			? [chartSettings.xRange[0], chartSettings.xRange[1]]
-			: [-2, 12]; // Default: -2 to 12 minutes relative to charge
-		
-		const yTempDomain = chartSettings?.yRange && chartSettings.yRange[0] !== null && chartSettings.yRange[1] !== null
-			? [chartSettings.yRange[0], chartSettings.yRange[1]]
-			: [100, 500]; // Default: 100-500°F
-			
-		const yRoRDomain = chartSettings?.zRange && chartSettings.zRange[0] !== null && chartSettings.zRange[1] !== null
-			? [chartSettings.zRange[0], chartSettings.zRange[1]]
-			: [0, 50]; // Default: 0-50°F/min
+		const xDomain =
+			chartSettings?.xRange && chartSettings.xRange[0] !== null && chartSettings.xRange[1] !== null
+				? [chartSettings.xRange[0], chartSettings.xRange[1]]
+				: [-2, 12]; // Default: -2 to 12 minutes relative to charge
+
+		const yTempDomain =
+			chartSettings?.yRange && chartSettings.yRange[0] !== null && chartSettings.yRange[1] !== null
+				? [chartSettings.yRange[0], chartSettings.yRange[1]]
+				: [100, 500]; // Default: 100-500°F
+
+		const yRoRDomain =
+			chartSettings?.zRange && chartSettings.zRange[0] !== null && chartSettings.zRange[1] !== null
+				? [chartSettings.zRange[0], chartSettings.zRange[1]]
+				: [0, 50]; // Default: 0-50°F/min
 
 		console.log('updateChartDimensions scale update:', {
 			chartSettings,
@@ -1106,17 +1107,20 @@
 
 		// Setup scales with charge-relative time axis and dual y-axes
 		// Use chart boundaries if available, otherwise use defaults
-		const xDomain = chartSettings?.xRange && chartSettings.xRange[0] !== null && chartSettings.xRange[1] !== null 
-			? [chartSettings.xRange[0], chartSettings.xRange[1]]
-			: [-2, 12]; // Default: -2 to 12 minutes relative to charge
-		
-		const yTempDomain = chartSettings?.yRange && chartSettings.yRange[0] !== null && chartSettings.yRange[1] !== null
-			? [chartSettings.yRange[0], chartSettings.yRange[1]]
-			: [100, 500]; // Default: 100-500°F
-			
-		const yRoRDomain = chartSettings?.zRange && chartSettings.zRange[0] !== null && chartSettings.zRange[1] !== null
-			? [chartSettings.zRange[0], chartSettings.zRange[1]]
-			: [0, 50]; // Default: 0-50°F/min
+		const xDomain =
+			chartSettings?.xRange && chartSettings.xRange[0] !== null && chartSettings.xRange[1] !== null
+				? [chartSettings.xRange[0], chartSettings.xRange[1]]
+				: [-2, 12]; // Default: -2 to 12 minutes relative to charge
+
+		const yTempDomain =
+			chartSettings?.yRange && chartSettings.yRange[0] !== null && chartSettings.yRange[1] !== null
+				? [chartSettings.yRange[0], chartSettings.yRange[1]]
+				: [100, 500]; // Default: 100-500°F
+
+		const yRoRDomain =
+			chartSettings?.zRange && chartSettings.zRange[0] !== null && chartSettings.zRange[1] !== null
+				? [chartSettings.zRange[0], chartSettings.zRange[1]]
+				: [0, 50]; // Default: 0-50°F/min
 
 		console.log('onMount scale setup:', {
 			chartSettings,
@@ -1537,13 +1541,17 @@
 			const supabase = createClient();
 			const roastDataService = createRoastDataService(supabase);
 			const settings = await roastDataService.getChartSettings(roastId);
-			
+
 			if (settings) {
 				// Normalize xRange to minutes if values appear to be in seconds
 				let xMin = settings.xRange[0];
 				let xMax = settings.xRange[1];
 				const looksLikeSeconds =
-					xMin !== null && xMax !== null && typeof xMin === 'number' && typeof xMax === 'number' && (xMin > 60 || xMax > 60);
+					xMin !== null &&
+					xMax !== null &&
+					typeof xMin === 'number' &&
+					typeof xMax === 'number' &&
+					(xMin > 60 || xMax > 60);
 
 				if (looksLikeSeconds) {
 					xMin = xMin !== null ? xMin / 60 : xMin;
@@ -1684,15 +1692,21 @@
 
 	// Effect to update chart dimensions when chart settings change
 	$effect(() => {
-		console.log('Chart settings effect triggered:', { 
-			chartSettings, 
-			hasSvg: !!svg, 
+		console.log('Chart settings effect triggered:', {
+			chartSettings,
+			hasSvg: !!svg,
 			hasXScale: xScale !== undefined,
 			hasYScaleTemp: yScaleTemp !== undefined,
 			hasYScaleRoR: yScaleRoR !== undefined
 		});
-		
-		if (chartSettings && svg && xScale !== undefined && yScaleTemp !== undefined && yScaleRoR !== undefined) {
+
+		if (
+			chartSettings &&
+			svg &&
+			xScale !== undefined &&
+			yScaleTemp !== undefined &&
+			yScaleRoR !== undefined
+		) {
 			console.log('Updating chart dimensions due to chart settings change');
 			untrack(() => updateChartDimensions());
 		}

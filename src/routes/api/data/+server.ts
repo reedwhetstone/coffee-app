@@ -293,7 +293,7 @@ export const DELETE: RequestHandler = async (event) => {
 		// If there are roast profiles, delete their associated data
 		if (roastProfiles && roastProfiles.length > 0) {
 			const roastIds = roastProfiles.map((profile: RoastProfile) => profile.roast_id);
-			
+
 			// Delete from normalized tables
 			const { error: tempError } = await supabase
 				.from('roast_temperatures')
