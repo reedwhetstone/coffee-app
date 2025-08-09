@@ -13,9 +13,7 @@
 		accumulatedTime,
 		temperatureEntries,
 		eventEntries,
-		controlChanges,
-		msToSeconds,
-		secondsToMs
+		msToSeconds
 	} from './stores';
 
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
@@ -46,9 +44,7 @@
 	let heatValue = $state(1);
 	let selectedEvent = $state<string | null>(null);
 
-	// Roast profile state management
-	let sortField = $state<string | null>('roast_id');
-	let sortDirection = $state<'asc' | 'desc' | null>('asc');
+	// Roast profile state management (removed unused sort variables)
 
 	// Profile grouping and sorting state
 	let sortedBatchNames = $state<string[]>([]);
@@ -458,48 +454,56 @@
 		}
 	}
 
-	// Update the fan control handler to work even before roasting starts
+	// Update the fan control handler
 	function updateFan(value: number) {
 		fanValue = value;
-		if ($startTime === null) return;
+		if ($startTime === null || !currentRoastProfile?.roast_id) return;
 
 		const currentTime = isPaused
 			? $accumulatedTime
 			: performance.now() - $startTime + $accumulatedTime;
 
-		const controlPoint = {
-			time: currentTime,
-			heat: heatValue,
-			fan: value
+		// Add control event to normalized structure
+		const timeSeconds = msToSeconds(currentTime);
+		const controlEvent = {
+			roast_id: currentRoastProfile.roast_id,
+			time_seconds: timeSeconds,
+			event_type: 1,
+			event_value: value.toString(),
+			event_string: 'fan_setting',
+			category: 'control' as const,
+			subcategory: 'machine_setting',
+			user_generated: true,
+			automatic: false
 		};
 
-		// Add to live visualization data (for chart rendering)
-		$roastData = [...$roastData, controlPoint];
-
-		// Add to control changes (for backend persistence)
-		$controlChanges = [...$controlChanges, controlPoint];
+		$eventEntries = [...$eventEntries, controlEvent];
 	}
 
-	// Update the heat control handler to work even before roasting starts
+	// Update the heat control handler
 	function updateHeat(value: number) {
 		heatValue = value;
-		if ($startTime === null) return;
+		if ($startTime === null || !currentRoastProfile?.roast_id) return;
 
 		const currentTime = isPaused
 			? $accumulatedTime
 			: performance.now() - $startTime + $accumulatedTime;
 
-		const controlPoint = {
-			time: currentTime,
-			heat: value,
-			fan: fanValue
+		// Add control event to normalized structure
+		const timeSeconds = msToSeconds(currentTime);
+		const controlEvent = {
+			roast_id: currentRoastProfile.roast_id,
+			time_seconds: timeSeconds,
+			event_type: 1,
+			event_value: value.toString(),
+			event_string: 'heat_setting',
+			category: 'control' as const,
+			subcategory: 'machine_setting',
+			user_generated: true,
+			automatic: false
 		};
 
-		// Add to live visualization data (for chart rendering)
-		$roastData = [...$roastData, controlPoint];
-
-		// Add to control changes (for backend persistence)
-		$controlChanges = [...$controlChanges, controlPoint];
+		$eventEntries = [...$eventEntries, controlEvent];
 	}
 
 	// Profile management handlers
@@ -526,20 +530,6 @@
 		selectedBean = { name: 'No Bean Selected' };
 		// Refresh profiles list
 		await loadRoastProfiles();
-	}
-
-	// Table sorting handler
-	function toggleSort(field: string) {
-		if (sortField === field) {
-			if (sortDirection === 'asc') sortDirection = 'desc';
-			else if (sortDirection === 'desc') {
-				sortField = null;
-				sortDirection = null;
-			}
-		} else {
-			sortField = field;
-			sortDirection = 'asc';
-		}
 	}
 
 	// Function to toggle batch expansion
@@ -622,72 +612,14 @@
 				throw new Error('Failed to fetch roast data');
 			}
 
-			const data = await response.json();
-
-			if (data.data.length > 0) {
-				// Convert response data to roast data points
-				$roastData = data.data.map((entry: any) => {
-					const timeInMs = entry.time_seconds ? secondsToMs(entry.time_seconds) : 0;
-
-					return {
-						time: timeInMs,
-						heat: entry.heat_setting || 0,
-						fan: entry.fan_setting || 0,
-						bean_temp: entry.bean_temp,
-						environmental_temp: entry.environmental_temp,
-						ambient_temp: entry.ambient_temp,
-						ror_bean_temp: entry.ror_bean_temp,
-						data_source: entry.data_source,
-						// Include milestone flags for charge detection
-						charge: entry.charge || false,
-						start: entry.start || false,
-						maillard: entry.maillard || false,
-						fc_start: entry.fc_start || false,
-						drop: entry.drop || false,
-						end: entry.end || false
-					};
-				});
-
-				// Convert to roast events for chart display
-				$roastEvents = data.data
-					.filter(
-						(entry: any) =>
-							entry.start ||
-							entry.charge ||
-							entry.maillard ||
-							entry.fc_start ||
-							entry.fc_rolling ||
-							entry.fc_end ||
-							entry.sc_start ||
-							entry.drop ||
-							entry.end
-					)
-					.map((entry: any) => {
-						const timeInMs = entry.time_seconds ? secondsToMs(entry.time_seconds) : 0;
-
-						let eventName = 'Unknown';
-						if (entry.start) eventName = 'Start';
-						else if (entry.charge) eventName = 'Charge';
-						else if (entry.maillard) eventName = 'Maillard';
-						else if (entry.fc_start) eventName = 'FC Start';
-						else if (entry.fc_rolling) eventName = 'FC Rolling';
-						else if (entry.fc_end) eventName = 'FC End';
-						else if (entry.sc_start) eventName = 'SC Start';
-						else if (entry.drop) eventName = 'Drop';
-						else if (entry.end) eventName = 'Cool End';
-
-						return { time: timeInMs, name: eventName };
-					});
-			} else {
-				// Clear all data for new roast
-				$roastData = [];
-				$roastEvents = [];
-				$temperatureEntries = [];
-				$eventEntries = [];
-				$controlChanges = [];
-				$startTime = null;
-				$accumulatedTime = 0;
-			}
+			// The profile-log API now returns normalized data
+			// Clear existing data first
+			$temperatureEntries = [];
+			$eventEntries = [];
+			$roastData = [];
+			$roastEvents = [];
+			$startTime = null;
+			$accumulatedTime = 0;
 
 			// Smooth scroll to top
 			window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -701,16 +633,9 @@
 		}
 	}
 
-	// Add saveRoastProfile function with comprehensive loading states
+	// Simplified save function using normalized data structure
 	async function saveRoastProfile() {
-		// Import the loading store
-		const { loadingStore } = await import('$lib/stores/loadingStore');
-		const operationId = 'save-roast-profile';
-
 		try {
-			// Start loading state
-			loadingStore.start(operationId, 'Preparing roast profile...');
-
 			if (!selectedBean?.id) {
 				throw new Error(
 					'No coffee selected. Please select a coffee before saving the roast profile.'
@@ -721,50 +646,23 @@
 				throw new Error('Please stop the roast before saving.');
 			}
 
-			// Prepare the logs with end time before saving
-			loadingStore.update(operationId, 'Preparing roast data...');
-			const preparedLogs = prepareRoastDataForSave();
-
-			let profileResponse;
-			let profile;
-
+			// Ensure we have a roast profile
+			let roastId: number;
 			if (currentRoastProfile?.roast_id) {
-				// Update existing profile
-				loadingStore.update(operationId, 'Updating roast profile...');
-				profileResponse = await fetch(`/api/roast-profiles?id=${currentRoastProfile.roast_id}`, {
-					method: 'PUT',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						...currentRoastProfile,
-						last_updated: new Date()
-					})
-				});
-
-				if (!profileResponse.ok) {
-					const errorData = await profileResponse.json();
-					throw new Error(errorData.error || 'Failed to update roast profile');
-				}
-				profile = await profileResponse.json();
+				roastId = currentRoastProfile.roast_id;
 			} else {
-				// Create new profile
-				loadingStore.update(operationId, 'Creating new roast profile...');
-				profileResponse = await fetch('/api/roast-profiles', {
+				// Create new profile first
+				const profileResponse = await fetch('/api/roast-profiles', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json'
 					},
 					body: JSON.stringify({
-						batch_name: `${selectedBean.name} - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+						batch_name: `${selectedBean.name} - ${new Date().toLocaleDateString()}`,
 						coffee_id: selectedBean.id,
 						coffee_name: selectedBean.name,
 						roast_date: new Date(),
-						last_updated: new Date(),
-						oz_in: null,
-						oz_out: null,
-						roast_notes: null,
-						roast_targets: null
+						last_updated: new Date()
 					})
 				});
 
@@ -772,88 +670,46 @@
 					const errorData = await profileResponse.json();
 					throw new Error(errorData.error || 'Failed to save roast profile');
 				}
-				profile = await profileResponse.json();
+
+				const profile = await profileResponse.json();
+				const actualProfile = Array.isArray(profile) ? profile[0] : profile;
+				roastId = actualProfile.roast_id;
+				currentRoastProfile = actualProfile;
 			}
 
-			// Handle API response format - single profile creation returns an array
-			const actualProfile = Array.isArray(profile) ? profile[0] : profile;
+			// Clear existing data for this roast
+			await fetch(`/api/profile-log?roast_id=${roastId}`, { method: 'DELETE' });
 
-			if (!actualProfile || !actualProfile.roast_id) {
-				console.error('No valid profile with roast_id in response:', profile);
-				throw new Error('Failed to get roast_id from profile creation');
-			}
-
-			const roastId = actualProfile.roast_id;
-
-			// Delete existing log entries if updating
-			if (currentRoastProfile?.roast_id) {
-				loadingStore.update(operationId, 'Clearing old roast data...');
-				await fetch(`/api/profile-log?roast_id=${currentRoastProfile.roast_id}`, {
-					method: 'DELETE'
+			// Save the normalized data directly to API
+			if ($eventEntries.length > 0) {
+				const logResponse = await fetch('/api/profile-log', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(
+						$eventEntries.map((entry) => ({
+							...entry,
+							roast_id: roastId
+						}))
+					)
 				});
+
+				if (!logResponse.ok) {
+					const errorData = await logResponse.json();
+					throw new Error(errorData.error || 'Failed to save roast data');
+				}
 			}
 
-			// Save new roast data with temperature and event entries
-			loadingStore.update(operationId, 'Saving roast data...');
-
-			// Convert control changes to the format expected by the API (only meaningful changes, not every-second data)
-			const logEntries = $controlChanges.map((point, index) => {
-				const timeSeconds = msToSeconds(point.time);
-
-				// Find events at this time point
-				const eventsAtTime = $roastEvents.filter(
-					(event) => Math.abs(event.time - point.time) < 1000 // Within 1 second
-				);
-
-				return {
-					roast_id: roastId,
-					time_seconds: timeSeconds,
-					fan_setting: point.fan || 0,
-					heat_setting: point.heat || 0,
-					bean_temp: point.bean_temp,
-					environmental_temp: point.environmental_temp,
-					ambient_temp: point.ambient_temp,
-					// Convert events back to boolean flags for API compatibility
-					start: eventsAtTime.some((e) => e.name === 'Start'),
-					charge: eventsAtTime.some((e) => e.name === 'Charge'),
-					maillard: eventsAtTime.some((e) => e.name === 'Maillard'),
-					fc_start: eventsAtTime.some((e) => e.name === 'FC Start'),
-					fc_rolling: eventsAtTime.some((e) => e.name === 'FC Rolling'),
-					fc_end: eventsAtTime.some((e) => e.name === 'FC End'),
-					sc_start: eventsAtTime.some((e) => e.name === 'SC Start'),
-					drop: eventsAtTime.some((e) => e.name === 'Drop'),
-					end: eventsAtTime.some((e) => e.name === 'Cool End')
-				};
-			});
-
-			const logResponse = await fetch('/api/profile-log', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(logEntries)
-			});
-
-			if (!logResponse.ok) {
-				const errorData = await logResponse.json();
-				throw new Error(errorData.error || 'Failed to save roast data');
-			}
-
-			// Reload profiles and select the saved one
-			loadingStore.update(operationId, 'Refreshing profile list...');
+			// Reload and select the saved profile
 			await loadRoastProfiles();
 			const savedProfile = data.data.find((p: { roast_id: number }) => p.roast_id === roastId);
 			if (savedProfile) {
-				loadingStore.update(operationId, 'Loading saved profile...');
 				await selectProfile(savedProfile);
 			}
 
-			// Complete the loading operation
-			loadingStore.complete(operationId);
 			alert('Roast profile saved successfully!');
 		} catch (error: unknown) {
-			// Complete loading even on error
-			loadingStore.complete(operationId);
 			console.error('Error saving roast profile:', error);
 			alert(error instanceof Error ? error.message : 'Failed to save roast profile');
 		}
@@ -868,30 +724,7 @@
 		isFormVisible = false;
 	}
 
-	function prepareRoastDataForSave() {
-		if ($controlChanges.length === 0) return [];
-
-		const lastTime = $roastData[$roastData.length - 1]?.time || 0;
-
-		// Check if we need to add an end event
-		const hasDropEvent = $roastEvents.some((e) => e.name === 'Drop');
-		const hasEndEvent = $roastEvents.some((e) => e.name === 'Cool End');
-
-		if (hasDropEvent && !hasEndEvent) {
-			// Add end event
-			$roastEvents = [
-				...$roastEvents,
-				{
-					time: lastTime,
-					name: 'Cool End'
-				}
-			];
-		}
-
-		return $controlChanges;
-	}
-
-	async function handleClearRoastData(roastId: number) {
+	async function handleClearRoastData() {
 		try {
 			const response = await fetch(`/api/clear-roast?roast_id=${currentRoastProfile.roast_id}`, {
 				method: 'DELETE'
@@ -965,17 +798,17 @@
 					</div>
 				{:else if RoastChartInterface}
 					<RoastChartInterface
-						{isPaused}
+						bind:isPaused
 						{currentRoastProfile}
-						{fanValue}
-						{heatValue}
-						{isRoasting}
-						{selectedEvent}
+						bind:fanValue
+						bind:heatValue
+						bind:isRoasting
+						bind:selectedEvent
 						{updateFan}
 						{updateHeat}
 						{saveRoastProfile}
 						{selectedBean}
-						clearRoastData={() => handleClearRoastData(currentRoastProfile.roast_id)}
+						clearRoastData={() => handleClearRoastData()}
 					/>
 				{/if}
 			</div>

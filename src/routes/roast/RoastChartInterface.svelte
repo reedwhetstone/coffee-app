@@ -18,7 +18,6 @@
 		accumulatedTime,
 		temperatureEntries,
 		eventEntries,
-		controlChanges,
 		type RoastPoint,
 		type TemperatureEntry,
 		type RoastEventEntry,
@@ -154,7 +153,6 @@
 
 	let pressTimer: ReturnType<typeof setTimeout> | null = null;
 	let isLongPressing = $state(false);
-	let isCoolEndSaving = $state(false);
 	const LONG_PRESS_DURATION = 1000;
 
 	let chartContainer: HTMLDivElement;
@@ -287,7 +285,6 @@
 		$roastEvents = [];
 		$temperatureEntries = [];
 		$eventEntries = [];
-		$controlChanges = [];
 		isRoasting = false;
 		isPaused = false;
 	}
@@ -1170,72 +1167,9 @@
 		};
 	});
 
-	function prepareDataForSave() {
-		if ($temperatureEntries.length === 0 && $eventEntries.length === 0) {
-			return { temperatureEntries: [], eventEntries: [] };
-		}
-
-		const lastTime = $roastData[$roastData.length - 1]?.time || 0;
-		const timeSeconds = msToSeconds(lastTime);
-		const roastId = currentRoastProfile?.roast_id || 0;
-
-		// Check if we need to add an end event
-		const hasDropEvent = $eventEntries.some((e) => e.event_string === 'drop');
-		const hasEndEvent = $eventEntries.some(
-			(e) => e.event_string === 'cool' || e.event_string === 'end'
-		);
-
-		let finalEventEntries = [...$eventEntries];
-
-		if (hasDropEvent && !hasEndEvent) {
-			// Add end event after drop
-			finalEventEntries.push({
-				roast_id: roastId,
-				time_seconds: timeSeconds,
-				event_type: 10,
-				event_value: null,
-				event_string: 'cool',
-				category: 'milestone',
-				subcategory: 'roast_phase',
-				user_generated: true,
-				automatic: false
-			});
-
-			// Add final control settings
-			finalEventEntries.push({
-				roast_id: roastId,
-				time_seconds: timeSeconds,
-				event_type: 1,
-				event_value: fanValue.toString(),
-				event_string: 'fan_setting',
-				category: 'control',
-				subcategory: 'machine_setting',
-				user_generated: true,
-				automatic: false
-			});
-
-			finalEventEntries.push({
-				roast_id: roastId,
-				time_seconds: timeSeconds,
-				event_type: 1,
-				event_value: '0', // Heat to 0 at end
-				event_string: 'heat_setting',
-				category: 'control',
-				subcategory: 'machine_setting',
-				user_generated: true,
-				automatic: false
-			});
-		}
-
-		return {
-			temperatureEntries: $temperatureEntries,
-			eventEntries: finalEventEntries
-		};
-	}
-
 	function handleEventLog(event: string) {
-		console.log('handleEventLog called with event:', event);
-		if ($startTime === null) return;
+		if ($startTime === null || !currentRoastProfile?.roast_id) return;
+
 		selectedEvent = event;
 		const currentTime = isPaused
 			? $accumulatedTime
@@ -1245,88 +1179,45 @@
 		const existingEvent = $roastEvents.find(
 			(e) => e.name === event && Math.abs(e.time - currentTime) < 1000
 		);
-		if (!existingEvent) {
-			// Add to roastEvents for chart display
-			$roastEvents = [
-				...$roastEvents,
-				{
-					time: currentTime,
-					name: event
-				}
-			];
 
-			// Special handling for Drop and Cool End events
-			if (event === 'Drop') {
-				heatValue = 0; // Set heat to 0 when Drop is logged
-				updateHeat(0);
-			} else if (event === 'Cool End') {
-				// Ensure at least one final control change is recorded so save has a roast_id
-				// This mirrors the manual Save flow which relies on $controlChanges
-				$controlChanges = [
-					...$controlChanges,
-					{
-						time: currentTime,
-						heat: heatValue,
-						fan: fanValue
-					}
-				];
+		if (existingEvent) return; // Event already logged
 
-				// Stop the roast timer and save the log
-				if (timerInterval) clearInterval(timerInterval);
-				if (dataLoggingInterval) clearInterval(dataLoggingInterval);
-				isRoasting = false;
-				isPaused = false;
+		// Add to roastEvents for chart display
+		$roastEvents = [...$roastEvents, { time: currentTime, name: event }];
 
-				// Automatically save the roast profile with loading indication
-				// Set loading state and save asynchronously
-				console.log('Cool End auto-save: currentRoastProfile =', currentRoastProfile);
-				console.log(
-					'Cool End auto-save: currentRoastProfile.roast_id =',
-					currentRoastProfile?.roast_id
-				);
-				isCoolEndSaving = true;
-				(async () => {
-					try {
-						console.log('Cool End auto-save: About to call saveRoastProfile()');
-						await saveRoastProfile();
-						console.log('Cool End auto-save: saveRoastProfile() completed successfully');
-					} catch (error) {
-						console.error('Cool End auto-save ERROR:', error);
-						console.error('Cool End auto-save ERROR details:', {
-							message: error instanceof Error ? error.message : error,
-							stack: error instanceof Error ? error.stack : undefined
-						});
-					} finally {
-						isCoolEndSaving = false;
-					}
-				})();
-			}
+		// Create milestone and control events
+		const timeSeconds = msToSeconds(currentTime);
+		const roastId = currentRoastProfile.roast_id;
 
-			// Create event entries for new structure
-			const timeSeconds = msToSeconds(currentTime);
-			const roastId = currentRoastProfile?.roast_id || 0;
+		// Handle special event behaviors
+		if (event === 'Drop') {
+			heatValue = 0; // Set heat to 0 when Drop is logged
+		} else if (event === 'Cool End') {
+			// Just pause the timer like the stop button - user will save manually
+			if (timerInterval) clearInterval(timerInterval);
+			if (dataLoggingInterval) clearInterval(dataLoggingInterval);
+			timerInterval = null;
+			dataLoggingInterval = null;
+			$accumulatedTime += performance.now() - $startTime!;
+			isPaused = true;
+		}
 
-			console.log('handleEventLog: Creating event entries for', event);
-			console.log('handleEventLog: currentRoastProfile =', currentRoastProfile);
-			console.log('handleEventLog: roastId =', roastId);
+		// Create milestone event
+		const milestoneEvent: RoastEventEntry = {
+			roast_id: roastId,
+			time_seconds: timeSeconds,
+			event_type: 10,
+			event_value: null,
+			event_string: normalizeEventName(event),
+			category: 'milestone',
+			subcategory: 'roast_phase',
+			user_generated: true,
+			automatic: false
+		};
 
-			// Add milestone event
-			const milestoneEvent: RoastEventEntry = {
-				roast_id: roastId,
-				time_seconds: timeSeconds,
-				event_type: 10,
-				event_value: null,
-				event_string: normalizeEventName(event),
-				category: 'milestone',
-				subcategory: 'roast_phase',
-				user_generated: true,
-				automatic: false
-			};
-
-			// Add control events for current settings
-			const controlEvents: RoastEventEntry[] = [];
-
-			controlEvents.push({
+		// Create control events for current settings
+		const controlEvents: RoastEventEntry[] = [
+			{
 				roast_id: roastId,
 				time_seconds: timeSeconds,
 				event_type: 1,
@@ -1336,23 +1227,22 @@
 				subcategory: 'machine_setting',
 				user_generated: true,
 				automatic: false
-			});
-
-			controlEvents.push({
+			},
+			{
 				roast_id: roastId,
 				time_seconds: timeSeconds,
 				event_type: 1,
-				event_value: (event === 'Drop' ? 0 : heatValue).toString(),
+				event_value: event === 'Drop' ? '0' : heatValue.toString(),
 				event_string: 'heat_setting',
 				category: 'control',
 				subcategory: 'machine_setting',
 				user_generated: true,
 				automatic: false
-			});
+			}
+		];
 
-			$eventEntries = [...$eventEntries, milestoneEvent, ...controlEvents];
-			console.log('NEW EVENT');
-		}
+		// Add all events to store
+		$eventEntries = [...$eventEntries, milestoneEvent, ...controlEvents];
 	}
 
 	// Add this function to handle settings changes
@@ -1959,25 +1849,15 @@
 											class="cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
 											event
 												? 'bg-background-tertiary-light text-text-primary-light'
-												: 'text-text-primary-light'} {!isRoasting ||
-											(event === 'Cool End' && isCoolEndSaving)
+												: 'text-text-primary-light'} {!isRoasting
 												? 'cursor-not-allowed opacity-50'
 												: ''} {i % 2 !== 0 ? 'border-l border-border-light' : ''} {i > 1
 												? 'border-t border-border-light'
 												: ''}"
-											onclick={() => isRoasting && !isCoolEndSaving && handleEventLog(event)}
-											disabled={!isRoasting || (event === 'Cool End' && isCoolEndSaving)}
+											onclick={() => isRoasting && handleEventLog(event)}
+											disabled={!isRoasting}
 										>
-											{#if event === 'Cool End' && isCoolEndSaving}
-												<div class="flex items-center justify-center gap-1">
-													<div
-														class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
-													></div>
-													<span class="block text-xs font-medium">Saving...</span>
-												</div>
-											{:else}
-												<span class="block text-xs font-medium">{event}</span>
-											{/if}
+											<span class="block text-xs font-medium">{event}</span>
 										</button>
 									{/each}
 								</div>
@@ -1990,23 +1870,13 @@
 											class="flex-1 cursor-pointer whitespace-nowrap p-3 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
 											event
 												? 'bg-background-tertiary-light text-text-primary-light'
-												: 'text-text-primary-light'} {!isRoasting ||
-											(event === 'Cool End' && isCoolEndSaving)
+												: 'text-text-primary-light'} {!isRoasting
 												? 'cursor-not-allowed opacity-50'
 												: ''} {i !== 0 ? 'border-l border-border-light' : ''}"
-											onclick={() => isRoasting && !isCoolEndSaving && handleEventLog(event)}
-											disabled={!isRoasting || (event === 'Cool End' && isCoolEndSaving)}
+											onclick={() => isRoasting && handleEventLog(event)}
+											disabled={!isRoasting}
 										>
-											{#if event === 'Cool End' && isCoolEndSaving}
-												<div class="flex items-center justify-center gap-2">
-													<div
-														class="h-4 w-4 animate-spin rounded-full border border-white border-t-transparent"
-													></div>
-													<span class="block text-sm font-medium">Saving...</span>
-												</div>
-											{:else}
-												<span class="block text-sm font-medium">{event}</span>
-											{/if}
+											<span class="block text-sm font-medium">{event}</span>
 										</button>
 									{/each}
 								</div>

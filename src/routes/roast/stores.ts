@@ -70,16 +70,18 @@ export interface RoastEventEntry {
 	notes?: string;
 }
 
-export const roastData = writable<RoastPoint[]>([]);
-export const roastEvents = writable<RoastEvent[]>([]);
+// Simplified store structure - single source of truth
 export const startTime = writable<number | null>(null);
 export const isRoasting = writable(false);
 export const accumulatedTime = writable<number>(0);
-// New stores for normalized data
+
+// Primary data stores for normalized structure
 export const temperatureEntries = writable<TemperatureEntry[]>([]);
 export const eventEntries = writable<RoastEventEntry[]>([]);
-// Store for tracking only meaningful control changes (for backend persistence)
-export const controlChanges = writable<RoastPoint[]>([]);
+
+// Derived chart data - computed from temperatureEntries and eventEntries
+export const roastData = writable<RoastPoint[]>([]);
+export const roastEvents = writable<RoastEvent[]>([]);
 
 // Time conversion utilities for new structure
 export function msToSeconds(ms: number): number {
@@ -90,29 +92,69 @@ export function secondsToMs(seconds: number): number {
 	return seconds * 1000;
 }
 
-// Convert TemperatureDataPoint to RoastPoint for chart compatibility
-export function temperatureDataToRoastPoint(tempData: TemperatureDataPoint[]): RoastPoint[] {
-	return tempData.map((point) => ({
-		time: secondsToMs(point.time_seconds),
-		heat: 0, // Will be populated from control events
-		fan: 0, // Will be populated from control events
-		bean_temp: point.bean_temp,
-		environmental_temp: point.environmental_temp,
-		ambient_temp: point.ambient_temp,
-		ror_bean_temp: point.ror_bean_temp,
-		data_source: point.data_source as 'live' | 'artisan_import'
-	}));
-}
+// Convert normalized data to chart format for D3.js rendering
+export function convertToChartData(
+	temperatures: TemperatureEntry[],
+	events: RoastEventEntry[]
+): { roastData: RoastPoint[]; roastEvents: RoastEvent[] } {
+	// Sort control events by time for carry-forward logic
+	const fanEvents = events
+		.filter((e) => e.event_string === 'fan_setting')
+		.sort((a, b) => parseFloat(String(a.time_seconds)) - parseFloat(String(b.time_seconds)));
+	const heatEvents = events
+		.filter((e) => e.event_string === 'heat_setting')
+		.sort((a, b) => parseFloat(String(a.time_seconds)) - parseFloat(String(b.time_seconds)));
 
-// Convert RoastEventData to RoastEvent for chart compatibility
-export function roastEventDataToRoastEvent(eventData: RoastEventData[]): RoastEvent[] {
-	return eventData
-		.filter((event) => event.category === 'milestone')
+	// Convert temperature entries to chart data with control values carried forward
+	const roastData: RoastPoint[] = temperatures.map((temp) => {
+		const tempTimeSeconds = parseFloat(String(temp.time_seconds));
+
+		// Find most recent control events before or at this time
+		const fanEvent = fanEvents
+			.filter((e) => parseFloat(String(e.time_seconds)) <= tempTimeSeconds)
+			.pop();
+		const heatEvent = heatEvents
+			.filter((e) => parseFloat(String(e.time_seconds)) <= tempTimeSeconds)
+			.pop();
+
+		// Find milestone events at this time
+		const milestoneEvents = events.filter(
+			(e) =>
+				e.category === 'milestone' &&
+				Math.abs(parseFloat(String(e.time_seconds)) - tempTimeSeconds) < 1
+		);
+
+		return {
+			time: secondsToMs(tempTimeSeconds),
+			heat: heatEvent ? parseInt(heatEvent.event_value || '0') : 0,
+			fan: fanEvent ? parseInt(fanEvent.event_value || '0') : 0,
+			bean_temp: temp.bean_temp,
+			environmental_temp: temp.environmental_temp,
+			ambient_temp: temp.ambient_temp,
+			ror_bean_temp: temp.ror_bean_temp,
+			data_source: temp.data_source,
+			// Milestone flags for chart rendering
+			charge: milestoneEvents.some((e) => e.event_string === 'charge'),
+			start: milestoneEvents.some((e) => e.event_string === 'start'),
+			maillard: milestoneEvents.some(
+				(e) => e.event_string === 'dry_end' || e.event_string === 'maillard'
+			),
+			fc_start: milestoneEvents.some((e) => e.event_string === 'fc_start'),
+			drop: milestoneEvents.some((e) => e.event_string === 'drop'),
+			end: milestoneEvents.some((e) => e.event_string === 'cool' || e.event_string === 'end')
+		};
+	});
+
+	// Convert milestone events to chart display format
+	const roastEvents: RoastEvent[] = events
+		.filter((e) => e.category === 'milestone')
 		.map((event) => ({
 			time: secondsToMs(event.time_seconds),
 			name:
-				event.event_string.charAt(0).toUpperCase() + event.event_string.slice(1).replace('_', ' ')
+				event.event_string.charAt(0).toUpperCase() + event.event_string.slice(1).replace(/_/g, ' ')
 		}));
+
+	return { roastData, roastEvents };
 }
 
 export interface MilestoneData {
@@ -224,4 +266,56 @@ export function calculateMilestones(milestones: MilestoneData): MilestoneCalcula
 		fcTime: fcTime - start, // Relative time from start
 		devPercent
 	};
+}
+
+// Add a simple roast event with automatic control settings
+export function addRoastEvent(
+	eventName: string,
+	roastId: number,
+	currentTimeMs: number,
+	fanValue: number,
+	heatValue: number
+): { milestoneEvent: RoastEventEntry; controlEvents: RoastEventEntry[] } {
+	const timeSeconds = msToSeconds(currentTimeMs);
+
+	// Create milestone event
+	const milestoneEvent: RoastEventEntry = {
+		roast_id: roastId,
+		time_seconds: timeSeconds,
+		event_type: 10,
+		event_value: null,
+		event_string: eventName.toLowerCase().replace(/\s+/g, '_'),
+		category: 'milestone',
+		subcategory: 'roast_phase',
+		user_generated: true,
+		automatic: false
+	};
+
+	// Create control events for current settings
+	const controlEvents: RoastEventEntry[] = [
+		{
+			roast_id: roastId,
+			time_seconds: timeSeconds,
+			event_type: 1,
+			event_value: fanValue.toString(),
+			event_string: 'fan_setting',
+			category: 'control',
+			subcategory: 'machine_setting',
+			user_generated: true,
+			automatic: false
+		},
+		{
+			roast_id: roastId,
+			time_seconds: timeSeconds,
+			event_type: 1,
+			event_value: eventName === 'Drop' ? '0' : heatValue.toString(),
+			event_string: 'heat_setting',
+			category: 'control',
+			subcategory: 'machine_setting',
+			user_generated: true,
+			automatic: false
+		}
+	];
+
+	return { milestoneEvent, controlEvents };
 }
