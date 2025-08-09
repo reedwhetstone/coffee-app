@@ -341,7 +341,19 @@
 	function calculateBTRoR(data: RoastPoint[]): { time: number; ror: number }[] {
 		if (data.length < 2) return [];
 
-		// Step 1: Filter and extract valid bean temperature data
+		// Step 1: Get charge and drop times to filter RoR display
+		let chargeTime: number | null = null;
+		let dropTime: number | null = null;
+		
+		// Extract milestone events to determine charge and drop times
+		const events = isDuringRoasting ? $eventEntries : savedEventEntries;
+		if (events.length > 0) {
+			const milestones = extractMilestones(events);
+			chargeTime = milestones.charge || milestones.start || null;
+			dropTime = milestones.drop || milestones.end || null;
+		}
+
+		// Step 2: Filter and extract valid bean temperature data
 		const validTempData = data
 			.filter(
 				(point) => point.bean_temp !== null && point.bean_temp !== undefined && point.bean_temp > 0
@@ -350,10 +362,10 @@
 
 		if (validTempData.length < 15) return []; // Need sufficient data for calculation
 
-		// Step 2: Pre-smooth the temperature data to reduce noise (15-point window)
+		// Step 3: Pre-smooth the temperature data to reduce noise (15-point window)
 		const smoothedTempData = smoothTemperatureData(validTempData, 15);
 
-		// Step 3: Calculate raw RoR from temperature differences
+		// Step 4: Calculate raw RoR from temperature differences
 		const rawRorData: { time: number; ror: number }[] = [];
 
 		for (let i = 1; i < smoothedTempData.length; i++) {
@@ -366,8 +378,19 @@
 			if (timeDiffMinutes > 0) {
 				const ror = tempDiff / timeDiffMinutes; // °F/min or °C/min
 
-				// Only include reasonable RoR values
-				if (Math.abs(ror) <= 50) {
+				// Filter RoR data based on charge and drop times if available
+				let includePoint = true;
+				if (chargeTime !== null && dropTime !== null) {
+					// Both charge and drop exist: only show RoR between them
+					includePoint = currentPoint.time >= chargeTime && currentPoint.time <= dropTime;
+				} else if (chargeTime !== null) {
+					// Only charge exists: show RoR from charge onwards
+					includePoint = currentPoint.time >= chargeTime;
+				}
+				// If no charge/drop events exist, show entire RoR curve
+
+				// Only include reasonable RoR values (within scale bounds and positive)
+				if (includePoint && Math.abs(ror) <= 50 && ror > 0) {
 					rawRorData.push({
 						time: currentPoint.time,
 						ror: ror
@@ -378,7 +401,7 @@
 
 		if (rawRorData.length === 0) return [];
 
-		// Step 4: Apply smoothing to RoR values using same function as temperature (10-point window)
+		// Step 5: Apply smoothing to RoR values using same function as temperature (10-point window)
 		const finalSmoothedData = smoothTemperatureData(
 			rawRorData.map((point) => ({ time: point.time, temp: point.ror })),
 			10
@@ -448,7 +471,7 @@
 		.defined((d) => d.environmental_temp !== null && d.environmental_temp !== undefined)
 		.curve(curveBasis); // Smooth curve for ET temperature
 
-	// RoR line generator - smooth curve for Rate of Rise
+	// RoR line generator - smooth curve for Rate of Rise (positive values only)
 	const rorLine = line<{ time: number; ror: number }>()
 		.x((d) => {
 			const chargeTime = getChargeTime($roastData);
@@ -456,7 +479,7 @@
 			return xScale(adjustedTime);
 		})
 		.y((d) => yScaleRoR(d.ror))
-		.defined((d) => Math.abs(d.ror) <= 50) // Only render RoR values within scale bounds
+		.defined((d) => d.ror > 0 && d.ror <= 50) // Only render positive RoR values within scale bounds
 		.curve(curveBasis); // Smooth curve for RoR
 
 	// Note: deltaBT removed since it's the same as RoR
@@ -1044,7 +1067,7 @@
 		// Setup scales with charge-relative time axis and dual y-axes
 		xScale = scaleLinear().domain([-2, 12]).range([0, width]); // -2 to 12 minutes relative to charge
 		yScaleTemp = scaleLinear().domain([100, 500]).range([height, 0]); // Left y-axis: Temperature (F)
-		yScaleRoR = scaleLinear().domain([-10, 50]).range([height, 0]); // Right y-axis: RoR (°F/min)
+		yScaleRoR = scaleLinear().domain([0, 50]).range([height, 0]); // Right y-axis: RoR (°F/min, positive only)
 
 		// Add left y-axis (Temperature)
 		svg
