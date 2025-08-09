@@ -169,6 +169,13 @@
 	let savedEventEntries = $state<RoastEventEntry[]>([]);
 	let savedEventValueSeries = $state<EventValueSeries[]>([]);
 
+	// Chart boundary settings from roast_profiles table
+	let chartSettings = $state<{
+		xRange: [number | null, number | null];
+		yRange: [number | null, number | null];
+		zRange: [number | null, number | null];
+	} | null>(null);
+
 	// Add these computed values - check for saved data to determine state
 	let isBeforeRoasting = $derived(
 		!currentRoastProfile?.roast_id || (savedEventEntries.length === 0 && $roastData.length === 0)
@@ -178,7 +185,13 @@
 	// Handle profile changes
 	$effect(() => {
 		if (currentRoastProfile && isBeforeRoasting) {
-			untrack(() => resetTimer());
+			untrack(() => {
+				resetTimer();
+				// Load chart settings for the current profile even before roasting starts
+				if (currentRoastProfile.roast_id) {
+					loadChartSettings(currentRoastProfile.roast_id);
+				}
+			});
 		}
 	});
 
@@ -731,16 +744,24 @@
 		// Sort events by time to ensure proper ordering
 		eventData.sort((a, b) => a.time - b.time);
 
-		// Update x-axis scale based on roast profile chart settings or data duration
-		const maxTimeRelative =
-			data.length > 0
-				? Math.max(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) // Convert data time to minutes relative to charge
-				: 12; // Default to 12 if no data
+		// Update x-axis scale only when no saved chart settings are present
+		const hasSavedXRange =
+			chartSettings?.xRange && chartSettings.xRange[0] !== null && chartSettings.xRange[1] !== null;
 
-		const minTimeRelative =
-			data.length > 0 ? Math.min(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) : -2;
+		if (!hasSavedXRange) {
+			// Auto-scale to data duration relative to charge
+			const maxTimeRelative =
+				data.length > 0
+					? Math.max(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) // minutes
+					: 12; // Default max when no data
 
-		xScale.domain([Math.min(minTimeRelative, -2), Math.max(maxTimeRelative, 12)]);
+			const minTimeRelative =
+				data.length > 0
+					? Math.min(...data.map((d) => (d.time - chargeTime) / (1000 * 60)))
+					: -2; // Default min when no data
+
+			xScale.domain([Math.min(minTimeRelative, -2), Math.max(maxTimeRelative, 12)]);
+		}
 
 		// Update time tracker position (charge-relative)
 		if (isRoasting && !isPaused) {
@@ -1003,10 +1024,29 @@
 			)
 			.attr('preserveAspectRatio', 'xMidYMid meet');
 
-		// Update scales
-		xScale.range([0, width]);
-		yScaleTemp.range([height, 0]);
-		yScaleRoR.range([height, 0]);
+		// Update scales with chart boundaries if available
+		const xDomain = chartSettings?.xRange && chartSettings.xRange[0] !== null && chartSettings.xRange[1] !== null 
+			? [chartSettings.xRange[0], chartSettings.xRange[1]]
+			: [-2, 12]; // Default: -2 to 12 minutes relative to charge
+		
+		const yTempDomain = chartSettings?.yRange && chartSettings.yRange[0] !== null && chartSettings.yRange[1] !== null
+			? [chartSettings.yRange[0], chartSettings.yRange[1]]
+			: [100, 500]; // Default: 100-500°F
+			
+		const yRoRDomain = chartSettings?.zRange && chartSettings.zRange[0] !== null && chartSettings.zRange[1] !== null
+			? [chartSettings.zRange[0], chartSettings.zRange[1]]
+			: [0, 50]; // Default: 0-50°F/min
+
+		console.log('updateChartDimensions scale update:', {
+			chartSettings,
+			xDomain,
+			yTempDomain,
+			yRoRDomain
+		});
+
+		xScale.domain(xDomain).range([0, width]);
+		yScaleTemp.domain(yTempDomain).range([height, 0]);
+		yScaleRoR.domain(yRoRDomain).range([height, 0]);
 
 		// Clear old grid elements
 		svg.selectAll('.temp-grid').remove();
@@ -1065,9 +1105,29 @@
 			.attr('transform', `translate(${margin.left},${margin.top})`);
 
 		// Setup scales with charge-relative time axis and dual y-axes
-		xScale = scaleLinear().domain([-2, 12]).range([0, width]); // -2 to 12 minutes relative to charge
-		yScaleTemp = scaleLinear().domain([100, 500]).range([height, 0]); // Left y-axis: Temperature (F)
-		yScaleRoR = scaleLinear().domain([0, 50]).range([height, 0]); // Right y-axis: RoR (°F/min, positive only)
+		// Use chart boundaries if available, otherwise use defaults
+		const xDomain = chartSettings?.xRange && chartSettings.xRange[0] !== null && chartSettings.xRange[1] !== null 
+			? [chartSettings.xRange[0], chartSettings.xRange[1]]
+			: [-2, 12]; // Default: -2 to 12 minutes relative to charge
+		
+		const yTempDomain = chartSettings?.yRange && chartSettings.yRange[0] !== null && chartSettings.yRange[1] !== null
+			? [chartSettings.yRange[0], chartSettings.yRange[1]]
+			: [100, 500]; // Default: 100-500°F
+			
+		const yRoRDomain = chartSettings?.zRange && chartSettings.zRange[0] !== null && chartSettings.zRange[1] !== null
+			? [chartSettings.zRange[0], chartSettings.zRange[1]]
+			: [0, 50]; // Default: 0-50°F/min
+
+		console.log('onMount scale setup:', {
+			chartSettings,
+			xDomain,
+			yTempDomain,
+			yRoRDomain
+		});
+
+		xScale = scaleLinear().domain(xDomain).range([0, width]);
+		yScaleTemp = scaleLinear().domain(yTempDomain).range([height, 0]);
+		yScaleRoR = scaleLinear().domain(yRoRDomain).range([height, 0]);
 
 		// Add left y-axis (Temperature)
 		svg
@@ -1471,6 +1531,41 @@
 		});
 	}
 
+	// Load chart settings from roast_profiles table
+	async function loadChartSettings(roastId: number) {
+		try {
+			const supabase = createClient();
+			const roastDataService = createRoastDataService(supabase);
+			const settings = await roastDataService.getChartSettings(roastId);
+			
+			if (settings) {
+				// Normalize xRange to minutes if values appear to be in seconds
+				let xMin = settings.xRange[0];
+				let xMax = settings.xRange[1];
+				const looksLikeSeconds =
+					xMin !== null && xMax !== null && typeof xMin === 'number' && typeof xMax === 'number' && (xMin > 60 || xMax > 60);
+
+				if (looksLikeSeconds) {
+					xMin = xMin !== null ? xMin / 60 : xMin;
+					xMax = xMax !== null ? xMax / 60 : xMax;
+				}
+
+				chartSettings = {
+					xRange: [xMin, xMax],
+					yRange: [settings.yRange[0], settings.yRange[1]],
+					zRange: [settings.zRange[0], settings.zRange[1]]
+				};
+				console.log('Loaded chart settings:', chartSettings);
+			} else {
+				chartSettings = null;
+				console.log('No chart settings found, using defaults');
+			}
+		} catch (error) {
+			console.error('Error loading chart settings:', error);
+			chartSettings = null;
+		}
+	}
+
 	// Load saved roast data when a roast profile is selected - use roastDataService exclusively
 	async function loadSavedRoastData(roastId: number) {
 		try {
@@ -1570,16 +1665,36 @@
 		}
 	}
 
-	// Effect to load saved data when currentRoastProfile changes
+	// Effect to load saved data and chart settings when currentRoastProfile changes
 	$effect(() => {
 		if (currentRoastProfile?.roast_id && !isDuringRoasting) {
-			untrack(() => loadSavedRoastData(currentRoastProfile.roast_id));
+			untrack(() => {
+				loadSavedRoastData(currentRoastProfile.roast_id);
+				loadChartSettings(currentRoastProfile.roast_id);
+			});
 		} else if (!currentRoastProfile?.roast_id) {
 			savedTemperatureEntries = [];
 			savedEventEntries = [];
 			savedEventValueSeries = [];
+			chartSettings = null;
 			$roastData = [];
 			$roastEvents = [];
+		}
+	});
+
+	// Effect to update chart dimensions when chart settings change
+	$effect(() => {
+		console.log('Chart settings effect triggered:', { 
+			chartSettings, 
+			hasSvg: !!svg, 
+			hasXScale: xScale !== undefined,
+			hasYScaleTemp: yScaleTemp !== undefined,
+			hasYScaleRoR: yScaleRoR !== undefined
+		});
+		
+		if (chartSettings && svg && xScale !== undefined && yScaleTemp !== undefined && yScaleRoR !== undefined) {
+			console.log('Updating chart dimensions due to chart settings change');
+			untrack(() => updateChartDimensions());
 		}
 	});
 
