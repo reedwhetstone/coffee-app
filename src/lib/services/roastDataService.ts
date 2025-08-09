@@ -204,7 +204,12 @@ export class RoastDataService {
 			roastId,
 			rawDataCount: data?.length || 0,
 			groupedEventsCount: groupedEvents.size,
-			groupedEventsKeys: Array.from(groupedEvents.keys())
+			groupedEventsKeys: Array.from(groupedEvents.keys()),
+			rawEventSample: data?.slice(0, 5).map((e) => ({
+				time_seconds: e.time_seconds,
+				event_string: e.event_string,
+				event_value: e.event_value
+			}))
 		});
 
 		for (const [eventString, values] of groupedEvents) {
@@ -214,12 +219,13 @@ export class RoastDataService {
 			const min = Math.min(...numericValues);
 			const max = Math.max(...numericValues);
 
-			// Auto-detect scale type
+			// Auto-detect scale type: if any value > 11, use 0-100 scale, else use 0-10 scale
 			let detected_scale: 'percentage' | 'decimal' | 'custom' = 'custom';
-			if (min >= 0 && max <= 10) {
-				detected_scale = 'decimal'; // 0-10 scale
-			} else if (min >= 0 && max <= 100) {
+			const hasValueAbove11 = numericValues.some((value) => value > 11);
+			if (hasValueAbove11) {
 				detected_scale = 'percentage'; // 0-100 scale
+			} else if (min >= 0 && max <= 10) {
+				detected_scale = 'decimal'; // 0-10 scale
 			}
 
 			const series = {
@@ -236,7 +242,17 @@ export class RoastDataService {
 				}
 			};
 
-			console.log(`EventValueSeries for ${eventString}:`, series);
+			console.log(`EventValueSeries for ${eventString}:`, {
+				valuesCount: series.values.length,
+				timeRange: [
+					Math.min(...series.values.map((v) => v.time_seconds)),
+					Math.max(...series.values.map((v) => v.time_seconds))
+				],
+				valueRange: [min, max],
+				detected_scale,
+				hasValueAbove11,
+				sampleValues: series.values.slice(0, 3)
+			});
 			eventValueSeries.push(series);
 		}
 

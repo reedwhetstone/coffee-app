@@ -166,7 +166,7 @@ function transformArtisanData(
 			const valueString = artisanData.specialeventsStrings?.[index];
 
 			// Process ALL events that have non-empty string values (keep "0" as valid)
-			if (valueString && valueString !== '') {
+			if (valueString && valueString !== '' && eventType !== undefined) {
 				// Direct device mapping using etypes array
 				const deviceName = artisanData.etypes?.[eventType];
 
