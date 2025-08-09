@@ -154,44 +154,50 @@ function transformArtisanData(
 		artisanData.specialevents &&
 		artisanData.specialeventsStrings
 	) {
+		console.log('Processing special events with direct device mapping:');
+		console.log('specialevents (times):', artisanData.specialevents);
+		console.log('specialeventstype:', artisanData.specialeventstype);
+		console.log('specialeventsvalue:', artisanData.specialeventsvalue);
+		console.log('specialeventsStrings:', artisanData.specialeventsStrings);
+		console.log('etypes:', artisanData.etypes);
+
 		artisanData.specialevents.forEach((timeSeconds: number, index: number) => {
-			const value = artisanData.specialeventsStrings?.[index];
 			const eventType = artisanData.specialeventstype?.[index];
+			const valueString = artisanData.specialeventsStrings?.[index];
 
-			// Only process control events (type 3) and button events (type 0) with valid values
-			if ((eventType === 3 || eventType === 0) && value && value !== '' && value !== '0') {
-				// Determine event name based on value patterns and etypes
-				let eventName = 'control';
+			// Process ALL events that have non-empty string values (keep "0" as valid)
+			if (valueString && valueString !== '') {
+				// Direct device mapping using etypes array
+				const deviceName = artisanData.etypes?.[eventType];
+				
+				if (deviceName && deviceName !== '--') {
+					console.log(`Control event: time=${timeSeconds}s, device=${deviceName}, value="${valueString}"`);
 
-				// Map common control values to etype names based on typical Artisan patterns
-				if (artisanData.etypes) {
-					// For roasting controls, values often correspond to different devices
-					// Air: typically higher values (80-100)
-					// Drum: medium values (40-70)
-					// Damper: variable values (20-90)
-					// Burner: typically lower to medium values (20-60)
-					const numValue = parseInt(value);
-					if (!isNaN(numValue)) {
-						if (numValue >= 80) {
-							eventName = artisanData.etypes[0] || 'Air'; // Air
-						} else if (numValue >= 60) {
-							eventName = artisanData.etypes[1] || 'Drum'; // Drum
-						} else if (numValue >= 30) {
-							eventName = artisanData.etypes[2] || 'Damper'; // Damper
-						} else {
-							eventName = artisanData.etypes[3] || 'Burner'; // Burner
-						}
-						// Clean up name and make lowercase for consistency
-						eventName = eventName.toLowerCase().replace('--', 'control');
-					}
+					specialEvents.push({
+						time: timeSeconds,
+						name: deviceName.toLowerCase(), // "air", "burner", "drum", "damper"
+						value: valueString
+					});
+				} else if (deviceName === '--') {
+					console.log(`Skipping -- device event at ${timeSeconds}s`);
+				} else {
+					console.log(`Unknown event type ${eventType} at ${timeSeconds}s`);
 				}
-
-				specialEvents.push({
-					time: timeSeconds,
-					name: eventName,
-					value: value
-				});
+			} else {
+				console.log(`Skipping empty value event at ${timeSeconds}s (type=${eventType})`);
 			}
+		});
+
+		// Log summary of processed control events by device type
+		const deviceSummary = specialEvents.reduce((acc, event) => {
+			acc[event.name] = acc[event.name] || [];
+			acc[event.name].push(event.value);
+			return acc;
+		}, {} as Record<string, string[]>);
+
+		console.log('Control events summary by device:');
+		Object.entries(deviceSummary).forEach(([device, values]) => {
+			console.log(`${device}: [${values.join(', ')}] (${values.length} events)`);
 		});
 	}
 
