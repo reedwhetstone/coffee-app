@@ -36,7 +36,8 @@
 		const customLabels: Record<string, string> = {
 			grade: 'Elevation (MASL)',
 			appearance: 'Appearance',
-			type: 'Importer'
+			type: 'Importer',
+			roast_id: 'Roast ID'
 		};
 
 		// Return custom label if available, otherwise format normally
@@ -340,6 +341,14 @@
 									<option value={batchName}>{batchName}</option>
 								{/each}
 							</select>
+						{:else if column === 'roast_id'}
+							<input
+								type="text"
+								value={$filterStore.filters.roast_id || ''}
+								oninput={(e) => filterStore.setFilter('roast_id', e.currentTarget.value)}
+								class="w-full rounded border border-text-primary-dark border-opacity-20 bg-background-primary-dark/50 p-2 text-sm shadow-md"
+								placeholder="Search by Roast ID"
+							/>
 						{:else if column === 'stocked'}
 							<select
 								value={$filterStore.filters.stocked || ''}

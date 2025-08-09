@@ -293,6 +293,13 @@ function createFilterStore() {
 					).sort((a, b) => a.localeCompare(b));
 				}
 
+				// Get unique roast IDs
+				if (state.originalData.some((item) => item.roast_id)) {
+					uniqueValues.roastIds = Array.from(
+						new Set(state.originalData.map((item) => item.roast_id).filter(Boolean))
+					).sort((a, b) => Number(a) - Number(b)); // Sort numerically instead of alphabetically
+				}
+
 				// Only update uniqueValues if they've actually changed
 				if (JSON.stringify(uniqueValues) !== JSON.stringify(state.uniqueValues)) {
 					state.uniqueValues = uniqueValues;
@@ -386,6 +393,16 @@ function createFilterStore() {
 					}
 					// For other boolean values, use direct comparison
 					return itemValue === value;
+				}
+
+				// Handle roast_id text search
+				if (key === 'roast_id') {
+					// Skip filtering if value is empty string
+					if (value === '') return true;
+					// Convert roast_id to string and do partial match search
+					const roastIdString = String(itemValue || '');
+					const searchString = String(value || '').toLowerCase();
+					return roastIdString.toLowerCase().includes(searchString);
 				}
 
 				// Handle different filter types
@@ -487,8 +504,8 @@ function createFilterStore() {
 					: dateB.getTime() - dateA.getTime();
 			}
 
-			// Handle score_value and other numeric fields
-			if (sortField === 'score_value' || sortField === 'cost_lb') {
+			// Handle score_value, roast_id and other numeric fields
+			if (sortField === 'score_value' || sortField === 'cost_lb' || sortField === 'roast_id') {
 				const numA = parseFloat(aValue) || 0;
 				const numB = parseFloat(bValue) || 0;
 
@@ -624,6 +641,7 @@ function createFilterStore() {
 			];
 		} else if (routeId.includes('roast')) {
 			return [
+				'roast_id',
 				'batch_name',
 				'coffee_name',
 				'roast_date',
