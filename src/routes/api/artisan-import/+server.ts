@@ -169,9 +169,11 @@ function transformArtisanData(
 			if (valueString && valueString !== '') {
 				// Direct device mapping using etypes array
 				const deviceName = artisanData.etypes?.[eventType];
-				
+
 				if (deviceName && deviceName !== '--') {
-					console.log(`Control event: time=${timeSeconds}s, device=${deviceName}, value="${valueString}"`);
+					console.log(
+						`Control event: time=${timeSeconds}s, device=${deviceName}, value="${valueString}"`
+					);
 
 					specialEvents.push({
 						time: timeSeconds,
@@ -189,11 +191,14 @@ function transformArtisanData(
 		});
 
 		// Log summary of processed control events by device type
-		const deviceSummary = specialEvents.reduce((acc, event) => {
-			acc[event.name] = acc[event.name] || [];
-			acc[event.name].push(event.value);
-			return acc;
-		}, {} as Record<string, string[]>);
+		const deviceSummary = specialEvents.reduce(
+			(acc, event) => {
+				acc[event.name] = acc[event.name] || [];
+				acc[event.name].push(event.value);
+				return acc;
+			},
+			{} as Record<string, string[]>
+		);
 
 		console.log('Control events summary by device:');
 		Object.entries(deviceSummary).forEach(([device, values]) => {
