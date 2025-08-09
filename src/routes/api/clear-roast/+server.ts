@@ -28,13 +28,11 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		let deletedCounts = {
 			artisan_import_log: 0,
 			roast_events: 0,
-			roast_phases: 0,
-			roast_temperatures: 0,
-			profile_log: 0
+			roast_temperatures: 0
 		};
 
-		// Delete from all related tables in proper order
-		// Note: We don't delete the roast_profiles record itself, just clear its data
+		// Delete from normalized roast data tables in proper order
+		// Note: We don't delete the roast_profiles record itself, just clear its associated data
 
 		// 1. Delete artisan import log entries
 		const { data: deletedImportLog, error: importLogError } = await supabase
@@ -75,21 +73,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		}
 		deletedCounts.roast_temperatures = deletedTemperatures?.length || 0;
 
-		// 4. Note: roast_phases table no longer exists, skipping
-		deletedCounts.roast_phases = 0;
-
-		// 5. Delete profile log entries
-		const { data: deletedProfileLog, error: profileLogError } = await supabase
-			.from('profile_log')
-			.delete()
-			.eq('roast_id', parsedId)
-			.select('log_id');
-
-		if (profileLogError) {
-			console.error('Error deleting profile log:', profileLogError);
-			return json({ error: 'Failed to clear profile log' }, { status: 500 });
-		}
-		deletedCounts.profile_log = deletedProfileLog?.length || 0;
+		// Note: profile_log and roast_phases are legacy tables that no longer exist in the normalized schema
 
 		// Optional: Reset some roast_profiles fields to clear imported data while preserving core profile
 		const { error: resetError } = await supabase

@@ -315,54 +315,9 @@ function transformArtisanData(
 		});
 	});
 
-	// Create roast phases data
-	const roastPhases: any[] = [];
-	if (totalTime > 0) {
-		// Drying phase
-		if (milestones.charge && milestones.dry_end) {
-			roastPhases.push({
-				roast_id: roastId,
-				phase_name: 'drying',
-				phase_order: 1,
-				start_time: milestones.charge,
-				end_time: milestones.dry_end,
-				duration: milestones.dry_end - milestones.charge,
-				percentage_of_total: dryingPercent,
-				calculation_method: 'artisan',
-				confidence_score: 1.0
-			});
-		}
+	// Note: roast_phases table no longer exists in normalized schema
+	// Phase percentages are now stored directly in roast_profiles table
 
-		// Maillard phase
-		if (milestones.dry_end && milestones.fc_start) {
-			roastPhases.push({
-				roast_id: roastId,
-				phase_name: 'maillard',
-				phase_order: 2,
-				start_time: milestones.dry_end,
-				end_time: milestones.fc_start,
-				duration: milestones.fc_start - milestones.dry_end,
-				percentage_of_total: maillardPercent,
-				calculation_method: 'artisan',
-				confidence_score: 1.0
-			});
-		}
-
-		// Development phase
-		if (milestones.fc_start && dropTime) {
-			roastPhases.push({
-				roast_id: roastId,
-				phase_name: 'development',
-				phase_order: 3,
-				start_time: milestones.fc_start,
-				end_time: dropTime,
-				duration: dropTime - milestones.fc_start,
-				percentage_of_total: developmentPercent,
-				calculation_method: 'artisan',
-				confidence_score: 1.0
-			});
-		}
-	}
 
 	// Create extra device data using all mapped extra devices
 	const extraDeviceDataForDB: any[] = [];
@@ -394,8 +349,7 @@ function transformArtisanData(
 			total_time_seconds: totalTime
 		},
 		milestoneEvents,
-		controlEvents,
-		roastPhases
+		controlEvents
 	};
 }
 

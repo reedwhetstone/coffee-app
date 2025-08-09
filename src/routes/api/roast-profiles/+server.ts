@@ -229,8 +229,9 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 
 			const coffee_id = existing.coffee_id;
 
-			// Delete associated logs first
-			await supabase.from('profile_log').delete().eq('roast_id', id);
+			// Delete associated data from normalized tables first
+			await supabase.from('roast_temperatures').delete().eq('roast_id', id);
+			await supabase.from('roast_events').delete().eq('roast_id', id);
 			// Then delete the profile
 			await supabase.from('roast_profiles').delete().eq('roast_id', id).eq('user', user.id);
 
@@ -250,8 +251,9 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 					...new Set(profiles.map((p: { roast_id: number; coffee_id: number }) => p.coffee_id))
 				];
 
-				// Delete associated logs first
-				await supabase.from('profile_log').delete().in('roast_id', roastIds);
+				// Delete associated data from normalized tables first
+				await supabase.from('roast_temperatures').delete().in('roast_id', roastIds);
+				await supabase.from('roast_events').delete().in('roast_id', roastIds);
 				// Then delete all profiles in the batch
 				await supabase
 					.from('roast_profiles')

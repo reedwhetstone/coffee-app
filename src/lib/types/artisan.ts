@@ -169,18 +169,8 @@ export interface ProcessedRoastData {
 		automatic: boolean;
 	}>;
 
-	// Roast phases for roast_phases table
-	roastPhases: Array<{
-		roast_id: number;
-		phase_name: string;
-		phase_order: number;
-		start_time: number;
-		end_time: number;
-		duration: number;
-		percentage_of_total: number;
-		calculation_method: string;
-		confidence_score: number;
-	}>;
+	// Note: roast_phases table no longer exists in normalized schema
+	// Phase data is now stored directly in roast_profiles table
 }
 
 export interface ValidationResult {

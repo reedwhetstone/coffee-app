@@ -290,15 +290,22 @@ export const DELETE: RequestHandler = async (event) => {
 
 		if (selectError) throw selectError;
 
-		// If there are roast profiles, delete their logs
+		// If there are roast profiles, delete their associated data
 		if (roastProfiles && roastProfiles.length > 0) {
 			const roastIds = roastProfiles.map((profile: RoastProfile) => profile.roast_id);
-			const { error: logError } = await supabase
-				.from('profile_log')
+			
+			// Delete from normalized tables
+			const { error: tempError } = await supabase
+				.from('roast_temperatures')
 				.delete()
 				.in('roast_id', roastIds);
+			if (tempError) throw tempError;
 
-			if (logError) throw logError;
+			const { error: eventError } = await supabase
+				.from('roast_events')
+				.delete()
+				.in('roast_id', roastIds);
+			if (eventError) throw eventError;
 		}
 
 		// Delete roast profiles

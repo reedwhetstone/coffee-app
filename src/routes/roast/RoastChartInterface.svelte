@@ -1941,7 +1941,7 @@
 						);
 						console.log('Manual save: About to call saveRoastProfile()');
 						try {
-							await saveRoastProfile();
+							saveRoastProfile();
 							console.log('Manual save: saveRoastProfile() completed successfully');
 						} catch (error: unknown) {
 							console.error('Manual save ERROR:', error);
