@@ -544,29 +544,62 @@
 			const yScale = createEventValueScale(eventSeries);
 			if (!yScale) return;
 
-			// Convert event values to chart data points with carry-forward logic
-			let lastValue = eventSeries.values[0].value;
+			// Build step-after points directly from event timestamps (seconds -> ms)
+			const sortedValues = [...eventSeries.values].sort((a, b) => a.time_seconds - b.time_seconds);
+
+			// Determine chart start from processedData if available; otherwise from events
+			const chartStart =
+				processedData.length > 0
+					? Math.min(...processedData.map((d: any) => d.time))
+					: sortedValues[0].time_seconds * 1000;
+
+			// FIXED: Calculate chartEnd using milestone completion and chart settings
+			let chartEnd: number;
+
+			// Priority 1: Use chart_x_max setting if available (convert minutes to ms, relative to charge)
+			if (chartSettings?.xRange && chartSettings.xRange[1] !== null) {
+				const chargeTimeMs = getChargeTime(processedData);
+				chartEnd = chargeTimeMs + chartSettings.xRange[1] * 60 * 1000; // Convert minutes to ms
+			}
+			// Priority 2: Use Cool End milestone time + buffer
+			else {
+				const events = isDuringRoasting ? $eventEntries : savedEventEntries;
+				const milestones = extractMilestones(events);
+
+				if (milestones.end) {
+					chartEnd = milestones.end + 60 * 1000; // Cool End + 1 minute buffer
+				}
+				// Priority 3: Use Drop milestone time + buffer
+				else if (milestones.drop) {
+					chartEnd = milestones.drop + 2 * 60 * 1000; // Drop + 2 minutes buffer for cooling
+				}
+				// Priority 4: Use processedData range if available
+				else if (processedData.length > 0) {
+					chartEnd = Math.max(...processedData.map((d: any) => d.time)) + 60 * 1000; // + 1 minute buffer
+				}
+				// Fallback: Use event data range
+				else {
+					chartEnd = sortedValues[sortedValues.length - 1].time_seconds * 1000 + 60 * 1000; // + 1 minute buffer
+				}
+			}
+
 			const eventDataPoints: Array<{ time: number; value: number }> = [];
 
-			// Find all time points that need event values
-			const allTimePoints = processedData.map((d) => d.time);
+			// Anchor at chartStart holding the first value
+			eventDataPoints.push({
+				time: chartStart,
+				value: sortedValues[0].value
+			});
 
-			allTimePoints.forEach((timeMs) => {
-				const timeSeconds = timeMs / 1000;
+			// Add each change at the exact event time
+			for (const v of sortedValues) {
+				eventDataPoints.push({ time: v.time_seconds * 1000, value: v.value });
+			}
 
-				// Find the most recent event value before or at this time
-				const applicableEvent = eventSeries.values
-					.filter((v) => v.time_seconds <= timeSeconds)
-					.pop();
-
-				if (applicableEvent) {
-					lastValue = applicableEvent.value;
-				}
-
-				eventDataPoints.push({
-					time: timeMs,
-					value: lastValue
-				});
+			// Extend last value to chartEnd so the line is visible through the end
+			eventDataPoints.push({
+				time: chartEnd,
+				value: sortedValues[sortedValues.length - 1].value
 			});
 
 			// Create line generator for this event type
@@ -586,7 +619,7 @@
 				.attr('fill', 'none')
 				.attr('stroke', color)
 				.attr('stroke-width', 2)
-				.attr('stroke-dasharray', index % 2 === 0 ? 'none' : '3,3') // Alternate solid/dashed
+				.attr('stroke-dasharray', index % 2 === 0 ? 'none' : '3,3')
 				.attr('d', eventLine);
 		});
 	}
@@ -686,8 +719,21 @@
 	function updateChart(data: RoastPoint[]) {
 		if (!svg || !xScale || !yScaleTemp || !yScaleRoR) return;
 
+		// DEBUG: Log incoming data
+		console.log('=== UPDATE CHART DEBUG ===');
+		console.log('Raw data length:', data.length);
+		if (data.length > 0) {
+			console.log('Data time range:', {
+				first: data[0]?.time,
+				last: data[data.length - 1]?.time,
+				firstSeconds: data[0]?.time / 1000,
+				lastSeconds: data[data.length - 1]?.time / 1000
+			});
+		}
+
 		// Sort data by time first
 		const sortedData = [...data].sort((a, b) => a.time - b.time);
+		console.log('Sorted data length:', sortedData.length);
 
 		// Process sorted data to fill NULL values
 		let lastHeat = 0;
@@ -734,6 +780,7 @@
 
 		// Get charge time for relative time calculation
 		const chargeTime = getChargeTime(data);
+		console.log('Charge time:', chargeTime, 'seconds:', chargeTime / 1000);
 
 		// Create combined events array - preserve ALL original event names without modification
 		const eventData = $roastEvents.map((event) => ({
@@ -800,6 +847,12 @@
 		const beanTempData = processedData.filter(
 			(d) => d.bean_temp !== null && d.bean_temp !== undefined && d.bean_temp > 0
 		);
+		console.log('Bean temp data filtering:', {
+			processedDataLength: processedData.length,
+			beanTempDataLength: beanTempData.length,
+			firstBeanTemp: beanTempData[0],
+			lastBeanTemp: beanTempData[beanTempData.length - 1]
+		});
 		if (beanTempData.length > 0) {
 			svg
 				.append('path')
@@ -1593,6 +1646,17 @@
 				data_source: 'live' as const // Treat all data sources the same
 			}));
 
+			console.log('=== LOAD SAVED ROAST DATA DEBUG ===');
+			console.log('Loaded temperature entries:', savedTemperatureEntries.length);
+			if (savedTemperatureEntries.length > 0) {
+				const firstTemp = savedTemperatureEntries[0];
+				const lastTemp = savedTemperatureEntries[savedTemperatureEntries.length - 1];
+				console.log('Temperature data range:', {
+					first: { time: firstTemp.time_seconds, temp: firstTemp.bean_temp },
+					last: { time: lastTemp.time_seconds, temp: lastTemp.bean_temp }
+				});
+			}
+
 			// Get ALL milestone and control events from the roast_events table
 			savedEventEntries = [
 				...chartData.milestones.map((milestone) => ({
@@ -1638,10 +1702,23 @@
 					milestone.event_string.slice(1).replace(/_/g, ' ') // Convert snake_case to Title Case
 			}));
 
+			console.log('Milestone events:', chartData.milestones.map(m => ({
+				event: m.event_string,
+				time_seconds: m.time_seconds,
+				time_ms: m.time_seconds * 1000
+			})));
+
 			// For legacy data without temperature entries, create minimal roast data for milestones
 			// Control events will be rendered via savedEventValueSeries
 			if (savedTemperatureEntries.length > 0) {
 				$roastData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
+				console.log('Converted roast data length:', $roastData.length);
+				if ($roastData.length > 0) {
+					console.log('Converted data range:', {
+						first: { time: $roastData[0].time, seconds: $roastData[0].time / 1000 },
+						last: { time: $roastData[$roastData.length - 1].time, seconds: $roastData[$roastData.length - 1].time / 1000 }
+					});
+				}
 			} else {
 				// Create basic data points from milestones only (for legacy app data)
 				const milestoneEvents = savedEventEntries.filter((e) => e.category === 'milestone');

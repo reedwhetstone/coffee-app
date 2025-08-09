@@ -69,11 +69,10 @@ export class RoastDataService {
 	 * Get all temperature data for a roast
 	 */
 	async getTemperatureData(roastId: number): Promise<TemperatureDataPoint[]> {
-		const { data, error } = await this.supabase
-			.from('roast_temperatures')
-			.select('*')
-			.eq('roast_id', roastId)
-			.order('time_seconds', { ascending: true });
+		// Use stored function to sample every other temperature record by primary key
+		const { data, error } = await this.supabase.rpc('get_even_temp_ids', {
+			roast_id_param: roastId
+		});
 
 		if (error) {
 			console.error('Error fetching temperature data:', error);
@@ -81,11 +80,11 @@ export class RoastDataService {
 		}
 
 		return (data || [])
-			.map((temp) => ({
+			.map((temp: any) => ({
 				...temp,
 				time_seconds: parseFloat(String(temp.time_seconds)) // Convert string to number
 			}))
-			.filter((temp) => !isNaN(temp.time_seconds));
+			.filter((temp: any) => !isNaN(temp.time_seconds));
 	}
 
 	/**

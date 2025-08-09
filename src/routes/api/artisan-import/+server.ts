@@ -155,15 +155,33 @@ function transformArtisanData(
 		artisanData.specialeventsStrings
 	) {
 		console.log('Processing special events with direct device mapping:');
-		console.log('specialevents (times):', artisanData.specialevents);
+		console.log('specialevents (indices):', artisanData.specialevents);
 		console.log('specialeventstype:', artisanData.specialeventstype);
 		console.log('specialeventsvalue:', artisanData.specialeventsvalue);
 		console.log('specialeventsStrings:', artisanData.specialeventsStrings);
 		console.log('etypes:', artisanData.etypes);
 
-		artisanData.specialevents.forEach((timeSeconds: number, index: number) => {
+		artisanData.specialevents.forEach((eventIndex: number, index: number) => {
 			const eventType = artisanData.specialeventstype?.[index];
 			const valueString = artisanData.specialeventsStrings?.[index];
+
+			// Resolve special event index -> absolute time in seconds
+			let timeSeconds: number | undefined;
+			if (
+				typeof eventIndex === 'number' &&
+				Number.isFinite(eventIndex) &&
+				eventIndex >= 0 &&
+				eventIndex < timex.length &&
+				typeof timex[eventIndex] === 'number' &&
+				Number.isFinite(timex[eventIndex])
+			) {
+				timeSeconds = timex[eventIndex];
+			} else {
+				console.warn(
+					`Skipping special event with invalid index: index=${eventIndex}, timex.length=${timex.length}`
+				);
+				return;
+			}
 
 			// Process ALL events that have non-empty string values (keep "0" as valid)
 			if (valueString && valueString !== '' && eventType !== undefined) {
@@ -172,7 +190,7 @@ function transformArtisanData(
 
 				if (deviceName && deviceName !== '--') {
 					console.log(
-						`Control event: time=${timeSeconds}s, device=${deviceName}, value="${valueString}"`
+						`Control event: index=${eventIndex} → time=${timeSeconds}s, device=${deviceName}, value="${valueString}"`
 					);
 
 					specialEvents.push({
