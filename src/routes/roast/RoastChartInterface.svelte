@@ -1702,11 +1702,14 @@
 					milestone.event_string.slice(1).replace(/_/g, ' ') // Convert snake_case to Title Case
 			}));
 
-			console.log('Milestone events:', chartData.milestones.map(m => ({
-				event: m.event_string,
-				time_seconds: m.time_seconds,
-				time_ms: m.time_seconds * 1000
-			})));
+			console.log(
+				'Milestone events:',
+				chartData.milestones.map((m) => ({
+					event: m.event_string,
+					time_seconds: m.time_seconds,
+					time_ms: m.time_seconds * 1000
+				}))
+			);
 
 			// For legacy data without temperature entries, create minimal roast data for milestones
 			// Control events will be rendered via savedEventValueSeries
@@ -1716,7 +1719,10 @@
 				if ($roastData.length > 0) {
 					console.log('Converted data range:', {
 						first: { time: $roastData[0].time, seconds: $roastData[0].time / 1000 },
-						last: { time: $roastData[$roastData.length - 1].time, seconds: $roastData[$roastData.length - 1].time / 1000 }
+						last: {
+							time: $roastData[$roastData.length - 1].time,
+							seconds: $roastData[$roastData.length - 1].time / 1000
+						}
 					});
 				}
 			} else {
@@ -1928,7 +1934,7 @@
 <div class="w-full overflow-x-hidden">
 	<!-- Roast session header -->
 	<div class="mb-3 flex flex-wrap justify-between">
-		<h1 class="text-xl font-bold text-text-primary-light sm:text-2xl">
+		<h1 class="text-text-primary-light text-xl font-bold sm:text-2xl">
 			Roast Session: {selectedBean.name}
 		</h1>
 	</div>
@@ -1945,18 +1951,18 @@
 	</div>
 
 	<!-- Roast event controls and timer -->
-	<div class="mt-6 bg-background-secondary-light p-3 sm:p-4">
+	<div class="bg-background-secondary-light mt-6 p-3 sm:p-4">
 		<!-- Timer and Start/Stop button -->
 		<div class="mb-4 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-4">
 			{#if isBeforeRoasting || isDuringRoasting}
-				<div class="text-3xl font-bold text-text-primary-light sm:text-4xl md:text-5xl">
+				<div class="text-text-primary-light text-3xl font-bold sm:text-4xl md:text-5xl">
 					{formattedTime}
 				</div>
 			{/if}
 			{#if isBeforeRoasting || isDuringRoasting}
 				<button
 					id="start-end-roast"
-					class="w-full rounded-md border-2 border-green-800 px-3 py-1 text-base font-medium text-text-primary-light transition-colors hover:bg-green-900 sm:w-auto sm:px-4 sm:py-2 sm:text-lg"
+					class="text-text-primary-light w-full rounded-md border-2 border-green-800 px-3 py-1 text-base font-medium transition-colors hover:bg-green-900 sm:w-auto sm:px-4 sm:py-2 sm:text-lg"
 					onmousedown={(e) => {
 						if (isRoasting) {
 							isLongPressing = true;
@@ -2005,26 +2011,26 @@
 			<!-- Fan and Heat controls (left side) -->
 			{#if isBeforeRoasting || isDuringRoasting}
 				<div
-					class="flex w-full flex-row justify-center gap-8 bg-background-primary-light p-3 sm:w-64 sm:p-4 md:mr-4 md:border-r md:border-border-light lg:mr-4 lg:border-r lg:border-border-light"
+					class="bg-background-primary-light md:border-border-light lg:border-border-light flex w-full flex-row justify-center gap-8 p-3 sm:w-64 sm:p-4 md:mr-4 md:border-r lg:mr-4 lg:border-r"
 				>
 					<!-- Fan control -->
 					<div class="flex flex-col items-center gap-2">
-						<span class="text-sm font-medium text-text-secondary-light">FAN</span>
+						<span class="text-text-secondary-light text-sm font-medium">FAN</span>
 						<div class="flex flex-col items-center rounded-lg border-2 border-indigo-800">
 							<button
-								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-indigo-900/80 hover:text-white"
+								class="text-text-primary-light flex h-8 w-full items-center justify-center hover:bg-indigo-900/80 hover:text-white"
 								onclick={() => handleFanChange(Math.min(10, fanValue + 1))}
 								disabled={fanValue >= 10}
 							>
 								+
 							</button>
 							<div
-								class="flex h-10 w-10 items-center justify-center text-lg font-bold text-text-primary-light sm:h-12 sm:w-12 sm:text-xl"
+								class="text-text-primary-light flex h-10 w-10 items-center justify-center text-lg font-bold sm:h-12 sm:w-12 sm:text-xl"
 							>
 								{fanValue}
 							</div>
 							<button
-								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-indigo-900/80 hover:text-white"
+								class="text-text-primary-light flex h-8 w-full items-center justify-center hover:bg-indigo-900/80 hover:text-white"
 								onclick={() => handleFanChange(Math.max(0, fanValue - 1))}
 								disabled={fanValue <= 0}
 							>
@@ -2035,22 +2041,22 @@
 
 					<!-- Heat control -->
 					<div class="flex flex-col items-center gap-2">
-						<span class="text-sm font-medium text-text-secondary-light">HEAT</span>
+						<span class="text-text-secondary-light text-sm font-medium">HEAT</span>
 						<div class="flex flex-col items-center rounded-lg border-2 border-amber-800">
 							<button
-								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-amber-900/80 hover:text-white"
+								class="text-text-primary-light flex h-8 w-full items-center justify-center hover:bg-amber-900/80 hover:text-white"
 								onclick={() => handleHeatChange(Math.min(10, heatValue + 1))}
 								disabled={heatValue >= 10}
 							>
 								+
 							</button>
 							<div
-								class="flex h-10 w-10 items-center justify-center text-lg font-bold text-text-primary-light sm:h-12 sm:w-12 sm:text-xl"
+								class="text-text-primary-light flex h-10 w-10 items-center justify-center text-lg font-bold sm:h-12 sm:w-12 sm:text-xl"
 							>
 								{heatValue}
 							</div>
 							<button
-								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-amber-900/80 hover:text-white"
+								class="text-text-primary-light flex h-8 w-full items-center justify-center hover:bg-amber-900/80 hover:text-white"
 								onclick={() => handleHeatChange(Math.max(0, heatValue - 1))}
 								disabled={heatValue <= 0}
 							>
@@ -2065,23 +2071,23 @@
 			<div class="flex-grow">
 				{#if isBeforeRoasting || isDuringRoasting}
 					<div class="mb-4">
-						<h3 class="mb-2 text-sm font-medium text-text-secondary-light">ROAST EVENTS</h3>
+						<h3 class="text-text-secondary-light mb-2 text-sm font-medium">ROAST EVENTS</h3>
 						<div class="relative overflow-x-auto">
 							<div
-								class="rounded-lg border border-border-light bg-background-primary-light shadow-sm"
+								class="border-border-light bg-background-primary-light rounded-lg border shadow-sm"
 							>
 								<!-- Mobile view: Grid layout with 2 buttons per row -->
 								<div class="grid grid-cols-2 sm:hidden">
 									{#each ['Charge', 'Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop', 'Cool End'] as event, i}
 										<button
 											type="button"
-											class="cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
+											class="hover:bg-background-tertiary-light/10 cursor-pointer whitespace-nowrap p-2 text-center transition-colors {selectedEvent ===
 											event
 												? 'bg-background-tertiary-light text-text-primary-light'
 												: 'text-text-primary-light'} {!isRoasting
 												? 'cursor-not-allowed opacity-50'
-												: ''} {i % 2 !== 0 ? 'border-l border-border-light' : ''} {i > 1
-												? 'border-t border-border-light'
+												: ''} {i % 2 !== 0 ? 'border-border-light border-l' : ''} {i > 1
+												? 'border-border-light border-t'
 												: ''}"
 											onclick={() => isRoasting && handleEventLog(event)}
 											disabled={!isRoasting}
@@ -2096,12 +2102,12 @@
 									{#each ['Charge', 'Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop', 'Cool End'] as event, i}
 										<button
 											type="button"
-											class="flex-1 cursor-pointer whitespace-nowrap p-3 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
+											class="hover:bg-background-tertiary-light/10 flex-1 cursor-pointer whitespace-nowrap p-3 text-center transition-colors {selectedEvent ===
 											event
 												? 'bg-background-tertiary-light text-text-primary-light'
 												: 'text-text-primary-light'} {!isRoasting
 												? 'cursor-not-allowed opacity-50'
-												: ''} {i !== 0 ? 'border-l border-border-light' : ''}"
+												: ''} {i !== 0 ? 'border-border-light border-l' : ''}"
 											onclick={() => isRoasting && handleEventLog(event)}
 											disabled={!isRoasting}
 										>
@@ -2117,38 +2123,38 @@
 				<!-- Roast milestone timestamps -->
 				<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
 					<div
-						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
+						class="border-border-light bg-background-primary-light rounded border p-1 text-center sm:p-2"
 					>
-						<span class="text-xs text-text-secondary-light">DRYING %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">
+						<span class="text-text-secondary-light text-xs">DRYING %</span>
+						<div class="text-text-primary-light text-base font-bold sm:text-lg">
 							{dryingDisplay}
 						</div>
 					</div>
 					<div
-						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
+						class="border-border-light bg-background-primary-light rounded border p-1 text-center sm:p-2"
 					>
-						<span class="text-xs text-text-secondary-light">TP</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">{tpDisplay}</div>
+						<span class="text-text-secondary-light text-xs">DRY END</span>
+						<div class="text-text-primary-light text-base font-bold sm:text-lg">{tpDisplay}</div>
 					</div>
 					<div
-						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
+						class="border-border-light bg-background-primary-light rounded border p-1 text-center sm:p-2"
 					>
-						<span class="text-xs text-text-secondary-light">MAILLARD %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">
+						<span class="text-text-secondary-light text-xs">MAILLARD %</span>
+						<div class="text-text-primary-light text-base font-bold sm:text-lg">
 							{maillardDisplay}
 						</div>
 					</div>
 					<div
-						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
+						class="border-border-light bg-background-primary-light rounded border p-1 text-center sm:p-2"
 					>
-						<span class="text-xs text-text-secondary-light">FC</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">{fcDisplay}</div>
+						<span class="text-text-secondary-light text-xs">FIRST CRACK</span>
+						<div class="text-text-primary-light text-base font-bold sm:text-lg">{fcDisplay}</div>
 					</div>
 					<div
-						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
+						class="border-border-light bg-background-primary-light rounded border p-1 text-center sm:p-2"
 					>
-						<span class="text-xs text-text-secondary-light">DEV %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">{devDisplay}</div>
+						<span class="text-text-secondary-light text-xs">DEV %</span>
+						<div class="text-text-primary-light text-base font-bold sm:text-lg">{devDisplay}</div>
 					</div>
 				</div>
 			</div>
@@ -2188,7 +2194,7 @@
 			{:catch}
 				<!-- Fallback button if LoadingButton fails to load -->
 				<button
-					class="w-full rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light sm:w-auto"
+					class="text-text-primary-light hover:bg-background-primary-light w-full rounded border-2 border-zinc-500 px-3 py-1 sm:w-auto"
 					onclick={() => {
 						console.log('Manual save (fallback): currentRoastProfile =', currentRoastProfile);
 						console.log('Manual save (fallback): About to call saveRoastProfile()');
@@ -2204,7 +2210,7 @@
 		<!-- Import Artisan File button - only show when profile exists -->
 		{#if currentRoastProfile?.roast_id}
 			<button
-				class="w-full rounded border-2 border-blue-600 px-3 py-1 text-text-primary-light hover:bg-blue-900 sm:w-auto"
+				class="text-text-primary-light w-full rounded border-2 border-blue-600 px-3 py-1 hover:bg-blue-900 sm:w-auto"
 				onclick={showArtisanImportDialog}
 			>
 				Import Artisan File
@@ -2213,7 +2219,7 @@
 
 		{#if !isBeforeRoasting}
 			<button
-				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-950 sm:w-auto"
+				class="text-text-primary-light w-full rounded border-2 border-red-800 px-3 py-1 hover:bg-red-950 sm:w-auto"
 				onclick={() => {
 					if (
 						confirm('Are you sure you want to clear this roast data? This action cannot be undone.')
@@ -2239,18 +2245,18 @@
 		></button>
 		<div class="flex min-h-screen items-center justify-center p-4">
 			<div
-				class="relative w-full max-w-md rounded-lg bg-background-secondary-light p-6 shadow-xl"
+				class="bg-background-secondary-light relative w-full max-w-md rounded-lg p-6 shadow-xl"
 				role="dialog"
 				aria-modal="true"
 			>
-				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">
+				<h3 class="text-text-primary-light mb-4 text-lg font-semibold">
 					Import Artisan Roast File
 				</h3>
 
 				<div class="mb-4">
 					<label
 						for="artisan-file-input"
-						class="mb-2 block text-sm font-medium text-text-primary-light"
+						class="text-text-primary-light mb-2 block text-sm font-medium"
 					>
 						Select Artisan .alog file:
 					</label>
@@ -2259,9 +2265,9 @@
 						type="file"
 						accept=".alog,.alog.json,.json"
 						onchange={handleArtisanFileSelect}
-						class="block w-full text-sm text-text-primary-light file:mr-4 file:rounded file:border-0 file:bg-background-tertiary-light file:px-4 file:py-2 file:text-sm file:font-semibold file:text-text-primary-light hover:file:bg-background-primary-light"
+						class="text-text-primary-light file:bg-background-tertiary-light file:text-text-primary-light hover:file:bg-background-primary-light block w-full text-sm file:mr-4 file:rounded file:border-0 file:px-4 file:py-2 file:text-sm file:font-semibold"
 					/>
-					<p class="mt-2 text-xs text-text-secondary-light">
+					<p class="text-text-secondary-light mt-2 text-xs">
 						Import roast profile data from Artisan roasting software. This will replace all existing
 						imported data for this profile.
 					</p>
@@ -2276,7 +2282,7 @@
 				<div class="flex justify-end space-x-3">
 					<button
 						type="button"
-						class="rounded bg-background-primary-light px-4 py-2 text-text-primary-light hover:bg-background-tertiary-light"
+						class="bg-background-primary-light text-text-primary-light hover:bg-background-tertiary-light rounded px-4 py-2"
 						onclick={cancelArtisanImport}
 					>
 						Cancel
