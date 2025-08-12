@@ -51,9 +51,9 @@
 <div class="flex h-full flex-col">
 	<!-- Header with close button that handles keyboard events -->
 	<header
-		class="flex items-center justify-between border-b border-text-primary-dark border-opacity-20 p-4"
+		class="flex items-center justify-between border-b border-text-primary-light border-opacity-20 p-4"
 	>
-		<h2 class="text-xl font-semibold" id="nav-dialog-title">Navigation</h2>
+		<h2 class="text-lg font-semibold text-text-primary-light" id="nav-dialog-title">Navigation</h2>
 		<button
 			onclick={(e) => {
 				e.stopPropagation();
@@ -84,10 +84,10 @@
 			<li>
 				<a
 					href="/"
-					class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath ===
+					class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath ===
 					'/'
-						? ' border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
-						: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+						? 'bg-background-tertiary-light text-white'
+						: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 				>
 					Catalog
 				</a>
@@ -98,10 +98,10 @@
 				<li>
 					<a
 						href="/beans"
-						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/beans'
-							? ' border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
-							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+							? 'bg-background-tertiary-light text-white'
+							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 					>
 						Beans
 					</a>
@@ -109,10 +109,10 @@
 				<li>
 					<a
 						href="/roast"
-						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/roast'
-							? ' border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
-							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+							? 'bg-background-tertiary-light text-white'
+							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 					>
 						Roast
 					</a>
@@ -120,10 +120,10 @@
 				<li>
 					<a
 						href="/profit"
-						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/profit'
-							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
-							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+							? 'bg-background-tertiary-light text-white'
+							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 					>
 						Profit
 					</a>
@@ -133,17 +133,17 @@
 			<!-- Admin-only navigation -->
 			{#if hasRequiredRole('admin')}
 				<li class="mt-4">
-					<div class="text-text-secondary-dark mb-2 text-xs font-semibold uppercase tracking-wide">
+					<div class="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
 						Administration
 					</div>
 				</li>
 				<li>
 					<a
 						href="/admin"
-						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {routeId ===
+						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/admin'
-							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
-							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+							? 'bg-background-tertiary-light text-white'
+							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 					>
 						Admin Dashboard
 					</a>
@@ -152,16 +152,16 @@
 		</ul>
 
 		<!-- API Dashboard and Contact links for all users -->
-		<div class="mt-6 border-t border-background-tertiary-light/20 pt-4">
+		<div class="mt-6 border-t border-text-primary-light border-opacity-20 pt-4">
 			<ul class="space-y-2">
 				<li>
 					<a
 						href="/api-dashboard"
-						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath.startsWith(
+						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath.startsWith(
 							'/api-dashboard'
 						)
-							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
-							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+							? 'bg-background-tertiary-light text-white'
+							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 					>
 						Parchment API
 					</a>
@@ -169,10 +169,10 @@
 				<li>
 					<a
 						href="/contact"
-						class="block rounded border border-background-tertiary-light/20 px-3 py-2 text-left text-sm {currentPath ===
+						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath ===
 						'/contact'
-							? 'border border-background-tertiary-light bg-background-tertiary-light/80 text-text-primary-dark'
-							: 'text-text-primary-dark hover:border hover:border-background-tertiary-light hover:bg-background-tertiary-light/10'}"
+							? 'bg-background-tertiary-light text-white'
+							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 					>
 						Contact
 					</a>

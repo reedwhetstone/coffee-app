@@ -137,9 +137,9 @@
 <div class="flex h-full flex-col">
 	<!-- Header with close button -->
 	<header
-		class="flex items-center justify-between border-b border-text-primary-dark border-opacity-20 p-4"
+		class="flex items-center justify-between border-b border-text-primary-light border-opacity-20 p-4"
 	>
-		<h2 class="text-xl font-semibold" id="actions-dialog-title">Actions</h2>
+		<h2 class="text-lg font-semibold text-text-primary-light" id="actions-dialog-title">Actions</h2>
 		<button
 			onclick={(e) => {
 				e.stopPropagation();
@@ -169,25 +169,25 @@
 			<div class="space-y-2">
 				<!-- Always show all functions regardless of current page -->
 				<button
-					class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
+					class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					onclick={handleNewBean}
 				>
 					New Bean
 				</button>
 				<button
-					class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
+					class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					onclick={handleNewRoast}
 				>
 					New Roast
 				</button>
 				<button
-					class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
+					class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					onclick={handleNewSale}
 				>
 					New Sale
 				</button>
 				<button
-					class="block w-full rounded border border-background-tertiary-light px-3 py-2 text-left text-sm text-text-primary-dark hover:bg-background-tertiary-light hover:opacity-80"
+					class="block w-full rounded-md border border-background-tertiary-light px-3 py-2 text-left text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					onclick={handleShareAllBeans}
 				>
 					Share All Beans

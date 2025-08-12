@@ -46,9 +46,9 @@
 <div class="flex h-full flex-col">
 	<!-- Header with close button that handles keyboard events -->
 	<header
-		class="flex items-center justify-between border-b border-text-primary-dark border-opacity-20 p-4"
+		class="flex items-center justify-between border-b border-text-primary-light border-opacity-20 p-4"
 	>
-		<h2 class="text-xl font-semibold" id="auth-dialog-title">Account</h2>
+		<h2 class="text-lg font-semibold text-text-primary-light" id="auth-dialog-title">Account</h2>
 		<button
 			onclick={(e) => {
 				e.stopPropagation();
@@ -76,24 +76,24 @@
 	<main class="flex-grow overflow-y-auto p-4">
 		{#if user}
 			<div class="mb-4">
-				<h3 class="mb-2 font-medium">Signed in as:</h3>
-				<p class="mb-4 text-sm opacity-80">{user.email}</p>
+				<h3 class="mb-2 font-medium text-text-primary-light">Signed in as:</h3>
+				<p class="mb-4 text-sm text-text-secondary-light">{user.email}</p>
 
 				<button
 					onclick={handleSignOut}
-					class="w-full rounded bg-red-500/10 px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/20"
+					class="w-full rounded-md border border-red-600 px-4 py-2 text-left text-sm text-red-600 transition-all duration-200 hover:bg-red-600 hover:text-white"
 				>
 					Sign Out
 				</button>
 			</div>
 		{:else}
 			<div class="mb-4">
-				<h3 class="mb-2 font-medium">Not signed in</h3>
-				<p class="mb-4 text-sm opacity-80">Sign in to access your account</p>
+				<h3 class="mb-2 font-medium text-text-primary-light">Not signed in</h3>
+				<p class="mb-4 text-sm text-text-secondary-light">Sign in to access your account</p>
 
 				<button
 					onclick={handleSignIn}
-					class="w-full rounded bg-blue-500/10 px-4 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20"
+					class="w-full rounded-md bg-background-tertiary-light px-4 py-2 text-left text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 				>
 					Sign In with Google
 				</button>
@@ -101,7 +101,7 @@
 		{/if}
 		<button
 			onclick={navigateToSubscription}
-			class="mb-3 w-full rounded bg-blue-500/10 px-4 py-2 text-left text-sm text-blue-400 hover:bg-blue-500/20"
+			class="mb-3 w-full rounded-md border border-background-tertiary-light px-4 py-2 text-left text-sm text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 		>
 			Subscription
 		</button>

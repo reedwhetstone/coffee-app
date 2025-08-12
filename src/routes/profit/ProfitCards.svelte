@@ -211,7 +211,7 @@
 									<!-- Individual Coffee Card -->
 									<button
 										type="button"
-										class="w-full rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light text-left focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
+										class="w-full rounded-lg bg-background-secondary-light p-4 text-left ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 										onclick={() => handleSelectCoffee(item.coffee_name, date)}
 									>
 										<div class="mb-3 flex items-start justify-between">
@@ -224,7 +224,9 @@
 												</p>
 											</div>
 											<div class="text-right text-sm text-text-secondary-light">
-												{selectedCoffee === item.coffee_name ? 'Click to hide sales' : 'Click to view sales'}
+												{selectedCoffee === item.coffee_name
+													? 'Click to hide sales'
+													: 'Click to view sales'}
 											</div>
 										</div>
 

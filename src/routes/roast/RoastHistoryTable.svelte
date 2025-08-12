@@ -151,67 +151,67 @@
 									{@const completionStatus = getRoastCompletionStatus(profile)}
 									<button
 										type="button"
-										class="w-full rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light text-left focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2 {currentRoastProfile?.roast_id ===
+										class="w-full rounded-lg bg-background-secondary-light p-4 text-left ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2 {currentRoastProfile?.roast_id ===
 										profile.roast_id
 											? 'ring-2 ring-background-tertiary-light'
 											: ''}"
 										onclick={() => onSelectProfile(profile)}
 									>
-											<div class="mb-3 flex items-start justify-between">
-												<div>
-													<h4 class="font-semibold text-text-primary-light">
-														{profile.coffee_name}
-													</h4>
-													<p class="text-sm text-text-secondary-light">
-														{formatDateForDisplay(profile.roast_date)}
-														{#if currentRoastProfile?.roast_id === profile.roast_id}
-															• Currently Selected
-														{/if}
-													</p>
-												</div>
-												<div class="text-right text-sm text-text-secondary-light">
-													{currentRoastProfile?.roast_id === profile.roast_id
-														? 'Currently selected'
-														: 'Click to select'}
-												</div>
+										<div class="mb-3 flex items-start justify-between">
+											<div>
+												<h4 class="font-semibold text-text-primary-light">
+													{profile.coffee_name}
+												</h4>
+												<p class="text-sm text-text-secondary-light">
+													{formatDateForDisplay(profile.roast_date)}
+													{#if currentRoastProfile?.roast_id === profile.roast_id}
+														• Currently Selected
+													{/if}
+												</p>
 											</div>
-
-											<!-- Roast Metrics Grid - Following ProfitCards Pattern -->
-											<div class="grid grid-cols-2 gap-3 text-sm">
-												<div>
-													<p class="text-text-secondary-light">Weight In</p>
-													<p class="font-semibold text-blue-500">
-														{profile.oz_in ? `${profile.oz_in} oz` : 'N/A'}
-													</p>
-												</div>
-												<div>
-													<p class="text-text-secondary-light">Duration</p>
-													<p class="font-semibold text-indigo-500">
-														{calculateRoastDuration(profile)}
-													</p>
-												</div>
-												<div>
-													<p class="text-text-secondary-light">Yield</p>
-													<p class="font-semibold text-green-500">
-														{calculateYieldPercentage(profile)}
-													</p>
-												</div>
-												<div>
-													<p class="text-text-secondary-light">End Temp</p>
-													<p class="font-semibold {getRoastLevelColor(profile.end_temperature)}">
-														{profile.end_temperature
-															? `${Math.round(profile.end_temperature)}°F`
-															: 'N/A'}
-													</p>
-												</div>
+											<div class="text-right text-sm text-text-secondary-light">
+												{currentRoastProfile?.roast_id === profile.roast_id
+													? 'Currently selected'
+													: 'Click to select'}
 											</div>
+										</div>
 
-											{#if profile.notes}
-												<div class="mt-4 border-t border-border-light pt-4">
-													<h5 class="mb-2 font-medium text-text-primary-light">Notes</h5>
-													<p class="text-sm text-text-secondary-light">{profile.notes}</p>
-												</div>
-											{/if}
+										<!-- Roast Metrics Grid - Following ProfitCards Pattern -->
+										<div class="grid grid-cols-2 gap-3 text-sm">
+											<div>
+												<p class="text-text-secondary-light">Weight In</p>
+												<p class="font-semibold text-blue-500">
+													{profile.oz_in ? `${profile.oz_in} oz` : 'N/A'}
+												</p>
+											</div>
+											<div>
+												<p class="text-text-secondary-light">Duration</p>
+												<p class="font-semibold text-indigo-500">
+													{calculateRoastDuration(profile)}
+												</p>
+											</div>
+											<div>
+												<p class="text-text-secondary-light">Yield</p>
+												<p class="font-semibold text-green-500">
+													{calculateYieldPercentage(profile)}
+												</p>
+											</div>
+											<div>
+												<p class="text-text-secondary-light">End Temp</p>
+												<p class="font-semibold {getRoastLevelColor(profile.end_temperature)}">
+													{profile.end_temperature
+														? `${Math.round(profile.end_temperature)}°F`
+														: 'N/A'}
+												</p>
+											</div>
+										</div>
+
+										{#if profile.notes}
+											<div class="mt-4 border-t border-border-light pt-4">
+												<h5 class="mb-2 font-medium text-text-primary-light">Notes</h5>
+												<p class="text-sm text-text-secondary-light">{profile.notes}</p>
+											</div>
+										{/if}
 									</button>
 								{/each}
 							</div>
