@@ -685,7 +685,7 @@
 								{#if role === 'admin' || role === 'member'}
 									<button
 										onclick={() => (showCuppingForm = true)}
-										class="rounded bg-background-tertiary-light px-3 py-1 text-sm text-white transition-colors duration-200 hover:bg-opacity-90"
+										class="rounded-md bg-background-tertiary-light px-3 py-1 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 									>
 										{userTastingNotes() ? 'Edit' : 'Add'} Cupping Notes
 									</button>
@@ -770,7 +770,7 @@
 									{#if role === 'admin' || role === 'member'}
 										<button
 											onclick={() => (showCuppingForm = true)}
-											class="mt-2 rounded bg-background-tertiary-light px-3 py-1 text-sm text-white transition-colors duration-200 hover:bg-opacity-90"
+											class="mt-2 rounded-md bg-background-tertiary-light px-3 py-1 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 										>
 											Add Cupping Assessment
 										</button>
@@ -1017,16 +1017,16 @@
 		<div class="mt-6 flex flex-wrap justify-end gap-2 border-t border-border-light pt-4">
 			{#if currentTab === 'overview'}
 				<button
-					class="rounded {isEditing
-						? 'border-2 border-green-800 hover:bg-green-900'
-						: 'border-2 border-blue-800 hover:bg-blue-900'} min-w-[80px] px-3 py-1 text-text-primary-light"
+					class="rounded-md {isEditing
+						? 'bg-green-600 text-white hover:bg-green-700'
+						: 'border border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light hover:text-white'} min-w-[80px] px-3 py-1 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 					onclick={toggleEdit}
 				>
 					{isEditing ? 'Save' : 'Edit'}
 				</button>
 			{/if}
 			<button
-				class="min-w-[80px] rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900"
+				class="min-w-[80px] rounded-md border border-red-600 px-3 py-1 font-medium text-red-600 transition-all duration-200 hover:bg-red-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
 				onclick={deleteBean}
 			>
 				Delete

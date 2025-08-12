@@ -147,18 +147,20 @@
 	bind:this={sidebarButtonsContainer}
 >
 	{#if data?.session?.user}
-		<div class="flex h-full w-16 flex-col items-center space-y-4 bg-transparent py-4">
+		<div
+			class="flex h-full w-16 flex-col items-center space-y-4 bg-background-primary-light py-4 shadow-lg"
+		>
 			<!-- Auth Menu Button -->
 			<div class="relative">
 				<button
 					onclick={toggleAuthMenu}
-					class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+					class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					aria-label="Toggle authentication menu"
 				>
 					{#if data?.user}
 						<!-- User Avatar/Icon -->
 						<div
-							class="flex h-8 w-8 items-center justify-center rounded-full bg-transparent text-text-primary-dark hover:text-background-tertiary-light"
+							class="flex h-8 w-8 items-center justify-center rounded-full bg-background-tertiary-light font-medium text-white"
 						>
 							{data.user.email?.[0].toUpperCase() || 'U'}
 						</div>
@@ -186,7 +188,7 @@
 			<div class="relative">
 				<button
 					onclick={toggleNavMenu}
-					class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+					class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					aria-label="Toggle navigation menu"
 				>
 					<svg
@@ -211,7 +213,7 @@
 				<div class="relative">
 					<button
 						onclick={toggleActionsMenu}
-						class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+						class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						aria-label="Toggle actions"
 					>
 						<svg
@@ -237,7 +239,7 @@
 				<div class="relative">
 					<button
 						onclick={toggleAdminMenu}
-						class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+						class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						aria-label="Toggle admin menu"
 					>
 						<svg
@@ -269,7 +271,7 @@
 				<div class="relative">
 					<button
 						onclick={toggleSettingsMenu}
-						class="rounded-full bg-background-primary-dark p-2 text-text-primary-dark shadow-lg hover:text-background-tertiary-light hover:opacity-90"
+						class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						aria-label="Toggle filters"
 					>
 						<svg
@@ -305,7 +307,7 @@
 		<!-- Auth Menu Panel -->
 		{#if activeMenu === 'auth'}
 			<aside
-				class="h-full w-64 bg-background-primary-dark text-text-primary-dark"
+				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="User Login Menu"
 			>
 				<AuthSidebar {data} isOpen={true} onClose={closeAllMenus} />
@@ -315,7 +317,7 @@
 		<!-- Navigation Menu Panel -->
 		{#if activeMenu === 'nav'}
 			<aside
-				class="h-full w-64 bg-background-primary-dark text-text-primary-dark"
+				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				role="navigation"
 				aria-label="Main navigation menu"
 			>
@@ -326,7 +328,7 @@
 		<!-- Actions Menu Panel -->
 		{#if activeMenu === 'actions'}
 			<aside
-				class="h-full w-64 bg-background-primary-dark text-text-primary-dark"
+				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="Actions menu"
 			>
 				<ActionsButton {data} isOpen={true} onClose={closeAllMenus} />
@@ -336,7 +338,7 @@
 		<!-- Settings Menu Panel -->
 		{#if activeMenu === 'settings'}
 			<aside
-				class="h-full w-64 bg-background-primary-dark text-text-primary-dark"
+				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="Settings menu"
 			>
 				<SettingsButton {data} isOpen={true} onClose={closeAllMenus} />
@@ -346,7 +348,7 @@
 		<!-- Admin Menu Panel -->
 		{#if activeMenu === 'admin'}
 			<aside
-				class="h-full w-64 bg-background-primary-dark text-text-primary-dark"
+				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="Admin menu"
 			>
 				<AdminSidebar {data} isOpen={true} onClose={closeAllMenus} />

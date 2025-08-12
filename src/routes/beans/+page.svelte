@@ -589,14 +589,14 @@
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					<button
 						onclick={() => handleAddNewBean()}
-						class="rounded-md bg-background-tertiary-light px-4 py-2 text-white transition-all duration-200 hover:bg-opacity-90"
+						class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 					>
 						{data?.data?.length > 0 ? 'Add New Coffee' : 'Add Your First Bean'}
 					</button>
 					{#if data?.data?.length > 0}
 						<button
 							onclick={() => filterStore.clearFilters()}
-							class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+							class="rounded-md border border-background-tertiary-light px-4 py-2 font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 						>
 							Clear Filters
 						</button>

@@ -209,8 +209,10 @@
 							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 								{#each items as item}
 									<!-- Individual Coffee Card -->
-									<div
-										class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
+									<button
+										type="button"
+										class="w-full rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light text-left focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
+										onclick={() => handleSelectCoffee(item.coffee_name, date)}
 									>
 										<div class="mb-3 flex items-start justify-between">
 											<div>
@@ -221,13 +223,9 @@
 													{item.purchased_qty_lbs.toFixed(1)} lbs purchased
 												</p>
 											</div>
-											<button
-												type="button"
-												class="rounded-md border border-background-tertiary-light px-3 py-1 text-sm text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-												onclick={() => handleSelectCoffee(item.coffee_name, date)}
-											>
-												{selectedCoffee === item.coffee_name ? 'Hide Sales' : 'View Sales'}
-											</button>
+											<div class="text-right text-sm text-text-secondary-light">
+												{selectedCoffee === item.coffee_name ? 'Click to hide sales' : 'Click to view sales'}
+											</div>
 										</div>
 
 										<!-- Coffee Metrics Grid -->
@@ -343,7 +341,7 @@
 												{/if}
 											</div>
 										{/if}
-									</div>
+									</button>
 								{/each}
 							</div>
 						</div>

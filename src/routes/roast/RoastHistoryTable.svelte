@@ -89,11 +89,11 @@
 			{#each sortedBatchNames as batchName}
 				{@const profiles = sortedGroupedProfiles[batchName] || []}
 				{@const batchSummary = getBatchSummary(profiles)}
-				<div class="rounded-lg bg-background-secondary-light shadow-sm ring-1 ring-border-light">
-					<!-- Enhanced Batch Header -->
+				<div class="rounded-lg bg-background-secondary-light ring-1 ring-border-light">
+					<!-- Batch Header - Following ProfitCards Pattern -->
 					<button
 						type="button"
-						class="flex w-full items-center justify-between p-4 transition-colors hover:bg-background-tertiary-light/5 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
+						class="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-background-primary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 						onclick={() => onToggleBatch(batchName)}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
@@ -106,248 +106,113 @@
 						aria-label="Toggle {batchName} batch ({batchSummary.count} roasts)"
 					>
 						<div class="flex items-center gap-3">
-							<span
-								class="text-background-tertiary-light transition-transform duration-200 {isBatchExpanded(
-									batchName
-								)
-									? 'rotate-90'
-									: ''}"
-							>
-								▶
-							</span>
-							<div class="text-left">
-								<h3 class="break-words text-lg font-semibold text-text-primary-light">
+							<div class="text-text-primary-light">
+								{isBatchExpanded(batchName) ? '▼' : '▶'}
+							</div>
+							<div>
+								<h3 class="text-lg font-semibold text-text-primary-light">
 									{batchName}
 								</h3>
-								<div class="flex flex-wrap items-center gap-4 text-sm text-text-secondary-light">
-									<span>{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''}</span>
-									<span>•</span>
-									<span>{batchSummary.totalWeight} oz total</span>
-									{#if batchSummary.avgYield > 0}
-										<span>•</span>
-										<span class="text-green-600">{batchSummary.avgYield}% avg yield</span>
-									{/if}
-								</div>
+								<p class="text-sm text-text-secondary-light">
+									{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''} • {formatDateForDisplay(
+										profiles[0]?.roast_date
+									)}
+								</p>
 							</div>
 						</div>
-						<div class="text-sm text-text-secondary-light">
-							{formatDateForDisplay(profiles[0]?.roast_date)}
+						<div class="hidden text-right sm:block">
+							<div class="grid grid-cols-3 gap-6 text-sm">
+								<div>
+									<p class="text-text-secondary-light">Total Weight</p>
+									<p class="font-semibold text-blue-500">{batchSummary.totalWeight} oz</p>
+								</div>
+								<div>
+									<p class="text-text-secondary-light">Avg Yield</p>
+									<p class="font-semibold text-green-500">{batchSummary.avgYield}%</p>
+								</div>
+								<div>
+									<p class="text-text-secondary-light">Roasts</p>
+									<p class="font-semibold text-purple-500">{batchSummary.count}</p>
+								</div>
+							</div>
 						</div>
 					</button>
 
 					<!-- Roast Profile Cards -->
 					{#if isBatchExpanded(batchName) && profiles.length > 0}
 						<div
-							class="border-t border-border-light p-4"
+							class="border-t border-border-light bg-background-primary-light p-4"
 							id="batch-{batchName.replace(/\s+/g, '-').toLowerCase()}"
 							role="region"
 							aria-label="Roast profiles for {batchName}"
 						>
-							<div class="grid gap-3 sm:grid-cols-2">
+							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 								{#each profiles as profile}
 									{@const completionStatus = getRoastCompletionStatus(profile)}
-									<div
-										class="group relative rounded-lg bg-background-primary-light ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light {currentRoastProfile?.roast_id ===
+									<button
+										type="button"
+										class="w-full rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light text-left focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2 {currentRoastProfile?.roast_id ===
 										profile.roast_id
-											? 'bg-background-tertiary-light/5 ring-2 ring-background-tertiary-light'
+											? 'ring-2 ring-background-tertiary-light'
 											: ''}"
+										onclick={() => onSelectProfile(profile)}
 									>
-										<!-- Main clickable area -->
-										<button
-											type="button"
-											class="w-full p-4 text-left focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-1"
-											onclick={() => onSelectProfile(profile)}
-											onkeydown={(e) => {
-												if (e.key === 'Enter' || e.key === ' ') {
-													e.preventDefault();
-													onSelectProfile(profile);
-												}
-											}}
-											aria-label="View roast profile for {profile.coffee_name} from {formatDateForDisplay(
-												profile.roast_date
-											)}"
-											aria-pressed={currentRoastProfile?.roast_id === profile.roast_id}
-										>
 											<div class="mb-3 flex items-start justify-between">
-												<div class="flex-1">
-													<h4
-														class="line-clamp-2 font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
-													>
+												<div>
+													<h4 class="font-semibold text-text-primary-light">
 														{profile.coffee_name}
 													</h4>
-													<div class="mt-1 flex items-center gap-2">
-														<p class="text-sm text-text-secondary-light">
-															{formatDateForDisplay(profile.roast_date)}
-														</p>
-														<span
-															class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium {completionStatus.bgColor} {completionStatus.color}"
-														>
-															{completionStatus.status}
-														</span>
-													</div>
+													<p class="text-sm text-text-secondary-light">
+														{formatDateForDisplay(profile.roast_date)}
+														{#if currentRoastProfile?.roast_id === profile.roast_id}
+															• Currently Selected
+														{/if}
+													</p>
 												</div>
-												<div class="ml-2 flex flex-col gap-1">
-													{#if profile.notes}
-														<div class="rounded bg-amber-100 px-2 py-1">
-															<span class="text-xs text-amber-800" title="Has notes">📝</span>
-														</div>
-													{/if}
-													{#if currentRoastProfile?.roast_id === profile.roast_id}
-														<div class="rounded bg-background-tertiary-light px-2 py-1">
-															<span class="text-xs text-white" title="Currently selected">👁️</span>
-														</div>
-													{/if}
+												<div class="text-right text-sm text-text-secondary-light">
+													{currentRoastProfile?.roast_id === profile.roast_id
+														? 'Currently selected'
+														: 'Click to select'}
 												</div>
 											</div>
 
-											<!-- Key Metrics Grid -->
-											<div class="grid grid-cols-2 gap-3 text-xs">
-												<div class="space-y-1">
-													<div class="text-text-secondary-light">Weight</div>
-													<div class="font-medium text-blue-600">
+											<!-- Roast Metrics Grid - Following ProfitCards Pattern -->
+											<div class="grid grid-cols-2 gap-3 text-sm">
+												<div>
+													<p class="text-text-secondary-light">Weight In</p>
+													<p class="font-semibold text-blue-500">
 														{profile.oz_in ? `${profile.oz_in} oz` : 'N/A'}
-													</div>
+													</p>
 												</div>
-												<div class="space-y-1">
-													<div class="text-text-secondary-light">Duration</div>
-													<div class="font-medium text-indigo-600">
+												<div>
+													<p class="text-text-secondary-light">Duration</p>
+													<p class="font-semibold text-indigo-500">
 														{calculateRoastDuration(profile)}
-													</div>
+													</p>
 												</div>
-												<div class="space-y-1">
-													<div class="text-text-secondary-light">Yield</div>
-													<div class="font-medium text-green-600">
+												<div>
+													<p class="text-text-secondary-light">Yield</p>
+													<p class="font-semibold text-green-500">
 														{calculateYieldPercentage(profile)}
-													</div>
+													</p>
 												</div>
-												<div class="space-y-1">
-													<div class="text-text-secondary-light">End Temp</div>
-													<div class="font-medium {getRoastLevelColor(profile.end_temperature)}">
+												<div>
+													<p class="text-text-secondary-light">End Temp</p>
+													<p class="font-semibold {getRoastLevelColor(profile.end_temperature)}">
 														{profile.end_temperature
 															? `${Math.round(profile.end_temperature)}°F`
 															: 'N/A'}
-													</div>
-												</div>
-											</div>
-
-											<!-- Notes Preview -->
-											{#if profile.notes}
-												<div class="mt-3 border-t border-border-light pt-3">
-													<p class="line-clamp-2 text-xs text-text-secondary-light">
-														{profile.notes}
 													</p>
 												</div>
-											{/if}
-
-											<!-- Selection indicator -->
-											<div class="mt-3 flex items-center justify-end">
-												<svg
-													class="h-4 w-4 text-text-secondary-light transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
-													fill="none"
-													stroke="currentColor"
-													viewBox="0 0 24 24"
-												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														stroke-width="2"
-														d="M9 5l7 7-7 7"
-													/>
-												</svg>
 											</div>
-										</button>
 
-										<!-- Quick Actions - positioned absolutely -->
-										<div
-											class="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-background-primary-light/90 p-1 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100"
-										>
-											<button
-												type="button"
-												class="rounded p-1 text-text-secondary-light hover:bg-background-tertiary-light/10 hover:text-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
-												onclick={(e) => {
-													e.stopPropagation();
-													// TODO: Implement edit functionality
-													console.log('Edit profile:', profile.roast_id);
-												}}
-												onkeydown={(e) => {
-													if (e.key === 'Enter' || e.key === ' ') {
-														e.preventDefault();
-														e.stopPropagation();
-														console.log('Edit profile:', profile.roast_id);
-													}
-												}}
-												aria-label="Edit roast profile for {profile.coffee_name}"
-												title="Edit roast profile"
-											>
-												<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														stroke-width="2"
-														d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-													/>
-												</svg>
-											</button>
-											<button
-												type="button"
-												class="rounded p-1 text-text-secondary-light hover:bg-blue-50 hover:text-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
-												onclick={(e) => {
-													e.stopPropagation();
-													// TODO: Implement duplicate functionality
-													console.log('Duplicate profile:', profile.roast_id);
-												}}
-												onkeydown={(e) => {
-													if (e.key === 'Enter' || e.key === ' ') {
-														e.preventDefault();
-														e.stopPropagation();
-														console.log('Duplicate profile:', profile.roast_id);
-													}
-												}}
-												aria-label="Duplicate roast profile for {profile.coffee_name}"
-												title="Duplicate roast profile"
-											>
-												<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														stroke-width="2"
-														d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-													/>
-												</svg>
-											</button>
-											<button
-												type="button"
-												class="rounded p-1 text-text-secondary-light hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-1 focus:ring-red-500"
-												onclick={(e) => {
-													e.stopPropagation();
-													if (confirm(`Delete roast profile for ${profile.coffee_name}?`)) {
-														// TODO: Implement delete functionality
-														console.log('Delete profile:', profile.roast_id);
-													}
-												}}
-												onkeydown={(e) => {
-													if (e.key === 'Enter' || e.key === ' ') {
-														e.preventDefault();
-														e.stopPropagation();
-														if (confirm(`Delete roast profile for ${profile.coffee_name}?`)) {
-															console.log('Delete profile:', profile.roast_id);
-														}
-													}
-												}}
-												aria-label="Delete roast profile for {profile.coffee_name}"
-												title="Delete roast profile"
-											>
-												<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														stroke-width="2"
-														d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-													/>
-												</svg>
-											</button>
-										</div>
-									</div>
+											{#if profile.notes}
+												<div class="mt-4 border-t border-border-light pt-4">
+													<h5 class="mb-2 font-medium text-text-primary-light">Notes</h5>
+													<p class="text-sm text-text-secondary-light">{profile.notes}</p>
+												</div>
+											{/if}
+									</button>
 								{/each}
 							</div>
 						</div>
@@ -372,18 +237,8 @@
 		transition: transform 0.2s ease-in-out;
 	}
 
-	/* Custom hover effects */
-	.group:hover .group-hover\:scale-\[1\.02\] {
-		transform: scale(1.02);
-	}
-
 	/* Smooth transitions for interactive elements */
 	button {
 		transition: all 0.15s ease-in-out;
-	}
-
-	/* Ensure quick action buttons maintain opacity on focus */
-	.group:focus-within .opacity-0 {
-		opacity: 1;
 	}
 </style>
