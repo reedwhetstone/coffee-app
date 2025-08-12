@@ -137,7 +137,7 @@
 	}
 
 	// Calculate content margin based on active menu
-	let contentMargin = $derived(activeMenu ? 'ml-80' : 'ml-16');
+	let contentMargin = $derived(activeMenu ? 'ml-[22rem]' : 'ml-24');
 
 	// Determine if we should show marketing layout (no sidebar)
 	let isMarketingPage = $derived(!data.session && page.url.pathname === '/');
@@ -282,7 +282,7 @@
 
 				<!-- Main Content Container -->
 				<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
-					<div class="h-full py-4 pr-4">
+					<div class="h-full py-4 pr-12">
 						<!-- Page Content -->
 						{@render children()}
 					</div>
