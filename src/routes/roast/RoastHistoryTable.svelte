@@ -164,15 +164,7 @@
 												</h4>
 												<p class="text-sm text-text-secondary-light">
 													{formatDateForDisplay(profile.roast_date)}
-													{#if currentRoastProfile?.roast_id === profile.roast_id}
-														• Currently Selected
-													{/if}
 												</p>
-											</div>
-											<div class="text-right text-sm text-text-secondary-light">
-												{currentRoastProfile?.roast_id === profile.roast_id
-													? 'Currently selected'
-													: 'Click to select'}
 											</div>
 										</div>
 

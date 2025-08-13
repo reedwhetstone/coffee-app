@@ -223,11 +223,6 @@
 													{item.purchased_qty_lbs.toFixed(1)} lbs purchased
 												</p>
 											</div>
-											<div class="text-right text-sm text-text-secondary-light">
-												{selectedCoffee === item.coffee_name
-													? 'Click to hide sales'
-													: 'Click to view sales'}
-											</div>
 										</div>
 
 										<!-- Coffee Metrics Grid -->
