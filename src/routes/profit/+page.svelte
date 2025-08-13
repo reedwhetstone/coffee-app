@@ -245,76 +245,10 @@
 		<p class="text-text-secondary-light">Track your coffee sales performance and profitability</p>
 	</div>
 
-	<!-- KPI Cards Grid -->
-	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-		<!-- Primary Metrics -->
-		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Total Revenue</h3>
-			<p class="mt-1 text-2xl font-bold text-green-500">${totalRevenue.toFixed(2)}</p>
-			<p class="mt-1 text-xs text-text-secondary-light">From all coffee sales</p>
-		</div>
-
-		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Total Profit</h3>
-			<p class="mt-1 text-2xl font-bold text-blue-500">${totalProfit.toFixed(2)}</p>
-			<p class="mt-1 text-xs text-text-secondary-light">Net profit after costs</p>
-		</div>
-
-		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Average Margin</h3>
-			<p class="mt-1 text-2xl font-bold text-purple-500">{averageMargin().toFixed(1)}%</p>
-			<p class="mt-1 text-xs text-text-secondary-light">Weighted by sales volume</p>
-		</div>
-
-		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Sell-Through Rate</h3>
-			<p class="mt-1 text-2xl font-bold text-orange-500">{sellThroughRate().toFixed(1)}%</p>
-			<p class="mt-1 text-xs text-text-secondary-light">Inventory sold vs purchased</p>
-		</div>
-	</div>
-
-	<!-- Secondary Metrics -->
-	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Total Investment</h3>
-			<p class="mt-1 text-2xl font-bold text-red-500">${totalCost.toFixed(2)}</p>
-			<p class="mt-1 text-xs text-text-secondary-light">Bean cost + shipping & tax</p>
-		</div>
-
-		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Coffee Purchased</h3>
-			<p class="mt-1 text-2xl font-bold text-indigo-500">{totalPoundsRoasted.toFixed(1)} lbs</p>
-			<p class="mt-1 text-xs text-text-secondary-light">Total green coffee inventory</p>
-		</div>
-
-		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-			<h3 class="text-sm font-medium text-text-primary-light">Roast Loss Rate</h3>
-			<p class="mt-1 text-2xl font-bold text-cyan-500">{roastLossRate().toFixed(1)}%</p>
-			<p class="mt-1 text-xs text-text-secondary-light">Weight loss during roasting</p>
-		</div>
-	</div>
+	<!-- Coffee Sales Analysis Chart -->
+	<SalesChart {profitData} {salesData} />
 
 	<!-- Performance Chart Component -->
 	<PerformanceChart {salesData} {profitData} />
 
-	<!-- Coffee Sales Analysis -->
-	<div class="space-y-4">
-		<div class="flex items-center justify-between">
-			<div>
-				<h2 class="text-xl font-semibold text-text-primary-light">Coffee Sales Analysis</h2>
-				<p class="text-sm text-text-secondary-light">
-					Interactive visual analysis with comprehensive filtering and metrics
-				</p>
-			</div>
-			<button
-				type="button"
-				class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
-				onclick={showSaleForm}
-			>
-				Add New Sale
-			</button>
-		</div>
-
-		<SalesChart {profitData} {salesData} />
-	</div>
 </div>
