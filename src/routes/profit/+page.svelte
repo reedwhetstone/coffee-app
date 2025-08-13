@@ -3,12 +3,9 @@
 	import { onMount } from 'svelte';
 	import SaleForm from './SaleForm.svelte';
 	import PerformanceChart from './PerformanceChart.svelte';
+	import SalesChart from './SalesChart.svelte';
 	import { page } from '$app/state';
 	import type { PageData } from './$types';
-
-	// Lazy load the profit cards component
-	let ProfitCards = $state<any>(null);
-	let profitCardsLoading = $state(true);
 
 	interface ProfitData {
 		id: number;
@@ -50,11 +47,9 @@
 	// Convert state variables to use $state
 	let profitData = $state<ProfitData[]>([]);
 	let roastProfileData = $state<RoastProfileData[]>([]);
-	let expandedDates = $state(new Set<string>());
 	let salesData = $state<SaleData[]>([]);
 	let isFormVisible = $state(false);
 	let selectedSale = $state<SaleData | null>(null);
-	let selectedCoffee = $state<string | null>(null);
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -140,59 +135,6 @@
 		}
 	}
 
-	// Modify toggleDate to set the selected coffee
-	function toggleDate(date: string) {
-		if (expandedDates.has(date)) {
-			expandedDates.delete(date);
-			salesData = [];
-			selectedCoffee = null; // Clear selected coffee when closing
-		} else {
-			expandedDates.add(date);
-			// Get the first coffee for this date
-			const items = group(profitData, (d) => d.purchase_date).get(date) || [];
-			if (items.length > 0) {
-				selectedCoffee = items[0].coffee_name; // Set selected coffee
-				fetchSalesForCoffee(items[0].coffee_name);
-			}
-		}
-		// Create a new Set to trigger reactivity in Svelte 5
-		expandedDates = new Set(expandedDates);
-	}
-
-	function handleSelectCoffee({ coffeeName }: { coffeeName: string; date: string }) {
-		// If coffeeName is empty, hide sales
-		if (coffeeName === '') {
-			selectedCoffee = null;
-			salesData = [];
-		} else {
-			selectedCoffee = coffeeName;
-			fetchSalesForCoffee(coffeeName);
-		}
-	}
-
-	function handleSaleEdit(sale: SaleData) {
-		selectedSale = sale;
-		isFormVisible = true;
-	}
-
-	async function handleSaleDelete(id: number) {
-		try {
-			const response = await fetch(`/api/profit?id=${id}`, {
-				method: 'DELETE'
-			});
-
-			if (response.ok) {
-				if (selectedCoffee) {
-					await fetchSalesForCoffee(selectedCoffee);
-				}
-			} else {
-				alert('Failed to delete sale');
-			}
-		} catch (error) {
-			console.error('Error deleting sale:', error);
-		}
-	}
-
 	// Convert onMount to use $effect
 	$effect(() => {
 		const fetchData = async () => {
@@ -268,13 +210,6 @@
 			} as any;
 		}
 	}
-
-	// Lazy load ProfitCards component
-	onMount(async () => {
-		const module = await import('./ProfitCards.svelte');
-		ProfitCards = module.default;
-		profitCardsLoading = false;
-	});
 
 	// Ensure the data object always has the callback
 	$effect(() => {
@@ -368,7 +303,7 @@
 			<div>
 				<h2 class="text-xl font-semibold text-text-primary-light">Coffee Sales Analysis</h2>
 				<p class="text-sm text-text-secondary-light">
-					Detailed breakdown by purchase date and coffee
+					Interactive visual analysis with comprehensive filtering and metrics
 				</p>
 			</div>
 			<button
@@ -380,44 +315,6 @@
 			</button>
 		</div>
 
-		{#if profitCardsLoading}
-			<div
-				class="flex items-center justify-center rounded-lg bg-background-secondary-light p-8 ring-1 ring-border-light"
-			>
-				<div
-					class="h-8 w-8 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"
-				></div>
-				<span class="ml-3 text-sm text-text-secondary-light">Loading profit analysis...</span>
-			</div>
-		{:else if ProfitCards}
-			<ProfitCards
-				{profitData}
-				{salesData}
-				{expandedDates}
-				{selectedCoffee}
-				onToggleDate={toggleDate}
-				onSelectCoffee={handleSelectCoffee}
-				onEditSale={handleSaleEdit}
-				onDeleteSale={handleSaleDelete}
-				onAddSale={showSaleForm}
-			/>
-		{:else}
-			<div
-				class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light"
-			>
-				<div class="mb-4 text-6xl opacity-50">📊</div>
-				<h3 class="mb-2 text-lg font-semibold text-text-primary-light">No Sales Data Yet</h3>
-				<p class="mb-4 text-text-secondary-light">
-					Start tracking your coffee sales to see detailed profit analysis.
-				</p>
-				<button
-					type="button"
-					class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
-					onclick={showSaleForm}
-				>
-					Record Your First Sale
-				</button>
-			</div>
-		{/if}
+		<SalesChart {profitData} {salesData} />
 	</div>
 </div>
