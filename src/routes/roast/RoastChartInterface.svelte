@@ -184,7 +184,7 @@
 		y: 0,
 		data: null as any
 	});
-	
+
 	let tooltipHideTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Add these computed values - check for saved data to determine state
@@ -1050,9 +1050,10 @@
 	function showVerticalIndicator(svg: any, xPos: number) {
 		// Remove existing indicator
 		svg.selectAll('.hover-line').remove();
-		
+
 		// Add new indicator
-		svg.append('line')
+		svg
+			.append('line')
 			.attr('class', 'hover-line')
 			.attr('x1', xPos)
 			.attr('x2', xPos)
@@ -1069,7 +1070,13 @@
 	}
 
 	// Interactive overlay for tooltip (only for saved data)
-	function addInteractiveOverlay(svg: any, chartData: any[], xScale: any, yScaleTemp: any, chargeTime: number) {
+	function addInteractiveOverlay(
+		svg: any,
+		chartData: any[],
+		xScale: any,
+		yScaleTemp: any,
+		chargeTime: number
+	) {
 		// Only add overlay if we're viewing saved data (not during live roasting)
 		if (isDuringRoasting || chartData.length === 0) {
 			return;
@@ -1086,27 +1093,27 @@
 
 		// Mouse tracking for saved data only
 		overlay
-			.on('mouseover', function() {
+			.on('mouseover', function () {
 				if (tooltipHideTimeout) {
 					clearTimeout(tooltipHideTimeout);
 					tooltipHideTimeout = null;
 				}
 				tooltipState.visible = true;
 			})
-			.on('mousemove', function(this: SVGRectElement, event: any) {
+			.on('mousemove', function (this: SVGRectElement, event: any) {
 				try {
 					if (tooltipHideTimeout) {
 						clearTimeout(tooltipHideTimeout);
 						tooltipHideTimeout = null;
 					}
-					
+
 					const [mouseX] = pointer(event, this);
 					const x0 = xScale.invert(mouseX);
-					
+
 					// Find closest data point by time
 					let closestIndex = 0;
 					let minDistance = Math.abs((chartData[0].time - chargeTime) / (1000 * 60) - x0);
-					
+
 					for (let i = 1; i < chartData.length; i++) {
 						const timeRelative = (chartData[i].time - chargeTime) / (1000 * 60);
 						const distance = Math.abs(timeRelative - x0);
@@ -1115,23 +1122,23 @@
 							closestIndex = i;
 						}
 					}
-					
+
 					const d = chartData[closestIndex];
-					
+
 					if (d) {
 						// Get mouse position relative to viewport
 						const mouseX = event.clientX;
 						const mouseY = event.clientY;
-						
+
 						// Find event value data at this time point
 						const eventData = getEventDataAtTime(d.time);
-						
+
 						// Calculate RoR at this point
 						const rorValue = calculateRoRAtPoint(chartData, closestIndex);
-						
+
 						// Find milestone events at this time
 						const milestones = getMilestonesAtTime(d.time);
-						
+
 						// Update tooltip state
 						tooltipState.data = {
 							...d,
@@ -1143,7 +1150,7 @@
 						tooltipState.x = mouseX;
 						tooltipState.y = mouseY;
 						tooltipState.visible = true;
-						
+
 						// Show vertical line indicator
 						const xPos = xScale((d.time - chargeTime) / (1000 * 60));
 						showVerticalIndicator(svg, xPos);
@@ -1152,7 +1159,7 @@
 					console.warn('Tooltip error:', error);
 				}
 			})
-			.on('mouseout', function() {
+			.on('mouseout', function () {
 				// Use a small delay to prevent flickering
 				tooltipHideTimeout = setTimeout(() => {
 					tooltipState.visible = false;
@@ -1165,57 +1172,59 @@
 	// Helper function to get event data at a specific time
 	function getEventDataAtTime(timeMs: number) {
 		const eventData: any = {};
-		
+
 		// Look for event value data at this time from savedEventValueSeries
 		savedEventValueSeries.forEach((series) => {
 			const timeSeconds = timeMs / 1000;
 			// Find the most recent event value at or before this time
 			const relevantValues = series.values
-				.filter(v => v.time_seconds <= timeSeconds)
+				.filter((v) => v.time_seconds <= timeSeconds)
 				.sort((a, b) => b.time_seconds - a.time_seconds);
-			
+
 			if (relevantValues.length > 0) {
 				eventData[series.event_string] = relevantValues[0].value;
 			} else if (series.values.length > 0) {
 				// If no values found at or before this time, check if this is early in the roast
 				// and we should carry forward the first value
 				const firstValue = series.values[0];
-				const chartStart = savedTemperatureEntries.length > 0 
-					? Math.min(...savedTemperatureEntries.map(t => t.time_seconds * 1000))
-					: 0;
-				
+				const chartStart =
+					savedTemperatureEntries.length > 0
+						? Math.min(...savedTemperatureEntries.map((t) => t.time_seconds * 1000))
+						: 0;
+
 				// If we're within 30 seconds of chart start and have an early control value, use it
 				if (timeMs - chartStart <= 30000 && firstValue.time_seconds * 1000 - chartStart <= 60000) {
 					eventData[series.event_string] = firstValue.value;
 				}
 			}
 		});
-		
+
 		// Also check savedEventEntries for control events with carry-forward logic
 		const events = isDuringRoasting ? $eventEntries : savedEventEntries;
-		const controlEvents = events.filter(e => e.category === 'control');
-		
-		['fan_setting', 'heat_setting'].forEach(controlType => {
+		const controlEvents = events.filter((e) => e.category === 'control');
+
+		['fan_setting', 'heat_setting'].forEach((controlType) => {
 			if (!eventData[controlType]) {
 				const timeSeconds = timeMs / 1000;
 				const relevantEvents = controlEvents
-					.filter(e => e.event_string === controlType && e.time_seconds <= timeSeconds)
+					.filter((e) => e.event_string === controlType && e.time_seconds <= timeSeconds)
 					.sort((a, b) => b.time_seconds - a.time_seconds);
-				
+
 				if (relevantEvents.length > 0) {
 					const value = parseInt(relevantEvents[0].event_value || '0');
 					eventData[controlType] = value;
 				} else {
 					// Carry forward from first available value if we're early in the roast
 					const firstEvent = controlEvents
-						.filter(e => e.event_string === controlType)
+						.filter((e) => e.event_string === controlType)
 						.sort((a, b) => a.time_seconds - b.time_seconds)[0];
-					
+
 					if (firstEvent) {
-						const chartStart = savedTemperatureEntries.length > 0 
-							? Math.min(...savedTemperatureEntries.map(t => t.time_seconds * 1000))
-							: 0;
-						
+						const chartStart =
+							savedTemperatureEntries.length > 0
+								? Math.min(...savedTemperatureEntries.map((t) => t.time_seconds * 1000))
+								: 0;
+
 						// Carry forward if we're within 30 seconds of chart start
 						if (timeMs - chartStart <= 30000) {
 							eventData[controlType] = parseInt(firstEvent.event_value || '0');
@@ -1224,7 +1233,7 @@
 				}
 			}
 		});
-		
+
 		return eventData;
 	}
 
@@ -1233,16 +1242,16 @@
 		if (index < 1 || !chartData[index].bean_temp || !chartData[index - 1].bean_temp) {
 			return null;
 		}
-		
+
 		const currentPoint = chartData[index];
 		const previousPoint = chartData[index - 1];
 		const timeDiffMinutes = (currentPoint.time - previousPoint.time) / (1000 * 60);
 		const tempDiff = currentPoint.bean_temp - previousPoint.bean_temp;
-		
+
 		if (timeDiffMinutes > 0) {
 			return tempDiff / timeDiffMinutes; // °F/min
 		}
-		
+
 		return null;
 	}
 
@@ -1250,15 +1259,15 @@
 	function getMilestonesAtTime(timeMs: number): string[] {
 		const timeSeconds = timeMs / 1000;
 		const tolerance = 5; // 5 second tolerance for milestone matching
-		
+
 		const events = isDuringRoasting ? $eventEntries : savedEventEntries;
 		const milestones = events
-			.filter(event => 
-				event.category === 'milestone' && 
-				Math.abs(event.time_seconds - timeSeconds) <= tolerance
+			.filter(
+				(event) =>
+					event.category === 'milestone' && Math.abs(event.time_seconds - timeSeconds) <= tolerance
 			)
-			.map(event => event.event_string);
-		
+			.map((event) => event.event_string);
+
 		return milestones;
 	}
 
@@ -2559,31 +2568,39 @@
 	{@const tooltipHeight = 280}
 	{@const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1200}
 	{@const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800}
-	{@const leftPos = tooltipState.x + tooltipWidth + 25 > viewportWidth ? tooltipState.x - tooltipWidth - 25 : tooltipState.x + 25}
-	{@const topPos = tooltipState.y + tooltipHeight + 25 > viewportHeight ? tooltipState.y - tooltipHeight - 25 : tooltipState.y + 25}
-	
-	<div 
-		class="fixed z-[1000] pointer-events-none transition-all duration-200 ease-out"
+	{@const leftPos =
+		tooltipState.x + tooltipWidth + 25 > viewportWidth
+			? tooltipState.x - tooltipWidth - 25
+			: tooltipState.x + 25}
+	{@const topPos =
+		tooltipState.y + tooltipHeight + 25 > viewportHeight
+			? tooltipState.y - tooltipHeight - 25
+			: tooltipState.y + 25}
+
+	<div
+		class="pointer-events-none fixed z-[1000] transition-all duration-200 ease-out"
 		style="left: {leftPos}px; top: {topPos}px;"
 	>
-		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light shadow-lg backdrop-blur-sm bg-opacity-95 max-w-sm">
-			<div class="font-semibold text-text-primary-light mb-3 text-sm">
+		<div
+			class="max-w-sm rounded-lg bg-background-secondary-light bg-opacity-95 p-4 shadow-lg ring-1 ring-border-light backdrop-blur-sm"
+		>
+			<div class="mb-3 text-sm font-semibold text-text-primary-light">
 				🕐 {formatTime(d.time, d.chargeTime)}
 			</div>
-			
+
 			<div class="space-y-2 text-xs">
 				<!-- Milestone Events -->
 				{#if d.milestones && d.milestones.length > 0}
-					<div class="bg-green-50 border border-green-200 rounded p-2 mb-2">
-						<div class="text-xs font-medium text-green-800 mb-1">🎯 Milestone Events</div>
+					<div class="mb-2 rounded border border-green-200 bg-green-50 p-2">
+						<div class="mb-1 text-xs font-medium text-green-800">🎯 Milestone Events</div>
 						{#each d.milestones as milestone}
-							<div class="text-xs text-green-700 capitalize">
+							<div class="text-xs capitalize text-green-700">
 								{milestone.replace(/_/g, ' ')}
 							</div>
 						{/each}
 					</div>
 				{/if}
-				
+
 				<!-- Temperature Data -->
 				{#if d.bean_temp !== null && d.bean_temp !== undefined}
 					<div class="flex justify-between">
@@ -2591,35 +2608,40 @@
 						<span class="font-semibold text-orange-500">{formatTemperature(d.bean_temp)}</span>
 					</div>
 				{/if}
-				
+
 				{#if d.environmental_temp !== null && d.environmental_temp !== undefined}
 					<div class="flex justify-between">
 						<span class="text-text-secondary-light">Env Temp (ET):</span>
-						<span class="font-semibold text-red-500">{formatTemperature(d.environmental_temp)}</span>
+						<span class="font-semibold text-red-500">{formatTemperature(d.environmental_temp)}</span
+						>
 					</div>
 				{/if}
-				
+
 				{#if d.rorValue !== null && d.rorValue !== undefined}
 					<div class="flex justify-between">
 						<span class="text-text-secondary-light">Rate of Rise:</span>
 						<span class="font-semibold text-blue-500">{formatTemperature(d.rorValue)}/min</span>
 					</div>
 				{/if}
-				
+
 				<!-- Control Settings from Event Data -->
 				{#if d.eventData && Object.keys(d.eventData).length > 0}
-					<div class="border-t border-border-light pt-2 mt-2">
-						<div class="text-xs font-medium text-text-primary-light mb-1">⚙️ Control Settings</div>
-						
+					<div class="mt-2 border-t border-border-light pt-2">
+						<div class="mb-1 text-xs font-medium text-text-primary-light">⚙️ Control Settings</div>
+
 						{#each Object.entries(d.eventData) as [eventName, value]}
 							<div class="flex justify-between">
-								<span class="text-text-secondary-light capitalize">
+								<span class="capitalize text-text-secondary-light">
 									{eventName.replace(/_setting/g, '').replace(/_/g, ' ')}:
 								</span>
-								<span class="font-medium" 
+								<span
+									class="font-medium"
 									class:text-blue-600={eventName.includes('fan') || eventName.includes('air')}
 									class:text-orange-600={eventName.includes('heat') || eventName.includes('burner')}
-									class:text-purple-600={!eventName.includes('fan') && !eventName.includes('air') && !eventName.includes('heat') && !eventName.includes('burner')}
+									class:text-purple-600={!eventName.includes('fan') &&
+										!eventName.includes('air') &&
+										!eventName.includes('heat') &&
+										!eventName.includes('burner')}
 								>
 									{formatControlValue(typeof value === 'number' ? value : null)}
 								</span>

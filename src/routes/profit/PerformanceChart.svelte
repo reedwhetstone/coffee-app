@@ -90,13 +90,13 @@
 	// Filter data based on selected time range
 	let filteredSalesData = $derived(() => {
 		if (selectedTimeRange === 'All') return salesData;
-		
-		const range = timeRangeOptions.find(r => r.value === selectedTimeRange);
+
+		const range = timeRangeOptions.find((r) => r.value === selectedTimeRange);
 		if (!range || !range.months) return salesData;
-		
+
 		const cutoffDate = new Date();
 		cutoffDate.setMonth(cutoffDate.getMonth() - range.months);
-		
+
 		return salesData.filter((sale: SaleData) => new Date(sale.sell_date) >= cutoffDate);
 	});
 
@@ -168,8 +168,10 @@
 			const monthCosts = sum(
 				profitData.filter((p: ProfitData) => {
 					const pDate = new Date(p.purchase_date);
-					return pDate.getFullYear() === firstDay.getFullYear() && 
-						   pDate.getMonth() === firstDay.getMonth();
+					return (
+						pDate.getFullYear() === firstDay.getFullYear() &&
+						pDate.getMonth() === firstDay.getMonth()
+					);
 				}),
 				(p: ProfitData) => (+p.bean_cost || 0) + (+p.tax_ship_cost || 0)
 			);
@@ -189,7 +191,7 @@
 	}
 
 	function calculateMarginData(salesData: SaleData[]) {
-		return calculateCumulativeData(salesData).map(d => ({
+		return calculateCumulativeData(salesData).map((d) => ({
 			...d,
 			revenue: d.margin,
 			cost: 0,
@@ -242,9 +244,7 @@
 			];
 		}
 
-		const yScale = scaleLinear()
-			.domain(yDomain)
-			.range([height, 0]);
+		const yScale = scaleLinear().domain(yDomain).range([height, 0]);
 
 		// Enhanced axes with better formatting
 		const xAxis = axisBottom(xScale)
@@ -257,31 +257,32 @@
 			})
 			.ticks(6);
 
-		const yAxisFormat = selectedViewType === 'margin' 
-			? (d: any) => `${d}%`
-			: (d: any) => `$${d.toLocaleString()}`;
-		
-		const yAxis = axisLeft(yScale)
-			.tickFormat(yAxisFormat)
-			.ticks(6);
+		const yAxisFormat =
+			selectedViewType === 'margin' ? (d: any) => `${d}%` : (d: any) => `$${d.toLocaleString()}`;
+
+		const yAxis = axisLeft(yScale).tickFormat(yAxisFormat).ticks(6);
 
 		// Add grid lines (following UI framework subtle styling)
-		svg.append('g')
+		svg
+			.append('g')
 			.attr('class', 'grid')
 			.attr('transform', `translate(0,${height})`)
-			.call(axisBottom(xScale)
-				.tickSize(-height)
-				.tickFormat(() => '')
+			.call(
+				axisBottom(xScale)
+					.tickSize(-height)
+					.tickFormat(() => '')
 			)
 			.style('stroke-dasharray', '2,2')
 			.style('opacity', 0.1)
 			.style('stroke', 'rgb(156 163 175)');
 
-		svg.append('g')
+		svg
+			.append('g')
 			.attr('class', 'grid')
-			.call(axisLeft(yScale)
-				.tickSize(-width)
-				.tickFormat(() => '')
+			.call(
+				axisLeft(yScale)
+					.tickSize(-width)
+					.tickFormat(() => '')
 			)
 			.style('stroke-dasharray', '2,2')
 			.style('opacity', 0.1)
@@ -298,7 +299,8 @@
 			.style('fill', 'rgb(156 163 175)')
 			.style('font-size', '12px');
 
-		svg.append('g')
+		svg
+			.append('g')
 			.attr('class', 'y-axis')
 			.call(yAxis)
 			.style('color', 'rgb(156 163 175)')
@@ -326,29 +328,37 @@
 		const defs = svg.append('defs');
 
 		// Revenue gradient (semantic green)
-		const revenueGradient = defs.append('linearGradient')
+		const revenueGradient = defs
+			.append('linearGradient')
 			.attr('id', 'revenueGradient')
-			.attr('x1', '0%').attr('y1', '0%')
-			.attr('x2', '0%').attr('y2', '100%');
-		revenueGradient.append('stop')
+			.attr('x1', '0%')
+			.attr('y1', '0%')
+			.attr('x2', '0%')
+			.attr('y2', '100%');
+		revenueGradient
+			.append('stop')
 			.attr('offset', '0%')
 			.attr('stop-color', 'rgb(34 197 94)')
 			.attr('stop-opacity', 0.8);
-		revenueGradient.append('stop')
+		revenueGradient
+			.append('stop')
 			.attr('offset', '100%')
 			.attr('stop-color', 'rgb(34 197 94)')
 			.attr('stop-opacity', 0.1);
 
 		// Add area fills first (behind lines)
 		if (showProfitLine && selectedViewType !== 'margin') {
-			svg.append('path')
+			svg
+				.append('path')
 				.datum(chartData)
 				.attr('fill', 'url(#revenueGradient)')
-				.attr('d', area<any>()
-					.x((d) => xScale(new Date(d.date)))
-					.y0(height)
-					.y1((d) => yScale(d.revenue))
-					.curve(curveMonotoneX)
+				.attr(
+					'd',
+					area<any>()
+						.x((d) => xScale(new Date(d.date)))
+						.y0(height)
+						.y1((d) => yScale(d.revenue))
+						.curve(curveMonotoneX)
 				);
 		}
 
@@ -409,18 +419,18 @@
 
 		// Mouse tracking with smooth state management
 		overlay
-			.on('mouseover', function() {
+			.on('mouseover', function () {
 				tooltipState.visible = true;
 			})
-			.on('mousemove', function(this: SVGRectElement, event: any) {
+			.on('mousemove', function (this: SVGRectElement, event: any) {
 				try {
 					const [mouseX] = pointer(event, this);
 					const x0 = xScale.invert(mouseX);
-					
+
 					// Find closest data point
 					let closestIndex = 0;
 					let minDistance = Math.abs(new Date(chartData[0].date).getTime() - x0.getTime());
-					
+
 					for (let i = 1; i < chartData.length; i++) {
 						const distance = Math.abs(new Date(chartData[i].date).getTime() - x0.getTime());
 						if (distance < minDistance) {
@@ -428,20 +438,20 @@
 							closestIndex = i;
 						}
 					}
-					
+
 					const d = chartData[closestIndex];
-					
+
 					if (d) {
 						// Get mouse position relative to viewport
 						const rect = chartContainer.getBoundingClientRect();
 						const mouseX = event.clientX;
 						const mouseY = event.clientY;
-						
+
 						// Update tooltip state smoothly
 						tooltipState.data = d;
 						tooltipState.x = mouseX;
 						tooltipState.y = mouseY;
-						
+
 						// Show vertical line indicator
 						showVerticalIndicator(svg, xScale(new Date(d.date)));
 					}
@@ -449,7 +459,7 @@
 					console.warn('Tooltip error:', error);
 				}
 			})
-			.on('mouseout', function() {
+			.on('mouseout', function () {
 				tooltipState.visible = false;
 				tooltipState.data = null;
 				hideVerticalIndicator(svg);
@@ -459,9 +469,10 @@
 	function showVerticalIndicator(svg: any, xPos: number) {
 		// Remove existing indicator
 		svg.selectAll('.hover-line').remove();
-		
+
 		// Add new indicator
-		svg.append('line')
+		svg
+			.append('line')
 			.attr('class', 'hover-line')
 			.attr('x1', xPos)
 			.attr('x2', xPos)
@@ -484,35 +495,36 @@
 			.attr('transform', `translate(${width - 140}, 20)`);
 
 		const legendItems = [
-			{ 
-				label: selectedViewType === 'margin' ? 'Profit Margin' : 'Revenue', 
+			{
+				label: selectedViewType === 'margin' ? 'Profit Margin' : 'Revenue',
 				color: selectedViewType === 'margin' ? 'rgb(59 130 246)' : 'rgb(34 197 94)',
 				visible: showProfitLine,
 				dashed: false
 			},
-			{ 
-				label: 'Costs', 
+			{
+				label: 'Costs',
 				color: 'rgb(239 68 68)',
 				visible: showCostLine && selectedViewType !== 'margin',
 				dashed: false
 			},
-			{ 
-				label: selectedViewType === 'margin' ? 'Target (25%)' : 'Target', 
+			{
+				label: selectedViewType === 'margin' ? 'Target (25%)' : 'Target',
 				color: 'rgb(139 92 246)',
 				visible: showTargetLine,
 				dashed: true
 			}
-		].filter(item => item.visible);
+		].filter((item) => item.visible);
 
 		legendItems.forEach((item, i) => {
-			const legendGroup = legend.append('g')
+			const legendGroup = legend
+				.append('g')
 				.attr('transform', `translate(0, ${i * 22})`)
 				.style('cursor', 'pointer')
 				.style('opacity', 0.9)
-				.on('mouseover', function(this: SVGGElement) {
+				.on('mouseover', function (this: SVGGElement) {
 					select(this).style('opacity', 1);
 				})
-				.on('mouseout', function(this: SVGGElement) {
+				.on('mouseout', function (this: SVGGElement) {
 					select(this).style('opacity', 0.9);
 				});
 
@@ -539,14 +551,16 @@
 	}
 
 	// Format functions for tooltip
-	const formatCurrency = (value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+	const formatCurrency = (value: number) =>
+		`$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 	const formatPercent = (value: number) => `${value.toFixed(1)}%`;
-	const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', {
-		weekday: 'short',
-		month: 'short', 
-		day: 'numeric',
-		year: 'numeric'
-	});
+	const formatDate = (dateStr: string) =>
+		new Date(dateStr).toLocaleDateString('en-US', {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
 
 	// Resize handler
 	onMount(() => {
@@ -566,27 +580,32 @@
 <div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
 	<!-- Chart Header with Controls -->
 	<div class="mb-6">
-		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div>
 				<h3 class="text-lg font-semibold text-text-primary-light">Sales Performance Dashboard</h3>
 				<p class="text-sm text-text-secondary-light">
-					Interactive analysis with {selectedTimeRange} data in {viewTypeOptions.find(v => v.value === selectedViewType)?.label.toLowerCase()} view
+					Interactive analysis with {selectedTimeRange} data in {viewTypeOptions
+						.find((v) => v.value === selectedViewType)
+						?.label.toLowerCase()} view
 				</p>
 			</div>
-			
+
 			<!-- Chart Controls -->
 			<div class="flex flex-wrap items-center gap-3">
 				<!-- Time Range Selector -->
 				<div class="flex items-center gap-2">
 					<span class="text-xs font-medium text-text-secondary-light">Period:</span>
-					<div class="flex rounded-md border border-border-light overflow-hidden bg-background-primary-light">
+					<div
+						class="flex overflow-hidden rounded-md border border-border-light bg-background-primary-light"
+					>
 						{#each timeRangeOptions as option}
 							<button
 								type="button"
-								class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedTimeRange === option.value 
-									? 'bg-background-tertiary-light text-white' 
-									: 'text-text-secondary-light hover:text-text-primary-light hover:bg-background-tertiary-light hover:bg-opacity-10'}"
-								onclick={() => selectedTimeRange = option.value}
+								class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedTimeRange ===
+								option.value
+									? 'bg-background-tertiary-light text-white'
+									: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+								onclick={() => (selectedTimeRange = option.value)}
 							>
 								{option.label}
 							</button>
@@ -597,15 +616,18 @@
 				<!-- View Type Selector -->
 				<div class="flex items-center gap-2">
 					<span class="text-xs font-medium text-text-secondary-light">View:</span>
-					<div class="flex rounded-md border border-border-light overflow-hidden bg-background-primary-light">
+					<div
+						class="flex overflow-hidden rounded-md border border-border-light bg-background-primary-light"
+					>
 						{#each viewTypeOptions as option}
 							<button
 								type="button"
-								class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedViewType === option.value 
-									? 'bg-background-tertiary-light text-white' 
-									: 'text-text-secondary-light hover:text-text-primary-light hover:bg-background-tertiary-light hover:bg-opacity-10'}"
-								onclick={() => selectedViewType = option.value}
-								title="{option.description}"
+								class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedViewType ===
+								option.value
+									? 'bg-background-tertiary-light text-white'
+									: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+								onclick={() => (selectedViewType = option.value)}
+								title={option.description}
 							>
 								{option.label}
 							</button>
@@ -616,48 +638,48 @@
 		</div>
 
 		<!-- Legend and Line Controls -->
-		<div class="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border-light">
+		<div class="mt-4 flex flex-wrap items-center gap-4 border-t border-border-light pt-4">
 			<span class="text-xs font-medium text-text-secondary-light">Display:</span>
-			
+
 			{#if selectedViewType !== 'margin'}
-				<label class="flex items-center gap-2 cursor-pointer">
-					<input 
-						type="checkbox" 
+				<label class="flex cursor-pointer items-center gap-2">
+					<input
+						type="checkbox"
 						bind:checked={showProfitLine}
-						class="w-4 h-4 text-green-500 bg-background-primary-light border-border-light rounded focus:ring-green-500 focus:ring-2"
+						class="h-4 w-4 rounded border-border-light bg-background-primary-light text-green-500 focus:ring-2 focus:ring-green-500"
 					/>
 					<div class="flex items-center gap-2">
-						<div class="w-4 h-0.5 bg-green-500 rounded"></div>
+						<div class="h-0.5 w-4 rounded bg-green-500"></div>
 						<span class="text-xs text-text-primary-light">Revenue</span>
 					</div>
 				</label>
 
-				<label class="flex items-center gap-2 cursor-pointer">
-					<input 
-						type="checkbox" 
+				<label class="flex cursor-pointer items-center gap-2">
+					<input
+						type="checkbox"
 						bind:checked={showCostLine}
-						class="w-4 h-4 text-red-500 bg-background-primary-light border-border-light rounded focus:ring-red-500 focus:ring-2"
+						class="h-4 w-4 rounded border-border-light bg-background-primary-light text-red-500 focus:ring-2 focus:ring-red-500"
 					/>
 					<div class="flex items-center gap-2">
-						<div class="w-4 h-0.5 bg-red-500 rounded"></div>
+						<div class="h-0.5 w-4 rounded bg-red-500"></div>
 						<span class="text-xs text-text-primary-light">Costs</span>
 					</div>
 				</label>
 			{:else}
 				<div class="flex items-center gap-2">
-					<div class="w-4 h-0.5 bg-blue-500 rounded"></div>
+					<div class="h-0.5 w-4 rounded bg-blue-500"></div>
 					<span class="text-xs text-text-primary-light">Profit Margin</span>
 				</div>
 			{/if}
 
-			<label class="flex items-center gap-2 cursor-pointer">
-				<input 
-					type="checkbox" 
+			<label class="flex cursor-pointer items-center gap-2">
+				<input
+					type="checkbox"
 					bind:checked={showTargetLine}
-					class="w-4 h-4 text-purple-500 bg-background-primary-light border-border-light rounded focus:ring-purple-500 focus:ring-2"
+					class="h-4 w-4 rounded border-border-light bg-background-primary-light text-purple-500 focus:ring-2 focus:ring-purple-500"
 				/>
 				<div class="flex items-center gap-2">
-					<div class="w-4 h-0.5 bg-purple-500 rounded border-t border-dashed"></div>
+					<div class="h-0.5 w-4 rounded border-t border-dashed bg-purple-500"></div>
 					<span class="text-xs text-text-primary-light">Target</span>
 				</div>
 			</label>
@@ -668,9 +690,11 @@
 	<div class="relative">
 		<div bind:this={chartContainer} class="w-full" style="min-height: 400px;"></div>
 		{#if !processedChartData().length}
-			<div class="absolute inset-0 flex items-center justify-center bg-background-secondary-light bg-opacity-90 rounded">
+			<div
+				class="absolute inset-0 flex items-center justify-center rounded bg-background-secondary-light bg-opacity-90"
+			>
 				<div class="text-center">
-					<div class="text-4xl mb-2 opacity-50">📊</div>
+					<div class="mb-2 text-4xl opacity-50">📊</div>
 					<div class="text-sm text-text-secondary-light">No sales data for selected period</div>
 				</div>
 			</div>
@@ -679,26 +703,33 @@
 
 	<!-- Smart Insights Panel -->
 	{#if processedChartData().length > 1}
-		<div class="mt-6 p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100">
+		<div
+			class="mt-6 rounded-lg border border-blue-100 bg-gradient-to-r from-blue-50 to-purple-50 p-4"
+		>
 			<div class="flex items-start gap-3">
-				<div class="flex-shrink-0 p-2 bg-blue-100 rounded-lg">
-					<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+				<div class="flex-shrink-0 rounded-lg bg-blue-100 p-2">
+					<svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+						></path>
 					</svg>
 				</div>
 				<div class="flex-1">
-					<h4 class="font-semibold text-gray-800 mb-2">📊 Performance Insights</h4>
+					<h4 class="mb-2 font-semibold text-gray-800">📊 Performance Insights</h4>
 					{#if processedChartData().length > 0}
 						{@const data = processedChartData()}
 						{@const latestRevenue = data[data.length - 1]?.revenue || 0}
 						{@const earliestRevenue = data[0]?.revenue || 0}
-						{@const growthRate = earliestRevenue > 0 ? ((latestRevenue - earliestRevenue) / earliestRevenue) * 100 : 0}
+						{@const growthRate =
+							earliestRevenue > 0 ? ((latestRevenue - earliestRevenue) / earliestRevenue) * 100 : 0}
 						{@const avgMargin = data.reduce((sum, d) => sum + (d.margin || 0), 0) / data.length}
 						{@const isGrowthPositive = growthRate > 0}
 						{@const isMarginHealthy = avgMargin >= 20}
-						<div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-
-							<div class="flex items-center gap-2 p-3 bg-white bg-opacity-50 rounded-lg">
+						<div class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+							<div class="flex items-center gap-2 rounded-lg bg-white bg-opacity-50 p-3">
 								<span class="text-lg">{isGrowthPositive ? '📈' : '📉'}</span>
 								<div>
 									<div class="font-medium text-gray-700">
@@ -706,35 +737,52 @@
 									</div>
 									<div class="text-xs text-gray-600">
 										{#if selectedViewType === 'margin'}
-											Average {avgMargin.toFixed(1)}% • {isMarginHealthy ? 'Healthy' : 'Needs attention'}
+											Average {avgMargin.toFixed(1)}% • {isMarginHealthy
+												? 'Healthy'
+												: 'Needs attention'}
 										{:else}
-											{Math.abs(growthRate).toFixed(1)}% {isGrowthPositive ? 'increase' : 'decrease'}
+											{Math.abs(growthRate).toFixed(1)}% {isGrowthPositive
+												? 'increase'
+												: 'decrease'}
 										{/if}
 									</div>
 								</div>
 							</div>
 
-							<div class="flex items-center gap-2 p-3 bg-white bg-opacity-50 rounded-lg">
+							<div class="flex items-center gap-2 rounded-lg bg-white bg-opacity-50 p-3">
 								<span class="text-lg">🎯</span>
 								<div>
 									<div class="font-medium text-gray-700">Target Performance</div>
 									<div class="text-xs text-gray-600">
-										{data.filter(d => selectedViewType === 'margin' ? d.revenue >= d.target : d.revenue >= d.target).length} of {data.length} periods meet target ({Math.round(data.filter(d => selectedViewType === 'margin' ? d.revenue >= d.target : d.revenue >= d.target).length/data.length*100)}%)
+										{data.filter((d) =>
+											selectedViewType === 'margin' ? d.revenue >= d.target : d.revenue >= d.target
+										).length} of {data.length} periods meet target ({Math.round(
+											(data.filter((d) =>
+												selectedViewType === 'margin'
+													? d.revenue >= d.target
+													: d.revenue >= d.target
+											).length /
+												data.length) *
+												100
+										)}%)
 									</div>
 								</div>
 							</div>
 						</div>
-						
+
 						{#if selectedViewType === 'cumulative'}
-							<div class="mt-3 p-3 bg-blue-50 bg-opacity-70 rounded-lg border-l-4 border-blue-400">
+							<div class="mt-3 rounded-lg border-l-4 border-blue-400 bg-blue-50 bg-opacity-70 p-3">
 								<div class="text-xs text-gray-700">
 									<strong>💡 Recommendation:</strong>
 									{#if avgMargin < 15}
-										Consider increasing prices or reducing costs - your {avgMargin.toFixed(1)}% margin is below industry standards.
+										Consider increasing prices or reducing costs - your {avgMargin.toFixed(1)}%
+										margin is below industry standards.
 									{:else if avgMargin > 30}
-										Excellent margins! Consider reinvesting profits into inventory expansion or premium equipment.
+										Excellent margins! Consider reinvesting profits into inventory expansion or
+										premium equipment.
 									{:else}
-										Healthy margins! Focus on consistent quality and customer retention to maintain growth.
+										Healthy margins! Focus on consistent quality and customer retention to maintain
+										growth.
 									{/if}
 								</div>
 							</div>
@@ -749,25 +797,34 @@
 <!-- Smooth Tooltip Implementation (Following UI Framework) -->
 {#if tooltipState.visible && tooltipState.data}
 	{@const d = tooltipState.data}
-	{@const isTargetMet = selectedViewType === 'margin' ? d.revenue >= d.target : d.revenue >= d.target}
+	{@const isTargetMet =
+		selectedViewType === 'margin' ? d.revenue >= d.target : d.revenue >= d.target}
 	{@const targetDiff = selectedViewType === 'margin' ? d.revenue - d.target : d.revenue - d.target}
-	
+
 	{@const tooltipWidth = 300}
 	{@const tooltipHeight = 200}
 	{@const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1200}
 	{@const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800}
-	{@const leftPos = tooltipState.x + tooltipWidth + 15 > viewportWidth ? tooltipState.x - tooltipWidth - 15 : tooltipState.x + 15}
-	{@const topPos = tooltipState.y + tooltipHeight + 15 > viewportHeight ? tooltipState.y - tooltipHeight - 15 : tooltipState.y + 15}
-	
-	<div 
-		class="fixed z-[1000] pointer-events-none transition-all duration-200 ease-out"
+	{@const leftPos =
+		tooltipState.x + tooltipWidth + 15 > viewportWidth
+			? tooltipState.x - tooltipWidth - 15
+			: tooltipState.x + 15}
+	{@const topPos =
+		tooltipState.y + tooltipHeight + 15 > viewportHeight
+			? tooltipState.y - tooltipHeight - 15
+			: tooltipState.y + 15}
+
+	<div
+		class="pointer-events-none fixed z-[1000] transition-all duration-200 ease-out"
 		style="left: {leftPos}px; top: {topPos}px;"
 	>
-		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light shadow-lg backdrop-blur-sm bg-opacity-95 max-w-xs">
-			<div class="font-semibold text-text-primary-light mb-3 text-sm">
+		<div
+			class="max-w-xs rounded-lg bg-background-secondary-light bg-opacity-95 p-4 shadow-lg ring-1 ring-border-light backdrop-blur-sm"
+		>
+			<div class="mb-3 text-sm font-semibold text-text-primary-light">
 				📅 {formatDate(d.date)}
 			</div>
-			
+
 			<div class="space-y-2 text-xs">
 				{#if selectedViewType === 'margin'}
 					<div class="flex justify-between">
@@ -790,7 +847,9 @@
 						</div>
 						<div class="flex justify-between">
 							<span class="text-text-secondary-light">Profit:</span>
-							<span class="font-semibold {d.profit >= 0 ? 'text-green-500' : 'text-red-500'}">{formatCurrency(d.profit)}</span>
+							<span class="font-semibold {d.profit >= 0 ? 'text-green-500' : 'text-red-500'}"
+								>{formatCurrency(d.profit)}</span
+							>
 						</div>
 					{/if}
 					<div class="flex justify-between">
@@ -799,11 +858,11 @@
 					</div>
 				{/if}
 			</div>
-			
-			<div class="mt-3 pt-3 border-t border-border-light">
-				<div class="text-xs font-medium text-text-primary-light mb-1">📊 Performance</div>
+
+			<div class="mt-3 border-t border-border-light pt-3">
+				<div class="mb-1 text-xs font-medium text-text-primary-light">📊 Performance</div>
 				<div class="text-xs {isTargetMet ? 'text-green-600' : 'text-orange-600'}">
-					{isTargetMet ? '✅ On track' : '⚠️ Below target'} 
+					{isTargetMet ? '✅ On track' : '⚠️ Below target'}
 					{#if selectedViewType === 'margin'}
 						({Math.abs(targetDiff).toFixed(1)}% {isTargetMet ? 'above' : 'below'})
 					{:else}
