@@ -45,6 +45,26 @@
 - [ ] **Roast Insights** - improve filters - the name should be a search, not a drop down.
 - [ ] **Roast Insights** - Add % weight loss display per roast
 - [ ] **Roast Insights** - Add remaining purchased quantity data to bean inventory
+- [ ] **Roast Insights** - integrate a roast darkness token into /roast and /beans roasting sections
+
+<11 % Weight Loss:
+When the coffee loses less than 11% weight loss, I am generally concerned that it is under-roasted / under-developed. Some lower moisture content coffees (green) can be in the 10’s, but I am generally skeptical of a roast when I am less than 11%.
+
+11 - 13 % Weight Loss:
+This is, almost without exception, light roast territory. Generally, unless the coffee is quite wet, as you move above 13% you end up with what I would consider a light-medium or medium roast.
+
+14 - 16 % Weight Loss:
+For me, this is medium roast territory. Here we tend to have less acidity and delicate notes and have more caramels, nuts, and chocolate.
+
+17 - 18 % Weight Loss:
+I would consider this a dark roast, though I recognize that people all have different perspectives on light, medium, dark, etc. So I can only tell you that for me this is a dark roast. Roast notes here become dominant. Smoke, dark chocolate, roast, and woody.
+
+19 - 21 % Weight Loss:
+This is extremely dark roasted for me. Roast notes dominate in what I would consider unpleasant ways.
+
+greater than 22% Weight Loss
+If you’re not on fire, you’re getting pretty close. This is extremely dark roast territory and I would recommend avoidance.
+
 -
 - [ ] **Roast Chart** - add save response to when you click cool end so people know the software is doing something.
 - [ ] **Roast Chart** - Remove y-axis lines
