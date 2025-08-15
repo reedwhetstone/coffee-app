@@ -131,7 +131,12 @@ export class LangChainService {
 					roast_name: z.string().optional().describe('Search by roast name'),
 					batch_name: z.string().optional().describe('Search by batch name'),
 					coffee_id: z.number().optional().describe('Filter by green coffee inventory ID'),
-					catalog_id: z.number().optional().describe('Filter by catalog ID (use this when you have an ID from coffee_catalog_search)'),
+					catalog_id: z
+						.number()
+						.optional()
+						.describe(
+							'Filter by catalog ID (use this when you have an ID from coffee_catalog_search)'
+						),
 					limit: z.number().optional().describe('Number of results'),
 					include_calculations: z.boolean().optional().describe('Include summary calculations')
 				}),
@@ -231,7 +236,10 @@ export class LangChainService {
 			return JSON.stringify(result, null, 2);
 		} catch (error) {
 			const errorMessage = `Failed to call ${endpoint}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-			this.logger.logError(error instanceof Error ? error : errorMessage, `Tool call to ${endpoint}`);
+			this.logger.logError(
+				error instanceof Error ? error : errorMessage,
+				`Tool call to ${endpoint}`
+			);
 			return JSON.stringify({ error: errorMessage });
 		}
 	}
@@ -324,7 +332,8 @@ export class LangChainService {
 					output: step.observation || null
 				})) || [];
 
-			const finalResponse = result.output ||
+			const finalResponse =
+				result.output ||
 				result.text ||
 				'I apologize, but I encountered an issue processing your request.';
 

@@ -4,7 +4,6 @@
 	import CuppingNotesForm from './CuppingNotesForm.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 
-
 	let { selectedBean, role, onUpdate, onDelete } = $props<{
 		selectedBean: any;
 		role?: 'viewer' | 'member' | 'admin';
@@ -18,7 +17,6 @@
 	let processingUpdate = $state(false);
 	let lastSelectedBeanId = $state<number | null>(null);
 	let showCuppingForm = $state(false);
-
 
 	// Parse AI tasting notes
 	let aiTastingNotes = $derived((): TastingNotes | null => {
@@ -119,7 +117,6 @@
 			editedBean = JSON.parse(JSON.stringify(selectedBean));
 		}
 	});
-
 
 	async function saveChanges() {
 		if (processingUpdate) return;
@@ -230,7 +227,6 @@
 		if (value >= 2) return '#f97316'; // orange-500
 		return '#ef4444'; // red-500
 	}
-
 </script>
 
 <div
@@ -719,7 +715,8 @@
 						(sum: number, p: any) => sum + p.oz_out,
 						0
 					)}
-					{@const avgLoss = validTotalOzIn > 0 ? ((validTotalOzIn - validTotalOzOut) / validTotalOzIn) * 100 : 0}
+					{@const avgLoss =
+						validTotalOzIn > 0 ? ((validTotalOzIn - validTotalOzOut) / validTotalOzIn) * 100 : 0}
 
 					<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
@@ -736,7 +733,7 @@
 								{validRoastsForLoss.length > 0 ? avgLoss.toFixed(1) : 'N/A'}%
 							</p>
 							<p class="text-xs text-text-secondary-light">
-								{validRoastsForLoss.length > 0 
+								{validRoastsForLoss.length > 0
 									? `${validTotalOzIn.toFixed(1)} oz in - ${validTotalOzOut.toFixed(1)} oz out (${validRoastsForLoss.length} valid roasts)`
 									: 'No valid data for loss calculation'}
 							</p>

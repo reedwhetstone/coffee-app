@@ -127,7 +127,6 @@
 		return () => window.removeEventListener('scroll', handleScroll);
 	});
 
-
 	/**
 	 * Parses AI tasting notes JSON data safely
 	 * @param tastingNotesJson - JSON string from database
@@ -198,7 +197,6 @@
 	{/if}
 
 	<div class="space-y-4">
-
 		<!-- Coffee Cards -->
 		<div class="flex-1">
 			{#if !$filteredData || $filteredData.length === 0}

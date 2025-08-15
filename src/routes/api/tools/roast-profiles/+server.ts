@@ -54,7 +54,7 @@ export const POST: RequestHandler = async (event) => {
 				.select('id')
 				.eq('catalog_id', catalog_id)
 				.eq('user', user.id);
-			
+
 			if (inventoryItems && inventoryItems.length > 0) {
 				// For now, use the first matching inventory item
 				// In the future, we might want to return roasts for all matching inventory items

@@ -33,7 +33,7 @@ export class ChatLogger {
 		};
 
 		this.logs.push(logMessage);
-		this.printCleanLog('🧑‍💼 USER PROMPT', prompt, { 
+		this.printCleanLog('🧑‍💼 USER PROMPT', prompt, {
 			session: this.sessionId,
 			history: `${conversationHistory?.length || 0} messages`
 		});
@@ -72,7 +72,12 @@ export class ChatLogger {
 	/**
 	 * Log tool response/output
 	 */
-	logToolResponse(toolName: string, output: any, success: boolean = true, metadata?: Record<string, any>): void {
+	logToolResponse(
+		toolName: string,
+		output: any,
+		success: boolean = true,
+		metadata?: Record<string, any>
+	): void {
 		const logMessage: LogMessage = {
 			timestamp: new Date().toISOString(),
 			type: 'tool_response',
@@ -81,7 +86,7 @@ export class ChatLogger {
 		};
 
 		this.logs.push(logMessage);
-		
+
 		const icon = success ? '✅' : '❌';
 		const status = success ? 'SUCCESS' : 'FAILED';
 		this.printCleanLog(`${icon} TOOL RESPONSE: ${toolName} ${status}`, output, metadata);
@@ -95,10 +100,10 @@ export class ChatLogger {
 			timestamp: new Date().toISOString(),
 			type: 'final_response',
 			content: response,
-			metadata: { 
-				sessionId: this.sessionId, 
+			metadata: {
+				sessionId: this.sessionId,
 				toolCallCount: toolCalls?.length || 0,
-				...metadata 
+				...metadata
 			}
 		};
 
@@ -125,7 +130,7 @@ export class ChatLogger {
 
 		this.logs.push(logMessage);
 		this.printCleanLog(`❌ ERROR${context ? ` (${context})` : ''}`, errorMessage, metadata);
-		
+
 		if (errorStack) {
 			console.error('Stack trace:', errorStack);
 		}
@@ -138,13 +143,15 @@ export class ChatLogger {
 		const summary = {
 			sessionId: this.sessionId,
 			totalMessages: this.logs.length,
-			userPrompts: this.logs.filter(l => l.type === 'user_prompt').length,
-			toolCalls: this.logs.filter(l => l.type === 'tool_call').length,
-			responses: this.logs.filter(l => l.type === 'final_response').length,
-			errors: this.logs.filter(l => l.type === 'error').length,
-			duration: this.logs.length > 0 ? 
-				new Date(this.logs[this.logs.length - 1].timestamp).getTime() - 
-				new Date(this.logs[0].timestamp).getTime() : 0
+			userPrompts: this.logs.filter((l) => l.type === 'user_prompt').length,
+			toolCalls: this.logs.filter((l) => l.type === 'tool_call').length,
+			responses: this.logs.filter((l) => l.type === 'final_response').length,
+			errors: this.logs.filter((l) => l.type === 'error').length,
+			duration:
+				this.logs.length > 0
+					? new Date(this.logs[this.logs.length - 1].timestamp).getTime() -
+						new Date(this.logs[0].timestamp).getTime()
+					: 0
 		};
 
 		this.printCleanLog('📊 CONVERSATION SUMMARY', summary);
@@ -169,9 +176,9 @@ export class ChatLogger {
 	 */
 	private printCleanLog(header: string, content: any, metadata?: Record<string, any>): void {
 		const timestamp = new Date().toISOString().split('T')[1].split('.')[0]; // HH:MM:SS format
-		
+
 		console.log(`\n━━━ ${header} [${timestamp}] ━━━`);
-		
+
 		if (typeof content === 'string') {
 			console.log(content);
 		} else {
@@ -181,7 +188,7 @@ export class ChatLogger {
 		if (metadata && Object.keys(metadata).length > 0) {
 			console.log('📋 Metadata:', metadata);
 		}
-		
+
 		console.log('━'.repeat(80));
 	}
 }
