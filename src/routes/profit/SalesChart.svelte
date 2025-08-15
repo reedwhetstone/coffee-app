@@ -145,15 +145,17 @@
 		{ value: 'ytd', label: 'Year to Date' }
 	];
 
-	// Set default purchase date to most recent when data loads
+	// Initialize purchase date selection with most recent date when data first loads
+	let hasInitializedDates = false;
 	$effect(() => {
-		if (profitData.length > 0 && selectedPurchaseDates.size === 0) {
+		if (profitData.length > 0 && !hasInitializedDates) {
 			const dates = [
 				...new Set(profitData.map((d: ProfitData) => d.purchase_date))
 			].sort() as string[];
 			if (dates.length > 0) {
 				selectedPurchaseDates.add(dates[dates.length - 1]); // Most recent date
 				selectedPurchaseDates = new Set(selectedPurchaseDates);
+				hasInitializedDates = true;
 			}
 		}
 	});

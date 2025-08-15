@@ -138,7 +138,7 @@
 	// Convert onMount to use $effect
 	$effect(() => {
 		const fetchData = async () => {
-			await Promise.all([fetchProfitData(), fetchRoastProfileData(), fetchInitialSalesData()]);
+			await Promise.all([fetchInitialSalesData(), fetchRoastProfileData()]);
 
 			// Check if we should show the sale form based on the page state
 			const state = page.state as any;
