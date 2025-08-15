@@ -45,10 +45,7 @@ export const POST: RequestHandler = async (event) => {
 		} = input;
 
 		// Build query
-		let query = supabase
-			.from('coffee_catalog')
-			.select('*')
-			.eq('public_coffee', true);
+		let query = supabase.from('coffee_catalog').select('*').eq('public_coffee', true);
 
 		// Apply stocked filter
 		if (stocked_only) {
@@ -58,7 +55,9 @@ export const POST: RequestHandler = async (event) => {
 		// Apply structured filters
 		if (origin) {
 			// Check continent, country, and region
-			query = query.or(`continent.ilike.%${origin}%,country.ilike.%${origin}%,region.ilike.%${origin}%`);
+			query = query.or(
+				`continent.ilike.%${origin}%,country.ilike.%${origin}%,region.ilike.%${origin}%`
+			);
 		}
 
 		if (process) {
@@ -83,9 +82,11 @@ export const POST: RequestHandler = async (event) => {
 
 		// Apply flavor keywords to multiple text fields
 		if (flavor_keywords.length > 0) {
-			const flavorConditions = flavor_keywords.map(keyword => {
-				return `ai_description.ilike.%${keyword}%,cupping_notes.ilike.%${keyword}%,farm_notes.ilike.%${keyword}%`;
-			}).join(',');
+			const flavorConditions = flavor_keywords
+				.map((keyword) => {
+					return `ai_description.ilike.%${keyword}%,cupping_notes.ilike.%${keyword}%,farm_notes.ilike.%${keyword}%`;
+				})
+				.join(',');
 			query = query.or(flavorConditions);
 		}
 
@@ -101,7 +102,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// Determine search strategy used
 		let searchStrategy: 'structured' | 'hybrid' | 'fallback' = 'structured';
-		
+
 		// If no results with strict filters, could implement fallback logic here
 		if (!coffees || coffees.length === 0) {
 			searchStrategy = 'fallback';

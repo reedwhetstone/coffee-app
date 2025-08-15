@@ -25,14 +25,14 @@ export const POST: RequestHandler = async (event) => {
 
 		// Create LangChain service instance with base URL and auth headers for tool calls
 		const baseUrl = event.url.origin;
-		
+
 		// Get the session cookie to pass to tool calls
 		const sessionCookie = event.request.headers.get('cookie');
 		const authHeaders: Record<string, string> = {};
 		if (sessionCookie) {
 			authHeaders['cookie'] = sessionCookie;
 		}
-		
+
 		const langchainService = createLangChainService(OPENAI_API_KEY, supabase, baseUrl, authHeaders);
 
 		// Process the message

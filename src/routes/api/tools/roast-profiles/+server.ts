@@ -46,7 +46,8 @@ export const POST: RequestHandler = async (event) => {
 		// Build base query for roast profiles
 		let query = supabase
 			.from('roast_profiles')
-			.select(`
+			.select(
+				`
 				*,
 				green_coffee_inv!coffee_id (
 					id,
@@ -58,7 +59,8 @@ export const POST: RequestHandler = async (event) => {
 						cultivar_detail
 					)
 				)
-			`)
+			`
+			)
 			.eq('user', user.id);
 
 		// Apply filters
@@ -80,7 +82,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// Order by most recent first and apply limit
 		query = query.order('roast_date', { ascending: false });
-		
+
 		if (limit > 0) {
 			query = query.limit(limit);
 		}
@@ -95,45 +97,49 @@ export const POST: RequestHandler = async (event) => {
 		let summary;
 		if (include_calculations && profiles && profiles.length > 0) {
 			// Calculate summary statistics
-			const validProfiles = profiles.filter(p => 
-				p.development_percent !== null && 
-				p.fc_start_temp !== null && 
-				p.drop_temp !== null
+			const validProfiles = profiles.filter(
+				(p) => p.development_percent !== null && p.fc_start_temp !== null && p.drop_temp !== null
 			);
 
 			if (validProfiles.length > 0) {
 				summary = {
-					avg_development_percent: validProfiles.reduce((sum, p) => sum + (p.development_percent || 0), 0) / validProfiles.length,
-					avg_fc_start_temp: validProfiles.reduce((sum, p) => sum + (p.fc_start_temp || 0), 0) / validProfiles.length,
-					avg_drop_temp: validProfiles.reduce((sum, p) => sum + (p.drop_temp || 0), 0) / validProfiles.length,
+					avg_development_percent:
+						validProfiles.reduce((sum, p) => sum + (p.development_percent || 0), 0) /
+						validProfiles.length,
+					avg_fc_start_temp:
+						validProfiles.reduce((sum, p) => sum + (p.fc_start_temp || 0), 0) /
+						validProfiles.length,
+					avg_drop_temp:
+						validProfiles.reduce((sum, p) => sum + (p.drop_temp || 0), 0) / validProfiles.length,
 					total_roasts: profiles.length
 				};
 			}
 		}
 
 		// Clean up the response for better LLM consumption
-		const cleanProfiles = profiles?.map(profile => ({
-			roast_id: profile.roast_id,
-			roast_name: profile.roast_name,
-			batch_name: profile.batch_name,
-			roast_date: profile.roast_date,
-			coffee_name: profile.green_coffee_inv?.coffee_catalog?.name,
-			coffee_processing: profile.green_coffee_inv?.coffee_catalog?.processing,
-			coffee_region: profile.green_coffee_inv?.coffee_catalog?.region,
-			coffee_variety: profile.green_coffee_inv?.coffee_catalog?.cultivar_detail,
-			// Roast metrics
-			oz_in: profile.oz_in,
-			oz_out: profile.oz_out,
-			fc_start_time: profile.fc_start_time,
-			development_percent: profile.development_percent,
-			total_roast_time: profile.total_roast_time,
-			drop_temp: profile.drop_temp,
-			fc_start_temp: profile.fc_start_temp,
-			charge_temp: profile.charge_temp,
-			// User notes
-			roast_notes: profile.roast_notes,
-			user_notes: profile.green_coffee_inv?.notes
-		})) || [];
+		const cleanProfiles =
+			profiles?.map((profile) => ({
+				roast_id: profile.roast_id,
+				roast_name: profile.roast_name,
+				batch_name: profile.batch_name,
+				roast_date: profile.roast_date,
+				coffee_name: profile.green_coffee_inv?.coffee_catalog?.name,
+				coffee_processing: profile.green_coffee_inv?.coffee_catalog?.processing,
+				coffee_region: profile.green_coffee_inv?.coffee_catalog?.region,
+				coffee_variety: profile.green_coffee_inv?.coffee_catalog?.cultivar_detail,
+				// Roast metrics
+				oz_in: profile.oz_in,
+				oz_out: profile.oz_out,
+				fc_start_time: profile.fc_start_time,
+				development_percent: profile.development_percent,
+				total_roast_time: profile.total_roast_time,
+				drop_temp: profile.drop_temp,
+				fc_start_temp: profile.fc_start_temp,
+				charge_temp: profile.charge_temp,
+				// User notes
+				roast_notes: profile.roast_notes,
+				user_notes: profile.green_coffee_inv?.notes
+			})) || [];
 
 		const response: RoastProfilesToolResponse = {
 			profiles: cleanProfiles,

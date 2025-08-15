@@ -250,5 +250,4 @@
 
 	<!-- Performance Chart Component -->
 	<PerformanceChart {salesData} {profitData} />
-
 </div>

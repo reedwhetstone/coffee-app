@@ -37,7 +37,7 @@
 
 	// Pages where settings (filters) should be shown
 	let showSettings = $derived(() => {
-		const filterPages = ['/', '/beans', '/roast', '/profit'];
+		const filterPages = ['/catalog', '/beans', '/roast', '/profit'];
 		return filterPages.includes(currentRoute);
 	});
 

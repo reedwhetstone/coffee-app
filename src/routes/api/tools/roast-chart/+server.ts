@@ -39,11 +39,7 @@ export const POST: RequestHandler = async (event) => {
 		const input: RoastChartToolInput = await event.request.json();
 
 		// Validate required parameters
-		const {
-			roast_id,
-			include_events = true,
-			include_temperature_data = true
-		} = input;
+		const { roast_id, include_events = true, include_temperature_data = true } = input;
 
 		if (!roast_id) {
 			return json({ error: 'roast_id is required' }, { status: 400 });
@@ -52,7 +48,8 @@ export const POST: RequestHandler = async (event) => {
 		// Get the roast profile first
 		const { data: roastProfile, error: profileError } = await supabase
 			.from('roast_profiles')
-			.select(`
+			.select(
+				`
 				*,
 				green_coffee_inv!coffee_id (
 					id,
@@ -64,34 +61,40 @@ export const POST: RequestHandler = async (event) => {
 						cultivar_detail
 					)
 				)
-			`)
+			`
+			)
 			.eq('roast_id', roast_id)
 			.eq('user', user.id)
 			.single();
 
 		if (profileError || !roastProfile) {
-			return json({ 
-				error: 'Roast profile not found or access denied',
-				roast_profile: null,
-				chart_ready: false,
-				message: `No roast profile found for roast_id: ${roast_id}`
-			}, { status: 404 });
+			return json(
+				{
+					error: 'Roast profile not found or access denied',
+					roast_profile: null,
+					chart_ready: false,
+					message: `No roast profile found for roast_id: ${roast_id}`
+				},
+				{ status: 404 }
+			);
 		}
 
-		let chartData: {
-			temperature_data: Array<{
-				time_seconds: number;
-				bean_temp?: number;
-				environmental_temp?: number;
-				fan_setting?: number;
-			}>;
-			event_data: Array<{
-				time_seconds: number;
-				event_type: number;
-				event_value?: string;
-				notes?: string;
-			}>;
-		} | undefined;
+		let chartData:
+			| {
+					temperature_data: Array<{
+						time_seconds: number;
+						bean_temp?: number;
+						environmental_temp?: number;
+						fan_setting?: number;
+					}>;
+					event_data: Array<{
+						time_seconds: number;
+						event_type: number;
+						event_value?: string;
+						notes?: string;
+					}>;
+			  }
+			| undefined;
 		let chartReady = false;
 		let message = 'Roast profile found.';
 

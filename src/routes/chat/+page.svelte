@@ -16,7 +16,9 @@
 	}
 
 	// Chat state management
-	let messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }> = $state([]);
+	let messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }> = $state(
+		[]
+	);
 	let inputMessage = $state('');
 	let isLoading = $state(false);
 	let chatContainer = $state<HTMLDivElement>();
@@ -134,7 +136,9 @@
 {#if !session}
 	<!-- Unauthenticated state -->
 	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
-		<div class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg">
+		<div
+			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
+		>
 			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Coffee Chat</h1>
 			<p class="mb-6 text-text-secondary-light">
 				Sign in to access our AI coffee expert for personalized recommendations and roasting advice.
@@ -150,7 +154,9 @@
 {:else if !hasRequiredRole('member')}
 	<!-- Member role required -->
 	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
-		<div class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg">
+		<div
+			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
+		>
 			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Premium Feature</h1>
 			<p class="mb-6 text-text-secondary-light">
 				The Coffee Chat AI assistant is available for premium members. Upgrade to access
@@ -223,25 +229,29 @@
 							<div>• Brewing guidance</div>
 						</div>
 					</div>
-					
+
 					<!-- Example queries -->
 					<div class="space-y-2">
 						<p class="text-sm font-medium text-text-primary-light">Try asking:</p>
 						<div class="space-y-2 text-sm">
 							<button
-								onclick={() => (inputMessage = "I need a natural processed Ethiopian with fruity stone fruit notes")}
+								onclick={() =>
+									(inputMessage =
+										'I need a natural processed Ethiopian with fruity stone fruit notes')}
 								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 							>
 								"I need a natural processed Ethiopian with fruity stone fruit notes"
 							</button>
 							<button
-								onclick={() => (inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
+								onclick={() =>
+									(inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
 								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 							>
 								"What's the best way to roast a washed Costa Rican coffee?"
 							</button>
 							<button
-								onclick={() => (inputMessage = "Analyze my recent roasting sessions and suggest improvements")}
+								onclick={() =>
+									(inputMessage = 'Analyze my recent roasting sessions and suggest improvements')}
 								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 							>
 								"Analyze my recent roasting sessions and suggest improvements"
@@ -253,9 +263,7 @@
 				<!-- Chat messages -->
 				<div class="mx-auto max-w-4xl space-y-4">
 					{#each messages as message}
-						<div
-							class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}"
-						>
+						<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
 							<div
 								class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user'
 									? 'bg-background-tertiary-light text-white'
@@ -273,7 +281,9 @@
 						<div class="flex justify-start">
 							<div class="max-w-[80%] rounded-lg bg-background-secondary-light px-4 py-2">
 								<div class="flex items-center space-x-2">
-									<div class="h-2 w-2 animate-pulse rounded-full bg-background-tertiary-light"></div>
+									<div
+										class="h-2 w-2 animate-pulse rounded-full bg-background-tertiary-light"
+									></div>
 									<div
 										class="h-2 w-2 animate-pulse rounded-full bg-background-tertiary-light"
 										style="animation-delay: 0.2s"
@@ -316,10 +326,12 @@
 					<button
 						type="submit"
 						disabled={isLoading || !inputMessage.trim()}
-						class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+						class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if isLoading}
-							<div class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+							<div
+								class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
+							></div>
 						{:else}
 							<svg
 								xmlns="http://www.w3.org/2000/svg"

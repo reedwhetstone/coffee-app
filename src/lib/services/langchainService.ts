@@ -33,7 +33,12 @@ export class LangChainService {
 	private baseUrl: string;
 	private authHeaders: Record<string, string>;
 
-	constructor(openaiApiKey: string, supabase: SupabaseClient, baseUrl: string = '', authHeaders: Record<string, string> = {}) {
+	constructor(
+		openaiApiKey: string,
+		supabase: SupabaseClient,
+		baseUrl: string = '',
+		authHeaders: Record<string, string> = {}
+	) {
 		this.openaiApiKey = openaiApiKey;
 		this.supabase = supabase;
 		this.baseUrl = baseUrl;
@@ -68,10 +73,14 @@ export class LangChainService {
 			// Coffee Catalog Search Tool
 			new DynamicStructuredTool({
 				name: 'coffee_catalog_search',
-				description: 'Search for coffee beans in the catalog with filters for origin, processing, variety, price range, and flavor keywords',
+				description:
+					'Search for coffee beans in the catalog with filters for origin, processing, variety, price range, and flavor keywords',
 				schema: z.object({
 					origin: z.string().optional().describe('Coffee origin (country, region, or continent)'),
-					process: z.string().optional().describe('Processing method (natural, washed, honey, etc.)'),
+					process: z
+						.string()
+						.optional()
+						.describe('Processing method (natural, washed, honey, etc.)'),
 					variety: z.string().optional().describe('Coffee variety/cultivar'),
 					price_range: z.array(z.number()).length(2).optional().describe('Price range [min, max]'),
 					flavor_keywords: z.array(z.string()).optional().describe('Flavor descriptors'),
@@ -86,10 +95,14 @@ export class LangChainService {
 			// User's Green Coffee Inventory Tool
 			new DynamicStructuredTool({
 				name: 'green_coffee_inventory',
-				description: 'Get the user\'s personal coffee inventory with purchase history and roast summaries',
+				description:
+					"Get the user's personal coffee inventory with purchase history and roast summaries",
 				schema: z.object({
 					stocked_only: z.boolean().optional().describe('Only show currently stocked beans'),
-					include_catalog_details: z.boolean().optional().describe('Include full catalog information'),
+					include_catalog_details: z
+						.boolean()
+						.optional()
+						.describe('Include full catalog information'),
 					include_roast_summary: z.boolean().optional().describe('Include roasting statistics'),
 					limit: z.number().optional().describe('Number of results to return')
 				}),
@@ -99,7 +112,7 @@ export class LangChainService {
 			// Roast Profiles Tool
 			new DynamicStructuredTool({
 				name: 'roast_profiles',
-				description: 'Get user\'s roast profiles with filtering and summary statistics',
+				description: "Get user's roast profiles with filtering and summary statistics",
 				schema: z.object({
 					roast_id: z.string().optional().describe('Specific roast ID'),
 					roast_name: z.string().optional().describe('Search by roast name'),
@@ -114,7 +127,8 @@ export class LangChainService {
 			// Roast Chart Data Tool
 			new DynamicStructuredTool({
 				name: 'roast_chart_data',
-				description: 'Get detailed roast chart data including temperature curves and events for a specific roast',
+				description:
+					'Get detailed roast chart data including temperature curves and events for a specific roast',
 				schema: z.object({
 					roast_id: z.string().describe('Required roast ID'),
 					include_events: z.boolean().optional().describe('Include roast events'),
@@ -138,11 +152,18 @@ export class LangChainService {
 			// Coffee Knowledge Base Tool
 			new DynamicStructuredTool({
 				name: 'coffee_knowledge',
-				description: 'Search the coffee knowledge base for educational content about roasting, brewing, and coffee science',
+				description:
+					'Search the coffee knowledge base for educational content about roasting, brewing, and coffee science',
 				schema: z.object({
 					context_string: z.string().describe('Required search query for knowledge retrieval'),
-					chunk_types: z.array(z.enum(['profile', 'tasting', 'origin', 'commercial', 'processing'])).optional().describe('Types of knowledge chunks to search'),
-					max_chunks: z.number().optional().describe('Maximum number of knowledge chunks to return'),
+					chunk_types: z
+						.array(z.enum(['profile', 'tasting', 'origin', 'commercial', 'processing']))
+						.optional()
+						.describe('Types of knowledge chunks to search'),
+					max_chunks: z
+						.number()
+						.optional()
+						.describe('Maximum number of knowledge chunks to return'),
 					similarity_threshold: z.number().optional().describe('Similarity threshold for matching')
 				}),
 				func: async (input) => this.callTool('/api/tools/coffee-chunks', input)
@@ -167,15 +188,17 @@ export class LangChainService {
 
 			if (!response.ok) {
 				const errorText = await response.text();
-				throw new Error(`Tool call failed: ${response.status} ${response.statusText} - ${errorText}`);
+				throw new Error(
+					`Tool call failed: ${response.status} ${response.statusText} - ${errorText}`
+				);
 			}
 
 			const result = await response.json();
 			return JSON.stringify(result, null, 2);
 		} catch (error) {
 			console.error(`Tool call error for ${endpoint}:`, error);
-			return JSON.stringify({ 
-				error: `Failed to call ${endpoint}: ${error instanceof Error ? error.message : 'Unknown error'}` 
+			return JSON.stringify({
+				error: `Failed to call ${endpoint}: ${error instanceof Error ? error.message : 'Unknown error'}`
 			});
 		}
 	}
@@ -248,20 +271,22 @@ export class LangChainService {
 			// Execute the agent with tool calling
 			const result = await this.agent!.invoke({
 				input: message,
-				chat_history: conversationHistory.map(msg => 
-					`${msg.role}: ${msg.content}`
-				).join('\n')
+				chat_history: conversationHistory.map((msg) => `${msg.role}: ${msg.content}`).join('\n')
 			});
 
 			// Extract tool calls from intermediate steps
-			const toolCalls = result.intermediateSteps?.map((step: any) => ({
-				tool: step.action?.tool || 'unknown',
-				input: step.action?.toolInput || {},
-				output: step.observation || null
-			})) || [];
+			const toolCalls =
+				result.intermediateSteps?.map((step: any) => ({
+					tool: step.action?.tool || 'unknown',
+					input: step.action?.toolInput || {},
+					output: step.observation || null
+				})) || [];
 
 			return {
-				response: result.output || result.text || 'I apologize, but I encountered an issue processing your request.',
+				response:
+					result.output ||
+					result.text ||
+					'I apologize, but I encountered an issue processing your request.',
 				tool_calls: toolCalls,
 				conversation_id: userId ? `${userId}_${Date.now()}` : undefined
 			};
@@ -294,7 +319,7 @@ export class LangChainService {
 	updateModel(modelName: string, temperature?: number): void {
 		// GPT-5 models do not support temperature parameter at all
 		const isGPT5 = modelName.includes('gpt-5');
-		
+
 		const modelConfig: any = {
 			apiKey: this.openaiApiKey,
 			model: modelName,

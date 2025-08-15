@@ -100,7 +100,7 @@ function createFilterStore() {
 			return { field: 'purchase_date', direction: 'desc' as const };
 		} else if (routeId.includes('roast')) {
 			return { field: 'roast_date', direction: 'desc' as const };
-		} else if (routeId === '/' || routeId === '') {
+		} else if (routeId === '/' || routeId === '' || routeId === '/catalog') {
 			return { field: 'stocked_date', direction: 'desc' as const };
 		} else {
 			return { field: null, direction: null } as const;
@@ -650,7 +650,7 @@ function createFilterStore() {
 				'oz_in',
 				'oz_out'
 			];
-		} else if (routeId === '/') {
+		} else if (routeId === '/' || routeId === '/catalog') {
 			return [
 				'name',
 				'source',

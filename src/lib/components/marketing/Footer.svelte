@@ -105,10 +105,7 @@
 					>
 						Privacy Policy
 					</a>
-					<a
-						href="/terms"
-						class="text-xs text-text-secondary-light hover:text-text-primary-light"
-					>
+					<a href="/terms" class="text-xs text-text-secondary-light hover:text-text-primary-light">
 						Terms of Service
 					</a>
 					<a

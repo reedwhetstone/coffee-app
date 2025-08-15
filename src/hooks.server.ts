@@ -115,17 +115,17 @@ const authGuard: Handle = async ({ event, resolve }) => {
 
 	// Use requireRole for protected route checks
 	if (requiresProtection && !requireRole(event.locals.role, 'member')) {
-		throw redirect(303, '/');
+		throw redirect(303, '/catalog');
 	}
 
 	// Check admin route access
 	if (requiresAdminAccess && !requireRole(event.locals.role, 'admin')) {
-		throw redirect(303, '/');
+		throw redirect(303, '/catalog');
 	}
 
 	// Check API dashboard access - allow any authenticated user (viewer gets free tier API access)
 	if (requiresApiAccess && !session) {
-		throw redirect(303, '/');
+		throw redirect(303, '/catalog');
 	}
 
 	return resolve(event);

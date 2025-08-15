@@ -326,6 +326,7 @@ User: "What would be the best way to roast this washed Puerto Rican coffee from 
 ## API References & Documentation
 
 ### OpenAI API Reference
+
 - **Official Documentation**: https://platform.openai.com/docs/api-reference/introduction
 - **Important Notes**:
   - **GPT-5 models do NOT support temperature parameter** - they use fixed internal settings
@@ -334,6 +335,7 @@ User: "What would be the best way to roast this washed Puerto Rican coffee from 
   - Use `apiKey` parameter instead of `openAIApiKey` in ChatOpenAI constructor
 
 ### LangChain Documentation
+
 - **Official Documentation**: https://js.langchain.com/docs/introduction/
 - **Key Integration Points**:
   - ChatOpenAI configuration for GPT-5 compatibility
@@ -342,6 +344,7 @@ User: "What would be the best way to roast this washed Puerto Rican coffee from 
   - Custom tool definitions with JSON schemas
 
 ### Implementation Notes
+
 - **Model Configuration**: GPT-5 models require minimal configuration (no temperature, fixed behavior)
 - **Error Handling**: GPT-5 will reject temperature parameters with 400 error
 - **Cost Optimization**: Use GPT-5-nano for routing, GPT-5 for complex synthesis
@@ -350,6 +353,7 @@ User: "What would be the best way to roast this washed Puerto Rican coffee from 
 ### GPT-5 Tool Calling Audit (2025)
 
 #### Key GPT-5 Tool Calling Enhancements
+
 - **96.7% Success Rate**: GPT-5 achieves 96.7% on τ2-bench telecom tool calling benchmark
 - **Improved Sequential/Parallel Calling**: Better at chaining dozens of tool calls in sequence and parallel
 - **Enhanced Error Handling**: Better at dealing with tool errors and recovery
@@ -358,18 +362,21 @@ User: "What would be the best way to roast this washed Puerto Rican coffee from 
 #### Two Tool Calling Approaches
 
 **1. Traditional JSON Function Calling (Recommended for Our Use Case)**
+
 - Use `tools` parameter with `"type": "function"`
 - Enable `strict: true` for 100% JSON Schema compliance
 - Supports parallel tool calling (multiple tools simultaneously)
 - Perfect for structured data operations (our coffee catalog, inventory, roast data)
 
 **2. Custom Tools (New in GPT-5)**
+
 - Use `"type": "custom"` for raw text payloads (Python scripts, SQL, etc.)
 - Grammar-constrained outputs via Context-Free Grammars (CFGs)
 - **Does NOT support parallel calling**
 - Better for code generation, but not needed for our structured data use case
 
 #### Implementation Recommendations for Coffee Chatbot
+
 - **Use Traditional JSON Function Calling** with `strict: true`
 - **Enable Parallel Tool Calling** for efficiency (e.g., get inventory + roast profiles simultaneously)
 - **Implement Comprehensive JSON Schemas** for all our 6 tools
@@ -379,7 +386,9 @@ User: "What would be the best way to roast this washed Puerto Rican coffee from 
 - **Add progress messaging** for long-running multi-tool tasks
 
 #### Tool Calling Architecture Decision
+
 We'll use **Traditional JSON Function Calling** because:
+
 - Our tools return structured data (perfect for JSON)
 - We need parallel tool calling for efficiency
 - 100% schema compliance with `strict: true`

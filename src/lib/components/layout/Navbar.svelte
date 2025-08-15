@@ -80,12 +80,12 @@
 
 	<main class="flex-grow overflow-y-auto p-4">
 		<ul class="space-y-2">
-			<!-- Home/Catalog - Available to all logged in users -->
+			<!-- Catalog - Available to all logged in users -->
 			<li>
 				<a
-					href="/"
+					href="/catalog"
 					class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath ===
-					'/'
+					'/catalog'
 						? 'bg-background-tertiary-light text-white'
 						: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 				>

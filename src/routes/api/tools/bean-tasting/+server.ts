@@ -44,11 +44,7 @@ export const POST: RequestHandler = async (event) => {
 		const input: BeanTastingToolInput = await event.request.json();
 
 		// Validate required parameters
-		const {
-			bean_id,
-			filter,
-			include_radar_data = true
-		} = input;
+		const { bean_id, filter, include_radar_data = true } = input;
 
 		if (!bean_id) {
 			return json({ error: 'bean_id is required' }, { status: 400 });
@@ -61,15 +57,20 @@ export const POST: RequestHandler = async (event) => {
 		// Get the coffee bean information from catalog
 		const { data: coffeeInfo, error: coffeeError } = await supabase
 			.from('coffee_catalog')
-			.select('id, name, processing, region, source, cupping_notes, ai_tasting_notes, ai_description')
+			.select(
+				'id, name, processing, region, source, cupping_notes, ai_tasting_notes, ai_description'
+			)
 			.eq('id', bean_id)
 			.single();
 
 		if (coffeeError || !coffeeInfo) {
-			return json({ 
-				error: 'Coffee bean not found',
-				message: `No coffee found with bean_id: ${bean_id}`
-			}, { status: 404 });
+			return json(
+				{
+					error: 'Coffee bean not found',
+					message: `No coffee found with bean_id: ${bean_id}`
+				},
+				{ status: 404 }
+			);
 		}
 
 		let userNotes = null;
@@ -125,7 +126,10 @@ export const POST: RequestHandler = async (event) => {
 
 			tastingNotes.combined_notes = {
 				descriptions: combinedDescriptions,
-				sources: ['AI Analysis', 'Supplier Notes', 'Your Notes'].slice(0, combinedDescriptions.length)
+				sources: ['AI Analysis', 'Supplier Notes', 'Your Notes'].slice(
+					0,
+					combinedDescriptions.length
+				)
 			};
 		}
 
@@ -133,9 +137,10 @@ export const POST: RequestHandler = async (event) => {
 		let radarData;
 		if (include_radar_data && coffeeInfo.ai_tasting_notes) {
 			try {
-				const aiTastingNotes = typeof coffeeInfo.ai_tasting_notes === 'string' 
-					? JSON.parse(coffeeInfo.ai_tasting_notes)
-					: coffeeInfo.ai_tasting_notes;
+				const aiTastingNotes =
+					typeof coffeeInfo.ai_tasting_notes === 'string'
+						? JSON.parse(coffeeInfo.ai_tasting_notes)
+						: coffeeInfo.ai_tasting_notes;
 
 				if (aiTastingNotes && typeof aiTastingNotes === 'object') {
 					radarData = {

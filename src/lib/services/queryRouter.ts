@@ -42,7 +42,7 @@ export class QueryRouter {
 		try {
 			const response = await this.model.invoke(prompt);
 			const result = this.parseClassificationResponse(response.content.toString());
-			
+
 			return {
 				...result,
 				query_terms: this.extractQueryTerms(query)
@@ -109,7 +109,7 @@ Examples:
 			}
 
 			const parsed = JSON.parse(jsonMatch[0]);
-			
+
 			// Validate and clean the response
 			return {
 				intent: this.validateIntent(parsed.intent),
@@ -133,12 +133,14 @@ Examples:
 	private cleanFilters(filters: any): QueryClassification['filters'] {
 		return {
 			origin: typeof filters.origin === 'string' ? filters.origin : undefined,
-			process_subtype: typeof filters.process_subtype === 'string' ? filters.process_subtype : undefined,
+			process_subtype:
+				typeof filters.process_subtype === 'string' ? filters.process_subtype : undefined,
 			variety: typeof filters.variety === 'string' ? filters.variety : undefined,
-			price_range: Array.isArray(filters.price_range) && filters.price_range.length === 2 
-				? [Number(filters.price_range[0]), Number(filters.price_range[1])]
-				: undefined,
-			flavor_keywords: Array.isArray(filters.flavor_keywords) 
+			price_range:
+				Array.isArray(filters.price_range) && filters.price_range.length === 2
+					? [Number(filters.price_range[0]), Number(filters.price_range[1])]
+					: undefined,
+			flavor_keywords: Array.isArray(filters.flavor_keywords)
 				? filters.flavor_keywords.filter((k: any) => typeof k === 'string')
 				: [],
 			bean_id: typeof filters.bean_id === 'number' ? filters.bean_id : undefined,
@@ -148,33 +150,59 @@ Examples:
 
 	private extractQueryTerms(query: string): string {
 		// Extract key terms for tsvector search
-		const stopWords = ['i', 'need', 'want', 'looking', 'for', 'a', 'an', 'the', 'and', 'or', 'but', 'with', 'from'];
-		const terms = query.toLowerCase()
+		const stopWords = [
+			'i',
+			'need',
+			'want',
+			'looking',
+			'for',
+			'a',
+			'an',
+			'the',
+			'and',
+			'or',
+			'but',
+			'with',
+			'from'
+		];
+		const terms = query
+			.toLowerCase()
 			.replace(/[^\w\s]/g, ' ')
 			.split(/\s+/)
-			.filter(term => term.length > 2 && !stopWords.includes(term))
+			.filter((term) => term.length > 2 && !stopWords.includes(term))
 			.slice(0, 10); // Limit to 10 terms
-		
+
 		return terms.join(' ');
 	}
 
 	private getFallbackClassification(query: string): QueryClassification {
 		// Simple fallback classification using keyword matching
 		const lowerQuery = query.toLowerCase();
-		
+
 		let intent: QueryIntent = 'catalog';
 		let require_knowledge = false;
 		let require_catalog = true;
 
 		// Basic intent detection
-		if (lowerQuery.includes('roast') && (lowerQuery.includes('profile') || lowerQuery.includes('chart'))) {
+		if (
+			lowerQuery.includes('roast') &&
+			(lowerQuery.includes('profile') || lowerQuery.includes('chart'))
+		) {
 			intent = 'roast';
 			require_catalog = false;
-		} else if (lowerQuery.includes('how') || lowerQuery.includes('guide') || lowerQuery.includes('tip')) {
+		} else if (
+			lowerQuery.includes('how') ||
+			lowerQuery.includes('guide') ||
+			lowerQuery.includes('tip')
+		) {
 			intent = 'knowledge';
 			require_knowledge = true;
 			require_catalog = false;
-		} else if (lowerQuery.includes('analyze') || lowerQuery.includes('trend') || lowerQuery.includes('compare')) {
+		} else if (
+			lowerQuery.includes('analyze') ||
+			lowerQuery.includes('trend') ||
+			lowerQuery.includes('compare')
+		) {
 			intent = 'analysis';
 		}
 
@@ -184,22 +212,30 @@ Examples:
 		};
 
 		// Extract basic origins
-		const origins = ['ethiopia', 'colombia', 'brazil', 'kenya', 'guatemala', 'costa rica', 'panama'];
-		const foundOrigin = origins.find(origin => lowerQuery.includes(origin));
+		const origins = [
+			'ethiopia',
+			'colombia',
+			'brazil',
+			'kenya',
+			'guatemala',
+			'costa rica',
+			'panama'
+		];
+		const foundOrigin = origins.find((origin) => lowerQuery.includes(origin));
 		if (foundOrigin) {
 			filters.origin = foundOrigin;
 		}
 
 		// Extract basic processes
 		const processes = ['natural', 'washed', 'honey', 'anaerobic'];
-		const foundProcess = processes.find(process => lowerQuery.includes(process));
+		const foundProcess = processes.find((process) => lowerQuery.includes(process));
 		if (foundProcess) {
 			filters.process_subtype = foundProcess;
 		}
 
 		// Extract basic flavor keywords
 		const flavors = ['fruity', 'chocolate', 'floral', 'citrus', 'nutty', 'sweet', 'bright'];
-		filters.flavor_keywords = flavors.filter(flavor => lowerQuery.includes(flavor));
+		filters.flavor_keywords = flavors.filter((flavor) => lowerQuery.includes(flavor));
 
 		return {
 			intent,

@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	}
 
 	if (!code) {
-		throw redirect(303, '/');
+		throw redirect(303, '/catalog');
 	}
 
 	try {
@@ -23,5 +23,5 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 		throw redirect(303, '/auth/error');
 	}
 
-	throw redirect(303, '/');
+	throw redirect(303, '/catalog');
 };

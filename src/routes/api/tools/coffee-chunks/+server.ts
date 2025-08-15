@@ -38,12 +38,7 @@ export const POST: RequestHandler = async (event) => {
 		const input: CoffeeChunksToolInput = await event.request.json();
 
 		// Validate required parameters
-		const {
-			context_string,
-			chunk_types,
-			max_chunks = 10,
-			similarity_threshold = 0.3
-		} = input;
+		const { context_string, chunk_types, max_chunks = 10, similarity_threshold = 0.3 } = input;
 
 		if (!context_string || context_string.trim().length === 0) {
 			return json({ error: 'context_string is required and cannot be empty' }, { status: 400 });
@@ -51,7 +46,10 @@ export const POST: RequestHandler = async (event) => {
 
 		// Validate OPENAI_API_KEY
 		if (!OPENAI_API_KEY) {
-			return json({ error: 'OpenAI API key not configured for knowledge retrieval' }, { status: 500 });
+			return json(
+				{ error: 'OpenAI API key not configured for knowledge retrieval' },
+				{ status: 500 }
+			);
 		}
 
 		// Initialize RAG service
@@ -64,28 +62,22 @@ export const POST: RequestHandler = async (event) => {
 			chunkTypes: chunk_types
 		};
 
-		const retrievalResult = await ragService.retrieveRelevantCoffees(
-			context_string,
-			searchOptions
-		);
+		const retrievalResult = await ragService.retrieveRelevantCoffees(context_string, searchOptions);
 
 		// The RAG service returns coffee catalog results, but we want chunk-level results
 		// Let's make a direct call to the coffee_chunks RPC function for more granular results
-		
+
 		// Generate embedding for the query
 		const queryEmbeddingService = ragService['queryEmbeddingService']; // Access private property
 		const queryEmbedding = await queryEmbeddingService.generateQueryEmbedding(context_string);
 
 		// Search chunks directly
-		const { data: chunksData, error: chunksError } = await supabase.rpc(
-			'match_coffee_chunks',
-			{
-				query_embedding: queryEmbedding,
-				match_threshold: similarity_threshold,
-				match_count: max_chunks,
-				chunk_types: chunk_types || null
-			}
-		);
+		const { data: chunksData, error: chunksError } = await supabase.rpc('match_coffee_chunks', {
+			query_embedding: queryEmbedding,
+			match_threshold: similarity_threshold,
+			match_count: max_chunks,
+			chunk_types: chunk_types || null
+		});
 
 		if (chunksError) {
 			console.error('Coffee chunks search error:', chunksError);
@@ -93,7 +85,9 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Get coffee names for chunks that reference specific coffees
-		const coffeeIds = chunksData?.filter((chunk: any) => chunk.coffee_id).map((chunk: any) => chunk.coffee_id) || [];
+		const coffeeIds =
+			chunksData?.filter((chunk: any) => chunk.coffee_id).map((chunk: any) => chunk.coffee_id) ||
+			[];
 		let coffeeNames: Record<number, string> = {};
 
 		if (coffeeIds.length > 0) {
@@ -103,19 +97,20 @@ export const POST: RequestHandler = async (event) => {
 				.in('id', coffeeIds);
 
 			if (coffeeData) {
-				coffeeNames = Object.fromEntries(coffeeData.map(coffee => [coffee.id, coffee.name]));
+				coffeeNames = Object.fromEntries(coffeeData.map((coffee) => [coffee.id, coffee.name]));
 			}
 		}
 
 		// Format chunks for response
-		const formattedChunks = chunksData?.map((chunk: any) => ({
-			content: chunk.content,
-			chunk_type: chunk.chunk_type,
-			coffee_id: chunk.coffee_id || undefined,
-			coffee_name: chunk.coffee_id ? coffeeNames[chunk.coffee_id] || 'Unknown Coffee' : undefined,
-			similarity: chunk.similarity || 0,
-			document_id: chunk.id
-		})) || [];
+		const formattedChunks =
+			chunksData?.map((chunk: any) => ({
+				content: chunk.content,
+				chunk_type: chunk.chunk_type,
+				coffee_id: chunk.coffee_id || undefined,
+				coffee_name: chunk.coffee_id ? coffeeNames[chunk.coffee_id] || 'Unknown Coffee' : undefined,
+				similarity: chunk.similarity || 0,
+				document_id: chunk.id
+			})) || [];
 
 		// Determine search strategy used
 		let searchStrategy = 'semantic_search';
@@ -123,9 +118,10 @@ export const POST: RequestHandler = async (event) => {
 			searchStrategy = `filtered_semantic_search (${chunk_types.join(', ')})`;
 		}
 
-		const message = formattedChunks.length > 0 
-			? `Found ${formattedChunks.length} relevant knowledge chunks for: "${context_string}"`
-			: `No relevant knowledge found for: "${context_string}". Try a different query or broader terms.`;
+		const message =
+			formattedChunks.length > 0
+				? `Found ${formattedChunks.length} relevant knowledge chunks for: "${context_string}"`
+				: `No relevant knowledge found for: "${context_string}". Try a different query or broader terms.`;
 
 		const response: CoffeeChunksToolResponse = {
 			chunks: formattedChunks,

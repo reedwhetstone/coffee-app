@@ -487,70 +487,70 @@
 </script>
 
 <!-- Sales Chart Component -->
-<div class="bg-background-secondary-light ring-border-light rounded-lg">
+<div class="rounded-lg bg-background-secondary-light ring-border-light">
 	<!-- KPI Summary Panel -->
 	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-		<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-			<h3 class="text-text-primary-light text-sm font-medium">Total Sales</h3>
+		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Total Sales</h3>
 			<p class="mt-1 text-2xl font-bold text-indigo-500">{formatNumber(kpiSummary().totalSales)}</p>
-			<p class="text-text-secondary-light mt-1 text-xs">Individual transactions</p>
+			<p class="mt-1 text-xs text-text-secondary-light">Individual transactions</p>
 		</div>
 
-		<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-			<h3 class="text-text-primary-light text-sm font-medium">Total Revenue</h3>
+		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Total Revenue</h3>
 			<p class="mt-1 text-2xl font-bold text-green-500">
 				{formatCurrency(kpiSummary().totalRevenue)}
 			</p>
-			<p class="text-text-secondary-light mt-1 text-xs">From all sales</p>
+			<p class="mt-1 text-xs text-text-secondary-light">From all sales</p>
 		</div>
 
-		<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-			<h3 class="text-text-primary-light text-sm font-medium">Total Profit</h3>
+		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Total Profit</h3>
 			<p class="mt-1 text-2xl font-bold text-blue-500">
 				{formatCurrency(kpiSummary().totalProfit)}
 			</p>
-			<p class="text-text-secondary-light mt-1 text-xs">Net after costs</p>
+			<p class="mt-1 text-xs text-text-secondary-light">Net after costs</p>
 		</div>
 
-		<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-			<h3 class="text-text-primary-light text-sm font-medium">Avg Margin</h3>
+		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Avg Margin</h3>
 			<p class="mt-1 text-2xl font-bold text-purple-500">
 				{formatPercent(kpiSummary().averageMargin)}
 			</p>
-			<p class="text-text-secondary-light mt-1 text-xs">Weighted average</p>
+			<p class="mt-1 text-xs text-text-secondary-light">Weighted average</p>
 		</div>
 	</div>
 
 	<!-- Secondary KPIs -->
 	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-		<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-			<h3 class="text-text-primary-light text-sm font-medium">Oz Sold</h3>
+		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Oz Sold</h3>
 			<p class="mt-1 text-xl font-bold text-cyan-500">{kpiSummary().totalOzSold.toFixed(1)}</p>
 		</div>
 
-		<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-			<h3 class="text-text-primary-light text-sm font-medium">Investment</h3>
+		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Investment</h3>
 			<p class="mt-1 text-xl font-bold text-red-500">
 				{formatCurrency(kpiSummary().totalInvestment)}
 			</p>
 		</div>
 
-		<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-			<h3 class="text-text-primary-light text-sm font-medium">Coffee Purchased</h3>
+		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Coffee Purchased</h3>
 			<p class="mt-1 text-xl font-bold text-indigo-500">
 				{kpiSummary().totalPoundsRoasted.toFixed(1)} lbs
 			</p>
 		</div>
 
-		<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-			<h3 class="text-text-primary-light text-sm font-medium">Sell-Through Rate</h3>
+		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Sell-Through Rate</h3>
 			<p class="mt-1 text-xl font-bold text-orange-500">
 				{formatPercent(kpiSummary().sellThroughRate)}
 			</p>
 		</div>
 
-		<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-			<h3 class="text-text-primary-light text-sm font-medium">Avg Price/oz</h3>
+		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-primary-light">Avg Price/oz</h3>
 			<p class="mt-1 text-xl font-bold text-teal-500">
 				{formatCurrency(kpiSummary().avgSellingPricePerOz)}
 			</p>
@@ -559,14 +559,14 @@
 
 	<!-- Filter Controls -->
 	<div
-		class="border-border-light mb-6 flex flex-col gap-4 border-t pt-6 sm:flex-row sm:items-center sm:justify-between"
+		class="mb-6 flex flex-col gap-4 border-t border-border-light pt-6 sm:flex-row sm:items-center sm:justify-between"
 	>
 		<div class="flex flex-wrap items-center gap-4">
 			<!-- Date Range Selector -->
 			<div class="flex items-center gap-2">
-				<span class="text-text-secondary-light text-xs font-medium">Period:</span>
+				<span class="text-xs font-medium text-text-secondary-light">Period:</span>
 				<div
-					class="border-border-light bg-background-primary-light flex overflow-hidden rounded-md border"
+					class="flex overflow-hidden rounded-md border border-border-light bg-background-primary-light"
 				>
 					{#each dateRangeOptions as option}
 						<button
@@ -574,7 +574,7 @@
 							class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedDateRange ===
 							option.value
 								? 'bg-background-tertiary-light text-white'
-								: 'text-text-secondary-light hover:bg-background-tertiary-light hover:text-text-primary-light hover:bg-opacity-10'}"
+								: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
 							onclick={() => (selectedDateRange = option.value)}
 						>
 							{option.label}
@@ -585,13 +585,13 @@
 
 			<!-- Purchase Date Multi-Select Toggle -->
 			<div class="flex items-center gap-2">
-				<span class="text-text-secondary-light text-xs font-medium">Purchase Dates:</span>
+				<span class="text-xs font-medium text-text-secondary-light">Purchase Dates:</span>
 				<button
 					type="button"
-					class="border-border-light bg-background-primary-light hover:bg-background-tertiary-light flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition-all hover:bg-opacity-10"
+					class="flex items-center gap-2 rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-xs transition-all hover:bg-background-tertiary-light hover:bg-opacity-10"
 					onclick={() => (purchaseDatesPanelExpanded = !purchaseDatesPanelExpanded)}
 				>
-					<span class="text-text-primary-light font-medium">
+					<span class="font-medium text-text-primary-light">
 						{selectedPurchaseDates.size} selected
 					</span>
 					<span
@@ -606,10 +606,10 @@
 
 			<!-- Metric Selector -->
 			<div class="flex items-center gap-2">
-				<span class="text-text-secondary-light text-xs font-medium">Metric:</span>
+				<span class="text-xs font-medium text-text-secondary-light">Metric:</span>
 				<select
 					bind:value={selectedMetric}
-					class="border-border-light bg-background-primary-light text-text-primary-light focus:ring-background-tertiary-light rounded-md border px-3 py-1.5 text-xs focus:outline-none focus:ring-2"
+					class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-xs text-text-primary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
 				>
 					{#each metricOptions as option}
 						<option value={option.value}>{option.label}</option>
@@ -624,15 +624,15 @@
 		{@const availableDates = [
 			...new Set(profitData.map((d: ProfitData) => d.purchase_date))
 		].sort() as string[]}
-		<div class="bg-background-primary-light ring-border-light mb-6 rounded-lg p-4 ring-1">
+		<div class="mb-6 rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 			<div class="mb-4 flex items-center justify-between">
-				<h4 class="text-text-primary-light text-sm font-medium">
+				<h4 class="text-sm font-medium text-text-primary-light">
 					Select Purchase Dates ({selectedPurchaseDates.size} of {availableDates.length} selected)
 				</h4>
 				<div class="flex gap-2">
 					<button
 						type="button"
-						class="border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light rounded-md border px-2 py-1 text-xs transition-all hover:text-white"
+						class="rounded-md border border-background-tertiary-light px-2 py-1 text-xs text-background-tertiary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 						onclick={selectAllPurchaseDates}
 					>
 						All
@@ -653,9 +653,9 @@
 							type="checkbox"
 							checked={selectedPurchaseDates.has(date)}
 							onchange={() => togglePurchaseDate(date)}
-							class="border-border-light bg-background-primary-light text-background-tertiary-light focus:ring-background-tertiary-light h-4 w-4 rounded focus:ring-2"
+							class="h-4 w-4 rounded border-border-light bg-background-primary-light text-background-tertiary-light focus:ring-2 focus:ring-background-tertiary-light"
 						/>
-						<span class="text-text-primary-light text-xs">{formatDateForDisplay(date)}</span>
+						<span class="text-xs text-text-primary-light">{formatDateForDisplay(date)}</span>
 					</label>
 				{/each}
 			</div>
@@ -667,11 +667,11 @@
 		<div bind:this={chartContainer} class="w-full" style="min-height: 400px;"></div>
 		{#if chartData().length === 0}
 			<div
-				class="bg-background-secondary-light absolute inset-0 flex items-center justify-center rounded bg-opacity-90"
+				class="absolute inset-0 flex items-center justify-center rounded bg-background-secondary-light bg-opacity-90"
 			>
 				<div class="text-center">
 					<div class="mb-2 text-4xl opacity-50">📊</div>
-					<div class="text-text-secondary-light text-sm">
+					<div class="text-sm text-text-secondary-light">
 						No data available for selected filters
 					</div>
 				</div>
@@ -701,9 +701,9 @@
 		style="left: {leftPos}px; top: {topPos}px;"
 	>
 		<div
-			class="bg-background-secondary-light ring-border-light max-w-xs rounded-lg bg-opacity-95 p-4 shadow-lg ring-1 backdrop-blur-sm"
+			class="max-w-xs rounded-lg bg-background-secondary-light bg-opacity-95 p-4 shadow-lg ring-1 ring-border-light backdrop-blur-sm"
 		>
-			<div class="text-text-primary-light mb-3 text-sm font-semibold">
+			<div class="mb-3 text-sm font-semibold text-text-primary-light">
 				☕ {d.beanName}
 			</div>
 
@@ -755,8 +755,8 @@
 				</div>
 			</div>
 
-			<div class="border-border-light mt-3 border-t pt-3">
-				<div class="text-text-primary-light mb-1 text-xs font-medium">📊 Current Value</div>
+			<div class="mt-3 border-t border-border-light pt-3">
+				<div class="mb-1 text-xs font-medium text-text-primary-light">📊 Current Value</div>
 				<div class="text-sm font-bold" style="color: {getMetricColor(selectedMetric)}">
 					{currentMetric().format(d.value)}
 				</div>

@@ -40,7 +40,10 @@ export const POST: RequestHandler = async (event) => {
 		} = input;
 
 		// Build base query similar to existing /data endpoint
-		let query = supabase.from('green_coffee_inv').select(`
+		let query = supabase
+			.from('green_coffee_inv')
+			.select(
+				`
 			*,
 			coffee_catalog!catalog_id (
 				name,
@@ -71,9 +74,10 @@ export const POST: RequestHandler = async (event) => {
 				ai_tasting_notes,
 				public_coffee
 			)
-		`)
-		.eq('user', user.id)
-		.order('purchase_date', { ascending: false });
+		`
+			)
+			.eq('user', user.id)
+			.order('purchase_date', { ascending: false });
 
 		// Apply stocked filter if requested
 		if (stocked_only) {
@@ -95,20 +99,22 @@ export const POST: RequestHandler = async (event) => {
 		// Calculate summary statistics
 		const summary = {
 			total_beans: inventory?.length || 0,
-			total_weight_lbs: inventory?.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0) || 0,
-			total_value: inventory?.reduce((sum, bean) => {
-				const beanCost = bean.bean_cost || 0;
-				const taxShipCost = bean.tax_ship_cost || 0;
-				return sum + beanCost + taxShipCost;
-			}, 0) || 0,
-			stocked_beans: inventory?.filter(bean => bean.stocked).length || 0
+			total_weight_lbs:
+				inventory?.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0) || 0,
+			total_value:
+				inventory?.reduce((sum, bean) => {
+					const beanCost = bean.bean_cost || 0;
+					const taxShipCost = bean.tax_ship_cost || 0;
+					return sum + beanCost + taxShipCost;
+				}, 0) || 0,
+			stocked_beans: inventory?.filter((bean) => bean.stocked).length || 0
 		};
 
 		// If roast summary is requested, get roast profile counts
 		let processedInventory = inventory || [];
 		if (include_roast_summary && inventory) {
-			const coffeeIds = inventory.map(bean => bean.id);
-			
+			const coffeeIds = inventory.map((bean) => bean.id);
+
 			if (coffeeIds.length > 0) {
 				const { data: roastProfiles } = await supabase
 					.from('roast_profiles')
@@ -117,14 +123,19 @@ export const POST: RequestHandler = async (event) => {
 					.eq('user', user.id);
 
 				// Add roast summary to each inventory item
-				processedInventory = inventory.map(bean => ({
+				processedInventory = inventory.map((bean) => ({
 					...bean,
 					roast_summary: {
-						total_roasts: roastProfiles?.filter(profile => profile.coffee_id === bean.id).length || 0,
-						total_oz_in: roastProfiles?.filter(profile => profile.coffee_id === bean.id)
-							.reduce((sum, profile) => sum + (profile.oz_in || 0), 0) || 0,
-						total_oz_out: roastProfiles?.filter(profile => profile.coffee_id === bean.id)
-							.reduce((sum, profile) => sum + (profile.oz_out || 0), 0) || 0
+						total_roasts:
+							roastProfiles?.filter((profile) => profile.coffee_id === bean.id).length || 0,
+						total_oz_in:
+							roastProfiles
+								?.filter((profile) => profile.coffee_id === bean.id)
+								.reduce((sum, profile) => sum + (profile.oz_in || 0), 0) || 0,
+						total_oz_out:
+							roastProfiles
+								?.filter((profile) => profile.coffee_id === bean.id)
+								.reduce((sum, profile) => sum + (profile.oz_out || 0), 0) || 0
 					}
 				}));
 			}
@@ -132,7 +143,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// Clean up catalog data if not requested
 		if (!include_catalog_details) {
-			processedInventory = processedInventory.map(bean => {
+			processedInventory = processedInventory.map((bean) => {
 				const { coffee_catalog, ...beanWithoutCatalog } = bean;
 				return {
 					...beanWithoutCatalog,
