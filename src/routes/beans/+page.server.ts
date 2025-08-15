@@ -190,8 +190,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		throw error;
 	}
 
-	console.log('Server: Query successful, data length:', greenCoffeeData?.length);
-
 	// Separately get roast profiles for all coffee IDs
 	const coffeeIds = greenCoffeeData?.map((bean) => bean.id) || [];
 	const { data: roastProfilesData, error: roastError } = await supabase
@@ -201,33 +199,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.eq('user', user.id);
 
 	if (roastError) {
-		console.log('Server: Roast profiles query error:', roastError);
-	}
-
-	console.log('Server: Roast profiles data length:', roastProfilesData?.length);
-
-	// Debug: Log the data structure before serialization
-	console.log('Server: greenCoffeeData length:', greenCoffeeData?.length);
-	if (greenCoffeeData && greenCoffeeData.length > 0) {
-		const sampleBean = greenCoffeeData[0];
-		console.log('Server: First bean structure:', {
-			id: sampleBean.id,
-			coffee_catalog: !!sampleBean.coffee_catalog,
-			roast_profiles: sampleBean.roast_profiles?.length || 0
-		});
-
-		const beanWithProfiles = greenCoffeeData.find(
-			(bean) => bean.roast_profiles && bean.roast_profiles.length > 0
-		);
-		if (beanWithProfiles) {
-			console.log('Server: Bean with profiles found:', {
-				coffee_id: beanWithProfiles.id,
-				profiles_count: beanWithProfiles.roast_profiles?.length,
-				sample_profile: beanWithProfiles.roast_profiles?.[0]
-			});
-		} else {
-			console.log('Server: No beans with roast_profiles found');
-		}
+		throw roastError;
 	}
 
 	// Manually join roast profiles data
@@ -255,20 +227,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				}))
 			};
 		}) || [];
-
-	console.log('Server: Cleaned data length:', cleanData.length);
-	if (cleanData.length > 0) {
-		const beanWithProfiles = cleanData.find(
-			(bean) => bean.roast_profiles && bean.roast_profiles.length > 0
-		);
-		if (beanWithProfiles) {
-			console.log('Server: Manual join - Bean with profiles found:', {
-				coffee_id: beanWithProfiles.id,
-				profiles_count: beanWithProfiles.roast_profiles?.length,
-				sample_profile: beanWithProfiles.roast_profiles?.[0]
-			});
-		}
-	}
 
 	return {
 		data: cleanData,
