@@ -89,7 +89,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 };
 
 const authGuard: Handle = async ({ event, resolve }) => {
-	const protectedRoutes = ['/roast', '/profit', '/beans'];
+	const protectedRoutes = ['/roast', '/profit', '/beans', '/chat'];
 	const adminRoutes = ['/admin'];
 	const apiRoutes = ['/api-dashboard'];
 	const currentPath = event.url.pathname;

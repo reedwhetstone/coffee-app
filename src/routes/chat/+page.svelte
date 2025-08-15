@@ -1,0 +1,345 @@
+<script lang="ts">
+	import type { PageData } from './$types';
+	import { checkRole } from '$lib/types/auth.types';
+	import type { UserRole } from '$lib/types/auth.types';
+
+	let { data } = $props<{ data: PageData }>();
+
+	// Destructure with default values to prevent undefined errors
+	let { session, role = 'viewer' } = $derived(data);
+
+	// User role management
+	let userRole: UserRole = $derived(role as UserRole);
+
+	function hasRequiredRole(requiredRole: UserRole): boolean {
+		return checkRole(userRole, requiredRole);
+	}
+
+	// Chat state management
+	let messages = $state<Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }>>([]);
+	let inputMessage = $state('');
+	let isLoading = $state(false);
+	let chatContainer = $state<HTMLDivElement>();
+
+	// Scroll to bottom when new messages are added
+	$effect(() => {
+		if (messages.length && chatContainer) {
+			chatContainer.scrollTop = chatContainer.scrollHeight;
+		}
+	});
+
+	/**
+	 * Send message to chat API
+	 */
+	async function sendMessage() {
+		if (!inputMessage.trim() || isLoading) return;
+
+		const userMessage = inputMessage.trim();
+		inputMessage = '';
+		isLoading = true;
+
+		// Add user message to chat
+		messages.push({
+			role: 'user',
+			content: userMessage,
+			timestamp: new Date()
+		});
+
+		try {
+			// TODO: Replace with LangChain service call
+			const response = await fetch('/api/chat', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					message: userMessage,
+					conversation_history: messages.slice(0, -1) // Exclude the message we just added
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to get chat response');
+			}
+
+			const result = await response.json();
+
+			// Add assistant response to chat
+			messages.push({
+				role: 'assistant',
+				content: result.response,
+				timestamp: new Date()
+			});
+		} catch (error) {
+			console.error('Chat error:', error);
+			messages.push({
+				role: 'assistant',
+				content: 'Sorry, I encountered an error. Please try again.',
+				timestamp: new Date()
+			});
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	/**
+	 * Handle form submission
+	 */
+	function handleSubmit(event: Event) {
+		event.preventDefault();
+		sendMessage();
+	}
+
+	/**
+	 * Export conversation history
+	 */
+	function exportConversation() {
+		const exportData = {
+			conversation: messages,
+			exported_at: new Date().toISOString(),
+			user_id: session?.user?.id
+		};
+
+		const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+			type: 'application/json'
+		});
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `coffee-chat-${new Date().toISOString().split('T')[0]}.json`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	}
+
+	/**
+	 * Clear conversation
+	 */
+	function clearConversation() {
+		if (confirm('Are you sure you want to clear the conversation?')) {
+			messages = [];
+		}
+	}
+</script>
+
+<svelte:head>
+	<title>Coffee Chat - AI Assistant</title>
+	<meta
+		name="description"
+		content="Chat with our AI coffee expert for personalized recommendations and roasting advice."
+	/>
+</svelte:head>
+
+{#if !session}
+	<!-- Unauthenticated state -->
+	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
+		<div class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg">
+			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Coffee Chat</h1>
+			<p class="mb-6 text-text-secondary-light">
+				Sign in to access our AI coffee expert for personalized recommendations and roasting advice.
+			</p>
+			<a
+				href="/auth"
+				class="rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+			>
+				Sign In
+			</a>
+		</div>
+	</div>
+{:else if !hasRequiredRole('member')}
+	<!-- Member role required -->
+	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
+		<div class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg">
+			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Premium Feature</h1>
+			<p class="mb-6 text-text-secondary-light">
+				The Coffee Chat AI assistant is available for premium members. Upgrade to access
+				personalized recommendations and expert roasting advice.
+			</p>
+			<div class="space-y-3">
+				<a
+					href="/subscription"
+					class="block rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+				>
+					Upgrade to Premium
+				</a>
+				<a
+					href="/"
+					class="block rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+				>
+					Back to Home
+				</a>
+			</div>
+		</div>
+	</div>
+{:else}
+	<!-- Main chat interface for authenticated members -->
+	<div class="flex h-screen flex-col bg-background-primary-light">
+		<!-- Header -->
+		<header class="border-b border-border-light bg-background-secondary-light px-4 py-3">
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-xl font-semibold text-text-primary-light">Coffee Chat</h1>
+					<p class="text-sm text-text-secondary-light">AI-powered coffee assistant</p>
+				</div>
+				<div class="flex space-x-2">
+					{#if messages.length > 0}
+						<button
+							onclick={exportConversation}
+							class="rounded-md border border-background-tertiary-light px-3 py-1 text-sm text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						>
+							Export
+						</button>
+						<button
+							onclick={clearConversation}
+							class="rounded-md border border-red-500 px-3 py-1 text-sm text-red-500 transition-all duration-200 hover:bg-red-500 hover:text-white"
+						>
+							Clear
+						</button>
+					{/if}
+				</div>
+			</div>
+		</header>
+
+		<!-- Chat messages area -->
+		<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4">
+			{#if messages.length === 0}
+				<!-- Welcome message -->
+				<div class="mx-auto max-w-2xl text-center">
+					<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
+						<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
+							Welcome to Coffee Chat! ☕
+						</h2>
+						<p class="mb-4 text-text-secondary-light">
+							I'm your AI coffee expert, here to help with personalized recommendations, roasting
+							advice, and coffee knowledge. Ask me anything about:
+						</p>
+						<div class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2">
+							<div>• Coffee recommendations</div>
+							<div>• Roasting techniques</div>
+							<div>• Flavor profiles</div>
+							<div>• Processing methods</div>
+							<div>• Your inventory analysis</div>
+							<div>• Brewing guidance</div>
+						</div>
+					</div>
+					
+					<!-- Example queries -->
+					<div class="space-y-2">
+						<p class="text-sm font-medium text-text-primary-light">Try asking:</p>
+						<div class="space-y-2 text-sm">
+							<button
+								onclick={() => (inputMessage = "I need a natural processed Ethiopian with fruity stone fruit notes")}
+								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+							>
+								"I need a natural processed Ethiopian with fruity stone fruit notes"
+							</button>
+							<button
+								onclick={() => (inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
+								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+							>
+								"What's the best way to roast a washed Costa Rican coffee?"
+							</button>
+							<button
+								onclick={() => (inputMessage = "Analyze my recent roasting sessions and suggest improvements")}
+								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+							>
+								"Analyze my recent roasting sessions and suggest improvements"
+							</button>
+						</div>
+					</div>
+				</div>
+			{:else}
+				<!-- Chat messages -->
+				<div class="mx-auto max-w-4xl space-y-4">
+					{#each messages as message}
+						<div
+							class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}"
+						>
+							<div
+								class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user'
+									? 'bg-background-tertiary-light text-white'
+									: 'bg-background-secondary-light text-text-primary-light'}"
+							>
+								<div class="whitespace-pre-wrap">{message.content}</div>
+								<div class="mt-1 text-xs opacity-70">
+									{message.timestamp.toLocaleTimeString()}
+								</div>
+							</div>
+						</div>
+					{/each}
+
+					{#if isLoading}
+						<div class="flex justify-start">
+							<div class="max-w-[80%] rounded-lg bg-background-secondary-light px-4 py-2">
+								<div class="flex items-center space-x-2">
+									<div class="h-2 w-2 animate-pulse rounded-full bg-background-tertiary-light"></div>
+									<div
+										class="h-2 w-2 animate-pulse rounded-full bg-background-tertiary-light"
+										style="animation-delay: 0.2s"
+									></div>
+									<div
+										class="h-2 w-2 animate-pulse rounded-full bg-background-tertiary-light"
+										style="animation-delay: 0.4s"
+									></div>
+									<span class="text-sm text-text-secondary-light">Thinking...</span>
+								</div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Input area -->
+		<div class="border-t border-border-light bg-background-secondary-light p-4">
+			<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
+				<div class="flex space-x-2">
+					<textarea
+						bind:value={inputMessage}
+						placeholder="Ask me about coffee recommendations, roasting advice, or anything coffee-related..."
+						class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
+						rows="1"
+						disabled={isLoading}
+						onkeydown={(e) => {
+							if (e.key === 'Enter' && !e.shiftKey) {
+								e.preventDefault();
+								sendMessage();
+							}
+						}}
+						oninput={(e) => {
+							const target = e.target as HTMLTextAreaElement;
+							target.style.height = 'auto';
+							target.style.height = target.scrollHeight + 'px';
+						}}
+					></textarea>
+					<button
+						type="submit"
+						disabled={isLoading || !inputMessage.trim()}
+						class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						{#if isLoading}
+							<div class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+						{:else}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5"
+								viewBox="0 0 20 20"
+								fill="currentColor"
+							>
+								<path
+									fill-rule="evenodd"
+									d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+						{/if}
+					</button>
+				</div>
+				<div class="mt-2 text-xs text-text-secondary-light">
+					Press Enter to send, Shift+Enter for new line
+				</div>
+			</form>
+		</div>
+	</div>
+{/if}
