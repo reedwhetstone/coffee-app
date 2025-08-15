@@ -98,10 +98,10 @@
 		<div class="bg-background-secondary-light py-16">
 			<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 				<div class="mb-12 text-center">
-					<h2 class="text-text-primary-light text-3xl font-bold sm:text-4xl">
+					<h2 class="text-3xl font-bold text-text-primary-light sm:text-4xl">
 						Explore Our Coffee Marketplace
 					</h2>
-					<p class="text-text-secondary-light mt-4 text-lg">
+					<p class="mt-4 text-lg text-text-secondary-light">
 						Browse our curated selection of premium coffee beans from around the world
 					</p>
 				</div>
@@ -124,22 +124,22 @@
 				<!-- Sign Up Prompt with API Cross-Reference -->
 				<div class="py-8 text-center">
 					<div
-						class="border-background-tertiary-light/20 bg-background-primary-light rounded-lg border p-8"
+						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-8"
 					>
-						<h3 class="text-text-primary-light mb-2 text-xl font-semibold">Want to see more?</h3>
-						<p class="text-text-secondary-light mb-4">
+						<h3 class="mb-2 text-xl font-semibold text-text-primary-light">Want to see more?</h3>
+						<p class="mb-4 text-text-secondary-light">
 							Sign up to browse our full catalog of hundreds of premium coffee beans
 						</p>
 						<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 							<button
 								onclick={() => goto('/auth')}
-								class="bg-background-tertiary-light rounded-md px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+								class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 							>
 								Sign Up Free - No Credit Card Required
 							</button>
 							<button
 								onclick={() => goto('/api')}
-								class="border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light rounded-md border px-6 py-3 transition-all duration-200 hover:text-white"
+								class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 							>
 								View API Documentation
 							</button>
