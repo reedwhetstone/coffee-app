@@ -16,7 +16,7 @@
 	}
 
 	// Chat state management
-	let messages = $state<Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }>>([]);
+	let messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }> = $state([]);
 	let inputMessage = $state('');
 	let isLoading = $state(false);
 	let chatContainer = $state<HTMLDivElement>();

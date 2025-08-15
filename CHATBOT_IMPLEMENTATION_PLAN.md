@@ -347,6 +347,45 @@ User: "What would be the best way to roast this washed Puerto Rican coffee from 
 - **Cost Optimization**: Use GPT-5-nano for routing, GPT-5 for complex synthesis
 - **API Compatibility**: Always check latest OpenAI docs for parameter changes
 
+### GPT-5 Tool Calling Audit (2025)
+
+#### Key GPT-5 Tool Calling Enhancements
+- **96.7% Success Rate**: GPT-5 achieves 96.7% on τ2-bench telecom tool calling benchmark
+- **Improved Sequential/Parallel Calling**: Better at chaining dozens of tool calls in sequence and parallel
+- **Enhanced Error Handling**: Better at dealing with tool errors and recovery
+- **Proactive Tool Usage**: Can make tool calls without explicit instruction when beneficial
+
+#### Two Tool Calling Approaches
+
+**1. Traditional JSON Function Calling (Recommended for Our Use Case)**
+- Use `tools` parameter with `"type": "function"`
+- Enable `strict: true` for 100% JSON Schema compliance
+- Supports parallel tool calling (multiple tools simultaneously)
+- Perfect for structured data operations (our coffee catalog, inventory, roast data)
+
+**2. Custom Tools (New in GPT-5)**
+- Use `"type": "custom"` for raw text payloads (Python scripts, SQL, etc.)
+- Grammar-constrained outputs via Context-Free Grammars (CFGs)
+- **Does NOT support parallel calling**
+- Better for code generation, but not needed for our structured data use case
+
+#### Implementation Recommendations for Coffee Chatbot
+- **Use Traditional JSON Function Calling** with `strict: true`
+- **Enable Parallel Tool Calling** for efficiency (e.g., get inventory + roast profiles simultaneously)
+- **Implement Comprehensive JSON Schemas** for all our 6 tools
+- **Use GPT-5-nano for routing** (cost-effective, still supports tool calling)
+- **Use GPT-5 for complex multi-tool orchestration**
+- **Implement proper error handling** for tool call failures
+- **Add progress messaging** for long-running multi-tool tasks
+
+#### Tool Calling Architecture Decision
+We'll use **Traditional JSON Function Calling** because:
+- Our tools return structured data (perfect for JSON)
+- We need parallel tool calling for efficiency
+- 100% schema compliance with `strict: true`
+- Better integration with LangChain agents
+- Proven reliability for our use case
+
 ---
 
 This implementation plan creates a production-ready, scalable chatbot that leverages modern AI capabilities while maintaining control over business logic and data access patterns. The modular approach allows for incremental development and testing while providing a clear path to a sophisticated coffee AI assistant.
