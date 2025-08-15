@@ -4,91 +4,6 @@
 	import CuppingNotesForm from './CuppingNotesForm.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 
-	// Milestone calculation functions from RoastChartInterface
-	interface MilestoneData {
-		start?: number;
-		charge?: number;
-		maillard?: number;
-		fc_start?: number;
-		fc_end?: number;
-		sc_start?: number;
-		drop?: number;
-		end?: number;
-	}
-
-	interface MilestoneCalculations {
-		totalTime: number;
-		dryingPercent: number;
-		tpTime: number;
-		maillardPercent: number;
-		fcTime: number;
-		devPercent: number;
-	}
-
-	function mysqlTimeToMs(timeStr: string): number {
-		if (!timeStr) return 0;
-		const [hours, minutes, seconds] = timeStr.split(':').map(Number);
-		return (hours * 3600 + minutes * 60 + seconds) * 1000;
-	}
-
-	function extractMilestones(logs: any[]): MilestoneData {
-		const milestones: MilestoneData = {};
-
-		for (const log of logs) {
-			const time = mysqlTimeToMs(log.time);
-
-			if (log.start) milestones.start = time;
-			if (log.charge) milestones.charge = time;
-			if (log.maillard) milestones.maillard = time;
-			if (log.fc_start) milestones.fc_start = time;
-			if (log.fc_end) milestones.fc_end = time;
-			if (log.sc_start) milestones.sc_start = time;
-			if (log.drop) milestones.drop = time;
-			if (log.end) milestones.end = time;
-		}
-
-		return milestones;
-	}
-
-	function calculateMilestones(milestones: MilestoneData): MilestoneCalculations {
-		// Use charge time if available, otherwise fall back to start time
-		const start = milestones.charge || milestones.start || 0;
-		const drop = milestones.drop || milestones.end || 0;
-
-		const totalTime = drop - start;
-		const tpTime = milestones.maillard || 0;
-		const fcTime = milestones.fc_start || 0;
-
-		let dryingPercent = 0;
-		let maillardPercent = 0;
-		let devPercent = 0;
-
-		if (totalTime > 0) {
-			// DRYING % = time from start/charge to turning point (maillard)
-			if (tpTime > start) {
-				dryingPercent = ((tpTime - start) / totalTime) * 100;
-			}
-
-			// MAILLARD % = time from turning point to first crack
-			if (fcTime > tpTime && tpTime > 0) {
-				maillardPercent = ((fcTime - tpTime) / totalTime) * 100;
-			}
-
-			// DEV % = time from first crack to drop/end
-			if (fcTime > 0 && drop > fcTime) {
-				devPercent = ((drop - fcTime) / totalTime) * 100;
-			}
-		}
-
-		return {
-			totalTime,
-			dryingPercent,
-			tpTime: tpTime - start,
-			maillardPercent,
-			fcTime: fcTime - start,
-			devPercent
-		};
-	}
 
 	let { selectedBean, role, onUpdate, onDelete } = $props<{
 		selectedBean: any;
@@ -104,8 +19,6 @@
 	let lastSelectedBeanId = $state<number | null>(null);
 	let showCuppingForm = $state(false);
 
-	// State for roast profile calculations
-	let roastProfileCalculations = $state<Record<number, MilestoneCalculations>>({});
 
 	// Parse AI tasting notes
 	let aiTastingNotes = $derived((): TastingNotes | null => {
@@ -207,12 +120,6 @@
 		}
 	});
 
-	// Load roast calculations when switching to roasting tab
-	$effect(() => {
-		if (currentTab === 'roasting' && selectedBean.roast_profiles?.length > 0) {
-			loadRoastCalculations();
-		}
-	});
 
 	async function saveChanges() {
 		if (processingUpdate) return;
@@ -324,52 +231,6 @@
 		return '#ef4444'; // red-500
 	}
 
-	// Function to fetch profile logs and calculate dev percentage for a roast
-	async function calculateRoastMetrics(roastId: number) {
-		try {
-			const response = await fetch(`/api/profile-log?roast_id=${roastId}`);
-			if (!response.ok) {
-				console.warn(`Failed to load profile logs for roast ${roastId}:`, response.statusText);
-				return null;
-			}
-
-			const result = await response.json();
-			const logs = result.data || [];
-
-			if (logs.length === 0) {
-				return null;
-			}
-
-			const milestones = extractMilestones(logs);
-			const calculations = calculateMilestones(milestones);
-
-			return calculations;
-		} catch (error) {
-			console.error(`Error calculating metrics for roast ${roastId}:`, error);
-			return null;
-		}
-	}
-
-	// Load roast profile calculations when roasting tab is viewed
-	async function loadRoastCalculations() {
-		if (!selectedBean.roast_profiles || selectedBean.roast_profiles.length === 0) {
-			return;
-		}
-
-		const calculations: Record<number, MilestoneCalculations> = {};
-
-		// Process each roast profile
-		for (const profile of selectedBean.roast_profiles) {
-			if (profile.roast_id) {
-				const calc = await calculateRoastMetrics(profile.roast_id);
-				if (calc) {
-					calculations[profile.roast_id] = calc;
-				}
-			}
-		}
-
-		roastProfileCalculations = calculations;
-	}
 </script>
 
 <div
@@ -800,9 +661,6 @@
 				{#if selectedBean.roast_profiles && selectedBean.roast_profiles.length > 0}
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 						{#each selectedBean.roast_profiles as profile, index}
-							{@const calculations = profile.roast_id
-								? roastProfileCalculations[profile.roast_id]
-								: null}
 							<button
 								class="w-full cursor-pointer rounded-lg bg-background-primary-light p-4 text-left ring-1 ring-border-light transition-all duration-200 hover:bg-background-secondary-light hover:ring-2 hover:ring-background-tertiary-light"
 								onclick={() => {
@@ -828,31 +686,10 @@
 									</div>
 								</div>
 								<div class="mb-2 text-sm text-text-secondary-light">
-									Loss: {profile.oz_in && profile.oz_out
+									Loss: {profile.oz_in && profile.oz_out && profile.oz_in > 0 && profile.oz_out > 0
 										? (((profile.oz_in - profile.oz_out) / profile.oz_in) * 100).toFixed(1)
-										: 0}%
+										: 'N/A'}%
 								</div>
-								{#if calculations?.devPercent}
-									<div class="flex items-center justify-between">
-										<span class="text-xs text-text-secondary-light">DEV %:</span>
-										<span class="text-sm font-medium text-background-tertiary-light">
-											{calculations.devPercent.toFixed(1)}%
-										</span>
-									</div>
-								{/if}
-								{#if calculations?.totalTime}
-									<div class="mt-1 flex items-center justify-between">
-										<span class="text-xs text-text-secondary-light">Total Time:</span>
-										<span class="text-sm font-medium text-text-primary-light">
-											{(() => {
-												const totalSeconds = Math.floor(calculations.totalTime / 1000);
-												const minutes = Math.floor(totalSeconds / 60);
-												const seconds = totalSeconds % 60;
-												return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-											})()}
-										</span>
-									</div>
-								{/if}
 								{#if profile.roast_date}
 									<div class="mt-1 text-xs text-text-secondary-light">
 										{new Date(profile.roast_date).toLocaleDateString()}
@@ -871,7 +708,18 @@
 						(sum: number, p: any) => sum + (p.oz_out || 0),
 						0
 					)}
-					{@const avgLoss = totalOzIn > 0 ? ((totalOzIn - totalOzOut) / totalOzIn) * 100 : 0}
+					{@const validRoastsForLoss = selectedBean.roast_profiles.filter(
+						(p: any) => p.oz_in && p.oz_out && p.oz_in > 0 && p.oz_out > 0
+					)}
+					{@const validTotalOzIn = validRoastsForLoss.reduce(
+						(sum: number, p: any) => sum + p.oz_in,
+						0
+					)}
+					{@const validTotalOzOut = validRoastsForLoss.reduce(
+						(sum: number, p: any) => sum + p.oz_out,
+						0
+					)}
+					{@const avgLoss = validTotalOzIn > 0 ? ((validTotalOzIn - validTotalOzOut) / validTotalOzIn) * 100 : 0}
 
 					<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
@@ -884,7 +732,14 @@
 						</div>
 						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 							<h4 class="text-sm font-medium text-text-primary-light">Avg Loss Rate</h4>
-							<p class="text-2xl font-bold text-orange-500">{avgLoss.toFixed(1)}%</p>
+							<p class="text-2xl font-bold text-orange-500">
+								{validRoastsForLoss.length > 0 ? avgLoss.toFixed(1) : 'N/A'}%
+							</p>
+							<p class="text-xs text-text-secondary-light">
+								{validRoastsForLoss.length > 0 
+									? `${validTotalOzIn.toFixed(1)} oz in - ${validTotalOzOut.toFixed(1)} oz out (${validRoastsForLoss.length} valid roasts)`
+									: 'No valid data for loss calculation'}
+							</p>
 						</div>
 					</div>
 				{:else}

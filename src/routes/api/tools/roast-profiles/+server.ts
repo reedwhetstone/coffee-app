@@ -7,7 +7,8 @@ interface RoastProfilesToolInput {
 	roast_id?: string;
 	roast_name?: string;
 	batch_name?: string;
-	coffee_id?: number;
+	coffee_id?: number; // green_coffee_inv.id
+	catalog_id?: number; // coffee_catalog.id - will be converted to coffee_id
 	limit?: number;
 	include_calculations?: boolean;
 }
@@ -39,9 +40,27 @@ export const POST: RequestHandler = async (event) => {
 			roast_name,
 			batch_name,
 			coffee_id,
+			catalog_id,
 			limit = 20,
 			include_calculations = true
 		} = input;
+
+		// If catalog_id is provided instead of coffee_id, convert it
+		let finalCoffeeId = coffee_id;
+		if (catalog_id && !coffee_id) {
+			// Find green_coffee_inv.id(s) that match this catalog_id for this user
+			const { data: inventoryItems } = await supabase
+				.from('green_coffee_inv')
+				.select('id')
+				.eq('catalog_id', catalog_id)
+				.eq('user', user.id);
+			
+			if (inventoryItems && inventoryItems.length > 0) {
+				// For now, use the first matching inventory item
+				// In the future, we might want to return roasts for all matching inventory items
+				finalCoffeeId = inventoryItems[0].id;
+			}
+		}
 
 		// Build base query for roast profiles
 		let query = supabase
@@ -76,8 +95,8 @@ export const POST: RequestHandler = async (event) => {
 			query = query.ilike('batch_name', `%${batch_name}%`);
 		}
 
-		if (coffee_id) {
-			query = query.eq('coffee_id', coffee_id);
+		if (finalCoffeeId) {
+			query = query.eq('coffee_id', finalCoffeeId);
 		}
 
 		// Order by most recent first and apply limit
@@ -149,7 +168,8 @@ export const POST: RequestHandler = async (event) => {
 				roast_id,
 				roast_name,
 				batch_name,
-				coffee_id,
+				coffee_id: finalCoffeeId,
+				catalog_id,
 				limit,
 				include_calculations
 			}

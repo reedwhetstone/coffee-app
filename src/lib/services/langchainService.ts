@@ -130,7 +130,8 @@ export class LangChainService {
 					roast_id: z.string().optional().describe('Specific roast ID'),
 					roast_name: z.string().optional().describe('Search by roast name'),
 					batch_name: z.string().optional().describe('Search by batch name'),
-					coffee_id: z.number().optional().describe('Filter by coffee ID'),
+					coffee_id: z.number().optional().describe('Filter by green coffee inventory ID'),
+					catalog_id: z.number().optional().describe('Filter by catalog ID (use this when you have an ID from coffee_catalog_search)'),
 					limit: z.number().optional().describe('Number of results'),
 					include_calculations: z.boolean().optional().describe('Include summary calculations')
 				}),
