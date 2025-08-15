@@ -25,7 +25,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		}
 
 		const parsedId = parseInt(roastId, 10);
-		let deletedCounts = {
+		const deletedCounts = {
 			artisan_import_log: 0,
 			roast_events: 0,
 			roast_temperatures: 0

@@ -132,7 +132,7 @@ export const POST: RequestHandler = async (event) => {
 		const systemPrompt =
 			queryType === 'analysis' ? getAnalysisSystemPrompt() : getRecommendationSystemPrompt();
 
-		let chatSession = model.startChat({
+		const chatSession = model.startChat({
 			history: [
 				{
 					role: 'user',

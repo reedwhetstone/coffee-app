@@ -97,7 +97,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		if (error) throw error;
 
 		// Return data directly - roast profiles are now included via native join
-		let enrichedData = rows || [];
+		const enrichedData = rows || [];
 
 		return json({
 			data: enrichedData,
