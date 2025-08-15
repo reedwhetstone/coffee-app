@@ -84,7 +84,7 @@ export const POST: RequestHandler = async (event) => {
 		if (flavor_keywords.length > 0) {
 			const flavorConditions = flavor_keywords
 				.map((keyword) => {
-					return `ai_description.ilike.%${keyword}%,cupping_notes.ilike.%${keyword}%,farm_notes.ilike.%${keyword}%`;
+					return `ai_description.ilike.%${keyword}%,cupping_notes.ilike.%${keyword}%,farm_notes.ilike.%${keyword}%,ai_tasting_notes.ilike.%${keyword}%`;
 				})
 				.join(',');
 			query = query.or(flavorConditions);

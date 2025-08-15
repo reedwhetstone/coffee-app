@@ -6,6 +6,7 @@ import { DynamicStructuredTool } from '@langchain/core/tools';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { BaseMessage } from '@langchain/core/messages';
 import { z } from 'zod';
+import { createChatLogger, type ChatLogger } from './chatLogger.js';
 
 export interface ChatMessage {
 	role: 'user' | 'assistant';
@@ -32,6 +33,7 @@ export class LangChainService {
 	private tools: DynamicStructuredTool[];
 	private baseUrl: string;
 	private authHeaders: Record<string, string>;
+	private logger: ChatLogger;
 
 	constructor(
 		openaiApiKey: string,
@@ -43,6 +45,7 @@ export class LangChainService {
 		this.supabase = supabase;
 		this.baseUrl = baseUrl;
 		this.authHeaders = authHeaders;
+		this.logger = createChatLogger();
 
 		// Initialize the chat model with GPT-5 for complex tool orchestration
 		this.model = new ChatOpenAI({
@@ -89,7 +92,12 @@ export class LangChainService {
 					limit: z.number().optional().describe('Number of results to return'),
 					stocked_only: z.boolean().optional().describe('Only show currently stocked coffees')
 				}),
-				func: async (input) => this.callTool('/api/tools/coffee-catalog', input)
+				func: async (input) => {
+					this.logger.logToolCall('coffee_catalog_search', input);
+					const result = await this.callTool('/api/tools/coffee-catalog', input);
+					this.logger.logToolResponse('coffee_catalog_search', result, true);
+					return result;
+				}
 			}),
 
 			// User's Green Coffee Inventory Tool
@@ -106,7 +114,12 @@ export class LangChainService {
 					include_roast_summary: z.boolean().optional().describe('Include roasting statistics'),
 					limit: z.number().optional().describe('Number of results to return')
 				}),
-				func: async (input) => this.callTool('/api/tools/green-coffee-inv', input)
+				func: async (input) => {
+					this.logger.logToolCall('green_coffee_inventory', input);
+					const result = await this.callTool('/api/tools/green-coffee-inv', input);
+					this.logger.logToolResponse('green_coffee_inventory', result, true);
+					return result;
+				}
 			}),
 
 			// Roast Profiles Tool
@@ -121,7 +134,12 @@ export class LangChainService {
 					limit: z.number().optional().describe('Number of results'),
 					include_calculations: z.boolean().optional().describe('Include summary calculations')
 				}),
-				func: async (input) => this.callTool('/api/tools/roast-profiles', input)
+				func: async (input) => {
+					this.logger.logToolCall('roast_profiles', input);
+					const result = await this.callTool('/api/tools/roast-profiles', input);
+					this.logger.logToolResponse('roast_profiles', result, true);
+					return result;
+				}
 			}),
 
 			// Roast Chart Data Tool
@@ -134,7 +152,12 @@ export class LangChainService {
 					include_events: z.boolean().optional().describe('Include roast events'),
 					include_temperature_data: z.boolean().optional().describe('Include temperature data')
 				}),
-				func: async (input) => this.callTool('/api/tools/roast-chart', input)
+				func: async (input) => {
+					this.logger.logToolCall('roast_chart_data', input);
+					const result = await this.callTool('/api/tools/roast-chart', input);
+					this.logger.logToolResponse('roast_chart_data', result, true);
+					return result;
+				}
 			}),
 
 			// Bean Tasting Notes Tool
@@ -146,7 +169,12 @@ export class LangChainService {
 					filter: z.enum(['user', 'supplier', 'both']).describe('Which tasting notes to include'),
 					include_radar_data: z.boolean().optional().describe('Include radar chart data')
 				}),
-				func: async (input) => this.callTool('/api/tools/bean-tasting', input)
+				func: async (input) => {
+					this.logger.logToolCall('bean_tasting_notes', input);
+					const result = await this.callTool('/api/tools/bean-tasting', input);
+					this.logger.logToolResponse('bean_tasting_notes', result, true);
+					return result;
+				}
 			}),
 
 			// Coffee Knowledge Base Tool
@@ -166,7 +194,12 @@ export class LangChainService {
 						.describe('Maximum number of knowledge chunks to return'),
 					similarity_threshold: z.number().optional().describe('Similarity threshold for matching')
 				}),
-				func: async (input) => this.callTool('/api/tools/coffee-chunks', input)
+				func: async (input) => {
+					this.logger.logToolCall('coffee_knowledge', input);
+					const result = await this.callTool('/api/tools/coffee-chunks', input);
+					this.logger.logToolResponse('coffee_knowledge', result, true);
+					return result;
+				}
 			})
 		];
 	}
@@ -196,10 +229,9 @@ export class LangChainService {
 			const result = await response.json();
 			return JSON.stringify(result, null, 2);
 		} catch (error) {
-			console.error(`Tool call error for ${endpoint}:`, error);
-			return JSON.stringify({
-				error: `Failed to call ${endpoint}: ${error instanceof Error ? error.message : 'Unknown error'}`
-			});
+			const errorMessage = `Failed to call ${endpoint}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+			this.logger.logError(error instanceof Error ? error : errorMessage, `Tool call to ${endpoint}`);
+			return JSON.stringify({ error: errorMessage });
 		}
 	}
 
@@ -243,12 +275,12 @@ export class LangChainService {
 			prompt: prompt
 		});
 
-		// Create agent executor
+		// Create agent executor with clean logging
 		this.agent = new AgentExecutor({
 			agent: agent,
 			tools: this.tools,
 			memory: this.memory,
-			verbose: true,
+			verbose: false, // Disable verbose LangChain logging
 			maxIterations: 5,
 			returnIntermediateSteps: true
 		});
@@ -263,10 +295,19 @@ export class LangChainService {
 		userId?: string
 	): Promise<ChatResponse> {
 		try {
+			// Log user prompt
+			this.logger.logUserPrompt(message, conversationHistory);
+
 			// Initialize agent if not already done
 			if (!this.agent) {
 				await this.initializeAgent();
 			}
+
+			// Log LLM processing start
+			this.logger.logLLMThinking('Starting message processing with GPT-5', {
+				model: 'gpt-5-2025-08-07',
+				max_iterations: 5
+			});
 
 			// Execute the agent with tool calling
 			const result = await this.agent!.invoke({
@@ -282,16 +323,28 @@ export class LangChainService {
 					output: step.observation || null
 				})) || [];
 
+			const finalResponse = result.output ||
+				result.text ||
+				'I apologize, but I encountered an issue processing your request.';
+
+			// Log final response
+			this.logger.logFinalResponse(finalResponse, toolCalls, {
+				user_id: userId,
+				iterations: result.intermediateSteps?.length || 0
+			});
+
+			// Log conversation summary if this seems like a completion
+			if (toolCalls.length > 0) {
+				this.logger.logConversationSummary();
+			}
+
 			return {
-				response:
-					result.output ||
-					result.text ||
-					'I apologize, but I encountered an issue processing your request.',
+				response: finalResponse,
 				tool_calls: toolCalls,
 				conversation_id: userId ? `${userId}_${Date.now()}` : undefined
 			};
 		} catch (error) {
-			console.error('LangChain service error:', error);
+			this.logger.logError(error instanceof Error ? error : String(error), 'Message processing');
 			throw new Error(
 				`Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`
 			);
