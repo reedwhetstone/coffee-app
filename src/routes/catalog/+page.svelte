@@ -1,20 +1,20 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { onMount, tick } from 'svelte';
+	import { onMount } from 'svelte';
 	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';
 
 	// Import components
-	import LazyLoad from '$lib/components/LazyLoad.svelte';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
+	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 
 	let { data } = $props<{ data: PageData }>();
 
 	// Destructure with default values to prevent undefined errors
-	let { supabase, session, role = 'viewer' } = $derived(data);
+	let { session, role = 'viewer' } = $derived(data);
 
 	// Import global UserRole type
 	import type { UserRole } from '$lib/types/auth.types';
@@ -217,46 +217,6 @@
 	}
 
 	/**
-	 * Helper functions for coffee score visualization
-	 * These functions handle the visual representation of coffee quality scores
-	 */
-
-	/**
-	 * Calculates percentage for score visualization
-	 * @param score - Coffee quality score
-	 * @param min - Minimum score value
-	 * @param max - Maximum score value
-	 * @returns Percentage value for visual representation
-	 */
-	function getScorePercentage(score: number, min = 80, max = 100) {
-		return Math.min(100, Math.max(0, ((score - min) / (max - min)) * 100));
-	}
-
-	/**
-	 * Returns appropriate color for score arc based on quality
-	 * @param score - Coffee quality score
-	 * @returns Hex color code
-	 */
-	function getStrokeColor(score: number) {
-		if (score >= 90) return '#16a34a'; // green-600
-		if (score >= 85) return '#65a30d'; // lime-600
-		if (score >= 80) return '#ca8a04'; // yellow-600
-		return '#dc2626'; // red-600
-	}
-
-	/**
-	 * Returns appropriate CSS class for score text color
-	 * @param score - Coffee quality score
-	 * @returns Tailwind CSS class name
-	 */
-	function getScoreColorClass(score: number) {
-		if (score >= 90) return 'text-green-600';
-		if (score >= 85) return 'text-lime-600';
-		if (score >= 80) return 'text-yellow-600';
-		return 'text-red-600';
-	}
-
-	/**
 	 * Parses AI tasting notes JSON data safely
 	 * @param tastingNotesJson - JSON string from database
 	 * @returns Parsed tasting notes or null if invalid
@@ -297,26 +257,26 @@
 	<!-- Upgrade Banner for Viewers -->
 	{#if session && !hasRequiredRole('member')}
 		<div
-			class="rounded-lg border border-background-tertiary-light/20 bg-gradient-to-r from-background-tertiary-light/10 to-harvest-gold/10 p-6"
+			class="border-background-tertiary-light/20 from-background-tertiary-light/10 to-harvest-gold/10 rounded-lg border bg-gradient-to-r p-6"
 		>
 			<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
 				<div class="text-center sm:text-left">
-					<h3 class="text-lg font-semibold text-text-primary-light">🚀 Unlock Premium Features</h3>
-					<p class="text-sm text-text-secondary-light">
+					<h3 class="text-text-primary-light text-lg font-semibold">🚀 Unlock Premium Features</h3>
+					<p class="text-text-secondary-light text-sm">
 						Get AI recommendations, roast tracking, profit analytics, and more for just $5/month
 					</p>
 				</div>
 				<div class="flex flex-col gap-3 sm:flex-row">
 					<button
 						onclick={() => goto('/subscription')}
-						class="rounded-md bg-background-tertiary-light px-6 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+						class="bg-background-tertiary-light rounded-md px-6 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 					>
 						Start Free Trial
 					</button>
 					<button
 						onclick={() =>
 							document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-						class="rounded-md border border-background-tertiary-light px-6 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						class="border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light rounded-md border px-6 py-2 transition-all duration-200 hover:text-white"
 					>
 						Learn More
 					</button>
@@ -328,7 +288,7 @@
 	<div class="space-y-4">
 		{#if hasRequiredRole('member')}
 			<!-- Integrated chat interface -->
-			<div class="rounded-2xl bg-background-tertiary-light shadow-md">
+			<div class="bg-background-tertiary-light rounded-2xl shadow-md">
 				<form
 					onsubmit={(e) => {
 						e.preventDefault();
@@ -337,14 +297,14 @@
 					class="space-y-4"
 				>
 					<!-- Query/Input area with wrapping textarea -->
-					<div class="relative rounded-2xl bg-background-secondary-light p-4 shadow-md">
+					<div class="bg-background-secondary-light relative rounded-2xl p-4 shadow-md">
 						<span class="text-primary-light text-sm">Query:</span>
 						<div>
 							<div class="flex items-center gap-2">
 								<textarea
 									bind:value={searchQuery}
 									placeholder={'Ask for coffee recommendations or request data analysis (e.g., "analyze price trends over time")'}
-									class="text-primary-light flex-1 resize-none border-none bg-transparent font-medium placeholder-text-secondary-light focus:border-none focus:outline-none focus:ring-0"
+									class="text-primary-light placeholder-text-secondary-light flex-1 resize-none border-none bg-transparent font-medium focus:border-none focus:outline-none focus:ring-0"
 									disabled={isLoading}
 									onfocus={(e) => (e.target as HTMLTextAreaElement).select()}
 									oninput={(e) => {
@@ -356,12 +316,12 @@
 								></textarea>
 								<button
 									type="submit"
-									class="flex h-8 w-8 items-center justify-center rounded-full border-none bg-background-tertiary-light text-text-primary-light hover:opacity-80 disabled:opacity-50"
+									class="bg-background-tertiary-light text-text-primary-light flex h-8 w-8 items-center justify-center rounded-full border-none hover:opacity-80 disabled:opacity-50"
 									disabled={isLoading || !searchQuery.trim()}
 								>
 									{#if isLoading}
 										<div
-											class="h-4 w-4 animate-spin rounded-full border-2 border-text-primary-light border-t-transparent"
+											class="border-text-primary-light h-4 w-4 animate-spin rounded-full border-2 border-t-transparent"
 										></div>
 									{:else}
 										<svg
@@ -396,38 +356,37 @@
 						<div class="px-4 pb-4">
 							<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 								{#each recommendedCoffees as coffee}
-									{@const tastingNotes = parseTastingNotes(coffee.ai_tasting_notes)}
 									<a
 										href={coffee.link}
 										target="_blank"
-										class="group block rounded-lg bg-background-primary-light p-4 shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light focus:outline-none"
+										class="bg-background-primary-light ring-border-light hover:ring-background-tertiary-light group block rounded-lg p-4 shadow-sm ring-1 transition-all hover:scale-[1.02] focus:outline-none"
 									>
 										<div class="flex items-start justify-between">
 											<div class="flex-1">
 												<h4
-													class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
+													class="text-text-primary-light group-hover:text-background-tertiary-light font-semibold"
 												>
 													{coffee.name}
 												</h4>
-												<p class="mt-1 text-sm font-medium text-background-tertiary-light">
+												<p class="text-background-tertiary-light mt-1 text-sm font-medium">
 													{coffee.source}
 												</p>
 												{#if coffee.ai_description}
-													<p class="mt-2 text-xs text-text-secondary-light">
+													<p class="text-text-secondary-light mt-2 text-xs">
 														{coffee.ai_description}
 													</p>
 												{/if}
-												<p class="mt-2 text-xs italic text-text-secondary-light">
+												<p class="text-text-secondary-light mt-2 text-xs italic">
 													{coffee.reason}
 												</p>
 											</div>
 											<div class="flex flex-col items-end space-y-2">
 												<div class="text-right">
-													<div class="font-bold text-background-tertiary-light">
+													<div class="text-background-tertiary-light font-bold">
 														${coffee.cost_lb}/lb
 													</div>
 													{#if coffee.score_value}
-														<div class="mt-1 text-xs text-text-secondary-light">
+														<div class="text-text-secondary-light mt-1 text-xs">
 															Score: {Math.round(coffee.score_value)}
 														</div>
 													{/if}
@@ -443,7 +402,7 @@
 										</div>
 										<div class="mt-3 flex items-center justify-end">
 											<svg
-												class="h-4 w-4 text-text-secondary-light transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
+												class="text-text-secondary-light group-hover:text-background-tertiary-light h-4 w-4 transition-transform group-hover:translate-x-1"
 												fill="none"
 												stroke="currentColor"
 												viewBox="0 0 24 24"
@@ -468,158 +427,19 @@
 		<!-- Coffee Cards -->
 		<div class="flex-1">
 			{#if !$filteredData || $filteredData.length === 0}
-				<p class="p-4 text-text-primary-light">
+				<p class="text-text-primary-light p-4">
 					No coffee data available ({data?.data?.length || 0} items in raw data)
 				</p>
 			{:else}
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 					{#each paginatedData as coffee}
-						{@const tastingNotes = parseTastingNotes(coffee.ai_tasting_notes)}
-						{#if coffee.ai_tasting_notes && !tastingNotes}
-							{console.log(
-								'Debug - Raw ai_tasting_notes:',
-								coffee.ai_tasting_notes,
-								'Type:',
-								typeof coffee.ai_tasting_notes
-							)}
-						{/if}
-						<button
-							type="button"
-							class="group rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
-							onclick={() => {
-								if (coffee.link) window.open(coffee.link, '_blank');
-							}}
-							onkeydown={(e) => {
-								if (e.key === 'Enter' && coffee.link) window.open(coffee.link, '_blank');
-							}}
-						>
-							<!-- Mobile-optimized layout -->
-							<div
-								class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0"
-							>
-								<!-- Content section -->
-								<div class="flex-1">
-									<h3
-										class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
-									>
-										{coffee.name}
-									</h3>
-									<div class="mt-1 flex items-center justify-between">
-										<p class="text-sm font-medium text-background-tertiary-light">
-											{coffee.source}
-										</p>
-										<!-- Mobile: Price and score next to supplier name -->
-										<div class="text-right sm:hidden">
-											<div class="font-bold text-background-tertiary-light">
-												${coffee.cost_lb}/lb
-											</div>
-											<!-- {#if coffee.score_value}
-												<div class="text-xs text-text-secondary-light">
-													Score: {Math.round(coffee.score_value)}
-												</div>
-											{/if} -->
-										</div>
-									</div>
-									{#if coffee.ai_description}
-										<p class="my-4 text-xs text-text-secondary-light">
-											{coffee.ai_description}
-										</p>
-									{/if}
-
-									<!-- Mobile: Chart full width -->
-									{#if tastingNotes}
-										<div class="mt-2 px-6 sm:hidden">
-											<TastingNotesRadar {tastingNotes} size={300} responsive={true} lazy={true} />
-										</div>
-									{/if}
-
-									<div class="mt-3 flex-col gap-2 text-xs text-text-secondary-light sm:grid-cols-2">
-										<div>
-											<span class="font-medium">Location:</span>
-											{[coffee.continent, coffee.country, coffee.region]
-												.filter(Boolean)
-												.join(' > ') || '-'}
-										</div>
-										<div>
-											{#if coffee.processing}
-												<span>Processing: {coffee.processing}</span>
-											{/if}
-										</div>
-										<div>
-											{#if coffee.cultivar_detail}
-												<span>Cultivar: {coffee.cultivar_detail}</span>
-											{/if}
-										</div>
-										<div>
-											{#if coffee.grade}
-												<span>Elevation: {coffee.grade}</span>
-											{/if}
-										</div>
-										<div>
-											{#if coffee.appearance}
-												<span>Appearance: {coffee.appearance}</span>
-											{/if}
-										</div>
-										<div>
-											{#if coffee.type}
-												<span>Importer: {coffee.type}</span>
-											{/if}
-										</div>
-										<div>
-											{#if coffee.arrival_date}
-												<span>Arrival: {coffee.arrival_date}</span>
-											{/if}
-										</div>
-										<div>
-											{#if coffee.stocked_date}
-												<span>Stocked: {coffee.stocked_date}</span>
-											{/if}
-										</div>
-									</div>
-								</div>
-
-								<!-- Desktop: Price, score, and chart in sidebar -->
-								<div class="hidden flex-col items-end space-y-2 sm:flex">
-									<div class="text-right">
-										<div class="font-bold text-background-tertiary-light">
-											${coffee.cost_lb}/lb
-										</div>
-										<!-- {#if coffee.score_value}
-											<div class="mt-1 text-xs text-text-secondary-light">
-												Score: {Math.round(coffee.score_value)}
-											</div>
-										{/if} -->
-									</div>
-									{#if tastingNotes}
-										<div class="pt-4">
-											<TastingNotesRadar {tastingNotes} size={180} lazy={true} />
-										</div>
-									{/if}
-								</div>
-							</div>
-
-							<div class="mt-3 flex items-center justify-end">
-								<svg
-									class="h-4 w-4 text-text-secondary-light transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-									/>
-								</svg>
-							</div>
-						</button>
+						<CoffeeCard {coffee} {parseTastingNotes} />
 					{/each}
 
 					{#if isLoadingMore}
 						<div class="flex justify-center p-4">
 							<div
-								class="h-8 w-8 animate-spin rounded-full border-4 border-background-primary-dark border-t-background-tertiary-light"
+								class="border-background-primary-dark border-t-background-tertiary-light h-8 w-8 animate-spin rounded-full border-4"
 							></div>
 						</div>
 					{/if}
