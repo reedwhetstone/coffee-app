@@ -100,6 +100,18 @@
 				<p class="text-xs text-text-secondary-light">© 2025 Purveyors. All rights reserved.</p>
 				<div class="mt-4 flex space-x-6 sm:mt-0">
 					<a
+						href="/privacy"
+						class="text-xs text-text-secondary-light hover:text-text-primary-light"
+					>
+						Privacy Policy
+					</a>
+					<a
+						href="/terms"
+						class="text-xs text-text-secondary-light hover:text-text-primary-light"
+					>
+						Terms of Service
+					</a>
+					<a
 						href="/contact"
 						class="text-xs text-text-secondary-light hover:text-text-primary-light"
 					>
