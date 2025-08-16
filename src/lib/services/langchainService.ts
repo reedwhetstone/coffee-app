@@ -148,28 +148,11 @@ export class LangChainService {
 				}
 			}),
 
-			// Roast Chart Data Tool
-			new DynamicStructuredTool({
-				name: 'roast_chart_data',
-				description:
-					'Get detailed roast chart data including temperature curves and events for a specific roast',
-				schema: z.object({
-					roast_id: z.string().describe('Required roast ID'),
-					include_events: z.boolean().optional().describe('Include roast events'),
-					include_temperature_data: z.boolean().optional().describe('Include temperature data')
-				}),
-				func: async (input) => {
-					this.logger.logToolCall('roast_chart_data', input);
-					const result = await this.callTool('/api/tools/roast-chart', input);
-					this.logger.logToolResponse('roast_chart_data', result, true);
-					return result;
-				}
-			}),
-
 			// Bean Tasting Notes Tool
 			new DynamicStructuredTool({
 				name: 'bean_tasting_notes',
-				description: 'Get tasting notes and radar chart data for a specific coffee bean',
+				description:
+					'Get tasting notes and radar chart data for a specific coffee bean; user data, supplier data, or both',
 				schema: z.object({
 					bean_id: z.number().describe('Required coffee bean ID'),
 					filter: z.enum(['user', 'supplier', 'both']).describe('Which tasting notes to include'),
@@ -181,32 +164,32 @@ export class LangChainService {
 					this.logger.logToolResponse('bean_tasting_notes', result, true);
 					return result;
 				}
-			}),
-
-			// Coffee Knowledge Base Tool
-			new DynamicStructuredTool({
-				name: 'coffee_knowledge',
-				description:
-					'Search the coffee knowledge base for educational content about roasting, brewing, and coffee science',
-				schema: z.object({
-					context_string: z.string().describe('Required search query for knowledge retrieval'),
-					chunk_types: z
-						.array(z.enum(['profile', 'tasting', 'origin', 'commercial', 'processing']))
-						.optional()
-						.describe('Types of knowledge chunks to search'),
-					max_chunks: z
-						.number()
-						.optional()
-						.describe('Maximum number of knowledge chunks to return'),
-					similarity_threshold: z.number().optional().describe('Similarity threshold for matching')
-				}),
-				func: async (input) => {
-					this.logger.logToolCall('coffee_knowledge', input);
-					const result = await this.callTool('/api/tools/coffee-chunks', input);
-					this.logger.logToolResponse('coffee_knowledge', result, true);
-					return result;
-				}
 			})
+
+			// // Coffee Knowledge Base Tool - commenting this out until the vector db actually has good data.. right now it's not good.
+			// new DynamicStructuredTool({
+			// 	name: 'coffee_knowledge',
+			// 	description:
+			// 		'Search the coffee knowledge base for educational content about roasting, brewing, and coffee science',
+			// 	schema: z.object({
+			// 		context_string: z.string().describe('Required search query for knowledge retrieval'),
+			// 		chunk_types: z
+			// 			.array(z.enum(['profile', 'tasting', 'origin', 'commercial', 'processing']))
+			// 			.optional()
+			// 			.describe('Types of knowledge chunks to search'),
+			// 		max_chunks: z
+			// 			.number()
+			// 			.optional()
+			// 			.describe('Maximum number of knowledge chunks to return'),
+			// 		similarity_threshold: z.number().optional().describe('Similarity threshold for matching')
+			// 	}),
+			// 	func: async (input) => {
+			// 		this.logger.logToolCall('coffee_knowledge', input);
+			// 		const result = await this.callTool('/api/tools/coffee-chunks', input);
+			// 		this.logger.logToolResponse('coffee_knowledge', result, true);
+			// 		return result;
+			// 	}
+			// })
 		];
 	}
 
@@ -256,18 +239,16 @@ export class LangChainService {
 				informed decisions about coffee selection, roasting, and brewing.
 
 				You have access to several tools to help users:
-				1. coffee_catalog_search - Find and recommend coffee beans
+				1. coffee_catalog_search - Find and recommend coffee beans or analyze historical green coffee data
 				2. green_coffee_inventory - View user's personal coffee inventory  
 				3. roast_profiles - Analyze user's roasting history and profiles
-				4. roast_chart_data - Get detailed roast curves and data
-				5. bean_tasting_notes - Get tasting notes and flavor profiles
-				6. coffee_knowledge - Search educational content about coffee
-
+				4. bean_tasting_notes - Get tasting notes and flavor profiles
+				
 				Guidelines:
 				- Use tools proactively to provide helpful, data-driven responses
 				- When users ask for coffee recommendations, use coffee_catalog_search
-				- When discussing their inventory or beans, use green_coffee_inventory
-				- For roasting advice, combine roast_profiles with coffee_knowledge
+				- When discussing user inventory or beans, use green_coffee_inventory
+				- For roasting advice, use roast_profiles
 				- Always provide practical, actionable advice
 				- Be conversational and enthusiastic about coffee
 				- If a tool call fails, acknowledge it and provide general guidance`
@@ -430,7 +411,11 @@ export class LangChainService {
 						input: event.data?.input || {},
 						output: event.data?.output || null
 					});
-				} else if (event.event === 'on_chain_start' && event.name === 'AgentExecutor' && !executorStarted) {
+				} else if (
+					event.event === 'on_chain_start' &&
+					event.name === 'AgentExecutor' &&
+					!executorStarted
+				) {
 					emitThinkingStep('Executing reasoning process...');
 					executorStarted = true;
 				} else if (event.event === 'on_llm_start') {
@@ -489,9 +474,6 @@ export class LangChainService {
 				case 'roast_profiles':
 					onThinkingStep?.('Reviewing your roasting history...');
 					break;
-				case 'roast_chart_data':
-					onThinkingStep?.('Analyzing roast curve data...');
-					break;
 				case 'bean_tasting_notes':
 					onThinkingStep?.('Checking flavor profiles...');
 					break;
@@ -501,29 +483,29 @@ export class LangChainService {
 				default:
 					onThinkingStep?.(`Processing ${toolName}...`);
 			}
-		} else if (phase === 'end') {
-			switch (toolName) {
-				case 'coffee_catalog_search':
-					onThinkingStep?.('Coffee catalog search completed');
-					break;
-				case 'green_coffee_inventory':
-					onThinkingStep?.('Inventory analysis completed');
-					break;
-				case 'roast_profiles':
-					onThinkingStep?.('Roasting history review completed');
-					break;
-				case 'roast_chart_data':
-					onThinkingStep?.('Roast data analysis completed');
-					break;
-				case 'bean_tasting_notes':
-					onThinkingStep?.('Flavor profile analysis completed');
-					break;
-				case 'coffee_knowledge':
-					onThinkingStep?.('Knowledge base consultation completed');
-					break;
-				default:
-					onThinkingStep?.(`${toolName} processing completed`);
-			}
+			// } else if (phase === 'end') {
+			// 	switch (toolName) {
+			// 		case 'coffee_catalog_search':
+			// 			onThinkingStep?.('Coffee catalog search completed');
+			// 			break;
+			// 		case 'green_coffee_inventory':
+			// 			onThinkingStep?.('Inventory analysis completed');
+			// 			break;
+			// 		case 'roast_profiles':
+			// 			onThinkingStep?.('Roasting history review completed');
+			// 			break;
+			// 		case 'roast_chart_data':
+			// 			onThinkingStep?.('Roast data analysis completed');
+			// 			break;
+			// 		case 'bean_tasting_notes':
+			// 			onThinkingStep?.('Flavor profile analysis completed');
+			// 			break;
+			// 		case 'coffee_knowledge':
+			// 			onThinkingStep?.('Knowledge base consultation completed');
+			// 			break;
+			// 		default:
+			// 			onThinkingStep?.(`${toolName} processing completed`);
+			// 	}
 		}
 	}
 
