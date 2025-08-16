@@ -75,7 +75,7 @@
 									</div>
 									{#if coffee.processing}
 										<div class="text-xs text-text-secondary-light">
-											{coffee.processing}
+											{coffee.processing.length > 25 ? coffee.processing.substring(0, 25) + '...' : coffee.processing}
 										</div>
 									{/if}
 								</div>
@@ -95,7 +95,7 @@
 								</div>
 								{#if coffee.processing}
 									<div class="mt-1 text-xs text-background-tertiary-light">
-										{coffee.processing}
+										{coffee.processing.length > 25 ? coffee.processing.substring(0, 25) + '...' : coffee.processing}
 									</div>
 								{/if}
 							</div>
