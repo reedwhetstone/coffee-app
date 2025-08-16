@@ -20,11 +20,14 @@ async function parseResponseAndFetchCoffeeData(response: string, supabase: any) 
 		const coffeeCardsMatch = response.match(/coffee_cards:\s*\[([^\]]+)\]/);
 		if (coffeeCardsMatch) {
 			const idsString = coffeeCardsMatch[1];
-			const coffeeIds = idsString.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
-			
+			const coffeeIds = idsString
+				.split(',')
+				.map((id) => parseInt(id.trim()))
+				.filter((id) => !isNaN(id));
+
 			// Extract message (everything before the coffee_cards line)
 			const messageMatch = response.split(/\n.*coffee_cards:/)[0];
-			
+
 			structuredResponse = {
 				message: messageMatch.trim(),
 				coffee_cards: coffeeIds,
@@ -41,7 +44,7 @@ async function parseResponseAndFetchCoffeeData(response: string, supabase: any) 
 				.select('*')
 				.in('id', structuredResponse.coffee_cards)
 				.eq('public_coffee', true);
-			
+
 			if (data) {
 				coffeeData = data;
 			}
@@ -104,8 +107,11 @@ export const POST: RequestHandler = async (event) => {
 				)
 				.then(async (response) => {
 					// Parse response and fetch coffee data
-					const { structuredResponse, coffeeData } = await parseResponseAndFetchCoffeeData(response.response, supabase);
-					
+					const { structuredResponse, coffeeData } = await parseResponseAndFetchCoffeeData(
+						response.response,
+						supabase
+					);
+
 					// Send final response
 					const data = JSON.stringify({
 						type: 'complete',

@@ -26,6 +26,7 @@
 	// Coffee preview sidebar state
 	let coffeePreviewOpen = $state(false);
 	let selectedCoffeeIds = $state<number[]>([]);
+	let focusCoffeeId = $state<number | undefined>(undefined);
 
 	// Sync sidebar state with layout
 	$effect(() => {
@@ -35,8 +36,9 @@
 	});
 
 	// Handle coffee preview request
-	function handleCoffeePreview(coffeeIds: number[]) {
+	function handleCoffeePreview(coffeeIds: number[], focusId?: number) {
 		selectedCoffeeIds = coffeeIds;
+		focusCoffeeId = focusId;
 		coffeePreviewOpen = true;
 	}
 
@@ -44,6 +46,7 @@
 	function handleSidebarClose() {
 		coffeePreviewOpen = false;
 		selectedCoffeeIds = [];
+		focusCoffeeId = undefined;
 	}
 
 	/**
@@ -165,12 +168,12 @@
 								} else if (data.type === 'complete') {
 									// Clear thinking steps and add final response
 									thinkingSteps = [];
-									
+
 									// Use structured response data if available
 									const structuredResponse = data.structured_response;
 									const coffeeCards = structuredResponse?.coffee_cards || [];
 									const coffeeData = data.coffee_data || [];
-									
+
 									messages.push({
 										role: 'assistant',
 										content: structuredResponse?.message || data.response,
@@ -500,6 +503,7 @@
 	<CoffeePreviewSidebar
 		isOpen={coffeePreviewOpen}
 		coffeeIds={selectedCoffeeIds}
+		focusId={focusCoffeeId}
 		onClose={handleSidebarClose}
 		{parseTastingNotes}
 	/>

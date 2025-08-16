@@ -6,11 +6,13 @@
 	let {
 		isOpen = false,
 		coffeeIds = [],
+		focusId,
 		onClose,
 		parseTastingNotes
 	} = $props<{
 		isOpen: boolean;
 		coffeeIds: number[];
+		focusId?: number;
 		onClose: () => void;
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
 	}>();
@@ -19,6 +21,10 @@
 	let coffeeData = $state<any[]>([]);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+
+	// References for scrolling - DOM element references with $state() to avoid warnings
+	let contentContainer = $state<HTMLDivElement>();
+	let mobileContentContainer = $state<HTMLDivElement>();
 
 	// Fetch coffee data when sidebar opens
 	$effect(() => {
@@ -50,6 +56,36 @@
 			coffeeData = [];
 		} finally {
 			loading = false;
+		}
+	}
+
+	// Scroll to focused coffee when data loads
+	$effect(() => {
+		if (coffeeData.length > 0 && focusId && isOpen) {
+			// Small delay to ensure DOM is updated
+			setTimeout(() => {
+				scrollToFocusedCoffee();
+			}, 100);
+		}
+	});
+
+	function scrollToFocusedCoffee() {
+		if (!focusId) return;
+
+		const targetElement = document.getElementById(`coffee-${focusId}`);
+		if (targetElement) {
+			// Try desktop container first, then mobile
+			const container = contentContainer || mobileContentContainer;
+			if (container) {
+				const containerRect = container.getBoundingClientRect();
+				const targetRect = targetElement.getBoundingClientRect();
+				const scrollTop = targetRect.top - containerRect.top + container.scrollTop - 20; // 20px offset
+
+				container.scrollTo({
+					top: scrollTop,
+					behavior: 'smooth'
+				});
+			}
 		}
 	}
 
@@ -92,7 +128,7 @@
 
 <!-- Desktop Sidebar -->
 <div
-	class="fixed top-0 right-0 z-[55] h-full w-[32rem] transform bg-background-primary-light shadow-2xl transition-transform duration-300 ease-out {isOpen
+	class="fixed right-0 top-0 z-[55] h-full w-[32rem] transform bg-background-primary-light shadow-2xl transition-transform duration-300 ease-out {isOpen
 		? 'translate-x-0'
 		: 'translate-x-full'} hidden md:block"
 >
@@ -111,18 +147,25 @@
 				aria-label="Close coffee preview"
 			>
 				<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					/>
 				</svg>
 			</button>
 		</div>
 	</div>
 
 	<!-- Sidebar Content -->
-	<div class="h-[calc(100%-80px)] overflow-y-auto p-6">
+	<div bind:this={contentContainer} class="h-[calc(100%-80px)] overflow-y-auto p-6">
 		{#if loading}
 			<div class="flex items-center justify-center py-12">
 				<div class="flex items-center space-x-3">
-					<div class="h-6 w-6 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"></div>
+					<div
+						class="h-6 w-6 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"
+					></div>
 					<span class="text-text-secondary-light">Loading coffee details...</span>
 				</div>
 			</div>
@@ -144,7 +187,9 @@
 			<!-- Coffee Grid - matches /catalog page layout -->
 			<div class="space-y-4">
 				{#each coffeeData as coffee}
-					<CoffeeCard {coffee} {parseTastingNotes} />
+					<div id="coffee-{coffee.id}">
+						<CoffeeCard {coffee} {parseTastingNotes} />
+					</div>
 				{/each}
 			</div>
 		{/if}
@@ -179,18 +224,25 @@
 						aria-label="Close coffee preview"
 					>
 						<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
 						</svg>
 					</button>
 				</div>
 			</div>
 
 			<!-- Mobile Content -->
-			<div class="h-[calc(100%-64px)] overflow-y-auto p-4">
+			<div bind:this={mobileContentContainer} class="h-[calc(100%-64px)] overflow-y-auto p-4">
 				{#if loading}
 					<div class="flex items-center justify-center py-12">
 						<div class="flex items-center space-x-3">
-							<div class="h-6 w-6 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"></div>
+							<div
+								class="h-6 w-6 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"
+							></div>
 							<span class="text-text-secondary-light">Loading coffee details...</span>
 						</div>
 					</div>
@@ -212,7 +264,9 @@
 					<!-- Mobile Coffee Grid -->
 					<div class="space-y-4">
 						{#each coffeeData as coffee}
-							<CoffeeCard {coffee} {parseTastingNotes} />
+							<div id="coffee-{coffee.id}">
+								<CoffeeCard {coffee} {parseTastingNotes} />
+							</div>
 						{/each}
 					</div>
 				{/if}

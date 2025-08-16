@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		// Check for specific IDs filter
 		const idsParam = url.searchParams.getAll('ids');
-		const requestedIds = idsParam.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+		const requestedIds = idsParam.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
 
 		// If specific IDs are requested, fetch them directly (bypass cache)
 		if (requestedIds.length > 0) {

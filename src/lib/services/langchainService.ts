@@ -99,8 +99,14 @@ export class LangChainService {
 					limit: z.number().optional().describe('Number of results to return'),
 					stocked_only: z.boolean().optional().describe('Only show currently stocked coffees'),
 					name: z.string().optional().describe('Search by coffee name'),
-					stocked_days: z.number().optional().describe('Find coffees stocked within this many days'),
-					drying_method: z.string().optional().describe('Drying method (sun-dried, patio-dried, etc.)'),
+					stocked_days: z
+						.number()
+						.optional()
+						.describe('Find coffees stocked within this many days'),
+					drying_method: z
+						.string()
+						.optional()
+						.describe('Drying method (sun-dried, patio-dried, etc.)'),
 					coffee_ids: z.array(z.number()).optional().describe('Specific coffee IDs to retrieve')
 				}),
 				func: async (input) => {
