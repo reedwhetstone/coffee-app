@@ -108,17 +108,6 @@
 				</li>
 				<li>
 					<a
-						href="/chat"
-						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
-						'/chat'
-							? 'bg-background-tertiary-light text-white'
-							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
-					>
-						Coffee Chat
-					</a>
-				</li>
-				<li>
-					<a
 						href="/roast"
 						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/roast'
