@@ -14,8 +14,15 @@ export interface ChatMessage {
 	timestamp: Date;
 }
 
+export interface StructuredChatResponse {
+	message: string; // Markdown-formatted text
+	coffee_cards?: number[]; // Array of coffee_catalog.id values
+	response_type: 'text' | 'cards' | 'mixed';
+}
+
 export interface ChatResponse {
 	response: string;
+	structured_response?: StructuredChatResponse;
 	tool_calls?: Array<{
 		tool: string;
 		input: any;
@@ -77,7 +84,7 @@ export class LangChainService {
 			new DynamicStructuredTool({
 				name: 'coffee_catalog_search',
 				description:
-					'Search for coffee beans in the catalog with filters for origin, processing, variety, price range, and flavor keywords',
+					'Search for coffee beans in the catalog with filters for origin, processing, variety, price range, flavor keywords, coffee name, recent arrivals, and specific coffee IDs',
 				schema: z.object({
 					origin: z.string().optional().describe('Coffee origin (country, region, or continent)'),
 					process: z
@@ -90,7 +97,11 @@ export class LangChainService {
 					score_min: z.number().optional().describe('Minimum cupping score'),
 					score_max: z.number().optional().describe('Maximum cupping score'),
 					limit: z.number().optional().describe('Number of results to return'),
-					stocked_only: z.boolean().optional().describe('Only show currently stocked coffees')
+					stocked_only: z.boolean().optional().describe('Only show currently stocked coffees'),
+					name: z.string().optional().describe('Search by coffee name'),
+					stocked_days: z.number().optional().describe('Find coffees stocked within this many days'),
+					drying_method: z.string().optional().describe('Drying method (sun-dried, patio-dried, etc.)'),
+					coffee_ids: z.array(z.number()).optional().describe('Specific coffee IDs to retrieve')
 				}),
 				func: async (input) => {
 					this.logger.logToolCall('coffee_catalog_search', input);
@@ -244,6 +255,15 @@ export class LangChainService {
 				3. roast_profiles - Analyze user's roasting history and profiles
 				4. bean_tasting_notes - Get tasting notes and flavor profiles
 				
+				RESPONSE FORMAT INSTRUCTIONS:
+				You MUST respond with a JSON object containing:
+				- message: Markdown-formatted response text with headers, lists, bold text
+				- coffee_cards: Array of coffee ID numbers when recommending specific coffees
+				- response_type: "text", "cards", or "mixed"
+				
+				When recommending coffees, include the coffee IDs at the end of your response like:
+				coffee_cards: [123, 456, 789]
+				
 				Guidelines:
 				- Use tools proactively to provide helpful, data-driven responses
 				- When users ask for coffee recommendations, use coffee_catalog_search
@@ -251,6 +271,7 @@ export class LangChainService {
 				- For roasting advice, use roast_profiles
 				- Always provide practical, actionable advice
 				- Be conversational and enthusiastic about coffee
+				- Extract coffee IDs from tool responses and include in coffee_cards
 				- If a tool call fails, acknowledge it and provide general guidance`
 			],
 			['placeholder', '{chat_history}'],

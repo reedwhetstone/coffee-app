@@ -3,6 +3,8 @@
 	import { checkRole } from '$lib/types/auth.types';
 	import type { UserRole } from '$lib/types/auth.types';
 	import ChainOfThought from '$lib/components/ChainOfThought.svelte';
+	import ChatMessageRenderer from '$lib/components/ChatMessageRenderer.svelte';
+	import type { TastingNotes } from '$lib/types/coffee.types';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -16,10 +18,51 @@
 		return checkRole(userRole, requiredRole);
 	}
 
+	/**
+	 * Parses AI tasting notes JSON data safely
+	 * @param tastingNotesJson - JSON string from database
+	 * @returns Parsed tasting notes or null if invalid
+	 */
+	function parseTastingNotes(tastingNotesJson: string | null | object): TastingNotes | null {
+		if (!tastingNotesJson) return null;
+
+		try {
+			// Handle both string and object formats (Supabase jsonb can return either)
+			let parsed: any;
+			if (typeof tastingNotesJson === 'string') {
+				parsed = JSON.parse(tastingNotesJson);
+			} else if (typeof tastingNotesJson === 'object') {
+				parsed = tastingNotesJson;
+			} else {
+				return null;
+			}
+
+			// Validate that required properties exist
+			if (
+				parsed.body &&
+				parsed.flavor &&
+				parsed.acidity &&
+				parsed.sweetness &&
+				parsed.fragrance_aroma
+			) {
+				return parsed as TastingNotes;
+			}
+		} catch (error) {
+			console.error('Error parsing tasting notes:', error);
+		}
+
+		return null;
+	}
+
 	// Chat state management
-	let messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }> = $state(
-		[]
-	);
+	let messages: Array<{
+		role: 'user' | 'assistant';
+		content: string;
+		timestamp: Date;
+		coffeeCards?: number[];
+		coffeeData?: any[];
+		isStructured?: boolean;
+	}> = $state([]);
 	let inputMessage = $state('');
 	let isLoading = $state(false);
 	let chatContainer = $state<HTMLDivElement>();
@@ -94,10 +137,19 @@
 								} else if (data.type === 'complete') {
 									// Clear thinking steps and add final response
 									thinkingSteps = [];
+									
+									// Use structured response data if available
+									const structuredResponse = data.structured_response;
+									const coffeeCards = structuredResponse?.coffee_cards || [];
+									const coffeeData = data.coffee_data || [];
+									
 									messages.push({
 										role: 'assistant',
-										content: data.response,
-										timestamp: new Date()
+										content: structuredResponse?.message || data.response,
+										timestamp: new Date(),
+										coffeeCards: coffeeCards,
+										coffeeData: coffeeData,
+										isStructured: !!structuredResponse
 									});
 								} else if (data.type === 'error') {
 									// Handle error
@@ -314,7 +366,16 @@
 									? 'bg-background-tertiary-light text-white'
 									: 'bg-background-secondary-light text-text-primary-light'}"
 							>
-								<div class="whitespace-pre-wrap">{message.content}</div>
+								{#if message.role === 'assistant' && message.isStructured}
+									<ChatMessageRenderer
+										message={message.content}
+										coffeeCards={message.coffeeCards}
+										coffeeData={message.coffeeData || []}
+										{parseTastingNotes}
+									/>
+								{:else}
+									<div class="whitespace-pre-wrap">{message.content}</div>
+								{/if}
 								<div class="mt-1 text-xs opacity-70">
 									{message.timestamp.toLocaleTimeString()}
 								</div>

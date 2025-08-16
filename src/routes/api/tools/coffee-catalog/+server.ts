@@ -13,6 +13,11 @@ interface CoffeeCatalogToolInput {
 	score_max?: number;
 	limit?: number;
 	stocked_only?: boolean;
+	// New search parameters
+	name?: string;
+	stocked_days?: number;
+	drying_method?: string;
+	coffee_ids?: number[];
 }
 
 // Tool response interface
@@ -41,7 +46,11 @@ export const POST: RequestHandler = async (event) => {
 			score_min,
 			score_max,
 			limit = 10,
-			stocked_only = true
+			stocked_only = true,
+			name,
+			stocked_days,
+			drying_method,
+			coffee_ids
 		} = input;
 
 		// Build query
@@ -66,6 +75,30 @@ export const POST: RequestHandler = async (event) => {
 
 		if (variety) {
 			query = query.ilike('cultivar_detail', `%${variety}%`);
+		}
+
+		// New search parameters
+		if (name) {
+			query = query.ilike('name', `%${name}%`);
+		}
+
+		if (drying_method) {
+			// Search both processing and drying_method fields
+			query = query.or(
+				`processing.ilike.%${drying_method}%,drying_method.ilike.%${drying_method}%`
+			);
+		}
+
+		if (coffee_ids && coffee_ids.length > 0) {
+			query = query.in('id', coffee_ids);
+		}
+
+		if (stocked_days && stocked_days > 0) {
+			// Calculate date N days ago
+			const cutoffDate = new Date();
+			cutoffDate.setDate(cutoffDate.getDate() - stocked_days);
+			const cutoffISOString = cutoffDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+			query = query.gte('stocked_date', cutoffISOString);
 		}
 
 		if (price_range && price_range.length === 2) {
@@ -128,7 +161,11 @@ export const POST: RequestHandler = async (event) => {
 				score_min,
 				score_max,
 				limit,
-				stocked_only
+				stocked_only,
+				name,
+				stocked_days,
+				drying_method,
+				coffee_ids
 			},
 			search_strategy: searchStrategy
 		};

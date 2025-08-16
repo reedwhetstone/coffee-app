@@ -54,6 +54,7 @@
 	},
 	"dependencies": {
 		"@google/generative-ai": "^0.21.0",
+		"@humanspeak/svelte-markdown": "^0.8.10",
 		"@langchain/openai": "^0.6.7",
 		"@supabase/ssr": "^0.5.2",
 		"@supabase/supabase-js": "^2.48.1",
