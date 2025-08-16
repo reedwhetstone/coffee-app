@@ -371,14 +371,25 @@ export class LangChainService {
 		onThinkingStep?: (step: string) => void
 	): Promise<ChatResponse> {
 		try {
+			// Simple string-based deduplication
+			let lastThinkingStep = '';
+
+			// Helper to emit only new thinking steps
+			const emitThinkingStep = (step: string) => {
+				if (step !== lastThinkingStep) {
+					lastThinkingStep = step;
+					onThinkingStep?.(step);
+				}
+			};
+
 			// Log user prompt
 			this.logger.logUserPrompt(message, conversationHistory);
-			onThinkingStep?.('Analyzing your request...');
+			emitThinkingStep('Analyzing your request...');
 
 			// Initialize agent if not already done
 			if (!this.agent) {
 				await this.initializeAgent();
-				onThinkingStep?.('AI assistant initialized');
+				emitThinkingStep('AI assistant initialized');
 			}
 
 			// Log LLM processing start
@@ -387,7 +398,7 @@ export class LangChainService {
 				max_iterations: 5
 			});
 
-			onThinkingStep?.('Planning approach to your question...');
+			emitThinkingStep('Planning approach to your question...');
 
 			// Use LangChain's native streamEvents for real-time intermediate steps
 			const streamingEvents = this.agent!.streamEvents(
@@ -400,16 +411,18 @@ export class LangChainService {
 
 			const toolCalls: Array<{ tool: string; input: any; output: any }> = [];
 			let finalResponse = '';
+			let executorStarted = false;
 
 			// Process events as they stream in
 			for await (const event of streamingEvents) {
 				// Map event types to user-friendly thinking steps
 				if (event.event === 'on_tool_start') {
 					const toolName = event.name;
-					this.mapToolToThinkingStep(toolName, 'start', onThinkingStep);
+					this.mapToolToThinkingStep(toolName, 'start', emitThinkingStep);
 				} else if (event.event === 'on_tool_end') {
 					const toolName = event.name;
-					this.mapToolToThinkingStep(toolName, 'end', onThinkingStep);
+					// Remove completion messages to avoid repetition
+					// this.mapToolToThinkingStep(toolName, 'end', onThinkingStep);
 
 					// Collect tool call data
 					toolCalls.push({
@@ -417,13 +430,14 @@ export class LangChainService {
 						input: event.data?.input || {},
 						output: event.data?.output || null
 					});
-				} else if (event.event === 'on_chain_start' && event.name === 'AgentExecutor') {
-					onThinkingStep?.('Executing reasoning process...');
+				} else if (event.event === 'on_chain_start' && event.name === 'AgentExecutor' && !executorStarted) {
+					emitThinkingStep('Executing reasoning process...');
+					executorStarted = true;
 				} else if (event.event === 'on_llm_start') {
-					onThinkingStep?.('Generating response...');
+					emitThinkingStep('Generating response...');
 				} else if (event.event === 'on_chain_end' && event.name === 'AgentExecutor') {
 					finalResponse = event.data?.output?.output || event.data?.output || '';
-					onThinkingStep?.('Synthesizing final response...');
+					emitThinkingStep('Synthesizing final response...');
 				}
 			}
 
