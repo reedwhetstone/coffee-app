@@ -171,17 +171,37 @@
 
 									// Use structured response data if available
 									const structuredResponse = data.structured_response;
-									const coffeeCards = structuredResponse?.coffee_cards || [];
 									const coffeeData = data.coffee_data || [];
 
-									messages.push({
+									// Create base message
+									const newMessage: any = {
 										role: 'assistant',
 										content: structuredResponse?.message || data.response,
-										timestamp: new Date(),
-										coffeeCards: coffeeCards,
-										coffeeData: coffeeData,
-										isStructured: !!structuredResponse
-									});
+										timestamp: new Date()
+									};
+
+									// Dynamically add all structured fields from the response
+									if (structuredResponse) {
+										// Add all fields from structured_response except 'message' (already used for content)
+										Object.entries(structuredResponse).forEach(([key, value]) => {
+											if (key !== 'message') {
+												newMessage[key] = value;
+											}
+										});
+										newMessage.isStructured = true;
+									}
+
+									// Add coffee_data if present (comes separately from API)
+									if (coffeeData.length > 0) {
+										newMessage.coffeeData = coffeeData;
+									}
+
+									// Maintain backward compatibility with existing field names
+									if (structuredResponse?.coffee_cards) {
+										newMessage.coffeeCards = structuredResponse.coffee_cards;
+									}
+
+									messages.push(newMessage);
 								} else if (data.type === 'error') {
 									// Handle error
 									thinkingSteps = [];
@@ -220,6 +240,101 @@
 	}
 
 	/**
+	 * Detect structured data fields in a message object
+	 * Returns an object containing only the structured data fields
+	 */
+	function detectStructuredFields(message: any): Record<string, any> | null {
+		// Base message fields that are not considered structured data
+		const baseFields = new Set(['role', 'content', 'timestamp']);
+		
+		const structuredFields: Record<string, any> = {};
+		let hasStructuredData = false;
+
+		for (const [key, value] of Object.entries(message)) {
+			// Skip base message fields
+			if (baseFields.has(key)) continue;
+			
+			// Detect structured data patterns
+			const isStructuredField = 
+				// Arrays with content
+				(Array.isArray(value) && value.length > 0) ||
+				// Non-null objects (excluding Date objects)
+				(typeof value === 'object' && value !== null && !(value instanceof Date)) ||
+				// Boolean metadata fields
+				(typeof value === 'boolean' && (key.startsWith('is') || key.startsWith('has'))) ||
+				// Fields with naming patterns indicating structured data
+				key.endsWith('_cards') || key.endsWith('_data') || key.endsWith('_ids') ||
+				key.endsWith('_type') || key.endsWith('_metadata') ||
+				// Explicit structured field
+				key === 'isStructured';
+
+			if (isStructuredField) {
+				structuredFields[key] = value;
+				hasStructuredData = true;
+			}
+		}
+
+		return hasStructuredData ? structuredFields : null;
+	}
+
+	/**
+	 * Format conversation data as Markdown
+	 */
+	function formatConversationAsMarkdown(messages: any[], exportData: any): string {
+		const timestamp = new Date().toLocaleString();
+		const userId = exportData.user_id || 'Unknown';
+
+		let markdown = `# Coffee Chat Conversation\n\n`;
+		markdown += `**Exported:** ${timestamp}  \n`;
+		markdown += `**User ID:** ${userId}\n\n`;
+		markdown += `---\n\n`;
+
+		messages.forEach((message, index) => {
+			const messageTime = new Date(message.timestamp).toLocaleString();
+			const role = message.role === 'user' ? '🧑‍💼 User' : '🤖 Assistant';
+
+			markdown += `## ${role}\n`;
+			markdown += `*${messageTime}*\n\n`;
+			markdown += `${message.content}\n\n`;
+
+			// Add legacy coffee card information if present (for backward compatibility)
+			if (message.coffeeCards && message.coffeeCards.length > 0) {
+				markdown += `### ☕ Coffee Recommendations\n\n`;
+
+				if (message.coffeeData && message.coffeeData.length > 0) {
+					message.coffeeData.forEach((coffee: any, coffeeIndex: number) => {
+						markdown += `**${coffee.name || 'Unknown Coffee'}**\n`;
+						if (coffee.origin) markdown += `- Origin: ${coffee.origin}\n`;
+						if (coffee.variety) markdown += `- Variety: ${coffee.variety}\n`;
+						if (coffee.processing) markdown += `- Processing: ${coffee.processing}\n`;
+						if (coffee.price_per_lb) markdown += `- Price: $${coffee.price_per_lb}/lb\n`;
+						if (coffee.description) {
+							markdown += `- Description: ${coffee.description}\n`;
+						}
+						markdown += `\n`;
+					});
+				} else {
+					markdown += `Coffee IDs: ${message.coffeeCards.join(', ')}\n\n`;
+				}
+			}
+
+			// Add structured data as JSON code block if present
+			const structuredFields = detectStructuredFields(message);
+			if (structuredFields) {
+				markdown += `\`\`\`json\n`;
+				markdown += JSON.stringify(structuredFields, null, 2);
+				markdown += `\n\`\`\`\n\n`;
+			}
+
+			if (index < messages.length - 1) {
+				markdown += `---\n\n`;
+			}
+		});
+
+		return markdown;
+	}
+
+	/**
 	 * Export conversation history
 	 */
 	function exportConversation() {
@@ -229,13 +344,15 @@
 			user_id: session?.user?.id
 		};
 
-		const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-			type: 'application/json'
+		const markdownContent = formatConversationAsMarkdown(messages, exportData);
+
+		const blob = new Blob([markdownContent], {
+			type: 'text/markdown'
 		});
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `coffee-chat-${new Date().toISOString().split('T')[0]}.json`;
+		a.download = `coffee-chat-${new Date().toISOString().split('T')[0]}.md`;
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);

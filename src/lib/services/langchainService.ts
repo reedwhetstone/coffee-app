@@ -18,6 +18,8 @@ export interface StructuredChatResponse {
 	message: string; // Markdown-formatted text
 	coffee_cards?: number[]; // Array of coffee_catalog.id values
 	response_type: 'text' | 'cards' | 'mixed';
+	// Extensible structure for future structured data types
+	[key: string]: any; // Allow additional structured data fields
 }
 
 export interface ChatResponse {
@@ -57,7 +59,7 @@ export class LangChainService {
 		// Initialize the chat model with GPT-5 for complex tool orchestration
 		this.model = new ChatOpenAI({
 			apiKey: this.openaiApiKey,
-			model: 'gpt-5-2025-08-07', // Use full GPT-5 for tool calling
+			model: 'gpt-5-mini-2025-08-07', // Use full GPT-5 for tool calling
 			// Note: GPT-5 models do not support temperature parameter
 			maxTokens: 4096,
 			streaming: false

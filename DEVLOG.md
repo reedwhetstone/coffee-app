@@ -1,5 +1,11 @@
 ## Todo List
 
+**_IMPORTANT_**
+
+- [ ] - BUILD OUT ROBUST LOGGING OF ALL DATA INTO ROAST_PROFILES TO GIVE THE CHAT BOT A GREAT BASELINE
+
+**_IMPORTANT_**
+
 - [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row; may also be linked to roast. Needs cascade delete function.
 - [ ] **Bug** - can't edit user rating
 
