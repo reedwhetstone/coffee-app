@@ -362,6 +362,158 @@ export class LangChainService {
 	}
 
 	/**
+	 * Process a chat message with streaming thinking steps using LangChain's native streamEvents
+	 */
+	async processMessageWithStreaming(
+		message: string,
+		conversationHistory: ChatMessage[] = [],
+		userId?: string,
+		onThinkingStep?: (step: string) => void
+	): Promise<ChatResponse> {
+		try {
+			// Log user prompt
+			this.logger.logUserPrompt(message, conversationHistory);
+			onThinkingStep?.('Analyzing your request...');
+
+			// Initialize agent if not already done
+			if (!this.agent) {
+				await this.initializeAgent();
+				onThinkingStep?.('AI assistant initialized');
+			}
+
+			// Log LLM processing start
+			this.logger.logLLMThinking('Starting message processing with GPT-5', {
+				model: 'gpt-5-2025-08-07',
+				max_iterations: 5
+			});
+
+			onThinkingStep?.('Planning approach to your question...');
+
+			// Use LangChain's native streamEvents for real-time intermediate steps
+			const streamingEvents = this.agent!.streamEvents(
+				{
+					input: message,
+					chat_history: conversationHistory.map((msg) => `${msg.role}: ${msg.content}`).join('\n')
+				},
+				{ version: 'v2' }
+			);
+
+			const toolCalls: Array<{ tool: string; input: any; output: any }> = [];
+			let finalResponse = '';
+
+			// Process events as they stream in
+			for await (const event of streamingEvents) {
+				// Map event types to user-friendly thinking steps
+				if (event.event === 'on_tool_start') {
+					const toolName = event.name;
+					this.mapToolToThinkingStep(toolName, 'start', onThinkingStep);
+				} else if (event.event === 'on_tool_end') {
+					const toolName = event.name;
+					this.mapToolToThinkingStep(toolName, 'end', onThinkingStep);
+
+					// Collect tool call data
+					toolCalls.push({
+						tool: toolName,
+						input: event.data?.input || {},
+						output: event.data?.output || null
+					});
+				} else if (event.event === 'on_chain_start' && event.name === 'AgentExecutor') {
+					onThinkingStep?.('Executing reasoning process...');
+				} else if (event.event === 'on_llm_start') {
+					onThinkingStep?.('Generating response...');
+				} else if (event.event === 'on_chain_end' && event.name === 'AgentExecutor') {
+					finalResponse = event.data?.output?.output || event.data?.output || '';
+					onThinkingStep?.('Synthesizing final response...');
+				}
+			}
+
+			// Fallback response if streaming didn't capture it
+			if (!finalResponse) {
+				finalResponse = 'I apologize, but I encountered an issue processing your request.';
+			}
+
+			// Log final response
+			this.logger.logFinalResponse(finalResponse, toolCalls, {
+				user_id: userId,
+				iterations: toolCalls.length
+			});
+
+			// Log conversation summary if this seems like a completion
+			if (toolCalls.length > 0) {
+				this.logger.logConversationSummary();
+			}
+
+			return {
+				response: finalResponse,
+				tool_calls: toolCalls,
+				conversation_id: userId ? `${userId}_${Date.now()}` : undefined
+			};
+		} catch (error) {
+			this.logger.logError(error instanceof Error ? error : String(error), 'Message processing');
+			throw new Error(
+				`Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`
+			);
+		}
+	}
+
+	/**
+	 * Map tool names to user-friendly thinking steps
+	 */
+	private mapToolToThinkingStep(
+		toolName: string,
+		phase: 'start' | 'end',
+		onThinkingStep?: (step: string) => void
+	): void {
+		if (phase === 'start') {
+			switch (toolName) {
+				case 'coffee_catalog_search':
+					onThinkingStep?.('Searching coffee catalog...');
+					break;
+				case 'green_coffee_inventory':
+					onThinkingStep?.('Analyzing your coffee inventory...');
+					break;
+				case 'roast_profiles':
+					onThinkingStep?.('Reviewing your roasting history...');
+					break;
+				case 'roast_chart_data':
+					onThinkingStep?.('Analyzing roast curve data...');
+					break;
+				case 'bean_tasting_notes':
+					onThinkingStep?.('Checking flavor profiles...');
+					break;
+				case 'coffee_knowledge':
+					onThinkingStep?.('Consulting coffee knowledge base...');
+					break;
+				default:
+					onThinkingStep?.(`Processing ${toolName}...`);
+			}
+		} else if (phase === 'end') {
+			switch (toolName) {
+				case 'coffee_catalog_search':
+					onThinkingStep?.('Coffee catalog search completed');
+					break;
+				case 'green_coffee_inventory':
+					onThinkingStep?.('Inventory analysis completed');
+					break;
+				case 'roast_profiles':
+					onThinkingStep?.('Roasting history review completed');
+					break;
+				case 'roast_chart_data':
+					onThinkingStep?.('Roast data analysis completed');
+					break;
+				case 'bean_tasting_notes':
+					onThinkingStep?.('Flavor profile analysis completed');
+					break;
+				case 'coffee_knowledge':
+					onThinkingStep?.('Knowledge base consultation completed');
+					break;
+				default:
+					onThinkingStep?.(`${toolName} processing completed`);
+			}
+		}
+	}
+
+	/**
 	 * Clear conversation memory
 	 */
 	async clearMemory(): Promise<void> {

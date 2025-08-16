@@ -10,7 +10,7 @@ export const POST: RequestHandler = async (event) => {
 		const { user } = await requireMemberRole(event);
 		const { supabase } = event.locals;
 
-		const { message, conversation_history } = await event.request.json();
+		const { message, conversation_history, stream } = await event.request.json();
 
 		// Validate input
 		if (!message || typeof message !== 'string') {
@@ -35,7 +35,55 @@ export const POST: RequestHandler = async (event) => {
 
 		const langchainService = createLangChainService(OPENAI_API_KEY, supabase, baseUrl, authHeaders);
 
-		// Process the message
+		// If streaming is requested, use Server-Sent Events
+		if (stream) {
+			const { readable, writable } = new TransformStream();
+			const writer = writable.getWriter();
+			const encoder = new TextEncoder();
+
+			// Process message with streaming callback
+			langchainService
+				.processMessageWithStreaming(
+					message,
+					conversation_history || [],
+					user.id,
+					(thinkingStep: string) => {
+						// Send thinking step via SSE
+						const data = JSON.stringify({ type: 'thinking', step: thinkingStep });
+						writer.write(encoder.encode(`data: ${data}\n\n`));
+					}
+				)
+				.then((response) => {
+					// Send final response
+					const data = JSON.stringify({
+						type: 'complete',
+						response: response.response,
+						tool_calls: response.tool_calls,
+						conversation_id: response.conversation_id
+					});
+					writer.write(encoder.encode(`data: ${data}\n\n`));
+					writer.close();
+				})
+				.catch((error) => {
+					// Send error
+					const data = JSON.stringify({
+						type: 'error',
+						error: error instanceof Error ? error.message : 'Unknown error'
+					});
+					writer.write(encoder.encode(`data: ${data}\n\n`));
+					writer.close();
+				});
+
+			return new Response(readable, {
+				headers: {
+					'Content-Type': 'text/event-stream',
+					'Cache-Control': 'no-cache',
+					Connection: 'keep-alive'
+				}
+			});
+		}
+
+		// Fallback to regular JSON response for non-streaming requests
 		const response = await langchainService.processMessage(
 			message,
 			conversation_history || [],

@@ -148,19 +148,19 @@
 >
 	{#if data?.session?.user}
 		<div
-			class="bg-background-primary-light flex h-full w-16 flex-col items-center space-y-4 py-4 shadow-lg"
+			class="flex h-full w-16 flex-col items-center space-y-4 bg-background-primary-light py-4 shadow-lg"
 		>
 			<!-- Auth Menu Button -->
 			<div class="relative">
 				<button
 					onclick={toggleAuthMenu}
-					class="bg-background-secondary-light text-text-primary-light ring-border-light hover:bg-background-tertiary-light rounded-full p-2 shadow-sm ring-1 transition-all duration-200 hover:text-white"
+					class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					aria-label="Toggle authentication menu"
 				>
 					{#if data?.user}
 						<!-- User Avatar/Icon -->
 						<div
-							class="bg-background-tertiary-light flex h-8 w-8 items-center justify-center rounded-full font-medium text-white"
+							class="flex h-8 w-8 items-center justify-center rounded-full bg-background-tertiary-light font-medium text-white"
 						>
 							{data.user.email?.[0].toUpperCase() || 'U'}
 						</div>
@@ -188,7 +188,7 @@
 			<div class="relative">
 				<a
 					href="/chat"
-					class="bg-background-secondary-light text-text-primary-light ring-border-light hover:bg-background-tertiary-light hover:ring-background-tertiary-light flex items-center justify-center rounded-full p-2 ring-1 transition-all duration-200 hover:text-white"
+					class="flex items-center justify-center rounded-full bg-background-secondary-light p-2 text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white hover:ring-background-tertiary-light"
 					style="box-shadow: 0 0 20px rgba(249, 165, 123, 0.5), 0 1px 2px 0 rgb(0 0 0 / 0.05);"
 					aria-label="Coffee Chat"
 				>
@@ -213,7 +213,7 @@
 			<div class="relative">
 				<button
 					onclick={toggleNavMenu}
-					class="bg-background-secondary-light text-text-primary-light ring-border-light hover:bg-background-tertiary-light rounded-full p-2 shadow-sm ring-1 transition-all duration-200 hover:text-white"
+					class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					aria-label="Toggle navigation menu"
 				>
 					<svg
@@ -238,7 +238,7 @@
 				<div class="relative">
 					<button
 						onclick={toggleActionsMenu}
-						class="bg-background-secondary-light text-text-primary-light ring-border-light hover:bg-background-tertiary-light rounded-full p-2 shadow-sm ring-1 transition-all duration-200 hover:text-white"
+						class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						aria-label="Toggle actions"
 					>
 						<svg
@@ -264,7 +264,7 @@
 				<div class="relative">
 					<button
 						onclick={toggleAdminMenu}
-						class="bg-background-secondary-light text-text-primary-light ring-border-light hover:bg-background-tertiary-light rounded-full p-2 shadow-sm ring-1 transition-all duration-200 hover:text-white"
+						class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						aria-label="Toggle admin menu"
 					>
 						<svg
@@ -296,7 +296,7 @@
 				<div class="relative">
 					<button
 						onclick={toggleSettingsMenu}
-						class="bg-background-secondary-light text-text-primary-light ring-border-light hover:bg-background-tertiary-light rounded-full p-2 shadow-sm ring-1 transition-all duration-200 hover:text-white"
+						class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						aria-label="Toggle filters"
 					>
 						<svg
@@ -345,7 +345,7 @@
 		<!-- Auth Menu Panel -->
 		{#if activeMenu === 'auth'}
 			<aside
-				class="bg-background-primary-light text-text-primary-light ring-border-light h-full w-64 shadow-xl ring-1"
+				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="User Login Menu"
 			>
 				<AuthSidebar {data} isOpen={true} onClose={closeAllMenus} />
@@ -355,7 +355,7 @@
 		<!-- Navigation Menu Panel -->
 		{#if activeMenu === 'nav'}
 			<aside
-				class="bg-background-primary-light text-text-primary-light ring-border-light h-full w-64 shadow-xl ring-1"
+				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				role="navigation"
 				aria-label="Main navigation menu"
 			>
@@ -366,7 +366,7 @@
 		<!-- Actions Menu Panel -->
 		{#if activeMenu === 'actions'}
 			<aside
-				class="bg-background-primary-light text-text-primary-light ring-border-light h-full w-64 shadow-xl ring-1"
+				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="Actions menu"
 			>
 				<ActionsButton {data} isOpen={true} onClose={closeAllMenus} />
@@ -376,7 +376,7 @@
 		<!-- Settings Menu Panel -->
 		{#if activeMenu === 'settings'}
 			<aside
-				class="bg-background-primary-light text-text-primary-light ring-border-light h-full w-64 shadow-xl ring-1"
+				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="Settings menu"
 			>
 				<SettingsButton {data} isOpen={true} onClose={closeAllMenus} />
@@ -386,7 +386,7 @@
 		<!-- Admin Menu Panel -->
 		{#if activeMenu === 'admin'}
 			<aside
-				class="bg-background-primary-light text-text-primary-light ring-border-light h-full w-64 shadow-xl ring-1"
+				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="Admin menu"
 			>
 				<AdminSidebar {data} isOpen={true} onClose={closeAllMenus} />

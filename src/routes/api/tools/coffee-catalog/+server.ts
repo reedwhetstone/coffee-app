@@ -82,12 +82,20 @@ export const POST: RequestHandler = async (event) => {
 
 		// Apply flavor keywords to multiple text fields
 		if (flavor_keywords.length > 0) {
-			const flavorConditions = flavor_keywords
-				.map((keyword) => {
-					return `ai_description.ilike.%${keyword}%,cupping_notes.ilike.%${keyword}%,farm_notes.ilike.%${keyword}%,ai_tasting_notes.ilike.%${keyword}%`;
-				})
-				.join(',');
-			query = query.or(flavorConditions);
+			// Build OR conditions for each keyword across all searchable text fields
+			const allFieldConditions: string[] = [];
+
+			for (const keyword of flavor_keywords) {
+				// Add conditions for each text field from the schema
+				allFieldConditions.push(`description_short.ilike.%${keyword}%`);
+				allFieldConditions.push(`description_long.ilike.%${keyword}%`);
+				allFieldConditions.push(`farm_notes.ilike.%${keyword}%`);
+				allFieldConditions.push(`ai_description.ilike.%${keyword}%`);
+				allFieldConditions.push(`cupping_notes.ilike.%${keyword}%`);
+			}
+
+			// Apply all conditions as a single OR query
+			query = query.or(allFieldConditions.join(','));
 		}
 
 		// Apply limit and ordering
