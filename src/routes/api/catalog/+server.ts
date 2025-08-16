@@ -12,22 +12,39 @@ let catalogCache: {
 
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
 
-export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }, url }) => {
 	try {
 		const { session } = await safeGetSession();
 		if (!session) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		// Check cache first
+		// Check for specific IDs filter
+		const idsParam = url.searchParams.getAll('ids');
+		const requestedIds = idsParam.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+
+		// If specific IDs are requested, fetch them directly (bypass cache)
+		if (requestedIds.length > 0) {
+			console.log('Fetching specific coffee IDs from database:', requestedIds);
+			const { data: rows, error } = await supabase
+				.from('coffee_catalog')
+				.select('*')
+				.in('id', requestedIds)
+				.order('name');
+
+			if (error) throw error;
+			return json(rows || []);
+		}
+
+		// Check cache first for full catalog
 		const now = Date.now();
 		if (catalogCache.data && now - catalogCache.timestamp < CACHE_TTL) {
 			console.log('Serving catalog data from cache');
 			return json(catalogCache.data);
 		}
 
-		// Cache miss or expired - fetch from database
-		console.log('Fetching catalog data from database');
+		// Cache miss or expired - fetch full catalog from database
+		console.log('Fetching full catalog data from database');
 		const { data: rows, error } = await supabase.from('coffee_catalog').select('*').order('name');
 
 		if (error) throw error;

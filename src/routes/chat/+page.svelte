@@ -4,7 +4,9 @@
 	import type { UserRole } from '$lib/types/auth.types';
 	import ChainOfThought from '$lib/components/ChainOfThought.svelte';
 	import ChatMessageRenderer from '$lib/components/ChatMessageRenderer.svelte';
+	import CoffeePreviewSidebar from '$lib/components/CoffeePreviewSidebar.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
+	import { getContext } from 'svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -16,6 +18,32 @@
 
 	function hasRequiredRole(requiredRole: UserRole): boolean {
 		return checkRole(userRole, requiredRole);
+	}
+
+	// Get right sidebar context from layout
+	const rightSidebarContext = getContext<{ setOpen: (isOpen: boolean) => void }>('rightSidebar');
+
+	// Coffee preview sidebar state
+	let coffeePreviewOpen = $state(false);
+	let selectedCoffeeIds = $state<number[]>([]);
+
+	// Sync sidebar state with layout
+	$effect(() => {
+		if (rightSidebarContext) {
+			rightSidebarContext.setOpen(coffeePreviewOpen);
+		}
+	});
+
+	// Handle coffee preview request
+	function handleCoffeePreview(coffeeIds: number[]) {
+		selectedCoffeeIds = coffeeIds;
+		coffeePreviewOpen = true;
+	}
+
+	// Handle sidebar close
+	function handleSidebarClose() {
+		coffeePreviewOpen = false;
+		selectedCoffeeIds = [];
 	}
 
 	/**
@@ -372,6 +400,7 @@
 										coffeeCards={message.coffeeCards}
 										coffeeData={message.coffeeData || []}
 										{parseTastingNotes}
+										onCoffeePreview={handleCoffeePreview}
 									/>
 								{:else}
 									<div class="whitespace-pre-wrap">{message.content}</div>
@@ -466,4 +495,12 @@
 			</form>
 		</div>
 	</div>
+
+	<!-- Coffee Preview Sidebar -->
+	<CoffeePreviewSidebar
+		isOpen={coffeePreviewOpen}
+		coffeeIds={selectedCoffeeIds}
+		onClose={handleSidebarClose}
+		{parseTastingNotes}
+	/>
 {/if}

@@ -3,7 +3,7 @@
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 	import CookieBanner from '$lib/components/CookieBanner.svelte';
 	import UnifiedHeader from '$lib/components/layout/UnifiedHeader.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 	import { page } from '$app/state';
 
 	// Lazy load heavy components to improve FCP
@@ -41,6 +41,7 @@
 	let initializedRoutes = $state<Set<string>>(new Set());
 	let processingInit = $state(false);
 	let activeMenu = $state<string | null>(null);
+	let rightSidebarOpen = $state(false);
 
 	// Create a container to store the page data for Actionsbar
 	let pageData = $state<any>(null);
@@ -58,6 +59,16 @@
 		//console.log('Layout handleMenuChange called with menu:', menu);
 		activeMenu = menu;
 	}
+
+	// Handle right sidebar state change
+	function handleRightSidebarChange(isOpen: boolean) {
+		rightSidebarOpen = isOpen;
+	}
+
+	// Set context for child components to access right sidebar control
+	setContext('rightSidebar', {
+		setOpen: handleRightSidebarChange
+	});
 
 	// Track route changes and initialize data for new routes only when necessary
 	$effect(() => {
@@ -136,8 +147,9 @@
 		}
 	}
 
-	// Calculate content margin based on active menu
-	let contentMargin = $derived(activeMenu ? 'ml-[22rem]' : 'ml-24');
+	// Calculate content margin based on active menu and right sidebar
+	let rightMargin = $derived(rightSidebarOpen ? 'md:mr-[32rem]' : 'mr-0');
+	let contentMargin = $derived(`${activeMenu ? 'ml-[22rem]' : 'ml-24'} ${rightMargin}`);
 
 	// Determine if we should show marketing layout (no sidebar)
 	let isMarketingPage = $derived(!data.session && page.url.pathname === '/');
