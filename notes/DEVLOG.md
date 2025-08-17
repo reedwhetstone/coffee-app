@@ -2,7 +2,8 @@
 
 **_IMPORTANT_**
 
-- [ ] - BUILD OUT ROBUST LOGGING OF ALL DATA INTO ROAST_PROFILES TO GIVE THE CHAT BOT A GREAT BASELINE
+- [ ] - clean un needed roat_profiles cols from table & app
+- [ ] - roast profile report share function
 
 **_IMPORTANT_**
 

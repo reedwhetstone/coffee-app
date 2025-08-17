@@ -10,16 +10,6 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	// Check if user is authenticated and redirect to catalog
-	let { session } = $derived(data);
-
-	// Redirect authenticated users to catalog using $effect
-	$effect(() => {
-		if (session) {
-			goto('/catalog');
-		}
-	});
-
 	/**
 	 * Parses AI tasting notes JSON data safely
 	 * @param tastingNotesJson - JSON string from database
@@ -64,6 +54,10 @@
 			{#await import('$lib/components/marketing/Features.svelte') then module}
 				{@const Features = module.default}
 				<Features />
+			{:catch}
+				<div class="py-16 text-center">
+					<p class="text-text-secondary-light">Content temporarily unavailable</p>
+				</div>
 			{/await}
 		{/snippet}
 	</LazyLoad>
@@ -73,6 +67,10 @@
 			{#await import('$lib/components/marketing/Pricing.svelte') then module}
 				{@const Pricing = module.default}
 				<Pricing />
+			{:catch}
+				<div class="py-16 text-center">
+					<p class="text-text-secondary-light">Content temporarily unavailable</p>
+				</div>
 			{/await}
 		{/snippet}
 	</LazyLoad>
@@ -81,6 +79,10 @@
 			{#await import('$lib/components/marketing/CTA.svelte') then module}
 				{@const CTA = module.default}
 				<CTA />
+			{:catch}
+				<div class="py-16 text-center">
+					<p class="text-text-secondary-light">Content temporarily unavailable</p>
+				</div>
 			{/await}
 		{/snippet}
 	</LazyLoad>
@@ -89,6 +91,10 @@
 			{#await import('$lib/components/marketing/Footer.svelte') then module}
 				{@const Footer = module.default}
 				<Footer />
+			{:catch}
+				<div class="py-8 text-center">
+					<p class="text-text-secondary-light">Content temporarily unavailable</p>
+				</div>
 			{/await}
 		{/snippet}
 	</LazyLoad>
