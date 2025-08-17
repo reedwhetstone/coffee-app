@@ -682,8 +682,8 @@
 									</div>
 								</div>
 								<div class="mb-2 text-sm text-text-secondary-light">
-									Loss: {profile.oz_in && profile.oz_out && profile.oz_in > 0 && profile.oz_out > 0
-										? (((profile.oz_in - profile.oz_out) / profile.oz_in) * 100).toFixed(1)
+									Loss: {profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined
+										? profile.weight_loss_percent.toFixed(1)
 										: 'N/A'}%
 								</div>
 								{#if profile.roast_date}
@@ -705,18 +705,13 @@
 						0
 					)}
 					{@const validRoastsForLoss = selectedBean.roast_profiles.filter(
-						(p: any) => p.oz_in && p.oz_out && p.oz_in > 0 && p.oz_out > 0
-					)}
-					{@const validTotalOzIn = validRoastsForLoss.reduce(
-						(sum: number, p: any) => sum + p.oz_in,
-						0
-					)}
-					{@const validTotalOzOut = validRoastsForLoss.reduce(
-						(sum: number, p: any) => sum + p.oz_out,
-						0
+						(p: any) => p.weight_loss_percent !== null && p.weight_loss_percent !== undefined
 					)}
 					{@const avgLoss =
-						validTotalOzIn > 0 ? ((validTotalOzIn - validTotalOzOut) / validTotalOzIn) * 100 : 0}
+						validRoastsForLoss.length > 0
+							? validRoastsForLoss.reduce((sum: number, p: any) => sum + p.weight_loss_percent, 0) /
+								validRoastsForLoss.length
+							: 0}
 
 					<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
@@ -734,8 +729,8 @@
 							</p>
 							<p class="text-xs text-text-secondary-light">
 								{validRoastsForLoss.length > 0
-									? `${validTotalOzIn.toFixed(1)} oz in - ${validTotalOzOut.toFixed(1)} oz out (${validRoastsForLoss.length} valid roasts)`
-									: 'No valid data for loss calculation'}
+									? `Average from ${validRoastsForLoss.length} roast${validRoastsForLoss.length === 1 ? '' : 's'} with calculated loss data`
+									: 'No roasts with weight loss data available'}
 							</p>
 						</div>
 					</div>

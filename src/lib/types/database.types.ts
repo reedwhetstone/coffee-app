@@ -103,6 +103,15 @@ export interface Database {
 					chart_y_min: number | null;
 					chart_x_max: number | null;
 					chart_x_min: number | null;
+					tp_time: number | null;
+					tp_temp: number | null;
+					dry_phase_ror: number | null;
+					mid_phase_ror: number | null;
+					finish_phase_ror: number | null;
+					total_ror: number | null;
+					auc: number | null;
+					weight_loss_percent: number | null;
+					dry_phase_delta_temp: number | null;
 				};
 				Insert: Omit<Database['public']['Tables']['roast_profiles']['Row'], 'roast_id'>;
 				Update: Partial<Database['public']['Tables']['roast_profiles']['Row']>;

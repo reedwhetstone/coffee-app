@@ -1,8 +1,13 @@
 import type { PageServerLoad } from './$types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface RoastProfile {
 	oz_in: number | null;
 	oz_out: number | null;
+	weight_loss_percent: number | null;
+	roast_id: number;
+	batch_name: string | null;
+	roast_date: string | null;
 }
 
 interface CoffeeCatalog {
@@ -51,6 +56,88 @@ interface GreenCoffeeRow {
 	roast_profiles?: RoastProfile[];
 }
 
+/**
+ * Builds the standardized query for green coffee inventory with related data
+ */
+function buildGreenCoffeeQuery(supabase: SupabaseClient) {
+	return supabase.from('green_coffee_inv').select(`
+		*,
+		coffee_catalog!catalog_id (
+			name,
+			score_value,
+			arrival_date,
+			region,
+			processing,
+			drying_method,
+			lot_size,
+			bag_size,
+			packaging,
+			cultivar_detail,
+			grade,
+			appearance,
+			roast_recs,
+			type,
+			description_short,
+			description_long,
+			farm_notes,
+			link,
+			cost_lb,
+			source,
+			stocked,
+			cupping_notes,
+			stocked_date,
+			unstocked_date,
+			ai_description,
+			ai_tasting_notes,
+			public_coffee
+		),
+		roast_profiles!coffee_id (
+			oz_in,
+			oz_out,
+			weight_loss_percent,
+			roast_id,
+			batch_name,
+			roast_date
+		)
+	`);
+}
+
+/**
+ * Processes raw data from Supabase to ensure consistent serialization
+ * and proper data structure for frontend consumption
+ */
+function processGreenCoffeeData(rawData: any[]): GreenCoffeeRow[] {
+	return rawData.map((bean) => ({
+		...bean,
+		// Handle ai_tasting_notes serialization consistently
+		ai_tasting_notes: bean.coffee_catalog?.ai_tasting_notes
+			? JSON.stringify(bean.coffee_catalog.ai_tasting_notes)
+			: null,
+		coffee_catalog: bean.coffee_catalog
+			? {
+					...bean.coffee_catalog,
+					ai_tasting_notes: bean.coffee_catalog.ai_tasting_notes
+						? JSON.stringify(bean.coffee_catalog.ai_tasting_notes)
+						: null
+				}
+			: null,
+		// Process roast profiles to ensure proper numeric formatting
+		roast_profiles:
+			bean.roast_profiles?.map((profile: any) => ({
+				oz_in: profile.oz_in,
+				oz_out: profile.oz_out,
+				// Round weight_loss_percent to 2 decimal places to ensure consistent serialization
+				weight_loss_percent:
+					profile.weight_loss_percent !== null
+						? Math.round(profile.weight_loss_percent * 100) / 100
+						: null,
+				roast_id: profile.roast_id,
+				batch_name: profile.batch_name,
+				roast_date: profile.roast_date
+			})) || []
+	}));
+}
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const { supabase, safeGetSession } = locals;
 	const shareToken = url.searchParams.get('share');
@@ -65,45 +152,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.single();
 
 		if (shareData) {
-			let query = supabase.from('green_coffee_inv').select(`
-				*,
-				coffee_catalog!catalog_id (
-					name,
-					score_value,
-					arrival_date,
-					region,
-					processing,
-					drying_method,
-					lot_size,
-					bag_size,
-					packaging,
-					cultivar_detail,
-					grade,
-					appearance,
-					roast_recs,
-					type,
-					description_short,
-					description_long,
-					farm_notes,
-					link,
-					cost_lb,
-					source,
-					stocked,
-					cupping_notes,
-					stocked_date,
-					unstocked_date,
-					ai_description,
-					ai_tasting_notes,
-					public_coffee
-				),
-				roast_profiles!coffee_id (
-					oz_in,
-					oz_out,
-					roast_id,
-					batch_name,
-					roast_date
-				)
-			`);
+			let query = buildGreenCoffeeQuery(supabase);
 
 			if (shareData.resource_id === 'all') {
 				query = query.eq('user', shareData.user_id);
@@ -114,8 +163,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			const { data: greenCoffeeData, error } = await query;
 			if (error) throw error;
 
+			const processedData = processGreenCoffeeData(greenCoffeeData || []);
+
 			return {
-				data: greenCoffeeData || [],
+				data: processedData,
 				role: 'viewer',
 				searchState: Object.fromEntries(url.searchParams.entries()),
 				isShared: true
@@ -136,7 +187,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const role = locals.role || 'viewer';
 
 	if (!session || !user) {
-		console.log('Server: No session or user, returning empty data');
 		return {
 			data: [],
 			searchState: Object.fromEntries(url.searchParams.entries()),
@@ -145,91 +195,19 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		};
 	}
 
-	// First get the green coffee data
-	const { data: greenCoffeeData, error } = await supabase
-		.from('green_coffee_inv')
-		.select(
-			`
-			*,
-			coffee_catalog!catalog_id (
-				name,
-				score_value,
-				arrival_date,
-				region,
-				processing,
-				drying_method,
-				lot_size,
-				bag_size,
-				packaging,
-				cultivar_detail,
-				grade,
-				appearance,
-				roast_recs,
-				type,
-				description_short,
-				description_long,
-				farm_notes,
-				link,
-				cost_lb,
-				source,
-				stocked,
-				cupping_notes,
-				stocked_date,
-				unstocked_date,
-				ai_description,
-				ai_tasting_notes,
-				public_coffee
-			)
-		`
-		)
+	// Get green coffee data with unified query approach
+	const { data: greenCoffeeData, error } = await buildGreenCoffeeQuery(supabase)
 		.eq('user', user.id)
 		.order('purchase_date', { ascending: false });
 
 	if (error) {
-		console.log('Server: Query error:', error);
 		throw error;
 	}
 
-	// Separately get roast profiles for all coffee IDs
-	const coffeeIds = greenCoffeeData?.map((bean) => bean.id) || [];
-	const { data: roastProfilesData, error: roastError } = await supabase
-		.from('roast_profiles')
-		.select('coffee_id, oz_in, oz_out, roast_id, batch_name, roast_date')
-		.in('coffee_id', coffeeIds)
-		.eq('user', user.id);
-
-	if (roastError) {
-		throw roastError;
-	}
-
-	// Manually join roast profiles data
-	const cleanData =
-		greenCoffeeData?.map((bean) => {
-			// Find roast profiles for this coffee
-			const profiles = roastProfilesData?.filter((profile) => profile.coffee_id === bean.id) || [];
-
-			return {
-				...bean,
-				ai_tasting_notes: bean.coffee_catalog?.ai_tasting_notes
-					? JSON.stringify(bean.coffee_catalog.ai_tasting_notes)
-					: null,
-				coffee_catalog: bean.coffee_catalog
-					? {
-							...bean.coffee_catalog,
-							ai_tasting_notes: bean.coffee_catalog.ai_tasting_notes
-								? JSON.stringify(bean.coffee_catalog.ai_tasting_notes)
-								: null
-						}
-					: null,
-				roast_profiles: profiles.map((profile) => ({
-					oz_in: profile.oz_in,
-					oz_out: profile.oz_out
-				}))
-			};
-		}) || [];
+	const processedData = processGreenCoffeeData(greenCoffeeData || []);
 
 	return {
-		data: cleanData,
+		data: processedData,
 		searchState: Object.fromEntries(url.searchParams.entries()),
 		role,
 		isShared: false

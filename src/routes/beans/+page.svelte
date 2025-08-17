@@ -32,6 +32,10 @@
 			roast_profiles?: Array<{
 				oz_in: number | null;
 				oz_out: number | null;
+				weight_loss_percent: number | null;
+				roast_id: number | null;
+				batch_name: string | null;
+				roast_date: string | null;
 			}>;
 		}>;
 		role?: 'viewer' | 'member' | 'admin';

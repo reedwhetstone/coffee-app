@@ -51,6 +51,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			roast_profiles!coffee_id (
 				oz_in,
 				oz_out,
+				weight_loss_percent,
 				roast_id,
 				batch_name,
 				roast_date

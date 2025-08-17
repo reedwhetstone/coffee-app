@@ -93,6 +93,9 @@ function transformArtisanData(
 	// Extract milestones
 	const milestones = extractMilestones(artisanData);
 
+	// Extract computed data from Artisan
+	const computedData = (artisanData as any).computed || {};
+
 	// Normalize temperatures to Fahrenheit for consistency
 	const { beanTemps, envTemps, unit } = normalizeArtisanTemperatures(
 		temp1,
@@ -269,12 +272,8 @@ function transformArtisanData(
 
 	// Prepare profile data for roast_profiles table (matching schema columns)
 	const profileData = {
-		coffee_name: artisanData.title || 'Imported Roast',
 		roaster_type: artisanData.roastertype || 'Unknown',
 		roaster_size: artisanData.roastersize || 0,
-		input_weight: artisanData.weight?.[0] || 0, // Will map to oz_in
-		output_weight: artisanData.weight?.[1] || 0, // Will map to oz_out
-		weight_unit: artisanData.weight?.[2] || 'g',
 		temperature_unit: 'F' as const, // Always store as Fahrenheit after conversion
 		roast_notes:
 			`Imported from Artisan\nRoaster: ${artisanData.roastertype || 'Unknown'}\nOriginal temp unit: ${artisanData.mode}\nWeight unit: ${artisanData.weight?.[2] || 'g'}` +
@@ -301,6 +300,22 @@ function transformArtisanData(
 			});
 		}
 	});
+
+	// Add turning point milestone if available from computed data
+	if (computedData.TP_time && computedData.TP_time > 0) {
+		milestoneEvents.push({
+			roast_id: roastId,
+			time_seconds: computedData.TP_time,
+			event_type: 10, // Milestone event type
+			event_value: null, // Milestone events have NULL values
+			event_string: 'turning_point', // TP milestone
+			category: 'milestone',
+			subcategory: 'roast_phase',
+			user_generated: false,
+			automatic: true,
+			notes: `Imported from Artisan: turning point at ${computedData.TP_time}s, ${computedData.TP_BT}°F`
+		});
+	}
 
 	// Create control events for all extra devices using actual etypes names
 	const controlEvents: any[] = [];
@@ -375,6 +390,28 @@ function transformArtisanData(
 			maillard_percent: maillardPercent,
 			development_percent: developmentPercent,
 			total_time_seconds: totalTime
+		},
+		computed: {
+			// Turning point data
+			tp_time: computedData.TP_time || null,
+			tp_temp: computedData.TP_BT || null,
+			// Rate of rise metrics
+			dry_phase_ror: computedData.dry_phase_ror || null,
+			mid_phase_ror: computedData.mid_phase_ror || null,
+			finish_phase_ror: computedData.finish_phase_ror || null,
+			total_ror: computedData.total_ror || null,
+			// Advanced metrics
+			auc: computedData.AUC || null,
+			dry_phase_delta_temp: computedData.dry_phase_delta_temp || null,
+			// Temperature mappings to existing columns (use computed when available)
+			charge_temp_computed: computedData.CHARGE_BT || null,
+			dry_end_temp_computed: computedData.DRY_BT || null,
+			drop_temp_computed: computedData.DROP_BT || null,
+			cool_temp_computed: computedData.COOL_BT || null,
+			// Time mappings to existing columns
+			dry_end_time_computed: computedData.DRY_time || null,
+			drop_time_computed: computedData.DROP_time || null,
+			cool_time_computed: computedData.COOL_time || null
 		},
 		milestoneEvents,
 		controlEvents
@@ -452,9 +489,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const { error: updateError } = await supabase
 			.from('roast_profiles')
 			.update({
-				// Keep original coffee_name, use Artisan title for title field
+				// Keep original coffee_name and batch_name
 				coffee_name: profile.coffee_name, // Preserve original coffee
-				title: artisanData.title || 'Imported Roast', // Artisan title
 				batch_name: profile.batch_name, // Preserve original batch name without modification
 				roaster_type: artisanData.roastertype || 'Unknown',
 				roaster_size: artisanData.roastersize || 0,
@@ -466,19 +502,36 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				chart_y_max: (artisanData as any).ymax || null,
 				chart_z_min: (artisanData as any).zmin || null,
 				chart_z_max: (artisanData as any).zmax || null,
-				// Milestone data for quick access
+				// Milestone data for quick access (use computed when available)
 				charge_time: processedData.milestones.charge || null,
-				dry_end_time: processedData.milestones.dry_end || null,
+				dry_end_time:
+					processedData.computed.dry_end_time_computed || processedData.milestones.dry_end || null,
 				fc_start_time: processedData.milestones.fc_start || null,
 				fc_end_time: processedData.milestones.fc_end || null,
 				sc_start_time: processedData.milestones.sc_start || null,
-				drop_time: processedData.milestones.drop || null,
-				cool_time: processedData.milestones.cool || null,
+				drop_time:
+					processedData.computed.drop_time_computed || processedData.milestones.drop || null,
+				cool_time:
+					processedData.computed.cool_time_computed || processedData.milestones.cool || null,
+				// Milestone temperatures (use computed when available)
+				charge_temp: processedData.computed.charge_temp_computed || null,
+				dry_end_temp: processedData.computed.dry_end_temp_computed || null,
+				drop_temp: processedData.computed.drop_temp_computed || null,
+				cool_temp: processedData.computed.cool_temp_computed || null,
 				// Phase calculations
 				dry_percent: processedData.phases.drying_percent || null,
 				maillard_percent: processedData.phases.maillard_percent || null,
 				development_percent: processedData.phases.development_percent || null,
 				total_roast_time: processedData.phases.total_time_seconds || null,
+				// New computed data fields
+				tp_time: processedData.computed.tp_time || null,
+				tp_temp: processedData.computed.tp_temp || null,
+				dry_phase_ror: processedData.computed.dry_phase_ror || null,
+				mid_phase_ror: processedData.computed.mid_phase_ror || null,
+				finish_phase_ror: processedData.computed.finish_phase_ror || null,
+				total_ror: processedData.computed.total_ror || null,
+				auc: processedData.computed.auc || null,
+				dry_phase_delta_temp: processedData.computed.dry_phase_delta_temp || null,
 				roast_uuid: processedData.profileData.roast_uuid,
 				data_source: 'artisan_import'
 			})

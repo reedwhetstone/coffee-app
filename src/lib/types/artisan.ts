@@ -109,12 +109,8 @@ export interface ProcessedTemperaturePoint {
 export interface ProcessedRoastData {
 	// For roast_profiles table
 	profileData: {
-		coffee_name: string;
 		roaster_type: string;
 		roaster_size: number;
-		input_weight: number;
-		output_weight: number;
-		weight_unit: string;
 		temperature_unit: 'F' | 'C';
 		roast_notes?: string;
 		roast_uuid?: string;
@@ -168,6 +164,30 @@ export interface ProcessedRoastData {
 		user_generated: boolean;
 		automatic: boolean;
 	}>;
+
+	// Computed data from Artisan
+	computed: {
+		// Turning point data
+		tp_time: number | null;
+		tp_temp: number | null;
+		// Rate of rise metrics
+		dry_phase_ror: number | null;
+		mid_phase_ror: number | null;
+		finish_phase_ror: number | null;
+		total_ror: number | null;
+		// Advanced metrics
+		auc: number | null;
+		dry_phase_delta_temp: number | null;
+		// Temperature mappings to existing columns
+		charge_temp_computed: number | null;
+		dry_end_temp_computed: number | null;
+		drop_temp_computed: number | null;
+		cool_temp_computed: number | null;
+		// Time mappings to existing columns
+		dry_end_time_computed: number | null;
+		drop_time_computed: number | null;
+		cool_time_computed: number | null;
+	};
 
 	// Note: roast_phases table no longer exists in normalized schema
 	// Phase data is now stored directly in roast_profiles table

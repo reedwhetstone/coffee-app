@@ -156,12 +156,18 @@ export class LangChainService {
 			// Roast Profiles Tool
 			new DynamicStructuredTool({
 				name: 'roast_profiles',
-				description: "Get user's roast profiles with filtering, timing data, temperature milestones, and advanced analytics",
+				description:
+					"Get user's roast profiles with filtering, timing data, temperature milestones, and advanced analytics",
 				schema: z.object({
 					roast_id: z.string().optional().describe('Specific roast ID'),
 					roast_name: z.string().optional().describe('Search by roast name'),
 					batch_name: z.string().optional().describe('Search by batch name'),
-					coffee_id: z.number().optional().describe('Filter by green coffee inventory ID - use this for specific coffee analysis'),
+					coffee_id: z
+						.number()
+						.optional()
+						.describe(
+							'Filter by green coffee inventory ID - use this for specific coffee analysis'
+						),
 					catalog_id: z
 						.number()
 						.optional()

@@ -2,6 +2,14 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
 
+// Helper function to calculate weight loss percentage
+function calculateWeightLoss(ozIn: number | null, ozOut: number | null): number | null {
+	if (!ozIn || !ozOut || ozIn <= 0) return null;
+	const weightLoss = ((ozIn - ozOut) / ozIn) * 100;
+	// Round to 2 decimal places to avoid serialization issues
+	return Math.round(weightLoss * 100) / 100;
+}
+
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
 		const { session, user } = await safeGetSession();
@@ -91,6 +99,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					last_updated: new Date().toISOString().slice(0, 19).replace('T', ' '),
 					oz_in: bean.oz_in || null,
 					oz_out: bean.oz_out || null,
+					weight_loss_percent: calculateWeightLoss(bean.oz_in, bean.oz_out),
 					roast_notes: roast_notes || null,
 					roast_targets: roast_targets || null
 				};
@@ -295,6 +304,24 @@ export const PUT: RequestHandler = async ({
 		}
 
 		const data = await request.json();
+
+		// Add weight_loss_percent calculation if oz_in or oz_out are provided
+		if (data.oz_in !== undefined || data.oz_out !== undefined) {
+			// For updates, we need to get the current values if only one is being updated
+			if (data.oz_in === undefined || data.oz_out === undefined) {
+				const { data: current } = await supabase
+					.from('roast_profiles')
+					.select('oz_in, oz_out')
+					.eq('roast_id', id)
+					.single();
+
+				const ozIn = data.oz_in !== undefined ? data.oz_in : current?.oz_in;
+				const ozOut = data.oz_out !== undefined ? data.oz_out : current?.oz_out;
+				data.weight_loss_percent = calculateWeightLoss(ozIn, ozOut);
+			} else {
+				data.weight_loss_percent = calculateWeightLoss(data.oz_in, data.oz_out);
+			}
+		}
 
 		// Verify ownership and get coffee_id for stocked status update
 		const { data: existing } = await supabase

@@ -28,6 +28,7 @@
 		coffee_id: number;
 		oz_in: number;
 		oz_out: number;
+		weight_loss_percent: number | null;
 	}
 
 	// Add new interfaces and variables for sales functionality
@@ -83,20 +84,21 @@
 	});
 
 	let roastLossRate = $derived(() => {
-		// Group roast data by coffee_id
-		const roastsByBean = group(roastProfileData, (d) => d.coffee_id);
+		// Filter roasts that have weight loss percentage data
+		const roastsWithLossData = roastProfileData.filter(
+			(d) => d.weight_loss_percent !== null && d.weight_loss_percent !== undefined
+		);
 
-		// Sum up oz_in and oz_out for each coffee
-		let totalOzIn = 0;
-		let totalOzOut = 0;
+		if (roastsWithLossData.length === 0) return 0;
 
-		roastsByBean.forEach((roasts) => {
-			totalOzIn += sum(roasts, (d) => Number(d.oz_in) || 0);
-			totalOzOut += sum(roasts, (d) => Number(d.oz_out) || 0);
-		});
+		// Calculate weighted average weight loss percentage based on input weight
+		const totalWeightedLoss = sum(
+			roastsWithLossData,
+			(d) => d.weight_loss_percent! * (Number(d.oz_in) || 0)
+		);
+		const totalOzIn = sum(roastsWithLossData, (d) => Number(d.oz_in) || 0);
 
-		// Calculate loss rate if we have valid data
-		return totalOzIn > 0 ? ((totalOzIn - totalOzOut) / totalOzIn) * 100 : 0;
+		return totalOzIn > 0 ? totalWeightedLoss / totalOzIn : 0;
 	});
 
 	// Add sales form handlers
@@ -177,7 +179,8 @@
 			if (response.ok) {
 				const data = await response.json();
 				roastProfileData = data.data.filter(
-					(profile: RoastProfileData) => profile.oz_in != null && profile.oz_out != null
+					(profile: RoastProfileData) =>
+						profile.oz_in != null && profile.oz_out != null && profile.weight_loss_percent != null
 				);
 			}
 		} catch (error) {

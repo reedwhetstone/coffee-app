@@ -36,6 +36,15 @@ interface RoastProfilesToolResponse {
 		avg_maillard_percent: number | null;
 		development_consistency: number | null;
 		avg_weight_loss_percent: number | null;
+		avg_total_ror: number | null;
+		avg_dry_phase_ror: number | null;
+		avg_mid_phase_ror: number | null;
+		avg_finish_phase_ror: number | null;
+		ror_consistency: number | null;
+		avg_auc: number | null;
+		avg_tp_time: number | null;
+		avg_tp_temp: number | null;
+		avg_dry_phase_delta_temp: number | null;
 		roaster_types_used: string[];
 		data_sources_used: string[];
 		date_range_start: string;
@@ -129,6 +138,15 @@ export const POST: RequestHandler = async (event) => {
 				chart_y_min,
 				chart_x_max,
 				chart_x_min,
+				tp_time,
+				tp_temp,
+				dry_phase_ror,
+				mid_phase_ror,
+				finish_phase_ror,
+				total_ror,
+				auc,
+				weight_loss_percent,
+				dry_phase_delta_temp,
 				green_coffee_inv!coffee_id (
 					id,
 					notes,
@@ -195,69 +213,87 @@ export const POST: RequestHandler = async (event) => {
 		if (include_calculations && profiles && profiles.length > 0) {
 			// Calculate comprehensive summary statistics
 			const validProfiles = profiles.filter((p) => p.total_roast_time !== null);
-			const tempValidProfiles = profiles.filter((p) => p.fc_start_temp !== null && p.drop_temp !== null);
+			const tempValidProfiles = profiles.filter(
+				(p) => p.fc_start_temp !== null && p.drop_temp !== null
+			);
 			const phaseValidProfiles = profiles.filter((p) => p.development_percent !== null);
 			const weightValidProfiles = profiles.filter((p) => p.oz_in !== null && p.oz_out !== null);
 
 			if (validProfiles.length > 0) {
 				// Helper function to calculate average safely
 				const safeAvg = (profiles: any[], field: string) => {
-					const validValues = profiles.filter(p => p[field] !== null && p[field] !== undefined);
-					return validValues.length > 0 
-						? validValues.reduce((sum, p) => sum + (p[field] || 0), 0) / validValues.length 
+					const validValues = profiles.filter((p) => p[field] !== null && p[field] !== undefined);
+					return validValues.length > 0
+						? validValues.reduce((sum, p) => sum + (p[field] || 0), 0) / validValues.length
 						: null;
 				};
 
 				// Helper function to calculate standard deviation
 				const safeStdDev = (profiles: any[], field: string) => {
-					const validValues = profiles.filter(p => p[field] !== null && p[field] !== undefined);
+					const validValues = profiles.filter((p) => p[field] !== null && p[field] !== undefined);
 					if (validValues.length < 2) return null;
 					const avg = safeAvg(validValues, field);
 					if (avg === null) return null;
-					const variance = validValues.reduce((sum, p) => sum + Math.pow((p[field] || 0) - avg, 2), 0) / validValues.length;
+					const variance =
+						validValues.reduce((sum, p) => sum + Math.pow((p[field] || 0) - avg, 2), 0) /
+						validValues.length;
 					return Math.sqrt(variance);
 				};
 
 				summary = {
 					// Basic counts
 					total_roasts: profiles.length,
-					
+
 					// Timing analysis
 					avg_total_roast_time: safeAvg(validProfiles, 'total_roast_time'),
 					avg_charge_time: safeAvg(profiles, 'charge_time'),
 					avg_fc_start_time: safeAvg(profiles, 'fc_start_time'),
 					avg_drop_time: safeAvg(profiles, 'drop_time'),
-					
+
 					// Temperature analysis
 					avg_charge_temp: safeAvg(tempValidProfiles, 'charge_temp'),
 					avg_fc_start_temp: safeAvg(tempValidProfiles, 'fc_start_temp'),
 					avg_drop_temp: safeAvg(tempValidProfiles, 'drop_temp'),
 					temp_consistency_fc_start: safeStdDev(tempValidProfiles, 'fc_start_temp'),
 					temp_consistency_drop: safeStdDev(tempValidProfiles, 'drop_temp'),
-					
+
 					// Phase percentages analysis
 					avg_development_percent: safeAvg(phaseValidProfiles, 'development_percent'),
 					avg_dry_percent: safeAvg(profiles, 'dry_percent'),
 					avg_maillard_percent: safeAvg(profiles, 'maillard_percent'),
 					development_consistency: safeStdDev(phaseValidProfiles, 'development_percent'),
-					
-					// Weight loss analysis
-					avg_weight_loss_percent: weightValidProfiles.length > 0 
-						? weightValidProfiles.reduce((sum, p) => {
-							const loss = ((p.oz_in - p.oz_out) / p.oz_in) * 100;
-							return sum + loss;
-						}, 0) / weightValidProfiles.length
-						: null,
-					
+
+					// Weight loss analysis (using pre-calculated database values)
+					avg_weight_loss_percent: safeAvg(profiles, 'weight_loss_percent'),
+
+					// Computed roast analytics
+					avg_total_ror: safeAvg(profiles, 'total_ror'),
+					avg_dry_phase_ror: safeAvg(profiles, 'dry_phase_ror'),
+					avg_mid_phase_ror: safeAvg(profiles, 'mid_phase_ror'),
+					avg_finish_phase_ror: safeAvg(profiles, 'finish_phase_ror'),
+					ror_consistency: safeStdDev(profiles, 'total_ror'),
+					avg_auc: safeAvg(profiles, 'auc'),
+					avg_tp_time: safeAvg(profiles, 'tp_time'),
+					avg_tp_temp: safeAvg(profiles, 'tp_temp'),
+					avg_dry_phase_delta_temp: safeAvg(profiles, 'dry_phase_delta_temp'),
+
 					// Equipment usage
-					roaster_types_used: [...new Set(profiles.filter(p => p.roaster_type).map(p => p.roaster_type))],
-					data_sources_used: [...new Set(profiles.filter(p => p.data_source).map(p => p.data_source))],
-					
+					roaster_types_used: [
+						...new Set(profiles.filter((p) => p.roaster_type).map((p) => p.roaster_type))
+					],
+					data_sources_used: [
+						...new Set(profiles.filter((p) => p.data_source).map((p) => p.data_source))
+					],
+
 					// Date range
-					date_range_start: profiles.reduce((earliest, p) => 
-						p.roast_date < earliest ? p.roast_date : earliest, profiles[0]?.roast_date),
-					date_range_end: profiles.reduce((latest, p) => 
-						p.roast_date > latest ? p.roast_date : latest, profiles[0]?.roast_date)
+					date_range_start: profiles.reduce(
+						(earliest, p) => (p.roast_date < earliest ? p.roast_date : earliest),
+						profiles[0]?.roast_date
+					),
+					date_range_end: profiles.reduce(
+						(latest, p) => (p.roast_date > latest ? p.roast_date : latest),
+						profiles[0]?.roast_date
+					)
 				};
 			}
 		}
@@ -272,13 +308,13 @@ export const POST: RequestHandler = async (event) => {
 				roast_date: profile.roast_date,
 				last_updated: profile.last_updated,
 				user: profile.user,
-				
+
 				// Coffee catalog information (from join)
 				coffee_catalog_name: profile.green_coffee_inv?.coffee_catalog?.name,
 				coffee_processing: profile.green_coffee_inv?.coffee_catalog?.processing,
 				coffee_region: profile.green_coffee_inv?.coffee_catalog?.region,
 				coffee_variety: profile.green_coffee_inv?.coffee_catalog?.cultivar_detail,
-				
+
 				// Roaster equipment information
 				title: profile.title,
 				roaster_type: profile.roaster_type,
@@ -286,11 +322,11 @@ export const POST: RequestHandler = async (event) => {
 				roast_uuid: profile.roast_uuid,
 				temperature_unit: profile.temperature_unit,
 				data_source: profile.data_source,
-				
+
 				// Weight measurements
 				oz_in: profile.oz_in,
 				oz_out: profile.oz_out,
-				
+
 				// Timing milestones
 				charge_time: profile.charge_time,
 				dry_end_time: profile.dry_end_time,
@@ -300,7 +336,7 @@ export const POST: RequestHandler = async (event) => {
 				drop_time: profile.drop_time,
 				cool_time: profile.cool_time,
 				total_roast_time: profile.total_roast_time,
-				
+
 				// Temperature milestones
 				charge_temp: profile.charge_temp,
 				dry_end_temp: profile.dry_end_temp,
@@ -309,12 +345,12 @@ export const POST: RequestHandler = async (event) => {
 				sc_start_temp: profile.sc_start_temp,
 				drop_temp: profile.drop_temp,
 				cool_temp: profile.cool_temp,
-				
+
 				// Roasting phase percentages
 				dry_percent: profile.dry_percent,
 				maillard_percent: profile.maillard_percent,
 				development_percent: profile.development_percent,
-				
+
 				// Chart configuration
 				chart_z_max: profile.chart_z_max,
 				chart_z_min: profile.chart_z_min,
@@ -322,7 +358,18 @@ export const POST: RequestHandler = async (event) => {
 				chart_y_min: profile.chart_y_min,
 				chart_x_max: profile.chart_x_max,
 				chart_x_min: profile.chart_x_min,
-				
+
+				// Computed roast analytics
+				tp_time: profile.tp_time,
+				tp_temp: profile.tp_temp,
+				dry_phase_ror: profile.dry_phase_ror,
+				mid_phase_ror: profile.mid_phase_ror,
+				finish_phase_ror: profile.finish_phase_ror,
+				total_ror: profile.total_ror,
+				auc: profile.auc,
+				weight_loss_percent: profile.weight_loss_percent,
+				dry_phase_delta_temp: profile.dry_phase_delta_temp,
+
 				// Notes and targets
 				roast_notes: profile.roast_notes,
 				roast_targets: profile.roast_targets,
