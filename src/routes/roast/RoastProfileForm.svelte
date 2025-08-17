@@ -20,7 +20,7 @@
 			loadingStore.start(operationId, 'Loading available coffees...');
 			coffeesLoading = true;
 
-			const response = await fetch('/api/data');
+			const response = await fetch('/api/beans');
 			if (response.ok) {
 				const data = await response.json();
 				console.log('API response:', data);

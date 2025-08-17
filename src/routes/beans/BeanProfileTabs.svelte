@@ -132,7 +132,7 @@
 				last_updated: new Date().toISOString()
 			};
 
-			const response = await fetch(`/api/data?id=${selectedBean.id}`, {
+			const response = await fetch(`/api/beans?id=${selectedBean.id}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json'
@@ -190,7 +190,7 @@
 				last_updated: new Date().toISOString()
 			};
 
-			const response = await fetch(`/api/data?id=${selectedBean.id}`, {
+			const response = await fetch(`/api/beans?id=${selectedBean.id}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json'

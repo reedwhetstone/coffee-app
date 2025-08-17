@@ -1,62 +1,14 @@
-// src/routes/api/data/+server.ts
 import { json } from '@sveltejs/kit';
 import { requireUserAuth } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
-
-interface GreenCoffeeRow {
-	purchase_date: string | null;
-	[key: string]: any;
-}
-
-interface RoastProfile {
-	roast_id: string;
-}
+import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
 		const id = url.searchParams.get('id');
 		const shareToken = url.searchParams.get('share');
 
-		let query = locals.supabase.from('green_coffee_inv').select(`
-			*,
-			coffee_catalog!catalog_id (
-				name,
-				score_value,
-				arrival_date,
-				region,
-				processing,
-				drying_method,
-				lot_size,
-				bag_size,
-				packaging,
-				cultivar_detail,
-				grade,
-				appearance,
-				roast_recs,
-				type,
-				description_short,
-				description_long,
-				farm_notes,
-				link,
-				cost_lb,
-				source,
-				stocked,
-				cupping_notes,
-				stocked_date,
-				unstocked_date,
-				ai_description,
-				ai_tasting_notes,
-				public_coffee
-			),
-			roast_profiles!coffee_id (
-				oz_in,
-				oz_out,
-				weight_loss_percent,
-				roast_id,
-				batch_name,
-				roast_date
-			)
-		`);
+		let query = buildGreenCoffeeQuery(locals.supabase);
 
 		// If share token is provided, verify it and show shared data
 		if (shareToken) {
@@ -97,16 +49,16 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const { data: rows, error } = await query;
 		if (error) throw error;
 
-		// Return data directly - roast profiles are now included via native join
-		const enrichedData = rows || [];
+		// Process data consistently
+		const processedData = processGreenCoffeeData(rows || []);
 
 		return json({
-			data: enrichedData,
+			data: processedData,
 			searchState: Object.fromEntries(url.searchParams.entries())
 		});
 	} catch (error) {
-		console.error('Error querying database:', error);
-		return json({ data: [], error: 'Failed to fetch data' });
+		console.error('Error querying beans:', error);
+		return json({ data: [], error: 'Failed to fetch beans' });
 	}
 };
 
@@ -217,47 +169,87 @@ export const POST: RequestHandler = async (event) => {
 		const { data: newBean, error } = await supabase
 			.from('green_coffee_inv')
 			.insert(cleanedBean)
-			.select(
-				`
-				*,
-				coffee_catalog!catalog_id (
-					name,
-					score_value,
-					arrival_date,
-					region,
-					processing,
-					drying_method,
-					lot_size,
-					bag_size,
-					packaging,
-					cultivar_detail,
-					grade,
-					appearance,
-					roast_recs,
-					type,
-					description_short,
-					description_long,
-					farm_notes,
-					link,
-					cost_lb,
-					source,
-					stocked,
-					cupping_notes,
-					stocked_date,
-					unstocked_date,
-					ai_description,
-					ai_tasting_notes,
-					public_coffee
-				)
-			`
-			)
+			.select()
 			.single();
 
 		if (error) throw error;
-		return json(newBean);
+
+		// Get the full bean data with joins
+		const { data: fullBean } = await buildGreenCoffeeQuery(supabase)
+			.eq('id', newBean.id)
+			.single();
+
+		return json(processGreenCoffeeData([fullBean])[0]);
 	} catch (error) {
 		console.error('Error creating bean:', error);
 		return json({ error: 'Failed to create bean' }, { status: 500 });
+	}
+};
+
+export const PUT: RequestHandler = async (event) => {
+	try {
+		const { user } = await requireUserAuth(event);
+		const { supabase } = event.locals;
+		const { url, request } = event;
+
+		const id = url.searchParams.get('id');
+		if (!id) {
+			return json({ error: 'No ID provided' }, { status: 400 });
+		}
+
+		// Verify ownership
+		const { data: existing } = await supabase
+			.from('green_coffee_inv')
+			.select('user')
+			.eq('id', id)
+			.single();
+
+		if (!existing || existing.user !== user.id) {
+			return json({ error: 'Unauthorized' }, { status: 403 });
+		}
+
+		const updates = await request.json();
+		const { id: _, ...rawUpdateData } = updates;
+
+		// Filter to only include actual green_coffee_inv table columns
+		const validColumns = [
+			'rank',
+			'notes',
+			'purchase_date',
+			'purchased_qty_lbs',
+			'bean_cost',
+			'tax_ship_cost',
+			'last_updated',
+			'user',
+			'catalog_id',
+			'stocked',
+			'cupping_notes'
+		];
+
+		const updateData = Object.fromEntries(
+			Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
+		);
+
+		// First do the update without the join to avoid schema cache issues
+		const { error: updateError } = await supabase
+			.from('green_coffee_inv')
+			.update(updateData)
+			.eq('id', id);
+
+		if (updateError) {
+			console.error('Update error:', updateError);
+			throw updateError;
+		}
+
+		// Then fetch the updated data with the join
+		const { data: updatedBean } = await buildGreenCoffeeQuery(supabase)
+			.eq('id', id)
+			.single();
+
+		return json(processGreenCoffeeData([updatedBean])[0]);
+	} catch (error) {
+		console.error('Error updating bean:', error);
+		return json({ success: false, error: 'Failed to update bean' }, { status: 500 });
 	}
 };
 
@@ -293,7 +285,7 @@ export const DELETE: RequestHandler = async (event) => {
 
 		// If there are roast profiles, delete their associated data
 		if (roastProfiles && roastProfiles.length > 0) {
-			const roastIds = roastProfiles.map((profile: RoastProfile) => profile.roast_id);
+			const roastIds = roastProfiles.map((profile: any) => profile.roast_id);
 
 			// Delete from normalized tables
 			const { error: tempError } = await supabase
@@ -353,145 +345,5 @@ export const DELETE: RequestHandler = async (event) => {
 	} catch (error) {
 		console.error('Error deleting bean and associated data:', error);
 		return json({ success: false, error: 'Failed to delete bean' }, { status: 500 });
-	}
-};
-
-export const PUT: RequestHandler = async (event) => {
-	try {
-		const { user } = await requireUserAuth(event);
-		const { supabase } = event.locals;
-		const { url, request } = event;
-
-		const id = url.searchParams.get('id');
-		if (!id) {
-			return json({ error: 'No ID provided' }, { status: 400 });
-		}
-
-		// Verify ownership
-		const { data: existing } = await supabase
-			.from('green_coffee_inv')
-			.select('user')
-			.eq('id', id)
-			.single();
-
-		if (!existing || existing.user !== user.id) {
-			return json({ error: 'Unauthorized' }, { status: 403 });
-		}
-
-		const updates = await request.json();
-		const { id: _, ...rawUpdateData } = updates;
-
-		console.log('PUT request - updating bean ID:', id);
-		console.log('Raw update data keys:', Object.keys(rawUpdateData));
-
-		// Filter to only include actual green_coffee_inv table columns
-		const validColumns = [
-			'rank',
-			'notes',
-			'purchase_date',
-			'purchased_qty_lbs',
-			'bean_cost',
-			'tax_ship_cost',
-			'last_updated',
-			'user',
-			'catalog_id',
-			'stocked',
-			'cupping_notes'
-		];
-
-		const updateData = Object.fromEntries(
-			Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
-		);
-
-		console.log('Filtered update data:', JSON.stringify(updateData, null, 2));
-
-		// First, verify the record exists
-		const { data: existingBean, error: checkError } = await supabase
-			.from('green_coffee_inv')
-			.select('id')
-			.eq('id', id)
-			.single();
-
-		if (checkError) {
-			console.log('Error checking for existing bean:', checkError);
-			throw checkError;
-		}
-
-		if (!existingBean) {
-			console.log(`No bean found with ID ${id}`);
-			return json({ success: false, error: 'Bean not found' }, { status: 404 });
-		}
-
-		// First do the update without the join to avoid schema cache issues
-		const { error: updateError } = await supabase
-			.from('green_coffee_inv')
-			.update(updateData)
-			.eq('id', id);
-
-		if (updateError) {
-			console.error('Update error:', updateError);
-			throw updateError;
-		}
-
-		// Then fetch the updated data with the join
-		const { data: updatedBeans, error } = await supabase
-			.from('green_coffee_inv')
-			.select(
-				`
-				*,
-				coffee_catalog!catalog_id (
-					name,
-					score_value,
-					arrival_date,
-					region,
-					processing,
-					drying_method,
-					lot_size,
-					bag_size,
-					packaging,
-					cultivar_detail,
-					grade,
-					appearance,
-					roast_recs,
-					type,
-					description_short,
-					description_long,
-					farm_notes,
-					link,
-					cost_lb,
-					source,
-					stocked,
-					cupping_notes,
-					stocked_date,
-					unstocked_date,
-					ai_description,
-					ai_tasting_notes,
-					public_coffee
-				)
-			`
-			)
-			.eq('id', id);
-
-		if (error) {
-			console.warn('Join query failed, falling back to basic select:', error);
-			// Fallback: just return the basic updated record without the join
-			const { data: basicData, error: basicError } = await supabase
-				.from('green_coffee_inv')
-				.select('*')
-				.eq('id', id)
-				.single();
-
-			if (basicError) throw basicError;
-			return json(basicData);
-		}
-
-		if (!updatedBeans || updatedBeans.length === 0) {
-			return json({ success: false, error: 'Update failed' }, { status: 500 });
-		}
-
-		return json(updatedBeans[0]);
-	} catch (error) {
-		console.error('Error updating bean:', error);
-		return json({ success: false, error: 'Failed to update bean' }, { status: 500 });
 	}
 };

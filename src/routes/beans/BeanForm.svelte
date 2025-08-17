@@ -214,7 +214,7 @@
 					}
 				}
 
-				const response = await fetch('/api/data', {
+				const response = await fetch('/api/beans', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json'

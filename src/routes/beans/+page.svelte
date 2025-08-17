@@ -187,73 +187,29 @@
 		}
 	}
 
-	// Function to refresh data using SvelteKit invalidation
+	// Function to refresh data using SvelteKit invalidation (preferred approach)
 	async function refreshData() {
 		await invalidateAll();
-	}
-
-	// Function to load data from API
-	async function loadData() {
-		try {
-			isLoading = true;
-			const shareToken = page.url.searchParams.get('share');
-			const url = shareToken ? `/api/data?share=${shareToken}` : '/api/data';
-
-			const response = await fetch(url);
-			if (response.ok) {
-				const result = await response.json();
-				data = {
-					data: result.data,
-					searchState: data.searchState,
-					role: data.role
-				};
-
-				hasAttemptedLoad = true;
-
-				// Re-initialize filter store with new data
-				if (data.data.length > 0 && !initializing) {
-					initializing = true;
-					setTimeout(() => {
-						filterStore.initializeForRoute(page.url.pathname, data.data);
-						initializing = false;
-						isLoading = false;
-					}, 0);
-				} else {
-					// No data received, but loading is complete
-					isLoading = false;
-				}
-
-				return true;
-			}
-			hasAttemptedLoad = true;
-			isLoading = false;
-			return false;
-		} catch (error) {
-			console.error('Error loading data:', error);
-			hasAttemptedLoad = true;
-			isLoading = false;
-			return false;
-		}
 	}
 
 	// Function to handle bean deletion
 	async function deleteBean(id: number) {
 		try {
 			selectedBean = null;
-			const response = await fetch(`/api/data?id=${id}`, {
+			const response = await fetch(`/api/beans?id=${id}`, {
 				method: 'DELETE'
 			});
 
 			if (response.ok) {
-				await loadData();
+				await refreshData();
 			} else {
 				const errorData = await response.json();
 				console.error('Failed to delete bean:', errorData.error || 'Unknown error');
-				await loadData();
+				await refreshData();
 			}
 		} catch (error) {
 			console.error('Error deleting bean:', error);
-			await loadData();
+			await refreshData();
 		}
 	}
 
@@ -266,7 +222,7 @@
 	async function handleFormSubmit(
 		newBean: Database['public']['Tables']['green_coffee_inv']['Row']
 	) {
-		await loadData();
+		await refreshData();
 		selectedBean = null;
 		setTimeout(() => {
 			selectedBean = newBean;
@@ -276,7 +232,7 @@
 	async function handleBeanUpdate(
 		updatedBean: Database['public']['Tables']['green_coffee_inv']['Row']
 	) {
-		await loadData();
+		await refreshData();
 		selectedBean = updatedBean;
 	}
 
@@ -287,35 +243,34 @@
 			hasAttemptedLoad = true;
 		}
 
-		loadData().then(() => {
-			const searchState = page.state as any;
-			console.log('Beans page searchState:', searchState);
+		// Handle search state from navigation
+		const searchState = page.state as any;
+		console.log('Beans page searchState:', searchState);
 
-			// Check if we should show a bean based on the search state
-			if (searchState?.searchType === 'green' && searchState?.searchId) {
-				const foundBean = data.data.find(
-					(bean: Database['public']['Tables']['green_coffee_inv']['Row']) =>
-						bean.id === searchState.searchId
-				);
-				if (foundBean) {
-					selectedBean = foundBean;
-					// Scroll to bean profile after it renders
-					setTimeout(() => {
-						if (beanProfileElement) {
-							beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-						}
-					}, 100);
-				}
-			}
-
-			// Check if we should show the bean form
-			if (searchState?.showBeanForm) {
-				console.log('Should show bean form based on state flag');
+		// Check if we should show a bean based on the search state
+		if (searchState?.searchType === 'green' && searchState?.searchId) {
+			const foundBean = data.data.find(
+				(bean: Database['public']['Tables']['green_coffee_inv']['Row']) =>
+					bean.id === searchState.searchId
+			);
+			if (foundBean) {
+				selectedBean = foundBean;
+				// Scroll to bean profile after it renders
 				setTimeout(() => {
-					handleAddNewBean();
+					if (beanProfileElement) {
+						beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					}
 				}, 100);
 			}
-		});
+		}
+
+		// Check if we should show the bean form
+		if (searchState?.showBeanForm) {
+			console.log('Should show bean form based on state flag');
+			setTimeout(() => {
+				handleAddNewBean();
+			}, 100);
+		}
 
 		// Add event listener for the custom show-bean-form event
 		window.addEventListener('show-bean-form', handleAddNewBean);
@@ -519,19 +474,12 @@
 					try {
 						// Update selectedBean immediately with the response from the API
 						selectedBean = updatedBean;
-						// Then refresh the data in the background to keep everything in sync
-						await loadData();
-						// Only update selectedBean from refreshed data if it has newer or additional data
-						// Keep the updated cupping notes and rank from the API response
+						// Refresh the data to keep everything in sync
+						await refreshData();
+						// Update selectedBean from the refreshed data
 						const refreshedBean = $filteredData.find((bean) => bean.id === updatedBean.id);
 						if (refreshedBean) {
-							// Merge the fresh API data with any additional fields from the refreshed bean
-							selectedBean = {
-								...refreshedBean,
-								cupping_notes: updatedBean.cupping_notes, // Keep the fresh cupping notes
-								rank: updatedBean.rank, // Keep the fresh rank
-								last_updated: updatedBean.last_updated // Keep the fresh timestamp
-							};
+							selectedBean = refreshedBean;
 						}
 					} finally {
 						setTimeout(() => {

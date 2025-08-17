@@ -20,7 +20,7 @@
 	async function loadData() {
 		try {
 			// Fetch coffees from green_coffee_inv with catalog cross-reference (similar to BeanForm)
-			const coffeeResponse = await fetch('/api/data');
+			const coffeeResponse = await fetch('/api/beans');
 			if (coffeeResponse.ok) {
 				const coffeeData = await coffeeResponse.json();
 				// Store the full coffee data with catalog information
