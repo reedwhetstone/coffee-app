@@ -25,21 +25,47 @@
 
 	// Helper functions for data calculations
 	function calculateRoastDuration(profile: any): string {
+		// Use calculated total_roast_time from roast_profiles, fallback to roast_duration_minutes
+		if (profile.total_roast_time) {
+			const totalSeconds = Math.round(profile.total_roast_time);
+			const minutes = Math.floor(totalSeconds / 60);
+			const seconds = totalSeconds % 60;
+			return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+		}
 		if (!profile.roast_duration_minutes) return 'N/A';
 		const minutes = Math.floor(profile.roast_duration_minutes);
 		const seconds = Math.round((profile.roast_duration_minutes - minutes) * 60);
 		return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 	}
 
-	function calculateYieldPercentage(profile: any): string {
+	function calculateWeightLossPercentage(profile: any): string {
+		// Use calculated weight_loss_percent from roast_profiles, fallback to calculation
+		if (profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined) {
+			return `${profile.weight_loss_percent.toFixed(1)}%`;
+		}
 		if (!profile.oz_in || !profile.oz_out) return 'N/A';
-		return `${Math.round((profile.oz_out / profile.oz_in) * 100)}%`;
+		// Calculate weight loss percentage: (oz_in - oz_out) / oz_in * 100
+		const weightLoss = ((profile.oz_in - profile.oz_out) / profile.oz_in) * 100;
+		return `${weightLoss.toFixed(1)}%`;
 	}
 
-	function getRoastLevelColor(endTemp: number | null): string {
-		if (!endTemp) return 'text-text-secondary-light';
-		if (endTemp < 400) return 'text-yellow-600'; // Light roast
-		if (endTemp < 420) return 'text-amber-600'; // Medium roast
+	function getDropTempDisplay(profile: any): string {
+		// Use calculated drop_temp from roast_profiles, fallback to end_temperature
+		if (profile.drop_temp) {
+			return `${Math.round(profile.drop_temp)}°F`;
+		}
+		if (profile.end_temperature) {
+			return `${Math.round(profile.end_temperature)}°F`;
+		}
+		return 'N/A';
+	}
+
+	function getRoastLevelColor(profile: any): string {
+		// Use drop_temp if available, otherwise end_temperature
+		const temp = profile.drop_temp || profile.end_temperature;
+		if (!temp) return 'text-text-secondary-light';
+		if (temp < 400) return 'text-yellow-600'; // Light roast
+		if (temp < 420) return 'text-amber-600'; // Medium roast
 		return 'text-orange-700'; // Dark roast
 	}
 
@@ -59,17 +85,26 @@
 
 	function getBatchSummary(profiles: any[]) {
 		const totalWeight = profiles.reduce((sum, p) => sum + (p.oz_in || 0), 0);
-		const avgYield =
-			profiles.reduce((sum, p) => {
+		
+		// Calculate average weight loss percentage for batch summary
+		const validProfiles = profiles.filter(p => 
+			p.weight_loss_percent !== null && p.weight_loss_percent !== undefined ||
+			(p.oz_in && p.oz_out)
+		);
+		const avgWeightLoss = validProfiles.length > 0 ? 
+			validProfiles.reduce((sum, p) => {
+				if (p.weight_loss_percent !== null && p.weight_loss_percent !== undefined) {
+					return sum + p.weight_loss_percent;
+				}
 				if (p.oz_in && p.oz_out) {
-					return sum + p.oz_out / p.oz_in;
+					return sum + ((p.oz_in - p.oz_out) / p.oz_in) * 100;
 				}
 				return sum;
-			}, 0) / profiles.length;
+			}, 0) / validProfiles.length : 0;
 
 		return {
 			totalWeight: totalWeight.toFixed(1),
-			avgYield: avgYield ? Math.round(avgYield * 100) : 0,
+			avgWeightLoss: avgWeightLoss.toFixed(1),
 			count: profiles.length
 		};
 	}
@@ -127,8 +162,8 @@
 									<p class="font-semibold text-blue-500">{batchSummary.totalWeight} oz</p>
 								</div>
 								<div>
-									<p class="text-text-secondary-light">Avg Yield</p>
-									<p class="font-semibold text-green-500">{batchSummary.avgYield}%</p>
+									<p class="text-text-secondary-light">Avg Loss</p>
+									<p class="font-semibold text-red-500">{batchSummary.avgWeightLoss}%</p>
 								</div>
 								<div>
 									<p class="text-text-secondary-light">Roasts</p>
@@ -183,17 +218,15 @@
 												</p>
 											</div>
 											<div>
-												<p class="text-text-secondary-light">Yield</p>
-												<p class="font-semibold text-green-500">
-													{calculateYieldPercentage(profile)}
+												<p class="text-text-secondary-light">Loss %</p>
+												<p class="font-semibold text-red-500">
+													{calculateWeightLossPercentage(profile)}
 												</p>
 											</div>
 											<div>
-												<p class="text-text-secondary-light">End Temp</p>
-												<p class="font-semibold {getRoastLevelColor(profile.end_temperature)}">
-													{profile.end_temperature
-														? `${Math.round(profile.end_temperature)}°F`
-														: 'N/A'}
+												<p class="text-text-secondary-light">Drop Temp</p>
+												<p class="font-semibold {getRoastLevelColor(profile)}">
+													{getDropTempDisplay(profile)}
 												</p>
 											</div>
 										</div>

@@ -607,12 +607,12 @@
 			isPaused = false;
 
 			// Fetch and load roast data using new API structure
-			const response = await fetch(`/api/profile-log?roast_id=${profile.roast_id}`);
+			const response = await fetch(`/api/roast-data?roast_id=${profile.roast_id}`);
 			if (!response.ok) {
 				throw new Error('Failed to fetch roast data');
 			}
 
-			// The profile-log API now returns normalized data
+			// The roast-data API returns normalized data from roast_events and roast_temperatures
 			// Clear existing data first
 			$temperatureEntries = [];
 			$eventEntries = [];
@@ -678,11 +678,11 @@
 			}
 
 			// Clear existing data for this roast
-			await fetch(`/api/profile-log?roast_id=${roastId}`, { method: 'DELETE' });
+			await fetch(`/api/roast-data?roast_id=${roastId}`, { method: 'DELETE' });
 
-			// Save the normalized data directly to API
+			// Save event data (live roasting only generates events, no temperature data)
 			if ($eventEntries.length > 0) {
-				const logResponse = await fetch('/api/profile-log', {
+				const logResponse = await fetch('/api/roast-data', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json'

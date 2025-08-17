@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createRoastDataService } from '$lib/services/roastDataService';
+import { createMilestoneCalculationService } from '$lib/services/milestoneCalculationService';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
@@ -51,15 +52,33 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const events = await request.json();
-		const eventsArray = Array.isArray(events) ? events : [events];
+		const requestData = await request.json();
+		
+		// Handle both legacy event-only format and new combined format
+		let temperatures: any[] = [];
+		let events: any[] = [];
+		let roastId: number;
 
-		// Verify all events have roast_id and validate ownership
-		const roastId = eventsArray[0]?.roast_id;
+		if (Array.isArray(requestData)) {
+			// Legacy format: array of events only
+			events = requestData;
+			roastId = events[0]?.roast_id;
+		} else if (requestData.temperatures && requestData.events) {
+			// New format: object with both temperatures and events
+			temperatures = Array.isArray(requestData.temperatures) ? requestData.temperatures : [];
+			events = Array.isArray(requestData.events) ? requestData.events : [];
+			roastId = requestData.roast_id || temperatures[0]?.roast_id || events[0]?.roast_id;
+		} else {
+			// Assume it's a single event
+			events = [requestData];
+			roastId = requestData.roast_id;
+		}
+
 		if (!roastId) {
 			return json({ error: 'roast_id is required' }, { status: 400 });
 		}
 
+		// Verify ownership of the roast profile
 		const { data: profile } = await supabase
 			.from('roast_profiles')
 			.select('user')
@@ -70,18 +89,49 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
-		// Insert events directly to roast_events table
-		const { error } = await supabase.from('roast_events').insert(eventsArray);
+		let temperatureCount = 0;
+		let eventCount = 0;
 
-		if (error) {
-			console.error('Event insert error:', error);
-			return json({ error: error.message }, { status: 500 });
+		// Insert temperatures if provided
+		if (temperatures.length > 0) {
+			const { error: tempError } = await supabase.from('roast_temperatures').insert(temperatures);
+			if (tempError) {
+				console.error('Temperature insert error:', tempError);
+				return json({ error: tempError.message }, { status: 500 });
+			}
+			temperatureCount = temperatures.length;
 		}
 
-		return json({ success: true, count: eventsArray.length });
+		// Insert events if provided
+		if (events.length > 0) {
+			const { error: eventError } = await supabase.from('roast_events').insert(events);
+			if (eventError) {
+				console.error('Event insert error:', eventError);
+				return json({ error: eventError.message }, { status: 500 });
+			}
+			eventCount = events.length;
+		}
+
+		// Automatically calculate and update milestone data after saving
+		try {
+			const milestoneService = createMilestoneCalculationService(supabase);
+			await milestoneService.updateRoastProfileMilestones(roastId);
+			console.log(`Milestone calculation completed for roast ${roastId}`);
+		} catch (milestoneError) {
+			// Log error but don't fail the main operation
+			console.warn(`Failed to calculate milestones for roast ${roastId}:`, milestoneError);
+		}
+
+		return json({ 
+			success: true, 
+			temperatureCount,
+			eventCount,
+			totalCount: temperatureCount + eventCount,
+			milestonesCalculated: true
+		});
 	} catch (error) {
-		console.error('Error creating profile log:', error);
-		return json({ error: 'Failed to create profile log' }, { status: 500 });
+		console.error('Error creating roast data:', error);
+		return json({ error: 'Failed to create roast data' }, { status: 500 });
 	}
 };
 
