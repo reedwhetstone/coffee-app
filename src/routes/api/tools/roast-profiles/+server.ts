@@ -11,6 +11,7 @@ interface RoastProfilesToolInput {
 	catalog_id?: number; // coffee_catalog.id - will be converted to coffee_id
 	limit?: number;
 	include_calculations?: boolean;
+	stocked_only?: boolean; // Filter to only show roasts for currently stocked coffee
 }
 
 // Tool response interface
@@ -41,8 +42,9 @@ export const POST: RequestHandler = async (event) => {
 			batch_name,
 			coffee_id,
 			catalog_id,
-			limit = 20,
-			include_calculations = true
+			limit = 10,
+			include_calculations = true,
+			stocked_only = true
 		} = input;
 
 		// If catalog_id is provided instead of coffee_id, convert it
@@ -71,6 +73,7 @@ export const POST: RequestHandler = async (event) => {
 				green_coffee_inv!coffee_id (
 					id,
 					notes,
+					stocked,
 					coffee_catalog!catalog_id (
 						name,
 						processing,
@@ -81,6 +84,12 @@ export const POST: RequestHandler = async (event) => {
 			`
 			)
 			.eq('user', user.id);
+
+		// Apply stocked filter - default to only show roasts for currently stocked coffee
+		// This focuses on actionable roasting data for available inventory
+		if (stocked_only !== false) {
+			query = query.eq('green_coffee_inv.stocked', true);
+		}
 
 		// Apply filters
 		if (roast_id) {
@@ -99,11 +108,12 @@ export const POST: RequestHandler = async (event) => {
 			query = query.eq('coffee_id', finalCoffeeId);
 		}
 
-		// Order by most recent first and apply limit
+		// Order by most recent first and apply limit - enforce maximum of 15 items
 		query = query.order('roast_date', { ascending: false });
 
-		if (limit > 0) {
-			query = query.limit(limit);
+		const finalLimit = Math.min(limit || 10, 15);
+		if (finalLimit > 0) {
+			query = query.limit(finalLimit);
 		}
 
 		const { data: profiles, error } = await query;
@@ -170,8 +180,9 @@ export const POST: RequestHandler = async (event) => {
 				batch_name,
 				coffee_id: finalCoffeeId,
 				catalog_id,
-				limit,
-				include_calculations
+				limit: finalLimit,
+				include_calculations,
+				stocked_only
 			}
 		};
 

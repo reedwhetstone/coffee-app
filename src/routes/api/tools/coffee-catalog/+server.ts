@@ -56,8 +56,9 @@ export const POST: RequestHandler = async (event) => {
 		// Build query
 		let query = supabase.from('coffee_catalog').select('*').eq('public_coffee', true);
 
-		// Apply stocked filter
-		if (stocked_only) {
+		// Apply stocked filter - default to stocked coffees unless explicitly disabled
+		// This keeps results focused on currently available inventory
+		if (stocked_only !== false) {
 			query = query.eq('stocked', true);
 		}
 
@@ -131,8 +132,9 @@ export const POST: RequestHandler = async (event) => {
 			query = query.or(allFieldConditions.join(','));
 		}
 
-		// Apply limit and ordering
-		query = query.order('score_value', { ascending: false }).limit(limit);
+		// Apply limit and ordering - enforce maximum of 15 items
+		const finalLimit = Math.min(limit || 10, 15);
+		query = query.order('score_value', { ascending: false }).limit(finalLimit);
 
 		const { data: coffees, error } = await query;
 
@@ -160,7 +162,7 @@ export const POST: RequestHandler = async (event) => {
 				flavor_keywords,
 				score_min,
 				score_max,
-				limit,
+				limit: finalLimit,
 				stocked_only,
 				name,
 				stocked_days,

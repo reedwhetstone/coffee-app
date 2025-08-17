@@ -246,16 +246,16 @@
 	function detectStructuredFields(message: any): Record<string, any> | null {
 		// Base message fields that are not considered structured data
 		const baseFields = new Set(['role', 'content', 'timestamp']);
-		
+
 		const structuredFields: Record<string, any> = {};
 		let hasStructuredData = false;
 
 		for (const [key, value] of Object.entries(message)) {
 			// Skip base message fields
 			if (baseFields.has(key)) continue;
-			
+
 			// Detect structured data patterns
-			const isStructuredField = 
+			const isStructuredField =
 				// Arrays with content
 				(Array.isArray(value) && value.length > 0) ||
 				// Non-null objects (excluding Date objects)
@@ -263,8 +263,11 @@
 				// Boolean metadata fields
 				(typeof value === 'boolean' && (key.startsWith('is') || key.startsWith('has'))) ||
 				// Fields with naming patterns indicating structured data
-				key.endsWith('_cards') || key.endsWith('_data') || key.endsWith('_ids') ||
-				key.endsWith('_type') || key.endsWith('_metadata') ||
+				key.endsWith('_cards') ||
+				key.endsWith('_data') ||
+				key.endsWith('_ids') ||
+				key.endsWith('_type') ||
+				key.endsWith('_metadata') ||
 				// Explicit structured field
 				key === 'isStructured';
 

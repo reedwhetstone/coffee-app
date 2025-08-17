@@ -98,8 +98,14 @@ export class LangChainService {
 					flavor_keywords: z.array(z.string()).optional().describe('Flavor descriptors'),
 					score_min: z.number().optional().describe('Minimum cupping score'),
 					score_max: z.number().optional().describe('Maximum cupping score'),
-					limit: z.number().optional().describe('Number of results to return'),
-					stocked_only: z.boolean().optional().describe('Only show currently stocked coffees'),
+					limit: z.number().optional().describe('Number of results to return (max 15)').default(10),
+					stocked_only: z
+						.boolean()
+						.optional()
+						.describe(
+							'Only show currently stocked coffees (default: true, use false for historical analysis)'
+						)
+						.default(true),
 					name: z.string().optional().describe('Search by coffee name'),
 					stocked_days: z
 						.number()
@@ -125,13 +131,19 @@ export class LangChainService {
 				description:
 					"Get the user's personal coffee inventory with purchase history and roast summaries",
 				schema: z.object({
-					stocked_only: z.boolean().optional().describe('Only show currently stocked beans'),
+					stocked_only: z
+						.boolean()
+						.optional()
+						.describe(
+							'Only show currently stocked beans (default: true, use false for historical analysis)'
+						)
+						.default(true),
 					include_catalog_details: z
 						.boolean()
 						.optional()
 						.describe('Include full catalog information'),
 					include_roast_summary: z.boolean().optional().describe('Include roasting statistics'),
-					limit: z.number().optional().describe('Number of results to return')
+					limit: z.number().optional().describe('Number of results to return (max 15)').default(15)
 				}),
 				func: async (input) => {
 					this.logger.logToolCall('green_coffee_inventory', input);
@@ -156,8 +168,19 @@ export class LangChainService {
 						.describe(
 							'Filter by catalog ID (use this when you have an ID from coffee_catalog_search)'
 						),
-					limit: z.number().optional().describe('Number of results'),
-					include_calculations: z.boolean().optional().describe('Include summary calculations')
+					limit: z.number().optional().describe('Number of results (max 15)').default(10),
+					include_calculations: z
+						.boolean()
+						.optional()
+						.describe('Include summary calculations')
+						.default(true),
+					stocked_only: z
+						.boolean()
+						.optional()
+						.describe(
+							'Only show roasts for currently stocked coffee (default: true, use false for historical analysis)'
+						)
+						.default(true)
 				}),
 				func: async (input) => {
 					this.logger.logToolCall('roast_profiles', input);
@@ -253,34 +276,47 @@ export class LangChainService {
 		const prompt = ChatPromptTemplate.fromMessages([
 			[
 				'system',
-				`You are an expert coffee consultant with deep knowledge of coffee varieties, processing methods, 
-				roasting techniques, and flavor profiles. You help coffee enthusiasts and professionals make 
-				informed decisions about coffee selection, roasting, and brewing.
+				`You are an expert coffee consultant who combines deep knowledge of coffee varieties, 
+processing methods, roasting techniques, and flavor profiles with practical guidance. 
+Your goal is to help coffee enthusiasts and professionals make informed, actionable 
+decisions about coffee selection, roasting, and brewing.
 
-				You have access to several tools to help users:
-				1. coffee_catalog_search - Find and recommend coffee beans or analyze historical green coffee data
-				2. green_coffee_inventory - View user's personal coffee inventory  
-				3. roast_profiles - Analyze user's roasting history and profiles
-				4. bean_tasting_notes - Get tasting notes and flavor profiles
-				
-				RESPONSE FORMAT INSTRUCTIONS:
-				You MUST respond with a JSON object containing:
-				- message: Markdown-formatted response text with headers, lists, bold text
-				- coffee_cards: Array of coffee ID numbers when recommending specific coffees
-				- response_type: "text", "cards", or "mixed"
-				
-				When recommending coffees, include the coffee IDs at the end of your response like:
-				coffee_cards: [123, 456, 789]
-				
-				Guidelines:
-				- Use tools proactively to provide helpful, data-driven responses
-				- When users ask for coffee recommendations, use coffee_catalog_search
-				- When discussing user inventory or beans, use green_coffee_inventory
-				- For roasting advice, use roast_profiles
-				- Always provide practical, actionable advice
-				- Be conversational and enthusiastic about coffee
-				- Extract coffee IDs from tool responses and include in coffee_cards
-				- If a tool call fails, acknowledge it and provide general guidance`
+TOOL USAGE
+You have access to 4 specialized tools (max 15 results each). You MUST use them strategically, 
+and only when needed:
+1. coffee_catalog_search - Query supplier inventories of green coffee
+2. green_coffee_inventory - Query the users personal green coffee inventory & notes 
+   (these rows may reference catalog entries or independent purchases)
+3. roast_profiles - Analyze user's roasting data
+4. bean_tasting_notes - Retrieve or analyze detailed flavor profiles (user vs supplier)
+
+CONSTRAINTS
+- You must not exceed: **3 tool execution rounds** and **7 total tool calls per user request**
+- Always use stocked_only=true filters unless the user explicitly asks for historical or sold-out coffees
+- Each tool call returns at most 15 results
+- Use tools only when they add real value. General knowledge questions may not require tools.
+
+STRATEGIC APPROACH
+1. Parse the user request → identify whether tools are needed
+2. If tools are needed, call the most relevant one(s) with focused filters
+3. Prefer currently available inventory unless explicitly asked otherwise
+4. Provide recommendations that are practical, specific, and usable today
+5. If tools fail or return no results → acknowledge it, explain, and give general guidance
+
+RESPONSE FORMAT
+You MUST always return valid JSON with the following structure:
+{{
+  "message": "Markdown-formatted answer with headers, bullet lists, bold text, etc.",
+  "coffee_cards": [list of coffee ID numbers or [] if none],
+  "response_type": "text" | "cards" | "mixed"
+			}}
+
+RULES
+- Include coffee IDs only when recommending specific coffees (never roast IDs)
+- Omit or use an empty array for coffee_cards when no coffees are directly referenced
+- Be conversational, encouraging, and enthusiastic about coffee while remaining precise
+- Always ground advice in data where possible (tool results, user data)
+- Default to stocked data; only fetch historical when explicitly requested"`
 			],
 			['placeholder', '{chat_history}'],
 			['human', '{input}'],
@@ -294,13 +330,13 @@ export class LangChainService {
 			prompt: prompt
 		});
 
-		// Create agent executor with clean logging
+		// Create agent executor with limited iterations to prevent context bloat
 		this.agent = new AgentExecutor({
 			agent: agent,
 			tools: this.tools,
 			memory: this.memory,
 			verbose: false, // Disable verbose LangChain logging
-			maxIterations: 5,
+			maxIterations: 3, // Reduced from 5 to enforce strategic tool usage
 			returnIntermediateSteps: true
 		});
 	}
@@ -341,6 +377,14 @@ export class LangChainService {
 					input: step.action?.toolInput || {},
 					output: step.observation || null
 				})) || [];
+
+			// Log tool usage for monitoring
+			if (toolCalls.length > 7) {
+				this.logger.logError(
+					new Error(`Excessive tool calls: ${toolCalls.length} calls made`),
+					'Tool call limit exceeded'
+				);
+			}
 
 			const finalResponse =
 				result.output ||
@@ -440,6 +484,12 @@ export class LangChainService {
 						input: event.data?.input || {},
 						output: event.data?.output || null
 					});
+
+					// Check tool call limit
+					if (toolCalls.length > 7) {
+						emitThinkingStep('Tool call limit reached - finalizing response...');
+						break;
+					}
 				} else if (
 					event.event === 'on_chain_start' &&
 					event.name === 'AgentExecutor' &&

@@ -33,10 +33,10 @@ export const POST: RequestHandler = async (event) => {
 
 		// Default parameters
 		const {
-			stocked_only = false,
+			stocked_only = true,
 			include_catalog_details = true,
 			include_roast_summary = true,
-			limit = 50
+			limit = 15
 		} = input;
 
 		// Build base query similar to existing /data endpoint
@@ -79,14 +79,16 @@ export const POST: RequestHandler = async (event) => {
 			.eq('user', user.id)
 			.order('purchase_date', { ascending: false });
 
-		// Apply stocked filter if requested
-		if (stocked_only) {
+		// Apply stocked filter - default to stocked inventory unless explicitly disabled
+		// This focuses on currently available beans for roasting
+		if (stocked_only !== false) {
 			query = query.eq('stocked', true);
 		}
 
-		// Apply limit
-		if (limit > 0) {
-			query = query.limit(limit);
+		// Apply limit - enforce maximum of 15 items
+		const finalLimit = Math.min(limit || 15, 15);
+		if (finalLimit > 0) {
+			query = query.limit(finalLimit);
 		}
 
 		const { data: inventory, error } = await query;
@@ -160,7 +162,7 @@ export const POST: RequestHandler = async (event) => {
 				stocked_only,
 				include_catalog_details,
 				include_roast_summary,
-				limit
+				limit: finalLimit
 			}
 		};
 
