@@ -183,7 +183,7 @@ export class MilestoneCalculationService {
 		return {
 			...milestones,
 			...phases,
-			weight_loss_percent: weightLoss
+			weight_loss_percent: weightLoss ?? undefined
 		};
 	}
 
