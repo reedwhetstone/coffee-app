@@ -9,6 +9,8 @@ interface RoastProfilesToolInput {
 	batch_name?: string;
 	coffee_id?: number; // green_coffee_inv.id
 	catalog_id?: number; // coffee_catalog.id - will be converted to coffee_id
+	roast_date_start?: string; // Date range filtering start (YYYY-MM-DD)
+	roast_date_end?: string; // Date range filtering end (YYYY-MM-DD)
 	limit?: number;
 	include_calculations?: boolean;
 	stocked_only?: boolean; // Filter to only show roasts for currently stocked coffee
@@ -19,10 +21,25 @@ interface RoastProfilesToolResponse {
 	profiles: any[];
 	total: number;
 	summary?: {
-		avg_development_percent: number;
-		avg_fc_start_temp: number;
-		avg_drop_temp: number;
 		total_roasts: number;
+		avg_total_roast_time: number | null;
+		avg_charge_time: number | null;
+		avg_fc_start_time: number | null;
+		avg_drop_time: number | null;
+		avg_charge_temp: number | null;
+		avg_fc_start_temp: number | null;
+		avg_drop_temp: number | null;
+		temp_consistency_fc_start: number | null;
+		temp_consistency_drop: number | null;
+		avg_development_percent: number | null;
+		avg_dry_percent: number | null;
+		avg_maillard_percent: number | null;
+		development_consistency: number | null;
+		avg_weight_loss_percent: number | null;
+		roaster_types_used: string[];
+		data_sources_used: string[];
+		date_range_start: string;
+		date_range_end: string;
 	};
 	filters_applied: RoastProfilesToolInput;
 }
@@ -42,6 +59,8 @@ export const POST: RequestHandler = async (event) => {
 			batch_name,
 			coffee_id,
 			catalog_id,
+			roast_date_start,
+			roast_date_end,
 			limit = 10,
 			include_calculations = true,
 			stocked_only = true
@@ -64,12 +83,52 @@ export const POST: RequestHandler = async (event) => {
 			}
 		}
 
-		// Build base query for roast profiles
+		// Build base query for roast profiles - select all fields explicitly
 		let query = supabase
 			.from('roast_profiles')
 			.select(
 				`
-				*,
+				roast_id,
+				batch_name,
+				coffee_id,
+				coffee_name,
+				roast_date,
+				oz_in,
+				oz_out,
+				roast_notes,
+				roast_targets,
+				last_updated,
+				user,
+				title,
+				roaster_type,
+				roaster_size,
+				roast_uuid,
+				temperature_unit,
+				charge_time,
+				dry_end_time,
+				fc_start_time,
+				fc_end_time,
+				sc_start_time,
+				drop_time,
+				cool_time,
+				charge_temp,
+				dry_end_temp,
+				fc_start_temp,
+				fc_end_temp,
+				sc_start_temp,
+				drop_temp,
+				cool_temp,
+				dry_percent,
+				maillard_percent,
+				development_percent,
+				total_roast_time,
+				data_source,
+				chart_z_max,
+				chart_z_min,
+				chart_y_max,
+				chart_y_min,
+				chart_x_max,
+				chart_x_min,
 				green_coffee_inv!coffee_id (
 					id,
 					notes,
@@ -108,6 +167,15 @@ export const POST: RequestHandler = async (event) => {
 			query = query.eq('coffee_id', finalCoffeeId);
 		}
 
+		// Apply date range filters
+		if (roast_date_start) {
+			query = query.gte('roast_date', roast_date_start);
+		}
+
+		if (roast_date_end) {
+			query = query.lte('roast_date', roast_date_end);
+		}
+
 		// Order by most recent first and apply limit - enforce maximum of 15 items
 		query = query.order('roast_date', { ascending: false });
 
@@ -125,48 +193,139 @@ export const POST: RequestHandler = async (event) => {
 
 		let summary;
 		if (include_calculations && profiles && profiles.length > 0) {
-			// Calculate summary statistics
-			const validProfiles = profiles.filter(
-				(p) => p.development_percent !== null && p.fc_start_temp !== null && p.drop_temp !== null
-			);
+			// Calculate comprehensive summary statistics
+			const validProfiles = profiles.filter((p) => p.total_roast_time !== null);
+			const tempValidProfiles = profiles.filter((p) => p.fc_start_temp !== null && p.drop_temp !== null);
+			const phaseValidProfiles = profiles.filter((p) => p.development_percent !== null);
+			const weightValidProfiles = profiles.filter((p) => p.oz_in !== null && p.oz_out !== null);
 
 			if (validProfiles.length > 0) {
+				// Helper function to calculate average safely
+				const safeAvg = (profiles: any[], field: string) => {
+					const validValues = profiles.filter(p => p[field] !== null && p[field] !== undefined);
+					return validValues.length > 0 
+						? validValues.reduce((sum, p) => sum + (p[field] || 0), 0) / validValues.length 
+						: null;
+				};
+
+				// Helper function to calculate standard deviation
+				const safeStdDev = (profiles: any[], field: string) => {
+					const validValues = profiles.filter(p => p[field] !== null && p[field] !== undefined);
+					if (validValues.length < 2) return null;
+					const avg = safeAvg(validValues, field);
+					if (avg === null) return null;
+					const variance = validValues.reduce((sum, p) => sum + Math.pow((p[field] || 0) - avg, 2), 0) / validValues.length;
+					return Math.sqrt(variance);
+				};
+
 				summary = {
-					avg_development_percent:
-						validProfiles.reduce((sum, p) => sum + (p.development_percent || 0), 0) /
-						validProfiles.length,
-					avg_fc_start_temp:
-						validProfiles.reduce((sum, p) => sum + (p.fc_start_temp || 0), 0) /
-						validProfiles.length,
-					avg_drop_temp:
-						validProfiles.reduce((sum, p) => sum + (p.drop_temp || 0), 0) / validProfiles.length,
-					total_roasts: profiles.length
+					// Basic counts
+					total_roasts: profiles.length,
+					
+					// Timing analysis
+					avg_total_roast_time: safeAvg(validProfiles, 'total_roast_time'),
+					avg_charge_time: safeAvg(profiles, 'charge_time'),
+					avg_fc_start_time: safeAvg(profiles, 'fc_start_time'),
+					avg_drop_time: safeAvg(profiles, 'drop_time'),
+					
+					// Temperature analysis
+					avg_charge_temp: safeAvg(tempValidProfiles, 'charge_temp'),
+					avg_fc_start_temp: safeAvg(tempValidProfiles, 'fc_start_temp'),
+					avg_drop_temp: safeAvg(tempValidProfiles, 'drop_temp'),
+					temp_consistency_fc_start: safeStdDev(tempValidProfiles, 'fc_start_temp'),
+					temp_consistency_drop: safeStdDev(tempValidProfiles, 'drop_temp'),
+					
+					// Phase percentages analysis
+					avg_development_percent: safeAvg(phaseValidProfiles, 'development_percent'),
+					avg_dry_percent: safeAvg(profiles, 'dry_percent'),
+					avg_maillard_percent: safeAvg(profiles, 'maillard_percent'),
+					development_consistency: safeStdDev(phaseValidProfiles, 'development_percent'),
+					
+					// Weight loss analysis
+					avg_weight_loss_percent: weightValidProfiles.length > 0 
+						? weightValidProfiles.reduce((sum, p) => {
+							const loss = ((p.oz_in - p.oz_out) / p.oz_in) * 100;
+							return sum + loss;
+						}, 0) / weightValidProfiles.length
+						: null,
+					
+					// Equipment usage
+					roaster_types_used: [...new Set(profiles.filter(p => p.roaster_type).map(p => p.roaster_type))],
+					data_sources_used: [...new Set(profiles.filter(p => p.data_source).map(p => p.data_source))],
+					
+					// Date range
+					date_range_start: profiles.reduce((earliest, p) => 
+						p.roast_date < earliest ? p.roast_date : earliest, profiles[0]?.roast_date),
+					date_range_end: profiles.reduce((latest, p) => 
+						p.roast_date > latest ? p.roast_date : latest, profiles[0]?.roast_date)
 				};
 			}
 		}
 
-		// Clean up the response for better LLM consumption
+		// Clean up the response for better LLM consumption - include ALL roast profile fields
 		const cleanProfiles =
 			profiles?.map((profile) => ({
+				// Basic roast information
 				roast_id: profile.roast_id,
-				roast_name: profile.roast_name,
 				batch_name: profile.batch_name,
+				coffee_name: profile.coffee_name,
 				roast_date: profile.roast_date,
-				coffee_name: profile.green_coffee_inv?.coffee_catalog?.name,
+				last_updated: profile.last_updated,
+				user: profile.user,
+				
+				// Coffee catalog information (from join)
+				coffee_catalog_name: profile.green_coffee_inv?.coffee_catalog?.name,
 				coffee_processing: profile.green_coffee_inv?.coffee_catalog?.processing,
 				coffee_region: profile.green_coffee_inv?.coffee_catalog?.region,
 				coffee_variety: profile.green_coffee_inv?.coffee_catalog?.cultivar_detail,
-				// Roast metrics
+				
+				// Roaster equipment information
+				title: profile.title,
+				roaster_type: profile.roaster_type,
+				roaster_size: profile.roaster_size,
+				roast_uuid: profile.roast_uuid,
+				temperature_unit: profile.temperature_unit,
+				data_source: profile.data_source,
+				
+				// Weight measurements
 				oz_in: profile.oz_in,
 				oz_out: profile.oz_out,
+				
+				// Timing milestones
+				charge_time: profile.charge_time,
+				dry_end_time: profile.dry_end_time,
 				fc_start_time: profile.fc_start_time,
-				development_percent: profile.development_percent,
+				fc_end_time: profile.fc_end_time,
+				sc_start_time: profile.sc_start_time,
+				drop_time: profile.drop_time,
+				cool_time: profile.cool_time,
 				total_roast_time: profile.total_roast_time,
-				drop_temp: profile.drop_temp,
-				fc_start_temp: profile.fc_start_temp,
+				
+				// Temperature milestones
 				charge_temp: profile.charge_temp,
-				// User notes
+				dry_end_temp: profile.dry_end_temp,
+				fc_start_temp: profile.fc_start_temp,
+				fc_end_temp: profile.fc_end_temp,
+				sc_start_temp: profile.sc_start_temp,
+				drop_temp: profile.drop_temp,
+				cool_temp: profile.cool_temp,
+				
+				// Roasting phase percentages
+				dry_percent: profile.dry_percent,
+				maillard_percent: profile.maillard_percent,
+				development_percent: profile.development_percent,
+				
+				// Chart configuration
+				chart_z_max: profile.chart_z_max,
+				chart_z_min: profile.chart_z_min,
+				chart_y_max: profile.chart_y_max,
+				chart_y_min: profile.chart_y_min,
+				chart_x_max: profile.chart_x_max,
+				chart_x_min: profile.chart_x_min,
+				
+				// Notes and targets
 				roast_notes: profile.roast_notes,
+				roast_targets: profile.roast_targets,
 				user_notes: profile.green_coffee_inv?.notes
 			})) || [];
 
@@ -180,6 +339,8 @@ export const POST: RequestHandler = async (event) => {
 				batch_name,
 				coffee_id: finalCoffeeId,
 				catalog_id,
+				roast_date_start,
+				roast_date_end,
 				limit: finalLimit,
 				include_calculations,
 				stocked_only
