@@ -160,7 +160,6 @@ CREATE TABLE public.roast_profiles (
   roast_targets character varying,
   last_updated character varying,
   user uuid,
-  title text,
   roaster_type text,
   roaster_size numeric,
   roast_uuid text,

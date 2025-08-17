@@ -108,7 +108,6 @@ export const POST: RequestHandler = async (event) => {
 				roast_targets,
 				last_updated,
 				user,
-				title,
 				roaster_type,
 				roaster_size,
 				roast_uuid,
@@ -222,20 +221,20 @@ export const POST: RequestHandler = async (event) => {
 			if (validProfiles.length > 0) {
 				// Helper function to calculate average safely
 				const safeAvg = (profiles: any[], field: string) => {
-					const validValues = profiles.filter((p) => p[field] !== null && p[field] !== undefined);
+					const validValues = profiles.filter((p) => p[field] !== null && p[field] !== undefined && p[field] !== 0);
 					return validValues.length > 0
-						? validValues.reduce((sum, p) => sum + (p[field] || 0), 0) / validValues.length
+						? validValues.reduce((sum, p) => sum + p[field], 0) / validValues.length
 						: null;
 				};
 
 				// Helper function to calculate standard deviation
 				const safeStdDev = (profiles: any[], field: string) => {
-					const validValues = profiles.filter((p) => p[field] !== null && p[field] !== undefined);
+					const validValues = profiles.filter((p) => p[field] !== null && p[field] !== undefined && p[field] !== 0);
 					if (validValues.length < 2) return null;
 					const avg = safeAvg(validValues, field);
 					if (avg === null) return null;
 					const variance =
-						validValues.reduce((sum, p) => sum + Math.pow((p[field] || 0) - avg, 2), 0) /
+						validValues.reduce((sum, p) => sum + Math.pow(p[field] - avg, 2), 0) /
 						validValues.length;
 					return Math.sqrt(variance);
 				};
@@ -316,7 +315,6 @@ export const POST: RequestHandler = async (event) => {
 				coffee_variety: profile.green_coffee_inv?.coffee_catalog?.cultivar_detail,
 
 				// Roaster equipment information
-				title: profile.title,
 				roaster_type: profile.roaster_type,
 				roaster_size: profile.roaster_size,
 				roast_uuid: profile.roast_uuid,
