@@ -4,53 +4,24 @@
 	import { loadingStore } from '$lib/stores/loadingStore';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
 
-	const { onClose, onSubmit, selectedBean } = $props<{
+	const { onClose, onSubmit, selectedBean, availableCoffees = [] } = $props<{
 		onClose: () => void;
 		onSubmit: (data: any) => void;
 		selectedBean: any;
+		availableCoffees?: any[];
 	}>();
 
-	let availableCoffees = $state<any[]>([]);
-	let coffeesLoading = $state(true);
+	// Process available coffees to ensure proper name property
+	let processedCoffees = $derived(
+		availableCoffees
+			.filter((coffee: any) => coffee.stocked === true)
+			.map((coffee: any) => ({
+				...coffee,
+				name: coffee.coffee_catalog?.name || coffee.name || 'Unknown Coffee'
+			}))
+	);
 
-	// Fetch available coffees on component mount
-	async function loadCoffees() {
-		const operationId = 'load-coffees';
-		try {
-			loadingStore.start(operationId, 'Loading available coffees...');
-			coffeesLoading = true;
-
-			const response = await fetch('/api/beans');
-			if (response.ok) {
-				const data = await response.json();
-				console.log('API response:', data);
-
-				// Ensure data.data exists and is an array before processing
-				const coffeeList = Array.isArray(data.data) ? data.data : [];
-
-				// Filter and transform the data to only show stocked beans with direct name property
-				availableCoffees = coffeeList
-					.filter((coffee: any) => coffee.stocked === true)
-					.map((coffee: any) => ({
-						...coffee,
-						name: coffee.coffee_catalog?.name || coffee.name || 'Unknown Coffee'
-					}));
-
-				console.log('Available coffees:', availableCoffees);
-			} else {
-				console.error('Failed to fetch coffees:', response.status, response.statusText);
-				throw new Error('Failed to load available coffees');
-			}
-		} catch (error) {
-			console.error('Error loading coffees:', error);
-			availableCoffees = []; // Ensure it's always an array
-		} finally {
-			loadingStore.complete(operationId);
-			coffeesLoading = false;
-		}
-	}
-
-	loadCoffees();
+	let coffeesLoading = $state(false); // No longer loading since data is passed via props
 
 	let formData = $state({
 		batch_name: selectedBean
@@ -90,7 +61,7 @@
 
 	function handleCoffeeChange(event: Event, index: number) {
 		const selectedId = (event.target as HTMLSelectElement).value;
-		const selected = availableCoffees.find((coffee) => coffee.id.toString() === selectedId);
+		const selected = processedCoffees.find((coffee: any) => coffee.id.toString() === selectedId);
 		if (selected) {
 			batchBeans[index].coffee_id = selected.id;
 			batchBeans[index].coffee_name = selected.name; // Now uses the transformed name property
@@ -339,7 +310,7 @@
 												<option value="">Loading coffees...</option>
 											{:else}
 												<option value="">Select a coffee...</option>
-												{#each availableCoffees as coffee}
+												{#each processedCoffees as coffee}
 													<option value={coffee.id} selected={coffee.id === selectedBean?.id}>
 														{coffee.name}
 													</option>

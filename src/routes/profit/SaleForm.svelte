@@ -2,54 +2,21 @@
 	const {
 		sale = null,
 		onClose,
-		onSubmit
+		onSubmit,
+		availableCoffees = [],
+		availableBatches = [],
+		catalogBeans = []
 	} = $props<{
 		sale: any;
 		onClose: () => void;
 		onSubmit: (sale: any) => void;
+		availableCoffees?: any[];
+		availableBatches?: any[];
+		catalogBeans?: any[];
 	}>();
 
 	// Extract defaultBean from sale if it exists
 	let defaultBean = sale?.defaultBean || null;
-
-	let availableCoffees = $state<any[]>([]);
-	let availableBatches = $state<any[]>([]);
-	let catalogBeans = $state<any[]>([]);
-
-	// Fetch available coffees and batches on component mount
-	async function loadData() {
-		try {
-			// Fetch coffees from green_coffee_inv with catalog cross-reference (similar to BeanForm)
-			const coffeeResponse = await fetch('/api/beans');
-			if (coffeeResponse.ok) {
-				const coffeeData = await coffeeResponse.json();
-				// Store the full coffee data with catalog information
-				availableCoffees = coffeeData.data.filter((coffee: any) => coffee.stocked);
-			}
-
-			// Fetch catalog data for rich information
-			const catalogResponse = await fetch('/api/catalog');
-			if (catalogResponse.ok) {
-				const catalogData = await catalogResponse.json();
-				catalogBeans = catalogData.filter((bean: any) => bean.stocked);
-			}
-
-			// Fetch batches from roast_profiles
-			const batchResponse = await fetch('/api/roast-profiles');
-			if (batchResponse.ok) {
-				const batchData = await batchResponse.json();
-				// Get unique batch names
-				const uniqueBatches = [
-					...new Set(batchData.data.map((profile: any) => profile.batch_name))
-				];
-				availableBatches = uniqueBatches.map((name) => ({ batch_name: name }));
-			}
-		} catch (error) {
-			console.error('Error loading data:', error);
-		}
-	}
-
-	loadData();
 
 	let formData = $state(
 		sale?.id

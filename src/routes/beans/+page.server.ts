@@ -72,9 +72,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}
 
 	const processedData = processGreenCoffeeData(greenCoffeeData || []);
+	
+	// Also fetch catalog data for forms
+	const { data: catalogData, error: catalogError } = await supabase
+		.from('coffee_catalog')
+		.select('*')
+		.eq('stocked', true)
+		.order('name');
+
+	if (catalogError) {
+		throw catalogError;
+	}
 
 	return {
 		data: processedData,
+		catalogData: catalogData || [],
 		searchState: Object.fromEntries(url.searchParams.entries()),
 		role,
 		isShared: false

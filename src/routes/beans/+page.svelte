@@ -38,6 +38,7 @@
 				roast_date: string | null;
 			}>;
 		}>;
+		catalogData?: Array<any>;
 		role?: 'viewer' | 'member' | 'admin';
 	};
 
@@ -46,6 +47,15 @@
 	// Debug: Log the data
 	$effect(() => {
 		console.log('Raw data from server:', data?.data?.length);
+		console.log('Full server data object:', {
+			hasData: !!data,
+			dataKeys: data ? Object.keys(data) : [],
+			role: data?.role,
+			searchState: data?.searchState,
+			isShared: data?.isShared,
+			catalogDataLength: data?.catalogData?.length
+		});
+		
 		if (data?.data?.length > 0) {
 			console.log('First bean raw data:', data.data[0]);
 			const beanWithProfiles = data.data.find(
@@ -86,6 +96,17 @@
 	// Initialize or clear filtered data based on current route and data
 	$effect(() => {
 		const currentRoute = page.url.pathname;
+		
+		console.log('Filter store effect triggered:', {
+			currentRoute,
+			hasData: !!(data?.data && data.data.length > 0),
+			dataLength: data?.data?.length || 0,
+			filteredDataLength: $filteredData.length,
+			filterStoreInitialized: $filterStore.initialized,
+			filterStoreRouteId: $filterStore.routeId,
+			initializing,
+			hasAttemptedLoad
+		});
 
 		// If we're on the beans route but have no data and filter store has data from another route, clear it
 		if (
@@ -94,12 +115,14 @@
 			$filteredData.length > 0 &&
 			!initializing
 		) {
+			console.log('Filter store: Clearing data for empty beans route');
 			initializing = true;
 			setTimeout(() => {
 				filterStore.initializeForRoute(currentRoute, []);
 				initializing = false;
 				// If we have no data and have attempted to load, we're done loading
 				if (hasAttemptedLoad) {
+					console.log('Filter store: Setting isLoading = false after clearing');
 					isLoading = false;
 				}
 			}, 0);
@@ -112,11 +135,29 @@
 				$filterStore.routeId !== currentRoute) &&
 			!initializing
 		) {
+			console.log('Filter store: Initializing with data');
 			initializing = true;
 			setTimeout(() => {
 				filterStore.initializeForRoute(currentRoute, data.data);
 				initializing = false;
 				isLoading = false; // We have data, so we're done loading
+				console.log('Filter store: Initialization complete, isLoading = false');
+			}, 0);
+		}
+		// If we're on beans route, have no data, and filter store is not initialized
+		else if (
+			currentRoute.includes('/beans') &&
+			(!data?.data || data.data.length === 0) &&
+			!$filterStore.initialized &&
+			!initializing
+		) {
+			console.log('Filter store: Initializing empty data for beans route');
+			initializing = true;
+			setTimeout(() => {
+				filterStore.initializeForRoute(currentRoute, []);
+				initializing = false;
+				isLoading = false;
+				console.log('Filter store: Empty initialization complete, isLoading = false');
 			}, 0);
 		}
 	});
@@ -237,10 +278,22 @@
 	}
 
 	onMount(() => {
+		console.log('Beans page onMount - data check:', {
+			hasData: !!data,
+			dataLength: data?.data?.length || 0,
+			dataArray: data?.data
+		});
+		
 		// If we have server-side data, we're not loading
 		if (data?.data?.length > 0) {
+			console.log('Beans page onMount - Setting isLoading to false, has data');
 			isLoading = false;
 			hasAttemptedLoad = true;
+		} else {
+			console.log('Beans page onMount - No data found, will stay in loading state');
+			hasAttemptedLoad = true;
+			// Set loading to false even with no data to prevent infinite loading
+			isLoading = false;
 		}
 
 		// Handle search state from navigation
@@ -507,7 +560,12 @@
 	{#if isFormVisible}
 		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
 			<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 md:p-6">
-				<BeanForm bean={null} onClose={() => (isFormVisible = false)} onSubmit={handleFormSubmit} />
+				<BeanForm 
+					bean={null} 
+					onClose={() => (isFormVisible = false)} 
+					onSubmit={handleFormSubmit}
+					catalogBeans={data?.catalogData || []}
+				/>
 			</div>
 		</div>
 	{/if}

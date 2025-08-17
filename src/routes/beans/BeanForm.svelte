@@ -1,23 +1,23 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
 
 	const {
 		bean = null,
 		onClose,
-		onSubmit
+		onSubmit,
+		catalogBeans = []
 	} = $props<{
 		bean: any;
 		onClose: () => void;
 		onSubmit: (bean: any) => void;
+		catalogBeans?: any[];
 	}>();
 
 	let isManualEntry = $state(true);
-	let catalogBeans = $state<any[]>([]);
 	let sourceFilter = $state('');
 	let isUpdating = $state(false);
 	let isSubmitting = $state(false);
-	let catalogLoading = $state(false);
+	let catalogLoading = $state(false); // Keep for form submission loading state
 
 	// Optional catalog fields for manual entry
 	let optionalFields = $state<{ [key: string]: string | number | null }>({
@@ -119,20 +119,8 @@
 		];
 	}
 
-	async function loadCatalogBeans() {
-		try {
-			catalogLoading = true;
-			const response = await fetch('/api/catalog');
-			if (response.ok) {
-				const data = await response.json();
-				catalogBeans = data.filter((bean: any) => bean.stocked);
-			}
-		} catch (error) {
-			console.error('Error loading catalog beans:', error);
-		} finally {
-			catalogLoading = false;
-		}
-	}
+	// Filter catalog beans based on stocked status
+	let filteredCatalogBeans = $derived(catalogBeans.filter((bean: any) => bean.stocked));
 
 	function populateFromCatalog(catalogBean: any, beanIndex: number = 0) {
 		if (!catalogBean) return;
@@ -243,10 +231,7 @@
 		}
 	}
 
-	// Load catalog beans when component mounts
-	onMount(() => {
-		loadCatalogBeans();
-	});
+	// Remove onMount - data is now passed via props
 
 	// Handle source filter change manually
 	function handleSourceChange() {
@@ -279,7 +264,7 @@
 		}
 
 		// Find the selected bean by ID
-		const selectedBean = catalogBeans.find((b) => b.id.toString() === selectedValue);
+		const selectedBean = filteredCatalogBeans.find((b: any) => b.id.toString() === selectedValue);
 
 		if (selectedBean) {
 			populateFromCatalog(selectedBean, beanIndex);
@@ -397,7 +382,7 @@
 						class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 					>
 						<option value="">All Sources</option>
-						{#each [...new Set(catalogBeans.map((b) => b.source))] as source}
+						{#each [...new Set(filteredCatalogBeans.map((b: any) => b.source))] as source}
 							<option value={source}>{source}</option>
 						{/each}
 					</select>
@@ -470,7 +455,7 @@
 										onchange={(e) => handleBeanSelect(e, index)}
 									>
 										<option value="">Select a coffee bean...</option>
-										{#each catalogBeans.filter((b) => !sourceFilter || b.source === sourceFilter) as catalogBean}
+										{#each filteredCatalogBeans.filter((b: any) => !sourceFilter || b.source === sourceFilter) as catalogBean}
 											<option value={catalogBean.id}>{catalogBean.name}</option>
 										{/each}
 									</select>
