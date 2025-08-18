@@ -54,6 +54,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 			// Fetch all coffee data in single query to avoid N+1 problem
 			const coffeeIds = batch_beans.map((bean: any) => bean.coffee_id);
+			const uniqueCoffeeIds = [...new Set(coffeeIds)]; // Remove duplicates for query
+			
 			const { data: coffees, error: coffeeError } = await supabase
 				.from('green_coffee_inv')
 				.select(
@@ -64,16 +66,18 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					)
 				`
 				)
-				.in('id', coffeeIds)
+				.in('id', uniqueCoffeeIds)
 				.eq('user', user.id);
 
 			if (coffeeError) throw coffeeError;
 			if (!coffees || coffees.length === 0) {
 				throw new Error('No valid coffee_ids found for this user');
 			}
-			if (coffees.length !== batch_beans.length) {
+			
+			// Check that all unique coffee IDs were found (allows for duplicates in batch_beans)
+			if (coffees.length !== uniqueCoffeeIds.length) {
 				const foundIds = coffees.map((c) => c.id);
-				const missingIds = coffeeIds.filter((id: number) => !foundIds.includes(id));
+				const missingIds = uniqueCoffeeIds.filter((id) => !foundIds.includes(id));
 				throw new Error(`Coffee IDs not found or not owned by user: ${missingIds.join(', ')}`);
 			}
 

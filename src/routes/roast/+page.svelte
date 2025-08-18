@@ -59,6 +59,10 @@
 	let updatingProfileGroups = $state(false);
 	let initializing = $state(false);
 
+	// Available coffees for form
+	let availableCoffees = $state<any[]>([]);
+	let coffeesLoading = $state(false);
+
 	// // Debug data in the component
 	// $effect(() => {
 	// 	//console.log('Roast page data:', data);
@@ -262,6 +266,28 @@
 	let processing = $state(false);
 	// Removed the sort effect since it's redundant - the filtered data effect will handle updates
 
+	// Function to fetch available coffees
+	async function fetchAvailableCoffees() {
+		try {
+			coffeesLoading = true;
+			const response = await fetch('/api/beans');
+			if (response.ok) {
+				const result = await response.json();
+				// Filter for stocked coffees only
+				const stockedCoffees = (result.data || []).filter((coffee: any) => coffee.stocked === true);
+				availableCoffees = stockedCoffees;
+			} else {
+				console.error('Failed to fetch available coffees');
+				availableCoffees = [];
+			}
+		} catch (error) {
+			console.error('Error fetching available coffees:', error);
+			availableCoffees = [];
+		} finally {
+			coffeesLoading = false;
+		}
+	}
+
 	// Fetches all roast profiles from the API and sets the current profile
 	async function loadRoastProfiles() {
 		try {
@@ -293,6 +319,9 @@
 	onMount(() => {
 		let shouldShowForm = false;
 		let profileIdToLoad: string | null = null;
+
+		// Fetch available coffees immediately on mount
+		fetchAvailableCoffees();
 
 		if (typeof window !== 'undefined' && !currentRoastProfile) {
 			const params = new URLSearchParams(window.location.search);
@@ -717,6 +746,11 @@
 
 	function showRoastForm() {
 		console.log('showRoastForm called with selectedBean:', selectedBean);
+		// Coffee data is already fetched on mount, just show the form
+		// Only fetch again if we don't have any coffees loaded
+		if (availableCoffees.length === 0 && !coffeesLoading) {
+			fetchAvailableCoffees();
+		}
 		isFormVisible = true;
 	}
 
@@ -761,7 +795,7 @@
 {#if isFormVisible}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 p-4">
 		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 shadow-xl sm:p-6">
-			<RoastProfileForm {selectedBean} onClose={hideRoastForm} onSubmit={handleFormSubmit} />
+			<RoastProfileForm {selectedBean} {availableCoffees} onClose={hideRoastForm} onSubmit={handleFormSubmit} />
 		</div>
 	</div>
 {/if}

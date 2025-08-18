@@ -85,22 +85,25 @@
 
 	function getBatchSummary(profiles: any[]) {
 		const totalWeight = profiles.reduce((sum, p) => sum + (p.oz_in || 0), 0);
-		
+
 		// Calculate average weight loss percentage for batch summary
-		const validProfiles = profiles.filter(p => 
-			p.weight_loss_percent !== null && p.weight_loss_percent !== undefined ||
-			(p.oz_in && p.oz_out)
+		const validProfiles = profiles.filter(
+			(p) =>
+				(p.weight_loss_percent !== null && p.weight_loss_percent !== undefined) ||
+				(p.oz_in && p.oz_out)
 		);
-		const avgWeightLoss = validProfiles.length > 0 ? 
-			validProfiles.reduce((sum, p) => {
-				if (p.weight_loss_percent !== null && p.weight_loss_percent !== undefined) {
-					return sum + p.weight_loss_percent;
-				}
-				if (p.oz_in && p.oz_out) {
-					return sum + ((p.oz_in - p.oz_out) / p.oz_in) * 100;
-				}
-				return sum;
-			}, 0) / validProfiles.length : 0;
+		const avgWeightLoss =
+			validProfiles.length > 0
+				? validProfiles.reduce((sum, p) => {
+						if (p.weight_loss_percent !== null && p.weight_loss_percent !== undefined) {
+							return sum + p.weight_loss_percent;
+						}
+						if (p.oz_in && p.oz_out) {
+							return sum + ((p.oz_in - p.oz_out) / p.oz_in) * 100;
+						}
+						return sum;
+					}, 0) / validProfiles.length
+				: 0;
 
 		return {
 			totalWeight: totalWeight.toFixed(1),
@@ -112,9 +115,9 @@
 
 <div class="w-full max-w-[100vw] overflow-x-hidden">
 	{#if !sortedBatchNames || sortedBatchNames.length === 0}
-		<div class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light">
+		<div class="bg-background-secondary-light ring-border-light rounded-lg p-8 text-center ring-1">
 			<div class="mb-4 text-6xl opacity-50">📊</div>
-			<h3 class="mb-2 text-lg font-semibold text-text-primary-light">No Roast Profiles Yet</h3>
+			<h3 class="text-text-primary-light mb-2 text-lg font-semibold">No Roast Profiles Yet</h3>
 			<p class="text-text-secondary-light">
 				Start roasting to see your profile history and analytics here
 			</p>
@@ -124,11 +127,11 @@
 			{#each sortedBatchNames as batchName}
 				{@const profiles = sortedGroupedProfiles[batchName] || []}
 				{@const batchSummary = getBatchSummary(profiles)}
-				<div class="rounded-lg bg-background-secondary-light ring-1 ring-border-light">
+				<div class="bg-background-secondary-light ring-border-light rounded-lg ring-1">
 					<!-- Batch Header - Following ProfitCards Pattern -->
 					<button
 						type="button"
-						class="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-background-primary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
+						class="hover:bg-background-primary-light focus:ring-background-tertiary-light flex w-full items-center justify-between p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
 						onclick={() => onToggleBatch(batchName)}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
@@ -145,10 +148,10 @@
 								{isBatchExpanded(batchName) ? '▼' : '▶'}
 							</div>
 							<div>
-								<h3 class="text-lg font-semibold text-text-primary-light">
+								<h3 class="text-text-primary-light text-lg font-semibold">
 									{batchName}
 								</h3>
-								<p class="text-sm text-text-secondary-light">
+								<p class="text-text-secondary-light text-sm">
 									{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''} • {formatDateForDisplay(
 										profiles[0]?.roast_date
 									)}
@@ -176,7 +179,7 @@
 					<!-- Roast Profile Cards -->
 					{#if isBatchExpanded(batchName) && profiles.length > 0}
 						<div
-							class="border-t border-border-light bg-background-primary-light p-4"
+							class="border-border-light bg-background-primary-light border-t p-4"
 							id="batch-{batchName.replace(/\s+/g, '-').toLowerCase()}"
 							role="region"
 							aria-label="Roast profiles for {batchName}"
@@ -186,19 +189,19 @@
 									{@const completionStatus = getRoastCompletionStatus(profile)}
 									<button
 										type="button"
-										class="w-full rounded-lg bg-background-secondary-light p-4 text-left ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2 {currentRoastProfile?.roast_id ===
+										class="bg-background-secondary-light ring-border-light hover:ring-background-tertiary-light focus:ring-background-tertiary-light w-full rounded-lg p-4 text-left ring-1 transition-all hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2 {currentRoastProfile?.roast_id ===
 										profile.roast_id
-											? 'ring-2 ring-background-tertiary-light'
+											? 'ring-background-tertiary-light ring-2'
 											: ''}"
 										onclick={() => onSelectProfile(profile)}
 									>
 										<div class="mb-3 flex items-start justify-between">
 											<div>
-												<h4 class="font-semibold text-text-primary-light">
+												<h4 class="text-text-primary-light font-semibold">
 													{profile.coffee_name}
 												</h4>
-												<p class="text-sm text-text-secondary-light">
-													{formatDateForDisplay(profile.roast_date)}
+												<p class="text-text-secondary-light text-sm">
+													ID: {profile.roast_id} • {formatDateForDisplay(profile.roast_date)}
 												</p>
 											</div>
 										</div>
@@ -232,9 +235,9 @@
 										</div>
 
 										{#if profile.notes}
-											<div class="mt-4 border-t border-border-light pt-4">
-												<h5 class="mb-2 font-medium text-text-primary-light">Notes</h5>
-												<p class="text-sm text-text-secondary-light">{profile.notes}</p>
+											<div class="border-border-light mt-4 border-t pt-4">
+												<h5 class="text-text-primary-light mb-2 font-medium">Notes</h5>
+												<p class="text-text-secondary-light text-sm">{profile.notes}</p>
 											</div>
 										{/if}
 									</button>

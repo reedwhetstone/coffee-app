@@ -2,6 +2,7 @@
 
 **_IMPORTANT_**
 
+- [ ] - new roast can't select any coffees
 - [ ] - clean un needed roat_profiles cols from table & app
 - [ ] - roast profile report share function
 
