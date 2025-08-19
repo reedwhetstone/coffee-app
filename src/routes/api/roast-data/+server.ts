@@ -53,7 +53,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		const requestData = await request.json();
-		
+
 		// Handle both legacy event-only format and new combined format
 		let temperatures: any[] = [];
 		let events: any[] = [];
@@ -122,8 +122,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			console.warn(`Failed to calculate milestones for roast ${roastId}:`, milestoneError);
 		}
 
-		return json({ 
-			success: true, 
+		return json({
+			success: true,
 			temperatureCount,
 			eventCount,
 			totalCount: temperatureCount + eventCount,

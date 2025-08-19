@@ -110,13 +110,16 @@
 	async function handleFormSubmit(saleData: any) {
 		try {
 			const isUpdate = selectedSale?.id !== undefined && selectedSale?.id !== null;
-			const response = await fetch(`/api/profit${isUpdate && selectedSale ? `?id=${selectedSale.id}` : ''}`, {
-				method: isUpdate ? 'PUT' : 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(saleData)
-			});
+			const response = await fetch(
+				`/api/profit${isUpdate && selectedSale ? `?id=${selectedSale.id}` : ''}`,
+				{
+					method: isUpdate ? 'PUT' : 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(saleData)
+				}
+			);
 
 			if (!response.ok) {
 				const errorData = await response.json();

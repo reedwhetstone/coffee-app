@@ -31,9 +31,12 @@ export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession 
 		});
 	} catch (error) {
 		console.error('Error in milestone backfill:', error);
-		return json({ 
-			error: 'Failed to backfill milestones',
-			details: error instanceof Error ? error.message : 'Unknown error'
-		}, { status: 500 });
+		return json(
+			{
+				error: 'Failed to backfill milestones',
+				details: error instanceof Error ? error.message : 'Unknown error'
+			},
+			{ status: 500 }
+		);
 	}
 };

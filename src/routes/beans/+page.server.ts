@@ -72,7 +72,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}
 
 	const processedData = processGreenCoffeeData(greenCoffeeData || []);
-	
+
 	// Also fetch catalog data for forms
 	const { data: catalogData, error: catalogError } = await supabase
 		.from('coffee_catalog')

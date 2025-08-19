@@ -1702,18 +1702,19 @@
 		// For completed roasts, prefer database values from roast_profiles
 		if (!isDuringRoasting && currentRoastProfile) {
 			const profile = currentRoastProfile;
-			
+
 			// Check if we have calculated milestone data in the database
-			const hasDbData = profile.dry_percent !== null || 
-							  profile.maillard_percent !== null || 
-							  profile.development_percent !== null;
-			
+			const hasDbData =
+				profile.dry_percent !== null ||
+				profile.maillard_percent !== null ||
+				profile.development_percent !== null;
+
 			if (hasDbData) {
 				// Convert database times to milliseconds and calculate relative display times
 				const chargeTime = (profile.charge_time || 0) * 1000;
 				const dryEndTime = (profile.dry_end_time || 0) * 1000;
 				const fcStartTime = (profile.fc_start_time || 0) * 1000;
-				
+
 				return {
 					totalTime: (profile.total_roast_time || 0) * 1000,
 					dryingPercent: profile.dry_percent || 0,

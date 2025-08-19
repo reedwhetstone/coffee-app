@@ -37,7 +37,10 @@
 		const currentRoute = page.url.pathname;
 
 		// Simple initialization: only run if we have data and store isn't initialized for this route
-		if (data?.data?.length > 0 && (!$filterStore.initialized || $filterStore.routeId !== currentRoute)) {
+		if (
+			data?.data?.length > 0 &&
+			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
+		) {
 			filterStore.initializeForRoute(currentRoute, data.data);
 		}
 	});

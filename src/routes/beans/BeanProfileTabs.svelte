@@ -678,7 +678,8 @@
 									</div>
 								</div>
 								<div class="mb-2 text-sm text-text-secondary-light">
-									Loss: {profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined
+									Loss: {profile.weight_loss_percent !== null &&
+									profile.weight_loss_percent !== undefined
 										? profile.weight_loss_percent.toFixed(1)
 										: 'N/A'}%
 								</div>

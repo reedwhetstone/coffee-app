@@ -35,7 +35,7 @@
 
 	async function handleSubmit() {
 		const isUpdate = sale?.id !== undefined && sale?.id !== null;
-		
+
 		try {
 			const cleanedSale = Object.fromEntries(
 				Object.entries(formData).map(([key, value]) => [
@@ -43,8 +43,7 @@
 					value === '' || value === undefined ? null : value
 				])
 			);
-			
-			
+
 			const response = await fetch(isUpdate ? `/api/profit?id=${sale.id}` : '/api/profit', {
 				method: isUpdate ? 'PUT' : 'POST',
 				headers: {
@@ -78,7 +77,7 @@
 				selectedCoffee.name || selectedCoffee.coffee_catalog?.name || 'Unknown Coffee';
 			formData.green_coffee_inv_id = selectedCoffee.id;
 			formData.purchase_date = selectedCoffee.purchase_date;
-			
+
 			// Clear batch selection when coffee changes
 			formData.batch_name = '';
 		}
@@ -96,14 +95,15 @@
 			const batchCoffee = availableCoffees.find(
 				(coffee: any) => coffee.id === selectedBatch.coffee_id
 			);
-			
+
 			if (batchCoffee) {
 				formData.green_coffee_inv_id = batchCoffee.id;
-				formData.coffee_name = batchCoffee.name || batchCoffee.coffee_catalog?.name || 'Unknown Coffee';
+				formData.coffee_name =
+					batchCoffee.name || batchCoffee.coffee_catalog?.name || 'Unknown Coffee';
 				formData.purchase_date = batchCoffee.purchase_date;
 			}
 		}
-		
+
 		formData.batch_name = selectedBatchName;
 	}
 
@@ -112,7 +112,7 @@
 		if (!formData.green_coffee_inv_id || !availableBatches.length) {
 			return availableBatches;
 		}
-		
+
 		return availableBatches.filter(
 			(batch: any) => batch.coffee_id?.toString() === formData.green_coffee_inv_id?.toString()
 		);
@@ -123,18 +123,16 @@
 		if (!formData.batch_name || !availableBatches.length) {
 			return availableCoffees;
 		}
-		
+
 		const selectedBatch = availableBatches.find(
 			(batch: any) => batch.batch_name === formData.batch_name
 		);
-		
+
 		if (!selectedBatch) {
 			return availableCoffees;
 		}
-		
-		return availableCoffees.filter(
-			(coffee: any) => coffee.id === selectedBatch.coffee_id
-		);
+
+		return availableCoffees.filter((coffee: any) => coffee.id === selectedBatch.coffee_id);
 	});
 </script>
 

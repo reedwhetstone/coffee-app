@@ -13,7 +13,9 @@
 				Ready to elevate your coffee roasting?
 			</h2>
 			<p class="mx-auto mt-6 max-w-xl text-lg leading-8 text-orange-100">
-				Join thousands of coffee roasters who trust our platform to grow their business. Get professional-grade tools at a fraction of enterprise solution costs—start your free trial today and discover the power of AI-driven coffee insights.
+				Join thousands of coffee roasters who trust our platform to grow their business. Get
+				professional-grade tools at a fraction of enterprise solution costs—start your free trial
+				today and discover the power of AI-driven coffee insights.
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
 				<button

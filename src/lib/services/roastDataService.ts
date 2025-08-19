@@ -351,7 +351,6 @@ export class RoastDataService {
 			zRange: [data.chart_z_min, data.chart_z_max]
 		};
 	}
-
 }
 
 // Helper function to create service instance

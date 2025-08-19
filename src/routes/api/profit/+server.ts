@@ -231,12 +231,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// Get the coffee name separately for the response
 		const { data: coffeeData } = await supabase
 			.from('green_coffee_inv')
-			.select(`
+			.select(
+				`
 				purchase_date,
 				coffee_catalog!catalog_id (
 					name
 				)
-			`)
+			`
+			)
 			.eq('id', insertData.green_coffee_inv_id)
 			.single();
 

@@ -142,7 +142,6 @@
 				roast_targets: formData.roast_targets
 			};
 
-
 			// Submit the roast profile data using parent callback
 			loadingStore.update(operationId, 'Saving roast profiles to database...');
 			const roastProfilesResponse = await onSubmit(dataForAPI);
@@ -215,14 +214,14 @@
 	></button>
 	<div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
 		<div
-			class="bg-background-secondary-light relative w-full max-w-4xl rounded-lg p-6 shadow-xl"
+			class="relative w-full max-w-4xl rounded-lg bg-background-secondary-light p-6 shadow-xl"
 			role="dialog"
 			aria-modal="true"
 		>
 			<!-- Header -->
 			<div class="mb-6">
-				<h2 class="text-text-primary-light text-2xl font-bold">Add New Roast Profile</h2>
-				<p class="text-text-secondary-light mt-2">
+				<h2 class="text-2xl font-bold text-text-primary-light">Add New Roast Profile</h2>
+				<p class="mt-2 text-text-secondary-light">
 					Create a new roast batch with multiple beans and optional Artisan data
 				</p>
 			</div>
@@ -236,11 +235,11 @@
 				class="max-h-[70vh] space-y-6 overflow-y-auto pr-2"
 			>
 				<!-- Batch Details -->
-				<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-					<h3 class="text-text-primary-light mb-4 text-lg font-semibold">Batch Information</h3>
+				<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+					<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Batch Information</h3>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div class="space-y-2">
-							<label for="batch_name" class="text-text-primary-light block text-sm font-medium">
+							<label for="batch_name" class="block text-sm font-medium text-text-primary-light">
 								Batch Name
 							</label>
 							<input
@@ -248,32 +247,32 @@
 								type="text"
 								bind:value={formData.batch_name}
 								placeholder="Enter batch name"
-								class="bg-background-secondary-light text-text-primary-light placeholder-text-secondary-light ring-border-light focus:ring-background-tertiary-light block w-full rounded-md border-0 px-3 py-2 shadow-sm ring-1 focus:ring-2"
+								class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 								required
 							/>
 						</div>
 
 						<div class="space-y-2">
-							<label for="roast_date" class="text-text-primary-light block text-sm font-medium">
+							<label for="roast_date" class="block text-sm font-medium text-text-primary-light">
 								Roast Date
 							</label>
 							<input
 								id="roast_date"
 								type="date"
 								bind:value={formData.roast_date}
-								class="bg-background-secondary-light text-text-primary-light ring-border-light focus:ring-background-tertiary-light block w-full rounded-md border-0 px-3 py-2 shadow-sm ring-1 focus:ring-2"
+								class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 								required
 							/>
 						</div>
 					</div>
 				</div>
 				<!-- Beans in Batch -->
-				<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
+				<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 					<div class="mb-4 flex items-center justify-between">
-						<h3 class="text-text-primary-light text-lg font-semibold">Beans in Batch</h3>
+						<h3 class="text-lg font-semibold text-text-primary-light">Beans in Batch</h3>
 						<button
 							type="button"
-							class="bg-background-tertiary-light flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+							class="flex items-center gap-2 rounded-md bg-background-tertiary-light px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 							onclick={addBeanToBatch}
 						>
 							<span class="text-lg">+</span>
@@ -284,7 +283,7 @@
 					<div class="space-y-4">
 						{#each batchBeans as bean, index}
 							<div
-								class="bg-background-secondary-light ring-border-light relative rounded-lg p-4 ring-1"
+								class="relative rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
 							>
 								<!-- Remove bean button (except for first bean) -->
 								{#if index > 0}
@@ -301,13 +300,13 @@
 									<div class="space-y-2 sm:col-span-2">
 										<label
 											for="coffee_select_{index}"
-											class="text-text-primary-light block text-sm font-medium"
+											class="block text-sm font-medium text-text-primary-light"
 										>
 											Select Coffee
 										</label>
 										<select
 											id="coffee_select_{index}"
-											class="bg-background-primary-light text-text-primary-light ring-border-light focus:ring-background-tertiary-light block w-full rounded-md border-0 px-3 py-2 shadow-sm ring-1 focus:ring-2"
+											class="block w-full rounded-md border-0 bg-background-primary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 											value={bean.coffee_id}
 											onchange={(e) => handleCoffeeChange(e, index)}
 											required
@@ -328,7 +327,7 @@
 									<div class="space-y-2">
 										<label
 											for="oz_in_{index}"
-											class="text-text-primary-light block text-sm font-medium"
+											class="block text-sm font-medium text-text-primary-light"
 										>
 											Green Weight (oz)
 										</label>
@@ -339,7 +338,7 @@
 											min="0"
 											bind:value={bean.oz_in}
 											placeholder="0"
-											class="bg-background-primary-light text-text-primary-light placeholder-text-secondary-light ring-border-light focus:ring-background-tertiary-light block w-full rounded-md border-0 px-3 py-2 shadow-sm ring-1 focus:ring-2"
+											class="block w-full rounded-md border-0 bg-background-primary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 											required
 										/>
 									</div>
@@ -347,7 +346,7 @@
 									<div class="space-y-2">
 										<label
 											for="oz_out_{index}"
-											class="text-text-primary-light block text-sm font-medium"
+											class="block text-sm font-medium text-text-primary-light"
 										>
 											Roasted Weight (oz)
 										</label>
@@ -358,7 +357,7 @@
 											min="0"
 											bind:value={bean.oz_out}
 											placeholder="0"
-											class="bg-background-primary-light text-text-primary-light placeholder-text-secondary-light ring-border-light focus:ring-background-tertiary-light block w-full rounded-md border-0 px-3 py-2 shadow-sm ring-1 focus:ring-2"
+											class="block w-full rounded-md border-0 bg-background-primary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 										/>
 									</div>
 
@@ -366,7 +365,7 @@
 									<div class="space-y-2 sm:col-span-2">
 										<label
 											for="artisan_file_{index}"
-											class="text-text-primary-light block text-sm font-medium"
+											class="block text-sm font-medium text-text-primary-light"
 										>
 											Artisan Roast Log (Optional)
 										</label>
@@ -376,9 +375,9 @@
 												type="file"
 												accept=".csv,.xlsx"
 												onchange={(e) => handleFileUpload(e, index)}
-												class="text-text-primary-light file:bg-background-tertiary-light block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-opacity-90"
+												class="block w-full text-sm text-text-primary-light file:mr-4 file:rounded-md file:border-0 file:bg-background-tertiary-light file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-opacity-90"
 											/>
-											<p class="text-text-secondary-light text-xs">
+											<p class="text-xs text-text-secondary-light">
 												Upload CSV or XLSX exported from Artisan to import temperature curves
 											</p>
 											{#if bean.artisan_file}
@@ -395,11 +394,11 @@
 				</div>
 
 				<!-- Notes and Targets -->
-				<div class="bg-background-primary-light ring-border-light rounded-lg p-4 ring-1">
-					<h3 class="text-text-primary-light mb-4 text-lg font-semibold">Notes & Targets</h3>
+				<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+					<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Notes & Targets</h3>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div class="space-y-2">
-							<label for="roast_targets" class="text-text-primary-light block text-sm font-medium">
+							<label for="roast_targets" class="block text-sm font-medium text-text-primary-light">
 								Roast Targets
 							</label>
 							<textarea
@@ -407,12 +406,12 @@
 								bind:value={formData.roast_targets}
 								rows="3"
 								placeholder="Enter your roast targets and goals..."
-								class="bg-background-secondary-light text-text-primary-light placeholder-text-secondary-light ring-border-light focus:ring-background-tertiary-light block w-full rounded-md border-0 px-3 py-2 shadow-sm ring-1 focus:ring-2"
+								class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 							></textarea>
 						</div>
 
 						<div class="space-y-2">
-							<label for="roast_notes" class="text-text-primary-light block text-sm font-medium">
+							<label for="roast_notes" class="block text-sm font-medium text-text-primary-light">
 								Roast Notes
 							</label>
 							<textarea
@@ -420,7 +419,7 @@
 								bind:value={formData.roast_notes}
 								rows="3"
 								placeholder="Add notes about this roast session..."
-								class="bg-background-secondary-light text-text-primary-light placeholder-text-secondary-light ring-border-light focus:ring-background-tertiary-light block w-full rounded-md border-0 px-3 py-2 shadow-sm ring-1 focus:ring-2"
+								class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 							></textarea>
 						</div>
 					</div>
@@ -428,11 +427,11 @@
 			</form>
 
 			<!-- Footer -->
-			<div class="border-background-tertiary-light/20 mt-6 border-t pt-6">
+			<div class="mt-6 border-t border-background-tertiary-light/20 pt-6">
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
 					<button
 						type="button"
-						class="border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light rounded-md border px-4 py-2 transition-all duration-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+						class="rounded-md border border-background-tertiary-light px-4 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 						onclick={onClose}
 						disabled={isSubmitting}
 					>

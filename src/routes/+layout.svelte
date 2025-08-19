@@ -243,7 +243,7 @@
 			<!-- Authenticated Layout with Sidebar -->
 			<div class="flex min-h-screen">
 				<!-- Left Sidebar Component -->
-				<LeftSidebar data={data} onMenuChange={handleMenuChange} />
+				<LeftSidebar {data} onMenuChange={handleMenuChange} />
 
 				<!-- Main Content Container -->
 				<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">

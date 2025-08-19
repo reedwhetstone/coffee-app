@@ -55,7 +55,7 @@
 			isShared: data?.isShared,
 			catalogDataLength: data?.catalogData?.length
 		});
-		
+
 		if (data?.data?.length > 0) {
 			console.log('First bean raw data:', data.data[0]);
 			const beanWithProfiles = data.data.find(
@@ -94,7 +94,7 @@
 	// Initialize filter store when data is available
 	$effect(() => {
 		const currentRoute = page.url.pathname;
-		
+
 		// Simple initialization: only run if we have data and store isn't initialized for this route
 		if (data?.data && (!$filterStore.initialized || $filterStore.routeId !== currentRoute)) {
 			console.log('Filter store: Initializing for beans route');
@@ -179,7 +179,7 @@
 
 	onMount(() => {
 		console.log('Beans page mounted');
-		
+
 		// Set loading to false
 		isLoading = false;
 
@@ -417,9 +417,9 @@
 	{#if isFormVisible}
 		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
 			<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 md:p-6">
-				<BeanForm 
-					bean={null} 
-					onClose={() => (isFormVisible = false)} 
+				<BeanForm
+					bean={null}
+					onClose={() => (isFormVisible = false)}
 					onSubmit={handleFormSubmit}
 					catalogBeans={data?.catalogData || []}
 				/>

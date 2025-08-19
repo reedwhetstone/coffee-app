@@ -190,9 +190,12 @@ export class MilestoneCalculationService {
 	/**
 	 * Update roast_profiles table with calculated milestone data
 	 */
-	async updateRoastProfileMilestones(roastId: number, calculatedData?: CalculatedRoastData): Promise<void> {
+	async updateRoastProfileMilestones(
+		roastId: number,
+		calculatedData?: CalculatedRoastData
+	): Promise<void> {
 		// Get calculated data if not provided
-		const data = calculatedData || await this.getCalculatedRoastData(roastId);
+		const data = calculatedData || (await this.getCalculatedRoastData(roastId));
 
 		// Filter out undefined values to avoid overwriting existing data with nulls
 		const updateData = Object.fromEntries(
@@ -241,9 +244,11 @@ export class MilestoneCalculationService {
 			stats.processed++;
 			try {
 				const calculatedData = await this.getCalculatedRoastData(profile.roast_id);
-				
+
 				// Only update if we have meaningful data
-				const hasData = Object.values(calculatedData).some(value => value !== null && value !== undefined);
+				const hasData = Object.values(calculatedData).some(
+					(value) => value !== null && value !== undefined
+				);
 				if (hasData) {
 					await this.updateRoastProfileMilestones(profile.roast_id, calculatedData);
 					stats.updated++;
@@ -260,6 +265,8 @@ export class MilestoneCalculationService {
 }
 
 // Helper function to create service instance
-export function createMilestoneCalculationService(supabase: SupabaseClient): MilestoneCalculationService {
+export function createMilestoneCalculationService(
+	supabase: SupabaseClient
+): MilestoneCalculationService {
 	return new MilestoneCalculationService(supabase);
 }

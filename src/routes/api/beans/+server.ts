@@ -175,9 +175,7 @@ export const POST: RequestHandler = async (event) => {
 		if (error) throw error;
 
 		// Get the full bean data with joins
-		const { data: fullBean } = await buildGreenCoffeeQuery(supabase)
-			.eq('id', newBean.id)
-			.single();
+		const { data: fullBean } = await buildGreenCoffeeQuery(supabase).eq('id', newBean.id).single();
 
 		return json(processGreenCoffeeData([fullBean])[0]);
 	} catch (error) {
@@ -242,9 +240,7 @@ export const PUT: RequestHandler = async (event) => {
 		}
 
 		// Then fetch the updated data with the join
-		const { data: updatedBean } = await buildGreenCoffeeQuery(supabase)
-			.eq('id', id)
-			.single();
+		const { data: updatedBean } = await buildGreenCoffeeQuery(supabase).eq('id', id).single();
 
 		return json(processGreenCoffeeData([updatedBean])[0]);
 	} catch (error) {

@@ -76,9 +76,12 @@
 	// Separate effect for filter store initialization - only depends on data, not $filteredData
 	$effect(() => {
 		const currentRoute = page.url.pathname;
-		
+
 		// Initialize filter store if needed - only depends on raw data
-		if (data?.data?.length > 0 && (!$filterStore.initialized || $filterStore.routeId !== currentRoute)) {
+		if (
+			data?.data?.length > 0 &&
+			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
+		) {
 			filterStore.initializeForRoute(currentRoute, data.data);
 		}
 	});
@@ -131,7 +134,7 @@
 	// Effect to handle first-time expansion of batches
 	$effect(() => {
 		const batchNames = sortedBatchNames();
-		
+
 		// If this is the first load and there are batches, expand the first one
 		if (batchNames.length > 0 && expandedBatches.size === 0 && !initialLoadComplete) {
 			expandedBatches.add(batchNames[0]);
@@ -157,7 +160,6 @@
 	});
 
 	// Remove selectedBean from data object - use URL params for navigation instead
-
 
 	// Removed the sort effect since it's redundant - the filtered data effect will handle updates
 
@@ -646,7 +648,12 @@
 {#if isFormVisible}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 p-4">
 		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 shadow-xl sm:p-6">
-			<RoastProfileForm {selectedBean} {availableCoffees} onClose={hideRoastForm} onSubmit={handleFormSubmit} />
+			<RoastProfileForm
+				{selectedBean}
+				{availableCoffees}
+				onClose={hideRoastForm}
+				onSubmit={handleFormSubmit}
+			/>
 		</div>
 	</div>
 {/if}
