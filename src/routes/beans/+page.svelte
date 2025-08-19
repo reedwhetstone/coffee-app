@@ -93,73 +93,24 @@
 	let isLoading = $state(true);
 	let hasAttemptedLoad = $state(false);
 
-	// Initialize or clear filtered data based on current route and data
+	// Initialize filter store once when component mounts or data changes
 	$effect(() => {
 		const currentRoute = page.url.pathname;
 		
-		console.log('Filter store effect triggered:', {
-			currentRoute,
-			hasData: !!(data?.data && data.data.length > 0),
-			dataLength: data?.data?.length || 0,
-			filteredDataLength: $filteredData.length,
-			filterStoreInitialized: $filterStore.initialized,
-			filterStoreRouteId: $filterStore.routeId,
-			initializing,
-			hasAttemptedLoad
-		});
+		// Only initialize if not already done for this route and not currently initializing
+		if (initializing || ($filterStore.initialized && $filterStore.routeId === currentRoute)) {
+			return;
+		}
 
-		// If we're on the beans route but have no data and filter store has data from another route, clear it
-		if (
-			currentRoute.includes('/beans') &&
-			(!data?.data || data.data.length === 0) &&
-			$filteredData.length > 0 &&
-			!initializing
-		) {
-			console.log('Filter store: Clearing data for empty beans route');
-			initializing = true;
-			setTimeout(() => {
-				filterStore.initializeForRoute(currentRoute, []);
-				initializing = false;
-				// If we have no data and have attempted to load, we're done loading
-				if (hasAttemptedLoad) {
-					console.log('Filter store: Setting isLoading = false after clearing');
-					isLoading = false;
-				}
-			}, 0);
-		}
-		// If we have page data but filtered data is empty or from a different route, initialize it
-		else if (
-			data?.data?.length > 0 &&
-			($filteredData.length === 0 ||
-				!$filterStore.initialized ||
-				$filterStore.routeId !== currentRoute) &&
-			!initializing
-		) {
-			console.log('Filter store: Initializing with data');
-			initializing = true;
-			setTimeout(() => {
-				filterStore.initializeForRoute(currentRoute, data.data);
-				initializing = false;
-				isLoading = false; // We have data, so we're done loading
-				console.log('Filter store: Initialization complete, isLoading = false');
-			}, 0);
-		}
-		// If we're on beans route, have no data, and filter store is not initialized
-		else if (
-			currentRoute.includes('/beans') &&
-			(!data?.data || data.data.length === 0) &&
-			!$filterStore.initialized &&
-			!initializing
-		) {
-			console.log('Filter store: Initializing empty data for beans route');
-			initializing = true;
-			setTimeout(() => {
-				filterStore.initializeForRoute(currentRoute, []);
-				initializing = false;
-				isLoading = false;
-				console.log('Filter store: Empty initialization complete, isLoading = false');
-			}, 0);
-		}
+		console.log('Filter store: Initializing for beans route');
+		initializing = true;
+		
+		// Initialize synchronously to avoid async loops
+		filterStore.initializeForRoute(currentRoute, data?.data || []);
+		initializing = false;
+		isLoading = false;
+		
+		console.log('Filter store: Initialization complete');
 	});
 
 	// State for form and bean selection
@@ -169,35 +120,13 @@
 	let lastSelectedBeanId = $state<number | null>(null);
 	let beanProfileElement = $state<HTMLElement | null>(null);
 
-	// Reset selected bean if it's filtered out with guard to prevent loops
-	let lastFilteredDataLength = $state(0);
-
+	// Reset selected bean if it's filtered out
 	$effect(() => {
-		// Only process if the filtered data length has actually changed
-		if (lastFilteredDataLength !== $filteredData.length) {
-			// console.log(
-			// 	'Filtered data changed in beans page, from',
-			// 	lastFilteredDataLength,
-			// 	'to',
-			// 	$filteredData.length
-			// );
-			lastFilteredDataLength = $filteredData.length;
-
-			if ($filteredData.length && selectedBean && !processingUpdate) {
-				processingUpdate = true;
-				try {
-					// Check if the selected bean still exists in the filtered data
-					const stillExists = $filteredData.some((bean) => bean.id === selectedBean.id);
-					if (!stillExists && selectedBean.id !== lastSelectedBeanId) {
-						// console.log('Selected bean was filtered out, resetting selection');
-						selectedBean = null;
-					}
-				} finally {
-					// Use setTimeout to break potential update cycles
-					setTimeout(() => {
-						processingUpdate = false;
-					}, 50);
-				}
+		// Check if selected bean still exists in filtered data
+		if (selectedBean && $filteredData.length > 0) {
+			const stillExists = $filteredData.some((bean) => bean.id === selectedBean.id);
+			if (!stillExists) {
+				selectedBean = null;
 			}
 		}
 	});
@@ -340,13 +269,11 @@
 		isFormVisible = true;
 	}
 
-	// Ensure the data object always has the callback and selectedBean
-	$effect(() => {
-		if (data) {
-			// Always ensure the callback is attached
-			data.selectedBean = selectedBean;
-			data.onAddNewBean = handleAddNewBean;
-		}
+	// Create a reactive data object that includes selectedBean for child components
+	let pageData = $derived({
+		...data,
+		selectedBean: selectedBean,
+		onAddNewBean: handleAddNewBean
 	});
 
 	/**
@@ -520,7 +447,7 @@
 		<div class="mb-4" bind:this={beanProfileElement}>
 			<BeanProfileTabs
 				{selectedBean}
-				role={data.role}
+				role={pageData.role}
 				onUpdate={async (updatedBean) => {
 					if (processingUpdate) return;
 					processingUpdate = true;
@@ -564,7 +491,7 @@
 					bean={null} 
 					onClose={() => (isFormVisible = false)} 
 					onSubmit={handleFormSubmit}
-					catalogBeans={data?.catalogData || []}
+					catalogBeans={pageData?.catalogData || []}
 				/>
 			</div>
 		</div>
@@ -574,7 +501,7 @@
 	{#if !isLoading && $filteredData && $filteredData.length > 0}
 		<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 			<div class="text-sm text-text-secondary-light">
-				Showing {$filteredData.length} of {data?.data?.length || 0} coffees
+				Showing {$filteredData.length} of {pageData?.data?.length || 0} coffees
 			</div>
 		</div>
 	{/if}
@@ -589,10 +516,10 @@
 			>
 				<div class="mb-4 text-6xl opacity-50">☕</div>
 				<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
-					{data?.data?.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
+					{pageData?.data?.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
 				</h3>
 				<p class="mb-4 text-text-secondary-light">
-					{data?.data?.length > 0
+					{pageData?.data?.length > 0
 						? 'Try adjusting your filters to see more coffees, or add a new coffee to your inventory.'
 						: 'Start building your coffee inventory by adding your first green coffee bean.'}
 				</p>
@@ -601,9 +528,9 @@
 						onclick={() => handleAddNewBean()}
 						class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 					>
-						{data?.data?.length > 0 ? 'Add New Coffee' : 'Add Your First Bean'}
+						{pageData?.data?.length > 0 ? 'Add New Coffee' : 'Add Your First Bean'}
 					</button>
-					{#if data?.data?.length > 0}
+					{#if pageData?.data?.length > 0}
 						<button
 							onclick={() => filterStore.clearFilters()}
 							class="rounded-md border border-background-tertiary-light px-4 py-2 font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
