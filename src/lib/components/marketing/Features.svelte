@@ -1,26 +1,56 @@
 <section id="features" class="bg-background-primary-light py-24 sm:py-32">
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-2xl lg:text-center">
-			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
-				Built for home roasters
+			<h2 class="text-background-tertiary-light text-base font-semibold leading-7">
+				Built for coffee professionals
 			</h2>
-			<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-				From Curious to Confident
+			<p class="text-text-primary-light mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+				From Curious to Commercial
 			</p>
-			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				Whether you're roasting for fun or profit, Purveyors grows with you. Discover small-lot
-				green coffees, track your roasting journey, and perfect your craft.
+			<p class="text-text-secondary-light mt-6 text-lg leading-8">
+				Whether you're a home roaster or running a commercial operation, Purveyors scales with your needs. Professional-grade tools for roast tracking, quality assessment, and coffee discovery.
 			</p>
 		</div>
 		<div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
 			<dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
-				<!-- AI-Powered Recommendations -->
+				<!-- Artisan Integration -->
 				<div class="flex flex-col">
 					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
+						class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
 					>
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
+							class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
+						>
+							<svg
+								class="h-6 w-6 text-white"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="1.5"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"
+								/>
+							</svg>
+						</div>
+						Seamless Artisan Integration
+					</dt>
+					<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
+						<p class="flex-auto">
+							Import .alog files in seconds and generate professional roast curves instantly. Perfect integration with your existing Artisan workflow for both home roasters and commercial QA processes. Maintain comprehensive roast logs without disrupting your current setup.
+						</p>
+					</dd>
+				</div>
+
+				<!-- AI Coffee Analytics Assistant -->
+				<div class="flex flex-col">
+					<dt
+						class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
+					>
+						<div
+							class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
 						>
 							<svg
 								class="h-6 w-6 text-white"
@@ -36,24 +66,22 @@
 								/>
 							</svg>
 						</div>
-						Coffee AI Concierge
+						AI Coffee Analytics Assistant
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
 						<p class="flex-auto">
-							Ask "What's a good washed Ethiopian under $8/lb with floral notes?" and get curated
-							recommendations instantly. Your friendly AI assistant understands coffee like you do
-							and helps you discover perfect beans for your roasting goals.
+							Analyze roast trends, identify QA patterns, and get expert insights instantly. Ask "Why was this roast underdeveloped?" or "Find me a washed Ethiopian under $8/lb with bright acidity." Your AI assistant understands both coffee science and your specific needs.
 						</p>
 					</dd>
 				</div>
 
-				<!-- Inventory Management -->
+				<!-- Green Coffee Catalog -->
 				<div class="flex flex-col">
 					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
+						class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
 					>
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
+							class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
 						>
 							<svg
 								class="h-6 w-6 text-white"
@@ -69,24 +97,22 @@
 								/>
 							</svg>
 						</div>
-						Green Coffee Marketplace
+						Curated Green Coffee Catalog
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
 						<p class="flex-auto">
-							Discover unique, small-lot coffees from vetted sellers offering 1-5 lb bags perfect
-							for home roasters. Filter by origin, processing method, flavor notes, and price to
-							find exactly what you're looking for.
+							Discover unique, small-lot coffees from trusted suppliers with detailed tasting notes and processing information. Filter by origin, processing method, flavor profiles, and price to find exactly what you need for your roasting program.
 						</p>
 					</dd>
 				</div>
 
-				<!-- Roasting Profiles -->
+				<!-- Professional QA & Tracking -->
 				<div class="flex flex-col">
 					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
+						class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
 					>
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
+							class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
 						>
 							<svg
 								class="h-6 w-6 text-white"
@@ -107,57 +133,22 @@
 								/>
 							</svg>
 						</div>
-						Roast Anywhere
+						Professional QA & Tracking
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
 						<p class="flex-auto">
-							Seamless cross-device experience. Start your roast log on laptop, import Artisan data,
-							add tasting notes from mobile while sipping. Beautiful D3.js charts make your roasting
-							data easy to understand.
+							Comprehensive roast session tracking with quality assessment workflows. Perfect for small-medium roasting businesses managing multiple profiles and maintaining consistency standards. Cross-device access keeps your team synchronized.
 						</p>
 					</dd>
 				</div>
 
-				<!-- Profit Tracking -->
+				<!-- Advanced Analytics -->
 				<div class="flex flex-col">
 					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
+						class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
 					>
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
-						>
-							<svg
-								class="h-6 w-6 text-white"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke-width="1.5"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.897-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-								/>
-							</svg>
-						</div>
-						Inventory & Purchase Tracking
-					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
-						<p class="flex-auto">
-							Track your green coffee purchases, remaining quantities, and favorite vendors. Set
-							reorder thresholds and get reminders for coffees you loved. Perfect for managing your
-							home roasting inventory.
-						</p>
-					</dd>
-				</div>
-
-				<!-- Semantic Search -->
-				<div class="flex flex-col">
-					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
+							class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
 						>
 							<svg
 								class="h-6 w-6 text-white"
@@ -173,24 +164,22 @@
 								/>
 							</svg>
 						</div>
-						Tasting Journal & Analytics
+						Advanced Roast Analytics
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
 						<p class="flex-auto">
-							Log each cup you taste, link it to your roast profile, and track what works. AI helps
-							you understand your roast data - "Why was this roast underdeveloped?" - so you improve
-							faster.
+							Deep dive into your roasting data with trend analysis, pattern recognition, and performance metrics. Beautiful D3.js visualizations help identify consistency patterns and optimization opportunities across your entire roasting program.
 						</p>
 					</dd>
 				</div>
 
-				<!-- Integration -->
+				<!-- API Access -->
 				<div class="flex flex-col">
 					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
+						class="text-text-primary-light flex items-center gap-x-3 text-base font-semibold leading-7"
 					>
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
+							class="bg-background-tertiary-light flex h-10 w-10 items-center justify-center rounded-lg"
 						>
 							<svg
 								class="h-6 w-6 text-white"
@@ -202,23 +191,21 @@
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"
+									d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"
 								/>
 							</svg>
 						</div>
-						Artisan Integration
+						Developer API Access
 					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+					<dd class="text-text-secondary-light mt-4 flex flex-auto flex-col text-base leading-7">
 						<p class="flex-auto">
-							Seamlessly sync with Artisan roasting software. Import your roast logs automatically,
-							generate beautiful curves, and identify trends. Fits perfectly into your existing
-							roasting workflow.
+							Programmatic access to our comprehensive coffee catalog and roasting data. Build custom integrations, automate workflows, and create specialized tools with our robust API. Perfect for developers and businesses requiring data integration.
 						</p>
 					</dd>
 				</div>
 
 				<!-- Parchment API -->
-				<div class="flex flex-col">
+				<!-- <div class="flex flex-col">
 					<dt
 						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
 					>
@@ -248,7 +235,7 @@
 							workflows with our Parchment API and detailed documentation.
 						</p>
 					</dd>
-				</div>
+				</div> -->
 			</dl>
 		</div>
 	</div>

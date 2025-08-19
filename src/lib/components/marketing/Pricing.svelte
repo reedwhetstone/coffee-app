@@ -17,7 +17,7 @@
 		<div class="mx-auto max-w-4xl text-center">
 			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Pricing</h2>
 			<p class="mt-2 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-				Grow from curious to confident
+				Grow from curious to commercial
 			</p>
 		</div>
 		<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-text-secondary-light">
@@ -61,7 +61,7 @@
 									clip-rule="evenodd"
 								/>
 							</svg>
-							Browse green coffee marketplace
+							Browse curated green coffee catalog
 						</li>
 						<li class="flex gap-x-3">
 							<svg
@@ -171,7 +171,7 @@
 									clip-rule="evenodd"
 								/>
 							</svg>
-							Full Coffee AI Concierge
+							Full AI Coffee Analytics Assistant
 						</li>
 						<li class="flex gap-x-3">
 							<svg
@@ -199,7 +199,7 @@
 									clip-rule="evenodd"
 								/>
 							</svg>
-							Artisan integration & roast logging
+							Seamless Artisan .alog integration
 						</li>
 						<li class="flex gap-x-3">
 							<svg
@@ -227,7 +227,7 @@
 									clip-rule="evenodd"
 								/>
 							</svg>
-							Roast analytics & improvement tips
+							Advanced roast analytics & QA insights
 						</li>
 						<li class="flex gap-x-3">
 							<svg
