@@ -52,6 +52,11 @@
 	let isFormVisible = $state(false);
 	let selectedSale = $state<SaleData | null>(null);
 
+	// Form data state
+	let availableCoffees = $state<any[]>([]);
+	let availableBatches = $state<any[]>([]);
+	let formDataLoading = $state(false);
+
 	let { data } = $props<{ data: PageData }>();
 
 	// Convert reactive statements to use $derived
@@ -104,8 +109,9 @@
 	// Add sales form handlers
 	async function handleFormSubmit(saleData: any) {
 		try {
-			const response = await fetch(`/api/profit${selectedSale ? `?id=${selectedSale.id}` : ''}`, {
-				method: selectedSale ? 'PUT' : 'POST',
+			const isUpdate = selectedSale?.id !== undefined && selectedSale?.id !== null;
+			const response = await fetch(`/api/profit${isUpdate && selectedSale ? `?id=${selectedSale.id}` : ''}`, {
+				method: isUpdate ? 'PUT' : 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
@@ -113,13 +119,15 @@
 			});
 
 			if (!response.ok) {
-				throw new Error(`Failed to ${selectedSale ? 'update' : 'create'} sale`);
+				const errorData = await response.json();
+				throw new Error(errorData.error || `Failed to ${isUpdate ? 'update' : 'create'} sale`);
 			}
 
-			// Refresh the sales data for the selected coffee
-			await fetchSalesForCoffee(salesData[0].coffee_name || '');
+			// Refresh all profit and sales data
+			await fetchInitialSalesData();
 		} catch (error) {
 			console.error('Error updating sales data:', error);
+			alert(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
 		}
 		isFormVisible = false;
 		selectedSale = null;
@@ -137,10 +145,57 @@
 		}
 	}
 
+	// Function to fetch available coffees for sale form
+	async function fetchAvailableCoffees() {
+		try {
+			const response = await fetch('/api/beans');
+			if (response.ok) {
+				const result = await response.json();
+				// Filter for stocked coffees only
+				const stockedCoffees = (result.data || []).filter((coffee: any) => coffee.stocked === true);
+				availableCoffees = stockedCoffees;
+			} else {
+				console.error('Failed to fetch available coffees');
+				availableCoffees = [];
+			}
+		} catch (error) {
+			console.error('Error fetching available coffees:', error);
+			availableCoffees = [];
+		}
+	}
+
+	// Function to fetch available batches (roast profiles) for sale form
+	async function fetchAvailableBatches() {
+		try {
+			const response = await fetch('/api/roast-profiles');
+			if (response.ok) {
+				const result = await response.json();
+				// Get roast profiles with coffee relationships for batch selection
+				availableBatches = result.data || [];
+			} else {
+				console.error('Failed to fetch available batches');
+				availableBatches = [];
+			}
+		} catch (error) {
+			console.error('Error fetching available batches:', error);
+			availableBatches = [];
+		}
+	}
+
+	// Function to fetch form data (coffees and batches)
+	async function fetchFormData() {
+		formDataLoading = true;
+		try {
+			await Promise.all([fetchAvailableCoffees(), fetchAvailableBatches()]);
+		} finally {
+			formDataLoading = false;
+		}
+	}
+
 	// Convert onMount to use $effect
 	$effect(() => {
 		const fetchData = async () => {
-			await Promise.all([fetchInitialSalesData(), fetchRoastProfileData()]);
+			await Promise.all([fetchInitialSalesData(), fetchRoastProfileData(), fetchFormData()]);
 
 			// Check if we should show the sale form based on the page state
 			const state = page.state as any;
@@ -231,6 +286,9 @@
 		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-6 shadow-2xl">
 			<SaleForm
 				sale={selectedSale}
+				{availableCoffees}
+				{availableBatches}
+				catalogBeans={data?.catalogData || []}
 				onClose={() => {
 					isFormVisible = false;
 					selectedSale = null;

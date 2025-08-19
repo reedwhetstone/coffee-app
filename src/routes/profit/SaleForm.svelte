@@ -34,6 +34,8 @@
 	);
 
 	async function handleSubmit() {
+		const isUpdate = sale?.id !== undefined && sale?.id !== null;
+		
 		try {
 			const cleanedSale = Object.fromEntries(
 				Object.entries(formData).map(([key, value]) => [
@@ -41,9 +43,10 @@
 					value === '' || value === undefined ? null : value
 				])
 			);
-
-			const response = await fetch(sale?.id ? `/api/profit?id=${sale.id}` : '/api/profit', {
-				method: sale?.id ? 'PUT' : 'POST',
+			
+			
+			const response = await fetch(isUpdate ? `/api/profit?id=${sale.id}` : '/api/profit', {
+				method: isUpdate ? 'PUT' : 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
@@ -56,10 +59,10 @@
 				onClose();
 			} else {
 				const data = await response.json();
-				alert(`Failed to ${sale?.id ? 'update' : 'create'} sale: ${data.error}`);
+				alert(`Failed to ${isUpdate ? 'update' : 'create'} sale: ${data.error}`);
 			}
 		} catch (error) {
-			console.error(`Error ${sale?.id ? 'updating' : 'creating'} sale:`, error);
+			console.error(`Error ${isUpdate ? 'updating' : 'creating'} sale:`, error);
 		}
 	}
 
@@ -75,8 +78,64 @@
 				selectedCoffee.name || selectedCoffee.coffee_catalog?.name || 'Unknown Coffee';
 			formData.green_coffee_inv_id = selectedCoffee.id;
 			formData.purchase_date = selectedCoffee.purchase_date;
+			
+			// Clear batch selection when coffee changes
+			formData.batch_name = '';
 		}
 	}
+
+	// Handle batch selection
+	function handleBatchChange(event: Event) {
+		const selectedBatchName = (event.target as HTMLSelectElement).value;
+		const selectedBatch = availableBatches.find(
+			(batch: any) => batch.batch_name === selectedBatchName
+		);
+
+		if (selectedBatch) {
+			// If a batch is selected, auto-select the coffee for that batch
+			const batchCoffee = availableCoffees.find(
+				(coffee: any) => coffee.id === selectedBatch.coffee_id
+			);
+			
+			if (batchCoffee) {
+				formData.green_coffee_inv_id = batchCoffee.id;
+				formData.coffee_name = batchCoffee.name || batchCoffee.coffee_catalog?.name || 'Unknown Coffee';
+				formData.purchase_date = batchCoffee.purchase_date;
+			}
+		}
+		
+		formData.batch_name = selectedBatchName;
+	}
+
+	// Reactive filtered batches based on selected coffee
+	let filteredBatches = $derived(() => {
+		if (!formData.green_coffee_inv_id || !availableBatches.length) {
+			return availableBatches;
+		}
+		
+		return availableBatches.filter(
+			(batch: any) => batch.coffee_id?.toString() === formData.green_coffee_inv_id?.toString()
+		);
+	});
+
+	// Reactive filtered coffees based on selected batch
+	let filteredCoffees = $derived(() => {
+		if (!formData.batch_name || !availableBatches.length) {
+			return availableCoffees;
+		}
+		
+		const selectedBatch = availableBatches.find(
+			(batch: any) => batch.batch_name === formData.batch_name
+		);
+		
+		if (!selectedBatch) {
+			return availableCoffees;
+		}
+		
+		return availableCoffees.filter(
+			(coffee: any) => coffee.id === selectedBatch.coffee_id
+		);
+	});
 </script>
 
 <!-- Clean card-based form design matching home page patterns -->
@@ -111,7 +170,7 @@
 						required
 					>
 						<option value="">Select a coffee...</option>
-						{#each availableCoffees as coffee}
+						{#each filteredCoffees() as coffee}
 							<option value={coffee.id}
 								>{coffee.name || coffee.coffee_catalog?.name || 'Unknown Coffee'}</option
 							>
@@ -121,16 +180,16 @@
 
 				<div class="space-y-2">
 					<label for="batch_name" class="block text-sm font-medium text-text-primary-light">
-						Batch Name
+						Batch Name <span class="text-text-secondary-light">(optional)</span>
 					</label>
 					<select
 						id="batch_name"
 						class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
-						bind:value={formData.batch_name}
-						required
+						value={formData.batch_name}
+						onchange={handleBatchChange}
 					>
-						<option value="">Select a batch...</option>
-						{#each availableBatches as batch}
+						<option value="">Select a batch (optional)...</option>
+						{#each filteredBatches() as batch}
 							<option value={batch.batch_name}>{batch.batch_name}</option>
 						{/each}
 					</select>

@@ -30,75 +30,22 @@
 	let displayLimit = $state(15);
 	let isLoadingMore = $state(false);
 
-	// Initialization tracking to prevent duplicate filter store setup
-	let initializing = $state(false);
-
 	/**
 	 * Initialize filter store when page loads
-	 * Ensures the filter store is properly set up for the catalog route
 	 */
 	$effect(() => {
 		const currentRoute = page.url.pathname;
 
-		// Initialize filter store if we have data and it's not already initialized for this route
-		if (
-			data?.data?.length > 0 &&
-			(!$filterStore.initialized || $filterStore.routeId !== currentRoute) &&
-			!initializing
-		) {
-			initializing = true;
-			// Use requestIdleCallback for better performance if available
-			if (typeof requestIdleCallback !== 'undefined') {
-				requestIdleCallback(() => {
-					filterStore.initializeForRoute(currentRoute, data.data);
-					initializing = false;
-				});
-			} else {
-				// Fallback for older browsers
-				setTimeout(() => {
-					filterStore.initializeForRoute(currentRoute, data.data);
-					initializing = false;
-				}, 0);
-			}
+		// Simple initialization: only run if we have data and store isn't initialized for this route
+		if (data?.data?.length > 0 && (!$filterStore.initialized || $filterStore.routeId !== currentRoute)) {
+			filterStore.initializeForRoute(currentRoute, data.data);
 		}
 	});
 
 	/**
-	 * Pagination state and reactive updates
-	 * Manages the subset of filtered data to display based on current limit
-	 * Reacts to changes in filtered data, display limit, and filter/sort operations
+	 * Pagination state - simple reactive slice of filtered data
 	 */
-	let paginatedData = $state<any[]>([]);
-	let updatingPagination = $state(false);
-	let lastFilteredDataLength = $state(0);
-	let lastDisplayLimit = $state(15);
-	let lastChangeCounter = $state(0);
-
-	$effect(() => {
-		// Update pagination when filtered data changes, display limit changes, or filter/sort changes
-		if (
-			lastFilteredDataLength !== $filteredData.length ||
-			lastDisplayLimit !== displayLimit ||
-			lastChangeCounter !== $filterChangeNotifier
-		) {
-			// Update tracking variables to prevent unnecessary re-renders
-			lastFilteredDataLength = $filteredData.length;
-			lastDisplayLimit = displayLimit;
-			lastChangeCounter = $filterChangeNotifier;
-
-			// Update paginated data slice with debouncing to prevent rapid updates
-			if (!updatingPagination) {
-				updatingPagination = true;
-				setTimeout(() => {
-					try {
-						paginatedData = $filteredData.slice(0, displayLimit);
-					} finally {
-						updatingPagination = false;
-					}
-				}, 0);
-			}
-		}
-	});
+	let paginatedData = $derived($filteredData.slice(0, displayLimit));
 
 	/**
 	 * Handles infinite scroll functionality
@@ -112,7 +59,6 @@
 			isLoadingMore = true;
 			await new Promise((resolve) => setTimeout(resolve, 300));
 			displayLimit += 15;
-			paginatedData = $filteredData.slice(0, displayLimit); // Immediately update paginated data
 			isLoadingMore = false;
 		}
 	}

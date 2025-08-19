@@ -143,10 +143,8 @@
 			if (response.ok) {
 				const updatedBean = await response.json();
 				isEditing = false;
-				setTimeout(() => {
-					onUpdate(updatedBean);
-					processingUpdate = false;
-				}, 50);
+				onUpdate(updatedBean);
+				processingUpdate = false;
 			} else {
 				const data = await response.json();
 				alert(`Failed to update bean: ${data.error}`);
@@ -170,9 +168,7 @@
 			try {
 				processingUpdate = true;
 				onDelete(selectedBean.id);
-				setTimeout(() => {
-					processingUpdate = false;
-				}, 50);
+				processingUpdate = false;
 			} catch (error) {
 				console.error('Error during bean deletion:', error);
 				processingUpdate = false;

@@ -200,7 +200,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		const saleData = await request.json();
-		const { coffee_name: _, ...insertData } = saleData;
+		const { coffee_name: _, id: __, ...insertData } = saleData;
 
 		if (!insertData.green_coffee_inv_id) {
 			return json({ error: 'green_coffee_inv_id is required' }, { status: 400 });
@@ -221,30 +221,30 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const { data: newSale, error: insertError } = await supabase
 			.from('sales')
 			.insert({ ...insertData, user: user.id })
-			.select(
-				`
-                *,
-                green_coffee_inv (
-                    id,
-                    purchase_date,
-                    catalog_id,
-                    coffee_catalog!catalog_id (
-                        name
-                    )
-                )
-            `
-			)
+			.select()
 			.single();
 
 		if (insertError) {
 			return json({ error: insertError.message }, { status: 500 });
 		}
 
+		// Get the coffee name separately for the response
+		const { data: coffeeData } = await supabase
+			.from('green_coffee_inv')
+			.select(`
+				purchase_date,
+				coffee_catalog!catalog_id (
+					name
+				)
+			`)
+			.eq('id', insertData.green_coffee_inv_id)
+			.single();
+
 		// Format the response to match the expected structure
 		const formattedSale = {
 			...newSale,
-			coffee_name: newSale.green_coffee_inv?.coffee_catalog?.name || null,
-			purchase_date: newSale.green_coffee_inv?.purchase_date || null
+			coffee_name: coffeeData?.coffee_catalog?.name || null,
+			purchase_date: coffeeData?.purchase_date || null
 		};
 
 		return json(formattedSale);

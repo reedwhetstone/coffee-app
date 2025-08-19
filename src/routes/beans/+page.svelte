@@ -88,41 +88,28 @@
 		}
 	});
 
-	// Track initialization and loading states
-	let initializing = $state(false);
+	// Track loading state
 	let isLoading = $state(true);
-	let hasAttemptedLoad = $state(false);
 
-	// Initialize filter store once when component mounts or data changes
+	// Initialize filter store when data is available
 	$effect(() => {
 		const currentRoute = page.url.pathname;
 		
-		// Only initialize if not already done for this route and not currently initializing
-		if (initializing || ($filterStore.initialized && $filterStore.routeId === currentRoute)) {
-			return;
+		// Simple initialization: only run if we have data and store isn't initialized for this route
+		if (data?.data && (!$filterStore.initialized || $filterStore.routeId !== currentRoute)) {
+			console.log('Filter store: Initializing for beans route');
+			filterStore.initializeForRoute(currentRoute, data.data);
+			isLoading = false;
 		}
-
-		console.log('Filter store: Initializing for beans route');
-		initializing = true;
-		
-		// Initialize synchronously to avoid async loops
-		filterStore.initializeForRoute(currentRoute, data?.data || []);
-		initializing = false;
-		isLoading = false;
-		
-		console.log('Filter store: Initialization complete');
 	});
 
 	// State for form and bean selection
 	let isFormVisible = $state(false);
 	let selectedBean = $state<any>(null);
-	let processingUpdate = $state(false);
-	let lastSelectedBeanId = $state<number | null>(null);
 	let beanProfileElement = $state<HTMLElement | null>(null);
 
 	// Reset selected bean if it's filtered out
 	$effect(() => {
-		// Check if selected bean still exists in filtered data
 		if (selectedBean && $filteredData.length > 0) {
 			const stillExists = $filteredData.some((bean) => bean.id === selectedBean.id);
 			if (!stillExists) {
@@ -131,29 +118,16 @@
 		}
 	});
 
-	// Function to select a bean with guard
+	// Function to select a bean
 	function selectBean(bean: any) {
-		if (processingUpdate) return;
-
-		processingUpdate = true;
-		try {
-			// Only update if different to avoid unnecessary re-renders
-			if (!selectedBean || selectedBean.id !== bean.id) {
-				// console.log('Selecting bean:', bean.id);
-				lastSelectedBeanId = bean.id;
-				selectedBean = bean;
-				// Scroll to bean profile after it renders
-				setTimeout(() => {
-					if (beanProfileElement) {
-						beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-					}
-				}, 100);
-			}
-		} finally {
-			// Use setTimeout to break potential update cycles
+		if (!selectedBean || selectedBean.id !== bean.id) {
+			selectedBean = bean;
+			// Scroll to bean profile after it renders
 			setTimeout(() => {
-				processingUpdate = false;
-			}, 50);
+				if (beanProfileElement) {
+					beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 100);
 		}
 	}
 
@@ -193,10 +167,7 @@
 		newBean: Database['public']['Tables']['green_coffee_inv']['Row']
 	) {
 		await refreshData();
-		selectedBean = null;
-		setTimeout(() => {
-			selectedBean = newBean;
-		}, 0);
+		selectedBean = newBean;
 	}
 
 	async function handleBeanUpdate(
@@ -207,37 +178,19 @@
 	}
 
 	onMount(() => {
-		console.log('Beans page onMount - data check:', {
-			hasData: !!data,
-			dataLength: data?.data?.length || 0,
-			dataArray: data?.data
-		});
+		console.log('Beans page mounted');
 		
-		// If we have server-side data, we're not loading
-		if (data?.data?.length > 0) {
-			console.log('Beans page onMount - Setting isLoading to false, has data');
-			isLoading = false;
-			hasAttemptedLoad = true;
-		} else {
-			console.log('Beans page onMount - No data found, will stay in loading state');
-			hasAttemptedLoad = true;
-			// Set loading to false even with no data to prevent infinite loading
-			isLoading = false;
-		}
+		// Set loading to false
+		isLoading = false;
 
 		// Handle search state from navigation
 		const searchState = page.state as any;
-		console.log('Beans page searchState:', searchState);
 
 		// Check if we should show a bean based on the search state
-		if (searchState?.searchType === 'green' && searchState?.searchId) {
-			const foundBean = data.data.find(
-				(bean: Database['public']['Tables']['green_coffee_inv']['Row']) =>
-					bean.id === searchState.searchId
-			);
+		if (searchState?.searchType === 'green' && searchState?.searchId && data?.data) {
+			const foundBean = data.data.find((bean: any) => bean.id === searchState.searchId);
 			if (foundBean) {
 				selectedBean = foundBean;
-				// Scroll to bean profile after it renders
 				setTimeout(() => {
 					if (beanProfileElement) {
 						beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -248,7 +201,6 @@
 
 		// Check if we should show the bean form
 		if (searchState?.showBeanForm) {
-			console.log('Should show bean form based on state flag');
 			setTimeout(() => {
 				handleAddNewBean();
 			}, 100);
@@ -269,12 +221,7 @@
 		isFormVisible = true;
 	}
 
-	// Create a reactive data object that includes selectedBean for child components
-	let pageData = $derived({
-		...data,
-		selectedBean: selectedBean,
-		onAddNewBean: handleAddNewBean
-	});
+	// Remove selectedBean from data object - use URL params for navigation instead
 
 	/**
 	 * Parses AI tasting notes JSON data safely
@@ -447,37 +394,20 @@
 		<div class="mb-4" bind:this={beanProfileElement}>
 			<BeanProfileTabs
 				{selectedBean}
-				role={pageData.role}
+				role={data.role}
 				onUpdate={async (updatedBean) => {
-					if (processingUpdate) return;
-					processingUpdate = true;
-					try {
-						// Update selectedBean immediately with the response from the API
-						selectedBean = updatedBean;
-						// Refresh the data to keep everything in sync
-						await refreshData();
-						// Update selectedBean from the refreshed data
-						const refreshedBean = $filteredData.find((bean) => bean.id === updatedBean.id);
-						if (refreshedBean) {
-							selectedBean = refreshedBean;
-						}
-					} finally {
-						setTimeout(() => {
-							processingUpdate = false;
-						}, 50);
+					// Update selectedBean and refresh data
+					selectedBean = updatedBean;
+					await refreshData();
+					// Update selectedBean from refreshed data
+					const refreshedBean = $filteredData.find((bean) => bean.id === updatedBean.id);
+					if (refreshedBean) {
+						selectedBean = refreshedBean;
 					}
 				}}
 				onDelete={async (id) => {
-					if (processingUpdate) return;
-					processingUpdate = true;
-					try {
-						await deleteBean(id);
-						selectedBean = null;
-					} finally {
-						setTimeout(() => {
-							processingUpdate = false;
-						}, 50);
-					}
+					await deleteBean(id);
+					selectedBean = null;
 				}}
 			/>
 		</div>
@@ -491,7 +421,7 @@
 					bean={null} 
 					onClose={() => (isFormVisible = false)} 
 					onSubmit={handleFormSubmit}
-					catalogBeans={pageData?.catalogData || []}
+					catalogBeans={data?.catalogData || []}
 				/>
 			</div>
 		</div>
@@ -501,7 +431,7 @@
 	{#if !isLoading && $filteredData && $filteredData.length > 0}
 		<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 			<div class="text-sm text-text-secondary-light">
-				Showing {$filteredData.length} of {pageData?.data?.length || 0} coffees
+				Showing {$filteredData.length} of {data?.data?.length || 0} coffees
 			</div>
 		</div>
 	{/if}
@@ -516,10 +446,10 @@
 			>
 				<div class="mb-4 text-6xl opacity-50">☕</div>
 				<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
-					{pageData?.data?.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
+					{data?.data?.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
 				</h3>
 				<p class="mb-4 text-text-secondary-light">
-					{pageData?.data?.length > 0
+					{data?.data?.length > 0
 						? 'Try adjusting your filters to see more coffees, or add a new coffee to your inventory.'
 						: 'Start building your coffee inventory by adding your first green coffee bean.'}
 				</p>
@@ -528,9 +458,9 @@
 						onclick={() => handleAddNewBean()}
 						class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 					>
-						{pageData?.data?.length > 0 ? 'Add New Coffee' : 'Add Your First Bean'}
+						{data?.data?.length > 0 ? 'Add New Coffee' : 'Add Your First Bean'}
 					</button>
-					{#if pageData?.data?.length > 0}
+					{#if data?.data?.length > 0}
 						<button
 							onclick={() => filterStore.clearFilters()}
 							class="rounded-md border border-background-tertiary-light px-4 py-2 font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"

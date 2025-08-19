@@ -1,8 +1,7 @@
 <!-- src/lib/components/layout/Actionsbar.svelte -->
 <script lang="ts">
 	import { page } from '$app/state';
-	import { afterNavigate } from '$app/navigation';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';
 
 	// Props declaration
@@ -68,24 +67,13 @@
 			window.dispatchEvent(new CustomEvent('show-roast-form'));
 		} else {
 			// Navigate to roast page with form state
-			// Check if we have a selected bean from the current page
-			const selectedBean = data?.selectedBean;
-			console.log('Selected bean for roast:', selectedBean);
-
-			if (selectedBean) {
-				goto(`/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.name)}`, {
-					state: {
-						showRoastForm: true,
-						selectedBean: selectedBean
-					}
-				});
-			} else {
-				goto('/roast', {
-					state: {
-						showRoastForm: true
-					}
-				});
-			}
+			// Always navigate to roast page without pre-selected bean
+			// Users can select a bean from the roast form
+			goto('/roast', {
+				state: {
+					showRoastForm: true
+				}
+			});
 		}
 		onClose();
 	}

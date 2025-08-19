@@ -203,6 +203,22 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 
 **MANDATORY for SvelteKit 5 applications:**
 
+### Circular Dependency Prevention
+
+**CRITICAL - Prevent Infinite Loops:**
+
+- **NEVER use `$effect()` to sync derived values back to `$state()` variables**
+- **NEVER read `$filteredData` in effects that update state variables**
+- **Use `$derived()` for computed values, call as functions in templates: `sortedData()`**
+- **Separate concerns**: Filter store initialization vs data processing effects
+
+### Reactive Primitive Selection
+
+- **`$state()`**: Mutable data (user input, selections, loading states)
+- **`$derived()`**: Computed values from reactive data (filtering, sorting, transformations)
+- **`$effect()`**: Side effects only (API calls, DOM manipulation, logging)
+- **Template Usage**: Call derived functions: `{#each sortedItems() as item}`
+
 **State Variable Guidelines:**
 
 - **Use `$state()` for ALL mutable variables** that need to trigger reactivity
@@ -527,6 +543,12 @@ const combined = mainData?.map((item) => ({
 
 ### Todo Management Best Practices
 
+**REQUIRED - Use TodoWrite for Reactive Debugging:**
+
+- **Effect_update_depth_exceeded errors** (systematic debugging needed)
+- **Multiple reactive effects coordination** (circular dependency risk)
+- **Complex state transformations** affecting multiple components
+
 **Task Creation and Organization:**
 
 - Create specific, actionable items with clear deliverables
@@ -786,6 +808,15 @@ const avgCost = totalWeight > 0 ? (totalCost / totalWeight).toFixed(2) : '0.00';
 ```
 
 ## General Debugging Guidelines
+
+### Infinite Loop Debugging
+
+**When encountering `effect_update_depth_exceeded`:**
+
+1. **Identify effects that read and write related reactive values**
+2. **Replace state sync patterns with pure `$derived()` functions**
+3. **Separate filter store initialization from data processing**
+4. **Use `pnpm check` to verify TypeScript after reactive changes**
 
 ### Systematic Debugging Approach
 

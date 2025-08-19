@@ -47,17 +47,15 @@
 	// Roast profile state management (removed unused sort variables)
 
 	// Profile grouping and sorting state
-	let sortedBatchNames = $state<string[]>([]);
-	let sortedGroupedProfiles = $state<Record<string, any[]>>({});
 	let expandedBatches = $state<Set<string>>(new Set());
 	let currentProfileIndex = $state<number>(0);
 
 	// Page data
 	let { data } = $props<{ data: PageData }>();
 
-	// Track initialization and processing
-	let updatingProfileGroups = $state(false);
-	let initializing = $state(false);
+	// Track processing state
+	let processing = $state(false);
+	let initialLoadComplete = $state(false);
 
 	// Available coffees for form
 	let availableCoffees = $state<any[]>([]);
@@ -75,136 +73,27 @@
 	// 	);
 	// });
 
-	// Initialize filter store
+	// Separate effect for filter store initialization - only depends on data, not $filteredData
 	$effect(() => {
 		const currentRoute = page.url.pathname;
-		// If we have page data but filtered data is empty, initialize it
-		if (
-			data?.data?.length > 0 &&
-			(!$filterStore.initialized || $filterStore.routeId !== currentRoute) &&
-			!initializing
-		) {
-			//console.log('Initializing filter store with roast page data:', data.data.length, 'items');
-			initializing = true;
-			// Use setTimeout to break potential update cycles
-			setTimeout(() => {
-				filterStore.initializeForRoute(currentRoute, data.data);
-				initializing = false;
-
-				// Force an update of grouped profiles after initialization
-				setTimeout(() => {
-					if ($filteredData.length > 0 && !updatingProfileGroups) {
-						//console.log('Forcing update of grouped profiles after filter store initialization');
-						updateGroupedProfiles([...$filteredData]);
-					}
-				}, 100);
-			}, 0);
+		
+		// Initialize filter store if needed - only depends on raw data
+		if (data?.data?.length > 0 && (!$filterStore.initialized || $filterStore.routeId !== currentRoute)) {
+			filterStore.initializeForRoute(currentRoute, data.data);
 		}
 	});
 
-	// Update grouped profiles when filtered data changes - completely restructured to prevent loops
-
-	let initialLoadComplete = $state(false);
-
-	// Replace the existing effect with a more robust version that uses the filterChangeNotifier
-	let lastFilteredDataLength = $state(0);
-
-	$effect(() => {
-		// Only process if the filtered data length has actually changed
-		if (lastFilteredDataLength !== $filteredData.length) {
-			// console.log(
-			// 	'Filtered data changed in roast page, from',
-			// 	lastFilteredDataLength,
-			// 	'to',
-			// 	$filteredData.length
-			// );
-			lastFilteredDataLength = $filteredData.length;
-
-			// Skip if we're already updating
-			if (updatingProfileGroups) {
-				//console.log('Already updating profile groups, skipping');
-				return;
-			}
-
-			// Skip if no data
-			if (!$filteredData.length) {
-				// Clear the sorted batch names and grouped profiles when there's no data
-				if (sortedBatchNames.length > 0 || Object.keys(sortedGroupedProfiles).length > 0) {
-					//console.log('No filtered data, clearing sorted batch names and grouped profiles');
-					sortedBatchNames = [];
-					sortedGroupedProfiles = {};
-				}
-				return;
-			}
-
-			// Process the data with a guard to prevent loops
-			//console.log('Filter change detected, updating grouped profiles');
-			updatingProfileGroups = true;
-			try {
-				// Create a snapshot of the current filtered data to avoid reactivity issues
-				const dataSnapshot = [...$filteredData];
-				updateGroupedProfiles(dataSnapshot);
-			} finally {
-				updatingProfileGroups = false;
-			}
-		}
-	});
-
-	// Update selectedBean when currentRoastProfile changes
-	$effect(() => {
-		if (currentRoastProfile && !processing) {
-			// Check if the selectedBean actually needs to be updated
-			if (
-				!selectedBean ||
-				selectedBean.id !== currentRoastProfile.coffee_id ||
-				selectedBean.name !== currentRoastProfile.coffee_name
-			) {
-				processing = true;
-				try {
-					// console.log(
-					// 	'Updating selectedBean from currentRoastProfile:',
-					// 	currentRoastProfile.coffee_id
-					// );
-					selectedBean = {
-						id: currentRoastProfile.coffee_id,
-						name: currentRoastProfile.coffee_name
-					};
-				} finally {
-					// Use setTimeout to break potential update cycles
-					setTimeout(() => {
-						processing = false;
-					}, 50);
-				}
-			}
-		}
-	});
-
-	// Ensure the data object always has the callback and selectedBean
-	$effect(() => {
-		if (data) {
-			// Always ensure the callback is attached
-			data.selectedBean = selectedBean;
-			data.onAddNewRoast = showRoastForm;
-		}
-	});
-
-	// Function to update grouped profiles from filtered data
-	function updateGroupedProfiles(profiles: any[]) {
-		//	console.log('Updating grouped profiles with', profiles.length, 'profiles');
-
-		// Skip update if profiles array is empty
-		if (!profiles.length) {
-			//	console.log('No profiles to update, clearing groupings');
-			sortedBatchNames = [];
-			sortedGroupedProfiles = {};
-			return;
+	// Derived values for grouped profiles - directly computed from $filteredData
+	let sortedGroupedProfiles = $derived(() => {
+		if (!$filteredData || $filteredData.length === 0) {
+			return {};
 		}
 
 		// Group profiles by batch name
 		const newGroupedProfiles: Record<string, any[]> = {};
 
 		// Process each profile
-		profiles.forEach((profile) => {
+		$filteredData.forEach((profile) => {
 			const batchName = profile.batch_name || 'Unknown Batch';
 			if (!newGroupedProfiles[batchName]) {
 				newGroupedProfiles[batchName] = [];
@@ -221,49 +110,55 @@
 			});
 		});
 
-		// Get sorted batch names
-		const batchNames = Object.keys(newGroupedProfiles).sort((a, b) => {
+		return newGroupedProfiles;
+	});
+
+	let sortedBatchNames = $derived(() => {
+		const groupedProfiles = sortedGroupedProfiles();
+		const batchNames = Object.keys(groupedProfiles).sort((a, b) => {
 			// Get the latest date from each batch
-			const latestA = newGroupedProfiles[a][0]?.roast_date
-				? new Date(newGroupedProfiles[a][0].roast_date)
+			const latestA = groupedProfiles[a][0]?.roast_date
+				? new Date(groupedProfiles[a][0].roast_date)
 				: new Date(0);
-			const latestB = newGroupedProfiles[b][0]?.roast_date
-				? new Date(newGroupedProfiles[b][0].roast_date)
+			const latestB = groupedProfiles[b][0]?.roast_date
+				? new Date(groupedProfiles[b][0].roast_date)
 				: new Date(0);
 			return latestB.getTime() - latestA.getTime();
 		});
+		return batchNames;
+	});
 
-		// Store the current expanded batches before updating
-		const currentExpandedBatches = new Set(expandedBatches);
-
-		// Update state
-		sortedBatchNames = batchNames;
-		sortedGroupedProfiles = newGroupedProfiles;
-
-		// Preserve expanded batches that still exist in the new data
-		const newExpandedBatches = new Set<string>();
-		for (const batchName of currentExpandedBatches) {
-			if (batchNames.includes(batchName)) {
-				newExpandedBatches.add(batchName);
-			}
-		}
-
+	// Effect to handle first-time expansion of batches
+	$effect(() => {
+		const batchNames = sortedBatchNames();
+		
 		// If this is the first load and there are batches, expand the first one
-		if (batchNames.length > 0 && newExpandedBatches.size === 0 && !initialLoadComplete) {
-			newExpandedBatches.add(batchNames[0]);
+		if (batchNames.length > 0 && expandedBatches.size === 0 && !initialLoadComplete) {
+			expandedBatches.add(batchNames[0]);
 			initialLoadComplete = true;
 		}
+	});
 
-		// Update the expanded batches
-		expandedBatches = newExpandedBatches;
+	// Update selectedBean when currentRoastProfile changes
+	$effect(() => {
+		if (currentRoastProfile) {
+			// Update selectedBean if it's different
+			if (
+				!selectedBean ||
+				selectedBean.id !== currentRoastProfile.coffee_id ||
+				selectedBean.name !== currentRoastProfile.coffee_name
+			) {
+				selectedBean = {
+					id: currentRoastProfile.coffee_id,
+					name: currentRoastProfile.coffee_name
+				};
+			}
+		}
+	});
 
-		//console.log('Updated sorted batch names:', batchNames);
-		//console.log('Updated sorted grouped profiles keys:', Object.keys(sortedGroupedProfiles));
-		//console.log('Updated expanded batches:', Array.from(expandedBatches));
-	}
+	// Remove selectedBean from data object - use URL params for navigation instead
 
-	// Effect to handle sort changes - make this more efficient
-	let processing = $state(false);
+
 	// Removed the sort effect since it's redundant - the filtered data effect will handle updates
 
 	// Function to fetch available coffees
@@ -295,20 +190,8 @@
 			if (response.ok) {
 				const result = await response.json();
 				if (result.data && Array.isArray(result.data)) {
-					// Update the page data
+					// Update the page data - the reactive effect will handle filter store initialization
 					data.data = result.data;
-
-					// Force an update of the filter store
-					const currentRoute = page.url.pathname;
-					filterStore.initializeForRoute(currentRoute, result.data);
-
-					// Force an update of grouped profiles after a short delay
-					setTimeout(() => {
-						if ($filteredData.length > 0) {
-							//console.log('Forcing update of grouped profiles after loading roast profiles');
-							updateGroupedProfiles([...$filteredData]);
-						}
-					}, 150);
 				}
 			}
 		} catch (error) {
@@ -369,12 +252,6 @@
 
 		// Load roast profiles and ensure they're displayed
 		loadRoastProfiles().then(() => {
-			// Force an update of the grouped profiles if they're not already populated
-			if (sortedBatchNames.length === 0 && $filteredData.length > 0) {
-				//console.log('Forcing update of grouped profiles on mount');
-				updateGroupedProfiles([...$filteredData]);
-			}
-
 			// Load specific profile if profileId was provided in URL
 			if (profileIdToLoad && data?.data?.length > 0) {
 				const targetProfile = data.data.find(
@@ -389,33 +266,15 @@
 			}
 		});
 
-		// Initialize filter store with roast data if needed
-		const currentRoute = page.url.pathname;
-		if (
-			data?.data?.length > 0 &&
-			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
-		) {
-			//console.log('Initializing filter store with roast page data:', data.data.length, 'items');
-			filterStore.initializeForRoute(currentRoute, data.data);
-
-			// Force an update of the grouped profiles after initialization
-			setTimeout(() => {
-				if ($filteredData.length > 0 && sortedBatchNames.length === 0) {
-					//console.log('Forcing update of grouped profiles after filter store initialization');
-					updateGroupedProfiles([...$filteredData]);
-				}
-
-				// Also check for profileId to load after filter store initialization
-				if (profileIdToLoad && data?.data?.length > 0 && !currentRoastProfile) {
-					const targetProfile = data.data.find(
-						(p: { roast_id: number }) => p.roast_id === parseInt(profileIdToLoad)
-					);
-					if (targetProfile) {
-						console.log('Loading profile from URL parameter (delayed):', targetProfile);
-						selectProfile(targetProfile);
-					}
-				}
-			}, 150);
+		// Check for profileId to load from URL params
+		if (profileIdToLoad && data?.data?.length > 0 && !currentRoastProfile) {
+			const targetProfile = data.data.find(
+				(p: { roast_id: number }) => p.roast_id === parseInt(profileIdToLoad)
+			);
+			if (targetProfile) {
+				console.log('Loading profile from URL parameter:', targetProfile);
+				selectProfile(targetProfile);
+			}
 		}
 
 		// Add event listener for the custom show-roast-form event
@@ -573,9 +432,9 @@
 		}
 
 		// Ensure the batch exists in the sorted grouped profiles
-		if (!sortedGroupedProfiles[batchName]) {
+		if (!sortedGroupedProfiles()[batchName]) {
 			//console.error('Batch not found in sorted grouped profiles:', batchName);
-			//console.log('Available batches:', Object.keys(sortedGroupedProfiles));
+			//console.log('Available batches:', Object.keys(sortedGroupedProfiles()));
 			return;
 		}
 
@@ -595,14 +454,8 @@
 		expandedBatches = newExpandedBatches;
 		//console.log('Updated expanded batches:', Array.from(expandedBatches));
 
-		// Force a UI update by triggering a state change
-		// This ensures Svelte recognizes the change to the Set
-		setTimeout(() => {
-			// Create a temporary copy to force reactivity
-			const tempSet = new Set(expandedBatches);
-			expandedBatches = tempSet;
-			//console.log('Batch toggle complete, expanded batches:', Array.from(expandedBatches));
-		}, 10);
+		// Force reactivity by reassigning the Set
+		expandedBatches = new Set(expandedBatches);
 	}
 
 	// Function to select a profile
@@ -613,7 +466,7 @@
 		try {
 			// Find the batch and index of the profile
 			const batchName = profile.batch_name || 'Unknown Batch';
-			const profiles = sortedGroupedProfiles[batchName] || [];
+			const profiles = sortedGroupedProfiles()[batchName] || [];
 			const index = profiles.findIndex((p) => p.roast_id === profile.roast_id);
 
 			// Make a copy of the profile to avoid reference issues
@@ -656,9 +509,7 @@
 			console.error('Error selecting profile:', error);
 			alert('Failed to load profile data');
 		} finally {
-			setTimeout(() => {
-				processing = false;
-			}, 50);
+			processing = false;
 		}
 	}
 
@@ -813,7 +664,7 @@
 				<RoastProfileDisplay
 					profile={currentRoastProfile}
 					profiles={currentRoastProfile
-						? sortedGroupedProfiles[currentRoastProfile.batch_name] || []
+						? sortedGroupedProfiles()[currentRoastProfile.batch_name] || []
 						: []}
 					currentIndex={currentProfileIndex}
 					onUpdate={handleProfileUpdate}
@@ -852,8 +703,8 @@
 	<!-- Replace the old table with this component -->
 	<div class="w-full">
 		<RoastHistoryTable
-			{sortedBatchNames}
-			{sortedGroupedProfiles}
+			sortedBatchNames={sortedBatchNames()}
+			sortedGroupedProfiles={sortedGroupedProfiles()}
 			{expandedBatches}
 			{currentRoastProfile}
 			onToggleBatch={toggleBatch}
