@@ -65,15 +65,27 @@
 	});
 
 	/**
-	 * Pagination state - simple reactive slice of filtered data
+	 * Data source - use server data for catalog route, fallback to filtered data
 	 */
-	let paginatedData = $derived($filteredData.slice(0, displayLimit));
+	let displayData = $derived(() => {
+		// Use server data if available (for paginated catalog)
+		if ($filterStore.serverData?.length > 0) {
+			return $filterStore.serverData;
+		}
+		// Fallback to filtered data with pagination for non-server routes
+		return $filteredData.slice(0, displayLimit);
+	});
 
 	/**
-	 * Handles infinite scroll functionality
-	 * Loads more items when user scrolls near the bottom of the page
+	 * Handles pagination for server-side or infinite scroll for client-side
 	 */
 	async function handleScroll() {
+		// For server-side routes, don't use infinite scroll - use proper pagination
+		if ($filterStore.routeId.includes('/catalog') || $filterStore.routeId === '/') {
+			return;
+		}
+
+		// Infinite scroll for client-side routes
 		const scrollPosition = window.innerHeight + window.scrollY;
 		const bottomOfPage = document.documentElement.offsetHeight - 200;
 
@@ -171,13 +183,19 @@
 	<div class="space-y-4">
 		<!-- Coffee Cards -->
 		<div class="flex-1">
-			{#if !$filteredData || $filteredData.length === 0}
+			{#if $filterStore.isLoading}
+				<div class="flex justify-center p-8">
+					<div
+						class="h-8 w-8 animate-spin rounded-full border-4 border-background-primary-dark border-t-background-tertiary-light"
+					></div>
+				</div>
+			{:else if !displayData() || displayData().length === 0}
 				<p class="p-4 text-text-primary-light">
-					No coffee data available ({data?.data?.length || 0} items in raw data)
+					No coffee data available {$filterStore.pagination.total > 0 ? `(${$filterStore.pagination.total} total items)` : ''}
 				</p>
 			{:else}
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-					{#each paginatedData as coffee}
+					{#each displayData() as coffee}
 						<CoffeeCard {coffee} {parseTastingNotes} />
 					{/each}
 
@@ -189,13 +207,40 @@
 						</div>
 					{/if}
 
-					{#if !isLoadingMore && displayLimit < $filteredData.length}
+					<!-- Server-side pagination controls -->
+					{#if $filterStore.pagination.totalPages > 1}
+						<div class="col-span-full flex items-center justify-center gap-4 p-4">
+							<button
+								onclick={() => filterStore.loadPrevPage()}
+								disabled={!$filterStore.pagination.hasPrev || $filterStore.isLoading}
+								class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								Previous
+							</button>
+							
+							<span class="text-sm text-text-secondary-light">
+								Page {$filterStore.pagination.page} of {$filterStore.pagination.totalPages}
+								({$filterStore.pagination.total} total items)
+							</span>
+							
+							<button
+								onclick={() => filterStore.loadNextPage()}
+								disabled={!$filterStore.pagination.hasNext || $filterStore.isLoading}
+								class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								Next
+							</button>
+						</div>
+					{/if}
+
+					<!-- Client-side infinite scroll indicators -->
+					{#if !$filterStore.pagination.totalPages && !isLoadingMore && displayLimit < $filteredData.length}
 						<div class="flex justify-center p-4">
 							<p class="text-primary-light text-sm">Scroll for more coffees...</p>
 						</div>
 					{/if}
 
-					{#if displayLimit >= $filteredData.length}
+					{#if !$filterStore.pagination.totalPages && displayLimit >= $filteredData.length && $filteredData.length > 0}
 						<div class="flex justify-center p-4">
 							<p class="text-primary-light text-sm">No more coffees to load</p>
 						</div>

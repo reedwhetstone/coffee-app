@@ -2,14 +2,14 @@ import type { PageServerLoad } from './$types';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	// Get recent stocked coffees with smaller initial limit for better performance
-	// Load first 50 items quickly, implement pagination for rest
+	// With server-side pagination implemented, we can now use a smaller initial limit
+	// The client will fetch additional pages via the API as needed
 	const { data: stockedData } = await locals.supabase
 		.from('coffee_catalog')
 		.select('*')
 		.eq('stocked', true)
-		.order('arrival_date', { ascending: false });
-	//.limit(50); // temporarily no reduced limit for faster initial load, unless comprehensive fix is addressed. simply limiting the initial load doesn't address the need for all the data in the search and for infinite scroll.
+		.order('arrival_date', { ascending: false })
+		.limit(15); // Initial page load - additional data fetched via API
 
 	// Generate schema for authenticated coffee catalog page
 	const baseUrl = `${url.protocol}//${url.host}`;

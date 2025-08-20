@@ -248,7 +248,7 @@
 				milliseconds = elapsed % 1000;
 			}, 1);
 
-			// Start continuous data logging
+			// Optimized data logging - reduced frequency for better performance
 			dataLoggingInterval = setInterval(() => {
 				const currentTime = performance.now() - $startTime! + $accumulatedTime;
 				$roastData = [
@@ -259,7 +259,7 @@
 						fan: fanValue
 					}
 				];
-			}, 1000); // Log data every second
+			}, 2000); // Log data every 2 seconds for better performance
 
 			isRoasting = true;
 		} else if (!isPaused) {
@@ -279,7 +279,7 @@
 				milliseconds = elapsed % 1000;
 			}, 1);
 
-			// Resume data logging
+			// Resume data logging with optimized frequency
 			dataLoggingInterval = setInterval(() => {
 				const currentTime = performance.now() - $startTime! + $accumulatedTime;
 				$roastData = [
@@ -290,7 +290,7 @@
 						fan: fanValue
 					}
 				];
-			}, 1000);
+			}, 2000); // Optimized: 2 seconds for better performance
 
 			isPaused = false;
 		}
@@ -727,24 +727,41 @@
 			.range([tempRange[0], tempRange[0] - chartHeight * 0.3]); // Use 30% of chart height
 	}
 
+	// Performance optimization: cache and change detection
+	let lastDataHash = '';
+	let lastChargeTime = 0;
+	let animationFrameId: number | null = null;
+	let timeTrackerUpdateId: number | null = null;
+	let lastTimeTrackerUpdate = 0;
+
 	function updateChart(data: RoastPoint[]) {
 		if (!svg || !xScale || !yScaleTemp || !yScaleRoR) return;
 
-		// DEBUG: Log incoming data
-		console.log('=== UPDATE CHART DEBUG ===');
-		console.log('Raw data length:', data.length);
-		if (data.length > 0) {
-			console.log('Data time range:', {
-				first: data[0]?.time,
-				last: data[data.length - 1]?.time,
-				firstSeconds: data[0]?.time / 1000,
-				lastSeconds: data[data.length - 1]?.time / 1000
-			});
+		// Performance optimization: use requestAnimationFrame for smooth updates
+		if (animationFrameId) {
+			cancelAnimationFrame(animationFrameId);
 		}
 
-		// Sort data by time first
-		const sortedData = [...data].sort((a, b) => a.time - b.time);
-		console.log('Sorted data length:', sortedData.length);
+		animationFrameId = requestAnimationFrame(() => {
+			updateChartImmediate(data);
+		});
+	}
+
+	function updateChartImmediate(data: RoastPoint[]) {
+		// Performance optimization: detect data changes
+		const currentDataHash = `${data.length}-${data[0]?.time || 0}-${data[data.length - 1]?.time || 0}`;
+		const currentChargeTime = getChargeTime(data);
+		
+		// Skip update if data and charge time haven't changed (except during active roasting)
+		if (currentDataHash === lastDataHash && currentChargeTime === lastChargeTime && !isRoasting) {
+			return;
+		}
+
+		lastDataHash = currentDataHash;
+		lastChargeTime = currentChargeTime;
+
+		// Sort data by time first (only if needed)
+		const sortedData = data.length > 1 ? [...data].sort((a, b) => a.time - b.time) : data;
 
 		// Process sorted data to fill NULL values
 		let lastHeat = 0;
@@ -764,36 +781,19 @@
 			};
 		});
 
-		// Clear existing elements - comprehensive cleanup
-		svg.selectAll('.bean-temp-line').remove();
-		svg.selectAll('.env-temp-line').remove();
-		svg.selectAll('.ror-line').remove();
-		svg.selectAll('.temp-legend').remove();
-		svg.selectAll('.event-marker').remove();
-		svg.selectAll('.event-label').remove();
-		svg.selectAll('.event-value-line').remove(); // Clear dynamic event value lines
-		svg.selectAll('.event-value-label').remove(); // Clear dynamic event value labels
-		svg.selectAll('.control-event-line').remove(); // Clear control event lines from processed data
-		svg.selectAll('.fan-line').remove(); // Clear fan lines
-		svg.selectAll('.heat-line').remove(); // Clear heat lines
-		svg.selectAll('.tooltip-overlay').remove(); // Clear tooltip overlay
-		svg.selectAll('.hover-line').remove(); // Clear hover indicator lines
+		// Optimized selective clearing - only clear what's necessary
+		const elementsToUpdate = [
+			'.bean-temp-line', '.env-temp-line', '.ror-line', '.temp-legend',
+			'.event-marker', '.event-label', '.event-value-line', '.event-value-label',
+			'.control-event-line', '.fan-line', '.heat-line'
+		];
 
-		// Clear any remaining event-related elements that might persist
-		svg.selectAll('[class*="event-value-label-"]').remove(); // Clear numbered event labels
-		svg.selectAll('path[stroke*="#"]').remove(); // Clear any remaining colored paths
-		svg
-			.selectAll('text')
-			.filter(function () {
-				const element = this as any;
-				const text = element?.textContent || '';
-				return text.includes('_setting') || text.includes('fan') || text.includes('heat');
-			})
-			.remove(); // Clear any remaining event-related text
+		// Batch DOM operations for better performance
+		elementsToUpdate.forEach(selector => {
+			svg.selectAll(selector).remove();
+		});
 
-		// Get charge time for relative time calculation
-		const chargeTime = getChargeTime(data);
-		console.log('Charge time:', chargeTime, 'seconds:', chargeTime / 1000);
+		// Use charge time from above
 
 		// Create combined events array - preserve ALL original event names without modification
 		const eventData = $roastEvents.map((event) => ({
@@ -812,81 +812,73 @@
 			// Auto-scale to data duration relative to charge
 			const maxTimeRelative =
 				data.length > 0
-					? Math.max(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) // minutes
+					? Math.max(...data.map((d) => (d.time - currentChargeTime) / (1000 * 60))) // minutes
 					: 12; // Default max when no data
 
 			const minTimeRelative =
-				data.length > 0 ? Math.min(...data.map((d) => (d.time - chargeTime) / (1000 * 60))) : -2; // Default min when no data
+				data.length > 0 ? Math.min(...data.map((d) => (d.time - currentChargeTime) / (1000 * 60))) : -2; // Default min when no data
 
 			xScale.domain([Math.min(minTimeRelative, -2), Math.max(maxTimeRelative, 12)]);
 		}
 
-		// Update time tracker position (charge-relative)
-		if (isRoasting && !isPaused) {
-			const currentTime =
-				(performance.now() - $startTime! + $accumulatedTime - chargeTime) / (1000 * 60);
-			svg
-				.select('.time-tracker')
-				.style('display', 'block')
-				.attr('x1', xScale(currentTime))
-				.attr('x2', xScale(currentTime));
-		} else {
-			svg.select('.time-tracker').style('display', 'none');
-		}
+		// Optimized time tracker updates - only during active roasting
+		updateTimeTracker(currentChargeTime);
 
 		// Update x-axis and charge line position
 		svg.select('.x-axis').call(axisBottom(xScale) as any);
 		svg.select('.charge-line').attr('x1', xScale(0)).attr('x2', xScale(0));
 
-		// Add environmental temperature line (ET) - solid line
-		const envTempData = processedData.filter(
-			(d) =>
-				d.environmental_temp !== null &&
-				d.environmental_temp !== undefined &&
-				d.environmental_temp > 0
+		// Optimized data filtering - combine filtering operations
+		const { envTempData, beanTempData } = processedData.reduce(
+			(acc, d) => {
+				if (d.environmental_temp !== null && d.environmental_temp !== undefined && d.environmental_temp > 0) {
+					acc.envTempData.push(d);
+				}
+				if (d.bean_temp !== null && d.bean_temp !== undefined && d.bean_temp > 0) {
+					acc.beanTempData.push(d);
+				}
+				return acc;
+			},
+			{ envTempData: [] as typeof processedData, beanTempData: [] as typeof processedData }
 		);
+
+		// Calculate RoR data once
+		const rorData = beanTempData.length > 0 ? calculateBTRoR(processedData) : [];
+
+		// Render lines individually to handle type differences
+		// Environmental temperature line (ET)
 		if (envTempData.length > 0) {
 			svg
 				.append('path')
 				.attr('class', 'env-temp-line')
 				.datum(envTempData)
 				.attr('fill', 'none')
-				.attr('stroke', '#dc2626') // Red solid line for environmental temperature
+				.attr('stroke', '#dc2626')
 				.attr('stroke-width', 2)
 				.attr('d', envTempLine);
 		}
 
-		// Add bean temperature line (BT) - orange dashed line (as requested)
-		const beanTempData = processedData.filter(
-			(d) => d.bean_temp !== null && d.bean_temp !== undefined && d.bean_temp > 0
-		);
-		console.log('Bean temp data filtering:', {
-			processedDataLength: processedData.length,
-			beanTempDataLength: beanTempData.length,
-			firstBeanTemp: beanTempData[0],
-			lastBeanTemp: beanTempData[beanTempData.length - 1]
-		});
+		// Bean temperature line (BT)
 		if (beanTempData.length > 0) {
 			svg
 				.append('path')
 				.attr('class', 'bean-temp-line')
 				.datum(beanTempData)
 				.attr('fill', 'none')
-				.attr('stroke', '#f59e0b') // Orange dashed line for bean temperature (as requested)
+				.attr('stroke', '#f59e0b')
 				.attr('stroke-width', 3)
 				.attr('stroke-dasharray', '5,5')
 				.attr('d', beanTempLine);
 		}
 
-		// Calculate and add RoR line (blue)
-		const rorData = calculateBTRoR(processedData);
+		// RoR line
 		if (rorData.length > 0) {
 			svg
 				.append('path')
 				.attr('class', 'ror-line')
 				.datum(rorData)
 				.attr('fill', 'none')
-				.attr('stroke', '#2563eb') // Blue for RoR
+				.attr('stroke', '#2563eb')
 				.attr('stroke-width', 2)
 				.attr('d', rorLine);
 		}
@@ -894,7 +886,7 @@
 		// deltaBT removed - it's the same as RoR which is already displayed
 
 		// Add dynamic event value lines
-		renderEventValueLines(svg, processedData, chargeTime);
+		renderEventValueLines(svg, processedData, currentChargeTime);
 
 		// Add comprehensive legend for all data lines
 		if (beanTempData.length > 0 || envTempData.length > 0 || rorData.length > 0) {
@@ -990,11 +982,11 @@
 			.join('line')
 			.attr('class', 'event-marker')
 			.attr('x1', (d) => {
-				const timeRelativeToCharge = (d.time - chargeTime) / (1000 * 60);
+				const timeRelativeToCharge = (d.time - currentChargeTime) / (1000 * 60);
 				return xScale(timeRelativeToCharge);
 			})
 			.attr('x2', (d) => {
-				const timeRelativeToCharge = (d.time - chargeTime) / (1000 * 60);
+				const timeRelativeToCharge = (d.time - currentChargeTime) / (1000 * 60);
 				return xScale(timeRelativeToCharge);
 			})
 			.attr('y1', 0)
@@ -1010,7 +1002,7 @@
 			.join('text')
 			.attr('class', 'event-label')
 			.attr('x', (d) => {
-				const timeRelativeToCharge = (d.time - chargeTime) / (1000 * 60);
+				const timeRelativeToCharge = (d.time - currentChargeTime) / (1000 * 60);
 				return xScale(timeRelativeToCharge);
 			})
 			.attr('y', 10)
@@ -1019,12 +1011,47 @@
 			.attr('font-size', '12px')
 			.attr('text-anchor', 'end')
 			.attr('transform', (d) => {
-				const timeRelativeToCharge = (d.time - chargeTime) / (1000 * 60);
+				const timeRelativeToCharge = (d.time - currentChargeTime) / (1000 * 60);
 				return `rotate(-90, ${xScale(timeRelativeToCharge)}, 10)`;
 			});
 
 		// Add interactive overlay for tooltip (only for saved data viewing)
-		addInteractiveOverlay(svg, processedData, xScale, yScaleTemp, chargeTime);
+		addInteractiveOverlay(svg, processedData, xScale, yScaleTemp, currentChargeTime);
+	}
+
+	/**
+	 * Optimized time tracker updates - throttled for performance
+	 */
+	function updateTimeTracker(chargeTime: number) {
+		if (!svg || !xScale) return;
+
+		if (isRoasting && !isPaused) {
+			// Throttle time tracker updates to 60fps max
+			const now = performance.now();
+			if (now - lastTimeTrackerUpdate < 16) return; // ~60fps
+			lastTimeTrackerUpdate = now;
+
+			const currentTime = (performance.now() - $startTime! + $accumulatedTime - chargeTime) / (1000 * 60);
+			
+			// Use requestAnimationFrame for smooth updates
+			if (timeTrackerUpdateId) {
+				cancelAnimationFrame(timeTrackerUpdateId);
+			}
+			
+			timeTrackerUpdateId = requestAnimationFrame(() => {
+				svg
+					.select('.time-tracker')
+					.style('display', 'block')
+					.attr('x1', xScale(currentTime))
+					.attr('x2', xScale(currentTime));
+			});
+		} else {
+			if (timeTrackerUpdateId) {
+				cancelAnimationFrame(timeTrackerUpdateId);
+				timeTrackerUpdateId = null;
+			}
+			svg.select('.time-tracker').style('display', 'none');
+		}
 	}
 
 	// Tooltip formatting functions

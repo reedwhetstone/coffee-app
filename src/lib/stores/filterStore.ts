@@ -7,15 +7,25 @@ type FilterState = {
 	sortDirection: 'asc' | 'desc' | null;
 	filters: Record<string, any>;
 	uniqueValues: Record<string, any[]>;
-	originalData: any[];
+	originalData: any[]; // Keep for backward compatibility
 	filteredData: any[];
+	serverData: any[]; // Server-side filtered/sorted data
+	pagination: {
+		page: number;
+		limit: number;
+		total: number;
+		totalPages: number;
+		hasNext: boolean;
+		hasPrev: boolean;
+	};
 	lastProcessedString: string;
 	processing: boolean;
-	initialized: boolean; // Flag to track if store is initialized
-	initializingRoute: string | null; // Flag to track route being initialized
-	lastDebounceId: NodeJS.Timeout | null; // Track the last debounce timer
-	lastProcessedCacheKey: string | null; // Track the last processed cache key
-	changeCounter: number; // Counter to track filter changes
+	isLoading: boolean; // Loading state for server requests
+	initialized: boolean;
+	initializingRoute: string | null;
+	lastDebounceId: NodeJS.Timeout | null;
+	lastProcessedCacheKey: string | null;
+	changeCounter: number;
 };
 
 // Initialize default state
@@ -27,8 +37,18 @@ const initialState: FilterState = {
 	uniqueValues: {},
 	originalData: [],
 	filteredData: [],
+	serverData: [],
+	pagination: {
+		page: 1,
+		limit: 15,
+		total: 0,
+		totalPages: 0,
+		hasNext: false,
+		hasPrev: false
+	},
 	lastProcessedString: '',
 	processing: false,
+	isLoading: false,
 	initialized: false,
 	initializingRoute: null,
 	lastDebounceId: null,
@@ -41,8 +61,119 @@ function createFilterStore() {
 	const { subscribe, update } = writable<FilterState>(initialState);
 
 	/**
+	 * Builds query parameters for server-side filtering and sorting
+	 * @returns URLSearchParams object
+	 */
+	function buildQueryParams(state: FilterState): URLSearchParams {
+		const params = new URLSearchParams();
+		
+		// Add pagination parameters
+		params.append('page', state.pagination.page.toString());
+		params.append('limit', state.pagination.limit.toString());
+		
+		// Add sort parameters
+		if (state.sortField) {
+			params.append('sortField', state.sortField);
+		}
+		if (state.sortDirection) {
+			params.append('sortDirection', state.sortDirection);
+		}
+		
+		// Add filter parameters
+		Object.entries(state.filters).forEach(([key, value]) => {
+			if (value === undefined || value === null || value === '') return;
+			
+			if (Array.isArray(value)) {
+				value.forEach(v => {
+					if (v) params.append(key, v.toString());
+				});
+			} else if (typeof value === 'object' && value.min !== undefined && value.max !== undefined) {
+				// Handle range filters (score_value, cost_lb)
+				if (value.min !== '') params.append(`${key}_min`, value.min.toString());
+				if (value.max !== '') params.append(`${key}_max`, value.max.toString());
+			} else {
+				params.append(key, value.toString());
+			}
+		});
+		
+		return params;
+	}
+
+	// Server fetch debouncing
+	let serverFetchTimeout: NodeJS.Timeout | null = null;
+
+	/**
+	 * Fetches data from the server with current filter/sort/pagination settings
+	 * Includes debouncing to prevent excessive API calls
+	 */
+	async function fetchServerData() {
+		const state = get({ subscribe });
+		
+		// Only fetch for catalog route
+		if (!state.routeId.includes('/catalog') && state.routeId !== '/') {
+			return;
+		}
+
+		// Clear existing timeout
+		if (serverFetchTimeout) {
+			clearTimeout(serverFetchTimeout);
+		}
+
+		// Debounce server requests for better performance
+		serverFetchTimeout = setTimeout(async () => {
+			update(s => ({ ...s, isLoading: true }));
+			
+			try {
+				const currentState = get({ subscribe });
+				const params = buildQueryParams(currentState);
+				const response = await fetch(`/api/catalog?${params}`);
+				
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+				}
+				
+				const result = await response.json();
+				
+				update(s => ({
+					...s,
+					serverData: result.data || [],
+					pagination: result.pagination || s.pagination,
+					filteredData: result.data || [], // Keep filteredData in sync for backward compatibility
+					isLoading: false,
+					changeCounter: s.changeCounter + 1
+				}));
+			} catch (error) {
+				console.error('Error fetching server data:', error);
+				update(s => ({ ...s, isLoading: false }));
+			}
+		}, 150); // Debounce server requests by 150ms
+	}
+
+	/**
+	 * Fetches unique filter values from the server
+	 */
+	async function fetchUniqueValues() {
+		try {
+			const response = await fetch('/api/catalog/filters');
+			
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+			
+			const uniqueValues = await response.json();
+			
+			update(s => ({
+				...s,
+				uniqueValues
+			}));
+		} catch (error) {
+			console.error('Error fetching unique values:', error);
+		}
+	}
+
+	/**
 	 * Initializes the filter store for a specific route with data
-	 * Sets up default sorting, filters, and processes the initial data
+	 * For catalog route, switches to server-side mode
 	 * @param routeId - The route identifier (e.g., '/beans', '/roast', '/')
 	 * @param data - Array of data items to initialize with
 	 */
@@ -52,6 +183,9 @@ function createFilterStore() {
 		if (currentState.initializingRoute === routeId) {
 			return;
 		}
+
+		// Determine if this is a server-side route (catalog)
+		const isServerSideRoute = routeId.includes('/catalog') || routeId === '/';
 
 		// Immediate setup with minimal processing
 		update((state) => {
@@ -72,18 +206,41 @@ function createFilterStore() {
 				state.filters.stocked = 'TRUE';
 			}
 
-			// Quick initial filter/sort for immediate display
-			state.filteredData = processData(data, state.sortField, state.sortDirection, state.filters);
+			if (isServerSideRoute) {
+				// For catalog route, use server-side mode
+				state.serverData = [];
+				state.pagination = {
+					page: 1,
+					limit: 15,
+					total: 0,
+					totalPages: 0,
+					hasNext: false,
+					hasPrev: false
+				};
+				state.filteredData = []; // Start empty, will be populated by server
+			} else {
+				// For other routes, use client-side processing
+				state.filteredData = processData(data, state.sortField, state.sortDirection, state.filters);
+			}
+
 			state.initialized = true;
 			state.initializingRoute = null;
 
 			return state;
 		});
 
-		// Defer heavy processing (unique values) to next tick to avoid blocking
-		setTimeout(() => {
-			updateUniqueFilterValues();
-		}, 0);
+		if (isServerSideRoute) {
+			// For catalog route, fetch server data and unique values
+			setTimeout(() => {
+				fetchServerData();
+				fetchUniqueValues();
+			}, 0);
+		} else {
+			// For other routes, use client-side processing
+			setTimeout(() => {
+				updateUniqueFilterValues();
+			}, 0);
+		}
 	}
 
 	/**
@@ -128,9 +285,19 @@ function createFilterStore() {
 			if (!normalizedField) {
 				state.sortDirection = null;
 			}
+			// Reset to first page for server-side routes
+			if (state.routeId.includes('/catalog') || state.routeId === '/') {
+				state.pagination.page = 1;
+			}
 			return state;
 		});
-		processAndUpdateFilteredData();
+
+		const currentState = get({ subscribe });
+		if (currentState.routeId.includes('/catalog') || currentState.routeId === '/') {
+			fetchServerData();
+		} else {
+			processAndUpdateFilteredData();
+		}
 	}
 
 	/**
@@ -144,9 +311,19 @@ function createFilterStore() {
 
 		update((state) => {
 			state.sortDirection = normalizedDirection;
+			// Reset to first page for server-side routes
+			if (state.routeId.includes('/catalog') || state.routeId === '/') {
+				state.pagination.page = 1;
+			}
 			return state;
 		});
-		processAndUpdateFilteredData();
+
+		const currentState = get({ subscribe });
+		if (currentState.routeId.includes('/catalog') || currentState.routeId === '/') {
+			fetchServerData();
+		} else {
+			processAndUpdateFilteredData();
+		}
 	}
 
 	/**
@@ -157,9 +334,19 @@ function createFilterStore() {
 	function setFilter(key: string, value: any) {
 		update((state) => {
 			state.filters = { ...state.filters, [key]: value };
+			// Reset to first page for server-side routes
+			if (state.routeId.includes('/catalog') || state.routeId === '/') {
+				state.pagination.page = 1;
+			}
 			return state;
 		});
-		processAndUpdateFilteredData();
+
+		const currentState = get({ subscribe });
+		if (currentState.routeId.includes('/catalog') || currentState.routeId === '/') {
+			fetchServerData();
+		} else {
+			processAndUpdateFilteredData();
+		}
 	}
 
 	// Toggle sort field or direction
@@ -190,12 +377,54 @@ function createFilterStore() {
 	function clearFilters() {
 		update((state) => {
 			state.filters = {};
+			// Reset to first page for server-side routes
+			if (state.routeId.includes('/catalog') || state.routeId === '/') {
+				state.pagination.page = 1;
+			}
 			return state;
 		});
-		processAndUpdateFilteredData();
+
+		const currentState = get({ subscribe });
+		if (currentState.routeId.includes('/catalog') || currentState.routeId === '/') {
+			fetchServerData();
+		} else {
+			processAndUpdateFilteredData();
+		}
 	}
 
-	// Update unique filter values based on original data
+	/**
+	 * Loads a specific page (server-side only)
+	 * @param page - Page number to load
+	 */
+	function loadPage(page: number) {
+		update((state) => {
+			state.pagination.page = page;
+			return state;
+		});
+		fetchServerData();
+	}
+
+	/**
+	 * Loads the next page (server-side only)
+	 */
+	function loadNextPage() {
+		const currentState = get({ subscribe });
+		if (currentState.pagination.hasNext) {
+			loadPage(currentState.pagination.page + 1);
+		}
+	}
+
+	/**
+	 * Loads the previous page (server-side only)
+	 */
+	function loadPrevPage() {
+		const currentState = get({ subscribe });
+		if (currentState.pagination.hasPrev) {
+			loadPage(currentState.pagination.page - 1);
+		}
+	}
+
+	// Update unique filter values based on original data (optimized)
 	function updateUniqueFilterValues() {
 		try {
 			update((state) => {
@@ -212,7 +441,7 @@ function createFilterStore() {
 					return state;
 				}
 
-				// Use a simpler cache key - just length and first/last item ids
+				// Optimized cache key - use data length and checksum for better performance
 				const cacheKey = `${state.originalData.length}-${state.originalData[0]?.id || 'start'}-${state.originalData[state.originalData.length - 1]?.id || 'end'}`;
 				if (cacheKey === state.lastProcessedCacheKey) {
 					state.processing = false;
@@ -222,84 +451,60 @@ function createFilterStore() {
 				// Save the cache key to avoid reprocessing
 				state.lastProcessedCacheKey = cacheKey;
 
-				// Now process the unique values
+				// Optimized unique values processing with efficient Set operations
 				const uniqueValues: Record<string, any[]> = {};
+				const data = state.originalData;
 
-				// Get unique sources - handle joined data structure and include items with sources
-				const allSources = state.originalData.map((item) => {
-					// For beans page with joined data, check coffee_catalog.source first
-					if (item.coffee_catalog?.source) return item.coffee_catalog.source;
-					// Fallback to direct fields
-					return item.source || item.vendor;
-				});
+				// Helper to extract and dedupe values efficiently
+				const extractUnique = (fieldExtractor: (item: any) => any, fieldName: string) => {
+					const values = new Set<string>();
+					for (const item of data) {
+						const value = fieldExtractor(item);
+						if (value) values.add(value);
+					}
+					return values.size > 0 ? Array.from(values).sort() : null;
+				};
 
-				// Only include this if there are any non-null sources
-				const validSources = allSources.filter(Boolean);
-				if (validSources.length > 0) {
-					uniqueValues.sources = Array.from(new Set(validSources)).sort((a, b) =>
-						a.localeCompare(b)
+				// Process each field type efficiently
+				const sourceExtractor = (item: any) => 
+					item.coffee_catalog?.source || item.source || item.vendor;
+				const sources = extractUnique(sourceExtractor, 'sources');
+				if (sources) uniqueValues.sources = sources;
+
+				const continents = extractUnique(item => getFieldValue(item, 'continent'), 'continents');
+				if (continents) uniqueValues.continents = continents;
+
+				const countries = extractUnique(item => getFieldValue(item, 'country'), 'countries');
+				if (countries) uniqueValues.countries = countries;
+
+				const arrivalDates = extractUnique(item => getFieldValue(item, 'arrival_date'), 'arrivalDates');
+				if (arrivalDates) uniqueValues.arrivalDates = arrivalDates;
+
+				const purchaseDates = extractUnique(item => item.purchase_date, 'purchaseDates');
+				if (purchaseDates) uniqueValues.purchaseDates = purchaseDates;
+
+				const roastDates = extractUnique(item => item.roast_date, 'roastDates');
+				if (roastDates) uniqueValues.roastDates = roastDates;
+
+				const batchNames = extractUnique(item => item.batch_name, 'batchNames');
+				if (batchNames) uniqueValues.batchNames = batchNames;
+
+				// Roast IDs need special numeric sorting
+				const roastIdSet = new Set<number>();
+				for (const item of data) {
+					if (item.roast_id) roastIdSet.add(Number(item.roast_id));
+				}
+				if (roastIdSet.size > 0) {
+					uniqueValues.roastIds = Array.from(roastIdSet).sort((a, b) => a - b);
+				}
+
+				// Only update if there are actual changes (shallow comparison)
+				const hasChanges = Object.keys(uniqueValues).length !== Object.keys(state.uniqueValues).length ||
+					Object.keys(uniqueValues).some(key => 
+						uniqueValues[key].length !== state.uniqueValues[key]?.length
 					);
-				}
 
-				// Get unique purchase dates
-				if (state.originalData.some((item) => item.purchase_date)) {
-					uniqueValues.purchaseDates = Array.from(
-						new Set(state.originalData.map((item) => item.purchase_date).filter(Boolean))
-					).sort((a, b) => a.localeCompare(b));
-				}
-
-				// Get unique arrival dates from catalog data
-				if (state.originalData.some((item) => getFieldValue(item, 'arrival_date'))) {
-					uniqueValues.arrivalDates = Array.from(
-						new Set(
-							state.originalData.map((item) => getFieldValue(item, 'arrival_date')).filter(Boolean)
-						)
-					).sort((a, b) => a.localeCompare(b));
-				}
-
-				// Get unique continents
-				if (state.originalData.some((item) => getFieldValue(item, 'continent'))) {
-					uniqueValues.continents = Array.from(
-						new Set(
-							state.originalData.map((item) => getFieldValue(item, 'continent')).filter(Boolean)
-						)
-					).sort((a, b) => a.localeCompare(b));
-				}
-
-				// Get unique countries
-				if (state.originalData.some((item) => getFieldValue(item, 'country'))) {
-					uniqueValues.countries = Array.from(
-						new Set(
-							state.originalData.map((item) => getFieldValue(item, 'country')).filter(Boolean)
-						)
-					).sort((a, b) => a.localeCompare(b));
-				}
-
-				// Get unique roast dates
-				if (state.originalData.some((item) => item.roast_date)) {
-					uniqueValues.roastDates = Array.from(
-						new Set(state.originalData.map((item) => item.roast_date).filter(Boolean))
-					).sort((a, b) => a.localeCompare(b));
-				}
-
-				// Get unique batch names
-				if (state.originalData.some((item) => item.batch_name)) {
-					uniqueValues.batchNames = Array.from(
-						new Set(state.originalData.map((item) => item.batch_name).filter(Boolean))
-					).sort((a, b) => a.localeCompare(b));
-				}
-
-				// Get unique roast IDs
-				if (state.originalData.some((item) => item.roast_id)) {
-					uniqueValues.roastIds = Array.from(
-						new Set(state.originalData.map((item) => item.roast_id).filter(Boolean))
-					).sort((a, b) => Number(a) - Number(b)); // Sort numerically instead of alphabetically
-				}
-
-				// Simple check if uniqueValues have changed by comparing keys
-				const currentKeys = Object.keys(state.uniqueValues).sort().join(',');
-				const newKeys = Object.keys(uniqueValues).sort().join(',');
-				if (currentKeys !== newKeys) {
+				if (hasChanges) {
 					state.uniqueValues = uniqueValues;
 				}
 
@@ -543,7 +748,7 @@ function createFilterStore() {
 		return sorted;
 	}
 
-	// Process and update filtered data, with debounce to avoid rapid updates
+	// Process and update filtered data, with optimized debounce
 	function processAndUpdateFilteredData() {
 		// If a debounce timer exists, clear it
 		const currentState = get({ subscribe });
@@ -551,10 +756,10 @@ function createFilterStore() {
 			clearTimeout(currentState.lastDebounceId);
 		}
 
-		// Set a new debounce timer with a shorter delay for better responsiveness
+		// Optimized debounce - faster response for better UX
 		const debounceId = setTimeout(() => {
 			update((state) => {
-				// If already processing, skip this update to prevent race conditions
+				// Skip if already processing to prevent race conditions
 				if (state.processing) {
 					return state;
 				}
@@ -562,19 +767,23 @@ function createFilterStore() {
 				state.processing = true;
 
 				try {
-					if (!state.originalData || !state.originalData.length) {
+					// Early return for empty data
+					if (!state.originalData?.length) {
 						const hadData = state.filteredData.length > 0;
 						state.filteredData = [];
 						state.processing = false;
-
-						// Only increment counter if data changed
-						if (hadData) {
-							state.changeCounter++;
-						}
+						if (hadData) state.changeCounter++;
 						return state;
 					}
 
-					// Process the data with current filter settings
+					// Optimized processing - avoid unnecessary work
+					const cacheKey = `${state.sortField}-${state.sortDirection}-${JSON.stringify(state.filters)}`;
+					if (cacheKey === state.lastProcessedString && state.filteredData.length > 0) {
+						state.processing = false;
+						return state;
+					}
+
+					// Process the data efficiently
 					const processedData = processData(
 						state.originalData,
 						state.sortField,
@@ -582,16 +791,15 @@ function createFilterStore() {
 						state.filters
 					);
 
-					// Quick check if the data actually changed 
-					const dataChanged =
-						state.filteredData.length !== processedData.length ||
-						processedData.some((item, index) => item.id !== state.filteredData[index]?.id);
+					// Efficient change detection using IDs
+					const dataChanged = !arraysEqual(
+						state.filteredData.map(item => item.id),
+						processedData.map(item => item.id)
+					);
 
-					// Update the filtered data with the newly processed results
 					state.filteredData = processedData;
+					state.lastProcessedString = cacheKey;
 
-					// Increment change counter only if data actually changed
-					// This triggers reactive updates in components that depend on the change counter
 					if (dataChanged) {
 						state.changeCounter++;
 					}
@@ -604,13 +812,22 @@ function createFilterStore() {
 
 				return state;
 			});
-		}, 16); // ~1 frame at 60fps for better responsiveness
+		}, 8); // Reduced debounce for snappier response
 
 		// Store the debounce timer ID
 		update((state) => {
 			state.lastDebounceId = debounceId;
 			return state;
 		});
+	}
+
+	// Efficient array comparison helper
+	function arraysEqual(a: any[], b: any[]): boolean {
+		if (a.length !== b.length) return false;
+		for (let i = 0; i < a.length; i++) {
+			if (a[i] !== b[i]) return false;
+		}
+		return true;
 	}
 
 	/**
@@ -680,7 +897,12 @@ function createFilterStore() {
 		toggleSort,
 		clearFilters,
 		getFilterableColumns,
-		filteredData
+		filteredData,
+		loadPage,
+		loadNextPage,
+		loadPrevPage,
+		fetchServerData,
+		fetchUniqueValues
 	};
 }
 
