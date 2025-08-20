@@ -1,15 +1,9 @@
 import type { PageServerLoad } from '../(home)/$types';
 import { createSchemaService } from '$lib/services/schemaService';
-import { redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	// Get session data first
+	// Get session data - no longer redirecting server-side for better performance
 	const { session } = await locals.safeGetSession();
-
-	// Redirect authenticated users to catalog immediately
-	if (session) {
-		throw redirect(303, '/catalog');
-	}
 
 	// Get limited coffee data for preview section with error handling
 	let stockedData: any[] = [];
@@ -56,6 +50,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	};
 
 	return {
+		session, // Include session data for client-side redirect logic
 		data: stockedData,
 		trainingData: stockedData,
 		meta: {

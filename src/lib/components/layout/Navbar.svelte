@@ -39,12 +39,16 @@
 		currentPath = page.url.pathname;
 	});
 
-	// Close menu when route changes
+	// Update route tracking when navigation completes
 	afterNavigate(() => {
 		routeId = page.route.id;
 		currentPath = page.url.pathname;
-		onClose();
 	});
+
+	// Function to handle instant menu close on navigation
+	function handleNavClick() {
+		onClose(); // Close menu immediately, don't wait for navigation to complete
+	}
 </script>
 
 <!-- Navigation menu panel - full height -->
@@ -84,6 +88,7 @@
 			<li>
 				<a
 					href="/catalog"
+					onclick={handleNavClick}
 					class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath ===
 					'/catalog'
 						? 'bg-background-tertiary-light text-white'
@@ -98,6 +103,7 @@
 				<li>
 					<a
 						href="/beans"
+						onclick={handleNavClick}
 						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/beans'
 							? 'bg-background-tertiary-light text-white'
@@ -109,6 +115,7 @@
 				<li>
 					<a
 						href="/roast"
+						onclick={handleNavClick}
 						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/roast'
 							? 'bg-background-tertiary-light text-white'
@@ -120,6 +127,7 @@
 				<li>
 					<a
 						href="/profit"
+						onclick={handleNavClick}
 						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/profit'
 							? 'bg-background-tertiary-light text-white'
@@ -140,6 +148,7 @@
 				<li>
 					<a
 						href="/admin"
+						onclick={handleNavClick}
 						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/admin'
 							? 'bg-background-tertiary-light text-white'
@@ -157,6 +166,7 @@
 				<li>
 					<a
 						href="/api-dashboard"
+						onclick={handleNavClick}
 						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath.startsWith(
 							'/api-dashboard'
 						)
@@ -169,6 +179,7 @@
 				<li>
 					<a
 						href="/contact"
+						onclick={handleNavClick}
 						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath ===
 						'/contact'
 							? 'bg-background-tertiary-light text-white'

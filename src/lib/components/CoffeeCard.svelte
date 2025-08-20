@@ -1,11 +1,29 @@
 <script lang="ts">
-	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
+	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 
 	let { coffee, parseTastingNotes } = $props<{
 		coffee: any;
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
 	}>();
+
+	// Lazy load the tasting notes radar component
+	let TastingNotesRadar = $state<any>(null);
+	let radarComponentLoading = $state(true);
+
+	// Load radar component after initial render
+	$effect(() => {
+		setTimeout(async () => {
+			try {
+				const module = await import('$lib/components/TastingNotesRadar.svelte');
+				TastingNotesRadar = module.default;
+				radarComponentLoading = false;
+			} catch (error) {
+				console.error('Failed to load radar component:', error);
+				radarComponentLoading = false;
+			}
+		}, 250); // Further delayed for catalog cards
+	});
 
 	// Parse tasting notes for this coffee
 	let tastingNotes = $derived(parseTastingNotes(coffee.ai_tasting_notes));
@@ -65,7 +83,11 @@
 			<!-- Mobile: Chart full width -->
 			{#if tastingNotes}
 				<div class="mt-2 px-6 sm:hidden">
-					<TastingNotesRadar {tastingNotes} size={300} responsive={true} lazy={true} />
+					{#if radarComponentLoading}
+						<ChartSkeleton height="300px" title="Loading tasting profile..." />
+					{:else if TastingNotesRadar}
+						<TastingNotesRadar {tastingNotes} size={300} responsive={true} lazy={true} />
+					{/if}
 				</div>
 			{/if}
 
@@ -126,7 +148,11 @@
 			</div>
 			{#if tastingNotes}
 				<div class="pt-4">
-					<TastingNotesRadar {tastingNotes} size={180} lazy={true} />
+					{#if radarComponentLoading}
+						<ChartSkeleton height="180px" title="Loading tasting profile..." />
+					{:else if TastingNotesRadar}
+						<TastingNotesRadar {tastingNotes} size={180} lazy={true} />
+					{/if}
 				</div>
 			{/if}
 		</div>

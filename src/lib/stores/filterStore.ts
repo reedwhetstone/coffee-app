@@ -50,14 +50,11 @@ function createFilterStore() {
 		// Skip if already initializing this route
 		const currentState = get({ subscribe });
 		if (currentState.initializingRoute === routeId) {
-			console.log(`Already initializing route ${routeId}, skipping duplicate call`);
 			return;
 		}
 
-		//console.log(`Initializing filter store for route: ${routeId} with ${data.length} items`);
-
+		// Immediate setup with minimal processing
 		update((state) => {
-			// Mark that we're initializing this route
 			state.initializingRoute = routeId;
 			state.routeId = routeId;
 			state.originalData = data;
@@ -70,24 +67,23 @@ function createFilterStore() {
 			state.sortField = field;
 			state.sortDirection = direction;
 
-			// Update unique filter values
-			updateUniqueFilterValues();
-
-			// Don't auto-filter by source - let users see all beans including manual entries with no source
-			// This ensures manually created beans with NULL sources are visible by default
-
 			// Auto-filter beans by green_coffee_inv.stocked = 'TRUE' for beans route (user can change this)
 			if (routeId.includes('beans')) {
 				state.filters.stocked = 'TRUE';
 			}
 
-			// Process the data with initial settings
+			// Quick initial filter/sort for immediate display
 			state.filteredData = processData(data, state.sortField, state.sortDirection, state.filters);
 			state.initialized = true;
 			state.initializingRoute = null;
 
 			return state;
 		});
+
+		// Defer heavy processing (unique values) to next tick to avoid blocking
+		setTimeout(() => {
+			updateUniqueFilterValues();
+		}, 0);
 	}
 
 	/**
@@ -216,15 +212,15 @@ function createFilterStore() {
 					return state;
 				}
 
-				// Check if we've already processed this exact data set
-				const dataString = JSON.stringify(state.originalData.map((item) => item.id || item._id));
-				if (dataString === state.lastProcessedString) {
+				// Use a simpler cache key - just length and first/last item ids
+				const cacheKey = `${state.originalData.length}-${state.originalData[0]?.id || 'start'}-${state.originalData[state.originalData.length - 1]?.id || 'end'}`;
+				if (cacheKey === state.lastProcessedCacheKey) {
 					state.processing = false;
 					return state;
 				}
 
-				// Save the string representation of IDs to avoid reprocessing
-				state.lastProcessedString = dataString;
+				// Save the cache key to avoid reprocessing
+				state.lastProcessedCacheKey = cacheKey;
 
 				// Now process the unique values
 				const uniqueValues: Record<string, any[]> = {};
@@ -300,8 +296,10 @@ function createFilterStore() {
 					).sort((a, b) => Number(a) - Number(b)); // Sort numerically instead of alphabetically
 				}
 
-				// Only update uniqueValues if they've actually changed
-				if (JSON.stringify(uniqueValues) !== JSON.stringify(state.uniqueValues)) {
+				// Simple check if uniqueValues have changed by comparing keys
+				const currentKeys = Object.keys(state.uniqueValues).sort().join(',');
+				const newKeys = Object.keys(uniqueValues).sort().join(',');
+				if (currentKeys !== newKeys) {
 					state.uniqueValues = uniqueValues;
 				}
 
@@ -584,11 +582,10 @@ function createFilterStore() {
 						state.filters
 					);
 
-					// Check if the data actually changed (order matters for sorting)
+					// Quick check if the data actually changed 
 					const dataChanged =
 						state.filteredData.length !== processedData.length ||
-						JSON.stringify(processedData.map((item) => item.id)) !==
-							JSON.stringify(state.filteredData.map((item) => item.id));
+						processedData.some((item, index) => item.id !== state.filteredData[index]?.id);
 
 					// Update the filtered data with the newly processed results
 					state.filteredData = processedData;

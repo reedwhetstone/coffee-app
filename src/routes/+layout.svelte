@@ -1,16 +1,11 @@
 <script lang="ts">
 	import '../app.css';
-	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 	import CookieBanner from '$lib/components/CookieBanner.svelte';
 	import UnifiedHeader from '$lib/components/layout/UnifiedHeader.svelte';
-	import { onMount, setContext } from 'svelte';
+	import LeftSidebar from '$lib/components/layout/LeftSidebar.svelte';
+	import { filterStore } from '$lib/stores/filterStore';
+	import { setContext } from 'svelte';
 	import { page } from '$app/state';
-
-	// Lazy load heavy components to improve FCP
-	let LeftSidebar: any = $state(null);
-	let filterStore: any = $state(null);
-	let componentsLoaded = $state(false);
-	let loadingMessage = $state('Loading...');
 
 	import type { PageMeta } from '$lib/types/meta.types';
 
@@ -40,11 +35,8 @@
 	let activeMenu = $state<string | null>(null);
 	let rightSidebarOpen = $state(false);
 
-	// Remove pageData - no longer needed since selectedBean is handled via URL params
-
 	// Handle menu change from the sidebar
 	function handleMenuChange(menu: string | null) {
-		//console.log('Layout handleMenuChange called with menu:', menu);
 		activeMenu = menu;
 	}
 
@@ -58,47 +50,11 @@
 		setOpen: handleRightSidebarChange
 	});
 
-	// Remove complex route tracking - let individual pages handle their own filter store initialization
-
-	onMount(async () => {
-		try {
-			// Load core components with simple progress messages
-			loadingMessage = 'Loading components...';
-
-			const [sidebarModule, filterModule] = await Promise.all([
-				import('$lib/components/layout/LeftSidebar.svelte'),
-				import('$lib/stores/filterStore')
-			]);
-
-			loadingMessage = 'Setting up navigation...';
-			LeftSidebar = sidebarModule.default;
-			filterStore = filterModule.filterStore;
-
-			// Initialize data for current route
-			loadingMessage = 'Initializing data...';
-			await initializeRoute();
-
-			// Load analytics in background (non-blocking)
-			import('@vercel/speed-insights/sveltekit').then((m) => m.injectSpeedInsights());
-			import('@vercel/analytics/sveltekit').then((m) => m.injectAnalytics());
-
-			// Complete loading
-			componentsLoaded = true;
-		} catch (error) {
-			console.error('Error loading components:', error);
-			// Still show the app even if some components fail
-			componentsLoaded = true;
-		}
+	// Load analytics in background (non-blocking)
+	$effect(() => {
+		import('@vercel/speed-insights/sveltekit').then((m) => m.injectSpeedInsights());
+		import('@vercel/analytics/sveltekit').then((m) => m.injectAnalytics());
 	});
-
-	// Initialize route data
-	async function initializeRoute() {
-		const currentRoute = page.url.pathname;
-
-		if (data?.data && Array.isArray(data.data) && data.data.length > 0 && filterStore) {
-			filterStore.initializeForRoute(currentRoute, data.data);
-		}
-	}
 
 	// Calculate content margin based on active menu and right sidebar
 	let rightMargin = $derived(rightSidebarOpen ? 'md:mr-[32rem]' : 'mr-0');
@@ -220,10 +176,6 @@
 	{/if}
 </svelte:head>
 
-<!-- Simple loading screen for improved FCP -->
-{#if !componentsLoaded}
-	<SimpleLoadingScreen show={true} message={loadingMessage} />
-{/if}
 
 <!-- Show Unified Header for unauthenticated users on home/api pages -->
 {#if shouldShowUnifiedHeader}
@@ -237,32 +189,30 @@
 		<CookieBanner />
 	</div>
 {:else}
-	<!-- Main App - Only renders after components are loaded -->
-	{#if componentsLoaded && LeftSidebar}
-		{#if data?.session?.user}
-			<!-- Authenticated Layout with Sidebar -->
-			<div class="flex min-h-screen">
-				<!-- Left Sidebar Component -->
-				<LeftSidebar {data} onMenuChange={handleMenuChange} />
+	<!-- Main App -->
+	{#if data?.session?.user}
+		<!-- Authenticated Layout with Sidebar -->
+		<div class="flex min-h-screen">
+			<!-- Left Sidebar Component -->
+			<LeftSidebar {data} onMenuChange={handleMenuChange} />
 
-				<!-- Main Content Container -->
-				<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
-					<div class="h-full py-4 pr-12">
-						<!-- Page Content -->
-						{@render children()}
-					</div>
-				</main>
-			</div>
-		{:else}
-			<!-- Non-authenticated Layout without Sidebar -->
-			<div class="min-h-screen">
-				<main class="flex-1">
-					<div class="h-full px-4 py-4">
-						<!-- Page Content -->
-						{@render children()}
-					</div>
-				</main>
-			</div>
-		{/if}
+			<!-- Main Content Container -->
+			<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
+				<div class="h-full py-4 pr-12">
+					<!-- Page Content -->
+					{@render children()}
+				</div>
+			</main>
+		</div>
+	{:else}
+		<!-- Non-authenticated Layout without Sidebar -->
+		<div class="min-h-screen">
+			<main class="flex-1">
+				<div class="h-full px-4 py-4">
+					<!-- Page Content -->
+					{@render children()}
+				</div>
+			</main>
+		</div>
 	{/if}
 {/if}

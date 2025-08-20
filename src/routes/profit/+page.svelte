@@ -4,6 +4,7 @@
 	import SaleForm from './SaleForm.svelte';
 	import PerformanceChart from './PerformanceChart.svelte';
 	import SalesChart from './SalesChart.svelte';
+	import ProfitPageSkeleton from '$lib/components/ProfitPageSkeleton.svelte';
 	import { page } from '$app/state';
 	import type { PageData } from './$types';
 
@@ -302,8 +303,12 @@
 	</div>
 {/if}
 
-<div class="space-y-6">
-	<!-- Header Section -->
+<!-- Show instant skeleton only briefly while data loads -->
+{#if profitData.length === 0 && salesData.length === 0}
+	<ProfitPageSkeleton />
+{:else}
+	<div class="space-y-6">
+		<!-- Header Section -->
 	<div class="mb-6">
 		<h1 class="text-primary-light mb-2 text-2xl font-bold">Coffee Sales & Profit</h1>
 		<p class="text-text-secondary-light">Track your coffee sales performance and profitability</p>
@@ -315,3 +320,4 @@
 	<!-- Performance Chart Component -->
 	<PerformanceChart {salesData} {profitData} />
 </div>
+{/if}

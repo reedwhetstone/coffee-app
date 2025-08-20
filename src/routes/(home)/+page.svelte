@@ -10,6 +10,13 @@
 
 	let { data } = $props<{ data: PageData }>();
 
+	// Client-side redirect for authenticated users - avoids server round-trip
+	$effect(() => {
+		if (data.session) {
+			goto('/catalog', { replaceState: true });
+		}
+	});
+
 	/**
 	 * Parses AI tasting notes JSON data safely
 	 * @param tastingNotesJson - JSON string from database

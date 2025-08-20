@@ -7,9 +7,28 @@
 	import { checkRole } from '$lib/types/auth.types';
 
 	// Import components
-	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
+	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
+	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
+
+	// Lazy load the tasting notes radar component
+	let TastingNotesRadar = $state<any>(null);
+	let radarComponentLoading = $state(true);
+
+	// Load radar component after initial render
+	$effect(() => {
+		setTimeout(async () => {
+			try {
+				const module = await import('$lib/components/TastingNotesRadar.svelte');
+				TastingNotesRadar = module.default;
+				radarComponentLoading = false;
+			} catch (error) {
+				console.error('Failed to load radar component:', error);
+				radarComponentLoading = false;
+			}
+		}, 200); // Delayed to prioritize main content loading
+	});
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -112,8 +131,12 @@
 	}
 </script>
 
-<!-- Coffee Catalog App for Authenticated Users -->
-<div class="space-y-4">
+<!-- Show instant skeleton when no data loaded yet -->
+{#if !data || !data.data}
+	<CatalogPageSkeleton />
+{:else}
+	<!-- Coffee Catalog App for Authenticated Users -->
+	<div class="space-y-4">
 	<!-- Upgrade Banner for Viewers -->
 	{#if session && !hasRequiredRole('member')}
 		<div
@@ -182,3 +205,4 @@
 		</div>
 	</div>
 </div>
+{/if}

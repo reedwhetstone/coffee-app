@@ -6,9 +6,28 @@
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
-	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
+	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
+	import BeansPageSkeleton from '$lib/components/BeansPageSkeleton.svelte';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
+
+	// Lazy load the tasting notes radar component
+	let TastingNotesRadar = $state<any>(null);
+	let radarComponentLoading = $state(true);
+
+	// Load radar component after initial render
+	$effect(() => {
+		setTimeout(async () => {
+			try {
+				const module = await import('$lib/components/TastingNotesRadar.svelte');
+				TastingNotesRadar = module.default;
+				radarComponentLoading = false;
+			} catch (error) {
+				console.error('Failed to load radar component:', error);
+				radarComponentLoading = false;
+			}
+		}, 150); // Slightly delayed to prioritize main content
+	});
 
 	// Define the type for the page data
 	type PageData = {
@@ -259,14 +278,18 @@
 	}
 </script>
 
-<div class="">
-	<!-- Header Section -->
-	<div class="mb-6">
-		<h1 class="text-primary-light mb-2 text-2xl font-bold">Coffee Inventory</h1>
-		<p class="text-text-secondary-light">
-			Manage your green coffee bean inventory and track purchases
-		</p>
-	</div>
+<!-- Show instant skeleton when no data loaded yet -->
+{#if !data || !data.data}
+	<BeansPageSkeleton />
+{:else}
+	<div class="">
+		<!-- Header Section -->
+		<div class="mb-6">
+			<h1 class="text-primary-light mb-2 text-2xl font-bold">Coffee Inventory</h1>
+			<p class="text-text-secondary-light">
+				Manage your green coffee bean inventory and track purchases
+			</p>
+		</div>
 
 	<!-- Dashboard Cards Section -->
 	{#if !isLoading && $filteredData && $filteredData.length > 0}
@@ -558,7 +581,11 @@
 								<!-- Mobile: Chart full width -->
 								{#if tastingNotes}
 									<div class="mt-2 px-6 sm:hidden">
-										<TastingNotesRadar {tastingNotes} size={300} responsive={true} />
+										{#if radarComponentLoading}
+											<ChartSkeleton height="300px" title="Loading tasting profile..." />
+										{:else if TastingNotesRadar}
+											<TastingNotesRadar {tastingNotes} size={300} responsive={true} />
+										{/if}
 									</div>
 								{/if}
 
@@ -625,7 +652,11 @@
 								</div>
 								{#if tastingNotes}
 									<div class="pt-4">
-										<TastingNotesRadar {tastingNotes} size={180} />
+										{#if radarComponentLoading}
+											<ChartSkeleton height="180px" title="Loading tasting profile..." />
+										{:else if TastingNotesRadar}
+											<TastingNotesRadar {tastingNotes} size={180} />
+										{/if}
 									</div>
 								{/if}
 							</div>
@@ -651,4 +682,5 @@
 			</div>
 		{/if}
 	</div>
-</div>
+	</div>
+{/if}

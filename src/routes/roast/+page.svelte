@@ -18,17 +18,27 @@
 
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
+	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
+	import RoastPageSkeleton from '$lib/components/RoastPageSkeleton.svelte';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 
 	// Lazy load the heavy chart component
 	let RoastChartInterface = $state<any>(null);
 	let chartComponentLoading = $state(true);
 
-	onMount(async () => {
-		// Dynamically import the chart component to reduce initial bundle size
-		const module = await import('./RoastChartInterface.svelte');
-		RoastChartInterface = module.default;
-		chartComponentLoading = false;
+	// Load chart component after initial render
+	$effect(() => {
+		// Use setTimeout to defer loading until after page renders
+		setTimeout(async () => {
+			try {
+				const module = await import('./RoastChartInterface.svelte');
+				RoastChartInterface = module.default;
+				chartComponentLoading = false;
+			} catch (error) {
+				console.error('Failed to load chart component:', error);
+				chartComponentLoading = false;
+			}
+		}, 100); // Small delay to ensure page renders first
 	});
 	import type { PageData } from './$types';
 
@@ -661,7 +671,11 @@
 <!-- Global Loading Overlay -->
 <SimpleLoadingScreen show={false} overlay={true} />
 
-<div class="mx-auto w-full max-w-[100vw] overflow-x-hidden">
+<!-- Show instant skeleton when no data loaded yet -->
+{#if !data || !data.data}
+	<RoastPageSkeleton />
+{:else}
+	<div class="mx-auto w-full max-w-[100vw] overflow-x-hidden">
 	<!-- Current roast profile display -->
 	{#if currentRoastProfile}
 		<div
@@ -684,10 +698,7 @@
 			<!-- Main roasting interface -->
 			<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
 				{#if chartComponentLoading}
-					<div class="flex items-center justify-center p-8">
-						<div class="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500"></div>
-						<span class="ml-2 text-sm text-gray-600">Loading chart interface...</span>
-					</div>
+					<ChartSkeleton height="500px" title="Loading roasting interface..." />
 				{:else if RoastChartInterface}
 					<RoastChartInterface
 						bind:isPaused
@@ -727,3 +738,4 @@
 		<!-- Existing content -->
 	{/if}
 </div>
+{/if}
