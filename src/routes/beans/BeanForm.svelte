@@ -150,6 +150,11 @@
 			return;
 		}
 
+		if (!sharedFormData.purchase_date) {
+			alert('Please select a purchase date');
+			return;
+		}
+
 		try {
 			isSubmitting = true;
 
