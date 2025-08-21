@@ -159,10 +159,28 @@
 							try {
 								const data = JSON.parse(line.slice(6));
 
-								if (data.type === 'thinking') {
-									// Add thinking step
+								if (data.type === 'start') {
+									// Initial start message
+									thinkingSteps.push({
+										message: data.message || 'Starting AI processing...',
+										timestamp: new Date()
+									});
+								} else if (data.type === 'thinking') {
+									// Add thinking step with proper timestamp handling
 									thinkingSteps.push({
 										message: data.step,
+										timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
+									});
+								} else if (data.type === 'processing') {
+									// Add processing status
+									thinkingSteps.push({
+										message: data.message || 'Processing response...',
+										timestamp: new Date()
+									});
+								} else if (data.type === 'coffee_data') {
+									// Handle coffee data streaming
+									thinkingSteps.push({
+										message: `📋 Found ${data.count} coffee${data.count === 1 ? '' : 's'} to display`,
 										timestamp: new Date()
 									});
 								} else if (data.type === 'complete') {
@@ -177,7 +195,7 @@
 									const newMessage: any = {
 										role: 'assistant',
 										content: structuredResponse?.message || data.response,
-										timestamp: new Date()
+										timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
 									};
 
 									// Dynamically add all structured fields from the response
@@ -203,16 +221,18 @@
 
 									messages.push(newMessage);
 								} else if (data.type === 'error') {
-									// Handle error
+									// Handle error with detailed information
 									thinkingSteps = [];
+									console.error('AI processing error:', data.error, data.details);
+									
 									messages.push({
 										role: 'assistant',
-										content: 'Sorry, I encountered an error. Please try again.',
-										timestamp: new Date()
+										content: `Sorry, I encountered an error: ${data.error}. Please try again.`,
+										timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
 									});
 								}
 							} catch (e) {
-								console.error('Error parsing SSE data:', e);
+								console.error('Error parsing SSE data:', e, line);
 							}
 						}
 					}
@@ -538,26 +558,13 @@
 					{#if isLoading && thinkingSteps.length > 0}
 						<div class="flex justify-start">
 							<div class="max-w-[80%]">
-								<ChainOfThought steps={thinkingSteps} />
+								<ChainOfThought steps={thinkingSteps} isActive={isLoading} />
 							</div>
 						</div>
 					{:else if isLoading}
 						<div class="flex justify-start">
-							<div class="max-w-[80%] rounded-lg bg-background-secondary-light px-4 py-2">
-								<div class="flex items-center space-x-2">
-									<div
-										class="h-2 w-2 animate-pulse rounded-full bg-background-tertiary-light"
-									></div>
-									<div
-										class="h-2 w-2 animate-pulse rounded-full bg-background-tertiary-light"
-										style="animation-delay: 0.2s"
-									></div>
-									<div
-										class="h-2 w-2 animate-pulse rounded-full bg-background-tertiary-light"
-										style="animation-delay: 0.4s"
-									></div>
-									<span class="text-sm text-text-secondary-light">Initializing...</span>
-								</div>
+							<div class="max-w-[80%]">
+								<ChainOfThought steps={[]} isActive={isLoading} />
 							</div>
 						</div>
 					{/if}

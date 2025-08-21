@@ -62,7 +62,7 @@ export class LangChainService {
 			model: 'gpt-5-mini-2025-08-07', // Use full GPT-5 for tool calling
 			// Note: GPT-5 models do not support temperature parameter
 			maxTokens: 4096,
-			streaming: false
+			streaming: true // Enable streaming for real-time response generation
 		});
 
 		// Initialize memory for conversation context
@@ -438,6 +438,14 @@ RULES
 		userId?: string,
 		onThinkingStep?: (step: string) => void
 	): Promise<ChatResponse> {
+		// Set timeout for Vercel production (max 5 minutes for serverless functions)
+		const TIMEOUT_MS = 4.5 * 60 * 1000; // 4.5 minutes to be safe
+		const timeoutPromise = new Promise<never>((_, reject) => {
+			setTimeout(() => {
+				reject(new Error('AI processing timeout - please try a simpler question or try again later'));
+			}, TIMEOUT_MS);
+		});
+
 		try {
 			// Simple string-based deduplication
 			let lastThinkingStep = '';
@@ -468,6 +476,45 @@ RULES
 
 			emitThinkingStep('Planning approach to your question...');
 
+			// Wrap the main processing logic with timeout handling
+			const processingPromise = this.performStreamingProcessing(
+				message, 
+				conversationHistory, 
+				emitThinkingStep
+			);
+
+			// Race between processing and timeout
+			const result = await Promise.race([processingPromise, timeoutPromise]);
+			return result;
+		} catch (error) {
+			this.logger.logError(error instanceof Error ? error : String(error), 'Message processing');
+			
+			// Provide fallback response for various error types
+			if (error instanceof Error) {
+				if (error.message.includes('timeout')) {
+					throw new Error('The AI assistant took too long to respond. Please try a simpler question or try again later.');
+				} else if (error.message.includes('rate limit') || error.message.includes('429')) {
+					throw new Error('AI service is temporarily busy. Please wait a moment and try again.');
+				} else if (error.message.includes('network') || error.message.includes('fetch')) {
+					throw new Error('Network connection issue. Please check your connection and try again.');
+				}
+			}
+			
+			throw new Error(
+				`Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`
+			);
+		}
+	}
+
+	/**
+	 * Core streaming processing logic with comprehensive error handling
+	 */
+	private async performStreamingProcessing(
+		message: string,
+		conversationHistory: ChatMessage[],
+		emitThinkingStep: (step: string) => void
+	): Promise<ChatResponse> {
+		try {
 			// Use LangChain's native streamEvents for real-time intermediate steps
 			const streamingEvents = this.agent!.streamEvents(
 				{
@@ -480,28 +527,33 @@ RULES
 			const toolCalls: Array<{ tool: string; input: any; output: any }> = [];
 			let finalResponse = '';
 			let executorStarted = false;
+			let lastActivityTime = Date.now();
 
 			// Process events as they stream in
 			for await (const event of streamingEvents) {
+				lastActivityTime = Date.now();
+				
 				// Map event types to user-friendly thinking steps
 				if (event.event === 'on_tool_start') {
 					const toolName = event.name;
-					this.mapToolToThinkingStep(toolName, 'start', emitThinkingStep);
+					this.mapToolToThinkingStep(toolName, 'start', emitThinkingStep, event.data);
 				} else if (event.event === 'on_tool_end') {
 					const toolName = event.name;
-					// Remove completion messages to avoid repetition
-					// this.mapToolToThinkingStep(toolName, 'end', onThinkingStep);
+					const toolOutput = event.data?.output;
+					
+					// Provide specific feedback based on tool results
+					this.handleToolCompletion(toolName, toolOutput, emitThinkingStep);
 
 					// Collect tool call data
 					toolCalls.push({
 						tool: toolName,
 						input: event.data?.input || {},
-						output: event.data?.output || null
+						output: toolOutput || null
 					});
 
-					// Check tool call limit
+					// Check tool call limit with enhanced feedback
 					if (toolCalls.length > 7) {
-						emitThinkingStep('Tool call limit reached - finalizing response...');
+						emitThinkingStep('🚫 Tool call limit reached - finalizing response...');
 						break;
 					}
 				} else if (
@@ -509,24 +561,41 @@ RULES
 					event.name === 'AgentExecutor' &&
 					!executorStarted
 				) {
-					emitThinkingStep('Executing reasoning process...');
+					emitThinkingStep('🧠 Executing reasoning process...');
 					executorStarted = true;
 				} else if (event.event === 'on_llm_start') {
-					emitThinkingStep('Generating response...');
+					emitThinkingStep('💭 Generating intelligent response...');
+				} else if (event.event === 'on_llm_stream') {
+					// Handle token streaming for real-time response generation
+					const token = event.data?.chunk?.content || '';
+					if (token) {
+						emitThinkingStep('✍️ Writing response...');
+					}
 				} else if (event.event === 'on_chain_end' && event.name === 'AgentExecutor') {
 					finalResponse = event.data?.output?.output || event.data?.output || '';
-					emitThinkingStep('Synthesizing final response...');
+					emitThinkingStep('🎯 Finalizing response...');
+					break; // Exit early on completion
+				}
+
+				// Check for stale processing (fallback safety)
+				if (Date.now() - lastActivityTime > 30000) { // 30 seconds of no activity
+					emitThinkingStep('⚠️ Processing taking longer than expected...');
 				}
 			}
 
-			// Fallback response if streaming didn't capture it
+			// Enhanced fallback response logic
 			if (!finalResponse) {
-				finalResponse = 'I apologize, but I encountered an issue processing your request.';
+				if (toolCalls.length > 0) {
+					emitThinkingStep('🔄 Attempting to recover response from tool results...');
+					finalResponse = 'I found some information but had trouble formatting the response. Please try rephrasing your question.';
+				} else {
+					finalResponse = 'I apologize, but I encountered an issue processing your request. Please try again with a different question.';
+				}
 			}
 
 			// Log final response
 			this.logger.logFinalResponse(finalResponse, toolCalls, {
-				user_id: userId,
+				user_id: 'streaming_user',
 				iterations: toolCalls.length
 			});
 
@@ -538,67 +607,113 @@ RULES
 			return {
 				response: finalResponse,
 				tool_calls: toolCalls,
-				conversation_id: userId ? `${userId}_${Date.now()}` : undefined
+				conversation_id: `streaming_${Date.now()}`
 			};
 		} catch (error) {
-			this.logger.logError(error instanceof Error ? error : String(error), 'Message processing');
-			throw new Error(
-				`Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`
-			);
+			emitThinkingStep('❌ Processing encountered an error...');
+			this.logger.logError(error instanceof Error ? error : String(error), 'Streaming processing');
+			throw error;
 		}
 	}
 
 	/**
-	 * Map tool names to user-friendly thinking steps
+	 * Handle tool completion with specific result feedback
+	 */
+	private handleToolCompletion(
+		toolName: string,
+		toolOutput: any,
+		emitThinkingStep?: (step: string) => void
+	): void {
+		try {
+			switch (toolName) {
+				case 'coffee_catalog_search':
+					if (Array.isArray(toolOutput)) {
+						const count = toolOutput.length;
+						if (count > 0) {
+							emitThinkingStep?.(`✅ Found ${count} matching coffee${count === 1 ? '' : 's'} in catalog`);
+						} else {
+							emitThinkingStep?.('❌ No coffees found matching your criteria');
+						}
+					} else {
+						emitThinkingStep?.('✅ Coffee catalog search completed');
+					}
+					break;
+				case 'green_coffee_inventory':
+					if (Array.isArray(toolOutput)) {
+						const count = toolOutput.length;
+						emitThinkingStep?.(`✅ Analyzed ${count} item${count === 1 ? '' : 's'} in your inventory`);
+					} else {
+						emitThinkingStep?.('✅ Inventory analysis completed');
+					}
+					break;
+				case 'roast_profiles':
+					if (Array.isArray(toolOutput)) {
+						const count = toolOutput.length;
+						emitThinkingStep?.(`✅ Reviewed ${count} roast profile${count === 1 ? '' : 's'}`);
+					} else {
+						emitThinkingStep?.('✅ Roasting data reviewed');
+					}
+					break;
+				case 'bean_tasting_notes':
+					emitThinkingStep?.('✅ Flavor profiles and tasting notes analyzed');
+					break;
+				default:
+					emitThinkingStep?.(`✅ ${toolName.replace(/_/g, ' ')} completed`);
+			}
+		} catch (error) {
+			emitThinkingStep?.(`⚠️ ${toolName.replace(/_/g, ' ')} completed with issues`);
+		}
+	}
+
+	/**
+	 * Map tool names to user-friendly thinking steps with granular feedback
 	 */
 	private mapToolToThinkingStep(
 		toolName: string,
 		phase: 'start' | 'end',
-		onThinkingStep?: (step: string) => void
+		onThinkingStep?: (step: string) => void,
+		context?: any
 	): void {
 		if (phase === 'start') {
 			switch (toolName) {
 				case 'coffee_catalog_search':
-					onThinkingStep?.('Searching coffee catalog...');
+					onThinkingStep?.('🔍 Searching coffee catalog for matches...');
 					break;
 				case 'green_coffee_inventory':
-					onThinkingStep?.('Analyzing your coffee inventory...');
+					onThinkingStep?.('📦 Analyzing your personal coffee inventory...');
 					break;
 				case 'roast_profiles':
-					onThinkingStep?.('Reviewing your roasting history...');
+					onThinkingStep?.('📊 Reviewing your roasting history and profiles...');
 					break;
 				case 'bean_tasting_notes':
-					onThinkingStep?.('Checking flavor profiles...');
+					onThinkingStep?.('☕ Checking flavor profiles and tasting notes...');
 					break;
 				case 'coffee_knowledge':
-					onThinkingStep?.('Consulting coffee knowledge base...');
+					onThinkingStep?.('📚 Consulting coffee knowledge database...');
 					break;
 				default:
-					onThinkingStep?.(`Processing ${toolName}...`);
+					onThinkingStep?.(`⚙️ Processing ${toolName.replace(/_/g, ' ')}...`);
 			}
-			// } else if (phase === 'end') {
-			// 	switch (toolName) {
-			// 		case 'coffee_catalog_search':
-			// 			onThinkingStep?.('Coffee catalog search completed');
-			// 			break;
-			// 		case 'green_coffee_inventory':
-			// 			onThinkingStep?.('Inventory analysis completed');
-			// 			break;
-			// 		case 'roast_profiles':
-			// 			onThinkingStep?.('Roasting history review completed');
-			// 			break;
-			// 		case 'roast_chart_data':
-			// 			onThinkingStep?.('Roast data analysis completed');
-			// 			break;
-			// 		case 'bean_tasting_notes':
-			// 			onThinkingStep?.('Flavor profile analysis completed');
-			// 			break;
-			// 		case 'coffee_knowledge':
-			// 			onThinkingStep?.('Knowledge base consultation completed');
-			// 			break;
-			// 		default:
-			// 			onThinkingStep?.(`${toolName} processing completed`);
-			// 	}
+		} else if (phase === 'end') {
+			switch (toolName) {
+				case 'coffee_catalog_search':
+					onThinkingStep?.('✅ Found relevant coffees in catalog');
+					break;
+				case 'green_coffee_inventory':
+					onThinkingStep?.('✅ Inventory analysis complete');
+					break;
+				case 'roast_profiles':
+					onThinkingStep?.('✅ Roasting data analyzed');
+					break;
+				case 'bean_tasting_notes':
+					onThinkingStep?.('✅ Flavor profiles reviewed');
+					break;
+				case 'coffee_knowledge':
+					onThinkingStep?.('✅ Knowledge base consulted');
+					break;
+				default:
+					onThinkingStep?.(`✅ ${toolName.replace(/_/g, ' ')} completed`);
+			}
 		}
 	}
 

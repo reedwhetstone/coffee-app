@@ -93,46 +93,99 @@ export const POST: RequestHandler = async (event) => {
 			const writer = writable.getWriter();
 			const encoder = new TextEncoder();
 
+			// Helper function to safely write to stream with timeout
+			const safeWrite = async (data: any) => {
+				try {
+					const jsonData = JSON.stringify(data);
+					
+					// Add timeout to prevent hanging
+					const writePromise = writer.write(encoder.encode(`data: ${jsonData}\n\n`));
+					const timeoutPromise = new Promise((_, reject) => {
+						setTimeout(() => reject(new Error('Write timeout')), 5000);
+					});
+					
+					await Promise.race([writePromise, timeoutPromise]);
+				} catch (error) {
+					console.error('Error writing to stream:', error);
+					// Don't rethrow - continue processing
+				}
+			};
+
+			// Send initial status
+			await safeWrite({ type: 'start', message: 'Starting AI processing...' });
+
 			// Process message with streaming callback
-			langchainService
-				.processMessageWithStreaming(
+			try {
+				const streamingPromise = langchainService.processMessageWithStreaming(
 					message,
 					conversation_history || [],
 					user.id,
-					(thinkingStep: string) => {
-						// Send thinking step via SSE
-						const data = JSON.stringify({ type: 'thinking', step: thinkingStep });
-						writer.write(encoder.encode(`data: ${data}\n\n`));
+					async (thinkingStep: string) => {
+						// Send thinking step via SSE with timestamp
+						await safeWrite({ 
+							type: 'thinking', 
+							step: thinkingStep,
+							timestamp: new Date().toISOString()
+						});
 					}
-				)
+				);
+				
+				streamingPromise
 				.then(async (response) => {
+					// Send processing status
+					await safeWrite({ type: 'processing', message: 'Processing response data...' });
+
 					// Parse response and fetch coffee data
 					const { structuredResponse, coffeeData } = await parseResponseAndFetchCoffeeData(
 						response.response,
 						supabase
 					);
 
+					// Send coffee data first if available
+					if (coffeeData && coffeeData.length > 0) {
+						await safeWrite({ 
+							type: 'coffee_data', 
+							data: coffeeData,
+							count: coffeeData.length
+						});
+					}
+
 					// Send final response
-					const data = JSON.stringify({
+					await safeWrite({
 						type: 'complete',
 						response: response.response,
 						structured_response: structuredResponse,
 						coffee_data: coffeeData,
 						tool_calls: response.tool_calls,
-						conversation_id: response.conversation_id
+						conversation_id: response.conversation_id,
+						timestamp: new Date().toISOString()
 					});
-					writer.write(encoder.encode(`data: ${data}\n\n`));
-					writer.close();
+
+					await writer.close();
 				})
-				.catch((error) => {
-					// Send error
-					const data = JSON.stringify({
+				.catch(async (error) => {
+					console.error('LangChain processing error:', error);
+					
+					// Send detailed error information
+					await safeWrite({
 						type: 'error',
-						error: error instanceof Error ? error.message : 'Unknown error'
+						error: error instanceof Error ? error.message : 'Unknown error occurred',
+						details: error instanceof Error ? error.stack : null,
+						timestamp: new Date().toISOString()
 					});
-					writer.write(encoder.encode(`data: ${data}\n\n`));
-					writer.close();
+					
+					await writer.close();
 				});
+			} catch (immediateError) {
+				console.error('Immediate LangChain error:', immediateError);
+				await safeWrite({
+					type: 'error',
+					error: 'Failed to initialize LangChain processing',
+					details: immediateError instanceof Error ? immediateError.message : 'Unknown immediate error',
+					timestamp: new Date().toISOString()
+				});
+				await writer.close();
+			}
 
 			return new Response(readable, {
 				headers: {
