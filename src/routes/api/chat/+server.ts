@@ -4,6 +4,11 @@ import { createLangChainService } from '$lib/services/langchainService';
 import { requireMemberRole } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
+// Configure edge runtime for streaming
+export const config = {
+	runtime: 'edge'
+};
+
 // Helper function to parse response and fetch coffee data
 async function parseResponseAndFetchCoffeeData(response: string, supabase: any) {
 	let structuredResponse = null;

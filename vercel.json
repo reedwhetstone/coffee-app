@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "src/routes/api/chat/+server.ts": {
-      "runtime": "edge"
-    }
-  },
   "headers": [
     {
       "source": "/api/chat",
