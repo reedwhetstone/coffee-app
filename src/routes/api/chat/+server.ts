@@ -112,7 +112,7 @@ export const POST: RequestHandler = async (event) => {
 			};
 
 			// Send initial status
-			await safeWrite({ type: 'start', message: 'Starting AI processing...' });
+			await safeWrite({ type: 'start', message: 'Understanding your question...' });
 
 			// Process message with streaming callback
 			try {
@@ -133,7 +133,7 @@ export const POST: RequestHandler = async (event) => {
 				streamingPromise
 				.then(async (response) => {
 					// Send processing status
-					await safeWrite({ type: 'processing', message: 'Processing response data...' });
+					await safeWrite({ type: 'processing', message: 'Preparing your recommendations...' });
 
 					// Parse response and fetch coffee data
 					const { structuredResponse, coffeeData } = await parseResponseAndFetchCoffeeData(
