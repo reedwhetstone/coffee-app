@@ -47,3 +47,32 @@ Prereqs: Node `22.x` (see `package.json` engines) and PNPM. Example: `corepack e
 
 - Secrets: Store in `.env` (never commit). Supabase keys live in environment vars.
 - Deploy: Vercel adapter configured; verify env vars in Vercel project settings.
+
+## AGENT GUIDELINES
+
+- Build / lint / test (single test):
+
+  - Install: `corepack enable && corepack prepare pnpm@latest --activate` then `pnpm i`
+  - Dev server: `pnpm dev`
+  - Run all tests: `pnpm test`
+  - Run a single test file: `pnpm test -- src/path/to/file.spec.ts` or `pnpm test -- --testNamePattern "part of test name"`
+  - Lint & format: `pnpm lint` and `pnpm format`
+
+- Code style highlights:
+
+  - Use TypeScript (strict). Prefer explicit types for exports; narrow 'any'.
+  - Svelte components: `PascalCase.svelte`. Route files: lowercase hyphenated.
+  - Imports: use absolute from `src/` where possible; keep extension-less (`.ts`/`.svelte`).
+  - Formatting: Prettier config enforced; run `pnpm format` before commits.
+  - Naming: functions/vars `camelCase`, types/interfaces `PascalCase`, constants `SCREAMING_SNAKE`.
+  - Error handling: return structured errors from services (avoid throwing raw strings); log with `src/lib/utils/alog-parser.ts` patterns.
+  - Tests: colocate with implementation; keep tests deterministic and fast; mock external services (Supabase, Stripe).
+
+- Cursor / Copilot rules:
+
+  - Cursor rules: follow repository `.cursorrules` (present at repo root). Honor navigation and edit restrictions.
+  - Copilot: respect `.github/copilot-instructions.md` if present; do not commit AI-generated secrets.
+
+- Automation notes for agents:
+  - Always run `pnpm lint` and `pnpm test:unit` after changes; run `pnpm check` for type safety.
+  - Don't modify git config; create focused commits with clear imperatives.
