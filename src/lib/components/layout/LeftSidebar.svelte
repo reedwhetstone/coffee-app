@@ -348,7 +348,7 @@
 				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="User Login Menu"
 			>
-				<AuthSidebar {data} isOpen={true} onClose={closeAllMenus} />
+				<AuthSidebar {data} onClose={closeAllMenus} />
 			</aside>
 		{/if}
 
@@ -359,7 +359,7 @@
 				role="navigation"
 				aria-label="Main navigation menu"
 			>
-				<NavbarButton {data} isOpen={true} onClose={closeAllMenus} />
+				<NavbarButton {data} onClose={closeAllMenus} />
 			</aside>
 		{/if}
 
@@ -369,7 +369,7 @@
 				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="Actions menu"
 			>
-				<ActionsButton {data} isOpen={true} onClose={closeAllMenus} />
+				<ActionsButton {data} onClose={closeAllMenus} />
 			</aside>
 		{/if}
 
@@ -389,7 +389,7 @@
 				class="h-full w-64 bg-background-primary-light text-text-primary-light shadow-xl ring-1 ring-border-light"
 				aria-label="Admin menu"
 			>
-				<AdminSidebar {data} isOpen={true} onClose={closeAllMenus} />
+				<AdminSidebar {data} onClose={closeAllMenus} />
 			</aside>
 		{/if}
 	</div>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatDateForInput } from '$lib/utils/dates';
+	import { formatDateForDisplay } from '$lib/utils/dates';
 	import { createEventDispatcher } from 'svelte';
 
 	const dispatch = createEventDispatcher();

@@ -596,7 +596,6 @@
 										message={message.content}
 										coffeeCards={message.coffeeCards}
 										coffeeData={message.coffeeData || []}
-										{parseTastingNotes}
 										onCoffeePreview={handleCoffeePreview}
 										isStreaming={message.isStreaming || false}
 									/>
