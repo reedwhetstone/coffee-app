@@ -93,18 +93,35 @@
 		coffeeCards?: number[];
 		coffeeData?: any[];
 		isStructured?: boolean;
+		isStreaming?: boolean;
 	}> = $state([]);
 	let inputMessage = $state('');
 	let isLoading = $state(false);
 	let chatContainer = $state<HTMLDivElement>();
 	let thinkingSteps = $state<Array<{ message: string; timestamp: Date }>>([]);
+	let shouldScrollToBottom = $state(true);
+	let streamingContent = $state('');
+	let isStreamingResponse = $state(false);
 
-	// Scroll to bottom when new messages are added or thinking steps update
+	// Smart scroll behavior - scroll to bottom for new messages, but allow user control
 	$effect(() => {
-		if ((messages.length || thinkingSteps.length) && chatContainer) {
-			chatContainer.scrollTop = chatContainer.scrollHeight;
+		if (chatContainer && shouldScrollToBottom) {
+			// Smooth scroll to bottom for new content
+			chatContainer.scrollTo({
+				top: chatContainer.scrollHeight,
+				behavior: 'smooth'
+			});
 		}
 	});
+
+	// Track if user manually scrolled up
+	function handleScroll() {
+		if (!chatContainer) return;
+		const { scrollTop, scrollHeight, clientHeight } = chatContainer;
+		const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
+		shouldScrollToBottom = isNearBottom;
+	}
+
 
 	/**
 	 * Send message to chat API with streaming thinking steps
@@ -116,6 +133,7 @@
 		inputMessage = '';
 		isLoading = true;
 		thinkingSteps = []; // Clear previous thinking steps
+		shouldScrollToBottom = true; // Reset scroll behavior for new message
 
 		// Add user message to chat
 		messages.push({
@@ -184,19 +202,20 @@
 										timestamp: new Date()
 									});
 								} else if (data.type === 'complete') {
-									// Clear thinking steps and add final response
-									thinkingSteps = [];
-
 									// Use structured response data if available
 									const structuredResponse = data.structured_response;
 									const coffeeData = data.coffee_data || [];
 
-									// Create base message
+									// Create base message with streaming flag
 									const newMessage: any = {
 										role: 'assistant',
-										content: structuredResponse?.message || data.response,
-										timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
+										content: '',
+										timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+										isStreaming: true
 									};
+
+									// Store content for streaming
+									streamingContent = structuredResponse?.message || data.response;
 
 									// Dynamically add all structured fields from the response
 									if (structuredResponse) {
@@ -219,7 +238,15 @@
 										newMessage.coffeeCards = structuredResponse.coffee_cards;
 									}
 
+									// Add message and start streaming animation
 									messages.push(newMessage);
+									
+									// Clear thinking steps with fade out animation
+									isStreamingResponse = true;
+									setTimeout(() => {
+										thinkingSteps = [];
+										startStreamingText();
+									}, 500); // Brief delay to show transition
 								} else if (data.type === 'error') {
 									// Handle error with detailed information
 									thinkingSteps = [];
@@ -249,6 +276,27 @@
 		} finally {
 			isLoading = false;
 		}
+	}
+
+	/**
+	 * Simple fade-in animation for response
+	 */
+	function startStreamingText() {
+		if (!streamingContent) return;
+		
+		const lastMessage = messages[messages.length - 1];
+		if (!lastMessage) return;
+
+		// Immediately set the full content
+		lastMessage.content = streamingContent;
+		messages = [...messages]; // Trigger reactivity
+		
+		// Remove streaming flag after fade animation
+		setTimeout(() => {
+			lastMessage.isStreaming = false;
+			isStreamingResponse = false;
+			messages = [...messages]; // Final update
+		}, 1200); // 1.2 seconds for fade animation
 	}
 
 	/**
@@ -475,7 +523,7 @@
 		</header>
 
 		<!-- Chat messages area -->
-		<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4">
+		<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4" onscroll={handleScroll}>
 			{#if messages.length === 0}
 				<!-- Welcome message -->
 				<div class="mx-auto max-w-2xl text-center">
@@ -530,12 +578,14 @@
 			{:else}
 				<!-- Chat messages -->
 				<div class="mx-auto max-w-4xl space-y-4">
-					{#each messages as message}
-						<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
+					{#each messages as message, index}
+						<div 
+							class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'} message-fade-in"
+						>
 							<div
-								class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user'
+								class="max-w-[80%] rounded-lg px-4 py-2 transition-all duration-300 {message.role === 'user'
 									? 'bg-background-tertiary-light text-white'
-									: 'bg-background-secondary-light text-text-primary-light'}"
+									: 'bg-background-secondary-light text-text-primary-light'} {message.isStreaming ? 'animate-pulse' : ''}"
 							>
 								{#if message.role === 'assistant' && message.isStructured}
 									<ChatMessageRenderer
@@ -544,9 +594,12 @@
 										coffeeData={message.coffeeData || []}
 										{parseTastingNotes}
 										onCoffeePreview={handleCoffeePreview}
+										isStreaming={message.isStreaming || false}
 									/>
 								{:else}
-									<div class="whitespace-pre-wrap">{message.content}</div>
+									<div class="whitespace-pre-wrap transition-all duration-1000 ease-out {message.isStreaming ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}">
+										{message.content}
+									</div>
 								{/if}
 								<div class="mt-1 text-xs opacity-70">
 									{message.timestamp.toLocaleTimeString()}
@@ -555,10 +608,10 @@
 						</div>
 					{/each}
 
-					{#if isLoading && thinkingSteps.length > 0}
-						<div class="flex justify-start">
+					{#if (isLoading && thinkingSteps.length > 0) || isStreamingResponse}
+						<div class="flex justify-start transition-all duration-500 {isStreamingResponse ? 'opacity-50 scale-95' : 'opacity-100 scale-100'}">
 							<div class="max-w-[80%]">
-								<ChainOfThought steps={thinkingSteps} isActive={isLoading} />
+								<ChainOfThought steps={thinkingSteps} isActive={isLoading && !isStreamingResponse} />
 							</div>
 						</div>
 					{:else if isLoading}
@@ -635,3 +688,36 @@
 		{parseTastingNotes}
 	/>
 {/if}
+
+<style>
+	.message-fade-in {
+		animation: messageFadeIn 0.3s ease-out;
+	}
+
+	@keyframes messageFadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	/* Delayed fade-in for coffee cards */
+	:global(.animate-fade-in-delayed) {
+		animation: fadeInDelayed 0.8s ease-out 0.4s both;
+	}
+
+	@keyframes fadeInDelayed {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+</style>

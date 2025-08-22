@@ -18,7 +18,7 @@
 	}
 </script>
 
-<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light transition-all duration-300">
 	<div class="space-y-3">
 		{#each steps as step, index}
 			<div class="fade-in" style="animation-delay: {index * 0.1}s">
@@ -82,6 +82,22 @@
 		}
 		95%, 100% {
 			opacity: 0.3;
+		}
+	}
+
+	/* Smooth exit animation when transitioning to final response */
+	:global(.chain-of-thought-exit) {
+		animation: fadeOut 0.5s ease-in-out forwards;
+	}
+
+	@keyframes fadeOut {
+		from {
+			opacity: 1;
+			transform: scale(1);
+		}
+		to {
+			opacity: 0;
+			transform: scale(0.95);
 		}
 	}
 </style>

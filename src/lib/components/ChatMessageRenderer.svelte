@@ -7,13 +7,15 @@
 		coffeeCards = [],
 		coffeeData = [],
 		parseTastingNotes,
-		onCoffeePreview
+		onCoffeePreview,
+		isStreaming = false
 	} = $props<{
 		message: string;
 		coffeeCards?: number[];
 		coffeeData?: any[];
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
 		onCoffeePreview?: (coffeeIds: number[], focusId?: number) => void;
+		isStreaming?: boolean;
 	}>();
 
 	// Filter coffee data to match the requested card IDs
@@ -34,14 +36,14 @@
 
 <!-- Markdown Content -->
 <div
-	class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light"
+	class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light transition-all duration-1000 ease-out {isStreaming ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}"
 >
 	<SvelteMarkdown source={message} />
 </div>
 
 <!-- Coffee Recommendations Section -->
-{#if coffeeCards && coffeeCards.length > 0 && filteredCoffeeData().length > 0}
-	<div class="my-4">
+{#if coffeeCards && coffeeCards.length > 0 && filteredCoffeeData().length > 0 && !isStreaming}
+	<div class="my-4 animate-fade-in-delayed">
 		<h3 class="mb-3 font-semibold text-text-primary-light">
 			Coffee Recommendations ({filteredCoffeeData().length})
 		</h3>
@@ -126,3 +128,4 @@
 		</div>
 	</div>
 {/if}
+
