@@ -1772,8 +1772,8 @@
 		const events = isDuringRoasting ? $eventEntries : savedEventEntries;
 
 		// Include seconds and milliseconds in dependency to trigger updates every tick
-		seconds; // Dependency for live updates
-		milliseconds; // Dependency for live updates
+		void seconds; // Dependency for live updates
+		void milliseconds; // Dependency for live updates
 
 		if (events.length === 0) {
 			return {

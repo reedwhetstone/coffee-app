@@ -1,8 +1,11 @@
+interface ProcessHandler {
+	sendLog: (message: string) => void;
+	addProcess: (process: { pid: number; command: string; status: string }) => void;
+}
+
 declare global {
-	var processHandler: {
-		sendLog: (message: string) => void;
-		addProcess: (process: any) => void;
-	};
+	declare const processHandler: ProcessHandler;
+	declare const Stripe: (key: string) => any;
 
 	namespace App {
 		interface Locals {

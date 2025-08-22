@@ -63,7 +63,7 @@
 
 			// Initialize Stripe Elements
 			if (!stripe) {
-				// @ts-ignore - Stripe will be loaded from external script
+				// eslint-disable-next-line no-undef
 				stripe = Stripe(
 					'pk_live_51R3ltgKwI9NkGqAnzQHOmPvkVfxCdAFGf4fwDKw9tGMtv1AcEYLONo8It8dnPTBHoZHY6gmHj6zZhtbPRgrYOrII006S1GdaWO'
 				);
