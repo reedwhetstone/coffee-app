@@ -5,13 +5,8 @@
 	import { checkRole } from '$lib/types/auth.types';
 
 	// Props declaration
-	let {
-		data,
-		isOpen = false,
-		onClose = () => {}
-	} = $props<{
+	let { data, onClose = () => {} } = $props<{
 		data: any;
-		isOpen?: boolean;
 		onClose?: () => void;
 	}>();
 

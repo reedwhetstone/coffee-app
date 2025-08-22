@@ -15,6 +15,7 @@
 	<div class="relative h-full">
 		<!-- Y-axis labels -->
 		<div class="absolute left-0 top-0 flex h-full flex-col justify-between">
+			<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 			{#each Array(5) as _}
 				<div class="h-4 w-8 rounded bg-background-tertiary-light opacity-30"></div>
 			{/each}
@@ -34,6 +35,7 @@
 
 			<!-- X-axis labels -->
 			<div class="mt-2 flex justify-between">
+				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 				{#each Array(6) as _}
 					<div class="h-4 w-8 rounded bg-background-tertiary-light opacity-30"></div>
 				{/each}

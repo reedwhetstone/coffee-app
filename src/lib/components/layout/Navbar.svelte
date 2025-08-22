@@ -1,23 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
-	import pkg from 'lodash';
 	import { checkRole } from '$lib/types/auth.types';
-	const { debounce } = pkg;
 
 	// Update the props declaration to include isOpen and onClose
-	let {
-		data,
-		isOpen = false,
-		onClose = () => {}
-	} = $props<{
+	let { data, onClose = () => {} } = $props<{
 		data: any;
-		isOpen?: boolean;
 		onClose?: () => void;
 	}>();
 
 	// Destructure with default values to prevent undefined errors
-	let { supabase, session, role = 'viewer' } = $derived(data);
+	let { role = 'viewer' } = $derived(data);
 
 	// Import global UserRole type
 	import type { UserRole } from '$lib/types/auth.types';

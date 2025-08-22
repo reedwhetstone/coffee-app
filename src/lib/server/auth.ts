@@ -40,7 +40,7 @@ export async function requireAuth(event: RequestEvent) {
 export async function requireAuthMiddleware(event: RequestEvent) {
 	try {
 		await requireAuth(event);
-	} catch (error) {
+	} catch {
 		return new Response(JSON.stringify({ error: 'Unauthorized' }), {
 			status: 401,
 			headers: { 'Content-Type': 'application/json' }

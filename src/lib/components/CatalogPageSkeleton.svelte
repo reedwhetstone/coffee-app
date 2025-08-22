@@ -25,6 +25,7 @@
 
 	<!-- Coffee Cards Grid -->
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(12) as _}
 			<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 				<div class="flex items-start justify-between">
@@ -47,6 +48,7 @@
 
 						<!-- Details grid -->
 						<div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+							<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 							{#each Array(6) as _}
 								<div class="h-3 w-24 rounded bg-background-tertiary-light opacity-20"></div>
 							{/each}

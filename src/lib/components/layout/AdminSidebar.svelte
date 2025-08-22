@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 
-	let { data, isOpen, onClose } = $props<{
+	let { data, onClose } = $props<{
 		data: any;
-		isOpen: boolean;
 		onClose: () => void;
 	}>();
 

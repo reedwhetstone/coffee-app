@@ -186,7 +186,6 @@
 						>
 							<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 								{#each profiles as profile}
-									{@const completionStatus = getRoastCompletionStatus(profile)}
 									<button
 										type="button"
 										class="w-full rounded-lg bg-background-secondary-light p-4 text-left ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2 {currentRoastProfile?.roast_id ===

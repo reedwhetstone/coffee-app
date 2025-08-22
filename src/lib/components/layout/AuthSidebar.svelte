@@ -1,16 +1,11 @@
 <!-- src/lib/components/layout/AuthSidebar.svelte -->
 <script lang="ts">
-	import { signInWithGoogle, signOut } from '$lib/supabase';
+	import { signInWithGoogle } from '$lib/supabase';
 	import { goto } from '$app/navigation';
 
 	// Props with default values to prevent undefined errors
-	let {
-		data,
-		isOpen = false,
-		onClose = () => {}
-	} = $props<{
+	let { data, onClose = () => {} } = $props<{
 		data: any;
-		isOpen?: boolean;
 		onClose?: () => void;
 	}>();
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { formatDateForDisplay, prepareDateForAPI } from '$lib/utils/dates';
+	import { prepareDateForAPI } from '$lib/utils/dates';
 	import { loadingStore } from '$lib/stores/loadingStore';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
 

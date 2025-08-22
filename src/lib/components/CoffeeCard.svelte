@@ -2,7 +2,6 @@
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
-	import type { ComponentType } from 'svelte';
 
 	let { coffee, parseTastingNotes } = $props<{
 		coffee: CoffeeCatalog;

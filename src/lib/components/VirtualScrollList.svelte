@@ -17,7 +17,6 @@
 
 	let scrollContainer: HTMLElement;
 	let scrollTop = $state(0);
-	let containerEl: HTMLElement;
 
 	// Calculate visible range
 	let visibleRange = $derived(() => {
@@ -72,7 +71,7 @@
 	</div>
 </div>
 
-{#snippet children({ item, index }: { item: T; index: number })}
+{#snippet children({ index }: { item: T; index: number })}
 	<!-- Default content - should be overridden -->
 	<div class="border-b p-4">Item {index}</div>
 {/snippet}

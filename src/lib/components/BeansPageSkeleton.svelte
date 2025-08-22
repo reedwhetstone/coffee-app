@@ -11,6 +11,7 @@
 
 	<!-- Dashboard Cards Section -->
 	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(5) as _}
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 				<div class="mb-2 h-4 w-20 rounded bg-background-tertiary-light opacity-30"></div>
@@ -31,6 +32,7 @@
 
 	<!-- Coffee Cards Grid -->
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(9) as _}
 			<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 				<div class="flex items-start justify-between">
@@ -45,6 +47,7 @@
 
 						<!-- Details grid -->
 						<div class="space-y-1">
+							<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 							{#each Array(4) as _}
 								<div class="h-3 w-40 rounded bg-background-tertiary-light opacity-20"></div>
 							{/each}

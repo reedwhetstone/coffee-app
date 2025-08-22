@@ -1,20 +1,17 @@
 <script lang="ts">
 	import SvelteMarkdown from '@humanspeak/svelte-markdown';
-	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 
 	let {
 		message,
 		coffeeCards = [],
 		coffeeData = [],
-		parseTastingNotes,
 		onCoffeePreview,
 		isStreaming = false
 	} = $props<{
 		message: string;
 		coffeeCards?: number[];
 		coffeeData?: CoffeeCatalog[];
-		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
 		onCoffeePreview?: (coffeeIds: number[], focusId?: number) => void;
 		isStreaming?: boolean;
 	}>();

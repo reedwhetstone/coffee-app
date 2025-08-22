@@ -25,6 +25,7 @@
 		<div class="relative h-96 w-full rounded bg-background-tertiary-light opacity-20">
 			<!-- Y-axis labels -->
 			<div class="absolute left-0 top-0 flex h-full flex-col justify-between p-4">
+				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 				{#each Array(6) as _}
 					<div class="h-3 w-8 rounded bg-background-tertiary-light opacity-40"></div>
 				{/each}
@@ -57,6 +58,7 @@
 
 			<!-- X-axis labels -->
 			<div class="absolute bottom-0 left-12 right-4 flex justify-between p-2">
+				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 				{#each Array(8) as _}
 					<div class="h-3 w-6 rounded bg-background-tertiary-light opacity-40"></div>
 				{/each}
@@ -77,14 +79,17 @@
 
 		<!-- Table header -->
 		<div class="mb-2 grid grid-cols-6 gap-4 border-b border-border-light pb-2">
+			<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 			{#each Array(6) as _}
 				<div class="h-4 w-16 rounded bg-background-tertiary-light opacity-30"></div>
 			{/each}
 		</div>
 
 		<!-- Table rows -->
+		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(8) as _}
 			<div class="grid grid-cols-6 gap-4 border-b border-border-light py-2">
+				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 				{#each Array(6) as _}
 					<div class="h-4 w-12 rounded bg-background-tertiary-light opacity-20"></div>
 				{/each}

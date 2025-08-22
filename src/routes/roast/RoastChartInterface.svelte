@@ -11,13 +11,7 @@
 		type Selection,
 		type ScaleLinear
 	} from 'd3';
-	import type {
-		D3Selection,
-		D3GSelection,
-		TemperaturePoint,
-		RoastEventPoint,
-		ChartDimensions
-	} from '$lib/types/d3.types';
+	import type { D3GSelection, TemperaturePoint } from '$lib/types/d3.types';
 	import type { RoastProfile } from '$lib/types/component.types';
 	import { curveStepAfter, curveBasis } from 'd3-shape';
 	import {

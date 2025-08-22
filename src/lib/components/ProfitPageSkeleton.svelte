@@ -11,6 +11,7 @@
 
 	<!-- KPI Cards -->
 	<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(4) as _}
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 				<div class="mb-2 h-4 w-24 rounded bg-background-tertiary-light opacity-30"></div>
@@ -28,7 +29,8 @@
 		<div class="relative h-64 w-full rounded bg-background-tertiary-light opacity-20">
 			<!-- Chart bars -->
 			<div class="absolute inset-4 flex items-end justify-between">
-				{#each Array(12) as _, i}
+				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
+				{#each Array(12) as _}
 					<div
 						class="w-4 rounded-t bg-background-tertiary-light opacity-40"
 						style="height: {Math.random() * 80 + 20}%"
@@ -47,14 +49,17 @@
 
 		<!-- Table header -->
 		<div class="mb-2 grid grid-cols-5 gap-4 border-b border-border-light pb-2">
+			<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 			{#each Array(5) as _}
 				<div class="h-4 w-16 rounded bg-background-tertiary-light opacity-30"></div>
 			{/each}
 		</div>
 
 		<!-- Table rows -->
+		<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 		{#each Array(8) as _}
 			<div class="grid grid-cols-5 gap-4 border-b border-border-light py-2">
+				<!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
 				{#each Array(5) as _}
 					<div class="h-4 w-12 rounded bg-background-tertiary-light opacity-20"></div>
 				{/each}

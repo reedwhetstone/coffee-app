@@ -196,7 +196,7 @@ function validateBuildSchemas() {
 				const htmlContent = readFileSync(filePath, 'utf-8');
 				const { hasErrors } = validatePageSchemas(route, htmlContent);
 				if (hasErrors) hasGlobalErrors = true;
-			} catch (fileError) {
+			} catch {
 				console.warn(`⚠️  Could not read file for route ${route}: ${filePath}`);
 				console.warn('This is expected if the route requires authentication or dynamic rendering.');
 			}
