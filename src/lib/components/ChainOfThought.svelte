@@ -9,6 +9,54 @@
 		isActive?: boolean;
 	}>();
 
+	// Coffee brewing words organized by phases
+	const coffeeWords = {
+		warmup: ['Charging', 'Preheating', 'Grinding', 'Puck Prepping', 'Tamping', 'Dialing In'],
+		execution: [
+			'Brewing',
+			'Percolating',
+			'Blooming',
+			'Steeping',
+			'Stirring',
+			'Frothing',
+			'Drying',
+			'Pulling',
+			'Cracking',
+			'Extracting',
+			'Pressing',
+			'Channeling',
+			'Pulsing',
+			'Yellowing',
+			'Filtering',
+			'Cupping',
+			'Roasting',
+			'Degassing',
+			'Regrinding',
+			'Foaming',
+			"Crema'ing",
+			'Pouring',
+			'Cooling',
+			'Sipping',
+			'Spilling',
+			'Knocking'
+		]
+	};
+
+	// Get current coffee word based on step count
+	function getCurrentCoffeeWord(): string {
+		const stepCount = steps.length;
+
+		if (stepCount === 0) {
+			// Randomly choose from warmup words for initial step
+			const randomIndex = Math.floor(Math.random() * coffeeWords.warmup.length);
+			return coffeeWords.warmup[randomIndex];
+		} else {
+			// After warmup, randomly choose from execution array
+			const randomIndex = Math.floor(Math.random() * coffeeWords.execution.length);
+			return coffeeWords.execution[randomIndex];
+		}
+	}
+
 	// Get status color for different types of steps
 	function getStatusColor(message: string): string {
 		if (message.includes('Found') && !message.includes('No ')) return 'text-green-600';
@@ -43,12 +91,15 @@
 			</div>
 		{/each}
 
-		{#if isActive && steps.length === 0}
-			<div class="flex items-center space-x-3">
+		<!-- Coffee word indicator - shows when active -->
+		{#if isActive}
+			<div class="coffee-indicator flex items-center space-x-3">
 				<div class="flex-shrink-0">
 					<div class="h-1.5 w-1.5 animate-pulse rounded-full bg-background-tertiary-light"></div>
 				</div>
-				<span class="typing-animation text-sm text-text-primary-light"> Thinking... </span>
+				<span class="coffee-word text-sm text-text-primary-light">
+					{getCurrentCoffeeWord()}...
+				</span>
 			</div>
 		{/if}
 	</div>
@@ -61,8 +112,12 @@
 		animation-fill-mode: forwards;
 	}
 
-	.typing-animation {
-		animation: typewriter 1.5s steps(20) infinite;
+	.coffee-word {
+		animation: coffeeBrewPulse 2s ease-in-out infinite;
+	}
+
+	.coffee-indicator {
+		animation: fadeIn 0.3s ease-out;
 	}
 
 	@keyframes fadeIn {
@@ -76,14 +131,15 @@
 		}
 	}
 
-	@keyframes typewriter {
+	@keyframes coffeeBrewPulse {
 		0%,
-		90% {
-			opacity: 1;
-		}
-		95%,
 		100% {
-			opacity: 0.3;
+			opacity: 1;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 0.7;
+			transform: scale(1.02);
 		}
 	}
 
