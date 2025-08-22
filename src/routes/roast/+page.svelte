@@ -6,6 +6,7 @@
 	import RoastProfileForm from './RoastProfileForm.svelte';
 	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import {
 		roastData,
 		roastEvents,
@@ -503,6 +504,15 @@
 			// Reset roasting state
 			isRoasting = false;
 			isPaused = false;
+
+			// Update URL to reflect the selected profile
+			const currentUrl = new URL(window.location.href);
+			currentUrl.searchParams.set('profileId', profile.roast_id.toString());
+			goto(currentUrl.pathname + '?' + currentUrl.searchParams.toString(), { 
+				replaceState: true,
+				keepFocus: true,
+				noScroll: true
+			});
 
 			// Fetch and load roast data using new API structure
 			const response = await fetch(`/api/roast-data?roast_id=${profile.roast_id}`);

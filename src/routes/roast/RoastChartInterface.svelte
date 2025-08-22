@@ -446,10 +446,10 @@
 		// Extract milestones from event entries
 		if (events.length > 0) {
 			const milestones = extractMilestones(events);
-			if (milestones.charge) {
+			if (milestones.charge && !isNaN(milestones.charge) && isFinite(milestones.charge)) {
 				return milestones.charge;
 			}
-			if (milestones.start) {
+			if (milestones.start && !isNaN(milestones.start) && isFinite(milestones.start)) {
 				return milestones.start;
 			}
 		}
@@ -458,18 +458,24 @@
 		const chargePoint = data.find(
 			(point) => point.data_source === 'artisan_import' && point.charge
 		);
-		if (chargePoint) {
+		if (chargePoint && !isNaN(chargePoint.time) && isFinite(chargePoint.time)) {
 			return chargePoint.time;
 		}
 
 		// Fallback: look for any charge point in the data
 		const anyChargePoint = data.find((point) => point.charge);
-		if (anyChargePoint) {
+		if (anyChargePoint && !isNaN(anyChargePoint.time) && isFinite(anyChargePoint.time)) {
 			return anyChargePoint.time;
 		}
 
-		// Final fallback: use start of data
-		return data.length > 0 ? data[0].time : 0;
+		// Final fallback: use start of data with validation
+		if (data.length > 0 && !isNaN(data[0].time) && isFinite(data[0].time)) {
+			return data[0].time;
+		}
+
+		// Ultimate fallback: return 0 if nothing is valid
+		console.warn('getChargeTime: No valid charge time found, using 0');
+		return 0;
 	}
 
 	// Create line generators
@@ -480,7 +486,14 @@
 			return xScale(adjustedTime);
 		})
 		.y((d) => (d.bean_temp !== null && d.bean_temp !== undefined ? yScaleTemp(d.bean_temp) : 0))
-		.defined((d) => d.bean_temp !== null && d.bean_temp !== undefined)
+		.defined((d) => {
+			if (d.bean_temp === null || d.bean_temp === undefined) return false;
+			const chargeTime = getChargeTime($roastData);
+			const adjustedTime = (d.time - chargeTime) / (1000 * 60);
+			const xPos = xScale(adjustedTime);
+			const yPos = yScaleTemp(d.bean_temp);
+			return !isNaN(xPos) && !isNaN(yPos) && isFinite(xPos) && isFinite(yPos);
+		})
 		.curve(curveBasis); // Smooth curve for BT temperature
 
 	const envTempLine = line<RoastPoint>()
@@ -494,7 +507,14 @@
 				? yScaleTemp(d.environmental_temp)
 				: 0
 		)
-		.defined((d) => d.environmental_temp !== null && d.environmental_temp !== undefined)
+		.defined((d) => {
+			if (d.environmental_temp === null || d.environmental_temp === undefined) return false;
+			const chargeTime = getChargeTime($roastData);
+			const adjustedTime = (d.time - chargeTime) / (1000 * 60);
+			const xPos = xScale(adjustedTime);
+			const yPos = yScaleTemp(d.environmental_temp);
+			return !isNaN(xPos) && !isNaN(yPos) && isFinite(xPos) && isFinite(yPos);
+		})
 		.curve(curveBasis); // Smooth curve for ET temperature
 
 	// RoR line generator - smooth curve for Rate of Rise (positive values only)
@@ -505,7 +525,14 @@
 			return xScale(adjustedTime);
 		})
 		.y((d) => yScaleRoR(d.ror))
-		.defined((d) => d.ror > 0 && d.ror <= 50) // Only render positive RoR values within scale bounds
+		.defined((d) => {
+			if (!(d.ror > 0 && d.ror <= 50)) return false; // Only render positive RoR values within scale bounds
+			const chargeTime = getChargeTime($roastData);
+			const adjustedTime = (d.time - chargeTime) / (1000 * 60);
+			const xPos = xScale(adjustedTime);
+			const yPos = yScaleRoR(d.ror);
+			return !isNaN(xPos) && !isNaN(yPos) && isFinite(xPos) && isFinite(yPos);
+		})
 		.curve(curveBasis); // Smooth curve for RoR
 
 	// Note: deltaBT removed since it's the same as RoR
@@ -516,7 +543,19 @@
 		processedData: TemperaturePoint[],
 		chargeTime: number
 	) {
-		if (!svg || !xScale || !yScaleTemp) return;
+		// Enhanced validation with debugging
+		if (!svg) {
+			console.warn('renderEventValueLines: svg is undefined');
+			return;
+		}
+		if (!xScale) {
+			console.warn('renderEventValueLines: xScale is undefined');
+			return;
+		}
+		if (!yScaleTemp) {
+			console.warn('renderEventValueLines: yScaleTemp is undefined');
+			return;
+		}
 
 		console.log('renderEventValueLines:', {
 			savedEventValueSeriesCount: savedEventValueSeries.length,
@@ -632,18 +671,37 @@
 					return xScale(adjustedTime);
 				})
 				.y((d) => yScale(d.value))
+				.defined((d) => {
+					const adjustedTime = (d.time - chargeTime) / (1000 * 60);
+					const xPos = xScale(adjustedTime);
+					const yPos = yScale(d.value);
+					const isValid = !isNaN(xPos) && !isNaN(yPos) && isFinite(xPos) && isFinite(yPos);
+					if (!isValid) {
+						console.warn('Invalid saved event value data point:', { d, adjustedTime, xPos, yPos, chargeTime });
+					}
+					return isValid;
+				})
 				.curve(curveStepAfter); // Use step-after for control values
 
-			// Draw the line
-			svg
-				.append('path')
-				.attr('class', 'event-value-line')
-				.datum(eventDataPoints)
-				.attr('fill', 'none')
-				.attr('stroke', color)
-				.attr('stroke-width', 2)
-				.attr('stroke-dasharray', index % 2 === 0 ? 'none' : '3,3')
-				.attr('d', eventLine);
+			// Draw the line with safety check
+			try {
+				const pathData = eventLine(eventDataPoints);
+				if (pathData && pathData !== 'M' && !pathData.includes('NaN')) {
+					svg
+						.append('path')
+						.attr('class', 'event-value-line')
+						.datum(eventDataPoints)
+						.attr('fill', 'none')
+						.attr('stroke', color)
+						.attr('stroke-width', 2)
+						.attr('stroke-dasharray', index % 2 === 0 ? 'none' : '3,3')
+						.attr('d', pathData);
+				} else {
+					console.warn(`Skipping invalid event line path for series ${eventSeries.event_string}:`, pathData);
+				}
+			} catch (error) {
+				console.error(`Failed to generate event line path for series ${eventSeries.event_string}:`, error);
+			}
 		});
 	}
 
@@ -653,6 +711,12 @@
 		processedData: TemperaturePoint[],
 		chargeTime: number
 	) {
+		console.log('renderProcessedDataControlEvents called with:', {
+			processedDataLength: processedData.length,
+			chargeTime,
+			sampleData: processedData.slice(0, 3),
+		});
+
 		// Extract fan and heat data series from processed data
 		const fanData = processedData
 			.filter((d) => d.fan !== null && d.fan !== undefined && d.time !== undefined)
@@ -662,6 +726,13 @@
 			.filter((d) => d.heat !== null && d.heat !== undefined && d.time !== undefined)
 			.map((d) => ({ time: d.time as number, value: d.heat || 0 }));
 
+		console.log('Control event data extracted:', {
+			fanDataLength: fanData.length,
+			heatDataLength: heatData.length,
+			fanSample: fanData.slice(0, 3),
+			heatSample: heatData.slice(0, 3)
+		});
+
 		// Create Y scale for control values (0-10 scale for legacy data)
 		const controlScale = scaleLinear()
 			.domain([0, 10])
@@ -670,45 +741,103 @@
 				yScaleTemp.range()[0] - (yScaleTemp.range()[0] - yScaleTemp.range()[1]) * 0.3
 			]);
 
+		console.log('Control scale created:', {
+			domain: controlScale.domain(),
+			range: controlScale.range(),
+			yScaleTempRange: yScaleTemp.range()
+		});
+
 		// Render fan line (blue, dashed)
 		if (fanData.length > 0 && fanData.some((d) => d.value > 0)) {
+			console.log('Rendering fan line with', fanData.length, 'points');
+
 			const fanLine = line<{ time: number; value: number }>()
 				.x((d) => {
 					const adjustedTime = (d.time - chargeTime) / (1000 * 60);
-					return xScale(adjustedTime);
+					const xPos = xScale(adjustedTime);
+					return xPos;
 				})
-				.y((d) => controlScale(d.value))
+				.y((d) => {
+					const yPos = controlScale(d.value);
+					return yPos;
+				})
+				.defined((d) => {
+					const adjustedTime = (d.time - chargeTime) / (1000 * 60);
+					const xPos = xScale(adjustedTime);
+					const yPos = controlScale(d.value);
+					const isValid = !isNaN(xPos) && !isNaN(yPos) && isFinite(xPos) && isFinite(yPos);
+					if (!isValid) {
+						console.warn('Invalid fan data point:', { d, adjustedTime, xPos, yPos });
+					}
+					return isValid;
+				})
 				.curve(curveStepAfter);
 
-			svg
-				.append('path')
-				.attr('class', 'control-event-line fan-line')
-				.datum(fanData)
-				.attr('fill', 'none')
-				.attr('stroke', '#3730a3') // Blue for fan
-				.attr('stroke-width', 2)
-				.attr('stroke-dasharray', '3,3') // Dashed
-				.attr('d', fanLine);
+			const pathData = fanLine(fanData);
+			console.log('Fan line path data:', pathData);
+
+			if (pathData) {
+				svg
+					.append('path')
+					.attr('class', 'control-event-line fan-line')
+					.datum(fanData)
+					.attr('fill', 'none')
+					.attr('stroke', '#3730a3') // Blue for fan
+					.attr('stroke-width', 2)
+					.attr('stroke-dasharray', '3,3') // Dashed
+					.attr('d', pathData);
+				console.log('Fan line rendered successfully');
+			} else {
+				console.error('Failed to generate fan line path data');
+			}
+		} else {
+			console.log('No fan data to render:', { fanDataLength: fanData.length, hasPositiveValues: fanData.some((d) => d.value > 0) });
 		}
 
 		// Render heat line (brown, solid)
 		if (heatData.length > 0 && heatData.some((d) => d.value > 0)) {
+			console.log('Rendering heat line with', heatData.length, 'points');
+
 			const heatLine = line<{ time: number; value: number }>()
 				.x((d) => {
 					const adjustedTime = (d.time - chargeTime) / (1000 * 60);
-					return xScale(adjustedTime);
+					const xPos = xScale(adjustedTime);
+					return xPos;
 				})
-				.y((d) => controlScale(d.value))
+				.y((d) => {
+					const yPos = controlScale(d.value);
+					return yPos;
+				})
+				.defined((d) => {
+					const adjustedTime = (d.time - chargeTime) / (1000 * 60);
+					const xPos = xScale(adjustedTime);
+					const yPos = controlScale(d.value);
+					const isValid = !isNaN(xPos) && !isNaN(yPos) && isFinite(xPos) && isFinite(yPos);
+					if (!isValid) {
+						console.warn('Invalid heat data point:', { d, adjustedTime, xPos, yPos });
+					}
+					return isValid;
+				})
 				.curve(curveStepAfter);
 
-			svg
-				.append('path')
-				.attr('class', 'control-event-line heat-line')
-				.datum(heatData)
-				.attr('fill', 'none')
-				.attr('stroke', '#b45309') // Brown for heat
-				.attr('stroke-width', 2)
-				.attr('d', heatLine);
+			const pathData = heatLine(heatData);
+			console.log('Heat line path data:', pathData);
+
+			if (pathData) {
+				svg
+					.append('path')
+					.attr('class', 'control-event-line heat-line')
+					.datum(heatData)
+					.attr('fill', 'none')
+					.attr('stroke', '#b45309') // Brown for heat
+					.attr('stroke-width', 2)
+					.attr('d', pathData);
+				console.log('Heat line rendered successfully');
+			} else {
+				console.error('Failed to generate heat line path data');
+			}
+		} else {
+			console.log('No heat data to render:', { heatDataLength: heatData.length, hasPositiveValues: heatData.some((d) => d.value > 0) });
 		}
 	}
 
@@ -2260,8 +2389,13 @@
 
 			alert(message);
 
-			// Reload the profile data to show the imported data
-			window.location.reload();
+			// Reload the profile data to show the imported data without reloading the page
+			// This prevents the roast form from being triggered by page reload events
+			if (currentRoastProfile?.roast_id) {
+				// Reload just the roast data for this profile
+				await loadSavedRoastData(currentRoastProfile.roast_id);
+				await loadChartSettings(currentRoastProfile.roast_id);
+			}
 		} catch (error) {
 			console.error('Artisan import failed:', error);
 			alert(

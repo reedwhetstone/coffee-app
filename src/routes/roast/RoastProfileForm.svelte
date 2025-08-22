@@ -80,6 +80,27 @@
 	function handleFileUpload(event: Event, index: number) {
 		const file = (event.target as HTMLInputElement).files?.[0];
 		if (file) {
+			// Validate file format
+			const fileName = file.name.toLowerCase();
+			if (
+				!fileName.endsWith('.alog') &&
+				!fileName.endsWith('.alog.json') &&
+				!fileName.endsWith('.json')
+			) {
+				alert('Please select a valid Artisan .alog file.');
+				// Clear the input
+				(event.target as HTMLInputElement).value = '';
+				return;
+			}
+
+			// Additional validation: check file size (reasonable limit)
+			if (file.size > 50 * 1024 * 1024) {
+				alert('File too large. Please select a file smaller than 50MB.');
+				// Clear the input
+				(event.target as HTMLInputElement).value = '';
+				return;
+			}
+
 			batchBeans[index].artisan_file = file;
 			batchBeans = [...batchBeans];
 		}
@@ -373,12 +394,12 @@
 											<input
 												id="artisan_file_{index}"
 												type="file"
-												accept=".csv,.xlsx"
+												accept=".alog,.alog.json,.json"
 												onchange={(e) => handleFileUpload(e, index)}
 												class="block w-full text-sm text-text-primary-light file:mr-4 file:rounded-md file:border-0 file:bg-background-tertiary-light file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-opacity-90"
 											/>
 											<p class="text-xs text-text-secondary-light">
-												Upload CSV or XLSX exported from Artisan to import temperature curves
+												Upload .alog file from Artisan to import complete roast profile with temperature curves and events
 											</p>
 											{#if bean.artisan_file}
 												<p class="text-xs font-medium text-green-600">
