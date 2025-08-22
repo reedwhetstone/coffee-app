@@ -176,7 +176,6 @@
 	{/if}
 </svelte:head>
 
-
 <!-- Show Unified Header for unauthenticated users on home/api pages -->
 {#if shouldShowUnifiedHeader}
 	<UnifiedHeader />

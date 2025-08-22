@@ -66,11 +66,11 @@ function createFilterStore() {
 	 */
 	function buildQueryParams(state: FilterState): URLSearchParams {
 		const params = new URLSearchParams();
-		
+
 		// Add pagination parameters
 		params.append('page', state.pagination.page.toString());
 		params.append('limit', state.pagination.limit.toString());
-		
+
 		// Add sort parameters
 		if (state.sortField) {
 			params.append('sortField', state.sortField);
@@ -78,13 +78,13 @@ function createFilterStore() {
 		if (state.sortDirection) {
 			params.append('sortDirection', state.sortDirection);
 		}
-		
+
 		// Add filter parameters
 		Object.entries(state.filters).forEach(([key, value]) => {
 			if (value === undefined || value === null || value === '') return;
-			
+
 			if (Array.isArray(value)) {
-				value.forEach(v => {
+				value.forEach((v) => {
 					if (v) params.append(key, v.toString());
 				});
 			} else if (typeof value === 'object' && value.min !== undefined && value.max !== undefined) {
@@ -95,7 +95,7 @@ function createFilterStore() {
 				params.append(key, value.toString());
 			}
 		});
-		
+
 		return params;
 	}
 
@@ -108,7 +108,7 @@ function createFilterStore() {
 	 */
 	async function fetchServerData() {
 		const state = get({ subscribe });
-		
+
 		// Only fetch for catalog route
 		if (!state.routeId.includes('/catalog') && state.routeId !== '/') {
 			return;
@@ -121,20 +121,20 @@ function createFilterStore() {
 
 		// Debounce server requests for better performance
 		serverFetchTimeout = setTimeout(async () => {
-			update(s => ({ ...s, isLoading: true }));
-			
+			update((s) => ({ ...s, isLoading: true }));
+
 			try {
 				const currentState = get({ subscribe });
 				const params = buildQueryParams(currentState);
 				const response = await fetch(`/api/catalog?${params}`);
-				
+
 				if (!response.ok) {
 					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 				}
-				
+
 				const result = await response.json();
-				
-				update(s => ({
+
+				update((s) => ({
 					...s,
 					serverData: result.data || [],
 					pagination: result.pagination || s.pagination,
@@ -144,7 +144,7 @@ function createFilterStore() {
 				}));
 			} catch (error) {
 				console.error('Error fetching server data:', error);
-				update(s => ({ ...s, isLoading: false }));
+				update((s) => ({ ...s, isLoading: false }));
 			}
 		}, 150); // Debounce server requests by 150ms
 	}
@@ -155,14 +155,14 @@ function createFilterStore() {
 	async function fetchUniqueValues() {
 		try {
 			const response = await fetch('/api/catalog/filters');
-			
+
 			if (!response.ok) {
 				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 			}
-			
+
 			const uniqueValues = await response.json();
-			
-			update(s => ({
+
+			update((s) => ({
 				...s,
 				uniqueValues
 			}));
@@ -466,27 +466,30 @@ function createFilterStore() {
 				};
 
 				// Process each field type efficiently
-				const sourceExtractor = (item: any) => 
+				const sourceExtractor = (item: any) =>
 					item.coffee_catalog?.source || item.source || item.vendor;
 				const sources = extractUnique(sourceExtractor, 'sources');
 				if (sources) uniqueValues.sources = sources;
 
-				const continents = extractUnique(item => getFieldValue(item, 'continent'), 'continents');
+				const continents = extractUnique((item) => getFieldValue(item, 'continent'), 'continents');
 				if (continents) uniqueValues.continents = continents;
 
-				const countries = extractUnique(item => getFieldValue(item, 'country'), 'countries');
+				const countries = extractUnique((item) => getFieldValue(item, 'country'), 'countries');
 				if (countries) uniqueValues.countries = countries;
 
-				const arrivalDates = extractUnique(item => getFieldValue(item, 'arrival_date'), 'arrivalDates');
+				const arrivalDates = extractUnique(
+					(item) => getFieldValue(item, 'arrival_date'),
+					'arrivalDates'
+				);
 				if (arrivalDates) uniqueValues.arrivalDates = arrivalDates;
 
-				const purchaseDates = extractUnique(item => item.purchase_date, 'purchaseDates');
+				const purchaseDates = extractUnique((item) => item.purchase_date, 'purchaseDates');
 				if (purchaseDates) uniqueValues.purchaseDates = purchaseDates;
 
-				const roastDates = extractUnique(item => item.roast_date, 'roastDates');
+				const roastDates = extractUnique((item) => item.roast_date, 'roastDates');
 				if (roastDates) uniqueValues.roastDates = roastDates;
 
-				const batchNames = extractUnique(item => item.batch_name, 'batchNames');
+				const batchNames = extractUnique((item) => item.batch_name, 'batchNames');
 				if (batchNames) uniqueValues.batchNames = batchNames;
 
 				// Roast IDs need special numeric sorting
@@ -499,9 +502,10 @@ function createFilterStore() {
 				}
 
 				// Only update if there are actual changes (shallow comparison)
-				const hasChanges = Object.keys(uniqueValues).length !== Object.keys(state.uniqueValues).length ||
-					Object.keys(uniqueValues).some(key => 
-						uniqueValues[key].length !== state.uniqueValues[key]?.length
+				const hasChanges =
+					Object.keys(uniqueValues).length !== Object.keys(state.uniqueValues).length ||
+					Object.keys(uniqueValues).some(
+						(key) => uniqueValues[key].length !== state.uniqueValues[key]?.length
 					);
 
 				if (hasChanges) {
@@ -793,8 +797,8 @@ function createFilterStore() {
 
 					// Efficient change detection using IDs
 					const dataChanged = !arraysEqual(
-						state.filteredData.map(item => item.id),
-						processedData.map(item => item.id)
+						state.filteredData.map((item) => item.id),
+						processedData.map((item) => item.id)
 					);
 
 					state.filteredData = processedData;

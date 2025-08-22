@@ -751,7 +751,7 @@
 		// Performance optimization: detect data changes
 		const currentDataHash = `${data.length}-${data[0]?.time || 0}-${data[data.length - 1]?.time || 0}`;
 		const currentChargeTime = getChargeTime(data);
-		
+
 		// Skip update if data and charge time haven't changed (except during active roasting)
 		if (currentDataHash === lastDataHash && currentChargeTime === lastChargeTime && !isRoasting) {
 			return;
@@ -783,13 +783,21 @@
 
 		// Optimized selective clearing - only clear what's necessary
 		const elementsToUpdate = [
-			'.bean-temp-line', '.env-temp-line', '.ror-line', '.temp-legend',
-			'.event-marker', '.event-label', '.event-value-line', '.event-value-label',
-			'.control-event-line', '.fan-line', '.heat-line'
+			'.bean-temp-line',
+			'.env-temp-line',
+			'.ror-line',
+			'.temp-legend',
+			'.event-marker',
+			'.event-label',
+			'.event-value-line',
+			'.event-value-label',
+			'.control-event-line',
+			'.fan-line',
+			'.heat-line'
 		];
 
 		// Batch DOM operations for better performance
-		elementsToUpdate.forEach(selector => {
+		elementsToUpdate.forEach((selector) => {
 			svg.selectAll(selector).remove();
 		});
 
@@ -816,7 +824,9 @@
 					: 12; // Default max when no data
 
 			const minTimeRelative =
-				data.length > 0 ? Math.min(...data.map((d) => (d.time - currentChargeTime) / (1000 * 60))) : -2; // Default min when no data
+				data.length > 0
+					? Math.min(...data.map((d) => (d.time - currentChargeTime) / (1000 * 60)))
+					: -2; // Default min when no data
 
 			xScale.domain([Math.min(minTimeRelative, -2), Math.max(maxTimeRelative, 12)]);
 		}
@@ -831,7 +841,11 @@
 		// Optimized data filtering - combine filtering operations
 		const { envTempData, beanTempData } = processedData.reduce(
 			(acc, d) => {
-				if (d.environmental_temp !== null && d.environmental_temp !== undefined && d.environmental_temp > 0) {
+				if (
+					d.environmental_temp !== null &&
+					d.environmental_temp !== undefined &&
+					d.environmental_temp > 0
+				) {
 					acc.envTempData.push(d);
 				}
 				if (d.bean_temp !== null && d.bean_temp !== undefined && d.bean_temp > 0) {
@@ -1031,13 +1045,14 @@
 			if (now - lastTimeTrackerUpdate < 16) return; // ~60fps
 			lastTimeTrackerUpdate = now;
 
-			const currentTime = (performance.now() - $startTime! + $accumulatedTime - chargeTime) / (1000 * 60);
-			
+			const currentTime =
+				(performance.now() - $startTime! + $accumulatedTime - chargeTime) / (1000 * 60);
+
 			// Use requestAnimationFrame for smooth updates
 			if (timeTrackerUpdateId) {
 				cancelAnimationFrame(timeTrackerUpdateId);
 			}
-			
+
 			timeTrackerUpdateId = requestAnimationFrame(() => {
 				svg
 					.select('.time-tracker')

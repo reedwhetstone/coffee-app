@@ -57,6 +57,15 @@ async function parseResponseAndFetchCoffeeData(response: string, supabase: any) 
 }
 
 export const POST: RequestHandler = async (event) => {
+	// Create AbortController for handling connection aborts
+	const controller = new AbortController();
+	const { signal } = controller;
+
+	// Handle client disconnect
+	event.request.signal.addEventListener('abort', () => {
+		controller.abort();
+	});
+
 	try {
 		// Require member role for chat features
 		const { user } = await requireMemberRole(event);
@@ -87,23 +96,34 @@ export const POST: RequestHandler = async (event) => {
 
 		const langchainService = createLangChainService(OPENAI_API_KEY, supabase, baseUrl, authHeaders);
 
+		// Check if request was aborted before processing
+		if (signal.aborted) {
+			return json({ error: 'Request was cancelled' }, { status: 499 });
+		}
+
 		// If streaming is requested, use Server-Sent Events
 		if (stream) {
 			const { readable, writable } = new TransformStream();
 			const writer = writable.getWriter();
 			const encoder = new TextEncoder();
 
-			// Helper function to safely write to stream with timeout
+			// Helper function to safely write to stream with timeout and abort handling
 			const safeWrite = async (data: any) => {
 				try {
+					// Check if request was aborted
+					if (signal.aborted) {
+						console.log('Stream write cancelled - request aborted');
+						return;
+					}
+
 					const jsonData = JSON.stringify(data);
-					
+
 					// Add timeout to prevent hanging
 					const writePromise = writer.write(encoder.encode(`data: ${jsonData}\n\n`));
 					const timeoutPromise = new Promise((_, reject) => {
 						setTimeout(() => reject(new Error('Write timeout')), 5000);
 					});
-					
+
 					await Promise.race([writePromise, timeoutPromise]);
 				} catch (error) {
 					console.error('Error writing to stream:', error);
@@ -122,66 +142,79 @@ export const POST: RequestHandler = async (event) => {
 					user.id,
 					async (thinkingStep: string) => {
 						// Send thinking step via SSE with timestamp
-						await safeWrite({ 
-							type: 'thinking', 
+						await safeWrite({
+							type: 'thinking',
 							step: thinkingStep,
 							timestamp: new Date().toISOString()
 						});
 					}
 				);
-				
+
 				streamingPromise
-				.then(async (response) => {
-					// Send processing status
-					await safeWrite({ type: 'processing', message: 'Preparing your recommendations...' });
+					.then(async (response) => {
+						// Send processing status
+						await safeWrite({ type: 'processing', message: 'Preparing your recommendations...' });
 
-					// Parse response and fetch coffee data
-					const { structuredResponse, coffeeData } = await parseResponseAndFetchCoffeeData(
-						response.response,
-						supabase
-					);
+						// Parse response and fetch coffee data
+						const { structuredResponse, coffeeData } = await parseResponseAndFetchCoffeeData(
+							response.response,
+							supabase
+						);
 
-					// Send coffee data first if available
-					if (coffeeData && coffeeData.length > 0) {
-						await safeWrite({ 
-							type: 'coffee_data', 
-							data: coffeeData,
-							count: coffeeData.length
+						// Send coffee data first if available
+						if (coffeeData && coffeeData.length > 0) {
+							await safeWrite({
+								type: 'coffee_data',
+								data: coffeeData,
+								count: coffeeData.length
+							});
+						}
+
+						// Send final response
+						await safeWrite({
+							type: 'complete',
+							response: response.response,
+							structured_response: structuredResponse,
+							coffee_data: coffeeData,
+							tool_calls: response.tool_calls,
+							conversation_id: response.conversation_id,
+							timestamp: new Date().toISOString()
 						});
-					}
 
-					// Send final response
-					await safeWrite({
-						type: 'complete',
-						response: response.response,
-						structured_response: structuredResponse,
-						coffee_data: coffeeData,
-						tool_calls: response.tool_calls,
-						conversation_id: response.conversation_id,
-						timestamp: new Date().toISOString()
-					});
+						await writer.close();
+					})
+					.catch(async (error) => {
+						console.error('LangChain processing error:', error);
 
-					await writer.close();
-				})
-				.catch(async (error) => {
-					console.error('LangChain processing error:', error);
-					
-					// Send detailed error information
-					await safeWrite({
-						type: 'error',
-						error: error instanceof Error ? error.message : 'Unknown error occurred',
-						details: error instanceof Error ? error.stack : null,
-						timestamp: new Date().toISOString()
+						// Handle specific abort errors
+						let errorMessage = 'Unknown error occurred';
+						if (error instanceof Error) {
+							if (error.message.includes('aborted') || error.message.includes('abort')) {
+								errorMessage = 'Request was cancelled by the client';
+							} else if (error.message.includes('timeout')) {
+								errorMessage = 'Request timed out - please try a simpler question';
+							} else {
+								errorMessage = error.message;
+							}
+						}
+
+						// Send detailed error information
+						await safeWrite({
+							type: 'error',
+							error: errorMessage,
+							details: error instanceof Error ? error.stack : null,
+							timestamp: new Date().toISOString()
+						});
+
+						await writer.close();
 					});
-					
-					await writer.close();
-				});
 			} catch (immediateError) {
 				console.error('Immediate LangChain error:', immediateError);
 				await safeWrite({
 					type: 'error',
 					error: 'Failed to initialize LangChain processing',
-					details: immediateError instanceof Error ? immediateError.message : 'Unknown immediate error',
+					details:
+						immediateError instanceof Error ? immediateError.message : 'Unknown immediate error',
 					timestamp: new Date().toISOString()
 				});
 				await writer.close();
@@ -210,6 +243,15 @@ export const POST: RequestHandler = async (event) => {
 		});
 	} catch (error) {
 		console.error('Chat API error:', error);
+
+		// Handle abort errors specifically
+		if (
+			error instanceof Error &&
+			(error.message.includes('aborted') || error.message.includes('abort'))
+		) {
+			return json({ error: 'Request was cancelled by the client' }, { status: 499 });
+		}
+
 		return json(
 			{ error: error instanceof Error ? error.message : 'Unknown error' },
 			{ status: 500 }

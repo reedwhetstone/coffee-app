@@ -56,7 +56,7 @@
 <!-- Marketing Landing Page for Non-Authenticated Users -->
 <div class="min-h-screen">
 	<Hero />
-	<LazyLoad threshold={0.1} rootMargin="100px">
+	<LazyLoad threshold={0.3} rootMargin="200px">
 		{#snippet children()}
 			{#await import('$lib/components/marketing/Features.svelte') then module}
 				{@const Features = module.default}
@@ -69,7 +69,7 @@
 		{/snippet}
 	</LazyLoad>
 	<!-- <Testimonials /> -->
-	<LazyLoad threshold={0.1} rootMargin="100px">
+	<LazyLoad threshold={0.3} rootMargin="200px">
 		{#snippet children()}
 			{#await import('$lib/components/marketing/Pricing.svelte') then module}
 				{@const Pricing = module.default}
@@ -81,7 +81,7 @@
 			{/await}
 		{/snippet}
 	</LazyLoad>
-	<LazyLoad threshold={0.1} rootMargin="100px">
+	<LazyLoad threshold={0.3} rootMargin="200px">
 		{#snippet children()}
 			{#await import('$lib/components/marketing/CTA.svelte') then module}
 				{@const CTA = module.default}
@@ -93,7 +93,7 @@
 			{/await}
 		{/snippet}
 	</LazyLoad>
-	<LazyLoad threshold={0.1} rootMargin="100px">
+	<LazyLoad threshold={0.3} rootMargin="200px">
 		{#snippet children()}
 			{#await import('$lib/components/marketing/Footer.svelte') then module}
 				{@const Footer = module.default}

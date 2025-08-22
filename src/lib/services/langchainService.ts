@@ -442,7 +442,9 @@ RULES
 		const TIMEOUT_MS = 4.5 * 60 * 1000; // 4.5 minutes to be safe
 		const timeoutPromise = new Promise<never>((_, reject) => {
 			setTimeout(() => {
-				reject(new Error('AI processing timeout - please try a simpler question or try again later'));
+				reject(
+					new Error('AI processing timeout - please try a simpler question or try again later')
+				);
 			}, TIMEOUT_MS);
 		});
 
@@ -474,8 +476,8 @@ RULES
 
 			// Wrap the main processing logic with timeout handling
 			const processingPromise = this.performStreamingProcessing(
-				message, 
-				conversationHistory, 
+				message,
+				conversationHistory,
 				emitThinkingStep
 			);
 
@@ -484,18 +486,20 @@ RULES
 			return result;
 		} catch (error) {
 			this.logger.logError(error instanceof Error ? error : String(error), 'Message processing');
-			
+
 			// Provide fallback response for various error types
 			if (error instanceof Error) {
 				if (error.message.includes('timeout')) {
-					throw new Error('The AI assistant took too long to respond. Please try a simpler question or try again later.');
+					throw new Error(
+						'The AI assistant took too long to respond. Please try a simpler question or try again later.'
+					);
 				} else if (error.message.includes('rate limit') || error.message.includes('429')) {
 					throw new Error('AI service is temporarily busy. Please wait a moment and try again.');
 				} else if (error.message.includes('network') || error.message.includes('fetch')) {
 					throw new Error('Network connection issue. Please check your connection and try again.');
 				}
 			}
-			
+
 			throw new Error(
 				`Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`
 			);
@@ -528,7 +532,7 @@ RULES
 			// Process events as they stream in
 			for await (const event of streamingEvents) {
 				lastActivityTime = Date.now();
-				
+
 				// Map event types to user-friendly thinking steps
 				if (event.event === 'on_tool_start') {
 					const toolName = event.name;
@@ -536,7 +540,7 @@ RULES
 				} else if (event.event === 'on_tool_end') {
 					const toolName = event.name;
 					const toolOutput = event.data?.output;
-					
+
 					// Provide specific feedback based on tool results
 					this.handleToolCompletion(toolName, toolOutput, emitThinkingStep);
 
@@ -574,7 +578,8 @@ RULES
 				}
 
 				// Check for stale processing (fallback safety)
-				if (Date.now() - lastActivityTime > 30000) { // 30 seconds of no activity
+				if (Date.now() - lastActivityTime > 30000) {
+					// 30 seconds of no activity
 					emitThinkingStep('Still working on this...');
 				}
 			}
@@ -583,9 +588,11 @@ RULES
 			if (!finalResponse) {
 				if (toolCalls.length > 0) {
 					emitThinkingStep('Putting together what I found...');
-					finalResponse = 'I found some information but had trouble formatting the response. Please try rephrasing your question.';
+					finalResponse =
+						'I found some information but had trouble formatting the response. Please try rephrasing your question.';
 				} else {
-					finalResponse = 'I apologize, but I encountered an issue processing your request. Please try again with a different question.';
+					finalResponse =
+						'I apologize, but I encountered an issue processing your request. Please try again with a different question.';
 				}
 			}
 

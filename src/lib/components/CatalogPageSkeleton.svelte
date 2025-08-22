@@ -32,19 +32,19 @@
 					<div class="flex-1">
 						<div class="mb-2 h-6 w-48 rounded bg-background-tertiary-light opacity-50"></div>
 						<div class="mb-3 h-4 w-32 rounded bg-background-tertiary-light opacity-30"></div>
-						
+
 						<!-- Description area -->
 						<div class="mb-4 space-y-2">
 							<div class="h-3 w-full rounded bg-background-tertiary-light opacity-20"></div>
 							<div class="h-3 w-5/6 rounded bg-background-tertiary-light opacity-20"></div>
 							<div class="h-3 w-4/6 rounded bg-background-tertiary-light opacity-20"></div>
 						</div>
-						
+
 						<!-- Mobile chart area -->
 						<div class="mb-4 sm:hidden">
 							<div class="h-32 w-full rounded bg-background-tertiary-light opacity-20"></div>
 						</div>
-						
+
 						<!-- Details grid -->
 						<div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
 							{#each Array(6) as _}
@@ -52,14 +52,14 @@
 							{/each}
 						</div>
 					</div>
-					
+
 					<!-- Right side - price and chart (desktop) -->
 					<div class="ml-4 hidden flex-col items-end sm:flex">
 						<div class="mb-2 h-6 w-20 rounded bg-background-tertiary-light opacity-50"></div>
 						<div class="h-32 w-32 rounded bg-background-tertiary-light opacity-20"></div>
 					</div>
 				</div>
-				
+
 				<!-- Action button area -->
 				<div class="mt-3 flex items-center justify-end">
 					<div class="h-4 w-4 rounded bg-background-tertiary-light opacity-30"></div>
@@ -67,7 +67,7 @@
 			</div>
 		{/each}
 	</div>
-	
+
 	<!-- Load More Button -->
 	<div class="mt-8 text-center">
 		<div class="mx-auto h-10 w-32 rounded bg-background-tertiary-light opacity-30"></div>

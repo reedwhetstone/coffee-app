@@ -149,105 +149,109 @@
 {:else}
 	<!-- Coffee Catalog App for Authenticated Users -->
 	<div class="space-y-4">
-	<!-- Upgrade Banner for Viewers -->
-	{#if session && !hasRequiredRole('member')}
-		<div
-			class="rounded-lg border border-background-tertiary-light/20 bg-gradient-to-r from-background-tertiary-light/10 to-harvest-gold/10 p-6"
-		>
-			<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
-				<div class="text-center sm:text-left">
-					<h3 class="text-lg font-semibold text-text-primary-light">🚀 Unlock Premium Features</h3>
-					<p class="text-sm text-text-secondary-light">
-						Get AI recommendations, roast tracking, profit analytics, and more for just $5/month
-					</p>
-				</div>
-				<div class="flex flex-col gap-3 sm:flex-row">
-					<button
-						onclick={() => goto('/subscription')}
-						class="rounded-md bg-background-tertiary-light px-6 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
-					>
-						Start Free Trial
-					</button>
-					<button
-						onclick={() =>
-							document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-						class="rounded-md border border-background-tertiary-light px-6 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-					>
-						Learn More
-					</button>
+		<!-- Upgrade Banner for Viewers -->
+		{#if session && !hasRequiredRole('member')}
+			<div
+				class="rounded-lg border border-background-tertiary-light/20 bg-gradient-to-r from-background-tertiary-light/10 to-harvest-gold/10 p-6"
+			>
+				<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
+					<div class="text-center sm:text-left">
+						<h3 class="text-lg font-semibold text-text-primary-light">
+							🚀 Unlock Premium Features
+						</h3>
+						<p class="text-sm text-text-secondary-light">
+							Get AI recommendations, roast tracking, profit analytics, and more for just $5/month
+						</p>
+					</div>
+					<div class="flex flex-col gap-3 sm:flex-row">
+						<button
+							onclick={() => goto('/subscription')}
+							class="rounded-md bg-background-tertiary-light px-6 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+						>
+							Start Free Trial
+						</button>
+						<button
+							onclick={() =>
+								document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+							class="rounded-md border border-background-tertiary-light px-6 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						>
+							Learn More
+						</button>
+					</div>
 				</div>
 			</div>
-		</div>
-	{/if}
+		{/if}
 
-	<div class="space-y-4">
-		<!-- Coffee Cards -->
-		<div class="flex-1">
-			{#if $filterStore.isLoading}
-				<div class="flex justify-center p-8">
-					<div
-						class="h-8 w-8 animate-spin rounded-full border-4 border-background-primary-dark border-t-background-tertiary-light"
-					></div>
-				</div>
-			{:else if !displayData() || displayData().length === 0}
-				<p class="p-4 text-text-primary-light">
-					No coffee data available {$filterStore.pagination.total > 0 ? `(${$filterStore.pagination.total} total items)` : ''}
-				</p>
-			{:else}
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-					{#each displayData() as coffee}
-						<CoffeeCard {coffee} {parseTastingNotes} />
-					{/each}
+		<div class="space-y-4">
+			<!-- Coffee Cards -->
+			<div class="flex-1">
+				{#if $filterStore.isLoading}
+					<div class="flex justify-center p-8">
+						<div
+							class="h-8 w-8 animate-spin rounded-full border-4 border-background-primary-dark border-t-background-tertiary-light"
+						></div>
+					</div>
+				{:else if !displayData() || displayData().length === 0}
+					<p class="p-4 text-text-primary-light">
+						No coffee data available {$filterStore.pagination.total > 0
+							? `(${$filterStore.pagination.total} total items)`
+							: ''}
+					</p>
+				{:else}
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+						{#each displayData() as coffee}
+							<CoffeeCard {coffee} {parseTastingNotes} />
+						{/each}
 
-					{#if isLoadingMore}
-						<div class="flex justify-center p-4">
-							<div
-								class="h-8 w-8 animate-spin rounded-full border-4 border-background-primary-dark border-t-background-tertiary-light"
-							></div>
-						</div>
-					{/if}
+						{#if isLoadingMore}
+							<div class="flex justify-center p-4">
+								<div
+									class="h-8 w-8 animate-spin rounded-full border-4 border-background-primary-dark border-t-background-tertiary-light"
+								></div>
+							</div>
+						{/if}
 
-					<!-- Server-side pagination controls -->
-					{#if $filterStore.pagination.totalPages > 1}
-						<div class="col-span-full flex items-center justify-center gap-4 p-4">
-							<button
-								onclick={() => filterStore.loadPrevPage()}
-								disabled={!$filterStore.pagination.hasPrev || $filterStore.isLoading}
-								class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-							>
-								Previous
-							</button>
-							
-							<span class="text-sm text-text-secondary-light">
-								Page {$filterStore.pagination.page} of {$filterStore.pagination.totalPages}
-								({$filterStore.pagination.total} total items)
-							</span>
-							
-							<button
-								onclick={() => filterStore.loadNextPage()}
-								disabled={!$filterStore.pagination.hasNext || $filterStore.isLoading}
-								class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-							>
-								Next
-							</button>
-						</div>
-					{/if}
+						<!-- Server-side pagination controls -->
+						{#if $filterStore.pagination.totalPages > 1}
+							<div class="col-span-full flex items-center justify-center gap-4 p-4">
+								<button
+									onclick={() => filterStore.loadPrevPage()}
+									disabled={!$filterStore.pagination.hasPrev || $filterStore.isLoading}
+									class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									Previous
+								</button>
 
-					<!-- Client-side infinite scroll indicators -->
-					{#if !$filterStore.pagination.totalPages && !isLoadingMore && displayLimit < $filteredData.length}
-						<div class="flex justify-center p-4">
-							<p class="text-primary-light text-sm">Scroll for more coffees...</p>
-						</div>
-					{/if}
+								<span class="text-sm text-text-secondary-light">
+									Page {$filterStore.pagination.page} of {$filterStore.pagination.totalPages}
+									({$filterStore.pagination.total} total items)
+								</span>
 
-					{#if !$filterStore.pagination.totalPages && displayLimit >= $filteredData.length && $filteredData.length > 0}
-						<div class="flex justify-center p-4">
-							<p class="text-primary-light text-sm">No more coffees to load</p>
-						</div>
-					{/if}
-				</div>
-			{/if}
+								<button
+									onclick={() => filterStore.loadNextPage()}
+									disabled={!$filterStore.pagination.hasNext || $filterStore.isLoading}
+									class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									Next
+								</button>
+							</div>
+						{/if}
+
+						<!-- Client-side infinite scroll indicators -->
+						{#if !$filterStore.pagination.totalPages && !isLoadingMore && displayLimit < $filteredData.length}
+							<div class="flex justify-center p-4">
+								<p class="text-primary-light text-sm">Scroll for more coffees...</p>
+							</div>
+						{/if}
+
+						{#if !$filterStore.pagination.totalPages && displayLimit >= $filteredData.length && $filteredData.length > 0}
+							<div class="flex justify-center p-4">
+								<p class="text-primary-light text-sm">No more coffees to load</p>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
-</div>
 {/if}

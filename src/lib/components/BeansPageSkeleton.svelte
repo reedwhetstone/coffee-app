@@ -42,7 +42,7 @@
 							<div class="h-3 w-full rounded bg-background-tertiary-light opacity-20"></div>
 							<div class="h-3 w-3/4 rounded bg-background-tertiary-light opacity-20"></div>
 						</div>
-						
+
 						<!-- Details grid -->
 						<div class="space-y-1">
 							{#each Array(4) as _}
@@ -50,7 +50,7 @@
 							{/each}
 						</div>
 					</div>
-					
+
 					<!-- Right side - price and chart area -->
 					<div class="ml-4 flex flex-col items-end">
 						<div class="mb-2 h-5 w-16 rounded bg-background-tertiary-light opacity-50"></div>

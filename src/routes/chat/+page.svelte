@@ -122,7 +122,6 @@
 		shouldScrollToBottom = isNearBottom;
 	}
 
-
 	/**
 	 * Send message to chat API with streaming thinking steps
 	 */
@@ -240,7 +239,7 @@
 
 									// Add message and start streaming animation
 									messages.push(newMessage);
-									
+
 									// Clear thinking steps with fade out animation
 									isStreamingResponse = true;
 									setTimeout(() => {
@@ -251,7 +250,7 @@
 									// Handle error with detailed information
 									thinkingSteps = [];
 									console.error('AI processing error:', data.error, data.details);
-									
+
 									messages.push({
 										role: 'assistant',
 										content: `Sorry, I encountered an error: ${data.error}. Please try again.`,
@@ -283,14 +282,14 @@
 	 */
 	function startStreamingText() {
 		if (!streamingContent) return;
-		
+
 		const lastMessage = messages[messages.length - 1];
 		if (!lastMessage) return;
 
 		// Immediately set the full content
 		lastMessage.content = streamingContent;
 		messages = [...messages]; // Trigger reactivity
-		
+
 		// Remove streaming flag after fade animation
 		setTimeout(() => {
 			lastMessage.isStreaming = false;
@@ -579,13 +578,18 @@
 				<!-- Chat messages -->
 				<div class="mx-auto max-w-4xl space-y-4">
 					{#each messages as message, index}
-						<div 
-							class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'} message-fade-in"
+						<div
+							class="flex {message.role === 'user'
+								? 'justify-end'
+								: 'justify-start'} message-fade-in"
 						>
 							<div
-								class="max-w-[80%] rounded-lg px-4 py-2 transition-all duration-300 {message.role === 'user'
+								class="max-w-[80%] rounded-lg px-4 py-2 transition-all duration-300 {message.role ===
+								'user'
 									? 'bg-background-tertiary-light text-white'
-									: 'bg-background-secondary-light text-text-primary-light'} {message.isStreaming ? 'animate-pulse' : ''}"
+									: 'bg-background-secondary-light text-text-primary-light'} {message.isStreaming
+									? 'animate-pulse'
+									: ''}"
 							>
 								{#if message.role === 'assistant' && message.isStructured}
 									<ChatMessageRenderer
@@ -597,7 +601,11 @@
 										isStreaming={message.isStreaming || false}
 									/>
 								{:else}
-									<div class="whitespace-pre-wrap transition-all duration-1000 ease-out {message.isStreaming ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}">
+									<div
+										class="whitespace-pre-wrap transition-all duration-1000 ease-out {message.isStreaming
+											? 'translate-y-4 opacity-0'
+											: 'translate-y-0 opacity-100'}"
+									>
 										{message.content}
 									</div>
 								{/if}
@@ -609,9 +617,16 @@
 					{/each}
 
 					{#if (isLoading && thinkingSteps.length > 0) || isStreamingResponse}
-						<div class="flex justify-start transition-all duration-500 {isStreamingResponse ? 'opacity-50 scale-95' : 'opacity-100 scale-100'}">
+						<div
+							class="flex justify-start transition-all duration-500 {isStreamingResponse
+								? 'scale-95 opacity-50'
+								: 'scale-100 opacity-100'}"
+						>
 							<div class="max-w-[80%]">
-								<ChainOfThought steps={thinkingSteps} isActive={isLoading && !isStreamingResponse} />
+								<ChainOfThought
+									steps={thinkingSteps}
+									isActive={isLoading && !isStreamingResponse}
+								/>
 							</div>
 						</div>
 					{:else if isLoading}

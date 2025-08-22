@@ -69,7 +69,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		if (isPaginated) {
 			// Debug: Log filter parameters
 			console.log('Received filter parameters:', filters);
-			
+
 			// Build query with server-side filtering and sorting
 			let query = supabase
 				.from('coffee_catalog')
@@ -81,7 +81,8 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			if (filters.country) query = query.eq('country', filters.country);
 			if (filters.source.length > 0) query = query.in('source', filters.source);
 			if (filters.processing) query = query.ilike('processing', `%${filters.processing}%`);
-			if (filters.cultivar_detail) query = query.ilike('cultivar_detail', `%${filters.cultivar_detail}%`);
+			if (filters.cultivar_detail)
+				query = query.ilike('cultivar_detail', `%${filters.cultivar_detail}%`);
 			if (filters.type) query = query.ilike('type', `%${filters.type}%`);
 			if (filters.grade) query = query.ilike('grade', `%${filters.grade}%`);
 			if (filters.appearance) query = query.ilike('appearance', `%${filters.appearance}%`);
@@ -89,8 +90,10 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			if (filters.region) query = query.ilike('region', `%${filters.region}%`);
 
 			// Apply numeric range filters
-			if (filters.score_value_min) query = query.gte('score_value', parseFloat(filters.score_value_min));
-			if (filters.score_value_max) query = query.lte('score_value', parseFloat(filters.score_value_max));
+			if (filters.score_value_min)
+				query = query.gte('score_value', parseFloat(filters.score_value_min));
+			if (filters.score_value_max)
+				query = query.lte('score_value', parseFloat(filters.score_value_max));
 			if (filters.cost_lb_min) query = query.gte('cost_lb', parseFloat(filters.cost_lb_min));
 			if (filters.cost_lb_max) query = query.lte('cost_lb', parseFloat(filters.cost_lb_max));
 

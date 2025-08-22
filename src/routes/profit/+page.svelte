@@ -309,15 +309,15 @@
 {:else}
 	<div class="space-y-6">
 		<!-- Header Section -->
-	<div class="mb-6">
-		<h1 class="text-primary-light mb-2 text-2xl font-bold">Coffee Sales & Profit</h1>
-		<p class="text-text-secondary-light">Track your coffee sales performance and profitability</p>
+		<div class="mb-6">
+			<h1 class="text-primary-light mb-2 text-2xl font-bold">Coffee Sales & Profit</h1>
+			<p class="text-text-secondary-light">Track your coffee sales performance and profitability</p>
+		</div>
+
+		<!-- Coffee Sales Analysis Chart -->
+		<SalesChart {profitData} {salesData} />
+
+		<!-- Performance Chart Component -->
+		<PerformanceChart {salesData} {profitData} />
 	</div>
-
-	<!-- Coffee Sales Analysis Chart -->
-	<SalesChart {profitData} {salesData} />
-
-	<!-- Performance Chart Component -->
-	<PerformanceChart {salesData} {profitData} />
-</div>
 {/if}
