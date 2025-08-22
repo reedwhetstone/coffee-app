@@ -11,7 +11,16 @@
 
 	// Coffee brewing words organized by phases
 	const coffeeWords = {
-		warmup: ['Charging', 'Preheating', 'Grinding', 'Puck Prepping', 'Tamping', 'Dialing In'],
+		warmup: [
+			'Charging',
+			'Preheating',
+			'Grinding',
+			'Prepping',
+			'Tamping',
+			'Weighing', // measuring green
+			'Sorting', // defect removal
+			'Dosing'
+		],
 		execution: [
 			'Brewing',
 			'Percolating',
@@ -20,25 +29,37 @@
 			'Stirring',
 			'Frothing',
 			'Drying',
-			'Pulling',
 			'Cracking',
 			'Extracting',
-			'Pressing',
 			'Channeling',
-			'Pulsing',
 			'Yellowing',
 			'Filtering',
 			'Cupping',
 			'Roasting',
 			'Degassing',
-			'Regrinding',
 			'Foaming',
 			"Crema'ing",
 			'Pouring',
 			'Cooling',
 			'Sipping',
-			'Spilling',
-			'Knocking'
+			'Knocking',
+			'Browning',
+			'Maillard-ing?',
+			'Caramelizing',
+			'Rolling',
+			'Puffing',
+			'Exotherming',
+			'Pacing',
+			'Tracking',
+			'Logging',
+			'Dialing',
+			'Blending',
+			'Bagging',
+			'Tasting',
+			'Slurping',
+			'Sampling',
+			'Sourcing',
+			'Burning'
 		]
 	};
 
