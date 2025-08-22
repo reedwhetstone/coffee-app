@@ -379,10 +379,13 @@ RULES
 			});
 
 			// Execute the agent with tool calling
-			const result = await this.agent!.invoke({
-				input: message,
-				chat_history: conversationHistory.map((msg) => `${msg.role}: ${msg.content}`).join('\n')
-			});
+			const result = await this.agent!.invoke(
+				{
+					input: message,
+					chat_history: conversationHistory.map((msg) => `${msg.role}: ${msg.content}`).join('\n')
+				},
+				{ timeout: 240000 } // 4 minutes built-in timeout
+			);
 
 			// Extract tool calls from intermediate steps
 			const toolCalls =
@@ -521,13 +524,18 @@ RULES
 					input: message,
 					chat_history: conversationHistory.map((msg) => `${msg.role}: ${msg.content}`).join('\n')
 				},
-				{ version: 'v2' }
+				{ 
+					version: 'v2',
+					timeout: 240000 // 4 minutes built-in timeout
+				}
 			);
 
 			const toolCalls: Array<{ tool: string; input: any; output: any }> = [];
 			let finalResponse = '';
 			let executorStarted = false;
 			let lastActivityTime = Date.now();
+			let streamedTokens = '';
+			let lastTokenUpdate = Date.now();
 
 			// Process events as they stream in
 			for await (const event of streamingEvents) {
@@ -569,10 +577,23 @@ RULES
 					// Handle token streaming for real-time response generation
 					const token = event.data?.chunk?.content || '';
 					if (token) {
-						emitThinkingStep('Writing response...');
+						streamedTokens += token;
+						
+						// Emit accumulated tokens every 500ms or when we have meaningful content
+						const now = Date.now();
+						if (now - lastTokenUpdate > 500 || streamedTokens.length > 50) {
+							emitThinkingStep(`✍️ ${streamedTokens.trim()}`);
+							lastTokenUpdate = now;
+						}
 					}
 				} else if (event.event === 'on_chain_end' && event.name === 'AgentExecutor') {
 					finalResponse = event.data?.output?.output || event.data?.output || '';
+					
+					// Emit any remaining streamed tokens
+					if (streamedTokens.trim()) {
+						emitThinkingStep(`✍️ ${streamedTokens.trim()}`);
+					}
+					
 					emitThinkingStep('Almost ready...');
 					break; // Exit early on completion
 				}

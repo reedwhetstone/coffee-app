@@ -118,16 +118,26 @@ export const POST: RequestHandler = async (event) => {
 
 					const jsonData = JSON.stringify(data);
 
-					// Add timeout to prevent hanging
+					// Increase timeout for complex AI processing and add proper cleanup
 					const writePromise = writer.write(encoder.encode(`data: ${jsonData}\n\n`));
+					
+					let timeoutId: NodeJS.Timeout | undefined;
 					const timeoutPromise = new Promise((_, reject) => {
-						setTimeout(() => reject(new Error('Write timeout')), 5000);
+						timeoutId = setTimeout(() => {
+							reject(new Error('Write timeout after 10 seconds'));
+						}, 10000); // Increased from 5s to 10s for complex processing
 					});
 
-					await Promise.race([writePromise, timeoutPromise]);
+					try {
+						await Promise.race([writePromise, timeoutPromise]);
+						if (timeoutId) clearTimeout(timeoutId);
+					} catch (raceError) {
+						if (timeoutId) clearTimeout(timeoutId);
+						throw raceError;
+					}
 				} catch (error) {
 					console.error('Error writing to stream:', error);
-					// Don't rethrow - continue processing
+					// Don't rethrow - continue processing even if write fails
 				}
 			};
 

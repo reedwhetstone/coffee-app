@@ -156,7 +156,14 @@
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to get chat response');
+				// Handle specific status codes gracefully
+				if (response.status === 499) {
+					console.log('Request was cancelled by client or server timeout');
+					return; // Silently return, don't show error to user
+				}
+				
+				const errorText = await response.text().catch(() => 'Unknown error');
+				throw new Error(`Chat request failed (${response.status}): ${errorText}`);
 			}
 
 			// Handle Server-Sent Events
@@ -164,114 +171,128 @@
 				const reader = response.body.getReader();
 				const decoder = new TextDecoder();
 
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
+				try {
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
 
-					const chunk = decoder.decode(value);
-					const lines = chunk.split('\n');
+						const chunk = decoder.decode(value);
+						const lines = chunk.split('\n');
 
-					for (const line of lines) {
-						if (line.trim() && line.startsWith('data: ')) {
-							try {
-								const data = JSON.parse(line.slice(6));
+						for (const line of lines) {
+							if (line.trim() && line.startsWith('data: ')) {
+								try {
+									const data = JSON.parse(line.slice(6));
 
-								if (data.type === 'start') {
-									// Initial start message
-									thinkingSteps.push({
-										message: data.message || 'Starting AI processing...',
-										timestamp: new Date()
-									});
-								} else if (data.type === 'thinking') {
-									// Add thinking step with proper timestamp handling
-									thinkingSteps.push({
-										message: data.step,
-										timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
-									});
-								} else if (data.type === 'processing') {
-									// Add processing status
-									thinkingSteps.push({
-										message: data.message || 'Processing response...',
-										timestamp: new Date()
-									});
-								} else if (data.type === 'coffee_data') {
-									// Handle coffee data streaming
-									thinkingSteps.push({
-										message: `📋 Found ${data.count} coffee${data.count === 1 ? '' : 's'} to display`,
-										timestamp: new Date()
-									});
-								} else if (data.type === 'complete') {
-									// Use structured response data if available
-									const structuredResponse = data.structured_response;
-									const coffeeData = data.coffee_data || [];
-
-									// Create base message with streaming flag
-									const newMessage: any = {
-										role: 'assistant',
-										content: '',
-										timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
-										isStreaming: true
-									};
-
-									// Store content for streaming
-									streamingContent = structuredResponse?.message || data.response;
-
-									// Dynamically add all structured fields from the response
-									if (structuredResponse) {
-										// Add all fields from structured_response except 'message' (already used for content)
-										Object.entries(structuredResponse).forEach(([key, value]) => {
-											if (key !== 'message') {
-												newMessage[key] = value;
-											}
+									if (data.type === 'start') {
+										// Initial start message
+										thinkingSteps.push({
+											message: data.message || 'Starting AI processing...',
+											timestamp: new Date()
 										});
-										newMessage.isStructured = true;
-									}
+									} else if (data.type === 'thinking') {
+										// Add thinking step with proper timestamp handling
+										thinkingSteps.push({
+											message: data.step,
+											timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
+										});
+									} else if (data.type === 'processing') {
+										// Add processing status
+										thinkingSteps.push({
+											message: data.message || 'Processing response...',
+											timestamp: new Date()
+										});
+									} else if (data.type === 'coffee_data') {
+										// Handle coffee data streaming
+										thinkingSteps.push({
+											message: `📋 Found ${data.count} coffee${data.count === 1 ? '' : 's'} to display`,
+											timestamp: new Date()
+										});
+									} else if (data.type === 'complete') {
+										// Use structured response data if available
+										const structuredResponse = data.structured_response;
+										const coffeeData = data.coffee_data || [];
 
-									// Add coffee_data if present (comes separately from API)
-									if (coffeeData.length > 0) {
-										newMessage.coffeeData = coffeeData;
-									}
+										// Create base message with streaming flag
+										const newMessage: any = {
+											role: 'assistant',
+											content: '',
+											timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+											isStreaming: true
+										};
 
-									// Maintain backward compatibility with existing field names
-									if (structuredResponse?.coffee_cards) {
-										newMessage.coffeeCards = structuredResponse.coffee_cards;
-									}
+										// Store content for streaming
+										streamingContent = structuredResponse?.message || data.response;
 
-									// Add message and start streaming animation
-									messages.push(newMessage);
+										// Dynamically add all structured fields from the response
+										if (structuredResponse) {
+											// Add all fields from structured_response except 'message' (already used for content)
+											Object.entries(structuredResponse).forEach(([key, value]) => {
+												if (key !== 'message') {
+													newMessage[key] = value;
+												}
+											});
+											newMessage.isStructured = true;
+										}
 
-									// Clear thinking steps with fade out animation
-									isStreamingResponse = true;
-									setTimeout(() => {
+										// Add coffee_data if present (comes separately from API)
+										if (coffeeData.length > 0) {
+											newMessage.coffeeData = coffeeData;
+										}
+
+										// Maintain backward compatibility with existing field names
+										if (structuredResponse?.coffee_cards) {
+											newMessage.coffeeCards = structuredResponse.coffee_cards;
+										}
+
+										// Add message and start streaming animation
+										messages.push(newMessage);
+
+										// Clear thinking steps with fade out animation
+										isStreamingResponse = true;
+										setTimeout(() => {
+											thinkingSteps = [];
+											startStreamingText();
+										}, 500); // Brief delay to show transition
+									} else if (data.type === 'error') {
+										// Handle error with detailed information
 										thinkingSteps = [];
-										startStreamingText();
-									}, 500); // Brief delay to show transition
-								} else if (data.type === 'error') {
-									// Handle error with detailed information
-									thinkingSteps = [];
-									console.error('AI processing error:', data.error, data.details);
+										console.error('AI processing error:', data.error, data.details);
 
-									messages.push({
-										role: 'assistant',
-										content: `Sorry, I encountered an error: ${data.error}. Please try again.`,
-										timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
-									});
+										messages.push({
+											role: 'assistant',
+											content: `Sorry, I encountered an error: ${data.error}. Please try again.`,
+											timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
+										});
+									}
+								} catch (e) {
+									console.error('Error parsing SSE data:', e, line);
 								}
-							} catch (e) {
-								console.error('Error parsing SSE data:', e, line);
 							}
 						}
 					}
+				} catch (streamError) {
+					console.log('Stream reading error (likely client cancellation):', streamError);
+					// Don't throw error for stream reading issues - these are often cancellations
+				} finally {
+					try {
+						reader.releaseLock();
+					} catch {}
 				}
 			}
 		} catch (error) {
 			console.error('Chat error:', error);
 			thinkingSteps = [];
-			messages.push({
-				role: 'assistant',
-				content: 'Sorry, I encountered an error. Please try again.',
-				timestamp: new Date()
-			});
+			
+			// Only show error message if it's not a cancellation
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			if (!errorMessage.includes('cancelled') && !errorMessage.includes('aborted')) {
+				messages.push({
+					role: 'assistant',
+					content: 'Sorry, I encountered an error. Please try again.',
+					timestamp: new Date()
+				});
+			}
 		} finally {
 			isLoading = false;
 		}
