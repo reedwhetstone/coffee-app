@@ -313,10 +313,26 @@ export const POST: RequestHandler = async (event) => {
 				user: profile.user,
 
 				// Coffee catalog information (from join)
-				coffee_catalog_name: profile.green_coffee_inv?.coffee_catalog?.name,
-				coffee_processing: profile.green_coffee_inv?.coffee_catalog?.processing,
-				coffee_region: profile.green_coffee_inv?.coffee_catalog?.region,
-				coffee_variety: profile.green_coffee_inv?.coffee_catalog?.cultivar_detail,
+				coffee_catalog_name:
+					(profile.green_coffee_inv as any)?.coffee_catalog?.name ||
+					(Array.isArray((profile.green_coffee_inv as any)?.coffee_catalog)
+						? (profile.green_coffee_inv as any)?.coffee_catalog[0]?.name
+						: null),
+				coffee_processing:
+					(profile.green_coffee_inv as any)?.coffee_catalog?.processing ||
+					(Array.isArray((profile.green_coffee_inv as any)?.coffee_catalog)
+						? (profile.green_coffee_inv as any)?.coffee_catalog[0]?.processing
+						: null),
+				coffee_region:
+					(profile.green_coffee_inv as any)?.coffee_catalog?.region ||
+					(Array.isArray((profile.green_coffee_inv as any)?.coffee_catalog)
+						? (profile.green_coffee_inv as any)?.coffee_catalog[0]?.region
+						: null),
+				coffee_variety:
+					(profile.green_coffee_inv as any)?.coffee_catalog?.cultivar_detail ||
+					(Array.isArray((profile.green_coffee_inv as any)?.coffee_catalog)
+						? (profile.green_coffee_inv as any)?.coffee_catalog[0]?.cultivar_detail
+						: null),
 
 				// Roaster equipment information
 				roaster_type: profile.roaster_type,
@@ -375,7 +391,9 @@ export const POST: RequestHandler = async (event) => {
 				// Notes and targets
 				roast_notes: profile.roast_notes,
 				roast_targets: profile.roast_targets,
-				user_notes: profile.green_coffee_inv?.notes
+				user_notes: Array.isArray(profile.green_coffee_inv)
+					? (profile.green_coffee_inv as any)[0]?.notes
+					: (profile.green_coffee_inv as any)?.notes
 			})) || [];
 
 		const response: RoastProfilesToolResponse = {

@@ -381,7 +381,7 @@
 			.attr('height', 0)
 			.attr('fill', getMetricColor(selectedMetric))
 			.style('cursor', 'pointer')
-			.on('mouseover', function (event: any, d: ChartDataPoint) {
+			.on('mouseover', function (event: MouseEvent, d: ChartDataPoint) {
 				// Highlight bar
 				select(this).attr('fill', getMetricColor(selectedMetric, true));
 

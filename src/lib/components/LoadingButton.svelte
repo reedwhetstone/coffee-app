@@ -14,7 +14,7 @@
 		variant: 'primary' | 'secondary' | 'danger' | 'success';
 		size?: 'small' | 'medium' | 'large';
 		onclick?: () => void | Promise<void>;
-		children: any;
+		children: import('svelte').Snippet;
 		loadingText?: string;
 		class?: string;
 	}>();

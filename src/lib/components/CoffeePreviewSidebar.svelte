@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import CoffeeCard from './CoffeeCard.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
+	import type { CoffeeCatalog } from '$lib/types/component.types';
 
 	let {
 		isOpen = false,
@@ -18,7 +19,7 @@
 	}>();
 
 	// Coffee data state
-	let coffeeData = $state<any[]>([]);
+	let coffeeData = $state<CoffeeCatalog[]>([]);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 

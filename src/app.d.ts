@@ -2,9 +2,9 @@
 
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
-import { SupabaseClient, Session } from '@supabase/supabase-js';
-import { Database } from '$lib/database.types';
-import { User } from '@supabase/supabase-js';
+import { SupabaseClient, Session, User } from '@supabase/supabase-js';
+import type { Database } from '$lib/types/database.types';
+import type { UserRole } from '$lib/types/auth.types';
 
 declare global {
 	namespace App {
@@ -13,16 +13,16 @@ declare global {
 			supabase: SupabaseClient<Database>;
 			session: Session | null;
 			user: User | null;
-			role: 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
+			role: UserRole;
 			data: {
 				session: Session | null;
 				user: User | null;
-				role: 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
+				role: UserRole;
 			};
 			safeGetSession(): Promise<{
 				session: Session | null;
 				user: User | null;
-				role: 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
+				role: UserRole;
 			}>;
 		}
 		interface PageData {
@@ -42,7 +42,7 @@ declare global {
 				email: string | undefined;
 				role: string | undefined;
 			} | null;
-			role: 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
+			role: UserRole;
 		}
 		// interface PageState {}
 		// interface Platform {}
@@ -50,7 +50,7 @@ declare global {
 
 	// Global window interface for D3
 	interface Window {
-		d3?: any;
+		d3?: typeof import('d3');
 	}
 }
 

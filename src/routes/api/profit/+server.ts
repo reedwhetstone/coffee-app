@@ -18,17 +18,30 @@ interface Row {
 	bean_cost: number | null;
 	tax_ship_cost: number | null;
 	catalog_id: number | null;
-	coffee_catalog?: {
-		name: string;
-		score_value: number | null;
-		arrival_date: string | null;
-		region: string | null;
-		processing: string | null;
-		cultivar_detail: string | null;
-		cost_lb: number | null;
-		source: string | null;
-		stocked: boolean | null;
-	} | null;
+	coffee_catalog?:
+		| {
+				name: string;
+				score_value: number | null;
+				arrival_date: string | null;
+				region: string | null;
+				processing: string | null;
+				cultivar_detail: string | null;
+				cost_lb: number | null;
+				source: string | null;
+				stocked: boolean | null;
+		  }[]
+		| {
+				name: string;
+				score_value: number | null;
+				arrival_date: string | null;
+				region: string | null;
+				processing: string | null;
+				cultivar_detail: string | null;
+				cost_lb: number | null;
+				source: string | null;
+				stocked: boolean | null;
+		  }
+		| null;
 	sales?: Sale[];
 	roast_profiles?: RoastProfile[];
 }
@@ -118,7 +131,9 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			const profitMargin = totalCost > 0 ? (profit / totalCost) * 100 : 0;
 
 			// Use coffee catalog name if available
-			const displayName = row.coffee_catalog?.name;
+			const displayName = Array.isArray(row.coffee_catalog)
+				? row.coffee_catalog[0]?.name
+				: row.coffee_catalog?.name;
 
 			return {
 				id: row.id,
@@ -245,7 +260,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// Format the response to match the expected structure
 		const formattedSale = {
 			...newSale,
-			coffee_name: coffeeData?.coffee_catalog?.name || null,
+			coffee_name: Array.isArray(coffeeData?.coffee_catalog)
+				? (coffeeData?.coffee_catalog as any)[0]?.name || null
+				: (coffeeData?.coffee_catalog as any)?.name || null,
 			purchase_date: coffeeData?.purchase_date || null
 		};
 

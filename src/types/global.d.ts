@@ -5,7 +5,7 @@ interface ProcessHandler {
 
 declare global {
 	declare const processHandler: ProcessHandler;
-	declare const Stripe: (key: string) => any;
+	declare const Stripe: (key: string) => import('stripe').Stripe;
 
 	namespace App {
 		interface Locals {

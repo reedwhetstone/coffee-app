@@ -1,6 +1,44 @@
 export interface Database {
 	public: {
 		Tables: {
+			coffee_catalog: {
+				Row: {
+					id: number;
+					name: string;
+					score_value: number | null;
+					arrival_date: string | null;
+					region: string | null;
+					processing: string | null;
+					drying_method: string | null;
+					roast_recs: string | null;
+					lot_size: string | null;
+					bag_size: string | null;
+					packaging: string | null;
+					cultivar_detail: string | null;
+					grade: string | null;
+					appearance: string | null;
+					description_short: string | null;
+					farm_notes: string | null;
+					type: string | null;
+					description_long: string | null;
+					link: string | null;
+					cost_lb: number | null;
+					last_updated: string | null;
+					source: string | null;
+					stocked: boolean | null;
+					cupping_notes: string | null;
+					unstocked_date: string | null;
+					stocked_date: string | null;
+					ai_description: string | null;
+					ai_tasting_notes: Record<string, any> | null;
+					public_coffee: boolean | null;
+					coffee_user: string | null;
+					country: string | null;
+					continent: string | null;
+				};
+				Insert: Omit<Database['public']['Tables']['coffee_catalog']['Row'], 'id'>;
+				Update: Partial<Database['public']['Tables']['coffee_catalog']['Row']>;
+			};
 			coffee_chunks: {
 				Row: {
 					id: string;

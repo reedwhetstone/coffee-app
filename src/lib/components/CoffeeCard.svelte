@@ -1,9 +1,11 @@
 <script lang="ts">
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
+	import type { CoffeeCatalog } from '$lib/types/component.types';
+	import type { ComponentType } from 'svelte';
 
 	let { coffee, parseTastingNotes } = $props<{
-		coffee: any;
+		coffee: CoffeeCatalog;
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
 	}>();
 

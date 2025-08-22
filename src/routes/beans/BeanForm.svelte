@@ -1,5 +1,10 @@
 <script lang="ts">
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
+	import type {
+		InventoryWithCatalog,
+		CoffeeCatalog,
+		CoffeeFormData
+	} from '$lib/types/component.types';
 
 	const {
 		bean = null,
@@ -7,10 +12,10 @@
 		onSubmit,
 		catalogBeans = []
 	} = $props<{
-		bean: any;
+		bean: InventoryWithCatalog | null;
 		onClose: () => void;
-		onSubmit: (bean: any) => void;
-		catalogBeans?: any[];
+		onSubmit: (bean: CoffeeFormData) => void;
+		catalogBeans?: CoffeeCatalog[];
 	}>();
 
 	let isManualEntry = $state(true);
@@ -120,9 +125,9 @@
 	}
 
 	// Filter catalog beans based on stocked status
-	let filteredCatalogBeans = $derived(catalogBeans.filter((bean: any) => bean.stocked));
+	let filteredCatalogBeans = $derived(catalogBeans.filter((bean: CoffeeCatalog) => bean.stocked));
 
-	function populateFromCatalog(catalogBean: any, beanIndex: number = 0) {
+	function populateFromCatalog(catalogBean: CoffeeCatalog, beanIndex: number = 0) {
 		if (!catalogBean) return;
 
 		// Only set catalog_id and default cost from catalog for the specific bean
@@ -179,7 +184,7 @@
 				}
 
 				// Prepare bean data for submission
-				const cleanedBean: any = {
+				const cleanedBean: CoffeeFormData = {
 					...Object.fromEntries(
 						Object.entries(beanData).map(([key, value]) => [
 							key,
@@ -269,7 +274,9 @@
 		}
 
 		// Find the selected bean by ID
-		const selectedBean = filteredCatalogBeans.find((b: any) => b.id.toString() === selectedValue);
+		const selectedBean = filteredCatalogBeans.find(
+			(b: CoffeeCatalog) => b.id.toString() === selectedValue
+		);
 
 		if (selectedBean) {
 			populateFromCatalog(selectedBean, beanIndex);
@@ -387,7 +394,7 @@
 						class="block w-full rounded-md border-0 bg-background-secondary-light px-3 py-2 text-text-primary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 					>
 						<option value="">All Sources</option>
-						{#each [...new Set(filteredCatalogBeans.map((b: any) => b.source))] as source}
+						{#each [...new Set(filteredCatalogBeans.map((b: CoffeeCatalog) => b.source))] as source}
 							<option value={source}>{source}</option>
 						{/each}
 					</select>
@@ -460,7 +467,7 @@
 										onchange={(e) => handleBeanSelect(e, index)}
 									>
 										<option value="">Select a coffee bean...</option>
-										{#each filteredCatalogBeans.filter((b: any) => !sourceFilter || b.source === sourceFilter) as catalogBean}
+										{#each filteredCatalogBeans.filter((b: CoffeeCatalog) => !sourceFilter || b.source === sourceFilter) as catalogBean}
 											<option value={catalogBean.id}>{catalogBean.name}</option>
 										{/each}
 									</select>

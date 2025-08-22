@@ -6,7 +6,8 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { handleCookieCheck } from '$lib/middleware/cookieCheck';
 import { getUserRole } from '$lib/server/auth';
 import { requireRole } from '$lib/server/auth';
-import { hasRole } from '$lib/types/auth.types';
+import type { UserRole } from '$lib/types/auth.types';
+import type { Session, User } from '@supabase/supabase-js';
 
 // Handle Stripe checkout success redirects
 const handleStripeRedirects: Handle = async ({ event, resolve }) => {
@@ -67,12 +68,16 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 	// Get validated session and user data
 	const sessionData = await event.locals.safeGetSession();
-	const { session, user, role } = sessionData as { session: any; user: any; role: string };
+	const { session, user, role } = sessionData as {
+		session: Session | null;
+		user: User | null;
+		role: UserRole;
+	};
 
 	// Set initial state
 	event.locals.session = session;
 	event.locals.user = user;
-	event.locals.role = role as 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
+	event.locals.role = role;
 
 	// Make data available to the frontend
 	event.locals.data = {
@@ -99,12 +104,16 @@ const authGuard: Handle = async ({ event, resolve }) => {
 
 	// Get session and verified user data
 	const sessionData2 = await event.locals.safeGetSession();
-	const { session, user, role } = sessionData2 as { session: any; user: any; role: string };
+	const { session, user, role } = sessionData2 as {
+		session: Session | null;
+		user: User | null;
+		role: UserRole;
+	};
 
 	// Set default values
 	event.locals.session = session;
 	event.locals.user = user;
-	event.locals.role = role as 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
+	event.locals.role = role;
 
 	// Make sure these values are available to the frontend
 	event.locals.data = {

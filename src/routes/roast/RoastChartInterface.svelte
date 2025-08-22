@@ -11,6 +11,14 @@
 		type Selection,
 		type ScaleLinear
 	} from 'd3';
+	import type {
+		D3Selection,
+		D3GSelection,
+		TemperaturePoint,
+		RoastEventPoint,
+		ChartDimensions
+	} from '$lib/types/d3.types';
+	import type { RoastProfile } from '$lib/types/component.types';
 	import { curveStepAfter, curveBasis } from 'd3-shape';
 	import {
 		roastData,
@@ -134,7 +142,7 @@
 		isPaused?: boolean;
 		fanValue: number;
 		heatValue: number;
-		currentRoastProfile?: any | null;
+		currentRoastProfile?: RoastProfile | null;
 		selectedEvent?: string | null;
 		updateFan: (value: number) => void;
 		updateHeat: (value: number) => void;
@@ -182,7 +190,7 @@
 		visible: false,
 		x: 0,
 		y: 0,
-		data: null as any
+		data: null as TemperaturePoint | null
 	});
 
 	let tooltipHideTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -396,7 +404,7 @@
 			const currentPoint = smoothedTempData[i];
 			const previousPoint = smoothedTempData[i - 1];
 
-			const timeDiffMinutes = (currentPoint.time - previousPoint.time) / (1000 * 60);
+			const timeDiffMinutes = ((currentPoint.time || 0) - (previousPoint.time || 0)) / (1000 * 60);
 			const tempDiff = currentPoint.temp - previousPoint.temp;
 
 			if (timeDiffMinutes > 0) {
@@ -509,7 +517,11 @@
 	// Note: deltaBT removed since it's the same as RoR
 
 	// Function to render dynamic event value lines based on event value series
-	function renderEventValueLines(svg: any, processedData: any[], chargeTime: number) {
+	function renderEventValueLines(
+		svg: D3GSelection,
+		processedData: TemperaturePoint[],
+		chargeTime: number
+	) {
 		if (!svg || !xScale || !yScaleTemp) return;
 
 		console.log('renderEventValueLines:', {
@@ -534,7 +546,11 @@
 	}
 
 	// Function to render savedEventValueSeries (existing logic)
-	function renderSavedEventValueSeries(svg: any, processedData: any[], chargeTime: number) {
+	function renderSavedEventValueSeries(
+		svg: D3GSelection,
+		processedData: TemperaturePoint[],
+		chargeTime: number
+	) {
 		// Define colors for different event types
 		const eventColors = [
 			'#b45309', // Brown for heat-related events
@@ -561,7 +577,7 @@
 			// Determine chart start from processedData if available; otherwise from events
 			const chartStart =
 				processedData.length > 0
-					? Math.min(...processedData.map((d: any) => d.time))
+					? Math.min(...processedData.map((d: TemperaturePoint) => d.time_seconds * 1000))
 					: sortedValues[0].time_seconds * 1000;
 
 			// FIXED: Calculate chartEnd using milestone completion and chart settings
@@ -569,7 +585,7 @@
 
 			// Priority 1: Use chart_x_max setting if available (convert minutes to ms, relative to charge)
 			if (chartSettings?.xRange && chartSettings.xRange[1] !== null) {
-				const chargeTimeMs = getChargeTime(processedData);
+				const chargeTimeMs = getChargeTime(processedData as RoastPoint[]);
 				chartEnd = chargeTimeMs + chartSettings.xRange[1] * 60 * 1000; // Convert minutes to ms
 			}
 			// Priority 2: Use Cool End milestone time + buffer
@@ -586,7 +602,9 @@
 				}
 				// Priority 4: Use processedData range if available
 				else if (processedData.length > 0) {
-					chartEnd = Math.max(...processedData.map((d: any) => d.time)) + 60 * 1000; // + 1 minute buffer
+					chartEnd =
+						Math.max(...processedData.map((d: TemperaturePoint) => d.time_seconds * 1000)) +
+						60 * 1000; // + 1 minute buffer
 				}
 				// Fallback: Use event data range
 				else {
@@ -636,15 +654,19 @@
 	}
 
 	// Function to render control events from processedData (for legacy and live data)
-	function renderProcessedDataControlEvents(svg: any, processedData: any[], chargeTime: number) {
+	function renderProcessedDataControlEvents(
+		svg: D3GSelection,
+		processedData: TemperaturePoint[],
+		chargeTime: number
+	) {
 		// Extract fan and heat data series from processed data
 		const fanData = processedData
-			.filter((d) => d.fan !== null && d.fan !== undefined)
-			.map((d) => ({ time: d.time, value: d.fan || 0 }));
+			.filter((d) => d.fan !== null && d.fan !== undefined && d.time !== undefined)
+			.map((d) => ({ time: d.time as number, value: d.fan || 0 }));
 
 		const heatData = processedData
-			.filter((d) => d.heat !== null && d.heat !== undefined)
-			.map((d) => ({ time: d.time, value: d.heat || 0 }));
+			.filter((d) => d.heat !== null && d.heat !== undefined && d.time !== undefined)
+			.map((d) => ({ time: d.time as number, value: d.heat || 0 }));
 
 		// Create Y scale for control values (0-10 scale for legacy data)
 		const controlScale = scaleLinear()
@@ -835,7 +857,7 @@
 		updateTimeTracker(currentChargeTime);
 
 		// Update x-axis and charge line position
-		svg.select('.x-axis').call(axisBottom(xScale) as any);
+		(svg.select('.x-axis') as any).call(axisBottom(xScale));
 		svg.select('.charge-line').attr('x1', xScale(0)).attr('x2', xScale(0));
 
 		// Optimized data filtering - combine filtering operations
@@ -900,7 +922,7 @@
 		// deltaBT removed - it's the same as RoR which is already displayed
 
 		// Add dynamic event value lines
-		renderEventValueLines(svg, processedData, currentChargeTime);
+		renderEventValueLines(svg, processedData as unknown as TemperaturePoint[], currentChargeTime);
 
 		// Add comprehensive legend for all data lines
 		if (beanTempData.length > 0 || envTempData.length > 0 || rorData.length > 0) {
@@ -1030,7 +1052,13 @@
 			});
 
 		// Add interactive overlay for tooltip (only for saved data viewing)
-		addInteractiveOverlay(svg, processedData, xScale, yScaleTemp, currentChargeTime);
+		addInteractiveOverlay(
+			svg,
+			processedData as unknown as TemperaturePoint[],
+			xScale,
+			yScaleTemp,
+			currentChargeTime
+		);
 	}
 
 	/**
@@ -1089,7 +1117,7 @@
 	}
 
 	// Vertical indicator line functions
-	function showVerticalIndicator(svg: any, xPos: number) {
+	function showVerticalIndicator(svg: D3GSelection, xPos: number) {
 		// Remove existing indicator
 		svg.selectAll('.hover-line').remove();
 
@@ -1107,16 +1135,16 @@
 			.style('opacity', 0.7);
 	}
 
-	function hideVerticalIndicator(svg: any) {
+	function hideVerticalIndicator(svg: D3GSelection) {
 		svg.selectAll('.hover-line').remove();
 	}
 
 	// Interactive overlay for tooltip (only for saved data)
 	function addInteractiveOverlay(
-		svg: any,
-		chartData: any[],
-		xScale: any,
-		yScaleTemp: any,
+		svg: D3GSelection,
+		chartData: TemperaturePoint[],
+		xScale: ScaleLinear<number, number>,
+		yScaleTemp: ScaleLinear<number, number>,
 		chargeTime: number
 	) {
 		// Only add overlay if we're viewing saved data (not during live roasting)
@@ -1142,7 +1170,7 @@
 				}
 				tooltipState.visible = true;
 			})
-			.on('mousemove', function (this: SVGRectElement, event: any) {
+			.on('mousemove', function (this: SVGRectElement, event: MouseEvent) {
 				try {
 					if (tooltipHideTimeout) {
 						clearTimeout(tooltipHideTimeout);
@@ -1154,10 +1182,10 @@
 
 					// Find closest data point by time
 					let closestIndex = 0;
-					let minDistance = Math.abs((chartData[0].time - chargeTime) / (1000 * 60) - x0);
+					let minDistance = Math.abs(((chartData[0].time || 0) - chargeTime) / (1000 * 60) - x0);
 
 					for (let i = 1; i < chartData.length; i++) {
-						const timeRelative = (chartData[i].time - chargeTime) / (1000 * 60);
+						const timeRelative = ((chartData[i].time || 0) - chargeTime) / (1000 * 60);
 						const distance = Math.abs(timeRelative - x0);
 						if (distance < minDistance) {
 							minDistance = distance;
@@ -1173,13 +1201,13 @@
 						const mouseY = event.clientY;
 
 						// Find event value data at this time point
-						const eventData = getEventDataAtTime(d.time);
+						const eventData = getEventDataAtTime(d.time || 0);
 
 						// Calculate RoR at this point
 						const rorValue = calculateRoRAtPoint(chartData, closestIndex);
 
 						// Find milestone events at this time
-						const milestones = getMilestonesAtTime(d.time);
+						const milestones = getMilestonesAtTime(d.time || 0);
 
 						// Update tooltip state
 						tooltipState.data = {
@@ -1187,14 +1215,14 @@
 							eventData,
 							chargeTime,
 							rorValue,
-							milestones
+							milestones: milestones.map((event) => ({ event, time: d.time || 0 }))
 						};
 						tooltipState.x = mouseX;
 						tooltipState.y = mouseY;
 						tooltipState.visible = true;
 
 						// Show vertical line indicator
-						const xPos = xScale((d.time - chargeTime) / (1000 * 60));
+						const xPos = xScale(((d.time || 0) - chargeTime) / (1000 * 60));
 						showVerticalIndicator(svg, xPos);
 					}
 				} catch (error) {
@@ -1213,7 +1241,7 @@
 
 	// Helper function to get event data at a specific time
 	function getEventDataAtTime(timeMs: number) {
-		const eventData: any = {};
+		const eventData: Record<string, boolean> = {};
 
 		// Look for event value data at this time from savedEventValueSeries
 		savedEventValueSeries.forEach((series) => {
@@ -1224,7 +1252,7 @@
 				.sort((a, b) => b.time_seconds - a.time_seconds);
 
 			if (relevantValues.length > 0) {
-				eventData[series.event_string] = relevantValues[0].value;
+				(eventData as any)[series.event_string] = relevantValues[0].value;
 			} else if (series.values.length > 0) {
 				// If no values found at or before this time, check if this is early in the roast
 				// and we should carry forward the first value
@@ -1236,7 +1264,7 @@
 
 				// If we're within 30 seconds of chart start and have an early control value, use it
 				if (timeMs - chartStart <= 30000 && firstValue.time_seconds * 1000 - chartStart <= 60000) {
-					eventData[series.event_string] = firstValue.value;
+					(eventData as any)[series.event_string] = firstValue.value;
 				}
 			}
 		});
@@ -1254,7 +1282,7 @@
 
 				if (relevantEvents.length > 0) {
 					const value = parseInt(relevantEvents[0].event_value || '0');
-					eventData[controlType] = value;
+					(eventData as any)[controlType] = value;
 				} else {
 					// Carry forward from first available value if we're early in the roast
 					const firstEvent = controlEvents
@@ -1269,7 +1297,7 @@
 
 						// Carry forward if we're within 30 seconds of chart start
 						if (timeMs - chartStart <= 30000) {
-							eventData[controlType] = parseInt(firstEvent.event_value || '0');
+							(eventData as any)[controlType] = parseInt(firstEvent.event_value || '0');
 						}
 					}
 				}
@@ -1280,14 +1308,14 @@
 	}
 
 	// Helper function to calculate RoR at a specific point
-	function calculateRoRAtPoint(chartData: any[], index: number): number | null {
+	function calculateRoRAtPoint(chartData: TemperaturePoint[], index: number): number | null {
 		if (index < 1 || !chartData[index].bean_temp || !chartData[index - 1].bean_temp) {
 			return null;
 		}
 
 		const currentPoint = chartData[index];
 		const previousPoint = chartData[index - 1];
-		const timeDiffMinutes = (currentPoint.time - previousPoint.time) / (1000 * 60);
+		const timeDiffMinutes = ((currentPoint.time || 0) - (previousPoint.time || 0)) / (1000 * 60);
 		const tempDiff = currentPoint.bean_temp - previousPoint.bean_temp;
 
 		if (timeDiffMinutes > 0) {
@@ -1408,11 +1436,10 @@
 		svg.selectAll('.temp-grid').remove();
 
 		// Update y-axis positions and dimensions
-		svg.select('.y-axis-left').call(axisLeft(yScaleTemp) as any);
-		svg
-			.select('.y-axis-right')
-			.attr('transform', `translate(${width}, 0)`)
-			.call(axisRight(yScaleRoR) as any);
+		(svg.select('.y-axis-left') as any).call(axisLeft(yScaleTemp));
+		(svg.select('.y-axis-right').attr('transform', `translate(${width}, 0)`) as any).call(
+			axisRight(yScaleRoR)
+		);
 
 		// Update charge line position
 		svg.select('.charge-line').attr('x1', xScale(0)).attr('x2', xScale(0)).attr('y2', height);
@@ -1432,10 +1459,9 @@
 		}
 
 		// Update x-axis only
-		svg
-			.select('.x-axis')
-			.attr('transform', `translate(0,${height})`)
-			.call(axisBottom(xScale) as any);
+		(svg.select('.x-axis').attr('transform', `translate(0,${height})`) as any).call(
+			axisBottom(xScale)
+		);
 
 		// Update chart with new dimensions
 		updateChart($roastData);
@@ -1492,7 +1518,7 @@
 		svg
 			.append('g')
 			.attr('class', 'y-axis-left')
-			.call(axisLeft(yScaleTemp) as any)
+			.call(axisLeft(yScaleTemp))
 			.selectAll('text')
 			.style('fill', '#dc2626')
 			.style('font-size', '10px');
@@ -1554,7 +1580,7 @@
 			.append('g')
 			.attr('class', 'x-axis')
 			.attr('transform', `translate(0,${height})`)
-			.call(axisBottom(xScale) as any);
+			.call(axisBottom(xScale));
 
 		// Add x-axis label
 		svg
@@ -2654,7 +2680,7 @@
 			class="max-w-sm rounded-lg bg-background-secondary-light bg-opacity-95 p-4 shadow-lg ring-1 ring-border-light backdrop-blur-sm"
 		>
 			<div class="mb-3 text-sm font-semibold text-text-primary-light">
-				🕐 {formatTime(d.time, d.chargeTime)}
+				🕐 {formatTime(d.time || 0, d.chargeTime || 0)}
 			</div>
 
 			<div class="space-y-2 text-xs">
@@ -2664,7 +2690,7 @@
 						<div class="mb-1 text-xs font-medium text-green-800">🎯 Milestone Events</div>
 						{#each d.milestones as milestone}
 							<div class="text-xs capitalize text-green-700">
-								{milestone.replace(/_/g, ' ')}
+								{milestone.event.replace(/_/g, ' ')}
 							</div>
 						{/each}
 					</div>

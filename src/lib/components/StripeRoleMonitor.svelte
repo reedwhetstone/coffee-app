@@ -54,8 +54,8 @@
 
 			report = await response.json();
 			error = null;
-		} catch (err: any) {
-			error = err.message || 'Failed to fetch discrepancies';
+		} catch (err: unknown) {
+			error = (err as Error).message || 'Failed to fetch discrepancies';
 			console.error('Error fetching discrepancies:', err);
 		} finally {
 			loading = false;
@@ -86,8 +86,8 @@
 
 			// Refresh the data
 			await fetchDiscrepancies();
-		} catch (err: any) {
-			error = err.message || 'Failed to fix user role';
+		} catch (err: unknown) {
+			error = (err as Error).message || 'Failed to fix user role';
 			console.error('Error fixing role:', err);
 		} finally {
 			fixingUserId = null;

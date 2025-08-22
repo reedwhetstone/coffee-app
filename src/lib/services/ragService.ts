@@ -1,8 +1,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { QueryEmbeddingService } from './queryEmbeddingService';
+import type { CoffeeWithInventory, RAGResult } from '$lib/types/api.types';
+import type { Database } from '$lib/types/database.types';
+
+type CoffeeChunk = {
+	id: string;
+	coffee_id: number;
+	chunk_type: string;
+	content: string;
+	metadata: Record<string, unknown>;
+	similarity?: number;
+};
+
+type CoffeeWithSimilarity = Database['public']['Tables']['coffee_catalog']['Row'] & {
+	similarity: number;
+};
 
 interface RetrievalResult {
-	currentInventory: any[];
+	currentInventory: CoffeeWithSimilarity[];
 }
 
 interface SearchOptions {
@@ -24,8 +39,8 @@ export class RAGService {
 	 * Remove embedding from coffee data to avoid sending large vectors to LLM
 	 * Preserve similarity scores for debugging and ranking
 	 */
-	private cleanCoffeeData(coffees: any[]): any[] {
-		return coffees.map(({ embedding, ...coffee }) => coffee);
+	private cleanCoffeeData(coffees: CoffeeWithSimilarity[]): CoffeeWithSimilarity[] {
+		return coffees.map(({ ...coffee }) => coffee);
 	}
 
 	/**
@@ -347,7 +362,7 @@ export class RAGService {
 
 		// Aggregate chunks by coffee_id and calculate max similarity per coffee
 		const coffeeScores = new Map<number, number>();
-		chunks.forEach((chunk: any) => {
+		chunks.forEach((chunk: CoffeeChunk) => {
 			const currentScore = coffeeScores.get(chunk.coffee_id) || 0;
 			coffeeScores.set(chunk.coffee_id, Math.max(currentScore, chunk.similarity || 0));
 		});

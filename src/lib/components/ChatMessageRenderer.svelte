@@ -1,6 +1,7 @@
 <script lang="ts">
 	import SvelteMarkdown from '@humanspeak/svelte-markdown';
 	import type { TastingNotes } from '$lib/types/coffee.types';
+	import type { CoffeeCatalog } from '$lib/types/component.types';
 
 	let {
 		message,
@@ -12,7 +13,7 @@
 	} = $props<{
 		message: string;
 		coffeeCards?: number[];
-		coffeeData?: any[];
+		coffeeData?: CoffeeCatalog[];
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
 		onCoffeePreview?: (coffeeIds: number[], focusId?: number) => void;
 		isStreaming?: boolean;
@@ -21,14 +22,14 @@
 	// Filter coffee data to match the requested card IDs
 	let filteredCoffeeData = $derived(() => {
 		if (!coffeeCards || coffeeCards.length === 0) return [];
-		return coffeeData.filter((coffee: any) => coffeeCards.includes(coffee.id));
+		return coffeeData.filter((coffee: CoffeeCatalog) => coffeeCards.includes(coffee.id));
 	});
 
 	// Handle individual coffee card click - opens full list with focus on selected coffee
-	function handleCoffeeCardClick(coffee: any) {
+	function handleCoffeeCardClick(coffee: CoffeeCatalog) {
 		if (onCoffeePreview) {
 			// Pass all coffee IDs to show full list, with focusId to indicate which one to scroll to
-			const allIds = filteredCoffeeData().map((c: any) => c.id);
+			const allIds = filteredCoffeeData().map((c: CoffeeCatalog) => c.id);
 			onCoffeePreview(allIds, coffee.id);
 		}
 	}

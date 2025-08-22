@@ -10,6 +10,13 @@
 	import BeansPageSkeleton from '$lib/components/BeansPageSkeleton.svelte';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
+	import type {
+		InventoryWithCatalog,
+		RoastProfile,
+		CoffeeCatalog,
+		CoffeeFormData
+	} from '$lib/types/component.types';
+	import type { ComponentType } from 'svelte';
 
 	// Lazy load the tasting notes radar component
 	let TastingNotesRadar = $state<any>(null);
@@ -47,7 +54,7 @@
 			user: string;
 			catalog_id: number | null;
 			stocked: boolean | null;
-			coffee_catalog?: any;
+			coffee_catalog?: CoffeeCatalog;
 			roast_profiles?: Array<{
 				oz_in: number | null;
 				oz_out: number | null;
@@ -57,7 +64,7 @@
 				roast_date: string | null;
 			}>;
 		}>;
-		catalogData?: Array<any>;
+		catalogData?: CoffeeCatalog[];
 		role?: 'viewer' | 'member' | 'admin';
 	};
 
@@ -138,7 +145,7 @@
 	});
 
 	// Function to select a bean
-	function selectBean(bean: any) {
+	function selectBean(bean: InventoryWithCatalog) {
 		if (!selectedBean || selectedBean.id !== bean.id) {
 			selectedBean = bean;
 			// Scroll to bean profile after it renders
@@ -182,11 +189,10 @@
 		isFormVisible = true;
 	}
 
-	async function handleFormSubmit(
-		newBean: Database['public']['Tables']['green_coffee_inv']['Row']
-	) {
+	async function handleFormSubmit(formData: CoffeeFormData) {
 		await refreshData();
-		selectedBean = newBean;
+		// For form submission, we don't have the full bean data immediately
+		// The bean will be selected from the refreshed data if needed
 	}
 
 	async function handleBeanUpdate(
@@ -207,7 +213,9 @@
 
 		// Check if we should show a bean based on the search state
 		if (searchState?.searchType === 'green' && searchState?.searchId && data?.data) {
-			const foundBean = data.data.find((bean: any) => bean.id === searchState.searchId);
+			const foundBean = data.data.find(
+				(bean: InventoryWithCatalog) => bean.id === searchState.searchId
+			);
 			if (foundBean) {
 				selectedBean = foundBean;
 				setTimeout(() => {
@@ -252,11 +260,11 @@
 
 		try {
 			// Handle both string and object formats (Supabase jsonb can return either)
-			let parsed: any;
+			let parsed: TastingNotes;
 			if (typeof tastingNotesJson === 'string') {
 				parsed = JSON.parse(tastingNotesJson);
 			} else if (typeof tastingNotesJson === 'object') {
-				parsed = tastingNotesJson;
+				parsed = tastingNotesJson as TastingNotes;
 			} else {
 				return null;
 			}
@@ -326,22 +334,25 @@
 					<h3 class="text-sm font-medium text-text-primary-light">Raw Inventory</h3>
 					<p class="mt-1 text-2xl font-bold text-indigo-500">
 						{(() => {
-							const totalStockedLbs = $filteredData.reduce((sum: number, bean: any) => {
-								const purchasedOz = (bean.purchased_qty_lbs || 0) * 16;
-								const roastedOz =
-									bean.roast_profiles?.reduce(
-										(ozSum: number, profile: any) => ozSum + (profile.oz_in || 0),
-										0
-									) || 0;
-								const remainingOz = purchasedOz - roastedOz;
-								const shouldBeStocked = remainingOz >= 8; // 0.5 lb threshold logic from stockedStatusUtils
+							const totalStockedLbs = $filteredData.reduce(
+								(sum: number, bean: InventoryWithCatalog) => {
+									const purchasedOz = (bean.purchased_qty_lbs || 0) * 16;
+									const roastedOz =
+										bean.roast_profiles?.reduce(
+											(ozSum: number, profile: RoastProfile) => ozSum + (profile.oz_in || 0),
+											0
+										) || 0;
+									const remainingOz = purchasedOz - roastedOz;
+									const shouldBeStocked = remainingOz >= 8; // 0.5 lb threshold logic from stockedStatusUtils
 
-								// Only count remaining inventory for coffees that should be stocked
-								if (shouldBeStocked) {
-									return sum + remainingOz / 16;
-								}
-								return sum;
-							}, 0);
+									// Only count remaining inventory for coffees that should be stocked
+									if (shouldBeStocked) {
+										return sum + remainingOz / 16;
+									}
+									return sum;
+								},
+								0
+							);
 							return totalStockedLbs.toFixed(1);
 						})()} lbs
 					</p>
@@ -523,7 +534,7 @@
 						{@const purchasedOz = (bean.purchased_qty_lbs || 0) * 16}
 						{@const roastedOz =
 							bean.roast_profiles?.reduce(
-								(ozSum: number, profile: any) => ozSum + (profile.oz_in || 0),
+								(ozSum: number, profile: RoastProfile) => ozSum + (profile.oz_in || 0),
 								0
 							) || 0}
 						{@const remainingLbs = (purchasedOz - roastedOz) / 16}

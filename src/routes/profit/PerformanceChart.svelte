@@ -15,6 +15,8 @@
 		pointer
 	} from 'd3';
 	import { onMount } from 'svelte';
+	import type { D3GSelection, PerformanceDataPoint } from '$lib/types/d3.types';
+	import type { Line } from 'd3';
 
 	interface SaleData {
 		id: number;
@@ -69,7 +71,7 @@
 		visible: false,
 		x: 0,
 		y: 0,
-		data: null as any
+		data: null as PerformanceDataPoint | null
 	});
 
 	// Time range options
@@ -151,7 +153,7 @@
 				target: targetRevenue,
 				margin: runningRevenue > 0 ? ((runningRevenue - runningCost) / runningRevenue) * 100 : 0,
 				saleData: sale
-			};
+			} as PerformanceDataPoint;
 		});
 	}
 
@@ -161,7 +163,7 @@
 			return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 		});
 
-		const result: any[] = [];
+		const result: PerformanceDataPoint[] = [];
 		monthlyGroups.forEach((sales, monthKey) => {
 			const monthRevenue = sum(sales, (s) => s.price);
 			const firstDay = new Date(monthKey + '-01');
@@ -226,8 +228,13 @@
 			.attr('transform', `translate(${margin.left},${margin.top})`);
 
 		// Create dynamic scales based on view type
+		const extent_result = extent(chartData, (d) => new Date(d.date));
 		const xScale = scaleTime()
-			.domain(extent(chartData, (d) => new Date(d.date)) as [Date, Date])
+			.domain(
+				extent_result[0] && extent_result[1]
+					? [extent_result[0], extent_result[1]]
+					: [new Date(), new Date()]
+			)
 			.range([0, width]);
 
 		let yDomain: [number, number];
@@ -258,7 +265,9 @@
 			.ticks(6);
 
 		const yAxisFormat =
-			selectedViewType === 'margin' ? (d: any) => `${d}%` : (d: any) => `$${d.toLocaleString()}`;
+			selectedViewType === 'margin'
+				? (d: any) => `${Number(d)}%`
+				: (d: any) => `$${Number(d).toLocaleString()}`;
 
 		const yAxis = axisLeft(yScale).tickFormat(yAxisFormat).ticks(6);
 
@@ -309,17 +318,17 @@
 			.style('font-size', '12px');
 
 		// Create line generators with improved styling
-		const revenueLine = line<any>()
+		const revenueLine = line<PerformanceDataPoint>()
 			.x((d) => xScale(new Date(d.date)))
 			.y((d) => yScale(d.revenue))
 			.curve(curveMonotoneX);
 
-		const costLine = line<any>()
+		const costLine = line<PerformanceDataPoint>()
 			.x((d) => xScale(new Date(d.date)))
 			.y((d) => yScale(d.cost))
 			.curve(curveMonotoneX);
 
-		const targetLine = line<any>()
+		const targetLine = line<PerformanceDataPoint>()
 			.x((d) => xScale(new Date(d.date)))
 			.y((d) => yScale(d.target))
 			.curve(curveMonotoneX);
@@ -354,7 +363,7 @@
 				.attr('fill', 'url(#revenueGradient)')
 				.attr(
 					'd',
-					area<any>()
+					area<PerformanceDataPoint>()
 						.x((d) => xScale(new Date(d.date)))
 						.y0(height)
 						.y1((d) => yScale(d.revenue))
@@ -407,7 +416,12 @@
 		addLegend(svg, width);
 	}
 
-	function addInteractiveOverlay(svg: any, chartData: any[], xScale: any, yScale: any) {
+	function addInteractiveOverlay(
+		svg: D3GSelection,
+		chartData: PerformanceDataPoint[],
+		xScale: any,
+		yScale: any
+	) {
 		// Create overlay for capturing mouse events
 		const overlay = svg
 			.append('rect')
@@ -422,7 +436,7 @@
 			.on('mouseover', function () {
 				tooltipState.visible = true;
 			})
-			.on('mousemove', function (this: SVGRectElement, event: any) {
+			.on('mousemove', function (this: SVGRectElement, event: MouseEvent) {
 				try {
 					const [mouseX] = pointer(event, this);
 					const x0 = xScale.invert(mouseX);
@@ -466,7 +480,7 @@
 			});
 	}
 
-	function showVerticalIndicator(svg: any, xPos: number) {
+	function showVerticalIndicator(svg: D3GSelection, xPos: number) {
 		// Remove existing indicator
 		svg.selectAll('.hover-line').remove();
 
@@ -484,11 +498,11 @@
 			.style('opacity', 0.7);
 	}
 
-	function hideVerticalIndicator(svg: any) {
+	function hideVerticalIndicator(svg: D3GSelection) {
 		svg.selectAll('.hover-line').remove();
 	}
 
-	function addLegend(svg: any, width: number) {
+	function addLegend(svg: D3GSelection, width: number) {
 		const legend = svg
 			.append('g')
 			.attr('class', 'legend')

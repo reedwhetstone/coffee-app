@@ -94,9 +94,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				return {
 					user: user.id,
 					batch_name:
-						batch_name || `${coffee.coffee_catalog.name} - ${new Date().toLocaleDateString()}`,
+						batch_name ||
+						`${Array.isArray(coffee.coffee_catalog) ? (coffee.coffee_catalog as any)[0]?.name : (coffee.coffee_catalog as any)?.name} - ${new Date().toLocaleDateString()}`,
 					coffee_id: bean.coffee_id,
-					coffee_name: bean.coffee_name || coffee.coffee_catalog.name,
+					coffee_name:
+						bean.coffee_name ||
+						(Array.isArray(coffee.coffee_catalog)
+							? (coffee.coffee_catalog as any)[0]?.name
+							: (coffee.coffee_catalog as any)?.name),
 					roast_date: roast_date
 						? new Date(roast_date).toISOString().slice(0, 19).replace('T', ' ')
 						: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -178,9 +183,13 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					user: user.id,
 					batch_name:
 						profileData.batch_name ||
-						`${coffee.coffee_catalog.name} - ${new Date().toLocaleDateString()}`,
+						`${Array.isArray(coffee.coffee_catalog) ? (coffee.coffee_catalog as any)[0]?.name : (coffee.coffee_catalog as any)?.name} - ${new Date().toLocaleDateString()}`,
 					coffee_id: profileData.coffee_id,
-					coffee_name: profileData.coffee_name || coffee.coffee_catalog.name,
+					coffee_name:
+						profileData.coffee_name ||
+						(Array.isArray(coffee.coffee_catalog)
+							? (coffee.coffee_catalog as any)[0]?.name
+							: (coffee.coffee_catalog as any)?.name),
 					roast_date: profileData.roast_date
 						? new Date(profileData.roast_date).toISOString().slice(0, 19).replace('T', ' ')
 						: new Date().toISOString().slice(0, 19).replace('T', ' '),

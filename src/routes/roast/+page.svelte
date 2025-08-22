@@ -41,9 +41,11 @@
 		}, 100); // Small delay to ensure page renders first
 	});
 	import type { PageData } from './$types';
+	import type { RoastProfile, CoffeeCatalog, RoastFormData } from '$lib/types/component.types';
+	import type { ComponentType } from 'svelte';
 
 	// Roast profile state management
-	let currentRoastProfile = $state<any>(null);
+	let currentRoastProfile = $state<RoastProfile | null>(null);
 
 	// Main state variables
 	let isFormVisible = $state(false);
@@ -68,7 +70,7 @@
 	let initialLoadComplete = $state(false);
 
 	// Available coffees for form
-	let availableCoffees = $state<any[]>([]);
+	let availableCoffees = $state<CoffeeCatalog[]>([]);
 	let coffeesLoading = $state(false);
 
 	// // Debug data in the component
@@ -181,7 +183,9 @@
 			if (response.ok) {
 				const result = await response.json();
 				// Filter for stocked coffees only
-				const stockedCoffees = (result.data || []).filter((coffee: any) => coffee.stocked === true);
+				const stockedCoffees = (result.data || []).filter(
+					(coffee: CoffeeCatalog) => coffee.stocked === true
+				);
 				availableCoffees = stockedCoffees;
 			} else {
 				console.error('Failed to fetch available coffees');
@@ -299,7 +303,7 @@
 	});
 
 	// Form submission handler for new roast profiles
-	async function handleFormSubmit(profileData: any) {
+	async function handleFormSubmit(profileData: RoastFormData) {
 		try {
 			// The form now sends data with batch_beans format, use it directly
 			const response = await fetch('/api/roast-profiles', {
@@ -342,7 +346,7 @@
 				return result.roast_ids
 					? result
 					: {
-							roast_ids: profiles.map((p: any) => p.roast_id),
+							roast_ids: profiles.map((p: RoastProfile) => p.roast_id),
 							profiles: profiles
 						};
 			} else {
@@ -407,7 +411,7 @@
 	}
 
 	// Profile management handlers
-	async function handleProfileUpdate(updatedProfile: any) {
+	async function handleProfileUpdate(updatedProfile: RoastProfile) {
 		try {
 			await loadRoastProfiles(); // Refresh the profiles list first
 			const profile = data.data.find(
@@ -471,7 +475,7 @@
 	}
 
 	// Function to select a profile
-	async function selectProfile(profile: any) {
+	async function selectProfile(profile: RoastProfile) {
 		if (processing) return;
 
 		processing = true;
@@ -623,6 +627,9 @@
 
 	async function handleClearRoastData() {
 		try {
+			if (!currentRoastProfile) {
+				throw new Error('No roast profile selected');
+			}
 			const response = await fetch(`/api/clear-roast?roast_id=${currentRoastProfile.roast_id}`, {
 				method: 'DELETE'
 			});
@@ -638,7 +645,9 @@
 			// Show success message with details
 			alert(`Successfully cleared roast data: ${result.message}`);
 
-			await selectProfile(currentRoastProfile); // Reload the profile
+			if (currentRoastProfile) {
+				await selectProfile(currentRoastProfile); // Reload the profile
+			}
 		} catch (error) {
 			console.error('Error clearing roast data:', error);
 			alert(error instanceof Error ? error.message : 'Failed to clear roast data');

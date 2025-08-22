@@ -1,18 +1,18 @@
-<script lang="ts">
-	import { onMount, tick } from 'svelte';
+<script lang="ts" generics="T">
+	import { onMount } from 'svelte';
 
 	let {
 		items = [],
 		itemHeight = 200,
 		containerHeight = 600,
 		overscan = 5,
-		getKey = (item: any, index: number) => item.id || index
+		getKey = (item: T, index: number) => (item as any)?.id || index
 	} = $props<{
-		items: any[];
+		items: T[];
 		itemHeight?: number;
 		containerHeight?: number;
 		overscan?: number;
-		getKey?: (item: any, index: number) => string | number;
+		getKey?: (item: T, index: number) => string | number;
 	}>();
 
 	let scrollContainer: HTMLElement;
@@ -29,7 +29,7 @@
 
 	let visibleItems = $derived(() => {
 		const { start, end } = visibleRange();
-		return items.slice(start, end).map((item: any, index: number) => ({
+		return items.slice(start, end).map((item: T, index: number) => ({
 			item,
 			index: start + index,
 			key: getKey(item, start + index)
@@ -72,7 +72,7 @@
 	</div>
 </div>
 
-{#snippet children({ item, index }: { item: any; index: number })}
+{#snippet children({ item, index }: { item: T; index: number })}
 	<!-- Default content - should be overridden -->
 	<div class="border-b p-4">Item {index}</div>
 {/snippet}
