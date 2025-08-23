@@ -29,9 +29,7 @@
 	let coffeesLoading = $state(false); // No longer loading since data is passed via props
 
 	let formData = $state({
-		batch_name: selectedBean
-			? `${selectedBean.name} Batch - ${new Date().toLocaleDateString()}`
-			: '',
+		batch_name: selectedBean ? selectedBean.name : '',
 		coffee_id: selectedBean?.id ? Number(selectedBean.id) : '',
 		coffee_name: selectedBean?.name || '',
 		roast_date: prepareDateForAPI(new Date().toISOString()),
@@ -71,7 +69,7 @@
 			batchBeans[index].coffee_id = selected.id;
 			batchBeans[index].coffee_name = selected.name; // Now uses the transformed name property
 			if (index === 0 && formData.batch_name === '') {
-				formData.batch_name = `${selected.name} Batch - ${new Date().toLocaleDateString()}`;
+				formData.batch_name = selected.name;
 			}
 			batchBeans = [...batchBeans];
 		}
