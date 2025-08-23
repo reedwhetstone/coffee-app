@@ -120,7 +120,7 @@ export const POST: RequestHandler = async (event) => {
 
 					// Increase timeout for complex AI processing and add proper cleanup
 					const writePromise = writer.write(encoder.encode(`data: ${jsonData}\n\n`));
-					
+
 					let timeoutId: NodeJS.Timeout | undefined;
 					const timeoutPromise = new Promise((_, reject) => {
 						timeoutId = setTimeout(() => {
