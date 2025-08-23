@@ -107,11 +107,13 @@ roastDataService.getEventValueSeries: {
 
 ### Root Cause Analysis
 
-1. **Event String Mapping**: Need to map `burner`→`heat`, `air`→`fan` in new API
+1. **Event String Mapping**: Need to asses logic requirements for `burner`→`heat`, `air`→`fan` in new API. We can map burner heat air and fan but we also can use fallbacks. What is important is that these controls are mapped and that they are displayed with their event_string name. Ideally heat is red, air is blue and dampener is purple but the event colors don't really matter as long as their color keys & mapping is correct.
 2. **Stored Procedure**: Old service uses `get_even_temp_ids` RPC function for temperature sampling
 3. **Data Processing**: New API needs same data processing logic as old service
 
 ## Next Steps (In Progress)
+
+**IMPORTANT: look to codebase setup in b784b53de0f3ed165e7965cc51476dececd20cd9 to reference a working roast chart interface. We want to simplify and clean up the logic - the existing logic was over complicating the data movement but it was working. Core methodology & intent should be considered when refactoring - we are not reinventing the interface and data movement, we are cleaning it up**
 
 ### Phase 4: Data Source Correction
 

@@ -20,17 +20,6 @@
 		previousIndex = currentIndex;
 	}
 
-	function slideTransition(_: Element, { duration = 300, direction = 1, delay = 0 }) {
-		return {
-			duration,
-			delay,
-			css: (t: number) => `
-				transform: translateX(${direction * (1 - t) * 100}%);
-				position: relative;
-				z-index: 0;
-			`
-		};
-	}
 
 	function toggleEdit() {
 		if (isEditing) {
@@ -151,7 +140,6 @@
 		}
 	}
 
-	$: slideDirection = currentIndex > previousIndex ? 1 : -1;
 </script>
 
 <div class="overflow-hidden rounded-lg bg-background-secondary-light p-3 sm:p-6">
@@ -184,10 +172,7 @@
 	<div class="relative">
 		<div class="overflow-hidden">
 			{#key currentIndex}
-				<div
-					class="grid grid-cols-1 gap-4 sm:grid-cols-2"
-					in:slideTransition={{ direction: slideDirection, delay: 50 }}
-				>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					{#each Object.entries(profile) as [key, value]}
 						{#if ['oz_in', 'oz_out', 'roast_notes', 'roast_targets'].includes(key)}
 							<div
@@ -245,17 +230,6 @@
 		</div>
 	</div>
 	<div>
-		<div class="mt-4 flex items-center justify-center gap-2">
-			{#each profiles as _, i}
-				<button
-					class="h-3 w-3 rounded-full transition-all duration-300 {i === currentIndex
-						? 'scale-110 bg-background-tertiary-light'
-						: 'border border-border-light bg-background-primary-light hover:bg-border-light'}"
-					onclick={() => goToProfile(i)}
-					aria-label="Go to profile {i + 1}"
-				></button>
-			{/each}
-		</div>
 		<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row sm:space-x-2">
 			<button
 				class="w-full rounded sm:w-auto {isEditing

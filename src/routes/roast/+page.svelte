@@ -17,9 +17,8 @@
 		msToSeconds
 	} from './stores';
 
-	import RoastHistoryTable from './RoastHistoryTable.svelte';
+	import RoastProfileTabs from './RoastProfileTabs.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
-	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import RoastPageSkeleton from '$lib/components/RoastPageSkeleton.svelte';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 
@@ -514,23 +513,13 @@
 				noScroll: true
 			});
 
-			// Fetch and load roast data using new API structure
-			const response = await fetch(`/api/roast-data?roast_id=${profile.roast_id}`);
-			if (!response.ok) {
-				throw new Error('Failed to fetch roast data');
-			}
-
-			// The roast-data API returns normalized data from roast_events and roast_temperatures
-			// Clear existing data first
+			// Clear live roasting state when switching to saved profile  
 			$temperatureEntries = [];
 			$eventEntries = [];
 			$roastData = [];
 			$roastEvents = [];
 			$startTime = null;
 			$accumulatedTime = 0;
-
-			// Smooth scroll to top
-			window.scrollTo({ top: 0, behavior: 'smooth' });
 		} catch (error) {
 			console.error('Error selecting profile:', error);
 			alert('Failed to load profile data');
@@ -583,29 +572,8 @@
 				currentRoastProfile = actualProfile;
 			}
 
-			// Clear existing data for this roast
-			await fetch(`/api/roast-data?roast_id=${roastId}`, { method: 'DELETE' });
-
-			// Save event data (live roasting only generates events, no temperature data)
-			if ($eventEntries.length > 0) {
-				const logResponse = await fetch('/api/roast-data', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(
-						$eventEntries.map((entry) => ({
-							...entry,
-							roast_id: roastId
-						}))
-					)
-				});
-
-				if (!logResponse.ok) {
-					const errorData = await logResponse.json();
-					throw new Error(errorData.error || 'Failed to save roast data');
-				}
-			}
+			// Note: Roast event data is now saved directly during roasting process
+			// Legacy data clearing/saving removed - clean slate implementation
 
 			// Reload and select the saved profile
 			await loadRoastProfiles();
@@ -672,6 +640,24 @@
 		// Refresh profiles list
 		await loadRoastProfiles();
 	}
+
+	// Function to clear the current profile (for Browse Profiles tab)
+	function handleClearProfile() {
+		currentRoastProfile = null;
+		selectedBean = { name: 'No Bean Selected' };
+		
+		// Clear roasting state
+		isRoasting = false;
+		isPaused = false;
+		
+		// Clear live roasting data
+		$temperatureEntries = [];
+		$eventEntries = [];
+		$roastData = [];
+		$roastEvents = [];
+		$startTime = null;
+		$accumulatedTime = 0;
+	}
 </script>
 
 {#if isFormVisible}
@@ -694,67 +680,36 @@
 {#if !data || !data.data}
 	<RoastPageSkeleton />
 {:else}
-	<div class="mx-auto w-full max-w-[100vw] overflow-x-hidden">
-		<!-- Current roast profile display -->
-		{#if currentRoastProfile}
-			<div
-				class="mb-3 w-full overflow-x-hidden rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
-			>
-				<div class="mb-6">
-					<RoastProfileDisplay
-						profile={currentRoastProfile}
-						profiles={currentRoastProfile
-							? sortedGroupedProfiles()[currentRoastProfile.batch_name] || []
-							: []}
-						currentIndex={currentProfileIndex}
-						onUpdate={handleProfileUpdate}
-						onDelete={handleProfileDelete}
-						on:profileDeleted={handleProfileDelete}
-						on:batchDeleted={handleBatchDelete}
-					/>
-				</div>
+	<!-- New Tab-Based Interface -->
+	<RoastProfileTabs
+		sortedBatchNames={sortedBatchNames()}
+		sortedGroupedProfiles={sortedGroupedProfiles()}
+		{expandedBatches}
+		{currentRoastProfile}
+		{currentProfileIndex}
+		{chartComponentLoading}
+		{RoastChartInterface}
+		onToggleBatch={toggleBatch}
+		onSelectProfile={selectProfile}
+		onProfileUpdate={handleProfileUpdate}
+		onProfileDelete={handleProfileDelete}
+		onBatchDelete={handleBatchDelete}
+		onClearProfile={handleClearProfile}
+		{selectedBean}
+		bind:isPaused
+		bind:fanValue
+		bind:heatValue
+		bind:isRoasting
+		bind:selectedEvent
+		{updateFan}
+		{updateHeat}
+		{saveRoastProfile}
+		clearRoastData={() => handleClearRoastData()}
+	/>
 
-				<!-- Main roasting interface -->
-				<div class="mb-6 rounded-lg bg-background-secondary-light p-4">
-					{#if chartComponentLoading}
-						<ChartSkeleton height="500px" title="Loading roasting interface..." />
-					{:else if RoastChartInterface}
-						<RoastChartInterface
-							bind:isPaused
-							{currentRoastProfile}
-							bind:fanValue
-							bind:heatValue
-							bind:isRoasting
-							bind:selectedEvent
-							{updateFan}
-							{updateHeat}
-							{saveRoastProfile}
-							{selectedBean}
-							clearRoastData={() => handleClearRoastData()}
-						/>
-					{/if}
-				</div>
-			</div>
-		{/if}
-
-		<!-- Replace the old table with this component -->
-		<div class="w-full">
-			<RoastHistoryTable
-				sortedBatchNames={sortedBatchNames()}
-				sortedGroupedProfiles={sortedGroupedProfiles()}
-				{expandedBatches}
-				{currentRoastProfile}
-				onToggleBatch={toggleBatch}
-				onSelectProfile={selectProfile}
-			/>
-		</div>
-
-		{#if !$filteredData || $filteredData.length === 0}
-			<p class="p-4 text-text-primary-light">
-				No roast profiles available ({data?.data?.length || 0} items in raw data)
-			</p>
-		{:else}
-			<!-- Existing content -->
-		{/if}
-	</div>
+	{#if !$filteredData || $filteredData.length === 0}
+		<p class="p-4 text-text-primary-light">
+			No roast profiles available ({data?.data?.length || 0} items in raw data)
+		</p>
+	{/if}
 {/if}
