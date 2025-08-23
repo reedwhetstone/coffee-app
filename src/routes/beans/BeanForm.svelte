@@ -51,7 +51,7 @@
 
 	// Shared form data for batch-level fields
 	let sharedFormData = $state({
-		purchase_date: '',
+		purchase_date: new Date().toISOString().split('T')[0], // Auto-populate with current date
 		tax_ship_cost: 0.0,
 		notes: ''
 	});
