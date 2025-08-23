@@ -399,7 +399,8 @@
 												class="block w-full text-sm text-text-primary-light file:mr-4 file:rounded-md file:border-0 file:bg-background-tertiary-light file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-opacity-90"
 											/>
 											<p class="text-xs text-text-secondary-light">
-												Upload .alog file from Artisan to import complete roast profile with temperature curves and events
+												Upload .alog file from Artisan to import complete roast profile with
+												temperature curves and events
 											</p>
 											{#if bean.artisan_file}
 												<p class="text-xs font-medium text-green-600">

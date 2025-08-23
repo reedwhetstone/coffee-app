@@ -103,35 +103,6 @@ CREATE TABLE public.green_coffee_inv (
   CONSTRAINT green_coffee_inv_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id),
   CONSTRAINT green_coffee_inv_catalog_id_fkey FOREIGN KEY (catalog_id) REFERENCES public.coffee_catalog(id)
 );
-CREATE TABLE public.profile_log (
-  log_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  roast_id integer NOT NULL,
-  fan_setting integer,
-  heat_setting integer,
-  start smallint DEFAULT 0,
-  maillard smallint DEFAULT 0,
-  fc_start smallint DEFAULT 0,
-  fc_rolling smallint DEFAULT 0,
-  fc_end smallint DEFAULT 0,
-  sc_start smallint DEFAULT 0,
-  drop smallint DEFAULT 0,
-  end smallint DEFAULT 0,
-  time time without time zone,
-  user uuid,
-  bean_temp numeric,
-  charge smallint DEFAULT '0'::smallint,
-  environmental_temp numeric,
-  time_seconds numeric,
-  is_dry_end boolean DEFAULT false,
-  is_fc_end boolean DEFAULT false,
-  is_sc_start boolean DEFAULT false,
-  is_sc_end boolean DEFAULT false,
-  is_cool boolean DEFAULT false,
-  data_source text DEFAULT 'live'::text,
-  CONSTRAINT profile_log_pkey PRIMARY KEY (log_id),
-  CONSTRAINT profile_log_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id),
-  CONSTRAINT profile_log_roast_id_fkey FOREIGN KEY (roast_id) REFERENCES public.roast_profiles(roast_id)
-);
 CREATE TABLE public.roast_events (
   event_id integer NOT NULL DEFAULT nextval('roast_events_event_id_seq'::regclass),
   roast_id integer NOT NULL,
@@ -237,13 +208,13 @@ CREATE TABLE public.sales (
   oz_sold integer NOT NULL,
   price numeric NOT NULL,
   buyer character varying NOT NULL,
-  batch_name character varying NOT NULL,
+  batch_name text,
   sell_date date NOT NULL,
   purchase_date date NOT NULL,
   user uuid,
   CONSTRAINT sales_pkey PRIMARY KEY (id),
-  CONSTRAINT sales_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id),
-  CONSTRAINT sales_green_coffee_inv_id_fkey FOREIGN KEY (green_coffee_inv_id) REFERENCES public.green_coffee_inv(id)
+  CONSTRAINT sales_green_coffee_inv_id_fkey FOREIGN KEY (green_coffee_inv_id) REFERENCES public.green_coffee_inv(id),
+  CONSTRAINT sales_user_fkey FOREIGN KEY (user) REFERENCES public.user_roles(id)
 );
 CREATE TABLE public.shared_links (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

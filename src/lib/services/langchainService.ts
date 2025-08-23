@@ -524,7 +524,7 @@ RULES
 					input: message,
 					chat_history: conversationHistory.map((msg) => `${msg.role}: ${msg.content}`).join('\n')
 				},
-				{ 
+				{
 					version: 'v2',
 					timeout: 240000 // 4 minutes built-in timeout
 				}
@@ -578,7 +578,7 @@ RULES
 					const token = event.data?.chunk?.content || '';
 					if (token) {
 						streamedTokens += token;
-						
+
 						// Emit accumulated tokens every 500ms or when we have meaningful content
 						const now = Date.now();
 						if (now - lastTokenUpdate > 500 || streamedTokens.length > 50) {
@@ -588,12 +588,12 @@ RULES
 					}
 				} else if (event.event === 'on_chain_end' && event.name === 'AgentExecutor') {
 					finalResponse = event.data?.output?.output || event.data?.output || '';
-					
+
 					// Emit any remaining streamed tokens
 					if (streamedTokens.trim()) {
 						emitThinkingStep(`✍️ ${streamedTokens.trim()}`);
 					}
-					
+
 					emitThinkingStep('Almost ready...');
 					break; // Exit early on completion
 				}

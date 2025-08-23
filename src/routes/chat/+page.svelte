@@ -161,7 +161,7 @@
 					console.log('Request was cancelled by client or server timeout');
 					return; // Silently return, don't show error to user
 				}
-				
+
 				const errorText = await response.text().catch(() => 'Unknown error');
 				throw new Error(`Chat request failed (${response.status}): ${errorText}`);
 			}
@@ -283,7 +283,7 @@
 		} catch (error) {
 			console.error('Chat error:', error);
 			thinkingSteps = [];
-			
+
 			// Only show error message if it's not a cancellation
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			if (!errorMessage.includes('cancelled') && !errorMessage.includes('aborted')) {

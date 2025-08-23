@@ -508,7 +508,7 @@
 			// Update URL to reflect the selected profile
 			const currentUrl = new URL(window.location.href);
 			currentUrl.searchParams.set('profileId', profile.roast_id.toString());
-			goto(currentUrl.pathname + '?' + currentUrl.searchParams.toString(), { 
+			goto(currentUrl.pathname + '?' + currentUrl.searchParams.toString(), {
 				replaceState: true,
 				keepFocus: true,
 				noScroll: true
