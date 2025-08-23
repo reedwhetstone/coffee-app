@@ -146,26 +146,23 @@
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center sm:text-left">
-				<h1 class="text-primary-light break-words text-xl font-bold sm:text-2xl">
-					{profile.batch_name} // {formatDateForDisplay(profile.roast_date)}
+				<h1 class="text-primary-light break-words text-lg font-bold sm:text-xl">
+					{profile.coffee_name}
 				</h1>
 				{#if profile.roast_id}
 					<div class="mt-1 text-sm text-text-secondary-light">
-						Roast ID: {profile.roast_id}
+						Roast ID: {profile.roast_id} • {formatDateForDisplay(profile.roast_date)}
 					</div>
 				{/if}
 			</div>
-			<button
-				class="w-full rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900 sm:w-auto"
-				onclick={deleteBatch}
-			>
-				Delete Batch
-			</button>
-		</div>
-		<div class="mt-2 flex items-center justify-center sm:justify-start">
-			<h3 class="text-l break-words font-bold text-text-primary-light">
-				{profile.coffee_name}
-			</h3>
+			<div class="flex gap-2">
+				<button
+					class="rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900 text-sm"
+					onclick={deleteBatch}
+				>
+					Delete Batch
+				</button>
+			</div>
 		</div>
 	</div>
 

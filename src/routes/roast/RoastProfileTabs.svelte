@@ -2,6 +2,7 @@
 	import RoastHistoryTable from './RoastHistoryTable.svelte';
 	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
+	import { formatDateForDisplay } from '$lib/utils/dates';
 	import type { RoastProfile } from '$lib/types/component.types';
 	import type { ComponentType } from 'svelte';
 
@@ -112,6 +113,36 @@
 		// Clear current profile state in parent
 		onClearProfile();
 	}
+
+	// Helper function for batch summary (from RoastHistoryTable)
+	function getBatchSummary(profiles: any[]) {
+		const totalWeight = profiles.reduce((sum, p) => sum + (p.oz_in || 0), 0);
+
+		// Calculate average weight loss percentage for batch summary
+		const validProfiles = profiles.filter(
+			(p) =>
+				(p.weight_loss_percent !== null && p.weight_loss_percent !== undefined) ||
+				(p.oz_in && p.oz_out)
+		);
+		const avgWeightLoss =
+			validProfiles.length > 0
+				? validProfiles.reduce((sum, p) => {
+						if (p.weight_loss_percent !== null && p.weight_loss_percent !== undefined) {
+							return sum + p.weight_loss_percent;
+						}
+						if (p.oz_in && p.oz_out) {
+							return sum + ((p.oz_in - p.oz_out) / p.oz_in) * 100;
+						}
+						return sum;
+					}, 0) / validProfiles.length
+				: 0;
+
+		return {
+			totalWeight: totalWeight.toFixed(1),
+			avgWeightLoss: avgWeightLoss.toFixed(1),
+			count: profiles.length
+		};
+	}
 </script>
 
 <div class="mx-auto w-full max-w-[100vw] overflow-x-hidden">
@@ -130,24 +161,6 @@
 				Browse Profiles
 			</button>
 			
-			<!-- Individual Profile Tabs -->
-			{#if currentRoastProfile}
-				{@const batchProfiles = sortedGroupedProfiles[currentRoastProfile.batch_name] || []}
-				{#each batchProfiles as profile, index}
-					<button
-						class="flex items-center gap-2 border-b-2 px-1 py-2 text-sm font-medium transition-colors duration-200 {currentRoastProfile.roast_id === profile.roast_id
-							? 'border-background-tertiary-light text-background-tertiary-light'
-							: 'border-transparent text-text-secondary-light hover:border-border-light hover:text-text-primary-light'}"
-						onclick={() => {
-							viewMode = 'active';
-							handleProfileSelect(profile);
-						}}
-					>
-						<span>📊</span>
-						#{profile.roast_id}
-					</button>
-				{/each}
-			{/if}
 		</div>
 	</div>
 
@@ -166,44 +179,98 @@
 				/>
 			</div>
 		{:else if viewMode === 'active' && currentRoastProfile}
-			<!-- Active Profile Tab Content -->
-			<div class="mt-6 space-y-6">
-				<!-- Profile Info Section -->
-				<div
-					class="w-full overflow-x-hidden rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
-				>
-					<RoastProfileDisplay
-						profile={currentRoastProfile}
-						profiles={currentRoastProfile
-							? sortedGroupedProfiles[currentRoastProfile.batch_name] || []
-							: []}
-						currentIndex={currentProfileIndex}
-						onUpdate={onProfileUpdate}
-						onDelete={onProfileDelete}
-						on:profileDeleted={onProfileDelete}
-						on:batchDeleted={onBatchDelete}
-					/>
+			<!-- Tiered Active Profile Content -->
+			{@const batchProfiles = sortedGroupedProfiles[currentRoastProfile.batch_name] || []}
+			{@const batchSummary = getBatchSummary(batchProfiles)}
+			<div class="mt-6">
+				
+				<!-- Tier 1: Batch Header -->
+				<div class="rounded-lg bg-background-secondary-light ring-1 ring-border-light mb-0">
+					<div class="flex w-full items-center justify-between p-4">
+						<div class="flex items-center gap-3">
+							<div>
+								<h3 class="text-lg font-semibold text-text-primary-light">
+									{currentRoastProfile.batch_name}
+								</h3>
+								<p class="text-sm text-text-secondary-light">
+									{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''} • {formatDateForDisplay(
+										batchProfiles[0]?.roast_date
+									)}
+								</p>
+							</div>
+						</div>
+						<div class="hidden text-right sm:block">
+							<div class="grid grid-cols-3 gap-6 text-sm">
+								<div>
+									<p class="text-text-secondary-light">Total Weight</p>
+									<p class="font-semibold text-blue-500">{batchSummary.totalWeight} oz</p>
+								</div>
+								<div>
+									<p class="text-text-secondary-light">Avg Loss</p>
+									<p class="font-semibold text-red-500">{batchSummary.avgWeightLoss}%</p>
+								</div>
+								<div>
+									<p class="text-text-secondary-light">Roasts</p>
+									<p class="font-semibold text-purple-500">{batchSummary.count}</p>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Tier 2: Bean Profile Sub-tabs -->
+					<div class="border-t border-border-light bg-background-primary-light">
+						<div class="flex space-x-1 overflow-x-auto p-2">
+							{#each batchProfiles as profile}
+								<button
+									class="flex-shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200 {currentRoastProfile.roast_id === profile.roast_id
+										? 'bg-background-tertiary-light text-white'
+										: 'bg-background-secondary-light text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+									onclick={() => handleProfileSelect(profile)}
+								>
+									{profile.coffee_name} #{profile.roast_id}
+								</button>
+							{/each}
+						</div>
+					</div>
 				</div>
 
-				<!-- Chart Interface Section -->
-				<div class="rounded-lg bg-background-secondary-light p-4">
-					{#if chartComponentLoading}
-						<ChartSkeleton height="500px" title="Loading roasting interface..." />
-					{:else if RoastChartInterface}
-						<RoastChartInterface
-							bind:isPaused
-							{currentRoastProfile}
-							bind:fanValue
-							bind:heatValue
-							bind:isRoasting
-							bind:selectedEvent
-							{updateFan}
-							{updateHeat}
-							{saveRoastProfile}
-							{selectedBean}
-							clearRoastData={clearRoastData}
+				<!-- Content Area: Profile Details + Chart -->
+				<div class="mt-6 space-y-6">
+					<!-- Profile Info Section -->
+					<div
+						class="w-full overflow-x-hidden rounded-lg border border-border-light bg-background-secondary-light p-3 shadow-md"
+					>
+						<RoastProfileDisplay
+							profile={currentRoastProfile}
+							profiles={batchProfiles}
+							currentIndex={currentProfileIndex}
+							onUpdate={onProfileUpdate}
+							onDelete={onProfileDelete}
+							on:profileDeleted={onProfileDelete}
+							on:batchDeleted={onBatchDelete}
 						/>
-					{/if}
+					</div>
+
+					<!-- Chart Interface Section -->
+					<div class="rounded-lg bg-background-secondary-light p-4">
+						{#if chartComponentLoading}
+							<ChartSkeleton height="500px" title="Loading roasting interface..." />
+						{:else if RoastChartInterface}
+							<RoastChartInterface
+								bind:isPaused
+								{currentRoastProfile}
+								bind:fanValue
+								bind:heatValue
+								bind:isRoasting
+								bind:selectedEvent
+								{updateFan}
+								{updateHeat}
+								{saveRoastProfile}
+								{selectedBean}
+								clearRoastData={clearRoastData}
+							/>
+						{/if}
+					</div>
 				</div>
 			</div>
 		{/if}
