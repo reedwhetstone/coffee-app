@@ -21,6 +21,7 @@
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import RoastPageSkeleton from '$lib/components/RoastPageSkeleton.svelte';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
+	import UnifiedLoadingState from '$lib/components/UnifiedLoadingState.svelte';
 
 	// Lazy load the heavy chart component
 	let RoastChartInterface = $state<any>(null);
@@ -63,7 +64,12 @@
 	let currentProfileIndex = $state<number>(0);
 
 	// Page data
-	let { data } = $props<{ data: PageData }>();
+	let { data = { data: [], role: 'viewer' } } = $props<{ data?: Partial<PageData> }>();
+
+	// Client-side data state
+	let clientData = $state<any[]>([]);
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
 
 	// Track processing state
 	let processing = $state(false);
@@ -85,18 +91,52 @@
 	// 	);
 	// });
 
-	// Separate effect for filter store initialization - only depends on data, not $filteredData
+	// Client-side data fetching
 	$effect(() => {
-		const currentRoute = page.url.pathname;
+		const fetchData = async () => {
+			isLoading = true;
+			error = null;
+			try {
+				const response = await fetch('/api/roast');
+				if (!response.ok) {
+					throw new Error('Failed to fetch roast profiles');
+				}
+				const result = await response.json();
+				clientData = result.data || [];
 
-		// Initialize filter store if needed - only depends on raw data
-		if (
-			data?.data?.length > 0 &&
-			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
-		) {
-			filterStore.initializeForRoute(currentRoute, data.data);
-		}
+				// Initialize FilterStore with client data
+				const currentRoute = page.url.pathname;
+				filterStore.initializeForRoute(currentRoute, clientData);
+			} catch (err) {
+				console.error('Error fetching roast data:', err);
+				error = err instanceof Error ? err.message : 'Failed to load roast data';
+			} finally {
+				isLoading = false;
+			}
+		};
+
+		fetchData();
 	});
+
+	// Function to refresh data using client-side API call
+	async function refreshData() {
+		isLoading = true;
+		try {
+			const response = await fetch('/api/roast');
+			if (!response.ok) {
+				throw new Error('Failed to refresh roast data');
+			}
+			const result = await response.json();
+			clientData = result.data || [];
+
+			// Re-initialize FilterStore with fresh data
+			filterStore.initializeForRoute(page.url.pathname, clientData);
+		} catch (err) {
+			console.error('Error refreshing data:', err);
+		} finally {
+			isLoading = false;
+		}
+	}
 
 	// Derived values for grouped profiles - directly computed from $filteredData
 	let sortedGroupedProfiles = $derived(() => {
@@ -202,12 +242,12 @@
 	// Fetches all roast profiles from the API and sets the current profile
 	async function loadRoastProfiles() {
 		try {
-			const response = await fetch('/api/roast-profiles');
+			const response = await fetch('/api/roast');
 			if (response.ok) {
 				const result = await response.json();
 				if (result.data && Array.isArray(result.data)) {
-					// Update the page data - the reactive effect will handle filter store initialization
-					data.data = result.data;
+					// Update the client data - the reactive effect will handle filter store initialization
+					clientData = result.data;
 				}
 			}
 		} catch (error) {
@@ -282,9 +322,9 @@
 			}
 		});
 
-		// Check for profileId to load from URL params
-		if (profileIdToLoad && data?.data?.length > 0 && !currentRoastProfile) {
-			const targetProfile = data.data.find(
+		// Check for profileId to load from URL params after client data loads
+		if (profileIdToLoad && clientData.length > 0 && !currentRoastProfile) {
+			const targetProfile = clientData.find(
 				(p: { roast_id: number }) => p.roast_id === parseInt(profileIdToLoad)
 			);
 			if (targetProfile) {
@@ -306,7 +346,7 @@
 	async function handleFormSubmit(profileData: RoastFormData) {
 		try {
 			// The form now sends data with batch_beans format, use it directly
-			const response = await fetch('/api/roast-profiles', {
+			const response = await fetch('/api/roast', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -321,6 +361,9 @@
 
 			const result = await response.json();
 			const profiles = result.profiles || result; // Handle both new and legacy response formats
+
+			// Refresh data to get updated profiles
+			await refreshData();
 
 			if (profiles && profiles.length > 0) {
 				// Update the selected bean and current profile
@@ -547,7 +590,7 @@
 				roastId = currentRoastProfile.roast_id;
 			} else {
 				// Create new profile first
-				const profileResponse = await fetch('/api/roast-profiles', {
+				const profileResponse = await fetch('/api/roast', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json'
@@ -676,10 +719,18 @@
 <!-- Global Loading Overlay -->
 <SimpleLoadingScreen show={false} overlay={true} />
 
-<!-- Show instant skeleton when no data loaded yet -->
-{#if !data || !data.data}
-	<RoastPageSkeleton />
-{:else}
+<UnifiedLoadingState
+	state={isLoading ? 'loading' : error ? 'error' : 'success'}
+	{error}
+	skeletonComponent={RoastPageSkeleton}
+	on:retry={async () => {
+		error = null;
+		// Re-trigger the data fetching
+		await refreshData();
+	}}
+/>
+
+{#if !isLoading && !error}
 	<!-- New Tab-Based Interface -->
 	<RoastProfileTabs
 		sortedBatchNames={sortedBatchNames()}

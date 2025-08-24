@@ -2,14 +2,14 @@ import type { PageServerLoad } from './$types';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	// With server-side pagination implemented, we can now use a smaller initial limit
-	// The client will fetch additional pages via the API as needed
+	// Progressive hydration: Load minimal initial data for faster SSR
+	// Client will lazy-load remaining items for better perceived performance
 	const { data: stockedData } = await locals.supabase
 		.from('coffee_catalog')
 		.select('*')
 		.eq('stocked', true)
 		.order('arrival_date', { ascending: false })
-		.limit(15); // Initial page load - additional data fetched via API
+		.limit(5); // Reduced for faster initial load - remaining items loaded client-side
 
 	// Generate schema for authenticated coffee catalog page
 	const baseUrl = `${url.protocol}//${url.host}`;

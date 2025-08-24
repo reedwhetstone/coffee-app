@@ -42,6 +42,32 @@
 	function handleNavClick() {
 		onClose(); // Close menu immediately, don't wait for navigation to complete
 	}
+
+	// Preloading cache to avoid duplicate requests
+	const preloadCache = new Set<string>();
+
+	// Function to preload API data on hover
+	async function preloadRouteData(route: string) {
+		if (preloadCache.has(route)) return; // Already preloading or preloaded
+		
+		preloadCache.add(route);
+		
+		try {
+			if (route === '/beans') {
+				// Preload beans data
+				const beansResponse = fetch('/api/beans');
+				const catalogResponse = fetch('/api/catalog');
+				await Promise.allSettled([beansResponse, catalogResponse]);
+			} else if (route === '/roast') {
+				// Preload roast data
+				await fetch('/api/roast');
+			}
+		} catch (error) {
+			console.log('Preload failed for', route, ':', error);
+			// Remove from cache on failure so it can be retried
+			preloadCache.delete(route);
+		}
+	}
 </script>
 
 <!-- Navigation menu panel - full height -->
@@ -97,6 +123,7 @@
 					<a
 						href="/beans"
 						onclick={handleNavClick}
+						onmouseenter={() => preloadRouteData('/beans')}
 						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/beans'
 							? 'bg-background-tertiary-light text-white'
@@ -109,6 +136,7 @@
 					<a
 						href="/roast"
 						onclick={handleNavClick}
+						onmouseenter={() => preloadRouteData('/roast')}
 						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
 						'/roast'
 							? 'bg-background-tertiary-light text-white'

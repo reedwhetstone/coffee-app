@@ -9,6 +9,7 @@
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import BeansPageSkeleton from '$lib/components/BeansPageSkeleton.svelte';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
+	import UnifiedLoadingState from '$lib/components/UnifiedLoadingState.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type {
 		InventoryWithCatalog,
@@ -68,7 +69,7 @@
 		role?: 'viewer' | 'member' | 'admin';
 	};
 
-	let { data } = $props<{ data: PageData }>();
+	let { data = { data: [], role: 'viewer', catalogData: [] } } = $props<{ data?: Partial<PageData> }>();
 
 	// Debug: Log the data
 	$effect(() => {
@@ -114,19 +115,52 @@
 		}
 	});
 
-	// Track loading state
+	// Track loading state for client-side data fetching
 	let isLoading = $state(true);
+	let clientData = $state<PageData['data']>([]);
+	let catalogData = $state<CoffeeCatalog[]>([]);
+	let error = $state<string | null>(null);
 
-	// Initialize filter store when data is available
+	// Client-side data fetching
 	$effect(() => {
-		const currentRoute = page.url.pathname;
+		const shareToken = page.url.searchParams.get('share');
+		const fetchData = async () => {
+			isLoading = true;
+			error = null;
+			try {
+				// Build query params
+				const params = new URLSearchParams();
+				if (shareToken) params.append('share', shareToken);
 
-		// Simple initialization: only run if we have data and store isn't initialized for this route
-		if (data?.data && (!$filterStore.initialized || $filterStore.routeId !== currentRoute)) {
-			console.log('Filter store: Initializing for beans route');
-			filterStore.initializeForRoute(currentRoute, data.data);
-			isLoading = false;
-		}
+				// Fetch beans data
+				const response = await fetch(`/api/beans?${params}`);
+				if (!response.ok) {
+					throw new Error('Failed to fetch beans data');
+				}
+				const result = await response.json();
+				clientData = result.data || [];
+
+				// Only fetch catalog data if not sharing (for forms)
+				if (!shareToken) {
+					const catalogResponse = await fetch('/api/catalog');
+					if (catalogResponse.ok) {
+						const catalogResult = await catalogResponse.json();
+						catalogData = Array.isArray(catalogResult) ? catalogResult : catalogResult.data || [];
+					}
+				}
+
+				// Initialize FilterStore with client data
+				const currentRoute = page.url.pathname;
+				filterStore.initializeForRoute(currentRoute, clientData);
+			} catch (err) {
+				console.error('Error fetching beans data:', err);
+				error = err instanceof Error ? err.message : 'Failed to load data';
+			} finally {
+				isLoading = false;
+			}
+		};
+
+		fetchData();
 	});
 
 	// State for form and bean selection
@@ -157,9 +191,29 @@
 		}
 	}
 
-	// Function to refresh data using SvelteKit invalidation (preferred approach)
+	// Function to refresh data using client-side API call
 	async function refreshData() {
-		await invalidateAll();
+		isLoading = true;
+		try {
+			const shareToken = page.url.searchParams.get('share');
+			const params = new URLSearchParams();
+			if (shareToken) params.append('share', shareToken);
+
+			// Fetch fresh beans data
+			const response = await fetch(`/api/beans?${params}`);
+			if (!response.ok) {
+				throw new Error('Failed to refresh beans data');
+			}
+			const result = await response.json();
+			clientData = result.data || [];
+
+			// Re-initialize FilterStore with fresh data
+			filterStore.initializeForRoute(page.url.pathname, clientData);
+		} catch (err) {
+			console.error('Error refreshing data:', err);
+		} finally {
+			isLoading = false;
+		}
 	}
 
 	// Function to handle bean deletion
@@ -202,36 +256,37 @@
 		selectedBean = updatedBean;
 	}
 
-	onMount(() => {
-		console.log('Beans page mounted');
+	// Handle search state and navigation after data loads
+	$effect(() => {
+		if (!isLoading && clientData.length > 0) {
+			const searchState = page.state as any;
 
-		// Set loading to false
-		isLoading = false;
+			// Check if we should show a bean based on the search state
+			if (searchState?.searchType === 'green' && searchState?.searchId) {
+				const foundBean = clientData.find(
+					(bean) => bean.id === searchState.searchId
+				);
+				if (foundBean) {
+					selectedBean = foundBean;
+					setTimeout(() => {
+						if (beanProfileElement) {
+							beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+						}
+					}, 100);
+				}
+			}
 
-		// Handle search state from navigation
-		const searchState = page.state as any;
-
-		// Check if we should show a bean based on the search state
-		if (searchState?.searchType === 'green' && searchState?.searchId && data?.data) {
-			const foundBean = data.data.find(
-				(bean: InventoryWithCatalog) => bean.id === searchState.searchId
-			);
-			if (foundBean) {
-				selectedBean = foundBean;
+			// Check if we should show the bean form
+			if (searchState?.showBeanForm) {
 				setTimeout(() => {
-					if (beanProfileElement) {
-						beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-					}
+					handleAddNewBean();
 				}, 100);
 			}
 		}
+	});
 
-		// Check if we should show the bean form
-		if (searchState?.showBeanForm) {
-			setTimeout(() => {
-				handleAddNewBean();
-			}, 100);
-		}
+	onMount(() => {
+		console.log('Beans page mounted');
 
 		// Add event listener for the custom show-bean-form event
 		window.addEventListener('show-bean-form', handleAddNewBean);
@@ -286,10 +341,18 @@
 	}
 </script>
 
-<!-- Show instant skeleton when no data loaded yet -->
-{#if !data || !data.data}
-	<BeansPageSkeleton />
-{:else}
+<UnifiedLoadingState
+	state={isLoading ? 'loading' : error ? 'error' : 'success'}
+	{error}
+	skeletonComponent={BeansPageSkeleton}
+	on:retry={async () => {
+		error = null;
+		// Re-trigger the data fetching
+		await refreshData();
+	}}
+/>
+
+{#if !isLoading && !error}
 	<div class="">
 		<!-- Header Section -->
 		<div class="mb-6">
@@ -429,7 +492,7 @@
 			<div class="mb-4" bind:this={beanProfileElement}>
 				<BeanProfileTabs
 					{selectedBean}
-					role={data.role}
+					role={data?.role || 'viewer'}
 					onUpdate={async (updatedBean) => {
 						// Update selectedBean and refresh data
 						selectedBean = updatedBean;
@@ -456,7 +519,7 @@
 						bean={null}
 						onClose={() => (isFormVisible = false)}
 						onSubmit={handleFormSubmit}
-						catalogBeans={data?.catalogData || []}
+						catalogBeans={catalogData}
 					/>
 				</div>
 			</div>
@@ -466,7 +529,7 @@
 		{#if !isLoading && $filteredData && $filteredData.length > 0}
 			<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 				<div class="text-sm text-text-secondary-light">
-					Showing {$filteredData.length} of {data?.data?.length || 0} coffees
+					Showing {$filteredData.length} of {clientData.length || 0} coffees
 				</div>
 			</div>
 		{/if}
@@ -485,10 +548,10 @@
 				>
 					<div class="mb-4 text-6xl opacity-50">☕</div>
 					<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
-						{data?.data?.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
+						{clientData.length > 0 ? 'No Coffees Match Your Filters' : 'No Coffee Beans Yet'}
 					</h3>
 					<p class="mb-4 text-text-secondary-light">
-						{data?.data?.length > 0
+						{clientData.length > 0
 							? 'Try adjusting your filters to see more coffees, or add a new coffee to your inventory.'
 							: 'Start building your coffee inventory by adding your first green coffee bean.'}
 					</p>
@@ -497,9 +560,9 @@
 							onclick={() => handleAddNewBean()}
 							class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 						>
-							{data?.data?.length > 0 ? 'Add New Coffee' : 'Add Your First Bean'}
+							{clientData.length > 0 ? 'Add New Coffee' : 'Add Your First Bean'}
 						</button>
-						{#if data?.data?.length > 0}
+						{#if clientData.length > 0}
 							<button
 								onclick={() => filterStore.clearFilters()}
 								class="rounded-md border border-background-tertiary-light px-4 py-2 font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
