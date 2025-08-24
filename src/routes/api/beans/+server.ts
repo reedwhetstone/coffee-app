@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { requireUserAuth } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
+import { updateStockedStatus } from '$lib/server/stockedStatusUtils.js';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
@@ -228,6 +229,7 @@ export const PUT: RequestHandler = async (event) => {
 			Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
 		);
 
+
 		// First do the update without the join to avoid schema cache issues
 		const { error: updateError } = await supabase
 			.from('green_coffee_inv')
@@ -237,6 +239,16 @@ export const PUT: RequestHandler = async (event) => {
 		if (updateError) {
 			console.error('Update error:', updateError);
 			throw updateError;
+		}
+
+		// Auto-update stocked status if inventory quantities changed and stocked wasn't manually set
+		if (updateData.purchased_qty_lbs !== undefined && updateData.stocked === undefined) {
+			try {
+				await updateStockedStatus(supabase, parseInt(id), user.id);
+			} catch (stockError) {
+				console.warn('Failed to auto-update stocked status:', stockError);
+				// Don't fail the whole operation if stocked status update fails
+			}
 		}
 
 		// Then fetch the updated data with the join

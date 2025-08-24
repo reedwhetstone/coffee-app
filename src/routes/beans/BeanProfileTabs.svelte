@@ -79,7 +79,8 @@
 		'purchased_qty_lbs',
 		'bean_cost',
 		'tax_ship_cost',
-		'rank'
+		'rank',
+		'stocked'
 	];
 
 	const tabs = [
@@ -115,6 +116,11 @@
 
 			// Deep clone to avoid reference issues
 			editedBean = JSON.parse(JSON.stringify(selectedBean));
+			
+			// Ensure stocked has a boolean value (default to false if null/undefined)
+			if (editedBean.stocked === null || editedBean.stocked === undefined) {
+				editedBean.stocked = false;
+			}
 		}
 	});
 
@@ -131,6 +137,7 @@
 				purchase_date: prepareDateForAPI(editedBean.purchase_date),
 				last_updated: new Date().toISOString()
 			};
+
 
 			const response = await fetch(`/api/beans?id=${selectedBean.id}`, {
 				method: 'PUT',
@@ -381,7 +388,30 @@
 							) || 0}
 						{@const remainingLbs = (purchasedOz - roastedOz) / 16}
 						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-							<h4 class="text-sm font-medium text-text-primary-light">STOCKED INVENTORY</h4>
+							<div class="flex items-center justify-between">
+								<h4 class="text-sm font-medium text-text-primary-light">STOCKED INVENTORY</h4>
+								{#if isEditing}
+									<!-- Checkbox -->
+									<label class="flex items-center gap-2">
+										<input
+											type="checkbox"
+											bind:checked={editedBean.stocked}
+											class="h-4 w-4 rounded border-border-light text-green-500 focus:ring-green-500 focus:ring-offset-0"
+										/>
+										<span class="text-sm font-medium text-text-secondary-light">In Stock</span>
+									</label>
+								{:else}
+									<!-- Status Indicator -->
+									<div class="flex items-center gap-2">
+										<div
+											class="h-3 w-3 rounded-full {selectedBean.stocked ? 'bg-green-500' : 'bg-red-500'}"
+										></div>
+										<span class="text-xs font-medium text-text-secondary-light">
+											{selectedBean.stocked ? 'In Stock' : 'Out of Stock'}
+										</span>
+									</div>
+								{/if}
+							</div>
 							<div class="mt-2 flex items-center gap-3">
 								<span
 									class="text-2xl font-bold {remainingLbs > 0 ? 'text-green-500' : 'text-red-500'}"
@@ -392,6 +422,11 @@
 									({purchasedOz.toFixed(0)} oz purchased - {roastedOz.toFixed(0)} oz roasted)
 								</span>
 							</div>
+							{#if isEditing}
+								<div class="mt-2 text-xs text-text-secondary-light">
+									Toggle to manually override stock status (auto-updates when inventory &lt; 4 oz)
+								</div>
+							{/if}
 						</div>
 					{/if}
 				</div>

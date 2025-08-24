@@ -32,8 +32,8 @@ export async function updateStockedStatus(supabase: any, coffee_id: number, user
 		const purchasedOz = (coffee.purchased_qty_lbs || 0) * 16;
 		const remainingOz = purchasedOz - totalOzIn;
 
-		// Update stocked status if remaining quantity is below 8 oz (0.5 lb)
-		const shouldBeStocked = remainingOz >= 8;
+		// Update stocked status if remaining quantity is below 4 oz
+		const shouldBeStocked = remainingOz >= 4;
 
 		const { error: updateError } = await supabase
 			.from('green_coffee_inv')
