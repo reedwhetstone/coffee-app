@@ -46,14 +46,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 	try {
 		console.log(`=== RAW CHART DATA API: Roast ${roastIdNum} ===`);
-		
+
 		const dbQueryStart = performance.now();
-		
+
 		// Use time-based adaptive sampling - single RPC call replaces 4+ previous queries
-		const [{ data: chartData, error: dataError }, { data: metadata, error: metaError }] = 
+		const [{ data: chartData, error: dataError }, { data: metadata, error: metaError }] =
 			await Promise.all([
-				supabase.rpc('get_chart_data_sampled', { 
-					roast_id_param: roastIdNum, 
+				supabase.rpc('get_chart_data_sampled', {
+					roast_id_param: roastIdNum,
 					target_points: 400 // Stay under 1,000 row limit
 				}),
 				supabase.rpc('get_chart_metadata', { roast_id_param: roastIdNum })
@@ -67,7 +67,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		}
 
 		const processingStart = performance.now();
-		
+
 		// Database now returns time_milliseconds directly - no conversion needed
 		const responseData: RawChartData = {
 			rawData: chartData || [],
@@ -77,7 +77,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				sampleRate: Math.ceil((metadata?.[0]?.total_data_points || 0) / 400), // Calculate from actual data
 				timeRange: [
 					metadata?.[0]?.time_min_ms || 0, // Keep in milliseconds
-					metadata?.[0]?.time_max_ms || 0  // Keep in milliseconds
+					metadata?.[0]?.time_max_ms || 0 // Keep in milliseconds
 				],
 				tempRange: [metadata?.[0]?.temp_min || 0, metadata?.[0]?.temp_max || 500],
 				rorRange: [metadata?.[0]?.ror_min || 0, metadata?.[0]?.ror_max || 50],
@@ -89,7 +89,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				}
 			}
 		};
-		
+
 		const processingTime = performance.now() - processingStart;
 		const totalApiTime = performance.now() - startTime;
 
@@ -109,7 +109,6 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		});
 
 		return json(responseData);
-
 	} catch (error) {
 		console.error('Error fetching raw chart data:', error);
 		return json({ error: 'Failed to process chart data' }, { status: 500 });

@@ -41,16 +41,16 @@
 	function formatDisplayName(eventString: string): string {
 		return eventString
 			.split('_')
-			.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
 			.join(' ');
 	}
 
 	// Frontend control mapping configuration - visible and adjustable
 	const CONTROL_MAPPING = {
-		useSimplified: true,  // User preference
+		useSimplified: true, // User preference
 		mappings: {
-			'burner': 'heat',
-			'air': 'fan'
+			burner: 'heat',
+			air: 'fan'
 		}
 	};
 
@@ -58,7 +58,10 @@
 		// TODO: Evaluate if these conversions are actually necessary
 		// Current mapping preserves existing chart functionality
 		if (CONTROL_MAPPING.useSimplified) {
-			return CONTROL_MAPPING.mappings[eventString as keyof typeof CONTROL_MAPPING.mappings] || eventString;
+			return (
+				CONTROL_MAPPING.mappings[eventString as keyof typeof CONTROL_MAPPING.mappings] ||
+				eventString
+			);
 		}
 		return eventString; // Use raw event_string if no mapping needed
 	}
@@ -2182,13 +2185,13 @@
 			const controlSeries = new Map<string, any[]>();
 
 			// Process raw data with frontend logic - times already in milliseconds from DB
-			rawData.rawData?.forEach(row => {
+			rawData.rawData?.forEach((row) => {
 				const timeMs = row.time_milliseconds; // Already in milliseconds from corrected DB function
 				const timeSeconds = timeMs / 1000; // Convert to seconds for internal data structures
 
 				if (row.data_type === 'temperature') {
 					// Build temperature entries
-					let tempEntry = temperatureData.find(t => t.time_seconds === timeSeconds);
+					let tempEntry = temperatureData.find((t) => t.time_seconds === timeSeconds);
 					if (!tempEntry) {
 						tempEntry = {
 							roast_id: roastId,
@@ -2203,11 +2206,11 @@
 					}
 					// Map field names to temperature entry properties
 					if (row.field_name === 'bean_temp') tempEntry.bean_temp = row.value_numeric;
-					else if (row.field_name === 'environmental_temp') tempEntry.environmental_temp = row.value_numeric;
+					else if (row.field_name === 'environmental_temp')
+						tempEntry.environmental_temp = row.value_numeric;
 					else if (row.field_name === 'ambient_temp') tempEntry.ambient_temp = row.value_numeric;
 					else if (row.field_name === 'ror_bean_temp') tempEntry.ror_bean_temp = row.value_numeric;
-				}
-				else if (row.data_type === 'milestone') {
+				} else if (row.data_type === 'milestone') {
 					milestoneEvents.push({
 						roast_id: roastId,
 						time_seconds: timeSeconds,
@@ -2219,8 +2222,7 @@
 						user_generated: false,
 						automatic: true
 					});
-				}
-				else if (row.data_type === 'control') {
+				} else if (row.data_type === 'control') {
 					// Group control data by event_string for series
 					const mappedControl = getControlMapping(row.event_string || '');
 					if (!controlSeries.has(mappedControl)) {
@@ -2237,8 +2239,8 @@
 			savedTemperatureEntries = temperatureData.sort((a, b) => a.time_seconds - b.time_seconds);
 
 			// Combine milestone and control events for savedEventEntries
-			const controlEvents = Array.from(controlSeries.entries()).flatMap(([eventString, points]) => 
-				points.map(point => ({
+			const controlEvents = Array.from(controlSeries.entries()).flatMap(([eventString, points]) =>
+				points.map((point) => ({
 					roast_id: roastId,
 					time_seconds: point.time_seconds,
 					event_type: 1,
@@ -2258,14 +2260,14 @@
 				category: 'control',
 				values: values.sort((a, b) => a.time_seconds - b.time_seconds),
 				value_range: {
-					min: Math.min(...values.map(v => v.value)),
-					max: Math.max(...values.map(v => v.value)),
+					min: Math.min(...values.map((v) => v.value)),
+					max: Math.max(...values.map((v) => v.value)),
 					detected_scale: 'percentage'
 				}
 			}));
 
 			// Convert milestone events to chart display format with frontend formatting
-			$roastEvents = milestoneEvents.map(milestone => ({
+			$roastEvents = milestoneEvents.map((milestone) => ({
 				time: milestone.time_seconds * 1000, // Convert to milliseconds for chart
 				name: formatDisplayName(milestone.event_string || 'Unknown')
 			}));
@@ -2275,7 +2277,7 @@
 				$roastData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
 			} else {
 				// Create basic data points from milestones for chart rendering
-				$roastData = milestoneEvents.map(event => ({
+				$roastData = milestoneEvents.map((event) => ({
 					time: event.time_seconds * 1000, // Convert to milliseconds for chart
 					heat: 0,
 					fan: 0,
@@ -2299,14 +2301,13 @@
 
 			console.log(`Frontend processing results for ${roastId}:`, {
 				tempPoints: savedTemperatureEntries.length,
-				controlPoints: savedEventEntries.filter(e => e.category === 'control').length,
+				controlPoints: savedEventEntries.filter((e) => e.category === 'control').length,
 				milestones: milestoneEvents.length,
 				controlSeries: controlSeries.size,
 				processingTime: `${processingTime.toFixed(2)}ms`,
 				totalTime: `${totalTime.toFixed(2)}ms`,
 				apiTime: rawData.metadata?.performanceMetrics?.totalApiTime || 0
 			});
-
 		} catch (error) {
 			console.error('Error loading roast data:', error);
 			savedTemperatureEntries = [];

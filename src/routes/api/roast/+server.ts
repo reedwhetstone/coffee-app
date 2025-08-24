@@ -229,10 +229,7 @@ export const DELETE: RequestHandler = async (event) => {
 			.eq('roast_id', id);
 		if (tempError) throw tempError;
 
-		const { error: eventError } = await supabase
-			.from('roast_events')
-			.delete()
-			.eq('roast_id', id);
+		const { error: eventError } = await supabase.from('roast_events').delete().eq('roast_id', id);
 		if (eventError) throw eventError;
 
 		// Finally, delete the roast profile

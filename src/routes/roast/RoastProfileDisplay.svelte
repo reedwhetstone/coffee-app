@@ -20,7 +20,6 @@
 		previousIndex = currentIndex;
 	}
 
-
 	function toggleEdit() {
 		if (isEditing) {
 			saveChanges();
@@ -139,7 +138,6 @@
 			alert(error instanceof Error ? error.message : 'Failed to delete batch profiles');
 		}
 	}
-
 </script>
 
 <div class="overflow-hidden rounded-lg bg-background-secondary-light p-3 sm:p-6">
@@ -157,7 +155,7 @@
 			</div>
 			<div class="flex gap-2">
 				<button
-					class="rounded border-2 border-red-800 px-3 py-1 text-text-primary-light hover:bg-red-900 text-sm"
+					class="rounded border-2 border-red-800 px-3 py-1 text-sm text-text-primary-light hover:bg-red-900"
 					onclick={deleteBatch}
 				>
 					Delete Batch

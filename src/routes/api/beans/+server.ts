@@ -229,7 +229,6 @@ export const PUT: RequestHandler = async (event) => {
 			Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
 		);
 
-
 		// First do the update without the join to avoid schema cache issues
 		const { error: updateError } = await supabase
 			.from('green_coffee_inv')

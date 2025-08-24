@@ -75,7 +75,7 @@
 		if (currentRoastProfile && viewMode === 'browser') {
 			// Only auto-switch if user hasn't manually chosen browser mode
 			viewMode = 'active';
-			
+
 			// Only scroll if user is not already near the tabs
 			setTimeout(() => {
 				const tabsElement = document.querySelector('.tab-navigation');
@@ -102,14 +102,14 @@
 	// Handle Browse Profiles tab click - clear current profile and reset URL
 	function handleBrowseProfilesClick() {
 		viewMode = 'browser';
-		
+
 		// Clear URL profileId parameter
 		const currentUrl = new URL(window.location.href);
 		currentUrl.searchParams.delete('profileId');
 		if (typeof window !== 'undefined') {
 			window.history.replaceState({}, '', currentUrl.pathname + (currentUrl.search || ''));
 		}
-		
+
 		// Clear current profile state in parent
 		onClearProfile();
 	}
@@ -160,7 +160,6 @@
 				<span>📋</span>
 				Browse Profiles
 			</button>
-			
 		</div>
 	</div>
 
@@ -174,7 +173,7 @@
 					{sortedGroupedProfiles}
 					{expandedBatches}
 					{currentRoastProfile}
-					onToggleBatch={onToggleBatch}
+					{onToggleBatch}
 					onSelectProfile={handleProfileSelect}
 				/>
 			</div>
@@ -183,9 +182,8 @@
 			{@const batchProfiles = sortedGroupedProfiles[currentRoastProfile.batch_name] || []}
 			{@const batchSummary = getBatchSummary(batchProfiles)}
 			<div class="mt-6">
-				
 				<!-- Tier 1: Batch Header -->
-				<div class="rounded-lg bg-background-secondary-light ring-1 ring-border-light mb-0">
+				<div class="mb-0 rounded-lg bg-background-secondary-light ring-1 ring-border-light">
 					<div class="flex w-full items-center justify-between p-4">
 						<div class="flex items-center gap-3">
 							<div>
@@ -222,7 +220,8 @@
 						<div class="flex space-x-1 overflow-x-auto p-2">
 							{#each batchProfiles as profile}
 								<button
-									class="flex-shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200 {currentRoastProfile.roast_id === profile.roast_id
+									class="flex-shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200 {currentRoastProfile.roast_id ===
+									profile.roast_id
 										? 'bg-background-tertiary-light text-white'
 										: 'bg-background-secondary-light text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
 									onclick={() => handleProfileSelect(profile)}
@@ -267,7 +266,7 @@
 								{updateHeat}
 								{saveRoastProfile}
 								{selectedBean}
-								clearRoastData={clearRoastData}
+								{clearRoastData}
 							/>
 						{/if}
 					</div>

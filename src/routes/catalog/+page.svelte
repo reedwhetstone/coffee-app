@@ -143,8 +143,8 @@
 	}
 </script>
 
-<!-- Show instant skeleton when no data loaded yet -->
-{#if !data || !data.data}
+<!-- Show skeleton during FilterStore loading -->
+{#if $filterStore.isLoading}
 	<CatalogPageSkeleton />
 {:else}
 	<!-- Coffee Catalog App for Authenticated Users -->

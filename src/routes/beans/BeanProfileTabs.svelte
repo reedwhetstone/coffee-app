@@ -116,7 +116,7 @@
 
 			// Deep clone to avoid reference issues
 			editedBean = JSON.parse(JSON.stringify(selectedBean));
-			
+
 			// Ensure stocked has a boolean value (default to false if null/undefined)
 			if (editedBean.stocked === null || editedBean.stocked === undefined) {
 				editedBean.stocked = false;
@@ -137,7 +137,6 @@
 				purchase_date: prepareDateForAPI(editedBean.purchase_date),
 				last_updated: new Date().toISOString()
 			};
-
 
 			const response = await fetch(`/api/beans?id=${selectedBean.id}`, {
 				method: 'PUT',
@@ -389,7 +388,9 @@
 						{@const remainingLbs = (purchasedOz - roastedOz) / 16}
 						<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 							<div class="flex items-center justify-between">
-								<h4 class="text-sm font-medium text-text-primary-light">{selectedBean.stocked ? 'STOCKED' : 'UNSTOCKED'} INVENTORY</h4>
+								<h4 class="text-sm font-medium text-text-primary-light">
+									{selectedBean.stocked ? 'STOCKED' : 'UNSTOCKED'} INVENTORY
+								</h4>
 								{#if isEditing}
 									<!-- Checkbox -->
 									<label class="flex items-center gap-2">
@@ -404,7 +405,9 @@
 									<!-- Status Indicator -->
 									<div class="flex items-center gap-2">
 										<div
-											class="h-3 w-3 rounded-full {selectedBean.stocked ? 'bg-green-500' : 'bg-red-500'}"
+											class="h-3 w-3 rounded-full {selectedBean.stocked
+												? 'bg-green-500'
+												: 'bg-red-500'}"
 										></div>
 										<span class="text-xs font-medium text-text-secondary-light">
 											{selectedBean.stocked ? 'In Stock' : 'Out of Stock'}
@@ -414,7 +417,11 @@
 							</div>
 							<div class="mt-2 flex items-center gap-3">
 								<span
-									class="text-2xl font-bold {selectedBean.stocked === false ? 'text-red-500' : (remainingLbs > 0 ? 'text-green-500' : 'text-red-500')}"
+									class="text-2xl font-bold {selectedBean.stocked === false
+										? 'text-red-500'
+										: remainingLbs > 0
+											? 'text-green-500'
+											: 'text-red-500'}"
 								>
 									{remainingLbs.toFixed(1)} lbs
 								</span>

@@ -556,7 +556,7 @@
 				noScroll: true
 			});
 
-			// Clear live roasting state when switching to saved profile  
+			// Clear live roasting state when switching to saved profile
 			$temperatureEntries = [];
 			$eventEntries = [];
 			$roastData = [];
@@ -688,11 +688,11 @@
 	function handleClearProfile() {
 		currentRoastProfile = null;
 		selectedBean = { name: 'No Bean Selected' };
-		
+
 		// Clear roasting state
 		isRoasting = false;
 		isPaused = false;
-		
+
 		// Clear live roasting data
 		$temperatureEntries = [];
 		$eventEntries = [];
@@ -723,7 +723,7 @@
 	state={isLoading ? 'loading' : error ? 'error' : 'success'}
 	{error}
 	skeletonComponent={RoastPageSkeleton}
-	on:retry={async () => {
+	onretry={async () => {
 		error = null;
 		// Re-trigger the data fetching
 		await refreshData();

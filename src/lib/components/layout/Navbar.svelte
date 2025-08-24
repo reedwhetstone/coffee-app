@@ -49,9 +49,9 @@
 	// Function to preload API data on hover
 	async function preloadRouteData(route: string) {
 		if (preloadCache.has(route)) return; // Already preloading or preloaded
-		
+
 		preloadCache.add(route);
-		
+
 		try {
 			if (route === '/beans') {
 				// Preload beans data

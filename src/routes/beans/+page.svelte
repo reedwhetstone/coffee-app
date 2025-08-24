@@ -69,7 +69,9 @@
 		role?: 'viewer' | 'member' | 'admin';
 	};
 
-	let { data = { data: [], role: 'viewer', catalogData: [] } } = $props<{ data?: Partial<PageData> }>();
+	let { data = { data: [], role: 'viewer', catalogData: [] } } = $props<{
+		data?: Partial<PageData>;
+	}>();
 
 	// Debug: Log the data
 	$effect(() => {
@@ -263,9 +265,7 @@
 
 			// Check if we should show a bean based on the search state
 			if (searchState?.searchType === 'green' && searchState?.searchId) {
-				const foundBean = clientData.find(
-					(bean) => bean.id === searchState.searchId
-				);
+				const foundBean = clientData.find((bean) => bean.id === searchState.searchId);
 				if (foundBean) {
 					selectedBean = foundBean;
 					setTimeout(() => {
@@ -345,7 +345,7 @@
 	state={isLoading ? 'loading' : error ? 'error' : 'success'}
 	{error}
 	skeletonComponent={BeansPageSkeleton}
-	on:retry={async () => {
+	onretry={async () => {
 		error = null;
 		// Re-trigger the data fetching
 		await refreshData();
@@ -707,7 +707,13 @@
 										</div>
 										<div>
 											<span class="font-medium">{bean.stocked ? 'Stocked' : 'Unstocked'}:</span>
-											<span class={bean.stocked === false ? 'text-red-500' : (remainingLbs > 0 ? 'text-green-500' : 'text-red-500')}>
+											<span
+												class={bean.stocked === false
+													? 'text-red-500'
+													: remainingLbs > 0
+														? 'text-green-500'
+														: 'text-red-500'}
+											>
 												{remainingLbs.toFixed(1)} lbs
 											</span>
 											{#if roastedOz > 0}
