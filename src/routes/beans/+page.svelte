@@ -643,8 +643,8 @@
 											{/if}
 										</div>
 										<div>
-											<span class="font-medium">Stocked:</span>
-											<span class={remainingLbs > 0 ? 'text-green-500' : 'text-red-500'}>
+											<span class="font-medium">{bean.stocked ? 'Stocked' : 'Unstocked'}:</span>
+											<span class={bean.stocked === false ? 'text-red-500' : (remainingLbs > 0 ? 'text-green-500' : 'text-red-500')}>
 												{remainingLbs.toFixed(1)} lbs
 											</span>
 											{#if roastedOz > 0}
