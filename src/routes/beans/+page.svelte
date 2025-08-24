@@ -9,7 +9,6 @@
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import BeansPageSkeleton from '$lib/components/BeansPageSkeleton.svelte';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
-	import UnifiedLoadingState from '$lib/components/UnifiedLoadingState.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type {
 		InventoryWithCatalog,
@@ -341,18 +340,33 @@
 	}
 </script>
 
-<UnifiedLoadingState
-	state={isLoading ? 'loading' : error ? 'error' : 'success'}
-	{error}
-	skeletonComponent={BeansPageSkeleton}
-	onretry={async () => {
-		error = null;
-		// Re-trigger the data fetching
-		await refreshData();
-	}}
-/>
-
-{#if !isLoading && !error}
+{#if isLoading}
+	<BeansPageSkeleton />
+{:else if error}
+	<!-- Error state -->
+	<div class="rounded-lg bg-red-50 p-6 text-center ring-1 ring-red-200">
+		<div class="mb-4 text-6xl opacity-50">⚠️</div>
+		<h3 class="mb-2 text-lg font-semibold text-red-900">Failed to load data</h3>
+		<p class="mb-4 text-red-700">{error}</p>
+		<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
+			<button
+				onclick={async () => {
+					error = null;
+					await refreshData();
+				}}
+				class="rounded-md bg-red-600 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+			>
+				Try Again
+			</button>
+			<button
+				onclick={() => window.location.reload()}
+				class="rounded-md border border-red-600 px-4 py-2 font-medium text-red-600 transition-all duration-200 hover:bg-red-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+			>
+				Reload Page
+			</button>
+		</div>
+	</div>
+{:else}
 	<div class="">
 		<!-- Header Section -->
 		<div class="mb-6">
