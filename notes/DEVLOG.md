@@ -2,8 +2,6 @@
 
 **_IMPORTANT_**
 
-- [ ] - new roast can't select any coffees
-- [ ] - clean un needed roat_profiles cols from table & app
 - [ ] - roast profile report share function
 
 **_IMPORTANT_**
@@ -19,18 +17,11 @@
 - [ ] **UI/UX** - the supplier cupping note dashed lines are way too dark, distracting
 - [ ] **UI/UX** - fix score & rating display
 - [ ] **UI/UX** - saving the cupping notes doesn't retrigger the page to render the new data saved to the db
-- [ ] **UI/UX** - improve linking to roast logs from the bean page
 - [ ] **UI/UX** - Clean up beans catalog profiles and remove user reference
 -
 - [ ] **Web Scraping** - Add option to add a bean based on a URL
 - [ ] **Web Scraping** - Implement automatic scraping for supported URLs
 -
-- [ ] **AI** - Hybrid RAG: Use tool calls for structured lookups: filters, search, pricing, transactions. Use RAG for unstructured knowledge: guides, tips, reviews, roast advice.  
-       - “Find Ethiopian naturals under $10/lb rated 88+” 🔧 Tool Call Clear filters → use MySQL API  
-       - “What’s a good coffee for a chocolatey espresso profile?” 📚 RAG Requires semantic matching and taste context  
-       - “Compare these two coffees side by side” 🔧 Tool Call Deterministic, tabular output  
-       - “How does fermentation impact acidity in natural processed beans?” 📚 RAG Explanatory, doc-based
-- [ ] **AI** - Extremely comprehensive synonym table to bolser RAG
 - [ ] **AI** - add bean filter context button to chat bot
 -
 - [ ] **Performance** - Fix real experience score and content paint
@@ -40,17 +31,10 @@
 - [ ] **Mobile** - Move fan settings below the chart on mobile
 -
 - [ ] **Navigation** - expand on the share functionality - so you can share filtered results from the catalog view
-- [ ] **Navigation** - Improve menu UI - the icons are really hard to understand
-- [ ] **Navigation** - Highlight the catalog page when you are on it in the navigation menu
 - [ ] **Navigation** - move menu bar to bottom bar for mobile
-- [ ] **Navigation** - only display relevant active menu options for each page. Currently showing all of them, indescriminantly
-- [ ] **Navigation** - simplify nav bar area, have less going on. Make it easier to understand what icons mean what.
-- [ ] **Navigation** - make it easier to navigate back to landing page from the pricing page
 - [ ] **Navigation** - improve sales funnel & clickthrough to make it more seamless
 - [ ] **Navigation** - simplify main page? Really long scrolling
 -
-- [ ] **Roast Insights** - make the roast comparison on bean profile show the actual roast names and allow you to navigate directly to those roast profiles
-- [ ] **Roast Insights** - improve filters - the name should be a search, not a drop down.
 - [ ] **Roast Insights** - Add % weight loss display per roast
 - [ ] **Roast Insights** - Add remaining purchased quantity data to bean inventory
 - [ ] **Roast Insights** - integrate a roast darkness token into /roast and /beans roasting sections
