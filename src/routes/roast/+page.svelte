@@ -69,7 +69,7 @@
 	let clientData = $state<any[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
-	
+
 	// Profile operation errors
 	let profileError = $state<string | null>(null);
 	let operationInProgress = $state<string | null>(null);
@@ -120,14 +120,14 @@
 	async function syncData() {
 		isLoading = true;
 		error = null;
-		
+
 		try {
 			const response = await fetch('/api/roast-profiles');
 			if (!response.ok) {
 				throw new Error('Failed to fetch roast profiles');
 			}
 			const result = await response.json();
-			
+
 			if (result.data && Array.isArray(result.data)) {
 				clientData = result.data;
 				// Re-initialize FilterStore with fresh data
@@ -193,9 +193,9 @@
 
 		// Only auto-expand if no profile is currently selected and this is truly the first load
 		if (
-			batchNames.length > 0 && 
-			expandedBatches.size === 0 && 
-			!initialLoadComplete && 
+			batchNames.length > 0 &&
+			expandedBatches.size === 0 &&
+			!initialLoadComplete &&
 			!currentRoastProfile &&
 			!selectionState.selectionInProgress
 		) {
@@ -249,7 +249,6 @@
 			coffeesLoading = false;
 		}
 	}
-
 
 	onMount(() => {
 		let shouldShowForm = false;
@@ -309,20 +308,20 @@
 				// Only proceed if we have a profileId to load and no profile is currently selected
 				if (profileIdToLoad && !currentRoastProfile) {
 					const targetProfileId = parseInt(profileIdToLoad);
-					
+
 					// Use filtered data to ensure consistency with the UI
 					const filteredProfiles = $filteredData || [];
 					let targetProfile = filteredProfiles.find(
 						(p: { roast_id: number }) => p.roast_id === targetProfileId
 					);
-					
+
 					// Fallback to client data if not found in filtered data
 					if (!targetProfile && clientData.length > 0) {
 						targetProfile = clientData.find(
 							(p: { roast_id: number }) => p.roast_id === targetProfileId
 						);
 					}
-					
+
 					if (targetProfile) {
 						console.log('Loading profile from URL parameter:', targetProfile);
 						selectProfile(targetProfile);
@@ -346,7 +345,7 @@
 	async function handleFormSubmit(profileData: RoastFormData) {
 		setOperation('Creating roast profile...');
 		clearProfileError();
-		
+
 		try {
 			// The form now sends data with batch_beans format, use it directly
 			const response = await fetch('/api/roast-profiles', {
@@ -463,7 +462,7 @@
 	async function handleProfileUpdate(updatedProfile: RoastProfile) {
 		setOperation('Updating profile...');
 		clearProfileError();
-		
+
 		try {
 			await syncData(); // Refresh the profiles list first
 			const profile = (data?.data || []).find(
@@ -550,10 +549,10 @@
 
 		selectionState.selectionInProgress = true;
 		selectionState.processing = true;
-		
+
 		try {
 			console.log('Selecting profile:', profile.roast_id, profile.coffee_name);
-			
+
 			// Find the batch and index of the profile - with fallback for data consistency
 			const batchName = profile.batch_name || 'Unknown Batch';
 			const groupedProfiles = sortedGroupedProfiles();
@@ -603,11 +602,13 @@
 			$roastEvents = [];
 			$startTime = null;
 			$accumulatedTime = 0;
-			
+
 			console.log('Profile selection completed successfully');
 		} catch (error) {
 			console.error('Error selecting profile:', error);
-			setProfileError('Failed to load profile data: ' + (error instanceof Error ? error.message : 'Unknown error'));
+			setProfileError(
+				'Failed to load profile data: ' + (error instanceof Error ? error.message : 'Unknown error')
+			);
 		} finally {
 			// Add a small delay to prevent rapid-fire clicks
 			setTimeout(() => {
@@ -621,7 +622,7 @@
 	async function saveRoastProfile() {
 		setOperation('Saving roast profile...');
 		clearProfileError();
-		
+
 		try {
 			if (!selectedBean?.id) {
 				throw new Error(
@@ -669,7 +670,9 @@
 
 			// Reload and select the saved profile
 			await syncData();
-			const savedProfile = (data?.data || []).find((p: { roast_id: number }) => p.roast_id === roastId);
+			const savedProfile = (data?.data || []).find(
+				(p: { roast_id: number }) => p.roast_id === roastId
+			);
 			if (savedProfile) {
 				await selectProfile(savedProfile);
 			}
@@ -701,7 +704,7 @@
 	async function handleClearRoastData() {
 		setOperation('Clearing roast data...');
 		clearProfileError();
-		
+
 		try {
 			if (!currentRoastProfile) {
 				throw new Error('No roast profile selected');
@@ -737,16 +740,20 @@
 		currentRoastProfile = null;
 		selectedBean = { name: 'No Bean Selected' };
 		selectionState.lastSelectedId = null;
-		
+
 		// Clear URL parameter for deleted profile
 		const currentUrl = new URL(window.location.href);
 		currentUrl.searchParams.delete('profileId');
-		goto(currentUrl.pathname + (currentUrl.searchParams.toString() ? '?' + currentUrl.searchParams.toString() : ''), {
-			replaceState: true,
-			keepFocus: true,
-			noScroll: true
-		});
-		
+		goto(
+			currentUrl.pathname +
+				(currentUrl.searchParams.toString() ? '?' + currentUrl.searchParams.toString() : ''),
+			{
+				replaceState: true,
+				keepFocus: true,
+				noScroll: true
+			}
+		);
+
 		// Refresh both server data and client data
 		await syncData();
 	}
@@ -794,9 +801,11 @@
 
 <!-- Profile Operation Status -->
 {#if operationInProgress}
-	<div class="fixed top-4 right-4 z-50 rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
+	<div class="fixed right-4 top-4 z-50 rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
 		<div class="flex items-center">
-			<div class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+			<div
+				class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"
+			></div>
 			<span class="text-sm font-medium text-blue-900">{operationInProgress}</span>
 		</div>
 	</div>
@@ -804,7 +813,7 @@
 
 <!-- Profile Operation Error -->
 {#if profileError}
-	<div class="fixed top-4 right-4 z-50 rounded-lg bg-red-50 p-4 ring-1 ring-red-200">
+	<div class="fixed right-4 top-4 z-50 rounded-lg bg-red-50 p-4 ring-1 ring-red-200">
 		<div class="flex items-start">
 			<div class="mr-3 mt-0.5 h-4 w-4 text-red-500">⚠️</div>
 			<div class="flex-1">
