@@ -69,9 +69,17 @@
 	let clientData = $state<any[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
+	
+	// Profile operation errors
+	let profileError = $state<string | null>(null);
+	let operationInProgress = $state<string | null>(null);
 
 	// Track processing state
-	let processing = $state(false);
+	let selectionState = $state({
+		processing: false,
+		lastSelectedId: null as number | null,
+		selectionInProgress: false
+	});
 	let initialLoadComplete = $state(false);
 
 	// Available coffees for form
@@ -90,48 +98,45 @@
 	// 	);
 	// });
 
-	// Client-side data fetching
-	$effect(() => {
-		const fetchData = async () => {
-			isLoading = true;
-			error = null;
-			try {
-				const response = await fetch('/api/roast');
-				if (!response.ok) {
-					throw new Error('Failed to fetch roast profiles');
-				}
-				const result = await response.json();
-				clientData = result.data || [];
+	// Data loading is handled by onMount to avoid race conditions
 
-				// Initialize FilterStore with client data
-				const currentRoute = page.url.pathname;
-				filterStore.initializeForRoute(currentRoute, clientData);
-			} catch (err) {
-				console.error('Error fetching roast data:', err);
-				error = err instanceof Error ? err.message : 'Failed to load roast data';
-			} finally {
-				isLoading = false;
-			}
-		};
+	// Error handling utilities
+	function setProfileError(message: string) {
+		profileError = message;
+		setTimeout(() => {
+			profileError = null;
+		}, 5000); // Clear error after 5 seconds
+	}
 
-		fetchData();
-	});
+	function clearProfileError() {
+		profileError = null;
+	}
 
-	// Function to refresh data using client-side API call
-	async function refreshData() {
+	function setOperation(operation: string | null) {
+		operationInProgress = operation;
+	}
+
+	// Unified function to sync data from API and update filter store
+	async function syncData() {
 		isLoading = true;
+		error = null;
+		
 		try {
-			const response = await fetch('/api/roast');
+			const response = await fetch('/api/roast-profiles');
 			if (!response.ok) {
-				throw new Error('Failed to refresh roast data');
+				throw new Error('Failed to fetch roast profiles');
 			}
 			const result = await response.json();
-			clientData = result.data || [];
-
-			// Re-initialize FilterStore with fresh data
-			filterStore.initializeForRoute(page.url.pathname, clientData);
+			
+			if (result.data && Array.isArray(result.data)) {
+				clientData = result.data;
+				// Re-initialize FilterStore with fresh data
+				const currentRoute = page.url.pathname;
+				filterStore.initializeForRoute(currentRoute, clientData);
+			}
 		} catch (err) {
-			console.error('Error refreshing data:', err);
+			console.error('Error syncing roast data:', err);
+			error = err instanceof Error ? err.message : 'Failed to load roast data';
 		} finally {
 			isLoading = false;
 		}
@@ -186,8 +191,14 @@
 	$effect(() => {
 		const batchNames = sortedBatchNames();
 
-		// If this is the first load and there are batches, expand the first one
-		if (batchNames.length > 0 && expandedBatches.size === 0 && !initialLoadComplete) {
+		// Only auto-expand if no profile is currently selected and this is truly the first load
+		if (
+			batchNames.length > 0 && 
+			expandedBatches.size === 0 && 
+			!initialLoadComplete && 
+			!currentRoastProfile &&
+			!selectionState.selectionInProgress
+		) {
 			expandedBatches.add(batchNames[0]);
 			initialLoadComplete = true;
 		}
@@ -195,7 +206,8 @@
 
 	// Update selectedBean when currentRoastProfile changes
 	$effect(() => {
-		if (currentRoastProfile) {
+		// Only update if we have a profile and we're not in the middle of profile selection
+		if (currentRoastProfile && !selectionState.selectionInProgress) {
 			// Update selectedBean if it's different
 			if (
 				!selectedBean ||
@@ -238,21 +250,6 @@
 		}
 	}
 
-	// Fetches all roast profiles from the API and sets the current profile
-	async function loadRoastProfiles() {
-		try {
-			const response = await fetch('/api/roast');
-			if (response.ok) {
-				const result = await response.json();
-				if (result.data && Array.isArray(result.data)) {
-					// Update the client data - the reactive effect will handle filter store initialization
-					clientData = result.data;
-				}
-			}
-		} catch (error) {
-			console.error('Error loading roast profiles:', error);
-		}
-	}
 
 	onMount(() => {
 		let shouldShowForm = false;
@@ -305,32 +302,36 @@
 			}, 100);
 		}
 
-		// Load roast profiles and ensure they're displayed
-		loadRoastProfiles().then(() => {
-			// Load specific profile if profileId was provided in URL
-			if (profileIdToLoad && data?.data?.length > 0) {
-				const targetProfile = data.data.find(
-					(p: { roast_id: number }) => p.roast_id === parseInt(profileIdToLoad)
-				);
-				if (targetProfile) {
-					console.log('Loading profile from URL parameter:', targetProfile);
-					selectProfile(targetProfile);
-				} else {
-					console.warn(`Profile with ID ${profileIdToLoad} not found`);
+		// Load roast profiles and handle URL-based profile selection
+		syncData().then(() => {
+			// Wait a bit for the filter store to process the data
+			setTimeout(() => {
+				// Only proceed if we have a profileId to load and no profile is currently selected
+				if (profileIdToLoad && !currentRoastProfile) {
+					const targetProfileId = parseInt(profileIdToLoad);
+					
+					// Use filtered data to ensure consistency with the UI
+					const filteredProfiles = $filteredData || [];
+					let targetProfile = filteredProfiles.find(
+						(p: { roast_id: number }) => p.roast_id === targetProfileId
+					);
+					
+					// Fallback to client data if not found in filtered data
+					if (!targetProfile && clientData.length > 0) {
+						targetProfile = clientData.find(
+							(p: { roast_id: number }) => p.roast_id === targetProfileId
+						);
+					}
+					
+					if (targetProfile) {
+						console.log('Loading profile from URL parameter:', targetProfile);
+						selectProfile(targetProfile);
+					} else {
+						console.warn(`Profile with ID ${profileIdToLoad} not found in available data`);
+					}
 				}
-			}
+			}, 100); // Small delay to ensure filter store is ready
 		});
-
-		// Check for profileId to load from URL params after client data loads
-		if (profileIdToLoad && clientData.length > 0 && !currentRoastProfile) {
-			const targetProfile = clientData.find(
-				(p: { roast_id: number }) => p.roast_id === parseInt(profileIdToLoad)
-			);
-			if (targetProfile) {
-				console.log('Loading profile from URL parameter:', targetProfile);
-				selectProfile(targetProfile);
-			}
-		}
 
 		// Add event listener for the custom show-roast-form event
 		window.addEventListener('show-roast-form', showRoastForm);
@@ -343,9 +344,12 @@
 
 	// Form submission handler for new roast profiles
 	async function handleFormSubmit(profileData: RoastFormData) {
+		setOperation('Creating roast profile...');
+		clearProfileError();
+		
 		try {
 			// The form now sends data with batch_beans format, use it directly
-			const response = await fetch('/api/roast', {
+			const response = await fetch('/api/roast-profiles', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -361,8 +365,11 @@
 			const result = await response.json();
 			const profiles = result.profiles || result; // Handle both new and legacy response formats
 
+			// Close form immediately on successful response
+			isFormVisible = false;
+
 			// Refresh data to get updated profiles
-			await refreshData();
+			await syncData();
 
 			if (profiles && profiles.length > 0) {
 				// Update the selected bean and current profile
@@ -372,17 +379,15 @@
 				};
 
 				// First refresh the profiles list
-				await loadRoastProfiles();
+				await syncData();
 
 				// Then find and select the newly created profile
-				const newProfile = data.data.find(
+				const newProfile = (data?.data || []).find(
 					(p: { roast_id: number }) => p.roast_id === profiles[0].roast_id
 				);
 				if (newProfile) {
 					await selectProfile(newProfile);
 				}
-
-				isFormVisible = false;
 
 				// Return the result for Artisan file upload (already has roast_ids if using new format)
 				return result.roast_ids
@@ -396,7 +401,9 @@
 			}
 		} catch (error: unknown) {
 			console.error('Error creating roast profiles:', error);
-			alert(error instanceof Error ? error.message : 'Failed to create roast profiles');
+			setProfileError(error instanceof Error ? error.message : 'Failed to create roast profiles');
+		} finally {
+			setOperation(null);
 		}
 	}
 
@@ -454,19 +461,24 @@
 
 	// Profile management handlers
 	async function handleProfileUpdate(updatedProfile: RoastProfile) {
+		setOperation('Updating profile...');
+		clearProfileError();
+		
 		try {
-			await loadRoastProfiles(); // Refresh the profiles list first
-			const profile = data.data.find(
+			await syncData(); // Refresh the profiles list first
+			const profile = (data?.data || []).find(
 				(p: { roast_id: number }) => p.roast_id === updatedProfile.roast_id
 			);
 			if (profile) {
 				await selectProfile(profile);
 			} else {
-				throw new Error('Updated profile not found');
+				throw new Error('Updated profile not found in refreshed data');
 			}
 		} catch (error) {
 			console.error('Error updating profile:', error);
-			alert('Failed to update roast profile');
+			setProfileError(error instanceof Error ? error.message : 'Failed to update roast profile');
+		} finally {
+			setOperation(null);
 		}
 	}
 
@@ -475,7 +487,7 @@
 		currentRoastProfile = null;
 		selectedBean = { name: 'No Bean Selected' };
 		// Refresh profiles list
-		await loadRoastProfiles();
+		await syncData();
 	}
 
 	// Function to toggle batch expansion
@@ -518,18 +530,45 @@
 
 	// Function to select a profile
 	async function selectProfile(profile: RoastProfile) {
-		if (processing) return;
+		// Prevent concurrent calls and duplicate selections
+		if (selectionState.processing || selectionState.selectionInProgress) {
+			console.log('Profile selection already in progress, skipping');
+			return;
+		}
 
-		processing = true;
+		// Check if we're trying to select the same profile again
+		if (selectionState.lastSelectedId === profile.roast_id) {
+			console.log('Profile already selected, skipping');
+			return;
+		}
+
+		// Defensive check: ensure profile has required data
+		if (!profile || !profile.roast_id) {
+			console.error('Invalid profile provided to selectProfile:', profile);
+			return;
+		}
+
+		selectionState.selectionInProgress = true;
+		selectionState.processing = true;
+		
 		try {
-			// Find the batch and index of the profile
+			console.log('Selecting profile:', profile.roast_id, profile.coffee_name);
+			
+			// Find the batch and index of the profile - with fallback for data consistency
 			const batchName = profile.batch_name || 'Unknown Batch';
-			const profiles = sortedGroupedProfiles()[batchName] || [];
+			const groupedProfiles = sortedGroupedProfiles();
+			const profiles = groupedProfiles[batchName] || [];
 			const index = profiles.findIndex((p) => p.roast_id === profile.roast_id);
+
+			// If not found in grouped profiles, it might be a timing issue
+			if (index === -1) {
+				console.warn('Profile not found in grouped profiles, using index 0 as fallback');
+			}
 
 			// Make a copy of the profile to avoid reference issues
 			currentRoastProfile = { ...profile };
-			currentProfileIndex = index;
+			currentProfileIndex = Math.max(0, index);
+			selectionState.lastSelectedId = profile.roast_id;
 
 			// Update selected bean
 			selectedBean = {
@@ -540,6 +579,8 @@
 			// Ensure the batch is expanded
 			if (!expandedBatches.has(batchName)) {
 				expandedBatches.add(batchName);
+				// Force reactivity by reassigning the Set
+				expandedBatches = new Set(expandedBatches);
 			}
 
 			// Reset roasting state
@@ -562,16 +603,25 @@
 			$roastEvents = [];
 			$startTime = null;
 			$accumulatedTime = 0;
+			
+			console.log('Profile selection completed successfully');
 		} catch (error) {
 			console.error('Error selecting profile:', error);
-			alert('Failed to load profile data');
+			setProfileError('Failed to load profile data: ' + (error instanceof Error ? error.message : 'Unknown error'));
 		} finally {
-			processing = false;
+			// Add a small delay to prevent rapid-fire clicks
+			setTimeout(() => {
+				selectionState.processing = false;
+				selectionState.selectionInProgress = false;
+			}, 100);
 		}
 	}
 
 	// Simplified save function using normalized data structure
 	async function saveRoastProfile() {
+		setOperation('Saving roast profile...');
+		clearProfileError();
+		
 		try {
 			if (!selectedBean?.id) {
 				throw new Error(
@@ -589,7 +639,7 @@
 				roastId = currentRoastProfile.roast_id;
 			} else {
 				// Create new profile first
-				const profileResponse = await fetch('/api/roast', {
+				const profileResponse = await fetch('/api/roast-profiles', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json'
@@ -618,16 +668,19 @@
 			// Legacy data clearing/saving removed - clean slate implementation
 
 			// Reload and select the saved profile
-			await loadRoastProfiles();
-			const savedProfile = data.data.find((p: { roast_id: number }) => p.roast_id === roastId);
+			await syncData();
+			const savedProfile = (data?.data || []).find((p: { roast_id: number }) => p.roast_id === roastId);
 			if (savedProfile) {
 				await selectProfile(savedProfile);
 			}
 
-			alert('Roast profile saved successfully!');
+			// Success - no alert needed, just clear any errors
+			clearProfileError();
 		} catch (error: unknown) {
 			console.error('Error saving roast profile:', error);
-			alert(error instanceof Error ? error.message : 'Failed to save roast profile');
+			setProfileError(error instanceof Error ? error.message : 'Failed to save roast profile');
+		} finally {
+			setOperation(null);
 		}
 	}
 
@@ -646,6 +699,9 @@
 	}
 
 	async function handleClearRoastData() {
+		setOperation('Clearing roast data...');
+		clearProfileError();
+		
 		try {
 			if (!currentRoastProfile) {
 				throw new Error('No roast profile selected');
@@ -662,15 +718,16 @@
 			const result = await response.json();
 			console.log('Clear roast result:', result);
 
-			// Show success message with details
-			alert(`Successfully cleared roast data: ${result.message}`);
-
+			// Clear data successful - reload the profile
 			if (currentRoastProfile) {
 				await selectProfile(currentRoastProfile); // Reload the profile
 			}
+			clearProfileError();
 		} catch (error) {
 			console.error('Error clearing roast data:', error);
-			alert(error instanceof Error ? error.message : 'Failed to clear roast data');
+			setProfileError(error instanceof Error ? error.message : 'Failed to clear roast data');
+		} finally {
+			setOperation(null);
 		}
 	}
 
@@ -679,14 +736,26 @@
 		// Reset state
 		currentRoastProfile = null;
 		selectedBean = { name: 'No Bean Selected' };
-		// Refresh profiles list
-		await loadRoastProfiles();
+		selectionState.lastSelectedId = null;
+		
+		// Clear URL parameter for deleted profile
+		const currentUrl = new URL(window.location.href);
+		currentUrl.searchParams.delete('profileId');
+		goto(currentUrl.pathname + (currentUrl.searchParams.toString() ? '?' + currentUrl.searchParams.toString() : ''), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
+		
+		// Refresh both server data and client data
+		await syncData();
 	}
 
 	// Function to clear the current profile (for Browse Profiles tab)
 	function handleClearProfile() {
 		currentRoastProfile = null;
 		selectedBean = { name: 'No Bean Selected' };
+		selectionState.lastSelectedId = null;
 
 		// Clear roasting state
 		isRoasting = false;
@@ -699,6 +768,11 @@
 		$roastEvents = [];
 		$startTime = null;
 		$accumulatedTime = 0;
+
+		// Clear URL params
+		const currentUrl = new URL(window.location.href);
+		currentUrl.searchParams.delete('profileId');
+		goto(currentUrl.pathname, { replaceState: true, keepFocus: true, noScroll: true });
 	}
 </script>
 
@@ -718,6 +792,35 @@
 <!-- Global Loading Overlay -->
 <SimpleLoadingScreen show={false} overlay={true} />
 
+<!-- Profile Operation Status -->
+{#if operationInProgress}
+	<div class="fixed top-4 right-4 z-50 rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
+		<div class="flex items-center">
+			<div class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+			<span class="text-sm font-medium text-blue-900">{operationInProgress}</span>
+		</div>
+	</div>
+{/if}
+
+<!-- Profile Operation Error -->
+{#if profileError}
+	<div class="fixed top-4 right-4 z-50 rounded-lg bg-red-50 p-4 ring-1 ring-red-200">
+		<div class="flex items-start">
+			<div class="mr-3 mt-0.5 h-4 w-4 text-red-500">⚠️</div>
+			<div class="flex-1">
+				<p class="text-sm font-medium text-red-900">Operation Failed</p>
+				<p class="text-sm text-red-700">{profileError}</p>
+			</div>
+			<button
+				onclick={() => clearProfileError()}
+				class="ml-2 rounded-md bg-red-100 p-1 text-red-500 hover:bg-red-200"
+			>
+				×
+			</button>
+		</div>
+	</div>
+{/if}
+
 {#if isLoading}
 	<RoastPageSkeleton />
 {:else if error}
@@ -730,7 +833,7 @@
 			<button
 				onclick={async () => {
 					error = null;
-					await refreshData();
+					await syncData();
 				}}
 				class="rounded-md bg-red-600 px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
 			>

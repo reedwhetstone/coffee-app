@@ -17,14 +17,17 @@
 	}>();
 
 	// Process available coffees to ensure proper name property
-	let processedCoffees = $derived(
-		availableCoffees
-			.filter((coffee: any) => coffee.stocked === true)
+	let processedCoffees = $derived(() => {
+		if (!Array.isArray(availableCoffees)) {
+			return [];
+		}
+		return availableCoffees
+			.filter((coffee: any) => coffee?.stocked === true)
 			.map((coffee: any) => ({
 				...coffee,
 				name: coffee.coffee_catalog?.name || coffee.name || 'Unknown Coffee'
-			}))
-	);
+			}));
+	});
 
 	let coffeesLoading = $state(false); // No longer loading since data is passed via props
 
@@ -64,7 +67,8 @@
 
 	function handleCoffeeChange(event: Event, index: number) {
 		const selectedId = (event.target as HTMLSelectElement).value;
-		const selected = processedCoffees.find((coffee: any) => coffee.id.toString() === selectedId);
+		const coffeesArray = processedCoffees();
+		const selected = coffeesArray.find((coffee: any) => coffee.id.toString() === selectedId);
 		if (selected) {
 			batchBeans[index].coffee_id = selected.id;
 			batchBeans[index].coffee_name = selected.name; // Now uses the transformed name property
@@ -334,7 +338,7 @@
 												<option value="">Loading coffees...</option>
 											{:else}
 												<option value="">Select a coffee...</option>
-												{#each processedCoffees as coffee}
+												{#each processedCoffees() as coffee}
 													<option value={coffee.id} selected={coffee.id === selectedBean?.id}>
 														{coffee.name}
 													</option>

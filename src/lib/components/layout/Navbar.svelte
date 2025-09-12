@@ -60,7 +60,7 @@
 				await Promise.allSettled([beansResponse, catalogResponse]);
 			} else if (route === '/roast') {
 				// Preload roast data
-				await fetch('/api/roast');
+				await fetch('/api/roast-profiles');
 			}
 		} catch (error) {
 			console.log('Preload failed for', route, ':', error);
