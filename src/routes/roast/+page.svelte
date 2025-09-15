@@ -668,13 +668,21 @@
 			// Note: Roast event data is now saved directly during roasting process
 			// Legacy data clearing/saving removed - clean slate implementation
 
-			// Reload and select the saved profile
-			await syncData();
-			const savedProfile = (data?.data || []).find(
-				(p: { roast_id: number }) => p.roast_id === roastId
-			);
-			if (savedProfile) {
-				await selectProfile(savedProfile);
+			// For active roasting sessions, avoid full data sync that clears state
+			if (isRoasting || isPaused) {
+				// Just update the current profile with the saved roast_id
+				if (currentRoastProfile) {
+					currentRoastProfile.roast_id = roastId;
+				}
+			} else {
+				// Only sync data and reload profile if not actively roasting
+				await syncData();
+				const savedProfile = (data?.data || []).find(
+					(p: { roast_id: number }) => p.roast_id === roastId
+				);
+				if (savedProfile) {
+					await selectProfile(savedProfile);
+				}
 			}
 
 			// Success - no alert needed, just clear any errors
