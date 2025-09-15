@@ -9,31 +9,29 @@ async function parseResponseAndFetchCoffeeData(response: string, supabase: any) 
 	let structuredResponse = null;
 	let coffeeData: any[] = [];
 
-	// Try to parse as JSON first
+	// Parse JSON response (strict JSON mode should ensure this always works)
 	try {
 		const parsed = JSON.parse(response);
 		if (parsed.message || parsed.coffee_cards || parsed.response_type) {
 			structuredResponse = parsed;
-		}
-	} catch (e) {
-		// Look for coffee_cards pattern in text
-		const coffeeCardsMatch = response.match(/coffee_cards:\s*\[([^\]]+)\]/);
-		if (coffeeCardsMatch) {
-			const idsString = coffeeCardsMatch[1];
-			const coffeeIds = idsString
-				.split(',')
-				.map((id) => parseInt(id.trim()))
-				.filter((id) => !isNaN(id));
-
-			// Extract message (everything before the coffee_cards line)
-			const messageMatch = response.split(/\n.*coffee_cards:/)[0];
-
+		} else {
+			console.warn('Parsed JSON does not match expected structure:', parsed);
+			// Fallback for malformed but parseable JSON
 			structuredResponse = {
-				message: messageMatch.trim(),
-				coffee_cards: coffeeIds,
-				response_type: 'mixed'
+				message: typeof parsed === 'string' ? parsed : JSON.stringify(parsed),
+				coffee_cards: [],
+				response_type: 'text'
 			};
 		}
+	} catch (e) {
+		console.error('Failed to parse JSON response from AI:', e);
+		console.error('Raw response:', response);
+		// Create a fallback response for invalid JSON
+		structuredResponse = {
+			message: 'I apologize, but I encountered an issue formatting my response. Please try asking again.',
+			coffee_cards: [],
+			response_type: 'text'
+		};
 	}
 
 	// Fetch coffee data if we have IDs

@@ -62,7 +62,10 @@ export class LangChainService {
 			model: 'gpt-5-mini-2025-08-07', // Use full GPT-5 for tool calling
 			// Note: GPT-5 models do not support temperature parameter
 			maxTokens: 4096,
-			streaming: true // Enable streaming for real-time response generation
+			streaming: true, // Enable streaming for real-time response generation
+			modelKwargs: {
+				response_format: { type: 'json_object' }
+			}
 		});
 
 		// Initialize memory for conversation context
@@ -86,7 +89,7 @@ export class LangChainService {
 			new DynamicStructuredTool({
 				name: 'coffee_catalog_search',
 				description:
-					'Search for coffee beans in the catalog with filters for origin, processing, variety, price range, flavor keywords, coffee name, recent arrivals, and specific coffee IDs',
+					'Search for coffee beans in the catalog with filters for origin, processing, variety, price range, flavor keywords, coffee name, recent arrivals, supplier, and specific coffee IDs',
 				schema: z.object({
 					origin: z.string().optional().describe('Coffee origin (country, region, or continent)'),
 					process: z
@@ -115,6 +118,7 @@ export class LangChainService {
 						.string()
 						.optional()
 						.describe('Drying method (sun-dried, patio-dried, etc.)'),
+					supplier: z.string().optional().describe('Coffee supplier or source'),
 					coffee_ids: z.array(z.number()).optional().describe('Specific coffee IDs to retrieve')
 				}),
 				func: async (input) => {
@@ -318,12 +322,36 @@ STRATEGIC APPROACH
 5. If tools fail or return no results → acknowledge it, explain, and give general guidance
 
 RESPONSE FORMAT
-You MUST always return valid JSON with the following structure:
+You MUST always return ONLY valid JSON with the following structure:
 {{
-  "message": "Markdown-formatted answer with headers, bullet lists, bold text, etc.",
+  "message": "Markdown-formatted answer with headers, bullet lists, bold text, etc. Use \n for line breaks.",
   "coffee_cards": [list of coffee ID numbers or [] if none],
   "response_type": "text" | "cards" | "mixed"
-			}}
+}}
+
+JSON FORMATTING NOTES:
+- Your entire response must be a single valid JSON object
+- Use \n for line breaks within the message string - NEVER use HTML tags like <br>
+- The API will handle all necessary JSON escaping automatically
+- Do not include any text before or after the JSON object
+
+MARKDOWN FORMATTING RULES:
+- Use \n\n for paragraph breaks (not <br><br>)
+- Use \n for single line breaks (not <br>)
+- Use # ## ### for headers (not HTML heading tags)
+- Use **bold** for emphasis (not <b> or <strong> tags)
+- Use - or * for bullet lists with \n between items
+- NEVER use HTML tags like <br>, <p>, <div>, <b>, <strong>, etc.
+
+CORRECT EXAMPLE:
+{{
+  "message": "## Coffee Recommendations\n\n**Colombia Huila**\n- Origin: Colombia\n- Process: Washed\n- Notes: Chocolate, caramel\n\n**Ethiopia Yirgacheffe**\n- Origin: Ethiopia\n- Process: Natural\n- Notes: Fruity, floral"
+}}
+
+INCORRECT EXAMPLE (DO NOT DO THIS):
+{{
+  "message": "## Coffee Recommendations<br><br><b>Colombia Huila</b><br>- Origin: Colombia<br>- Process: Washed"
+}}
 
 RULES
 - Include coffee IDs only when recommending specific coffees (never roast IDs)
@@ -749,7 +777,10 @@ RULES
 			apiKey: this.openaiApiKey,
 			model: modelName,
 			maxTokens: 4096,
-			streaming: false
+			streaming: false,
+			modelKwargs: {
+				response_format: { type: 'json_object' }
+			}
 		};
 
 		// Only set temperature for non-GPT-5 models

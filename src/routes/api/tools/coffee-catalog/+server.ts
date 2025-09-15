@@ -17,6 +17,7 @@ interface CoffeeCatalogToolInput {
 	name?: string;
 	stocked_days?: number;
 	drying_method?: string;
+	supplier?: string;
 	coffee_ids?: number[];
 }
 
@@ -50,6 +51,7 @@ export const POST: RequestHandler = async (event) => {
 			name,
 			stocked_days,
 			drying_method,
+			supplier,
 			coffee_ids
 		} = input;
 
@@ -88,6 +90,10 @@ export const POST: RequestHandler = async (event) => {
 			query = query.or(
 				`processing.ilike.%${drying_method}%,drying_method.ilike.%${drying_method}%`
 			);
+		}
+
+		if (supplier) {
+			query = query.ilike('source', `%${supplier}%`);
 		}
 
 		if (coffee_ids && coffee_ids.length > 0) {
@@ -167,6 +173,7 @@ export const POST: RequestHandler = async (event) => {
 				name,
 				stocked_days,
 				drying_method,
+				supplier,
 				coffee_ids
 			},
 			search_strategy: searchStrategy
