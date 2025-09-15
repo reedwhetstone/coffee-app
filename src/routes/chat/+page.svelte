@@ -182,7 +182,11 @@
 						for (const line of lines) {
 							if (line.trim() && line.startsWith('data: ')) {
 								try {
-									const data = JSON.parse(line.slice(6));
+									const dataContent = line.slice(6);
+									// Add extra validation for JSON content
+									if (!dataContent.trim()) continue;
+
+									const data = JSON.parse(dataContent);
 
 									if (data.type === 'start') {
 										// Initial start message

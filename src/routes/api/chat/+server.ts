@@ -116,7 +116,22 @@ export const POST: RequestHandler = async (event) => {
 						return;
 					}
 
-					const jsonData = JSON.stringify(data);
+					// Safe JSON stringify with error handling for malformed strings
+					let jsonData: string;
+					try {
+						jsonData = JSON.stringify(data);
+					} catch (jsonError) {
+						console.error('JSON stringify error:', jsonError);
+						// Fallback: sanitize the data and try again
+						const sanitizedData = JSON.parse(JSON.stringify(data, (_, value) => {
+							if (typeof value === 'string') {
+								// Replace problematic characters that might break JSON
+								return value.replace(/[\u0000-\u001f\u007f-\u009f]/g, '');
+							}
+							return value;
+						}));
+						jsonData = JSON.stringify(sanitizedData);
+					}
 
 					// Increase timeout for complex AI processing and add proper cleanup
 					const writePromise = writer.write(encoder.encode(`data: ${jsonData}\n\n`));
