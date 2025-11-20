@@ -123,6 +123,93 @@
 	}
 
 	/**
+	 * Process a single SSE data item
+	 */
+	function processSSEDataItem(data: any) {
+		if (data.type === 'start') {
+			// Initial start message
+			thinkingSteps.push({
+				message: data.message || 'Starting AI processing...',
+				timestamp: new Date()
+			});
+		} else if (data.type === 'thinking') {
+			// Add thinking step with proper timestamp handling
+			thinkingSteps.push({
+				message: data.step,
+				timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
+			});
+		} else if (data.type === 'processing') {
+			// Add processing status
+			thinkingSteps.push({
+				message: data.message || 'Processing response...',
+				timestamp: new Date()
+			});
+		} else if (data.type === 'coffee_data') {
+			// Handle coffee data streaming
+			thinkingSteps.push({
+				message: `📋 Found ${data.count} coffee${data.count === 1 ? '' : 's'} to display`,
+				timestamp: new Date()
+			});
+		} else if (data.type === 'complete') {
+			// Use structured response data if available
+			const structuredResponse = data.structured_response;
+			const coffeeData = data.coffee_data || [];
+
+			// Create base message with streaming flag
+			const newMessage: any = {
+				role: 'assistant',
+				content: '',
+				timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+				isStreaming: true
+			};
+
+			// Store content for streaming
+			streamingContent = structuredResponse?.message || data.response;
+
+			// Dynamically add all structured fields from the response
+			if (structuredResponse) {
+				// Add all fields from structured_response except 'message' (already used for content)
+				Object.entries(structuredResponse).forEach(([key, value]) => {
+					if (key !== 'message') {
+						newMessage[key] = value;
+					}
+				});
+				newMessage.isStructured = true;
+			}
+
+			// Add coffee_data if present (comes separately from API)
+			if (coffeeData.length > 0) {
+				newMessage.coffeeData = coffeeData;
+			}
+
+			// Maintain backward compatibility with existing field names
+			if (structuredResponse?.coffee_cards) {
+				newMessage.coffeeCards = structuredResponse.coffee_cards;
+			}
+
+			// Add message and start streaming animation
+			messages.push(newMessage);
+
+			// Clear thinking steps with fade out animation
+			isStreamingResponse = true;
+			setTimeout(() => {
+				thinkingSteps = [];
+				startStreamingText();
+			}, 500); // Brief delay to show transition
+		} else if (data.type === 'error') {
+			// Handle error with detailed information
+			thinkingSteps = [];
+			console.error('AI processing error:', data.error, data.details);
+
+			messages.push({
+				role: 'assistant',
+				content: `Sorry, I encountered an error: ${data.error}. Please try again.`,
+				timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
+			});
+		}
+	}
+
+	/**
 	 * Send message to chat API with streaming thinking steps
 	 */
 	async function sendMessage() {
@@ -170,14 +257,43 @@
 			if (response.body) {
 				const reader = response.body.getReader();
 				const decoder = new TextDecoder();
+				let buffer = ''; // Buffer for incomplete lines across chunks
 
 				try {
 					while (true) {
 						const { done, value } = await reader.read();
-						if (done) break;
 
-						const chunk = decoder.decode(value);
-						const lines = chunk.split('\n');
+						if (done) {
+							// Process any remaining buffered data
+							if (buffer.trim()) {
+								const lines = buffer.split('\n');
+								for (const line of lines) {
+									if (line.trim() && line.startsWith('data: ')) {
+										try {
+											const dataContent = line.slice(6);
+											if (!dataContent.trim()) continue;
+											const data = JSON.parse(dataContent);
+											processSSEDataItem(data);
+										} catch (e) {
+											console.error('Error parsing final buffered SSE data:', e, line);
+											if (e instanceof SyntaxError) {
+												console.error('JSON parse error - line length:', line.length);
+												console.error('Line preview:', line.substring(0, 200));
+											}
+										}
+									}
+								}
+							}
+							break;
+						}
+
+						// Decode chunk and add to buffer (use stream: true for multi-byte character handling)
+						buffer += decoder.decode(value, { stream: true });
+
+						// Process complete lines (ending with \n)
+						const lines = buffer.split('\n');
+						// Keep the last line in buffer (might be incomplete)
+						buffer = lines.pop() || '';
 
 						for (const line of lines) {
 							if (line.trim() && line.startsWith('data: ')) {
@@ -187,90 +303,13 @@
 									if (!dataContent.trim()) continue;
 
 									const data = JSON.parse(dataContent);
-
-									if (data.type === 'start') {
-										// Initial start message
-										thinkingSteps.push({
-											message: data.message || 'Starting AI processing...',
-											timestamp: new Date()
-										});
-									} else if (data.type === 'thinking') {
-										// Add thinking step with proper timestamp handling
-										thinkingSteps.push({
-											message: data.step,
-											timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
-										});
-									} else if (data.type === 'processing') {
-										// Add processing status
-										thinkingSteps.push({
-											message: data.message || 'Processing response...',
-											timestamp: new Date()
-										});
-									} else if (data.type === 'coffee_data') {
-										// Handle coffee data streaming
-										thinkingSteps.push({
-											message: `📋 Found ${data.count} coffee${data.count === 1 ? '' : 's'} to display`,
-											timestamp: new Date()
-										});
-									} else if (data.type === 'complete') {
-										// Use structured response data if available
-										const structuredResponse = data.structured_response;
-										const coffeeData = data.coffee_data || [];
-
-										// Create base message with streaming flag
-										const newMessage: any = {
-											role: 'assistant',
-											content: '',
-											timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
-											isStreaming: true
-										};
-
-										// Store content for streaming
-										streamingContent = structuredResponse?.message || data.response;
-
-										// Dynamically add all structured fields from the response
-										if (structuredResponse) {
-											// Add all fields from structured_response except 'message' (already used for content)
-											Object.entries(structuredResponse).forEach(([key, value]) => {
-												if (key !== 'message') {
-													newMessage[key] = value;
-												}
-											});
-											newMessage.isStructured = true;
-										}
-
-										// Add coffee_data if present (comes separately from API)
-										if (coffeeData.length > 0) {
-											newMessage.coffeeData = coffeeData;
-										}
-
-										// Maintain backward compatibility with existing field names
-										if (structuredResponse?.coffee_cards) {
-											newMessage.coffeeCards = structuredResponse.coffee_cards;
-										}
-
-										// Add message and start streaming animation
-										messages.push(newMessage);
-
-										// Clear thinking steps with fade out animation
-										isStreamingResponse = true;
-										setTimeout(() => {
-											thinkingSteps = [];
-											startStreamingText();
-										}, 500); // Brief delay to show transition
-									} else if (data.type === 'error') {
-										// Handle error with detailed information
-										thinkingSteps = [];
-										console.error('AI processing error:', data.error, data.details);
-
-										messages.push({
-											role: 'assistant',
-											content: `Sorry, I encountered an error: ${data.error}. Please try again.`,
-											timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
-										});
-									}
+									processSSEDataItem(data);
 								} catch (e) {
 									console.error('Error parsing SSE data:', e, line);
+									if (e instanceof SyntaxError) {
+										console.error('JSON parse error - line length:', line.length);
+										console.error('Line preview:', line.substring(0, 200));
+									}
 								}
 							}
 						}
@@ -474,17 +513,17 @@
 
 {#if !session}
 	<!-- Unauthenticated state -->
-	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
+	<div class="bg-background-primary-light flex min-h-screen items-center justify-center">
 		<div
-			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
+			class="bg-background-secondary-light mx-auto max-w-md rounded-lg p-8 text-center shadow-lg"
 		>
-			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Coffee Chat</h1>
-			<p class="mb-6 text-text-secondary-light">
+			<h1 class="text-text-primary-light mb-4 text-2xl font-bold">Coffee Chat</h1>
+			<p class="text-text-secondary-light mb-6">
 				Sign in to access our AI coffee expert for personalized recommendations and roasting advice.
 			</p>
 			<a
 				href="/auth"
-				class="rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+				class="bg-background-tertiary-light rounded-md px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 			>
 				Sign In
 			</a>
@@ -492,25 +531,25 @@
 	</div>
 {:else if !hasRequiredRole('member')}
 	<!-- Member role required -->
-	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
+	<div class="bg-background-primary-light flex min-h-screen items-center justify-center">
 		<div
-			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
+			class="bg-background-secondary-light mx-auto max-w-md rounded-lg p-8 text-center shadow-lg"
 		>
-			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Premium Feature</h1>
-			<p class="mb-6 text-text-secondary-light">
+			<h1 class="text-text-primary-light mb-4 text-2xl font-bold">Premium Feature</h1>
+			<p class="text-text-secondary-light mb-6">
 				The Coffee Chat AI assistant is available for premium members. Upgrade to access
 				personalized recommendations and expert roasting advice.
 			</p>
 			<div class="space-y-3">
 				<a
 					href="/subscription"
-					class="block rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+					class="bg-background-tertiary-light block rounded-md px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 				>
 					Upgrade to Premium
 				</a>
 				<a
 					href="/"
-					class="block rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+					class="border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light block rounded-md border px-6 py-3 transition-all duration-200 hover:text-white"
 				>
 					Back to Home
 				</a>
@@ -519,19 +558,19 @@
 	</div>
 {:else}
 	<!-- Main chat interface for authenticated members -->
-	<div class="flex h-screen flex-col bg-background-primary-light">
+	<div class="bg-background-primary-light flex h-screen flex-col">
 		<!-- Header -->
-		<header class="border-b border-border-light bg-background-secondary-light px-4 py-3">
+		<header class="border-border-light bg-background-secondary-light border-b px-4 py-3">
 			<div class="flex items-center justify-between">
 				<div>
-					<h1 class="text-xl font-semibold text-text-primary-light">Coffee Chat</h1>
-					<p class="text-sm text-text-secondary-light">AI-powered coffee assistant</p>
+					<h1 class="text-text-primary-light text-xl font-semibold">Coffee Chat</h1>
+					<p class="text-text-secondary-light text-sm">AI-powered coffee assistant</p>
 				</div>
 				<div class="flex space-x-2">
 					{#if messages.length > 0}
 						<button
 							onclick={exportConversation}
-							class="rounded-md border border-background-tertiary-light px-3 py-1 text-sm text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+							class="border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light rounded-md border px-3 py-1 text-sm transition-all duration-200 hover:text-white"
 						>
 							Export
 						</button>
@@ -551,15 +590,15 @@
 			{#if messages.length === 0}
 				<!-- Welcome message -->
 				<div class="mx-auto max-w-2xl text-center">
-					<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
-						<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
+					<div class="bg-background-secondary-light mb-8 rounded-lg p-6">
+						<h2 class="text-text-primary-light mb-3 text-lg font-semibold">
 							Welcome to Coffee Chat! ☕
 						</h2>
-						<p class="mb-4 text-text-secondary-light">
+						<p class="text-text-secondary-light mb-4">
 							I'm your AI coffee expert, here to help with personalized recommendations, roasting
 							advice, and coffee knowledge. Ask me anything about:
 						</p>
-						<div class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2">
+						<div class="text-text-secondary-light grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
 							<div>• Coffee recommendations</div>
 							<div>• Roasting techniques</div>
 							<div>• Flavor profiles</div>
@@ -571,13 +610,13 @@
 
 					<!-- Example queries -->
 					<div class="space-y-2">
-						<p class="text-sm font-medium text-text-primary-light">Try asking:</p>
+						<p class="text-text-primary-light text-sm font-medium">Try asking:</p>
 						<div class="space-y-2 text-sm">
 							<button
 								onclick={() =>
 									(inputMessage =
 										'Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique processing method.')}
-								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+								class="border-border-light bg-background-secondary-light text-text-secondary-light hover:bg-background-tertiary-light block w-full rounded-md border p-2 text-left transition-all hover:text-white"
 							>
 								"Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique
 								processing method."
@@ -585,14 +624,14 @@
 							<button
 								onclick={() =>
 									(inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
-								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+								class="border-border-light bg-background-secondary-light text-text-secondary-light hover:bg-background-tertiary-light block w-full rounded-md border p-2 text-left transition-all hover:text-white"
 							>
 								"What's the best way to roast a washed Costa Rican coffee?"
 							</button>
 							<button
 								onclick={() =>
 									(inputMessage = 'Analyze my recent roasting sessions and suggest improvements')}
-								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+								class="border-border-light bg-background-secondary-light text-text-secondary-light hover:bg-background-tertiary-light block w-full rounded-md border p-2 text-left transition-all hover:text-white"
 							>
 								"Analyze my recent roasting sessions and suggest improvements"
 							</button>
@@ -665,13 +704,13 @@
 		</div>
 
 		<!-- Input area -->
-		<div class="border-t border-border-light bg-background-secondary-light p-4">
+		<div class="border-border-light bg-background-secondary-light border-t p-4">
 			<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
 				<div class="flex space-x-2">
 					<textarea
 						bind:value={inputMessage}
 						placeholder="Ask me about coffee recommendations, roasting advice, or anything coffee-related..."
-						class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
+						class="border-border-light bg-background-primary-light text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:ring-background-tertiary-light flex-1 resize-none rounded-lg border px-4 py-3 focus:outline-none focus:ring-1"
 						rows="1"
 						disabled={isLoading}
 						onkeydown={(e) => {
@@ -689,7 +728,7 @@
 					<button
 						type="submit"
 						disabled={isLoading || !inputMessage.trim()}
-						class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+						class="bg-background-tertiary-light rounded-lg px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if isLoading}
 							<div
@@ -711,7 +750,7 @@
 						{/if}
 					</button>
 				</div>
-				<div class="mt-2 text-xs text-text-secondary-light">
+				<div class="text-text-secondary-light mt-2 text-xs">
 					Press Enter to send, Shift+Enter for new line
 				</div>
 			</form>
