@@ -87,6 +87,15 @@ export interface RoastProfileProps {
 	onViewChart?: (profile: RoastProfile) => void;
 }
 
+export interface RoastProfileDisplayProps {
+	profile: RoastProfile;
+	onUpdate: (profile: RoastProfile) => void;
+	onProfileDeleted: () => void;
+	onBatchDeleted: () => void;
+	profiles?: RoastProfile[];
+	currentIndex?: number;
+}
+
 export interface VirtualScrollProps<T = unknown> {
 	items: T[];
 	itemHeight: number;

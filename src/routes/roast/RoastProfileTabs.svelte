@@ -244,9 +244,8 @@
 							profiles={batchProfiles}
 							currentIndex={currentProfileIndex}
 							onUpdate={onProfileUpdate}
-							onDelete={onProfileDelete}
-							on:profileDeleted={onProfileDelete}
-							on:batchDeleted={onBatchDelete}
+							onProfileDeleted={onProfileDelete}
+							onBatchDeleted={onBatchDelete}
 						/>
 					</div>
 

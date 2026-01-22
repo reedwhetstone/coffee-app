@@ -1,24 +1,30 @@
 <script lang="ts">
 	import { formatDateForDisplay } from '$lib/utils/dates';
-	import { createEventDispatcher } from 'svelte';
+	import type { RoastProfile } from '$lib/types/component.types';
 
-	const dispatch = createEventDispatcher();
+	let {
+		profile,
+		onUpdate,
+		onProfileDeleted,
+		onBatchDeleted,
+		profiles = [],
+		currentIndex = 0
+	} = $props<{
+		profile: RoastProfile;
+		onUpdate: (profile: RoastProfile) => void;
+		onProfileDeleted: () => void;
+		onBatchDeleted: () => void;
+		profiles?: RoastProfile[];
+		currentIndex?: number;
+	}>();
 
-	export let profile: any;
-	export let onUpdate: (profile: any) => void;
-	export const onDelete = () => {};
-	export let profiles: any[] = [];
-	export let currentIndex: number = 0;
+	let isEditing = $state(false);
+	let editedProfile = $state<RoastProfile>({} as RoastProfile);
 
-	let isEditing = false;
-	let editedProfile: any = {};
-	let previousIndex = 0;
-
-	$: {
-		// Update these values when props change
+	// Sync editedProfile when profile prop changes
+	$effect(() => {
 		editedProfile = { ...profile };
-		previousIndex = currentIndex;
-	}
+	});
 
 	function toggleEdit() {
 		if (isEditing) {
@@ -74,8 +80,8 @@
 					throw new Error(error.error || 'Failed to delete profile');
 				}
 
-				// Dispatch event to parent for state update
-				dispatch('profileDeleted');
+				// Notify parent via callback
+				onProfileDeleted();
 			} catch (error) {
 				console.error('Error deleting roast profile:', error);
 				alert(error instanceof Error ? error.message : 'Failed to delete roast profile');
@@ -89,7 +95,6 @@
 			return;
 		}
 
-		previousIndex = currentIndex;
 		currentIndex = index;
 
 		// Get the profile at the new index
@@ -131,8 +136,8 @@
 				throw new Error(error.error || 'Failed to delete batch profiles');
 			}
 
-			// Dispatch event to parent for state update
-			dispatch('batchDeleted');
+			// Notify parent via callback
+			onBatchDeleted();
 		} catch (error) {
 			console.error('Error deleting batch:', error);
 			alert(error instanceof Error ? error.message : 'Failed to delete batch profiles');
@@ -187,7 +192,7 @@
 											<textarea
 												class="relative z-0 min-h-[80px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												rows="4"
-												bind:value={editedProfile[key]}
+												bind:value={(editedProfile as any)[key]}
 											></textarea>
 										{:else if ['oz_in', 'oz_out'].includes(key)}
 											<input
@@ -195,13 +200,13 @@
 												step="0.1"
 												min="0"
 												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-												bind:value={editedProfile[key]}
+												bind:value={(editedProfile as any)[key]}
 											/>
 										{:else}
 											<input
 												type="text"
 												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-												bind:value={editedProfile[key]}
+												bind:value={(editedProfile as any)[key]}
 											/>
 										{/if}
 									{:else}
