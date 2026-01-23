@@ -467,7 +467,8 @@ RULES
 		message: string,
 		conversationHistory: ChatMessage[] = [],
 		userId?: string,
-		onThinkingStep?: (step: string) => void
+		onThinkingStep?: (step: string) => void,
+		abortSignal?: AbortSignal
 	): Promise<ChatResponse> {
 		// Set timeout for Vercel production (max 5 minutes for serverless functions)
 		const TIMEOUT_MS = 4.5 * 60 * 1000; // 4.5 minutes to be safe
@@ -509,7 +510,8 @@ RULES
 			const processingPromise = this.performStreamingProcessing(
 				message,
 				conversationHistory,
-				emitThinkingStep
+				emitThinkingStep,
+				abortSignal
 			);
 
 			// Race between processing and timeout
@@ -543,7 +545,8 @@ RULES
 	private async performStreamingProcessing(
 		message: string,
 		conversationHistory: ChatMessage[],
-		emitThinkingStep: (step: string) => void
+		emitThinkingStep: (step: string) => void,
+		abortSignal?: AbortSignal
 	): Promise<ChatResponse> {
 		try {
 			// Use LangChain's native streamEvents for real-time intermediate steps
@@ -554,7 +557,8 @@ RULES
 				},
 				{
 					version: 'v2',
-					timeout: 240000 // 4 minutes built-in timeout
+					timeout: 240000, // 4 minutes built-in timeout
+					signal: abortSignal // Pass abort signal to LangChain
 				}
 			);
 
@@ -567,6 +571,12 @@ RULES
 
 			// Process events as they stream in
 			for await (const event of streamingEvents) {
+				// Check if abort was signaled
+				if (abortSignal?.aborted) {
+					emitThinkingStep('Request cancelled');
+					throw new Error('Request was aborted by the client');
+				}
+
 				lastActivityTime = Date.now();
 
 				// Map event types to user-friendly thinking steps

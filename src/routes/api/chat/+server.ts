@@ -105,13 +105,13 @@ export const POST: RequestHandler = async (event) => {
 			const writer = writable.getWriter();
 			const encoder = new TextEncoder();
 
-			// Helper function to safely write to stream with timeout and abort handling
+			// Helper function to safely write to stream (simplified - no timeout race)
 			const safeWrite = async (data: any) => {
 				try {
 					// Check if request was aborted
 					if (signal.aborted) {
 						console.log('Stream write cancelled - request aborted');
-						return;
+						return false;
 					}
 
 					// Safe JSON stringify with error handling for malformed strings
@@ -121,127 +121,131 @@ export const POST: RequestHandler = async (event) => {
 					} catch (jsonError) {
 						console.error('JSON stringify error:', jsonError);
 						// Fallback: sanitize the data and try again
-						const sanitizedData = JSON.parse(JSON.stringify(data, (_, value) => {
-							if (typeof value === 'string') {
-								// Replace problematic characters that might break JSON
-								return value.replace(/[\u0000-\u001f\u007f-\u009f]/g, '');
-							}
-							return value;
-						}));
+						const sanitizedData = JSON.parse(
+							JSON.stringify(data, (_, value) => {
+								if (typeof value === 'string') {
+									// Replace problematic characters that might break JSON
+									return value.replace(/[\u0000-\u001f\u007f-\u009f]/g, '');
+								}
+								return value;
+							})
+						);
 						jsonData = JSON.stringify(sanitizedData);
 					}
 
-					// Increase timeout for complex AI processing and add proper cleanup
-					const writePromise = writer.write(encoder.encode(`data: ${jsonData}\n\n`));
-
-					let timeoutId: NodeJS.Timeout | undefined;
-					const timeoutPromise = new Promise((_, reject) => {
-						timeoutId = setTimeout(() => {
-							reject(new Error('Write timeout after 10 seconds'));
-						}, 10000); // Increased from 5s to 10s for complex processing
-					});
-
-					try {
-						await Promise.race([writePromise, timeoutPromise]);
-						if (timeoutId) clearTimeout(timeoutId);
-					} catch (raceError) {
-						if (timeoutId) clearTimeout(timeoutId);
-						throw raceError;
-					}
+					await writer.write(encoder.encode(`data: ${jsonData}\n\n`));
+					return true;
 				} catch (error) {
 					console.error('Error writing to stream:', error);
-					// Don't rethrow - continue processing even if write fails
+					return false;
 				}
 			};
 
-			// Send initial status
-			await safeWrite({ type: 'start', message: 'Understanding your question...' });
+			// Heartbeat mechanism to keep connection alive during long processing
+			let heartbeatInterval: NodeJS.Timeout | undefined;
+			const startHeartbeat = () => {
+				heartbeatInterval = setInterval(async () => {
+					if (!signal.aborted) {
+						await safeWrite({ type: 'heartbeat', timestamp: new Date().toISOString() });
+					}
+				}, 15000); // Every 15 seconds
+			};
+			const stopHeartbeat = () => {
+				if (heartbeatInterval) {
+					clearInterval(heartbeatInterval);
+					heartbeatInterval = undefined;
+				}
+			};
 
-			// Process message with streaming callback
-			try {
-				const streamingPromise = langchainService.processMessageWithStreaming(
-					message,
-					conversation_history || [],
-					user.id,
-					async (thinkingStep: string) => {
-						// Send thinking step via SSE with timestamp
+			// Process streaming in async IIFE to avoid detached promise issues
+			(async () => {
+				startHeartbeat();
+
+				try {
+					// Send initial status
+					await safeWrite({ type: 'start', message: 'Understanding your question...' });
+
+					// Process message with streaming callback, passing abort signal
+					const response = await langchainService.processMessageWithStreaming(
+						message,
+						conversation_history || [],
+						user.id,
+						async (thinkingStep: string) => {
+							// Send thinking step via SSE with timestamp
+							await safeWrite({
+								type: 'thinking',
+								step: thinkingStep,
+								timestamp: new Date().toISOString()
+							});
+						},
+						signal // Pass abort signal to langchain service
+					);
+
+					// Check if aborted before sending final response
+					if (signal.aborted) {
+						console.log('Request aborted before completion');
+						return;
+					}
+
+					// Send processing status
+					await safeWrite({ type: 'processing', message: 'Preparing your recommendations...' });
+
+					// Parse response and fetch coffee data
+					const { structuredResponse, coffeeData } = await parseResponseAndFetchCoffeeData(
+						response.response,
+						supabase
+					);
+
+					// Send coffee data first if available
+					if (coffeeData && coffeeData.length > 0) {
 						await safeWrite({
-							type: 'thinking',
-							step: thinkingStep,
-							timestamp: new Date().toISOString()
+							type: 'coffee_data',
+							data: coffeeData,
+							count: coffeeData.length
 						});
 					}
-				);
 
-				streamingPromise
-					.then(async (response) => {
-						// Send processing status
-						await safeWrite({ type: 'processing', message: 'Preparing your recommendations...' });
-
-						// Parse response and fetch coffee data
-						const { structuredResponse, coffeeData } = await parseResponseAndFetchCoffeeData(
-							response.response,
-							supabase
-						);
-
-						// Send coffee data first if available
-						if (coffeeData && coffeeData.length > 0) {
-							await safeWrite({
-								type: 'coffee_data',
-								data: coffeeData,
-								count: coffeeData.length
-							});
-						}
-
-						// Send final response
-						await safeWrite({
-							type: 'complete',
-							response: response.response,
-							structured_response: structuredResponse,
-							coffee_data: coffeeData,
-							tool_calls: response.tool_calls,
-							conversation_id: response.conversation_id,
-							timestamp: new Date().toISOString()
-						});
-
-						await writer.close();
-					})
-					.catch(async (error) => {
-						console.error('LangChain processing error:', error);
-
-						// Handle specific abort errors
-						let errorMessage = 'Unknown error occurred';
-						if (error instanceof Error) {
-							if (error.message.includes('aborted') || error.message.includes('abort')) {
-								errorMessage = 'Request was cancelled by the client';
-							} else if (error.message.includes('timeout')) {
-								errorMessage = 'Request timed out - please try a simpler question';
-							} else {
-								errorMessage = error.message;
-							}
-						}
-
-						// Send detailed error information
-						await safeWrite({
-							type: 'error',
-							error: errorMessage,
-							details: error instanceof Error ? error.stack : null,
-							timestamp: new Date().toISOString()
-						});
-
-						await writer.close();
+					// Send final response
+					await safeWrite({
+						type: 'complete',
+						response: response.response,
+						structured_response: structuredResponse,
+						coffee_data: coffeeData,
+						tool_calls: response.tool_calls,
+						conversation_id: response.conversation_id,
+						timestamp: new Date().toISOString()
 					});
-			} catch (immediateError) {
-				console.error('Immediate LangChain error:', immediateError);
-				await safeWrite({
-					type: 'error',
-					error: 'Failed to initialize LangChain processing',
-					details:
-						immediateError instanceof Error ? immediateError.message : 'Unknown immediate error',
-					timestamp: new Date().toISOString()
-				});
-				await writer.close();
-			}
+				} catch (error) {
+					console.error('LangChain processing error:', error);
+
+					// Handle specific abort errors
+					let errorMessage = 'Unknown error occurred';
+					if (error instanceof Error) {
+						if (error.message.includes('aborted') || error.message.includes('abort')) {
+							errorMessage = 'Request was cancelled by the client';
+						} else if (error.message.includes('timeout')) {
+							errorMessage = 'Request timed out - please try a simpler question';
+						} else {
+							errorMessage = error.message;
+						}
+					}
+
+					// Send detailed error information
+					await safeWrite({
+						type: 'error',
+						error: errorMessage,
+						details: error instanceof Error ? error.stack : null,
+						timestamp: new Date().toISOString()
+					});
+				} finally {
+					stopHeartbeat();
+					try {
+						await writer.close();
+					} catch (closeError) {
+						console.log('Writer already closed or error closing:', closeError);
+					}
+				}
+			})();
 
 			return new Response(readable, {
 				headers: {

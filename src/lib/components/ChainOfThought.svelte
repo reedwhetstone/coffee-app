@@ -63,20 +63,28 @@
 		]
 	};
 
-	// Get current coffee word based on step count
-	function getCurrentCoffeeWord(): string {
+	// Track current word with $state to prevent flickering
+	let currentWord = $state('');
+	let lastStepCount = $state(-1);
+
+	// Only pick new word when step count changes
+	$effect(() => {
 		const stepCount = steps.length;
 
-		if (stepCount === 0) {
-			// Randomly choose from warmup words for initial step
-			const randomIndex = Math.floor(Math.random() * coffeeWords.warmup.length);
-			return coffeeWords.warmup[randomIndex];
-		} else {
-			// After warmup, randomly choose from execution array
-			const randomIndex = Math.floor(Math.random() * coffeeWords.execution.length);
-			return coffeeWords.execution[randomIndex];
+		if (stepCount !== lastStepCount) {
+			lastStepCount = stepCount;
+
+			if (stepCount === 0) {
+				// Randomly choose from warmup words for initial step
+				const randomIndex = Math.floor(Math.random() * coffeeWords.warmup.length);
+				currentWord = coffeeWords.warmup[randomIndex];
+			} else {
+				// After warmup, randomly choose from execution array
+				const randomIndex = Math.floor(Math.random() * coffeeWords.execution.length);
+				currentWord = coffeeWords.execution[randomIndex];
+			}
 		}
-	}
+	});
 
 	// Get status color for different types of steps
 	function getStatusColor(message: string): string {
@@ -119,7 +127,7 @@
 					<div class="h-1.5 w-1.5 animate-pulse rounded-full bg-background-tertiary-light"></div>
 				</div>
 				<span class="coffee-word text-sm text-text-primary-light">
-					{getCurrentCoffeeWord()}...
+					{currentWord}...
 				</span>
 			</div>
 		{/if}

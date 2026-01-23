@@ -123,9 +123,26 @@
 	}
 
 	/**
+	 * Check if a string is complete, valid JSON
+	 */
+	function isCompleteJson(str: string): boolean {
+		try {
+			JSON.parse(str);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
 	 * Process a single SSE data item
 	 */
 	function processSSEDataItem(data: any) {
+		// Skip heartbeat messages - they're just for keeping connection alive
+		if (data.type === 'heartbeat') {
+			return;
+		}
+
 		if (data.type === 'start') {
 			// Initial start message
 			thinkingSteps.push({
@@ -258,6 +275,33 @@
 				const reader = response.body.getReader();
 				const decoder = new TextDecoder();
 				let buffer = ''; // Buffer for incomplete lines across chunks
+				let jsonBuffer = ''; // Buffer for incomplete JSON across lines
+
+				// Helper to process a data line with JSON buffering
+				const processDataLine = (line: string) => {
+					if (!line.trim() || !line.startsWith('data: ')) return;
+
+					const dataContent = line.slice(6);
+					if (!dataContent.trim()) return;
+
+					// Accumulate JSON content
+					const combinedJson = jsonBuffer + dataContent;
+
+					// Check if we have complete JSON
+					if (isCompleteJson(combinedJson)) {
+						try {
+							const data = JSON.parse(combinedJson);
+							processSSEDataItem(data);
+							jsonBuffer = ''; // Reset buffer on success
+						} catch (e) {
+							console.error('Error parsing SSE data after validation:', e);
+							jsonBuffer = ''; // Reset on unexpected error
+						}
+					} else {
+						// Incomplete JSON - accumulate in buffer
+						jsonBuffer = combinedJson;
+					}
+				};
 
 				try {
 					while (true) {
@@ -268,20 +312,16 @@
 							if (buffer.trim()) {
 								const lines = buffer.split('\n');
 								for (const line of lines) {
-									if (line.trim() && line.startsWith('data: ')) {
-										try {
-											const dataContent = line.slice(6);
-											if (!dataContent.trim()) continue;
-											const data = JSON.parse(dataContent);
-											processSSEDataItem(data);
-										} catch (e) {
-											console.error('Error parsing final buffered SSE data:', e, line);
-											if (e instanceof SyntaxError) {
-												console.error('JSON parse error - line length:', line.length);
-												console.error('Line preview:', line.substring(0, 200));
-											}
-										}
-									}
+									processDataLine(line);
+								}
+							}
+							// Process any remaining JSON buffer
+							if (jsonBuffer.trim() && isCompleteJson(jsonBuffer)) {
+								try {
+									const data = JSON.parse(jsonBuffer);
+									processSSEDataItem(data);
+								} catch (e) {
+									console.error('Error parsing final JSON buffer:', e);
 								}
 							}
 							break;
@@ -296,22 +336,7 @@
 						buffer = lines.pop() || '';
 
 						for (const line of lines) {
-							if (line.trim() && line.startsWith('data: ')) {
-								try {
-									const dataContent = line.slice(6);
-									// Add extra validation for JSON content
-									if (!dataContent.trim()) continue;
-
-									const data = JSON.parse(dataContent);
-									processSSEDataItem(data);
-								} catch (e) {
-									console.error('Error parsing SSE data:', e, line);
-									if (e instanceof SyntaxError) {
-										console.error('JSON parse error - line length:', line.length);
-										console.error('Line preview:', line.substring(0, 200));
-									}
-								}
-							}
+							processDataLine(line);
 						}
 					}
 				} catch (streamError) {
