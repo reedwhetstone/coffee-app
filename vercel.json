@@ -1,9 +1,4 @@
 {
-	"functions": {
-		"api/**": {
-			"maxDuration": 300
-		}
-	},
 	"headers": [
 		{
 			"source": "/api/chat",
