@@ -20,7 +20,7 @@ These issues break core functionality and should be fixed first.
 
 These issues impact usability but don't break core functionality.
 
-- [ ] **UI/UX** - Supplier cupping note dashed lines are too dark and visually distracting. Reduce opacity or change to lighter color.
+- [x] **UI/UX** - Supplier cupping note dashed lines are too dark and visually distracting. Reduce opacity or change to lighter color.
 - [ ] **UI/UX** - Score & rating display formatting needs cleanup. Numbers and labels aren't aligned consistently.
 - [ ] **UI/UX** - Saving cupping notes doesn't refresh page data. After save, the UI should re-render to show the newly saved data without requiring manual refresh.
 - [ ] **UI/UX** - Clean up beans catalog profiles to remove exposed user reference fields from the display.
