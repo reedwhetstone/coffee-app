@@ -955,3 +955,21 @@ if (!response.ok) {
 - Use efficient query patterns (avoid N+1 queries)
 - Handle loading states and error conditions gracefully
 - Test with realistic data volumes
+
+## Common Pitfalls
+
+Patterns learned from prior development sessions. Review before making changes.
+
+1. **Double modal wrapping**: Some form components (e.g., `RoastProfileForm`) are self-contained modals with their own `fixed inset-0` overlay. Render them directly — never wrap in another modal container. See "Modal Component Pattern" above.
+
+2. **Cascade delete completeness**: When deleting `green_coffee_inv` records, ALL FK-dependent tables must be cleaned up. See "Cascade Delete Order" in Database Structure. When new FK-dependent tables are added, update all cascade handlers in `/api/beans/+server.ts` and `/api/clear-roast/+server.ts`.
+
+3. **Navigation**: Always use `goto()` from `$app/navigation` — never `window.location.href`. See "Navigation Pattern" above. Also, `URLSearchParams.get()` returns decoded values; never double-decode with `decodeURIComponent()`.
+
+4. **Data display completeness**: When displaying entity data, show ALL non-null fields rather than hard-coding a limited subset. Use a filter pattern:
+   ```typescript
+   const availableFields = ['field1', 'field2', ...]; // comprehensive list
+   const displayFields = availableFields.filter(f => data[f] != null && data[f] !== '');
+   ```
+
+5. **Pre-existing type errors**: ~291 pre-existing TypeScript errors exist from outdated `database.types.ts`. When verifying changes, filter `pnpm check` output to only your modified files. See "Known Pre-Existing Issues" above.
