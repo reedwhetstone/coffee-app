@@ -708,7 +708,177 @@ Claude synthesizes: Natural language response with recommendations
 
 ---
 
-## Tradeoffs and Challenges
+## Critical Concerns: Why MCP-First May Be Wrong
+
+Before proceeding, we must honestly address fundamental problems with using MCP as a web app data layer. **These are not minor tradeoffs—they are architectural mismatches.**
+
+### 1. The Shape Mismatch (JSON vs. Context)
+
+**The Problem**: MCP was designed to return **text or blobs** meant for an LLM's context window, not structured JSON for UI components.
+
+| Protocol | Returns | Designed For |
+|----------|---------|--------------|
+| **REST/GraphQL** | `[{ "id": 1, "name": "Ethiopia", "price": 8.50 }]` | Direct UI binding |
+| **MCP** | `{ content: [{ type: 'text', text: '...' }] }` | LLM consumption |
+
+**Real Impact**:
+```typescript
+// REST - Clean, direct mapping
+const coffees = await fetch('/api/catalog').then(r => r.json());
+coffees.forEach(c => render(<CoffeeCard coffee={c} />));
+
+// MCP - Awkward parsing required
+const result = await mcpClient.callTool('search_coffees', {});
+const parsed = JSON.parse(result.content[0].text); // 🚩 Extra step
+const coffees = parsed.coffees; // 🚩 Nested extraction
+coffees.forEach(c => render(<CoffeeCard coffee={c} />));
+```
+
+**Verdict**: MCP adds a serialization layer that provides zero value for traditional UI rendering. You're essentially using a semi-truck to deliver a pizza.
+
+### 2. Client-Side Complexity (Massive Plumbing)
+
+**The Problem**: MCP is a **stateful protocol**. To use it in a browser, your frontend must:
+
+1. Implement a full MCP Client SDK (~50KB+ gzipped)
+2. Perform protocol handshake on connection
+3. Negotiate capabilities (prompts, resources, tools)
+4. Maintain persistent SSE connection
+5. Handle reconnection, state sync, and timeouts
+
+**Comparison**:
+```typescript
+// REST - Native browser capability
+const data = await fetch('/api/beans').then(r => r.json());
+
+// MCP - Requires shipping significant plumbing
+import { MCPClient } from '@anthropic/mcp-sdk';  // Heavy dependency
+import { SSETransport } from '@anthropic/mcp-sdk/transports';
+
+const client = new MCPClient({
+  transport: new SSETransport('/mcp/sse'),
+  auth: { token: session.access_token }
+});
+
+await client.connect();           // Handshake
+await client.negotiateCapabilities(); // Capability exchange
+const result = await client.callTool('get_inventory', {});
+// Plus: reconnection handlers, state management, error recovery...
+```
+
+**Verdict**: You're shipping kilobytes of protocol code to the client for something `fetch()` does natively.
+
+### 3. Security Risks (The "God Mode" Problem)
+
+**The Problem**: MCP servers expose **Tools** designed to give AI agents agency. These often include powerful operations:
+
+- `execute_sql_query` - Run arbitrary SQL
+- `read_file_system` - Access files
+- `update_inventory` - Write operations
+
+**The Risk**: Exposing an MCP server directly to a browser is effectively handing every user a command-line interface to your backend.
+
+```
+Traditional REST:
+  GET /api/user/profile → Specific, scoped endpoint
+  POST /api/beans → Validates, sanitizes, rate limits
+
+MCP in Browser:
+  callTool('execute_query', { sql: 'SELECT * FROM users' }) → 🚨 God mode
+  callTool('update_inventory', { ... }) → Direct DB access
+```
+
+**Mitigation Attempt**: Build a proxy layer to strip sensitive tools...
+**Reality**: You've just reinvented a bad REST API with extra steps.
+
+**Verdict**: The security model of MCP assumes a trusted client (AI assistant with user oversight), not an untrusted browser environment.
+
+### 4. Caching and Performance (Session vs. Stateless)
+
+**The Problem**: MCP is designed for **conversational sessions**, not high-traffic web applications.
+
+| Feature | REST/HTTP | MCP |
+|---------|-----------|-----|
+| **Caching** | ETags, Cache-Control, CDN | None native |
+| **Stateless** | Yes - each request independent | No - session-based |
+| **Connection** | Per-request or keep-alive | Persistent SSE required |
+| **CDN Support** | Full edge caching | Not applicable |
+| **Load Balancing** | Simple round-robin | Sticky sessions required |
+
+**Real Impact**:
+- Your `/api/catalog` can be cached at the CDN edge for 1 hour
+- An MCP tool call cannot—it's a dynamic session interaction
+- 1000 users loading catalog = 1000 MCP sessions vs. 1 CDN hit
+
+**Verdict**: MCP's session model is fundamentally incompatible with web-scale caching strategies.
+
+### 5. Debugging and Observability
+
+**The Problem**: REST calls are easy to trace in browser DevTools. MCP interactions are opaque.
+
+```
+REST debugging:
+  Network tab → /api/beans → 200 OK → Response JSON → Done
+
+MCP debugging:
+  SSE connection → Binary frames → Tool call → Response frame → Parse → ???
+  Where did it fail? Which tool? What was the context?
+```
+
+**Verdict**: Your team's debugging productivity drops significantly.
+
+---
+
+## The Fundamental Question
+
+> "Should my web app use MCP as its data layer?"
+
+**Answer: Almost certainly NO.**
+
+MCP excels at one thing: **enabling AI assistants to interact with your data**.
+
+Using MCP for browser-to-server communication is like using a language translation API to talk to someone who speaks the same language as you. It works, but why?
+
+---
+
+## Revised Architecture: The Correct Approach
+
+Given these concerns, here's the architecture that actually makes sense:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        PURVEYORS.IO                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐                          ┌─────────────┐       │
+│  │   Web App   │────── REST/Supabase ────▶│  Database   │       │
+│  │  (SvelteKit)│         (FAST)           │  (Postgres) │       │
+│  └─────────────┘                          └─────────────┘       │
+│         │                                        ▲              │
+│         │ (Chat/GenUI only)                      │              │
+│         ▼                                        │              │
+│  ┌─────────────┐     ┌─────────────┐            │              │
+│  │  LLM Layer  │────▶│  MCP Server │────────────┘              │
+│  │  (Claude)   │     │  (AI only)  │                           │
+│  └─────────────┘     └─────────────┘                           │
+│                             ▲                                   │
+│                             │                                   │
+│  ┌─────────────┐            │                                   │
+│  │   Claude    │────────────┘                                   │
+│  │   Desktop   │  (External AI clients)                         │
+│  └─────────────┘                                                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Insight**:
+- **Web app** → REST/Supabase (what it's designed for)
+- **AI clients** → MCP (what it's designed for)
+- **Shared business logic** → Service layer (called by both)
+
+---
+
+## Tradeoffs and Challenges (Revised)
 
 ### 1. **Learning Curve**
 - Team needs to learn MCP concepts
@@ -718,17 +888,17 @@ Claude synthesizes: Natural language response with recommendations
 ### 2. **Performance Overhead**
 - MCP adds protocol overhead vs direct Supabase calls
 - Serialization/deserialization for every operation
-- **Mitigation**: Caching layer, batch operations
+- **Mitigation**: Only use MCP for AI paths, not web app
 
 ### 3. **Web App Complexity**
 - Need MCP client in browser (or thin wrapper)
 - Real-time updates more complex
-- **Mitigation**: SSE transport, hybrid approach for real-time
+- **Mitigation**: **DON'T use MCP for web app data layer**
 
 ### 4. **Migration Effort**
 - Existing REST endpoints need conversion
 - Client code needs updates
-- **Mitigation**: Gradual migration, compatibility layer
+- **Mitigation**: Keep REST for web, add MCP as parallel AI interface
 
 ### 5. **Debugging Complexity**
 - Tool chains harder to trace than REST calls
@@ -787,18 +957,525 @@ Claude synthesizes: Natural language response with recommendations
 
 ---
 
+## Generative UI: Where MCP Actually Shines
+
+There is one architectural pattern where MCP in the web app makes perfect sense: **Generative UI (GenUI)**.
+
+### What is Generative UI?
+
+Instead of hard-coded components fetching data from APIs, the **LLM generates the UI itself** based on user intent and available data.
+
+```
+Traditional Web App:
+  User clicks "View Inventory" → Route to /beans → Fetch /api/beans → Render <InventoryTable />
+
+Generative UI:
+  User types "Show me my Ethiopian coffees sorted by roast date"
+         ↓
+  LLM receives prompt + MCP tools
+         ↓
+  LLM calls search_inventory tool via MCP
+         ↓
+  LLM generates: <CoffeeGrid coffees={[...]} sortBy="roast_date" highlight="Ethiopian" />
+         ↓
+  Frontend renders the generated component
+```
+
+**Why MCP works here**: The consumer of MCP data is still the LLM, not your JavaScript. The LLM understands the text/context format natively.
+
+### GenUI Architecture for Purveyors.io
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     GENERATIVE UI ARCHITECTURE                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │                         WEB APP                               │  │
+│  │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     │  │
+│  │  │   Static    │     │   GenUI     │     │  Component  │     │  │
+│  │  │   Pages     │     │   Chat      │     │   Library   │     │  │
+│  │  │  (REST)     │     │ Interface   │     │  (Render)   │     │  │
+│  │  └─────────────┘     └──────┬──────┘     └──────▲──────┘     │  │
+│  │                             │                   │             │  │
+│  └─────────────────────────────┼───────────────────┼─────────────┘  │
+│                                │                   │                │
+│                                ▼                   │                │
+│  ┌─────────────────────────────────────────────────┼─────────────┐  │
+│  │                     SERVER                      │             │  │
+│  │  ┌─────────────┐     ┌─────────────┐           │             │  │
+│  │  │   Claude    │────▶│  MCP Server │           │             │  │
+│  │  │   (LLM)     │     │   (Tools)   │           │             │  │
+│  │  └──────┬──────┘     └─────────────┘           │             │  │
+│  │         │                                       │             │  │
+│  │         ▼                                       │             │  │
+│  │  ┌─────────────┐                               │             │  │
+│  │  │  Component  │───────────────────────────────┘             │  │
+│  │  │  Generator  │  (Returns Svelte/React component code)      │  │
+│  │  └─────────────┘                                             │  │
+│  │                                                               │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### How It Works: Step by Step
+
+**1. User Input**
+```
+User: "Compare my last 5 roasts of the Yirgacheffe - show me a chart
+       of development time vs weight loss, and highlight any outliers"
+```
+
+**2. Server Processing**
+```typescript
+// /api/genui/+server.ts
+export async function POST({ request, locals }) {
+  const { prompt } = await request.json();
+  const { user } = await locals.safeGetSession();
+
+  // Claude with MCP tools
+  const response = await claude.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    system: `You are a coffee roasting assistant with access to the user's data.
+      When asked to display information, generate a Svelte component using
+      the available component library. Return valid JSON with:
+      - component: the component name to render
+      - props: the props to pass
+      - explanation: brief text explanation`,
+    messages: [{ role: 'user', content: prompt }],
+    tools: mcpTools, // MCP tools for data access
+  });
+
+  // Claude calls MCP tools, gets data, generates component spec
+  return json(response.content);
+}
+```
+
+**3. LLM Tool Calls (via MCP)**
+```typescript
+// Claude's internal reasoning:
+// 1. Call get_inventory to find Yirgacheffe
+// 2. Call get_roast_profiles filtered to that coffee
+// 3. Calculate statistics
+// 4. Generate component specification
+
+// MCP tool call:
+{
+  name: 'get_roast_profiles',
+  arguments: {
+    coffee_name: 'Yirgacheffe',
+    limit: 5,
+    include_metrics: true
+  }
+}
+
+// MCP returns (text for LLM):
+{
+  content: [{
+    type: 'text',
+    text: JSON.stringify({
+      roasts: [
+        { id: 1, date: '2026-01-15', dev_pct: 18.5, weight_loss: 14.2 },
+        { id: 2, date: '2026-01-20', dev_pct: 19.1, weight_loss: 14.8 },
+        // ...
+      ]
+    })
+  }]
+}
+```
+
+**4. LLM Generates Component Spec**
+```json
+{
+  "component": "RoastComparisonChart",
+  "props": {
+    "title": "Yirgacheffe Roast Comparison",
+    "data": [
+      { "date": "Jan 15", "development": 18.5, "weightLoss": 14.2, "outlier": false },
+      { "date": "Jan 20", "development": 19.1, "weightLoss": 14.8, "outlier": false },
+      { "date": "Jan 22", "development": 22.3, "weightLoss": 16.1, "outlier": true },
+      { "date": "Jan 25", "development": 18.8, "weightLoss": 14.5, "outlier": false },
+      { "date": "Jan 28", "development": 19.0, "weightLoss": 14.6, "outlier": false }
+    ],
+    "xAxis": "date",
+    "yAxes": ["development", "weightLoss"],
+    "highlightOutliers": true
+  },
+  "explanation": "I found 5 roasts of your Yirgacheffe. The January 22nd roast shows significantly higher development (22.3%) and weight loss (16.1%) - this appears to be an outlier, possibly indicating a longer or hotter roast than usual."
+}
+```
+
+**5. Frontend Renders**
+```svelte
+<!-- GenUIRenderer.svelte -->
+<script lang="ts">
+  import RoastComparisonChart from '$lib/components/charts/RoastComparisonChart.svelte';
+  import CoffeeGrid from '$lib/components/CoffeeGrid.svelte';
+  import InventoryTable from '$lib/components/InventoryTable.svelte';
+  import ProfitSummary from '$lib/components/ProfitSummary.svelte';
+  // ... all available GenUI components
+
+  const componentMap = {
+    RoastComparisonChart,
+    CoffeeGrid,
+    InventoryTable,
+    ProfitSummary,
+    // ... registry of allowed components
+  };
+
+  let { componentSpec } = $props<{ componentSpec: GenUISpec }>();
+
+  let Component = $derived(componentMap[componentSpec.component]);
+</script>
+
+{#if Component}
+  <div class="genui-container">
+    <p class="explanation">{componentSpec.explanation}</p>
+    <svelte:component this={Component} {...componentSpec.props} />
+  </div>
+{:else}
+  <p>Unknown component: {componentSpec.component}</p>
+{/if}
+```
+
+### Component Library for GenUI
+
+The LLM can only generate components from a **pre-defined library**. This is crucial for security and consistency.
+
+```typescript
+// /src/lib/genui/registry.ts
+export const genUIComponents = {
+  // Data Display
+  CoffeeCard: {
+    description: 'Display a single coffee with image, name, origin, and tasting notes',
+    props: z.object({
+      coffee: CoffeeSchema,
+      showPrice: z.boolean().optional(),
+      showScore: z.boolean().optional()
+    })
+  },
+
+  CoffeeGrid: {
+    description: 'Grid of coffee cards, good for browsing and comparison',
+    props: z.object({
+      coffees: z.array(CoffeeSchema),
+      columns: z.number().min(1).max(4).optional(),
+      sortBy: z.enum(['name', 'price', 'score', 'region']).optional()
+    })
+  },
+
+  InventoryTable: {
+    description: 'Tabular view of inventory with sorting and filtering',
+    props: z.object({
+      items: z.array(InventoryItemSchema),
+      columns: z.array(z.string()).optional(),
+      sortable: z.boolean().optional()
+    })
+  },
+
+  // Charts
+  RoastComparisonChart: {
+    description: 'Compare roast profiles over time with D3 visualization',
+    props: z.object({
+      data: z.array(RoastMetricSchema),
+      xAxis: z.string(),
+      yAxes: z.array(z.string()),
+      highlightOutliers: z.boolean().optional()
+    })
+  },
+
+  RoastCurveChart: {
+    description: 'Temperature curve visualization for a single roast',
+    props: z.object({
+      profileLog: z.array(ProfileLogSchema),
+      showPhases: z.boolean().optional()
+    })
+  },
+
+  ProfitChart: {
+    description: 'Revenue and profit visualization over time',
+    props: z.object({
+      data: z.array(ProfitDataSchema),
+      period: z.enum(['daily', 'weekly', 'monthly'])
+    })
+  },
+
+  // Business
+  ProfitSummary: {
+    description: 'KPI cards showing revenue, costs, and margins',
+    props: z.object({
+      revenue: z.number(),
+      costs: z.number(),
+      margin: z.number(),
+      period: z.string(),
+      comparison: z.object({
+        previousRevenue: z.number(),
+        previousMargin: z.number()
+      }).optional()
+    })
+  },
+
+  // Interactive
+  CoffeeRecommendations: {
+    description: 'AI-powered coffee recommendations with explanations',
+    props: z.object({
+      recommendations: z.array(z.object({
+        coffee: CoffeeSchema,
+        reason: z.string(),
+        confidence: z.number()
+      })),
+      basedOn: z.string()
+    })
+  }
+};
+
+// Generate system prompt for Claude
+export function generateComponentPrompt(): string {
+  return Object.entries(genUIComponents)
+    .map(([name, def]) => `- ${name}: ${def.description}`)
+    .join('\n');
+}
+```
+
+### Security Considerations for GenUI
+
+**1. Component Allowlist**
+```typescript
+// Only render known components
+const allowedComponents = new Set(Object.keys(genUIComponents));
+
+if (!allowedComponents.has(componentSpec.component)) {
+  throw new Error('Unauthorized component');
+}
+```
+
+**2. Props Validation**
+```typescript
+// Validate props against schema before rendering
+const schema = genUIComponents[componentSpec.component].props;
+const validatedProps = schema.parse(componentSpec.props);
+```
+
+**3. No Arbitrary Code Execution**
+```typescript
+// ❌ NEVER do this - executing LLM-generated code
+eval(llmResponse.code);
+
+// ✅ Only select from pre-built components
+const Component = componentMap[validatedName];
+```
+
+**4. Data Sanitization**
+```typescript
+// Sanitize any text content from LLM
+import DOMPurify from 'dompurify';
+const safeExplanation = DOMPurify.sanitize(componentSpec.explanation);
+```
+
+### GenUI User Experience
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  ☕ Purveyors.io                                    [Reed] ▼    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ 💬 Ask me anything about your coffee...                   │  │
+│  │                                                           │  │
+│  │ "Show me my Ethiopian naturals sorted by when I bought    │  │
+│  │  them, and highlight any that are running low"            │  │
+│  │                                                     [Ask] │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ I found 4 Ethiopian natural process coffees in your       │  │
+│  │ inventory. The Guji Uraga is running low (0.5 lbs left).  │  │
+│  │                                                           │  │
+│  │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐          │  │
+│  │ │ Sidamo  │ │ Yirga   │ │ Guji    │ │ Harrar  │          │  │
+│  │ │ Natural │ │ cheffe  │ │ Uraga   │ │ Natural │          │  │
+│  │ │         │ │ Natural │ │ ⚠️ LOW  │ │         │          │  │
+│  │ │ 2.5 lbs │ │ 1.8 lbs │ │ 0.5 lbs │ │ 3.2 lbs │          │  │
+│  │ │ Jan 5   │ │ Jan 12  │ │ Dec 28  │ │ Jan 20  │          │  │
+│  │ └─────────┘ └─────────┘ └─────────┘ └─────────┘          │  │
+│  │                                                           │  │
+│  │ [🛒 Reorder Guji Uraga]  [📊 Compare Roast Profiles]     │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### When to Use GenUI vs Static UI
+
+| Use GenUI When | Use Static UI When |
+|----------------|-------------------|
+| Query is open-ended | Fixed navigation paths |
+| Data needs vary by context | Same data every time |
+| Comparisons and analysis | Simple CRUD operations |
+| "Show me..." / "Compare..." | "Edit my profile" |
+| Insights and recommendations | Form submissions |
+| Exploratory data discovery | Transactional workflows |
+
+### Implementation Phases for GenUI
+
+**Phase 1: Chat-Only GenUI (4-6 weeks)**
+- Add GenUI chat interface alongside existing pages
+- Build component library (10-15 core components)
+- LLM generates components in response to queries
+- Existing pages remain static
+
+**Phase 2: Hybrid Interface (4-6 weeks)**
+- Add "Ask AI" button to existing pages
+- Context-aware: AI knows what page you're on
+- Can modify/filter current view via natural language
+- Static pages remain primary navigation
+
+**Phase 3: GenUI-Primary (6-8 weeks)**
+- GenUI becomes default interface for power users
+- Static pages for onboarding and simple tasks
+- Full natural language interaction with all data
+- Voice input support
+
+### GenUI + MCP Integration
+
+```typescript
+// The MCP server provides tools specifically designed for GenUI
+export const genUITools = {
+  // Data retrieval tools (same as before)
+  search_coffees: searchCoffeesTool,
+  get_inventory: getInventoryTool,
+  get_roast_profiles: getRoastProfilesTool,
+  analyze_profitability: analyzeProfitabilityTool,
+
+  // GenUI-specific tools
+  get_component_options: {
+    name: 'get_component_options',
+    description: 'Get available UI components and their capabilities',
+    handler: async () => ({
+      content: [{
+        type: 'text',
+        text: generateComponentPrompt()
+      }]
+    })
+  },
+
+  suggest_visualization: {
+    name: 'suggest_visualization',
+    description: 'Given data, suggest the best component to display it',
+    inputSchema: z.object({
+      dataType: z.enum(['coffees', 'inventory', 'roasts', 'sales', 'metrics']),
+      count: z.number(),
+      userIntent: z.string()
+    }),
+    handler: async (params) => {
+      // Logic to recommend best component
+      const suggestion = suggestComponent(params);
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(suggestion)
+        }]
+      };
+    }
+  }
+};
+```
+
+### Benefits of GenUI Approach
+
+1. **MCP Used Correctly**: LLM consumes MCP data, not browser JavaScript
+2. **Natural Language Interface**: Users describe what they want, not how to get it
+3. **Dynamic Dashboards**: Every user gets personalized views
+4. **Reduced Development**: New queries don't require new endpoints
+5. **AI-Native UX**: The platform feels intelligent, not just data-driven
+
+### Risks and Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| LLM generates invalid component | Strict schema validation before render |
+| Slow response times | Streaming responses, loading states |
+| Hallucinated data | MCP tools return real data; LLM only formats |
+| Cost per interaction | Caching, smaller models for simple queries |
+| User confusion | Clear affordances, fallback to static UI |
+
+---
+
+## Revised Recommendation
+
+Given the critical concerns with MCP-as-data-layer and the promise of Generative UI:
+
+### DON'T Do:
+❌ Replace REST APIs with MCP for web app data fetching
+❌ Ship MCP client to browser for general data operations
+❌ Use MCP tools directly from Svelte components
+
+### DO:
+✅ Keep REST/Supabase for traditional web app pages
+✅ Build MCP server for external AI clients (Claude Desktop, partners)
+✅ Implement GenUI chat interface where LLM calls MCP on server
+✅ Use same MCP tools for both external AI and internal GenUI
+
+### Architecture Summary
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     PURVEYORS.IO                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  STATIC PAGES (REST)          GENUI (MCP on server)         │
+│  ┌─────────────────┐          ┌─────────────────┐          │
+│  │  /catalog       │          │  /chat          │          │
+│  │  /beans         │          │  AI-powered     │          │
+│  │  /roast         │          │  Natural lang   │          │
+│  │  /profit        │          │  Dynamic UI     │          │
+│  └────────┬────────┘          └────────┬────────┘          │
+│           │                            │                    │
+│           ▼                            ▼                    │
+│  ┌─────────────────┐          ┌─────────────────┐          │
+│  │  REST APIs      │          │  Claude + MCP   │          │
+│  │  (Supabase)     │          │  (Server-side)  │          │
+│  └────────┬────────┘          └────────┬────────┘          │
+│           │                            │                    │
+│           └────────────┬───────────────┘                    │
+│                        ▼                                    │
+│               ┌─────────────────┐                          │
+│               │    Supabase     │                          │
+│               │   (Postgres)    │                          │
+│               └─────────────────┘                          │
+│                        ▲                                    │
+│                        │                                    │
+│  EXTERNAL AI ──────────┴────────────────────────────────   │
+│  ┌─────────────────┐          ┌─────────────────┐          │
+│  │  Claude Desktop │          │  Partner Apps   │          │
+│  │  (stdio MCP)    │          │  (HTTP MCP)     │          │
+│  └─────────────────┘          └─────────────────┘          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Conclusion
 
-Converting purveyors.io to MCP-first is a significant architectural decision with real tradeoffs. The hybrid approach offers the best balance:
+The original vision of "MCP-First" was flawed in its assumption that MCP could replace REST for web app data fetching. It cannot and should not.
 
-1. **Build MCP server** with comprehensive tools
-2. **Keep REST endpoints** as thin wrappers initially
-3. **Migrate gradually** as you validate the pattern
-4. **Optimize later** based on real usage data
+**However**, MCP is the right choice for:
+1. **External AI clients** (Claude Desktop, third-party agents)
+2. **Generative UI** (LLM-powered interfaces on your server)
+3. **Developer APIs** (AI-native integrations)
 
-This positions purveyors.io as an AI-native platform while maintaining web app performance and allowing iterative improvements.
+The revised approach:
+1. **Keep REST** for traditional web pages (fast, cacheable, native)
+2. **Build MCP server** for AI clients and GenUI
+3. **Implement GenUI** as the innovative user experience layer
+4. **Share business logic** between REST handlers and MCP tools
+
+This positions purveyors.io as an AI-native platform while respecting the fundamental architecture of the web.
 
 ---
 
 *Document generated: January 2026*
+*Revised: January 2026 (addressing critical concerns)*
 *Related: MCP-SERVER-PROPOSAL.md, API-strategy.md*
