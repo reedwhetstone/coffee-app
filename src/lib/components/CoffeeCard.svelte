@@ -76,7 +76,7 @@
 				</div>
 			</div>
 			{#if coffee.ai_description}
-				<p class="my-4 text-xs text-text-secondary-light">
+				<p class="my-4 whitespace-pre-wrap text-xs text-text-secondary-light">
 					{coffee.ai_description}
 				</p>
 			{/if}

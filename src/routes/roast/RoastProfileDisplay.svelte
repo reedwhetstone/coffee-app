@@ -215,7 +215,7 @@
 												'roast_notes',
 												'roast_targets'
 											].includes(key)
-												? 'space-pre-wrap block'
+												? 'whitespace-pre-wrap block'
 												: ''}"
 										>
 											{value}
