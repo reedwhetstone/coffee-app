@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { prepareDateForAPI } from '$lib/utils/dates';
+	import { goto } from '$app/navigation';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import CuppingNotesForm from './CuppingNotesForm.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
@@ -168,7 +169,7 @@
 
 		if (
 			confirm(
-				'Are you sure you want to delete this bean? This will also delete all associated roast profiles and logs.'
+				'Are you sure you want to delete this bean? This will also delete all associated roast profiles, sales records, and logs.'
 			)
 		) {
 			try {
@@ -312,14 +313,43 @@
 				<div>
 					<h3 class="mb-4 font-semibold text-text-primary-light">Your Inventory</h3>
 
-					<!-- Notes field without border -->
-					{#if selectedBean.notes !== undefined && selectedBean.notes !== null && selectedBean.notes !== ''}
+					<!-- Rating field -->
+					<div class="mb-4 rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+						<h4 class="text-sm font-medium text-text-primary-light">RATING</h4>
+						{#if isEditing}
+							<div class="mt-2 flex items-center gap-3">
+								<input
+									type="number"
+									step="0.1"
+									min="0"
+									max="10"
+									class="w-24 rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
+									bind:value={editedBean.rank}
+								/>
+								<span class="text-sm text-text-secondary-light">/10</span>
+							</div>
+						{:else}
+							<div class="mt-2 flex items-center gap-2">
+								{#if selectedBean.rank !== undefined && selectedBean.rank !== null}
+									<span class="text-2xl font-bold text-amber-500">{selectedBean.rank}</span>
+									<span class="text-text-secondary-light">/10</span>
+								{:else}
+									<span class="text-sm text-text-secondary-light">No rating yet</span>
+								{/if}
+							</div>
+						{/if}
+					</div>
+
+					<!-- Notes field -->
+					{#if isEditing || (selectedBean.notes !== undefined && selectedBean.notes !== null && selectedBean.notes !== '')}
 						<div class="mb-4">
 							{#if isEditing && editableFields.includes('notes')}
+								<h4 class="mb-1 text-sm font-medium text-text-primary-light">NOTES</h4>
 								<textarea
 									class="w-full rounded border border-border-light bg-background-primary-light px-2 py-1 text-text-primary-light"
 									rows="4"
 									bind:value={editedBean.notes}
+									placeholder="Add notes about this coffee..."
 								></textarea>
 							{:else}
 								<div class="whitespace-pre-wrap text-text-primary-light">
@@ -441,10 +471,12 @@
 				<!-- Supplier Information Section -->
 				{#if selectedBean.coffee_catalog}
 					{@const catalogData = selectedBean.coffee_catalog}
-					{@const isPrivateCoffee = catalogData.public_coffee === false}
-					{@const baseFields = [
-						'arrival_date',
+					{@const availableFields = [
+						'score_value',
+						'country',
+						'continent',
 						'region',
+						'arrival_date',
 						'processing',
 						'drying_method',
 						'cultivar_detail',
@@ -454,17 +486,13 @@
 						'lot_size',
 						'bag_size',
 						'packaging',
-						'cost_lb'
-					]}
-					{@const privateFields = [
+						'cost_lb',
 						'description_short',
 						'description_long',
 						'farm_notes',
-						'roast_recs'
+						'roast_recs',
+						'cupping_notes'
 					]}
-					{@const availableFields = isPrivateCoffee
-						? [...baseFields, ...privateFields]
-						: baseFields}
 					{@const displayFields = availableFields.filter(
 						(field) =>
 							catalogData[field] !== undefined &&
@@ -522,14 +550,8 @@
 
 							<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 								{#each displayFields as key}
-									<div
-										class={key === 'description_short' ||
-										key === 'description_long' ||
-										key === 'farm_notes' ||
-										key === 'roast_recs'
-											? 'lg:col-span-2'
-											: ''}
-									>
+									{@const isLongText = ['description_short', 'description_long', 'farm_notes', 'roast_recs', 'cupping_notes'].includes(key)}
+									<div class={isLongText ? 'lg:col-span-2' : ''}>
 										<div
 											class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
 										>
@@ -537,17 +559,17 @@
 												{key.replace(/_/g, ' ').toUpperCase()}
 											</h4>
 											<div
-												class="mt-2 text-text-primary-light {key === 'description_short' ||
-												key === 'description_long' ||
-												key === 'farm_notes' ||
-												key === 'roast_recs'
-													? 'whitespace-pre-wrap'
-													: ''}"
+												class="mt-2 text-text-primary-light {isLongText ? 'whitespace-pre-wrap' : ''}"
 											>
 												{#if key === 'cost_lb'}
 													${typeof catalogData[key] === 'number'
 														? catalogData[key].toFixed(2)
 														: catalogData[key]}/lb
+												{:else if key === 'score_value'}
+													<span class="text-lg font-bold text-background-tertiary-light">{catalogData[key]}</span>
+													<span class="text-text-secondary-light">/100</span>
+												{:else if key === 'cupping_notes' && typeof catalogData[key] === 'object'}
+													{JSON.stringify(catalogData[key], null, 2)}
 												{:else}
 													{catalogData[key]}
 												{/if}
@@ -683,7 +705,7 @@
 					{#if role === 'admin' || role === 'member'}
 						<button
 							onclick={() => {
-								window.location.href = `/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
+								goto(`/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`);
 							}}
 							class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 						>
@@ -785,7 +807,7 @@
 						{#if role === 'admin' || role === 'member'}
 							<button
 								onclick={() => {
-									window.location.href = `/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
+									goto(`/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`);
 								}}
 								class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 							>

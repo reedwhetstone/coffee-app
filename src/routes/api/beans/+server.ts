@@ -282,6 +282,13 @@ export const DELETE: RequestHandler = async (event) => {
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
+		// Delete sales rows that reference this bean
+		const { error: salesError } = await supabase
+			.from('sales')
+			.delete()
+			.eq('green_coffee_inv_id', id);
+		if (salesError) throw salesError;
+
 		// Get roast profiles first
 		const { data: roastProfiles, error: selectError } = await supabase
 			.from('roast_profiles')
@@ -295,6 +302,12 @@ export const DELETE: RequestHandler = async (event) => {
 			const roastIds = roastProfiles.map((profile: any) => profile.roast_id);
 
 			// Delete from normalized tables
+			const { error: importLogError } = await supabase
+				.from('artisan_import_log')
+				.delete()
+				.in('roast_id', roastIds);
+			if (importLogError) throw importLogError;
+
 			const { error: tempError } = await supabase
 				.from('roast_temperatures')
 				.delete()
