@@ -8,11 +8,11 @@
 
 These issues break core functionality and should be fixed first.
 
-- [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row or roast profile. Needs cascade delete function or proper dependency handling to prevent orphaned records.
-- [ ] **Bug** - User rating editing is broken. The rating input/save mechanism on bean profiles doesn't persist changes to the database.
-- [ ] **Bug** - "New Roast" link on bean page doesn't navigate to roast form correctly. The link routing is malformed or missing coffee_id parameter.
-- [ ] **Bug** - Roast form layout overflow. The form doesn't fit within the page viewport on certain screen sizes, requiring horizontal scrolling.
-- [ ] **Bug** - Bean profile data collection incomplete. The `/beans` profile should pull all non-null data fields into the form display in an organized layout.
+- [x] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row or roast profile. Needs cascade delete function or proper dependency handling to prevent orphaned records.
+- [x] **Bug** - User rating editing is broken. The rating input/save mechanism on bean profiles doesn't persist changes to the database.
+- [x] **Bug** - "New Roast" link on bean page doesn't navigate to roast form correctly. The link routing is malformed or missing coffee_id parameter.
+- [x] **Bug** - Roast form layout overflow. The form doesn't fit within the page viewport on certain screen sizes, requiring horizontal scrolling.
+- [x] **Bug** - Bean profile data collection incomplete. The `/beans` profile should pull all non-null data fields into the form display in an organized layout.
 
 ---
 
