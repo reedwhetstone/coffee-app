@@ -216,6 +216,21 @@
 		data: null as TemperaturePoint | null
 	});
 
+	// Event feedback message state
+	let eventFeedback = $state<{ message: string; type: 'success' | 'info' } | null>(null);
+	let eventFeedbackTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	function showEventFeedback(message: string, type: 'success' | 'info' = 'success') {
+		// Clear any existing timeout
+		if (eventFeedbackTimeout) {
+			clearTimeout(eventFeedbackTimeout);
+		}
+		eventFeedback = { message, type };
+		eventFeedbackTimeout = setTimeout(() => {
+			eventFeedback = null;
+		}, 3000);
+	}
+
 	let tooltipHideTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Add these computed values - check for saved data to determine state
@@ -1841,6 +1856,8 @@
 			dataLoggingInterval = null;
 			$accumulatedTime += performance.now() - $startTime!;
 			isPaused = true;
+			// Show visual feedback
+			showEventFeedback('Cool End logged - Timer paused. Click "Save Roast" to save your data.', 'success');
 		}
 
 		// Create milestone event
@@ -2516,6 +2533,18 @@
 			></div>
 		</div>
 	</div>
+
+	<!-- Event feedback notification -->
+	{#if eventFeedback}
+		<div
+			class="mx-auto mt-4 max-w-2xl rounded-lg p-3 text-center text-sm font-medium transition-all duration-300 {eventFeedback.type ===
+			'success'
+				? 'bg-green-100 text-green-800 ring-1 ring-green-200'
+				: 'bg-blue-100 text-blue-800 ring-1 ring-blue-200'}"
+		>
+			{eventFeedback.message}
+		</div>
+	{/if}
 
 	<!-- Roast event controls and timer -->
 	<div class="mt-6 bg-background-secondary-light p-3 sm:p-4">
