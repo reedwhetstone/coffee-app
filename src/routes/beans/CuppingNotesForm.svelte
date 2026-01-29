@@ -1,6 +1,6 @@
 <script lang="ts">
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
-	import type { TastingNotes } from '$lib/types/coffee.types';
+	import type { TastingNotes, BrewMethod } from '$lib/types/coffee.types';
 
 	let {
 		initialNotes = null,
@@ -16,12 +16,26 @@
 		aiTastingNotes?: TastingNotes | null;
 	}>();
 
+	const brewMethods: { value: BrewMethod; label: string }[] = [
+		{ value: 'cupping', label: 'Cupping (Standard)' },
+		{ value: 'espresso', label: 'Espresso' },
+		{ value: 'pour_over', label: 'Pour Over' },
+		{ value: 'french_press', label: 'French Press' },
+		{ value: 'aeropress', label: 'AeroPress' },
+		{ value: 'drip', label: 'Drip Coffee' },
+		{ value: 'cold_brew', label: 'Cold Brew' },
+		{ value: 'moka_pot', label: 'Moka Pot' },
+		{ value: 'siphon', label: 'Siphon' },
+		{ value: 'other', label: 'Other' }
+	];
+
 	let formData = $state<TastingNotes>({
 		body: { tag: '', color: '#8B4513', score: 3 },
 		flavor: { tag: '', color: '#D2691E', score: 3 },
 		acidity: { tag: '', color: '#FFD700', score: 3 },
 		sweetness: { tag: '', color: '#DEB887', score: 3 },
-		fragrance_aroma: { tag: '', color: '#DDA0DD', score: 3 }
+		fragrance_aroma: { tag: '', color: '#DDA0DD', score: 3 },
+		brew_method: 'cupping'
 	});
 
 	let overallRating = $state<number | null>(initialRating);
@@ -29,7 +43,12 @@
 	// Initialize form data with existing notes if provided
 	$effect(() => {
 		if (initialNotes) {
-			formData = JSON.parse(JSON.stringify(initialNotes));
+			const loadedNotes = JSON.parse(JSON.stringify(initialNotes));
+			// Ensure brew_method has a default if not present in loaded data
+			if (!loadedNotes.brew_method) {
+				loadedNotes.brew_method = 'cupping';
+			}
+			formData = loadedNotes;
 		}
 		if (initialRating !== null) {
 			overallRating = initialRating;
@@ -54,7 +73,8 @@
 			flavor: { tag: '', color: '#D2691E', score: 3 },
 			acidity: { tag: '', color: '#FFD700', score: 3 },
 			sweetness: { tag: '', color: '#DEB887', score: 3 },
-			fragrance_aroma: { tag: '', color: '#DDA0DD', score: 3 }
+			fragrance_aroma: { tag: '', color: '#DDA0DD', score: 3 },
+			brew_method: 'cupping'
 		};
 		overallRating = null;
 	}
@@ -122,6 +142,29 @@
 			>
 				Clear Rating
 			</button>
+		</div>
+	</div>
+
+	<!-- Brew Method Section -->
+	<div class="mb-6 rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+		<div class="flex items-center justify-between">
+			<div class="flex-1">
+				<h4 class="mb-1 font-medium text-text-primary-light">Brew Method</h4>
+				<p class="text-xs text-text-secondary-light">
+					How was this coffee prepared for tasting?
+				</p>
+			</div>
+		</div>
+		<div class="mt-4">
+			<select
+				id="brew-method"
+				bind:value={formData.brew_method}
+				class="w-full rounded-md border border-border-light bg-background-primary-light px-3 py-2 text-text-primary-light focus:border-transparent focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+			>
+				{#each brewMethods as method}
+					<option value={method.value}>{method.label}</option>
+				{/each}
+			</select>
 		</div>
 	</div>
 
