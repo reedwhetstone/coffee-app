@@ -109,6 +109,15 @@ const updateData = Object.fromEntries(
 - `pnpm test` - Run all tests once
 - `pnpm test:unit` - Run tests in watch mode
 
+### Known Pre-Existing Issues
+
+- **`pnpm check`** reports ~291 errors, mostly from outdated Supabase generated types (`database.types.ts` has `never` types for tables). These are pre-existing and unrelated to feature work.
+- **`pnpm build`** fails without environment variables (`PUBLIC_SUPABASE_URL`, etc.). Build verification requires a properly configured `.env` file.
+- **When verifying changes**, filter `pnpm check` output to only your modified files to confirm no new errors were introduced:
+  ```bash
+  pnpm check 2>&1 | grep "Error:" | grep "YourModifiedFile"
+  ```
+
 ## Architecture Overview
 
 This is a **SvelteKit 5** coffee tracking and roasting application with the following key components:
@@ -136,8 +145,13 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - **coffee_catalog**: Master coffee data (name, description, processing details)
 - **green_coffee_inv**: User's personal inventory → `catalog_id` FK to `coffee_catalog`
 - **roast_profiles**: Roasting sessions → `coffee_id` FK to `green_coffee_inv`
-- **profile_log**: Temperature/time data → `roast_id` FK to `roast_profiles`
+- **roast_temperatures**: Normalized temperature/time data → `roast_id` FK to `roast_profiles`
+- **roast_events**: Normalized roast event markers → `roast_id` FK to `roast_profiles`
+- **artisan_import_log**: Artisan file import records → `roast_id` FK to `roast_profiles`
+- **sales**: Sale transactions → `green_coffee_inv_id` FK to `green_coffee_inv`
 - **user_roles**: User auth/permissions → Referenced by all user-owned tables
+
+> **Note**: `profile_log` is a legacy table — the normalized schema uses `roast_temperatures` and `roast_events` instead.
 
 **Key Foreign Key Patterns:**
 
@@ -145,6 +159,19 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - All user data tables reference `user_roles.id`
 - Roast profiles link to inventory (not directly to catalog)
 - Vector embeddings stored in `coffee_catalog` for semantic search
+
+**Cascade Delete Order (green_coffee_inv):**
+
+When deleting a bean from `green_coffee_inv`, delete dependents in this order:
+1. `sales` (FK: `green_coffee_inv_id`)
+2. `artisan_import_log` (FK: `roast_id` via `roast_profiles`)
+3. `roast_temperatures` (FK: `roast_id` via `roast_profiles`)
+4. `roast_events` (FK: `roast_id` via `roast_profiles`)
+5. `roast_profiles` (FK: `coffee_id`)
+6. `green_coffee_inv` (the record itself)
+7. `coffee_catalog` (only if user-owned private coffee with no other references)
+
+When adding new FK-dependent tables, always update all cascade delete handlers in `/api/beans/+server.ts` and `/api/clear-roast/+server.ts`.
 
 ### Key Services
 
@@ -196,6 +223,43 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - Form component receives data via props, returns data via callbacks
 - Use centralized stores/services for complex shared state
 - Avoid dual submission flows (component + parent both calling APIs)
+
+**Modal Component Pattern:**
+
+Some form components (e.g., `RoastProfileForm`) are self-contained modals — they create their own `fixed inset-0` overlay, backdrop, and centering. When rendering these components:
+
+```svelte
+<!-- ✅ CORRECT: Render self-contained modal directly -->
+{#if isFormVisible}
+	<RoastProfileForm {selectedBean} onClose={hideForm} onSubmit={handleSubmit} />
+{/if}
+
+<!-- ❌ WRONG: Don't wrap self-contained modals in another modal -->
+{#if isFormVisible}
+	<div class="fixed inset-0 z-50 ...">
+		<div class="max-w-2xl ...">
+			<RoastProfileForm ... />  <!-- Creates its own fixed overlay! -->
+		</div>
+	</div>
+{/if}
+```
+
+Double-wrapping causes layout overflow (inner modal breaks out of outer constraints) and doubled backdrops.
+
+**Navigation Pattern:**
+
+Always use SvelteKit's `goto()` for internal navigation instead of `window.location.href`:
+
+```typescript
+// ✅ Client-side navigation (fast, preserves app state)
+import { goto } from '$app/navigation';
+goto(`/roast?beanId=${id}&beanName=${encodeURIComponent(name)}`);
+
+// ❌ Full page reload (slow, resets app state)
+window.location.href = `/roast?beanId=${id}&beanName=${name}`;
+```
+
+When reading URL params with `URLSearchParams.get()`, values are already decoded — do not wrap with `decodeURIComponent()`.
 
 ## SvelteKit Development Guidelines
 

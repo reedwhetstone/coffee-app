@@ -37,7 +37,24 @@ You are a senior full-stack developer working on the purveyors.io coffee trackin
 
 ## Quality Gates
 
-- All changes must pass `pnpm check` (TypeScript/Svelte validation)
-- All changes must pass `pnpm build` (production build)
+- Verify no **new** errors in modified files via `pnpm check 2>&1 | grep "Error:" | grep "YourFile"`
+  - Note: ~291 pre-existing errors from outdated Supabase types are expected and unrelated
+- `pnpm build` requires env vars and may fail in environments without `.env` — this is pre-existing
 - Follow SvelteKit 5 runes syntax exclusively (`$props`, `$state`, `$derived`, `$effect`)
 - Follow established design patterns from CLAUDE.md
+
+## Common Pitfalls (Learned from Prior Sessions)
+
+1. **Double modal wrapping**: Some form components (e.g., `RoastProfileForm`) are self-contained modals with their own `fixed inset-0` overlay. Never wrap them in another modal container — render them directly with `{#if visible}<Component />{/if}`.
+
+2. **Cascade delete completeness**: When deleting `green_coffee_inv` records, ALL FK-dependent tables must be cleaned up in order: `sales` → `artisan_import_log` → `roast_temperatures` → `roast_events` → `roast_profiles` → the bean itself. Check `/api/beans/+server.ts` DELETE handler. When new FK-dependent tables are added to the schema, update all cascade handlers.
+
+3. **Navigation**: Always use `goto()` from `$app/navigation` instead of `window.location.href`. The latter causes a full page reload and resets app state. Also, `URLSearchParams.get()` returns decoded values — never double-decode with `decodeURIComponent()`.
+
+4. **Data display completeness**: When displaying entity data (bean profiles, catalog info), show ALL non-null fields rather than hard-coding a subset. Use a pattern like:
+   ```typescript
+   const availableFields = ['field1', 'field2', ...]; // comprehensive list
+   const displayFields = availableFields.filter(f => data[f] != null && data[f] !== '');
+   ```
+
+5. **Pre-existing type errors**: The codebase has ~291 pre-existing TypeScript errors from outdated `database.types.ts`. When verifying changes, filter `pnpm check` output to only your modified files.
