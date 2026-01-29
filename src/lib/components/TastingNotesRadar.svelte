@@ -145,11 +145,10 @@
 						// AI data styling: Single color orange dotted, no fill
 						if (showOverlay && userRadarData.length > 0) {
 							circle
-
-								.attr('fill-opacity', 0) // % opacity
+								.attr('fill-opacity', 0)
 								.attr('stroke', '#f9a57b')
-								.attr('stroke-width', 2)
-								.attr('stroke-opacity', 1)
+								.attr('stroke-width', 1.5)
+								.attr('stroke-opacity', 0.45)
 								.attr('stroke-dasharray', '4,4');
 						} else {
 							// Original AI styling when no overlay
@@ -192,7 +191,8 @@
 				.attr('r', 6)
 				.attr('fill-opacity', 0)
 				.attr('stroke', '#f9a57b')
-				.attr('stroke-width', 2)
+				.attr('stroke-width', 1.5)
+				.attr('stroke-opacity', 0.45)
 				.attr('stroke-dasharray', '4,4');
 
 			legend

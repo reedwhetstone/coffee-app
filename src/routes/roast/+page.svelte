@@ -272,7 +272,7 @@
 			else if (beanId && beanName) {
 				selectedBean = {
 					id: parseInt(beanId),
-					name: decodeURIComponent(beanName)
+					name: beanName
 				};
 				console.log('Set selectedBean from URL params:', selectedBean);
 				shouldShowForm = true; // Auto-show form when URL params are present
@@ -792,16 +792,12 @@
 </script>
 
 {#if isFormVisible}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 p-4">
-		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 shadow-xl sm:p-6">
-			<RoastProfileForm
-				{selectedBean}
-				{availableCoffees}
-				onClose={hideRoastForm}
-				onSubmit={handleFormSubmit}
-			/>
-		</div>
-	</div>
+	<RoastProfileForm
+		{selectedBean}
+		{availableCoffees}
+		onClose={hideRoastForm}
+		onSubmit={handleFormSubmit}
+	/>
 {/if}
 
 <!-- Global Loading Overlay -->

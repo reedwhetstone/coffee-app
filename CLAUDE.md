@@ -109,6 +109,15 @@ const updateData = Object.fromEntries(
 - `pnpm test` - Run all tests once
 - `pnpm test:unit` - Run tests in watch mode
 
+### Known Pre-Existing Issues
+
+- **`pnpm check`** reports ~291 errors, mostly from outdated Supabase generated types (`database.types.ts` has `never` types for tables). These are pre-existing and unrelated to feature work.
+- **`pnpm build`** fails without environment variables (`PUBLIC_SUPABASE_URL`, etc.). Build verification requires a properly configured `.env` file.
+- **When verifying changes**, filter `pnpm check` output to only your modified files to confirm no new errors were introduced:
+  ```bash
+  pnpm check 2>&1 | grep "Error:" | grep "YourModifiedFile"
+  ```
+
 ## Architecture Overview
 
 This is a **SvelteKit 5** coffee tracking and roasting application with the following key components:
@@ -136,8 +145,13 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - **coffee_catalog**: Master coffee data (name, description, processing details)
 - **green_coffee_inv**: User's personal inventory → `catalog_id` FK to `coffee_catalog`
 - **roast_profiles**: Roasting sessions → `coffee_id` FK to `green_coffee_inv`
-- **profile_log**: Temperature/time data → `roast_id` FK to `roast_profiles`
+- **roast_temperatures**: Normalized temperature/time data → `roast_id` FK to `roast_profiles`
+- **roast_events**: Normalized roast event markers → `roast_id` FK to `roast_profiles`
+- **artisan_import_log**: Artisan file import records → `roast_id` FK to `roast_profiles`
+- **sales**: Sale transactions → `green_coffee_inv_id` FK to `green_coffee_inv`
 - **user_roles**: User auth/permissions → Referenced by all user-owned tables
+
+> **Note**: `profile_log` is a legacy table — the normalized schema uses `roast_temperatures` and `roast_events` instead.
 
 **Key Foreign Key Patterns:**
 
@@ -145,6 +159,19 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - All user data tables reference `user_roles.id`
 - Roast profiles link to inventory (not directly to catalog)
 - Vector embeddings stored in `coffee_catalog` for semantic search
+
+**Cascade Delete Order (green_coffee_inv):**
+
+When deleting a bean from `green_coffee_inv`, delete dependents in this order:
+1. `sales` (FK: `green_coffee_inv_id`)
+2. `artisan_import_log` (FK: `roast_id` via `roast_profiles`)
+3. `roast_temperatures` (FK: `roast_id` via `roast_profiles`)
+4. `roast_events` (FK: `roast_id` via `roast_profiles`)
+5. `roast_profiles` (FK: `coffee_id`)
+6. `green_coffee_inv` (the record itself)
+7. `coffee_catalog` (only if user-owned private coffee with no other references)
+
+When adding new FK-dependent tables, always update all cascade delete handlers in `/api/beans/+server.ts` and `/api/clear-roast/+server.ts`.
 
 ### Key Services
 
@@ -196,6 +223,43 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - Form component receives data via props, returns data via callbacks
 - Use centralized stores/services for complex shared state
 - Avoid dual submission flows (component + parent both calling APIs)
+
+**Modal Component Pattern:**
+
+Some form components (e.g., `RoastProfileForm`) are self-contained modals — they create their own `fixed inset-0` overlay, backdrop, and centering. When rendering these components:
+
+```svelte
+<!-- ✅ CORRECT: Render self-contained modal directly -->
+{#if isFormVisible}
+	<RoastProfileForm {selectedBean} onClose={hideForm} onSubmit={handleSubmit} />
+{/if}
+
+<!-- ❌ WRONG: Don't wrap self-contained modals in another modal -->
+{#if isFormVisible}
+	<div class="fixed inset-0 z-50 ...">
+		<div class="max-w-2xl ...">
+			<RoastProfileForm ... />  <!-- Creates its own fixed overlay! -->
+		</div>
+	</div>
+{/if}
+```
+
+Double-wrapping causes layout overflow (inner modal breaks out of outer constraints) and doubled backdrops.
+
+**Navigation Pattern:**
+
+Always use SvelteKit's `goto()` for internal navigation instead of `window.location.href`:
+
+```typescript
+// ✅ Client-side navigation (fast, preserves app state)
+import { goto } from '$app/navigation';
+goto(`/roast?beanId=${id}&beanName=${encodeURIComponent(name)}`);
+
+// ❌ Full page reload (slow, resets app state)
+window.location.href = `/roast?beanId=${id}&beanName=${name}`;
+```
+
+When reading URL params with `URLSearchParams.get()`, values are already decoded — do not wrap with `decodeURIComponent()`.
 
 ## SvelteKit Development Guidelines
 
@@ -891,3 +955,21 @@ if (!response.ok) {
 - Use efficient query patterns (avoid N+1 queries)
 - Handle loading states and error conditions gracefully
 - Test with realistic data volumes
+
+## Common Pitfalls
+
+Patterns learned from prior development sessions. Review before making changes.
+
+1. **Double modal wrapping**: Some form components (e.g., `RoastProfileForm`) are self-contained modals with their own `fixed inset-0` overlay. Render them directly — never wrap in another modal container. See "Modal Component Pattern" above.
+
+2. **Cascade delete completeness**: When deleting `green_coffee_inv` records, ALL FK-dependent tables must be cleaned up. See "Cascade Delete Order" in Database Structure. When new FK-dependent tables are added, update all cascade handlers in `/api/beans/+server.ts` and `/api/clear-roast/+server.ts`.
+
+3. **Navigation**: Always use `goto()` from `$app/navigation` — never `window.location.href`. See "Navigation Pattern" above. Also, `URLSearchParams.get()` returns decoded values; never double-decode with `decodeURIComponent()`.
+
+4. **Data display completeness**: When displaying entity data, show ALL non-null fields rather than hard-coding a limited subset. Use a filter pattern:
+   ```typescript
+   const availableFields = ['field1', 'field2', ...]; // comprehensive list
+   const displayFields = availableFields.filter(f => data[f] != null && data[f] !== '');
+   ```
+
+5. **Pre-existing type errors**: ~291 pre-existing TypeScript errors exist from outdated `database.types.ts`. When verifying changes, filter `pnpm check` output to only your modified files. See "Known Pre-Existing Issues" above.
