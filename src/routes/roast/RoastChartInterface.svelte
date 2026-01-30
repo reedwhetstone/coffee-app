@@ -1612,9 +1612,6 @@
 		yScaleTemp.domain(yTempDomain).range([height, 0]);
 		yScaleRoR.domain(yRoRDomain).range([height, 0]);
 
-		// Clear old grid elements
-		svg.selectAll('.temp-grid').remove();
-
 		// Update y-axis positions and dimensions
 		(svg.select('.y-axis-left') as any).call(axisLeft(yScaleTemp));
 		(svg.select('.y-axis-right').attr('transform', `translate(${width}, 0)`) as any).call(
@@ -1623,20 +1620,6 @@
 
 		// Update charge line position
 		svg.select('.charge-line').attr('x1', xScale(0)).attr('x2', xScale(0)).attr('y2', height);
-
-		// Redraw light temperature grid lines
-		for (let temp = 150; temp <= 450; temp += 50) {
-			svg
-				.append('line')
-				.attr('class', 'temp-grid')
-				.attr('x1', 0)
-				.attr('x2', width)
-				.attr('y1', yScaleTemp(temp))
-				.attr('y2', yScaleTemp(temp))
-				.attr('stroke', '#dc2626')
-				.attr('stroke-width', 0.5)
-				.attr('opacity', 0.1);
-		}
 
 		// Update x-axis only
 		(svg.select('.x-axis').attr('transform', `translate(0,${height})`) as any).call(
@@ -1749,20 +1732,6 @@
 			.style('font-size', '12px')
 			.style('font-weight', 'bold')
 			.text('Rate of Rise (°F/min)');
-
-		// Add light temperature grid lines
-		for (let temp = 150; temp <= 450; temp += 50) {
-			svg
-				.append('line')
-				.attr('class', 'temp-grid')
-				.attr('x1', 0)
-				.attr('x2', width)
-				.attr('y1', yScaleTemp(temp))
-				.attr('y2', yScaleTemp(temp))
-				.attr('stroke', '#dc2626')
-				.attr('stroke-width', 0.5)
-				.attr('opacity', 0.1);
-		}
 
 		// Add x-axis with charge-relative time
 		svg
