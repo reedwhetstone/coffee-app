@@ -73,6 +73,7 @@
 		"langchain": "^0.3.30",
 		"lodash": "^4.17.21",
 		"papaparse": "^5.5.3",
+		"playwright": "^1.58.1",
 		"pnpm": "^10.28.1",
 		"stripe": "^17.7.0",
 		"uuid": "^9.0.1",
