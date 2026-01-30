@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { prepareDateForAPI } from '$lib/utils/dates';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import CuppingNotesForm from './CuppingNotesForm.svelte';
@@ -13,7 +14,7 @@
 
 	let currentTab = $state('overview');
 	let isEditing = $state(false);
-	let editedBean = $state({ ...selectedBean });
+	let editedBean = $state<any>({});
 	let processingUpdate = $state(false);
 	let lastSelectedBeanId = $state<number | null>(null);
 	let showCuppingForm = $state(false);
@@ -104,24 +105,30 @@
 
 	// Update editedBean when selectedBean changes
 	$effect(() => {
-		// Update editedBean whenever selectedBean changes
-		if (selectedBean) {
+		// Read selectedBean to track it as a dependency
+		const bean = selectedBean;
+		if (!bean) return;
+
+		// Use untrack for reads/writes to state that shouldn't re-trigger this effect
+		untrack(() => {
 			// Skip if we're processing an update from this component to avoid cycles
-			if (processingUpdate && lastSelectedBeanId === selectedBean.id) {
+			if (processingUpdate && lastSelectedBeanId === bean.id) {
 				return;
 			}
 
 			// Update the last processed ID
-			lastSelectedBeanId = selectedBean.id;
+			lastSelectedBeanId = bean.id;
 
 			// Deep clone to avoid reference issues
-			editedBean = JSON.parse(JSON.stringify(selectedBean));
+			const cloned = JSON.parse(JSON.stringify(bean));
 
 			// Ensure stocked has a boolean value (default to false if null/undefined)
-			if (editedBean.stocked === null || editedBean.stocked === undefined) {
-				editedBean.stocked = false;
+			if (cloned.stocked === null || cloned.stocked === undefined) {
+				cloned.stocked = false;
 			}
-		}
+
+			editedBean = cloned;
+		});
 	});
 
 	async function saveChanges() {

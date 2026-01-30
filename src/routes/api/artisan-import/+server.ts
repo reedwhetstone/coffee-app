@@ -4,6 +4,7 @@ import type { ArtisanRoastData, ProcessedRoastData, MilestoneData } from '$lib/t
 import { validateArtisanData, validateProcessedData } from '$lib/utils/artisan-validator.js';
 import { normalizeArtisanTemperatures, artisanModeToUnit } from '$lib/utils/temperature.js';
 import { processAlogFile } from '$lib/utils/alog-parser.js';
+import { clearRoastData, insertTemperatures, insertEvents } from '$lib/server/roastDataUtils.js';
 
 // Legacy interfaces removed - now using comprehensive types from artisan.ts
 
@@ -542,60 +543,21 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			throw updateError;
 		}
 
-		// Insert data into new table structure
-		const batchSize = 100;
+		// Insert data into normalized tables using shared utilities
+		const roastIdNum = parseInt(roastId);
 
-		// 1. Clear existing data for this roast
-		console.log('Clearing existing imported data...');
-		await supabase
-			.from('roast_temperatures')
-			.delete()
-			.eq('roast_id', parseInt(roastId))
-			.eq('data_source', 'artisan_import');
+		// 1. Clear existing imported data for this roast
+		await clearRoastData(supabase, roastIdNum, 'artisan_import');
 
-		await supabase
-			.from('roast_events')
-			.delete()
-			.eq('roast_id', parseInt(roastId))
-			.in('category', ['milestone', 'control', 'machine']);
-
-		// 2. Insert temperature data to roast_temperatures table
+		// 2. Insert temperature data
 		console.log(`Inserting ${processedData.temperatureData.length} temperature points...`);
-		for (let i = 0; i < processedData.temperatureData.length; i += batchSize) {
-			const batch = processedData.temperatureData.slice(i, i + batchSize);
-			const { error: tempError } = await supabase.from('roast_temperatures').insert(batch);
+		await insertTemperatures(supabase, processedData.temperatureData);
 
-			if (tempError) {
-				console.error('Error inserting temperature batch:', tempError);
-				throw tempError;
-			}
-		}
-
-		// 3. Insert milestone events
-		if (processedData.milestoneEvents.length > 0) {
-			console.log(`Inserting ${processedData.milestoneEvents.length} milestone events...`);
-			const { error: milestoneError } = await supabase
-				.from('roast_events')
-				.insert(processedData.milestoneEvents);
-
-			if (milestoneError) {
-				console.error('Error inserting milestone events:', milestoneError);
-				throw milestoneError;
-			}
-		}
-
-		// 4. Insert control events in batches
-		if (processedData.controlEvents.length > 0) {
-			console.log(`Inserting ${processedData.controlEvents.length} control events...`);
-			for (let i = 0; i < processedData.controlEvents.length; i += batchSize) {
-				const batch = processedData.controlEvents.slice(i, i + batchSize);
-				const { error: controlError } = await supabase.from('roast_events').insert(batch);
-
-				if (controlError) {
-					console.error('Error inserting control event batch:', controlError);
-					throw controlError;
-				}
-			}
+		// 3. Insert milestone + control events
+		const allEvents = [...processedData.milestoneEvents, ...processedData.controlEvents];
+		if (allEvents.length > 0) {
+			console.log(`Inserting ${allEvents.length} events (${processedData.milestoneEvents.length} milestones, ${processedData.controlEvents.length} control)...`);
+			await insertEvents(supabase, allEvents);
 		}
 
 		// Note: roast_phases table no longer exists, skipping phase insertion

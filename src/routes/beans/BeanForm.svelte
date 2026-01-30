@@ -57,29 +57,31 @@
 	});
 
 	// Array to store multiple beans in the batch
-	let batchBeans = $state(
-		bean
-			? [
-					{
-						...bean,
-						manual_name: bean.manual_name || '',
-						rank: bean.rank || null,
-						purchased_qty_lbs: bean.purchased_qty_lbs || 0,
-						bean_cost: bean.bean_cost || 0.0,
-						catalog_id: bean.catalog_id || null
-					}
-				]
-			: [
-					{
-						// User-specific inventory fields only
-						manual_name: '',
-						rank: null,
-						purchased_qty_lbs: 0,
-						bean_cost: 0.0,
-						catalog_id: null
-					}
-				]
-	);
+	let batchBeans = $state(initBatchBeans());
+
+	function initBatchBeans() {
+		if (bean) {
+			return [
+				{
+					...bean,
+					manual_name: bean.manual_name || '',
+					rank: bean.rank || null,
+					purchased_qty_lbs: bean.purchased_qty_lbs || 0,
+					bean_cost: bean.bean_cost || 0.0,
+					catalog_id: bean.catalog_id || null
+				}
+			];
+		}
+		return [
+			{
+				manual_name: '',
+				rank: null,
+				purchased_qty_lbs: 0,
+				bean_cost: 0.0,
+				catalog_id: null
+			}
+		];
+	}
 
 	// Initialize shared data from existing bean if editing
 	$effect(() => {

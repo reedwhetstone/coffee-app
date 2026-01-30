@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
+import { saveRoastData } from '$lib/server/roastDataUtils.js';
 
 // Helper function to calculate weight loss percentage
 function calculateWeightLoss(ozIn: number | null, ozOut: number | null): number | null {
@@ -316,7 +317,8 @@ export const PUT: RequestHandler = async ({
 			return json({ error: 'No ID provided' }, { status: 400 });
 		}
 
-		const data = await request.json();
+		const { temperatureEntries, eventEntries, ...profileData } = await request.json();
+		const data = profileData;
 
 		// Add weight_loss_percent calculation if oz_in or oz_out are provided
 		if (data.oz_in !== undefined || data.oz_out !== undefined) {
@@ -358,6 +360,17 @@ export const PUT: RequestHandler = async ({
 			.single();
 
 		if (error) throw error;
+
+		// If temperature/event data was provided, persist it
+		if (Array.isArray(temperatureEntries) && temperatureEntries.length > 0) {
+			const roastIdNum = parseInt(id);
+			// Ensure all entries have the correct roast_id
+			const temps = temperatureEntries.map((t: any) => ({ ...t, roast_id: roastIdNum }));
+			const events = Array.isArray(eventEntries)
+				? eventEntries.map((e: any) => ({ ...e, roast_id: roastIdNum }))
+				: [];
+			await saveRoastData(supabase, roastIdNum, temps, events, 'live');
+		}
 
 		// Update stocked status for this coffee after updating roast profile
 		await updateStockedStatus(supabase, coffee_id, user.id);

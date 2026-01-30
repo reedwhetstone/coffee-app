@@ -52,7 +52,7 @@
 		selectedEvent: string | null;
 		updateFan: (value: number) => void;
 		updateHeat: (value: number) => void;
-		saveRoastProfile: () => void;
+		saveRoastProfile: () => Promise<void>;
 		clearRoastData: () => void;
 	}>();
 

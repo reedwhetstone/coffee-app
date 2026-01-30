@@ -169,7 +169,7 @@
 		selectedEvent?: string | null;
 		updateFan: (value: number) => void;
 		updateHeat: (value: number) => void;
-		saveRoastProfile: () => void;
+		saveRoastProfile: () => Promise<void>;
 		selectedBean: { id?: number; name: string };
 		clearRoastData: () => void;
 	} = $props();
@@ -2772,7 +2772,7 @@
 						);
 						console.log('Manual save: About to call saveRoastProfile()');
 						try {
-							saveRoastProfile();
+							await saveRoastProfile();
 							console.log('Manual save: saveRoastProfile() completed successfully');
 						} catch (error: unknown) {
 							console.error('Manual save ERROR:', error);
@@ -2791,10 +2791,10 @@
 				<!-- Fallback button if LoadingButton fails to load -->
 				<button
 					class="w-full rounded border-2 border-zinc-500 px-3 py-1 text-text-primary-light hover:bg-background-primary-light sm:w-auto"
-					onclick={() => {
+					onclick={async () => {
 						console.log('Manual save (fallback): currentRoastProfile =', currentRoastProfile);
 						console.log('Manual save (fallback): About to call saveRoastProfile()');
-						saveRoastProfile();
+						await saveRoastProfile();
 					}}
 					disabled={!isRoasting && $eventEntries.length === 0}
 				>

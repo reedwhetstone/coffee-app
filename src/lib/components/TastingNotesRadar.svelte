@@ -21,11 +21,11 @@
 	let svgElement = $state<SVGSVGElement>();
 	let mounted = $state(false);
 	let d3Loaded = $state(false);
-	let isVisible = $state(!lazy); // If not lazy, always visible
+	let isVisible = $state(false);
 	let containerElement: HTMLElement;
 
-	const radius = size / 2 - 10; // Leave margin for labels
-	const center = size / 2;
+	let radius = $derived(size / 2 - 10); // Leave margin for labels
+	let center = $derived(size / 2);
 	const levels = 5; // 1-5 scale
 
 	// Transform tasting notes to radar data

@@ -665,8 +665,30 @@
 				currentRoastProfile = actualProfile;
 			}
 
-			// Note: Roast event data is now saved directly during roasting process
-			// Legacy data clearing/saving removed - clean slate implementation
+			// Persist temperature + event data to the database via PUT
+			const temps = $temperatureEntries;
+			const events = $eventEntries;
+
+			if (temps.length > 0 || events.length > 0) {
+				// Map entries to use correct roast_id (stores may have roast_id: 0 before profile creation)
+				const mappedTemps = temps.map((t) => ({ ...t, roast_id: roastId }));
+				const mappedEvents = events.map((e) => ({ ...e, roast_id: roastId }));
+
+				const putResponse = await fetch(`/api/roast-profiles?id=${roastId}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						temperatureEntries: mappedTemps,
+						eventEntries: mappedEvents,
+						last_updated: new Date().toISOString().slice(0, 19).replace('T', ' ')
+					})
+				});
+
+				if (!putResponse.ok) {
+					const errorData = await putResponse.json();
+					throw new Error(errorData.error || 'Failed to save roast data');
+				}
+			}
 
 			// For active roasting sessions, avoid full data sync that clears state
 			if (isRoasting || isPaused) {
