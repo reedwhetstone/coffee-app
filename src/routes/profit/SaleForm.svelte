@@ -1,13 +1,8 @@
 <script lang="ts">
-	const {
-		sale = null,
-		onClose,
-		onSubmit,
-		availableCoffees = [],
-		availableBatches = [],
-		catalogBeans = []
-	} = $props<{
-		sale: any;
+	import { untrack } from 'svelte';
+	
+	const props = $props<{
+		sale?: any;
 		onClose: () => void;
 		onSubmit: (sale: any) => void;
 		availableCoffees?: any[];
@@ -15,8 +10,13 @@
 		catalogBeans?: any[];
 	}>();
 
+	const { onClose, onSubmit, availableCoffees = [], availableBatches = [], catalogBeans = [] } = props;
+
+	// Capture the initial sale value using untrack - this is intentional as we only need initial value for form
+	const sale = untrack(() => props.sale ?? null);
+	
 	// Extract defaultBean from sale if it exists
-	let defaultBean = sale?.defaultBean || null;
+	const defaultBean = sale?.defaultBean || null;
 
 	let formData = $state(
 		sale?.id

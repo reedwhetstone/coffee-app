@@ -32,9 +32,9 @@
 	let coffeesLoading = $state(false); // No longer loading since data is passed via props
 
 	let formData = $state({
-		batch_name: selectedBean ? selectedBean.name : '',
-		coffee_id: selectedBean?.id ? Number(selectedBean.id) : '',
-		coffee_name: selectedBean?.name || '',
+		batch_name: '',
+		coffee_id: '' as number | string,
+		coffee_name: '',
 		roast_date: prepareDateForAPI(new Date().toISOString()),
 		oz_in: '',
 		oz_out: '',
@@ -46,13 +46,24 @@
 	// Array to store multiple beans in the batch
 	let batchBeans = $state([
 		{
-			coffee_id: selectedBean?.id ? Number(selectedBean.id) : '',
-			coffee_name: selectedBean?.name || '',
+			coffee_id: '' as number | string,
+			coffee_name: '',
 			oz_in: '',
 			oz_out: '',
 			artisan_file: null as File | null
 		}
 	]);
+
+	// Sync form data with selectedBean prop when it changes
+	$effect(() => {
+		if (selectedBean) {
+			formData.batch_name = selectedBean.name || '';
+			formData.coffee_id = selectedBean.id ? Number(selectedBean.id) : '';
+			formData.coffee_name = selectedBean.name || '';
+			batchBeans[0].coffee_id = selectedBean.id ? Number(selectedBean.id) : '';
+			batchBeans[0].coffee_name = selectedBean.name || '';
+		}
+	});
 
 	function addBeanToBatch() {
 		batchBeans = [

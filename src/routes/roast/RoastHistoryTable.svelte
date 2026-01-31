@@ -15,9 +15,9 @@
 		onSelectProfile: (profile: any) => void;
 	}>();
 
-	// Set defaults after destructuring
-	sortedBatchNames = sortedBatchNames ?? [];
-	sortedGroupedProfiles = sortedGroupedProfiles ?? {};
+	// Create derived values with defaults
+	let safeBatchNames = $derived(sortedBatchNames ?? []);
+	let safeGroupedProfiles = $derived(sortedGroupedProfiles ?? {});
 
 	import { formatDateForDisplay } from '$lib/utils/dates';
 
@@ -114,7 +114,7 @@
 </script>
 
 <div class="w-full max-w-[100vw] overflow-x-hidden">
-	{#if !sortedBatchNames || sortedBatchNames.length === 0}
+	{#if !safeBatchNames || safeBatchNames.length === 0}
 		<div class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light">
 			<div class="mb-4 text-6xl opacity-50">📊</div>
 			<h3 class="mb-2 text-lg font-semibold text-text-primary-light">No Roast Profiles Yet</h3>
@@ -124,8 +124,8 @@
 		</div>
 	{:else}
 		<div class="space-y-6">
-			{#each sortedBatchNames as batchName}
-				{@const profiles = sortedGroupedProfiles[batchName] || []}
+			{#each safeBatchNames as batchName}
+				{@const profiles = safeGroupedProfiles[batchName] || []}
 				{@const batchSummary = getBatchSummary(profiles)}
 				<div class="rounded-lg bg-background-secondary-light ring-1 ring-border-light">
 					<!-- Batch Header - Following ProfitCards Pattern -->

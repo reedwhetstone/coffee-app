@@ -19,12 +19,12 @@
 		class?: string;
 	}>();
 
-	// Loading state management
-	let isLoading = $state(loading);
+	// Internal loading state for async functions (not initialized from prop)
+	let isLoading = $state(false);
 
 	// Handle click with automatic loading state for async functions
 	async function handleClick() {
-		if (isLoading || disabled || !onclick) return;
+		if (loading || isLoading || disabled || !onclick) return;
 
 		try {
 			const result = onclick();

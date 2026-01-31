@@ -38,7 +38,7 @@
 		brew_method: 'cupping'
 	});
 
-	let overallRating = $state<number | null>(initialRating);
+	let overallRating = $state<number | null>(null);
 
 	// Initialize form data with existing notes if provided
 	$effect(() => {
