@@ -1,15 +1,24 @@
 import { writable, derived, get } from 'svelte/store';
 
 // Define types
+type DataItem = Record<string, unknown>;
+type FilterValue =
+	| string
+	| number
+	| boolean
+	| { min: string | number; max: string | number }
+	| string[]
+	| null;
+
 type FilterState = {
 	routeId: string;
 	sortField: string | null;
 	sortDirection: 'asc' | 'desc' | null;
-	filters: Record<string, any>;
-	uniqueValues: Record<string, any[]>;
-	originalData: any[]; // Keep for backward compatibility
-	filteredData: any[];
-	serverData: any[]; // Server-side filtered/sorted data
+	filters: Record<string, FilterValue>;
+	uniqueValues: Record<string, unknown[]>;
+	originalData: DataItem[]; // Keep for backward compatibility
+	filteredData: DataItem[];
+	serverData: DataItem[]; // Server-side filtered/sorted data
 	pagination: {
 		page: number;
 		limit: number;
@@ -177,7 +186,7 @@ function createFilterStore() {
 	 * @param routeId - The route identifier (e.g., '/beans', '/roast', '/')
 	 * @param data - Array of data items to initialize with
 	 */
-	function initializeForRoute(routeId: string, data: any[]) {
+	function initializeForRoute(routeId: string, data: DataItem[]) {
 		// Skip if already initializing this route
 		const currentState = get({ subscribe });
 		if (currentState.initializingRoute === routeId) {
@@ -331,7 +340,7 @@ function createFilterStore() {
 	 * @param key - The field name to filter on
 	 * @param value - The filter value (can be string, array, object with min/max, etc.)
 	 */
-	function setFilter(key: string, value: any) {
+	function setFilter(key: string, value: FilterValue) {
 		update((state) => {
 			state.filters = { ...state.filters, [key]: value };
 			// Reset to first page for server-side routes
@@ -452,22 +461,24 @@ function createFilterStore() {
 				state.lastProcessedCacheKey = cacheKey;
 
 				// Optimized unique values processing with efficient Set operations
-				const uniqueValues: Record<string, any[]> = {};
+				const uniqueValues: Record<string, unknown[]> = {};
 				const data = state.originalData;
 
 				// Helper to extract and dedupe values efficiently
-				const extractUnique = (fieldExtractor: (item: any) => any) => {
+				const extractUnique = (fieldExtractor: (item: DataItem) => unknown) => {
 					const values = new Set<string>();
 					for (const item of data) {
 						const value = fieldExtractor(item);
-						if (value) values.add(value);
+						if (value) values.add(String(value));
 					}
 					return values.size > 0 ? Array.from(values).sort() : null;
 				};
 
 				// Process each field type efficiently
-				const sourceExtractor = (item: any) =>
-					item.coffee_catalog?.source || item.source || item.vendor;
+				const sourceExtractor = (item: DataItem) => {
+					const catalog = item.coffee_catalog as DataItem | undefined;
+					return catalog?.source || item.source || item.vendor;
+				};
 				const sources = extractUnique(sourceExtractor);
 				if (sources) uniqueValues.sources = sources;
 
@@ -527,7 +538,7 @@ function createFilterStore() {
 	 * @param field - The field name to get
 	 * @returns The field value
 	 */
-	function getFieldValue(item: any, field: string): any {
+	function getFieldValue(item: DataItem, field: string): unknown {
 		// Fields that might be in coffee_catalog for joined beans data
 		const catalogFields = [
 			'name',
@@ -547,8 +558,9 @@ function createFilterStore() {
 		];
 
 		// For beans page joined data, check coffee_catalog first for these fields
-		if (catalogFields.includes(field) && item.coffee_catalog?.[field] !== undefined) {
-			return item.coffee_catalog[field];
+		const catalog = item.coffee_catalog as DataItem | undefined;
+		if (catalogFields.includes(field) && catalog?.[field] !== undefined) {
+			return catalog[field];
 		}
 
 		// Fallback to direct field access
@@ -556,7 +568,7 @@ function createFilterStore() {
 	}
 
 	// Filter data based on filters
-	function filterData(data: any[], filters: Record<string, any>): any[] {
+	function filterData(data: DataItem[], filters: Record<string, FilterValue>): DataItem[] {
 		// Skip if no filters
 		if (!Object.keys(filters).length) return data;
 
@@ -581,7 +593,7 @@ function createFilterStore() {
 					cutoffDate.setDate(cutoffDate.getDate() - daysBack);
 
 					// Parse the stocked_date (format: YYYY-MM-DD)
-					const stockedDate = new Date(itemValue);
+					const stockedDate = new Date(String(itemValue));
 					return stockedDate >= cutoffDate;
 				}
 
@@ -610,12 +622,14 @@ function createFilterStore() {
 				}
 
 				// Handle different filter types
-				if (typeof value === 'object') {
-					// Range filter
-					if (value.min !== undefined && value.max !== undefined) {
+				if (typeof value === 'object' && value !== null) {
+					// Range filter - check if it's a range object (not an array)
+					if (!Array.isArray(value) && 'min' in value && 'max' in value) {
+						const numItemValue =
+							typeof itemValue === 'number' ? itemValue : parseFloat(String(itemValue));
 						return (
-							(value.min === '' || itemValue >= parseFloat(value.min)) &&
-							(value.max === '' || itemValue <= parseFloat(value.max))
+							(value.min === '' || numItemValue >= parseFloat(String(value.min))) &&
+							(value.max === '' || numItemValue <= parseFloat(String(value.max)))
 						);
 					}
 
@@ -626,7 +640,7 @@ function createFilterStore() {
 						if (key === 'source' && value.length === 0) {
 							return true;
 						}
-						return value.includes(itemValue);
+						return value.includes(itemValue as string);
 					}
 				} else if (typeof itemValue === 'string' && typeof value === 'string') {
 					// Case-insensitive string search
@@ -649,10 +663,10 @@ function createFilterStore() {
 	 * @returns Sorted array of data items
 	 */
 	function sortData(
-		data: any[],
+		data: DataItem[],
 		sortField: string | null,
 		sortDirection: 'asc' | 'desc' | null
-	): any[] {
+	): DataItem[] {
 		// Return unsorted data if no sort criteria specified
 		if (!sortField || !sortDirection) {
 			return data;
@@ -700,8 +714,8 @@ function createFilterStore() {
 					return new Date(dateStr);
 				};
 
-				const dateA = parseMonthYear(aValue);
-				const dateB = parseMonthYear(bValue);
+				const dateA = parseMonthYear(String(aValue));
+				const dateB = parseMonthYear(String(bValue));
 
 				return sortDirection === 'asc'
 					? dateA.getTime() - dateB.getTime()
@@ -710,8 +724,8 @@ function createFilterStore() {
 
 			// Handle score_value, roast_id and other numeric fields
 			if (sortField === 'score_value' || sortField === 'cost_lb' || sortField === 'roast_id') {
-				const numA = parseFloat(aValue) || 0;
-				const numB = parseFloat(bValue) || 0;
+				const numA = parseFloat(String(aValue)) || 0;
+				const numB = parseFloat(String(bValue)) || 0;
 
 				return sortDirection === 'asc' ? numA - numB : numB - numA;
 			}
@@ -733,11 +747,11 @@ function createFilterStore() {
 
 	// Process data with filters and sorting
 	function processData(
-		data: any[],
+		data: DataItem[],
 		sortField: string | null,
 		sortDirection: 'asc' | 'desc' | null,
-		filters: Record<string, any>
-	): any[] {
+		filters: Record<string, FilterValue>
+	): DataItem[] {
 		// Start by filtering
 		const filtered = filterData(data, filters);
 		//	console.log('After filtering:', filtered.length, 'items');
@@ -823,7 +837,7 @@ function createFilterStore() {
 	}
 
 	// Efficient array comparison helper
-	function arraysEqual(a: any[], b: any[]): boolean {
+	function arraysEqual(a: unknown[], b: unknown[]): boolean {
 		if (a.length !== b.length) return false;
 		for (let i = 0; i < a.length; i++) {
 			if (a[i] !== b[i]) return false;
