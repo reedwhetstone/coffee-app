@@ -4,7 +4,66 @@ test.use({
 	storageState: 'tests/e2e/.auth/user.json'
 });
 
+// Types for collected errors
+interface ConsoleError {
+	type: string;
+	text: string;
+	location?: string;
+}
+
+interface NetworkError {
+	url: string;
+	status: number;
+	statusText: string;
+	method: string;
+}
+
 test('test', async ({ page }) => {
+	// Collect errors throughout the test
+	const consoleErrors: ConsoleError[] = [];
+	const networkErrors: NetworkError[] = [];
+
+	// Listen for console errors and warnings
+	page.on('console', (msg) => {
+		if (msg.type() === 'error' || msg.type() === 'warning') {
+			consoleErrors.push({
+				type: msg.type(),
+				text: msg.text(),
+				location: msg.location()?.url
+			});
+		}
+	});
+
+	// Listen for page errors (uncaught exceptions)
+	page.on('pageerror', (error) => {
+		consoleErrors.push({
+			type: 'pageerror',
+			text: error.message
+		});
+	});
+
+	// Listen for failed network requests (4xx, 5xx, or network failures)
+	page.on('response', (response) => {
+		if (response.status() >= 400) {
+			networkErrors.push({
+				url: response.url(),
+				status: response.status(),
+				statusText: response.statusText(),
+				method: response.request().method()
+			});
+		}
+	});
+
+	// Listen for requests that fail entirely (network errors, timeouts)
+	page.on('requestfailed', (request) => {
+		networkErrors.push({
+			url: request.url(),
+			status: 0,
+			statusText: request.failure()?.errorText || 'Request failed',
+			method: request.method()
+		});
+	});
+
 	await page.goto('http://localhost:5173/catalog');
 	await page.getByRole('button', { name: 'Toggle navigation menu' }).click();
 	await page.getByRole('link', { name: 'Beans' }).click();
@@ -87,4 +146,35 @@ test('test', async ({ page }) => {
 	await page.getByRole('button', { name: 'Create Sale' }).click();
 	await page.getByRole('button', { name: 'Last 30 Days' }).click();
 	await page.getByRole('button', { name: '3M' }).click();
+
+	// Log all collected errors at the end of the test
+	if (consoleErrors.length > 0) {
+		console.log('\n=== CONSOLE ERRORS/WARNINGS ===');
+		consoleErrors.forEach((err, i) => {
+			console.log(`${i + 1}. [${err.type.toUpperCase()}] ${err.text}`);
+			if (err.location) console.log(`   Location: ${err.location}`);
+		});
+	}
+
+	if (networkErrors.length > 0) {
+		console.log('\n=== NETWORK ERRORS ===');
+		networkErrors.forEach((err, i) => {
+			console.log(`${i + 1}. [${err.method}] ${err.url}`);
+			console.log(`   Status: ${err.status} ${err.statusText}`);
+		});
+	}
+
+	// Summary
+	const totalErrors = consoleErrors.length + networkErrors.length;
+	if (totalErrors > 0) {
+		console.log(
+			`\n=== SUMMARY: ${consoleErrors.length} console errors, ${networkErrors.length} network errors ===\n`
+		);
+	} else {
+		console.log('\n=== NO ERRORS DETECTED ===\n');
+	}
+
+	// Optional: Fail the test if there are critical errors
+	// Uncomment the next line to fail on any errors:
+	// expect(networkErrors.filter(e => e.status >= 500)).toHaveLength(0);
 });
