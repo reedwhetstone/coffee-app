@@ -72,49 +72,8 @@
 		data?: Partial<PageData>;
 	}>();
 
-	// Debug: Log the data
-	$effect(() => {
-		console.log('Raw data from server:', data?.data?.length);
-		console.log('Full server data object:', {
-			hasData: !!data,
-			dataKeys: data ? Object.keys(data) : [],
-			role: data?.role,
-			searchState: data?.searchState,
-			isShared: data?.isShared,
-			catalogDataLength: data?.catalogData?.length
-		});
-
-		if (data?.data?.length > 0) {
-			console.log('First bean raw data:', data.data[0]);
-			const beanWithProfiles = data.data.find(
-				(bean: PageData['data'][0]) => bean.roast_profiles && bean.roast_profiles.length > 0
-			);
-			if (beanWithProfiles) {
-				console.log(
-					'Bean with profiles found in raw data:',
-					beanWithProfiles.coffee_catalog?.name,
-					beanWithProfiles.roast_profiles
-				);
-			} else {
-				console.log('No beans with roast_profiles found in raw data');
-			}
-		}
-
-		if ($filteredData.length > 0) {
-			const sampleBean = $filteredData.find(
-				(bean) => bean.roast_profiles && bean.roast_profiles.length > 0
-			);
-			if (sampleBean) {
-				console.log(
-					'Sample bean with roast profiles in filtered data:',
-					sampleBean.coffee_catalog?.name,
-					sampleBean.roast_profiles
-				);
-			} else {
-				console.log('No beans with roast_profiles found in filtered data');
-			}
-		}
-	});
+	// Debug logging removed - was causing Svelte 5 console_log_state warnings
+	// Use $inspect() or $state.snapshot() if debugging is needed
 
 	// Track loading state for client-side data fetching
 	let isLoading = $state(true);
@@ -285,8 +244,6 @@
 	});
 
 	onMount(() => {
-		console.log('Beans page mounted');
-
 		// Add event listener for the custom show-bean-form event
 		window.addEventListener('show-bean-form', handleAddNewBean);
 
@@ -297,7 +254,6 @@
 	});
 
 	function handleAddNewBean() {
-		console.log('handleAddNewBean called');
 		selectedBean = null;
 		isFormVisible = true;
 	}

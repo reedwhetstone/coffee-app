@@ -5,6 +5,7 @@
 	import { formatDateForDisplay } from '$lib/utils/dates';
 	import type { RoastProfile } from '$lib/types/component.types';
 	import type { ComponentType } from 'svelte';
+	import { replaceState } from '$app/navigation';
 
 	let {
 		sortedBatchNames,
@@ -103,12 +104,10 @@
 	function handleBrowseProfilesClick() {
 		viewMode = 'browser';
 
-		// Clear URL profileId parameter
+		// Clear URL profileId parameter using SvelteKit's replaceState
 		const currentUrl = new URL(window.location.href);
 		currentUrl.searchParams.delete('profileId');
-		if (typeof window !== 'undefined') {
-			window.history.replaceState({}, '', currentUrl.pathname + (currentUrl.search || ''));
-		}
+		replaceState(currentUrl.pathname + (currentUrl.search || ''), {});
 
 		// Clear current profile state in parent
 		onClearProfile();
