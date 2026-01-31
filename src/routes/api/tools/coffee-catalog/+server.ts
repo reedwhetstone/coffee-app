@@ -23,7 +23,7 @@ interface CoffeeCatalogToolInput {
 
 // Tool response interface
 interface CoffeeCatalogToolResponse {
-	coffees: any[];
+	coffees: Record<string, unknown>[];
 	total: number;
 	filters_applied: CoffeeCatalogToolInput;
 	search_strategy: 'structured' | 'hybrid' | 'fallback';
@@ -32,7 +32,7 @@ interface CoffeeCatalogToolResponse {
 export const POST: RequestHandler = async (event) => {
 	try {
 		// Require member role for tool access
-		const { user } = await requireMemberRole(event);
+		await requireMemberRole(event);
 		const { supabase } = event.locals;
 
 		const input: CoffeeCatalogToolInput = await event.request.json();

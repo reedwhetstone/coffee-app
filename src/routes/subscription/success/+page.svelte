@@ -85,8 +85,8 @@
 				// Invalidate all data to refresh auth state regardless of role verification outcome
 				await invalidateAll();
 			}
-		} catch (err: any) {
-			error = err.message || 'Something went wrong';
+		} catch (err: unknown) {
+			error = err instanceof Error ? err.message : 'Something went wrong';
 			console.error('Error verifying payment:', err);
 		} finally {
 			loading = false;

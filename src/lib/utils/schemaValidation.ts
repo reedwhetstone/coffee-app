@@ -18,7 +18,7 @@ export interface SchemaTestResult {
 /**
  * Validate a JSON-LD schema object
  */
-export function validateSchema(schema: any): ValidationResult {
+export function validateSchema(schema: Record<string, unknown>): ValidationResult {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
@@ -59,7 +59,11 @@ export function validateSchema(schema: any): ValidationResult {
 /**
  * Type-specific validation rules
  */
-function validateByType(schema: any, errors: string[], warnings: string[]): void {
+function validateByType(
+	schema: Record<string, unknown>,
+	errors: string[],
+	warnings: string[]
+): void {
 	switch (schema['@type']) {
 		case 'Organization':
 			validateOrganization(schema, errors, warnings);
@@ -87,7 +91,11 @@ function validateByType(schema: any, errors: string[], warnings: string[]): void
 /**
  * Validate Organization schema
  */
-function validateOrganization(schema: any, errors: string[], warnings: string[]): void {
+function validateOrganization(
+	schema: Record<string, unknown>,
+	errors: string[],
+	warnings: string[]
+): void {
 	if (!schema.name) {
 		errors.push('Organization missing required "name" property');
 	}
@@ -96,15 +104,22 @@ function validateOrganization(schema: any, errors: string[], warnings: string[])
 		warnings.push('Organization missing recommended "url" property');
 	}
 
-	if (schema.logo && !schema.logo.url) {
-		errors.push('Organization logo missing "url" property');
+	if (schema.logo && typeof schema.logo === 'object') {
+		const logo = schema.logo as Record<string, unknown>;
+		if (!logo.url) {
+			errors.push('Organization logo missing "url" property');
+		}
 	}
 }
 
 /**
  * Validate Product schema
  */
-function validateProduct(schema: any, errors: string[], warnings: string[]): void {
+function validateProduct(
+	schema: Record<string, unknown>,
+	errors: string[],
+	warnings: string[]
+): void {
 	if (!schema.name) {
 		errors.push('Product missing required "name" property');
 	}
@@ -114,14 +129,14 @@ function validateProduct(schema: any, errors: string[], warnings: string[]): voi
 	}
 
 	if (schema.offers) {
-		validateOffer(schema.offers, errors, warnings);
+		validateOffer(schema.offers as Record<string, unknown>, errors, warnings);
 	}
 }
 
 /**
  * Validate Offer schema
  */
-function validateOffer(offer: any, errors: string[], warnings: string[]): void {
+function validateOffer(offer: Record<string, unknown>, errors: string[], warnings: string[]): void {
 	if (!offer.availability) {
 		warnings.push('Offer missing recommended "availability" property');
 	}
@@ -134,7 +149,11 @@ function validateOffer(offer: any, errors: string[], warnings: string[]): void {
 /**
  * Validate WebSite schema
  */
-function validateWebSite(schema: any, errors: string[], _warnings: string[]): void {
+function validateWebSite(
+	schema: Record<string, unknown>,
+	errors: string[],
+	_warnings: string[]
+): void {
 	if (!schema.name) {
 		errors.push('WebSite missing required "name" property');
 	}
@@ -144,7 +163,8 @@ function validateWebSite(schema: any, errors: string[], _warnings: string[]): vo
 	}
 
 	if (schema.potentialAction) {
-		if (!schema.potentialAction.target) {
+		const action = schema.potentialAction as Record<string, unknown>;
+		if (!action.target) {
 			errors.push('SearchAction missing required "target" property');
 		}
 	}
@@ -153,7 +173,11 @@ function validateWebSite(schema: any, errors: string[], _warnings: string[]): vo
 /**
  * Validate BreadcrumbList schema
  */
-function validateBreadcrumbList(schema: any, errors: string[], _warnings: string[]): void {
+function validateBreadcrumbList(
+	schema: Record<string, unknown>,
+	errors: string[],
+	_warnings: string[]
+): void {
 	if (!schema.itemListElement || !Array.isArray(schema.itemListElement)) {
 		errors.push('BreadcrumbList missing required "itemListElement" array');
 		return;
@@ -175,7 +199,11 @@ function validateBreadcrumbList(schema: any, errors: string[], _warnings: string
 /**
  * Validate FAQPage schema
  */
-function validateFAQPage(schema: any, errors: string[], _warnings: string[]): void {
+function validateFAQPage(
+	schema: Record<string, unknown>,
+	errors: string[],
+	_warnings: string[]
+): void {
 	if (!schema.mainEntity || !Array.isArray(schema.mainEntity)) {
 		errors.push('FAQPage missing required "mainEntity" array');
 		return;
@@ -194,7 +222,11 @@ function validateFAQPage(schema: any, errors: string[], _warnings: string[]): vo
 /**
  * Validate ItemList schema
  */
-function validateItemList(schema: any, errors: string[], warnings: string[]): void {
+function validateItemList(
+	schema: Record<string, unknown>,
+	errors: string[],
+	warnings: string[]
+): void {
 	if (!schema.itemListElement || !Array.isArray(schema.itemListElement)) {
 		errors.push('ItemList missing required "itemListElement" array');
 		return;
@@ -208,7 +240,11 @@ function validateItemList(schema: any, errors: string[], warnings: string[]): vo
 /**
  * Check for common schema issues
  */
-function validateCommonIssues(schema: any, errors: string[], warnings: string[]): void {
+function validateCommonIssues(
+	schema: Record<string, unknown>,
+	errors: string[],
+	warnings: string[]
+): void {
 	// Check for missing URLs in properties that should have them
 	const urlFields = ['url', 'sameAs', 'image'];
 	urlFields.forEach((field) => {
@@ -258,7 +294,7 @@ export function generateTestingUrls(pageUrl: string): {
 /**
  * Development helper to log schema validation results
  */
-export function logSchemaValidation(schemas: any[], pageUrl: string): void {
+export function logSchemaValidation(schemas: Record<string, unknown>[], pageUrl: string): void {
 	if (typeof window === 'undefined') return; // Only run in browser
 
 	console.group('🔍 Schema Validation Results');
@@ -297,10 +333,10 @@ export function logSchemaValidation(schemas: any[], pageUrl: string): void {
 /**
  * Extract schemas from page HTML (for testing)
  */
-export function extractSchemasFromPage(): any[] {
+export function extractSchemasFromPage(): Record<string, unknown>[] {
 	if (typeof window === 'undefined') return [];
 
-	const schemas: any[] = [];
+	const schemas: Record<string, unknown>[] = [];
 	const scriptElements = document.querySelectorAll('script[type="application/ld+json"]');
 
 	scriptElements.forEach((script) => {

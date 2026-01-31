@@ -19,10 +19,22 @@ interface BeanTastingToolResponse {
 		source?: string;
 	};
 	tasting_notes: {
-		user_notes?: any;
-		supplier_notes?: any;
-		ai_notes?: any;
-		combined_notes?: any;
+		user_notes?: {
+			notes?: string | null;
+			cupping_notes?: string | null;
+		} | null;
+		supplier_notes?: {
+			cupping_notes?: string | null;
+			source?: string | null;
+		};
+		ai_notes?: {
+			description?: string | null;
+			tasting_notes?: string | null;
+		};
+		combined_notes?: {
+			descriptions: (string | null | undefined)[];
+			sources: string[];
+		};
 	};
 	radar_data?: {
 		body: number;
@@ -61,9 +73,13 @@ export const POST: RequestHandler = async (event) => {
 				'id, name, processing, region, source, cupping_notes, ai_tasting_notes, ai_description'
 			)
 			.eq('id', bean_id)
+			.eq('id', bean_id)
 			.single();
 
-		if (coffeeError || !coffeeInfo) {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const coffee = coffeeInfo as any;
+
+		if (coffeeError || !coffee) {
 			return json(
 				{
 					error: 'Coffee bean not found',
@@ -74,7 +90,7 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		let userNotes = null;
-		let message = `Tasting notes for ${coffeeInfo.name}`;
+		let message = `Tasting notes for ${coffee.name}`;
 
 		// Get user's inventory entry for this coffee (if they have it)
 		if (filter === 'user' || filter === 'both') {
@@ -97,7 +113,7 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Prepare tasting notes based on filter
-		const tastingNotes: any = {};
+		const tastingNotes: BeanTastingToolResponse['tasting_notes'] = {};
 
 		if (filter === 'user' || filter === 'both') {
 			tastingNotes.user_notes = userNotes;
@@ -105,22 +121,22 @@ export const POST: RequestHandler = async (event) => {
 
 		if (filter === 'supplier' || filter === 'both') {
 			tastingNotes.supplier_notes = {
-				cupping_notes: coffeeInfo.cupping_notes,
-				source: coffeeInfo.source
+				cupping_notes: coffee.cupping_notes,
+				source: coffee.source
 			};
 		}
 
 		// Always include AI notes for context
 		tastingNotes.ai_notes = {
-			description: coffeeInfo.ai_description,
-			tasting_notes: coffeeInfo.ai_tasting_notes
+			description: coffee.ai_description,
+			tasting_notes: coffee.ai_tasting_notes
 		};
 
 		// Create combined notes for 'both' filter
 		if (filter === 'both') {
 			const combinedDescriptions = [
-				coffeeInfo.ai_description,
-				coffeeInfo.cupping_notes,
+				coffee.ai_description,
+				coffee.cupping_notes,
 				userNotes?.notes
 			].filter(Boolean);
 
@@ -135,12 +151,12 @@ export const POST: RequestHandler = async (event) => {
 
 		// Extract radar chart data if available and requested
 		let radarData;
-		if (include_radar_data && coffeeInfo.ai_tasting_notes) {
+		if (include_radar_data && coffee.ai_tasting_notes) {
 			try {
 				const aiTastingNotes =
-					typeof coffeeInfo.ai_tasting_notes === 'string'
-						? JSON.parse(coffeeInfo.ai_tasting_notes)
-						: coffeeInfo.ai_tasting_notes;
+					typeof coffee.ai_tasting_notes === 'string'
+						? JSON.parse(coffee.ai_tasting_notes)
+						: coffee.ai_tasting_notes;
 
 				if (aiTastingNotes && typeof aiTastingNotes === 'object') {
 					radarData = {
@@ -158,11 +174,11 @@ export const POST: RequestHandler = async (event) => {
 
 		const response: BeanTastingToolResponse = {
 			bean_info: {
-				id: coffeeInfo.id,
-				name: coffeeInfo.name,
-				processing: coffeeInfo.processing,
-				region: coffeeInfo.region,
-				source: coffeeInfo.source
+				id: coffee.id,
+				name: coffee.name,
+				processing: coffee.processing,
+				region: coffee.region,
+				source: coffee.source
 			},
 			tasting_notes: tastingNotes,
 			radar_data: radarData,

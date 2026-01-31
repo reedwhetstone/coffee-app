@@ -41,7 +41,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				resource_id: resourceId,
 				expires_at: expires.toISOString(),
 				is_active: true
-			} as any)
+			} as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 			.select()
 			.single();
 

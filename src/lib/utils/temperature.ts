@@ -102,10 +102,10 @@ export function normalizeArtisanTemperatures(
 /**
  * Safe temperature parsing with validation
  */
-export function parseTemperature(value: any): number | null {
+export function parseTemperature(value: unknown): number | null {
 	if (value === null || value === undefined || value === '') return null;
 
-	const parsed = typeof value === 'number' ? value : parseFloat(value);
+	const parsed = typeof value === 'number' ? value : parseFloat(String(value));
 
 	// Check for invalid values that Artisan might export
 	if (isNaN(parsed) || parsed === -1.0 || parsed < -273.15 || parsed > 1000) {
@@ -118,7 +118,7 @@ export function parseTemperature(value: any): number | null {
 /**
  * Validate temperature unit
  */
-export function isValidTemperatureUnit(unit: any): unit is TemperatureUnit {
+export function isValidTemperatureUnit(unit: unknown): unit is TemperatureUnit {
 	return unit === 'F' || unit === 'C';
 }
 

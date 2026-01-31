@@ -26,6 +26,13 @@ export interface RoastWithLogs extends RoastProfile {
 	green_coffee_inv?: InventoryWithCatalog;
 }
 
+export type AvailableCoffee = CoffeeCatalog & GreenCoffeeInv & { coffee_catalog?: CoffeeCatalog };
+
+export interface BatchItem {
+	batch_name: string;
+	coffee_id: number; // references green_coffee_inv_id or coffee_catalog_id? SalesForm implies coffee_id matches coffee.id
+}
+
 // Form data interfaces
 export interface CoffeeFormData {
 	manual_name?: string;

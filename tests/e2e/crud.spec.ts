@@ -16,20 +16,6 @@ async function waitForNetworkIdle(page: Page, timeout = 3000) {
 }
 
 /**
- * Helper to click a button and wait for it to complete (not be disabled)
- */
-async function clickAndWait(
-	page: Page,
-	buttonName: string | RegExp,
-	options?: { exact?: boolean }
-) {
-	const button = page.getByRole('button', { name: buttonName, ...options });
-	await button.click();
-	// Wait for any loading states to resolve
-	await page.waitForTimeout(300);
-}
-
-/**
  * Navigate to beans page via sidebar
  */
 async function navigateToBeans(page: Page) {
@@ -38,17 +24,6 @@ async function navigateToBeans(page: Page) {
 	await page.getByRole('link', { name: 'Beans' }).waitFor({ state: 'visible' });
 	await page.getByRole('link', { name: 'Beans' }).click();
 	await page.waitForURL(/\/beans/);
-}
-
-/**
- * Select a bean by partial name match
- */
-async function selectBean(page: Page, partialName: string) {
-	// Use regex to match partial name, ignoring dynamic parts like dates/IDs
-	await page
-		.getByRole('button', { name: new RegExp(partialName, 'i') })
-		.first()
-		.click();
 }
 
 // ============================================================
@@ -287,7 +262,7 @@ test.describe('Roast Profiles', () => {
 		await page.waitForTimeout(500);
 
 		// Check if there are any roast profiles
-		const startNewRoastBtn = page.getByRole('button', { name: /Start New Roast/i });
+		// const startNewRoastBtn = page.getByRole('button', { name: /Start New Roast/i });
 		const hasExistingProfiles = await page
 			.getByText(/Roast #|ID: \d+/)
 			.first()

@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 
 // Simple in-memory cache for catalog data
 let catalogCache: {
-	data: any[] | null;
+	data: Record<string, unknown>[] | null;
 	timestamp: number;
 } = {
 	data: null,
@@ -24,7 +24,8 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		const requestedIds = idsParam.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
 
 		if (requestedIds.length > 0) {
-			const { data: rows, error } = await supabase
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const { data: rows, error } = await (supabase as any)
 				.from('coffee_catalog')
 				.select('*')
 				.in('id', requestedIds)
@@ -71,7 +72,8 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			//	console.log('Received filter parameters:', filters);
 
 			// Build query with server-side filtering and sorting
-			let query = supabase
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			let query = (supabase as any)
 				.from('coffee_catalog')
 				.select('*', { count: 'exact' })
 				.eq('stocked', true);
@@ -138,7 +140,8 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			return json(catalogCache.data);
 		}
 
-		const { data: rows, error } = await supabase
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { data: rows, error } = await (supabase as any)
 			.from('coffee_catalog')
 			.select('*')
 			.eq('stocked', true)

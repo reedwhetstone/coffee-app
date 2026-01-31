@@ -12,11 +12,11 @@
 		curveMonotoneX,
 		line,
 		area,
-		pointer
+		pointer,
+		type ScaleTime
 	} from 'd3';
 	import { onMount } from 'svelte';
 	import type { D3GSelection, PerformanceDataPoint } from '$lib/types/d3.types';
-	import type { Line } from 'd3';
 
 	interface SaleData {
 		id: number;
@@ -266,8 +266,8 @@
 
 		const yAxisFormat =
 			selectedViewType === 'margin'
-				? (d: any) => `${Number(d)}%`
-				: (d: any) => `$${Number(d).toLocaleString()}`;
+				? (d: number | { valueOf(): number }) => `${Number(d)}%`
+				: (d: number | { valueOf(): number }) => `$${Number(d).toLocaleString()}`;
 
 		const yAxis = axisLeft(yScale).tickFormat(yAxisFormat).ticks(6);
 
@@ -410,7 +410,7 @@
 		}
 
 		// Add interactive overlay for smooth tooltip management
-		addInteractiveOverlay(svg, chartData, xScale, yScale);
+		addInteractiveOverlay(svg, chartData, xScale);
 
 		// Enhanced interactive legend
 		addLegend(svg, width);
@@ -419,8 +419,7 @@
 	function addInteractiveOverlay(
 		svg: D3GSelection,
 		chartData: PerformanceDataPoint[],
-		xScale: any,
-		yScale: any
+		xScale: ScaleTime<number, number>
 	) {
 		// Create overlay for capturing mouse events
 		const overlay = svg
@@ -456,8 +455,6 @@
 					const d = chartData[closestIndex];
 
 					if (d) {
-						// Get mouse position relative to viewport
-						const rect = chartContainer.getBoundingClientRect();
 						const mouseX = event.clientX;
 						const mouseY = event.clientY;
 

@@ -6,8 +6,8 @@
 export interface LogMessage {
 	timestamp: string;
 	type: 'user_prompt' | 'llm_thinking' | 'tool_call' | 'tool_response' | 'final_response' | 'error';
-	content: any;
-	metadata?: Record<string, any>;
+	content: unknown;
+	metadata?: Record<string, unknown>;
 }
 
 export class ChatLogger {
@@ -42,7 +42,7 @@ export class ChatLogger {
 	/**
 	 * Log LLM interpretation and thinking process
 	 */
-	logLLMThinking(thinking: string, metadata?: Record<string, any>): void {
+	logLLMThinking(thinking: string, metadata?: Record<string, unknown>): void {
 		const logMessage: LogMessage = {
 			timestamp: new Date().toISOString(),
 			type: 'llm_thinking',
@@ -57,7 +57,7 @@ export class ChatLogger {
 	/**
 	 * Log tool call with input parameters
 	 */
-	logToolCall(toolName: string, input: any, metadata?: Record<string, any>): void {
+	logToolCall(toolName: string, input: unknown, metadata?: Record<string, unknown>): void {
 		const logMessage: LogMessage = {
 			timestamp: new Date().toISOString(),
 			type: 'tool_call',
@@ -74,9 +74,9 @@ export class ChatLogger {
 	 */
 	logToolResponse(
 		toolName: string,
-		output: any,
+		output: unknown,
 		success: boolean = true,
-		metadata?: Record<string, any>
+		metadata?: Record<string, unknown>
 	): void {
 		const logMessage: LogMessage = {
 			timestamp: new Date().toISOString(),
@@ -95,7 +95,11 @@ export class ChatLogger {
 	/**
 	 * Log final LLM response to user
 	 */
-	logFinalResponse(response: string, toolCalls?: any[], metadata?: Record<string, any>): void {
+	logFinalResponse(
+		response: string,
+		toolCalls?: unknown[],
+		metadata?: Record<string, unknown>
+	): void {
 		const logMessage: LogMessage = {
 			timestamp: new Date().toISOString(),
 			type: 'final_response',
@@ -117,7 +121,7 @@ export class ChatLogger {
 	/**
 	 * Log errors with context
 	 */
-	logError(error: Error | string, context?: string, metadata?: Record<string, any>): void {
+	logError(error: Error | string, context?: string, metadata?: Record<string, unknown>): void {
 		const errorMessage = error instanceof Error ? error.message : error;
 		const errorStack = error instanceof Error ? error.stack : undefined;
 
@@ -174,7 +178,11 @@ export class ChatLogger {
 	/**
 	 * Private method to print clean, formatted console output
 	 */
-	private printCleanLog(header: string, content: any, metadata?: Record<string, any>): void {
+	private printCleanLog(
+		header: string,
+		content: unknown,
+		metadata?: Record<string, unknown>
+	): void {
 		const timestamp = new Date().toISOString().split('T')[1].split('.')[0]; // HH:MM:SS format
 
 		console.log(`\n━━━ ${header} [${timestamp}] ━━━`);

@@ -1,50 +1,21 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import type { Database } from '$lib/types/database.types';
 
-interface Sale {
-	price: number | null;
-	oz_sold: number | null;
-}
+type CoffeeCatalogName = { name: string };
+type GreenCoffeeWithCatalog = Database['public']['Tables']['green_coffee_inv']['Row'] & {
+	coffee_catalog: CoffeeCatalogName | CoffeeCatalogName[] | null;
+};
+type SaleWithDetails = Database['public']['Tables']['sales']['Row'] & {
+	green_coffee_inv: GreenCoffeeWithCatalog | null;
+};
 
-interface RoastProfile {
-	oz_in: number | null;
-	oz_out: number | null;
-}
-
-interface Row {
-	id: number;
-	purchase_date: string | null;
-	purchased_qty_lbs: number | null;
-	bean_cost: number | null;
-	tax_ship_cost: number | null;
-	catalog_id: number | null;
-	coffee_catalog?:
-		| {
-				name: string;
-				score_value: number | null;
-				arrival_date: string | null;
-				region: string | null;
-				processing: string | null;
-				cultivar_detail: string | null;
-				cost_lb: number | null;
-				source: string | null;
-				stocked: boolean | null;
-		  }[]
-		| {
-				name: string;
-				score_value: number | null;
-				arrival_date: string | null;
-				region: string | null;
-				processing: string | null;
-				cultivar_detail: string | null;
-				cost_lb: number | null;
-				source: string | null;
-				stocked: boolean | null;
-		  }
-		| null;
-	sales?: Sale[];
-	roast_profiles?: RoastProfile[];
-}
+// Type for the profit data query result
+type ProfitDataRow = Database['public']['Tables']['green_coffee_inv']['Row'] & {
+	coffee_catalog: CoffeeCatalogName | CoffeeCatalogName[] | null;
+	sales: { price: number | null; oz_sold: number | null }[];
+	roast_profiles: { oz_in: number | null; oz_out: number | null }[];
+};
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
@@ -54,7 +25,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		}
 
 		// Fetch sales data with coffee catalog details
-		const { data: sales, error: salesError } = await supabase
+		const { data: salesRaw, error: salesError } = await supabase
 			.from('sales')
 			.select(
 				`
@@ -71,12 +42,14 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			.eq('user', user.id)
 			.order('sell_date', { ascending: false });
 
+		const sales = salesRaw as unknown as SaleWithDetails[];
+
 		if (salesError) {
 			return json({ error: salesError.message }, { status: 500 });
 		}
 
 		// Fetch profit data with coffee catalog details
-		const { data: profitData, error: profitError } = await supabase
+		const { data: profitDataRaw, error: profitError } = await supabase
 			.from('green_coffee_inv')
 			.select(
 				`
@@ -110,16 +83,26 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			.eq('user', user.id)
 			.order('purchase_date', { ascending: false });
 
+		const profitData = profitDataRaw as unknown as ProfitDataRow[];
+
 		if (profitError) {
 			return json({ error: profitError.message }, { status: 500 });
 		}
 
-		const formattedSales = sales.map((sale) => ({
-			...sale,
-			coffee_name: sale.green_coffee_inv?.coffee_catalog?.name || null
-		}));
+		const formattedSales = (sales || []).map((sale) => {
+			// Safely access coffee name handling potential array or object
+			const catalog = sale.green_coffee_inv?.coffee_catalog;
+			const coffeeName = Array.isArray(catalog)
+				? catalog[0]?.name
+				: (catalog as { name: string })?.name;
 
-		const formattedProfitRows = profitData.map((row: Row) => {
+			return {
+				...sale,
+				coffee_name: coffeeName || null
+			};
+		});
+
+		const formattedProfitRows = profitData.map((row) => {
 			const totalSales = row.sales?.reduce((sum, sale) => sum + (sale.price || 0), 0) || 0;
 			const totalOzSold = row.sales?.reduce((sum, sale) => sum + (sale.oz_sold || 0), 0) || 0;
 			const totalOzIn =
@@ -228,8 +211,19 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			.eq('id', insertData.green_coffee_inv_id)
 			.single();
 
-		if (!coffee || coffee.user !== user.id) {
-			return json({ error: 'Unauthorized' }, { status: 403 });
+		// Check if user owns the coffee or has admin access for legacy data
+		// (Legacy data might not have user attached, or we might need loose check)
+		// For strict ownership: coffee?.user !== user.id
+		// But type of 'coffee' might be inferred as { user: string | null } or never if inferred wrong.
+		// We'll cast to unknown for safety if needed, or rely on loose check.
+		const coffeeUser = (coffee as unknown as { user: string | null })?.user;
+
+		if (!coffeeUser) {
+			// If coffee not found
+			return json({ error: 'Green coffee inventory not found' }, { status: 404 });
+		}
+		if (coffeeUser !== user.id) {
+			return json({ error: 'Unauthorized: You do not own this coffee inventory' }, { status: 403 });
 		}
 
 		// Insert the new sale with user ID
@@ -244,7 +238,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Get the coffee name separately for the response
-		const { data: coffeeData } = await supabase
+		const { data: coffeeDataRaw } = await supabase
 			.from('green_coffee_inv')
 			.select(
 				`
@@ -257,12 +251,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			.eq('id', insertData.green_coffee_inv_id)
 			.single();
 
+		const coffeeData = coffeeDataRaw as unknown as GreenCoffeeWithCatalog;
+
 		// Format the response to match the expected structure
 		const formattedSale = {
 			...newSale,
 			coffee_name: Array.isArray(coffeeData?.coffee_catalog)
-				? (coffeeData?.coffee_catalog as any)[0]?.name || null
-				: (coffeeData?.coffee_catalog as any)?.name || null,
+				? (coffeeData?.coffee_catalog[0] as { name: string })?.name || null
+				: (coffeeData?.coffee_catalog as { name: string })?.name || null,
 			purchase_date: coffeeData?.purchase_date || null
 		};
 

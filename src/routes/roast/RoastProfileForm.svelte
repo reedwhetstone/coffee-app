@@ -3,6 +3,10 @@
 	import { prepareDateForAPI } from '$lib/utils/dates';
 	import { loadingStore } from '$lib/stores/loadingStore';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
+	import type { RoastFormData, CoffeeCatalog, GreenCoffeeInv } from '$lib/types/component.types';
+
+	// Combined type for available coffees which might be catalog or inventory items
+	type CoffeeItem = CoffeeCatalog & GreenCoffeeInv & { coffee_catalog?: CoffeeCatalog };
 
 	const {
 		onClose,
@@ -11,9 +15,9 @@
 		availableCoffees = []
 	} = $props<{
 		onClose: () => void;
-		onSubmit: (data: any) => void;
-		selectedBean: any;
-		availableCoffees?: any[];
+		onSubmit: (data: RoastFormData) => Promise<unknown> | void;
+		selectedBean: CoffeeItem | null;
+		availableCoffees?: CoffeeItem[];
 	}>();
 
 	// Process available coffees to ensure proper name property
@@ -22,8 +26,8 @@
 			return [];
 		}
 		return availableCoffees
-			.filter((coffee: any) => coffee?.stocked === true)
-			.map((coffee: any) => ({
+			.filter((coffee: CoffeeItem) => coffee?.stocked === true)
+			.map((coffee: CoffeeItem) => ({
 				...coffee,
 				name: coffee.coffee_catalog?.name || coffee.name || 'Unknown Coffee'
 			}));
@@ -79,7 +83,7 @@
 	function handleCoffeeChange(event: Event, index: number) {
 		const selectedId = (event.target as HTMLSelectElement).value;
 		const coffeesArray = processedCoffees();
-		const selected = coffeesArray.find((coffee: any) => coffee.id.toString() === selectedId);
+		const selected = coffeesArray.find((coffee: CoffeeItem) => coffee.id.toString() === selectedId);
 		if (selected) {
 			batchBeans[index].coffee_id = selected.id;
 			batchBeans[index].coffee_name = selected.name; // Now uses the transformed name property

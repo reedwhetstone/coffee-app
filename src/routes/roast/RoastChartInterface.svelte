@@ -197,9 +197,25 @@
 	let margin = { top: 20, right: 80, bottom: 40, left: 80 }; // Increased right margin for RoR axis
 
 	// Saved profile data for milestone calculations
+	interface EventValuePoint {
+		time_seconds: number;
+		value: number;
+	}
+
+	interface EventValueSeries {
+		event_string: string;
+		category: string;
+		values: EventValuePoint[];
+		value_range: {
+			min: number;
+			max: number;
+			detected_scale: string;
+		};
+	}
+
 	let savedTemperatureEntries = $state<TemperatureEntry[]>([]);
 	let savedEventEntries = $state<RoastEventEntry[]>([]);
-	let savedEventValueSeries = $state<any[]>([]);
+	let savedEventValueSeries = $state<EventValueSeries[]>([]);
 
 	// Chart boundary settings from roast_profiles table
 	let chartSettings = $state<{
@@ -904,7 +920,7 @@
 	}
 
 	// Function to create appropriate Y-scale for an event value series
-	function createEventValueScale(eventSeries: any) {
+	function createEventValueScale(eventSeries: EventValueSeries) {
 		if (!yScaleTemp) return null;
 
 		// Get the temperature scale range to map event values
@@ -1011,10 +1027,11 @@
 		// Use charge time from above
 
 		// Create combined events array - preserve ALL original event names without modification
-		const eventData = $roastEvents.map((event) => ({
-			time: event.time,
-			name: event.name
-		}));
+		const eventData: Array<{ time: number; name: string } & Record<string, unknown>> =
+			$roastEvents.map((event) => ({
+				time: event.time,
+				name: event.name
+			}));
 
 		// Sort events by time to ensure proper ordering
 		eventData.sort((a, b) => a.time - b.time);
@@ -1042,7 +1059,7 @@
 		updateTimeTracker(currentChargeTime);
 
 		// Update x-axis and charge line position
-		(svg.select('.x-axis') as any).call(axisBottom(xScale));
+		(svg.select('.x-axis') as unknown as D3GSelection).call(axisBottom(xScale));
 		svg.select('.charge-line').attr('x1', xScale(0)).attr('x2', xScale(0));
 
 		// Optimized data filtering - combine filtering operations
@@ -1386,7 +1403,10 @@
 						const mouseY = event.clientY;
 
 						// Find event value data at this time point
-						const eventData = getEventDataAtTime(d.time || 0);
+						interface RoastEventData {
+							[key: string]: boolean | number;
+						}
+						let eventData: RoastEventData = getEventDataAtTime(d.time || 0);
 
 						// Calculate RoR at this point
 						const rorValue = calculateRoRAtPoint(chartData, closestIndex);
@@ -1426,18 +1446,18 @@
 
 	// Helper function to get event data at a specific time
 	function getEventDataAtTime(timeMs: number) {
-		const eventData: Record<string, boolean> = {};
+		const eventData: Record<string, boolean | number> = {};
 
 		// Look for event value data at this time from savedEventValueSeries
 		savedEventValueSeries.forEach((series) => {
 			const timeSeconds = timeMs / 1000;
 			// Find the most recent event value at or before this time
 			const relevantValues = series.values
-				.filter((v: any) => v.time_seconds <= timeSeconds)
-				.sort((a: any, b: any) => b.time_seconds - a.time_seconds);
+				.filter((v) => v.time_seconds <= timeSeconds)
+				.sort((a, b) => b.time_seconds - a.time_seconds);
 
 			if (relevantValues.length > 0) {
-				(eventData as any)[series.event_string] = relevantValues[0].value;
+				eventData[series.event_string] = relevantValues[0].value;
 			} else if (series.values.length > 0) {
 				// If no values found at or before this time, check if this is early in the roast
 				// and we should carry forward the first value
@@ -1449,7 +1469,7 @@
 
 				// If we're within 30 seconds of chart start and have an early control value, use it
 				if (timeMs - chartStart <= 30000 && firstValue.time_seconds * 1000 - chartStart <= 60000) {
-					(eventData as any)[series.event_string] = firstValue.value;
+					eventData[series.event_string] = firstValue.value;
 				}
 			}
 		});
@@ -1467,7 +1487,7 @@
 
 				if (relevantEvents.length > 0) {
 					const value = parseInt(relevantEvents[0].event_value || '0');
-					(eventData as any)[controlType] = value;
+					eventData[controlType] = value;
 				} else {
 					// Carry forward from first available value if we're early in the roast
 					const firstEvent = controlEvents
@@ -1482,7 +1502,7 @@
 
 						// Carry forward if we're within 30 seconds of chart start
 						if (timeMs - chartStart <= 30000) {
-							(eventData as any)[controlType] = parseInt(firstEvent.event_value || '0');
+							eventData[controlType] = parseInt(firstEvent.event_value || '0');
 						}
 					}
 				}
@@ -1613,18 +1633,20 @@
 		yScaleRoR.domain(yRoRDomain).range([height, 0]);
 
 		// Update y-axis positions and dimensions
-		(svg.select('.y-axis-left') as any).call(axisLeft(yScaleTemp));
-		(svg.select('.y-axis-right').attr('transform', `translate(${width}, 0)`) as any).call(
-			axisRight(yScaleRoR)
-		);
+		(svg.select('.y-axis-left') as unknown as D3GSelection).call(axisLeft(yScaleTemp));
+		(
+			svg
+				.select('.y-axis-right')
+				.attr('transform', `translate(${width}, 0)`) as unknown as D3GSelection
+		).call(axisRight(yScaleRoR));
 
 		// Update charge line position
 		svg.select('.charge-line').attr('x1', xScale(0)).attr('x2', xScale(0)).attr('y2', height);
 
 		// Update x-axis only
-		(svg.select('.x-axis').attr('transform', `translate(0,${height})`) as any).call(
-			axisBottom(xScale)
-		);
+		(
+			svg.select('.x-axis').attr('transform', `translate(0,${height})`) as unknown as D3GSelection
+		).call(axisBottom(xScale));
 
 		// Chart will be updated by the consolidated effect when scales change
 	}
@@ -1714,7 +1736,7 @@
 			.append('g')
 			.attr('class', 'y-axis-right')
 			.attr('transform', `translate(${width}, 0)`)
-			.call(axisRight(yScaleRoR) as any)
+			.call(axisRight(yScaleRoR))
 			.selectAll('text')
 			.style('fill', '#2563eb')
 			.style('font-size', '10px');
@@ -2169,9 +2191,9 @@
 			const processingStart = performance.now();
 
 			// Frontend processing - transparent and maintainable
-			const temperatureData: any[] = [];
-			const milestoneEvents: any[] = [];
-			const controlSeries = new Map<string, any[]>();
+			const temperatureData: TemperatureEntry[] = [];
+			const milestoneEvents: RoastEventEntry[] = [];
+			const controlSeries = new Map<string, EventValuePoint[]>();
 
 			// Process raw data with frontend logic - times already in milliseconds from DB
 			rawData.rawData?.forEach((row) => {
@@ -2205,7 +2227,7 @@
 						time_seconds: timeSeconds,
 						event_type: 10,
 						event_value: null,
-						event_string: row.event_string,
+						event_string: row.event_string || '',
 						category: 'milestone' as const,
 						subcategory: 'roast_phase',
 						user_generated: false,

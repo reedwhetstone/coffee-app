@@ -3,7 +3,6 @@
 	import CookieBanner from '$lib/components/CookieBanner.svelte';
 	import UnifiedHeader from '$lib/components/layout/UnifiedHeader.svelte';
 	import LeftSidebar from '$lib/components/layout/LeftSidebar.svelte';
-	import { filterStore } from '$lib/stores/filterStore';
 	import { setContext } from 'svelte';
 	import { page } from '$app/state';
 
@@ -26,12 +25,14 @@
 			email: string;
 			role: string;
 		} | null;
+
 		role: 'viewer' | 'member' | 'admin';
-		data?: any[];
+		data?: unknown[];
 		meta?: PageMeta;
 	}
 
-	let { data, children } = $props<{ data: LayoutData; children: any }>();
+	import type { Snippet } from 'svelte';
+	let { data, children } = $props<{ data: LayoutData; children: Snippet }>();
 	let activeMenu = $state<string | null>(null);
 	let rightSidebarOpen = $state(false);
 
@@ -138,15 +139,18 @@
 
 		<!-- Structured Data -->
 		{#if data.meta.structuredData}
-			{@html `<script type="application/ld+json">${JSON.stringify(data.meta.structuredData)}</script>`}
+			<!-- eslint-disable-next-line svelte/no-at-html-tags, no-useless-escape -->
+			{@html `<script type="application/ld+json">${JSON.stringify(data.meta.structuredData)}<\/script>`}
 		{/if}
 		{#if data.meta.schemaData}
 			{#if Array.isArray(data.meta.schemaData)}
 				{#each data.meta.schemaData as schema}
-					{@html `<script type="application/ld+json">${JSON.stringify(schema)}</script>`}
+					<!-- eslint-disable-next-line svelte/no-at-html-tags, no-useless-escape -->
+					{@html `<script type="application/ld+json">${JSON.stringify(schema)}<\/script>`}
 				{/each}
 			{:else}
-				{@html `<script type="application/ld+json">${JSON.stringify(data.meta.schemaData)}</script>`}
+				<!-- eslint-disable-next-line svelte/no-at-html-tags, no-useless-escape -->
+				{@html `<script type="application/ld+json">${JSON.stringify(data.meta.schemaData)}<\/script>`}
 			{/if}
 		{/if}
 

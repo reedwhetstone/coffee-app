@@ -19,7 +19,7 @@ export interface StructuredChatResponse {
 	coffee_cards?: number[]; // Array of coffee_catalog.id values
 	response_type: 'text' | 'cards' | 'mixed';
 	// Extensible structure for future structured data types
-	[key: string]: any; // Allow additional structured data fields
+	[key: string]: unknown; // Allow additional structured data fields
 }
 
 export interface ChatResponse {
@@ -27,8 +27,8 @@ export interface ChatResponse {
 	structured_response?: StructuredChatResponse;
 	tool_calls?: Array<{
 		tool: string;
-		input: any;
-		output: any;
+		input: unknown;
+		output: unknown;
 	}>;
 	conversation_id?: string;
 }
@@ -256,7 +256,7 @@ export class LangChainService {
 	/**
 	 * Call a tool endpoint with proper authentication
 	 */
-	private async callTool(endpoint: string, input: any): Promise<string> {
+	private async callTool(endpoint: string, input: unknown): Promise<string> {
 		try {
 			const url = this.baseUrl + endpoint;
 			const response = await fetch(url, {
@@ -562,7 +562,7 @@ RULES
 				}
 			);
 
-			const toolCalls: Array<{ tool: string; input: any; output: any }> = [];
+			const toolCalls: Array<{ tool: string; input: unknown; output: unknown }> = [];
 			let finalResponse = '';
 			let executorStarted = false;
 			let lastActivityTime = Date.now();
@@ -582,7 +582,7 @@ RULES
 				// Map event types to user-friendly thinking steps
 				if (event.event === 'on_tool_start') {
 					const toolName = event.name;
-					this.mapToolToThinkingStep(toolName, 'start', emitThinkingStep, event.data);
+					this.mapToolToThinkingStep(toolName, 'start', emitThinkingStep);
 				} else if (event.event === 'on_tool_end') {
 					const toolName = event.name;
 					const toolOutput = event.data?.output;
@@ -683,7 +683,7 @@ RULES
 	 */
 	private handleToolCompletion(
 		toolName: string,
-		toolOutput: any,
+		toolOutput: unknown,
 		emitThinkingStep?: (step: string) => void
 	): void {
 		try {
@@ -722,7 +722,7 @@ RULES
 				default:
 					emitThinkingStep?.(`Finished ${toolName.replace(/_/g, ' ')}`);
 			}
-		} catch (error) {
+		} catch (_error) {
 			emitThinkingStep?.(`Had trouble with ${toolName.replace(/_/g, ' ')}`);
 		}
 	}
@@ -733,8 +733,7 @@ RULES
 	private mapToolToThinkingStep(
 		toolName: string,
 		phase: 'start' | 'end',
-		onThinkingStep?: (step: string) => void,
-		context?: any
+		onThinkingStep?: (step: string) => void
 	): void {
 		if (phase === 'start') {
 			switch (toolName) {
@@ -783,7 +782,7 @@ RULES
 		// GPT-5 models do not support temperature parameter at all
 		const isGPT5 = modelName.includes('gpt-5');
 
-		const modelConfig: any = {
+		const modelConfig: ConstructorParameters<typeof ChatOpenAI>[0] = {
 			apiKey: this.openaiApiKey,
 			model: modelName,
 			maxTokens: 4096,

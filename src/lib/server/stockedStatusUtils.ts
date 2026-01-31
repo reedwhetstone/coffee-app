@@ -1,5 +1,11 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 // Utility function to update stocked status based on remaining quantity
-export async function updateStockedStatus(supabase: any, coffee_id: number, user_id: string) {
+export async function updateStockedStatus(
+	supabase: SupabaseClient,
+	coffee_id: number,
+	user_id: string
+) {
 	try {
 		// Get the green coffee inventory record
 		const { data: coffee, error: coffeeError } = await supabase
@@ -28,7 +34,10 @@ export async function updateStockedStatus(supabase: any, coffee_id: number, user
 
 		// Calculate remaining quantity
 		const totalOzIn =
-			roastProfiles?.reduce((sum: number, profile: any) => sum + (profile.oz_in || 0), 0) || 0;
+			roastProfiles?.reduce(
+				(sum: number, profile: { oz_in: number | null }) => sum + (profile.oz_in || 0),
+				0
+			) || 0;
 		const purchasedOz = (coffee.purchased_qty_lbs || 0) * 16;
 		const remainingOz = purchasedOz - totalOzIn;
 

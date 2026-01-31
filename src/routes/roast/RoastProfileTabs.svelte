@@ -33,7 +33,7 @@
 		clearRoastData
 	} = $props<{
 		sortedBatchNames: string[];
-		sortedGroupedProfiles: Record<string, any[]>;
+		sortedGroupedProfiles: Record<string, RoastProfile[]>;
 		expandedBatches: Set<string>;
 		currentRoastProfile: RoastProfile | null;
 		currentProfileIndex: number;
@@ -114,7 +114,7 @@
 	}
 
 	// Helper function for batch summary (from RoastHistoryTable)
-	function getBatchSummary(profiles: any[]) {
+	function getBatchSummary(profiles: RoastProfile[]) {
 		const totalWeight = profiles.reduce((sum, p) => sum + (p.oz_in || 0), 0);
 
 		// Calculate average weight loss percentage for batch summary
@@ -240,7 +240,6 @@
 					>
 						<RoastProfileDisplay
 							profile={currentRoastProfile}
-							profiles={batchProfiles}
 							currentIndex={currentProfileIndex}
 							onUpdate={onProfileUpdate}
 							onProfileDeleted={onProfileDelete}

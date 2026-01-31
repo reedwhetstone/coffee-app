@@ -4,17 +4,18 @@
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import CuppingNotesForm from './CuppingNotesForm.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
+	import type { InventoryWithCatalog, RoastProfile } from '$lib/types/component.types';
 
 	let { selectedBean, role, onUpdate, onDelete } = $props<{
-		selectedBean: any;
+		selectedBean: InventoryWithCatalog;
 		role?: 'viewer' | 'member' | 'admin';
-		onUpdate: (bean: any) => void;
+		onUpdate: (bean: InventoryWithCatalog) => void;
 		onDelete: (id: number) => void;
 	}>();
 
 	let currentTab = $state('overview');
 	let isEditing = $state(false);
-	let editedBean = $state<any>({});
+	let editedBean = $state<InventoryWithCatalog>({} as InventoryWithCatalog);
 	let processingUpdate = $state(false);
 	let lastSelectedBeanId = $state<number | null>(null);
 	let showCuppingForm = $state(false);
@@ -141,7 +142,7 @@
 				...Object.fromEntries(
 					Object.entries(editedBean).filter(([key]) => editableFields.includes(key))
 				), // Only include editable fields from editedBean
-				purchase_date: prepareDateForAPI(editedBean.purchase_date),
+				purchase_date: prepareDateForAPI(editedBean.purchase_date ?? ''),
 				last_updated: new Date().toISOString()
 			};
 
@@ -389,7 +390,7 @@
 						{@const purchasedOz = (selectedBean.purchased_qty_lbs || 0) * 16}
 						{@const roastedOz =
 							selectedBean.roast_profiles?.reduce(
-								(ozSum: number, profile: any) => ozSum + (profile.oz_in || 0),
+								(ozSum: number, profile: RoastProfile) => ozSum + (profile.oz_in || 0),
 								0
 							) || 0}
 						{@const remainingLbs = (purchasedOz - roastedOz) / 16}
@@ -743,20 +744,23 @@
 
 					<!-- Summary Stats -->
 					{@const totalOzIn = selectedBean.roast_profiles.reduce(
-						(sum: number, p: any) => sum + (p.oz_in || 0),
+						(sum: number, p: RoastProfile) => sum + (p.oz_in || 0),
 						0
 					)}
 					{@const totalOzOut = selectedBean.roast_profiles.reduce(
-						(sum: number, p: any) => sum + (p.oz_out || 0),
+						(sum: number, p: RoastProfile) => sum + (p.oz_out || 0),
 						0
 					)}
 					{@const validRoastsForLoss = selectedBean.roast_profiles.filter(
-						(p: any) => p.weight_loss_percent !== null && p.weight_loss_percent !== undefined
+						(p: RoastProfile) =>
+							p.weight_loss_percent !== null && p.weight_loss_percent !== undefined
 					)}
 					{@const avgLoss =
 						validRoastsForLoss.length > 0
-							? validRoastsForLoss.reduce((sum: number, p: any) => sum + p.weight_loss_percent, 0) /
-								validRoastsForLoss.length
+							? validRoastsForLoss.reduce(
+									(sum: number, p: RoastProfile) => sum + (p.weight_loss_percent || 0),
+									0
+								) / validRoastsForLoss.length
 							: 0}
 
 					<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -831,7 +835,7 @@
 							{@const remainingLbs =
 								((selectedBean.purchased_qty_lbs || 0) * 16 -
 									(selectedBean.roast_profiles?.reduce(
-										(sum: number, p: any) => sum + (p.oz_in || 0),
+										(sum: number, p: RoastProfile) => sum + (p.oz_in || 0),
 										0
 									) || 0)) /
 								16}
@@ -852,7 +856,7 @@
 							{@const totalPurchased = (selectedBean.purchased_qty_lbs || 0) * 16}
 							{@const totalRoasted =
 								selectedBean.roast_profiles?.reduce(
-									(sum: number, p: any) => sum + (p.oz_in || 0),
+									(sum: number, p: RoastProfile) => sum + (p.oz_in || 0),
 									0
 								) || 0}
 							<p class="text-2xl font-bold text-orange-500">

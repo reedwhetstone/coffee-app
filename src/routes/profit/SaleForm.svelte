@@ -1,25 +1,23 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
 
-	const props = $props<{
-		sale?: any;
-		onClose: () => void;
-		onSubmit: (sale: any) => void;
-		availableCoffees?: any[];
-		availableBatches?: any[];
-		catalogBeans?: any[];
-	}>();
-
-	const {
+	let {
+		sale: saleProp,
 		onClose,
 		onSubmit,
 		availableCoffees = [],
-		availableBatches = [],
-		catalogBeans = []
-	} = props;
+		availableBatches = []
+	} = $props<{
+		sale?: Record<string, unknown>; // Using unknown instead of any
+		onClose: () => void;
+		onSubmit: (sale: unknown) => void;
+		availableCoffees?: AvailableCoffee[];
+		availableBatches?: BatchItem[];
+	}>();
 
 	// Capture the initial sale value using untrack - this is intentional as we only need initial value for form
-	const sale = untrack(() => props.sale ?? null);
+	const sale = untrack(() => saleProp ?? null);
 
 	// Extract defaultBean from sale if it exists
 	const defaultBean = sale?.defaultBean || null;
@@ -75,7 +73,7 @@
 	function handleCoffeeChange(event: Event) {
 		const selectedCoffeeId = (event.target as HTMLSelectElement).value;
 		const selectedCoffee = availableCoffees.find(
-			(coffee: any) => coffee.id.toString() === selectedCoffeeId
+			(coffee: AvailableCoffee) => coffee.id.toString() === selectedCoffeeId
 		);
 
 		if (selectedCoffee) {
@@ -93,13 +91,13 @@
 	function handleBatchChange(event: Event) {
 		const selectedBatchName = (event.target as HTMLSelectElement).value;
 		const selectedBatch = availableBatches.find(
-			(batch: any) => batch.batch_name === selectedBatchName
+			(batch: BatchItem) => batch.batch_name === selectedBatchName
 		);
 
 		if (selectedBatch) {
 			// If a batch is selected, auto-select the coffee for that batch
 			const batchCoffee = availableCoffees.find(
-				(coffee: any) => coffee.id === selectedBatch.coffee_id
+				(coffee: AvailableCoffee) => coffee.id === selectedBatch.coffee_id
 			);
 
 			if (batchCoffee) {
@@ -120,7 +118,7 @@
 		}
 
 		return availableBatches.filter(
-			(batch: any) => batch.coffee_id?.toString() === formData.green_coffee_inv_id?.toString()
+			(batch: BatchItem) => batch.coffee_id?.toString() === formData.green_coffee_inv_id?.toString()
 		);
 	});
 
@@ -131,14 +129,16 @@
 		}
 
 		const selectedBatch = availableBatches.find(
-			(batch: any) => batch.batch_name === formData.batch_name
+			(batch: BatchItem) => batch.batch_name === formData.batch_name
 		);
 
 		if (!selectedBatch) {
 			return availableCoffees;
 		}
 
-		return availableCoffees.filter((coffee: any) => coffee.id === selectedBatch.coffee_id);
+		return availableCoffees.filter(
+			(coffee: AvailableCoffee) => coffee.id === selectedBatch.coffee_id
+		);
 	});
 </script>
 

@@ -35,7 +35,7 @@ export interface CoffeeCatalog {
 	stocked_date: string | null;
 	unstocked_date: string | null;
 	ai_description: string | null;
-	ai_tasting_notes: any;
+	ai_tasting_notes: Record<string, unknown> | null;
 	public_coffee: boolean | null;
 }
 
@@ -105,8 +105,8 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
  * Processes raw data from Supabase to ensure consistent serialization
  * and proper data structure for frontend consumption
  */
-export function processGreenCoffeeData(rawData: any[]): GreenCoffeeRow[] {
-	return rawData.map((bean) => ({
+export function processGreenCoffeeData(rawData: unknown[]): GreenCoffeeRow[] {
+	return (rawData as any[]).map((bean) => ({
 		...bean,
 		// Handle ai_tasting_notes serialization consistently
 		ai_tasting_notes: bean.coffee_catalog?.ai_tasting_notes

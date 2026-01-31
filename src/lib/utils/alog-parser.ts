@@ -3,7 +3,7 @@
  * Converts Python literals to JSON format for processing
  */
 
-export function parseAlogFile(alogContent: string): any {
+export function parseAlogFile(alogContent: string): unknown {
 	// Convert Python literal syntax to JSON
 	let jsonContent = alogContent;
 
@@ -77,7 +77,15 @@ export function parseAlogFile(alogContent: string): any {
  * Validate that critical temperature arrays exist and are consistent
  * Based on Artisan's validation logic in setProfile()
  */
-function validateTemperatureArrays(parsed: any): void {
+interface AlogData {
+	timex: number[];
+	temp1: number[];
+	temp2: number[];
+	[key: string]: unknown;
+}
+
+function validateTemperatureArrays(parsed: Record<string, unknown>): void {
+	const data = parsed as unknown as AlogData;
 	const requiredArrays = ['timex', 'temp1', 'temp2'];
 
 	// Check that all required arrays exist
@@ -91,9 +99,9 @@ function validateTemperatureArrays(parsed: any): void {
 	}
 
 	// Check that all arrays have the same length (as enforced by Artisan)
-	const timexLength = parsed.timex.length;
-	const temp1Length = parsed.temp1.length;
-	const temp2Length = parsed.temp2.length;
+	const timexLength = data.timex.length;
+	const temp1Length = data.temp1.length;
+	const temp2Length = data.temp2.length;
 
 	if (timexLength === 0) {
 		throw new Error('No profile data found: timex array is empty');
@@ -107,23 +115,24 @@ function validateTemperatureArrays(parsed: any): void {
 
 		// Truncate to minimum length (following Artisan's behavior)
 		const minLength = Math.min(timexLength, temp1Length, temp2Length);
-		parsed.timex = parsed.timex.slice(0, minLength);
-		parsed.temp1 = parsed.temp1.slice(0, minLength);
-		parsed.temp2 = parsed.temp2.slice(0, minLength);
+		parsed.timex = data.timex.slice(0, minLength);
+		parsed.temp1 = data.temp1.slice(0, minLength);
+		parsed.temp2 = data.temp2.slice(0, minLength);
 	}
 
 	// Validate that arrays contain valid numeric data
-	const validateNumericArray = (array: any[], name: string): void => {
+	const validateNumericArray = (array: unknown[], name: string): void => {
 		for (let i = 0; i < array.length; i++) {
-			if (typeof array[i] !== 'number' || isNaN(array[i])) {
-				throw new Error(`Invalid data in ${name} array at index ${i}: ${array[i]}`);
+			const val = array[i];
+			if (typeof val !== 'number' || isNaN(val)) {
+				throw new Error(`Invalid data in ${name} array at index ${i}: ${val}`);
 			}
 		}
 	};
 
-	validateNumericArray(parsed.timex, 'timex');
-	validateNumericArray(parsed.temp1, 'temp1');
-	validateNumericArray(parsed.temp2, 'temp2');
+	validateNumericArray(data.timex, 'timex');
+	validateNumericArray(data.temp1, 'temp1');
+	validateNumericArray(data.temp2, 'temp2');
 }
 
 /**
@@ -428,7 +437,7 @@ function getErrorContext(content: string, position: number, contextLength: numbe
  * Main function to handle .alog file processing
  * This is the primary entry point for parsing Artisan .alog files
  */
-export function processAlogFile(fileContent: string): any {
+export function processAlogFile(fileContent: string): unknown {
 	try {
 		// Preprocess the content to normalize format
 		const cleanContent = preprocessAlogContent(fileContent);

@@ -272,7 +272,7 @@ export class SchemaService {
 		url?: string;
 		expertise?: string[];
 	}): object {
-		const schema: any = {
+		const schema: Record<string, unknown> = {
 			'@context': 'https://schema.org',
 			'@type': 'Person',
 			name: person.name,
@@ -351,7 +351,7 @@ export class SchemaService {
 	}): object {
 		const productUrl = `${this.config.baseUrl}/coffee/${coffee.id}`;
 
-		const schema: any = {
+		const schema: Record<string, unknown> = {
 			'@context': 'https://schema.org',
 			'@type': 'Product',
 			name: coffee.name,
@@ -415,7 +415,7 @@ export class SchemaService {
 	/**
 	 * Generate ItemList schema for coffee collections
 	 */
-	generateCoffeeCollectionSchema(coffees: any[], pageUrl: string): object {
+	generateCoffeeCollectionSchema(coffees: Record<string, unknown>[], pageUrl: string): object {
 		return {
 			'@context': 'https://schema.org',
 			'@type': 'ItemList',
@@ -428,18 +428,19 @@ export class SchemaService {
 				position: index + 1,
 				item: {
 					'@type': 'Product',
-					name: coffee.name || 'Specialty Coffee',
+					name: (coffee.name as string) || 'Specialty Coffee',
 					description:
-						coffee.description || `Premium coffee from ${coffee.origin || 'specialty origins'}`,
+						(coffee.description as string) ||
+						`Premium coffee from ${(coffee.origin as string) || 'specialty origins'}`,
 					category: 'Green Coffee',
 					brand: {
 						'@type': 'Organization',
-						name: coffee.supplier || 'Specialty Coffee Supplier'
+						name: (coffee.supplier as string) || 'Specialty Coffee Supplier'
 					},
 					offers: coffee.price
 						? {
 								'@type': 'Offer',
-								price: coffee.price.toString(),
+								price: (coffee.price as number).toString(),
 								priceCurrency: 'USD',
 								availability: coffee.stocked
 									? 'https://schema.org/InStock'
@@ -454,10 +455,10 @@ export class SchemaService {
 	/**
 	 * Generate AggregateOffer schema for coffee catalog
 	 */
-	generateCoffeeAggregateOfferSchema(coffees: any[]): object {
+	generateCoffeeAggregateOfferSchema(coffees: Record<string, unknown>[]): object {
 		const prices = coffees
 			.filter((coffee) => coffee.price && coffee.stocked)
-			.map((coffee) => parseFloat(coffee.price));
+			.map((coffee) => parseFloat(coffee.price as string));
 
 		if (prices.length === 0) return {};
 
@@ -479,7 +480,11 @@ export class SchemaService {
 	/**
 	 * Helper method to generate page-specific schema combinations
 	 */
-	generatePageSchema(pageType: string, pageUrl: string, additionalData?: any): object {
+	generatePageSchema(
+		pageType: string,
+		pageUrl: string,
+		additionalData?: Record<string, any>
+	): object {
 		const schemas: object[] = [];
 
 		// Always include organization schema

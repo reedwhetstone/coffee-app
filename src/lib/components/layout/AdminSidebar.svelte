@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 
 	let { data, onClose } = $props<{
-		data: any;
+		data: Record<string, unknown>;
 		onClose: () => void;
 	}>();
 
@@ -73,15 +73,15 @@
 				class="flex h-8 w-8 items-center justify-center rounded-full bg-background-tertiary-light"
 			>
 				<span class="text-sm font-medium text-white">
-					{data?.user?.email?.charAt(0).toUpperCase() || 'A'}
+					{(data?.user as { email?: string })?.email?.charAt(0).toUpperCase() || 'A'}
 				</span>
 			</div>
 			<div>
 				<p class="text-sm font-medium text-text-primary-light">
-					{data?.user?.email || 'Admin User'}
+					{(data?.user as { email?: string })?.email || 'Admin User'}
 				</p>
 				<p class="text-xs capitalize text-text-secondary-light">
-					{data?.role || 'admin'} Role
+					{(data?.role as string) || 'admin'} Role
 				</p>
 			</div>
 		</div>

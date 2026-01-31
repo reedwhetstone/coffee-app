@@ -456,7 +456,7 @@ function createFilterStore() {
 				const data = state.originalData;
 
 				// Helper to extract and dedupe values efficiently
-				const extractUnique = (fieldExtractor: (item: any) => any, fieldName: string) => {
+				const extractUnique = (fieldExtractor: (item: any) => any) => {
 					const values = new Set<string>();
 					for (const item of data) {
 						const value = fieldExtractor(item);
@@ -468,28 +468,25 @@ function createFilterStore() {
 				// Process each field type efficiently
 				const sourceExtractor = (item: any) =>
 					item.coffee_catalog?.source || item.source || item.vendor;
-				const sources = extractUnique(sourceExtractor, 'sources');
+				const sources = extractUnique(sourceExtractor);
 				if (sources) uniqueValues.sources = sources;
 
-				const continents = extractUnique((item) => getFieldValue(item, 'continent'), 'continents');
+				const continents = extractUnique((item) => getFieldValue(item, 'continent'));
 				if (continents) uniqueValues.continents = continents;
 
-				const countries = extractUnique((item) => getFieldValue(item, 'country'), 'countries');
+				const countries = extractUnique((item) => getFieldValue(item, 'country'));
 				if (countries) uniqueValues.countries = countries;
 
-				const arrivalDates = extractUnique(
-					(item) => getFieldValue(item, 'arrival_date'),
-					'arrivalDates'
-				);
+				const arrivalDates = extractUnique((item) => getFieldValue(item, 'arrival_date'));
 				if (arrivalDates) uniqueValues.arrivalDates = arrivalDates;
 
-				const purchaseDates = extractUnique((item) => item.purchase_date, 'purchaseDates');
+				const purchaseDates = extractUnique((item) => item.purchase_date);
 				if (purchaseDates) uniqueValues.purchaseDates = purchaseDates;
 
-				const roastDates = extractUnique((item) => item.roast_date, 'roastDates');
+				const roastDates = extractUnique((item) => item.roast_date);
 				if (roastDates) uniqueValues.roastDates = roastDates;
 
-				const batchNames = extractUnique((item) => item.batch_name, 'batchNames');
+				const batchNames = extractUnique((item) => item.batch_name);
 				if (batchNames) uniqueValues.batchNames = batchNames;
 
 				// Roast IDs need special numeric sorting

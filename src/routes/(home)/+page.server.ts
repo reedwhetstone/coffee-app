@@ -6,7 +6,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const { session } = await locals.safeGetSession();
 
 	// Get limited coffee data for preview section with error handling
-	let stockedData: any[] = [];
+	let stockedData: Record<string, unknown>[] = [];
 	try {
 		const { data, error } = await locals.supabase
 			.from('coffee_catalog')

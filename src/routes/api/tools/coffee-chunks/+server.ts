@@ -62,7 +62,7 @@ export const POST: RequestHandler = async (event) => {
 			chunkTypes: chunk_types
 		};
 
-		const retrievalResult = await ragService.retrieveRelevantCoffees(context_string, searchOptions);
+		await ragService.retrieveRelevantCoffees(context_string, searchOptions);
 
 		// The RAG service returns coffee catalog results, but we want chunk-level results
 		// Let's make a direct call to the coffee_chunks RPC function for more granular results
@@ -72,6 +72,7 @@ export const POST: RequestHandler = async (event) => {
 		const queryEmbedding = await queryEmbeddingService.generateQueryEmbedding(context_string);
 
 		// Search chunks directly
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const { data: chunksData, error: chunksError } = await (supabase.rpc as any)(
 			'match_coffee_chunks',
 			{
@@ -89,31 +90,44 @@ export const POST: RequestHandler = async (event) => {
 
 		// Get coffee names for chunks that reference specific coffees
 		const coffeeIds =
-			chunksData?.filter((chunk: any) => chunk.coffee_id).map((chunk: any) => chunk.coffee_id) ||
-			[];
+			chunksData
+				?.filter((chunk: { coffee_id: number | null }) => chunk.coffee_id)
+				.map((chunk: { coffee_id: number }) => chunk.coffee_id) || [];
 		let coffeeNames: Record<number, string> = {};
 
 		if (coffeeIds.length > 0) {
-			const { data: coffeeData } = (await supabase
+			const { data: coffeeData } = await supabase
 				.from('coffee_catalog')
 				.select('id, name')
-				.in('id', coffeeIds)) as any;
+				.in('id', coffeeIds);
 
 			if (coffeeData) {
-				coffeeNames = Object.fromEntries(coffeeData.map((coffee: any) => [coffee.id, coffee.name]));
+				coffeeNames = Object.fromEntries(
+					coffeeData.map((coffee: { id: number; name: string }) => [coffee.id, coffee.name])
+				);
 			}
 		}
 
 		// Format chunks for response
 		const formattedChunks =
-			chunksData?.map((chunk: any) => ({
-				content: chunk.content,
-				chunk_type: chunk.chunk_type,
-				coffee_id: chunk.coffee_id || undefined,
-				coffee_name: chunk.coffee_id ? coffeeNames[chunk.coffee_id] || 'Unknown Coffee' : undefined,
-				similarity: chunk.similarity || 0,
-				document_id: chunk.id
-			})) || [];
+			chunksData?.map(
+				(chunk: {
+					content: string;
+					chunk_type: string;
+					coffee_id: number | null;
+					similarity: number;
+					id: string;
+				}) => ({
+					content: chunk.content,
+					chunk_type: chunk.chunk_type,
+					coffee_id: chunk.coffee_id || undefined,
+					coffee_name: chunk.coffee_id
+						? coffeeNames[chunk.coffee_id] || 'Unknown Coffee'
+						: undefined,
+					similarity: chunk.similarity || 0,
+					document_id: chunk.id
+				})
+			) || [];
 
 		// Determine search strategy used
 		let searchStrategy = 'semantic_search';

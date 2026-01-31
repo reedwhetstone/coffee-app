@@ -23,7 +23,8 @@
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 
 	// Lazy load the heavy chart component
-	let RoastChartInterface = $state<any>(null);
+	import type { ComponentType } from 'svelte';
+	let RoastChartInterface = $state<ComponentType | null>(null);
 	let chartComponentLoading = $state(true);
 
 	// Load chart component after initial render
@@ -32,7 +33,7 @@
 		setTimeout(async () => {
 			try {
 				const module = await import('./RoastChartInterface.svelte');
-				RoastChartInterface = module.default;
+				RoastChartInterface = module.default as unknown as ComponentType;
 				chartComponentLoading = false;
 			} catch (error) {
 				console.error('Failed to load chart component:', error);
@@ -65,7 +66,7 @@
 	let { data = { data: [], role: 'viewer' } } = $props<{ data?: Partial<PageData> }>();
 
 	// Client-side data state
-	let clientData = $state<any[]>([]);
+	let clientData = $state<RoastProfile[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 
@@ -148,7 +149,7 @@
 		}
 
 		// Group profiles by batch name
-		const newGroupedProfiles: Record<string, any[]> = {};
+		const newGroupedProfiles: Record<string, RoastProfile[]> = {};
 
 		// Process each profile
 		$filteredData.forEach((profile) => {
@@ -279,7 +280,10 @@
 		}
 
 		// Check if we should show the roast form based on navigation state
-		const state = page.state as any;
+		const state = page.state as {
+			showRoastForm?: boolean;
+			selectedBean?: { id: number; name: string };
+		};
 		console.log('Page state on mount:', state);
 
 		if (state?.showRoastForm) {
@@ -814,7 +818,7 @@
 
 {#if isFormVisible}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 p-4">
-		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 shadow-xl sm:p-6">
+		<div class="mb-6 rounded-lg bg-background-secondary-light p-4 shadow-md">
 			<RoastProfileForm
 				{selectedBean}
 				{availableCoffees}

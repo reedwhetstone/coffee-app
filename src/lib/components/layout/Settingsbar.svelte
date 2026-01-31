@@ -11,7 +11,7 @@
 
 	// Component props interface
 	let { onClose = () => {} } = $props<{
-		data: any;
+		data: Record<string, unknown>;
 		isOpen?: boolean;
 		onClose?: () => void;
 	}>();

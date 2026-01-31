@@ -80,7 +80,14 @@
 	});
 
 	// Metric options
-	const metricOptions = [
+	interface MetricOption {
+		value: string;
+		label: string;
+		format: (v: number) => string;
+		color: string;
+	}
+
+	const metricOptions: MetricOption[] = [
 		{
 			value: 'salesCount',
 			label: 'Number of Sales',
@@ -200,7 +207,7 @@
 	// Process chart data
 	let chartData = $derived(() => {
 		const filtered = filteredProfitData();
-		const filteredSales = filteredSalesData();
+		// const filteredSales = filteredSalesData();
 
 		const beanGroups = group(filtered, (d: ProfitData) => d.coffee_name);
 		const result: ChartDataPoint[] = [];

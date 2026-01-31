@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
@@ -9,7 +10,7 @@
 	}>();
 
 	// Lazy load the tasting notes radar component
-	let TastingNotesRadar = $state<any>(null);
+	let TastingNotesRadar = $state<Component | null>(null);
 	let radarComponentLoading = $state(true);
 
 	// Load radar component after initial render

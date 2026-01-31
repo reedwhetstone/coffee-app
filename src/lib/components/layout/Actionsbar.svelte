@@ -6,12 +6,12 @@
 
 	// Props declaration
 	let { data, onClose = () => {} } = $props<{
-		data: any;
+		data: Record<string, unknown>;
 		onClose?: () => void;
 	}>();
 
 	// Destructure with default values
-	let { role = 'viewer' } = $derived(data);
+	let { role = 'viewer' } = $derived(data as { role?: string });
 
 	// Import global UserRole type
 	import type { UserRole } from '$lib/types/auth.types';

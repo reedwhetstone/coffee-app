@@ -2,6 +2,13 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
 import { saveRoastData } from '$lib/server/roastDataUtils.js';
+import type { Database } from '$lib/types/database.types';
+
+type CoffeeCatalogName = { name: string };
+type GreenCoffeeWithCatalog = Database['public']['Tables']['green_coffee_inv']['Row'] & {
+	coffee_catalog: CoffeeCatalogName | CoffeeCatalogName[] | null;
+};
+type RoastProfileInsert = Database['public']['Tables']['roast_profiles']['Insert'];
 
 // Helper function to calculate weight loss percentage
 function calculateWeightLoss(ozIn: number | null, ozOut: number | null): number | null {
@@ -54,10 +61,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			}
 
 			// Fetch all coffee data in single query to avoid N+1 problem
-			const coffeeIds = batch_beans.map((bean: any) => bean.coffee_id);
+			const coffeeIds = batch_beans.map((bean: Record<string, unknown>) => bean.coffee_id);
 			const uniqueCoffeeIds = [...new Set(coffeeIds)]; // Remove duplicates for query
 
-			const { data: coffees, error: coffeeError } = await supabase
+			const { data: coffeesRaw, error: coffeeError } = await supabase
 				.from('green_coffee_inv')
 				.select(
 					`
@@ -70,6 +77,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				.in('id', uniqueCoffeeIds)
 				.eq('user', user.id);
 
+			const coffees = coffeesRaw as unknown as GreenCoffeeWithCatalog[];
+
 			if (coffeeError) throw coffeeError;
 			if (!coffees || coffees.length === 0) {
 				throw new Error('No valid coffee_ids found for this user');
@@ -78,7 +87,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			// Check that all unique coffee IDs were found (allows for duplicates in batch_beans)
 			if (coffees.length !== uniqueCoffeeIds.length) {
 				const foundIds = coffees.map((c) => c.id);
-				const missingIds = uniqueCoffeeIds.filter((id) => !foundIds.includes(id));
+				const missingIds = uniqueCoffeeIds.filter((id) => !foundIds.includes(id as number));
 				throw new Error(`Coffee IDs not found or not owned by user: ${missingIds.join(', ')}`);
 			}
 
@@ -86,23 +95,30 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			const coffeeMap = new Map(coffees.map((coffee) => [coffee.id, coffee]));
 
 			// Create profiles with coffee data from map
-			const profilesData = batch_beans.map((bean: any) => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const profilesData: RoastProfileInsert[] = batch_beans.map((bean: any) => {
 				const coffee = coffeeMap.get(bean.coffee_id);
-				if (!coffee || !coffee.coffee_catalog) {
+				if (!coffee) {
 					throw new Error(`Invalid coffee_id - coffee not found: ${bean.coffee_id}`);
 				}
+
+				// Handle coffee_catalog which can be object or array
+				const catalog = coffee.coffee_catalog;
+				const catalogName = Array.isArray(catalog)
+					? catalog[0]?.name
+					: (catalog as { name: string })?.name;
 
 				return {
 					user: user.id,
 					batch_name:
-						batch_name ||
-						`${Array.isArray(coffee.coffee_catalog) ? (coffee.coffee_catalog as any)[0]?.name : (coffee.coffee_catalog as any)?.name} - ${new Date().toLocaleDateString()}`,
+						batch_name || `${catalogName || 'Unknown Coffee'} - ${new Date().toLocaleDateString()}`,
 					coffee_id: bean.coffee_id,
 					coffee_name:
 						bean.coffee_name ||
+						catalogName ||
 						(Array.isArray(coffee.coffee_catalog)
-							? (coffee.coffee_catalog as any)[0]?.name
-							: (coffee.coffee_catalog as any)?.name),
+							? (coffee.coffee_catalog[0] as { name: string })?.name
+							: (coffee.coffee_catalog as { name: string })?.name),
 					roast_date: roast_date
 						? new Date(roast_date).toISOString().slice(0, 19).replace('T', ' ')
 						: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -146,7 +162,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 			// Fetch all coffee data in single query to avoid N+1 problem
 			const coffeeIds = profiles.map((profileData: any) => profileData.coffee_id);
-			const { data: coffees, error: coffeeError } = await supabase
+
+			const { data: coffeesRaw, error: coffeeError } = await supabase
 				.from('green_coffee_inv')
 				.select(
 					`
@@ -158,6 +175,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				)
 				.in('id', coffeeIds)
 				.eq('user', user.id);
+
+			const coffees = coffeesRaw as unknown as GreenCoffeeWithCatalog[];
 
 			if (coffeeError) throw coffeeError;
 			if (!coffees || coffees.length === 0) {
@@ -173,24 +192,31 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			const coffeeMap = new Map(coffees.map((coffee) => [coffee.id, coffee]));
 
 			// Create profiles with coffee data from map
-			const profilesData = profiles.map((profileData: any) => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const profilesData: RoastProfileInsert[] = profiles.map((profileData: any) => {
 				const coffee = coffeeMap.get(profileData.coffee_id);
-				if (!coffee || !coffee.coffee_catalog) {
+				if (!coffee) {
 					throw new Error(`Invalid coffee_id - coffee not found: ${profileData.coffee_id}`);
 				}
+
+				const catalog = coffee.coffee_catalog;
+				const catalogName = Array.isArray(catalog)
+					? catalog[0]?.name
+					: (catalog as { name: string })?.name;
 
 				return {
 					...profileData,
 					user: user.id,
 					batch_name:
 						profileData.batch_name ||
-						`${Array.isArray(coffee.coffee_catalog) ? (coffee.coffee_catalog as any)[0]?.name : (coffee.coffee_catalog as any)?.name} - ${new Date().toLocaleDateString()}`,
+						`${catalogName || 'Unknown Coffee'} - ${new Date().toLocaleDateString()}`,
 					coffee_id: profileData.coffee_id,
 					coffee_name:
 						profileData.coffee_name ||
+						catalogName ||
 						(Array.isArray(coffee.coffee_catalog)
-							? (coffee.coffee_catalog as any)[0]?.name
-							: (coffee.coffee_catalog as any)?.name),
+							? (coffee.coffee_catalog[0] as { name: string })?.name
+							: (coffee.coffee_catalog as { name: string })?.name),
 					roast_date: profileData.roast_date
 						? new Date(profileData.roast_date).toISOString().slice(0, 19).replace('T', ' ')
 						: new Date().toISOString().slice(0, 19).replace('T', ' '),
@@ -269,10 +295,8 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 				.eq('user', user.id);
 
 			if (profiles && profiles.length > 0) {
-				const roastIds = profiles.map((p: { roast_id: number; coffee_id: number }) => p.roast_id);
-				const coffeeIds = [
-					...new Set(profiles.map((p: { roast_id: number; coffee_id: number }) => p.coffee_id))
-				];
+				const roastIds = profiles.map((p) => p.roast_id);
+				const coffeeIds = [...new Set(profiles.map((p) => p.coffee_id))];
 
 				// Delete associated data from normalized tables first
 				await supabase.from('roast_temperatures').delete().in('roast_id', roastIds);
@@ -317,7 +341,8 @@ export const PUT: RequestHandler = async ({
 			return json({ error: 'No ID provided' }, { status: 400 });
 		}
 
-		const { temperatureEntries, eventEntries, ...profileData } = await request.json();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { temperatureEntries, eventEntries, ...profileData } = (await request.json()) as any;
 		const data = profileData;
 
 		// Add weight_loss_percent calculation if oz_in or oz_out are provided
@@ -365,9 +390,11 @@ export const PUT: RequestHandler = async ({
 		if (Array.isArray(temperatureEntries) && temperatureEntries.length > 0) {
 			const roastIdNum = parseInt(id);
 			// Ensure all entries have the correct roast_id
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const temps = temperatureEntries.map((t: any) => ({ ...t, roast_id: roastIdNum }));
 			const events = Array.isArray(eventEntries)
-				? eventEntries.map((e: any) => ({ ...e, roast_id: roastIdNum }))
+				? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+					eventEntries.map((e: any) => ({ ...e, roast_id: roastIdNum }))
 				: [];
 			await saveRoastData(supabase, roastIdNum, temps, events, 'live');
 		}

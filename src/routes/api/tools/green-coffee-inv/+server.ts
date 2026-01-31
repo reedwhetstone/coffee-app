@@ -11,8 +11,29 @@ interface GreenCoffeeInvToolInput {
 }
 
 // Tool response interface
+// Interface for inventory item
+interface InventoryItem {
+	id: number;
+	name?: string;
+	purchased_qty_lbs?: number | null;
+	bean_cost?: number | null;
+	tax_ship_cost?: number | null;
+	stocked: boolean;
+	coffee_catalog?: {
+		name?: string;
+		[key: string]: unknown;
+	} | null;
+	roast_summary?: {
+		total_roasts: number;
+		total_oz_in: number;
+		total_oz_out: number;
+	};
+	coffee_name?: string;
+	[key: string]: unknown;
+}
+
 interface GreenCoffeeInvToolResponse {
-	inventory: any[];
+	inventory: InventoryItem[];
 	total: number;
 	summary: {
 		total_beans: number;
@@ -91,7 +112,8 @@ export const POST: RequestHandler = async (event) => {
 			query = query.limit(finalLimit);
 		}
 
-		const { data: inventory, error } = await query;
+		const { data: inventoryData, error } = await query;
+		const inventory = inventoryData as unknown as InventoryItem[] | null;
 
 		if (error) {
 			console.error('Green coffee inventory tool error:', error);

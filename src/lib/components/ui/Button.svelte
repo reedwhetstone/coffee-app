@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+
 	// Button component following the Coffee App UI Framework
 	let {
 		variant = 'primary',
@@ -15,7 +17,7 @@
 		onclick?: () => void;
 		type?: 'button' | 'submit' | 'reset';
 		class?: string;
-		children: any;
+		children: Snippet;
 	}>();
 
 	// Base button classes following UI framework
@@ -38,7 +40,9 @@
 	};
 
 	// Combine all classes
-	const buttonClass = `${baseClasses} ${variantClasses[variant as keyof typeof variantClasses]} ${sizeClasses[size as keyof typeof sizeClasses]} ${additionalClasses}`;
+	let buttonClass = $derived(
+		`${baseClasses} ${variantClasses[variant as keyof typeof variantClasses]} ${sizeClasses[size as keyof typeof sizeClasses]} ${additionalClasses}`
+	);
 </script>
 
 <button {type} {disabled} {onclick} class={buttonClass}>

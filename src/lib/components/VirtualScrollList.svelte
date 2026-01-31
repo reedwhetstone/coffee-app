@@ -1,4 +1,5 @@
 <script lang="ts" generics="T">
+	/* eslint-disable no-undef */
 	import { onMount } from 'svelte';
 
 	let {
@@ -6,7 +7,7 @@
 		itemHeight = 200,
 		containerHeight = 600,
 		overscan = 5,
-		getKey = (item: T, index: number) => (item as any)?.id || index
+		getKey = (item: T, index: number) => (item as { id?: string | number })?.id || index
 	} = $props<{
 		items: T[];
 		itemHeight?: number;

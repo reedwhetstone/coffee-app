@@ -42,7 +42,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			const startOfHour = new Date(now.getTime() - 60 * 60 * 1000);
 
 			// Get usage data using the same method as usage analytics page
-			const { data: usageData, error: usageError } = (await supabase
+			const usageResult = await supabase
 				.from('api_usage')
 				.select(
 					`
@@ -54,7 +54,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 				)
 				.eq('api_keys.user_id', user.id)
 				.gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-				.order('timestamp', { ascending: false })) as any;
+				.order('timestamp', { ascending: false });
+
+			const usageData = usageResult.data as Record<string, unknown>[] | null;
+			const usageError = usageResult.error;
 
 			let monthlyUsage = 0;
 			let hourlyUsage = 0;
@@ -62,12 +65,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 			if (!usageError && usageData) {
 				// Calculate monthly usage (same method as usage analytics)
 				monthlyUsage = usageData.filter(
-					(record: any) => new Date(record.timestamp) >= startOfMonth
+					(record) => new Date(record.timestamp as string) >= startOfMonth
 				).length;
 
 				// Calculate hourly usage
 				hourlyUsage = usageData.filter(
-					(record: any) => new Date(record.timestamp) >= startOfHour
+					(record) => new Date(record.timestamp as string) >= startOfHour
 				).length;
 			}
 

@@ -2,6 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getStripe } from '$lib/services/stripe';
 import { createAdminClient } from '$lib/supabase-admin';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '$lib/types/database.types';
 
 interface RoleAuditLog {
 	user_id: string;
@@ -11,10 +13,11 @@ interface RoleAuditLog {
 	stripe_customer_id?: string;
 	stripe_subscription_id?: string;
 	session_id?: string;
-	metadata?: Record<string, any>;
+	metadata?: Record<string, unknown>;
 }
 
-async function logRoleChange(supabase: any, auditData: RoleAuditLog) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function logRoleChange(supabase: SupabaseClient<Database>, auditData: RoleAuditLog) {
 	try {
 		const { error } = await supabase.from('role_audit_logs').insert({
 			...auditData,
@@ -38,7 +41,7 @@ async function logRoleChange(supabase: any, auditData: RoleAuditLog) {
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const supabase = createAdminClient();
+	const supabase = createAdminClient() as SupabaseClient<Database>;
 	let sessionId: string | null = null;
 
 	try {
@@ -64,13 +67,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.eq('session_id', sessionId)
 			.eq('user_id', user.id)
 			.eq('status', 'completed')
+			.eq('status', 'completed')
 			.maybeSingle();
 
-		if (existingProcessing) {
+		const processingData = existingProcessing;
+
+		if (processingData) {
 			console.log('✅ Session already processed:', sessionId);
 			return json({
 				success: true,
-				roleUpdated: existingProcessing.role_updated || false,
+				roleUpdated: processingData.role_updated || false,
 				message: 'Session already processed',
 				alreadyProcessed: true
 			});
@@ -183,7 +189,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				user_id: user.id,
 				customer_id: customerId,
 				email: user.email || checkoutSession.customer_details?.email || null,
-				updated_at: new Date().toISOString()
+				created_at: new Date().toISOString()
 			},
 			{ onConflict: 'user_id' }
 		);
@@ -295,7 +301,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				message: 'Payment verified but no active subscription found'
 			});
 		}
-	} catch (error: any) {
+	} catch (error) {
 		console.error('❌ Error verifying session and updating role:', error);
 
 		// Mark processing as failed if we have sessionId and it's not a parsing error
@@ -305,7 +311,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					.from('stripe_session_processing')
 					.update({
 						status: 'failed',
-						error_message: error.message,
+						error_message: error instanceof Error ? error.message : 'Unknown error',
 						completed_at: new Date().toISOString()
 					})
 					.eq('session_id', sessionId);
@@ -314,6 +320,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		return json({ error: error.message || 'Internal server error' }, { status: 500 });
+		return json(
+			{ error: error instanceof Error ? error.message : 'Internal server error' },
+			{ status: 500 }
+		);
 	}
 };

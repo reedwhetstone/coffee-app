@@ -30,7 +30,7 @@ export interface Database {
 					unstocked_date: string | null;
 					stocked_date: string | null;
 					ai_description: string | null;
-					ai_tasting_notes: Record<string, any> | null;
+					ai_tasting_notes: Record<string, unknown> | null;
 					public_coffee: boolean | null;
 					coffee_user: string | null;
 					country: string | null;
@@ -45,7 +45,7 @@ export interface Database {
 					coffee_id: number;
 					chunk_type: 'profile' | 'tasting' | 'origin' | 'commercial' | 'processing';
 					content: string;
-					metadata: Record<string, any>;
+					metadata: Record<string, unknown>;
 					embedding: number[];
 					created_at: string;
 					updated_at: string;
@@ -196,10 +196,30 @@ export interface Database {
 					created_at: string;
 					last_used_at: string | null;
 					is_active: boolean;
-					permissions: Record<string, any>;
+					permissions: Record<string, unknown>;
 				};
 				Insert: Omit<Database['public']['Tables']['api_keys']['Row'], 'id' | 'created_at'>;
 				Update: Partial<Database['public']['Tables']['api_keys']['Row']>;
+			};
+			artisan_import_log: {
+				Row: {
+					id: number;
+					user_id: string;
+					roast_id: number;
+					filename: string;
+					file_size: number;
+					artisan_version: string | null;
+					total_data_points: number;
+					processing_status: string;
+					processing_messages: string[] | null;
+					original_data: string | null;
+					created_at: string;
+				};
+				Insert: Omit<
+					Database['public']['Tables']['artisan_import_log']['Row'],
+					'id' | 'created_at'
+				>;
+				Update: Partial<Database['public']['Tables']['artisan_import_log']['Row']>;
 			};
 			api_usage: {
 				Row: {
@@ -214,6 +234,54 @@ export interface Database {
 				};
 				Insert: Omit<Database['public']['Tables']['api_usage']['Row'], 'id' | 'timestamp'>;
 				Update: Partial<Database['public']['Tables']['api_usage']['Row']>;
+			};
+			stripe_customers: {
+				Row: {
+					user_id: string;
+					customer_id: string;
+					email: string | null;
+					created_at: string;
+				};
+				Insert: Database['public']['Tables']['stripe_customers']['Row'];
+				Update: Partial<Database['public']['Tables']['stripe_customers']['Row']>;
+			};
+			user_roles: {
+				Row: {
+					id: string;
+					user_role: string[] | null;
+					email: string | null;
+					name: string | null;
+					updated_at: string | null;
+				};
+				Insert: Database['public']['Tables']['user_roles']['Row'];
+				Update: Partial<Database['public']['Tables']['user_roles']['Row']>;
+			};
+			role_audit_logs: {
+				Row: {
+					id: number;
+					user_id: string;
+					old_role: string | null;
+					new_role: string;
+					trigger_type: string;
+					metadata: Record<string, unknown> | null;
+					created_at: string;
+					stripe_customer_id: string | null;
+				};
+				Insert: Omit<Database['public']['Tables']['role_audit_logs']['Row'], 'id' | 'created_at'>;
+				Update: Partial<Database['public']['Tables']['role_audit_logs']['Row']>;
+			};
+			stripe_session_processing: {
+				Row: {
+					session_id: string;
+					user_id: string;
+					status: string;
+					started_at: string;
+					completed_at: string | null;
+					error_message: string | null;
+					role_updated: boolean | null;
+				};
+				Insert: Database['public']['Tables']['stripe_session_processing']['Row'];
+				Update: Partial<Database['public']['Tables']['stripe_session_processing']['Row']>;
 			};
 		};
 	};

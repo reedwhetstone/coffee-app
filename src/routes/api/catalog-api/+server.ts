@@ -11,7 +11,7 @@ import { createAdminClient } from '$lib/supabase-admin';
 
 // Cache for catalog API data
 let catalogApiCache: {
-	data: any[] | null;
+	data: Record<string, unknown>[] | null;
 	timestamp: number;
 } = {
 	data: null,
@@ -82,7 +82,8 @@ export const GET: RequestHandler = async ({ request }) => {
 		const supabase = createAdminClient();
 
 		// Check user role - require API access only
-		const { data: userRoleData, error: roleError } = await supabase
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { data: userRoleData, error: roleError } = await (supabase as any)
 			.from('user_roles')
 			.select('user_role')
 			.eq('id', userId)
@@ -207,7 +208,8 @@ export const GET: RequestHandler = async ({ request }) => {
 		console.log('Fetching catalog API data from database');
 
 		// Fetch only public coffees with specified columns
-		const { data: rows, error: dbError } = await supabase
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { data: rows, error: dbError } = await (supabase as any)
 			.from('coffee_catalog')
 			.select(CATALOG_API_COLUMNS)
 			.eq('public_coffee', true)

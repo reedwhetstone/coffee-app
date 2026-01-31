@@ -31,11 +31,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 			};
 		}
 
-		const apiKeys = (apiKeysResult.data || []) as any[];
+		const apiKeys = (apiKeysResult.data || []) as Record<string, unknown>[];
 
 		// Get usage data for all user's API keys
 		const usagePromises = apiKeys.map(async (key) => {
-			const usage = await getApiKeyUsage(key.id);
+			const usage = await getApiKeyUsage(key.id as string);
 			return {
 				keyId: key.id,
 				keyName: key.name,
@@ -49,7 +49,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		let dailySummary = [];
 		if (apiKeys.length > 0) {
 			// Get aggregated usage across all user's keys
-			const { data: summaryData, error: summaryError } = (await supabase
+			const summaryResult = await supabase
 				.from('api_usage')
 				.select(
 					`
@@ -61,13 +61,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 				)
 				.eq('api_keys.user_id', user.id)
 				.gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-				.order('timestamp', { ascending: false })) as any;
+				.order('timestamp', { ascending: false });
+
+			const summaryData = summaryResult.data as Record<string, unknown>[] | null;
+			const summaryError = summaryResult.error;
 
 			if (!summaryError && summaryData) {
 				// Group by day
 				const dailyGroups = summaryData.reduce(
-					(acc: any, record: any) => {
-						const date = new Date(record.timestamp).toISOString().split('T')[0];
+					(acc: Record<string, any>, record: Record<string, unknown>) => {
+						const date = new Date(record.timestamp as string).toISOString().split('T')[0];
 						if (!acc[date]) {
 							acc[date] = {
 								date,
@@ -79,15 +82,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 							};
 						}
 						acc[date].total_requests++;
-						if (record.status_code < 400) {
+						if ((record.status_code as number) < 400) {
 							acc[date].success_requests++;
 						} else {
 							acc[date].error_requests++;
 						}
-						acc[date].total_response_time += record.response_time_ms;
+						acc[date].total_response_time += record.response_time_ms as number;
 						return acc;
 					},
-					{} as Record<string, any>
+					{} as Record<string, unknown>
 				);
 
 				dailySummary = Object.values(dailyGroups)
@@ -114,7 +117,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 		const hourlyUsage = usageResults
 			.flatMap((result) => result.usage || [])
-			.filter((record: any) => new Date(record.timestamp) >= startOfHour).length;
+			.filter(
+				(record: Record<string, unknown>) => new Date(record.timestamp as string) >= startOfHour
+			).length;
 
 		return {
 			apiKeys,

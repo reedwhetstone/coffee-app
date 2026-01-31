@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { Database } from '$lib/types/database.types';
 	import BeanForm from './BeanForm.svelte';
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
 	import { onMount } from 'svelte';
@@ -18,7 +17,8 @@
 	} from '$lib/types/component.types';
 
 	// Lazy load the tasting notes radar component
-	let TastingNotesRadar = $state<any>(null);
+	import type { Component } from 'svelte';
+	let TastingNotesRadar = $state<Component | null>(null);
 	let radarComponentLoading = $state(true);
 
 	// Load radar component after initial render
@@ -124,13 +124,13 @@
 
 	// State for form and bean selection
 	let isFormVisible = $state(false);
-	let selectedBean = $state<any>(null);
+	let selectedBean = $state<InventoryWithCatalog | null>(null);
 	let beanProfileElement = $state<HTMLElement | null>(null);
 
-	// Reset selected bean if it's filtered out
+	// Reset selectedBean if it's filtered out
 	$effect(() => {
 		if (selectedBean && $filteredData.length > 0) {
-			const stillExists = $filteredData.some((bean) => bean.id === selectedBean.id);
+			const stillExists = $filteredData.some((bean) => bean.id === selectedBean?.id);
 			if (!stillExists) {
 				selectedBean = null;
 			}
@@ -198,7 +198,7 @@
 
 	// Function to handle editing
 
-	async function handleFormSubmit(formData: CoffeeFormData) {
+	async function handleFormSubmit(_formData: CoffeeFormData) {
 		await refreshData();
 		// For form submission, we don't have the full bean data immediately
 		// The bean will be selected from the refreshed data if needed
@@ -207,13 +207,13 @@
 	// Handle search state and navigation after data loads
 	$effect(() => {
 		if (!isLoading && clientData.length > 0) {
-			const searchState = page.state as any;
+			const searchState = page.state as Record<string, unknown>;
 
 			// Check if we should show a bean based on the search state
 			if (searchState?.searchType === 'green' && searchState?.searchId) {
 				const foundBean = clientData.find((bean) => bean.id === searchState.searchId);
 				if (foundBean) {
-					selectedBean = foundBean;
+					selectedBean = foundBean as unknown as InventoryWithCatalog;
 					setTimeout(() => {
 						if (beanProfileElement) {
 							beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -547,7 +547,6 @@
 						{@const displayAppearance = catalogData?.appearance}
 						{@const displayType = catalogData?.type}
 						{@const displayArrival = catalogData?.arrival_date}
-						{@const displayRating = bean.rank}
 						{@const tastingNotes = parseTastingNotes(catalogData?.ai_tasting_notes)}
 						{@const userCuppingNotes = parseTastingNotes(bean.cupping_notes)}
 						{@const hasUserRating = bean.rank !== undefined && bean.rank !== null}

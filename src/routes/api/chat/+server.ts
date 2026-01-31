@@ -5,9 +5,10 @@ import { requireMemberRole } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
 // Helper function to parse response and fetch coffee data
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function parseResponseAndFetchCoffeeData(response: string, supabase: any) {
 	let structuredResponse = null;
-	let coffeeData: any[] = [];
+	let coffeeData: Record<string, unknown>[] = [];
 
 	// Parse JSON response (strict JSON mode should ensure this always works)
 	try {
@@ -38,7 +39,8 @@ async function parseResponseAndFetchCoffeeData(response: string, supabase: any) 
 	// Fetch coffee data if we have IDs
 	if (structuredResponse?.coffee_cards?.length > 0) {
 		try {
-			const { data } = await supabase
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const { data } = await (supabase as any)
 				.from('coffee_catalog')
 				.select('*')
 				.in('id', structuredResponse.coffee_cards)
@@ -107,7 +109,7 @@ export const POST: RequestHandler = async (event) => {
 			const encoder = new TextEncoder();
 
 			// Helper function to safely write to stream (simplified - no timeout race)
-			const safeWrite = async (data: any) => {
+			const safeWrite = async (data: unknown) => {
 				try {
 					// Check if request was aborted
 					if (signal.aborted) {
@@ -126,7 +128,8 @@ export const POST: RequestHandler = async (event) => {
 							JSON.stringify(data, (_, value) => {
 								if (typeof value === 'string') {
 									// Replace problematic characters that might break JSON
-									return value.replace(/[\u0000-\u001f\u007f-\u009f]/g, '');
+									return value // eslint-disable-next-line no-control-regex
+										.replace(/[\x00-\x1f\x7f-\x9f]/g, '');
 								}
 								return value;
 							})

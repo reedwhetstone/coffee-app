@@ -92,10 +92,12 @@ export async function getUserRoles(supabase: SupabaseClient, userId: string): Pr
 
 export { checkRole as requireRole };
 
+import type { User, Session } from '@supabase/supabase-js';
+
 // Enhanced role validation utilities for API endpoints
 export async function requireMemberRole(
 	event: RequestEvent
-): Promise<{ user: any; role: UserRole }> {
+): Promise<{ user: User; role: UserRole }> {
 	const { user, role } = await requireUserAuth(event);
 
 	if (!checkRole(role, 'member')) {
@@ -107,7 +109,7 @@ export async function requireMemberRole(
 
 export async function requireAdminRole(
 	event: RequestEvent
-): Promise<{ user: any; role: UserRole }> {
+): Promise<{ user: User; role: UserRole }> {
 	const { user, role } = await requireUserAuth(event);
 
 	if (!checkRole(role, 'admin')) {
@@ -117,9 +119,15 @@ export async function requireAdminRole(
 	return { user, role };
 }
 
-export async function requireUserAuth(event: RequestEvent): Promise<{ user: any; role: UserRole }> {
+export async function requireUserAuth(
+	event: RequestEvent
+): Promise<{ user: User; role: UserRole }> {
 	const sessionData = await event.locals.safeGetSession();
-	const { session, user, role } = sessionData as { session: any; user: any; role: UserRole };
+	const { session, user, role } = sessionData as {
+		session: Session | null;
+		user: User | null;
+		role: UserRole;
+	};
 
 	if (!session || !user) {
 		throw new AuthError('Authentication required');
@@ -142,7 +150,9 @@ export function createRoleMiddleware(requiredRole: UserRole) {
 }
 
 // Enhanced admin check for admin endpoints
-export async function validateAdminAccess(locals: any): Promise<{ user: any; role: UserRole }> {
+export async function validateAdminAccess(
+	locals: App.Locals
+): Promise<{ user: User; role: UserRole }> {
 	try {
 		const { session, user, role } = await locals.safeGetSession();
 
