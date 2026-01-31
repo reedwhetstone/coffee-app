@@ -556,7 +556,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// 3. Insert milestone + control events
 		const allEvents = [...processedData.milestoneEvents, ...processedData.controlEvents];
 		if (allEvents.length > 0) {
-			console.log(`Inserting ${allEvents.length} events (${processedData.milestoneEvents.length} milestones, ${processedData.controlEvents.length} control)...`);
+			console.log(
+				`Inserting ${allEvents.length} events (${processedData.milestoneEvents.length} milestones, ${processedData.controlEvents.length} control)...`
+			);
 			await insertEvents(supabase, allEvents);
 		}
 

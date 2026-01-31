@@ -84,12 +84,10 @@ A well-crafted CLAUDE.md is the AI's "constitution" for your project, providing 
 ### Required Elements:
 
 1. **Clarifying Questions:** For unclear/missing items, ask specific questions
-
    - Example: "What is the preferred error handling pattern for API calls?"
    - Focus on workflow-critical details that impact code generation
 
 2. **Concise Rewrites:** For each issue, suggest terse, imperative fixes
-
    - Format: "- Use X for Y scenarios"
    - Prioritize actionable instructions over explanatory text
 

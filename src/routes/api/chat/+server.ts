@@ -28,7 +28,8 @@ async function parseResponseAndFetchCoffeeData(response: string, supabase: any) 
 		console.error('Raw response:', response);
 		// Create a fallback response for invalid JSON
 		structuredResponse = {
-			message: 'I apologize, but I encountered an issue formatting my response. Please try asking again.',
+			message:
+				'I apologize, but I encountered an issue formatting my response. Please try asking again.',
 			coffee_cards: [],
 			response_type: 'text'
 		};

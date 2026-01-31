@@ -443,23 +443,19 @@ interface ApiSubscription {
 ### Current System Files to Study:
 
 1. **Authentication System:**
-
    - `src/hooks.server.ts` - Middleware and role protection
    - `src/lib/server/auth.ts` - Current auth functions
    - `src/lib/types/auth.types.ts` - Role definitions
 
 2. **Database & Types:**
-
    - `src/lib/types/database.types.ts` - Database type definitions
    - `src/lib/supabase.ts` - Database client setup
 
 3. **Existing API:**
-
    - `src/routes/api/catalog-api/+server.ts` - Current API implementation
    - `src/routes/api/docs/+page.svelte` - Current documentation
 
 4. **Stripe Integration:**
-
    - `src/lib/services/stripe.ts` - Stripe service functions
    - `src/lib/services/stripe-webhook.ts` - Webhook handling
    - `src/routes/subscription/` - Current subscription UI
@@ -473,14 +469,12 @@ interface ApiSubscription {
 ### Files to Create:
 
 1. **New API Infrastructure:**
-
    - `src/lib/server/apiAuth.ts`
    - `src/lib/server/rateLimit.ts`
    - `src/lib/server/apiSecurity.ts`
    - `src/lib/services/apiMonitoring.ts`
 
 2. **Dashboard Routes:**
-
    - Complete `src/routes/(authenticated)/api-dashboard/` directory structure
 
 3. **API Components:**
@@ -489,17 +483,14 @@ interface ApiSubscription {
 ### Files to Update:
 
 1. **Type Definitions:**
-
    - `src/lib/types/auth.types.ts` - Add 'api' role
    - `src/lib/types/database.types.ts` - Add new tables
 
 2. **Authentication System:**
-
    - `src/hooks.server.ts` - Support multiple roles
    - `src/lib/server/auth.ts` - Enhanced role checking
 
 3. **Existing API:**
-
    - `src/routes/api/catalog-api/+server.ts` - Bearer token auth
 
 4. **Subscription System:**

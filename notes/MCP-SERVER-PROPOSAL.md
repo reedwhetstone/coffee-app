@@ -18,6 +18,7 @@ The Model Context Protocol enables AI assistants (Claude, GPT, Copilot, etc.) to
 4. **Use specialized tools** - Custom functions tailored to specific workflows
 
 **Technical Architecture**:
+
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │   AI Assistant  │────▶│   MCP Server    │────▶│  Purveyors.io   │
@@ -31,23 +32,23 @@ The Model Context Protocol enables AI assistants (Claude, GPT, Copilot, etc.) to
 
 ### MCP Ecosystem (2026)
 
-| Category | Notable MCP Servers | Gap Analysis |
-|----------|---------------------|--------------|
-| **Databases** | Supabase, Postgres, Pinecone | Generic, not domain-specific |
-| **Enterprise** | Salesforce, Notion, Slack | No vertical industry focus |
-| **E-commerce** | Shopify, Stripe | No specialty food/beverage |
-| **Food & Beverage** | **NONE** | **Wide open opportunity** |
-| **Coffee Industry** | **NONE** | **First-mover advantage** |
+| Category            | Notable MCP Servers          | Gap Analysis                 |
+| ------------------- | ---------------------------- | ---------------------------- |
+| **Databases**       | Supabase, Postgres, Pinecone | Generic, not domain-specific |
+| **Enterprise**      | Salesforce, Notion, Slack    | No vertical industry focus   |
+| **E-commerce**      | Shopify, Stripe              | No specialty food/beverage   |
+| **Food & Beverage** | **NONE**                     | **Wide open opportunity**    |
+| **Coffee Industry** | **NONE**                     | **First-mover advantage**    |
 
 ### Coffee Software Landscape
 
-| Platform | AI Integration | MCP Server | Gap |
-|----------|----------------|------------|-----|
-| **Cropster** | Limited | No | Enterprise roasting, no AI discovery |
-| **Artisan** | None | No | Open-source, desktop-only |
-| **RoastPATH** | None | No | Mill City ecosystem only |
-| **DiFluid CoffeeOS** | Emerging | No | Hardware-focused |
-| **Purveyors.io** | Full RAG/Chat | **Opportunity** | AI-native platform |
+| Platform             | AI Integration | MCP Server      | Gap                                  |
+| -------------------- | -------------- | --------------- | ------------------------------------ |
+| **Cropster**         | Limited        | No              | Enterprise roasting, no AI discovery |
+| **Artisan**          | None           | No              | Open-source, desktop-only            |
+| **RoastPATH**        | None           | No              | Mill City ecosystem only             |
+| **DiFluid CoffeeOS** | Emerging       | No              | Hardware-focused                     |
+| **Purveyors.io**     | Full RAG/Chat  | **Opportunity** | AI-native platform                   |
 
 **Key Insight**: Cropster has an API but no MCP server. Their Ruby client (by Blue Bottle Coffee) shows enterprise demand for coffee data integration. Purveyors.io can leapfrog by offering AI-native connectivity.
 
@@ -60,6 +61,7 @@ The Model Context Protocol enables AI assistants (Claude, GPT, Copilot, etc.) to
 **Profile**: Home roasters and micro-roasters using Claude Desktop, Cursor, or similar AI tools in their daily workflow.
 
 **Use Case**:
+
 ```
 User in Claude Desktop: "What Ethiopian naturals do I have in inventory
 that would pair well with the Guatemalan I roasted last week?
@@ -67,6 +69,7 @@ Show me flavor profile overlap."
 ```
 
 **Value Proposition**:
+
 - Query personal inventory and roast history via natural language
 - Get AI-powered roast recommendations based on their data
 - Track costs and profits without switching apps
@@ -95,6 +98,7 @@ Show me flavor profile overlap."
 **Profile**: Developers building coffee-related applications, recommendation engines, or e-commerce integrations.
 
 **Use Case**:
+
 ```
 Developer building coffee subscription app: Uses MCP server to power
 their AI chatbot with real-time coffee catalog, availability,
@@ -102,6 +106,7 @@ and flavor matching without building their own data pipeline.
 ```
 
 **Value Proposition**:
+
 - Normalized, enriched coffee data (500+ coffees, embeddings, tasting notes)
 - Semantic search capabilities out-of-the-box
 - No need to build/maintain coffee domain expertise
@@ -130,6 +135,7 @@ and flavor matching without building their own data pipeline.
 **Profile**: Mid-size roasters (5-50 employees) wanting AI-powered insights across their team.
 
 **Use Case**:
+
 ```
 Production Manager: "Show me all roasts from this week where development
 time exceeded 20% and compare to our quality scores.
@@ -140,6 +146,7 @@ Which customers have the highest reorder rate?"
 ```
 
 **Value Proposition**:
+
 - Team-wide AI assistant for operations, QC, and sales
 - Natural language access to business intelligence
 - Integration with existing workflows (Artisan, POS, ERP)
@@ -169,6 +176,7 @@ Which customers have the highest reorder rate?"
 **Profile**: Green coffee importers, roaster equipment manufacturers, coffee education platforms wanting to embed AI capabilities.
 
 **Use Case**:
+
 ```
 Green Coffee Importer: Embeds Purveyors MCP into their customer portal.
 Roaster customers can ask: "What coffees arriving next month would
@@ -179,6 +187,7 @@ provide AI-powered roast recommendations based on machine capabilities.
 ```
 
 **Value Proposition**:
+
 - White-label AI intelligence for their platforms
 - Differentiation from competitors
 - Reduced development costs
@@ -208,6 +217,7 @@ provide AI-powered roast recommendations based on machine capabilities.
 **Profile**: Users of automation platforms (Zapier, Make, n8n) or building custom AI agents who need coffee domain expertise.
 
 **Use Case**:
+
 ```
 Automation: When a new coffee is added to inventory, AI analyzes flavor
 profile, suggests optimal roast parameters based on similar coffees,
@@ -219,6 +229,7 @@ inventory levels and sales velocity.
 ```
 
 **Value Proposition**:
+
 - Domain-specific tools for coffee workflows
 - Pre-built prompts and resources for coffee operations
 - Integration with existing automation stacks
@@ -249,6 +260,7 @@ inventory levels and sales velocity.
 **Scope**: Coffee catalog, general coffee information, semantic search
 
 **Architecture**:
+
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │   Any AI Tool   │────▶│   MCP Server    │────▶│ coffee_catalog  │
@@ -257,6 +269,7 @@ inventory levels and sales velocity.
 ```
 
 **MCP Tools Exposed**:
+
 - `search_coffees` - Semantic and filtered search
 - `get_coffee_details` - Full coffee information
 - `get_regions` - Browse by origin
@@ -275,6 +288,7 @@ inventory levels and sales velocity.
 **Scope**: Personal inventory, roast profiles, sales data
 
 **Architecture**:
+
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │  Claude Desktop │────▶│   MCP Server    │────▶│  User's Data    │
@@ -285,6 +299,7 @@ inventory levels and sales velocity.
 ```
 
 **MCP Tools Exposed** (in addition to public):
+
 - `get_my_inventory` - Personal green coffee stock
 - `get_my_roasts` - Roasting history and profiles
 - `get_my_sales` - Sales and profit data
@@ -293,6 +308,7 @@ inventory levels and sales velocity.
 - `analyze_profitability` - Financial insights
 
 **Auth Flow**:
+
 1. User initiates MCP connection in AI tool
 2. Redirected to Purveyors.io OAuth consent screen
 3. User approves scopes (inventory, roasts, sales)
@@ -311,6 +327,7 @@ inventory levels and sales velocity.
 **Scope**: Shared team data, role-based access, audit logging
 
 **Architecture**:
+
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │  Team Member's  │────▶│   MCP Server    │────▶│  Org's Data     │
@@ -322,6 +339,7 @@ inventory levels and sales velocity.
 ```
 
 **Additional MCP Tools**:
+
 - `get_team_inventory` - Shared inventory view
 - `get_team_roasts` - All team roasting activity
 - `get_team_performance` - Aggregated metrics
@@ -337,6 +355,7 @@ inventory levels and sales velocity.
 | Admin | Full | Full | Full | Full |
 
 **Enterprise Features**:
+
 - SSO integration (SAML, OIDC)
 - Audit logging for compliance
 - Data isolation between organizations
@@ -355,6 +374,7 @@ inventory levels and sales velocity.
 **Scope**: White-label MCP for partners to embed
 
 **Architecture**:
+
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │  Partner's App  │────▶│   MCP Gateway   │────▶│  Purveyors +    │
@@ -366,11 +386,13 @@ inventory levels and sales velocity.
 ```
 
 **Deployment Options**:
+
 1. **Hosted**: Partner uses Purveyors MCP endpoint with their API key
 2. **Proxy**: Partner runs MCP proxy, we provide backend
 3. **Licensed**: Partner self-hosts with our SDK
 
 **Data Isolation**:
+
 - Partner's customers only see partner-approved data
 - Can blend Purveyors catalog with partner's proprietary coffees
 - Usage attributed to partner account
@@ -385,14 +407,17 @@ inventory levels and sales velocity.
 ### Recommended Auth Strategy
 
 **Phase 1** (MVP): Options A + B
+
 - Public catalog access (viral growth)
 - Individual OAuth for members (conversion)
 
 **Phase 2** (Growth): Add Option C
+
 - Team features for commercial accounts
 - Enterprise SSO integrations
 
 **Phase 3** (Scale): Add Option D
+
 - Partner/embedded offerings
 - White-label capabilities
 
@@ -402,27 +427,27 @@ inventory levels and sales velocity.
 
 ### Revenue Projections
 
-| Segment | Year 1 | Year 2 | Year 3 |
-|---------|--------|--------|--------|
-| Individual (ICP 1) | $5,000 | $25,000 | $75,000 |
-| Developers (ICP 2) | $15,000 | $60,000 | $150,000 |
-| Commercial Teams (ICP 3) | $10,000 | $80,000 | $250,000 |
-| B2B Platforms (ICP 4) | $0 | $50,000 | $200,000 |
-| Agent Builders (ICP 5) | $2,000 | $20,000 | $100,000 |
-| **Total** | **$32,000** | **$235,000** | **$775,000** |
+| Segment                  | Year 1      | Year 2       | Year 3       |
+| ------------------------ | ----------- | ------------ | ------------ |
+| Individual (ICP 1)       | $5,000      | $25,000      | $75,000      |
+| Developers (ICP 2)       | $15,000     | $60,000      | $150,000     |
+| Commercial Teams (ICP 3) | $10,000     | $80,000      | $250,000     |
+| B2B Platforms (ICP 4)    | $0          | $50,000      | $200,000     |
+| Agent Builders (ICP 5)   | $2,000      | $20,000      | $100,000     |
+| **Total**                | **$32,000** | **$235,000** | **$775,000** |
 
-*Assumptions: Conservative adoption rates based on existing user base and market research*
+_Assumptions: Conservative adoption rates based on existing user base and market research_
 
 ### Cost Analysis
 
-| Category | One-time | Monthly |
-|----------|----------|---------|
-| MCP Server Development | $15,000-25,000 | - |
-| Auth Infrastructure | $5,000-10,000 | $200-500 |
-| Documentation & DevRel | $3,000-5,000 | $500-1000 |
-| Hosting & Infrastructure | - | $100-500 |
-| Support & Maintenance | - | $500-2000 |
-| **Total** | **$23,000-40,000** | **$1,300-4,000** |
+| Category                 | One-time           | Monthly          |
+| ------------------------ | ------------------ | ---------------- |
+| MCP Server Development   | $15,000-25,000     | -                |
+| Auth Infrastructure      | $5,000-10,000      | $200-500         |
+| Documentation & DevRel   | $3,000-5,000       | $500-1000        |
+| Hosting & Infrastructure | -                  | $100-500         |
+| Support & Maintenance    | -                  | $500-2000        |
+| **Total**                | **$23,000-40,000** | **$1,300-4,000** |
 
 ### ROI Timeline
 
@@ -479,6 +504,7 @@ my favorite Yirgacheffe but from a different region?"
 **Narrative**: "Built the first MCP server for the specialty coffee industry, establishing Purveyors.io as the AI-native platform in a $100B market"
 
 **Demonstrable Skills**:
+
 - AI/ML integration (RAG, embeddings, LLM orchestration)
 - Protocol implementation (MCP specification compliance)
 - B2B SaaS (multi-tenant auth, enterprise features)
@@ -488,6 +514,7 @@ my favorite Yirgacheffe but from a different region?"
 ### For Engineering Team
 
 **Technical Portfolio Items**:
+
 - MCP server implementation (TypeScript/Node.js)
 - OAuth 2.0 / OIDC integration
 - Multi-tenant data isolation
@@ -510,6 +537,7 @@ my favorite Yirgacheffe but from a different region?"
 **Timeline**: 4-6 weeks
 
 **Components**:
+
 1. MCP server core (TypeScript, official SDK)
 2. Public tools (catalog search, coffee details, recommendations)
 3. OAuth integration (Supabase Auth)
@@ -519,21 +547,22 @@ my favorite Yirgacheffe but from a different region?"
 
 **MCP Tools (MVP)**:
 
-| Tool | Scope | Description |
-|------|-------|-------------|
-| `search_coffees` | Public | Semantic + filtered search |
-| `get_coffee` | Public | Full coffee details |
-| `recommend_similar` | Public | AI-powered recommendations |
-| `get_my_inventory` | Auth | User's green coffee stock |
-| `get_my_roasts` | Auth | User's roast history |
-| `analyze_roast` | Auth | AI analysis of roast profile |
-| `get_profit_summary` | Auth | Financial overview |
+| Tool                 | Scope  | Description                  |
+| -------------------- | ------ | ---------------------------- |
+| `search_coffees`     | Public | Semantic + filtered search   |
+| `get_coffee`         | Public | Full coffee details          |
+| `recommend_similar`  | Public | AI-powered recommendations   |
+| `get_my_inventory`   | Auth   | User's green coffee stock    |
+| `get_my_roasts`      | Auth   | User's roast history         |
+| `analyze_roast`      | Auth   | AI analysis of roast profile |
+| `get_profit_summary` | Auth   | Financial overview           |
 
 ### Growth Scope (Phase 2)
 
 **Timeline**: 6-8 weeks additional
 
 **Components**:
+
 1. Team/organization support
 2. RBAC implementation
 3. Audit logging
@@ -546,6 +575,7 @@ my favorite Yirgacheffe but from a different region?"
 **Timeline**: 8-12 weeks additional
 
 **Components**:
+
 1. Partner/embedded SDK
 2. White-label configuration
 3. Usage-based billing integration
@@ -559,6 +589,7 @@ my favorite Yirgacheffe but from a different region?"
 ### Go Decision: **YES - Proceed with MVP**
 
 **Rationale**:
+
 1. **Zero competition** in coffee/food vertical
 2. **Existing AI infrastructure** (RAG, embeddings) reduces development cost
 3. **Clear monetization** aligned with existing API tiers
@@ -609,6 +640,6 @@ my favorite Yirgacheffe but from a different region?"
 
 ---
 
-*Document generated: January 2026*
-*Author: Claude Code Analysis*
-*Status: Proposal for Review*
+_Document generated: January 2026_
+_Author: Claude Code Analysis_
+_Status: Proposal for Review_

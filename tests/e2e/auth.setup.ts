@@ -30,41 +30,37 @@ setup('authenticate', async ({ page, request }) => {
 	const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 	// 1a. Generate a magic link via admin API (bypasses disabled email provider)
-	const linkResponse = await request.post(
-		`${supabaseUrl}/auth/v1/admin/generate_link`,
-		{
-			headers: {
-				apikey: supabaseAnonKey,
-				Authorization: `Bearer ${supabaseServiceRoleKey}`,
-				'Content-Type': 'application/json;charset=UTF-8'
-			},
-			data: {
-				type: 'magiclink',
-				email: email
-			}
+	const linkResponse = await request.post(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+		headers: {
+			apikey: supabaseAnonKey,
+			Authorization: `Bearer ${supabaseServiceRoleKey}`,
+			'Content-Type': 'application/json;charset=UTF-8'
+		},
+		data: {
+			type: 'magiclink',
+			email: email
 		}
-	);
+	});
 	if (!linkResponse.ok()) {
 		const body = await linkResponse.json();
-		throw new Error(`Admin generate_link failed (${linkResponse.status()}): ${JSON.stringify(body)}`);
+		throw new Error(
+			`Admin generate_link failed (${linkResponse.status()}): ${JSON.stringify(body)}`
+		);
 	}
 	const linkData = await linkResponse.json();
 
 	// 1b. Exchange the token for a session
-	const verifyResponse = await request.post(
-		`${supabaseUrl}/auth/v1/verify`,
-		{
-			headers: {
-				apikey: supabaseAnonKey,
-				Authorization: `Bearer ${supabaseAnonKey}`,
-				'Content-Type': 'application/json;charset=UTF-8'
-			},
-			data: {
-				type: 'magiclink',
-				token_hash: linkData.hashed_token
-			}
+	const verifyResponse = await request.post(`${supabaseUrl}/auth/v1/verify`, {
+		headers: {
+			apikey: supabaseAnonKey,
+			Authorization: `Bearer ${supabaseAnonKey}`,
+			'Content-Type': 'application/json;charset=UTF-8'
+		},
+		data: {
+			type: 'magiclink',
+			token_hash: linkData.hashed_token
 		}
-	);
+	});
 	if (!verifyResponse.ok()) {
 		const body = await verifyResponse.json();
 		throw new Error(`Token verify failed (${verifyResponse.status()}): ${JSON.stringify(body)}`);

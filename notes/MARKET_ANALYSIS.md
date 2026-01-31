@@ -15,25 +15,21 @@ _Generated from comprehensive codebase analysis_
 ### Primary Value Propositions
 
 1. **AI-Powered Coffee Intelligence**
-
    - Semantic search: "Find me a washed Ethiopian under $8/lb with bright acidity"
    - RAG-powered recommendations based on roasting patterns
    - Natural language queries for coffee discovery
 
 2. **Professional Roast Management**
-
    - Seamless Artisan .alog file integration
    - D3.js-powered visualization and analytics
    - Cross-device roast tracking and QA workflows
 
 3. **Comprehensive Business Intelligence**
-
    - Green coffee inventory management
    - Profit tracking and margin analysis
    - Sales analytics and ROI calculations
 
 4. **Curated Coffee Marketplace**
-
    - Normalized data from multiple suppliers
    - Real-time availability tracking
    - Quality scoring and professional evaluation
@@ -265,19 +261,16 @@ _Generated from comprehensive codebase analysis_
 ### Unique Competitive Advantages
 
 1. **AI-Powered Semantic Search**
-
    - No competitor offers natural language coffee discovery
    - RAG-powered recommendations based on actual roast data
    - Personalized suggestions improving over time
 
 2. **Unified Platform Approach**
-
    - Only solution combining sourcing + roasting + business intelligence
    - Seamless data flow from purchase to profit analysis
    - Cross-device synchronization for modern workflows
 
 3. **API-First Data Intelligence**
-
    - Normalized, enriched coffee data unavailable elsewhere
    - Professional quality scoring and evaluation
    - Real-time market intelligence and trends
@@ -320,13 +313,11 @@ _Generated from comprehensive codebase analysis_
 ### Content Marketing Themes
 
 1. **Educational Content**
-
    - "Mastering roast development with data"
    - "Understanding coffee quality metrics"
    - "Building a profitable roasting business"
 
 2. **Technical Content**
-
    - "Coffee data normalization challenges"
    - "AI applications in specialty coffee"
    - "Building coffee applications with APIs"
@@ -427,19 +418,16 @@ _Generated from comprehensive codebase analysis_
 ### Immediate Priorities
 
 1. **Customer Success Stories**
-
    - Micro-roaster profit improvement case studies
    - Home roaster skill development journeys
    - Enterprise efficiency and quality gains
 
 2. **Technical Demonstrations**
-
    - AI-powered coffee discovery videos
    - Artisan integration walkthroughs
    - Business intelligence dashboard tours
 
 3. **Educational Content Series**
-
    - "Coffee Roasting Analytics 101"
    - "Building a Profitable Roasting Business"
    - "Understanding Coffee Quality Metrics"
@@ -452,13 +440,11 @@ _Generated from comprehensive codebase analysis_
 ### Long-term Content Strategy
 
 1. **Community Platform**
-
    - User-generated roast profiles
    - Coffee discovery sharing
    - Professional networking features
 
 2. **Industry Intelligence**
-
    - Market trend reports
    - Supplier analysis and recommendations
    - Coffee industry data insights
@@ -475,13 +461,11 @@ _Generated from comprehensive codebase analysis_
 ### Immediate Actions (0-3 months)
 
 1. **Enhance Free Tier Value**
-
    - Expand AI recommendation capabilities
    - Improve coffee discovery experience
    - Add educational content integration
 
 2. **Optimize Conversion Funnel**
-
    - Streamline Artisan integration onboarding
    - Improve trial-to-paid messaging
    - Add usage-based upgrade prompts
@@ -494,13 +478,11 @@ _Generated from comprehensive codebase analysis_
 ### Medium-term Initiatives (3-12 months)
 
 1. **Enterprise Sales Process**
-
    - Develop custom demo environments
    - Create ROI calculation tools
    - Build integration consulting services
 
 2. **Partnership Program**
-
    - Coffee equipment manufacturer integrations
    - Specialty coffee association partnerships
    - Educational institution collaborations
@@ -513,13 +495,11 @@ _Generated from comprehensive codebase analysis_
 ### Long-term Vision (12+ months)
 
 1. **Platform Ecosystem**
-
    - Third-party integrations marketplace
    - Community-driven content platform
    - Industry-standard data exchange
 
 2. **Global Expansion**
-
    - International coffee supplier integration
    - Localized content and support
    - Regional partnership development

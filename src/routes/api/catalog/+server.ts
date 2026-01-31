@@ -68,7 +68,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		if (isPaginated) {
 			// Debug: Log filter parameters
-		//	console.log('Received filter parameters:', filters);
+			//	console.log('Received filter parameters:', filters);
 
 			// Build query with server-side filtering and sorting
 			let query = supabase

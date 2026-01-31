@@ -308,14 +308,14 @@ Items that need more context before they can be actionable.
 
 For roast darkness token implementation:
 
-| Weight Loss | Roast Level | Notes |
-| ----------- | ----------- | ----- |
-| <11% | Under-roasted | Generally concerning; some low-moisture greens can be 10% |
-| 11-13% | Light | Almost always light roast territory |
-| 14-16% | Medium | Less acidity, more caramels, nuts, chocolate |
-| 17-18% | Dark | Roast notes dominate: smoke, dark chocolate, woody |
-| 19-21% | Very Dark | Roast notes dominate in unpleasant ways |
-| >22% | Dangerous | Near-fire territory, avoid |
+| Weight Loss | Roast Level   | Notes                                                     |
+| ----------- | ------------- | --------------------------------------------------------- |
+| <11%        | Under-roasted | Generally concerning; some low-moisture greens can be 10% |
+| 11-13%      | Light         | Almost always light roast territory                       |
+| 14-16%      | Medium        | Less acidity, more caramels, nuts, chocolate              |
+| 17-18%      | Dark          | Roast notes dominate: smoke, dark chocolate, woody        |
+| 19-21%      | Very Dark     | Roast notes dominate in unpleasant ways                   |
+| >22%        | Dangerous     | Near-fire territory, avoid                                |
 
 ---
 

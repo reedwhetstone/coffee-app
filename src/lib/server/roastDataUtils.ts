@@ -45,10 +45,7 @@ export async function insertTemperatures(
 /**
  * Batch-insert event rows into roast_events.
  */
-export async function insertEvents(
-	supabase: SupabaseClient,
-	entries: EventRow[]
-): Promise<void> {
+export async function insertEvents(supabase: SupabaseClient, entries: EventRow[]): Promise<void> {
 	for (let i = 0; i < entries.length; i += BATCH_SIZE) {
 		const batch = entries.slice(i, i + BATCH_SIZE);
 		const { error } = await supabase.from('roast_events').insert(batch);
@@ -157,8 +154,7 @@ export function extractMilestoneProfileData(
 		const dryEnd = milestones.dry_end_time ?? 0;
 		const fcStart = milestones.fc_start_time ?? 0;
 
-		milestones.dry_percent =
-			dryEnd > chargeTime ? ((dryEnd - chargeTime) / totalTime) * 100 : null;
+		milestones.dry_percent = dryEnd > chargeTime ? ((dryEnd - chargeTime) / totalTime) * 100 : null;
 		milestones.maillard_percent =
 			fcStart > dryEnd && dryEnd > chargeTime ? ((fcStart - dryEnd) / totalTime) * 100 : null;
 		milestones.development_percent =
