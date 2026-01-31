@@ -16,7 +16,6 @@ interface RoleAuditLog {
 	metadata?: Json;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function logRoleChange(supabase: SupabaseClient<Database>, auditData: RoleAuditLog) {
 	try {
 		const { error } = await supabase.from('role_audit_logs').insert({

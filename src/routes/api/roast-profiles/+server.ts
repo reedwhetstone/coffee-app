@@ -163,7 +163,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			}
 
 			// Fetch all coffee data in single query to avoid N+1 problem
-			const coffeeIds = profiles.map((profileData: any) => profileData.coffee_id);
+			const coffeeIds = profiles.map(
+				(profileData: Record<string, unknown>) => profileData.coffee_id
+			) as number[];
 
 			const { data: coffeesRaw, error: coffeeError } = await supabase
 				.from('green_coffee_inv')

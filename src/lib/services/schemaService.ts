@@ -483,7 +483,7 @@ export class SchemaService {
 	generatePageSchema(
 		pageType: string,
 		pageUrl: string,
-		additionalData?: Record<string, any>
+		additionalData?: Record<string, unknown>
 	): object {
 		const schemas: object[] = [];
 
@@ -496,9 +496,20 @@ export class SchemaService {
 				schemas.push(this.generateSoftwareApplicationSchema());
 
 				// Add coffee collection schema if coffee data is provided (authenticated users)
-				if (additionalData?.coffees && additionalData.coffees.length > 0) {
-					schemas.push(this.generateCoffeeCollectionSchema(additionalData.coffees, pageUrl));
-					const aggregateOffer = this.generateCoffeeAggregateOfferSchema(additionalData.coffees);
+				if (
+					additionalData?.coffees &&
+					Array.isArray(additionalData.coffees) &&
+					additionalData.coffees.length > 0
+				) {
+					schemas.push(
+						this.generateCoffeeCollectionSchema(
+							additionalData.coffees as Record<string, unknown>[],
+							pageUrl
+						)
+					);
+					const aggregateOffer = this.generateCoffeeAggregateOfferSchema(
+						additionalData.coffees as Record<string, unknown>[]
+					);
 					if (Object.keys(aggregateOffer).length > 0) {
 						schemas.push(aggregateOffer);
 					}
@@ -515,13 +526,41 @@ export class SchemaService {
 			case 'api-service':
 				// Enhanced API page schema
 				if (additionalData?.service) {
-					schemas.push(this.generateServiceSchema(additionalData.service));
+					schemas.push(
+						this.generateServiceSchema(
+							additionalData.service as {
+								name: string;
+								description: string;
+								provider: string;
+								serviceType: string;
+								url: string;
+								features: string[];
+								audience?: string[];
+							}
+						)
+					);
 				}
 				if (additionalData?.pricing) {
-					schemas.push(this.generatePricingSchema(additionalData.pricing));
+					schemas.push(
+						this.generatePricingSchema(
+							additionalData.pricing as Array<{
+								name: string;
+								price: number;
+								currency: string;
+								billingDuration: string;
+								description: string;
+								features: string[];
+								popular?: boolean;
+							}>
+						)
+					);
 				}
-				if (additionalData?.faqs) {
-					schemas.push(this.generateFAQSchema(additionalData.faqs));
+				if (additionalData?.faqs && Array.isArray(additionalData.faqs)) {
+					schemas.push(
+						this.generateFAQSchema(
+							additionalData.faqs as Array<{ question: string; answer: string }>
+						)
+					);
 				}
 				// Keep legacy API product schema for compatibility
 				schemas.push(this.generateAPIProductSchema());
@@ -530,10 +569,34 @@ export class SchemaService {
 			case 'about':
 				// About page with founder information
 				if (additionalData?.organization) {
-					schemas.push(this.generateAboutPageSchema(pageUrl, additionalData.organization));
+					schemas.push(
+						this.generateAboutPageSchema(
+							pageUrl,
+							additionalData.organization as {
+								name: string;
+								description: string;
+								founder?: string;
+								foundingDate?: string;
+								mission?: string;
+							}
+						)
+					);
 				}
 				if (additionalData?.founder) {
-					schemas.push(this.generatePersonSchema(additionalData.founder));
+					schemas.push(
+						this.generatePersonSchema(
+							additionalData.founder as {
+								name: string;
+								jobTitle: string;
+								description: string;
+								organization: string;
+								email?: string;
+								image?: string;
+								url?: string;
+								expertise?: string[];
+							}
+						)
+					);
 				}
 				break;
 
@@ -543,14 +606,34 @@ export class SchemaService {
 
 			case 'coffee':
 				if (additionalData?.coffee) {
-					schemas.push(this.generateCoffeeProductSchema(additionalData.coffee));
+					schemas.push(
+						this.generateCoffeeProductSchema(
+							additionalData.coffee as {
+								id: string;
+								name: string;
+								description?: string;
+								origin?: string;
+								price?: number;
+								availability?: boolean;
+								roaster?: string;
+								imageUrl?: string;
+							}
+						)
+					);
 				}
 				break;
 
 			case 'coffee-collection':
-				if (additionalData?.coffees) {
-					schemas.push(this.generateCoffeeCollectionSchema(additionalData.coffees, pageUrl));
-					const aggregateOffer = this.generateCoffeeAggregateOfferSchema(additionalData.coffees);
+				if (additionalData?.coffees && Array.isArray(additionalData.coffees)) {
+					schemas.push(
+						this.generateCoffeeCollectionSchema(
+							additionalData.coffees as Record<string, unknown>[],
+							pageUrl
+						)
+					);
+					const aggregateOffer = this.generateCoffeeAggregateOfferSchema(
+						additionalData.coffees as Record<string, unknown>[]
+					);
 					if (Object.keys(aggregateOffer).length > 0) {
 						schemas.push(aggregateOffer);
 					}
@@ -560,15 +643,23 @@ export class SchemaService {
 			// Legacy support for original API case
 			case 'api':
 				schemas.push(this.generateAPIProductSchema());
-				if (additionalData?.faqs) {
-					schemas.push(this.generateFAQSchema(additionalData.faqs));
+				if (additionalData?.faqs && Array.isArray(additionalData.faqs)) {
+					schemas.push(
+						this.generateFAQSchema(
+							additionalData.faqs as Array<{ question: string; answer: string }>
+						)
+					);
 				}
 				break;
 		}
 
 		// Add breadcrumbs if provided
-		if (additionalData?.breadcrumbs) {
-			schemas.push(this.generateBreadcrumbSchema(additionalData.breadcrumbs));
+		if (additionalData?.breadcrumbs && Array.isArray(additionalData.breadcrumbs)) {
+			schemas.push(
+				this.generateBreadcrumbSchema(
+					additionalData.breadcrumbs as Array<{ name: string; url: string }>
+				)
+			);
 		}
 
 		return schemas.length === 1 ? schemas[0] : this.generateSchemaGraph(schemas);

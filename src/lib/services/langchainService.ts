@@ -417,11 +417,13 @@ RULES
 
 			// Extract tool calls from intermediate steps
 			const toolCalls =
-				result.intermediateSteps?.map((step: any) => ({
-					tool: step.action?.tool || 'unknown',
-					input: step.action?.toolInput || {},
-					output: step.observation || null
-				})) || [];
+				result.intermediateSteps?.map(
+					(step: { action?: { tool?: string; toolInput?: unknown }; observation?: unknown }) => ({
+						tool: step.action?.tool || 'unknown',
+						input: step.action?.toolInput || {},
+						output: step.observation || null
+					})
+				) || [];
 
 			// Log tool usage for monitoring
 			if (toolCalls.length > 7) {

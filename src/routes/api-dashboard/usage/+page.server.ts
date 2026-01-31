@@ -46,7 +46,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 		const usageResults = await Promise.all(usagePromises);
 
 		// Get usage summary for the last 30 days
-		let dailySummary = [];
+		// Define the daily summary type for the accumulator
+		type DailySummary = {
+			date: string;
+			total_requests: number;
+			success_requests: number;
+			error_requests: number;
+			avg_response_time: number;
+			total_response_time: number;
+		};
+		let dailySummary: DailySummary[] = [];
 		if (apiKeys.length > 0) {
 			// Get aggregated usage across all user's keys
 			const summaryResult = await supabase
@@ -68,33 +77,30 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 			if (!summaryError && summaryData) {
 				// Group by day
-				const dailyGroups = summaryData.reduce(
-					(acc: Record<string, any>, record: Record<string, unknown>) => {
-						const date = new Date(record.timestamp as string).toISOString().split('T')[0];
-						if (!acc[date]) {
-							acc[date] = {
-								date,
-								total_requests: 0,
-								success_requests: 0,
-								error_requests: 0,
-								avg_response_time: 0,
-								total_response_time: 0
-							};
-						}
-						acc[date].total_requests++;
-						if ((record.status_code as number) < 400) {
-							acc[date].success_requests++;
-						} else {
-							acc[date].error_requests++;
-						}
-						acc[date].total_response_time += record.response_time_ms as number;
-						return acc;
-					},
-					{} as Record<string, unknown>
-				);
+				const dailyGroups = summaryData.reduce<Record<string, DailySummary>>((acc, record) => {
+					const date = new Date(record.timestamp as string).toISOString().split('T')[0];
+					if (!acc[date]) {
+						acc[date] = {
+							date,
+							total_requests: 0,
+							success_requests: 0,
+							error_requests: 0,
+							avg_response_time: 0,
+							total_response_time: 0
+						};
+					}
+					acc[date].total_requests++;
+					if ((record.status_code as number) < 400) {
+						acc[date].success_requests++;
+					} else {
+						acc[date].error_requests++;
+					}
+					acc[date].total_response_time += record.response_time_ms as number;
+					return acc;
+				}, {});
 
 				dailySummary = Object.values(dailyGroups)
-					.map((day: any) => ({
+					.map((day) => ({
 						...day,
 						avg_response_time:
 							day.total_requests > 0 ? Math.round(day.total_response_time / day.total_requests) : 0

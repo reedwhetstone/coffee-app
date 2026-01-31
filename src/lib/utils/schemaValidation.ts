@@ -183,7 +183,7 @@ function validateBreadcrumbList(
 		return;
 	}
 
-	schema.itemListElement.forEach((item: any, index: number) => {
+	schema.itemListElement.forEach((item: Record<string, unknown>, index: number) => {
 		if (!item.position) {
 			errors.push(`BreadcrumbList item ${index} missing "position" property`);
 		}
@@ -209,14 +209,16 @@ function validateFAQPage(
 		return;
 	}
 
-	schema.mainEntity.forEach((question: any, index: number) => {
-		if (!question.name) {
-			errors.push(`FAQ question ${index} missing "name" property`);
+	schema.mainEntity.forEach(
+		(question: Record<string, unknown> & { acceptedAnswer?: { text?: string } }, index: number) => {
+			if (!question.name) {
+				errors.push(`FAQ question ${index} missing "name" property`);
+			}
+			if (!question.acceptedAnswer || !question.acceptedAnswer.text) {
+				errors.push(`FAQ question ${index} missing "acceptedAnswer.text" property`);
+			}
 		}
-		if (!question.acceptedAnswer || !question.acceptedAnswer.text) {
-			errors.push(`FAQ question ${index} missing "acceptedAnswer.text" property`);
-		}
-	});
+	);
 }
 
 /**

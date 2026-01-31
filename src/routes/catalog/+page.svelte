@@ -11,6 +11,7 @@
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
+	import type { CoffeeCatalog } from '$lib/types/component.types';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -49,13 +50,13 @@
 	/**
 	 * Data source - use server data for catalog route, fallback to filtered data
 	 */
-	let displayData = $derived(() => {
+	let displayData = $derived((): CoffeeCatalog[] => {
 		// Use server data if available (for paginated catalog)
 		if ($filterStore.serverData?.length > 0) {
-			return $filterStore.serverData;
+			return $filterStore.serverData as unknown as CoffeeCatalog[];
 		}
 		// Fallback to filtered data with pagination for non-server routes
-		return $filteredData.slice(0, displayLimit);
+		return ($filteredData as unknown as CoffeeCatalog[]).slice(0, displayLimit);
 	});
 
 	/**

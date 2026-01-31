@@ -21,7 +21,10 @@ export class ChatLogger {
 	/**
 	 * Log user prompt with clean formatting
 	 */
-	logUserPrompt(prompt: string, conversationHistory?: any[]): void {
+	logUserPrompt(
+		prompt: string,
+		conversationHistory?: Array<{ role: string; content: string }>
+	): void {
 		const logMessage: LogMessage = {
 			timestamp: new Date().toISOString(),
 			type: 'user_prompt',
