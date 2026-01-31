@@ -465,7 +465,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		);
 
 		// Update roast profile metadata (preserve original coffee_name + add chart ranges)
-		const { error: updateError } = await supabase.from('roast_profiles')
+		const { error: updateError } = await supabase
+			.from('roast_profiles')
 			.update({
 				// Keep original coffee_name and batch_name
 				coffee_name: profile.coffee_name, // Preserve original coffee

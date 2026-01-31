@@ -321,7 +321,10 @@ export const DELETE: RequestHandler = async (event) => {
 		if (profileError) throw profileError;
 
 		// Finally, delete the coffee
-		const { error: deleteError } = await supabase.from('green_coffee_inv').delete().eq('id', Number(id));
+		const { error: deleteError } = await supabase
+			.from('green_coffee_inv')
+			.delete()
+			.eq('id', Number(id));
 
 		if (deleteError) throw deleteError;
 

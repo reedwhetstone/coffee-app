@@ -304,7 +304,11 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
-		const { error } = await supabase.from('sales').delete().eq('id', parsedDeleteId).eq('user', user.id);
+		const { error } = await supabase
+			.from('sales')
+			.delete()
+			.eq('id', parsedDeleteId)
+			.eq('user', user.id);
 
 		if (error) {
 			return json({ error: error.message }, { status: 500 });

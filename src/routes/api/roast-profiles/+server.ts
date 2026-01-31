@@ -61,7 +61,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			}
 
 			// Fetch all coffee data in single query to avoid N+1 problem
-			const coffeeIds: number[] = batch_beans.map((bean: Record<string, unknown>) => bean.coffee_id as number);
+			const coffeeIds: number[] = batch_beans.map(
+				(bean: Record<string, unknown>) => bean.coffee_id as number
+			);
 			const uniqueCoffeeIds: number[] = [...new Set(coffeeIds)]; // Remove duplicates for query
 
 			const { data: coffeesRaw, error: coffeeError } = await supabase
