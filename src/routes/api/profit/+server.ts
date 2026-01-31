@@ -162,7 +162,14 @@ export const PUT: RequestHandler = async ({
 		}
 
 		// Verify ownership
-		const { data: existing } = await supabase.from('sales').select('user').eq('id', id).single();
+		const { data: existing } = (await supabase
+			.from('sales')
+			.select('user')
+			.eq('id', id)
+			.single()) as {
+			data: { user: string } | null;
+			error: unknown;
+		};
 
 		if (!existing || existing.user !== user.id) {
 			return json({ error: 'Unauthorized' }, { status: 403 });
@@ -171,8 +178,8 @@ export const PUT: RequestHandler = async ({
 		const updates = await request.json();
 		const { coffee_name: _, ...updateData } = updates;
 
-		const { data, error } = await supabase
-			.from('sales')
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { data, error } = await (supabase.from('sales') as any)
 			.update(updateData)
 			.eq('id', id)
 			.eq('user', user.id)
@@ -227,8 +234,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Insert the new sale with user ID
-		const { data: newSale, error: insertError } = await supabase
-			.from('sales')
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { data: newSale, error: insertError } = await (supabase.from('sales') as any)
 			.insert({ ...insertData, user: user.id })
 			.select()
 			.single();
@@ -282,7 +289,14 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		}
 
 		// Verify ownership
-		const { data: existing } = await supabase.from('sales').select('user').eq('id', id).single();
+		const { data: existing } = (await supabase
+			.from('sales')
+			.select('user')
+			.eq('id', id)
+			.single()) as {
+			data: { user: string } | null;
+			error: unknown;
+		};
 
 		if (!existing || existing.user !== user.id) {
 			return json({ error: 'Unauthorized' }, { status: 403 });

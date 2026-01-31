@@ -3,10 +3,16 @@
 	import { prepareDateForAPI } from '$lib/utils/dates';
 	import { loadingStore } from '$lib/stores/loadingStore';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
-	import type { RoastFormData, CoffeeCatalog, GreenCoffeeInv } from '$lib/types/component.types';
+	import type { RoastFormData } from '$lib/types/component.types';
 
-	// Combined type for available coffees which might be catalog or inventory items
-	type CoffeeItem = CoffeeCatalog & GreenCoffeeInv & { coffee_catalog?: CoffeeCatalog };
+	// Flexible type for available coffees which might be catalog or inventory items
+	interface CoffeeItem {
+		id: number;
+		name: string;
+		stocked?: boolean | null;
+		coffee_catalog?: { name?: string } | null;
+		[key: string]: unknown;
+	}
 
 	const {
 		onClose,
@@ -16,7 +22,7 @@
 	} = $props<{
 		onClose: () => void;
 		onSubmit: (data: RoastFormData) => Promise<unknown> | void;
-		selectedBean: CoffeeItem | null;
+		selectedBean: { id?: number; name: string } | null;
 		availableCoffees?: CoffeeItem[];
 	}>();
 
@@ -26,8 +32,8 @@
 			return [];
 		}
 		return availableCoffees
-			.filter((coffee: CoffeeItem) => coffee?.stocked === true)
-			.map((coffee: CoffeeItem) => ({
+			.filter((coffee) => coffee?.stocked === true)
+			.map((coffee) => ({
 				...coffee,
 				name: coffee.coffee_catalog?.name || coffee.name || 'Unknown Coffee'
 			}));

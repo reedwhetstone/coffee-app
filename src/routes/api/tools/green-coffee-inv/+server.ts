@@ -140,11 +140,20 @@ export const POST: RequestHandler = async (event) => {
 			const coffeeIds = inventory.map((bean) => bean.id);
 
 			if (coffeeIds.length > 0) {
-				const { data: roastProfiles } = await supabase
+				const { data: roastProfiles } = (await supabase
 					.from('roast_profiles')
 					.select('coffee_id, oz_in, oz_out, roast_id, batch_name, roast_date')
 					.in('coffee_id', coffeeIds)
-					.eq('user', user.id);
+					.eq('user', user.id)) as {
+					data: Array<{
+						coffee_id: number;
+						oz_in: number | null;
+						oz_out: number | null;
+						roast_id: number;
+						batch_name: string;
+						roast_date: string;
+					}> | null;
+				};
 
 				// Add roast summary to each inventory item
 				processedInventory = inventory.map((bean) => ({

@@ -132,8 +132,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			});
 
 			// Insert all profiles in batch
-			const { data: profiles, error } = await supabase
-				.from('roast_profiles')
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const { data: profiles, error } = await (supabase.from('roast_profiles') as any)
 				.insert(profilesData)
 				.select();
 
@@ -147,7 +147,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			// Return in format expected by form
 			return json({
 				profiles,
-				roast_ids: profiles.map((p) => p.roast_id)
+				roast_ids: (profiles as { roast_id: number }[]).map((p) => p.roast_id)
 			});
 		} else {
 			// Single profile creation (legacy support)
@@ -231,8 +231,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			});
 
 			// Insert all profiles in batch
-			const { data: results, error } = await supabase
-				.from('roast_profiles')
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const { data: results, error } = await (supabase.from('roast_profiles') as any)
 				.insert(profilesData)
 				.select();
 
@@ -266,11 +266,13 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 
 		if (id) {
 			// Verify ownership and get coffee_id for stocked status update
-			const { data: existing } = await supabase
+			const { data: existingRaw } = await supabase
 				.from('roast_profiles')
 				.select('user, coffee_id')
 				.eq('roast_id', id)
 				.single();
+
+			const existing = existingRaw as { user: string; coffee_id: number } | null;
 
 			if (!existing || existing.user !== user.id) {
 				return json({ error: 'Unauthorized' }, { status: 403 });
@@ -288,11 +290,13 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			await updateStockedStatus(supabase, coffee_id, user.id);
 		} else if (batchName) {
 			// Get all profile IDs and coffee_ids in the batch that belong to the user
-			const { data: profiles } = await supabase
+			const { data: profilesRaw } = await supabase
 				.from('roast_profiles')
 				.select('roast_id, coffee_id')
 				.eq('batch_name', batchName)
 				.eq('user', user.id);
+
+			const profiles = profilesRaw as { roast_id: number; coffee_id: number }[] | null;
 
 			if (profiles && profiles.length > 0) {
 				const roastIds = profiles.map((p) => p.roast_id);

@@ -50,13 +50,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const dbQueryStart = performance.now();
 
 		// Use time-based adaptive sampling - single RPC call replaces 4+ previous queries
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const [{ data: chartData, error: dataError }, { data: metadata, error: metaError }] =
 			await Promise.all([
-				supabase.rpc('get_chart_data_sampled', {
+				(supabase as any).rpc('get_chart_data_sampled', {
 					roast_id_param: roastIdNum,
 					target_points: 400 // Stay under 1,000 row limit
 				}),
-				supabase.rpc('get_chart_metadata', { roast_id_param: roastIdNum })
+				(supabase as any).rpc('get_chart_metadata', { roast_id_param: roastIdNum })
 			]);
 
 		const dbQueryTime = performance.now() - dbQueryStart;

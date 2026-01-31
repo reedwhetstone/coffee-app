@@ -81,6 +81,10 @@ export interface Database {
 					bean_cost: number | null;
 					tax_ship_cost: number | null;
 					last_updated: string;
+					stocked: boolean;
+					catalog_id: number | null;
+					user: string;
+					cupping_notes: string | null;
 				};
 				Insert: Omit<Database['public']['Tables']['green_coffee_inv']['Row'], 'id'>;
 				Update: Partial<Database['public']['Tables']['green_coffee_inv']['Row']>;

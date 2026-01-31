@@ -248,20 +248,21 @@ export function validateArtisanFileStructure(inputData: unknown): ValidationResu
 /**
  * Validate processed data before database insertion
  */
-export function validateProcessedData(processedData: Record<string, unknown>): ValidationResult {
+export function validateProcessedData(processedData: object): ValidationResult {
+	const data = processedData as Record<string, unknown>;
 	const errors: string[] = [];
 
-	if (!processedData.profileData) {
+	if (!data.profileData) {
 		errors.push('Missing profile data');
 	}
 
-	if (!processedData.temperatureData || !Array.isArray(processedData.temperatureData)) {
+	if (!data.temperatureData || !Array.isArray(data.temperatureData)) {
 		errors.push('Missing or invalid temperature points');
-	} else if (processedData.temperatureData.length === 0) {
+	} else if (data.temperatureData.length === 0) {
 		errors.push('No temperature points to insert');
 	}
 
-	if (!processedData.milestones) {
+	if (!data.milestones) {
 		errors.push('Missing milestone data');
 	}
 
