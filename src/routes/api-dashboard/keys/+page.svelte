@@ -90,8 +90,6 @@
 			console.log('API key copied to clipboard');
 		});
 	}
-
-
 </script>
 
 <svelte:head>

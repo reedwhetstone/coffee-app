@@ -17,7 +17,6 @@
 		CoffeeFormData
 	} from '$lib/types/component.types';
 
-
 	// Lazy load the tasting notes radar component
 	let TastingNotesRadar = $state<any>(null);
 	let radarComponentLoading = $state(true);
@@ -199,14 +198,11 @@
 
 	// Function to handle editing
 
-
 	async function handleFormSubmit(formData: CoffeeFormData) {
 		await refreshData();
 		// For form submission, we don't have the full bean data immediately
 		// The bean will be selected from the refreshed data if needed
 	}
-
-
 
 	// Handle search state and navigation after data loads
 	$effect(() => {

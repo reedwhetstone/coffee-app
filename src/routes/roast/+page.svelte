@@ -43,7 +43,6 @@
 	import type { PageData } from './$types';
 	import type { RoastProfile, CoffeeCatalog, RoastFormData } from '$lib/types/component.types';
 
-
 	// Roast profile state management
 	let currentRoastProfile = $state<RoastProfile | null>(null);
 
