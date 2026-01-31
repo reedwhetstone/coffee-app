@@ -32,6 +32,9 @@ export default defineConfig({
 
 	globalSetup: './tests/e2e/global-setup.ts',
 
+	/* Test timeout - 60 seconds is plenty with proper waits */
+	timeout: 60000,
+
 	/* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
 	use: {
 		/* Base URL to use in actions like `await page.goto('/')`. */
@@ -44,7 +47,12 @@ export default defineConfig({
 		screenshot: 'only-on-failure',
 
 		/* Record video on failure */
-		video: 'on-first-retry'
+		video: 'on-first-retry',
+
+		/* Slow down actions for debugging - lower in CI for speed */
+		launchOptions: {
+			slowMo: process.env.CI ? 0 : 250
+		}
 	},
 
 	/* Configure projects for major browsers */
