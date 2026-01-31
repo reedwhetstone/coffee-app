@@ -4,7 +4,7 @@
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { invalidateAll } from '$app/navigation';
+
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import BeansPageSkeleton from '$lib/components/BeansPageSkeleton.svelte';
@@ -16,7 +16,7 @@
 		CoffeeCatalog,
 		CoffeeFormData
 	} from '$lib/types/component.types';
-	import type { ComponentType } from 'svelte';
+
 
 	// Lazy load the tasting notes radar component
 	let TastingNotesRadar = $state<any>(null);
@@ -198,10 +198,7 @@
 	}
 
 	// Function to handle editing
-	function editBean(bean: Database['public']['Tables']['green_coffee_inv']['Row']) {
-		selectedBean = bean;
-		isFormVisible = true;
-	}
+
 
 	async function handleFormSubmit(formData: CoffeeFormData) {
 		await refreshData();
@@ -209,12 +206,7 @@
 		// The bean will be selected from the refreshed data if needed
 	}
 
-	async function handleBeanUpdate(
-		updatedBean: Database['public']['Tables']['green_coffee_inv']['Row']
-	) {
-		await refreshData();
-		selectedBean = updatedBean;
-	}
+
 
 	// Handle search state and navigation after data loads
 	$effect(() => {

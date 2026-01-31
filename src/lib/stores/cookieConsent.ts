@@ -34,7 +34,7 @@ function createCookieConsentStore() {
 		return defaultState;
 	};
 
-	const { subscribe, set, update } = writable<CookieConsentState>(loadFromStorage());
+	const { subscribe, set } = writable<CookieConsentState>(loadFromStorage());
 
 	// Save to localStorage whenever state changes
 	const saveToStorage = (state: CookieConsentState) => {

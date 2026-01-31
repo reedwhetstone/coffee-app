@@ -4,7 +4,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 
 export async function POST({ request, locals }: RequestEvent) {
 	// Ensure the user is authenticated
-	const { session, user } = await locals.safeGetSession();
+	const { user } = await locals.safeGetSession();
 	if (!user) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}

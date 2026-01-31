@@ -1,10 +1,10 @@
 <script lang="ts">
 	// Component imports
 	import { onMount } from 'svelte';
-	import { prepareDateForAPI } from '$lib/utils/dates';
+
 	// import RoastChart from './RoastChart.svelte';
 	import RoastProfileForm from './RoastProfileForm.svelte';
-	import RoastProfileDisplay from './RoastProfileDisplay.svelte';
+
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import {
@@ -42,7 +42,7 @@
 	});
 	import type { PageData } from './$types';
 	import type { RoastProfile, CoffeeCatalog, RoastFormData } from '$lib/types/component.types';
-	import type { ComponentType } from 'svelte';
+
 
 	// Roast profile state management
 	let currentRoastProfile = $state<RoastProfile | null>(null);

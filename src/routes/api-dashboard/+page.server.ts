@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { getUserApiKeys, getUserApiTier, API_RATE_LIMITS } from '$lib/server/apiAuth';
-import { hasRole } from '$lib/types/auth.types';
+
 import { createAdminClient } from '$lib/supabase-admin';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -42,7 +42,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			const startOfHour = new Date(now.getTime() - 60 * 60 * 1000);
 
 			// Get usage data using the same method as usage analytics page
-			const { data: usageData, error: usageError } = await supabase
+			const { data: usageData, error: usageError } = (await supabase
 				.from('api_usage')
 				.select(
 					`
@@ -54,7 +54,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				)
 				.eq('api_keys.user_id', user.id)
 				.gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-				.order('timestamp', { ascending: false });
+				.order('timestamp', { ascending: false })) as any;
 
 			let monthlyUsage = 0;
 			let hourlyUsage = 0;
@@ -62,12 +62,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 			if (!usageError && usageData) {
 				// Calculate monthly usage (same method as usage analytics)
 				monthlyUsage = usageData.filter(
-					(record) => new Date(record.timestamp) >= startOfMonth
+					(record: any) => new Date(record.timestamp) >= startOfMonth
 				).length;
 
 				// Calculate hourly usage
 				hourlyUsage = usageData.filter(
-					(record) => new Date(record.timestamp) >= startOfHour
+					(record: any) => new Date(record.timestamp) >= startOfHour
 				).length;
 			}
 

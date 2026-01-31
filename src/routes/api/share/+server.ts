@@ -32,7 +32,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const expires = new Date();
 		expires.setDate(expires.getDate() + parseInt(expiresIn));
 
-		const { data, error } = await supabase
+		const { error } = await supabase
 			.from('shared_links')
 			.insert({
 				user_id: user.id,
@@ -41,7 +41,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				resource_id: resourceId,
 				expires_at: expires.toISOString(),
 				is_active: true
-			})
+			} as any)
 			.select()
 			.single();
 

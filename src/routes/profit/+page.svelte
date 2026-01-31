@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { sum, group } from 'd3';
+	import { sum } from 'd3';
 	import { onMount } from 'svelte';
 	import SaleForm from './SaleForm.svelte';
 	import PerformanceChart from './PerformanceChart.svelte';

@@ -134,7 +134,7 @@ function validateOffer(offer: any, errors: string[], warnings: string[]): void {
 /**
  * Validate WebSite schema
  */
-function validateWebSite(schema: any, errors: string[], warnings: string[]): void {
+function validateWebSite(schema: any, errors: string[], _warnings: string[]): void {
 	if (!schema.name) {
 		errors.push('WebSite missing required "name" property');
 	}
@@ -153,7 +153,7 @@ function validateWebSite(schema: any, errors: string[], warnings: string[]): voi
 /**
  * Validate BreadcrumbList schema
  */
-function validateBreadcrumbList(schema: any, errors: string[], warnings: string[]): void {
+function validateBreadcrumbList(schema: any, errors: string[], _warnings: string[]): void {
 	if (!schema.itemListElement || !Array.isArray(schema.itemListElement)) {
 		errors.push('BreadcrumbList missing required "itemListElement" array');
 		return;
@@ -175,7 +175,7 @@ function validateBreadcrumbList(schema: any, errors: string[], warnings: string[
 /**
  * Validate FAQPage schema
  */
-function validateFAQPage(schema: any, errors: string[], warnings: string[]): void {
+function validateFAQPage(schema: any, errors: string[], _warnings: string[]): void {
 	if (!schema.mainEntity || !Array.isArray(schema.mainEntity)) {
 		errors.push('FAQPage missing required "mainEntity" array');
 		return;

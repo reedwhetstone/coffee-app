@@ -1,4 +1,4 @@
-import type { ArtisanRoastData, ValidationResult } from '$lib/types/artisan.js';
+import type { ValidationResult } from '$lib/types/artisan.js';
 import { isValidTemperatureUnit } from './temperature.js';
 
 /**

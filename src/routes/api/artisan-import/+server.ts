@@ -9,14 +9,6 @@ import { clearRoastData, insertTemperatures, insertEvents } from '$lib/server/ro
 // Legacy interfaces removed - now using comprehensive types from artisan.ts
 
 // Time conversion utilities for database storage
-function secondsToMySQLTime(seconds: number): string {
-	const totalSeconds = Math.floor(seconds);
-	const hours = Math.floor(totalSeconds / 3600);
-	const minutes = Math.floor((totalSeconds % 3600) / 60);
-	const secs = totalSeconds % 60;
-	const milliseconds = Math.floor((seconds - totalSeconds) * 1000);
-	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
-}
 
 // Parse Artisan .alog or .alog.json data
 function parseArtisanFile(fileContent: string, fileName: string): ArtisanRoastData {
@@ -583,10 +575,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				roaster: artisanData.roastertype,
 				weight: artisanData.weight,
 				temperature_unit: artisanData.mode,
-				timeindex: artisanData.timeindex,
-				data_points: artisanData.timex.length
+				timeindex: artisanData.timeindex
 			})
-		});
+		} as any);
 		if (logError) {
 			console.error('Error creating import log:', logError);
 			// Non-critical, continue

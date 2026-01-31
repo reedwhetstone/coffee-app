@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { onMount } from 'svelte';
-	import { filteredData, filterStore, filterChangeNotifier } from '$lib/stores/filterStore';
+	import { filteredData, filterStore } from '$lib/stores/filterStore';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';

@@ -91,10 +91,7 @@
 		});
 	}
 
-	function maskApiKey(key: string): string {
-		if (key.length <= 8) return key;
-		return key.substring(0, 8) + '...' + key.substring(key.length - 4);
-	}
+
 </script>
 
 <svelte:head>
