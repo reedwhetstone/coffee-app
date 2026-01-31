@@ -49,9 +49,9 @@ export default defineConfig({
 		/* Record video on failure */
 		video: 'on-first-retry',
 
-		/* Slow down actions for debugging - lower in CI for speed */
+		/* Slow down actions for stability */
 		launchOptions: {
-			slowMo: process.env.CI ? 0 : 250
+			slowMo: 500
 		}
 	},
 
