@@ -1,11 +1,9 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { getUserApiKeys } from '$lib/server/apiAuth';
-import { hasRole } from '$lib/types/auth.types';
-
 export const load: PageServerLoad = async ({ locals }) => {
 	// Get authenticated session
-	const { session, user, role } = await locals.safeGetSession();
+	const { session, user } = await locals.safeGetSession();
 
 	// Allow authenticated users (free tier defaults to api_viewer)
 	if (!session || !user) {
@@ -17,7 +15,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	let exampleApiKey = 'your_api_key';
 	if (apiKeysResult.success && apiKeysResult.data && apiKeysResult.data.length > 0) {
-		const activeKey = apiKeysResult.data.find((key) => key.is_active);
+		const activeKey = (apiKeysResult.data as any[]).find((key) => key.is_active);
 		if (activeKey) {
 			// Show masked version for documentation examples
 			exampleApiKey = activeKey.name.toLowerCase().replace(/\s+/g, '_') + '_key';

@@ -3,11 +3,9 @@ import { redirect } from '@sveltejs/kit';
 import {
 	getUserApiKeys,
 	getApiKeyUsage,
-	getUsageSummary,
 	getUserApiTier,
 	API_RATE_LIMITS
 } from '$lib/server/apiAuth';
-import { hasRole } from '$lib/types/auth.types';
 import { createAdminClient } from '$lib/supabase-admin';
 
 const supabase = createAdminClient();
@@ -33,7 +31,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			};
 		}
 
-		const apiKeys = apiKeysResult.data || [];
+		const apiKeys = (apiKeysResult.data || []) as any[];
 
 		// Get usage data for all user's API keys
 		const usagePromises = apiKeys.map(async (key) => {
@@ -51,7 +49,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		let dailySummary = [];
 		if (apiKeys.length > 0) {
 			// Get aggregated usage across all user's keys
-			const { data: summaryData, error: summaryError } = await supabase
+			const { data: summaryData, error: summaryError } = (await supabase
 				.from('api_usage')
 				.select(
 					`
@@ -63,12 +61,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 				)
 				.eq('api_keys.user_id', user.id)
 				.gte('timestamp', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-				.order('timestamp', { ascending: false });
+				.order('timestamp', { ascending: false })) as any;
 
 			if (!summaryError && summaryData) {
 				// Group by day
 				const dailyGroups = summaryData.reduce(
-					(acc, record) => {
+					(acc: any, record: any) => {
 						const date = new Date(record.timestamp).toISOString().split('T')[0];
 						if (!acc[date]) {
 							acc[date] = {
@@ -116,7 +114,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 		const hourlyUsage = usageResults
 			.flatMap((result) => result.usage || [])
-			.filter((record) => new Date(record.timestamp) >= startOfHour).length;
+			.filter((record: any) => new Date(record.timestamp) >= startOfHour).length;
 
 		return {
 			apiKeys,

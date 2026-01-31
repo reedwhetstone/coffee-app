@@ -1,4 +1,3 @@
-import type { Database } from './database.types';
 import type { CoffeeWithInventory, InventoryWithCatalog, RoastWithLogs } from './component.types';
 
 // Re-export for convenience

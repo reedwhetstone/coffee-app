@@ -1,12 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createApiKey } from '$lib/server/apiAuth';
-import { hasRole } from '$lib/types/auth.types';
-
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		// Get authenticated session
-		const { session, user, role } = await locals.safeGetSession();
+		const { session, user } = await locals.safeGetSession();
 
 		// Allow authenticated users (free tier defaults to api_viewer)
 		if (!session || !user) {

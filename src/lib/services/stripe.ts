@@ -1,8 +1,6 @@
 import { STRIPE_SECRET_KEY } from '$env/static/private';
 import Stripe from 'stripe';
-import { createClient } from '$lib/supabase';
 import { createAdminClient } from '$lib/supabase-admin';
-import type { Session } from '@supabase/supabase-js';
 
 // Initialize Stripe with the latest API version
 export const getStripe = () =>
@@ -52,7 +50,7 @@ export async function getStripeCustomerId(userId: string): Promise<string | null
 		return null;
 	}
 	console.log('data', data);
-	return data?.customer_id || null;
+	return (data as any)?.customer_id || null;
 }
 
 /**
@@ -103,7 +101,7 @@ export async function createStripeCustomer(
 				user_id: userId,
 				customer_id: customerId,
 				email
-			},
+			} as any,
 			{
 				onConflict: 'user_id'
 			}

@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { QueryEmbeddingService } from './queryEmbeddingService';
-import type { CoffeeWithInventory, RAGResult } from '$lib/types/api.types';
 import type { Database } from '$lib/types/database.types';
 
 type CoffeeChunk = {

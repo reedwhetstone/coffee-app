@@ -32,7 +32,7 @@ interface CoffeeChunksToolResponse {
 export const POST: RequestHandler = async (event) => {
 	try {
 		// Require member role for tool access
-		const { user } = await requireMemberRole(event);
+		await requireMemberRole(event);
 		const { supabase } = event.locals;
 
 		const input: CoffeeChunksToolInput = await event.request.json();
@@ -72,12 +72,15 @@ export const POST: RequestHandler = async (event) => {
 		const queryEmbedding = await queryEmbeddingService.generateQueryEmbedding(context_string);
 
 		// Search chunks directly
-		const { data: chunksData, error: chunksError } = await supabase.rpc('match_coffee_chunks', {
-			query_embedding: queryEmbedding,
-			match_threshold: similarity_threshold,
-			match_count: max_chunks,
-			chunk_types: chunk_types || null
-		});
+		const { data: chunksData, error: chunksError } = await (supabase.rpc as any)(
+			'match_coffee_chunks',
+			{
+				query_embedding: queryEmbedding,
+				match_threshold: similarity_threshold,
+				match_count: max_chunks,
+				chunk_types: chunk_types || null
+			}
+		);
 
 		if (chunksError) {
 			console.error('Coffee chunks search error:', chunksError);
@@ -91,13 +94,13 @@ export const POST: RequestHandler = async (event) => {
 		let coffeeNames: Record<number, string> = {};
 
 		if (coffeeIds.length > 0) {
-			const { data: coffeeData } = await supabase
+			const { data: coffeeData } = (await supabase
 				.from('coffee_catalog')
 				.select('id, name')
-				.in('id', coffeeIds);
+				.in('id', coffeeIds)) as any;
 
 			if (coffeeData) {
-				coffeeNames = Object.fromEntries(coffeeData.map((coffee) => [coffee.id, coffee.name]));
+				coffeeNames = Object.fromEntries(coffeeData.map((coffee: any) => [coffee.id, coffee.name]));
 			}
 		}
 

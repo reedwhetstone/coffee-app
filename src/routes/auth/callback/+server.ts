@@ -15,9 +15,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 			}
 
 			// Now safe to proceed with validated user
-			if (data.session.provider_token) {
-				const { provider_token, provider_refresh_token } = data.session;
-			}
+
 			throw redirect(303, next);
 		}
 		console.error('Auth error:', error);
