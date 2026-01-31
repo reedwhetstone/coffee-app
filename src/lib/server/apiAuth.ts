@@ -1,8 +1,15 @@
 import { createAdminClient } from '$lib/supabase-admin';
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
+import type { Database } from '$lib/types/database.types';
 
 const supabase = createAdminClient();
+
+// Type aliases for database operations
+type ApiKeyRow = Database['public']['Tables']['api_keys']['Row'];
+type ApiKeyInsert = Database['public']['Tables']['api_keys']['Insert'];
+type ApiKeyUpdate = Database['public']['Tables']['api_keys']['Update'];
+type ApiUsageInsert = Database['public']['Tables']['api_usage']['Insert'];
 
 // API key configuration
 const API_KEY_PREFIX = 'pk_live_';
@@ -78,11 +85,19 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 			return { valid: false, error: 'Invalid API key format' };
 		}
 
+		// Type alias for the select result
+		type ApiKeySelectResult = Pick<
+			ApiKeyRow,
+			'id' | 'user_id' | 'key_hash' | 'is_active' | 'last_used_at'
+		>;
+
 		// Get all active API keys (we need to check hashes)
-		const { data: apiKeys, error } = await supabase
+		const { data: apiKeysData, error } = await supabase
 			.from('api_keys')
 			.select('id, user_id, key_hash, is_active, last_used_at')
 			.eq('is_active', true);
+
+		const apiKeys = apiKeysData as ApiKeySelectResult[] | null;
 
 		if (error || !apiKeys) {
 			console.error('Error fetching API keys:', error);
@@ -96,7 +111,7 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 				// Update last used timestamp
 				await supabase
 					.from('api_keys')
-					.update({ last_used_at: new Date().toISOString() })
+					.update({ last_used_at: new Date().toISOString() } as never)
 					.eq('id', apiKey.id);
 
 				return {
@@ -131,7 +146,7 @@ export async function createApiKey(
 			name,
 			is_active: true,
 			permissions: {}
-		});
+		} as never);
 
 		if (error) {
 			console.error('Error creating API key:', error);
@@ -175,7 +190,7 @@ export async function deactivateApiKey(userId: string, keyId: string): Promise<b
 	try {
 		const { error } = await supabase
 			.from('api_keys')
-			.update({ is_active: false })
+			.update({ is_active: false } as never)
 			.eq('id', keyId)
 			.eq('user_id', userId); // Ensure user owns the key
 
@@ -210,7 +225,7 @@ export async function logApiUsage(
 			response_time_ms: responseTimeMs,
 			user_agent: userAgent,
 			ip_address: ipAddress
-		});
+		} as never);
 	} catch (error) {
 		// Don't throw on logging errors, just log them
 		console.error('Error logging API usage:', error);
@@ -345,10 +360,13 @@ export async function getUsageSummary(apiKeyId: string, days: number = 30) {
 	try {
 		const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-		const { data, error } = await supabase.rpc('get_api_usage_summary', {
-			key_id: apiKeyId,
-			start_date: startDate.toISOString()
-		});
+		const { data, error } = await supabase.rpc(
+			'get_api_usage_summary' as never,
+			{
+				key_id: apiKeyId,
+				start_date: startDate.toISOString()
+			} as never
+		);
 
 		if (error) {
 			console.error('Error fetching usage summary:', error);

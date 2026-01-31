@@ -1548,12 +1548,6 @@
 
 	// Consolidated chart update effect - handles both live roasting and saved profile viewing
 	$effect(() => {
-		console.log('=== CONSOLIDATED CHART UPDATE EFFECT ===');
-		console.log('isDuringRoasting:', isDuringRoasting);
-		console.log('$roastData length:', $roastData.length);
-		console.log('savedTemperatureEntries.length:', savedTemperatureEntries.length);
-		console.log('savedEventValueSeries.length:', savedEventValueSeries.length);
-
 		// Check if chart components are ready
 		if (
 			svg !== undefined &&
@@ -1563,26 +1557,16 @@
 		) {
 			if (isDuringRoasting) {
 				// Live roasting: use $roastData directly
-				console.log('Live roasting mode - using $roastData');
 				untrack(() => updateChart($roastData));
 			} else if (savedTemperatureEntries.length > 0 || savedEventEntries.length > 0) {
 				// Saved profile viewing: use the $roastData that was set by loadSavedRoastData
-				console.log('Saved profile mode - using $roastData from loadSavedRoastData');
-				console.log('$roastData sample:', $roastData.slice(0, 3));
 				untrack(() => updateChart($roastData));
 			} else {
 				// No data: clear chart
-				console.log('No data - clearing chart');
 				untrack(() => updateChart([]));
 			}
-		} else {
-			console.warn('Chart components not ready yet:', {
-				svg: svg !== undefined,
-				xScale: xScale !== undefined,
-				yScaleTemp: yScaleTemp !== undefined,
-				yScaleRoR: yScaleRoR !== undefined
-			});
 		}
+		// Chart components not ready yet - wait for next effect run
 	});
 
 	function updateChartDimensions() {

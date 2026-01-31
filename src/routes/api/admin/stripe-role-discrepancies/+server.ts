@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { getStripe } from '$lib/services/stripe';
 import { createAdminClient } from '$lib/supabase-admin';
 import { validateAdminAccess } from '$lib/server/auth';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient, PostgrestError } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database.types';
 
 interface DiscrepancyReport {
@@ -63,9 +63,14 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}
 
 		// Get all user roles separately
-		const { data: userRoles, error: rolesError } = await supabase
+		const { data: userRoles, error: rolesError } = (await supabase
 			.from('user_roles')
-			.select('id, user_role, email, name, updated_at');
+			.select('id, user_role, email, name, updated_at')) as {
+			data:
+				| { id: string; user_role: string[]; email: string; name: string; updated_at: string }[]
+				| null;
+			error: PostgrestError | null;
+		};
 
 		if (rolesError) {
 			console.error('❌ Error fetching user roles:', rolesError);
@@ -74,10 +79,12 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		// Manually join the data
 		const customersWithRoles =
-			stripeCustomers?.map((customer) => ({
-				...customer,
-				user_roles: userRoles?.find((role) => role.id === customer.user_id) || null
-			})) || [];
+			(stripeCustomers as { user_id: string; customer_id: string; email: string }[] | null)?.map(
+				(customer) => ({
+					...customer,
+					user_roles: userRoles?.find((role) => role.id === customer.user_id) || null
+				})
+			) || [];
 
 		console.log(`📊 Checking ${customersWithRoles?.length || 0} Stripe customers`);
 
@@ -154,7 +161,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}
 
 		// Get recent audit logs for context
-		const { data: recentLogs } = await supabase
+		const { data: recentLogs } = (await supabase
 			.from('role_audit_logs')
 			.select(
 				`
@@ -167,7 +174,18 @@ export const GET: RequestHandler = async ({ locals }) => {
 			`
 			)
 			.order('created_at', { ascending: false })
-			.limit(50);
+			.limit(50)) as {
+			data:
+				| {
+						user_id: string;
+						old_role: string | null;
+						new_role: string;
+						trigger_type: string;
+						created_at: string;
+						stripe_customer_id: string | null;
+				  }[]
+				| null;
+		};
 
 		// Manually join audit logs with user roles for email
 		const recentAuditLogs: AuditLogSummary[] = (recentLogs || []).map((log) => {
@@ -179,7 +197,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 				newRole: log.new_role,
 				triggerType: log.trigger_type,
 				createdAt: log.created_at,
-				stripeCustomerId: log.stripe_customer_id
+				stripeCustomerId: log.stripe_customer_id ?? undefined
 			};
 		});
 
@@ -229,11 +247,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const supabase = createAdminClient() as SupabaseClient<Database>;
 
 		// Get current roles
-		const { data: currentRoleData } = await supabase
+		const { data: currentRoleData } = (await supabase
 			.from('user_roles')
 			.select('user_role, email')
 			.eq('id', userId)
-			.maybeSingle();
+			.maybeSingle()) as { data: { user_role: string[]; email: string } | null };
 
 		if (!currentRoleData) {
 			return json({ error: 'User not found in user_roles' }, { status: 404 });
@@ -259,13 +277,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			updatedRoles = [expectedRole];
 		}
 
-		const { error: roleError } = await supabase
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { error: roleError } = (await (supabase as any)
 			.from('user_roles')
 			.update({
 				user_role: updatedRoles,
 				updated_at: new Date().toISOString()
 			})
-			.eq('id', userId);
+			.eq('id', userId)) as { error: PostgrestError | null };
 
 		if (roleError) {
 			console.error('❌ Error updating user role:', roleError);
@@ -273,7 +292,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Log the manual role change
-		const { error: auditError } = await supabase.from('role_audit_logs').insert({
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { error: auditError } = (await (supabase as any).from('role_audit_logs').insert({
 			user_id: userId,
 			old_role: currentRoles.join(','),
 			new_role: updatedRoles.join(','),
@@ -283,7 +303,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				admin_user: adminUser.id
 			},
 			created_at: new Date().toISOString()
-		});
+		})) as { error: PostgrestError | null };
 
 		if (auditError) {
 			console.error('❌ Error logging role change:', auditError);

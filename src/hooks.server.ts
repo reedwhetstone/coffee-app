@@ -8,6 +8,7 @@ import { getUserRole } from '$lib/server/auth';
 import { requireRole } from '$lib/server/auth';
 import type { UserRole } from '$lib/types/auth.types';
 import type { Session, User } from '@supabase/supabase-js';
+import type { CookieSerializeOptions } from 'cookie';
 
 // Handle Stripe checkout success redirects
 const handleStripeRedirects: Handle = async ({ event, resolve }) => {
@@ -30,14 +31,16 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		{
 			cookies: {
 				getAll: () => event.cookies.getAll(),
-				setAll: (cookiesToSet) => {
+				setAll: (
+					cookiesToSet: Array<{ name: string; value: string; options: CookieSerializeOptions }>
+				) => {
 					cookiesToSet.forEach(({ name, value, options }) => {
 						event.cookies.set(name, value, { ...options, path: '/' });
 					});
 				}
 			}
 		}
-	);
+	) as unknown as App.Locals['supabase'];
 
 	// Implement safeGetSession function that properly validates the JWT
 	event.locals.safeGetSession = async () => {

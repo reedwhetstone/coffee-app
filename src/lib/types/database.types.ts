@@ -284,5 +284,17 @@ export interface Database {
 				Update: Partial<Database['public']['Tables']['stripe_session_processing']['Row']>;
 			};
 		};
+		Functions: {
+			get_api_usage_summary: {
+				Args: { key_id: string; start_date: string };
+				Returns: Array<{
+					day: string;
+					request_count: number;
+					avg_response_time_ms: number;
+					success_count: number;
+					error_count: number;
+				}>;
+			};
+		};
 	};
 }
