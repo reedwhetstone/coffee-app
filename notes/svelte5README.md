@@ -505,6 +505,7 @@ In Svelte 5, event handlers are treated as properties, simplifying their use and
 #### Counter Example
 
 - **Svelte 4 vs. Svelte 5:**
+
   - **Before:**
 
   ```html
@@ -536,6 +537,7 @@ In Svelte 5, event handlers are treated as properties, simplifying their use and
 #### Tracking Dependencies
 
 - **Svelte 4 vs. Svelte 5:**
+
   - **Before:**
 
   ```html
@@ -575,6 +577,7 @@ In Svelte 5, event handlers are treated as properties, simplifying their use and
 #### Untracking Dependencies
 
 - **Svelte 4 vs. Svelte 5:**
+
   - **Before:**
 
   ```html
@@ -642,6 +645,7 @@ In Svelte 5, event handlers are treated as properties, simplifying their use and
 #### Autoscroll Example
 
 - **Svelte 4 vs. Svelte 5:**
+
   - **Before:**
 
   ```html

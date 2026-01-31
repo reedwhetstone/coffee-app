@@ -51,6 +51,7 @@ Prereqs: Node `22.x` (see `package.json` engines) and PNPM. Example: `corepack e
 ## AGENT GUIDELINES
 
 - Build / lint / test (single test):
+
   - Install: `corepack enable && corepack prepare pnpm@latest --activate` then `pnpm i`
   - Dev server: `pnpm dev`
   - Run all tests: `pnpm test`
@@ -58,6 +59,7 @@ Prereqs: Node `22.x` (see `package.json` engines) and PNPM. Example: `corepack e
   - Lint & format: `pnpm lint` and `pnpm format`
 
 - Code style highlights:
+
   - Use TypeScript (strict). Prefer explicit types for exports; narrow 'any'.
   - Svelte components: `PascalCase.svelte`. Route files: lowercase hyphenated.
   - Imports: use absolute from `src/` where possible; keep extension-less (`.ts`/`.svelte`).
@@ -67,6 +69,7 @@ Prereqs: Node `22.x` (see `package.json` engines) and PNPM. Example: `corepack e
   - Tests: colocate with implementation; keep tests deterministic and fast; mock external services (Supabase, Stripe).
 
 - Cursor / Copilot rules:
+
   - Cursor rules: follow repository `.cursorrules` (present at repo root). Honor navigation and edit restrictions.
   - Copilot: respect `.github/copilot-instructions.md` if present; do not commit AI-generated secrets.
 

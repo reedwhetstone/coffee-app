@@ -733,12 +733,14 @@ When creating new UI components, especially dashboards:
 Before creating or modifying any UI component:
 
 1. **Pattern Discovery Phase**:
+
    - Read 2-3 similar existing components to understand established patterns
    - Document repeated class combinations (e.g., `rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light`)
    - Identify consistent spacing, typography, and color usage
    - Note layout patterns (grid structures, responsive breakpoints)
 
 2. **Design Language Analysis**:
+
    - Compare target component with reference pages (e.g., /(home), /beans, /profit)
    - Extract common elements: card styling, button designs, form layouts, typography hierarchy
    - Document spacing patterns (`mt-1`, `mb-4`, `p-4`, etc.)

@@ -614,23 +614,23 @@ export const coffeeExpertPrompt: MCPPrompt = {
 ```svelte
 <!-- +page.svelte -->
 <script>
-  import { mcpClient } from '$lib/mcp/client';
+	import { mcpClient } from '$lib/mcp/client';
 
-  let coffees = $state([]);
-  let searchQuery = $state('');
+	let coffees = $state([]);
+	let searchQuery = $state('');
 
-  // Initial load via MCP resource
-  const catalogResource = await mcpClient.readResource('purveyors://catalog');
-  coffees = JSON.parse(catalogResource.text);
+	// Initial load via MCP resource
+	const catalogResource = await mcpClient.readResource('purveyors://catalog');
+	coffees = JSON.parse(catalogResource.text);
 
-  // Search via MCP tool
-  async function handleSearch() {
-    const result = await mcpClient.callTool('search_coffees', {
-      query: searchQuery,
-      limit: 20
-    });
-    coffees = JSON.parse(result.content[0].text).coffees;
-  }
+	// Search via MCP tool
+	async function handleSearch() {
+		const result = await mcpClient.callTool('search_coffees', {
+			query: searchQuery,
+			limit: 20
+		});
+		coffees = JSON.parse(result.content[0].text).coffees;
+	}
 </script>
 ```
 
@@ -650,25 +650,25 @@ Page → /api/roast-profiles → Supabase → D3 chart rendering
 
 ```svelte
 <script>
-  // Get roast data via MCP
-  const roasts = await mcpClient.callTool('get_roast_profiles', {
-    limit: 50,
-    include_logs: true
-  });
+	// Get roast data via MCP
+	const roasts = await mcpClient.callTool('get_roast_profiles', {
+		limit: 50,
+		include_logs: true
+	});
 
-  // Artisan import via MCP
-  async function handleArtisanImport(file) {
-    const content = await file.text();
-    await mcpClient.callTool('import_artisan_profile', {
-      file_content: content,
-      file_name: file.name
-    });
-  }
+	// Artisan import via MCP
+	async function handleArtisanImport(file) {
+		const content = await file.text();
+		await mcpClient.callTool('import_artisan_profile', {
+			file_content: content,
+			file_name: file.name
+		});
+	}
 
-  // Log new roast via MCP
-  async function saveRoast(roastData) {
-    await mcpClient.callTool('log_roast', roastData);
-  }
+	// Log new roast via MCP
+	async function saveRoast(roastData) {
+		await mcpClient.callTool('log_roast', roastData);
+	}
 </script>
 ```
 
@@ -1176,32 +1176,32 @@ export async function POST({ request, locals }) {
 ```svelte
 <!-- GenUIRenderer.svelte -->
 <script lang="ts">
-  import RoastComparisonChart from '$lib/components/charts/RoastComparisonChart.svelte';
-  import CoffeeGrid from '$lib/components/CoffeeGrid.svelte';
-  import InventoryTable from '$lib/components/InventoryTable.svelte';
-  import ProfitSummary from '$lib/components/ProfitSummary.svelte';
-  // ... all available GenUI components
+	import RoastComparisonChart from '$lib/components/charts/RoastComparisonChart.svelte';
+	import CoffeeGrid from '$lib/components/CoffeeGrid.svelte';
+	import InventoryTable from '$lib/components/InventoryTable.svelte';
+	import ProfitSummary from '$lib/components/ProfitSummary.svelte';
+	// ... all available GenUI components
 
-  const componentMap = {
-    RoastComparisonChart,
-    CoffeeGrid,
-    InventoryTable,
-    ProfitSummary,
-    // ... registry of allowed components
-  };
+	const componentMap = {
+		RoastComparisonChart,
+		CoffeeGrid,
+		InventoryTable,
+		ProfitSummary
+		// ... registry of allowed components
+	};
 
-  let { componentSpec } = $props<{ componentSpec: GenUISpec }>();
+	let { componentSpec } = $props<{ componentSpec: GenUISpec }>();
 
-  let Component = $derived(componentMap[componentSpec.component]);
+	let Component = $derived(componentMap[componentSpec.component]);
 </script>
 
 {#if Component}
-  <div class="genui-container">
-    <p class="explanation">{componentSpec.explanation}</p>
-    <svelte:component this={Component} {...componentSpec.props} />
-  </div>
+	<div class="genui-container">
+		<p class="explanation">{componentSpec.explanation}</p>
+		<svelte:component this={Component} {...componentSpec.props} />
+	</div>
 {:else}
-  <p>Unknown component: {componentSpec.component}</p>
+	<p>Unknown component: {componentSpec.component}</p>
 {/if}
 ```
 

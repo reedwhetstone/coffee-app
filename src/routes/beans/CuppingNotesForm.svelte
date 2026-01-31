@@ -150,9 +150,7 @@
 		<div class="flex items-center justify-between">
 			<div class="flex-1">
 				<h4 class="mb-1 font-medium text-text-primary-light">Brew Method</h4>
-				<p class="text-xs text-text-secondary-light">
-					How was this coffee prepared for tasting?
-				</p>
+				<p class="text-xs text-text-secondary-light">How was this coffee prepared for tasting?</p>
 			</div>
 		</div>
 		<div class="mt-4">

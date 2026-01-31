@@ -1826,7 +1826,10 @@
 			$accumulatedTime += performance.now() - $startTime!;
 			isPaused = true;
 			// Show visual feedback
-			showEventFeedback('Cool End logged - Timer paused. Click "Save Roast" to save your data.', 'success');
+			showEventFeedback(
+				'Cool End logged - Timer paused. Click "Save Roast" to save your data.',
+				'success'
+			);
 		}
 
 		// Create milestone event

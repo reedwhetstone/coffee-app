@@ -538,17 +538,17 @@
 
 {#if !session}
 	<!-- Unauthenticated state -->
-	<div class="bg-background-primary-light flex min-h-screen items-center justify-center">
+	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
 		<div
-			class="bg-background-secondary-light mx-auto max-w-md rounded-lg p-8 text-center shadow-lg"
+			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
 		>
-			<h1 class="text-text-primary-light mb-4 text-2xl font-bold">Coffee Chat</h1>
-			<p class="text-text-secondary-light mb-6">
+			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Coffee Chat</h1>
+			<p class="mb-6 text-text-secondary-light">
 				Sign in to access our AI coffee expert for personalized recommendations and roasting advice.
 			</p>
 			<a
 				href="/auth"
-				class="bg-background-tertiary-light rounded-md px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+				class="rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 			>
 				Sign In
 			</a>
@@ -556,25 +556,25 @@
 	</div>
 {:else if !hasRequiredRole('member')}
 	<!-- Member role required -->
-	<div class="bg-background-primary-light flex min-h-screen items-center justify-center">
+	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
 		<div
-			class="bg-background-secondary-light mx-auto max-w-md rounded-lg p-8 text-center shadow-lg"
+			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
 		>
-			<h1 class="text-text-primary-light mb-4 text-2xl font-bold">Premium Feature</h1>
-			<p class="text-text-secondary-light mb-6">
+			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Premium Feature</h1>
+			<p class="mb-6 text-text-secondary-light">
 				The Coffee Chat AI assistant is available for premium members. Upgrade to access
 				personalized recommendations and expert roasting advice.
 			</p>
 			<div class="space-y-3">
 				<a
 					href="/subscription"
-					class="bg-background-tertiary-light block rounded-md px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+					class="block rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 				>
 					Upgrade to Premium
 				</a>
 				<a
 					href="/"
-					class="border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light block rounded-md border px-6 py-3 transition-all duration-200 hover:text-white"
+					class="block rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 				>
 					Back to Home
 				</a>
@@ -583,19 +583,19 @@
 	</div>
 {:else}
 	<!-- Main chat interface for authenticated members -->
-	<div class="bg-background-primary-light flex h-screen flex-col">
+	<div class="flex h-screen flex-col bg-background-primary-light">
 		<!-- Header -->
-		<header class="border-border-light bg-background-secondary-light border-b px-4 py-3">
+		<header class="border-b border-border-light bg-background-secondary-light px-4 py-3">
 			<div class="flex items-center justify-between">
 				<div>
-					<h1 class="text-text-primary-light text-xl font-semibold">Coffee Chat</h1>
-					<p class="text-text-secondary-light text-sm">AI-powered coffee assistant</p>
+					<h1 class="text-xl font-semibold text-text-primary-light">Coffee Chat</h1>
+					<p class="text-sm text-text-secondary-light">AI-powered coffee assistant</p>
 				</div>
 				<div class="flex space-x-2">
 					{#if messages.length > 0}
 						<button
 							onclick={exportConversation}
-							class="border-background-tertiary-light text-background-tertiary-light hover:bg-background-tertiary-light rounded-md border px-3 py-1 text-sm transition-all duration-200 hover:text-white"
+							class="rounded-md border border-background-tertiary-light px-3 py-1 text-sm text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						>
 							Export
 						</button>
@@ -615,15 +615,15 @@
 			{#if messages.length === 0}
 				<!-- Welcome message -->
 				<div class="mx-auto max-w-2xl text-center">
-					<div class="bg-background-secondary-light mb-8 rounded-lg p-6">
-						<h2 class="text-text-primary-light mb-3 text-lg font-semibold">
+					<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
+						<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
 							Welcome to Coffee Chat! ☕
 						</h2>
-						<p class="text-text-secondary-light mb-4">
+						<p class="mb-4 text-text-secondary-light">
 							I'm your AI coffee expert, here to help with personalized recommendations, roasting
 							advice, and coffee knowledge. Ask me anything about:
 						</p>
-						<div class="text-text-secondary-light grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+						<div class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2">
 							<div>• Coffee recommendations</div>
 							<div>• Roasting techniques</div>
 							<div>• Flavor profiles</div>
@@ -635,13 +635,13 @@
 
 					<!-- Example queries -->
 					<div class="space-y-2">
-						<p class="text-text-primary-light text-sm font-medium">Try asking:</p>
+						<p class="text-sm font-medium text-text-primary-light">Try asking:</p>
 						<div class="space-y-2 text-sm">
 							<button
 								onclick={() =>
 									(inputMessage =
 										'Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique processing method.')}
-								class="border-border-light bg-background-secondary-light text-text-secondary-light hover:bg-background-tertiary-light block w-full rounded-md border p-2 text-left transition-all hover:text-white"
+								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 							>
 								"Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique
 								processing method."
@@ -649,14 +649,14 @@
 							<button
 								onclick={() =>
 									(inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
-								class="border-border-light bg-background-secondary-light text-text-secondary-light hover:bg-background-tertiary-light block w-full rounded-md border p-2 text-left transition-all hover:text-white"
+								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 							>
 								"What's the best way to roast a washed Costa Rican coffee?"
 							</button>
 							<button
 								onclick={() =>
 									(inputMessage = 'Analyze my recent roasting sessions and suggest improvements')}
-								class="border-border-light bg-background-secondary-light text-text-secondary-light hover:bg-background-tertiary-light block w-full rounded-md border p-2 text-left transition-all hover:text-white"
+								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 							>
 								"Analyze my recent roasting sessions and suggest improvements"
 							</button>
@@ -729,13 +729,13 @@
 		</div>
 
 		<!-- Input area -->
-		<div class="border-border-light bg-background-secondary-light border-t p-4">
+		<div class="border-t border-border-light bg-background-secondary-light p-4">
 			<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
 				<div class="flex space-x-2">
 					<textarea
 						bind:value={inputMessage}
 						placeholder="Ask me about coffee recommendations, roasting advice, or anything coffee-related..."
-						class="border-border-light bg-background-primary-light text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:ring-background-tertiary-light flex-1 resize-none rounded-lg border px-4 py-3 focus:outline-none focus:ring-1"
+						class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
 						rows="1"
 						disabled={isLoading}
 						onkeydown={(e) => {
@@ -753,7 +753,7 @@
 					<button
 						type="submit"
 						disabled={isLoading || !inputMessage.trim()}
-						class="bg-background-tertiary-light rounded-lg px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+						class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if isLoading}
 							<div
@@ -775,7 +775,7 @@
 						{/if}
 					</button>
 				</div>
-				<div class="text-text-secondary-light mt-2 text-xs">
+				<div class="mt-2 text-xs text-text-secondary-light">
 					Press Enter to send, Shift+Enter for new line
 				</div>
 			</form>

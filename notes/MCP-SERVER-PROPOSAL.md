@@ -462,16 +462,19 @@ _Assumptions: Conservative adoption rates based on existing user base and market
 ### Why This Matters Beyond Revenue
 
 1. **First-Mover in Vertical AI**
+
    - No coffee MCP servers exist
    - Defines the standard for food/beverage AI integration
    - Press/conference speaking opportunities
 
 2. **AI-Native Brand Positioning**
+
    - Purveyors becomes "the AI-powered coffee platform"
    - Attracts tech-forward customers
    - Differentiates from Cropster/Artisan
 
 3. **Ecosystem Creation**
+
    - Third-party developers build on your platform
    - Network effects compound value
    - Potential acquisition interest
@@ -599,15 +602,18 @@ my favorite Yirgacheffe but from a different region?"
 ### Suggested Approach
 
 1. **Start with ICP 1+2** (individuals + developers)
+
    - Fastest path to market validation
    - Lower support burden
    - Clear upgrade funnel
 
 2. **Build public + individual auth** (Options A+B)
+
    - Maximum reach with public tools
    - Revenue potential with auth'd features
 
 3. **Document extensively**
+
    - Developer experience is key differentiator
    - Self-service reduces support cost
 
