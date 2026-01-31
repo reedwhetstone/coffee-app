@@ -9,8 +9,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		}
 
 		// Fetch unique values for filter dropdowns from stocked coffee
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data: rows, error } = await (supabase as any)
+		const { data: rows, error } = await supabase
 			.from('coffee_catalog')
 			.select(
 				'source, continent, country, processing, cultivar_detail, type, grade, appearance, arrival_date'

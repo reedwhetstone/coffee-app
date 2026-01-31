@@ -417,7 +417,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const { data: profile } = (await supabase
 			.from('roast_profiles')
 			.select('user, coffee_name, batch_name')
-			.eq('roast_id', roastId)
+			.eq('roast_id', Number(roastId))
 			.single()) as {
 			data: { user: string; coffee_name: string; batch_name: string } | null;
 			error: unknown;
@@ -465,8 +465,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		);
 
 		// Update roast profile metadata (preserve original coffee_name + add chart ranges)
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { error: updateError } = await (supabase.from('roast_profiles') as any)
+		const { error: updateError } = await supabase.from('roast_profiles')
 			.update({
 				// Keep original coffee_name and batch_name
 				coffee_name: profile.coffee_name, // Preserve original coffee
@@ -543,8 +542,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// Note: roast_phases table no longer exists, skipping phase insertion
 
 		// Create import log entry
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { error: logError } = await (supabase.from('artisan_import_log') as any).insert({
+		const { error: logError } = await supabase.from('artisan_import_log').insert({
 			user_id: user.id,
 			roast_id: parseInt(roastId),
 			filename: file.name,

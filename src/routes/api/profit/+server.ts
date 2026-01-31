@@ -162,10 +162,11 @@ export const PUT: RequestHandler = async ({
 		}
 
 		// Verify ownership
+		const parsedId = Number(id);
 		const { data: existing } = (await supabase
 			.from('sales')
 			.select('user')
-			.eq('id', id)
+			.eq('id', parsedId)
 			.single()) as {
 			data: { user: string } | null;
 			error: unknown;
@@ -178,10 +179,10 @@ export const PUT: RequestHandler = async ({
 		const updates = await request.json();
 		const { coffee_name: _, ...updateData } = updates;
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data, error } = await (supabase.from('sales') as any)
-			.update(updateData)
-			.eq('id', id)
+		const { data, error } = await supabase
+			.from('sales')
+			.update(updateData as Database['public']['Tables']['sales']['Update'])
+			.eq('id', parsedId)
 			.eq('user', user.id)
 			.select()
 			.single();
@@ -234,9 +235,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Insert the new sale with user ID
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data: newSale, error: insertError } = await (supabase.from('sales') as any)
-			.insert({ ...insertData, user: user.id })
+		const { data: newSale, error: insertError } = await supabase
+			.from('sales')
+			.insert({ ...insertData, user: user.id } as Database['public']['Tables']['sales']['Insert'])
 			.select()
 			.single();
 
@@ -289,10 +290,11 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		}
 
 		// Verify ownership
+		const parsedDeleteId = Number(id);
 		const { data: existing } = (await supabase
 			.from('sales')
 			.select('user')
-			.eq('id', id)
+			.eq('id', parsedDeleteId)
 			.single()) as {
 			data: { user: string } | null;
 			error: unknown;
@@ -302,7 +304,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
-		const { error } = await supabase.from('sales').delete().eq('id', id).eq('user', user.id);
+		const { error } = await supabase.from('sales').delete().eq('id', parsedDeleteId).eq('user', user.id);
 
 		if (error) {
 			return json({ error: error.message }, { status: 500 });

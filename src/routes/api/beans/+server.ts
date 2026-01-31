@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { requireUserAuth } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
+import type { Database } from '$lib/types/database.types';
 import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils.js';
 
@@ -13,8 +14,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		// If share token is provided, verify it and show shared data
 		if (shareToken) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { data: shareData } = await (locals.supabase as any)
+			const { data: shareData } = await locals.supabase
 				.from('shared_links')
 				.select('user_id, resource_id')
 				.eq('share_token', shareToken)
@@ -112,11 +112,9 @@ export const POST: RequestHandler = async (event) => {
 				}
 			});
 
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { data: newCatalogEntry, error: catalogError } = await (supabase as any)
+			const { data: newCatalogEntry, error: catalogError } = await supabase
 				.from('coffee_catalog')
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				.insert(catalogData as any)
+				.insert(catalogData as Database['public']['Tables']['coffee_catalog']['Insert'])
 				.select('id')
 				.single();
 
@@ -162,8 +160,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// If this bean references a catalog item, verify it exists
 		if (catalogId) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { data: catalogBean, error: catalogError } = await (supabase as any)
+			const { data: catalogBean, error: catalogError } = await supabase
 				.from('coffee_catalog')
 				.select('id')
 				.eq('id', catalogId)
@@ -174,11 +171,9 @@ export const POST: RequestHandler = async (event) => {
 			}
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data: newBean, error } = await (supabase as any)
+		const { data: newBean, error } = await supabase
 			.from('green_coffee_inv')
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			.insert(cleanedBean as any)
+			.insert(cleanedBean as Database['public']['Tables']['green_coffee_inv']['Insert'])
 			.select()
 			.single();
 
@@ -206,11 +201,10 @@ export const PUT: RequestHandler = async (event) => {
 		}
 
 		// Verify ownership
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data: existing } = await (supabase as any)
+		const { data: existing } = await supabase
 			.from('green_coffee_inv')
 			.select('user')
-			.eq('id', id)
+			.eq('id', Number(id))
 			.single();
 
 		if (!existing || existing.user !== user.id) {
@@ -240,10 +234,10 @@ export const PUT: RequestHandler = async (event) => {
 		);
 
 		// First do the update without the join to avoid schema cache issues
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { error: updateError } = await (supabase.from('green_coffee_inv') as any)
-			.update(updateData)
-			.eq('id', id);
+		const { error: updateError } = await supabase
+			.from('green_coffee_inv')
+			.update(updateData as Database['public']['Tables']['green_coffee_inv']['Update'])
+			.eq('id', Number(id));
 
 		if (updateError) {
 			console.error('Update error:', updateError);
@@ -282,11 +276,10 @@ export const DELETE: RequestHandler = async (event) => {
 		}
 
 		// Verify ownership and get catalog_id for potential cascade deletion
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data: existing } = await (supabase as any)
+		const { data: existing } = await supabase
 			.from('green_coffee_inv')
 			.select('user, catalog_id')
-			.eq('id', id)
+			.eq('id', Number(id))
 			.single();
 
 		if (!existing || existing.user !== user.id) {
@@ -294,18 +287,16 @@ export const DELETE: RequestHandler = async (event) => {
 		}
 
 		// Get roast profiles first
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data: roastProfiles, error: selectError } = await (supabase as any)
+		const { data: roastProfiles, error: selectError } = await supabase
 			.from('roast_profiles')
 			.select('roast_id')
-			.eq('coffee_id', id);
+			.eq('coffee_id', Number(id));
 
 		if (selectError) throw selectError;
 
 		// If there are roast profiles, delete their associated data
 		if (roastProfiles && roastProfiles.length > 0) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const roastIds = roastProfiles.map((profile: any) => profile.roast_id);
+			const roastIds = roastProfiles.map((profile) => profile.roast_id);
 
 			// Delete from normalized tables
 			const { error: tempError } = await supabase
@@ -325,20 +316,19 @@ export const DELETE: RequestHandler = async (event) => {
 		const { error: profileError } = await supabase
 			.from('roast_profiles')
 			.delete()
-			.eq('coffee_id', id);
+			.eq('coffee_id', Number(id));
 
 		if (profileError) throw profileError;
 
 		// Finally, delete the coffee
-		const { error: deleteError } = await supabase.from('green_coffee_inv').delete().eq('id', id);
+		const { error: deleteError } = await supabase.from('green_coffee_inv').delete().eq('id', Number(id));
 
 		if (deleteError) throw deleteError;
 
 		// Check if we need to cascade delete the coffee_catalog entry
 		// Only delete if the catalog entry is user-owned (coffee_user = user.id)
 		if (existing.catalog_id) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { data: catalogEntry } = await (supabase as any)
+			const { data: catalogEntry } = await supabase
 				.from('coffee_catalog')
 				.select('coffee_user, public_coffee')
 				.eq('id', existing.catalog_id)

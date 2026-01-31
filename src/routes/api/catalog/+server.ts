@@ -24,8 +24,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		const requestedIds = idsParam.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
 
 		if (requestedIds.length > 0) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { data: rows, error } = await (supabase as any)
+			const { data: rows, error } = await supabase
 				.from('coffee_catalog')
 				.select('*')
 				.in('id', requestedIds)
@@ -72,8 +71,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			//	console.log('Received filter parameters:', filters);
 
 			// Build query with server-side filtering and sorting
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			let query = (supabase as any)
+			let query = supabase
 				.from('coffee_catalog')
 				.select('*', { count: 'exact' })
 				.eq('stocked', true);
@@ -140,8 +138,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			return json(catalogCache.data);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data: rows, error } = await (supabase as any)
+		const { data: rows, error } = await supabase
 			.from('coffee_catalog')
 			.select('*')
 			.eq('stocked', true)

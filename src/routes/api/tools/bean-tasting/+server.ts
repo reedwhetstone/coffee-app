@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { requireMemberRole } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
+import type { Json } from '$lib/types/database.types';
 
 // Interface for tool input validation
 interface BeanTastingToolInput {
@@ -21,7 +22,7 @@ interface BeanTastingToolResponse {
 	tasting_notes: {
 		user_notes?: {
 			notes?: string | null;
-			cupping_notes?: string | null;
+			cupping_notes?: Json | null;
 		} | null;
 		supplier_notes?: {
 			cupping_notes?: string | null;

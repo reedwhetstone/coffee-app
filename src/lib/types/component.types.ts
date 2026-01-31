@@ -4,7 +4,6 @@ import type { Database } from './database.types';
 export type CoffeeCatalog = Database['public']['Tables']['coffee_catalog']['Row'];
 export type GreenCoffeeInv = Database['public']['Tables']['green_coffee_inv']['Row'];
 export type RoastProfile = Database['public']['Tables']['roast_profiles']['Row'];
-export type ProfileLog = Database['public']['Tables']['profile_log']['Row'];
 export type SalesRecord = Database['public']['Tables']['sales']['Row'];
 
 // Extended types with joins and computed fields
@@ -21,8 +20,12 @@ export interface RoastWithCoffee extends RoastProfile {
 	green_coffee_inv?: InventoryWithCatalog;
 }
 
+export type RoastTemperature = Database['public']['Tables']['roast_temperatures']['Row'];
+export type RoastEvent = Database['public']['Tables']['roast_events']['Row'];
+
 export interface RoastWithLogs extends RoastProfile {
-	profile_log?: ProfileLog[];
+	roast_temperatures?: RoastTemperature[];
+	roast_events?: RoastEvent[];
 	green_coffee_inv?: InventoryWithCatalog;
 }
 

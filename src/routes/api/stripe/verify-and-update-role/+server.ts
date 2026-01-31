@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { getStripe } from '$lib/services/stripe';
 import { createAdminClient } from '$lib/supabase-admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '$lib/types/database.types';
+import type { Database, Json } from '$lib/types/database.types';
 
 interface RoleAuditLog {
 	user_id: string;
@@ -13,7 +13,7 @@ interface RoleAuditLog {
 	stripe_customer_id?: string;
 	stripe_subscription_id?: string;
 	session_id?: string;
-	metadata?: Record<string, unknown>;
+	metadata?: Json;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

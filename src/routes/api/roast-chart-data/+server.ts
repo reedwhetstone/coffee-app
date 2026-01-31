@@ -4,11 +4,11 @@ import type { RequestHandler } from './$types';
 // Raw chart data structure from optimized database functions
 export interface RawChartData {
 	rawData: Array<{
-		data_type: 'temperature' | 'milestone' | 'control';
+		data_type: string;
 		time_milliseconds: number; // Standardized on milliseconds
 		field_name: string;
-		value_numeric: number | null;
-		event_string: string | null;
+		value_numeric: number;
+		event_string: string;
 		category: string;
 		subcategory: string;
 	}>;
@@ -50,14 +50,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const dbQueryStart = performance.now();
 
 		// Use time-based adaptive sampling - single RPC call replaces 4+ previous queries
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const [{ data: chartData, error: dataError }, { data: metadata, error: metaError }] =
 			await Promise.all([
-				(supabase as any).rpc('get_chart_data_sampled', {
+				supabase.rpc('get_chart_data_sampled', {
 					roast_id_param: roastIdNum,
 					target_points: 400 // Stay under 1,000 row limit
 				}),
-				(supabase as any).rpc('get_chart_metadata', { roast_id_param: roastIdNum })
+				supabase.rpc('get_chart_metadata', { roast_id_param: roastIdNum })
 			]);
 
 		const dbQueryTime = performance.now() - dbQueryStart;

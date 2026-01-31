@@ -82,8 +82,16 @@ export const GET: RequestHandler = async ({ request }) => {
 		const supabase = createAdminClient();
 
 		// Check user role - require API access only
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data: userRoleData, error: roleError } = await (supabase as any)
+		if (!userId) {
+			return json(
+				{
+					error: 'Authentication required',
+					message: 'User ID not found'
+				},
+				{ status: 401 }
+			);
+		}
+		const { data: userRoleData, error: roleError } = await supabase
 			.from('user_roles')
 			.select('user_role')
 			.eq('id', userId)
@@ -208,8 +216,7 @@ export const GET: RequestHandler = async ({ request }) => {
 		console.log('Fetching catalog API data from database');
 
 		// Fetch only public coffees with specified columns
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data: rows, error: dbError } = await (supabase as any)
+		const { data: rows, error: dbError } = await supabase
 			.from('coffee_catalog')
 			.select(CATALOG_API_COLUMNS)
 			.eq('public_coffee', true)
@@ -233,7 +240,7 @@ export const GET: RequestHandler = async ({ request }) => {
 
 		// Update cache
 		catalogApiCache = {
-			data: rows || [],
+			data: (rows || []) as unknown as Record<string, unknown>[],
 			timestamp: now
 		};
 

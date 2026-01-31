@@ -25,6 +25,7 @@ const handleStripeRedirects: Handle = async ({ event, resolve }) => {
 };
 
 const handleSupabase: Handle = async ({ event, resolve }) => {
+	// Cast needed: @supabase/ssr@0.5.2 createServerClient generic doesn't fully support __InternalSupabase
 	event.locals.supabase = createServerClient<Database>(
 		PUBLIC_SUPABASE_URL,
 		PUBLIC_SUPABASE_ANON_KEY,

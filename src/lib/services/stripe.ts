@@ -45,7 +45,7 @@ export async function getStripeCustomerId(userId: string): Promise<string | null
 	// Use the admin client to bypass RLS
 	const supabase = createAdminClient();
 
-	const { data, error } = await (supabase as any)
+	const { data, error } = await supabase
 		.from('stripe_customers')
 		.select('customer_id')
 		.eq('user_id', userId)
@@ -55,8 +55,7 @@ export async function getStripeCustomerId(userId: string): Promise<string | null
 		console.error('Error fetching Stripe customer ID:', error);
 		return null;
 	}
-	console.log('data', data);
-	return (data as unknown as StripeCustomerRow)?.customer_id || null;
+	return data?.customer_id || null;
 }
 
 /**
@@ -102,12 +101,12 @@ export async function createStripeCustomer(
 		}
 
 		// Store or update the customer ID in Supabase
-		const { error } = await (supabase as any).from('stripe_customers').upsert(
+		const { error } = await supabase.from('stripe_customers').upsert(
 			{
 				user_id: userId,
 				customer_id: customerId,
 				email
-			} as unknown as StripeCustomerRow,
+			},
 			{
 				onConflict: 'user_id'
 			}

@@ -72,16 +72,12 @@ export const POST: RequestHandler = async (event) => {
 		const queryEmbedding = await queryEmbeddingService.generateQueryEmbedding(context_string);
 
 		// Search chunks directly
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { data: chunksData, error: chunksError } = await (supabase.rpc as any)(
-			'match_coffee_chunks',
-			{
-				query_embedding: queryEmbedding,
-				match_threshold: similarity_threshold,
-				match_count: max_chunks,
-				chunk_types: chunk_types || null
-			}
-		);
+		const { data: chunksData, error: chunksError } = await supabase.rpc('match_coffee_chunks', {
+			query_embedding: JSON.stringify(queryEmbedding),
+			match_threshold: similarity_threshold,
+			match_count: max_chunks,
+			chunk_types: chunk_types || undefined
+		});
 
 		if (chunksError) {
 			console.error('Coffee chunks search error:', chunksError);

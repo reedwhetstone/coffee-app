@@ -4,7 +4,7 @@ import { getStripe } from '$lib/services/stripe';
 import { createAdminClient } from '$lib/supabase-admin';
 import { validateAdminAccess } from '$lib/server/auth';
 import type { SupabaseClient, PostgrestError } from '@supabase/supabase-js';
-import type { Database } from '$lib/types/database.types';
+import type { Database, Json } from '$lib/types/database.types';
 
 interface DiscrepancyReport {
 	shouldBeMemberButArent: UserDiscrepancy[];
@@ -277,14 +277,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			updatedRoles = [expectedRole];
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { error: roleError } = (await (supabase as any)
+		const { error: roleError } = await supabase
 			.from('user_roles')
 			.update({
 				user_role: updatedRoles,
 				updated_at: new Date().toISOString()
 			})
-			.eq('id', userId)) as { error: PostgrestError | null };
+			.eq('id', userId);
 
 		if (roleError) {
 			console.error('❌ Error updating user role:', roleError);
@@ -292,8 +291,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Log the manual role change
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { error: auditError } = (await (supabase as any).from('role_audit_logs').insert({
+		const { error: auditError } = await supabase.from('role_audit_logs').insert({
 			user_id: userId,
 			old_role: currentRoles.join(','),
 			new_role: updatedRoles.join(','),
@@ -301,9 +299,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			metadata: {
 				reason: reason || 'Manual fix via admin dashboard',
 				admin_user: adminUser.id
-			},
+			} as Json,
 			created_at: new Date().toISOString()
-		})) as { error: PostgrestError | null };
+		});
 
 		if (auditError) {
 			console.error('❌ Error logging role change:', auditError);
@@ -323,7 +321,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 	} catch (error: unknown) {
 		console.error('❌ Error fixing role discrepancy:', error);
-		const err = error as any;
+		const err = error as { status?: number; message?: string };
 
 		// Handle authentication errors specifically
 		if (err.status === 403 || err.status === 401) {

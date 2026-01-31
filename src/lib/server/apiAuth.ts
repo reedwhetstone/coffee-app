@@ -111,12 +111,12 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 				// Update last used timestamp
 				await supabase
 					.from('api_keys')
-					.update({ last_used_at: new Date().toISOString() } as never)
+					.update({ last_used_at: new Date().toISOString() })
 					.eq('id', apiKey.id);
 
 				return {
 					valid: true,
-					userId: apiKey.user_id,
+					userId: apiKey.user_id ?? undefined,
 					keyId: apiKey.id
 				};
 			}
@@ -146,7 +146,7 @@ export async function createApiKey(
 			name,
 			is_active: true,
 			permissions: {}
-		} as never);
+		});
 
 		if (error) {
 			console.error('Error creating API key:', error);
@@ -190,7 +190,7 @@ export async function deactivateApiKey(userId: string, keyId: string): Promise<b
 	try {
 		const { error } = await supabase
 			.from('api_keys')
-			.update({ is_active: false } as never)
+			.update({ is_active: false })
 			.eq('id', keyId)
 			.eq('user_id', userId); // Ensure user owns the key
 
@@ -224,8 +224,8 @@ export async function logApiUsage(
 			status_code: statusCode,
 			response_time_ms: responseTimeMs,
 			user_agent: userAgent,
-			ip_address: ipAddress
-		} as never);
+			ip_address: ipAddress as unknown
+		});
 	} catch (error) {
 		// Don't throw on logging errors, just log them
 		console.error('Error logging API usage:', error);
@@ -360,13 +360,10 @@ export async function getUsageSummary(apiKeyId: string, days: number = 30) {
 	try {
 		const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-		const { data, error } = await supabase.rpc(
-			'get_api_usage_summary' as never,
-			{
-				key_id: apiKeyId,
-				start_date: startDate.toISOString()
-			} as never
-		);
+		const { data, error } = await supabase.rpc('get_api_usage_summary', {
+			key_id: apiKeyId,
+			start_date: startDate.toISOString()
+		});
 
 		if (error) {
 			console.error('Error fetching usage summary:', error);

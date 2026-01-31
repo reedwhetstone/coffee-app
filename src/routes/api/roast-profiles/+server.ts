@@ -61,8 +61,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			}
 
 			// Fetch all coffee data in single query to avoid N+1 problem
-			const coffeeIds = batch_beans.map((bean: Record<string, unknown>) => bean.coffee_id);
-			const uniqueCoffeeIds = [...new Set(coffeeIds)]; // Remove duplicates for query
+			const coffeeIds: number[] = batch_beans.map((bean: Record<string, unknown>) => bean.coffee_id as number);
+			const uniqueCoffeeIds: number[] = [...new Set(coffeeIds)]; // Remove duplicates for query
 
 			const { data: coffeesRaw, error: coffeeError } = await supabase
 				.from('green_coffee_inv')
@@ -132,9 +132,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			});
 
 			// Insert all profiles in batch
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { data: profiles, error } = await (supabase.from('roast_profiles') as any)
-				.insert(profilesData)
+			const { data: profiles, error } = await supabase
+				.from('roast_profiles')
+				.insert(profilesData as Database['public']['Tables']['roast_profiles']['Insert'][])
 				.select();
 
 			if (error) throw error;
@@ -231,9 +231,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			});
 
 			// Insert all profiles in batch
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const { data: results, error } = await (supabase.from('roast_profiles') as any)
-				.insert(profilesData)
+			const { data: results, error } = await supabase
+				.from('roast_profiles')
+				.insert(profilesData as Database['public']['Tables']['roast_profiles']['Insert'][])
 				.select();
 
 			if (error) throw error;
@@ -265,11 +265,12 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		const batchName = url.searchParams.get('name');
 
 		if (id) {
+			const parsedId = Number(id);
 			// Verify ownership and get coffee_id for stocked status update
 			const { data: existingRaw } = await supabase
 				.from('roast_profiles')
 				.select('user, coffee_id')
-				.eq('roast_id', id)
+				.eq('roast_id', parsedId)
 				.single();
 
 			const existing = existingRaw as { user: string; coffee_id: number } | null;
@@ -281,10 +282,10 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 			const coffee_id = existing.coffee_id;
 
 			// Delete associated data from normalized tables first
-			await supabase.from('roast_temperatures').delete().eq('roast_id', id);
-			await supabase.from('roast_events').delete().eq('roast_id', id);
+			await supabase.from('roast_temperatures').delete().eq('roast_id', parsedId);
+			await supabase.from('roast_events').delete().eq('roast_id', parsedId);
 			// Then delete the profile
-			await supabase.from('roast_profiles').delete().eq('roast_id', id).eq('user', user.id);
+			await supabase.from('roast_profiles').delete().eq('roast_id', parsedId).eq('user', user.id);
 
 			// Update stocked status for this coffee after deletion
 			await updateStockedStatus(supabase, coffee_id, user.id);
@@ -348,6 +349,7 @@ export const PUT: RequestHandler = async ({
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const { temperatureEntries, eventEntries, ...profileData } = (await request.json()) as any;
 		const data = profileData;
+		const parsedId = Number(id);
 
 		// Add weight_loss_percent calculation if oz_in or oz_out are provided
 		if (data.oz_in !== undefined || data.oz_out !== undefined) {
@@ -356,7 +358,7 @@ export const PUT: RequestHandler = async ({
 				const { data: current } = await supabase
 					.from('roast_profiles')
 					.select('oz_in, oz_out')
-					.eq('roast_id', id)
+					.eq('roast_id', parsedId)
 					.single();
 
 				const ozIn = data.oz_in !== undefined ? data.oz_in : current?.oz_in;
@@ -371,7 +373,7 @@ export const PUT: RequestHandler = async ({
 		const { data: existing } = await supabase
 			.from('roast_profiles')
 			.select('user, coffee_id')
-			.eq('roast_id', id)
+			.eq('roast_id', parsedId)
 			.single();
 
 		if (!existing || existing.user !== user.id) {
@@ -383,7 +385,7 @@ export const PUT: RequestHandler = async ({
 		const { data: updated, error } = await supabase
 			.from('roast_profiles')
 			.update(data)
-			.eq('roast_id', id)
+			.eq('roast_id', parsedId)
 			.eq('user', user.id)
 			.select()
 			.single();

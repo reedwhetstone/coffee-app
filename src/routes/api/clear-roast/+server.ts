@@ -17,7 +17,7 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		const { data: profile } = (await supabase
 			.from('roast_profiles')
 			.select('user, batch_name')
-			.eq('roast_id', roastId)
+			.eq('roast_id', Number(roastId))
 			.single()) as { data: { user: string; batch_name: string | null } | null; error: unknown };
 
 		if (!profile || profile.user !== user.id) {
