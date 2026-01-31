@@ -32,12 +32,6 @@ export interface SubscriptionDetails {
 	payment_method?: Stripe.PaymentMethod | null;
 }
 
-interface StripeCustomerRow {
-	user_id: string;
-	customer_id: string;
-	email: string | null;
-}
-
 /**
  * Get Stripe customer ID for a user
  */

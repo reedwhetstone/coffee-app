@@ -7,9 +7,9 @@ const supabase = createAdminClient();
 
 // Type aliases for database operations
 type ApiKeyRow = Database['public']['Tables']['api_keys']['Row'];
-type ApiKeyInsert = Database['public']['Tables']['api_keys']['Insert'];
-type ApiKeyUpdate = Database['public']['Tables']['api_keys']['Update'];
-type ApiUsageInsert = Database['public']['Tables']['api_usage']['Insert'];
+//type ApiKeyInsert = Database['public']['Tables']['api_keys']['Insert'];
+//type ApiKeyUpdate = Database['public']['Tables']['api_keys']['Update'];
+//type ApiUsageInsert = Database['public']['Tables']['api_usage']['Insert'];
 
 // API key configuration
 const API_KEY_PREFIX = 'pk_live_';
