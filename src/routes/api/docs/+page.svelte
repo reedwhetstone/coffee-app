@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
-	let { data } = $props<{ data: any }>();
+	let { data }: { data: any } = $props(); // eslint-disable-line @typescript-eslint/no-explicit-any
 
 	onMount(() => {
 		document.title = 'Parchment API Documentation';

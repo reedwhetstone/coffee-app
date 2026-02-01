@@ -1,16 +1,20 @@
 <!-- src/lib/components/layout/AuthSidebar.svelte -->
 <script lang="ts">
-	import { signInWithGoogle } from '$lib/supabase';
+	import { signInWithGoogle, createClient } from '$lib/supabase';
 	import { goto } from '$app/navigation';
+
+	import type { User } from '@supabase/supabase-js';
 
 	// Props with default values to prevent undefined errors
 	let { data, onClose = () => {} } = $props<{
-		data: any;
+		data: Record<string, unknown>;
 		onClose?: () => void;
 	}>();
 
 	// Destructure with default values
-	let { supabase, user } = $derived(data);
+	let { supabase, user } = $derived(
+		data as { supabase: ReturnType<typeof createClient>; user: User | null }
+	);
 
 	async function handleSignIn() {
 		try {

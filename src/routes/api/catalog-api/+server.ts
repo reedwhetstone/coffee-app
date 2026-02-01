@@ -11,7 +11,7 @@ import { createAdminClient } from '$lib/supabase-admin';
 
 // Cache for catalog API data
 let catalogApiCache: {
-	data: any[] | null;
+	data: Record<string, unknown>[] | null;
 	timestamp: number;
 } = {
 	data: null,
@@ -82,6 +82,15 @@ export const GET: RequestHandler = async ({ request }) => {
 		const supabase = createAdminClient();
 
 		// Check user role - require API access only
+		if (!userId) {
+			return json(
+				{
+					error: 'Authentication required',
+					message: 'User ID not found'
+				},
+				{ status: 401 }
+			);
+		}
 		const { data: userRoleData, error: roleError } = await supabase
 			.from('user_roles')
 			.select('user_role')
@@ -231,7 +240,7 @@ export const GET: RequestHandler = async ({ request }) => {
 
 		// Update cache
 		catalogApiCache = {
-			data: rows || [],
+			data: (rows || []) as unknown as Record<string, unknown>[],
 			timestamp: now
 		};
 

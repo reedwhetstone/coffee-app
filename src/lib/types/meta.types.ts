@@ -27,7 +27,7 @@ export interface PageMeta {
 	twitterCreator?: string;
 
 	// Structured Data
-	structuredData?: any; // Legacy support
+	structuredData?: Record<string, unknown>; // Legacy support
 	schemaData?: object | object[];
 
 	// Additional meta tags

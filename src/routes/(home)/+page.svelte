@@ -27,7 +27,7 @@
 
 		try {
 			// Handle both string and object formats (Supabase jsonb can return either)
-			let parsed: any;
+			let parsed: unknown;
 			if (typeof tastingNotesJson === 'string') {
 				parsed = JSON.parse(tastingNotesJson);
 			} else if (typeof tastingNotesJson === 'object') {
@@ -36,15 +36,11 @@
 				return null;
 			}
 
+			const notes = parsed as Partial<TastingNotes>;
+
 			// Validate that required properties exist
-			if (
-				parsed.body &&
-				parsed.flavor &&
-				parsed.acidity &&
-				parsed.sweetness &&
-				parsed.fragrance_aroma
-			) {
-				return parsed as TastingNotes;
+			if (notes.body && notes.flavor && notes.acidity && notes.sweetness && notes.fragrance_aroma) {
+				return notes as TastingNotes;
 			}
 		} catch (error) {
 			console.warn('Failed to parse tasting notes:', error, 'Input:', tastingNotesJson);

@@ -10,11 +10,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 		const supabase = createClient();
 
 		// Check if user already exists in stripe_customers table
-		const { data: customerData, error: customerError } = await supabase
+		const { data: customerData, error: customerError } = (await supabase
 			.from('stripe_customers')
 			.select('customer_id')
 			.eq('user_id', user.id)
-			.maybeSingle();
+			.maybeSingle()) as { data: { customer_id: string } | null; error: unknown };
 
 		if (customerError) {
 			console.error('Error checking for Stripe customer:', customerError);

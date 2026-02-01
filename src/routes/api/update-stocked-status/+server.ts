@@ -2,6 +2,13 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
 
+interface CoffeeInventoryItem {
+	id: number;
+	purchased_qty_lbs: number;
+	stocked: boolean;
+	roast_profiles: { oz_in: number | null }[];
+}
+
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
 		const { session, user } = await safeGetSession();
@@ -57,10 +64,10 @@ export const PUT: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		const updates = [];
 
-		for (const coffee of coffeeData || []) {
+		for (const coffee of (coffeeData as unknown as CoffeeInventoryItem[]) || []) {
 			const totalOzIn =
 				coffee.roast_profiles?.reduce(
-					(sum: number, profile: any) => sum + (profile.oz_in || 0),
+					(sum: number, profile: { oz_in: number | null }) => sum + (profile.oz_in || 0),
 					0
 				) || 0;
 			const purchasedOz = (coffee.purchased_qty_lbs || 0) * 16;
@@ -83,7 +90,8 @@ export const PUT: RequestHandler = async ({ locals: { supabase, safeGetSession }
 				updates.map((update) => ({
 					id: update.id,
 					stocked: update.stocked
-				})),
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				})) as any,
 				{ onConflict: 'id' }
 			);
 

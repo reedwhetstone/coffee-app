@@ -19,11 +19,15 @@
 
 	import RoastProfileTabs from './RoastProfileTabs.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
+
+	// Cast filtered data to the correct type for this page
+	let typedFilteredData = $derived($filteredData as unknown as RoastProfile[]);
 	import RoastPageSkeleton from '$lib/components/RoastPageSkeleton.svelte';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
 
 	// Lazy load the heavy chart component
-	let RoastChartInterface = $state<any>(null);
+	import type { ComponentType } from 'svelte';
+	let RoastChartInterface = $state<ComponentType | null>(null);
 	let chartComponentLoading = $state(true);
 
 	// Load chart component after initial render
@@ -32,7 +36,7 @@
 		setTimeout(async () => {
 			try {
 				const module = await import('./RoastChartInterface.svelte');
-				RoastChartInterface = module.default;
+				RoastChartInterface = module.default as unknown as ComponentType;
 				chartComponentLoading = false;
 			} catch (error) {
 				console.error('Failed to load chart component:', error);
@@ -65,7 +69,7 @@
 	let { data = { data: [], role: 'viewer' } } = $props<{ data?: Partial<PageData> }>();
 
 	// Client-side data state
-	let clientData = $state<any[]>([]);
+	let clientData = $state<RoastProfile[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 
@@ -141,17 +145,17 @@
 		}
 	}
 
-	// Derived values for grouped profiles - directly computed from $filteredData
+	// Derived values for grouped profiles - directly computed from typedFilteredData
 	let sortedGroupedProfiles = $derived(() => {
-		if (!$filteredData || $filteredData.length === 0) {
+		if (!typedFilteredData || typedFilteredData.length === 0) {
 			return {};
 		}
 
 		// Group profiles by batch name
-		const newGroupedProfiles: Record<string, any[]> = {};
+		const newGroupedProfiles: Record<string, RoastProfile[]> = {};
 
 		// Process each profile
-		$filteredData.forEach((profile) => {
+		typedFilteredData.forEach((profile) => {
 			const batchName = profile.batch_name || 'Unknown Batch';
 			if (!newGroupedProfiles[batchName]) {
 				newGroupedProfiles[batchName] = [];
@@ -279,7 +283,10 @@
 		}
 
 		// Check if we should show the roast form based on navigation state
-		const state = page.state as any;
+		const state = page.state as {
+			showRoastForm?: boolean;
+			selectedBean?: { id: number; name: string };
+		};
 		console.log('Page state on mount:', state);
 
 		if (state?.showRoastForm) {
@@ -308,17 +315,13 @@
 				if (profileIdToLoad && !currentRoastProfile) {
 					const targetProfileId = parseInt(profileIdToLoad);
 
-					// Use filtered data to ensure consistency with the UI
-					const filteredProfiles = $filteredData || [];
-					let targetProfile = filteredProfiles.find(
-						(p: { roast_id: number }) => p.roast_id === targetProfileId
-					);
+					// Use typed filtered data to ensure consistency with the UI
+					const filteredProfiles = typedFilteredData || [];
+					let targetProfile = filteredProfiles.find((p) => p.roast_id === targetProfileId);
 
 					// Fallback to client data if not found in filtered data
 					if (!targetProfile && clientData.length > 0) {
-						targetProfile = clientData.find(
-							(p: { roast_id: number }) => p.roast_id === targetProfileId
-						);
+						targetProfile = clientData.find((p) => p.roast_id === targetProfileId);
 					}
 
 					if (targetProfile) {
@@ -814,7 +817,7 @@
 
 {#if isFormVisible}
 	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 p-4">
-		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 shadow-xl sm:p-6">
+		<div class="mb-6 rounded-lg bg-background-secondary-light p-4 shadow-md">
 			<RoastProfileForm
 				{selectedBean}
 				{availableCoffees}

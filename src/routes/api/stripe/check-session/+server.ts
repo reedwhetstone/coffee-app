@@ -26,8 +26,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			clientSecret: checkoutSession.client_secret,
 			paymentStatus: checkoutSession.payment_status
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error checking session status:', error);
-		return json({ error: error.message }, { status: 500 });
+		return json(
+			{ error: error instanceof Error ? error.message : 'Unknown error' },
+			{ status: 500 }
+		);
 	}
 };

@@ -14,11 +14,11 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		}
 
 		// Verify ownership of the roast profile
-		const { data: profile } = await supabase
+		const { data: profile } = (await supabase
 			.from('roast_profiles')
 			.select('user, batch_name')
-			.eq('roast_id', roastId)
-			.single();
+			.eq('roast_id', Number(roastId))
+			.single()) as { data: { user: string; batch_name: string | null } | null; error: unknown };
 
 		if (!profile || profile.user !== user.id) {
 			return json({ error: 'Unauthorized' }, { status: 403 });
@@ -76,8 +76,8 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 		// Note: profile_log and roast_phases are legacy tables that no longer exist in the normalized schema
 
 		// Optional: Reset some roast_profiles fields to clear imported data while preserving core profile
-		const { error: resetError } = await supabase
-			.from('roast_profiles')
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { error: resetError } = await (supabase.from('roast_profiles') as any)
 			.update({
 				// Clear Artisan-specific fields while preserving user-entered data
 				title: null,

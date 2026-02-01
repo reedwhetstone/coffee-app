@@ -16,7 +16,9 @@
 	}>();
 
 	let checkoutElement = $state<HTMLElement | null>(null);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let stripe: any;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let checkout: any;
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -88,8 +90,8 @@
 			if (checkout.error) {
 				throw new Error(checkout.error.message);
 			}
-		} catch (err: any) {
-			error = err.message || 'Something went wrong';
+		} catch (err: unknown) {
+			error = err instanceof Error ? err.message : 'Something went wrong';
 			console.error('Checkout error:', err);
 		} finally {
 			loading = false;

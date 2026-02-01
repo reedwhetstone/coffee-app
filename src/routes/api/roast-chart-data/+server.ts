@@ -4,11 +4,11 @@ import type { RequestHandler } from './$types';
 // Raw chart data structure from optimized database functions
 export interface RawChartData {
 	rawData: Array<{
-		data_type: 'temperature' | 'milestone' | 'control';
+		data_type: string;
 		time_milliseconds: number; // Standardized on milliseconds
 		field_name: string;
-		value_numeric: number | null;
-		event_string: string | null;
+		value_numeric: number;
+		event_string: string;
 		category: string;
 		subcategory: string;
 	}>;

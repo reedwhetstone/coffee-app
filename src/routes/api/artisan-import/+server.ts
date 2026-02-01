@@ -13,7 +13,7 @@ import { clearRoastData, insertTemperatures, insertEvents } from '$lib/server/ro
 // Parse Artisan .alog or .alog.json data
 function parseArtisanFile(fileContent: string, fileName: string): ArtisanRoastData {
 	try {
-		let data: any;
+		let data: unknown;
 
 		if (fileName.toLowerCase().endsWith('.alog')) {
 			// Parse Python literal syntax (.alog file)
@@ -30,7 +30,9 @@ function parseArtisanFile(fileContent: string, fileName: string): ArtisanRoastDa
 		}
 
 		// Map 'mode' to 'temperature_unit' for consistency
-		data.temperature_unit = artisanModeToUnit(data.mode);
+		(data as ArtisanRoastData).temperature_unit = artisanModeToUnit(
+			(data as ArtisanRoastData).mode
+		);
 
 		return data as ArtisanRoastData;
 	} catch (error) {
@@ -79,18 +81,18 @@ function extractMilestones(artisanData: ArtisanRoastData): MilestoneData {
 function transformArtisanData(
 	roastId: number,
 	artisanData: ArtisanRoastData,
-	userId: string
+	_userId: string
 ): ProcessedRoastData {
-	const { timex, temp1, temp2, timeindex, extratemp1, extratemp2 } = artisanData;
+	const { timex, temp1, temp2, extratemp1, extratemp2 } = artisanData;
 
 	// Extract milestones
 	const milestones = extractMilestones(artisanData);
 
 	// Extract computed data from Artisan
-	const computedData = (artisanData as any).computed || {};
+	const computedData = artisanData.computed || {};
 
 	// Normalize temperatures to Fahrenheit for consistency
-	const { beanTemps, envTemps, unit } = normalizeArtisanTemperatures(
+	const { beanTemps, envTemps } = normalizeArtisanTemperatures(
 		temp1,
 		temp2,
 		artisanData.temperature_unit,
@@ -221,7 +223,7 @@ function transformArtisanData(
 	}
 
 	// Create temperature data for roast_temperatures table
-	const temperatureData: any[] = [];
+	const temperatureData: ProcessedRoastData['temperatureData'] = [];
 
 	// Add temperature data points (sample to avoid overwhelming database)
 	const sampleRate = Math.max(1, Math.floor(timex.length / 1000)); // Limit to ~1000 points
@@ -276,7 +278,7 @@ function transformArtisanData(
 	};
 
 	// Create milestone events for roast_events table
-	const milestoneEvents: any[] = [];
+	const milestoneEvents: ProcessedRoastData['milestoneEvents'] = [];
 	Object.entries(milestones).forEach(([eventName, timeSeconds]) => {
 		if (timeSeconds && timeSeconds > 0) {
 			milestoneEvents.push({
@@ -311,7 +313,7 @@ function transformArtisanData(
 	}
 
 	// Create control events for all extra devices using actual etypes names
-	const controlEvents: any[] = [];
+	const controlEvents: ProcessedRoastData['controlEvents'] = [];
 
 	// Process extratemp device data if available
 	timex.forEach((timeSeconds, index) => {
@@ -354,25 +356,6 @@ function transformArtisanData(
 
 	// Note: roast_phases table no longer exists in normalized schema
 	// Phase percentages are now stored directly in roast_profiles table
-
-	// Create extra device data using all mapped extra devices
-	const extraDeviceDataForDB: any[] = [];
-	extraDeviceData.forEach((device, deviceIndex) => {
-		timex.forEach((timeSeconds, index) => {
-			if (device.data[index] !== undefined && index % sampleRate === 0) {
-				extraDeviceDataForDB.push({
-					roast_id: roastId,
-					device_id: deviceIndex + 1,
-					device_name: device.name,
-					sensor_type: 'percentage',
-					time_seconds: timeSeconds,
-					value: device.data[index],
-					unit: '%',
-					quality: 'good'
-				});
-			}
-		});
-	});
 
 	return {
 		profileData,
@@ -431,11 +414,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Verify ownership and get existing roast profile data
-		const { data: profile } = await supabase
+		const { data: profile } = (await supabase
 			.from('roast_profiles')
 			.select('user, coffee_name, batch_name')
-			.eq('roast_id', roastId)
-			.single();
+			.eq('roast_id', Number(roastId))
+			.single()) as {
+			data: { user: string; coffee_name: string; batch_name: string } | null;
+			error: unknown;
+		};
 
 		if (!profile || profile.user !== user.id) {
 			return json({ error: 'Unauthorized' }, { status: 403 });
@@ -489,12 +475,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				roaster_size: artisanData.roastersize || 0,
 				temperature_unit: 'F', // Always store as Fahrenheit
 				// Chart display settings from Artisan
-				chart_x_min: (artisanData as any).xmin || null,
-				chart_x_max: (artisanData as any).xmax || null,
-				chart_y_min: (artisanData as any).ymin || null,
-				chart_y_max: (artisanData as any).ymax || null,
-				chart_z_min: (artisanData as any).zmin || null,
-				chart_z_max: (artisanData as any).zmax || null,
+				chart_x_min: artisanData.xmin || null,
+				chart_x_max: artisanData.xmax || null,
+				chart_y_min: artisanData.ymin || null,
+				chart_y_max: artisanData.ymax || null,
+				chart_z_min: artisanData.zmin || null,
+				chart_z_max: artisanData.zmax || null,
 				// Milestone data for quick access (use computed when available)
 				charge_time: processedData.milestones.charge || null,
 				dry_end_time:
@@ -577,7 +563,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				temperature_unit: artisanData.mode,
 				timeindex: artisanData.timeindex
 			})
-		} as any);
+		});
 		if (logError) {
 			console.error('Error creating import log:', logError);
 			// Non-critical, continue

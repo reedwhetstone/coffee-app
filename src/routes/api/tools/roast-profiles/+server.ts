@@ -18,7 +18,7 @@ interface RoastProfilesToolInput {
 
 // Tool response interface
 interface RoastProfilesToolResponse {
-	profiles: any[];
+	profiles: Record<string, unknown>[];
 	total: number;
 	summary?: {
 		total_roasts: number;
@@ -53,6 +53,70 @@ interface RoastProfilesToolResponse {
 	filters_applied: RoastProfilesToolInput;
 }
 
+// Interface for DB row to fix 'never' inference
+interface RoastProfileRow {
+	roast_id: string;
+	batch_name: string;
+	coffee_id: number;
+	coffee_name: string;
+	roast_date: string;
+	oz_in: number | null;
+	oz_out: number | null;
+	roast_notes: string | null;
+	roast_targets: unknown;
+	last_updated: string;
+	user: string;
+	roaster_type: string | null;
+	roaster_size: string | null;
+	roast_uuid: string | null;
+	temperature_unit: string | null;
+	charge_time: number | null;
+	dry_end_time: number | null;
+	fc_start_time: number | null;
+	fc_end_time: number | null;
+	sc_start_time: number | null;
+	drop_time: number | null;
+	cool_time: number | null;
+	charge_temp: number | null;
+	dry_end_temp: number | null;
+	fc_start_temp: number | null;
+	fc_end_temp: number | null;
+	sc_start_temp: number | null;
+	drop_temp: number | null;
+	cool_temp: number | null;
+	dry_percent: number | null;
+	maillard_percent: number | null;
+	development_percent: number | null;
+	total_roast_time: number | null;
+	data_source: string | null;
+	chart_z_max: number | null;
+	chart_z_min: number | null;
+	chart_y_max: number | null;
+	chart_y_min: number | null;
+	chart_x_max: number | null;
+	chart_x_min: number | null;
+	tp_time: number | null;
+	tp_temp: number | null;
+	dry_phase_ror: number | null;
+	mid_phase_ror: number | null;
+	finish_phase_ror: number | null;
+	total_ror: number | null;
+	auc: number | null;
+	weight_loss_percent: number | null;
+	dry_phase_delta_temp: number | null;
+	green_coffee_inv: {
+		id: number;
+		notes: string | null;
+		stocked: boolean;
+		coffee_catalog: {
+			name: string;
+			processing: string | null;
+			region: string | null;
+			cultivar_detail: string | null;
+		} | null;
+	} | null;
+}
+
 export const POST: RequestHandler = async (event) => {
 	try {
 		// Require member role for tool access
@@ -79,7 +143,8 @@ export const POST: RequestHandler = async (event) => {
 		let finalCoffeeId = coffee_id;
 		if (catalog_id && !coffee_id) {
 			// Find green_coffee_inv.id(s) that match this catalog_id for this user
-			const { data: inventoryItems } = await supabase
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const { data: inventoryItems } = await (supabase as any)
 				.from('green_coffee_inv')
 				.select('id')
 				.eq('catalog_id', catalog_id)
@@ -93,7 +158,8 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Build base query for roast profiles - select all fields explicitly
-		let query = supabase
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let query = (supabase as any)
 			.from('roast_profiles')
 			.select(
 				`
@@ -201,7 +267,10 @@ export const POST: RequestHandler = async (event) => {
 			query = query.limit(finalLimit);
 		}
 
-		const { data: profiles, error } = await query;
+		const { data: profiles, error } = (await query) as {
+			data: RoastProfileRow[] | null;
+			error: unknown;
+		};
 
 		if (error) {
 			console.error('Roast profiles tool error:', error);
@@ -216,10 +285,11 @@ export const POST: RequestHandler = async (event) => {
 				(p) => p.fc_start_temp !== null && p.drop_temp !== null
 			);
 			const phaseValidProfiles = profiles.filter((p) => p.development_percent !== null);
-			const weightValidProfiles = profiles.filter((p) => p.oz_in !== null && p.oz_out !== null);
+			// const weightValidProfiles = profiles.filter((p) => p.oz_in !== null && p.oz_out !== null);
 
 			if (validProfiles.length > 0) {
 				// Helper function to calculate average safely
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const safeAvg = (profiles: any[], field: string) => {
 					const validValues = profiles.filter(
 						(p) => p[field] !== null && p[field] !== undefined && p[field] !== 0
@@ -230,6 +300,7 @@ export const POST: RequestHandler = async (event) => {
 				};
 
 				// Helper function to calculate standard deviation
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const safeStdDev = (profiles: any[], field: string) => {
 					const validValues = profiles.filter(
 						(p) => p[field] !== null && p[field] !== undefined && p[field] !== 0
@@ -282,10 +353,10 @@ export const POST: RequestHandler = async (event) => {
 
 					// Equipment usage
 					roaster_types_used: [
-						...new Set(profiles.filter((p) => p.roaster_type).map((p) => p.roaster_type))
+						...new Set(profiles.filter((p) => p.roaster_type).map((p) => p.roaster_type as string))
 					],
 					data_sources_used: [
-						...new Set(profiles.filter((p) => p.data_source).map((p) => p.data_source))
+						...new Set(profiles.filter((p) => p.data_source).map((p) => p.data_source as string))
 					],
 
 					// Date range
@@ -314,24 +385,36 @@ export const POST: RequestHandler = async (event) => {
 
 				// Coffee catalog information (from join)
 				coffee_catalog_name:
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(profile.green_coffee_inv as any)?.coffee_catalog?.name ||
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(Array.isArray((profile.green_coffee_inv as any)?.coffee_catalog)
-						? (profile.green_coffee_inv as any)?.coffee_catalog[0]?.name
+						? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(profile.green_coffee_inv as any)?.coffee_catalog[0]?.name
 						: null),
 				coffee_processing:
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(profile.green_coffee_inv as any)?.coffee_catalog?.processing ||
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(Array.isArray((profile.green_coffee_inv as any)?.coffee_catalog)
-						? (profile.green_coffee_inv as any)?.coffee_catalog[0]?.processing
+						? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(profile.green_coffee_inv as any)?.coffee_catalog[0]?.processing
 						: null),
 				coffee_region:
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(profile.green_coffee_inv as any)?.coffee_catalog?.region ||
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(Array.isArray((profile.green_coffee_inv as any)?.coffee_catalog)
-						? (profile.green_coffee_inv as any)?.coffee_catalog[0]?.region
+						? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(profile.green_coffee_inv as any)?.coffee_catalog[0]?.region
 						: null),
 				coffee_variety:
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(profile.green_coffee_inv as any)?.coffee_catalog?.cultivar_detail ||
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(Array.isArray((profile.green_coffee_inv as any)?.coffee_catalog)
-						? (profile.green_coffee_inv as any)?.coffee_catalog[0]?.cultivar_detail
+						? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(profile.green_coffee_inv as any)?.coffee_catalog[0]?.cultivar_detail
 						: null),
 
 				// Roaster equipment information
@@ -392,8 +475,10 @@ export const POST: RequestHandler = async (event) => {
 				roast_notes: profile.roast_notes,
 				roast_targets: profile.roast_targets,
 				user_notes: Array.isArray(profile.green_coffee_inv)
-					? (profile.green_coffee_inv as any)[0]?.notes
-					: (profile.green_coffee_inv as any)?.notes
+					? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(profile.green_coffee_inv as any)[0]?.notes
+					: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(profile.green_coffee_inv as any)?.notes
 			})) || [];
 
 		const response: RoastProfilesToolResponse = {

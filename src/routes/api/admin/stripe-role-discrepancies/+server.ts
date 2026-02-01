@@ -3,6 +3,8 @@ import type { RequestHandler } from './$types';
 import { getStripe } from '$lib/services/stripe';
 import { createAdminClient } from '$lib/supabase-admin';
 import { validateAdminAccess } from '$lib/server/auth';
+import type { SupabaseClient, PostgrestError } from '@supabase/supabase-js';
+import type { Database, Json } from '$lib/types/database.types';
 
 interface DiscrepancyReport {
 	shouldBeMemberButArent: UserDiscrepancy[];
@@ -47,7 +49,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		console.log('🔍 Starting Stripe/role discrepancy check');
 
-		const supabase = createAdminClient();
+		const supabase = createAdminClient() as SupabaseClient<Database>;
 		const stripe = getStripe();
 
 		// Get all Stripe customers from our database
@@ -61,9 +63,14 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}
 
 		// Get all user roles separately
-		const { data: userRoles, error: rolesError } = await supabase
+		const { data: userRoles, error: rolesError } = (await supabase
 			.from('user_roles')
-			.select('id, user_role, email, name, updated_at');
+			.select('id, user_role, email, name, updated_at')) as {
+			data:
+				| { id: string; user_role: string[]; email: string; name: string; updated_at: string }[]
+				| null;
+			error: PostgrestError | null;
+		};
 
 		if (rolesError) {
 			console.error('❌ Error fetching user roles:', rolesError);
@@ -72,10 +79,12 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		// Manually join the data
 		const customersWithRoles =
-			stripeCustomers?.map((customer) => ({
-				...customer,
-				user_roles: userRoles?.find((role) => role.id === customer.user_id) || null
-			})) || [];
+			(stripeCustomers as { user_id: string; customer_id: string; email: string }[] | null)?.map(
+				(customer) => ({
+					...customer,
+					user_roles: userRoles?.find((role) => role.id === customer.user_id) || null
+				})
+			) || [];
 
 		console.log(`📊 Checking ${customersWithRoles?.length || 0} Stripe customers`);
 
@@ -85,7 +94,12 @@ export const GET: RequestHandler = async ({ locals }) => {
 		// Check each customer's subscription status
 		for (const customer of customersWithRoles || []) {
 			try {
-				const userRole = customer.user_roles as any;
+				const userRole = customer.user_roles as {
+					user_role: string[];
+					email: string;
+					name: string;
+					updated_at: string;
+				} | null;
 
 				// Get subscriptions for this customer
 				const subscriptions = await stripe.subscriptions.list({
@@ -147,7 +161,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}
 
 		// Get recent audit logs for context
-		const { data: recentLogs } = await supabase
+		const { data: recentLogs } = (await supabase
 			.from('role_audit_logs')
 			.select(
 				`
@@ -160,7 +174,18 @@ export const GET: RequestHandler = async ({ locals }) => {
 			`
 			)
 			.order('created_at', { ascending: false })
-			.limit(50);
+			.limit(50)) as {
+			data:
+				| {
+						user_id: string;
+						old_role: string | null;
+						new_role: string;
+						trigger_type: string;
+						created_at: string;
+						stripe_customer_id: string | null;
+				  }[]
+				| null;
+		};
 
 		// Manually join audit logs with user roles for email
 		const recentAuditLogs: AuditLogSummary[] = (recentLogs || []).map((log) => {
@@ -172,7 +197,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 				newRole: log.new_role,
 				triggerType: log.trigger_type,
 				createdAt: log.created_at,
-				stripeCustomerId: log.stripe_customer_id
+				stripeCustomerId: log.stripe_customer_id ?? undefined
 			};
 		});
 
@@ -194,15 +219,16 @@ export const GET: RequestHandler = async ({ locals }) => {
 		});
 
 		return json(report);
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error('❌ Error generating discrepancy report:', error);
 
+		const err = error as { status?: number; message?: string };
 		// Handle authentication errors specifically
-		if (error.status === 403 || error.status === 401) {
-			return json({ error: error.message }, { status: error.status });
+		if (err.status === 403 || err.status === 401) {
+			return json({ error: err.message }, { status: err.status });
 		}
 
-		return json({ error: error.message || 'Internal server error' }, { status: 500 });
+		return json({ error: err.message || 'Internal server error' }, { status: 500 });
 	}
 };
 
@@ -218,14 +244,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Invalid parameters' }, { status: 400 });
 		}
 
-		const supabase = createAdminClient();
+		const supabase = createAdminClient() as SupabaseClient<Database>;
 
 		// Get current roles
-		const { data: currentRoleData } = await supabase
+		const { data: currentRoleData } = (await supabase
 			.from('user_roles')
 			.select('user_role, email')
 			.eq('id', userId)
-			.maybeSingle();
+			.maybeSingle()) as { data: { user_role: string[]; email: string } | null };
 
 		if (!currentRoleData) {
 			return json({ error: 'User not found in user_roles' }, { status: 404 });
@@ -273,7 +299,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			metadata: {
 				reason: reason || 'Manual fix via admin dashboard',
 				admin_user: adminUser.id
-			},
+			} as Json,
 			created_at: new Date().toISOString()
 		});
 
@@ -293,14 +319,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			oldRole: currentRoles.join(','),
 			newRole: updatedRoles.join(',')
 		});
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error('❌ Error fixing role discrepancy:', error);
+		const err = error as { status?: number; message?: string };
 
 		// Handle authentication errors specifically
-		if (error.status === 403 || error.status === 401) {
-			return json({ error: error.message }, { status: error.status });
+		if (err.status === 403 || err.status === 401) {
+			return json({ error: err.message }, { status: err.status });
 		}
 
-		return json({ error: error.message || 'Internal server error' }, { status: 500 });
+		return json({ error: err.message || 'Internal server error' }, { status: 500 });
 	}
 };

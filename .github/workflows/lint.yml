@@ -1,0 +1,52 @@
+name: Code Quality
+
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Format, Check & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Create dummy .env for type checking
+        run: |
+          cat <<EOF > .env
+          PUBLIC_SUPABASE_URL=https://dummy.supabase.co
+          PUBLIC_SUPABASE_ANON_KEY=dummy
+          SUPABASE_SERVICE_ROLE_KEY=dummy
+          STRIPE_SECRET_KEY=dummy
+          STRIPE_WEBHOOK_SECRET=dummy
+          OPENAI_API_KEY=dummy
+          EOF
+
+      - name: Check formatting
+        run: pnpm format --check
+
+      - name: Type check
+        run: pnpm check --fail-on-warnings
+
+      - name: Lint
+        run: pnpm lint --max-warnings 0

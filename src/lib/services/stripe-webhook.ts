@@ -1,7 +1,8 @@
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { STRIPE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
+import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import Stripe from 'stripe';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getStripe } from './stripe';
 
 interface RoleAuditLog {
@@ -12,7 +13,7 @@ interface RoleAuditLog {
 	stripe_customer_id?: string;
 	stripe_subscription_id?: string;
 	session_id?: string;
-	metadata?: Record<string, any>;
+	metadata?: Record<string, unknown>;
 }
 
 /**
@@ -49,7 +50,7 @@ function updateRoleArray(
 /**
  * Log role changes for audit trail
  */
-async function logRoleChange(supabase: any, auditData: RoleAuditLog) {
+async function logRoleChange(supabase: SupabaseClient, auditData: RoleAuditLog) {
 	try {
 		const { error } = await supabase.from('role_audit_logs').insert({
 			...auditData,
@@ -104,7 +105,10 @@ export async function constructStripeEvent(
 /**
  * Handle subscription activation (new or updated)
  */
-export async function handleSubscriptionActive(subscription: Stripe.Subscription, supabase: any) {
+export async function handleSubscriptionActive(
+	subscription: Stripe.Subscription,
+	supabase: SupabaseClient
+) {
 	const customerId =
 		typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
 
@@ -155,7 +159,6 @@ export async function handleSubscriptionActive(subscription: Stripe.Subscription
 		.maybeSingle();
 
 	const currentRoles = currentRoleData?.user_role || ['viewer'];
-	const currentRole = Array.isArray(currentRoles) ? currentRoles[0] : currentRoles;
 
 	// Only update if user doesn't already have member role
 	if (!currentRoles.includes('member')) {
@@ -199,7 +202,10 @@ export async function handleSubscriptionActive(subscription: Stripe.Subscription
 /**
  * Handle subscription deactivation (canceled, unpaid, etc.)
  */
-export async function handleSubscriptionInactive(subscription: Stripe.Subscription, supabase: any) {
+export async function handleSubscriptionInactive(
+	subscription: Stripe.Subscription,
+	supabase: SupabaseClient
+) {
 	const customerId =
 		typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
 
@@ -250,7 +256,6 @@ export async function handleSubscriptionInactive(subscription: Stripe.Subscripti
 		.maybeSingle();
 
 	const currentRoles = currentRoleData?.user_role || ['viewer'];
-	const currentRole = Array.isArray(currentRoles) ? currentRoles[0] : currentRoles;
 
 	// Remove member role and set to viewer (handles downgrade)
 	if (currentRoles.includes('member')) {

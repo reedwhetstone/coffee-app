@@ -7,14 +7,12 @@
 		onUpdate,
 		onProfileDeleted,
 		onBatchDeleted,
-		profiles = [],
 		currentIndex = 0
 	} = $props<{
 		profile: RoastProfile;
 		onUpdate: (profile: RoastProfile) => void;
 		onProfileDeleted: () => void;
 		onBatchDeleted: () => void;
-		profiles?: RoastProfile[];
 		currentIndex?: number;
 	}>();
 
@@ -87,29 +85,6 @@
 				alert(error instanceof Error ? error.message : 'Failed to delete roast profile');
 			}
 		}
-	}
-
-	function goToProfile(index: number) {
-		if (index < 0 || index >= profiles.length) {
-			console.error('Invalid profile index:', index, 'profiles length:', profiles.length);
-			return;
-		}
-
-		currentIndex = index;
-
-		// Get the profile at the new index
-		const newProfile = profiles[currentIndex];
-		if (!newProfile) {
-			console.error('No profile found at index:', currentIndex);
-			return;
-		}
-
-		// Update the local profile
-		profile = { ...newProfile };
-
-		// Notify the parent component
-		console.log('Switching to profile:', profile.roast_id);
-		onUpdate(profile);
 	}
 
 	async function deleteBatch() {
@@ -192,7 +167,9 @@
 											<textarea
 												class="relative z-0 min-h-[80px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
 												rows="4"
-												bind:value={(editedProfile as any)[key]}
+												bind:value={
+													(editedProfile as Record<string, string | number | null | undefined>)[key]
+												}
 											></textarea>
 										{:else if ['oz_in', 'oz_out'].includes(key)}
 											<input
@@ -200,13 +177,17 @@
 												step="0.1"
 												min="0"
 												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-												bind:value={(editedProfile as any)[key]}
+												bind:value={
+													(editedProfile as Record<string, string | number | null | undefined>)[key]
+												}
 											/>
 										{:else}
 											<input
 												type="text"
 												class="relative z-0 h-[36px] w-full rounded bg-background-primary-light px-2 py-1 text-text-primary-light"
-												bind:value={(editedProfile as any)[key]}
+												bind:value={
+													(editedProfile as Record<string, string | number | null | undefined>)[key]
+												}
 											/>
 										{/if}
 									{:else}

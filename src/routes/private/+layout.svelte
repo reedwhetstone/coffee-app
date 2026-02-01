@@ -1,8 +1,9 @@
 <script lang="ts">
+	import { type Snippet } from 'svelte';
 	import { signOut } from '$lib/supabase';
 	import type { LayoutData } from './$types';
 
-	let { data, children } = $props<{ data: LayoutData; children: any }>();
+	let { data, children } = $props<{ data: LayoutData; children: Snippet }>();
 	let { supabase } = $derived(data);
 
 	async function handleSignOut() {

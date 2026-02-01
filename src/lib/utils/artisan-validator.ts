@@ -4,9 +4,10 @@ import { isValidTemperatureUnit } from './temperature.js';
 /**
  * Comprehensive validation for Artisan .alog.json files
  */
-export function validateArtisanData(data: any): ValidationResult {
+export function validateArtisanData(inputData: unknown): ValidationResult {
 	const errors: string[] = [];
 	const warnings: string[] = [];
+	const data = inputData as Record<string, unknown>;
 
 	// Basic structure validation
 	if (!data || typeof data !== 'object') {
@@ -35,9 +36,13 @@ export function validateArtisanData(data: any): ValidationResult {
 
 	// Array length consistency
 	if (data.timex && data.temp1 && data.temp2) {
-		const timeLength = data.timex.length;
-		const temp1Length = data.temp1.length;
-		const temp2Length = data.temp2.length;
+		const timex = data.timex as unknown[];
+		const temp1 = data.temp1 as unknown[];
+		const temp2 = data.temp2 as unknown[];
+
+		const timeLength = timex.length;
+		const temp1Length = temp1.length;
+		const temp2Length = temp2.length;
 
 		if (timeLength !== temp1Length) {
 			errors.push(
@@ -73,8 +78,9 @@ export function validateArtisanData(data: any): ValidationResult {
 
 		// Validate milestone indices are within time array bounds
 		if (data.timex && Array.isArray(data.timex)) {
-			const maxIndex = data.timex.length - 1;
-			data.timeindex.forEach((index: number, i: number) => {
+			const timex = data.timex as unknown[];
+			const maxIndex = timex.length - 1;
+			(data.timeindex as number[]).forEach((index: number, i: number) => {
 				if (index > 0 && index > maxIndex) {
 					errors.push(`Milestone index ${i} (${index}) exceeds time data length (${maxIndex})`);
 				}
@@ -132,7 +138,9 @@ export function validateArtisanData(data: any): ValidationResult {
 
 	// Temperature data reasonableness checks
 	if (data.temp1 && Array.isArray(data.temp1)) {
-		const beanTemps = data.temp1.filter((t: any) => typeof t === 'number' && !isNaN(t));
+		const beanTemps = data.temp1.filter(
+			(t: unknown) => typeof t === 'number' && !isNaN(t)
+		) as number[];
 		if (beanTemps.length > 0) {
 			const minBT = Math.min(...beanTemps);
 			const maxBT = Math.max(...beanTemps);
@@ -152,7 +160,9 @@ export function validateArtisanData(data: any): ValidationResult {
 	}
 
 	if (data.temp2 && Array.isArray(data.temp2)) {
-		const envTemps = data.temp2.filter((t: any) => typeof t === 'number' && !isNaN(t));
+		const envTemps = data.temp2.filter(
+			(t: unknown) => typeof t === 'number' && !isNaN(t)
+		) as number[];
 		if (envTemps.length > 0) {
 			const minET = Math.min(...envTemps);
 			const maxET = Math.max(...envTemps);
@@ -177,7 +187,7 @@ export function validateArtisanData(data: any): ValidationResult {
 
 	// Time data validation
 	if (data.timex && Array.isArray(data.timex)) {
-		const times = data.timex.filter((t: any) => typeof t === 'number' && !isNaN(t));
+		const times = data.timex.filter((t: unknown) => typeof t === 'number' && !isNaN(t)) as number[];
 		if (times.length > 0) {
 			const minTime = Math.min(...times);
 			const maxTime = Math.max(...times);
@@ -215,8 +225,9 @@ export function validateArtisanData(data: any): ValidationResult {
 /**
  * Quick validation for file upload (lighter check)
  */
-export function validateArtisanFileStructure(data: any): ValidationResult {
+export function validateArtisanFileStructure(inputData: unknown): ValidationResult {
 	const errors: string[] = [];
+	const data = inputData as Record<string, unknown>;
 
 	if (!data || typeof data !== 'object') {
 		errors.push('Invalid JSON structure');
@@ -237,20 +248,21 @@ export function validateArtisanFileStructure(data: any): ValidationResult {
 /**
  * Validate processed data before database insertion
  */
-export function validateProcessedData(processedData: any): ValidationResult {
+export function validateProcessedData(processedData: object): ValidationResult {
+	const data = processedData as Record<string, unknown>;
 	const errors: string[] = [];
 
-	if (!processedData.profileData) {
+	if (!data.profileData) {
 		errors.push('Missing profile data');
 	}
 
-	if (!processedData.temperatureData || !Array.isArray(processedData.temperatureData)) {
+	if (!data.temperatureData || !Array.isArray(data.temperatureData)) {
 		errors.push('Missing or invalid temperature points');
-	} else if (processedData.temperatureData.length === 0) {
+	} else if (data.temperatureData.length === 0) {
 		errors.push('No temperature points to insert');
 	}
 
-	if (!processedData.milestones) {
+	if (!data.milestones) {
 		errors.push('Missing milestone data');
 	}
 

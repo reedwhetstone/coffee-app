@@ -9,26 +9,9 @@
 	// Import components
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
-	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
+
 	import type { TastingNotes } from '$lib/types/coffee.types';
-
-	// Lazy load the tasting notes radar component
-	let TastingNotesRadar = $state<any>(null);
-	let radarComponentLoading = $state(true);
-
-	// Load radar component after initial render
-	$effect(() => {
-		setTimeout(async () => {
-			try {
-				const module = await import('$lib/components/TastingNotesRadar.svelte');
-				TastingNotesRadar = module.default;
-				radarComponentLoading = false;
-			} catch (error) {
-				console.error('Failed to load radar component:', error);
-				radarComponentLoading = false;
-			}
-		}, 200); // Delayed to prioritize main content loading
-	});
+	import type { CoffeeCatalog } from '$lib/types/component.types';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -67,13 +50,13 @@
 	/**
 	 * Data source - use server data for catalog route, fallback to filtered data
 	 */
-	let displayData = $derived(() => {
+	let displayData = $derived((): CoffeeCatalog[] => {
 		// Use server data if available (for paginated catalog)
 		if ($filterStore.serverData?.length > 0) {
-			return $filterStore.serverData;
+			return $filterStore.serverData as unknown as CoffeeCatalog[];
 		}
 		// Fallback to filtered data with pagination for non-server routes
-		return $filteredData.slice(0, displayLimit);
+		return ($filteredData as unknown as CoffeeCatalog[]).slice(0, displayLimit);
 	});
 
 	/**
@@ -117,6 +100,7 @@
 
 		try {
 			// Handle both string and object formats (Supabase jsonb can return either)
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			let parsed: any;
 			if (typeof tastingNotesJson === 'string') {
 				parsed = JSON.parse(tastingNotesJson);

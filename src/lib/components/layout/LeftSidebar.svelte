@@ -8,7 +8,7 @@
 
 	// Props for the sidebar
 	let { data, onMenuChange = () => {} } = $props<{
-		data: any;
+		data: Record<string, unknown>;
 		onMenuChange?: (menu: string | null) => void;
 	}>();
 
@@ -30,8 +30,10 @@
 	// Close menus when route changes, but store the current route to prevent unnecessary closing
 	let currentRoute = $state(page.url.pathname);
 
+	import type { UserRole } from '$lib/types/auth.types';
+
 	// Role checking logic
-	let userRole = $derived(data?.role || 'viewer');
+	let userRole = $derived((data?.role as UserRole) || 'viewer');
 	let isMember = $derived(checkRole(userRole, 'member'));
 	let isAdmin = $derived(checkRole(userRole, 'admin'));
 
@@ -146,7 +148,7 @@
 	class="fixed top-0 z-50 h-full {sidebarPosition} transition-all duration-300 ease-out"
 	bind:this={sidebarButtonsContainer}
 >
-	{#if data?.session?.user}
+	{#if (data?.session as { user?: { email?: string } })?.user}
 		<div
 			class="flex h-full w-16 flex-col items-center space-y-4 bg-background-primary-light py-4 shadow-lg"
 		>
@@ -157,12 +159,12 @@
 					class="rounded-full bg-background-secondary-light p-2 text-text-primary-light shadow-sm ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					aria-label="Toggle authentication menu"
 				>
-					{#if data?.user}
+					{#if data?.user as { email?: string }}
 						<!-- User Avatar/Icon -->
 						<div
 							class="flex h-8 w-8 items-center justify-center rounded-full bg-background-tertiary-light font-medium text-white"
 						>
-							{data.user.email?.[0].toUpperCase() || 'U'}
+							{(data.user as { email?: string }).email?.[0].toUpperCase() || 'U'}
 						</div>
 					{:else}
 						<!-- Default Profile Icon -->

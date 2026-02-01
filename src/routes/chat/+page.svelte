@@ -6,6 +6,7 @@
 	import ChatMessageRenderer from '$lib/components/ChatMessageRenderer.svelte';
 	import CoffeePreviewSidebar from '$lib/components/CoffeePreviewSidebar.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
+	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import { getContext } from 'svelte';
 
 	let { data } = $props<{ data: PageData }>();
@@ -59,6 +60,7 @@
 
 		try {
 			// Handle both string and object formats (Supabase jsonb can return either)
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			let parsed: any;
 			if (typeof tastingNotesJson === 'string') {
 				parsed = JSON.parse(tastingNotesJson);
@@ -91,9 +93,11 @@
 		content: string;
 		timestamp: Date;
 		coffeeCards?: number[];
-		coffeeData?: any[];
+		coffeeData?: CoffeeCatalog[];
 		isStructured?: boolean;
 		isStreaming?: boolean;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		[key: string]: any;
 	}> = $state([]);
 	let inputMessage = $state('');
 	let isLoading = $state(false);
@@ -137,6 +141,7 @@
 	/**
 	 * Process a single SSE data item
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	function processSSEDataItem(data: any) {
 		// Skip heartbeat messages - they're just for keeping connection alive
 		if (data.type === 'heartbeat') {
@@ -173,6 +178,7 @@
 			const coffeeData = data.coffee_data || [];
 
 			// Create base message with streaming flag
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const newMessage: any = {
 				role: 'assistant',
 				content: '',
@@ -345,7 +351,9 @@
 				} finally {
 					try {
 						reader.releaseLock();
-					} catch {}
+					} catch {
+						/* empty */
+					}
 				}
 			}
 		} catch (error) {
@@ -399,11 +407,12 @@
 	 * Detect structured data fields in a message object
 	 * Returns an object containing only the structured data fields
 	 */
-	function detectStructuredFields(message: any): Record<string, any> | null {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	function detectStructuredFields(message: any): Record<string, unknown> | null {
 		// Base message fields that are not considered structured data
 		const baseFields = new Set(['role', 'content', 'timestamp']);
 
-		const structuredFields: Record<string, any> = {};
+		const structuredFields: Record<string, unknown> = {};
 		let hasStructuredData = false;
 
 		for (const [key, value] of Object.entries(message)) {
@@ -439,6 +448,7 @@
 	/**
 	 * Format conversation data as Markdown
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	function formatConversationAsMarkdown(messages: any[], exportData: any): string {
 		const timestamp = new Date().toLocaleString();
 		const userId = exportData.user_id || 'Unknown';
@@ -461,7 +471,8 @@
 				markdown += `### ☕ Coffee Recommendations\n\n`;
 
 				if (message.coffeeData && message.coffeeData.length > 0) {
-					message.coffeeData.forEach((coffee: any, coffeeIndex: number) => {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					message.coffeeData.forEach((coffee: any) => {
 						markdown += `**${coffee.name || 'Unknown Coffee'}**\n`;
 						if (coffee.origin) markdown += `- Origin: ${coffee.origin}\n`;
 						if (coffee.variety) markdown += `- Variety: ${coffee.variety}\n`;
@@ -666,7 +677,7 @@
 			{:else}
 				<!-- Chat messages -->
 				<div class="mx-auto max-w-4xl space-y-4">
-					{#each messages as message, index}
+					{#each messages as message}
 						<div
 							class="flex {message.role === 'user'
 								? 'justify-end'

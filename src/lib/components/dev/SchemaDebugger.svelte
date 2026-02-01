@@ -10,7 +10,7 @@
 
 	let { show = false } = $props<{ show?: boolean }>();
 
-	let schemas = $state<any[]>([]);
+	let schemas = $state<Record<string, unknown>[]>([]);
 	let validationResults = $state<ValidationResult[]>([]);
 	let isExpanded = $state(false);
 	let currentUrl = $state('');
@@ -30,7 +30,7 @@
 		validateCurrentPageSchemas();
 	}
 
-	function copySchemaToClipboard(schema: any) {
+	function copySchemaToClipboard(schema: Record<string, unknown>) {
 		navigator.clipboard.writeText(JSON.stringify(schema, null, 2));
 	}
 

@@ -225,13 +225,17 @@
 											<div class="flex items-center space-x-1">
 												<div class="h-2 w-2 rounded-full bg-green-500"></div>
 												<span class="text-xs text-text-secondary-light">
-													{keyUsage.usage.filter((u: any) => u.status_code < 400).length} success
+													{keyUsage.usage.filter(
+														(u: Record<string, unknown>) => (u.status_code as number) < 400
+													).length} success
 												</span>
 											</div>
 											<div class="flex items-center space-x-1">
 												<div class="h-2 w-2 rounded-full bg-red-500"></div>
 												<span class="text-xs text-text-secondary-light">
-													{keyUsage.usage.filter((u: any) => u.status_code >= 400).length} errors
+													{keyUsage.usage.filter(
+														(u: Record<string, unknown>) => (u.status_code as number) >= 400
+													).length} errors
 												</span>
 											</div>
 										</div>

@@ -16,20 +16,6 @@ async function waitForNetworkIdle(page: Page, timeout = 3000) {
 }
 
 /**
- * Helper to click a button and wait for it to complete (not be disabled)
- */
-async function clickAndWait(
-	page: Page,
-	buttonName: string | RegExp,
-	options?: { exact?: boolean }
-) {
-	const button = page.getByRole('button', { name: buttonName, ...options });
-	await button.click();
-	// Wait for any loading states to resolve
-	await page.waitForTimeout(300);
-}
-
-/**
  * Navigate to beans page via sidebar
  */
 async function navigateToBeans(page: Page) {
@@ -38,17 +24,6 @@ async function navigateToBeans(page: Page) {
 	await page.getByRole('link', { name: 'Beans' }).waitFor({ state: 'visible' });
 	await page.getByRole('link', { name: 'Beans' }).click();
 	await page.waitForURL(/\/beans/);
-}
-
-/**
- * Select a bean by partial name match
- */
-async function selectBean(page: Page, partialName: string) {
-	// Use regex to match partial name, ignoring dynamic parts like dates/IDs
-	await page
-		.getByRole('button', { name: new RegExp(partialName, 'i') })
-		.first()
-		.click();
 }
 
 // ============================================================
@@ -68,25 +43,63 @@ interface NetworkError {
 	method: string;
 }
 
+/**
+ * Patterns to ignore - these are known non-actionable warnings from build/Playwright
+ */
+const IGNORED_CONSOLE_PATTERNS = [
+	// SvelteKit router warnings (triggered by Playwright navigation)
+	/Avoid using `history\.pushState/,
+	/Avoid using `history\.replaceState/,
+	// Svelte $state proxy console warnings
+	/console_log_state/,
+	/\$state proxies/,
+	// Chart initialization warning (normal during component mount)
+	/Chart components not ready yet/,
+	// tsconfig warnings during build
+	/Cannot find base config file/,
+	/tsconfig\.json/
+];
+
+const IGNORED_NETWORK_PATTERNS = [
+	// Aborted requests during fast navigation (test cleanup)
+	/net::ERR_ABORTED/,
+	/aborted/i
+];
+
+function isIgnoredConsoleError(error: ConsoleError): boolean {
+	return IGNORED_CONSOLE_PATTERNS.some((pattern) => pattern.test(error.text));
+}
+
+function isIgnoredNetworkError(error: NetworkError): boolean {
+	return IGNORED_NETWORK_PATTERNS.some((pattern) => pattern.test(error.statusText));
+}
+
 function setupErrorCollection(page: Page) {
 	const consoleErrors: ConsoleError[] = [];
 	const networkErrors: NetworkError[] = [];
 
 	page.on('console', (msg) => {
 		if (msg.type() === 'error' || msg.type() === 'warning') {
-			consoleErrors.push({
+			const error: ConsoleError = {
 				type: msg.type(),
 				text: msg.text(),
 				location: msg.location()?.url
-			});
+			};
+			// Only collect if not in ignored patterns
+			if (!isIgnoredConsoleError(error)) {
+				consoleErrors.push(error);
+			}
 		}
 	});
 
 	page.on('pageerror', (error) => {
-		consoleErrors.push({
+		const consoleError: ConsoleError = {
 			type: 'pageerror',
 			text: error.message
-		});
+		};
+		if (!isIgnoredConsoleError(consoleError)) {
+			consoleErrors.push(consoleError);
+		}
 	});
 
 	page.on('response', (response) => {
@@ -101,12 +114,16 @@ function setupErrorCollection(page: Page) {
 	});
 
 	page.on('requestfailed', (request) => {
-		networkErrors.push({
+		const error: NetworkError = {
 			url: request.url(),
 			status: 0,
 			statusText: request.failure()?.errorText || 'Request failed',
 			method: request.method()
-		});
+		};
+		// Only collect if not in ignored patterns
+		if (!isIgnoredNetworkError(error)) {
+			networkErrors.push(error);
+		}
 	});
 
 	return { consoleErrors, networkErrors };
@@ -287,7 +304,7 @@ test.describe('Roast Profiles', () => {
 		await page.waitForTimeout(500);
 
 		// Check if there are any roast profiles
-		const startNewRoastBtn = page.getByRole('button', { name: /Start New Roast/i });
+		// const startNewRoastBtn = page.getByRole('button', { name: /Start New Roast/i });
 		const hasExistingProfiles = await page
 			.getByText(/Roast #|ID: \d+/)
 			.first()

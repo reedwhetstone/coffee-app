@@ -33,8 +33,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		return json({ clientSecret });
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error creating checkout session:', error);
-		return json({ error: error.message }, { status: 500 });
+		return json(
+			{ error: error instanceof Error ? error.message : 'Unknown error' },
+			{ status: 500 }
+		);
 	}
 };

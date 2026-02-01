@@ -10,11 +10,11 @@ export const POST: RequestHandler = async ({ locals: { supabase, safeGetSession 
 		}
 
 		// Check if user has admin/member role (you may want to add additional role checking here)
-		const { data: userRole } = await supabase
+		const { data: userRole } = (await supabase
 			.from('user_roles')
 			.select('user_role')
 			.eq('id', user.id)
-			.single();
+			.single()) as { data: { user_role: string[] } | null };
 
 		if (!userRole || !userRole.user_role.includes('member')) {
 			return json({ error: 'Insufficient permissions' }, { status: 403 });

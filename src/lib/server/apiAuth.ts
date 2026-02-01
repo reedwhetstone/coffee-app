@@ -1,8 +1,15 @@
 import { createAdminClient } from '$lib/supabase-admin';
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
+import type { Database } from '$lib/types/database.types';
 
 const supabase = createAdminClient();
+
+// Type aliases for database operations
+type ApiKeyRow = Database['public']['Tables']['api_keys']['Row'];
+//type ApiKeyInsert = Database['public']['Tables']['api_keys']['Insert'];
+//type ApiKeyUpdate = Database['public']['Tables']['api_keys']['Update'];
+//type ApiUsageInsert = Database['public']['Tables']['api_usage']['Insert'];
 
 // API key configuration
 const API_KEY_PREFIX = 'pk_live_';
@@ -78,11 +85,19 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 			return { valid: false, error: 'Invalid API key format' };
 		}
 
+		// Type alias for the select result
+		type ApiKeySelectResult = Pick<
+			ApiKeyRow,
+			'id' | 'user_id' | 'key_hash' | 'is_active' | 'last_used_at'
+		>;
+
 		// Get all active API keys (we need to check hashes)
-		const { data: apiKeys, error } = await supabase
+		const { data: apiKeysData, error } = await supabase
 			.from('api_keys')
 			.select('id, user_id, key_hash, is_active, last_used_at')
 			.eq('is_active', true);
+
+		const apiKeys = apiKeysData as ApiKeySelectResult[] | null;
 
 		if (error || !apiKeys) {
 			console.error('Error fetching API keys:', error);
@@ -101,7 +116,7 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 
 				return {
 					valid: true,
-					userId: apiKey.user_id,
+					userId: apiKey.user_id ?? undefined,
 					keyId: apiKey.id
 				};
 			}
@@ -209,7 +224,7 @@ export async function logApiUsage(
 			status_code: statusCode,
 			response_time_ms: responseTimeMs,
 			user_agent: userAgent,
-			ip_address: ipAddress
+			ip_address: ipAddress as unknown
 		});
 	} catch (error) {
 		// Don't throw on logging errors, just log them

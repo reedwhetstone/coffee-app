@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 
 // Simple in-memory cache for catalog data
 let catalogCache: {
-	data: any[] | null;
+	data: Record<string, unknown>[] | null;
 	timestamp: number;
 } = {
 	data: null,

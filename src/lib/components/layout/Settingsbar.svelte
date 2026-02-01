@@ -11,7 +11,7 @@
 
 	// Component props interface
 	let { onClose = () => {} } = $props<{
-		data: any;
+		data: Record<string, unknown>;
 		isOpen?: boolean;
 		onClose?: () => void;
 	}>();
@@ -130,7 +130,9 @@
 										<button
 											class="text-xs text-background-tertiary-light hover:opacity-80"
 											onclick={() => {
-												filterStore.setFilter('source', [...$filterStore.uniqueValues.sources]);
+												filterStore.setFilter('source', [
+													...($filterStore.uniqueValues.sources as string[])
+												]);
 											}}
 										>
 											Select All
@@ -151,11 +153,19 @@
 											<label class="flex items-center gap-2 py-1">
 												<input
 													type="checkbox"
-													checked={$filterStore.filters.source?.includes(source)}
+													checked={Array.isArray($filterStore.filters.source) &&
+														$filterStore.filters.source.includes(source as string)}
 													onchange={(e) => {
-														const currentSources = $filterStore.filters.source || [];
+														const currentSources = (
+															Array.isArray($filterStore.filters.source)
+																? $filterStore.filters.source
+																: []
+														) as string[];
 														if (e.currentTarget.checked) {
-															filterStore.setFilter('source', [...currentSources, source]);
+															filterStore.setFilter('source', [
+																...currentSources,
+																source as string
+															]);
 														} else {
 															filterStore.setFilter(
 																'source',
@@ -187,7 +197,9 @@
 										<button
 											class="text-xs text-background-tertiary-light hover:opacity-80"
 											onclick={() => {
-												filterStore.setFilter('country', [...$filterStore.uniqueValues.countries]);
+												filterStore.setFilter('country', [
+													...($filterStore.uniqueValues.countries as string[])
+												]);
 											}}
 										>
 											Select All
@@ -208,11 +220,19 @@
 											<label class="flex items-center gap-2 py-1">
 												<input
 													type="checkbox"
-													checked={$filterStore.filters.country?.includes(country)}
+													checked={Array.isArray($filterStore.filters.country) &&
+														$filterStore.filters.country.includes(country as string)}
 													onchange={(e) => {
-														const currentCountries = $filterStore.filters.country || [];
+														const currentCountries = (
+															Array.isArray($filterStore.filters.country)
+																? $filterStore.filters.country
+																: []
+														) as string[];
 														if (e.currentTarget.checked) {
-															filterStore.setFilter('country', [...currentCountries, country]);
+															filterStore.setFilter('country', [
+																...currentCountries,
+																country as string
+															]);
 														} else {
 															filterStore.setFilter(
 																'country',
@@ -231,10 +251,19 @@
 								<div class="flex gap-2">
 									<input
 										type="number"
-										value={$filterStore.filters.score_value?.min || ''}
+										value={(
+											$filterStore.filters.score_value as
+												| { min: string | number; max: string | number }
+												| undefined
+										)?.min || ''}
 										oninput={(e) => {
 											const min = e.currentTarget.value;
-											const max = $filterStore.filters.score_value?.max || '';
+											const max =
+												(
+													$filterStore.filters.score_value as
+														| { min: string | number; max: string | number }
+														| undefined
+												)?.max || '';
 											filterStore.setFilter('score_value', { min, max });
 										}}
 										class="w-full rounded-md border border-border-light bg-background-primary-light p-2 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
@@ -245,10 +274,19 @@
 									/>
 									<input
 										type="number"
-										value={$filterStore.filters.score_value?.max || ''}
+										value={(
+											$filterStore.filters.score_value as
+												| { min: string | number; max: string | number }
+												| undefined
+										)?.max || ''}
 										oninput={(e) => {
 											const max = e.currentTarget.value;
-											const min = $filterStore.filters.score_value?.min || '';
+											const min =
+												(
+													$filterStore.filters.score_value as
+														| { min: string | number; max: string | number }
+														| undefined
+												)?.min || '';
 											filterStore.setFilter('score_value', { min, max });
 										}}
 										class="w-full rounded-md border border-border-light bg-background-primary-light p-2 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
@@ -262,10 +300,19 @@
 								<div class="flex gap-2">
 									<input
 										type="number"
-										value={$filterStore.filters.cost_lb?.min || ''}
+										value={(
+											$filterStore.filters.cost_lb as
+												| { min: string | number; max: string | number }
+												| undefined
+										)?.min || ''}
 										oninput={(e) => {
 											const min = e.currentTarget.value;
-											const max = $filterStore.filters.cost_lb?.max || '';
+											const max =
+												(
+													$filterStore.filters.cost_lb as
+														| { min: string | number; max: string | number }
+														| undefined
+												)?.max || '';
 											filterStore.setFilter('cost_lb', { min, max });
 										}}
 										class="w-full rounded-md border border-border-light bg-background-primary-light p-2 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
@@ -275,10 +322,19 @@
 									/>
 									<input
 										type="number"
-										value={$filterStore.filters.cost_lb?.max || ''}
+										value={(
+											$filterStore.filters.cost_lb as
+												| { min: string | number; max: string | number }
+												| undefined
+										)?.max || ''}
 										oninput={(e) => {
 											const max = e.currentTarget.value;
-											const min = $filterStore.filters.cost_lb?.min || '';
+											const min =
+												(
+													$filterStore.filters.cost_lb as
+														| { min: string | number; max: string | number }
+														| undefined
+												)?.min || '';
 											filterStore.setFilter('cost_lb', { min, max });
 										}}
 										class="w-full rounded-md border border-border-light bg-background-primary-light p-2 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"

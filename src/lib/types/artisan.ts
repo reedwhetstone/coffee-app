@@ -19,6 +19,31 @@ export interface ArtisanRoastData {
 	roastdate?: string;
 	roasttime?: string;
 	roast_uuid?: string;
+	xmin?: number;
+	xmax?: number;
+	ymin?: number;
+	ymax?: number;
+	zmin?: number;
+	zmax?: number;
+
+	// Computed data from Artisan
+	computed?: {
+		TP_time?: number;
+		TP_BT?: number;
+		dry_phase_ror?: number;
+		mid_phase_ror?: number;
+		finish_phase_ror?: number;
+		total_ror?: number;
+		AUC?: number;
+		dry_phase_delta_temp?: number;
+		CHARGE_BT?: number;
+		DRY_BT?: number;
+		DROP_BT?: number;
+		COOL_BT?: number;
+		DRY_time?: number;
+		DROP_time?: number;
+		COOL_time?: number;
+	};
 
 	// Time series data (required arrays)
 	timex: number[]; // Time in seconds from start
@@ -163,6 +188,7 @@ export interface ProcessedRoastData {
 		subcategory: string;
 		user_generated: boolean;
 		automatic: boolean;
+		notes?: string;
 	}>;
 
 	// Computed data from Artisan
@@ -200,16 +226,18 @@ export interface ValidationResult {
 }
 
 // Type guard for Artisan data
-export function isArtisanRoastData(data: any): data is ArtisanRoastData {
+export function isArtisanRoastData(data: unknown): data is ArtisanRoastData {
+	if (typeof data !== 'object' || data === null) {
+		return false;
+	}
+	const d = data as Record<string, unknown>;
 	return (
-		typeof data === 'object' &&
-		data !== null &&
-		Array.isArray(data.timex) &&
-		Array.isArray(data.temp1) &&
-		Array.isArray(data.temp2) &&
-		Array.isArray(data.timeindex) &&
-		typeof data.title === 'string' &&
-		(data.mode === 'F' || data.mode === 'C')
+		Array.isArray(d.timex) &&
+		Array.isArray(d.temp1) &&
+		Array.isArray(d.temp2) &&
+		Array.isArray(d.timeindex) &&
+		typeof d.title === 'string' &&
+		(d.mode === 'F' || d.mode === 'C')
 	);
 }
 

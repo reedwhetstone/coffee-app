@@ -15,8 +15,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	let exampleApiKey = 'your_api_key';
 	if (apiKeysResult.success && apiKeysResult.data && apiKeysResult.data.length > 0) {
-		const activeKey = (apiKeysResult.data as any[]).find((key) => key.is_active);
-		if (activeKey) {
+		const activeKey = (apiKeysResult.data as Array<{ is_active?: boolean; name?: string }>).find(
+			(key) => key.is_active
+		);
+		if (activeKey?.name) {
 			// Show masked version for documentation examples
 			exampleApiKey = activeKey.name.toLowerCase().replace(/\s+/g, '_') + '_key';
 		}

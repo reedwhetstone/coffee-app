@@ -1,4 +1,12 @@
 <script lang="ts">
+	import type { RoastProfile } from '$lib/types/component.types';
+
+	// Local type to handle potential legacy fields not in the DB schema
+	interface TableRoastProfile extends RoastProfile {
+		roast_duration_minutes?: number;
+		end_temperature?: number;
+	}
+
 	let {
 		sortedBatchNames,
 		sortedGroupedProfiles,
@@ -8,11 +16,11 @@
 		onSelectProfile
 	} = $props<{
 		sortedBatchNames: string[];
-		sortedGroupedProfiles: Record<string, any[]>;
+		sortedGroupedProfiles: Record<string, TableRoastProfile[]>;
 		expandedBatches: Set<string>;
-		currentRoastProfile: any;
+		currentRoastProfile: TableRoastProfile | null | undefined;
 		onToggleBatch: (batchName: string) => void;
-		onSelectProfile: (profile: any) => void;
+		onSelectProfile: (profile: TableRoastProfile) => void;
 	}>();
 
 	// Create derived values with defaults
@@ -24,7 +32,7 @@
 	let isBatchExpanded = $derived((batchName: string) => expandedBatches.has(batchName));
 
 	// Helper functions for data calculations
-	function calculateRoastDuration(profile: any): string {
+	function calculateRoastDuration(profile: TableRoastProfile): string {
 		// Use calculated total_roast_time from roast_profiles, fallback to roast_duration_minutes
 		if (profile.total_roast_time) {
 			const totalSeconds = Math.round(profile.total_roast_time);
@@ -38,7 +46,7 @@
 		return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 	}
 
-	function calculateWeightLossPercentage(profile: any): string {
+	function calculateWeightLossPercentage(profile: TableRoastProfile): string {
 		// Use calculated weight_loss_percent from roast_profiles, fallback to calculation
 		if (profile.weight_loss_percent !== null && profile.weight_loss_percent !== undefined) {
 			return `${profile.weight_loss_percent.toFixed(1)}%`;
@@ -49,7 +57,7 @@
 		return `${weightLoss.toFixed(1)}%`;
 	}
 
-	function getDropTempDisplay(profile: any): string {
+	function getDropTempDisplay(profile: TableRoastProfile): string {
 		// Use calculated drop_temp from roast_profiles, fallback to end_temperature
 		if (profile.drop_temp) {
 			return `${Math.round(profile.drop_temp)}°F`;
@@ -60,7 +68,7 @@
 		return 'N/A';
 	}
 
-	function getRoastLevelColor(profile: any): string {
+	function getRoastLevelColor(profile: TableRoastProfile): string {
 		// Use drop_temp if available, otherwise end_temperature
 		const temp = profile.drop_temp || profile.end_temperature;
 		if (!temp) return 'text-text-secondary-light';
@@ -69,21 +77,7 @@
 		return 'text-orange-700'; // Dark roast
 	}
 
-	function getRoastCompletionStatus(profile: any): {
-		status: string;
-		color: string;
-		bgColor: string;
-	} {
-		if (profile.oz_out && profile.oz_in) {
-			return { status: 'Complete', color: 'text-green-700', bgColor: 'bg-green-100' };
-		}
-		if (profile.roast_duration_minutes > 0) {
-			return { status: 'In Progress', color: 'text-blue-700', bgColor: 'bg-blue-100' };
-		}
-		return { status: 'Started', color: 'text-gray-700', bgColor: 'bg-gray-100' };
-	}
-
-	function getBatchSummary(profiles: any[]) {
+	function getBatchSummary(profiles: TableRoastProfile[]) {
 		const totalWeight = profiles.reduce((sum, p) => sum + (p.oz_in || 0), 0);
 
 		// Calculate average weight loss percentage for batch summary

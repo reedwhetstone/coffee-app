@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ComponentType } from 'svelte';
+	import type { ComponentType, Snippet } from 'svelte';
 
 	let {
 		state,
@@ -18,7 +18,7 @@
 		skeletonComponent?: ComponentType | null;
 		retryable?: boolean;
 		onretry?: (() => void) | undefined;
-		children?: any;
+		children?: Snippet;
 	}>();
 
 	function handleRetry() {

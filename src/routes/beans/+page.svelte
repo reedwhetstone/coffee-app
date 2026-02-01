@@ -1,11 +1,13 @@
 <script lang="ts">
-	import type { Database } from '$lib/types/database.types';
 	import BeanForm from './BeanForm.svelte';
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
+
+	// Cast filtered data to the correct type for this page
+	let typedFilteredData = $derived($filteredData as unknown as InventoryWithCatalog[]);
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import BeansPageSkeleton from '$lib/components/BeansPageSkeleton.svelte';
 	import SimpleLoadingScreen from '$lib/components/SimpleLoadingScreen.svelte';
@@ -18,7 +20,8 @@
 	} from '$lib/types/component.types';
 
 	// Lazy load the tasting notes radar component
-	let TastingNotesRadar = $state<any>(null);
+	import type { Component } from 'svelte';
+	let TastingNotesRadar = $state<Component | null>(null);
 	let radarComponentLoading = $state(true);
 
 	// Load radar component after initial render
@@ -124,13 +127,13 @@
 
 	// State for form and bean selection
 	let isFormVisible = $state(false);
-	let selectedBean = $state<any>(null);
+	let selectedBean = $state<InventoryWithCatalog | null>(null);
 	let beanProfileElement = $state<HTMLElement | null>(null);
 
-	// Reset selected bean if it's filtered out
+	// Reset selectedBean if it's filtered out
 	$effect(() => {
-		if (selectedBean && $filteredData.length > 0) {
-			const stillExists = $filteredData.some((bean) => bean.id === selectedBean.id);
+		if (selectedBean && typedFilteredData.length > 0) {
+			const stillExists = typedFilteredData.some((bean) => bean.id === selectedBean?.id);
 			if (!stillExists) {
 				selectedBean = null;
 			}
@@ -198,7 +201,7 @@
 
 	// Function to handle editing
 
-	async function handleFormSubmit(formData: CoffeeFormData) {
+	async function handleFormSubmit(_formData: CoffeeFormData) {
 		await refreshData();
 		// For form submission, we don't have the full bean data immediately
 		// The bean will be selected from the refreshed data if needed
@@ -207,13 +210,13 @@
 	// Handle search state and navigation after data loads
 	$effect(() => {
 		if (!isLoading && clientData.length > 0) {
-			const searchState = page.state as any;
+			const searchState = page.state as Record<string, unknown>;
 
 			// Check if we should show a bean based on the search state
 			if (searchState?.searchType === 'green' && searchState?.searchId) {
 				const foundBean = clientData.find((bean) => bean.id === searchState.searchId);
 				if (foundBean) {
-					selectedBean = foundBean;
+					selectedBean = foundBean as unknown as InventoryWithCatalog;
 					setTimeout(() => {
 						if (beanProfileElement) {
 							beanProfileElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -321,18 +324,18 @@
 		</div>
 
 		<!-- Dashboard Cards Section -->
-		{#if !isLoading && $filteredData && $filteredData.length > 0}
+		{#if !isLoading && typedFilteredData && typedFilteredData.length > 0}
 			<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 				<!-- Total Inventory Value -->
 				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 					<h3 class="text-sm font-medium text-text-primary-light">Total Inventory Value</h3>
 					<p class="mt-1 text-2xl font-bold text-green-500">
-						${$filteredData
+						${typedFilteredData
 							.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0)
 							.toFixed(2)}
 					</p>
 					<p class="mt-1 text-xs text-text-secondary-light">
-						{$filteredData.length} coffee{$filteredData.length !== 1 ? 's' : ''}
+						{typedFilteredData.length} coffee{typedFilteredData.length !== 1 ? 's' : ''}
 					</p>
 				</div>
 
@@ -340,12 +343,14 @@
 				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 					<h3 class="text-sm font-medium text-text-primary-light">Total Weight</h3>
 					<p class="mt-1 text-2xl font-bold text-blue-500">
-						{$filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0).toFixed(1)}
+						{typedFilteredData
+							.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0)
+							.toFixed(1)}
 						lbs
 					</p>
 					<p class="mt-1 text-xs text-text-secondary-light">
 						{(
-							$filteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0) * 16
+							typedFilteredData.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0) * 16
 						).toFixed(0)} oz total
 					</p>
 				</div>
@@ -355,7 +360,7 @@
 					<h3 class="text-sm font-medium text-text-primary-light">Raw Inventory</h3>
 					<p class="mt-1 text-2xl font-bold text-indigo-500">
 						{(() => {
-							const totalStockedLbs = $filteredData.reduce(
+							const totalStockedLbs = typedFilteredData.reduce(
 								(sum: number, bean: InventoryWithCatalog) => {
 									const purchasedOz = (bean.purchased_qty_lbs || 0) * 16;
 									const roastedOz =
@@ -385,11 +390,11 @@
 					<h3 class="text-sm font-medium text-text-primary-light">Avg Cost/lb</h3>
 					<p class="mt-1 text-2xl font-bold text-orange-500">
 						${(() => {
-							const totalCost = $filteredData.reduce(
+							const totalCost = typedFilteredData.reduce(
 								(sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)),
 								0
 							);
-							const totalWeight = $filteredData.reduce(
+							const totalWeight = typedFilteredData.reduce(
 								(sum, bean) => sum + (bean.purchased_qty_lbs || 0),
 								0
 							);
@@ -403,10 +408,10 @@
 				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 					<h3 class="text-sm font-medium text-text-primary-light">Currently Stocked</h3>
 					<p class="mt-1 text-2xl font-bold text-purple-500">
-						{$filteredData.filter((bean) => bean.stocked).length}
+						{typedFilteredData.filter((bean) => bean.stocked).length}
 					</p>
 					<p class="mt-1 text-xs text-text-secondary-light">
-						of {$filteredData.length} selected coffees
+						of {typedFilteredData.length} selected coffees
 					</p>
 				</div>
 			</div>
@@ -415,8 +420,8 @@
 			<div class="mb-6 rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Inventory by Source</h3>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{#each Object.entries($filteredData.reduce((acc, bean) => {
-								const source = bean.coffee_catalog?.source || bean.source || 'Unknown';
+					{#each Object.entries(typedFilteredData.reduce((acc, bean) => {
+								const source = bean.coffee_catalog?.source || 'Unknown';
 								if (!acc[source]) {
 									acc[source] = { count: 0, weight: 0, value: 0 };
 								}
@@ -456,7 +461,7 @@
 						selectedBean = updatedBean;
 						await refreshData();
 						// Update selectedBean from refreshed data
-						const refreshedBean = $filteredData.find((bean) => bean.id === updatedBean.id);
+						const refreshedBean = typedFilteredData.find((bean) => bean.id === updatedBean.id);
 						if (refreshedBean) {
 							selectedBean = refreshedBean;
 						}
@@ -484,10 +489,10 @@
 		{/if}
 
 		<!-- Quick Actions -->
-		{#if !isLoading && $filteredData && $filteredData.length > 0}
+		{#if !isLoading && typedFilteredData && typedFilteredData.length > 0}
 			<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 				<div class="text-sm text-text-secondary-light">
-					Showing {$filteredData.length} of {clientData.length || 0} coffees
+					Showing {typedFilteredData.length} of {clientData.length || 0} coffees
 				</div>
 			</div>
 		{/if}
@@ -500,7 +505,7 @@
 					message="Loading your coffee inventory..."
 					overlay={false}
 				/>
-			{:else if !$filteredData || $filteredData.length === 0}
+			{:else if !typedFilteredData || typedFilteredData.length === 0}
 				<div
 					class="rounded-lg bg-background-secondary-light p-8 text-center ring-1 ring-border-light"
 				>
@@ -532,9 +537,9 @@
 				</div>
 			{:else}
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-					{#each $filteredData as bean}
+					{#each typedFilteredData as bean}
 						{@const catalogData = bean.coffee_catalog}
-						{@const displayName = catalogData?.name || bean.name}
+						{@const displayName = catalogData?.name || 'Unknown Coffee'}
 						{@const displaySource = catalogData?.source || 'Unknown Source'}
 						{@const displayAiDescription = catalogData?.ai_description}
 						{@const displayLocation =
@@ -547,9 +552,12 @@
 						{@const displayAppearance = catalogData?.appearance}
 						{@const displayType = catalogData?.type}
 						{@const displayArrival = catalogData?.arrival_date}
-						{@const displayRating = bean.rank}
-						{@const tastingNotes = parseTastingNotes(catalogData?.ai_tasting_notes)}
-						{@const userCuppingNotes = parseTastingNotes(bean.cupping_notes)}
+						{@const tastingNotes = parseTastingNotes(
+							catalogData?.ai_tasting_notes as string | object | null
+						)}
+						{@const userCuppingNotes = parseTastingNotes(
+							bean.cupping_notes as string | object | null
+						)}
 						{@const hasUserRating = bean.rank !== undefined && bean.rank !== null}
 						{@const hasUserCupping = userCuppingNotes !== null}
 						{@const purchasedOz = (bean.purchased_qty_lbs || 0) * 16}

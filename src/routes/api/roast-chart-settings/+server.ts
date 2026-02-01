@@ -19,11 +19,20 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	const supabase = createClient();
 
 	try {
-		const { data, error } = await supabase
+		const { data: dataRaw, error } = await supabase
 			.from('roast_profiles')
 			.select('chart_x_min, chart_x_max, chart_y_min, chart_y_max, chart_z_min, chart_z_max')
 			.eq('roast_id', roastIdNum)
 			.single();
+
+		const data = dataRaw as {
+			chart_x_min: number | null;
+			chart_x_max: number | null;
+			chart_y_min: number | null;
+			chart_y_max: number | null;
+			chart_z_min: number | null;
+			chart_z_max: number | null;
+		} | null;
 
 		if (error) {
 			console.error('Error fetching chart settings:', error);
@@ -31,9 +40,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		}
 
 		const settings = {
-			xRange: [data.chart_x_min, data.chart_x_max],
-			yRange: [data.chart_y_min, data.chart_y_max],
-			zRange: [data.chart_z_min, data.chart_z_max]
+			xRange: [data?.chart_x_min, data?.chart_x_max],
+			yRange: [data?.chart_y_min, data?.chart_y_max],
+			zRange: [data?.chart_z_min, data?.chart_z_max]
 		};
 
 		return json({ settings });

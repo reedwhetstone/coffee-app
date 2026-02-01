@@ -49,7 +49,7 @@ export async function POST({ request }: RequestEvent) {
 
 		// Handle specific events
 		switch (event.type) {
-			case 'checkout.session.completed':
+			case 'checkout.session.completed': {
 				// Handle successful checkout
 				const session = event.data.object;
 				console.log('💰 Checkout session completed');
@@ -94,9 +94,10 @@ export async function POST({ request }: RequestEvent) {
 					}
 				}
 				break;
+			}
 
 			case 'customer.subscription.created':
-			case 'customer.subscription.updated':
+			case 'customer.subscription.updated': {
 				// Handle subscription creation or update
 				const subscription = event.data.object;
 				console.log('📋 Subscription status:', subscription.status);
@@ -113,6 +114,7 @@ export async function POST({ request }: RequestEvent) {
 					await handleSubscriptionInactive(subscription, supabase);
 				}
 				break;
+			}
 
 			case 'customer.subscription.deleted':
 				// Handle subscription cancellation

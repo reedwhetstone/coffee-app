@@ -49,8 +49,7 @@ export async function getStripeCustomerId(userId: string): Promise<string | null
 		console.error('Error fetching Stripe customer ID:', error);
 		return null;
 	}
-	console.log('data', data);
-	return (data as any)?.customer_id || null;
+	return data?.customer_id || null;
 }
 
 /**
@@ -101,7 +100,7 @@ export async function createStripeCustomer(
 				user_id: userId,
 				customer_id: customerId,
 				email
-			} as any,
+			},
 			{
 				onConflict: 'user_id'
 			}

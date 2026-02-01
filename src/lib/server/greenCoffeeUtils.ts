@@ -35,7 +35,7 @@ export interface CoffeeCatalog {
 	stocked_date: string | null;
 	unstocked_date: string | null;
 	ai_description: string | null;
-	ai_tasting_notes: any;
+	ai_tasting_notes: Record<string, unknown> | null;
 	public_coffee: boolean | null;
 }
 
@@ -101,12 +101,22 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
 	`);
 }
 
+// Raw bean structure from Supabase query with nested relations
+interface RawGreenCoffeeBean {
+	coffee_catalog?: {
+		ai_tasting_notes?: Record<string, unknown> | null;
+		[key: string]: unknown;
+	} | null;
+	roast_profiles?: RoastProfile[];
+	[key: string]: unknown;
+}
+
 /**
  * Processes raw data from Supabase to ensure consistent serialization
  * and proper data structure for frontend consumption
  */
-export function processGreenCoffeeData(rawData: any[]): GreenCoffeeRow[] {
-	return rawData.map((bean) => ({
+export function processGreenCoffeeData(rawData: unknown[]): GreenCoffeeRow[] {
+	return (rawData as RawGreenCoffeeBean[]).map((bean) => ({
 		...bean,
 		// Handle ai_tasting_notes serialization consistently
 		ai_tasting_notes: bean.coffee_catalog?.ai_tasting_notes
@@ -122,7 +132,7 @@ export function processGreenCoffeeData(rawData: any[]): GreenCoffeeRow[] {
 			: null,
 		// Process roast profiles to ensure proper numeric formatting
 		roast_profiles:
-			bean.roast_profiles?.map((profile: any) => ({
+			bean.roast_profiles?.map((profile: RoastProfile) => ({
 				oz_in: profile.oz_in,
 				oz_out: profile.oz_out,
 				// Round weight_loss_percent to 2 decimal places to ensure consistent serialization
@@ -134,5 +144,5 @@ export function processGreenCoffeeData(rawData: any[]): GreenCoffeeRow[] {
 				batch_name: profile.batch_name,
 				roast_date: profile.roast_date
 			})) || []
-	}));
+	})) as unknown as GreenCoffeeRow[];
 }

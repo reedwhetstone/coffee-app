@@ -1,6 +1,6 @@
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async ({ parent, url, data: serverData }) => {
+export const load: PageLoad = async ({ parent, data: serverData }) => {
 	const layoutData = await parent();
 
 	// Combine layout data with server data

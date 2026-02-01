@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { requireUserAuth } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
+import type { Database } from '$lib/types/database.types';
 import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils.js';
 
@@ -34,7 +35,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		} else {
 			// Standard user authentication - all users (including admins) see only their own data
 			const sessionData = await locals.safeGetSession();
-			const { session, user } = sessionData as { session: any; user: any };
+			const { session, user } = sessionData;
 
 			if (!session || !user) {
 				return json({ data: [] });
@@ -73,7 +74,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// If this is a manual entry (no catalog_id but has manual_name), create catalog entry first
 		if (!catalogId && bean.manual_name) {
-			const catalogData: { [key: string]: any } = {
+			const catalogData: Record<string, unknown> = {
 				name: bean.manual_name,
 				coffee_user: user.id,
 				public_coffee: false,
@@ -113,7 +114,7 @@ export const POST: RequestHandler = async (event) => {
 
 			const { data: newCatalogEntry, error: catalogError } = await supabase
 				.from('coffee_catalog')
-				.insert(catalogData)
+				.insert(catalogData as Database['public']['Tables']['coffee_catalog']['Insert'])
 				.select('id')
 				.single();
 
@@ -137,20 +138,23 @@ export const POST: RequestHandler = async (event) => {
 			'cupping_notes'
 		];
 
-		const cleanedBean: { [key: string]: any } = {
+		const cleanedBean: Record<string, unknown> = {
 			user: user.id,
 			catalog_id: catalogId,
 			last_updated: new Date().toISOString(),
 			// Ensure numeric fields are properly formatted
 			tax_ship_cost:
 				typeof bean.tax_ship_cost === 'number' ? parseFloat(bean.tax_ship_cost.toFixed(2)) : 0.0,
-			bean_cost: typeof bean.bean_cost === 'number' ? parseFloat(bean.bean_cost.toFixed(2)) : 0.0
+			bean_cost: typeof bean.bean_cost === 'number' ? parseFloat(bean.bean_cost.toFixed(2)) : 0.0,
+			name: bean.manual_name || 'Unknown Bean' // Required field
 		};
 
 		// Add only valid inventory columns
+		// Add only valid inventory columns (ignoring keys that don't match or are explicitly handled)
 		validInventoryColumns.forEach((field) => {
 			if (bean[field] !== undefined) {
-				cleanedBean[field] = bean[field];
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				(cleanedBean as any)[field] = bean[field];
 			}
 		});
 
@@ -169,7 +173,7 @@ export const POST: RequestHandler = async (event) => {
 
 		const { data: newBean, error } = await supabase
 			.from('green_coffee_inv')
-			.insert(cleanedBean)
+			.insert(cleanedBean as Database['public']['Tables']['green_coffee_inv']['Insert'])
 			.select()
 			.single();
 
@@ -200,7 +204,7 @@ export const PUT: RequestHandler = async (event) => {
 		const { data: existing } = await supabase
 			.from('green_coffee_inv')
 			.select('user')
-			.eq('id', id)
+			.eq('id', Number(id))
 			.single();
 
 		if (!existing || existing.user !== user.id) {
@@ -232,8 +236,8 @@ export const PUT: RequestHandler = async (event) => {
 		// First do the update without the join to avoid schema cache issues
 		const { error: updateError } = await supabase
 			.from('green_coffee_inv')
-			.update(updateData)
-			.eq('id', id);
+			.update(updateData as Database['public']['Tables']['green_coffee_inv']['Update'])
+			.eq('id', Number(id));
 
 		if (updateError) {
 			console.error('Update error:', updateError);
@@ -275,7 +279,7 @@ export const DELETE: RequestHandler = async (event) => {
 		const { data: existing } = await supabase
 			.from('green_coffee_inv')
 			.select('user, catalog_id')
-			.eq('id', id)
+			.eq('id', Number(id))
 			.single();
 
 		if (!existing || existing.user !== user.id) {
@@ -286,13 +290,13 @@ export const DELETE: RequestHandler = async (event) => {
 		const { data: roastProfiles, error: selectError } = await supabase
 			.from('roast_profiles')
 			.select('roast_id')
-			.eq('coffee_id', id);
+			.eq('coffee_id', Number(id));
 
 		if (selectError) throw selectError;
 
 		// If there are roast profiles, delete their associated data
 		if (roastProfiles && roastProfiles.length > 0) {
-			const roastIds = roastProfiles.map((profile: any) => profile.roast_id);
+			const roastIds = roastProfiles.map((profile) => profile.roast_id);
 
 			// Delete from normalized tables
 			const { error: tempError } = await supabase
@@ -312,12 +316,15 @@ export const DELETE: RequestHandler = async (event) => {
 		const { error: profileError } = await supabase
 			.from('roast_profiles')
 			.delete()
-			.eq('coffee_id', id);
+			.eq('coffee_id', Number(id));
 
 		if (profileError) throw profileError;
 
 		// Finally, delete the coffee
-		const { error: deleteError } = await supabase.from('green_coffee_inv').delete().eq('id', id);
+		const { error: deleteError } = await supabase
+			.from('green_coffee_inv')
+			.delete()
+			.eq('id', Number(id));
 
 		if (deleteError) throw deleteError;
 

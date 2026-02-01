@@ -4,7 +4,8 @@ import { requireRole } from '$lib/server/auth';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const sessionData = await locals.safeGetSession();
-	const { session, user } = sessionData as { session: any; user: any };
+	// sessionData is already typed from safeGetSession, so we can destructure directly or use type assertion if needed but avoid any
+	const { session, user } = sessionData;
 	const role = locals.role || 'viewer';
 
 	// Require authentication

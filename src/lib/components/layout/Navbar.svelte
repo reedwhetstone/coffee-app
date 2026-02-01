@@ -5,12 +5,12 @@
 
 	// Update the props declaration to include isOpen and onClose
 	let { data, onClose = () => {} } = $props<{
-		data: any;
+		data: Record<string, unknown>;
 		onClose?: () => void;
 	}>();
 
 	// Destructure with default values to prevent undefined errors
-	let { role = 'viewer' } = $derived(data);
+	let { role = 'viewer' } = $derived(data as { role?: string });
 
 	// Import global UserRole type
 	import type { UserRole } from '$lib/types/auth.types';
