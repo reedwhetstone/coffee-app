@@ -34,6 +34,8 @@ jobs:
       - name: Create dummy .env for type checking
         run: |
           cat <<EOF > .env
+          PUBLIC_SUPABASE_URL=https://dummy.supabase.co
+          PUBLIC_SUPABASE_ANON_KEY=dummy
           SUPABASE_SERVICE_ROLE_KEY=dummy
           STRIPE_SECRET_KEY=dummy
           STRIPE_WEBHOOK_SECRET=dummy
