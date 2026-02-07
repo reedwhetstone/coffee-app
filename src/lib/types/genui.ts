@@ -188,7 +188,41 @@ export interface RoastProfilesSummary {
 
 // ─── Block Action Types ──────────────────────────────────────────────────────
 
-export type BlockAction = { type: 'navigate'; url: string };
+export type BlockAction =
+	| { type: 'navigate'; url: string }
+	| { type: 'focus-canvas-block'; blockId: string }
+	| { type: 'scroll-to-message'; messageId: string };
+
+// ─── Canvas Types ────────────────────────────────────────────────────────────
+
+export type CanvasLayout = 'focus' | 'comparison' | 'dashboard';
+
+export interface CanvasBlock {
+	id: string;
+	block: UIBlock;
+	messageId: string;
+	pinned: boolean;
+	minimized: boolean;
+	addedAt: number;
+}
+
+export type CanvasMutation =
+	| { type: 'add'; block: UIBlock; messageId: string }
+	| { type: 'remove'; blockId: string }
+	| { type: 'focus'; blockId: string }
+	| { type: 'clear' }
+	| { type: 'layout'; layout: CanvasLayout }
+	| { type: 'replace'; blocks: Array<{ block: UIBlock; messageId: string }> }
+	| { type: 'pin'; blockId: string }
+	| { type: 'unpin'; blockId: string }
+	| { type: 'minimize'; blockId: string }
+	| { type: 'restore'; blockId: string };
+
+export interface CanvasState {
+	blocks: CanvasBlock[];
+	layout: CanvasLayout;
+	focusBlockId: string | null;
+}
 
 // ─── Helper to check block type ────────────────────────────────────────────────
 

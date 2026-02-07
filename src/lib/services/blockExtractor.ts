@@ -2,12 +2,15 @@ import type {
 	UIBlock,
 	CoffeeCardsBlock,
 	InventoryTableBlock,
+	RoastChartBlock,
 	RoastProfilesBlock,
 	RoastProfileRow,
 	TastingRadarBlock,
 	ErrorBlock,
 	CoffeeCardAnnotation,
-	RoastProfileAnnotation
+	RoastProfileAnnotation,
+	CanvasMutation,
+	CanvasLayout
 } from '$lib/types/genui';
 import type { TastingNotes, TastingNote } from '$lib/types/coffee.types';
 import type { UIMessage } from 'ai';
@@ -330,6 +333,91 @@ export function messageHasPresentResults(parts: any[]): boolean {
 			part?.type?.startsWith('tool-') &&
 			(part.toolName === 'present_results' || part.type === 'tool-present_results')
 	);
+}
+
+/**
+ * Returns additional companion blocks for a tool part.
+ * e.g. a roast-chart block when roast_profiles returns a single roast.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function extractCompanionBlocks(part: any): UIBlock[] {
+	if (!part?.type?.startsWith('tool-')) return [];
+	if (part.state !== 'output-available') return [];
+
+	const output = part.output;
+	if (!output || typeof output !== 'object') return [];
+
+	const toolName = part.toolName ?? part.type.replace('tool-', '');
+
+	// When roast_profiles returns a single profile, also produce a roast-chart block
+	if (
+		toolName === 'roast_profiles' &&
+		'profiles' in output &&
+		Array.isArray(output.profiles) &&
+		output.profiles.length === 1
+	) {
+		const profile = output.profiles[0];
+		const roastId = profile.roast_id ?? profile.id;
+		if (roastId != null) {
+			return [
+				{
+					type: 'roast-chart',
+					version: 1,
+					data: { roastId: Number(roastId) }
+				} satisfies RoastChartBlock
+			];
+		}
+	}
+
+	return [];
+}
+
+/**
+ * Extracts canvas mutations from a present_results tool part.
+ * Returns mutations to dispatch to canvasStore, or null if not present_results.
+ */
+export function extractCanvasMutationsFromPart(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	part: any,
+	block: UIBlock | null,
+	messageId: string
+): CanvasMutation[] | null {
+	if (!part?.type?.startsWith('tool-')) return null;
+	if (part.state !== 'output-available') return null;
+
+	const toolName = part.toolName ?? part.type.replace('tool-', '');
+	if (toolName !== 'present_results') return null;
+
+	const output = part.output;
+	if (!output || !('presentation' in output)) return null;
+
+	const presentation = output.presentation;
+	const mutations: CanvasMutation[] = [];
+
+	// Canvas action: replace (default), add, or clear
+	const canvasAction: string = presentation.canvas_action || 'replace';
+
+	if (canvasAction === 'clear') {
+		mutations.push({ type: 'clear' });
+		return mutations;
+	}
+
+	// If we have a block, dispatch it to canvas
+	if (block) {
+		if (canvasAction === 'replace') {
+			mutations.push({ type: 'replace', blocks: [{ block, messageId }] });
+		} else {
+			mutations.push({ type: 'add', block, messageId });
+		}
+	}
+
+	// Canvas layout hint
+	const canvasLayout: string | undefined = presentation.canvas_layout;
+	if (canvasLayout && ['focus', 'comparison', 'dashboard'].includes(canvasLayout)) {
+		mutations.push({ type: 'layout', layout: canvasLayout as CanvasLayout });
+	}
+
+	return mutations.length > 0 ? mutations : null;
 }
 
 /**

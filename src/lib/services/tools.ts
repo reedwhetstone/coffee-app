@@ -154,7 +154,19 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 						annotation: z.string().optional().describe('Natural language annotation for this item'),
 						highlight: z.boolean().optional().describe('Visually emphasize this item as top pick')
 					})
-				)
+				),
+				canvas_layout: z
+					.enum(['focus', 'comparison', 'dashboard'])
+					.optional()
+					.describe(
+						'Canvas layout hint. focus: single item with full detail. comparison: side-by-side evaluation. dashboard: grid of multiple items.'
+					),
+				canvas_action: z
+					.enum(['replace', 'add', 'clear'])
+					.optional()
+					.describe(
+						'Canvas action. replace: clear canvas and show new items (default). add: keep existing and add new. clear: clear canvas entirely.'
+					)
 			}),
 			execute: async (input) => ({ presentation: input })
 		})

@@ -7,8 +7,12 @@
 	import SvelteMarkdown from '@humanspeak/svelte-markdown';
 	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
 	import InlineStatusLine from '$lib/components/genui/InlineStatusLine.svelte';
+	import Canvas from '$lib/components/canvas/Canvas.svelte';
+	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import {
 		extractBlockFromPart,
+		extractCanvasMutationsFromPart,
+		extractCompanionBlocks,
 		buildSearchDataCache,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
@@ -65,8 +69,97 @@
 		return part;
 	}
 
+	// ─── Canvas panel state ──────────────────────────────────────────────────
+	let canvasOpen = $state(false);
+	let dividerDragging = $state(false);
+	let chatWidthPercent = $state(60); // Chat takes 60% by default
+	let mobileCanvasOpen = $state(false);
+
+	// Auto-open canvas when blocks arrive
+	$effect(() => {
+		if (!canvasStore.isEmpty && !canvasOpen) {
+			canvasOpen = true;
+		}
+	});
+
+	// Track which message IDs have been dispatched to canvas (to avoid duplicates)
+	let dispatchedParts = $state(new Set<string>());
+
+	// Dispatch blocks to canvas when streaming completes for a message
+	$effect(() => {
+		if (isActive) return; // Wait until streaming stops
+
+		for (const message of chat.messages) {
+			if (message.role !== 'assistant') continue;
+
+			const hasPR = messageHasPresentResults(message.parts);
+			const searchCache = hasPR ? buildSearchDataCache(message.parts) : undefined;
+			const extractorOptions = { searchDataCache: searchCache, hasPresentResults: hasPR };
+
+			for (const part of message.parts) {
+				if (!part.type.startsWith('tool-')) continue;
+
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const p = part as any;
+				const partKey = `${message.id}-${p.toolInvocationId ?? p.toolName ?? part.type}`;
+				if (dispatchedParts.has(partKey)) continue;
+
+				const block = extractBlockFromPart(p, extractorOptions);
+
+				// If this is a present_results part, use explicit canvas mutations
+				const mutations = extractCanvasMutationsFromPart(p, block, message.id);
+				if (mutations) {
+					for (const m of mutations) canvasStore.dispatch(m);
+					dispatchedParts = new Set([...dispatchedParts, partKey]);
+				} else if (block && block.type !== 'error') {
+					// Non-present_results tools: auto-add to canvas
+					canvasStore.dispatch({ type: 'add', block, messageId: message.id });
+					dispatchedParts = new Set([...dispatchedParts, partKey]);
+
+					// Also dispatch companion blocks (e.g., roast-chart for single roast profile)
+					const companions = extractCompanionBlocks(p);
+					for (const companion of companions) {
+						canvasStore.dispatch({ type: 'add', block: companion, messageId: message.id });
+					}
+				}
+			}
+		}
+	});
+
+	// Build a lookup: messageId + toolInvocationId → canvasBlockId
+	let canvasBlockLookup = $derived(() => {
+		const map = new Map<string, string>();
+		for (const cb of canvasStore.blocks) {
+			// Map messageId to the canvas block (simplified: last one wins per message)
+			map.set(cb.messageId, cb.id);
+		}
+		return map;
+	});
+
+	// ─── Divider drag handling ────────────────────────────────────────────────
+	function startDividerDrag(e: MouseEvent) {
+		e.preventDefault();
+		dividerDragging = true;
+
+		const onMove = (ev: MouseEvent) => {
+			const container = (e.target as HTMLElement)?.closest('.chat-canvas-container');
+			if (!container) return;
+			const rect = container.getBoundingClientRect();
+			const percent = ((ev.clientX - rect.left) / rect.width) * 100;
+			chatWidthPercent = Math.max(30, Math.min(80, percent));
+		};
+
+		const onUp = () => {
+			dividerDragging = false;
+			window.removeEventListener('mousemove', onMove);
+			window.removeEventListener('mouseup', onUp);
+		};
+
+		window.addEventListener('mousemove', onMove);
+		window.addEventListener('mouseup', onUp);
+	}
+
 	// ─── Accumulated status steps for the entire message ──────────────────────
-	// Collects all tool status into a single persistent status block
 	function getMessageToolSteps(
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		parts: any[]
@@ -77,7 +170,6 @@
 			if (!part?.type?.startsWith('tool-')) continue;
 
 			const rawName = part.toolName ?? part.type.replace('tool-', '');
-			// Skip present_results — it's an instant passthrough, no user-visible action
 			if (rawName === 'present_results') continue;
 
 			const toolName = rawName.replace(/_/g, ' ');
@@ -115,6 +207,23 @@
 	function handleBlockAction(action: BlockAction) {
 		if (action.type === 'navigate') {
 			goto(action.url);
+		} else if (action.type === 'focus-canvas-block') {
+			canvasStore.dispatch({ type: 'focus', blockId: action.blockId });
+			// On mobile, open canvas overlay
+			if (window.innerWidth < 768) {
+				mobileCanvasOpen = true;
+			}
+		} else if (action.type === 'scroll-to-message') {
+			scrollToMessage(action.messageId);
+		}
+	}
+
+	function scrollToMessage(messageId: string) {
+		const el = document.getElementById(`msg-${messageId}`);
+		if (el && chatContainer) {
+			el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			el.classList.add('message-highlight');
+			setTimeout(() => el.classList.remove('message-highlight'), 2000);
 		}
 	}
 
@@ -166,6 +275,8 @@
 	function clearConversation() {
 		if (confirm('Are you sure you want to clear the conversation?')) {
 			chat.messages = [];
+			canvasStore.clearAll();
+			dispatchedParts = new Set();
 		}
 	}
 </script>
@@ -224,7 +335,7 @@
 		</div>
 	</div>
 {:else}
-	<!-- Main chat interface for authenticated members -->
+	<!-- Main chat + canvas interface -->
 	<div class="flex h-screen flex-col bg-background-primary-light">
 		<!-- Header -->
 		<header class="border-b border-border-light bg-background-secondary-light px-4 py-3">
@@ -233,7 +344,25 @@
 					<h1 class="text-xl font-semibold text-text-primary-light">Coffee Chat</h1>
 					<p class="text-sm text-text-secondary-light">AI-powered coffee assistant</p>
 				</div>
-				<div class="flex space-x-2">
+				<div class="flex items-center space-x-2">
+					<!-- Canvas toggle (mobile) -->
+					{#if !canvasStore.isEmpty}
+						<button
+							onclick={() => (mobileCanvasOpen = !mobileCanvasOpen)}
+							class="rounded-md border border-border-light px-3 py-1 text-sm text-text-secondary-light transition-all duration-200 hover:text-text-primary-light md:hidden"
+						>
+							Canvas ({canvasStore.blockCount})
+						</button>
+					{/if}
+					<!-- Canvas toggle (desktop) -->
+					{#if !canvasStore.isEmpty}
+						<button
+							onclick={() => (canvasOpen = !canvasOpen)}
+							class="hidden rounded-md border border-border-light px-3 py-1 text-sm text-text-secondary-light transition-all duration-200 hover:text-text-primary-light md:block"
+						>
+							{canvasOpen ? 'Hide' : 'Show'} Canvas ({canvasStore.blockCount})
+						</button>
+					{/if}
 					{#if chat.messages.length > 0}
 						<button
 							onclick={exportConversation}
@@ -252,191 +381,284 @@
 			</div>
 		</header>
 
-		<!-- Chat messages area -->
-		<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4" onscroll={handleScroll}>
-			{#if chat.messages.length === 0}
-				<!-- Welcome message -->
-				<div class="mx-auto max-w-2xl text-center">
-					<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
-						<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
-							Welcome to Coffee Chat!
-						</h2>
-						<p class="mb-4 text-text-secondary-light">
-							I'm your AI coffee expert, here to help with personalized recommendations, roasting
-							advice, and coffee knowledge. Ask me anything about:
-						</p>
-						<div class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2">
-							<div>- Coffee recommendations</div>
-							<div>- Roasting techniques</div>
-							<div>- Flavor profiles</div>
-							<div>- Processing methods</div>
-							<div>- Your inventory analysis</div>
-							<div>- Brewing guidance</div>
-						</div>
-					</div>
-
-					<!-- Example queries -->
-					<div class="space-y-2">
-						<p class="text-sm font-medium text-text-primary-light">Try asking:</p>
-						<div class="space-y-2 text-sm">
-							<button
-								onclick={() =>
-									(inputMessage =
-										'Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique processing method.')}
-								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
-							>
-								"Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique
-								processing method."
-							</button>
-							<button
-								onclick={() =>
-									(inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
-								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
-							>
-								"What's the best way to roast a washed Costa Rican coffee?"
-							</button>
-							<button
-								onclick={() =>
-									(inputMessage = 'Analyze my recent roasting sessions and suggest improvements')}
-								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
-							>
-								"Analyze my recent roasting sessions and suggest improvements"
-							</button>
-						</div>
-					</div>
-				</div>
-			{:else}
-				<!-- Chat messages - interleaved rendering -->
-				<div class="mx-auto max-w-4xl space-y-4">
-					{#each chat.messages as message, msgIndex (message.id)}
-						{@const isLastMessage = msgIndex === chat.messages.length - 1}
-						{@const isStreaming = isLastMessage && isActive && message.role === 'assistant'}
-
-						{#if message.role === 'user'}
-							<!-- User message bubble -->
-							<div class="message-fade-in flex justify-end">
-								<div
-									class="max-w-[80%] rounded-lg bg-background-tertiary-light px-4 py-2 text-white"
-								>
-									{#each message.parts as part}
-										{#if part.type === 'text'}
-											<div class="whitespace-pre-wrap">{part.text}</div>
-										{/if}
-									{/each}
+		<!-- Chat + Canvas split container -->
+		<div class="chat-canvas-container flex flex-1 overflow-hidden">
+			<!-- Chat pane -->
+			<div
+				class="flex flex-col overflow-hidden"
+				style="width: {canvasOpen ? chatWidthPercent : 100}%; transition: width 0.2s ease;"
+			>
+				<!-- Chat messages area -->
+				<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4" onscroll={handleScroll}>
+					{#if chat.messages.length === 0}
+						<!-- Welcome message -->
+						<div class="mx-auto max-w-2xl text-center">
+							<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
+								<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
+									Welcome to Coffee Chat!
+								</h2>
+								<p class="mb-4 text-text-secondary-light">
+									I'm your AI coffee expert, here to help with personalized recommendations, roasting
+									advice, and coffee knowledge. Ask me anything about:
+								</p>
+								<div class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2">
+									<div>- Coffee recommendations</div>
+									<div>- Roasting techniques</div>
+									<div>- Flavor profiles</div>
+									<div>- Processing methods</div>
+									<div>- Your inventory analysis</div>
+									<div>- Brewing guidance</div>
 								</div>
 							</div>
-						{:else}
-							<!-- Assistant message -->
-							{@const hasPR = messageHasPresentResults(message.parts)}
-							{@const searchCache = hasPR ? buildSearchDataCache(message.parts) : undefined}
-							{@const extractorOptions = { searchDataCache: searchCache, hasPresentResults: hasPR }}
-							{@const toolSteps = getMessageToolSteps(message.parts)}
-							{@const hasToolParts = message.parts.some((p) => p.type.startsWith('tool-'))}
-							<div class="message-fade-in w-full space-y-3">
-								<!-- Persistent accumulated status line for all tool calls -->
-								{#if hasToolParts && toolSteps.length > 0}
-									<InlineStatusLine steps={toolSteps} isActive={isStreaming} />
-								{/if}
 
-								<!-- Text parts stream in live -->
-								{#each message.parts as part}
-									{#if part.type === 'text' && part.text.trim()}
-										<div
-											class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light"
-										>
-											<SvelteMarkdown source={part.text} />
-										</div>
-									{/if}
-								{/each}
-
-								<!-- Blocks render only after streaming completes -->
-								{#if !isStreaming}
-									{#each message.parts as part}
-										{#if part.type.startsWith('tool-')}
-											{@const toolPart = asToolPart(part)}
-											{@const block = extractBlockFromPart(toolPart, extractorOptions)}
-											{#if block}
-												<div class="block-fade-in block-container" style="contain: layout;">
-													<GenUIBlockRenderer {block} onAction={handleBlockAction} />
-												</div>
-											{:else if toolPart.state === 'output-error'}
-												{@const errorBlock = extractBlockFromPart(toolPart)}
-												{#if errorBlock}
-													<div class="block-fade-in block-container" style="contain: layout;">
-														<GenUIBlockRenderer block={errorBlock} onAction={handleBlockAction} />
-													</div>
-												{/if}
-											{/if}
-										{/if}
-									{/each}
-								{/if}
+							<!-- Example queries -->
+							<div class="space-y-2">
+								<p class="text-sm font-medium text-text-primary-light">Try asking:</p>
+								<div class="space-y-2 text-sm">
+									<button
+										onclick={() =>
+											(inputMessage =
+												'Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique processing method.')}
+										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+									>
+										"Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique
+										processing method."
+									</button>
+									<button
+										onclick={() =>
+											(inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
+										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+									>
+										"What's the best way to roast a washed Costa Rican coffee?"
+									</button>
+									<button
+										onclick={() =>
+											(inputMessage = 'Analyze my recent roasting sessions and suggest improvements')}
+										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+									>
+										"Analyze my recent roasting sessions and suggest improvements"
+									</button>
+								</div>
 							</div>
-						{/if}
-					{/each}
+						</div>
+					{:else}
+						<!-- Chat messages - interleaved rendering -->
+						<div class="mx-auto max-w-4xl space-y-4">
+							{#each chat.messages as message, msgIndex (message.id)}
+								{@const isLastMessage = msgIndex === chat.messages.length - 1}
+								{@const isStreaming = isLastMessage && isActive && message.role === 'assistant'}
 
-					<!-- Initial loading state before any assistant message parts exist -->
-					{#if chat.status === 'submitted' && (chat.messages.length === 0 || chat.messages[chat.messages.length - 1]?.role === 'user')}
-						<div class="message-fade-in">
-							<InlineStatusLine steps={[]} isActive={true} />
+								{#if message.role === 'user'}
+									<!-- User message bubble -->
+									<div id="msg-{message.id}" class="message-fade-in flex justify-end">
+										<div
+											class="max-w-[80%] rounded-lg bg-background-tertiary-light px-4 py-2 text-white"
+										>
+											{#each message.parts as part}
+												{#if part.type === 'text'}
+													<div class="whitespace-pre-wrap">{part.text}</div>
+												{/if}
+											{/each}
+										</div>
+									</div>
+								{:else}
+									<!-- Assistant message -->
+									{@const hasPR = messageHasPresentResults(message.parts)}
+									{@const searchCache = hasPR ? buildSearchDataCache(message.parts) : undefined}
+									{@const extractorOptions = { searchDataCache: searchCache, hasPresentResults: hasPR }}
+									{@const toolSteps = getMessageToolSteps(message.parts)}
+									{@const hasToolParts = message.parts.some((p) => p.type.startsWith('tool-'))}
+									<div id="msg-{message.id}" class="message-fade-in w-full space-y-3">
+										<!-- Persistent accumulated status line for all tool calls -->
+										{#if hasToolParts && toolSteps.length > 0}
+											<InlineStatusLine steps={toolSteps} isActive={isStreaming} />
+										{/if}
+
+										<!-- Text parts stream in live -->
+										{#each message.parts as part}
+											{#if part.type === 'text' && part.text.trim()}
+												<div
+													class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light"
+												>
+													<SvelteMarkdown source={part.text} />
+												</div>
+											{/if}
+										{/each}
+
+										<!-- Inline previews render after streaming completes -->
+										{#if !isStreaming}
+											{#each message.parts as part}
+												{#if part.type.startsWith('tool-')}
+													{@const toolPart = asToolPart(part)}
+													{@const block = extractBlockFromPart(toolPart, extractorOptions)}
+													{#if block}
+														{@const lookup = canvasBlockLookup()}
+														{@const canvasId = lookup.get(message.id)}
+														<div class="preview-fade-in my-1">
+															<GenUIBlockRenderer
+																{block}
+																renderMode="chat"
+																onAction={handleBlockAction}
+																canvasBlockId={canvasId}
+															/>
+														</div>
+													<!-- Companion block previews (e.g., roast chart for single roast) -->
+													{@const companions = extractCompanionBlocks(toolPart)}
+													{#each companions as companionBlock}
+														<div class="preview-fade-in my-1">
+															<GenUIBlockRenderer
+																block={companionBlock}
+																renderMode="chat"
+																onAction={handleBlockAction}
+																canvasBlockId={canvasId}
+															/>
+														</div>
+													{/each}
+													{:else if toolPart.state === 'output-error'}
+														{@const errorBlock = extractBlockFromPart(toolPart)}
+														{#if errorBlock}
+															<div class="preview-fade-in my-1">
+																<GenUIBlockRenderer
+																	block={errorBlock}
+																	renderMode="chat"
+																	onAction={handleBlockAction}
+																/>
+															</div>
+														{/if}
+													{/if}
+												{/if}
+											{/each}
+										{/if}
+									</div>
+								{/if}
+							{/each}
+
+							<!-- Initial loading state before any assistant message parts exist -->
+							{#if chat.status === 'submitted' && (chat.messages.length === 0 || chat.messages[chat.messages.length - 1]?.role === 'user')}
+								<div class="message-fade-in">
+									<InlineStatusLine steps={[]} isActive={true} />
+								</div>
+							{/if}
 						</div>
 					{/if}
 				</div>
+
+				<!-- Input area -->
+				<div class="border-t border-border-light bg-background-secondary-light p-4">
+					<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
+						<div class="flex space-x-2">
+							<textarea
+								bind:value={inputMessage}
+								placeholder="Ask me about coffee recommendations, roasting advice, or anything coffee-related..."
+								class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
+								rows="1"
+								disabled={isActive}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' && !e.shiftKey) {
+										e.preventDefault();
+										sendMessage();
+									}
+								}}
+								oninput={(e) => {
+									const target = e.target as HTMLTextAreaElement;
+									target.style.height = 'auto';
+									target.style.height = target.scrollHeight + 'px';
+								}}
+							></textarea>
+							<button
+								type="submit"
+								disabled={isActive || !inputMessage.trim()}
+								class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								{#if isActive}
+									<div
+										class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
+									></div>
+								{:else}
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-5 w-5"
+										viewBox="0 0 20 20"
+										fill="currentColor"
+									>
+										<path
+											fill-rule="evenodd"
+											d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+											clip-rule="evenodd"
+										/>
+									</svg>
+								{/if}
+							</button>
+						</div>
+						<div class="mt-2 text-xs text-text-secondary-light">
+							Press Enter to send, Shift+Enter for new line
+						</div>
+					</form>
+				</div>
+			</div>
+
+			<!-- Resizable divider (desktop only) -->
+			{#if canvasOpen}
+				<div
+					class="hidden w-1 cursor-col-resize bg-border-light transition-colors hover:bg-background-tertiary-light/40 md:block"
+					class:bg-background-tertiary-light={dividerDragging}
+					role="separator"
+					tabindex="0"
+					onmousedown={startDividerDrag}
+				></div>
+
+				<!-- Canvas pane (desktop) -->
+				<div
+					class="hidden overflow-hidden md:block"
+					style="width: {100 - chatWidthPercent}%;"
+				>
+					<Canvas
+						onAction={handleBlockAction}
+						onScrollToMessage={scrollToMessage}
+					/>
+				</div>
 			{/if}
 		</div>
-
-		<!-- Input area -->
-		<div class="border-t border-border-light bg-background-secondary-light p-4">
-			<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
-				<div class="flex space-x-2">
-					<textarea
-						bind:value={inputMessage}
-						placeholder="Ask me about coffee recommendations, roasting advice, or anything coffee-related..."
-						class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
-						rows="1"
-						disabled={isActive}
-						onkeydown={(e) => {
-							if (e.key === 'Enter' && !e.shiftKey) {
-								e.preventDefault();
-								sendMessage();
-							}
-						}}
-						oninput={(e) => {
-							const target = e.target as HTMLTextAreaElement;
-							target.style.height = 'auto';
-							target.style.height = target.scrollHeight + 'px';
-						}}
-					></textarea>
-					<button
-						type="submit"
-						disabled={isActive || !inputMessage.trim()}
-						class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{#if isActive}
-							<div
-								class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
-							></div>
-						{:else}
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-5 w-5"
-								viewBox="0 0 20 20"
-								fill="currentColor"
-							>
-								<path
-									fill-rule="evenodd"
-									d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
-									clip-rule="evenodd"
-								/>
-							</svg>
-						{/if}
-					</button>
-				</div>
-				<div class="mt-2 text-xs text-text-secondary-light">
-					Press Enter to send, Shift+Enter for new line
-				</div>
-			</form>
-		</div>
 	</div>
+
+	<!-- Mobile canvas overlay -->
+	{#if mobileCanvasOpen}
+		<div class="fixed inset-0 z-50 flex flex-col bg-background-primary-light md:hidden">
+			<div class="flex items-center justify-between border-b border-border-light px-4 py-3">
+				<span class="text-sm font-medium text-text-primary-light">
+					Canvas ({canvasStore.blockCount})
+				</span>
+				<button
+					onclick={() => (mobileCanvasOpen = false)}
+					class="rounded-md px-3 py-1 text-sm text-text-secondary-light transition-colors hover:text-text-primary-light"
+				>
+					Close
+				</button>
+			</div>
+			<div class="flex-1 overflow-hidden">
+				<Canvas
+					onAction={handleBlockAction}
+					onScrollToMessage={(msgId: string) => {
+						mobileCanvasOpen = false;
+						setTimeout(() => scrollToMessage(msgId), 300);
+					}}
+				/>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Mobile floating indicator -->
+	{#if !canvasStore.isEmpty && !mobileCanvasOpen}
+		<button
+			onclick={() => (mobileCanvasOpen = true)}
+			class="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 rounded-full bg-background-tertiary-light px-3 py-2 text-sm text-white shadow-lg transition-transform hover:scale-105 md:hidden"
+		>
+			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+			</svg>
+			{canvasStore.blockCount}
+		</button>
+	{/if}
 {/if}
 
 <style>
@@ -444,8 +666,12 @@
 		animation: messageFadeIn 0.3s ease-out;
 	}
 
-	.block-fade-in {
-		animation: blockFadeIn 0.4s ease-out;
+	.preview-fade-in {
+		animation: previewFadeIn 0.25s ease-out;
+	}
+
+	:global(.message-highlight) {
+		animation: highlightPulse 2s ease-out;
 	}
 
 	@keyframes messageFadeIn {
@@ -459,14 +685,21 @@
 		}
 	}
 
-	@keyframes blockFadeIn {
+	@keyframes previewFadeIn {
 		from {
 			opacity: 0;
-			transform: translateY(6px);
 		}
 		to {
 			opacity: 1;
-			transform: translateY(0);
+		}
+	}
+
+	@keyframes highlightPulse {
+		0% {
+			background-color: rgba(99, 102, 241, 0.15);
+		}
+		100% {
+			background-color: transparent;
 		}
 	}
 </style>

@@ -43,6 +43,14 @@ you MUST call present_results to control what the user sees:
    - "grid" — side-by-side columns, best for comparison
    - "focused" — single item, best for a clear recommendation
 4. Mark your top pick with highlight: true
+5. Choose a CANVAS LAYOUT (optional):
+   - "focus" — single item with full detail (default for 1 result)
+   - "comparison" — side-by-side items for evaluation
+   - "dashboard" — grid of multiple items
+6. Choose a CANVAS ACTION (optional):
+   - "replace" — clear canvas and show new items (default)
+   - "add" — keep existing canvas items and add new ones
+   - "clear" — clear canvas entirely
 
 ANNOTATION STYLE
 - Annotations should feel like natural speech, not UI labels
