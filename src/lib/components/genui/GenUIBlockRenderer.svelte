@@ -8,6 +8,7 @@
 	import DataTableBlock from './blocks/DataTableBlock.svelte';
 	import ErrorBlock from './blocks/ErrorBlock.svelte';
 	import RoastChartBlock from './blocks/RoastChartBlock.svelte';
+	import ActionCardBlock from './blocks/ActionCardBlock.svelte';
 	// Preview components (chat mode)
 	import CoffeeCardPreview from './previews/CoffeeCardPreview.svelte';
 	import InventoryPreview from './previews/InventoryPreview.svelte';
@@ -16,10 +17,12 @@
 	import DataTablePreview from './previews/DataTablePreview.svelte';
 	import ErrorPreview from './previews/ErrorPreview.svelte';
 	import RoastChartPreview from './previews/RoastChartPreview.svelte';
+	import ActionCardPreview from './previews/ActionCardPreview.svelte';
 
-	let { block, onAction, renderMode = 'canvas', canvasBlockId } = $props<{
+	let { block, onAction, onExecuteAction, renderMode = 'canvas', canvasBlockId } = $props<{
 		block: UIBlock;
 		onAction?: (action: BlockAction) => void;
+		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
 		renderMode?: 'chat' | 'canvas';
 		canvasBlockId?: string;
 	}>();
@@ -38,6 +41,8 @@
 			<TastingRadarPreview {block} {onAction} {canvasBlockId} />
 		{:else if block.type === 'roast-chart'}
 			<RoastChartPreview {block} {onAction} {canvasBlockId} />
+		{:else if block.type === 'action-card'}
+			<ActionCardPreview {block} {onAction} {canvasBlockId} />
 		{:else if block.type === 'data-table'}
 			<DataTablePreview {block} {onAction} {canvasBlockId} />
 		{:else if block.type === 'error'}
@@ -55,6 +60,8 @@
 			<RoastProfilesBlock {block} {onAction} />
 		{:else if block.type === 'roast-chart'}
 			<RoastChartBlock {block} />
+		{:else if block.type === 'action-card'}
+			<ActionCardBlock {block} {onAction} onExecute={onExecuteAction} />
 		{:else if block.type === 'tasting-radar'}
 			<TastingRadarBlock {block} {onAction} />
 		{:else if block.type === 'data-table'}

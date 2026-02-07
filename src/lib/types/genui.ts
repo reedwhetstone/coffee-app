@@ -124,11 +124,27 @@ export interface ErrorBlock {
 
 // ─── Supporting Types ──────────────────────────────────────────────────────────
 
+export type ActionType =
+	| 'add_bean_to_inventory'
+	| 'update_bean'
+	| 'create_roast_session'
+	| 'update_roast_notes'
+	| 'record_sale';
+
+export interface ActionField {
+	key: string;
+	label: string;
+	value: unknown;
+	type: 'text' | 'number' | 'date' | 'select' | 'textarea';
+	editable: boolean;
+	options?: string[]; // for select type
+}
+
 export interface ActionCardPayload {
-	functionName: string;
+	actionType: ActionType;
 	summary: string;
-	parameters: Record<string, unknown>;
-	status: 'proposed' | 'confirmed' | 'executing' | 'success' | 'failed';
+	fields: ActionField[];
+	status: 'proposed' | 'executing' | 'success' | 'failed';
 	result?: unknown;
 	error?: string;
 }

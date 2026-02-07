@@ -3,11 +3,12 @@
 	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 
-	let { blocks, layout, focusBlockId, onAction, onRemove, onPin, onMinimize } = $props<{
+	let { blocks, layout, focusBlockId, onAction, onExecuteAction, onRemove, onPin, onMinimize } = $props<{
 		blocks: CanvasBlock[];
 		layout: CanvasLayout;
 		focusBlockId: string | null;
 		onAction?: (action: BlockAction) => void;
+		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
 		onRemove: (blockId: string) => void;
 		onPin: (blockId: string) => void;
 		onMinimize: (blockId: string) => void;
@@ -21,6 +22,7 @@
 			class="canvas-block-wrapper"
 			class:is-focused={isFocused && layout === 'focus'}
 			class:is-secondary={!isFocused && layout === 'focus'}
+			class:is-pinned={canvasBlock.pinned}
 		>
 			<!-- Block header bar -->
 			<div class="flex items-center justify-between border-b border-border-light px-3 py-1.5">
@@ -83,7 +85,7 @@
 
 			<!-- Block content -->
 			<div class="canvas-block-content overflow-auto p-3">
-				<GenUIBlockRenderer block={canvasBlock.block} renderMode="canvas" {onAction} />
+				<GenUIBlockRenderer block={canvasBlock.block} renderMode="canvas" {onAction} {onExecuteAction} />
 			</div>
 		</div>
 	{/each}
@@ -136,6 +138,10 @@
 	.canvas-block-wrapper.is-focused {
 		border-color: var(--color-background-tertiary-light, #6366f1);
 		box-shadow: 0 0 0 1px var(--color-background-tertiary-light, #6366f1);
+	}
+
+	.canvas-block-wrapper.is-pinned {
+		border-color: #f59e0b;
 	}
 
 	.canvas-block-content {

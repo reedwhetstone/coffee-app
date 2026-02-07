@@ -3,9 +3,10 @@
 	import CanvasLayout from './CanvasLayout.svelte';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 
-	let { onAction, onScrollToMessage } = $props<{
+	let { onAction, onScrollToMessage, onExecuteAction } = $props<{
 		onAction?: (action: BlockAction) => void;
 		onScrollToMessage?: (messageId: string) => void;
+		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
 	}>();
 
 	// Minimized blocks shown as title bar at bottom
@@ -117,6 +118,7 @@
 				layout={canvasStore.layout}
 				focusBlockId={canvasStore.focusBlockId}
 				onAction={handleAction}
+				{onExecuteAction}
 				onRemove={handleRemove}
 				onPin={handlePin}
 				onMinimize={handleMinimize}

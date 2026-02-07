@@ -64,9 +64,7 @@
 	"dependencies": {
 		"@ai-sdk/openai": "^3.0.0",
 		"@ai-sdk/svelte": "^4.0.0",
-		"@google/generative-ai": "^0.21.0",
 		"@humanspeak/svelte-markdown": "^0.8.10",
-		"@langchain/openai": "^0.6.7",
 		"@supabase/ssr": "^0.5.2",
 		"@supabase/supabase-js": "^2.48.1",
 		"@tailwindcss/container-queries": "^0.1.1",
@@ -80,7 +78,6 @@
 		"glob": "^10.3.10",
 		"jose": "^5.9.6",
 		"jwt-decode": "^4.0.0",
-		"langchain": "^0.3.30",
 		"lodash": "^4.17.21",
 		"papaparse": "^5.5.3",
 		"playwright": "^1.58.1",

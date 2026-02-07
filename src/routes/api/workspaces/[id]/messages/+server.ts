@@ -33,8 +33,8 @@ export const POST: RequestHandler = async (event) => {
 			workspace_id: workspaceId,
 			role: msg.role,
 			content: msg.content,
-			parts: msg.parts || [],
-			canvas_mutations: msg.canvas_mutations || []
+			parts: (msg.parts || []) as import('$lib/types/database.types').Json,
+			canvas_mutations: (msg.canvas_mutations || []) as import('$lib/types/database.types').Json
 		}));
 
 		const { data, error } = await event.locals.supabase

@@ -6,6 +6,8 @@ import type {
 	RoastProfilesBlock,
 	RoastProfileRow,
 	TastingRadarBlock,
+	ActionCardBlock,
+	ActionType,
 	ErrorBlock,
 	CoffeeCardAnnotation,
 	RoastProfileAnnotation,
@@ -139,6 +141,23 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 				}
 			} satisfies TastingRadarBlock;
 		}
+	}
+
+	// Write tools return action_card payloads
+	if ('action_card' in output && output.action_card) {
+		const card = output.action_card as Record<string, unknown>;
+		return {
+			type: 'action-card',
+			version: 1,
+			data: {
+				actionType: card.actionType as ActionType,
+				summary: card.summary as string,
+				fields: (card.fields || []) as ActionCardBlock['data']['fields'],
+				status: (card.status as ActionCardBlock['data']['status']) || 'proposed',
+				result: card.result,
+				error: card.error as string | undefined
+			}
+		} satisfies ActionCardBlock;
 	}
 
 	return null;

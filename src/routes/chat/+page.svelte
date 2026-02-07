@@ -17,6 +17,9 @@
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
+	import SuggestionChips from '$lib/components/genui/SuggestionChips.svelte';
+	import { getSuggestions } from '$lib/services/suggestionEngine';
+	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import {
@@ -48,14 +51,37 @@
 		const ws = workspaceStore.currentWorkspace;
 		if (!ws) return undefined;
 
-		// Describe canvas state for the AI
+		// Describe canvas state for the AI with item names/details
 		let canvasDescription = '';
-		if (canvasStore.blocks.length > 0) {
-			const blockDescriptions = canvasStore.blocks.map((b: CanvasBlock) => {
-				const type = b.block.type.replace(/-/g, ' ');
-				return type;
+		const visible = canvasStore.visibleBlocks;
+		if (visible.length > 0) {
+			const descriptions = visible.map((b: CanvasBlock, i: number) => {
+				const block = b.block;
+				const pos = i + 1;
+				switch (block.type) {
+					case 'coffee-cards': {
+						const names = block.data.slice(0, 5).map((c) => c.name || 'Unknown').join(', ');
+						return `${pos}. Coffee cards: ${names}${block.data.length > 5 ? ` (+${block.data.length - 5} more)` : ''}`;
+					}
+					case 'roast-profiles': {
+						const names = block.data.slice(0, 5).map((r) => `${r.coffee_name} (${r.roast_date})`).join(', ');
+						return `${pos}. Roast profiles: ${names}${block.data.length > 5 ? ` (+${block.data.length - 5} more)` : ''}`;
+					}
+					case 'roast-chart':
+						return `${pos}. Roast temperature chart (roast #${block.data.roastId})`;
+					case 'inventory-table': {
+						const count = block.data.length;
+						return `${pos}. Inventory table (${count} beans)`;
+					}
+					case 'tasting-radar':
+						return `${pos}. Tasting radar: ${block.data.beanName}`;
+					case 'action-card':
+						return `${pos}. Action card: ${block.data.summary} [${block.data.status}]`;
+					default:
+						return `${pos}. ${block.type.replace(/-/g, ' ')}`;
+				}
 			});
-			canvasDescription = blockDescriptions.join(', ');
+			canvasDescription = descriptions.join('\n');
 		}
 
 		return {
@@ -258,6 +284,15 @@
 
 	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
 
+	// Context-aware suggestions above input
+	let suggestions = $derived(
+		getSuggestions(
+			workspaceStore.currentWorkspace?.type || 'general',
+			canvasStore.blocks,
+			chat.messages.length > 0
+		)
+	);
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	function asToolPart(part: unknown): any {
 		return part;
@@ -421,18 +456,67 @@
 		}
 	}
 
+	// ─── Action Card Execution ───────────────────────────────────────────────
+	async function executeAction(actionType: string, fields: Record<string, unknown>) {
+		const response = await fetch('/api/chat/execute-action', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ actionType, fields })
+		});
+
+		if (!response.ok) {
+			const data = await response.json();
+			throw new Error(data.error || 'Action execution failed');
+		}
+
+		return response.json();
+	}
+
+	// ─── Slash command completions ────────────────────────────────────────────
+	let slashCompletions = $derived(getSlashCompletions(inputMessage));
+
 	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
 		if (!inputMessage.trim() || isActive) return;
 
 		const text = inputMessage.trim();
+
+		// Intercept slash commands
+		const cmd = matchSlashCommand(text);
+		if (cmd) {
+			inputMessage = '';
+			if (cmd.action === 'clear-canvas') {
+				canvasStore.clearAll();
+				return;
+			}
+			if (cmd.action === 'pin-focused') {
+				const fid = canvasStore.focusBlockId;
+				if (fid) canvasStore.dispatch({ type: 'pin', blockId: fid });
+				return;
+			}
+			if (cmd.action === 'unpin-focused') {
+				const fid = canvasStore.focusBlockId;
+				if (fid) canvasStore.dispatch({ type: 'unpin', blockId: fid });
+				return;
+			}
+			if (cmd.chatText) {
+				inputMessage = '';
+				shouldScrollToBottom = true;
+				await chat.sendMessage(
+					{ text: cmd.chatText },
+					{ body: { workspaceContext: getWorkspaceContext() } }
+				);
+				return;
+			}
+		}
+
 		inputMessage = '';
 		shouldScrollToBottom = true;
 
-		await chat.sendMessage({
-			text,
-			body: { workspaceContext: getWorkspaceContext() }
-		});
+		await chat.sendMessage(
+			{ text },
+			{ body: { workspaceContext: getWorkspaceContext() } }
+		);
 	}
 
 	function handleSubmit(event: Event) {
@@ -469,11 +553,19 @@
 		URL.revokeObjectURL(url);
 	}
 
-	function clearConversation() {
+	async function clearConversation() {
 		if (confirm('Are you sure you want to clear the conversation?')) {
 			chat.messages = [];
 			canvasStore.clearAll();
 			dispatchedParts = new Set();
+			lastPersistedMessageCount = 0;
+
+			// Clear persisted messages for current workspace
+			const wsId = workspaceStore.currentWorkspaceId;
+			if (wsId) {
+				await fetch(`/api/workspaces/${wsId}/messages`, { method: 'DELETE' });
+				await workspaceStore.saveCanvasState(wsId, {});
+			}
 		}
 	}
 </script>
@@ -534,12 +626,12 @@
 {:else}
 	<!-- Main chat + canvas interface -->
 	<div class="flex h-screen flex-col bg-background-primary-light">
-		<!-- Header -->
-		<header class="border-b border-border-light bg-background-secondary-light px-4 py-3">
-			<div class="flex items-center justify-between">
-				<div>
-					<h1 class="text-xl font-semibold text-text-primary-light">Coffee Chat</h1>
-					<p class="text-sm text-text-secondary-light">AI-powered coffee assistant</p>
+		<!-- Header with workspace tabs -->
+		<header class="border-b border-border-light bg-background-secondary-light">
+			<!-- Top row: branding + actions -->
+			<div class="flex items-center justify-between px-4 py-2">
+				<div class="flex items-center gap-3">
+					<h1 class="text-lg font-semibold text-text-primary-light">Coffee Chat</h1>
 				</div>
 				<div class="flex items-center space-x-2">
 					<!-- Canvas toggle (mobile) -->
@@ -576,6 +668,68 @@
 					{/if}
 				</div>
 			</div>
+			<!-- Workspace tabs row -->
+			{#if workspacesLoaded}
+				<div class="flex items-center gap-1 overflow-x-auto px-3 pb-1">
+					{#each workspaceStore.workspaces as ws (ws.id)}
+						{@const isActive_ws = ws.id === workspaceStore.currentWorkspaceId}
+						<div
+							role="tab"
+							tabindex="0"
+							onclick={() => handleSwitchWorkspace(ws.id)}
+							onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSwitchWorkspace(ws.id); }}
+							class="group flex shrink-0 cursor-pointer items-center gap-1.5 rounded-t-md px-3 py-1.5 text-sm transition-colors {isActive_ws
+								? 'bg-background-primary-light text-text-primary-light font-medium'
+								: 'text-text-secondary-light hover:text-text-primary-light hover:bg-background-primary-light/50'}"
+						>
+							{#if editingTitle === ws.id}
+								<input
+									type="text"
+									bind:value={editTitleValue}
+									onblur={saveTitle}
+									onkeydown={(e) => {
+										if (e.key === 'Enter') saveTitle();
+										if (e.key === 'Escape') (editingTitle = null);
+									}}
+									class="w-24 rounded border border-border-light bg-transparent px-1 text-sm focus:outline-none"
+								/>
+							{:else}
+								<span
+									role="button"
+									tabindex="0"
+									ondblclick={() => startEditTitle(ws)}
+									onkeydown={(e) => { if (e.key === 'Enter') startEditTitle(ws); }}
+								>
+									{ws.title}
+								</span>
+							{/if}
+							{#if isActive_ws}
+								<button
+									onclick={(e) => {
+										e.stopPropagation();
+										handleDeleteWorkspace(ws.id);
+									}}
+									class="ml-1 rounded p-0.5 text-text-secondary-light opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
+									title="Delete workspace"
+								>
+									<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+									</svg>
+								</button>
+							{/if}
+						</div>
+					{/each}
+					<button
+						onclick={handleCreateWorkspace}
+						class="flex shrink-0 items-center gap-1 rounded-t-md px-2 py-1.5 text-sm text-text-secondary-light transition-colors hover:text-text-primary-light"
+						title="New workspace"
+					>
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+						</svg>
+					</button>
+				</div>
+			{/if}
 		</header>
 
 		<!-- Chat + Canvas split container -->
@@ -742,6 +896,31 @@
 
 				<!-- Input area -->
 				<div class="border-t border-border-light bg-background-secondary-light p-4">
+					{#if slashCompletions.length > 0 && inputMessage.startsWith('/')}
+						<div class="mx-auto mb-2 max-w-4xl rounded-lg border border-border-light bg-background-primary-light shadow-sm">
+							{#each slashCompletions as cmd (cmd.name)}
+								<button
+									onclick={() => {
+										if (cmd.chatText) {
+											inputMessage = cmd.chatText;
+										} else {
+											inputMessage = cmd.name;
+										}
+									}}
+									class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-background-secondary-light"
+								>
+									<span class="font-mono text-xs font-medium text-background-tertiary-light">{cmd.name}</span>
+									<span class="text-text-secondary-light">{cmd.description}</span>
+								</button>
+							{/each}
+						</div>
+					{:else if !isActive && suggestions.length > 0}
+						<div class="mx-auto max-w-4xl">
+							<SuggestionChips {suggestions} onSelect={(text) => {
+								inputMessage = text;
+							}} />
+						</div>
+					{/if}
 					<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
 						<div class="flex space-x-2">
 							<textarea
@@ -812,6 +991,7 @@
 					<Canvas
 						onAction={handleBlockAction}
 						onScrollToMessage={scrollToMessage}
+						onExecuteAction={executeAction}
 					/>
 				</div>
 			{/if}
@@ -839,6 +1019,7 @@
 						mobileCanvasOpen = false;
 						setTimeout(() => scrollToMessage(msgId), 300);
 					}}
+					onExecuteAction={executeAction}
 				/>
 			</div>
 		</div>
