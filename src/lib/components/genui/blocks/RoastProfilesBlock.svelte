@@ -38,7 +38,7 @@
 	}
 
 	function handleViewChart(roastId: string) {
-		window.open(`/roast?id=${roastId}`, '_blank');
+		window.open(`/roast?profileId=${roastId}`, '_blank');
 	}
 </script>
 

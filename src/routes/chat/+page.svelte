@@ -5,13 +5,14 @@
 	import { Chat } from '@ai-sdk/svelte';
 	import { DefaultChatTransport } from 'ai';
 	import SvelteMarkdown from '@humanspeak/svelte-markdown';
-	import CoffeePreviewSidebar from '$lib/components/CoffeePreviewSidebar.svelte';
-	import ChainOfThought from '$lib/components/ChainOfThought.svelte';
 	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
-	import { extractUIBlocks } from '$lib/services/blockExtractor';
+	import InlineStatusLine from '$lib/components/genui/InlineStatusLine.svelte';
+	import {
+		extractBlockFromPart,
+		buildSearchDataCache,
+		messageHasPresentResults
+	} from '$lib/services/blockExtractor';
 	import type { BlockAction } from '$lib/types/genui';
-	import type { TastingNotes } from '$lib/types/coffee.types';
-	import { getContext } from 'svelte';
 	import { goto } from '$app/navigation';
 
 	let { data } = $props<{ data: PageData }>();
@@ -24,60 +25,6 @@
 
 	function hasRequiredRole(requiredRole: UserRole): boolean {
 		return checkRole(userRole, requiredRole);
-	}
-
-	// Get right sidebar context from layout
-	const rightSidebarContext = getContext<{ setOpen: (isOpen: boolean) => void }>('rightSidebar');
-
-	// Coffee preview sidebar state
-	let coffeePreviewOpen = $state(false);
-	let selectedCoffeeIds = $state<number[]>([]);
-	let focusCoffeeId = $state<number | undefined>(undefined);
-
-	// Sync sidebar state with layout
-	$effect(() => {
-		if (rightSidebarContext) {
-			rightSidebarContext.setOpen(coffeePreviewOpen);
-		}
-	});
-
-	function handleCoffeePreview(coffeeIds: number[], focusId?: number) {
-		selectedCoffeeIds = coffeeIds;
-		focusCoffeeId = focusId;
-		coffeePreviewOpen = true;
-	}
-
-	function handleSidebarClose() {
-		coffeePreviewOpen = false;
-		selectedCoffeeIds = [];
-		focusCoffeeId = undefined;
-	}
-
-	function parseTastingNotes(tastingNotesJson: string | null | object): TastingNotes | null {
-		if (!tastingNotesJson) return null;
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			let parsed: any;
-			if (typeof tastingNotesJson === 'string') {
-				parsed = JSON.parse(tastingNotesJson);
-			} else if (typeof tastingNotesJson === 'object') {
-				parsed = tastingNotesJson;
-			} else {
-				return null;
-			}
-			if (
-				parsed.body &&
-				parsed.flavor &&
-				parsed.acidity &&
-				parsed.sweetness &&
-				parsed.fragrance_aroma
-			) {
-				return parsed as TastingNotes;
-			}
-		} catch (error) {
-			console.error('Error parsing tasting notes:', error);
-		}
-		return null;
 	}
 
 	// ─── Vercel AI SDK Chat Instance ───────────────────────────────────────────
@@ -111,59 +58,62 @@
 		shouldScrollToBottom = isNearBottom;
 	}
 
-	// ─── Thinking steps derived from tool parts in progress ────────────────────
-	let thinkingSteps = $derived.by(() => {
+	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	function asToolPart(part: unknown): any {
+		return part;
+	}
+
+	// ─── Accumulated status steps for the entire message ──────────────────────
+	// Collects all tool status into a single persistent status block
+	function getMessageToolSteps(
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		parts: any[]
+	): Array<{ message: string; timestamp: Date }> {
 		const steps: Array<{ message: string; timestamp: Date }> = [];
-		const lastMessage = chat.messages[chat.messages.length - 1];
-		if (!lastMessage || lastMessage.role !== 'assistant') return steps;
-		if (chat.status !== 'streaming' && chat.status !== 'submitted') return steps;
 
-		for (const part of lastMessage.parts) {
-			if (part.type.startsWith('tool-')) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const toolPart = part as any;
-				const toolName = part.type.replace('tool-', '').replace(/_/g, ' ');
+		for (const part of parts) {
+			if (!part?.type?.startsWith('tool-')) continue;
 
-				if (toolPart.state === 'input-streaming' || toolPart.state === 'input-available') {
-					steps.push({
-						message: `Querying ${toolName}...`,
-						timestamp: new Date()
-					});
-				} else if (toolPart.state === 'output-available') {
-					const output = toolPart.output;
-					let detail = '';
-					if (output && typeof output === 'object') {
-						if (Array.isArray(output)) {
-							detail = ` - Found ${output.length} result${output.length === 1 ? '' : 's'}`;
-						} else if ('coffees' in output && Array.isArray(output.coffees)) {
-							detail = ` - Found ${output.coffees.length} coffee${output.coffees.length === 1 ? '' : 's'}`;
-						} else if ('total_count' in output) {
-							detail = ` - Found ${output.total_count} result${output.total_count === 1 ? '' : 's'}`;
-						}
+			const rawName = part.toolName ?? part.type.replace('tool-', '');
+			// Skip present_results — it's an instant passthrough, no user-visible action
+			if (rawName === 'present_results') continue;
+
+			const toolName = rawName.replace(/_/g, ' ');
+
+			if (part.state === 'input-streaming' || part.state === 'input-available') {
+				steps.push({ message: `Querying ${toolName}...`, timestamp: new Date() });
+			} else if (part.state === 'output-available') {
+				const output = part.output;
+				let detail = '';
+				if (output && typeof output === 'object') {
+					if (Array.isArray(output)) {
+						detail = ` — ${output.length} result${output.length === 1 ? '' : 's'}`;
+					} else if ('coffees' in output && Array.isArray(output.coffees)) {
+						detail = ` — ${output.coffees.length} coffee${output.coffees.length === 1 ? '' : 's'}`;
+					} else if ('inventory' in output && Array.isArray(output.inventory)) {
+						detail = ` — ${output.inventory.length} item${output.inventory.length === 1 ? '' : 's'}`;
+					} else if ('profiles' in output && Array.isArray(output.profiles)) {
+						detail = ` — ${output.profiles.length} profile${output.profiles.length === 1 ? '' : 's'}`;
+					} else if ('total_count' in output) {
+						detail = ` — ${output.total_count} result${output.total_count === 1 ? '' : 's'}`;
 					}
-					steps.push({
-						message: `Finished ${toolName}${detail}`,
-						timestamp: new Date()
-					});
-				} else if (toolPart.state === 'output-error') {
-					steps.push({
-						message: `Error with ${toolName}: ${toolPart.errorText || 'unknown error'}`,
-						timestamp: new Date()
-					});
 				}
+				steps.push({ message: `${toolName}${detail}`, timestamp: new Date() });
+			} else if (part.state === 'output-error') {
+				steps.push({
+					message: `Error: ${part.errorText || 'unknown error'}`,
+					timestamp: new Date()
+				});
 			}
 		}
-
 		return steps;
-	});
-
-	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
+	}
 
 	// ─── Block action handler ─────────────────────────────────────────────────
 	function handleBlockAction(action: BlockAction) {
-		if (action.type === 'coffee-preview') {
-			handleCoffeePreview(action.coffeeIds, action.focusId);
-		} else if (action.type === 'navigate') {
+		if (action.type === 'navigate') {
 			goto(action.url);
 		}
 	}
@@ -356,73 +306,78 @@
 					</div>
 				</div>
 			{:else}
-				<!-- Chat messages -->
+				<!-- Chat messages - interleaved rendering -->
 				<div class="mx-auto max-w-4xl space-y-4">
 					{#each chat.messages as message, msgIndex (message.id)}
 						{@const isLastMessage = msgIndex === chat.messages.length - 1}
 						{@const isStreaming = isLastMessage && isActive && message.role === 'assistant'}
-						<div
-							class="flex {message.role === 'user'
-								? 'justify-end'
-								: 'justify-start'} message-fade-in flex-col {message.role === 'user'
-								? 'items-end'
-								: 'items-start'}"
-						>
-							<!-- Thinking steps inline BEFORE text for streaming message -->
-							{#if isStreaming && thinkingSteps.length > 0}
-								<div class="mb-2 max-w-[80%]">
-									<ChainOfThought steps={thinkingSteps} {isActive} />
-								</div>
-							{/if}
 
-							<!-- Message text bubble -->
-							{#if message.parts.some((p) => p.type === 'text') || message.role === 'user'}
+						{#if message.role === 'user'}
+							<!-- User message bubble -->
+							<div class="message-fade-in flex justify-end">
 								<div
-									class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user'
-										? 'bg-background-tertiary-light text-white'
-										: 'bg-background-secondary-light text-text-primary-light'}"
+									class="max-w-[80%] rounded-lg bg-background-tertiary-light px-4 py-2 text-white"
 								>
 									{#each message.parts as part}
 										{#if part.type === 'text'}
-											{#if message.role === 'assistant'}
-												<div
-													class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light"
-												>
-													<SvelteMarkdown source={part.text} />
+											<div class="whitespace-pre-wrap">{part.text}</div>
+										{/if}
+									{/each}
+								</div>
+							</div>
+						{:else}
+							<!-- Assistant message -->
+							{@const hasPR = messageHasPresentResults(message.parts)}
+							{@const searchCache = hasPR ? buildSearchDataCache(message.parts) : undefined}
+							{@const extractorOptions = { searchDataCache: searchCache, hasPresentResults: hasPR }}
+							{@const toolSteps = getMessageToolSteps(message.parts)}
+							{@const hasToolParts = message.parts.some((p) => p.type.startsWith('tool-'))}
+							<div class="message-fade-in w-full space-y-3">
+								<!-- Persistent accumulated status line for all tool calls -->
+								{#if hasToolParts && toolSteps.length > 0}
+									<InlineStatusLine steps={toolSteps} isActive={isStreaming} />
+								{/if}
+
+								<!-- Text parts stream in live -->
+								{#each message.parts as part}
+									{#if part.type === 'text' && part.text.trim()}
+										<div
+											class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light"
+										>
+											<SvelteMarkdown source={part.text} />
+										</div>
+									{/if}
+								{/each}
+
+								<!-- Blocks render only after streaming completes -->
+								{#if !isStreaming}
+									{#each message.parts as part}
+										{#if part.type.startsWith('tool-')}
+											{@const toolPart = asToolPart(part)}
+											{@const block = extractBlockFromPart(toolPart, extractorOptions)}
+											{#if block}
+												<div class="block-fade-in block-container" style="contain: layout;">
+													<GenUIBlockRenderer {block} onAction={handleBlockAction} />
 												</div>
-											{:else}
-												<div class="whitespace-pre-wrap">{part.text}</div>
+											{:else if toolPart.state === 'output-error'}
+												{@const errorBlock = extractBlockFromPart(toolPart)}
+												{#if errorBlock}
+													<div class="block-fade-in block-container" style="contain: layout;">
+														<GenUIBlockRenderer block={errorBlock} onAction={handleBlockAction} />
+													</div>
+												{/if}
 											{/if}
 										{/if}
 									{/each}
-									{#if !isStreaming}
-										<div class="mt-1 text-xs opacity-70">
-											{new Date().toLocaleTimeString()}
-										</div>
-									{/if}
-								</div>
-							{/if}
-
-							<!-- GenUI blocks render outside the message bubble -->
-							{#if message.role === 'assistant'}
-								{@const blocks = extractUIBlocks(message)}
-								{#if blocks.length > 0}
-									<div class="mt-2 w-full">
-										{#each blocks as block (block.type + '-' + JSON.stringify(block.data).slice(0, 50))}
-											<GenUIBlockRenderer {block} onAction={handleBlockAction} />
-										{/each}
-									</div>
 								{/if}
-							{/if}
-						</div>
+							</div>
+						{/if}
 					{/each}
 
-					<!-- Initial loading state before any message parts exist -->
+					<!-- Initial loading state before any assistant message parts exist -->
 					{#if chat.status === 'submitted' && (chat.messages.length === 0 || chat.messages[chat.messages.length - 1]?.role === 'user')}
-						<div class="flex justify-start">
-							<div class="max-w-[80%]">
-								<ChainOfThought steps={[]} isActive={true} />
-							</div>
+						<div class="message-fade-in">
+							<InlineStatusLine steps={[]} isActive={true} />
 						</div>
 					{/if}
 				</div>
@@ -482,15 +437,6 @@
 			</form>
 		</div>
 	</div>
-
-	<!-- Coffee Preview Sidebar -->
-	<CoffeePreviewSidebar
-		isOpen={coffeePreviewOpen}
-		coffeeIds={selectedCoffeeIds}
-		focusId={focusCoffeeId}
-		onClose={handleSidebarClose}
-		{parseTastingNotes}
-	/>
 {/if}
 
 <style>
@@ -498,10 +444,25 @@
 		animation: messageFadeIn 0.3s ease-out;
 	}
 
+	.block-fade-in {
+		animation: blockFadeIn 0.4s ease-out;
+	}
+
 	@keyframes messageFadeIn {
 		from {
 			opacity: 0;
 			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@keyframes blockFadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(6px);
 		}
 		to {
 			opacity: 1;

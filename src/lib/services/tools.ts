@@ -136,6 +136,37 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 			execute: async (input) => {
 				return callTool('/api/tools/bean-tasting', input);
 			}
+		}),
+
+		present_results: tool({
+			description:
+				'Present curated results with annotations and layout control. Call AFTER a search tool to control what the user sees.',
+			inputSchema: z.object({
+				source_tool: z.enum([
+					'coffee_catalog_search',
+					'green_coffee_inventory',
+					'roast_profiles'
+				]),
+				layout: z
+					.enum(['inline', 'grid', 'focused'])
+					.describe(
+						'inline: vertical stack for exploration. grid: side-by-side for comparison. focused: single highlighted recommendation.'
+					),
+				items: z.array(
+					z.object({
+						id: z.number().describe('Item ID from search results'),
+						annotation: z
+							.string()
+							.optional()
+							.describe('Natural language annotation for this item'),
+						highlight: z
+							.boolean()
+							.optional()
+							.describe('Visually emphasize this item as top pick')
+					})
+				)
+			}),
+			execute: async (input) => ({ presentation: input })
 		})
 	};
 }

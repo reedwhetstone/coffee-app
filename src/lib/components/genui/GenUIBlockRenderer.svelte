@@ -15,7 +15,7 @@
 
 <div class="genui-block w-full">
 	{#if block.type === 'coffee-cards'}
-		<CoffeeCardsBlock {block} {onAction} />
+		<CoffeeCardsBlock {block} />
 	{:else if block.type === 'inventory-table'}
 		<InventoryTableBlock {block} {onAction} />
 	{:else if block.type === 'roast-profiles'}

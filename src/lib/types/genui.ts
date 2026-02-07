@@ -26,11 +26,19 @@ export type UIBlock =
 	| SaleFormBlock
 	| ErrorBlock;
 
+export interface CoffeeCardAnnotation {
+	id: number;
+	annotation?: string;
+	highlight?: boolean;
+}
+
 export interface CoffeeCardsBlock {
 	type: 'coffee-cards';
 	version: 1;
 	data: CoffeeCatalog[];
 	focusId?: number;
+	layout?: 'inline' | 'grid' | 'focused';
+	annotations?: CoffeeCardAnnotation[];
 }
 
 export interface InventoryTableBlock {
@@ -173,9 +181,7 @@ export interface RoastProfilesSummary {
 
 // ─── Block Action Types ──────────────────────────────────────────────────────
 
-export type BlockAction =
-	| { type: 'coffee-preview'; coffeeIds: number[]; focusId?: number }
-	| { type: 'navigate'; url: string };
+export type BlockAction = { type: 'navigate'; url: string };
 
 // ─── Helper to check block type ────────────────────────────────────────────────
 
