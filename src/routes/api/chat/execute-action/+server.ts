@@ -29,7 +29,12 @@ export const POST: RequestHandler = async (event) => {
 
 		switch (actionType) {
 			case 'add_bean_to_inventory': {
-				const catalogId = params.catalog_id ? Number(params.catalog_id) : null;
+				// catalog_id can come from explicit field or from coffee_bean dropdown value
+				const catalogId = params.catalog_id
+					? Number(params.catalog_id)
+					: params.coffee_bean
+						? Number(params.coffee_bean)
+						: null;
 				const manualName = params.manual_name as string | undefined;
 
 				let finalCatalogId = catalogId;
@@ -55,11 +60,16 @@ export const POST: RequestHandler = async (event) => {
 					return json({ error: 'Either catalog_id or manual_name is required' }, { status: 400 });
 				}
 
+				// Compute total bean_cost from cost_per_lb * quantity
+				const qty = Number(params.purchased_qty_lbs) || 0;
+				const costPerLb = Number(params.cost_per_lb) || 0;
+				const totalBeanCost = Math.round(costPerLb * qty * 100) / 100;
+
 				const invData: Record<string, unknown> = {
 					user: user.id,
 					catalog_id: finalCatalogId,
-					purchased_qty_lbs: Number(params.purchased_qty_lbs) || 0,
-					bean_cost: Number(params.bean_cost) || 0,
+					purchased_qty_lbs: qty,
+					bean_cost: totalBeanCost,
 					tax_ship_cost: Number(params.tax_ship_cost) || 0,
 					purchase_date: params.purchase_date || new Date().toISOString().split('T')[0],
 					notes: params.notes || '',

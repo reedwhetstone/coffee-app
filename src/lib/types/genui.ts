@@ -137,7 +137,8 @@ export interface ActionField {
 	value: unknown;
 	type: 'text' | 'number' | 'date' | 'select' | 'textarea';
 	editable: boolean;
-	options?: string[]; // for select type
+	options?: string[]; // for select type (simple string options)
+	selectOptions?: Array<{ label: string; value: string }>; // for select type (label/value pairs)
 }
 
 export interface ActionCardPayload {

@@ -25,6 +25,25 @@
 
 	function setFieldValue(key: string, value: unknown) {
 		localFields = localFields.map((f) => (f.key === key ? { ...f, value } : f));
+
+		// Coupled field updates for add_bean_to_inventory
+		if (block.data.actionType === 'add_bean_to_inventory') {
+			// When coffee_bean dropdown changes, update the hidden catalog_id
+			if (key === 'coffee_bean') {
+				localFields = localFields.map((f) =>
+					f.key === 'catalog_id' ? { ...f, value: Number(value) } : f
+				);
+			}
+
+			// When cost_per_lb or purchased_qty_lbs changes, recompute total_bean_cost
+			if (key === 'cost_per_lb' || key === 'purchased_qty_lbs') {
+				const perLb = Number(localFields.find((f) => f.key === 'cost_per_lb')?.value) || 0;
+				const qty = Number(localFields.find((f) => f.key === 'purchased_qty_lbs')?.value) || 0;
+				localFields = localFields.map((f) =>
+					f.key === 'total_bean_cost' ? { ...f, value: Math.round(perLb * qty * 100) / 100 } : f
+				);
+			}
+		}
 	}
 
 	async function handleExecute() {
@@ -112,15 +131,21 @@
 							class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
 							rows="2"
 						></textarea>
-					{:else if field.type === 'select' && field.options}
+					{:else if field.type === 'select' && (field.selectOptions || field.options)}
 						<select
 							value={String(field.value)}
 							onchange={(e) => setFieldValue(field.key, (e.target as HTMLSelectElement).value)}
 							class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
 						>
-							{#each field.options as opt}
-								<option value={opt}>{opt}</option>
-							{/each}
+							{#if field.selectOptions}
+								{#each field.selectOptions as opt}
+									<option value={opt.value}>{opt.label}</option>
+								{/each}
+							{:else if field.options}
+								{#each field.options as opt}
+									<option value={opt}>{opt}</option>
+								{/each}
+							{/if}
 						</select>
 					{:else}
 						<input

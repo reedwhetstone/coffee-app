@@ -147,27 +147,61 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				catalog_id: z.number().optional().describe('Coffee catalog ID (from coffee_catalog_search results)'),
 				manual_name: z.string().optional().describe('Manual coffee name if not from catalog'),
 				purchased_qty_lbs: z.number().describe('Quantity purchased in pounds'),
-				bean_cost: z.number().optional().describe('Cost per pound'),
-				tax_ship_cost: z.number().optional().describe('Tax and shipping cost'),
+				cost_per_lb: z.number().optional().describe('Cost per pound in dollars'),
+				tax_ship_cost: z.number().optional().describe('Tax and shipping cost (total)'),
 				purchase_date: z.string().optional().describe('Purchase date (YYYY-MM-DD)'),
 				notes: z.string().optional().describe('Notes about this purchase')
 			}),
-			execute: async (input) => ({
-				action_card: {
-					actionType: 'add_bean_to_inventory',
-					summary: `Add ${input.manual_name || `catalog #${input.catalog_id}`} to inventory (${input.purchased_qty_lbs} lbs)`,
-					fields: [
-						...(input.catalog_id ? [{ key: 'catalog_id', label: 'Catalog ID', value: input.catalog_id, type: 'number', editable: false }] : []),
-						...(input.manual_name ? [{ key: 'manual_name', label: 'Coffee Name', value: input.manual_name, type: 'text', editable: true }] : []),
-						{ key: 'purchased_qty_lbs', label: 'Quantity (lbs)', value: input.purchased_qty_lbs, type: 'number', editable: true },
-						...(input.bean_cost != null ? [{ key: 'bean_cost', label: 'Cost/lb ($)', value: input.bean_cost, type: 'number', editable: true }] : []),
-						...(input.tax_ship_cost != null ? [{ key: 'tax_ship_cost', label: 'Tax & Shipping ($)', value: input.tax_ship_cost, type: 'number', editable: true }] : []),
-						{ key: 'purchase_date', label: 'Purchase Date', value: input.purchase_date || new Date().toISOString().split('T')[0], type: 'date', editable: true },
-						...(input.notes ? [{ key: 'notes', label: 'Notes', value: input.notes, type: 'textarea', editable: true }] : [])
-					],
-					status: 'proposed'
+			execute: async (input) => {
+				// Fetch stocked catalog beans for the dropdown
+				let beanSelectOptions: Array<{ label: string; value: string }> = [];
+				try {
+					const catalogResult = await callTool('/api/tools/coffee-catalog', { stocked_only: true, limit: 15 }) as { coffees?: Array<{ id: number; name: string; source?: string }> };
+					if (catalogResult.coffees) {
+						beanSelectOptions = catalogResult.coffees.map((c) => ({
+							label: c.source ? `${c.name} — ${c.source}` : c.name,
+							value: String(c.id)
+						}));
+					}
+				} catch {
+					// If catalog fetch fails, fall back to static catalog_id
 				}
-			})
+
+				const costPerLb = input.cost_per_lb ?? 0;
+				const qty = input.purchased_qty_lbs;
+				const totalBeanCost = Math.round(costPerLb * qty * 100) / 100;
+
+				// Determine which bean is pre-selected
+				const preSelectedValue = input.catalog_id ? String(input.catalog_id) : beanSelectOptions[0]?.value;
+				const preSelectedLabel = beanSelectOptions.find((o) => o.value === preSelectedValue)?.label || input.manual_name || '';
+
+				return {
+					action_card: {
+						actionType: 'add_bean_to_inventory',
+						summary: `Add ${preSelectedLabel || input.manual_name || `catalog #${input.catalog_id}`} to inventory (${qty} lbs)`,
+						fields: [
+							// Bean dropdown (if we have catalog options) or manual name fallback
+							...(beanSelectOptions.length > 0
+								? [
+									{ key: 'coffee_bean', label: 'Coffee Bean', value: preSelectedValue, type: 'select' as const, editable: true, selectOptions: beanSelectOptions },
+									{ key: 'catalog_id', label: 'Catalog ID', value: input.catalog_id || Number(preSelectedValue), type: 'number' as const, editable: false }
+								]
+								: [
+									...(input.catalog_id ? [{ key: 'catalog_id', label: 'Catalog ID', value: input.catalog_id, type: 'number' as const, editable: false }] : []),
+									...(input.manual_name ? [{ key: 'manual_name', label: 'Coffee Name', value: input.manual_name, type: 'text' as const, editable: true }] : [])
+								]
+							),
+							{ key: 'purchased_qty_lbs', label: 'Quantity (lbs)', value: qty, type: 'number' as const, editable: true },
+							...(input.cost_per_lb != null ? [{ key: 'cost_per_lb', label: 'Cost/lb ($)', value: costPerLb, type: 'number' as const, editable: true }] : []),
+							...(input.cost_per_lb != null ? [{ key: 'total_bean_cost', label: 'Total Bean Cost ($)', value: totalBeanCost, type: 'number' as const, editable: false }] : []),
+							...(input.tax_ship_cost != null ? [{ key: 'tax_ship_cost', label: 'Tax & Shipping ($)', value: input.tax_ship_cost, type: 'number' as const, editable: true }] : []),
+							{ key: 'purchase_date', label: 'Purchase Date', value: input.purchase_date || new Date().toISOString().split('T')[0], type: 'date' as const, editable: true },
+							...(input.notes ? [{ key: 'notes', label: 'Notes', value: input.notes, type: 'textarea' as const, editable: true }] : [])
+						],
+						status: 'proposed'
+					}
+				};
+			}
 		}),
 
 		update_bean: tool({
