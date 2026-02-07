@@ -65,9 +65,7 @@ function dispatch(mutation: CanvasMutation) {
 			// Restore if minimized
 			const target = blocks.find((b) => b.id === mutation.blockId);
 			if (target?.minimized) {
-				blocks = blocks.map((b) =>
-					b.id === mutation.blockId ? { ...b, minimized: false } : b
-				);
+				blocks = blocks.map((b) => (b.id === mutation.blockId ? { ...b, minimized: false } : b));
 			}
 			layout = 'focus';
 			break;
@@ -110,7 +108,7 @@ function dispatch(mutation: CanvasMutation) {
 			});
 
 			blocks = [...pinnedBlocks, ...newBlocks];
-			focusBlockId = newBlocks.length > 0 ? newBlocks[0].id : pinnedBlocks[0]?.id ?? null;
+			focusBlockId = newBlocks.length > 0 ? newBlocks[0].id : (pinnedBlocks[0]?.id ?? null);
 			layout = autoDetectLayout(blocks.length);
 			break;
 		}
@@ -126,9 +124,7 @@ function dispatch(mutation: CanvasMutation) {
 		}
 
 		case 'minimize': {
-			blocks = blocks.map((b) =>
-				b.id === mutation.blockId ? { ...b, minimized: true } : b
-			);
+			blocks = blocks.map((b) => (b.id === mutation.blockId ? { ...b, minimized: true } : b));
 			if (focusBlockId === mutation.blockId) {
 				const visible = blocks.filter((b) => !b.minimized && b.id !== mutation.blockId);
 				focusBlockId = visible.length > 0 ? visible[visible.length - 1].id : null;
@@ -137,9 +133,7 @@ function dispatch(mutation: CanvasMutation) {
 		}
 
 		case 'restore': {
-			blocks = blocks.map((b) =>
-				b.id === mutation.blockId ? { ...b, minimized: false } : b
-			);
+			blocks = blocks.map((b) => (b.id === mutation.blockId ? { ...b, minimized: false } : b));
 			focusBlockId = mutation.blockId;
 			break;
 		}

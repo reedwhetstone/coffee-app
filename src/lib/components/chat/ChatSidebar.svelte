@@ -94,12 +94,7 @@
 		>
 			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				{#if collapsed}
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M9 5l7 7-7 7"
-					/>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 				{:else}
 					<path
 						stroke-linecap="round"
@@ -140,7 +135,7 @@
 							onblur={saveRename}
 							onkeydown={(e) => {
 								if (e.key === 'Enter') saveRename();
-								if (e.key === 'Escape') (editingId = null);
+								if (e.key === 'Escape') editingId = null;
 							}}
 							onclick={(e) => e.stopPropagation()}
 							class="min-w-0 flex-1 rounded border border-border-light bg-transparent px-1 text-sm focus:outline-none"
@@ -158,7 +153,7 @@
 							e.stopPropagation();
 							onDelete(ws.id);
 						}}
-						class="shrink-0 rounded p-0.5 text-text-secondary-light opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
+						class="shrink-0 rounded p-0.5 text-text-secondary-light opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
 						title="Delete workspace"
 					>
 						<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,7 +181,7 @@
 					class="w-full rounded border border-border-light bg-background-primary-light px-2 py-1 text-sm text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none"
 					onkeydown={(e) => {
 						if (e.key === 'Enter') handleCreate();
-						if (e.key === 'Escape') (showCreateForm = false);
+						if (e.key === 'Escape') showCreateForm = false;
 					}}
 				/>
 				<select

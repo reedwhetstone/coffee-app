@@ -38,9 +38,7 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Build conversation text for summarization
-		const conversationText = messages
-			.map((m) => `${m.role}: ${m.content}`)
-			.join('\n');
+		const conversationText = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
 
 		const existingSummary = workspace.context_summary || '';
 

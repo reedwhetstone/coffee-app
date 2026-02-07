@@ -247,7 +247,10 @@
 			<div class="relative">
 				<button
 					onclick={handleChatClick}
-					class="flex items-center justify-center rounded-full bg-background-secondary-light p-2 text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white hover:ring-background-tertiary-light {activeMenu === 'workspaces' ? 'ring-2 ring-background-tertiary-light' : ''}"
+					class="flex items-center justify-center rounded-full bg-background-secondary-light p-2 text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white hover:ring-background-tertiary-light {activeMenu ===
+					'workspaces'
+						? 'ring-2 ring-background-tertiary-light'
+						: ''}"
 					style="box-shadow: 0 0 20px rgba(249, 165, 123, 0.5), 0 1px 2px 0 rgb(0 0 0 / 0.05);"
 					aria-label="Coffee Chat"
 				>
@@ -460,14 +463,21 @@
 			>
 				<!-- Header -->
 				<div class="flex items-center justify-between border-b border-border-light px-3 py-2.5">
-					<span class="text-xs font-semibold uppercase tracking-wider text-text-secondary-light">Workspaces</span>
+					<span class="text-xs font-semibold uppercase tracking-wider text-text-secondary-light"
+						>Workspaces</span
+					>
 					<button
 						onclick={closeAllMenus}
 						class="rounded p-1 text-text-secondary-light transition-colors hover:text-text-primary-light"
 						aria-label="Close"
 					>
 						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
 						</svg>
 					</button>
 				</div>
@@ -483,14 +493,19 @@
 								tabindex="0"
 								onclick={() => workspaceStore.uiCallbacks?.onSwitch(ws.id)}
 								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') workspaceStore.uiCallbacks?.onSwitch(ws.id);
+									if (e.key === 'Enter' || e.key === ' ')
+										workspaceStore.uiCallbacks?.onSwitch(ws.id);
 								}}
 								class="group flex cursor-pointer items-center gap-2 px-3 py-2 text-sm transition-colors {isActive
 									? 'border-l-2 border-background-tertiary-light bg-background-secondary-light font-semibold text-text-primary-light'
 									: 'text-text-secondary-light hover:bg-background-secondary-light/50 hover:text-text-primary-light'}"
 							>
 								<!-- Type dot -->
-								<span class="h-2.5 w-2.5 shrink-0 rounded-full {wsTypeColors[wsType]} {isActive ? 'ring-2 ring-background-tertiary-light/40' : ''}"></span>
+								<span
+									class="h-2.5 w-2.5 shrink-0 rounded-full {wsTypeColors[wsType]} {isActive
+										? 'ring-2 ring-background-tertiary-light/40'
+										: ''}"
+								></span>
 
 								{#if editingWsId === ws.id}
 									<input
@@ -499,7 +514,7 @@
 										onblur={saveWsRename}
 										onkeydown={(e) => {
 											if (e.key === 'Enter') saveWsRename();
-											if (e.key === 'Escape') (editingWsId = null);
+											if (e.key === 'Escape') editingWsId = null;
 										}}
 										onclick={(e) => e.stopPropagation()}
 										class="min-w-0 flex-1 rounded border border-border-light bg-transparent px-1 text-sm focus:outline-none"
@@ -520,11 +535,16 @@
 										e.stopPropagation();
 										workspaceStore.uiCallbacks?.onDelete(ws.id);
 									}}
-									class="shrink-0 rounded p-0.5 text-text-secondary-light opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
+									class="shrink-0 rounded p-0.5 text-text-secondary-light opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
 									title="Delete workspace"
 								>
 									<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M6 18L18 6M6 6l12 12"
+										/>
 									</svg>
 								</button>
 							</div>
@@ -547,7 +567,7 @@
 								class="w-full rounded border border-border-light bg-background-secondary-light px-2 py-1 text-sm text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none"
 								onkeydown={(e) => {
 									if (e.key === 'Enter') handleWsCreate();
-									if (e.key === 'Escape') (showCreateForm = false);
+									if (e.key === 'Escape') showCreateForm = false;
 								}}
 							/>
 							<select
@@ -582,7 +602,12 @@
 							title="New workspace"
 						>
 							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M12 4v16m8-8H4"
+								/>
 							</svg>
 							<span>New Workspace</span>
 						</button>

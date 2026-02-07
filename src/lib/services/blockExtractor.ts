@@ -174,7 +174,7 @@ function buildPresentedBlock(
 ): UIBlock | null {
 	const sourceTool: string = presentation.source_tool;
 	const layout: 'inline' | 'grid' | 'focused' = presentation.layout || 'inline';
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	 
 	const items: Array<{ id: number; annotation?: string; highlight?: boolean }> =
 		presentation.items || [];
 

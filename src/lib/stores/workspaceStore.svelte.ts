@@ -52,11 +52,11 @@ let error = $state<string | null>(null);
 // Track saved message count per workspace to detect new messages needing persistence
 let savedMessageCounts = $state<Map<string, number>>(new Map());
 
-let currentWorkspace = $derived(
+const currentWorkspace = $derived(
 	workspaces.find((w: Workspace) => w.id === currentWorkspaceId) ?? null
 );
 
-let sortedWorkspaces = $derived(
+const sortedWorkspaces = $derived(
 	[...workspaces].sort(
 		(a: Workspace, b: Workspace) =>
 			new Date(b.last_accessed_at).getTime() - new Date(a.last_accessed_at).getTime()
@@ -211,9 +211,7 @@ async function updateTitle(workspaceId: string, title: string): Promise<boolean>
 			body: JSON.stringify({ title })
 		});
 		if (!res.ok) throw new Error('Failed to update workspace');
-		workspaces = workspaces.map((w: Workspace) =>
-			w.id === workspaceId ? { ...w, title } : w
-		);
+		workspaces = workspaces.map((w: Workspace) => (w.id === workspaceId ? { ...w, title } : w));
 		return true;
 	} catch (err) {
 		error = (err as Error).message;

@@ -31,11 +31,13 @@ export function getSuggestions(
 
 	// Deduplicate by label and limit to 4
 	const seen = new Set<string>();
-	return suggestions.filter((s) => {
-		if (seen.has(s.label)) return false;
-		seen.add(s.label);
-		return true;
-	}).slice(0, 4);
+	return suggestions
+		.filter((s) => {
+			if (seen.has(s.label)) return false;
+			seen.add(s.label);
+			return true;
+		})
+		.slice(0, 4);
 }
 
 function getCanvasSuggestions(blocks: CanvasBlock[]): Suggestion[] {
@@ -76,7 +78,7 @@ function getCanvasSuggestions(blocks: CanvasBlock[]): Suggestion[] {
 	if (blockTypes.has('inventory-table')) {
 		suggestions.push({
 			label: 'What should I roast?',
-			text: "Based on my inventory, what should I roast next and why?"
+			text: 'Based on my inventory, what should I roast next and why?'
 		});
 	}
 
@@ -87,25 +89,43 @@ function getStarterSuggestions(workspaceType: string): Suggestion[] {
 	switch (workspaceType) {
 		case 'sourcing':
 			return [
-				{ label: 'Find Ethiopian', text: 'Find me a natural process Ethiopian coffee with fruity, berry-forward flavors.' },
-				{ label: 'Budget picks', text: 'Show me the best value coffees under $7/lb that are currently in stock.' },
+				{
+					label: 'Find Ethiopian',
+					text: 'Find me a natural process Ethiopian coffee with fruity, berry-forward flavors.'
+				},
+				{
+					label: 'Budget picks',
+					text: 'Show me the best value coffees under $7/lb that are currently in stock.'
+				},
 				{ label: 'What\u2019s new?', text: 'What new coffees have been stocked recently?' }
 			];
 		case 'roasting':
 			return [
 				{ label: 'Recent roasts', text: 'Show me my most recent roast profiles.' },
-				{ label: 'Best roasts', text: 'What were my best roasts by development percentage and weight loss?' },
-				{ label: 'Roast tips', text: 'What general tips do you have for improving my roast consistency?' }
+				{
+					label: 'Best roasts',
+					text: 'What were my best roasts by development percentage and weight loss?'
+				},
+				{
+					label: 'Roast tips',
+					text: 'What general tips do you have for improving my roast consistency?'
+				}
 			];
 		case 'inventory':
 			return [
 				{ label: 'My inventory', text: 'Show me my current green coffee inventory.' },
 				{ label: 'Running low', text: 'Which coffees in my inventory are running low?' },
-				{ label: 'What to buy', text: 'Based on my inventory and roasting history, what should I buy next?' }
+				{
+					label: 'What to buy',
+					text: 'Based on my inventory and roasting history, what should I buy next?'
+				}
 			];
 		case 'analysis':
 			return [
-				{ label: 'Profit overview', text: 'Give me a summary of my recent sales and profit margins.' },
+				{
+					label: 'Profit overview',
+					text: 'Give me a summary of my recent sales and profit margins.'
+				},
 				{ label: 'Cost analysis', text: 'Analyze my cost per pound across all my coffees.' },
 				{ label: 'Trends', text: 'What trends do you see in my roasting and sales data?' }
 			];
@@ -125,13 +145,19 @@ function getFollowUpSuggestions(workspaceType: string, canvasBlocks: CanvasBlock
 		// No canvas content — offer workspace-relevant follow-ups
 		switch (workspaceType) {
 			case 'sourcing':
-				suggestions.push({ label: 'Search catalog', text: 'Search the coffee catalog for something interesting.' });
+				suggestions.push({
+					label: 'Search catalog',
+					text: 'Search the coffee catalog for something interesting.'
+				});
 				break;
 			case 'roasting':
 				suggestions.push({ label: 'My roasts', text: 'Show me my recent roast profiles.' });
 				break;
 			case 'inventory':
-				suggestions.push({ label: 'My inventory', text: 'Show me my current green coffee inventory.' });
+				suggestions.push({
+					label: 'My inventory',
+					text: 'Show me my current green coffee inventory.'
+				});
 				break;
 		}
 	}

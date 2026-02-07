@@ -76,7 +76,10 @@
 			const end = Math.min(data.length, i + Math.ceil(windowSize / 2));
 			let sum = 0;
 			let count = 0;
-			for (let j = start; j < end; j++) { sum += data[j].temp; count++; }
+			for (let j = start; j < end; j++) {
+				sum += data[j].temp;
+				count++;
+			}
 			result.push({ time: data[i].time, temp: sum / count });
 		}
 		return result;
@@ -136,12 +139,19 @@
 
 		// Calculate time domain in minutes relative to charge
 		const minTime = points.length > 0 ? (points[0].time - chargeTime) / (1000 * 60) : -2;
-		const maxTime = points.length > 0 ? (points[points.length - 1].time - chargeTime) / (1000 * 60) : 12;
+		const maxTime =
+			points.length > 0 ? (points[points.length - 1].time - chargeTime) / (1000 * 60) : 12;
 
 		// Scales
-		const xScale = scaleLinear().domain([minTime - 0.5, maxTime + 0.5]).range([0, width]);
-		const yTemp = scaleLinear().domain([meta.tempRange[0] - 20, meta.tempRange[1] + 20]).range([height, 0]);
-		const yRoR = scaleLinear().domain([0, Math.min(meta.rorRange[1] + 5, 50)]).range([height, 0]);
+		const xScale = scaleLinear()
+			.domain([minTime - 0.5, maxTime + 0.5])
+			.range([0, width]);
+		const yTemp = scaleLinear()
+			.domain([meta.tempRange[0] - 20, meta.tempRange[1] + 20])
+			.range([height, 0]);
+		const yRoR = scaleLinear()
+			.domain([0, Math.min(meta.rorRange[1] + 5, 50)])
+			.range([height, 0]);
 
 		// Clear previous
 		select(container).selectAll('svg').remove();
@@ -154,32 +164,66 @@
 			.attr('transform', `translate(${margin.left},${margin.top})`);
 
 		// Axes
-		svg.append('g').attr('transform', `translate(0,${height})`).call(axisBottom(xScale).ticks(8))
-			.selectAll('text').style('fill', '#6b7280').style('font-size', '10px');
-		svg.append('g').call(axisLeft(yTemp).ticks(6))
-			.selectAll('text').style('fill', '#dc2626').style('font-size', '10px');
-		svg.append('g').attr('transform', `translate(${width},0)`).call(axisRight(yRoR).ticks(5))
-			.selectAll('text').style('fill', '#2563eb').style('font-size', '10px');
+		svg
+			.append('g')
+			.attr('transform', `translate(0,${height})`)
+			.call(axisBottom(xScale).ticks(8))
+			.selectAll('text')
+			.style('fill', '#6b7280')
+			.style('font-size', '10px');
+		svg
+			.append('g')
+			.call(axisLeft(yTemp).ticks(6))
+			.selectAll('text')
+			.style('fill', '#dc2626')
+			.style('font-size', '10px');
+		svg
+			.append('g')
+			.attr('transform', `translate(${width},0)`)
+			.call(axisRight(yRoR).ticks(5))
+			.selectAll('text')
+			.style('fill', '#2563eb')
+			.style('font-size', '10px');
 
 		// Axis labels
-		svg.append('text')
-			.attr('transform', 'rotate(-90)').attr('y', -45).attr('x', -height / 2)
-			.style('text-anchor', 'middle').style('fill', '#dc2626').style('font-size', '11px')
+		svg
+			.append('text')
+			.attr('transform', 'rotate(-90)')
+			.attr('y', -45)
+			.attr('x', -height / 2)
+			.style('text-anchor', 'middle')
+			.style('fill', '#dc2626')
+			.style('font-size', '11px')
 			.text('Temperature (°F)');
-		svg.append('text')
-			.attr('transform', 'rotate(90)').attr('y', -width - 55).attr('x', height / 2)
-			.style('text-anchor', 'middle').style('fill', '#2563eb').style('font-size', '11px')
+		svg
+			.append('text')
+			.attr('transform', 'rotate(90)')
+			.attr('y', -width - 55)
+			.attr('x', height / 2)
+			.style('text-anchor', 'middle')
+			.style('fill', '#2563eb')
+			.style('font-size', '11px')
 			.text('RoR (°F/min)');
-		svg.append('text')
-			.attr('x', width / 2).attr('y', height + 35)
-			.style('text-anchor', 'middle').style('fill', '#6b7280').style('font-size', '11px')
+		svg
+			.append('text')
+			.attr('x', width / 2)
+			.attr('y', height + 35)
+			.style('text-anchor', 'middle')
+			.style('fill', '#6b7280')
+			.style('font-size', '11px')
 			.text('Time (min from charge)');
 
 		// Charge line (t=0)
-		svg.append('line')
-			.attr('x1', xScale(0)).attr('x2', xScale(0))
-			.attr('y1', 0).attr('y2', height)
-			.attr('stroke', '#10b981').attr('stroke-width', 2).attr('stroke-dasharray', '3,3').attr('opacity', 0.7);
+		svg
+			.append('line')
+			.attr('x1', xScale(0))
+			.attr('x2', xScale(0))
+			.attr('y1', 0)
+			.attr('y2', height)
+			.attr('stroke', '#10b981')
+			.attr('stroke-width', 2)
+			.attr('stroke-dasharray', '3,3')
+			.attr('opacity', 0.7);
 
 		// Helper: time relative to charge in minutes
 		const relMin = (t: number) => (t - chargeTime) / (1000 * 60);
@@ -190,11 +234,19 @@
 			const btLine = line<ChartPoint>()
 				.x((d) => xScale(relMin(d.time)))
 				.y((d) => yTemp(d.bean_temp!))
-				.defined((d) => d.bean_temp !== null && !isNaN(xScale(relMin(d.time))) && !isNaN(yTemp(d.bean_temp!)))
+				.defined(
+					(d) =>
+						d.bean_temp !== null && !isNaN(xScale(relMin(d.time))) && !isNaN(yTemp(d.bean_temp!))
+				)
 				.curve(curveBasis);
-			svg.append('path').datum(btData)
-				.attr('fill', 'none').attr('stroke', '#f59e0b').attr('stroke-width', 2.5)
-				.attr('stroke-dasharray', '5,5').attr('d', btLine);
+			svg
+				.append('path')
+				.datum(btData)
+				.attr('fill', 'none')
+				.attr('stroke', '#f59e0b')
+				.attr('stroke-width', 2.5)
+				.attr('stroke-dasharray', '5,5')
+				.attr('d', btLine);
 		}
 
 		// Env temp line (ET)
@@ -203,10 +255,20 @@
 			const etLine = line<ChartPoint>()
 				.x((d) => xScale(relMin(d.time)))
 				.y((d) => yTemp(d.environmental_temp!))
-				.defined((d) => d.environmental_temp !== null && !isNaN(xScale(relMin(d.time))) && !isNaN(yTemp(d.environmental_temp!)))
+				.defined(
+					(d) =>
+						d.environmental_temp !== null &&
+						!isNaN(xScale(relMin(d.time))) &&
+						!isNaN(yTemp(d.environmental_temp!))
+				)
 				.curve(curveBasis);
-			svg.append('path').datum(etData)
-				.attr('fill', 'none').attr('stroke', '#dc2626').attr('stroke-width', 2).attr('d', etLine);
+			svg
+				.append('path')
+				.datum(etData)
+				.attr('fill', 'none')
+				.attr('stroke', '#dc2626')
+				.attr('stroke-width', 2)
+				.attr('d', etLine);
 		}
 
 		// RoR line
@@ -215,22 +277,39 @@
 			const rorLine = line<{ time: number; ror: number }>()
 				.x((d) => xScale(relMin(d.time)))
 				.y((d) => yRoR(d.ror))
-				.defined((d) => d.ror > 0 && d.ror <= 50 && !isNaN(xScale(relMin(d.time))) && !isNaN(yRoR(d.ror)))
+				.defined(
+					(d) => d.ror > 0 && d.ror <= 50 && !isNaN(xScale(relMin(d.time))) && !isNaN(yRoR(d.ror))
+				)
 				.curve(curveBasis);
-			svg.append('path').datum(rorData)
-				.attr('fill', 'none').attr('stroke', '#2563eb').attr('stroke-width', 2).attr('d', rorLine);
+			svg
+				.append('path')
+				.datum(rorData)
+				.attr('fill', 'none')
+				.attr('stroke', '#2563eb')
+				.attr('stroke-width', 2)
+				.attr('d', rorLine);
 		}
 
 		// Milestone markers
 		for (const evt of events) {
 			const x = xScale(relMin(evt.time));
 			if (x < 0 || x > width) continue;
-			svg.append('line')
-				.attr('x1', x).attr('x2', x).attr('y1', 0).attr('y2', height)
-				.attr('stroke', '#4ade80').attr('stroke-width', 1).attr('stroke-dasharray', '4,4');
-			svg.append('text')
-				.attr('x', x).attr('y', 10)
-				.attr('fill', '#4ade80').attr('font-size', '10px').attr('text-anchor', 'end')
+			svg
+				.append('line')
+				.attr('x1', x)
+				.attr('x2', x)
+				.attr('y1', 0)
+				.attr('y2', height)
+				.attr('stroke', '#4ade80')
+				.attr('stroke-width', 1)
+				.attr('stroke-dasharray', '4,4');
+			svg
+				.append('text')
+				.attr('x', x)
+				.attr('y', 10)
+				.attr('fill', '#4ade80')
+				.attr('font-size', '10px')
+				.attr('text-anchor', 'end')
 				.attr('transform', `rotate(-90,${x},10)`)
 				.text(evt.name);
 		}
@@ -240,30 +319,71 @@
 		let ly = 8;
 		const lx = width - 130;
 		if (btData.length > 0) {
-			legendG.append('line').attr('x1', lx).attr('x2', lx + 18).attr('y1', ly).attr('y2', ly)
-				.attr('stroke', '#f59e0b').attr('stroke-width', 2.5).attr('stroke-dasharray', '5,5');
-			legendG.append('text').attr('x', lx + 22).attr('y', ly).attr('dy', '0.35em')
-				.attr('font-size', '10px').attr('fill', '#6b7280').text('Bean Temp');
+			legendG
+				.append('line')
+				.attr('x1', lx)
+				.attr('x2', lx + 18)
+				.attr('y1', ly)
+				.attr('y2', ly)
+				.attr('stroke', '#f59e0b')
+				.attr('stroke-width', 2.5)
+				.attr('stroke-dasharray', '5,5');
+			legendG
+				.append('text')
+				.attr('x', lx + 22)
+				.attr('y', ly)
+				.attr('dy', '0.35em')
+				.attr('font-size', '10px')
+				.attr('fill', '#6b7280')
+				.text('Bean Temp');
 			ly += 14;
 		}
 		if (etData.length > 0) {
-			legendG.append('line').attr('x1', lx).attr('x2', lx + 18).attr('y1', ly).attr('y2', ly)
-				.attr('stroke', '#dc2626').attr('stroke-width', 2);
-			legendG.append('text').attr('x', lx + 22).attr('y', ly).attr('dy', '0.35em')
-				.attr('font-size', '10px').attr('fill', '#6b7280').text('Env Temp');
+			legendG
+				.append('line')
+				.attr('x1', lx)
+				.attr('x2', lx + 18)
+				.attr('y1', ly)
+				.attr('y2', ly)
+				.attr('stroke', '#dc2626')
+				.attr('stroke-width', 2);
+			legendG
+				.append('text')
+				.attr('x', lx + 22)
+				.attr('y', ly)
+				.attr('dy', '0.35em')
+				.attr('font-size', '10px')
+				.attr('fill', '#6b7280')
+				.text('Env Temp');
 			ly += 14;
 		}
 		if (rorData.length > 0) {
-			legendG.append('line').attr('x1', lx).attr('x2', lx + 18).attr('y1', ly).attr('y2', ly)
-				.attr('stroke', '#2563eb').attr('stroke-width', 2);
-			legendG.append('text').attr('x', lx + 22).attr('y', ly).attr('dy', '0.35em')
-				.attr('font-size', '10px').attr('fill', '#6b7280').text('RoR');
+			legendG
+				.append('line')
+				.attr('x1', lx)
+				.attr('x2', lx + 18)
+				.attr('y1', ly)
+				.attr('y2', ly)
+				.attr('stroke', '#2563eb')
+				.attr('stroke-width', 2);
+			legendG
+				.append('text')
+				.attr('x', lx + 22)
+				.attr('y', ly)
+				.attr('dy', '0.35em')
+				.attr('font-size', '10px')
+				.attr('fill', '#6b7280')
+				.text('RoR');
 		}
 
 		// Tooltip overlay
 		if (points.length > 0) {
-			svg.append('rect')
-				.attr('width', width).attr('height', height).attr('fill', 'transparent').style('cursor', 'crosshair')
+			svg
+				.append('rect')
+				.attr('width', width)
+				.attr('height', height)
+				.attr('fill', 'transparent')
+				.style('cursor', 'crosshair')
 				.on('mousemove', function (this: SVGRectElement, event: MouseEvent) {
 					const [mx] = pointer(event, this);
 					const x0 = xScale.invert(mx);
@@ -271,7 +391,10 @@
 					let minDist = Math.abs(relMin(points[0].time) - x0);
 					for (let i = 1; i < points.length; i++) {
 						const dist = Math.abs(relMin(points[i].time) - x0);
-						if (dist < minDist) { minDist = dist; closest = i; }
+						if (dist < minDist) {
+							minDist = dist;
+							closest = i;
+						}
 					}
 					const d = points[closest];
 					const xPos = xScale(relMin(d.time));
@@ -283,7 +406,10 @@
 						let md2 = Math.abs(rorData[0].time - d.time);
 						for (let i = 1; i < rorData.length; i++) {
 							const dd = Math.abs(rorData[i].time - d.time);
-							if (dd < md2) { md2 = dd; ci = i; }
+							if (dd < md2) {
+								md2 = dd;
+								ci = i;
+							}
 						}
 						if (md2 < 5000) rorVal = rorData[ci].ror.toFixed(1);
 					}
@@ -305,9 +431,17 @@
 
 					// Vertical indicator
 					svg.selectAll('.hover-line').remove();
-					svg.append('line').attr('class', 'hover-line')
-						.attr('x1', xPos).attr('x2', xPos).attr('y1', 0).attr('y2', height)
-						.attr('stroke', '#6b7280').attr('stroke-width', 1).attr('stroke-dasharray', '3,3').style('opacity', 0.7);
+					svg
+						.append('line')
+						.attr('class', 'hover-line')
+						.attr('x1', xPos)
+						.attr('x2', xPos)
+						.attr('y1', 0)
+						.attr('y2', height)
+						.attr('stroke', '#6b7280')
+						.attr('stroke-width', 1)
+						.attr('stroke-dasharray', '3,3')
+						.style('opacity', 0.7);
 				})
 				.on('mouseout', () => {
 					tooltip = { ...tooltip, visible: false };
@@ -360,7 +494,9 @@
 		<!-- Skeleton loader -->
 		<div class="flex h-64 items-center justify-center rounded-lg bg-background-secondary-light">
 			<div class="flex flex-col items-center gap-2">
-				<div class="h-5 w-5 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"></div>
+				<div
+					class="h-5 w-5 animate-spin rounded-full border-2 border-background-tertiary-light border-t-transparent"
+				></div>
 				<span class="text-xs text-text-secondary-light">Loading roast data...</span>
 			</div>
 		</div>
@@ -373,7 +509,11 @@
 			<div class="flex items-center justify-between border-b border-border-light px-3 py-2">
 				<span class="text-sm font-medium text-text-primary-light">{roastName}</span>
 			</div>
-			<div bind:this={chartContainer} class="chart-container w-full" style="min-height: 300px;"></div>
+			<div
+				bind:this={chartContainer}
+				class="chart-container w-full"
+				style="min-height: 300px;"
+			></div>
 		</div>
 	{/if}
 

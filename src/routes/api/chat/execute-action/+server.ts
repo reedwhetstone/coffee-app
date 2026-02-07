@@ -23,9 +23,8 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Convert fields array/object to a flat params map
-		const params: Record<string, unknown> = typeof fields === 'object' && !Array.isArray(fields)
-			? fields
-			: {};
+		const params: Record<string, unknown> =
+			typeof fields === 'object' && !Array.isArray(fields) ? fields : {};
 
 		switch (actionType) {
 			case 'add_bean_to_inventory': {
@@ -127,7 +126,9 @@ export const POST: RequestHandler = async (event) => {
 				if (updateData.purchased_qty_lbs !== undefined && updateData.stocked === undefined) {
 					try {
 						await updateStockedStatus(supabase, beanId, user.id);
-					} catch { /* non-critical */ }
+					} catch {
+						/* non-critical */
+					}
 				}
 
 				return json({ success: true, id: beanId, message: 'Bean updated' });
@@ -187,7 +188,8 @@ export const POST: RequestHandler = async (event) => {
 
 				const updateData: Record<string, unknown> = { last_updated: new Date().toISOString() };
 				if (params.roast_notes !== undefined) updateData.roast_notes = String(params.roast_notes);
-				if (params.roast_targets !== undefined) updateData.roast_targets = String(params.roast_targets);
+				if (params.roast_targets !== undefined)
+					updateData.roast_targets = String(params.roast_targets);
 
 				const { error: updateErr } = await supabase
 					.from('roast_profiles')
@@ -235,7 +237,9 @@ export const POST: RequestHandler = async (event) => {
 				// Auto-update stocked status
 				try {
 					await updateStockedStatus(supabase, invId, user.id);
-				} catch { /* non-critical */ }
+				} catch {
+					/* non-critical */
+				}
 
 				return json({ success: true, id: newSale.id, message: 'Sale recorded' });
 			}

@@ -63,7 +63,9 @@
 					// But that changes types. Instead: embed source in label as "Name [source]" and parse.
 					// NO - the plan says labels are just bean name. We need another approach.
 					// Let's just store a mapping from bean value to source in a hidden field.
-					const allBeansField = block.data.fields.find((f: ActionField) => f.key === '_bean_sources');
+					const allBeansField = block.data.fields.find(
+						(f: ActionField) => f.key === '_bean_sources'
+					);
 					if (allBeansField?.value && typeof allBeansField.value === 'object') {
 						const sourceMap = allBeansField.value as Record<string, string>;
 						const filtered = allBeanOptions.filter((opt) => sourceMap[opt.value] === sourceVal);
@@ -148,7 +150,8 @@
 
 	const statusIcons: Record<string, string> = {
 		proposed: 'M12 9v2m0 4h.01',
-		executing: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+		executing:
+			'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
 		success: 'M5 13l4 4L19 7',
 		failed: 'M6 18L18 6M6 6l12 12'
 	};
@@ -158,19 +161,38 @@
 	<!-- Header -->
 	<div class="mb-3 flex items-center justify-between">
 		<div class="flex items-center gap-2">
-			<svg class="h-5 w-5 {status === 'success' ? 'text-green-600' : status === 'failed' ? 'text-red-600' : status === 'executing' ? 'text-blue-600 animate-spin' : 'text-amber-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={statusIcons[status] || statusIcons.proposed} />
+			<svg
+				class="h-5 w-5 {status === 'success'
+					? 'text-green-600'
+					: status === 'failed'
+						? 'text-red-600'
+						: status === 'executing'
+							? 'animate-spin text-blue-600'
+							: 'text-amber-600'}"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d={statusIcons[status] || statusIcons.proposed}
+				/>
 			</svg>
 			<span class="text-sm font-medium text-text-primary-light">
 				{block.data.summary}
 			</span>
 		</div>
-		<span class="rounded-full px-2 py-0.5 text-xs font-medium {
-			status === 'proposed' ? 'bg-amber-100 text-amber-700' :
-			status === 'executing' ? 'bg-blue-100 text-blue-700' :
-			status === 'success' ? 'bg-green-100 text-green-700' :
-			'bg-red-100 text-red-700'
-		}">
+		<span
+			class="rounded-full px-2 py-0.5 text-xs font-medium {status === 'proposed'
+				? 'bg-amber-100 text-amber-700'
+				: status === 'executing'
+					? 'bg-blue-100 text-blue-700'
+					: status === 'success'
+						? 'bg-green-100 text-green-700'
+						: 'bg-red-100 text-red-700'}"
+		>
 			{statusLabels[status]}
 		</span>
 	</div>
@@ -179,53 +201,55 @@
 	<div class="space-y-2">
 		{#each localFields as field (field.key)}
 			{#if field.type !== 'hidden' && field.key !== '_bean_sources'}
-			<div class="flex items-center gap-2 text-sm">
-				<span class="w-32 shrink-0 text-text-secondary-light">{field.label}</span>
-				{#if editing && field.editable && status === 'proposed'}
-					{#if field.type === 'textarea'}
-						<textarea
-							value={String(field.value || '')}
-							oninput={(e) => setFieldValue(field.key, (e.target as HTMLTextAreaElement).value)}
-							class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
-							rows="2"
-						></textarea>
-					{:else if field.type === 'select' && (field.selectOptions || field.options)}
-						<select
-							value={String(field.value)}
-							onchange={(e) => setFieldValue(field.key, (e.target as HTMLSelectElement).value)}
-							class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
-						>
-							{#if field.selectOptions}
-								{#each field.selectOptions as opt}
-									<option value={opt.value}>{opt.label}</option>
-								{/each}
-							{:else if field.options}
-								{#each field.options as opt}
-									<option value={opt}>{opt}</option>
-								{/each}
-							{/if}
-						</select>
-					{:else}
-						<input
-							type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-							value={String(field.value || '')}
-							oninput={(e) => {
-								const val = (e.target as HTMLInputElement).value;
-								setFieldValue(field.key, field.type === 'number' ? Number(val) : val);
-							}}
-							class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
-						/>
-					{/if}
-				{:else}
-					<span class="flex-1 text-text-primary-light">
-						{#if field.selectOptions}
-							{field.selectOptions.find((o) => String(o.value) === String(field.value))?.label ?? field.value ?? '—'}
+				<div class="flex items-center gap-2 text-sm">
+					<span class="w-32 shrink-0 text-text-secondary-light">{field.label}</span>
+					{#if editing && field.editable && status === 'proposed'}
+						{#if field.type === 'textarea'}
+							<textarea
+								value={String(field.value || '')}
+								oninput={(e) => setFieldValue(field.key, (e.target as HTMLTextAreaElement).value)}
+								class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
+								rows="2"
+							></textarea>
+						{:else if field.type === 'select' && (field.selectOptions || field.options)}
+							<select
+								value={String(field.value)}
+								onchange={(e) => setFieldValue(field.key, (e.target as HTMLSelectElement).value)}
+								class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
+							>
+								{#if field.selectOptions}
+									{#each field.selectOptions as opt}
+										<option value={opt.value}>{opt.label}</option>
+									{/each}
+								{:else if field.options}
+									{#each field.options as opt}
+										<option value={opt}>{opt}</option>
+									{/each}
+								{/if}
+							</select>
 						{:else}
-							{field.value ?? '—'}
+							<input
+								type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+								value={String(field.value || '')}
+								oninput={(e) => {
+									const val = (e.target as HTMLInputElement).value;
+									setFieldValue(field.key, field.type === 'number' ? Number(val) : val);
+								}}
+								class="flex-1 rounded border border-border-light bg-white px-2 py-1 text-sm focus:border-background-tertiary-light focus:outline-none"
+							/>
 						{/if}
-					</span>
-				{/if}
-			</div>
+					{:else}
+						<span class="flex-1 text-text-primary-light">
+							{#if field.selectOptions}
+								{field.selectOptions.find((o) => String(o.value) === String(field.value))?.label ??
+									field.value ??
+									'—'}
+							{:else}
+								{field.value ?? '—'}
+							{/if}
+						</span>
+					{/if}
+				</div>
 			{/if}
 		{/each}
 	</div>
@@ -285,12 +309,12 @@
 		</div>
 	{:else if status === 'executing'}
 		<div class="mt-3 flex items-center gap-2">
-			<div class="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+			<div
+				class="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"
+			></div>
 			<span class="text-sm text-text-secondary-light">Processing...</span>
 		</div>
 	{:else if status === 'success'}
-		<div class="mt-3 text-sm text-green-600">
-			Action completed successfully.
-		</div>
+		<div class="mt-3 text-sm text-green-600">Action completed successfully.</div>
 	{/if}
 </div>

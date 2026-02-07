@@ -147,8 +147,7 @@ export const POST: RequestHandler = async (event) => {
 		const {
 			messages,
 			workspaceContext
-		}: { messages: UIMessage[]; workspaceContext?: WorkspaceContext } =
-			await event.request.json();
+		}: { messages: UIMessage[]; workspaceContext?: WorkspaceContext } = await event.request.json();
 
 		// Validate input
 		if (!messages || !Array.isArray(messages) || messages.length === 0) {

@@ -19,7 +19,13 @@
 	import RoastChartPreview from './previews/RoastChartPreview.svelte';
 	import ActionCardPreview from './previews/ActionCardPreview.svelte';
 
-	let { block, onAction, onExecuteAction, renderMode = 'canvas', canvasBlockId } = $props<{
+	let {
+		block,
+		onAction,
+		onExecuteAction,
+		renderMode = 'canvas',
+		canvasBlockId
+	} = $props<{
 		block: UIBlock;
 		onAction?: (action: BlockAction) => void;
 		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;

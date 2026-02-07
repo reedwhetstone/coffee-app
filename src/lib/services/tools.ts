@@ -142,9 +142,12 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 
 		add_bean_to_inventory: tool({
 			description:
-				'Propose adding a green coffee bean to the user\'s inventory. Returns an action card for user confirmation. Use catalog_id when adding a bean from the catalog.',
+				"Propose adding a green coffee bean to the user's inventory. Returns an action card for user confirmation. Use catalog_id when adding a bean from the catalog.",
 			inputSchema: z.object({
-				catalog_id: z.number().optional().describe('Coffee catalog ID (from coffee_catalog_search results)'),
+				catalog_id: z
+					.number()
+					.optional()
+					.describe('Coffee catalog ID (from coffee_catalog_search results)'),
 				manual_name: z.string().optional().describe('Manual coffee name if not from catalog'),
 				purchased_qty_lbs: z.number().describe('Quantity purchased in pounds'),
 				cost_per_lb: z.number().optional().describe('Cost per pound in dollars'),
@@ -158,7 +161,10 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				let beanSelectOptions: Array<{ label: string; value: string }> = [];
 				let sourceOptions: Array<{ label: string; value: string }> = [];
 				try {
-					const catalogResult = await callTool('/api/tools/coffee-catalog', { stocked_only: true, limit: 500 }) as { coffees?: Array<{ id: number; name: string; source?: string }> };
+					const catalogResult = (await callTool('/api/tools/coffee-catalog', {
+						stocked_only: true,
+						limit: 500
+					})) as { coffees?: Array<{ id: number; name: string; source?: string }> };
 					if (catalogResult.coffees) {
 						allBeans = catalogResult.coffees;
 						beanSelectOptions = allBeans.map((c) => ({
@@ -166,7 +172,9 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 							value: String(c.id)
 						}));
 						// Extract unique sources for the filter dropdown
-						const uniqueSources = [...new Set(allBeans.map((c) => c.source).filter(Boolean))] as string[];
+						const uniqueSources = [
+							...new Set(allBeans.map((c) => c.source).filter(Boolean))
+						] as string[];
 						sourceOptions = [
 							{ label: 'All Suppliers', value: '__all__' },
 							...uniqueSources.sort().map((s) => ({ label: s, value: s }))
@@ -181,7 +189,9 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				const totalBeanCost = Math.round(costPerLb * qty * 100) / 100;
 
 				// Determine which bean is pre-selected
-				const preSelectedValue = input.catalog_id ? String(input.catalog_id) : beanSelectOptions[0]?.value;
+				const preSelectedValue = input.catalog_id
+					? String(input.catalog_id)
+					: beanSelectOptions[0]?.value;
 				const preSelectedBean = allBeans.find((c) => String(c.id) === preSelectedValue);
 				const preSelectedLabel = preSelectedBean?.name || input.manual_name || '';
 				const preSelectedSource = preSelectedBean?.source || '__all__';
@@ -194,22 +204,121 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 							// Source filter + Bean dropdown (if we have catalog options) or manual name fallback
 							...(beanSelectOptions.length > 0
 								? [
-									{ key: 'source_filter', label: 'Supplier', value: preSelectedSource, type: 'select' as const, editable: true, selectOptions: sourceOptions },
-									{ key: 'coffee_bean', label: 'Coffee Bean', value: preSelectedValue, type: 'select' as const, editable: true, selectOptions: beanSelectOptions },
-									{ key: '_bean_sources', label: '', value: Object.fromEntries(allBeans.map((c) => [String(c.id), c.source || ''])), type: 'hidden' as const, editable: false },
-									{ key: 'catalog_id', label: 'Catalog ID', value: input.catalog_id || Number(preSelectedValue), type: 'number' as const, editable: false }
-								]
+										{
+											key: 'source_filter',
+											label: 'Supplier',
+											value: preSelectedSource,
+											type: 'select' as const,
+											editable: true,
+											selectOptions: sourceOptions
+										},
+										{
+											key: 'coffee_bean',
+											label: 'Coffee Bean',
+											value: preSelectedValue,
+											type: 'select' as const,
+											editable: true,
+											selectOptions: beanSelectOptions
+										},
+										{
+											key: '_bean_sources',
+											label: '',
+											value: Object.fromEntries(
+												allBeans.map((c) => [String(c.id), c.source || ''])
+											),
+											type: 'hidden' as const,
+											editable: false
+										},
+										{
+											key: 'catalog_id',
+											label: 'Catalog ID',
+											value: input.catalog_id || Number(preSelectedValue),
+											type: 'number' as const,
+											editable: false
+										}
+									]
 								: [
-									...(input.catalog_id ? [{ key: 'catalog_id', label: 'Catalog ID', value: input.catalog_id, type: 'number' as const, editable: false }] : []),
-									...(input.manual_name ? [{ key: 'manual_name', label: 'Coffee Name', value: input.manual_name, type: 'text' as const, editable: true }] : [])
-								]
-							),
-							{ key: 'purchased_qty_lbs', label: 'Quantity (lbs)', value: qty, type: 'number' as const, editable: true },
-							...(input.cost_per_lb != null ? [{ key: 'cost_per_lb', label: 'Cost/lb ($)', value: costPerLb, type: 'number' as const, editable: true }] : []),
-							...(input.cost_per_lb != null ? [{ key: 'total_bean_cost', label: 'Total Bean Cost ($)', value: totalBeanCost, type: 'number' as const, editable: false }] : []),
-							...(input.tax_ship_cost != null ? [{ key: 'tax_ship_cost', label: 'Tax & Shipping ($)', value: input.tax_ship_cost, type: 'number' as const, editable: true }] : []),
-							{ key: 'purchase_date', label: 'Purchase Date', value: input.purchase_date || new Date().toISOString().split('T')[0], type: 'date' as const, editable: true },
-							...(input.notes ? [{ key: 'notes', label: 'Notes', value: input.notes, type: 'textarea' as const, editable: true }] : [])
+										...(input.catalog_id
+											? [
+													{
+														key: 'catalog_id',
+														label: 'Catalog ID',
+														value: input.catalog_id,
+														type: 'number' as const,
+														editable: false
+													}
+												]
+											: []),
+										...(input.manual_name
+											? [
+													{
+														key: 'manual_name',
+														label: 'Coffee Name',
+														value: input.manual_name,
+														type: 'text' as const,
+														editable: true
+													}
+												]
+											: [])
+									]),
+							{
+								key: 'purchased_qty_lbs',
+								label: 'Quantity (lbs)',
+								value: qty,
+								type: 'number' as const,
+								editable: true
+							},
+							...(input.cost_per_lb != null
+								? [
+										{
+											key: 'cost_per_lb',
+											label: 'Cost/lb ($)',
+											value: costPerLb,
+											type: 'number' as const,
+											editable: true
+										}
+									]
+								: []),
+							...(input.cost_per_lb != null
+								? [
+										{
+											key: 'total_bean_cost',
+											label: 'Total Bean Cost ($)',
+											value: totalBeanCost,
+											type: 'number' as const,
+											editable: false
+										}
+									]
+								: []),
+							...(input.tax_ship_cost != null
+								? [
+										{
+											key: 'tax_ship_cost',
+											label: 'Tax & Shipping ($)',
+											value: input.tax_ship_cost,
+											type: 'number' as const,
+											editable: true
+										}
+									]
+								: []),
+							{
+								key: 'purchase_date',
+								label: 'Purchase Date',
+								value: input.purchase_date || new Date().toISOString().split('T')[0],
+								type: 'date' as const,
+								editable: true
+							},
+							...(input.notes
+								? [
+										{
+											key: 'notes',
+											label: 'Notes',
+											value: input.notes,
+											type: 'textarea' as const,
+											editable: true
+										}
+									]
+								: [])
 						],
 						status: 'proposed'
 					}
@@ -219,7 +328,7 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 
 		update_bean: tool({
 			description:
-				'Propose updating a bean in the user\'s inventory. Specify the inventory bean ID and fields to change.',
+				"Propose updating a bean in the user's inventory. Specify the inventory bean ID and fields to change.",
 			inputSchema: z.object({
 				bean_id: z.number().describe('Green coffee inventory ID'),
 				rank: z.number().optional().describe('Bean ranking (1-5)'),
@@ -232,11 +341,50 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					actionType: 'update_bean',
 					summary: `Update inventory bean #${input.bean_id}`,
 					fields: [
-						{ key: 'bean_id', label: 'Bean ID', value: input.bean_id, type: 'number', editable: false },
-						...(input.rank != null ? [{ key: 'rank', label: 'Rank', value: input.rank, type: 'number', editable: true }] : []),
-						...(input.notes != null ? [{ key: 'notes', label: 'Notes', value: input.notes, type: 'textarea', editable: true }] : []),
-						...(input.stocked != null ? [{ key: 'stocked', label: 'Stocked', value: input.stocked, type: 'select', editable: true, options: ['true', 'false'] }] : []),
-						...(input.purchased_qty_lbs != null ? [{ key: 'purchased_qty_lbs', label: 'Quantity (lbs)', value: input.purchased_qty_lbs, type: 'number', editable: true }] : [])
+						{
+							key: 'bean_id',
+							label: 'Bean ID',
+							value: input.bean_id,
+							type: 'number',
+							editable: false
+						},
+						...(input.rank != null
+							? [{ key: 'rank', label: 'Rank', value: input.rank, type: 'number', editable: true }]
+							: []),
+						...(input.notes != null
+							? [
+									{
+										key: 'notes',
+										label: 'Notes',
+										value: input.notes,
+										type: 'textarea',
+										editable: true
+									}
+								]
+							: []),
+						...(input.stocked != null
+							? [
+									{
+										key: 'stocked',
+										label: 'Stocked',
+										value: input.stocked,
+										type: 'select',
+										editable: true,
+										options: ['true', 'false']
+									}
+								]
+							: []),
+						...(input.purchased_qty_lbs != null
+							? [
+									{
+										key: 'purchased_qty_lbs',
+										label: 'Quantity (lbs)',
+										value: input.purchased_qty_lbs,
+										type: 'number',
+										editable: true
+									}
+								]
+							: [])
 					],
 					status: 'proposed'
 				}
@@ -260,13 +408,67 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					actionType: 'create_roast_session',
 					summary: `Create roast session: ${input.batch_name} (${input.coffee_name})`,
 					fields: [
-						{ key: 'coffee_id', label: 'Coffee ID', value: input.coffee_id, type: 'number', editable: false },
-						{ key: 'coffee_name', label: 'Coffee Name', value: input.coffee_name, type: 'text', editable: true },
-						{ key: 'batch_name', label: 'Batch Name', value: input.batch_name, type: 'text', editable: true },
-						{ key: 'roast_date', label: 'Roast Date', value: input.roast_date || new Date().toISOString().split('T')[0], type: 'date', editable: true },
-						...(input.oz_in != null ? [{ key: 'oz_in', label: 'Weight In (oz)', value: input.oz_in, type: 'number', editable: true }] : []),
-						...(input.roast_notes ? [{ key: 'roast_notes', label: 'Notes', value: input.roast_notes, type: 'textarea', editable: true }] : []),
-						...(input.roaster_type ? [{ key: 'roaster_type', label: 'Roaster', value: input.roaster_type, type: 'text', editable: true }] : [])
+						{
+							key: 'coffee_id',
+							label: 'Coffee ID',
+							value: input.coffee_id,
+							type: 'number',
+							editable: false
+						},
+						{
+							key: 'coffee_name',
+							label: 'Coffee Name',
+							value: input.coffee_name,
+							type: 'text',
+							editable: true
+						},
+						{
+							key: 'batch_name',
+							label: 'Batch Name',
+							value: input.batch_name,
+							type: 'text',
+							editable: true
+						},
+						{
+							key: 'roast_date',
+							label: 'Roast Date',
+							value: input.roast_date || new Date().toISOString().split('T')[0],
+							type: 'date',
+							editable: true
+						},
+						...(input.oz_in != null
+							? [
+									{
+										key: 'oz_in',
+										label: 'Weight In (oz)',
+										value: input.oz_in,
+										type: 'number',
+										editable: true
+									}
+								]
+							: []),
+						...(input.roast_notes
+							? [
+									{
+										key: 'roast_notes',
+										label: 'Notes',
+										value: input.roast_notes,
+										type: 'textarea',
+										editable: true
+									}
+								]
+							: []),
+						...(input.roaster_type
+							? [
+									{
+										key: 'roaster_type',
+										label: 'Roaster',
+										value: input.roaster_type,
+										type: 'text',
+										editable: true
+									}
+								]
+							: [])
 					],
 					status: 'proposed'
 				}
@@ -274,8 +476,7 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 		}),
 
 		update_roast_notes: tool({
-			description:
-				'Propose updating notes or targets on an existing roast profile.',
+			description: 'Propose updating notes or targets on an existing roast profile.',
 			inputSchema: z.object({
 				roast_id: z.number().describe('Roast profile ID'),
 				roast_notes: z.string().optional().describe('Updated roast notes'),
@@ -286,9 +487,35 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					actionType: 'update_roast_notes',
 					summary: `Update notes for roast #${input.roast_id}`,
 					fields: [
-						{ key: 'roast_id', label: 'Roast ID', value: input.roast_id, type: 'number', editable: false },
-						...(input.roast_notes != null ? [{ key: 'roast_notes', label: 'Roast Notes', value: input.roast_notes, type: 'textarea', editable: true }] : []),
-						...(input.roast_targets != null ? [{ key: 'roast_targets', label: 'Roast Targets', value: input.roast_targets, type: 'textarea', editable: true }] : [])
+						{
+							key: 'roast_id',
+							label: 'Roast ID',
+							value: input.roast_id,
+							type: 'number',
+							editable: false
+						},
+						...(input.roast_notes != null
+							? [
+									{
+										key: 'roast_notes',
+										label: 'Roast Notes',
+										value: input.roast_notes,
+										type: 'textarea',
+										editable: true
+									}
+								]
+							: []),
+						...(input.roast_targets != null
+							? [
+									{
+										key: 'roast_targets',
+										label: 'Roast Targets',
+										value: input.roast_targets,
+										type: 'textarea',
+										editable: true
+									}
+								]
+							: [])
 					],
 					status: 'proposed'
 				}
@@ -296,8 +523,7 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 		}),
 
 		record_sale: tool({
-			description:
-				'Propose recording a sale of roasted coffee.',
+			description: 'Propose recording a sale of roasted coffee.',
 			inputSchema: z.object({
 				green_coffee_inv_id: z.number().describe('Green coffee inventory ID'),
 				batch_name: z.string().describe('Batch name'),
@@ -311,13 +537,49 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					actionType: 'record_sale',
 					summary: `Record sale: ${input.oz_sold}oz of ${input.batch_name} to ${input.buyer} ($${input.price})`,
 					fields: [
-						{ key: 'green_coffee_inv_id', label: 'Inventory ID', value: input.green_coffee_inv_id, type: 'number', editable: false },
-						{ key: 'batch_name', label: 'Batch Name', value: input.batch_name, type: 'text', editable: true },
-						{ key: 'oz_sold', label: 'Oz Sold', value: input.oz_sold, type: 'number', editable: true },
-						{ key: 'price', label: 'Price ($)', value: input.price, type: 'number', editable: true },
+						{
+							key: 'green_coffee_inv_id',
+							label: 'Inventory ID',
+							value: input.green_coffee_inv_id,
+							type: 'number',
+							editable: false
+						},
+						{
+							key: 'batch_name',
+							label: 'Batch Name',
+							value: input.batch_name,
+							type: 'text',
+							editable: true
+						},
+						{
+							key: 'oz_sold',
+							label: 'Oz Sold',
+							value: input.oz_sold,
+							type: 'number',
+							editable: true
+						},
+						{
+							key: 'price',
+							label: 'Price ($)',
+							value: input.price,
+							type: 'number',
+							editable: true
+						},
 						{ key: 'buyer', label: 'Buyer', value: input.buyer, type: 'text', editable: true },
-						{ key: 'sell_date', label: 'Sale Date', value: input.sell_date || new Date().toISOString().split('T')[0], type: 'date', editable: true },
-						{ key: 'purchase_date', label: 'Purchase Date', value: new Date().toISOString().split('T')[0], type: 'date', editable: true }
+						{
+							key: 'sell_date',
+							label: 'Sale Date',
+							value: input.sell_date || new Date().toISOString().split('T')[0],
+							type: 'date',
+							editable: true
+						},
+						{
+							key: 'purchase_date',
+							label: 'Purchase Date',
+							value: new Date().toISOString().split('T')[0],
+							type: 'date',
+							editable: true
+						}
 					],
 					status: 'proposed'
 				}

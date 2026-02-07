@@ -14,7 +14,7 @@ These principles govern every phase. They aren't aspirational — they're accept
 
 ### 1. The AI is the interface, not a layer on top of one.
 
-The conversation *is* the product surface. The moment users feel like they're talking to a chatbot that then triggers a separate UI system, the illusion breaks. Rich elements should feel like the AI is rendering its thinking through them, not "calling" them. There is no distinction between "chat" and "app."
+The conversation _is_ the product surface. The moment users feel like they're talking to a chatbot that then triggers a separate UI system, the illusion breaks. Rich elements should feel like the AI is rendering its thinking through them, not "calling" them. There is no distinction between "chat" and "app."
 
 ### 2. Progressive disclosure through conversation, not menus.
 
@@ -22,26 +22,26 @@ Instead of frontloading options or dumping a dashboard, the AI reveals complexit
 
 ### 3. Structured output should feel like expression, not insertion.
 
-When a card, chart, or interactive element appears, it should feel like the AI *chose* to show you something — the way a knowledgeable friend might pull out their phone to show you a photo mid-conversation. Not like a template got populated. The AI editorializes in natural language woven around and into the blocks, not via UI badges or labels.
+When a card, chart, or interactive element appears, it should feel like the AI _chose_ to show you something — the way a knowledgeable friend might pull out their phone to show you a photo mid-conversation. Not like a template got populated. The AI editorializes in natural language woven around and into the blocks, not via UI badges or labels.
 
 ### 4. Agentic confidence with transparent reasoning.
 
-The AI makes opinionated choices — filtering, ranking, highlighting — while showing why. Users don't want "here are 47 results." They want "here's what I'd pick and here's my reasoning" with the ability to challenge or drill deeper. Action cards show exactly what function will be called + human-readable summary, but the AI's *framing* of those actions is what builds trust.
+The AI makes opinionated choices — filtering, ranking, highlighting — while showing why. Users don't want "here are 47 results." They want "here's what I'd pick and here's my reasoning" with the ability to challenge or drill deeper. Action cards show exactly what function will be called + human-readable summary, but the AI's _framing_ of those actions is what builds trust.
 
 ### 5. Multimodal output lives on one plane — but at two altitudes.
 
-Text, visuals, interactive elements, and actions all belong to the same experience. But they operate at two altitudes: the **chat** is the flowing conversation — rich text, narration, inline references. The **canvas** is the persistent distillate — where the conversation's current state crystallizes into structured, actionable reference material. The chat scrolls; the canvas stays. Together they *are* the interface.
+Text, visuals, interactive elements, and actions all belong to the same experience. But they operate at two altitudes: the **chat** is the flowing conversation — rich text, narration, inline references. The **canvas** is the persistent distillate — where the conversation's current state crystallizes into structured, actionable reference material. The chat scrolls; the canvas stays. Together they _are_ the interface.
 
 ### 6. Dynamic presentation adapts to the conversational moment.
 
 The AI dynamically chooses presentation patterns based on context — it doesn't always render information the same way:
 
-| Moment | Chat behavior | Canvas behavior |
-|--------|--------------|-----------------|
-| **Discovery/exploration** | Inline narration with embedded references: "I'd start with this one because..." with a linked preview | Canvas populates with the coffee card(s) for persistent comparison |
-| **Comparison/decision** | Synthesized take in prose: "Here are the three that make sense..." | Canvas arranges cards side-by-side, maybe adds a comparison table |
-| **Confirmation/action** | "This is the one. Here's the action card." | Canvas focuses on the single action card with editable fields |
-| **Analysis/deep dive** | AI narrates trends and insights | Canvas holds the roast chart or profit summary while discussion continues |
+| Moment                    | Chat behavior                                                                                         | Canvas behavior                                                           |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **Discovery/exploration** | Inline narration with embedded references: "I'd start with this one because..." with a linked preview | Canvas populates with the coffee card(s) for persistent comparison        |
+| **Comparison/decision**   | Synthesized take in prose: "Here are the three that make sense..."                                    | Canvas arranges cards side-by-side, maybe adds a comparison table         |
+| **Confirmation/action**   | "This is the one. Here's the action card."                                                            | Canvas focuses on the single action card with editable fields             |
+| **Analysis/deep dive**    | AI narrates trends and insights                                                                       | Canvas holds the roast chart or profit summary while discussion continues |
 
 This mirrors how a great human advisor works — they read the room. The chat is the conversation; the canvas is the whiteboard they're drawing on while they talk.
 
@@ -56,14 +56,16 @@ The core UX is a **Chat+** layout — conversation in one pane, a persistent vis
 The canvas is a **sandbox for the LLM and human to collaborate visually**. It is the distillate layer — where the raw conversation gets refined into persistent, structured, actionable material.
 
 **Core properties:**
+
 - **Doesn't scroll.** It maintains useful reference data — real information, charts, cards, comparisons — that stays visible while the conversation continues. Content is arranged spatially, not chronologically.
 - **Evolves with the conversation.** The AI adds, removes, and rearranges canvas content as the conversation's focus shifts. If you stop talking about Ethiopian coffees and start discussing roast profiles, the canvas transitions accordingly.
 - **Holds structured components.** Coffee cards, roast charts, inventory tables, action cards, profit summaries — the full UIBlock catalog renders here. These are the "real" interactive versions with full detail.
-- **Supports rendered code.** The AI can produce code snippets (charts via D3, data visualizations, custom layouts) that render live in the canvas sandbox. This makes it a space for the AI to *show* concepts visually.
+- **Supports rendered code.** The AI can produce code snippets (charts via D3, data visualizations, custom layouts) that render live in the canvas sandbox. This makes it a space for the AI to _show_ concepts visually.
 - **Resizable and pop-out capable.** The canvas can be adjusted from a side pane to expanded/fullscreen. On mobile, it pops out as a full-screen overlay with a gesture or tap to return to chat.
-- **Acts as a compaction/summary layer.** As conversation grows, the canvas represents the *current state* — what matters right now. It's the distilled, useful output of potentially long exchanges. You don't need to scroll back through chat to find that roast chart; it's on the canvas.
+- **Acts as a compaction/summary layer.** As conversation grows, the canvas represents the _current state_ — what matters right now. It's the distilled, useful output of potentially long exchanges. You don't need to scroll back through chat to find that roast chart; it's on the canvas.
 
 **What goes on the canvas:**
+
 - Coffee cards being actively discussed or compared
 - Roast temperature charts for reference during analysis
 - Inventory tables when managing beans
@@ -73,6 +75,7 @@ The canvas is a **sandbox for the LLM and human to collaborate visually**. It is
 - Any structured data the user wants to "pin" for reference
 
 **What the canvas is NOT:**
+
 - A second chat stream or message list
 - A static dashboard with fixed layout
 - An iframe or separate app — it's part of the same reactive state
@@ -82,6 +85,7 @@ The canvas is a **sandbox for the LLM and human to collaborate visually**. It is
 The chat is the **conversation component** — the scrolling, persistent record of the dialogue between user and AI.
 
 **Core properties:**
+
 - **Scrolls and persists.** The conversation builds chronologically. You can always scroll up and see where you were before. It's the record keeper.
 - **Primarily text-based with rich text support.** The AI's output is markdown-rendered prose — narration, reasoning, opinions, follow-up questions. This is where the AI's "voice" lives.
 - **Inline references to canvas content.** When the AI places a coffee card or chart on the canvas, the chat text contains an inline reference link — a small preview thumbnail or a styled text link that highlights/focuses the corresponding canvas item on click.
@@ -127,12 +131,14 @@ CANVAS transitions:
 ### The Rendering Model: Markdown + Block References
 
 The AI outputs **enhanced markdown** in chat messages. Standard markdown renders as rich text. Embedded **block reference tokens** resolve to either:
+
 - An **inline preview** in the chat (small, non-interactive — a thumbnail, a one-line summary, a link)
 - A **full component** on the canvas (interactive, detailed, persistent)
 
 This means a single assistant message might produce both chat text and canvas mutations simultaneously.
 
 **Block reference token format in AI output:**
+
 ```
 Here's a great option — {@coffee-card:1234 | Yirgacheffe Kochere}
 compared to {@coffee-card:5678 | Sidamo Guji}. The Kochere has
@@ -142,6 +148,7 @@ a more complex acidity profile.
 ```
 
 The renderer parses these tokens and:
+
 1. Renders an inline preview/link in the chat message
 2. Sends a canvas mutation to place/update the referenced component on the canvas
 3. Maintains a bidirectional link — clicking the chat reference focuses the canvas item; interacting with the canvas item can trigger chat context
@@ -149,6 +156,7 @@ The renderer parses these tokens and:
 ### Canvas Layout Strategy
 
 The canvas manages its own layout without scrolling. Strategies:
+
 - **Focus + context**: One primary item in full detail, related items at reduced size around it
 - **Comparison**: 2-3 items side-by-side at equal size
 - **Action**: Single action card centered with supporting reference data
@@ -178,11 +186,13 @@ The AI signals layout intent via a `canvasLayout` hint in its response, but the 
 **File**: `coffee-app/package.json`
 
 Add:
+
 - `ai` (core SDK - `streamText`, tool definitions, tool execution approval)
 - `@ai-sdk/svelte` (SvelteKit hooks)
 - `@ai-sdk/openai` (OpenAI provider for GPT-5-mini)
 
 Remove after migration:
+
 - `@langchain/openai`, `langchain`
 
 Note: AI SDK 6 includes native **tool execution approval** — the exact pattern needed for write tools in Phase 3.
@@ -192,6 +202,7 @@ Note: AI SDK 6 includes native **tool execution approval** — the exact pattern
 **File**: `src/routes/api/chat/+server.ts` (currently 290 lines of manual SSE)
 
 Replace the `TransformStream` + `safeWrite` + heartbeat implementation with:
+
 ```
 streamText({ model, tools, messages, system }) -> result.toDataStreamResponse()
 ```
@@ -205,6 +216,7 @@ This eliminates ~155 lines of streaming plumbing. Auth check (`requireMemberRole
 Replace manual SSE parsing (lines 254-375) and `processSSEDataItem` (lines 145-233) with `useChat` from `@ai-sdk/svelte`. Eliminates ~200 lines of client streaming code.
 
 `useChat` provides:
+
 - `messages` - reactive message array (replaces `$state([])`)
 - `input` - bound text input (replaces `inputMessage`)
 - `isLoading` - loading state
@@ -218,6 +230,7 @@ Chain-of-thought visualization (`ChainOfThought.svelte`) is reimplemented using 
 **New file**: `src/lib/services/tools.ts`
 
 Extract the 4 tool definitions from `langchainService.ts` (lines 86-252) into Vercel AI SDK `tool()` format. Each tool:
+
 - Keeps its Zod schema (already used)
 - Keeps the HTTP calls to `/api/tools/*`
 - **Returns a UIBlock** alongside raw data so the client knows how to render it
@@ -237,50 +250,50 @@ type BlockTarget = 'canvas' | 'chat-inline' | 'both';
 type CanvasLayout = 'focus' | 'comparison' | 'action' | 'dashboard';
 
 type UIBlock =
-  | { type: 'coffee-cards'; version: 1; data: CoffeeCatalog[]; focusId?: number }
-  | { type: 'inventory-table'; version: 1; data: GreenCoffeeInv[] }
-  | { type: 'roast-chart'; version: 1; data: { roastId: number } }
-  | { type: 'roast-comparison'; version: 1; data: { roastIds: number[] } }
-  | { type: 'profit-summary'; version: 1; data: ProfitMetrics }
-  | { type: 'tasting-radar'; version: 1; data: TastingData }
-  | { type: 'data-table'; version: 1; data: { columns: Column[]; rows: unknown[] } }
-  | { type: 'action-card'; version: 1; data: ActionCardPayload }
-  | { type: 'bean-form'; version: 1; data: Partial<BeanFormData> }
-  | { type: 'roast-form'; version: 1; data: Partial<RoastFormData> }
-  | { type: 'sale-form'; version: 1; data: Partial<SaleFormData> }
-  | { type: 'code-render'; version: 1; data: { code: string; language: string } }
-  | { type: 'error'; version: 1; data: { message: string; retryable: boolean } }
+	| { type: 'coffee-cards'; version: 1; data: CoffeeCatalog[]; focusId?: number }
+	| { type: 'inventory-table'; version: 1; data: GreenCoffeeInv[] }
+	| { type: 'roast-chart'; version: 1; data: { roastId: number } }
+	| { type: 'roast-comparison'; version: 1; data: { roastIds: number[] } }
+	| { type: 'profit-summary'; version: 1; data: ProfitMetrics }
+	| { type: 'tasting-radar'; version: 1; data: TastingData }
+	| { type: 'data-table'; version: 1; data: { columns: Column[]; rows: unknown[] } }
+	| { type: 'action-card'; version: 1; data: ActionCardPayload }
+	| { type: 'bean-form'; version: 1; data: Partial<BeanFormData> }
+	| { type: 'roast-form'; version: 1; data: Partial<RoastFormData> }
+	| { type: 'sale-form'; version: 1; data: Partial<SaleFormData> }
+	| { type: 'code-render'; version: 1; data: { code: string; language: string } }
+	| { type: 'error'; version: 1; data: { message: string; retryable: boolean } };
 
 // Action cards show function name + human-readable summary
 interface ActionCardPayload {
-  functionName: string;
-  summary: string;
-  parameters: Record<string, unknown>;
-  status: 'proposed' | 'confirmed' | 'executing' | 'success' | 'failed';
+	functionName: string;
+	summary: string;
+	parameters: Record<string, unknown>;
+	status: 'proposed' | 'confirmed' | 'executing' | 'success' | 'failed';
 }
 
 // Canvas state management
 interface CanvasState {
-  blocks: CanvasBlock[];
-  layout: CanvasLayout;
-  focusBlockId?: string;
+	blocks: CanvasBlock[];
+	layout: CanvasLayout;
+	focusBlockId?: string;
 }
 
 interface CanvasBlock {
-  id: string;              // Unique ID for block reference tokens
-  block: UIBlock;
-  target: BlockTarget;
-  position?: 'primary' | 'secondary' | 'minimized';
-  addedAt: number;         // Timestamp for ordering
+	id: string; // Unique ID for block reference tokens
+	block: UIBlock;
+	target: BlockTarget;
+	position?: 'primary' | 'secondary' | 'minimized';
+	addedAt: number; // Timestamp for ordering
 }
 
 // Canvas mutation — what the AI sends to modify canvas state
 type CanvasMutation =
-  | { action: 'add'; block: CanvasBlock }
-  | { action: 'remove'; blockId: string }
-  | { action: 'focus'; blockId: string }
-  | { action: 'clear' }
-  | { action: 'layout'; layout: CanvasLayout };
+	| { action: 'add'; block: CanvasBlock }
+	| { action: 'remove'; blockId: string }
+	| { action: 'focus'; blockId: string }
+	| { action: 'clear' }
+	| { action: 'layout'; layout: CanvasLayout };
 ```
 
 All UIBlocks include a `version` field from day one for schema evolution on persisted data.
@@ -290,6 +303,7 @@ All UIBlocks include a `version` field from day one for schema evolution on pers
 **New file**: `src/lib/utils/blockTokenParser.ts`
 
 Parses the AI's markdown output for block reference tokens like `{@coffee-card:1234 | Yirgacheffe Kochere}` and resolves them into:
+
 - An inline preview component in the chat (small card thumbnail, styled link)
 - A canvas mutation to place/update the full component
 
@@ -298,13 +312,15 @@ The parser integrates with the existing markdown renderer (`@humanspeak/svelte-m
 ### 0.7 System prompt design
 
 The system prompt is the primary lever for the design philosophy. It must instruct the AI to:
+
 - **Narrate in chat, render on canvas.** The AI's text goes in the chat. Structured data goes on the canvas. The chat references canvas items using block tokens.
 - **Editorialize in natural language.** "This is overpriced for what you get" hits differently than a 🏷️ "Budget Alert" pill. Opinions and annotations belong in the AI's prose, not in UI badges.
-- **Manage the canvas as a whiteboard.** When the conversation focus shifts, the AI should update the canvas — add relevant items, remove stale ones, change the layout. The canvas reflects the *current* state of the discussion, not its history.
+- **Manage the canvas as a whiteboard.** When the conversation focus shifts, the AI should update the canvas — add relevant items, remove stale ones, change the layout. The canvas reflects the _current_ state of the discussion, not its history.
 - **Use block references naturally.** Wrong: "I've placed some cards on the canvas." Right: "The [☕ Yirgacheffe Kochere →] has the profile you're looking for — compare it against the [☕ Sidamo Guji →] on price alone and it's a no-brainer."
 - **Signal layout intent.** When comparing coffees, hint `comparison` layout. When an action card is ready, hint `action` layout. The canvas handles the visual arrangement.
 
 ### Phase 0 risks & challenges
+
 - Verify `gpt-5-mini-2025-08-07` compatibility with `@ai-sdk/openai` provider
 - The system prompt (65 lines in langchainService.ts) needs significant revision: remove rigid JSON format, add canvas awareness, instruct the AI to narrate in chat and render on canvas
 - `BufferMemory` is replaced by passing `messages` array directly. Simpler but loses auto-summarization (addressed in Phase 2 with workspace memory)
@@ -324,6 +340,7 @@ The system prompt is the primary lever for the design philosophy. It must instru
 **New file**: `src/lib/components/canvas/Canvas.svelte`
 
 The canvas container component:
+
 - **Non-scrolling layout** with spatial arrangement of blocks
 - **Resizable** via drag handle between chat and canvas panes (desktop), with minimum/maximum width constraints
 - **Pop-out / fullscreen mode** (especially critical for mobile — the canvas overlays the chat with a gesture/tap to return)
@@ -335,6 +352,7 @@ The canvas container component:
 **New file**: `src/lib/stores/canvasState.ts`
 
 Svelte store managing:
+
 - Current `CanvasBlock[]` — what's rendered on the canvas
 - Current `CanvasLayout` — how blocks are spatially arranged
 - `focusBlockId` — which block has primary focus
@@ -346,6 +364,7 @@ Svelte store managing:
 **New file**: `src/lib/components/canvas/CanvasLayout.svelte`
 
 Implements the four layout strategies:
+
 - **Focus + context**: Primary block takes ~60% of canvas space, secondary blocks arranged as smaller tiles
 - **Comparison**: 2-3 blocks at equal size, side-by-side (or stacked on narrow canvas)
 - **Action**: Single action card centered, supporting reference blocks at reduced size
@@ -378,47 +397,51 @@ Every canvas block receives `onAction` callback for user interactions. Actions f
 
 Each block has **two render modes**: full (canvas) and preview (chat inline).
 
-| Component | Canvas render | Chat preview | Source |
-|-----------|--------------|--------------|--------|
-| `CoffeeCardsBlock.svelte` | Full card with image, tasting notes, pricing, actions | Small thumbnail + name + one-line summary | Extract from `ChatMessageRenderer.svelte` |
-| `InventoryTableBlock.svelte` | Full sortable table with stocked indicators | Row count + highlight metric | New, inspired by `/beans` |
-| `RoastChartBlock.svelte` | Full D3.js temperature curve, interactive | Mini sparkline or static thumbnail | Adapt from `/roast` |
-| `TastingRadarBlock.svelte` | Full radar chart | Small inline radar | Wrap existing `TastingNotesRadar.svelte` |
-| `ProfitSummaryBlock.svelte` | Revenue, costs, margin cards + trend chart | Single KPI number | Extract from `/profit` |
-| `DataTableBlock.svelte` | Full sorted/filtered table | Row count summary | New generic component |
-| `RoastComparisonBlock.svelte` | Side-by-side roast profiles | "Comparing N roasts" link | New |
-| `CodeRenderBlock.svelte` | Live rendered code output (charts, visualizations) | Code snippet preview | New |
-| `ActionCardBlock.svelte` | Full editable action card with execute/edit/cancel | Action summary badge with status | New (Phase 3 primary) |
+| Component                     | Canvas render                                         | Chat preview                              | Source                                    |
+| ----------------------------- | ----------------------------------------------------- | ----------------------------------------- | ----------------------------------------- |
+| `CoffeeCardsBlock.svelte`     | Full card with image, tasting notes, pricing, actions | Small thumbnail + name + one-line summary | Extract from `ChatMessageRenderer.svelte` |
+| `InventoryTableBlock.svelte`  | Full sortable table with stocked indicators           | Row count + highlight metric              | New, inspired by `/beans`                 |
+| `RoastChartBlock.svelte`      | Full D3.js temperature curve, interactive             | Mini sparkline or static thumbnail        | Adapt from `/roast`                       |
+| `TastingRadarBlock.svelte`    | Full radar chart                                      | Small inline radar                        | Wrap existing `TastingNotesRadar.svelte`  |
+| `ProfitSummaryBlock.svelte`   | Revenue, costs, margin cards + trend chart            | Single KPI number                         | Extract from `/profit`                    |
+| `DataTableBlock.svelte`       | Full sorted/filtered table                            | Row count summary                         | New generic component                     |
+| `RoastComparisonBlock.svelte` | Side-by-side roast profiles                           | "Comparing N roasts" link                 | New                                       |
+| `CodeRenderBlock.svelte`      | Live rendered code output (charts, visualizations)    | Code snippet preview                      | New                                       |
+| `ActionCardBlock.svelte`      | Full editable action card with execute/edit/cancel    | Action summary badge with status          | New (Phase 3 primary)                     |
 
 ### 1.6 Chat message renderer with block references
 
 **File**: `src/lib/components/ChatMessageRenderer.svelte` (131 lines → rewrite)
 
 Refactor to:
+
 1. Parse AI markdown output through the block token parser (§0.6)
 2. Render standard markdown via `@humanspeak/svelte-markdown`
 3. Resolve `{@block-type:id | label}` tokens into inline preview components
 4. Emit canvas mutations for referenced blocks
 
-The renderer supports **interleaved content** — a message might be: text paragraph → inline coffee card preview → more text → inline chart sparkline → concluding paragraph. The chat text *is* rich, but the heavy interactive components live on the canvas.
+The renderer supports **interleaved content** — a message might be: text paragraph → inline coffee card preview → more text → inline chart sparkline → concluding paragraph. The chat text _is_ rich, but the heavy interactive components live on the canvas.
 
 ### 1.7 Block visual language
 
 **Critical to get right in Phase 1 — this sets the tone for everything.**
 
 **Canvas blocks:**
+
 - Clean, branded components with enough chrome to be clearly interactive
 - Consistent visual language across block types (shared typography, spacing, color palette)
 - Clear focus state for the primary block
 - Minimized state for secondary blocks (collapse to a title bar + key metric)
 
 **Chat inline previews:**
+
 - **Minimal chrome.** Barely distinguishable from formatted text until hovered/tapped
 - Styled as inline links/badges that feel like part of the AI's prose
 - On click/tap, they focus the corresponding canvas block
 - Subtle visual connection (color accent, icon) linking preview to its canvas counterpart
 
 **The seamless connection:**
+
 - When a chat preview is hovered, the canvas subtly highlights the corresponding block
 - When a canvas block is clicked, the chat scrolls to (or highlights) the message that introduced it
 
@@ -429,6 +452,7 @@ The renderer supports **interleaved content** — a message might be: text parag
 - **Mobile**: Chat is default view. Canvas pops out as a fullscreen overlay. A persistent "canvas indicator" bar at the top shows how many items are on the canvas and opens it on tap.
 
 ### Phase 1 risks & challenges
+
 - D3.js roast chart from `/roast` likely has page-level dependencies. GenUI version must be self-contained.
 - **Canvas layout engine** is real engineering work — spatial arrangement, responsive sizing, animated transitions. Don't underestimate this.
 - **Block reference token reliability**: The LLM needs to generate `{@...}` tokens consistently. Prompt engineering + output validation required.
@@ -446,20 +470,21 @@ The renderer supports **interleaved content** — a message might be: text parag
 
 Instead of a flat list of past conversations, the app has **pre-defined workspace categories**:
 
-| Workspace | Focus | Default tools | Default canvas layout |
-|-----------|-------|---------------|----------------------|
-| **Sourcing** | Browse catalog, compare coffees, track availability | coffee_catalog_search, bean_tasting_notes | comparison |
-| **Roasting** | Roast profiles, temperature analysis, comparisons | roast_profiles, green_coffee_inventory | focus |
-| **Inventory** | Bean management, costs, stock levels | green_coffee_inventory, coffee_catalog_search | dashboard |
-| **Analysis** | Profit tracking, trends, tasting notes | roast_profiles, bean_tasting_notes, profit tools | dashboard |
+| Workspace     | Focus                                               | Default tools                                    | Default canvas layout |
+| ------------- | --------------------------------------------------- | ------------------------------------------------ | --------------------- |
+| **Sourcing**  | Browse catalog, compare coffees, track availability | coffee_catalog_search, bean_tasting_notes        | comparison            |
+| **Roasting**  | Roast profiles, temperature analysis, comparisons   | roast_profiles, green_coffee_inventory           | focus                 |
+| **Inventory** | Bean management, costs, stock levels                | green_coffee_inventory, coffee_catalog_search    | dashboard             |
+| **Analysis**  | Profit tracking, trends, tasting notes              | roast_profiles, bean_tasting_notes, profit tools | dashboard             |
 
 Each workspace:
+
 - Has its own conversation thread (messages persist in chat)
 - Maintains a **context document** (the "WORKSPACE.md" equivalent) that summarizes key insights, decisions, and patterns across all sessions
 - **Restores its canvas state** when the user returns — the canvas shows what was relevant at the end of the last session
 - Knows which tools are most relevant (passed as priority hints in the system prompt)
 
-Workspaces are structure *for* progressive disclosure (Design Philosophy §2) — they scope the AI's focus so it can go deeper faster. But within a workspace, the AI unfolds complexity organically through conversation, crystallizing results onto the canvas.
+Workspaces are structure _for_ progressive disclosure (Design Philosophy §2) — they scope the AI's focus so it can go deeper faster. But within a workspace, the AI unfolds complexity organically through conversation, crystallizing results onto the canvas.
 
 ### 2.2 Database schema
 
@@ -501,6 +526,7 @@ With RLS policies scoping to authenticated user.
 ### 2.3 Memory architecture
 
 **System prompt composition per request:**
+
 ```
 [base system prompt + design philosophy + canvas instructions]
 [global user context from user_ai_context.global_summary]
@@ -509,11 +535,12 @@ With RLS policies scoping to authenticated user.
 [last N full messages from workspace_messages]
 ```
 
-The canvas state summary is critical — it tells the AI what the user is currently *looking at*, enabling contextual awareness without re-scanning the full message history.
+The canvas state summary is critical — it tells the AI what the user is currently _looking at_, enabling contextual awareness without re-scanning the full message history.
 
 Memory is what enables the AI to be a genuine advisor rather than a stateless chatbot. With workspace memory, the AI can say "last time you roasted this Ethiopian, you dropped at 405°F and liked the result" — that's the kind of contextual intelligence that makes the interface feel like a knowledgeable colleague.
 
 **Context compaction strategy:**
+
 - After each conversation session (user leaves workspace or after N exchanges), run a summarization pass using the AI itself
 - The summarization prompt: "Given these recent messages and the existing workspace summary, update the summary with new key facts, decisions, and insights. Keep it concise."
 - The updated summary replaces `workspaces.context_summary`
@@ -527,6 +554,7 @@ This is intentionally simple — no external memory services, no vector retrieva
 ### 2.4 Workspace management API
 
 **New files**:
+
 - `src/routes/api/workspaces/+server.ts` - List/create workspaces
 - `src/routes/api/workspaces/[id]/+server.ts` - Get workspace + recent messages + canvas state
 - `src/routes/api/workspaces/[id]/messages/+server.ts` - Append messages
@@ -538,12 +566,14 @@ This is intentionally simple — no external memory services, no vector retrieva
 **File**: Update `src/routes/chat/+page.svelte`
 
 Replace the current single-conversation view with a workspace selector:
+
 - Workspace tabs or cards at the top (Sourcing, Roasting, Inventory, Analysis)
 - Each workspace restores its chat history AND canvas state when selected
 - The chat scrolls within the workspace; the canvas repopulates
 - The workspace context summary is visible (collapsible) so the user can see what the AI "remembers"
 
 ### Phase 2 risks & challenges
+
 - **Canvas state serialization**: Persisted canvas blocks may reference stale data (e.g., coffee prices changed). Include a "refresh" action on canvas blocks and a staleness indicator.
 - **Canvas state size**: A complex canvas with many blocks could produce large JSONB. Keep canvas state lean — store block IDs and fetch data on render, rather than persisting full data payloads.
 - **Summarization quality**: The AI summarizing its own conversations can lose important details. Let users edit the workspace summary manually as a safety valve.
@@ -555,7 +585,7 @@ Replace the current single-conversation view with a workspace selector:
 
 **Goal**: The AI can propose data mutations. The user reviews, optionally edits, and executes. The AI never touches the database directly.
 
-**Design imperative**: Action cards render on the **canvas** in `action` layout — they're the primary focus when a write operation is proposed. The chat contains the AI's narration and a reference link to the action card. This separation is important: the conversation explains *why*; the canvas shows *what* and lets you *act*.
+**Design imperative**: Action cards render on the **canvas** in `action` layout — they're the primary focus when a write operation is proposed. The chat contains the AI's narration and a reference link to the action card. This separation is important: the conversation explains _why_; the canvas shows _what_ and lets you _act_.
 
 ### 3.1 The execution model
 
@@ -597,13 +627,13 @@ CANVAS transitions:
 
 Added to `src/lib/services/tools.ts`:
 
-| Tool | Description | Existing API |
-|------|-------------|-------------|
-| `add_bean_to_inventory` | Propose adding coffee to user's inventory | `POST /api/beans` |
-| `update_bean` | Propose updating bean details | `PUT /api/beans?id=X` |
-| `create_roast_session` | Propose creating a roast profile | `POST /api/roast-profiles` |
-| `update_roast_notes` | Propose updating roast notes | `PUT /api/roast-profiles?id=X` |
-| `record_sale` | Propose recording a sale | `POST /api/profit` |
+| Tool                    | Description                               | Existing API                   |
+| ----------------------- | ----------------------------------------- | ------------------------------ |
+| `add_bean_to_inventory` | Propose adding coffee to user's inventory | `POST /api/beans`              |
+| `update_bean`           | Propose updating bean details             | `PUT /api/beans?id=X`          |
+| `create_roast_session`  | Propose creating a roast profile          | `POST /api/roast-profiles`     |
+| `update_roast_notes`    | Propose updating roast notes              | `PUT /api/roast-profiles?id=X` |
+| `record_sale`           | Propose recording a sale                  | `POST /api/profit`             |
 
 Each tool returns an `action-card` UIBlock targeted at the canvas. It does NOT execute the write.
 
@@ -612,6 +642,7 @@ Each tool returns an `action-card` UIBlock targeted at the canvas. It does NOT e
 **New file**: `src/lib/components/genui/blocks/ActionCardBlock.svelte`
 
 **Canvas render** (primary):
+
 - Function name (small, de-emphasized — transparency without visual noise)
 - Human-readable summary (the headline)
 - Editable parameter fields (using existing form type schemas from `component.types.ts` lines 40-75)
@@ -620,17 +651,19 @@ Each tool returns an `action-card` UIBlock targeted at the canvas. It does NOT e
 - On failure: show error inline with retry option
 
 **Chat preview**:
+
 - Action summary badge with status indicator
 - One-line description
 - Click to focus the canvas action card
 
-**Visual design**: The action card is the one block type that *should* have more chrome than others — it represents a consequential action and the user needs to clearly see the boundary of what they're approving. But it should still feel like the AI's confident recommendation, not a modal dialog.
+**Visual design**: The action card is the one block type that _should_ have more chrome than others — it represents a consequential action and the user needs to clearly see the boundary of what they're approving. But it should still feel like the AI's confident recommendation, not a modal dialog.
 
 ### 3.4 Action execution endpoint
 
 **New file**: `src/routes/api/chat/execute-action/+server.ts`
 
 Security-critical chokepoint:
+
 1. Validates session + role (`requireMemberRole`)
 2. Validates action against whitelist of allowed function names
 3. Verifies resource ownership (same patterns as existing PUT/DELETE endpoints)
@@ -641,6 +674,7 @@ Security-critical chokepoint:
 ### 3.5 System prompt for write tools
 
 Add constraints:
+
 - Always propose changes, never execute directly
 - Show all relevant details in the proposal
 - Don't change fields the user didn't mention
@@ -650,6 +684,7 @@ Add constraints:
 - After successful execution, suggest logical next steps
 
 ### Phase 3 risks & challenges
+
 - **Existing form types are ready**: `SalesFormData`, `RoastFormData`, `CoffeeFormData` in `component.types.ts` lines 40-75 are the schemas for action card editable fields. Reuse them directly.
 - **Stocked status cascade**: When adding/removing beans, `updateStockedStatus` from `stockedStatusUtils.ts` must run. The execute-action endpoint must trigger the same side effects as existing API endpoints.
 - **Canvas state during writes**: The action card lifecycle (proposed → executing → success) must update canvas state reactively. Handle optimistic updates and rollbacks.
@@ -669,26 +704,29 @@ This is where the Chat + Canvas architecture fully pays off. The canvas becomes 
 **New file**: `src/lib/stores/canvasContext.ts`
 
 Reactive store tracking:
+
 - Currently rendered canvas blocks and their data
 - User's recent interactions with canvas items (clicked a card, expanded a row, hovered a data point)
 - Active filters/search parameters
 - Canvas layout mode
 
-This context is included in every AI request so the AI knows what the user is *looking at* on the canvas. This enables responses like "why did you rank this higher?" or "what about the second one?" — the AI knows what "this" and "second one" refer to because it can see the canvas state.
+This context is included in every AI request so the AI knows what the user is _looking at_ on the canvas. This enables responses like "why did you rank this higher?" or "what about the second one?" — the AI knows what "this" and "second one" refer to because it can see the canvas state.
 
 ### 4.2 Proactive suggestions
 
 Based on canvas + conversation context, the AI surfaces suggestion chips:
+
 - Just added a bean to canvas → "Create a roast profile?"
 - Roast comparison on canvas → "Compare tasting notes?"
 - Haven't roasted a bean in inventory → "You have 3 lbs of Ethiopia Natural unroasted"
 - Canvas is empty → Subtle workspace-appropriate suggestion
 
-These are subtle prompts that feel like the AI *noticing* something, not push notifications.
+These are subtle prompts that feel like the AI _noticing_ something, not push notifications.
 
 ### 4.3 Quick commands
 
 Slash commands for common actions (syntactic sugar over tool calls):
+
 - `/beans` → render inventory table on canvas
 - `/roast [name]` → show matching roast profiles on canvas
 - `/add [coffee]` → start add-bean flow (action card on canvas)
@@ -700,6 +738,7 @@ Slash commands for common actions (syntactic sugar over tool calls):
 ### 4.4 Progressive page sunset
 
 As genUI blocks mature, make the chat+canvas page the default for members:
+
 - `/catalog` → Sourcing workspace with coffee-cards + data-table on canvas
 - `/beans` → Inventory workspace with inventory-table on canvas, CRUD via action cards
 - `/roast` → Roasting workspace with roast-chart on canvas
@@ -722,6 +761,7 @@ The AI orchestrates chained operations — the canvas evolves through each step:
 ### 4.6 Canvas pinning and manual curation
 
 Users can:
+
 - **Pin canvas items** to prevent auto-removal when conversation shifts
 - **Manually remove** items from the canvas
 - **Rearrange** items (drag to reorder/resize)
@@ -803,6 +843,7 @@ Each phase is independently shippable. Phase 0+1 together is the minimum viable 
 ## Verification Plan
 
 After each phase:
+
 1. `pnpm check` - TypeScript compilation
 2. `pnpm build` - Production build
 3. `pnpm test` - Existing tests pass
@@ -817,16 +858,16 @@ After each phase:
 
 ## Critical Files Reference
 
-| File | Current | Role in plan |
-|------|---------|-------------|
-| `src/routes/api/chat/+server.ts` | 290 lines, manual SSE | Rewrite with Vercel AI SDK (Phase 0) |
-| `src/lib/services/langchainService.ts` | 833 lines, LangChain agent | Extract tools, replace with AI SDK (Phase 0) |
-| `src/routes/chat/+page.svelte` | 838 lines, manual SSE parsing | Simplify with `useChat`, add Chat+Canvas layout (Phase 0+1) |
-| `src/lib/components/ChatMessageRenderer.svelte` | 131 lines | Refactor for markdown + block reference tokens (Phase 1) |
-| `src/lib/types/component.types.ts` | 307 lines, form types | Reuse form schemas for action cards (Phase 3) |
-| `src/lib/components/ChainOfThought.svelte` | 191 lines | Reimplement with AI SDK callbacks (Phase 0) |
-| `src/lib/services/ragService.ts` | 418 lines, disabled | Keep disabled until embedding data has unique value |
-| **New**: `src/lib/components/canvas/Canvas.svelte` | — | Canvas container + resize + pop-out (Phase 1) |
-| **New**: `src/lib/stores/canvasState.ts` | — | Canvas state management + mutations (Phase 1) |
-| **New**: `src/lib/types/genui.ts` | — | UIBlock + CanvasState + CanvasMutation types (Phase 0) |
-| **New**: `src/lib/utils/blockTokenParser.ts` | — | Block reference token parser (Phase 0) |
+| File                                               | Current                       | Role in plan                                                |
+| -------------------------------------------------- | ----------------------------- | ----------------------------------------------------------- |
+| `src/routes/api/chat/+server.ts`                   | 290 lines, manual SSE         | Rewrite with Vercel AI SDK (Phase 0)                        |
+| `src/lib/services/langchainService.ts`             | 833 lines, LangChain agent    | Extract tools, replace with AI SDK (Phase 0)                |
+| `src/routes/chat/+page.svelte`                     | 838 lines, manual SSE parsing | Simplify with `useChat`, add Chat+Canvas layout (Phase 0+1) |
+| `src/lib/components/ChatMessageRenderer.svelte`    | 131 lines                     | Refactor for markdown + block reference tokens (Phase 1)    |
+| `src/lib/types/component.types.ts`                 | 307 lines, form types         | Reuse form schemas for action cards (Phase 3)               |
+| `src/lib/components/ChainOfThought.svelte`         | 191 lines                     | Reimplement with AI SDK callbacks (Phase 0)                 |
+| `src/lib/services/ragService.ts`                   | 418 lines, disabled           | Keep disabled until embedding data has unique value         |
+| **New**: `src/lib/components/canvas/Canvas.svelte` | —                             | Canvas container + resize + pop-out (Phase 1)               |
+| **New**: `src/lib/stores/canvasState.ts`           | —                             | Canvas state management + mutations (Phase 1)               |
+| **New**: `src/lib/types/genui.ts`                  | —                             | UIBlock + CanvasState + CanvasMutation types (Phase 0)      |
+| **New**: `src/lib/utils/blockTokenParser.ts`       | —                             | Block reference token parser (Phase 0)                      |

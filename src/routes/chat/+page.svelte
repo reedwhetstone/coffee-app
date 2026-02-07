@@ -22,10 +22,7 @@
 	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import {
-		workspaceStore,
-		type WorkspaceMessage
-	} from '$lib/stores/workspaceStore.svelte';
+	import { workspaceStore, type WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -56,11 +53,17 @@
 				const pos = i + 1;
 				switch (block.type) {
 					case 'coffee-cards': {
-						const names = block.data.slice(0, 5).map((c) => c.name || 'Unknown').join(', ');
+						const names = block.data
+							.slice(0, 5)
+							.map((c) => c.name || 'Unknown')
+							.join(', ');
 						return `${pos}. Coffee cards: ${names}${block.data.length > 5 ? ` (+${block.data.length - 5} more)` : ''}`;
 					}
 					case 'roast-profiles': {
-						const names = block.data.slice(0, 5).map((r) => `${r.coffee_name} (${r.roast_date})`).join(', ');
+						const names = block.data
+							.slice(0, 5)
+							.map((r) => `${r.coffee_name} (${r.roast_date})`)
+							.join(', ');
 						return `${pos}. Roast profiles: ${names}${block.data.length > 5 ? ` (+${block.data.length - 5} more)` : ''}`;
 					}
 					case 'roast-chart':
@@ -224,7 +227,10 @@
 		}
 	}
 
-	async function handleCreateWorkspace(name?: string, type?: 'general' | 'sourcing' | 'roasting' | 'inventory' | 'analysis') {
+	async function handleCreateWorkspace(
+		name?: string,
+		type?: 'general' | 'sourcing' | 'roasting' | 'inventory' | 'analysis'
+	) {
 		await persistCurrentState();
 		const ws = await workspaceStore.createWorkspace(name, type);
 		if (ws) {
@@ -288,7 +294,11 @@
 	// Auto-persist when streaming completes (fast debounce)
 	let lastPersistedMessageCount = $state(0);
 	$effect(() => {
-		if (!isActive && chat.messages.length > 0 && chat.messages.length !== lastPersistedMessageCount) {
+		if (
+			!isActive &&
+			chat.messages.length > 0 &&
+			chat.messages.length !== lastPersistedMessageCount
+		) {
 			lastPersistedMessageCount = chat.messages.length;
 			const timeout = setTimeout(() => persistCurrentState(), 500);
 			return () => clearTimeout(timeout);
@@ -577,10 +587,7 @@
 		inputMessage = '';
 		shouldScrollToBottom = true;
 
-		await chat.sendMessage(
-			{ text },
-			{ body: { workspaceContext: getWorkspaceContext() } }
-		);
+		await chat.sendMessage({ text }, { body: { workspaceContext: getWorkspaceContext() } });
 	}
 
 	function handleSubmit(event: Event) {
@@ -740,10 +747,12 @@
 									Welcome to Coffee Chat!
 								</h2>
 								<p class="mb-4 text-text-secondary-light">
-									I'm your AI coffee expert, here to help with personalized recommendations, roasting
-									advice, and coffee knowledge. Ask me anything about:
+									I'm your AI coffee expert, here to help with personalized recommendations,
+									roasting advice, and coffee knowledge. Ask me anything about:
 								</p>
-								<div class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2">
+								<div
+									class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2"
+								>
 									<div>- Coffee recommendations</div>
 									<div>- Roasting techniques</div>
 									<div>- Flavor profiles</div>
@@ -763,8 +772,8 @@
 												'Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique processing method.')}
 										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 									>
-										"Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique
-										processing method."
+										"Check the green coffee catalog for an Ethiopian with stone fruit notes and a
+										unique processing method."
 									</button>
 									<button
 										onclick={() =>
@@ -775,7 +784,8 @@
 									</button>
 									<button
 										onclick={() =>
-											(inputMessage = 'Analyze my recent roasting sessions and suggest improvements')}
+											(inputMessage =
+												'Analyze my recent roasting sessions and suggest improvements')}
 										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 									>
 										"Analyze my recent roasting sessions and suggest improvements"
@@ -807,7 +817,10 @@
 									<!-- Assistant message -->
 									{@const hasPR = messageHasPresentResults(message.parts)}
 									{@const searchCache = hasPR ? buildSearchDataCache(message.parts) : undefined}
-									{@const extractorOptions = { searchDataCache: searchCache, hasPresentResults: hasPR }}
+									{@const extractorOptions = {
+										searchDataCache: searchCache,
+										hasPresentResults: hasPR
+									}}
 									{@const toolSteps = getMessageToolSteps(message.parts)}
 									{@const hasToolParts = message.parts.some((p) => p.type.startsWith('tool-'))}
 									<div id="msg-{message.id}" class="message-fade-in w-full space-y-3">
@@ -844,18 +857,18 @@
 																canvasBlockId={canvasId}
 															/>
 														</div>
-													<!-- Companion block previews (e.g., roast chart for single roast) -->
-													{@const companions = extractCompanionBlocks(toolPart)}
-													{#each companions as companionBlock}
-														<div class="preview-fade-in my-1">
-															<GenUIBlockRenderer
-																block={companionBlock}
-																renderMode="chat"
-																onAction={handleBlockAction}
-																canvasBlockId={canvasId}
-															/>
-														</div>
-													{/each}
+														<!-- Companion block previews (e.g., roast chart for single roast) -->
+														{@const companions = extractCompanionBlocks(toolPart)}
+														{#each companions as companionBlock}
+															<div class="preview-fade-in my-1">
+																<GenUIBlockRenderer
+																	block={companionBlock}
+																	renderMode="chat"
+																	onAction={handleBlockAction}
+																	canvasBlockId={canvasId}
+																/>
+															</div>
+														{/each}
 													{:else if toolPart.state === 'output-error'}
 														{@const errorBlock = extractBlockFromPart(toolPart)}
 														{#if errorBlock}
@@ -888,7 +901,9 @@
 				<!-- Input area -->
 				<div class="border-t border-border-light bg-background-secondary-light p-4">
 					{#if slashCompletions.length > 0 && inputMessage.startsWith('/')}
-						<div class="mx-auto mb-2 max-w-4xl rounded-lg border border-border-light bg-background-primary-light shadow-sm">
+						<div
+							class="mx-auto mb-2 max-w-4xl rounded-lg border border-border-light bg-background-primary-light shadow-sm"
+						>
 							{#each slashCompletions as cmd (cmd.name)}
 								<button
 									onclick={() => {
@@ -900,16 +915,21 @@
 									}}
 									class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-background-secondary-light"
 								>
-									<span class="font-mono text-xs font-medium text-background-tertiary-light">{cmd.name}</span>
+									<span class="font-mono text-xs font-medium text-background-tertiary-light"
+										>{cmd.name}</span
+									>
 									<span class="text-text-secondary-light">{cmd.description}</span>
 								</button>
 							{/each}
 						</div>
 					{:else if !isActive && suggestions.length > 0}
 						<div class="mx-auto max-w-4xl">
-							<SuggestionChips {suggestions} onSelect={(text) => {
-								inputMessage = text;
-							}} />
+							<SuggestionChips
+								{suggestions}
+								onSelect={(text) => {
+									inputMessage = text;
+								}}
+							/>
 						</div>
 					{/if}
 					<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
@@ -975,10 +995,7 @@
 				></div>
 
 				<!-- Canvas pane (desktop) -->
-				<div
-					class="hidden overflow-hidden md:block"
-					style="width: {100 - chatWidthPercent}%;"
-				>
+				<div class="hidden overflow-hidden md:block" style="width: {100 - chatWidthPercent}%;">
 					<Canvas
 						onAction={handleBlockAction}
 						onScrollToMessage={scrollToMessage}
@@ -1023,7 +1040,12 @@
 			class="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 rounded-full bg-background-tertiary-light px-3 py-2 text-sm text-white shadow-lg transition-transform hover:scale-105 md:hidden"
 		>
 			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+				/>
 			</svg>
 			{canvasStore.blockCount}
 		</button>

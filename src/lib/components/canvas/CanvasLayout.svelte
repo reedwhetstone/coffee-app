@@ -3,16 +3,17 @@
 	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 
-	let { blocks, layout, focusBlockId, onAction, onExecuteAction, onRemove, onPin, onMinimize } = $props<{
-		blocks: CanvasBlock[];
-		layout: CanvasLayout;
-		focusBlockId: string | null;
-		onAction?: (action: BlockAction) => void;
-		onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
-		onRemove: (blockId: string) => void;
-		onPin: (blockId: string) => void;
-		onMinimize: (blockId: string) => void;
-	}>();
+	let { blocks, layout, focusBlockId, onAction, onExecuteAction, onRemove, onPin, onMinimize } =
+		$props<{
+			blocks: CanvasBlock[];
+			layout: CanvasLayout;
+			focusBlockId: string | null;
+			onAction?: (action: BlockAction) => void;
+			onExecuteAction?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
+			onRemove: (blockId: string) => void;
+			onPin: (blockId: string) => void;
+			onMinimize: (blockId: string) => void;
+		}>();
 </script>
 
 <div class="canvas-layout canvas-layout-{layout}">
@@ -43,7 +44,12 @@
 							title="Focus"
 						>
 							<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+								/>
 							</svg>
 						</button>
 					{/if}
@@ -56,8 +62,18 @@
 						class:hover:text-amber-500={!canvasBlock.pinned}
 						title={canvasBlock.pinned ? 'Unpin' : 'Pin'}
 					>
-						<svg class="h-3.5 w-3.5" fill={canvasBlock.pinned ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+						<svg
+							class="h-3.5 w-3.5"
+							fill={canvasBlock.pinned ? 'currentColor' : 'none'}
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+							/>
 						</svg>
 					</button>
 					<!-- Minimize -->
@@ -77,7 +93,12 @@
 						title="Remove"
 					>
 						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
 						</svg>
 					</button>
 				</div>
@@ -85,7 +106,12 @@
 
 			<!-- Block content -->
 			<div class="canvas-block-content overflow-auto p-3">
-				<GenUIBlockRenderer block={canvasBlock.block} renderMode="canvas" {onAction} {onExecuteAction} />
+				<GenUIBlockRenderer
+					block={canvasBlock.block}
+					renderMode="canvas"
+					{onAction}
+					{onExecuteAction}
+				/>
 			</div>
 		</div>
 	{/each}
@@ -98,7 +124,9 @@
 		height: 100%;
 		overflow-y: auto;
 		padding: 0.75rem;
-		transition: grid-template-columns 0.3s ease, grid-template-rows 0.3s ease;
+		transition:
+			grid-template-columns 0.3s ease,
+			grid-template-rows 0.3s ease;
 	}
 
 	/* Focus: primary block takes most space, others as small tiles below */

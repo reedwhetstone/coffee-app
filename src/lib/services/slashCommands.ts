@@ -56,7 +56,9 @@ export const SLASH_COMMANDS: SlashCommand[] = [
  */
 export function matchSlashCommand(input: string): SlashCommand | null {
 	const trimmed = input.trim().toLowerCase();
-	return SLASH_COMMANDS.find((cmd) => trimmed === cmd.name || trimmed.startsWith(cmd.name + ' ')) ?? null;
+	return (
+		SLASH_COMMANDS.find((cmd) => trimmed === cmd.name || trimmed.startsWith(cmd.name + ' ')) ?? null
+	);
 }
 
 /**
