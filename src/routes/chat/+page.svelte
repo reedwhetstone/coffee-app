@@ -7,9 +7,12 @@
 	import SvelteMarkdown from '@humanspeak/svelte-markdown';
 	import CoffeePreviewSidebar from '$lib/components/CoffeePreviewSidebar.svelte';
 	import ChainOfThought from '$lib/components/ChainOfThought.svelte';
+	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
+	import { extractUIBlocks } from '$lib/services/blockExtractor';
+	import type { BlockAction } from '$lib/types/genui';
 	import type { TastingNotes } from '$lib/types/coffee.types';
-	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import { getContext } from 'svelte';
+	import { goto } from '$app/navigation';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -156,25 +159,13 @@
 
 	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
 
-	// ─── Coffee data extraction from tool results ──────────────────────────────
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function extractCoffeeData(message: any): CoffeeCatalog[] {
-		if (!message?.parts) return [];
-		const coffees: CoffeeCatalog[] = [];
-
-		for (const part of message.parts) {
-			if (!part.type.startsWith('tool-')) continue;
-			if (part.state !== 'output-available') continue;
-			const output = part.output;
-			if (!output || typeof output !== 'object') continue;
-
-			// coffee_catalog_search returns { coffees: [...] }
-			if ('coffees' in output && Array.isArray(output.coffees)) {
-				coffees.push(...output.coffees);
-			}
+	// ─── Block action handler ─────────────────────────────────────────────────
+	function handleBlockAction(action: BlockAction) {
+		if (action.type === 'coffee-preview') {
+			handleCoffeePreview(action.coffeeIds, action.focusId);
+		} else if (action.type === 'navigate') {
+			goto(action.url);
 		}
-
-		return coffees;
 	}
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
@@ -367,157 +358,67 @@
 			{:else}
 				<!-- Chat messages -->
 				<div class="mx-auto max-w-4xl space-y-4">
-					{#each chat.messages as message (message.id)}
+					{#each chat.messages as message, msgIndex (message.id)}
+						{@const isLastMessage = msgIndex === chat.messages.length - 1}
+						{@const isStreaming = isLastMessage && isActive && message.role === 'assistant'}
 						<div
 							class="flex {message.role === 'user'
 								? 'justify-end'
-								: 'justify-start'} message-fade-in"
+								: 'justify-start'} message-fade-in flex-col {message.role === 'user'
+								? 'items-end'
+								: 'items-start'}"
 						>
-							<div
-								class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user'
-									? 'bg-background-tertiary-light text-white'
-									: 'bg-background-secondary-light text-text-primary-light'}"
-							>
-								<!-- Render text parts -->
-								{#each message.parts as part}
-									{#if part.type === 'text'}
-										{#if message.role === 'assistant'}
-											<div
-												class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light"
-											>
-												<SvelteMarkdown source={part.text} />
-											</div>
-										{:else}
-											<div class="whitespace-pre-wrap">{part.text}</div>
-										{/if}
-									{/if}
-								{/each}
+							<!-- Thinking steps inline BEFORE text for streaming message -->
+							{#if isStreaming && thinkingSteps.length > 0}
+								<div class="mb-2 max-w-[80%]">
+									<ChainOfThought steps={thinkingSteps} {isActive} />
+								</div>
+							{/if}
 
-								<!-- Render coffee cards from tool results (once per message, not per part) -->
-								{#if message.role === 'assistant'}
-									{@const coffees = extractCoffeeData(message)}
-									{#if coffees.length > 0}
-										<div class="my-4">
-											<h3 class="mb-3 font-semibold text-text-primary-light">
-												Coffee Recommendations ({coffees.length})
-											</h3>
-											<div class="space-y-3">
-												{#each coffees as coffee (coffee.id)}
-													<button
-														type="button"
-														class="group w-full rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
-														onclick={() => {
-															const allIds = coffees.map(
-																(c: CoffeeCatalog) => c.id
-															);
-															handleCoffeePreview(allIds, coffee.id);
-														}}
-													>
-														<div
-															class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0"
-														>
-															<div class="flex-1">
-																<h4
-																	class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
-																>
-																	{coffee.name}
-																</h4>
-																<div
-																	class="mt-1 flex items-center justify-between"
-																>
-																	<p
-																		class="text-sm font-medium text-background-tertiary-light"
-																	>
-																		{coffee.source}
-																	</p>
-																	<div class="text-right sm:hidden">
-																		<div
-																			class="font-bold text-background-tertiary-light"
-																		>
-																			${coffee.cost_lb}/lb
-																		</div>
-																		{#if coffee.processing}
-																			<div
-																				class="text-xs text-text-secondary-light"
-																			>
-																				{coffee.processing.length > 25
-																					? coffee.processing.substring(
-																							0,
-																							25
-																						) + '...'
-																					: coffee.processing}
-																			</div>
-																		{/if}
-																	</div>
-																</div>
-																{#if coffee.ai_description}
-																	<p
-																		class="my-2 line-clamp-2 text-xs text-text-secondary-light"
-																	>
-																		{coffee.ai_description}
-																	</p>
-																{/if}
-															</div>
-															<div
-																class="hidden flex-col items-end space-y-1 sm:flex"
-															>
-																<div class="text-right">
-																	<div
-																		class="font-bold text-background-tertiary-light"
-																	>
-																		${coffee.cost_lb}/lb
-																	</div>
-																	{#if coffee.processing}
-																		<div
-																			class="mt-1 text-xs text-background-tertiary-light"
-																		>
-																			{coffee.processing.length > 25
-																				? coffee.processing.substring(
-																						0,
-																						25
-																					) + '...'
-																				: coffee.processing}
-																		</div>
-																	{/if}
-																</div>
-															</div>
-														</div>
-														<div class="mt-3 flex items-center justify-end">
-															<svg
-																class="h-4 w-4 text-text-secondary-light transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
-																fill="none"
-																stroke="currentColor"
-																viewBox="0 0 24 24"
-															>
-																<path
-																	stroke-linecap="round"
-																	stroke-linejoin="round"
-																	stroke-width="2"
-																	d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-																/>
-															</svg>
-														</div>
-													</button>
-												{/each}
-											</div>
+							<!-- Message text bubble -->
+							{#if message.parts.some((p) => p.type === 'text') || message.role === 'user'}
+								<div
+									class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user'
+										? 'bg-background-tertiary-light text-white'
+										: 'bg-background-secondary-light text-text-primary-light'}"
+								>
+									{#each message.parts as part}
+										{#if part.type === 'text'}
+											{#if message.role === 'assistant'}
+												<div
+													class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light"
+												>
+													<SvelteMarkdown source={part.text} />
+												</div>
+											{:else}
+												<div class="whitespace-pre-wrap">{part.text}</div>
+											{/if}
+										{/if}
+									{/each}
+									{#if !isStreaming}
+										<div class="mt-1 text-xs opacity-70">
+											{new Date().toLocaleTimeString()}
 										</div>
 									{/if}
-								{/if}
-								<div class="mt-1 text-xs opacity-70">
-									{new Date().toLocaleTimeString()}
 								</div>
-							</div>
+							{/if}
+
+							<!-- GenUI blocks render outside the message bubble -->
+							{#if message.role === 'assistant'}
+								{@const blocks = extractUIBlocks(message)}
+								{#if blocks.length > 0}
+									<div class="mt-2 w-full">
+										{#each blocks as block (block.type + '-' + JSON.stringify(block.data).slice(0, 50))}
+											<GenUIBlockRenderer {block} onAction={handleBlockAction} />
+										{/each}
+									</div>
+								{/if}
+							{/if}
 						</div>
 					{/each}
 
-					<!-- Thinking steps indicator while streaming -->
-					{#if isActive && thinkingSteps.length > 0}
-						<div class="flex justify-start">
-							<div class="max-w-[80%]">
-								<ChainOfThought steps={thinkingSteps} {isActive} />
-							</div>
-						</div>
-					{:else if chat.status === 'submitted'}
+					<!-- Initial loading state before any message parts exist -->
+					{#if chat.status === 'submitted' && (chat.messages.length === 0 || chat.messages[chat.messages.length - 1]?.role === 'user')}
 						<div class="flex justify-start">
 							<div class="max-w-[80%]">
 								<ChainOfThought steps={[]} isActive={true} />

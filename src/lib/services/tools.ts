@@ -30,24 +30,13 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				'Search for coffee beans in the catalog with filters for origin, processing, variety, price range, flavor keywords, coffee name, recent arrivals, supplier, and specific coffee IDs',
 			inputSchema: z.object({
 				origin: z.string().optional().describe('Coffee origin (country, region, or continent)'),
-				process: z
-					.string()
-					.optional()
-					.describe('Processing method (natural, washed, honey, etc.)'),
+				process: z.string().optional().describe('Processing method (natural, washed, honey, etc.)'),
 				variety: z.string().optional().describe('Coffee variety/cultivar'),
-				price_range: z
-					.array(z.number())
-					.length(2)
-					.optional()
-					.describe('Price range [min, max]'),
+				price_range: z.array(z.number()).length(2).optional().describe('Price range [min, max]'),
 				flavor_keywords: z.array(z.string()).optional().describe('Flavor descriptors'),
 				score_min: z.number().optional().describe('Minimum cupping score'),
 				score_max: z.number().optional().describe('Maximum cupping score'),
-				limit: z
-					.number()
-					.optional()
-					.default(10)
-					.describe('Number of results to return (max 15)'),
+				limit: z.number().optional().default(10).describe('Number of results to return (max 15)'),
 				stocked_only: z
 					.boolean()
 					.optional()
@@ -56,10 +45,7 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 						'Only show currently stocked coffees (default: true, use false for historical analysis)'
 					),
 				name: z.string().optional().describe('Search by coffee name'),
-				stocked_days: z
-					.number()
-					.optional()
-					.describe('Find coffees stocked within this many days'),
+				stocked_days: z.number().optional().describe('Find coffees stocked within this many days'),
 				drying_method: z
 					.string()
 					.optional()
@@ -87,15 +73,8 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					.boolean()
 					.optional()
 					.describe('Include full catalog information'),
-				include_roast_summary: z
-					.boolean()
-					.optional()
-					.describe('Include roasting statistics'),
-				limit: z
-					.number()
-					.optional()
-					.default(15)
-					.describe('Number of results to return (max 15)')
+				include_roast_summary: z.boolean().optional().describe('Include roasting statistics'),
+				limit: z.number().optional().default(15).describe('Number of results to return (max 15)')
 			}),
 			execute: async (input) => {
 				return callTool('/api/tools/green-coffee-inv', input);
@@ -112,9 +91,7 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				coffee_id: z
 					.number()
 					.optional()
-					.describe(
-						'Filter by green coffee inventory ID - use this for specific coffee analysis'
-					),
+					.describe('Filter by green coffee inventory ID - use this for specific coffee analysis'),
 				catalog_id: z
 					.number()
 					.optional()
@@ -153,9 +130,7 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				'Get tasting notes and radar chart data for a specific coffee bean; user data, supplier data, or both',
 			inputSchema: z.object({
 				bean_id: z.number().describe('Required coffee bean ID'),
-				filter: z
-					.enum(['user', 'supplier', 'both'])
-					.describe('Which tasting notes to include'),
+				filter: z.enum(['user', 'supplier', 'both']).describe('Which tasting notes to include'),
 				include_radar_data: z.boolean().optional().describe('Include radar chart data')
 			}),
 			execute: async (input) => {

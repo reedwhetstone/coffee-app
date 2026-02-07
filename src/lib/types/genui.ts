@@ -16,6 +16,7 @@ export type UIBlock =
 	| InventoryTableBlock
 	| RoastChartBlock
 	| RoastComparisonBlock
+	| RoastProfilesBlock
 	| ProfitSummaryBlock
 	| TastingRadarBlock
 	| DataTableBlock
@@ -36,6 +37,7 @@ export interface InventoryTableBlock {
 	type: 'inventory-table';
 	version: 1;
 	data: GreenCoffeeInv[];
+	summary?: InventorySummary;
 }
 
 export interface RoastChartBlock {
@@ -48,6 +50,13 @@ export interface RoastComparisonBlock {
 	type: 'roast-comparison';
 	version: 1;
 	data: { roastIds: number[] };
+}
+
+export interface RoastProfilesBlock {
+	type: 'roast-profiles';
+	version: 1;
+	data: RoastProfileRow[];
+	summary?: RoastProfilesSummary;
 }
 
 export interface ProfitSummaryBlock {
@@ -125,14 +134,53 @@ export interface TastingRadarData {
 	source: 'user' | 'supplier' | 'both';
 }
 
+export interface InventorySummary {
+	total_beans: number;
+	total_weight_lbs: number;
+	total_value: number;
+	stocked_beans: number;
+}
+
+export interface RoastProfileRow {
+	roast_id: string;
+	batch_name: string;
+	coffee_name: string;
+	roast_date: string;
+	total_roast_time: number | null;
+	fc_start_time: number | null;
+	fc_start_temp: number | null;
+	drop_time: number | null;
+	drop_temp: number | null;
+	development_percent: number | null;
+	weight_loss_percent: number | null;
+	total_ror: number | null;
+	oz_in: number | null;
+	oz_out: number | null;
+	roast_notes: string | null;
+}
+
+export interface RoastProfilesSummary {
+	total_roasts: number;
+	avg_total_roast_time: number | null;
+	avg_fc_start_temp: number | null;
+	avg_drop_temp: number | null;
+	avg_development_percent: number | null;
+	avg_weight_loss_percent: number | null;
+	avg_total_ror: number | null;
+	date_range_start?: string;
+	date_range_end?: string;
+}
+
+// ─── Block Action Types ──────────────────────────────────────────────────────
+
+export type BlockAction =
+	| { type: 'coffee-preview'; coffeeIds: number[]; focusId?: number }
+	| { type: 'navigate'; url: string };
+
 // ─── Helper to check block type ────────────────────────────────────────────────
 
 export function isUIBlock(obj: unknown): obj is UIBlock {
 	return (
-		typeof obj === 'object' &&
-		obj !== null &&
-		'type' in obj &&
-		'version' in obj &&
-		'data' in obj
+		typeof obj === 'object' && obj !== null && 'type' in obj && 'version' in obj && 'data' in obj
 	);
 }
