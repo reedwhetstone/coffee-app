@@ -24,7 +24,6 @@
 	import { onMount } from 'svelte';
 	import {
 		workspaceStore,
-		type Workspace,
 		type WorkspaceMessage
 	} from '$lib/stores/workspaceStore.svelte';
 
@@ -42,9 +41,6 @@
 
 	// ─── Workspace state ──────────────────────────────────────────────────────
 	let workspacesLoaded = $state(false);
-	let showWorkspaceMenu = $state(false);
-	let editingTitle = $state<string | null>(null);
-	let editTitleValue = $state('');
 
 	// Build workspace context for the AI system prompt
 	function getWorkspaceContext() {
@@ -103,18 +99,82 @@
 	let inputMessage = $state('');
 
 	// ─── Workspace lifecycle ──────────────────────────────────────────────────
-	onMount(async () => {
+	onMount(() => {
 		if (!hasRequiredRole('member')) return;
-		await workspaceStore.loadWorkspaces();
-		workspacesLoaded = true;
 
-		// Auto-create first workspace or load most recent
-		if (workspaceStore.workspaces.length === 0) {
-			const ws = await workspaceStore.createWorkspace('General', 'general');
-			if (ws) await loadWorkspace(ws.id);
-		} else {
-			await loadWorkspace(workspaceStore.workspaces[0].id);
-		}
+		// beforeunload: persist state via sendBeacon (reliable during tab close/nav)
+		const handleBeforeUnload = () => {
+			const wsId = workspaceStore.currentWorkspaceId;
+			if (!wsId) return;
+			// Save unsaved messages
+			const savedCount = workspaceStore.getSavedMessageCount(wsId);
+			const newMessages = chat.messages.slice(savedCount);
+			if (newMessages.length > 0) {
+				const toSave = newMessages.map((msg) => {
+					const textParts = msg.parts.filter((p) => p.type === 'text');
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const content = textParts.map((p: any) => p.text || '').join('\n');
+					return { role: msg.role, content, parts: msg.parts };
+				});
+				navigator.sendBeacon(
+					`/api/workspaces/${wsId}/messages`,
+					new Blob([JSON.stringify({ messages: toSave })], { type: 'application/json' })
+				);
+			}
+			// Save canvas state
+			navigator.sendBeacon(
+				`/api/workspaces/${wsId}/canvas`,
+				new Blob(
+					[
+						JSON.stringify({
+							canvas_state: {
+								blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
+									block: b.block,
+									messageId: b.messageId,
+									pinned: b.pinned
+								})),
+								layout: canvasStore.layout
+							}
+						})
+					],
+					{ type: 'application/json' }
+				)
+			);
+		};
+		window.addEventListener('beforeunload', handleBeforeUnload);
+
+		// Register workspace UI callbacks for LeftSidebar
+		workspaceStore.registerUICallbacks({
+			onSwitch: handleSwitchWorkspace,
+			onCreate: (name, type) => handleCreateWorkspace(name, type),
+			onDelete: handleDeleteWorkspace,
+			onRename: (id, title) => workspaceStore.updateTitle(id, title)
+		});
+
+		// Load workspaces then restore last active
+		(async () => {
+			await workspaceStore.loadWorkspaces();
+			workspacesLoaded = true;
+
+			if (workspaceStore.workspaces.length === 0) {
+				const ws = await workspaceStore.createWorkspace('General', 'general');
+				if (ws) await loadWorkspace(ws.id);
+			} else {
+				// Restore persisted workspace if it still exists
+				const persistedId = workspaceStore.getPersistedWorkspaceId();
+				const targetId =
+					persistedId && workspaceStore.workspaces.some((w) => w.id === persistedId)
+						? persistedId
+						: workspaceStore.workspaces[0].id;
+				await loadWorkspace(targetId);
+			}
+		})();
+
+		return () => {
+			workspaceStore.unregisterUICallbacks();
+			window.removeEventListener('beforeunload', handleBeforeUnload);
+			handleBeforeUnload(); // Also fires on SvelteKit client-side navigation
+		};
 	});
 
 	async function loadWorkspace(workspaceId: string) {
@@ -164,22 +224,18 @@
 		}
 	}
 
-	async function handleCreateWorkspace() {
-		const ws = await workspaceStore.createWorkspace();
+	async function handleCreateWorkspace(name?: string, type?: 'general' | 'sourcing' | 'roasting' | 'inventory' | 'analysis') {
+		await persistCurrentState();
+		const ws = await workspaceStore.createWorkspace(name, type);
 		if (ws) {
-			showWorkspaceMenu = false;
 			await loadWorkspace(ws.id);
 		}
 	}
 
 	async function handleSwitchWorkspace(workspaceId: string) {
-		if (workspaceId === workspaceStore.currentWorkspaceId) {
-			showWorkspaceMenu = false;
-			return;
-		}
+		if (workspaceId === workspaceStore.currentWorkspaceId) return;
 		// Save current workspace state before switching
 		await persistCurrentState();
-		showWorkspaceMenu = false;
 		await loadWorkspace(workspaceId);
 	}
 
@@ -194,18 +250,6 @@
 		} else {
 			await loadWorkspace(workspaceStore.workspaces[0].id);
 		}
-	}
-
-	function startEditTitle(ws: Workspace) {
-		editingTitle = ws.id;
-		editTitleValue = ws.title;
-	}
-
-	async function saveTitle() {
-		if (editingTitle && editTitleValue.trim()) {
-			await workspaceStore.updateTitle(editingTitle, editTitleValue.trim());
-		}
-		editingTitle = null;
 	}
 
 	// Persist chat messages and canvas state to the current workspace
@@ -241,13 +285,12 @@
 		});
 	}
 
-	// Auto-persist periodically when streaming completes
+	// Auto-persist when streaming completes (fast debounce)
 	let lastPersistedMessageCount = $state(0);
 	$effect(() => {
 		if (!isActive && chat.messages.length > 0 && chat.messages.length !== lastPersistedMessageCount) {
 			lastPersistedMessageCount = chat.messages.length;
-			// Debounce persistence
-			const timeout = setTimeout(() => persistCurrentState(), 2000);
+			const timeout = setTimeout(() => persistCurrentState(), 500);
 			return () => clearTimeout(timeout);
 		}
 	});
@@ -266,6 +309,7 @@
 	let chatContainer = $state<HTMLDivElement>();
 	let shouldScrollToBottom = $state(true);
 
+	// Scroll when new messages arrive
 	$effect(() => {
 		if (chatContainer && shouldScrollToBottom && chat.messages.length > 0) {
 			chatContainer.scrollTo({
@@ -273,6 +317,26 @@
 				behavior: 'smooth'
 			});
 		}
+	});
+
+	// Scroll during streaming — track content growth via parts length
+	$effect(() => {
+		if (!isActive || !shouldScrollToBottom || !chatContainer) return;
+		// Access the last message's parts to create a reactive dependency on streaming content
+		const lastMsg = chat.messages[chat.messages.length - 1];
+		if (lastMsg) {
+			// Touch parts to trigger re-run as streaming appends content
+			const _partsLen = lastMsg.parts.length;
+			// Also touch the last text part's content for character-level reactivity
+			const lastTextPart = lastMsg.parts.findLast((p) => p.type === 'text');
+			if (lastTextPart) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const _textLen = (lastTextPart as any).text?.length;
+			}
+		}
+		requestAnimationFrame(() => {
+			chatContainer?.scrollTo({ top: chatContainer.scrollHeight });
+		});
 	});
 
 	function handleScroll() {
@@ -626,112 +690,6 @@
 {:else}
 	<!-- Main chat + canvas interface -->
 	<div class="flex h-screen flex-col bg-background-primary-light">
-		<!-- Header with workspace tabs -->
-		<header class="border-b border-border-light bg-background-secondary-light">
-			<!-- Top row: branding + actions -->
-			<div class="flex items-center justify-between px-4 py-2">
-				<div class="flex items-center gap-3">
-					<h1 class="text-lg font-semibold text-text-primary-light">Coffee Chat</h1>
-				</div>
-				<div class="flex items-center space-x-2">
-					<!-- Canvas toggle (mobile) -->
-					{#if !canvasStore.isEmpty}
-						<button
-							onclick={() => (mobileCanvasOpen = !mobileCanvasOpen)}
-							class="rounded-md border border-border-light px-3 py-1 text-sm text-text-secondary-light transition-all duration-200 hover:text-text-primary-light md:hidden"
-						>
-							Canvas ({canvasStore.blockCount})
-						</button>
-					{/if}
-					<!-- Canvas toggle (desktop) -->
-					{#if !canvasStore.isEmpty}
-						<button
-							onclick={() => (canvasOpen = !canvasOpen)}
-							class="hidden rounded-md border border-border-light px-3 py-1 text-sm text-text-secondary-light transition-all duration-200 hover:text-text-primary-light md:block"
-						>
-							{canvasOpen ? 'Hide' : 'Show'} Canvas ({canvasStore.blockCount})
-						</button>
-					{/if}
-					{#if chat.messages.length > 0}
-						<button
-							onclick={exportConversation}
-							class="rounded-md border border-background-tertiary-light px-3 py-1 text-sm text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-						>
-							Export
-						</button>
-						<button
-							onclick={clearConversation}
-							class="rounded-md border border-red-500 px-3 py-1 text-sm text-red-500 transition-all duration-200 hover:bg-red-500 hover:text-white"
-						>
-							Clear
-						</button>
-					{/if}
-				</div>
-			</div>
-			<!-- Workspace tabs row -->
-			{#if workspacesLoaded}
-				<div class="flex items-center gap-1 overflow-x-auto px-3 pb-1">
-					{#each workspaceStore.workspaces as ws (ws.id)}
-						{@const isActive_ws = ws.id === workspaceStore.currentWorkspaceId}
-						<div
-							role="tab"
-							tabindex="0"
-							onclick={() => handleSwitchWorkspace(ws.id)}
-							onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSwitchWorkspace(ws.id); }}
-							class="group flex shrink-0 cursor-pointer items-center gap-1.5 rounded-t-md px-3 py-1.5 text-sm transition-colors {isActive_ws
-								? 'bg-background-primary-light text-text-primary-light font-medium'
-								: 'text-text-secondary-light hover:text-text-primary-light hover:bg-background-primary-light/50'}"
-						>
-							{#if editingTitle === ws.id}
-								<input
-									type="text"
-									bind:value={editTitleValue}
-									onblur={saveTitle}
-									onkeydown={(e) => {
-										if (e.key === 'Enter') saveTitle();
-										if (e.key === 'Escape') (editingTitle = null);
-									}}
-									class="w-24 rounded border border-border-light bg-transparent px-1 text-sm focus:outline-none"
-								/>
-							{:else}
-								<span
-									role="button"
-									tabindex="0"
-									ondblclick={() => startEditTitle(ws)}
-									onkeydown={(e) => { if (e.key === 'Enter') startEditTitle(ws); }}
-								>
-									{ws.title}
-								</span>
-							{/if}
-							{#if isActive_ws}
-								<button
-									onclick={(e) => {
-										e.stopPropagation();
-										handleDeleteWorkspace(ws.id);
-									}}
-									class="ml-1 rounded p-0.5 text-text-secondary-light opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
-									title="Delete workspace"
-								>
-									<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-									</svg>
-								</button>
-							{/if}
-						</div>
-					{/each}
-					<button
-						onclick={handleCreateWorkspace}
-						class="flex shrink-0 items-center gap-1 rounded-t-md px-2 py-1.5 text-sm text-text-secondary-light transition-colors hover:text-text-primary-light"
-						title="New workspace"
-					>
-						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-						</svg>
-					</button>
-				</div>
-			{/if}
-		</header>
-
 		<!-- Chat + Canvas split container -->
 		<div class="chat-canvas-container flex flex-1 overflow-hidden">
 			<!-- Chat pane -->
@@ -739,6 +697,39 @@
 				class="flex flex-col overflow-hidden"
 				style="width: {canvasOpen ? chatWidthPercent : 100}%; transition: width 0.2s ease;"
 			>
+				<!-- Chat toolbar -->
+				<div class="flex items-center justify-end border-b border-border-light px-3 py-1.5">
+					<div class="flex items-center gap-2">
+						{#if !canvasStore.isEmpty}
+							<button
+								onclick={() => (mobileCanvasOpen = !mobileCanvasOpen)}
+								class="rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light md:hidden"
+							>
+								Canvas ({canvasStore.blockCount})
+							</button>
+							<button
+								onclick={() => (canvasOpen = !canvasOpen)}
+								class="hidden rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light md:block"
+							>
+								{canvasOpen ? 'Hide' : 'Show'} Canvas ({canvasStore.blockCount})
+							</button>
+						{/if}
+						{#if chat.messages.length > 0}
+							<button
+								onclick={exportConversation}
+								class="rounded-md border border-background-tertiary-light px-2 py-0.5 text-xs text-background-tertiary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+							>
+								Export
+							</button>
+							<button
+								onclick={clearConversation}
+								class="rounded-md border border-red-500 px-2 py-0.5 text-xs text-red-500 transition-all hover:bg-red-500 hover:text-white"
+							>
+								Clear
+							</button>
+						{/if}
+					</div>
+				</div>
 				<!-- Chat messages area -->
 				<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4" onscroll={handleScroll}>
 					{#if chat.messages.length === 0}

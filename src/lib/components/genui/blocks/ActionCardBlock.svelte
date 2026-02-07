@@ -12,11 +12,20 @@
 	let status = $state(block.data.status);
 	let errorMsg = $state(block.data.error || '');
 
+	// Store all bean options for source_filter coupling (before filtering)
+	let allBeanOptions = $state<Array<{ label: string; value: string }>>([]);
+
 	// Initialize local fields from block data
 	$effect(() => {
 		localFields = block.data.fields.map((f: ActionField) => ({ ...f }));
 		status = block.data.status;
 		errorMsg = block.data.error || '';
+
+		// Cache the full bean options for source_filter coupling
+		const beanField = block.data.fields.find((f: ActionField) => f.key === 'coffee_bean');
+		if (beanField?.selectOptions) {
+			allBeanOptions = [...beanField.selectOptions];
+		}
 	});
 
 	function getFieldValue(key: string): unknown {
@@ -28,6 +37,54 @@
 
 		// Coupled field updates for add_bean_to_inventory
 		if (block.data.actionType === 'add_bean_to_inventory') {
+			// When source_filter changes, filter the coffee_bean options
+			if (key === 'source_filter') {
+				const sourceVal = String(value);
+				// We need to filter allBeanOptions by source — but we only have label/value
+				// We'll match by checking the tool's original catalog data
+				// For now, store filtered options back into the field
+				if (sourceVal === '__all__') {
+					localFields = localFields.map((f) =>
+						f.key === 'coffee_bean' ? { ...f, selectOptions: [...allBeanOptions] } : f
+					);
+				} else {
+					// Filter bean options: we need source info. The tool stores source in source_filter selectOptions.
+					// We'll use a lookup approach — catalog beans have name as label, ID as value
+					// Since we can't access the source per bean from selectOptions alone,
+					// we embed source in a data attribute pattern: store source mapping in allBeanOptions
+					// Actually, let's store source info. We'll extend the approach:
+					// The tool passes all beans with just name/id. We need source info client-side.
+					// Solution: encode source in the bean label like "name||source" and parse it.
+					// Better solution: use the source_filter field's selectOptions to build a lookup,
+					// and filter by querying which beans belong to a source.
+					// Simplest: we store the source per bean in a separate data structure.
+					// Let's use a workaround: store source info as a hidden field.
+					// Actually the cleanest approach: extend selectOptions to include a `group` field.
+					// But that changes types. Instead: embed source in label as "Name [source]" and parse.
+					// NO - the plan says labels are just bean name. We need another approach.
+					// Let's just store a mapping from bean value to source in a hidden field.
+					const allBeansField = block.data.fields.find((f: ActionField) => f.key === '_bean_sources');
+					if (allBeansField?.value && typeof allBeansField.value === 'object') {
+						const sourceMap = allBeansField.value as Record<string, string>;
+						const filtered = allBeanOptions.filter((opt) => sourceMap[opt.value] === sourceVal);
+						localFields = localFields.map((f) =>
+							f.key === 'coffee_bean' ? { ...f, selectOptions: filtered } : f
+						);
+						// If current selection is not in filtered list, select first available
+						const currentBean = String(localFields.find((f) => f.key === 'coffee_bean')?.value);
+						if (!filtered.some((opt) => opt.value === currentBean) && filtered.length > 0) {
+							localFields = localFields.map((f) =>
+								f.key === 'coffee_bean' ? { ...f, value: filtered[0].value } : f
+							);
+							// Also update catalog_id
+							localFields = localFields.map((f) =>
+								f.key === 'catalog_id' ? { ...f, value: Number(filtered[0].value) } : f
+							);
+						}
+					}
+				}
+			}
+
 			// When coffee_bean dropdown changes, update the hidden catalog_id
 			if (key === 'coffee_bean') {
 				localFields = localFields.map((f) =>
@@ -121,6 +178,7 @@
 	<!-- Fields -->
 	<div class="space-y-2">
 		{#each localFields as field (field.key)}
+			{#if field.type !== 'hidden' && field.key !== '_bean_sources'}
 			<div class="flex items-center gap-2 text-sm">
 				<span class="w-32 shrink-0 text-text-secondary-light">{field.label}</span>
 				{#if editing && field.editable && status === 'proposed'}
@@ -160,10 +218,15 @@
 					{/if}
 				{:else}
 					<span class="flex-1 text-text-primary-light">
-						{field.value ?? '—'}
+						{#if field.selectOptions}
+							{field.selectOptions.find((o) => String(o.value) === String(field.value))?.label ?? field.value ?? '—'}
+						{:else}
+							{field.value ?? '—'}
+						{/if}
 					</span>
 				{/if}
 			</div>
+			{/if}
 		{/each}
 	</div>
 

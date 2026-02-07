@@ -69,40 +69,28 @@
 		{#if annotation}
 			<p class="mb-2 text-sm italic text-text-secondary-light">{annotation}</p>
 		{/if}
-		<div class="flex items-start justify-between gap-3">
-			<div class="min-w-0 flex-1">
-				<div class="flex items-baseline gap-2">
-					<h3
-						class="truncate font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
-					>
-						{coffee.name}
-					</h3>
-					<span class="shrink-0 text-sm font-medium text-background-tertiary-light">
-						{coffee.source}
-					</span>
-				</div>
-				{#if coffee.ai_description}
-					<p class="mt-1 line-clamp-2 text-xs text-text-secondary-light">
-						{coffee.ai_description}
-					</p>
-				{/if}
-				<div class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-text-secondary-light">
-					<span>
-						{[coffee.country, coffee.region].filter(Boolean).join(', ') || coffee.continent || '-'}
-					</span>
-					{#if coffee.processing}
-						<span>{coffee.processing}</span>
-					{/if}
-				</div>
+		<div>
+			<h3 class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light">
+				{coffee.name}
+			</h3>
+			<div class="mt-1 flex items-baseline justify-between gap-2">
+				<span class="text-sm font-medium text-background-tertiary-light">{coffee.source}</span>
+				<span class="shrink-0 font-bold text-background-tertiary-light">${coffee.cost_lb}/lb</span>
 			</div>
-			<div class="shrink-0 text-right">
-				<div class="font-bold text-background-tertiary-light">
-					${coffee.cost_lb}/lb
-				</div>
+			<div class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-text-secondary-light">
+				<span>
+					{[coffee.country, coffee.region].filter(Boolean).join(', ') || coffee.continent || '-'}
+				</span>
+				{#if coffee.processing}
+					<span>{coffee.processing}</span>
+				{/if}
 			</div>
 		</div>
 	{:else}
 		<!-- Full mode: detailed card for catalog/home pages -->
+		{#if annotation}
+			<p class="mb-2 text-sm italic text-background-tertiary-light">{annotation}</p>
+		{/if}
 		<div class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
 			<!-- Content section -->
 			<div class="flex-1">

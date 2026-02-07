@@ -135,7 +135,7 @@ export interface ActionField {
 	key: string;
 	label: string;
 	value: unknown;
-	type: 'text' | 'number' | 'date' | 'select' | 'textarea';
+	type: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'hidden';
 	editable: boolean;
 	options?: string[]; // for select type (simple string options)
 	selectOptions?: Array<{ label: string; value: string }>; // for select type (label/value pairs)

@@ -17,8 +17,6 @@
 		}
 		return map;
 	});
-
-	let hasAnnotations = $derived(!!block.annotations && block.annotations.length > 0);
 </script>
 
 {#if layout === 'grid'}
@@ -29,7 +27,7 @@
 			<CoffeeCard
 				{coffee}
 				{parseTastingNotes}
-				compact={hasAnnotations}
+				compact={true}
 				highlighted={meta?.highlight}
 				annotation={meta?.annotation ?? ''}
 			/>
@@ -43,6 +41,7 @@
 			<CoffeeCard
 				{coffee}
 				{parseTastingNotes}
+				compact={true}
 				highlighted={true}
 				annotation={meta?.annotation ?? ''}
 			/>
@@ -56,7 +55,7 @@
 			<CoffeeCard
 				{coffee}
 				{parseTastingNotes}
-				compact={hasAnnotations}
+				compact={true}
 				highlighted={meta?.highlight}
 				annotation={meta?.annotation ?? ''}
 			/>

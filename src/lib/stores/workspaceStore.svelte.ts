@@ -20,6 +20,29 @@ export interface WorkspaceMessage {
 	created_at: string;
 }
 
+// localStorage helpers
+const WORKSPACE_ID_KEY = 'coffee-chat-workspace-id';
+
+function persistWorkspaceId(id: string | null) {
+	try {
+		if (id) {
+			localStorage.setItem(WORKSPACE_ID_KEY, id);
+		} else {
+			localStorage.removeItem(WORKSPACE_ID_KEY);
+		}
+	} catch {
+		// SSR or localStorage unavailable
+	}
+}
+
+function getPersistedWorkspaceId(): string | null {
+	try {
+		return localStorage.getItem(WORKSPACE_ID_KEY);
+	} catch {
+		return null;
+	}
+}
+
 // Module-level runes state
 let workspaces = $state<Workspace[]>([]);
 let currentWorkspaceId = $state<string | null>(null);
@@ -90,6 +113,7 @@ async function switchWorkspace(
 		const ws = data.workspace as Workspace;
 		workspaces = workspaces.map((w: Workspace) => (w.id === ws.id ? ws : w));
 		currentWorkspaceId = ws.id;
+		persistWorkspaceId(ws.id);
 
 		const messages = (data.messages || []) as WorkspaceMessage[];
 		savedMessageCounts = new Map(savedMessageCounts);
@@ -170,6 +194,7 @@ async function deleteWorkspace(workspaceId: string): Promise<boolean> {
 		workspaces = workspaces.filter((w: Workspace) => w.id !== workspaceId);
 		if (currentWorkspaceId === workspaceId) {
 			currentWorkspaceId = workspaces.length > 0 ? workspaces[0].id : null;
+			persistWorkspaceId(currentWorkspaceId);
 		}
 		return true;
 	} catch (err) {
@@ -200,6 +225,27 @@ function getSavedMessageCount(workspaceId: string): number {
 	return savedMessageCounts.get(workspaceId) || 0;
 }
 
+// ─── UI Callbacks (registered by chat page, called by LeftSidebar) ──────────
+export interface WorkspaceUICallbacks {
+	onSwitch: (id: string) => void;
+	onCreate: (name: string, type: Workspace['type']) => void;
+	onDelete: (id: string) => void;
+	onRename: (id: string, title: string) => void;
+}
+
+let uiCallbacks = $state<WorkspaceUICallbacks | null>(null);
+let workspacesReady = $state(false);
+
+function registerUICallbacks(callbacks: WorkspaceUICallbacks) {
+	uiCallbacks = callbacks;
+	workspacesReady = true;
+}
+
+function unregisterUICallbacks() {
+	uiCallbacks = null;
+	workspacesReady = false;
+}
+
 export const workspaceStore = {
 	get workspaces() {
 		return sortedWorkspaces;
@@ -216,6 +262,12 @@ export const workspaceStore = {
 	get error() {
 		return error;
 	},
+	get uiCallbacks() {
+		return uiCallbacks;
+	},
+	get workspacesReady() {
+		return workspacesReady;
+	},
 	loadWorkspaces,
 	createWorkspace,
 	switchWorkspace,
@@ -224,5 +276,8 @@ export const workspaceStore = {
 	triggerSummarize,
 	deleteWorkspace,
 	updateTitle,
-	getSavedMessageCount
+	getSavedMessageCount,
+	getPersistedWorkspaceId,
+	registerUICallbacks,
+	unregisterUICallbacks
 };

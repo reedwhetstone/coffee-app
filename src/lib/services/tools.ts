@@ -153,15 +153,24 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				notes: z.string().optional().describe('Notes about this purchase')
 			}),
 			execute: async (input) => {
-				// Fetch stocked catalog beans for the dropdown
+				// Fetch all stocked catalog beans for the dropdown
+				let allBeans: Array<{ id: number; name: string; source?: string }> = [];
 				let beanSelectOptions: Array<{ label: string; value: string }> = [];
+				let sourceOptions: Array<{ label: string; value: string }> = [];
 				try {
-					const catalogResult = await callTool('/api/tools/coffee-catalog', { stocked_only: true, limit: 15 }) as { coffees?: Array<{ id: number; name: string; source?: string }> };
+					const catalogResult = await callTool('/api/tools/coffee-catalog', { stocked_only: true, limit: 500 }) as { coffees?: Array<{ id: number; name: string; source?: string }> };
 					if (catalogResult.coffees) {
-						beanSelectOptions = catalogResult.coffees.map((c) => ({
-							label: c.source ? `${c.name} — ${c.source}` : c.name,
+						allBeans = catalogResult.coffees;
+						beanSelectOptions = allBeans.map((c) => ({
+							label: c.name,
 							value: String(c.id)
 						}));
+						// Extract unique sources for the filter dropdown
+						const uniqueSources = [...new Set(allBeans.map((c) => c.source).filter(Boolean))] as string[];
+						sourceOptions = [
+							{ label: 'All Suppliers', value: '__all__' },
+							...uniqueSources.sort().map((s) => ({ label: s, value: s }))
+						];
 					}
 				} catch {
 					// If catalog fetch fails, fall back to static catalog_id
@@ -173,17 +182,21 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 
 				// Determine which bean is pre-selected
 				const preSelectedValue = input.catalog_id ? String(input.catalog_id) : beanSelectOptions[0]?.value;
-				const preSelectedLabel = beanSelectOptions.find((o) => o.value === preSelectedValue)?.label || input.manual_name || '';
+				const preSelectedBean = allBeans.find((c) => String(c.id) === preSelectedValue);
+				const preSelectedLabel = preSelectedBean?.name || input.manual_name || '';
+				const preSelectedSource = preSelectedBean?.source || '__all__';
 
 				return {
 					action_card: {
 						actionType: 'add_bean_to_inventory',
 						summary: `Add ${preSelectedLabel || input.manual_name || `catalog #${input.catalog_id}`} to inventory (${qty} lbs)`,
 						fields: [
-							// Bean dropdown (if we have catalog options) or manual name fallback
+							// Source filter + Bean dropdown (if we have catalog options) or manual name fallback
 							...(beanSelectOptions.length > 0
 								? [
+									{ key: 'source_filter', label: 'Supplier', value: preSelectedSource, type: 'select' as const, editable: true, selectOptions: sourceOptions },
 									{ key: 'coffee_bean', label: 'Coffee Bean', value: preSelectedValue, type: 'select' as const, editable: true, selectOptions: beanSelectOptions },
+									{ key: '_bean_sources', label: '', value: Object.fromEntries(allBeans.map((c) => [String(c.id), c.source || ''])), type: 'hidden' as const, editable: false },
 									{ key: 'catalog_id', label: 'Catalog ID', value: input.catalog_id || Number(preSelectedValue), type: 'number' as const, editable: false }
 								]
 								: [
