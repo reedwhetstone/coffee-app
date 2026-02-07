@@ -2,9 +2,11 @@
 	import type { PageData } from './$types';
 	import { checkRole } from '$lib/types/auth.types';
 	import type { UserRole } from '$lib/types/auth.types';
-	import ChainOfThought from '$lib/components/ChainOfThought.svelte';
-	import ChatMessageRenderer from '$lib/components/ChatMessageRenderer.svelte';
+	import { Chat } from '@ai-sdk/svelte';
+	import { DefaultChatTransport } from 'ai';
+	import SvelteMarkdown from '@humanspeak/svelte-markdown';
 	import CoffeePreviewSidebar from '$lib/components/CoffeePreviewSidebar.svelte';
+	import ChainOfThought from '$lib/components/ChainOfThought.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import { getContext } from 'svelte';
@@ -36,30 +38,21 @@
 		}
 	});
 
-	// Handle coffee preview request
 	function handleCoffeePreview(coffeeIds: number[], focusId?: number) {
 		selectedCoffeeIds = coffeeIds;
 		focusCoffeeId = focusId;
 		coffeePreviewOpen = true;
 	}
 
-	// Handle sidebar close
 	function handleSidebarClose() {
 		coffeePreviewOpen = false;
 		selectedCoffeeIds = [];
 		focusCoffeeId = undefined;
 	}
 
-	/**
-	 * Parses AI tasting notes JSON data safely
-	 * @param tastingNotesJson - JSON string from database
-	 * @returns Parsed tasting notes or null if invalid
-	 */
 	function parseTastingNotes(tastingNotesJson: string | null | object): TastingNotes | null {
 		if (!tastingNotesJson) return null;
-
 		try {
-			// Handle both string and object formats (Supabase jsonb can return either)
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			let parsed: any;
 			if (typeof tastingNotesJson === 'string') {
@@ -69,8 +62,6 @@
 			} else {
 				return null;
 			}
-
-			// Validate that required properties exist
 			if (
 				parsed.body &&
 				parsed.flavor &&
@@ -83,34 +74,26 @@
 		} catch (error) {
 			console.error('Error parsing tasting notes:', error);
 		}
-
 		return null;
 	}
 
-	// Chat state management
-	let messages: Array<{
-		role: 'user' | 'assistant';
-		content: string;
-		timestamp: Date;
-		coffeeCards?: number[];
-		coffeeData?: CoffeeCatalog[];
-		isStructured?: boolean;
-		isStreaming?: boolean;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		[key: string]: any;
-	}> = $state([]);
-	let inputMessage = $state('');
-	let isLoading = $state(false);
-	let chatContainer = $state<HTMLDivElement>();
-	let thinkingSteps = $state<Array<{ message: string; timestamp: Date }>>([]);
-	let shouldScrollToBottom = $state(true);
-	let streamingContent = $state('');
-	let isStreamingResponse = $state(false);
+	// ─── Vercel AI SDK Chat Instance ───────────────────────────────────────────
+	const chat = new Chat({
+		transport: new DefaultChatTransport({ api: '/api/chat' }),
+		onError: (error) => {
+			console.error('Chat error:', error);
+		}
+	});
 
-	// Smart scroll behavior - scroll to bottom for new messages, but allow user control
+	// Input state (not managed by Chat class - we control the textarea)
+	let inputMessage = $state('');
+
+	// Scroll management
+	let chatContainer = $state<HTMLDivElement>();
+	let shouldScrollToBottom = $state(true);
+
 	$effect(() => {
-		if (chatContainer && shouldScrollToBottom) {
-			// Smooth scroll to bottom for new content
+		if (chatContainer && shouldScrollToBottom && chat.messages.length > 0) {
 			chatContainer.scrollTo({
 				top: chatContainer.scrollHeight,
 				behavior: 'smooth'
@@ -118,7 +101,6 @@
 		}
 	});
 
-	// Track if user manually scrolled up
 	function handleScroll() {
 		if (!chatContainer) return;
 		const { scrollTop, scrollHeight, clientHeight } = chatContainer;
@@ -126,399 +108,110 @@
 		shouldScrollToBottom = isNearBottom;
 	}
 
-	/**
-	 * Check if a string is complete, valid JSON
-	 */
-	function isCompleteJson(str: string): boolean {
-		try {
-			JSON.parse(str);
-			return true;
-		} catch {
-			return false;
-		}
-	}
+	// ─── Thinking steps derived from tool parts in progress ────────────────────
+	let thinkingSteps = $derived.by(() => {
+		const steps: Array<{ message: string; timestamp: Date }> = [];
+		const lastMessage = chat.messages[chat.messages.length - 1];
+		if (!lastMessage || lastMessage.role !== 'assistant') return steps;
+		if (chat.status !== 'streaming' && chat.status !== 'submitted') return steps;
 
-	/**
-	 * Process a single SSE data item
-	 */
+		for (const part of lastMessage.parts) {
+			if (part.type.startsWith('tool-')) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const toolPart = part as any;
+				const toolName = part.type.replace('tool-', '').replace(/_/g, ' ');
+
+				if (toolPart.state === 'input-streaming' || toolPart.state === 'input-available') {
+					steps.push({
+						message: `Querying ${toolName}...`,
+						timestamp: new Date()
+					});
+				} else if (toolPart.state === 'output-available') {
+					const output = toolPart.output;
+					let detail = '';
+					if (output && typeof output === 'object') {
+						if (Array.isArray(output)) {
+							detail = ` - Found ${output.length} result${output.length === 1 ? '' : 's'}`;
+						} else if ('coffees' in output && Array.isArray(output.coffees)) {
+							detail = ` - Found ${output.coffees.length} coffee${output.coffees.length === 1 ? '' : 's'}`;
+						} else if ('total_count' in output) {
+							detail = ` - Found ${output.total_count} result${output.total_count === 1 ? '' : 's'}`;
+						}
+					}
+					steps.push({
+						message: `Finished ${toolName}${detail}`,
+						timestamp: new Date()
+					});
+				} else if (toolPart.state === 'output-error') {
+					steps.push({
+						message: `Error with ${toolName}: ${toolPart.errorText || 'unknown error'}`,
+						timestamp: new Date()
+					});
+				}
+			}
+		}
+
+		return steps;
+	});
+
+	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
+
+	// ─── Coffee data extraction from tool results ──────────────────────────────
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function processSSEDataItem(data: any) {
-		// Skip heartbeat messages - they're just for keeping connection alive
-		if (data.type === 'heartbeat') {
-			return;
+	function extractCoffeeData(message: any): CoffeeCatalog[] {
+		if (!message?.parts) return [];
+		const coffees: CoffeeCatalog[] = [];
+
+		for (const part of message.parts) {
+			if (!part.type.startsWith('tool-')) continue;
+			if (part.state !== 'output-available') continue;
+			const output = part.output;
+			if (!output || typeof output !== 'object') continue;
+
+			// coffee_catalog_search returns { coffees: [...] }
+			if ('coffees' in output && Array.isArray(output.coffees)) {
+				coffees.push(...output.coffees);
+			}
 		}
 
-		if (data.type === 'start') {
-			// Initial start message
-			thinkingSteps.push({
-				message: data.message || 'Starting AI processing...',
-				timestamp: new Date()
-			});
-		} else if (data.type === 'thinking') {
-			// Add thinking step with proper timestamp handling
-			thinkingSteps.push({
-				message: data.step,
-				timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
-			});
-		} else if (data.type === 'processing') {
-			// Add processing status
-			thinkingSteps.push({
-				message: data.message || 'Processing response...',
-				timestamp: new Date()
-			});
-		} else if (data.type === 'coffee_data') {
-			// Handle coffee data streaming
-			thinkingSteps.push({
-				message: `📋 Found ${data.count} coffee${data.count === 1 ? '' : 's'} to display`,
-				timestamp: new Date()
-			});
-		} else if (data.type === 'complete') {
-			// Use structured response data if available
-			const structuredResponse = data.structured_response;
-			const coffeeData = data.coffee_data || [];
-
-			// Create base message with streaming flag
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const newMessage: any = {
-				role: 'assistant',
-				content: '',
-				timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
-				isStreaming: true
-			};
-
-			// Store content for streaming
-			streamingContent = structuredResponse?.message || data.response;
-
-			// Dynamically add all structured fields from the response
-			if (structuredResponse) {
-				// Add all fields from structured_response except 'message' (already used for content)
-				Object.entries(structuredResponse).forEach(([key, value]) => {
-					if (key !== 'message') {
-						newMessage[key] = value;
-					}
-				});
-				newMessage.isStructured = true;
-			}
-
-			// Add coffee_data if present (comes separately from API)
-			if (coffeeData.length > 0) {
-				newMessage.coffeeData = coffeeData;
-			}
-
-			// Maintain backward compatibility with existing field names
-			if (structuredResponse?.coffee_cards) {
-				newMessage.coffeeCards = structuredResponse.coffee_cards;
-			}
-
-			// Add message and start streaming animation
-			messages.push(newMessage);
-
-			// Clear thinking steps with fade out animation
-			isStreamingResponse = true;
-			setTimeout(() => {
-				thinkingSteps = [];
-				startStreamingText();
-			}, 500); // Brief delay to show transition
-		} else if (data.type === 'error') {
-			// Handle error with detailed information
-			thinkingSteps = [];
-			console.error('AI processing error:', data.error, data.details);
-
-			messages.push({
-				role: 'assistant',
-				content: `Sorry, I encountered an error: ${data.error}. Please try again.`,
-				timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
-			});
-		}
+		return coffees;
 	}
 
-	/**
-	 * Send message to chat API with streaming thinking steps
-	 */
+	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
-		if (!inputMessage.trim() || isLoading) return;
+		if (!inputMessage.trim() || isActive) return;
 
-		const userMessage = inputMessage.trim();
+		const text = inputMessage.trim();
 		inputMessage = '';
-		isLoading = true;
-		thinkingSteps = []; // Clear previous thinking steps
-		shouldScrollToBottom = true; // Reset scroll behavior for new message
+		shouldScrollToBottom = true;
 
-		// Add user message to chat
-		messages.push({
-			role: 'user',
-			content: userMessage,
-			timestamp: new Date()
-		});
-
-		try {
-			// Use streaming API for real-time thinking steps
-			const response = await fetch('/api/chat', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					message: userMessage,
-					conversation_history: messages.slice(0, -1), // Exclude the message we just added
-					stream: true
-				})
-			});
-
-			if (!response.ok) {
-				// Handle specific status codes gracefully
-				if (response.status === 499) {
-					console.log('Request was cancelled by client or server timeout');
-					return; // Silently return, don't show error to user
-				}
-
-				const errorText = await response.text().catch(() => 'Unknown error');
-				throw new Error(`Chat request failed (${response.status}): ${errorText}`);
-			}
-
-			// Handle Server-Sent Events
-			if (response.body) {
-				const reader = response.body.getReader();
-				const decoder = new TextDecoder();
-				let buffer = ''; // Buffer for incomplete lines across chunks
-				let jsonBuffer = ''; // Buffer for incomplete JSON across lines
-
-				// Helper to process a data line with JSON buffering
-				const processDataLine = (line: string) => {
-					if (!line.trim() || !line.startsWith('data: ')) return;
-
-					const dataContent = line.slice(6);
-					if (!dataContent.trim()) return;
-
-					// Accumulate JSON content
-					const combinedJson = jsonBuffer + dataContent;
-
-					// Check if we have complete JSON
-					if (isCompleteJson(combinedJson)) {
-						try {
-							const data = JSON.parse(combinedJson);
-							processSSEDataItem(data);
-							jsonBuffer = ''; // Reset buffer on success
-						} catch (e) {
-							console.error('Error parsing SSE data after validation:', e);
-							jsonBuffer = ''; // Reset on unexpected error
-						}
-					} else {
-						// Incomplete JSON - accumulate in buffer
-						jsonBuffer = combinedJson;
-					}
-				};
-
-				try {
-					while (true) {
-						const { done, value } = await reader.read();
-
-						if (done) {
-							// Process any remaining buffered data
-							if (buffer.trim()) {
-								const lines = buffer.split('\n');
-								for (const line of lines) {
-									processDataLine(line);
-								}
-							}
-							// Process any remaining JSON buffer
-							if (jsonBuffer.trim() && isCompleteJson(jsonBuffer)) {
-								try {
-									const data = JSON.parse(jsonBuffer);
-									processSSEDataItem(data);
-								} catch (e) {
-									console.error('Error parsing final JSON buffer:', e);
-								}
-							}
-							break;
-						}
-
-						// Decode chunk and add to buffer (use stream: true for multi-byte character handling)
-						buffer += decoder.decode(value, { stream: true });
-
-						// Process complete lines (ending with \n)
-						const lines = buffer.split('\n');
-						// Keep the last line in buffer (might be incomplete)
-						buffer = lines.pop() || '';
-
-						for (const line of lines) {
-							processDataLine(line);
-						}
-					}
-				} catch (streamError) {
-					console.log('Stream reading error (likely client cancellation):', streamError);
-					// Don't throw error for stream reading issues - these are often cancellations
-				} finally {
-					try {
-						reader.releaseLock();
-					} catch {
-						/* empty */
-					}
-				}
-			}
-		} catch (error) {
-			console.error('Chat error:', error);
-			thinkingSteps = [];
-
-			// Only show error message if it's not a cancellation
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			if (!errorMessage.includes('cancelled') && !errorMessage.includes('aborted')) {
-				messages.push({
-					role: 'assistant',
-					content: 'Sorry, I encountered an error. Please try again.',
-					timestamp: new Date()
-				});
-			}
-		} finally {
-			isLoading = false;
-		}
+		await chat.sendMessage({ text });
 	}
 
-	/**
-	 * Simple fade-in animation for response
-	 */
-	function startStreamingText() {
-		if (!streamingContent) return;
-
-		const lastMessage = messages[messages.length - 1];
-		if (!lastMessage) return;
-
-		// Immediately set the full content
-		lastMessage.content = streamingContent;
-		messages = [...messages]; // Trigger reactivity
-
-		// Remove streaming flag after fade animation
-		setTimeout(() => {
-			lastMessage.isStreaming = false;
-			isStreamingResponse = false;
-			messages = [...messages]; // Final update
-		}, 1200); // 1.2 seconds for fade animation
-	}
-
-	/**
-	 * Handle form submission
-	 */
 	function handleSubmit(event: Event) {
 		event.preventDefault();
 		sendMessage();
 	}
 
-	/**
-	 * Detect structured data fields in a message object
-	 * Returns an object containing only the structured data fields
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function detectStructuredFields(message: any): Record<string, unknown> | null {
-		// Base message fields that are not considered structured data
-		const baseFields = new Set(['role', 'content', 'timestamp']);
-
-		const structuredFields: Record<string, unknown> = {};
-		let hasStructuredData = false;
-
-		for (const [key, value] of Object.entries(message)) {
-			// Skip base message fields
-			if (baseFields.has(key)) continue;
-
-			// Detect structured data patterns
-			const isStructuredField =
-				// Arrays with content
-				(Array.isArray(value) && value.length > 0) ||
-				// Non-null objects (excluding Date objects)
-				(typeof value === 'object' && value !== null && !(value instanceof Date)) ||
-				// Boolean metadata fields
-				(typeof value === 'boolean' && (key.startsWith('is') || key.startsWith('has'))) ||
-				// Fields with naming patterns indicating structured data
-				key.endsWith('_cards') ||
-				key.endsWith('_data') ||
-				key.endsWith('_ids') ||
-				key.endsWith('_type') ||
-				key.endsWith('_metadata') ||
-				// Explicit structured field
-				key === 'isStructured';
-
-			if (isStructuredField) {
-				structuredFields[key] = value;
-				hasStructuredData = true;
-			}
-		}
-
-		return hasStructuredData ? structuredFields : null;
-	}
-
-	/**
-	 * Format conversation data as Markdown
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function formatConversationAsMarkdown(messages: any[], exportData: any): string {
+	// ─── Export / Clear ────────────────────────────────────────────────────────
+	function exportConversation() {
 		const timestamp = new Date().toLocaleString();
-		const userId = exportData.user_id || 'Unknown';
-
 		let markdown = `# Coffee Chat Conversation\n\n`;
-		markdown += `**Exported:** ${timestamp}  \n`;
-		markdown += `**User ID:** ${userId}\n\n`;
-		markdown += `---\n\n`;
+		markdown += `**Exported:** ${timestamp}\n\n---\n\n`;
 
-		messages.forEach((message, index) => {
-			const messageTime = new Date(message.timestamp).toLocaleString();
-			const role = message.role === 'user' ? '🧑‍💼 User' : '🤖 Assistant';
+		for (const message of chat.messages) {
+			const role = message.role === 'user' ? 'User' : 'Assistant';
+			markdown += `## ${role}\n\n`;
 
-			markdown += `## ${role}\n`;
-			markdown += `*${messageTime}*\n\n`;
-			markdown += `${message.content}\n\n`;
-
-			// Add legacy coffee card information if present (for backward compatibility)
-			if (message.coffeeCards && message.coffeeCards.length > 0) {
-				markdown += `### ☕ Coffee Recommendations\n\n`;
-
-				if (message.coffeeData && message.coffeeData.length > 0) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					message.coffeeData.forEach((coffee: any) => {
-						markdown += `**${coffee.name || 'Unknown Coffee'}**\n`;
-						if (coffee.origin) markdown += `- Origin: ${coffee.origin}\n`;
-						if (coffee.variety) markdown += `- Variety: ${coffee.variety}\n`;
-						if (coffee.processing) markdown += `- Processing: ${coffee.processing}\n`;
-						if (coffee.price_per_lb) markdown += `- Price: $${coffee.price_per_lb}/lb\n`;
-						if (coffee.description) {
-							markdown += `- Description: ${coffee.description}\n`;
-						}
-						markdown += `\n`;
-					});
-				} else {
-					markdown += `Coffee IDs: ${message.coffeeCards.join(', ')}\n\n`;
+			for (const part of message.parts) {
+				if (part.type === 'text') {
+					markdown += `${part.text}\n\n`;
 				}
 			}
+			markdown += `---\n\n`;
+		}
 
-			// Add structured data as JSON code block if present
-			const structuredFields = detectStructuredFields(message);
-			if (structuredFields) {
-				markdown += `\`\`\`json\n`;
-				markdown += JSON.stringify(structuredFields, null, 2);
-				markdown += `\n\`\`\`\n\n`;
-			}
-
-			if (index < messages.length - 1) {
-				markdown += `---\n\n`;
-			}
-		});
-
-		return markdown;
-	}
-
-	/**
-	 * Export conversation history
-	 */
-	function exportConversation() {
-		const exportData = {
-			conversation: messages,
-			exported_at: new Date().toISOString(),
-			user_id: session?.user?.id
-		};
-
-		const markdownContent = formatConversationAsMarkdown(messages, exportData);
-
-		const blob = new Blob([markdownContent], {
-			type: 'text/markdown'
-		});
+		const blob = new Blob([markdown], { type: 'text/markdown' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
@@ -529,12 +222,9 @@
 		URL.revokeObjectURL(url);
 	}
 
-	/**
-	 * Clear conversation
-	 */
 	function clearConversation() {
 		if (confirm('Are you sure you want to clear the conversation?')) {
-			messages = [];
+			chat.messages = [];
 		}
 	}
 </script>
@@ -603,7 +293,7 @@
 					<p class="text-sm text-text-secondary-light">AI-powered coffee assistant</p>
 				</div>
 				<div class="flex space-x-2">
-					{#if messages.length > 0}
+					{#if chat.messages.length > 0}
 						<button
 							onclick={exportConversation}
 							class="rounded-md border border-background-tertiary-light px-3 py-1 text-sm text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
@@ -623,24 +313,24 @@
 
 		<!-- Chat messages area -->
 		<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4" onscroll={handleScroll}>
-			{#if messages.length === 0}
+			{#if chat.messages.length === 0}
 				<!-- Welcome message -->
 				<div class="mx-auto max-w-2xl text-center">
 					<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
 						<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
-							Welcome to Coffee Chat! ☕
+							Welcome to Coffee Chat!
 						</h2>
 						<p class="mb-4 text-text-secondary-light">
 							I'm your AI coffee expert, here to help with personalized recommendations, roasting
 							advice, and coffee knowledge. Ask me anything about:
 						</p>
 						<div class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2">
-							<div>• Coffee recommendations</div>
-							<div>• Roasting techniques</div>
-							<div>• Flavor profiles</div>
-							<div>• Processing methods</div>
-							<div>• Your inventory analysis</div>
-							<div>• Brewing guidance</div>
+							<div>- Coffee recommendations</div>
+							<div>- Roasting techniques</div>
+							<div>- Flavor profiles</div>
+							<div>- Processing methods</div>
+							<div>- Your inventory analysis</div>
+							<div>- Brewing guidance</div>
 						</div>
 					</div>
 
@@ -677,61 +367,160 @@
 			{:else}
 				<!-- Chat messages -->
 				<div class="mx-auto max-w-4xl space-y-4">
-					{#each messages as message}
+					{#each chat.messages as message (message.id)}
 						<div
 							class="flex {message.role === 'user'
 								? 'justify-end'
 								: 'justify-start'} message-fade-in"
 						>
 							<div
-								class="max-w-[80%] rounded-lg px-4 py-2 transition-all duration-300 {message.role ===
-								'user'
+								class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user'
 									? 'bg-background-tertiary-light text-white'
-									: 'bg-background-secondary-light text-text-primary-light'} {message.isStreaming
-									? 'animate-pulse'
-									: ''}"
+									: 'bg-background-secondary-light text-text-primary-light'}"
 							>
-								{#if message.role === 'assistant' && message.isStructured}
-									<ChatMessageRenderer
-										message={message.content}
-										coffeeCards={message.coffeeCards}
-										coffeeData={message.coffeeData || []}
-										onCoffeePreview={handleCoffeePreview}
-										isStreaming={message.isStreaming || false}
-									/>
-								{:else}
-									<div
-										class="whitespace-pre-wrap transition-all duration-1000 ease-out {message.isStreaming
-											? 'translate-y-4 opacity-0'
-											: 'translate-y-0 opacity-100'}"
-									>
-										{message.content}
-									</div>
+								<!-- Render text parts -->
+								{#each message.parts as part}
+									{#if part.type === 'text'}
+										{#if message.role === 'assistant'}
+											<div
+												class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light"
+											>
+												<SvelteMarkdown source={part.text} />
+											</div>
+										{:else}
+											<div class="whitespace-pre-wrap">{part.text}</div>
+										{/if}
+									{/if}
+								{/each}
+
+								<!-- Render coffee cards from tool results (once per message, not per part) -->
+								{#if message.role === 'assistant'}
+									{@const coffees = extractCoffeeData(message)}
+									{#if coffees.length > 0}
+										<div class="my-4">
+											<h3 class="mb-3 font-semibold text-text-primary-light">
+												Coffee Recommendations ({coffees.length})
+											</h3>
+											<div class="space-y-3">
+												{#each coffees as coffee (coffee.id)}
+													<button
+														type="button"
+														class="group w-full rounded-lg bg-background-primary-light p-4 text-left shadow-sm ring-1 ring-border-light transition-all hover:scale-[1.02] hover:ring-background-tertiary-light"
+														onclick={() => {
+															const allIds = coffees.map(
+																(c: CoffeeCatalog) => c.id
+															);
+															handleCoffeePreview(allIds, coffee.id);
+														}}
+													>
+														<div
+															class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0"
+														>
+															<div class="flex-1">
+																<h4
+																	class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light"
+																>
+																	{coffee.name}
+																</h4>
+																<div
+																	class="mt-1 flex items-center justify-between"
+																>
+																	<p
+																		class="text-sm font-medium text-background-tertiary-light"
+																	>
+																		{coffee.source}
+																	</p>
+																	<div class="text-right sm:hidden">
+																		<div
+																			class="font-bold text-background-tertiary-light"
+																		>
+																			${coffee.cost_lb}/lb
+																		</div>
+																		{#if coffee.processing}
+																			<div
+																				class="text-xs text-text-secondary-light"
+																			>
+																				{coffee.processing.length > 25
+																					? coffee.processing.substring(
+																							0,
+																							25
+																						) + '...'
+																					: coffee.processing}
+																			</div>
+																		{/if}
+																	</div>
+																</div>
+																{#if coffee.ai_description}
+																	<p
+																		class="my-2 line-clamp-2 text-xs text-text-secondary-light"
+																	>
+																		{coffee.ai_description}
+																	</p>
+																{/if}
+															</div>
+															<div
+																class="hidden flex-col items-end space-y-1 sm:flex"
+															>
+																<div class="text-right">
+																	<div
+																		class="font-bold text-background-tertiary-light"
+																	>
+																		${coffee.cost_lb}/lb
+																	</div>
+																	{#if coffee.processing}
+																		<div
+																			class="mt-1 text-xs text-background-tertiary-light"
+																		>
+																			{coffee.processing.length > 25
+																				? coffee.processing.substring(
+																						0,
+																						25
+																					) + '...'
+																				: coffee.processing}
+																		</div>
+																	{/if}
+																</div>
+															</div>
+														</div>
+														<div class="mt-3 flex items-center justify-end">
+															<svg
+																class="h-4 w-4 text-text-secondary-light transition-transform group-hover:translate-x-1 group-hover:text-background-tertiary-light"
+																fill="none"
+																stroke="currentColor"
+																viewBox="0 0 24 24"
+															>
+																<path
+																	stroke-linecap="round"
+																	stroke-linejoin="round"
+																	stroke-width="2"
+																	d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+																/>
+															</svg>
+														</div>
+													</button>
+												{/each}
+											</div>
+										</div>
+									{/if}
 								{/if}
 								<div class="mt-1 text-xs opacity-70">
-									{message.timestamp.toLocaleTimeString()}
+									{new Date().toLocaleTimeString()}
 								</div>
 							</div>
 						</div>
 					{/each}
 
-					{#if (isLoading && thinkingSteps.length > 0) || isStreamingResponse}
-						<div
-							class="flex justify-start transition-all duration-500 {isStreamingResponse
-								? 'scale-95 opacity-50'
-								: 'scale-100 opacity-100'}"
-						>
-							<div class="max-w-[80%]">
-								<ChainOfThought
-									steps={thinkingSteps}
-									isActive={isLoading && !isStreamingResponse}
-								/>
-							</div>
-						</div>
-					{:else if isLoading}
+					<!-- Thinking steps indicator while streaming -->
+					{#if isActive && thinkingSteps.length > 0}
 						<div class="flex justify-start">
 							<div class="max-w-[80%]">
-								<ChainOfThought steps={[]} isActive={isLoading} />
+								<ChainOfThought steps={thinkingSteps} {isActive} />
+							</div>
+						</div>
+					{:else if chat.status === 'submitted'}
+						<div class="flex justify-start">
+							<div class="max-w-[80%]">
+								<ChainOfThought steps={[]} isActive={true} />
 							</div>
 						</div>
 					{/if}
@@ -748,7 +537,7 @@
 						placeholder="Ask me about coffee recommendations, roasting advice, or anything coffee-related..."
 						class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
 						rows="1"
-						disabled={isLoading}
+						disabled={isActive}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' && !e.shiftKey) {
 								e.preventDefault();
@@ -763,10 +552,10 @@
 					></textarea>
 					<button
 						type="submit"
-						disabled={isLoading || !inputMessage.trim()}
+						disabled={isActive || !inputMessage.trim()}
 						class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
 					>
-						{#if isLoading}
+						{#if isActive}
 							<div
 								class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
 							></div>
@@ -809,22 +598,6 @@
 	}
 
 	@keyframes messageFadeIn {
-		from {
-			opacity: 0;
-			transform: translateY(10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-
-	/* Delayed fade-in for coffee cards */
-	:global(.animate-fade-in-delayed) {
-		animation: fadeInDelayed 0.8s ease-out 0.4s both;
-	}
-
-	@keyframes fadeInDelayed {
 		from {
 			opacity: 0;
 			transform: translateY(10px);

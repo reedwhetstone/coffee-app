@@ -62,6 +62,8 @@
 		"vitest": "^2.0.4"
 	},
 	"dependencies": {
+		"@ai-sdk/openai": "^3.0.0",
+		"@ai-sdk/svelte": "^4.0.0",
 		"@google/generative-ai": "^0.21.0",
 		"@humanspeak/svelte-markdown": "^0.8.10",
 		"@langchain/openai": "^0.6.7",
@@ -72,6 +74,7 @@
 		"@tailwindcss/typography": "^0.5.15",
 		"@vercel/analytics": "^1.4.1",
 		"@vercel/speed-insights": "^1.2.0",
+		"ai": "^6.0.0",
 		"bcryptjs": "^3.0.2",
 		"d3": "^7.9.0",
 		"glob": "^10.3.10",
