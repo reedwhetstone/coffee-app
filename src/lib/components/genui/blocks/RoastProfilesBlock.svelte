@@ -6,6 +6,16 @@
 		onAction?: (action: BlockAction) => void;
 	}>();
 
+	let annotationMap = $derived(() => {
+		const map = new Map<number, { annotation?: string; highlight?: boolean }>();
+		if (block.annotations) {
+			for (const a of block.annotations) {
+				map.set(a.id, { annotation: a.annotation, highlight: a.highlight });
+			}
+		}
+		return map;
+	});
+
 	function formatTime(seconds: number | null): string {
 		if (seconds == null) return '-';
 		const mins = Math.floor(seconds / 60);
@@ -68,11 +78,16 @@
 			</thead>
 			<tbody>
 				{#each block.data as profile (profile.roast_id)}
+					{@const meta = annotationMap().get(Number(profile.roast_id))}
 					<tr
-						class="border-b border-border-light last:border-0 hover:bg-background-secondary-light/50"
+						class="border-b border-border-light last:border-0 hover:bg-background-secondary-light/50 {meta?.highlight
+							? 'border-l-3 border-l-background-tertiary-light bg-background-tertiary-light/5'
+							: ''}"
 					>
 						<td
-							class="sticky left-0 bg-background-primary-light px-3 py-2 font-medium text-text-primary-light"
+							class="sticky left-0 px-3 py-2 font-medium text-text-primary-light {meta?.highlight
+								? 'bg-background-tertiary-light/5'
+								: 'bg-background-primary-light'}"
 						>
 							{profile.batch_name || '-'}
 						</td>
@@ -122,6 +137,18 @@
 							</button>
 						</td>
 					</tr>
+					{#if meta?.annotation}
+						<tr class="border-b border-border-light last:border-0">
+							<td
+								colspan="10"
+								class="px-3 py-1.5 text-xs italic text-text-secondary-light {meta?.highlight
+									? 'bg-background-tertiary-light/5'
+									: ''}"
+							>
+								{meta.annotation}
+							</td>
+						</tr>
+					{/if}
 				{/each}
 			</tbody>
 		</table>

@@ -60,11 +60,18 @@ export interface RoastComparisonBlock {
 	data: { roastIds: number[] };
 }
 
+export interface RoastProfileAnnotation {
+	id: number;
+	annotation?: string;
+	highlight?: boolean;
+}
+
 export interface RoastProfilesBlock {
 	type: 'roast-profiles';
 	version: 1;
 	data: RoastProfileRow[];
 	summary?: RoastProfilesSummary;
+	annotations?: RoastProfileAnnotation[];
 }
 
 export interface ProfitSummaryBlock {

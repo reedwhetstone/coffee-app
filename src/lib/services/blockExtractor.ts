@@ -6,7 +6,8 @@ import type {
 	RoastProfileRow,
 	TastingRadarBlock,
 	ErrorBlock,
-	CoffeeCardAnnotation
+	CoffeeCardAnnotation,
+	RoastProfileAnnotation
 } from '$lib/types/genui';
 import type { TastingNotes, TastingNote } from '$lib/types/coffee.types';
 import type { UIMessage } from 'ai';
@@ -187,7 +188,49 @@ function buildPresentedBlock(
 		} satisfies CoffeeCardsBlock;
 	}
 
-	// TODO: Phase 2 — handle green_coffee_inventory and roast_profiles
+	if (sourceTool === 'roast_profiles') {
+		const profiles: RoastProfileRow[] = [];
+		const annotations: RoastProfileAnnotation[] = [];
+
+		for (const item of items) {
+			const cached = cache?.get(item.id) as Record<string, unknown> | undefined;
+			if (cached) {
+				profiles.push({
+					roast_id: String(cached.roast_id ?? ''),
+					batch_name: String(cached.batch_name ?? ''),
+					coffee_name: String(cached.coffee_name ?? cached.coffee_catalog_name ?? ''),
+					roast_date: String(cached.roast_date ?? ''),
+					total_roast_time: cached.total_roast_time as number | null,
+					fc_start_time: cached.fc_start_time as number | null,
+					fc_start_temp: cached.fc_start_temp as number | null,
+					drop_time: cached.drop_time as number | null,
+					drop_temp: cached.drop_temp as number | null,
+					development_percent: cached.development_percent as number | null,
+					weight_loss_percent: cached.weight_loss_percent as number | null,
+					total_ror: cached.total_ror as number | null,
+					oz_in: cached.oz_in as number | null,
+					oz_out: cached.oz_out as number | null,
+					roast_notes: cached.roast_notes as string | null
+				});
+			}
+			annotations.push({
+				id: item.id,
+				annotation: item.annotation,
+				highlight: item.highlight
+			});
+		}
+
+		if (profiles.length === 0) return null;
+
+		return {
+			type: 'roast-profiles',
+			version: 1,
+			data: profiles,
+			annotations
+		} satisfies RoastProfilesBlock;
+	}
+
+	// TODO: Phase 2 — handle green_coffee_inventory
 	return null;
 }
 
