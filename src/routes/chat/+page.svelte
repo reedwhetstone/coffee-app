@@ -16,8 +16,14 @@
 		buildSearchDataCache,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
-	import type { BlockAction } from '$lib/types/genui';
+	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import {
+		workspaceStore,
+		type Workspace,
+		type WorkspaceMessage
+	} from '$lib/stores/workspaceStore.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -31,6 +37,34 @@
 		return checkRole(userRole, requiredRole);
 	}
 
+	// ─── Workspace state ──────────────────────────────────────────────────────
+	let workspacesLoaded = $state(false);
+	let showWorkspaceMenu = $state(false);
+	let editingTitle = $state<string | null>(null);
+	let editTitleValue = $state('');
+
+	// Build workspace context for the AI system prompt
+	function getWorkspaceContext() {
+		const ws = workspaceStore.currentWorkspace;
+		if (!ws) return undefined;
+
+		// Describe canvas state for the AI
+		let canvasDescription = '';
+		if (canvasStore.blocks.length > 0) {
+			const blockDescriptions = canvasStore.blocks.map((b: CanvasBlock) => {
+				const type = b.block.type.replace(/-/g, ' ');
+				return type;
+			});
+			canvasDescription = blockDescriptions.join(', ');
+		}
+
+		return {
+			type: ws.type,
+			summary: ws.context_summary || undefined,
+			canvasDescription: canvasDescription || undefined
+		};
+	}
+
 	// ─── Vercel AI SDK Chat Instance ───────────────────────────────────────────
 	const chat = new Chat({
 		transport: new DefaultChatTransport({ api: '/api/chat' }),
@@ -41,6 +75,166 @@
 
 	// Input state (not managed by Chat class - we control the textarea)
 	let inputMessage = $state('');
+
+	// ─── Workspace lifecycle ──────────────────────────────────────────────────
+	onMount(async () => {
+		if (!hasRequiredRole('member')) return;
+		await workspaceStore.loadWorkspaces();
+		workspacesLoaded = true;
+
+		// Auto-create first workspace or load most recent
+		if (workspaceStore.workspaces.length === 0) {
+			const ws = await workspaceStore.createWorkspace('General', 'general');
+			if (ws) await loadWorkspace(ws.id);
+		} else {
+			await loadWorkspace(workspaceStore.workspaces[0].id);
+		}
+	});
+
+	async function loadWorkspace(workspaceId: string) {
+		const result = await workspaceStore.switchWorkspace(workspaceId);
+		if (!result) return;
+
+		// Clear current chat and canvas
+		chat.messages = [];
+		canvasStore.clearAll();
+		dispatchedParts = new Set();
+
+		// Restore messages from persisted workspace
+		if (result.messages.length > 0) {
+			// Reconstruct UIMessage-compatible objects from saved messages
+			const restored = result.messages.map((msg: WorkspaceMessage) => ({
+				id: msg.id,
+				role: msg.role,
+				parts:
+					Array.isArray(msg.parts) && msg.parts.length > 0
+						? msg.parts
+						: [{ type: 'text', text: msg.content }],
+				createdAt: new Date(msg.created_at)
+			}));
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			chat.messages = restored as any;
+		}
+
+		// Restore canvas state
+		if (
+			result.workspace.canvas_state &&
+			typeof result.workspace.canvas_state === 'object' &&
+			'blocks' in result.workspace.canvas_state
+		) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const cs = result.workspace.canvas_state as any;
+			if (Array.isArray(cs.blocks)) {
+				canvasStore.dispatch({ type: 'clear' });
+				for (const cb of cs.blocks) {
+					if (cb.block) {
+						canvasStore.dispatch({ type: 'add', block: cb.block, messageId: cb.messageId || '' });
+					}
+				}
+			}
+			if (cs.layout) {
+				canvasStore.dispatch({ type: 'layout', layout: cs.layout });
+			}
+		}
+	}
+
+	async function handleCreateWorkspace() {
+		const ws = await workspaceStore.createWorkspace();
+		if (ws) {
+			showWorkspaceMenu = false;
+			await loadWorkspace(ws.id);
+		}
+	}
+
+	async function handleSwitchWorkspace(workspaceId: string) {
+		if (workspaceId === workspaceStore.currentWorkspaceId) {
+			showWorkspaceMenu = false;
+			return;
+		}
+		// Save current workspace state before switching
+		await persistCurrentState();
+		showWorkspaceMenu = false;
+		await loadWorkspace(workspaceId);
+	}
+
+	async function handleDeleteWorkspace(workspaceId: string) {
+		if (!confirm('Delete this workspace and all its messages?')) return;
+		await workspaceStore.deleteWorkspace(workspaceId);
+		if (workspaceStore.workspaces.length === 0) {
+			const ws = await workspaceStore.createWorkspace('General', 'general');
+			if (ws) await loadWorkspace(ws.id);
+		} else if (workspaceStore.currentWorkspaceId !== workspaceId) {
+			// Already on a different workspace
+		} else {
+			await loadWorkspace(workspaceStore.workspaces[0].id);
+		}
+	}
+
+	function startEditTitle(ws: Workspace) {
+		editingTitle = ws.id;
+		editTitleValue = ws.title;
+	}
+
+	async function saveTitle() {
+		if (editingTitle && editTitleValue.trim()) {
+			await workspaceStore.updateTitle(editingTitle, editTitleValue.trim());
+		}
+		editingTitle = null;
+	}
+
+	// Persist chat messages and canvas state to the current workspace
+	async function persistCurrentState() {
+		const wsId = workspaceStore.currentWorkspaceId;
+		if (!wsId) return;
+
+		// Save new messages (ones not yet persisted)
+		const savedCount = workspaceStore.getSavedMessageCount(wsId);
+		const newMessages = chat.messages.slice(savedCount);
+		if (newMessages.length > 0) {
+			const toSave = newMessages.map((msg) => {
+				const textParts = msg.parts.filter((p) => p.type === 'text');
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const content = textParts.map((p: any) => p.text || '').join('\n');
+				return {
+					role: msg.role,
+					content,
+					parts: msg.parts
+				};
+			});
+			await workspaceStore.saveMessages(wsId, toSave);
+		}
+
+		// Save canvas state
+		await workspaceStore.saveCanvasState(wsId, {
+			blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
+				block: b.block,
+				messageId: b.messageId,
+				pinned: b.pinned
+			})),
+			layout: canvasStore.layout
+		});
+	}
+
+	// Auto-persist periodically when streaming completes
+	let lastPersistedMessageCount = $state(0);
+	$effect(() => {
+		if (!isActive && chat.messages.length > 0 && chat.messages.length !== lastPersistedMessageCount) {
+			lastPersistedMessageCount = chat.messages.length;
+			// Debounce persistence
+			const timeout = setTimeout(() => persistCurrentState(), 2000);
+			return () => clearTimeout(timeout);
+		}
+	});
+
+	// Trigger context compaction after ~10 message pairs
+	$effect(() => {
+		const wsId = workspaceStore.currentWorkspaceId;
+		if (!wsId || isActive) return;
+		const msgCount = chat.messages.length;
+		if (msgCount > 0 && msgCount % 20 === 0) {
+			workspaceStore.triggerSummarize(wsId);
+		}
+	});
 
 	// Scroll management
 	let chatContainer = $state<HTMLDivElement>();
@@ -235,7 +429,10 @@
 		inputMessage = '';
 		shouldScrollToBottom = true;
 
-		await chat.sendMessage({ text });
+		await chat.sendMessage({
+			text,
+			body: { workspaceContext: getWorkspaceContext() }
+		});
 	}
 
 	function handleSubmit(event: Event) {

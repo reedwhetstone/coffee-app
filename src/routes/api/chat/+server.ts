@@ -6,7 +6,7 @@ import { createChatTools } from '$lib/services/tools';
 import { requireMemberRole } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
-const SYSTEM_PROMPT = `You are an expert coffee consultant who combines deep knowledge of coffee varieties,
+const BASE_SYSTEM_PROMPT = `You are an expert coffee consultant who combines deep knowledge of coffee varieties,
 processing methods, roasting techniques, and flavor profiles with practical guidance.
 Your goal is to help coffee enthusiasts and professionals make informed, actionable
 decisions about coffee selection, roasting, and brewing.
@@ -72,6 +72,50 @@ RESPONSE FORMAT
 - Always ground advice in data where possible (tool results, user data)
 - Default to stocked data; only fetch historical when explicitly requested`;
 
+const WORKSPACE_TYPE_CONTEXT: Record<string, string> = {
+	general: '',
+	sourcing: `\nWORKSPACE FOCUS: Sourcing
+You are in the user's Sourcing workspace. Focus on green coffee discovery, supplier comparisons,
+origin analysis, and purchasing decisions. Prioritize coffee_catalog_search and bean_tasting_notes tools.`,
+	roasting: `\nWORKSPACE FOCUS: Roasting
+You are in the user's Roasting workspace. Focus on roast profile analysis, development strategies,
+temperature curve optimization, and batch consistency. Prioritize roast_profiles tool.
+When showing a single roast in detail, a temperature chart will render on the canvas automatically.`,
+	inventory: `\nWORKSPACE FOCUS: Inventory
+You are in the user's Inventory workspace. Focus on green coffee stock management, usage tracking,
+and purchase planning. Prioritize green_coffee_inventory tool.`,
+	analysis: `\nWORKSPACE FOCUS: Analysis
+You are in the user's Analysis workspace. Focus on cross-cutting insights: cost analysis,
+roast-to-cup correlations, profit optimization, and trend analysis. Use multiple tools together.`
+};
+
+interface WorkspaceContext {
+	type?: string;
+	summary?: string;
+	canvasDescription?: string;
+}
+
+function buildSystemPrompt(workspaceContext?: WorkspaceContext): string {
+	let prompt = BASE_SYSTEM_PROMPT;
+
+	if (workspaceContext?.type && WORKSPACE_TYPE_CONTEXT[workspaceContext.type]) {
+		prompt += WORKSPACE_TYPE_CONTEXT[workspaceContext.type];
+	}
+
+	if (workspaceContext?.summary) {
+		prompt += `\n\nWORKSPACE MEMORY (from previous conversations in this workspace):
+${workspaceContext.summary}`;
+	}
+
+	if (workspaceContext?.canvasDescription) {
+		prompt += `\n\nCANVAS STATE:
+The canvas currently shows: ${workspaceContext.canvasDescription}
+You can reference these items naturally (e.g., "that first one", "the Ethiopian").`;
+	}
+
+	return prompt;
+}
+
 export const POST: RequestHandler = async (event) => {
 	try {
 		// Require member role for chat features
@@ -83,7 +127,11 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'OpenAI API key not configured' }, { status: 500 });
 		}
 
-		const { messages }: { messages: UIMessage[] } = await event.request.json();
+		const {
+			messages,
+			workspaceContext
+		}: { messages: UIMessage[]; workspaceContext?: WorkspaceContext } =
+			await event.request.json();
 
 		// Validate input
 		if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -102,10 +150,13 @@ export const POST: RequestHandler = async (event) => {
 		const openai = createOpenAI({ apiKey: OPENAI_API_KEY });
 		const tools = createChatTools(baseUrl, authHeaders);
 
+		// Build dynamic system prompt with workspace context
+		const systemPrompt = buildSystemPrompt(workspaceContext);
+
 		// Stream the response using Vercel AI SDK
 		const result = streamText({
 			model: openai('gpt-5-mini-2025-08-07'),
-			system: SYSTEM_PROMPT,
+			system: systemPrompt,
 			messages: await convertToModelMessages(messages),
 			tools,
 			stopWhen: stepCountIs(4),
