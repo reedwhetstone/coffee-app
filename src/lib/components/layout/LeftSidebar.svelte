@@ -103,7 +103,6 @@
 	}
 
 	// ─── Workspace panel state ──────────────────────────────────────────────
-	let isOnChatPage = $derived(page.url.pathname === '/chat');
 	let showCreateForm = $state(false);
 	let newWsName = $state('');
 	let newWsType = $state<Workspace['type']>('general');

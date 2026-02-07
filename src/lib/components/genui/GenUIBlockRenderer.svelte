@@ -67,7 +67,7 @@
 		{:else if block.type === 'roast-chart'}
 			<RoastChartBlock {block} />
 		{:else if block.type === 'action-card'}
-			<ActionCardBlock {block} {onAction} onExecute={onExecuteAction} />
+			<ActionCardBlock {block} onExecute={onExecuteAction} />
 		{:else if block.type === 'tasting-radar'}
 			<TastingRadarBlock {block} {onAction} />
 		{:else if block.type === 'data-table'}

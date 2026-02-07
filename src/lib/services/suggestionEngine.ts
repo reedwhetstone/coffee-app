@@ -1,4 +1,4 @@
-import type { CanvasBlock, UIBlock } from '$lib/types/genui';
+import type { CanvasBlock } from '$lib/types/genui';
 
 export interface Suggestion {
 	label: string;

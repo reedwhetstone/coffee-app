@@ -1,4 +1,4 @@
-import type { CanvasBlock, CanvasLayout, CanvasMutation, UIBlock } from '$lib/types/genui';
+import type { CanvasBlock, CanvasLayout, CanvasMutation } from '$lib/types/genui';
 
 let nextBlockId = 0;
 function generateBlockId(): string {

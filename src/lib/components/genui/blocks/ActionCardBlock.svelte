@@ -1,16 +1,15 @@
 <script lang="ts">
-	import type { ActionCardBlock, ActionField, BlockAction } from '$lib/types/genui';
+	import type { ActionCardBlock, ActionField } from '$lib/types/genui';
 
-	let { block, onAction, onExecute } = $props<{
+	let { block, onExecute } = $props<{
 		block: ActionCardBlock;
-		onAction?: (action: BlockAction) => void;
 		onExecute?: (actionType: string, fields: Record<string, unknown>) => Promise<void>;
 	}>();
 
 	let editing = $state(false);
 	let localFields = $state<ActionField[]>([]);
-	let status = $state(block.data.status);
-	let errorMsg = $state(block.data.error || '');
+	let status = $state('proposed');
+	let errorMsg = $state('');
 
 	// Store all bean options for source_filter coupling (before filtering)
 	let allBeanOptions = $state<Array<{ label: string; value: string }>>([]);
@@ -27,10 +26,6 @@
 			allBeanOptions = [...beanField.selectOptions];
 		}
 	});
-
-	function getFieldValue(key: string): unknown {
-		return localFields.find((f) => f.key === key)?.value;
-	}
 
 	function setFieldValue(key: string, value: unknown) {
 		localFields = localFields.map((f) => (f.key === key ? { ...f, value } : f));

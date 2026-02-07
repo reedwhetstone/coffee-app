@@ -36,9 +36,6 @@
 		return checkRole(userRole, requiredRole);
 	}
 
-	// ─── Workspace state ──────────────────────────────────────────────────────
-	let workspacesLoaded = $state(false);
-
 	// Build workspace context for the AI system prompt
 	function getWorkspaceContext() {
 		const ws = workspaceStore.currentWorkspace;
@@ -157,7 +154,6 @@
 		// Load workspaces then restore last active
 		(async () => {
 			await workspaceStore.loadWorkspaces();
-			workspacesLoaded = true;
 
 			if (workspaceStore.workspaces.length === 0) {
 				const ws = await workspaceStore.createWorkspace('General', 'general');
@@ -986,6 +982,8 @@
 
 			<!-- Resizable divider (desktop only) -->
 			{#if canvasOpen}
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 				<div
 					class="hidden w-1 cursor-col-resize bg-border-light transition-colors hover:bg-background-tertiary-light/40 md:block"
 					class:bg-background-tertiary-light={dividerDragging}
