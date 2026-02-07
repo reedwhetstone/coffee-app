@@ -64,7 +64,6 @@ RESPONSE FORMAT
 - Always ground advice in data where possible (tool results, user data)
 - Default to stocked data; only fetch historical when explicitly requested`;
 
-
 export const POST: RequestHandler = async (event) => {
 	try {
 		// Require member role for chat features

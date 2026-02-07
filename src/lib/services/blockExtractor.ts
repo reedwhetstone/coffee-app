@@ -224,7 +224,11 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 
 		const toolName = part.toolName ?? part.type.replace('tool-', '');
 
-		if (toolName === 'coffee_catalog_search' && 'coffees' in output && Array.isArray(output.coffees)) {
+		if (
+			toolName === 'coffee_catalog_search' &&
+			'coffees' in output &&
+			Array.isArray(output.coffees)
+		) {
 			const itemMap = new Map<number, unknown>();
 			for (const coffee of output.coffees) {
 				if (coffee.id != null) itemMap.set(coffee.id, coffee);
@@ -238,7 +242,11 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 			}
 		}
 
-		if (toolName === 'green_coffee_inventory' && 'inventory' in output && Array.isArray(output.inventory)) {
+		if (
+			toolName === 'green_coffee_inventory' &&
+			'inventory' in output &&
+			Array.isArray(output.inventory)
+		) {
 			const itemMap = new Map<number, unknown>();
 			for (const inv of output.inventory) {
 				if (inv.id != null) itemMap.set(inv.id, inv);

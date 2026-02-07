@@ -56,9 +56,7 @@
 	type="button"
 	class="group relative rounded-lg bg-background-primary-light text-left shadow-sm ring-1 transition-all hover:ring-background-tertiary-light {highlighted
 		? 'border-l-4 border-background-tertiary-light ring-background-tertiary-light/40'
-		: 'ring-border-light'} {compact ? 'p-3' : 'p-4'} {compact
-		? ''
-		: 'hover:scale-[1.02]'}"
+		: 'ring-border-light'} {compact ? 'p-3' : 'p-4'} {compact ? '' : 'hover:scale-[1.02]'}"
 	onclick={() => {
 		if (coffee.link) window.open(coffee.link, '_blank');
 	}}
@@ -105,9 +103,7 @@
 		</div>
 	{:else}
 		<!-- Full mode: detailed card for catalog/home pages -->
-		<div
-			class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0"
-		>
+		<div class="flex flex-col space-y-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
 			<!-- Content section -->
 			<div class="flex-1">
 				<h3
