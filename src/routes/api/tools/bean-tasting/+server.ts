@@ -74,7 +74,6 @@ export const POST: RequestHandler = async (event) => {
 				'id, name, processing, region, source, cupping_notes, ai_tasting_notes, ai_description'
 			)
 			.eq('id', bean_id)
-			.eq('id', bean_id)
 			.single();
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { prepareDateForAPI } from '$lib/utils/dates';
 	import { loadingStore } from '$lib/stores/loadingStore';
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
@@ -65,13 +65,18 @@
 	]);
 
 	// Sync form data with selectedBean prop when it changes
+	// Only sync when a specific bean is pre-selected (has an id)
 	$effect(() => {
-		if (selectedBean) {
+		if (selectedBean?.id) {
 			formData.batch_name = selectedBean.name || '';
-			formData.coffee_id = selectedBean.id ? Number(selectedBean.id) : '';
+			formData.coffee_id = Number(selectedBean.id);
 			formData.coffee_name = selectedBean.name || '';
-			batchBeans[0].coffee_id = selectedBean.id ? Number(selectedBean.id) : '';
-			batchBeans[0].coffee_name = selectedBean.name || '';
+			// Use untrack to prevent batchBeans read from creating a dependency
+			// that would re-trigger this effect when the user selects a coffee
+			untrack(() => {
+				batchBeans[0].coffee_id = Number(selectedBean.id!);
+				batchBeans[0].coffee_name = selectedBean.name || '';
+			});
 		}
 	});
 
@@ -360,7 +365,7 @@
 											{:else}
 												<option value="">Select a coffee...</option>
 												{#each processedCoffees() as coffee}
-													<option value={coffee.id} selected={coffee.id === selectedBean?.id}>
+													<option value={coffee.id}>
 														{coffee.name}
 													</option>
 												{/each}

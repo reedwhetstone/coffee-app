@@ -2,12 +2,27 @@
 	import type { PageData } from './$types';
 	import { checkRole } from '$lib/types/auth.types';
 	import type { UserRole } from '$lib/types/auth.types';
-	import ChainOfThought from '$lib/components/ChainOfThought.svelte';
-	import ChatMessageRenderer from '$lib/components/ChatMessageRenderer.svelte';
-	import CoffeePreviewSidebar from '$lib/components/CoffeePreviewSidebar.svelte';
-	import type { TastingNotes } from '$lib/types/coffee.types';
-	import type { CoffeeCatalog } from '$lib/types/component.types';
-	import { getContext } from 'svelte';
+	import { Chat } from '@ai-sdk/svelte';
+	import { DefaultChatTransport } from 'ai';
+	import SvelteMarkdown from '@humanspeak/svelte-markdown';
+	import GenUIBlockRenderer from '$lib/components/genui/GenUIBlockRenderer.svelte';
+	import InlineStatusLine from '$lib/components/genui/InlineStatusLine.svelte';
+	import Canvas from '$lib/components/canvas/Canvas.svelte';
+	import { canvasStore } from '$lib/stores/canvasStore.svelte';
+	import {
+		extractBlockFromPart,
+		extractCanvasMutationsFromPart,
+		extractCompanionBlocks,
+		buildSearchDataCache,
+		messageHasPresentResults
+	} from '$lib/services/blockExtractor';
+	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
+	import SuggestionChips from '$lib/components/genui/SuggestionChips.svelte';
+	import { getSuggestions } from '$lib/services/suggestionEngine';
+	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { workspaceStore, type WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -21,96 +36,330 @@
 		return checkRole(userRole, requiredRole);
 	}
 
-	// Get right sidebar context from layout
-	const rightSidebarContext = getContext<{ setOpen: (isOpen: boolean) => void }>('rightSidebar');
+	// Build workspace context for the AI system prompt
+	function getWorkspaceContext() {
+		const ws = workspaceStore.currentWorkspace;
+		if (!ws) return undefined;
 
-	// Coffee preview sidebar state
-	let coffeePreviewOpen = $state(false);
-	let selectedCoffeeIds = $state<number[]>([]);
-	let focusCoffeeId = $state<number | undefined>(undefined);
+		// Describe canvas state for the AI with item names/details
+		let canvasDescription = '';
+		const visible = canvasStore.visibleBlocks;
+		if (visible.length > 0) {
+			const descriptions = visible.map((b: CanvasBlock, i: number) => {
+				const block = b.block;
+				const pos = i + 1;
+				switch (block.type) {
+					case 'coffee-cards': {
+						const items = Array.isArray(block.data) ? block.data : [];
+						const names = items
+							.slice(0, 5)
+							.map((c) => c?.name || 'Unknown')
+							.join(', ');
+						return `${pos}. Coffee cards: ${names}${items.length > 5 ? ` (+${items.length - 5} more)` : ''}`;
+					}
+					case 'roast-profiles': {
+						const items = Array.isArray(block.data) ? block.data : [];
+						const names = items
+							.slice(0, 5)
+							.map((r) => `${r?.coffee_name || 'Unknown'} (${r?.roast_date || '?'})`)
+							.join(', ');
+						return `${pos}. Roast profiles: ${names}${items.length > 5 ? ` (+${items.length - 5} more)` : ''}`;
+					}
+					case 'roast-chart':
+						return `${pos}. Roast temperature chart (roast #${block.data?.roastId || '?'})`;
+					case 'inventory-table': {
+						const items = Array.isArray(block.data) ? block.data : [];
+						return `${pos}. Inventory table (${items.length} beans)`;
+					}
+					case 'tasting-radar':
+						return `${pos}. Tasting radar: ${block.data?.beanName || 'Unknown'}`;
+					case 'action-card':
+						return `${pos}. Action card: ${block.data?.summary || 'Action'} [${block.data?.status || 'unknown'}]`;
+					default:
+						return `${pos}. ${block.type.replace(/-/g, ' ')}`;
+				}
+			});
+			canvasDescription = descriptions.join('\n');
+		}
 
-	// Sync sidebar state with layout
-	$effect(() => {
-		if (rightSidebarContext) {
-			rightSidebarContext.setOpen(coffeePreviewOpen);
+		return {
+			type: ws.type,
+			summary: ws.context_summary || undefined,
+			canvasDescription: canvasDescription || undefined
+		};
+	}
+
+	// ─── Chat error display ──────────────────────────────────────────────────
+	let chatError = $state<string | null>(null);
+
+	// ─── Vercel AI SDK Chat Instance ───────────────────────────────────────────
+	const chat = new Chat({
+		transport: new DefaultChatTransport({ api: '/api/chat' }),
+		onError: (error) => {
+			console.error('Chat error:', error);
+			chatError = error instanceof Error ? error.message : 'An error occurred. Please try again.';
+			setTimeout(() => {
+				chatError = null;
+			}, 8000);
 		}
 	});
 
-	// Handle coffee preview request
-	function handleCoffeePreview(coffeeIds: number[], focusId?: number) {
-		selectedCoffeeIds = coffeeIds;
-		focusCoffeeId = focusId;
-		coffeePreviewOpen = true;
-	}
+	// Input state (not managed by Chat class - we control the textarea)
+	let inputMessage = $state('');
 
-	// Handle sidebar close
-	function handleSidebarClose() {
-		coffeePreviewOpen = false;
-		selectedCoffeeIds = [];
-		focusCoffeeId = undefined;
-	}
+	// ─── Workspace lifecycle ──────────────────────────────────────────────────
+	onMount(() => {
+		if (!hasRequiredRole('member')) return;
 
-	/**
-	 * Parses AI tasting notes JSON data safely
-	 * @param tastingNotesJson - JSON string from database
-	 * @returns Parsed tasting notes or null if invalid
-	 */
-	function parseTastingNotes(tastingNotesJson: string | null | object): TastingNotes | null {
-		if (!tastingNotesJson) return null;
+		// beforeunload: persist state via sendBeacon (reliable during tab close/nav)
+		const handleBeforeUnload = () => {
+			const wsId = workspaceStore.currentWorkspaceId;
+			if (!wsId) return;
+			// Save unsaved messages
+			const savedCount = workspaceStore.getSavedMessageCount(wsId);
+			const newMessages = chat.messages.slice(savedCount);
+			if (newMessages.length > 0) {
+				const toSave = newMessages.map((msg) => {
+					const textParts = msg.parts.filter((p) => p.type === 'text');
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const content = textParts.map((p: any) => p.text || '').join('\n');
+					return { role: msg.role, content, parts: msg.parts };
+				});
+				navigator.sendBeacon(
+					`/api/workspaces/${wsId}/messages`,
+					new Blob([JSON.stringify({ messages: toSave })], { type: 'application/json' })
+				);
+			}
+			// Save canvas state (including pinned, minimized, focusBlockId)
+			const fIdx = canvasStore.focusBlockId
+				? canvasStore.blocks.findIndex((b: CanvasBlock) => b.id === canvasStore.focusBlockId)
+				: -1;
+			navigator.sendBeacon(
+				`/api/workspaces/${wsId}/canvas`,
+				new Blob(
+					[
+						JSON.stringify({
+							canvas_state: {
+								blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
+									block: b.block,
+									messageId: b.messageId,
+									pinned: b.pinned,
+									minimized: b.minimized
+								})),
+								layout: canvasStore.layout,
+								focusBlockId: canvasStore.focusBlockId,
+								focusBlockIndex: fIdx >= 0 ? fIdx : undefined
+							}
+						})
+					],
+					{ type: 'application/json' }
+				)
+			);
+		};
+		window.addEventListener('beforeunload', handleBeforeUnload);
 
-		try {
-			// Handle both string and object formats (Supabase jsonb can return either)
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			let parsed: any;
-			if (typeof tastingNotesJson === 'string') {
-				parsed = JSON.parse(tastingNotesJson);
-			} else if (typeof tastingNotesJson === 'object') {
-				parsed = tastingNotesJson;
+		// Register workspace UI callbacks for LeftSidebar
+		workspaceStore.registerUICallbacks({
+			onSwitch: handleSwitchWorkspace,
+			onCreate: (name, type) => handleCreateWorkspace(name, type),
+			onDelete: handleDeleteWorkspace,
+			onRename: (id, title) => workspaceStore.updateTitle(id, title)
+		});
+
+		// Load workspaces then restore last active
+		(async () => {
+			await workspaceStore.loadWorkspaces();
+
+			if (workspaceStore.workspaces.length === 0) {
+				const ws = await workspaceStore.createWorkspace('General', 'general');
+				if (ws) await loadWorkspace(ws.id);
 			} else {
-				return null;
+				// Restore persisted workspace if it still exists
+				const persistedId = workspaceStore.getPersistedWorkspaceId();
+				const targetId =
+					persistedId && workspaceStore.workspaces.some((w) => w.id === persistedId)
+						? persistedId
+						: workspaceStore.workspaces[0].id;
+				await loadWorkspace(targetId);
 			}
+		})();
 
-			// Validate that required properties exist
-			if (
-				parsed.body &&
-				parsed.flavor &&
-				parsed.acidity &&
-				parsed.sweetness &&
-				parsed.fragrance_aroma
-			) {
-				return parsed as TastingNotes;
-			}
-		} catch (error) {
-			console.error('Error parsing tasting notes:', error);
+		return () => {
+			workspaceStore.unregisterUICallbacks();
+			window.removeEventListener('beforeunload', handleBeforeUnload);
+			handleBeforeUnload(); // Also fires on SvelteKit client-side navigation
+		};
+	});
+
+	async function loadWorkspace(workspaceId: string) {
+		const result = await workspaceStore.switchWorkspace(workspaceId);
+		if (!result) return;
+
+		// Clear current chat and canvas
+		chat.messages = [];
+		canvasStore.clearAll();
+		dispatchedParts = new Set();
+
+		// Restore messages from persisted workspace
+		if (result.messages.length > 0) {
+			// Reconstruct UIMessage-compatible objects from saved messages
+			const restored = result.messages.map((msg: WorkspaceMessage) => ({
+				id: msg.id,
+				role: msg.role,
+				parts:
+					Array.isArray(msg.parts) && msg.parts.length > 0
+						? msg.parts
+						: [{ type: 'text', text: msg.content }],
+				createdAt: new Date(msg.created_at)
+			}));
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			chat.messages = restored as any;
 		}
 
-		return null;
+		// Restore canvas state (including pinned, minimized, focusBlockId)
+		if (
+			result.workspace.canvas_state &&
+			typeof result.workspace.canvas_state === 'object' &&
+			'blocks' in result.workspace.canvas_state
+		) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const cs = result.workspace.canvas_state as any;
+			if (Array.isArray(cs.blocks)) {
+				canvasStore.dispatch({ type: 'clear' });
+				for (const cb of cs.blocks) {
+					if (cb.block) {
+						canvasStore.dispatch({ type: 'add', block: cb.block, messageId: cb.messageId || '' });
+						// Restore pinned state
+						if (cb.pinned) {
+							const addedBlock = canvasStore.blocks[canvasStore.blocks.length - 1];
+							if (addedBlock) {
+								canvasStore.dispatch({ type: 'pin', blockId: addedBlock.id });
+							}
+						}
+						// Restore minimized state
+						if (cb.minimized) {
+							const addedBlock = canvasStore.blocks[canvasStore.blocks.length - 1];
+							if (addedBlock) {
+								canvasStore.dispatch({ type: 'minimize', blockId: addedBlock.id });
+							}
+						}
+					}
+				}
+			}
+			if (cs.layout) {
+				canvasStore.dispatch({ type: 'layout', layout: cs.layout });
+			}
+			// Restore focus block by index (IDs regenerate, so match by position)
+			if (cs.focusBlockId != null && typeof cs.focusBlockIndex === 'number') {
+				const targetBlock = canvasStore.blocks[cs.focusBlockIndex];
+				if (targetBlock) {
+					canvasStore.dispatch({ type: 'focus', blockId: targetBlock.id });
+				}
+			}
+		}
 	}
 
-	// Chat state management
-	let messages: Array<{
-		role: 'user' | 'assistant';
-		content: string;
-		timestamp: Date;
-		coffeeCards?: number[];
-		coffeeData?: CoffeeCatalog[];
-		isStructured?: boolean;
-		isStreaming?: boolean;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		[key: string]: any;
-	}> = $state([]);
-	let inputMessage = $state('');
-	let isLoading = $state(false);
-	let chatContainer = $state<HTMLDivElement>();
-	let thinkingSteps = $state<Array<{ message: string; timestamp: Date }>>([]);
-	let shouldScrollToBottom = $state(true);
-	let streamingContent = $state('');
-	let isStreamingResponse = $state(false);
+	async function handleCreateWorkspace(
+		name?: string,
+		type?: 'general' | 'sourcing' | 'roasting' | 'inventory' | 'analysis'
+	) {
+		await persistCurrentState();
+		const ws = await workspaceStore.createWorkspace(name, type);
+		if (ws) {
+			await loadWorkspace(ws.id);
+		}
+	}
 
-	// Smart scroll behavior - scroll to bottom for new messages, but allow user control
+	async function handleSwitchWorkspace(workspaceId: string) {
+		if (workspaceId === workspaceStore.currentWorkspaceId) return;
+		// Save current workspace state before switching
+		await persistCurrentState();
+		await loadWorkspace(workspaceId);
+	}
+
+	async function handleDeleteWorkspace(workspaceId: string) {
+		if (!confirm('Delete this workspace and all its messages?')) return;
+		await workspaceStore.deleteWorkspace(workspaceId);
+		if (workspaceStore.workspaces.length === 0) {
+			const ws = await workspaceStore.createWorkspace('General', 'general');
+			if (ws) await loadWorkspace(ws.id);
+		} else if (workspaceStore.currentWorkspaceId !== workspaceId) {
+			// Already on a different workspace
+		} else {
+			await loadWorkspace(workspaceStore.workspaces[0].id);
+		}
+	}
+
+	// Persist chat messages and canvas state to the current workspace
+	async function persistCurrentState() {
+		const wsId = workspaceStore.currentWorkspaceId;
+		if (!wsId) return;
+
+		// Save new messages (ones not yet persisted)
+		const savedCount = workspaceStore.getSavedMessageCount(wsId);
+		const newMessages = chat.messages.slice(savedCount);
+		if (newMessages.length > 0) {
+			const toSave = newMessages.map((msg) => {
+				const textParts = msg.parts.filter((p) => p.type === 'text');
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const content = textParts.map((p: any) => p.text || '').join('\n');
+				return {
+					role: msg.role,
+					content,
+					parts: msg.parts
+				};
+			});
+			await workspaceStore.saveMessages(wsId, toSave);
+		}
+
+		// Save canvas state (including pinned, minimized, focusBlockId)
+		const focusIdx = canvasStore.focusBlockId
+			? canvasStore.blocks.findIndex((b: CanvasBlock) => b.id === canvasStore.focusBlockId)
+			: -1;
+		await workspaceStore.saveCanvasState(wsId, {
+			blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
+				block: b.block,
+				messageId: b.messageId,
+				pinned: b.pinned,
+				minimized: b.minimized
+			})),
+			layout: canvasStore.layout,
+			focusBlockId: canvasStore.focusBlockId,
+			focusBlockIndex: focusIdx >= 0 ? focusIdx : undefined
+		});
+	}
+
+	// Auto-persist when streaming completes (fast debounce)
+	let lastPersistedMessageCount = $state(0);
 	$effect(() => {
-		if (chatContainer && shouldScrollToBottom) {
-			// Smooth scroll to bottom for new content
+		if (
+			!isActive &&
+			chat.messages.length > 0 &&
+			chat.messages.length !== lastPersistedMessageCount
+		) {
+			lastPersistedMessageCount = chat.messages.length;
+			const timeout = setTimeout(() => persistCurrentState(), 500);
+			return () => clearTimeout(timeout);
+		}
+	});
+
+	// Trigger context compaction after ~10 message pairs
+	$effect(() => {
+		const wsId = workspaceStore.currentWorkspaceId;
+		if (!wsId || isActive) return;
+		const msgCount = chat.messages.length;
+		if (msgCount > 0 && msgCount % 20 === 0) {
+			workspaceStore.triggerSummarize(wsId);
+		}
+	});
+
+	// Scroll management
+	let chatContainer = $state<HTMLDivElement>();
+	let shouldScrollToBottom = $state(true);
+
+	// Scroll when new messages arrive
+	$effect(() => {
+		if (chatContainer && shouldScrollToBottom && chat.messages.length > 0) {
 			chatContainer.scrollTo({
 				top: chatContainer.scrollHeight,
 				behavior: 'smooth'
@@ -118,7 +367,29 @@
 		}
 	});
 
-	// Track if user manually scrolled up
+	// Scroll during streaming — throttled to avoid scroll thrashing
+	let lastScrollTime = 0;
+	$effect(() => {
+		if (!isActive || !shouldScrollToBottom || !chatContainer) return;
+		// Access the last message's parts to create a reactive dependency on streaming content
+		const lastMsg = chat.messages[chat.messages.length - 1];
+		if (lastMsg) {
+			const _partsLen = lastMsg.parts.length;
+			const lastTextPart = lastMsg.parts.findLast((p) => p.type === 'text');
+			if (lastTextPart) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const _textLen = (lastTextPart as any).text?.length;
+			}
+		}
+		// Throttle scrolls to at most once per 100ms during streaming
+		const now = Date.now();
+		if (now - lastScrollTime < 100) return;
+		lastScrollTime = now;
+		requestAnimationFrame(() => {
+			chatContainer?.scrollTo({ top: chatContainer.scrollHeight });
+		});
+	});
+
 	function handleScroll() {
 		if (!chatContainer) return;
 		const { scrollTop, scrollHeight, clientHeight } = chatContainer;
@@ -126,399 +397,315 @@
 		shouldScrollToBottom = isNearBottom;
 	}
 
-	/**
-	 * Check if a string is complete, valid JSON
-	 */
-	function isCompleteJson(str: string): boolean {
-		try {
-			JSON.parse(str);
-			return true;
-		} catch {
-			return false;
-		}
+	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
+
+	// Progressive disclosure: collapse old tool previews
+	// Messages more than COLLAPSE_THRESHOLD exchanges old get collapsed previews
+	const COLLAPSE_THRESHOLD = 10; // collapse previews on messages older than 10 from the end
+	let expandedMessages = $state(new Set<string>());
+
+	function isOldMessage(msgIndex: number, totalMessages: number): boolean {
+		return totalMessages - msgIndex > COLLAPSE_THRESHOLD;
 	}
 
-	/**
-	 * Process a single SSE data item
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function processSSEDataItem(data: any) {
-		// Skip heartbeat messages - they're just for keeping connection alive
-		if (data.type === 'heartbeat') {
-			return;
-		}
-
-		if (data.type === 'start') {
-			// Initial start message
-			thinkingSteps.push({
-				message: data.message || 'Starting AI processing...',
-				timestamp: new Date()
-			});
-		} else if (data.type === 'thinking') {
-			// Add thinking step with proper timestamp handling
-			thinkingSteps.push({
-				message: data.step,
-				timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
-			});
-		} else if (data.type === 'processing') {
-			// Add processing status
-			thinkingSteps.push({
-				message: data.message || 'Processing response...',
-				timestamp: new Date()
-			});
-		} else if (data.type === 'coffee_data') {
-			// Handle coffee data streaming
-			thinkingSteps.push({
-				message: `📋 Found ${data.count} coffee${data.count === 1 ? '' : 's'} to display`,
-				timestamp: new Date()
-			});
-		} else if (data.type === 'complete') {
-			// Use structured response data if available
-			const structuredResponse = data.structured_response;
-			const coffeeData = data.coffee_data || [];
-
-			// Create base message with streaming flag
+	function getCollapsedSummary(parts: unknown[]): string {
+		let blockCount = 0;
+		const types: string[] = [];
+		for (const part of parts) {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const newMessage: any = {
-				role: 'assistant',
-				content: '',
-				timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
-				isStreaming: true
-			};
-
-			// Store content for streaming
-			streamingContent = structuredResponse?.message || data.response;
-
-			// Dynamically add all structured fields from the response
-			if (structuredResponse) {
-				// Add all fields from structured_response except 'message' (already used for content)
-				Object.entries(structuredResponse).forEach(([key, value]) => {
-					if (key !== 'message') {
-						newMessage[key] = value;
-					}
-				});
-				newMessage.isStructured = true;
+			const p = part as any;
+			if (p?.type?.startsWith('tool-') && p.state === 'output-available') {
+				blockCount++;
+				const name = (p.toolName ?? p.type.replace('tool-', '')).replace(/_/g, ' ');
+				if (name !== 'present results' && !types.includes(name)) types.push(name);
 			}
-
-			// Add coffee_data if present (comes separately from API)
-			if (coffeeData.length > 0) {
-				newMessage.coffeeData = coffeeData;
-			}
-
-			// Maintain backward compatibility with existing field names
-			if (structuredResponse?.coffee_cards) {
-				newMessage.coffeeCards = structuredResponse.coffee_cards;
-			}
-
-			// Add message and start streaming animation
-			messages.push(newMessage);
-
-			// Clear thinking steps with fade out animation
-			isStreamingResponse = true;
-			setTimeout(() => {
-				thinkingSteps = [];
-				startStreamingText();
-			}, 500); // Brief delay to show transition
-		} else if (data.type === 'error') {
-			// Handle error with detailed information
-			thinkingSteps = [];
-			console.error('AI processing error:', data.error, data.details);
-
-			messages.push({
-				role: 'assistant',
-				content: `Sorry, I encountered an error: ${data.error}. Please try again.`,
-				timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
-			});
 		}
+		if (blockCount === 0) return '';
+		return `${blockCount} tool result${blockCount > 1 ? 's' : ''}${types.length > 0 ? `: ${types.join(', ')}` : ''}`;
 	}
 
-	/**
-	 * Send message to chat API with streaming thinking steps
-	 */
-	async function sendMessage() {
-		if (!inputMessage.trim() || isLoading) return;
+	// Context-aware suggestions above input
+	let suggestions = $derived(
+		getSuggestions(
+			workspaceStore.currentWorkspace?.type || 'general',
+			canvasStore.blocks,
+			chat.messages.length > 0
+		)
+	);
 
-		const userMessage = inputMessage.trim();
-		inputMessage = '';
-		isLoading = true;
-		thinkingSteps = []; // Clear previous thinking steps
-		shouldScrollToBottom = true; // Reset scroll behavior for new message
+	// ─── Canvas panel state ──────────────────────────────────────────────────
+	let canvasOpen = $state(false);
+	let hasUserClosedCanvas = $state(false);
+	let dividerDragging = $state(false);
+	let chatWidthPercent = $state(60); // Chat takes 60% by default
+	let mobileCanvasOpen = $state(false);
 
-		// Add user message to chat
-		messages.push({
-			role: 'user',
-			content: userMessage,
-			timestamp: new Date()
-		});
+	// Auto-open canvas when blocks arrive, but respect user's explicit close
+	$effect(() => {
+		if (!canvasStore.isEmpty && !canvasOpen && !hasUserClosedCanvas) {
+			canvasOpen = true;
+		}
+		// Reset the user-closed flag when canvas is cleared
+		if (canvasStore.isEmpty) {
+			hasUserClosedCanvas = false;
+		}
+	});
 
-		try {
-			// Use streaming API for real-time thinking steps
-			const response = await fetch('/api/chat', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					message: userMessage,
-					conversation_history: messages.slice(0, -1), // Exclude the message we just added
-					stream: true
-				})
-			});
+	// Track which message IDs have been dispatched to canvas (to avoid duplicates)
+	let dispatchedParts = $state(new Set<string>());
 
-			if (!response.ok) {
-				// Handle specific status codes gracefully
-				if (response.status === 499) {
-					console.log('Request was cancelled by client or server timeout');
-					return; // Silently return, don't show error to user
-				}
+	// Dispatch blocks to canvas when streaming completes for a message
+	$effect(() => {
+		if (isActive) return; // Wait until streaming stops
 
-				const errorText = await response.text().catch(() => 'Unknown error');
-				throw new Error(`Chat request failed (${response.status}): ${errorText}`);
-			}
+		for (const message of chat.messages) {
+			if (message.role !== 'assistant') continue;
 
-			// Handle Server-Sent Events
-			if (response.body) {
-				const reader = response.body.getReader();
-				const decoder = new TextDecoder();
-				let buffer = ''; // Buffer for incomplete lines across chunks
-				let jsonBuffer = ''; // Buffer for incomplete JSON across lines
+			const hasPR = messageHasPresentResults(message.parts);
+			const searchCache = hasPR ? buildSearchDataCache(message.parts) : undefined;
+			const extractorOptions = { searchDataCache: searchCache, hasPresentResults: hasPR };
 
-				// Helper to process a data line with JSON buffering
-				const processDataLine = (line: string) => {
-					if (!line.trim() || !line.startsWith('data: ')) return;
+			for (const part of message.parts) {
+				if (!part.type.startsWith('tool-')) continue;
 
-					const dataContent = line.slice(6);
-					if (!dataContent.trim()) return;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const p = part as any;
+				const partKey = `${message.id}-${p.toolInvocationId ?? p.toolName ?? part.type}`;
+				if (dispatchedParts.has(partKey)) continue;
 
-					// Accumulate JSON content
-					const combinedJson = jsonBuffer + dataContent;
+				const block = extractBlockFromPart(p, extractorOptions);
 
-					// Check if we have complete JSON
-					if (isCompleteJson(combinedJson)) {
-						try {
-							const data = JSON.parse(combinedJson);
-							processSSEDataItem(data);
-							jsonBuffer = ''; // Reset buffer on success
-						} catch (e) {
-							console.error('Error parsing SSE data after validation:', e);
-							jsonBuffer = ''; // Reset on unexpected error
+				// If this is a present_results part, use explicit canvas mutations
+				const mutations = extractCanvasMutationsFromPart(p, block, message.id);
+				if (mutations) {
+					for (const m of mutations) canvasStore.dispatch(m);
+					dispatchedParts.add(partKey);
+				} else if (block && block.type !== 'error') {
+					// Non-present_results tools: auto-add to canvas
+					canvasStore.dispatch({ type: 'add', block, messageId: message.id });
+					dispatchedParts.add(partKey);
+
+					// Also dispatch companion blocks (e.g., roast-chart for single roast profile)
+					const companions = extractCompanionBlocks(p);
+					for (let ci = 0; ci < companions.length; ci++) {
+						const companionKey = `${partKey}-companion-${ci}`;
+						if (!dispatchedParts.has(companionKey)) {
+							canvasStore.dispatch({
+								type: 'add',
+								block: companions[ci],
+								messageId: message.id
+							});
+							dispatchedParts.add(companionKey);
 						}
-					} else {
-						// Incomplete JSON - accumulate in buffer
-						jsonBuffer = combinedJson;
-					}
-				};
-
-				try {
-					while (true) {
-						const { done, value } = await reader.read();
-
-						if (done) {
-							// Process any remaining buffered data
-							if (buffer.trim()) {
-								const lines = buffer.split('\n');
-								for (const line of lines) {
-									processDataLine(line);
-								}
-							}
-							// Process any remaining JSON buffer
-							if (jsonBuffer.trim() && isCompleteJson(jsonBuffer)) {
-								try {
-									const data = JSON.parse(jsonBuffer);
-									processSSEDataItem(data);
-								} catch (e) {
-									console.error('Error parsing final JSON buffer:', e);
-								}
-							}
-							break;
-						}
-
-						// Decode chunk and add to buffer (use stream: true for multi-byte character handling)
-						buffer += decoder.decode(value, { stream: true });
-
-						// Process complete lines (ending with \n)
-						const lines = buffer.split('\n');
-						// Keep the last line in buffer (might be incomplete)
-						buffer = lines.pop() || '';
-
-						for (const line of lines) {
-							processDataLine(line);
-						}
-					}
-				} catch (streamError) {
-					console.log('Stream reading error (likely client cancellation):', streamError);
-					// Don't throw error for stream reading issues - these are often cancellations
-				} finally {
-					try {
-						reader.releaseLock();
-					} catch {
-						/* empty */
 					}
 				}
 			}
-		} catch (error) {
-			console.error('Chat error:', error);
-			thinkingSteps = [];
+		}
+	});
 
-			// Only show error message if it's not a cancellation
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			if (!errorMessage.includes('cancelled') && !errorMessage.includes('aborted')) {
-				messages.push({
-					role: 'assistant',
-					content: 'Sorry, I encountered an error. Please try again.',
+	// Build a lookup: messageId → canvasBlockId[] (supports multiple blocks per message)
+	let canvasBlockLookup = $derived(() => {
+		const map = new Map<string, string[]>();
+		for (const cb of canvasStore.blocks) {
+			const existing = map.get(cb.messageId);
+			if (existing) {
+				existing.push(cb.id);
+			} else {
+				map.set(cb.messageId, [cb.id]);
+			}
+		}
+		return map;
+	});
+
+	// ─── Divider drag handling ────────────────────────────────────────────────
+	function startDividerDrag(e: MouseEvent) {
+		e.preventDefault();
+		dividerDragging = true;
+
+		const onMove = (ev: MouseEvent) => {
+			const container = (e.target as HTMLElement)?.closest('.chat-canvas-container');
+			if (!container) return;
+			const rect = container.getBoundingClientRect();
+			const percent = ((ev.clientX - rect.left) / rect.width) * 100;
+			chatWidthPercent = Math.max(30, Math.min(80, percent));
+		};
+
+		const onUp = () => {
+			dividerDragging = false;
+			window.removeEventListener('mousemove', onMove);
+			window.removeEventListener('mouseup', onUp);
+		};
+
+		window.addEventListener('mousemove', onMove);
+		window.addEventListener('mouseup', onUp);
+	}
+
+	// ─── Accumulated status steps for the entire message ──────────────────────
+	function getMessageToolSteps(
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		parts: any[]
+	): Array<{ message: string; timestamp: Date }> {
+		const steps: Array<{ message: string; timestamp: Date }> = [];
+
+		for (const part of parts) {
+			if (!part?.type?.startsWith('tool-')) continue;
+
+			const rawName = part.toolName ?? part.type.replace('tool-', '');
+			if (rawName === 'present_results') continue;
+
+			const toolName = rawName.replace(/_/g, ' ');
+
+			if (part.state === 'input-streaming' || part.state === 'input-available') {
+				steps.push({ message: `Querying ${toolName}...`, timestamp: new Date() });
+			} else if (part.state === 'output-available') {
+				const output = part.output;
+				let detail = '';
+				if (output && typeof output === 'object') {
+					if (Array.isArray(output)) {
+						detail = ` — ${output.length} result${output.length === 1 ? '' : 's'}`;
+					} else if ('coffees' in output && Array.isArray(output.coffees)) {
+						detail = ` — ${output.coffees.length} coffee${output.coffees.length === 1 ? '' : 's'}`;
+					} else if ('inventory' in output && Array.isArray(output.inventory)) {
+						detail = ` — ${output.inventory.length} item${output.inventory.length === 1 ? '' : 's'}`;
+					} else if ('profiles' in output && Array.isArray(output.profiles)) {
+						detail = ` — ${output.profiles.length} profile${output.profiles.length === 1 ? '' : 's'}`;
+					} else if ('total_count' in output) {
+						detail = ` — ${output.total_count} result${output.total_count === 1 ? '' : 's'}`;
+					}
+				}
+				steps.push({ message: `${toolName}${detail}`, timestamp: new Date() });
+			} else if (part.state === 'output-error') {
+				steps.push({
+					message: `Error: ${part.errorText || 'unknown error'}`,
 					timestamp: new Date()
 				});
 			}
-		} finally {
-			isLoading = false;
+		}
+		return steps;
+	}
+
+	// ─── Block action handler ─────────────────────────────────────────────────
+	function handleBlockAction(action: BlockAction) {
+		if (action.type === 'navigate') {
+			goto(action.url);
+		} else if (action.type === 'focus-canvas-block') {
+			canvasStore.dispatch({ type: 'focus', blockId: action.blockId });
+			// On mobile, open canvas overlay
+			if (window.innerWidth < 768) {
+				mobileCanvasOpen = true;
+			}
+		} else if (action.type === 'scroll-to-message') {
+			scrollToMessage(action.messageId);
 		}
 	}
 
-	/**
-	 * Simple fade-in animation for response
-	 */
-	function startStreamingText() {
-		if (!streamingContent) return;
-
-		const lastMessage = messages[messages.length - 1];
-		if (!lastMessage) return;
-
-		// Immediately set the full content
-		lastMessage.content = streamingContent;
-		messages = [...messages]; // Trigger reactivity
-
-		// Remove streaming flag after fade animation
-		setTimeout(() => {
-			lastMessage.isStreaming = false;
-			isStreamingResponse = false;
-			messages = [...messages]; // Final update
-		}, 1200); // 1.2 seconds for fade animation
+	function scrollToMessage(messageId: string) {
+		const el = document.getElementById(`msg-${messageId}`);
+		if (el && chatContainer) {
+			el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			el.classList.add('message-highlight');
+			setTimeout(() => el.classList.remove('message-highlight'), 2000);
+		}
 	}
 
-	/**
-	 * Handle form submission
-	 */
+	// ─── Action Card Execution ───────────────────────────────────────────────
+	async function executeAction(actionType: string, fields: Record<string, unknown>) {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+		try {
+			const response = await fetch('/api/chat/execute-action', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ actionType, fields }),
+				signal: controller.signal
+			});
+
+			clearTimeout(timeoutId);
+
+			if (!response.ok) {
+				const data = await response.json().catch(() => ({ error: 'Unknown error' }));
+				throw new Error(data.error || 'Action execution failed');
+			}
+
+			return response.json();
+		} catch (err) {
+			clearTimeout(timeoutId);
+			if (err instanceof DOMException && err.name === 'AbortError') {
+				throw new Error('Action timed out after 30 seconds');
+			}
+			throw err;
+		}
+	}
+
+	// ─── Slash command completions ────────────────────────────────────────────
+	let slashCompletions = $derived(getSlashCompletions(inputMessage));
+
+	// ─── Send Message ──────────────────────────────────────────────────────────
+	async function sendMessage() {
+		if (!inputMessage.trim() || isActive) return;
+
+		const text = inputMessage.trim();
+
+		// Intercept slash commands
+		const cmd = matchSlashCommand(text);
+		if (cmd) {
+			inputMessage = '';
+			if (cmd.action === 'clear-canvas') {
+				canvasStore.clearAll();
+				return;
+			}
+			if (cmd.action === 'pin-focused') {
+				const fid = canvasStore.focusBlockId;
+				if (fid) canvasStore.dispatch({ type: 'pin', blockId: fid });
+				return;
+			}
+			if (cmd.action === 'unpin-focused') {
+				const fid = canvasStore.focusBlockId;
+				if (fid) canvasStore.dispatch({ type: 'unpin', blockId: fid });
+				return;
+			}
+			if (cmd.chatText) {
+				inputMessage = '';
+				shouldScrollToBottom = true;
+				await chat.sendMessage(
+					{ text: cmd.chatText },
+					{ body: { workspaceContext: getWorkspaceContext() } }
+				);
+				return;
+			}
+		}
+
+		inputMessage = '';
+		shouldScrollToBottom = true;
+
+		await chat.sendMessage({ text }, { body: { workspaceContext: getWorkspaceContext() } });
+	}
+
 	function handleSubmit(event: Event) {
 		event.preventDefault();
 		sendMessage();
 	}
 
-	/**
-	 * Detect structured data fields in a message object
-	 * Returns an object containing only the structured data fields
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function detectStructuredFields(message: any): Record<string, unknown> | null {
-		// Base message fields that are not considered structured data
-		const baseFields = new Set(['role', 'content', 'timestamp']);
-
-		const structuredFields: Record<string, unknown> = {};
-		let hasStructuredData = false;
-
-		for (const [key, value] of Object.entries(message)) {
-			// Skip base message fields
-			if (baseFields.has(key)) continue;
-
-			// Detect structured data patterns
-			const isStructuredField =
-				// Arrays with content
-				(Array.isArray(value) && value.length > 0) ||
-				// Non-null objects (excluding Date objects)
-				(typeof value === 'object' && value !== null && !(value instanceof Date)) ||
-				// Boolean metadata fields
-				(typeof value === 'boolean' && (key.startsWith('is') || key.startsWith('has'))) ||
-				// Fields with naming patterns indicating structured data
-				key.endsWith('_cards') ||
-				key.endsWith('_data') ||
-				key.endsWith('_ids') ||
-				key.endsWith('_type') ||
-				key.endsWith('_metadata') ||
-				// Explicit structured field
-				key === 'isStructured';
-
-			if (isStructuredField) {
-				structuredFields[key] = value;
-				hasStructuredData = true;
-			}
-		}
-
-		return hasStructuredData ? structuredFields : null;
-	}
-
-	/**
-	 * Format conversation data as Markdown
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function formatConversationAsMarkdown(messages: any[], exportData: any): string {
+	// ─── Export / Clear ────────────────────────────────────────────────────────
+	function exportConversation() {
 		const timestamp = new Date().toLocaleString();
-		const userId = exportData.user_id || 'Unknown';
-
 		let markdown = `# Coffee Chat Conversation\n\n`;
-		markdown += `**Exported:** ${timestamp}  \n`;
-		markdown += `**User ID:** ${userId}\n\n`;
-		markdown += `---\n\n`;
+		markdown += `**Exported:** ${timestamp}\n\n---\n\n`;
 
-		messages.forEach((message, index) => {
-			const messageTime = new Date(message.timestamp).toLocaleString();
-			const role = message.role === 'user' ? '🧑‍💼 User' : '🤖 Assistant';
+		for (const message of chat.messages) {
+			const role = message.role === 'user' ? 'User' : 'Assistant';
+			markdown += `## ${role}\n\n`;
 
-			markdown += `## ${role}\n`;
-			markdown += `*${messageTime}*\n\n`;
-			markdown += `${message.content}\n\n`;
-
-			// Add legacy coffee card information if present (for backward compatibility)
-			if (message.coffeeCards && message.coffeeCards.length > 0) {
-				markdown += `### ☕ Coffee Recommendations\n\n`;
-
-				if (message.coffeeData && message.coffeeData.length > 0) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					message.coffeeData.forEach((coffee: any) => {
-						markdown += `**${coffee.name || 'Unknown Coffee'}**\n`;
-						if (coffee.origin) markdown += `- Origin: ${coffee.origin}\n`;
-						if (coffee.variety) markdown += `- Variety: ${coffee.variety}\n`;
-						if (coffee.processing) markdown += `- Processing: ${coffee.processing}\n`;
-						if (coffee.price_per_lb) markdown += `- Price: $${coffee.price_per_lb}/lb\n`;
-						if (coffee.description) {
-							markdown += `- Description: ${coffee.description}\n`;
-						}
-						markdown += `\n`;
-					});
-				} else {
-					markdown += `Coffee IDs: ${message.coffeeCards.join(', ')}\n\n`;
+			for (const part of message.parts) {
+				if (part.type === 'text') {
+					markdown += `${part.text}\n\n`;
 				}
 			}
+			markdown += `---\n\n`;
+		}
 
-			// Add structured data as JSON code block if present
-			const structuredFields = detectStructuredFields(message);
-			if (structuredFields) {
-				markdown += `\`\`\`json\n`;
-				markdown += JSON.stringify(structuredFields, null, 2);
-				markdown += `\n\`\`\`\n\n`;
-			}
-
-			if (index < messages.length - 1) {
-				markdown += `---\n\n`;
-			}
-		});
-
-		return markdown;
-	}
-
-	/**
-	 * Export conversation history
-	 */
-	function exportConversation() {
-		const exportData = {
-			conversation: messages,
-			exported_at: new Date().toISOString(),
-			user_id: session?.user?.id
-		};
-
-		const markdownContent = formatConversationAsMarkdown(messages, exportData);
-
-		const blob = new Blob([markdownContent], {
-			type: 'text/markdown'
-		});
+		const blob = new Blob([markdown], { type: 'text/markdown' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
@@ -529,12 +716,19 @@
 		URL.revokeObjectURL(url);
 	}
 
-	/**
-	 * Clear conversation
-	 */
-	function clearConversation() {
+	async function clearConversation() {
 		if (confirm('Are you sure you want to clear the conversation?')) {
-			messages = [];
+			chat.messages = [];
+			canvasStore.clearAll();
+			dispatchedParts = new Set();
+			lastPersistedMessageCount = 0;
+
+			// Clear persisted messages for current workspace
+			const wsId = workspaceStore.currentWorkspaceId;
+			if (wsId) {
+				await fetch(`/api/workspaces/${wsId}/messages`, { method: 'DELETE' });
+				await workspaceStore.saveCanvasState(wsId, {});
+			}
 		}
 	}
 </script>
@@ -593,219 +787,453 @@
 		</div>
 	</div>
 {:else}
-	<!-- Main chat interface for authenticated members -->
+	<!-- Main chat + canvas interface -->
 	<div class="flex h-screen flex-col bg-background-primary-light">
-		<!-- Header -->
-		<header class="border-b border-border-light bg-background-secondary-light px-4 py-3">
-			<div class="flex items-center justify-between">
-				<div>
-					<h1 class="text-xl font-semibold text-text-primary-light">Coffee Chat</h1>
-					<p class="text-sm text-text-secondary-light">AI-powered coffee assistant</p>
-				</div>
-				<div class="flex space-x-2">
-					{#if messages.length > 0}
-						<button
-							onclick={exportConversation}
-							class="rounded-md border border-background-tertiary-light px-3 py-1 text-sm text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-						>
-							Export
-						</button>
-						<button
-							onclick={clearConversation}
-							class="rounded-md border border-red-500 px-3 py-1 text-sm text-red-500 transition-all duration-200 hover:bg-red-500 hover:text-white"
-						>
-							Clear
-						</button>
-					{/if}
-				</div>
-			</div>
-		</header>
-
-		<!-- Chat messages area -->
-		<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4" onscroll={handleScroll}>
-			{#if messages.length === 0}
-				<!-- Welcome message -->
-				<div class="mx-auto max-w-2xl text-center">
-					<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
-						<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
-							Welcome to Coffee Chat! ☕
-						</h2>
-						<p class="mb-4 text-text-secondary-light">
-							I'm your AI coffee expert, here to help with personalized recommendations, roasting
-							advice, and coffee knowledge. Ask me anything about:
-						</p>
-						<div class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2">
-							<div>• Coffee recommendations</div>
-							<div>• Roasting techniques</div>
-							<div>• Flavor profiles</div>
-							<div>• Processing methods</div>
-							<div>• Your inventory analysis</div>
-							<div>• Brewing guidance</div>
-						</div>
-					</div>
-
-					<!-- Example queries -->
-					<div class="space-y-2">
-						<p class="text-sm font-medium text-text-primary-light">Try asking:</p>
-						<div class="space-y-2 text-sm">
+		<!-- Chat + Canvas split container -->
+		<div class="chat-canvas-container flex flex-1 overflow-hidden">
+			<!-- Chat pane -->
+			<div
+				class="flex flex-col overflow-hidden"
+				style="width: {canvasOpen ? chatWidthPercent : 100}%; transition: width 0.2s ease;"
+			>
+				<!-- Chat toolbar -->
+				<div class="flex items-center justify-end border-b border-border-light px-3 py-1.5">
+					<div class="flex items-center gap-2">
+						{#if !canvasStore.isEmpty}
 							<button
-								onclick={() =>
-									(inputMessage =
-										'Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique processing method.')}
-								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+								onclick={() => (mobileCanvasOpen = !mobileCanvasOpen)}
+								class="rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light md:hidden"
 							>
-								"Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique
-								processing method."
+								Canvas ({canvasStore.blockCount})
 							</button>
 							<button
-								onclick={() =>
-									(inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
-								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+								onclick={() => {
+									canvasOpen = !canvasOpen;
+									if (!canvasOpen) hasUserClosedCanvas = true;
+									else hasUserClosedCanvas = false;
+								}}
+								class="hidden rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light md:block"
 							>
-								"What's the best way to roast a washed Costa Rican coffee?"
+								{canvasOpen ? 'Hide' : 'Show'} Canvas ({canvasStore.blockCount})
+							</button>
+						{/if}
+						{#if chat.messages.length > 0}
+							<button
+								onclick={exportConversation}
+								class="rounded-md border border-background-tertiary-light px-2 py-0.5 text-xs text-background-tertiary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+							>
+								Export
 							</button>
 							<button
-								onclick={() =>
-									(inputMessage = 'Analyze my recent roasting sessions and suggest improvements')}
-								class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+								onclick={clearConversation}
+								class="rounded-md border border-red-500 px-2 py-0.5 text-xs text-red-500 transition-all hover:bg-red-500 hover:text-white"
 							>
-								"Analyze my recent roasting sessions and suggest improvements"
+								Clear
 							</button>
-						</div>
+						{/if}
 					</div>
 				</div>
-			{:else}
-				<!-- Chat messages -->
-				<div class="mx-auto max-w-4xl space-y-4">
-					{#each messages as message}
-						<div
-							class="flex {message.role === 'user'
-								? 'justify-end'
-								: 'justify-start'} message-fade-in"
-						>
-							<div
-								class="max-w-[80%] rounded-lg px-4 py-2 transition-all duration-300 {message.role ===
-								'user'
-									? 'bg-background-tertiary-light text-white'
-									: 'bg-background-secondary-light text-text-primary-light'} {message.isStreaming
-									? 'animate-pulse'
-									: ''}"
-							>
-								{#if message.role === 'assistant' && message.isStructured}
-									<ChatMessageRenderer
-										message={message.content}
-										coffeeCards={message.coffeeCards}
-										coffeeData={message.coffeeData || []}
-										onCoffeePreview={handleCoffeePreview}
-										isStreaming={message.isStreaming || false}
-									/>
-								{:else}
-									<div
-										class="whitespace-pre-wrap transition-all duration-1000 ease-out {message.isStreaming
-											? 'translate-y-4 opacity-0'
-											: 'translate-y-0 opacity-100'}"
+				<!-- Chat messages area -->
+				<div bind:this={chatContainer} class="flex-1 overflow-y-auto p-4" onscroll={handleScroll}>
+					{#if chat.messages.length === 0}
+						<!-- Welcome message -->
+						<div class="mx-auto max-w-2xl text-center">
+							<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
+								<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
+									Welcome to Coffee Chat!
+								</h2>
+								<p class="mb-4 text-text-secondary-light">
+									I'm your AI coffee expert, here to help with personalized recommendations,
+									roasting advice, and coffee knowledge. Ask me anything about:
+								</p>
+								<div
+									class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2"
+								>
+									<div>- Coffee recommendations</div>
+									<div>- Roasting techniques</div>
+									<div>- Flavor profiles</div>
+									<div>- Processing methods</div>
+									<div>- Your inventory analysis</div>
+									<div>- Brewing guidance</div>
+								</div>
+							</div>
+
+							<!-- Example queries -->
+							<div class="space-y-2">
+								<p class="text-sm font-medium text-text-primary-light">Try asking:</p>
+								<div class="space-y-2 text-sm">
+									<button
+										onclick={() =>
+											(inputMessage =
+												'Check the green coffee catalog for an Ethiopian with stone fruit notes and a unique processing method.')}
+										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 									>
-										{message.content}
-									</div>
-								{/if}
-								<div class="mt-1 text-xs opacity-70">
-									{message.timestamp.toLocaleTimeString()}
+										"Check the green coffee catalog for an Ethiopian with stone fruit notes and a
+										unique processing method."
+									</button>
+									<button
+										onclick={() =>
+											(inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
+										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+									>
+										"What's the best way to roast a washed Costa Rican coffee?"
+									</button>
+									<button
+										onclick={() =>
+											(inputMessage =
+												'Analyze my recent roasting sessions and suggest improvements')}
+										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+									>
+										"Analyze my recent roasting sessions and suggest improvements"
+									</button>
 								</div>
 							</div>
 						</div>
-					{/each}
+					{:else}
+						<!-- Chat messages - interleaved rendering -->
+						<div class="mx-auto max-w-4xl space-y-4">
+							{#each chat.messages as message, msgIndex (message.id)}
+								{@const isLastMessage = msgIndex === chat.messages.length - 1}
+								{@const isStreaming = isLastMessage && isActive && message.role === 'assistant'}
 
-					{#if (isLoading && thinkingSteps.length > 0) || isStreamingResponse}
-						<div
-							class="flex justify-start transition-all duration-500 {isStreamingResponse
-								? 'scale-95 opacity-50'
-								: 'scale-100 opacity-100'}"
-						>
-							<div class="max-w-[80%]">
-								<ChainOfThought
-									steps={thinkingSteps}
-									isActive={isLoading && !isStreamingResponse}
-								/>
-							</div>
-						</div>
-					{:else if isLoading}
-						<div class="flex justify-start">
-							<div class="max-w-[80%]">
-								<ChainOfThought steps={[]} isActive={isLoading} />
-							</div>
+								{#if message.role === 'user'}
+									<!-- User message bubble -->
+									<div id="msg-{message.id}" class="message-fade-in flex justify-end">
+										<div
+											class="max-w-[80%] rounded-lg bg-background-tertiary-light px-4 py-2 text-white"
+										>
+											{#each message.parts as part}
+												{#if part.type === 'text'}
+													<div class="whitespace-pre-wrap">{part.text}</div>
+												{/if}
+											{/each}
+										</div>
+									</div>
+								{:else}
+									<!-- Assistant message -->
+									{@const hasPR = messageHasPresentResults(message.parts)}
+									{@const searchCache = hasPR ? buildSearchDataCache(message.parts) : undefined}
+									{@const extractorOptions = {
+										searchDataCache: searchCache,
+										hasPresentResults: hasPR
+									}}
+									{@const toolSteps = getMessageToolSteps(message.parts)}
+									{@const hasToolParts = message.parts.some((p) => p.type.startsWith('tool-'))}
+									<div id="msg-{message.id}" class="message-fade-in w-full space-y-3">
+										<!-- Persistent accumulated status line for all tool calls -->
+										{#if hasToolParts && toolSteps.length > 0}
+											<InlineStatusLine steps={toolSteps} isActive={isStreaming} />
+										{/if}
+
+										<!-- Text parts stream in live -->
+										{#each message.parts as part}
+											{#if part.type === 'text' && part.text.trim()}
+												<div
+													class="prose prose-sm max-w-none text-text-primary-light prose-headings:text-text-primary-light prose-p:text-text-primary-light prose-strong:text-text-primary-light prose-ol:text-text-primary-light prose-ul:text-text-primary-light prose-li:text-text-primary-light"
+												>
+													<SvelteMarkdown source={part.text} />
+												</div>
+											{/if}
+										{/each}
+
+										<!-- Inline previews render after streaming completes -->
+										{#if !isStreaming}
+											{@const isOld = isOldMessage(msgIndex, chat.messages.length)}
+											{@const isExpanded = expandedMessages.has(message.id)}
+											{@const collapsedSummary =
+												isOld && !isExpanded ? getCollapsedSummary(message.parts) : ''}
+											{#if isOld && !isExpanded && collapsedSummary}
+												<!-- Collapsed preview summary for old messages -->
+												<button
+													onclick={() => {
+														expandedMessages.add(message.id);
+														expandedMessages = new Set(expandedMessages);
+													}}
+													class="flex items-center gap-1.5 rounded-md border border-border-light bg-background-secondary-light px-3 py-1.5 text-xs text-text-secondary-light transition-colors hover:text-text-primary-light"
+												>
+													<svg
+														class="h-3.5 w-3.5"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															stroke-width="2"
+															d="M9 5l7 7-7 7"
+														/>
+													</svg>
+													{collapsedSummary}
+												</button>
+											{:else}
+												{#each message.parts as part}
+													{#if part.type.startsWith('tool-')}
+														{@const toolPart = part as Record<string, unknown>}
+														{@const block = extractBlockFromPart(toolPart, extractorOptions)}
+														{#if block}
+															{@const lookup = canvasBlockLookup()}
+															{@const canvasIds = lookup.get(message.id) || []}
+															{@const canvasId = canvasIds[0]}
+															<div class="preview-fade-in my-1">
+																<GenUIBlockRenderer
+																	{block}
+																	renderMode="chat"
+																	onAction={handleBlockAction}
+																	canvasBlockId={canvasId}
+																/>
+															</div>
+															<!-- Companion block previews (e.g., roast chart for single roast) -->
+															{@const companions = extractCompanionBlocks(toolPart)}
+															{#each companions as companionBlock}
+																<div class="preview-fade-in my-1">
+																	<GenUIBlockRenderer
+																		block={companionBlock}
+																		renderMode="chat"
+																		onAction={handleBlockAction}
+																		canvasBlockId={canvasId}
+																	/>
+																</div>
+															{/each}
+														{:else if toolPart.state === 'output-error'}
+															{@const errorBlock = extractBlockFromPart(toolPart)}
+															{#if errorBlock}
+																<div class="preview-fade-in my-1">
+																	<GenUIBlockRenderer
+																		block={errorBlock}
+																		renderMode="chat"
+																		onAction={handleBlockAction}
+																	/>
+																</div>
+															{/if}
+														{/if}
+													{/if}
+												{/each}
+												{#if isOld && isExpanded}
+													<button
+														onclick={() => {
+															expandedMessages.delete(message.id);
+															expandedMessages = new Set(expandedMessages);
+														}}
+														class="text-xs text-text-secondary-light hover:text-text-primary-light"
+													>
+														Collapse previews
+													</button>
+												{/if}
+											{/if}
+										{/if}
+									</div>
+								{/if}
+							{/each}
+
+							<!-- Initial loading state before any assistant message parts exist -->
+							{#if chat.status === 'submitted' && (chat.messages.length === 0 || chat.messages[chat.messages.length - 1]?.role === 'user')}
+								<div class="message-fade-in">
+									<InlineStatusLine steps={[]} isActive={true} />
+								</div>
+							{/if}
 						</div>
 					{/if}
 				</div>
-			{/if}
-		</div>
 
-		<!-- Input area -->
-		<div class="border-t border-border-light bg-background-secondary-light p-4">
-			<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
-				<div class="flex space-x-2">
-					<textarea
-						bind:value={inputMessage}
-						placeholder="Ask me about coffee recommendations, roasting advice, or anything coffee-related..."
-						class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
-						rows="1"
-						disabled={isLoading}
-						onkeydown={(e) => {
-							if (e.key === 'Enter' && !e.shiftKey) {
-								e.preventDefault();
-								sendMessage();
-							}
-						}}
-						oninput={(e) => {
-							const target = e.target as HTMLTextAreaElement;
-							target.style.height = 'auto';
-							target.style.height = target.scrollHeight + 'px';
-						}}
-					></textarea>
-					<button
-						type="submit"
-						disabled={isLoading || !inputMessage.trim()}
-						class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+				<!-- Chat error banner -->
+				{#if chatError}
+					<div
+						class="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700"
 					>
-						{#if isLoading}
-							<div
-								class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
-							></div>
-						{:else}
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-5 w-5"
-								viewBox="0 0 20 20"
-								fill="currentColor"
-							>
+						<svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
+							/>
+						</svg>
+						<span class="flex-1">{chatError}</span>
+						<button
+							onclick={() => (chatError = null)}
+							class="shrink-0 text-red-500 hover:text-red-700"
+							aria-label="Dismiss error"
+						>
+							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
-									fill-rule="evenodd"
-									d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
-									clip-rule="evenodd"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
 								/>
 							</svg>
-						{/if}
-					</button>
+						</button>
+					</div>
+				{/if}
+
+				<!-- Input area -->
+				<div class="border-t border-border-light bg-background-secondary-light p-4">
+					{#if slashCompletions.length > 0 && inputMessage.startsWith('/')}
+						<div
+							class="mx-auto mb-2 max-w-4xl rounded-lg border border-border-light bg-background-primary-light shadow-sm"
+						>
+							{#each slashCompletions as cmd (cmd.name)}
+								<button
+									onclick={() => {
+										if (cmd.chatText) {
+											inputMessage = cmd.chatText;
+										} else {
+											inputMessage = cmd.name;
+										}
+									}}
+									class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors first:rounded-t-lg last:rounded-b-lg hover:bg-background-secondary-light"
+								>
+									<span class="font-mono text-xs font-medium text-background-tertiary-light"
+										>{cmd.name}</span
+									>
+									<span class="text-text-secondary-light">{cmd.description}</span>
+								</button>
+							{/each}
+						</div>
+					{:else if !isActive && suggestions.length > 0}
+						<div class="mx-auto max-w-4xl">
+							<SuggestionChips
+								{suggestions}
+								onSelect={(text) => {
+									inputMessage = text;
+								}}
+							/>
+						</div>
+					{/if}
+					<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">
+						<div class="flex space-x-2">
+							<textarea
+								bind:value={inputMessage}
+								placeholder="Ask me about coffee recommendations, roasting advice, or anything coffee-related..."
+								class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
+								rows="1"
+								disabled={isActive}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' && !e.shiftKey) {
+										e.preventDefault();
+										sendMessage();
+									}
+								}}
+								oninput={(e) => {
+									const target = e.target as HTMLTextAreaElement;
+									target.style.height = 'auto';
+									target.style.height = target.scrollHeight + 'px';
+								}}
+							></textarea>
+							<button
+								type="submit"
+								disabled={isActive || !inputMessage.trim()}
+								class="rounded-lg bg-background-tertiary-light px-4 py-3 text-white transition-all duration-200 hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								{#if isActive}
+									<div
+										class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"
+									></div>
+								{:else}
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-5 w-5"
+										viewBox="0 0 20 20"
+										fill="currentColor"
+									>
+										<path
+											fill-rule="evenodd"
+											d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+											clip-rule="evenodd"
+										/>
+									</svg>
+								{/if}
+							</button>
+						</div>
+						<div class="mt-2 text-xs text-text-secondary-light">
+							Press Enter to send, Shift+Enter for new line
+						</div>
+					</form>
 				</div>
-				<div class="mt-2 text-xs text-text-secondary-light">
-					Press Enter to send, Shift+Enter for new line
+			</div>
+
+			<!-- Resizable divider (desktop only) -->
+			{#if canvasOpen}
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+				<div
+					class="hidden w-1 cursor-col-resize bg-border-light transition-colors hover:bg-background-tertiary-light/40 md:block"
+					class:bg-background-tertiary-light={dividerDragging}
+					role="separator"
+					tabindex="0"
+					onmousedown={startDividerDrag}
+				></div>
+
+				<!-- Canvas pane (desktop) -->
+				<div class="hidden overflow-hidden md:block" style="width: {100 - chatWidthPercent}%;">
+					<Canvas
+						onAction={handleBlockAction}
+						onScrollToMessage={scrollToMessage}
+						onExecuteAction={executeAction}
+					/>
 				</div>
-			</form>
+			{/if}
 		</div>
 	</div>
 
-	<!-- Coffee Preview Sidebar -->
-	<CoffeePreviewSidebar
-		isOpen={coffeePreviewOpen}
-		coffeeIds={selectedCoffeeIds}
-		focusId={focusCoffeeId}
-		onClose={handleSidebarClose}
-		{parseTastingNotes}
-	/>
+	<!-- Mobile canvas overlay -->
+	{#if mobileCanvasOpen}
+		<div class="fixed inset-0 z-50 flex flex-col bg-background-primary-light md:hidden">
+			<div class="flex items-center justify-between border-b border-border-light px-4 py-3">
+				<span class="text-sm font-medium text-text-primary-light">
+					Canvas ({canvasStore.blockCount})
+				</span>
+				<button
+					onclick={() => (mobileCanvasOpen = false)}
+					class="rounded-md px-3 py-1 text-sm text-text-secondary-light transition-colors hover:text-text-primary-light"
+				>
+					Close
+				</button>
+			</div>
+			<div class="flex-1 overflow-hidden">
+				<Canvas
+					onAction={handleBlockAction}
+					onScrollToMessage={(msgId: string) => {
+						mobileCanvasOpen = false;
+						setTimeout(() => scrollToMessage(msgId), 300);
+					}}
+					onExecuteAction={executeAction}
+				/>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Mobile floating indicator -->
+	{#if !canvasStore.isEmpty && !mobileCanvasOpen}
+		<button
+			onclick={() => (mobileCanvasOpen = true)}
+			class="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 rounded-full bg-background-tertiary-light px-3 py-2 text-sm text-white shadow-lg transition-transform hover:scale-105 md:hidden"
+		>
+			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+				/>
+			</svg>
+			{canvasStore.blockCount}
+		</button>
+	{/if}
 {/if}
 
 <style>
 	.message-fade-in {
 		animation: messageFadeIn 0.3s ease-out;
+	}
+
+	.preview-fade-in {
+		animation: previewFadeIn 0.25s ease-out;
+	}
+
+	:global(.message-highlight) {
+		animation: highlightPulse 2s ease-out;
 	}
 
 	@keyframes messageFadeIn {
@@ -819,19 +1247,21 @@
 		}
 	}
 
-	/* Delayed fade-in for coffee cards */
-	:global(.animate-fade-in-delayed) {
-		animation: fadeInDelayed 0.8s ease-out 0.4s both;
-	}
-
-	@keyframes fadeInDelayed {
+	@keyframes previewFadeIn {
 		from {
 			opacity: 0;
-			transform: translateY(10px);
 		}
 		to {
 			opacity: 1;
-			transform: translateY(0);
+		}
+	}
+
+	@keyframes highlightPulse {
+		0% {
+			background-color: rgba(99, 102, 241, 0.15);
+		}
+		100% {
+			background-color: transparent;
 		}
 	}
 </style>

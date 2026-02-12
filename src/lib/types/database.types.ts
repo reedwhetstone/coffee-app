@@ -795,6 +795,32 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			user_ai_context: {
+				Row: {
+					global_summary: string | null;
+					updated_at: string | null;
+					user_id: string;
+				};
+				Insert: {
+					global_summary?: string | null;
+					updated_at?: string | null;
+					user_id: string;
+				};
+				Update: {
+					global_summary?: string | null;
+					updated_at?: string | null;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'user_ai_context_user_id_fkey';
+						columns: ['user_id'];
+						isOneToOne: true;
+						referencedRelation: 'user_roles';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			user_roles: {
 				Row: {
 					created_at: string;
@@ -824,6 +850,85 @@ export type Database = {
 					user_role?: string[];
 				};
 				Relationships: [];
+			};
+			workspace_messages: {
+				Row: {
+					canvas_mutations: Json | null;
+					content: string;
+					created_at: string | null;
+					id: string;
+					parts: Json | null;
+					role: string;
+					workspace_id: string;
+				};
+				Insert: {
+					canvas_mutations?: Json | null;
+					content: string;
+					created_at?: string | null;
+					id?: string;
+					parts?: Json | null;
+					role: string;
+					workspace_id: string;
+				};
+				Update: {
+					canvas_mutations?: Json | null;
+					content?: string;
+					created_at?: string | null;
+					id?: string;
+					parts?: Json | null;
+					role?: string;
+					workspace_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'workspace_messages_workspace_id_fkey';
+						columns: ['workspace_id'];
+						isOneToOne: false;
+						referencedRelation: 'workspaces';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			workspaces: {
+				Row: {
+					canvas_state: Json | null;
+					context_summary: string | null;
+					created_at: string | null;
+					id: string;
+					last_accessed_at: string | null;
+					title: string;
+					type: string;
+					user_id: string;
+				};
+				Insert: {
+					canvas_state?: Json | null;
+					context_summary?: string | null;
+					created_at?: string | null;
+					id?: string;
+					last_accessed_at?: string | null;
+					title?: string;
+					type?: string;
+					user_id: string;
+				};
+				Update: {
+					canvas_state?: Json | null;
+					context_summary?: string | null;
+					created_at?: string | null;
+					id?: string;
+					last_accessed_at?: string | null;
+					title?: string;
+					type?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'workspaces_user_id_fkey';
+						columns: ['user_id'];
+						isOneToOne: false;
+						referencedRelation: 'user_roles';
+						referencedColumns: ['id'];
+					}
+				];
 			};
 		};
 		Views: {
