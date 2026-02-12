@@ -16,6 +16,17 @@ async function waitForNetworkIdle(page: Page, timeout = 3000) {
 }
 
 /**
+ * Wait for a successful POST response to a URL pattern.
+ * Returns the response so callers can assert on status/body.
+ */
+async function waitForSuccessfulSubmission(page: Page, urlPattern: string) {
+	const response = await page.waitForResponse(
+		(resp) => resp.url().includes(urlPattern) && resp.request().method() === 'POST'
+	);
+	return response;
+}
+
+/**
  * Navigate to beans page via sidebar
  */
 async function navigateToBeans(page: Page) {
@@ -286,6 +297,73 @@ test.describe('Roast Profiles', () => {
 		// Verify profile was created (should see it in the list)
 		await expect(page.getByRole('button', { name: /Browse Profiles/i })).toBeVisible();
 
+		// Assert no server errors during submission
+		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(submissionErrors).toHaveLength(0);
+
+		logErrors(consoleErrors, networkErrors);
+	});
+
+	test('can create roast profile from dropdown without pre-selected bean', async ({ page }) => {
+		const { consoleErrors, networkErrors } = setupErrorCollection(page);
+
+		// Navigate directly to /roast (no pre-selected bean)
+		await page.goto('/roast');
+		await page.waitForLoadState('networkidle');
+
+		// Open the roast form via ActionsBar "New Roast" button
+		await page
+			.getByRole('button', { name: /Toggle actions|New Roast/i })
+			.first()
+			.click();
+
+		const newRoastBtn = page.getByRole('button', { name: 'New Roast' });
+		if (await newRoastBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+			await newRoastBtn.click();
+		}
+
+		// Wait for the coffee dropdown to appear (confirms form modal is open)
+		const coffeeSelect = page.locator('#coffee_select_0');
+		await coffeeSelect.waitFor({ state: 'visible' });
+
+		// Wait for options to load (more than just the placeholder)
+		await expect(coffeeSelect.locator('option')).not.toHaveCount(1, { timeout: 5000 });
+
+		// Select the first real coffee option (skip placeholder at index 0)
+		const options = await coffeeSelect.locator('option').allTextContents();
+		expect(options.length).toBeGreaterThan(1); // Must have at least placeholder + 1 coffee
+		await coffeeSelect.selectOption({ index: 1 });
+
+		// Assert the dropdown retained its value (the bug was it would revert)
+		const selectedValue = await coffeeSelect.inputValue();
+		expect(selectedValue).not.toBe('');
+
+		// Assert batch name auto-populated from the selection
+		const batchNameInput = page.locator('#batch_name');
+		const batchNameValue = await batchNameInput.inputValue();
+		expect(batchNameValue.length).toBeGreaterThan(0);
+
+		// Fill remaining required fields
+		await page.locator('#oz_in_0').fill('8');
+		await page.locator('#roast_targets').fill('Medium roast, city+');
+		await page.locator('#roast_notes').fill('Dropdown test ' + Date.now());
+
+		// Submit and intercept the API response
+		const [response] = await Promise.all([
+			waitForSuccessfulSubmission(page, '/api/roast-profiles'),
+			page.getByRole('button', { name: /Create Roast Profile/i }).click()
+		]);
+
+		// Assert the API returned success
+		expect(response.status()).toBeLessThan(400);
+
+		// Assert the form modal closed (indicates success)
+		await expect(page.locator('#coffee_select_0')).not.toBeVisible({ timeout: 5000 });
+
+		// Assert no server errors occurred
+		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(submissionErrors).toHaveLength(0);
+
 		logErrors(consoleErrors, networkErrors);
 	});
 
@@ -433,6 +511,10 @@ test.describe('Sales Management', () => {
 		// Create sale
 		await page.getByRole('button', { name: /Create Sale/i }).click();
 		await waitForNetworkIdle(page);
+
+		// Assert no server errors during submission
+		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(submissionErrors).toHaveLength(0);
 
 		logErrors(consoleErrors, networkErrors);
 	});

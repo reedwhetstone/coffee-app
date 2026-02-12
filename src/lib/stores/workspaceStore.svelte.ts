@@ -192,6 +192,9 @@ async function deleteWorkspace(workspaceId: string): Promise<boolean> {
 		const res = await fetch(`/api/workspaces/${workspaceId}`, { method: 'DELETE' });
 		if (!res.ok) throw new Error('Failed to delete workspace');
 		workspaces = workspaces.filter((w: Workspace) => w.id !== workspaceId);
+		// Clean up saved message count for deleted workspace
+		savedMessageCounts = new Map(savedMessageCounts);
+		savedMessageCounts.delete(workspaceId);
 		if (currentWorkspaceId === workspaceId) {
 			currentWorkspaceId = workspaces.length > 0 ? workspaces[0].id : null;
 			persistWorkspaceId(currentWorkspaceId);

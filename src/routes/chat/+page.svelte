@@ -50,29 +50,31 @@
 				const pos = i + 1;
 				switch (block.type) {
 					case 'coffee-cards': {
-						const names = block.data
+						const items = Array.isArray(block.data) ? block.data : [];
+						const names = items
 							.slice(0, 5)
-							.map((c) => c.name || 'Unknown')
+							.map((c) => c?.name || 'Unknown')
 							.join(', ');
-						return `${pos}. Coffee cards: ${names}${block.data.length > 5 ? ` (+${block.data.length - 5} more)` : ''}`;
+						return `${pos}. Coffee cards: ${names}${items.length > 5 ? ` (+${items.length - 5} more)` : ''}`;
 					}
 					case 'roast-profiles': {
-						const names = block.data
+						const items = Array.isArray(block.data) ? block.data : [];
+						const names = items
 							.slice(0, 5)
-							.map((r) => `${r.coffee_name} (${r.roast_date})`)
+							.map((r) => `${r?.coffee_name || 'Unknown'} (${r?.roast_date || '?'})`)
 							.join(', ');
-						return `${pos}. Roast profiles: ${names}${block.data.length > 5 ? ` (+${block.data.length - 5} more)` : ''}`;
+						return `${pos}. Roast profiles: ${names}${items.length > 5 ? ` (+${items.length - 5} more)` : ''}`;
 					}
 					case 'roast-chart':
-						return `${pos}. Roast temperature chart (roast #${block.data.roastId})`;
+						return `${pos}. Roast temperature chart (roast #${block.data?.roastId || '?'})`;
 					case 'inventory-table': {
-						const count = block.data.length;
-						return `${pos}. Inventory table (${count} beans)`;
+						const items = Array.isArray(block.data) ? block.data : [];
+						return `${pos}. Inventory table (${items.length} beans)`;
 					}
 					case 'tasting-radar':
-						return `${pos}. Tasting radar: ${block.data.beanName}`;
+						return `${pos}. Tasting radar: ${block.data?.beanName || 'Unknown'}`;
 					case 'action-card':
-						return `${pos}. Action card: ${block.data.summary} [${block.data.status}]`;
+						return `${pos}. Action card: ${block.data?.summary || 'Action'} [${block.data?.status || 'unknown'}]`;
 					default:
 						return `${pos}. ${block.type.replace(/-/g, ' ')}`;
 				}
@@ -87,11 +89,18 @@
 		};
 	}
 
+	// ─── Chat error display ──────────────────────────────────────────────────
+	let chatError = $state<string | null>(null);
+
 	// ─── Vercel AI SDK Chat Instance ───────────────────────────────────────────
 	const chat = new Chat({
 		transport: new DefaultChatTransport({ api: '/api/chat' }),
 		onError: (error) => {
 			console.error('Chat error:', error);
+			chatError = error instanceof Error ? error.message : 'An error occurred. Please try again.';
+			setTimeout(() => {
+				chatError = null;
+			}, 8000);
 		}
 	});
 
@@ -121,7 +130,10 @@
 					new Blob([JSON.stringify({ messages: toSave })], { type: 'application/json' })
 				);
 			}
-			// Save canvas state
+			// Save canvas state (including pinned, minimized, focusBlockId)
+			const fIdx = canvasStore.focusBlockId
+				? canvasStore.blocks.findIndex((b: CanvasBlock) => b.id === canvasStore.focusBlockId)
+				: -1;
 			navigator.sendBeacon(
 				`/api/workspaces/${wsId}/canvas`,
 				new Blob(
@@ -131,9 +143,12 @@
 								blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
 									block: b.block,
 									messageId: b.messageId,
-									pinned: b.pinned
+									pinned: b.pinned,
+									minimized: b.minimized
 								})),
-								layout: canvasStore.layout
+								layout: canvasStore.layout,
+								focusBlockId: canvasStore.focusBlockId,
+								focusBlockIndex: fIdx >= 0 ? fIdx : undefined
 							}
 						})
 					],
@@ -201,7 +216,7 @@
 			chat.messages = restored as any;
 		}
 
-		// Restore canvas state
+		// Restore canvas state (including pinned, minimized, focusBlockId)
 		if (
 			result.workspace.canvas_state &&
 			typeof result.workspace.canvas_state === 'object' &&
@@ -214,11 +229,32 @@
 				for (const cb of cs.blocks) {
 					if (cb.block) {
 						canvasStore.dispatch({ type: 'add', block: cb.block, messageId: cb.messageId || '' });
+						// Restore pinned state
+						if (cb.pinned) {
+							const addedBlock = canvasStore.blocks[canvasStore.blocks.length - 1];
+							if (addedBlock) {
+								canvasStore.dispatch({ type: 'pin', blockId: addedBlock.id });
+							}
+						}
+						// Restore minimized state
+						if (cb.minimized) {
+							const addedBlock = canvasStore.blocks[canvasStore.blocks.length - 1];
+							if (addedBlock) {
+								canvasStore.dispatch({ type: 'minimize', blockId: addedBlock.id });
+							}
+						}
 					}
 				}
 			}
 			if (cs.layout) {
 				canvasStore.dispatch({ type: 'layout', layout: cs.layout });
+			}
+			// Restore focus block by index (IDs regenerate, so match by position)
+			if (cs.focusBlockId != null && typeof cs.focusBlockIndex === 'number') {
+				const targetBlock = canvasStore.blocks[cs.focusBlockIndex];
+				if (targetBlock) {
+					canvasStore.dispatch({ type: 'focus', blockId: targetBlock.id });
+				}
 			}
 		}
 	}
@@ -276,14 +312,20 @@
 			await workspaceStore.saveMessages(wsId, toSave);
 		}
 
-		// Save canvas state
+		// Save canvas state (including pinned, minimized, focusBlockId)
+		const focusIdx = canvasStore.focusBlockId
+			? canvasStore.blocks.findIndex((b: CanvasBlock) => b.id === canvasStore.focusBlockId)
+			: -1;
 		await workspaceStore.saveCanvasState(wsId, {
 			blocks: canvasStore.blocks.map((b: CanvasBlock) => ({
 				block: b.block,
 				messageId: b.messageId,
-				pinned: b.pinned
+				pinned: b.pinned,
+				minimized: b.minimized
 			})),
-			layout: canvasStore.layout
+			layout: canvasStore.layout,
+			focusBlockId: canvasStore.focusBlockId,
+			focusBlockIndex: focusIdx >= 0 ? focusIdx : undefined
 		});
 	}
 
@@ -325,21 +367,24 @@
 		}
 	});
 
-	// Scroll during streaming — track content growth via parts length
+	// Scroll during streaming — throttled to avoid scroll thrashing
+	let lastScrollTime = 0;
 	$effect(() => {
 		if (!isActive || !shouldScrollToBottom || !chatContainer) return;
 		// Access the last message's parts to create a reactive dependency on streaming content
 		const lastMsg = chat.messages[chat.messages.length - 1];
 		if (lastMsg) {
-			// Touch parts to trigger re-run as streaming appends content
 			const _partsLen = lastMsg.parts.length;
-			// Also touch the last text part's content for character-level reactivity
 			const lastTextPart = lastMsg.parts.findLast((p) => p.type === 'text');
 			if (lastTextPart) {
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const _textLen = (lastTextPart as any).text?.length;
 			}
 		}
+		// Throttle scrolls to at most once per 100ms during streaming
+		const now = Date.now();
+		if (now - lastScrollTime < 100) return;
+		lastScrollTime = now;
 		requestAnimationFrame(() => {
 			chatContainer?.scrollTo({ top: chatContainer.scrollHeight });
 		});
@@ -354,6 +399,31 @@
 
 	let isActive = $derived(chat.status === 'streaming' || chat.status === 'submitted');
 
+	// Progressive disclosure: collapse old tool previews
+	// Messages more than COLLAPSE_THRESHOLD exchanges old get collapsed previews
+	const COLLAPSE_THRESHOLD = 10; // collapse previews on messages older than 10 from the end
+	let expandedMessages = $state(new Set<string>());
+
+	function isOldMessage(msgIndex: number, totalMessages: number): boolean {
+		return totalMessages - msgIndex > COLLAPSE_THRESHOLD;
+	}
+
+	function getCollapsedSummary(parts: unknown[]): string {
+		let blockCount = 0;
+		const types: string[] = [];
+		for (const part of parts) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const p = part as any;
+			if (p?.type?.startsWith('tool-') && p.state === 'output-available') {
+				blockCount++;
+				const name = (p.toolName ?? p.type.replace('tool-', '')).replace(/_/g, ' ');
+				if (name !== 'present results' && !types.includes(name)) types.push(name);
+			}
+		}
+		if (blockCount === 0) return '';
+		return `${blockCount} tool result${blockCount > 1 ? 's' : ''}${types.length > 0 ? `: ${types.join(', ')}` : ''}`;
+	}
+
 	// Context-aware suggestions above input
 	let suggestions = $derived(
 		getSuggestions(
@@ -363,21 +433,23 @@
 		)
 	);
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function asToolPart(part: unknown): any {
-		return part;
-	}
+
 
 	// ─── Canvas panel state ──────────────────────────────────────────────────
 	let canvasOpen = $state(false);
+	let hasUserClosedCanvas = $state(false);
 	let dividerDragging = $state(false);
 	let chatWidthPercent = $state(60); // Chat takes 60% by default
 	let mobileCanvasOpen = $state(false);
 
-	// Auto-open canvas when blocks arrive
+	// Auto-open canvas when blocks arrive, but respect user's explicit close
 	$effect(() => {
-		if (!canvasStore.isEmpty && !canvasOpen) {
+		if (!canvasStore.isEmpty && !canvasOpen && !hasUserClosedCanvas) {
 			canvasOpen = true;
+		}
+		// Reset the user-closed flag when canvas is cleared
+		if (canvasStore.isEmpty) {
+			hasUserClosedCanvas = false;
 		}
 	});
 
@@ -409,28 +481,40 @@
 				const mutations = extractCanvasMutationsFromPart(p, block, message.id);
 				if (mutations) {
 					for (const m of mutations) canvasStore.dispatch(m);
-					dispatchedParts = new Set([...dispatchedParts, partKey]);
+					dispatchedParts.add(partKey);
 				} else if (block && block.type !== 'error') {
 					// Non-present_results tools: auto-add to canvas
 					canvasStore.dispatch({ type: 'add', block, messageId: message.id });
-					dispatchedParts = new Set([...dispatchedParts, partKey]);
+					dispatchedParts.add(partKey);
 
 					// Also dispatch companion blocks (e.g., roast-chart for single roast profile)
 					const companions = extractCompanionBlocks(p);
-					for (const companion of companions) {
-						canvasStore.dispatch({ type: 'add', block: companion, messageId: message.id });
+					for (let ci = 0; ci < companions.length; ci++) {
+						const companionKey = `${partKey}-companion-${ci}`;
+						if (!dispatchedParts.has(companionKey)) {
+							canvasStore.dispatch({
+								type: 'add',
+								block: companions[ci],
+								messageId: message.id
+							});
+							dispatchedParts.add(companionKey);
+						}
 					}
 				}
 			}
 		}
 	});
 
-	// Build a lookup: messageId + toolInvocationId → canvasBlockId
+	// Build a lookup: messageId → canvasBlockId[] (supports multiple blocks per message)
 	let canvasBlockLookup = $derived(() => {
-		const map = new Map<string, string>();
+		const map = new Map<string, string[]>();
 		for (const cb of canvasStore.blocks) {
-			// Map messageId to the canvas block (simplified: last one wins per message)
-			map.set(cb.messageId, cb.id);
+			const existing = map.get(cb.messageId);
+			if (existing) {
+				existing.push(cb.id);
+			} else {
+				map.set(cb.messageId, [cb.id]);
+			}
 		}
 		return map;
 	});
@@ -528,18 +612,32 @@
 
 	// ─── Action Card Execution ───────────────────────────────────────────────
 	async function executeAction(actionType: string, fields: Record<string, unknown>) {
-		const response = await fetch('/api/chat/execute-action', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ actionType, fields })
-		});
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-		if (!response.ok) {
-			const data = await response.json();
-			throw new Error(data.error || 'Action execution failed');
+		try {
+			const response = await fetch('/api/chat/execute-action', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ actionType, fields }),
+				signal: controller.signal
+			});
+
+			clearTimeout(timeoutId);
+
+			if (!response.ok) {
+				const data = await response.json().catch(() => ({ error: 'Unknown error' }));
+				throw new Error(data.error || 'Action execution failed');
+			}
+
+			return response.json();
+		} catch (err) {
+			clearTimeout(timeoutId);
+			if (err instanceof DOMException && err.name === 'AbortError') {
+				throw new Error('Action timed out after 30 seconds');
+			}
+			throw err;
 		}
-
-		return response.json();
 	}
 
 	// ─── Slash command completions ────────────────────────────────────────────
@@ -711,7 +809,11 @@
 								Canvas ({canvasStore.blockCount})
 							</button>
 							<button
-								onclick={() => (canvasOpen = !canvasOpen)}
+								onclick={() => {
+									canvasOpen = !canvasOpen;
+									if (!canvasOpen) hasUserClosedCanvas = true;
+									else hasUserClosedCanvas = false;
+								}}
 								class="hidden rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light md:block"
 							>
 								{canvasOpen ? 'Hide' : 'Show'} Canvas ({canvasStore.blockCount})
@@ -838,47 +940,88 @@
 
 										<!-- Inline previews render after streaming completes -->
 										{#if !isStreaming}
-											{#each message.parts as part}
-												{#if part.type.startsWith('tool-')}
-													{@const toolPart = asToolPart(part)}
-													{@const block = extractBlockFromPart(toolPart, extractorOptions)}
-													{#if block}
-														{@const lookup = canvasBlockLookup()}
-														{@const canvasId = lookup.get(message.id)}
-														<div class="preview-fade-in my-1">
-															<GenUIBlockRenderer
-																{block}
-																renderMode="chat"
-																onAction={handleBlockAction}
-																canvasBlockId={canvasId}
-															/>
-														</div>
-														<!-- Companion block previews (e.g., roast chart for single roast) -->
-														{@const companions = extractCompanionBlocks(toolPart)}
-														{#each companions as companionBlock}
+											{@const isOld = isOldMessage(msgIndex, chat.messages.length)}
+											{@const isExpanded = expandedMessages.has(message.id)}
+											{@const collapsedSummary = isOld && !isExpanded ? getCollapsedSummary(message.parts) : ''}
+											{#if isOld && !isExpanded && collapsedSummary}
+												<!-- Collapsed preview summary for old messages -->
+												<button
+													onclick={() => {
+														expandedMessages.add(message.id);
+														expandedMessages = new Set(expandedMessages);
+													}}
+													class="flex items-center gap-1.5 rounded-md border border-border-light bg-background-secondary-light px-3 py-1.5 text-xs text-text-secondary-light transition-colors hover:text-text-primary-light"
+												>
+													<svg
+														class="h-3.5 w-3.5"
+														fill="none"
+														stroke="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															stroke-width="2"
+															d="M9 5l7 7-7 7"
+														/>
+													</svg>
+													{collapsedSummary}
+												</button>
+											{:else}
+												{#each message.parts as part}
+													{#if part.type.startsWith('tool-')}
+														{@const toolPart = part as any}
+														{@const block = extractBlockFromPart(toolPart, extractorOptions)}
+														{#if block}
+															{@const lookup = canvasBlockLookup()}
+															{@const canvasIds = lookup.get(message.id) || []}
+															{@const canvasId = canvasIds[0]}
 															<div class="preview-fade-in my-1">
 																<GenUIBlockRenderer
-																	block={companionBlock}
+																	{block}
 																	renderMode="chat"
 																	onAction={handleBlockAction}
 																	canvasBlockId={canvasId}
 																/>
 															</div>
-														{/each}
-													{:else if toolPart.state === 'output-error'}
-														{@const errorBlock = extractBlockFromPart(toolPart)}
-														{#if errorBlock}
-															<div class="preview-fade-in my-1">
-																<GenUIBlockRenderer
-																	block={errorBlock}
-																	renderMode="chat"
-																	onAction={handleBlockAction}
-																/>
-															</div>
+															<!-- Companion block previews (e.g., roast chart for single roast) -->
+															{@const companions = extractCompanionBlocks(toolPart)}
+															{#each companions as companionBlock}
+																<div class="preview-fade-in my-1">
+																	<GenUIBlockRenderer
+																		block={companionBlock}
+																		renderMode="chat"
+																		onAction={handleBlockAction}
+																		canvasBlockId={canvasId}
+																	/>
+																</div>
+															{/each}
+														{:else if toolPart.state === 'output-error'}
+															{@const errorBlock = extractBlockFromPart(toolPart)}
+															{#if errorBlock}
+																<div class="preview-fade-in my-1">
+																	<GenUIBlockRenderer
+																		block={errorBlock}
+																		renderMode="chat"
+																		onAction={handleBlockAction}
+																	/>
+																</div>
+															{/if}
 														{/if}
 													{/if}
+												{/each}
+												{#if isOld && isExpanded}
+													<button
+														onclick={() => {
+															expandedMessages.delete(message.id);
+															expandedMessages = new Set(expandedMessages);
+														}}
+														class="text-xs text-text-secondary-light hover:text-text-primary-light"
+													>
+														Collapse previews
+													</button>
 												{/if}
-											{/each}
+											{/if}
 										{/if}
 									</div>
 								{/if}
@@ -893,6 +1036,37 @@
 						</div>
 					{/if}
 				</div>
+
+				<!-- Chat error banner -->
+				{#if chatError}
+					<div
+						class="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700"
+					>
+						<svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
+							/>
+						</svg>
+						<span class="flex-1">{chatError}</span>
+						<button
+							onclick={() => (chatError = null)}
+							class="shrink-0 text-red-500 hover:text-red-700"
+							aria-label="Dismiss error"
+						>
+							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
+							</svg>
+						</button>
+					</div>
+				{/if}
 
 				<!-- Input area -->
 				<div class="border-t border-border-light bg-background-secondary-light p-4">

@@ -144,6 +144,7 @@ export interface ActionField {
 export interface ActionCardPayload {
 	actionType: ActionType;
 	summary: string;
+	reasoning?: string;
 	fields: ActionField[];
 	status: 'proposed' | 'executing' | 'success' | 'failed';
 	result?: unknown;

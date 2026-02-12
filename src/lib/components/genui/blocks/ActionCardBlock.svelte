@@ -192,6 +192,13 @@
 		</span>
 	</div>
 
+	<!-- AI Reasoning -->
+	{#if block.data.reasoning}
+		<div class="mb-3 rounded-md bg-background-primary-light px-3 py-2 text-sm italic text-text-secondary-light">
+			{block.data.reasoning}
+		</div>
+	{/if}
+
 	<!-- Fields -->
 	<div class="space-y-2">
 		{#each localFields as field (field.key)}

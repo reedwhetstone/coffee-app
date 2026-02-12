@@ -153,7 +153,13 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				cost_per_lb: z.number().optional().describe('Cost per pound in dollars'),
 				tax_ship_cost: z.number().optional().describe('Tax and shipping cost (total)'),
 				purchase_date: z.string().optional().describe('Purchase date (YYYY-MM-DD)'),
-				notes: z.string().optional().describe('Notes about this purchase')
+				notes: z.string().optional().describe('Notes about this purchase'),
+				reasoning: z
+					.string()
+					.optional()
+					.describe(
+						'Brief explanation of why this action is being proposed, e.g. "Adding this Ethiopian natural based on your interest in fruity coffees"'
+					)
 			}),
 			execute: async (input) => {
 				// Fetch all stocked catalog beans for the dropdown
@@ -200,6 +206,7 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					action_card: {
 						actionType: 'add_bean_to_inventory',
 						summary: `Add ${preSelectedLabel || input.manual_name || `catalog #${input.catalog_id}`} to inventory (${qty} lbs)`,
+						reasoning: input.reasoning,
 						fields: [
 							// Source filter + Bean dropdown (if we have catalog options) or manual name fallback
 							...(beanSelectOptions.length > 0
@@ -334,12 +341,14 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				rank: z.number().optional().describe('Bean ranking (1-5)'),
 				notes: z.string().optional().describe('Updated notes'),
 				stocked: z.boolean().optional().describe('Whether the bean is currently stocked'),
-				purchased_qty_lbs: z.number().optional().describe('Updated quantity')
+				purchased_qty_lbs: z.number().optional().describe('Updated quantity'),
+				reasoning: z.string().optional().describe('Brief explanation of why this update is proposed')
 			}),
 			execute: async (input) => ({
 				action_card: {
 					actionType: 'update_bean',
 					summary: `Update inventory bean #${input.bean_id}`,
+					reasoning: input.reasoning,
 					fields: [
 						{
 							key: 'bean_id',
@@ -401,12 +410,14 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				roast_date: z.string().optional().describe('Roast date (YYYY-MM-DD)'),
 				oz_in: z.number().optional().describe('Weight in (oz)'),
 				roast_notes: z.string().optional().describe('Roast notes or targets'),
-				roaster_type: z.string().optional().describe('Roaster type')
+				roaster_type: z.string().optional().describe('Roaster type'),
+				reasoning: z.string().optional().describe('Brief explanation of why this roast session is proposed')
 			}),
 			execute: async (input) => ({
 				action_card: {
 					actionType: 'create_roast_session',
 					summary: `Create roast session: ${input.batch_name} (${input.coffee_name})`,
+					reasoning: input.reasoning,
 					fields: [
 						{
 							key: 'coffee_id',
@@ -480,12 +491,14 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 			inputSchema: z.object({
 				roast_id: z.number().describe('Roast profile ID'),
 				roast_notes: z.string().optional().describe('Updated roast notes'),
-				roast_targets: z.string().optional().describe('Updated roast targets')
+				roast_targets: z.string().optional().describe('Updated roast targets'),
+				reasoning: z.string().optional().describe('Brief explanation of why these notes are proposed')
 			}),
 			execute: async (input) => ({
 				action_card: {
 					actionType: 'update_roast_notes',
 					summary: `Update notes for roast #${input.roast_id}`,
+					reasoning: input.reasoning,
 					fields: [
 						{
 							key: 'roast_id',
@@ -530,12 +543,14 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				oz_sold: z.number().describe('Ounces sold'),
 				price: z.number().describe('Sale price ($)'),
 				buyer: z.string().describe('Buyer name'),
-				sell_date: z.string().optional().describe('Sale date (YYYY-MM-DD)')
+				sell_date: z.string().optional().describe('Sale date (YYYY-MM-DD)'),
+				reasoning: z.string().optional().describe('Brief explanation of why this sale is being recorded')
 			}),
 			execute: async (input) => ({
 				action_card: {
 					actionType: 'record_sale',
 					summary: `Record sale: ${input.oz_sold}oz of ${input.batch_name} to ${input.buyer} ($${input.price})`,
+					reasoning: input.reasoning,
 					fields: [
 						{
 							key: 'green_coffee_inv_id',

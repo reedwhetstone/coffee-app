@@ -44,7 +44,10 @@ function getCanvasSuggestions(blocks: CanvasBlock[]): Suggestion[] {
 	const suggestions: Suggestion[] = [];
 	const blockTypes = new Set(blocks.map((b) => b.block.type));
 
-	if (blockTypes.has('coffee-cards') && blocks.length >= 2) {
+	if (
+		blockTypes.has('coffee-cards') &&
+		blocks.filter((b) => b.block.type === 'coffee-cards').length >= 2
+	) {
 		suggestions.push({
 			label: 'Compare these',
 			text: 'Compare the coffees currently on the canvas and recommend the best one for me.'

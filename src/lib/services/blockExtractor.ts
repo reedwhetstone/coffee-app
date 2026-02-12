@@ -152,6 +152,7 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 			data: {
 				actionType: card.actionType as ActionType,
 				summary: card.summary as string,
+				reasoning: card.reasoning as string | undefined,
 				fields: (card.fields || []) as ActionCardBlock['data']['fields'],
 				status: (card.status as ActionCardBlock['data']['status']) || 'proposed',
 				result: card.result,
@@ -252,7 +253,26 @@ function buildPresentedBlock(
 		} satisfies RoastProfilesBlock;
 	}
 
-	// TODO: Phase 2 — handle green_coffee_inventory
+	if (sourceTool === 'green_coffee_inventory') {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const inventory: any[] = [];
+
+		for (const item of items) {
+			const cached = cache?.get(item.id);
+			if (cached) {
+				inventory.push(cached);
+			}
+		}
+
+		if (inventory.length === 0) return null;
+
+		return {
+			type: 'inventory-table',
+			version: 1,
+			data: inventory
+		} satisfies InventoryTableBlock;
+	}
+
 	return null;
 }
 
