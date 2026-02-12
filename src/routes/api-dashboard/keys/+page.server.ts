@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const apiKeysResult = await getUserApiKeys(user.id);
 
 	if (!apiKeysResult.success) {
-		console.error('Failed to load API keys:', apiKeysResult.error);
+		console.error('Failed to load API keys');
 		return {
 			apiKeys: [],
 			error: 'Failed to load API keys'
