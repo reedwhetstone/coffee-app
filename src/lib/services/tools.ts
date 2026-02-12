@@ -342,7 +342,10 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				notes: z.string().optional().describe('Updated notes'),
 				stocked: z.boolean().optional().describe('Whether the bean is currently stocked'),
 				purchased_qty_lbs: z.number().optional().describe('Updated quantity'),
-				reasoning: z.string().optional().describe('Brief explanation of why this update is proposed')
+				reasoning: z
+					.string()
+					.optional()
+					.describe('Brief explanation of why this update is proposed')
 			}),
 			execute: async (input) => ({
 				action_card: {
@@ -411,7 +414,10 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				oz_in: z.number().optional().describe('Weight in (oz)'),
 				roast_notes: z.string().optional().describe('Roast notes or targets'),
 				roaster_type: z.string().optional().describe('Roaster type'),
-				reasoning: z.string().optional().describe('Brief explanation of why this roast session is proposed')
+				reasoning: z
+					.string()
+					.optional()
+					.describe('Brief explanation of why this roast session is proposed')
 			}),
 			execute: async (input) => ({
 				action_card: {
@@ -492,7 +498,10 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				roast_id: z.number().describe('Roast profile ID'),
 				roast_notes: z.string().optional().describe('Updated roast notes'),
 				roast_targets: z.string().optional().describe('Updated roast targets'),
-				reasoning: z.string().optional().describe('Brief explanation of why these notes are proposed')
+				reasoning: z
+					.string()
+					.optional()
+					.describe('Brief explanation of why these notes are proposed')
 			}),
 			execute: async (input) => ({
 				action_card: {
@@ -544,7 +553,10 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				price: z.number().describe('Sale price ($)'),
 				buyer: z.string().describe('Buyer name'),
 				sell_date: z.string().optional().describe('Sale date (YYYY-MM-DD)'),
-				reasoning: z.string().optional().describe('Brief explanation of why this sale is being recorded')
+				reasoning: z
+					.string()
+					.optional()
+					.describe('Brief explanation of why this sale is being recorded')
 			}),
 			execute: async (input) => ({
 				action_card: {

@@ -433,8 +433,6 @@
 		)
 	);
 
-
-
 	// ─── Canvas panel state ──────────────────────────────────────────────────
 	let canvasOpen = $state(false);
 	let hasUserClosedCanvas = $state(false);
@@ -942,7 +940,8 @@
 										{#if !isStreaming}
 											{@const isOld = isOldMessage(msgIndex, chat.messages.length)}
 											{@const isExpanded = expandedMessages.has(message.id)}
-											{@const collapsedSummary = isOld && !isExpanded ? getCollapsedSummary(message.parts) : ''}
+											{@const collapsedSummary =
+												isOld && !isExpanded ? getCollapsedSummary(message.parts) : ''}
 											{#if isOld && !isExpanded && collapsedSummary}
 												<!-- Collapsed preview summary for old messages -->
 												<button
@@ -970,7 +969,7 @@
 											{:else}
 												{#each message.parts as part}
 													{#if part.type.startsWith('tool-')}
-														{@const toolPart = part as any}
+														{@const toolPart = part as Record<string, unknown>}
 														{@const block = extractBlockFromPart(toolPart, extractorOptions)}
 														{#if block}
 															{@const lookup = canvasBlockLookup()}
