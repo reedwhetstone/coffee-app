@@ -1,0 +1,97 @@
+---
+title: "Building a Coffee Data Pipeline from Scratch"
+date: "2026-02-20"
+description: "The most interesting thing about the purveyors data pipeline isn't the scraping. It's the recursive feedback loop, and what it reveals about directing AI agents."
+tags: ["data-pipeline", "scraping", "ai-agents", "coffee"]
+pillar: "coffee-data-pipeline"
+draft: false
+readingTime: 12
+---
+
+# Building a Coffee Data Pipeline from Scratch
+
+Every morning, I review a PR over coffee. The PR was written by an AI agent. It fixes a data quality issue the agent found overnight, tested against live supplier pages, and documented with before/after extraction rates. I check the diff, merge it, and move on. By the next morning, the data is cleaner.
+
+This has been the rhythm for weeks now. The scraper runs overnight across 12 green coffee suppliers. An audit system checks data quality. Findings get surfaced. The agent investigates, writes a fix, opens a PR. I review. Merge. The pipeline improves. Repeat.
+
+The scraper itself is interesting. Normalizing coffee data across a dozen suppliers with different tech stacks, different grading systems, and different conventions for describing the same product is a genuinely hard problem. But the most valuable thing we've built isn't the scraper. It's the loop.
+
+## The Loop Is the Product
+
+Scrape. Audit. Fix. Scrape again. Each cycle makes the data better. And the cycles are fast because an AI agent handles the full execution while I focus on direction.
+
+The purveyors data pipeline went from a messy prototype to 12 live suppliers producing clean, normalized data in a matter of weeks. Not because I sat down and perfected each adapter by hand. Because the feedback loop compounds. Every day the system gets a little better, and the improvements accumulate.
+
+Here's what a typical cycle looks like:
+
+1. The scraper runs nightly across all suppliers
+2. Post-scrape, an audit agent checks column completeness, extraction gaps, format validation, and source health
+3. Results surface as structured findings with severity levels
+4. The AI agent reviews findings, identifies root causes, and writes targeted fixes
+5. Fixes get tested against live data before going into a PR
+6. I review the PR and merge
+7. Next run is cleaner
+
+That's the entire workflow. I'm not writing scraper code. I'm directing strategy and reviewing output.
+
+## Why Data Pipelines Are the Perfect Proving Ground
+
+Not all work is equally suited to autonomous agents. The sweet spot is tasks with **clear pass/fail criteria**.
+
+Data is either clean or dirty. A country field either contains a valid country name or it doesn't. An altitude value is either formatted as MASL or it's garbage. An extraction that returns null for a field that's clearly visible on the supplier page is a miss.
+
+This is fundamentally different from creative work, strategy, or anything where quality is subjective. When an agent can programmatically verify whether it succeeded, it can close its own loop. It doesn't need a human to judge every output. It needs a human to set the goals, define the quality bar, and handle the edge cases that require judgment.
+
+This pattern maps to something bigger happening right now. TIME's January 2026 piece on [how AI changed work](https://time.com/7342494/ai-changed-work-forever/) put it well: "When anyone with a creative spark can orchestrate a cloud of AI agents to build prototypes, analyze markets, and test hypotheses, the cost of trying something new plummets." The key word is *orchestrate*. Not *do*.
+
+Analytics Vidhya's [2026 agent trends analysis](https://www.analyticsvidhya.com/blog/2026/01/ai-agents-trends/) makes the point even more directly: "Employees are no longer valued for completing tasks end to end, but for directing, supervising, and even refining the work done by agents. The core human skill becomes intent-setting."
+
+I think of this as the economy of directors. The leverage right now isn't in doing the work. It's in clearly articulating what needs to happen, setting up feedback loops that let agents self-correct, and focusing your own time on the decisions agents can't make. A data pipeline with deterministic quality signals is one of the cleanest demonstrations of this pattern I've found.
+
+## How the Pipeline Works
+
+For the technically curious, here's the architecture:
+
+**Source adapters.** Each supplier gets a Source class. Three patterns: custom Playwright scrapers for complex sites that need browser rendering, a generic Shopify adapter that hits `/products.json` (no browser, just HTTP), and a generic WooCommerce adapter. Eight suppliers use custom scrapers. Four are Shopify configs that took minutes to set up.
+
+**URL collection and stock sync.** Each source implements `collectInitUrlsData()`, which returns product URLs, prices, and basic metadata. The pipeline compares these against the database: mark missing products as unstocked, update prices for existing products, queue new products for full scraping.
+
+**LLM cleaning.** This is where it gets interesting. Raw product page text goes through a unified cleaner that makes at most 3 API calls per product: field extraction, description generation, and tasting notes. The extraction prompt is auto-generated from the canonical column schema. Add a field to the schema, the prompt updates automatically. No manual prompt engineering when the data model evolves.
+
+**Post-processing.** Deterministic cleanup after the LLM pass: continent lookup from country, MASL format validation, date normalization, country name standardization. This catches the things LLMs are unreliable at (consistent formatting) while letting them handle what they're good at (understanding messy product descriptions).
+
+**Audit.** After every scrape run, an audit agent checks five dimensions: column completeness per source, extraction gap analysis, format validation, run-over-run comparison, and overall source health scoring. The audit output is structured data, not prose. That's what makes it actionable for an agent.
+
+## The Feedback Loop in Practice
+
+Abstract descriptions of "recursive improvement" are easy to write and hard to believe. Here are three real scenarios from the past few weeks:
+
+**A supplier redesigns their site.** The scraper runs. Extraction rates for Sweet Maria's drop from 94% to 61%. The audit catches it immediately: "Column completeness degraded significantly." The agent investigates, finds changed page structure, writes an updated adapter with new selectors, tests it against live pages. PR opened with before/after completeness numbers. I merge. Next run: 96%.
+
+**A new supplier onboarding.** I say "add Cafe Kreyol." The agent researches the site, identifies it as WooCommerce, writes a source config, runs the test harness, validates output against the schema, opens a PR with sample extraction data. My total involvement: one sentence of direction and a PR review.
+
+**Data quality drift.** The audit notices altitude data for a supplier coming through as "1400-1800" instead of proper MASL format. The post-processor catches some variations but misses others. The agent adds a new normalization rule to handle the edge case, tests it against historical data to avoid regressions, opens a PR. Next scrape applies the fix retroactively.
+
+Every one of these follows the same pattern: automated detection, agent investigation, agent fix, human review, merge, improvement compounds. The human role is director. Set the quality bar. Review the work. Decide priorities. The agent handles everything between "here's a problem" and "here's a tested fix."
+
+## Onboarding Velocity
+
+The speed difference with an agent in the loop is significant. Adding a new Shopify supplier used to mean: research the site, figure out the data structure, write a config, test it, validate output, write the PR. A few hours of focused work.
+
+Now the agent maintains full context of the scraper codebase, the supplier integration rubric, the testing requirements, the PR conventions. It doesn't start from scratch each time. It has institutional memory of how the pipeline works and applies it systematically to new work. A new Shopify config goes from "add this supplier" to "PR ready for review" in minutes.
+
+This is the economy of directors in practice. I'm not writing scraper code. I'm saying "this supplier looks interesting, add it" and reviewing the output. The velocity difference is 10x, conservatively.
+
+## What the Data Shows
+
+The pipeline currently tracks 1,258 coffees across 12 suppliers. Pricing data, availability patterns, origin distribution, processing method breakdowns. This normalized dataset doesn't exist anywhere else. No single supplier has visibility into the broader market. We do, because we aggregate and normalize across all of them.
+
+That data tells a story about the green coffee market that nobody else is publishing. Seasonal availability shifts, pricing trends by origin, which suppliers carry the most unique lots. We're going to start sharing that analysis publicly. (More on this in a future market intelligence post.)
+
+## The Trend, and an Honest Question
+
+This pattern of "human directs, agent executes the full cycle" won't stay niche. As LLMs improve, the range of tasks with clear pass/fail criteria expands. Today it's data pipelines. Tomorrow it's test suites, compliance audits, financial reconciliation. Anywhere the output is verifiably correct or incorrect, agents can close their own loops.
+
+The honest question is whether the economy of directors is a stable equilibrium or a transitional phase. Maybe LLMs get good enough that they don't need human directors for these tasks at all. Maybe the "clear pass/fail" zone expands until it swallows most knowledge work. I don't know.
+
+But right now, the alpha is clearly in leveraging agents for the full execution cycle and focusing human attention on direction, strategy, and the judgment calls that don't have clean pass/fail signals. That's what we're doing with purveyors. And this blog will keep tracking how it evolves.
