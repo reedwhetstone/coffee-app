@@ -64,9 +64,10 @@
 	// Determine if we should show marketing layout (no sidebar)
 	let isMarketingPage = $derived(!data.session && page.url.pathname === '/');
 
-	// Determine if we should show the unified header (unauthenticated users on home or api pages)
+	// Determine if we should show the unified header (unauthenticated users on public pages)
+	let isBlogPage = $derived(page.url.pathname.startsWith('/blog'));
 	let shouldShowUnifiedHeader = $derived(
-		!data.session && (page.url.pathname === '/' || page.url.pathname === '/api')
+		!data.session && (page.url.pathname === '/' || page.url.pathname === '/api' || isBlogPage)
 	);
 </script>
 

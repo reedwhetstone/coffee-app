@@ -1,0 +1,16 @@
+---
+title: "What is Purveyors?"
+date: "2026-02-20"
+description: "Why the specialty coffee market needs a data-first platform, and where purveyors.io is going."
+tags: ["purveyors", "coffee", "vision"]
+pillar: "supply-chain"
+draft: true
+readingTime: 8
+---
+
+# What is Purveyors?
+
+*This is a draft. Voice calibration needed.*
+
+<!-- TODO: First post. Origin story + vision. The pitch for why this exists. -->
+<!-- Source material: notes/MARKET_ANALYSIS.md, brain/projects/purveyors-blog.md -->

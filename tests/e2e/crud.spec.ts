@@ -27,7 +27,7 @@ async function waitForSuccessfulSubmission(page: Page, urlPattern: string) {
 }
 
 /**
- * Navigate to beans page via sidebar
+ * Navigate to beans page via sidebar and wait for inventory data to load
  */
 async function navigateToBeans(page: Page) {
 	await page.goto('/catalog');
@@ -35,6 +35,8 @@ async function navigateToBeans(page: Page) {
 	await page.getByRole('link', { name: 'Beans' }).waitFor({ state: 'visible' });
 	await page.getByRole('link', { name: 'Beans' }).click();
 	await page.waitForURL(/\/beans/);
+	// Wait for inventory data to load (client-side fetch via filterStore)
+	await waitForNetworkIdle(page, 10000);
 }
 
 // ============================================================
