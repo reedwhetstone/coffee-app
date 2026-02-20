@@ -1,10 +1,5 @@
 <script lang="ts">
-	let {
-		title,
-		description,
-		slug,
-		onclose
-	} = $props<{
+	let { title, description, slug, onclose } = $props<{
 		title: string;
 		description: string;
 		slug: string;
@@ -14,7 +9,7 @@
 	let postUrl = $derived(`https://purveyors.io/blog/${slug}`);
 
 	let linkedInText = $derived(
-		`${description}\n\nRead the full post:\n${postUrl}\n\n#coffee #specialtycoffee #coffeeroasting #coffeeindustry #purveyors`
+		`${title}\n\n${description}\n\nRead the full post:\n${postUrl}\n\n#coffee #specialtycoffee #coffeeroasting #coffeeindustry #purveyors`
 	);
 
 	let copied = $state(false);
@@ -64,13 +59,23 @@
 			class="inline-flex items-center gap-1.5 rounded-md border border-border-light px-3 py-1.5 text-sm font-medium text-text-primary-light transition-all hover:border-background-tertiary-light hover:text-background-tertiary-light"
 		>
 			{#if copied}
-				<svg class="h-4 w-4 text-growth-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<svg
+					class="h-4 w-4 text-growth-green"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 				</svg>
 				Copied
 			{:else}
 				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+					/>
 				</svg>
 				Copy text
 			{/if}
