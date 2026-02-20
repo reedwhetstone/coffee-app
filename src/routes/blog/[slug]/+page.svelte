@@ -19,10 +19,11 @@
 		});
 	}
 
-	const pillarInfo =
+	let pillarInfo = $derived(
 		data.metadata.pillar && PILLARS[data.metadata.pillar as keyof typeof PILLARS]
 			? PILLARS[data.metadata.pillar as keyof typeof PILLARS]
-			: null;
+			: null
+	);
 </script>
 
 <svelte:head>
@@ -91,7 +92,7 @@
 		prose-li:text-text-secondary-light
 		prose-img:rounded-lg"
 	>
-		<svelte:component this={data.content} />
+		<data.content />
 	</div>
 </article>
 
