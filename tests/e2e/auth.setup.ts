@@ -1,6 +1,7 @@
 import { test as setup, expect } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { seedTestData } from './seed-test-data';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const authFile = path.join(__dirname, '.auth/user.json');
@@ -102,6 +103,16 @@ setup('authenticate', async ({ page, request }) => {
 	await page.waitForLoadState('networkidle');
 	await expect(page).toHaveURL(/beans/);
 
-	// 5. Persist the authenticated session for other tests
+	// 5. Seed test data (idempotent — only inserts if missing)
+	const userId = session.user.id;
+	console.log(`Authenticated as user: ${userId}`);
+	try {
+		const seedResult = await seedTestData(supabaseUrl, supabaseServiceRoleKey, userId);
+		console.log(`Test data seeded: catalog=${seedResult.catalogId}, inventory=${seedResult.inventoryId}, roast=${seedResult.roastId}`);
+	} catch (err) {
+		console.warn(`Test data seeding failed (non-fatal): ${err}`);
+	}
+
+	// 6. Persist the authenticated session for other tests
 	await page.context().storageState({ path: authFile });
 });
