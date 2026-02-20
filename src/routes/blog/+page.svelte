@@ -7,9 +7,7 @@
 	let selectedTag = $state<string | null>(null);
 
 	let filteredPosts = $derived(
-		selectedTag
-			? data.posts.filter((p: BlogPost) => p.tags.includes(selectedTag!))
-			: data.posts
+		selectedTag ? data.posts.filter((p: BlogPost) => p.tags.includes(selectedTag!)) : data.posts
 	);
 
 	function formatDate(dateStr: string): string {

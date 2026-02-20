@@ -3,9 +3,7 @@
 	import type { BlogPost } from '$lib/types/blog.types';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
 
-	let {
-		data
-	} = $props<{
+	let { data } = $props<{
 		data: {
 			content: typeof import('svelte').SvelteComponent;
 			metadata: BlogPost;
@@ -51,14 +49,18 @@
 
 <article>
 	<!-- Post header with accent background -->
-	<header class="mb-10 rounded-lg border border-border-light bg-gradient-to-r from-background-tertiary-light/5 to-transparent p-6 sm:p-8">
+	<header
+		class="mb-10 rounded-lg border border-border-light bg-gradient-to-r from-background-tertiary-light/5 to-transparent p-6 sm:p-8"
+	>
 		<div class="mb-3 flex flex-wrap items-center gap-3 text-sm text-text-secondary-light">
 			<time datetime={data.metadata.date}>{formatDate(data.metadata.date)}</time>
 			<span class="text-border-light">·</span>
 			<span>{data.metadata.readingTime ?? 5} min read</span>
 			{#if pillarInfo}
 				<span class="text-border-light">·</span>
-				<span class="rounded-full bg-background-tertiary-light/10 px-2 py-0.5 text-xs font-medium text-background-tertiary-light">
+				<span
+					class="rounded-full bg-background-tertiary-light/10 px-2 py-0.5 text-xs font-medium text-background-tertiary-light"
+				>
 					{pillarInfo.label}
 				</span>
 			{/if}
@@ -75,7 +77,7 @@
 				{#each data.metadata.tags as tag}
 					<a
 						href="/blog/tag/{tag}"
-						class="rounded-full border border-background-tertiary-light/20 bg-background-tertiary-light/8 px-2.5 py-0.5 text-xs text-text-secondary-light transition-colors hover:border-background-tertiary-light/40 hover:text-background-tertiary-light"
+						class="bg-background-tertiary-light/8 rounded-full border border-background-tertiary-light/20 px-2.5 py-0.5 text-xs text-text-secondary-light transition-colors hover:border-background-tertiary-light/40 hover:text-background-tertiary-light"
 					>
 						{tag}
 					</a>
@@ -86,15 +88,15 @@
 
 	<!-- Post content -->
 	<div
-		class="prose prose-lg max-w-none
-		prose-headings:text-text-primary-light prose-headings:font-semibold
-		prose-h2:mt-12 prose-h2:border-b prose-h2:border-border-light prose-h2:pb-3
-		prose-p:text-text-secondary-light prose-p:leading-relaxed
-		prose-a:text-background-tertiary-light prose-a:no-underline hover:prose-a:underline
-		prose-strong:text-text-primary-light
-		prose-code:text-text-primary-light prose-code:bg-background-tertiary-light/8 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:before:content-none prose-code:after:content-none
-		prose-pre:bg-background-primary-dark prose-pre:text-text-primary-dark prose-pre:rounded-lg prose-pre:border prose-pre:border-border-light
-		prose-blockquote:border-l-4 prose-blockquote:border-background-tertiary-light prose-blockquote:bg-background-tertiary-light/5 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:text-text-secondary-light
+		class="prose-code:bg-background-tertiary-light/8 prose prose-lg
+		max-w-none prose-headings:font-semibold
+		prose-headings:text-text-primary-light prose-h2:mt-12 prose-h2:border-b prose-h2:border-border-light
+		prose-h2:pb-3 prose-p:leading-relaxed
+		prose-p:text-text-secondary-light prose-a:text-background-tertiary-light prose-a:no-underline
+		hover:prose-a:underline
+		prose-blockquote:rounded-r-lg prose-blockquote:border-l-4 prose-blockquote:border-background-tertiary-light prose-blockquote:bg-background-tertiary-light/5 prose-blockquote:py-1 prose-blockquote:text-text-secondary-light prose-strong:text-text-primary-light prose-code:rounded
+		prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:text-text-primary-light prose-code:before:content-none
+		prose-code:after:content-none prose-pre:rounded-lg prose-pre:border prose-pre:border-border-light prose-pre:bg-background-primary-dark prose-pre:text-text-primary-dark
 		prose-li:text-text-secondary-light
 		prose-img:rounded-lg prose-img:shadow-sm
 		prose-hr:border-border-light"
@@ -155,7 +157,10 @@
 		</div>
 		<noscript>
 			<p class="text-sm text-text-secondary-light">
-				Enable JavaScript to view <a href="https://giscus.app" class="text-background-tertiary-light">comments</a>.
+				Enable JavaScript to view <a
+					href="https://giscus.app"
+					class="text-background-tertiary-light">comments</a
+				>.
 			</p>
 		</noscript>
 	</div>
