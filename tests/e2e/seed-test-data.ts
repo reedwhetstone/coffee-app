@@ -14,7 +14,11 @@ interface SeedResult {
 	roastId: number;
 }
 
-export async function seedTestData(supabaseUrl: string, serviceRoleKey: string, userId: string): Promise<SeedResult> {
+export async function seedTestData(
+	supabaseUrl: string,
+	serviceRoleKey: string,
+	userId: string
+): Promise<SeedResult> {
 	const headers = {
 		apikey: serviceRoleKey,
 		Authorization: `Bearer ${serviceRoleKey}`,
@@ -23,7 +27,9 @@ export async function seedTestData(supabaseUrl: string, serviceRoleKey: string, 
 	};
 
 	// 1. Ensure user_roles entry exists
-	const userRoleRes = await fetch(`${supabaseUrl}/rest/v1/user_roles?id=eq.${userId}&select=id`, { headers });
+	const userRoleRes = await fetch(`${supabaseUrl}/rest/v1/user_roles?id=eq.${userId}&select=id`, {
+		headers
+	});
 	const existingRoles = await userRoleRes.json();
 
 	if (existingRoles.length === 0) {

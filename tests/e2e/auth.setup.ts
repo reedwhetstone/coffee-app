@@ -108,7 +108,9 @@ setup('authenticate', async ({ page, request }) => {
 	console.log(`Authenticated as user: ${userId}`);
 	try {
 		const seedResult = await seedTestData(supabaseUrl, supabaseServiceRoleKey, userId);
-		console.log(`Test data seeded: catalog=${seedResult.catalogId}, inventory=${seedResult.inventoryId}, roast=${seedResult.roastId}`);
+		console.log(
+			`Test data seeded: catalog=${seedResult.catalogId}, inventory=${seedResult.inventoryId}, roast=${seedResult.roastId}`
+		);
 	} catch (err) {
 		console.warn(`Test data seeding failed (non-fatal): ${err}`);
 	}
