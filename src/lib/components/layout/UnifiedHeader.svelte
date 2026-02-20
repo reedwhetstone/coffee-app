@@ -6,6 +6,7 @@
 	let currentPath = $derived(page.url.pathname);
 	let isHomePage = $derived(currentPath === '/');
 	let isApiPage = $derived(currentPath === '/api');
+	let isBlogPage = $derived(currentPath.startsWith('/blog'));
 
 	function handleSignIn() {
 		goto('/auth');
@@ -21,6 +22,10 @@
 
 	function navigateToApi() {
 		goto('/api');
+	}
+
+	function navigateToBlog() {
+		goto('/blog');
 	}
 </script>
 
@@ -56,6 +61,14 @@
 						: 'text-text-secondary-light hover:text-text-primary-light'}"
 				>
 					Parchment API
+				</button>
+				<button
+					onclick={navigateToBlog}
+					class="text-sm font-medium transition-colors duration-200 {isBlogPage
+						? 'text-background-tertiary-light'
+						: 'text-text-secondary-light hover:text-text-primary-light'}"
+				>
+					Blog
 				</button>
 			</nav>
 
@@ -123,6 +136,14 @@
 						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
 				>
 					Parchment API
+				</button>
+				<button
+					onclick={navigateToBlog}
+					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isBlogPage
+						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
+						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
+				>
+					Blog
 				</button>
 			</div>
 		</div>
