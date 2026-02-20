@@ -6,7 +6,7 @@
 		data
 	} = $props<{
 		data: {
-			content: ConstructorOfATypedSvelteComponent;
+			content: typeof import('svelte').SvelteComponent;
 			metadata: BlogPost;
 		};
 	}>();

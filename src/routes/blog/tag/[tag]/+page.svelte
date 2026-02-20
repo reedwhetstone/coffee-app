@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { PILLARS } from '$lib/types/blog.types';
 	import type { BlogPost } from '$lib/types/blog.types';
 
 	let { data } = $props<{ data: { posts: BlogPost[]; tag: string } }>();

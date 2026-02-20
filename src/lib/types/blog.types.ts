@@ -12,7 +12,7 @@ export interface BlogPost {
 
 export interface BlogPostModule {
 	metadata: BlogPost;
-	default: ConstructorOfATypedSvelteComponent;
+	default: typeof import('svelte').SvelteComponent;
 }
 
 export const PILLARS = {
