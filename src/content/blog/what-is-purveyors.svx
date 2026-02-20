@@ -1,16 +1,65 @@
 ---
 title: "What is Purveyors?"
 date: "2026-02-20"
-description: "Why the specialty coffee market needs a data-first platform, and where purveyors.io is going."
-tags: ["purveyors", "coffee", "vision"]
+description: "The green coffee supply chain is built for commercial buyers. If you're a hobbyist, you're an afterthought. That's the problem purveyors.io exists to solve."
+tags: ["purveyors", "coffee", "supply-chain", "vision"]
 pillar: "supply-chain"
-draft: true
+draft: false
 readingTime: 8
 ---
 
 # What is Purveyors?
 
-*This is a draft. Voice calibration needed.*
+I started roasting coffee at home a few years ago. Bought a popcorn popper, watched some YouTube videos, burned a lot of beans. The usual path. But when I tried to move past the beginner phase and actually source good green coffee, I hit a wall.
 
-<!-- TODO: First post. Origin story + vision. The pitch for why this exists. -->
-<!-- Source material: notes/MARKET_ANALYSIS.md, brain/projects/purveyors-blog.md -->
+The entire green coffee supply chain is built for commercial buyers. If you're a hobbyist wanting to get into the space, you're left with a fragmented mess and no real understanding of what makes one coffee better than another. A dozen suppliers, each with their own website, their own grading systems, their own way of describing origins. No way to compare across them without opening twelve tabs and mentally translating between incompatible vocabularies.
+
+You see it on Reddit constantly. Someone posts "Where do I buy green coffee?" and the answers are all over the place. People buying from Amazon, of all places. Green coffee is closer to fresh produce than it is to something that should sit indefinitely in an uncontrolled warehouse next to iPhones. The quality degradation from improper storage is real, and most beginners don't even know to worry about it.
+
+There is genuine demand for super high quality at reasonable prices in the hobby market. People are willing to pay a lot for the best. But nobody has built the tools or the market access to serve them well. That's the gap purveyors.io exists to fill.
+
+## The Incentive Misalignment
+
+The core problem isn't just fragmentation. It's a structural misalignment of incentives between commercial and consumer.
+
+Commercial coffee indexes for scale and efficiency. Consistency at volume. That's rational for a cafe pulling 200 shots a day. But consumers, especially the growing hobby market, want something different: craft, unique experience, excellence. These are fundamentally different value functions, and the entire supply chain is optimized for only one of them.
+
+You can see this playing out in hardware already. Companies like [Decent Espresso](https://decentespresso.com/) built prosumer machines for coffee nerds. Flow profiling, pressure profiling, real-time shot data, tablet interfaces. Features that commercial machines didn't offer because commercial buyers didn't need them. But the quality was so good that legitimate cafes started putting Decents on the counter. Their DE1Pro is [certified for commercial use](https://decentespresso.com/de1pro), rated for 200,000 shots, and shows up in restaurants, hotels, and specialty shops. The prosumer market didn't just coexist with commercial. It started pushing commercial innovation forward. The best cafes now signal legitimacy to customers by using gear designed for obsessives, not industrial equipment.
+
+The same dynamic exists in green coffee sourcing, but nobody has built the bridge. The best supply chains are indexed exclusively to bulk buying at commercial quantities. A home roaster wanting 2 lbs of a specific lot from a specific farm? Good luck. The infrastructure doesn't exist for you.
+
+I want to change that.
+
+## What Purveyors Actually Is
+
+Purveyors is a coffee intelligence platform. Not an e-commerce site. I don't sell beans. I aggregate, normalize, and serve the data that helps people make better sourcing and roasting decisions.
+
+In practice, that means a few things:
+
+**A unified data pipeline.** Scrapers pull green coffee listings from 12 suppliers (and growing), normalize them into a single schema, and make them searchable in one place. Different grading systems, inconsistent origin naming, varying levels of detail per supplier: all of that gets flattened into a consistent, comparable format.
+
+**An AI layer.** Semantic search across the entire catalog. Ask for "a washed Ethiopian under $8/lb with bright acidity" and get results ranked by relevance, not keyword matching. Tasting note generation, recommendations based on your roasting history, and a conversational interface for exploring the market.
+
+**Roast profiling and inventory tracking.** Log your roasts, track your green coffee inventory, analyze profit margins on what you sell. The platform connects the full loop from sourcing to roasting to selling.
+
+**An API.** The same data that powers the web app is available to developers, to other coffee tools, to AI agents. Everything goes through the same endpoints. If an AI agent wants to query the coffee catalog, it uses the same API a human-facing dashboard uses.
+
+The key insight, and the reason this isn't just another coffee tool, is that the same platform can serve both sides of the market. Open up discovery, comparison, and quality signals for hobbyists who are currently stuck navigating twelve supplier websites manually. And connect the commercial market's need for efficiency and scale through the same API tools and data infrastructure. One data layer, two very different user needs, served by the same architecture.
+
+## Where It's Going
+
+**An AI-first interface.** I'm moving from traditional page-based navigation to a conversational workspace. The AI doesn't just answer questions; it orchestrates the entire experience. Search, compare, log roasts, track inventory, all through a unified interface that adapts to what you're trying to do. More on this in a future post about our GenUI architecture.
+
+**API-first architecture.** Everything the web app does goes through the same API available externally. This is how the hobbyist tools and the commercial integrations live on the same platform without compromise. A home roaster uses the web app to find interesting coffees. A roastery management tool integrates via API to pull inventory data. Same data, same infrastructure, different interfaces. I'll write more about this B2C-to-B2B convergence soon.
+
+**Market intelligence.** The scraper data tells a story about the market that nobody else is publishing. Pricing trends, availability patterns, seasonal origin shifts, supplier comparisons. I'm going to start sharing that analysis publicly. When you have normalized data across 12+ suppliers, you can see things that no single supplier's catalog reveals.
+
+**This blog.** This blog is part of the product. It's where the thinking happens in public. It's where architecture decisions get stress-tested by explaining them. If you write about how something works and the explanation doesn't hold together, that's a signal the implementation needs work too. The blog doesn't just document the product. Writing about the product improves the product.
+
+## Who I Am
+
+I come from manufacturing. Years of implementing enterprise systems in industrial environments, bridging the gap between factory floor operations and modern technology. I founded purveyors to solve a problem I had as a home roaster, and I'm building it with an AI agent as a co-developer. Not in the "we sprinkled AI on our marketing page" sense. In the "my development partner is an AI agent that reads every file in the codebase and ships PRs" sense.
+
+This blog is the honest record of what that looks like. What works, what doesn't, what I'm learning along the way.
+
+Not a press release. Not a pitch deck. Just the work.
