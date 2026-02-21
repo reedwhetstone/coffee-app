@@ -27,7 +27,9 @@ async function waitForSuccessfulSubmission(page: Page, urlPattern: string) {
 }
 
 /**
- * Navigate to beans page via sidebar and wait for inventory data to load
+ * Navigate to beans page via sidebar and wait for inventory data to load.
+ * The beans page fetches data client-side in onMount, so we need to wait
+ * for the /api/beans response AND for the data to render, not just networkidle.
  */
 async function navigateToBeans(page: Page) {
 	await page.goto('/catalog');
@@ -35,8 +37,13 @@ async function navigateToBeans(page: Page) {
 	await page.getByRole('link', { name: 'Beans' }).waitFor({ state: 'visible' });
 	await page.getByRole('link', { name: 'Beans' }).click();
 	await page.waitForURL(/\/beans/);
-	// Wait for inventory data to load (client-side fetch via filterStore)
-	await waitForNetworkIdle(page, 10000);
+	// Wait for the /api/beans fetch to complete (client-side data loading)
+	await page.waitForResponse(
+		(resp) => resp.url().includes('/api/beans') && resp.status() === 200,
+		{ timeout: 15000 }
+	);
+	// Give the UI time to render the data from the response
+	await page.waitForTimeout(1000);
 }
 
 // ============================================================
