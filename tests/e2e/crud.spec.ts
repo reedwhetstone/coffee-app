@@ -27,16 +27,37 @@ async function waitForSuccessfulSubmission(page: Page, urlPattern: string) {
 }
 
 /**
- * Navigate to beans page via sidebar and wait for inventory data to load
+ * Navigate to beans page and wait for inventory data to render.
+ * Uses the /api/beans response + DOM check instead of waitForNetworkIdle
+ * to avoid race conditions with client-side fetches.
  */
 async function navigateToBeans(page: Page) {
-	await page.goto('/catalog');
-	await page.getByRole('button', { name: 'Toggle navigation menu' }).click();
-	await page.getByRole('link', { name: 'Beans' }).waitFor({ state: 'visible' });
-	await page.getByRole('link', { name: 'Beans' }).click();
-	await page.waitForURL(/\/beans/);
-	// Wait for inventory data to load (client-side fetch via filterStore)
-	await waitForNetworkIdle(page, 10000);
+	// Set up response listener before navigation
+	const beansResponse = page.waitForResponse(
+		(resp) => resp.url().includes('/api/beans') && resp.status() === 200
+	);
+
+	await page.goto('/beans');
+
+	// Wait for the API response to complete
+	await beansResponse;
+
+	// Wait for at least one bean card button to render in the DOM
+	const beanCard = page.locator('.grid button').first();
+	await beanCard.waitFor({ state: 'visible', timeout: 10000 });
+}
+
+/**
+ * Select the first available bean on the beans page.
+ * Returns the button locator for the selected bean.
+ */
+async function selectFirstBean(page: Page) {
+	const firstBean = page.locator('.grid button').first();
+	await firstBean.waitFor({ state: 'visible', timeout: 10000 });
+	await firstBean.click();
+	// Wait for the detail panel to open
+	await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible({ timeout: 5000 });
+	return firstBean;
 }
 
 // ============================================================
@@ -177,11 +198,8 @@ test.describe('Bean Management', () => {
 
 		await navigateToBeans(page);
 
-		// Select first bean with a flexible matcher
-		await page
-			.getByRole('button', { name: /Burundi/i })
-			.first()
-			.click();
+		// Select first available bean
+		await selectFirstBean(page);
 
 		// Verify bean modal/details opened
 		await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
@@ -193,10 +211,7 @@ test.describe('Bean Management', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
-		await page
-			.getByRole('button', { name: /Burundi/i })
-			.first()
-			.click();
+		await selectFirstBean(page);
 
 		// Click Edit
 		await page.getByRole('button', { name: 'Edit' }).click();
@@ -225,10 +240,7 @@ test.describe('Cupping Notes', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
-		await page
-			.getByRole('button', { name: /Burundi/i })
-			.first()
-			.click();
+		await selectFirstBean(page);
 
 		// Navigate to cupping tab - click the text directly in the tab bar area
 		const cuppingTab = page.locator('button').filter({ hasText: /^\u2615\s*Cupping$/ });
@@ -275,10 +287,7 @@ test.describe('Roast Profiles', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
-		await page
-			.getByRole('button', { name: /Burundi/i })
-			.first()
-			.click();
+		await selectFirstBean(page);
 
 		// Navigate to roasting tab
 		const roastingTab = page.locator('button').filter({ hasText: /^🔥\s*Roasting$/ });
@@ -373,10 +382,7 @@ test.describe('Roast Profiles', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
-		await page
-			.getByRole('button', { name: /Burundi/i })
-			.first()
-			.click();
+		await selectFirstBean(page);
 
 		// Navigate to roasting tab
 		const roastingTab = page.locator('button').filter({ hasText: /^🔥\s*Roasting$/ });
@@ -384,7 +390,6 @@ test.describe('Roast Profiles', () => {
 		await page.waitForTimeout(500);
 
 		// Check if there are any roast profiles
-		// const startNewRoastBtn = page.getByRole('button', { name: /Start New Roast/i });
 		const hasExistingProfiles = await page
 			.getByText(/Roast #|ID: \d+/)
 			.first()
@@ -421,10 +426,7 @@ test.describe('Roast Profiles', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
-		await page
-			.getByRole('button', { name: /Burundi/i })
-			.first()
-			.click();
+		await selectFirstBean(page);
 
 		// Navigate to roasting tab
 		const roastingTab = page.locator('button').filter({ hasText: /^🔥\s*Roasting$/ });
@@ -438,14 +440,14 @@ test.describe('Roast Profiles', () => {
 		}
 
 		// Look for any profile to delete - expand a group first if needed
-		const profileToggle = page.getByRole('button', { name: /Toggle.*Burundi/i }).first();
+		const profileToggle = page.getByRole('button', { name: /Toggle/i }).first();
 		if (await profileToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
 			await profileToggle.click();
 			await page.waitForTimeout(300);
 		}
 
-		// Click on a profile card
-		const profileCard = page.getByRole('button', { name: /Burundi.*ID: \d+/i }).first();
+		// Click on any profile card
+		const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
 		if (await profileCard.isVisible({ timeout: 3000 }).catch(() => false)) {
 			await profileCard.click();
 
