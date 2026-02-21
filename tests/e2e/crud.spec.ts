@@ -27,16 +27,40 @@ async function waitForSuccessfulSubmission(page: Page, urlPattern: string) {
 }
 
 /**
- * Navigate to beans page via sidebar and wait for inventory data to load
+ * Navigate to beans page and wait for inventory data to render.
+ *
+ * Key details:
+ * - Navigates directly to /beans (avoids nav toggle flakiness)
+ * - Sets up /api/beans response listener BEFORE navigation (no race)
+ * - Waits for the Burundi button to appear (proves data rendered)
  */
 async function navigateToBeans(page: Page) {
-	await page.goto('/catalog');
-	await page.getByRole('button', { name: 'Toggle navigation menu' }).click();
-	await page.getByRole('link', { name: 'Beans' }).waitFor({ state: 'visible' });
-	await page.getByRole('link', { name: 'Beans' }).click();
-	await page.waitForURL(/\/beans/);
-	// Wait for inventory data to load (client-side fetch via filterStore)
-	await waitForNetworkIdle(page, 10000);
+	// Set up response listener BEFORE navigating (avoids race with fast responses)
+	const beansResponsePromise = page.waitForResponse(
+		(resp) => resp.url().includes('/api/beans') && resp.status() === 200,
+		{ timeout: 30000 }
+	);
+
+	await page.goto('/beans');
+
+	// Wait for the API response
+	const beansResponse = await beansResponsePromise;
+	const responseBody = await beansResponse.json();
+	console.log(`/api/beans returned ${responseBody.data?.length ?? 0} items`);
+
+	// Wait for the bean list to render
+	await page
+		.getByRole('button', { name: /Burundi/i })
+		.first()
+		.waitFor({ state: 'visible', timeout: 10000 })
+		.catch(async () => {
+			// Debug: log what the page actually shows
+			const buttons = await page.getByRole('button').allTextContents();
+			console.log(`Page has ${buttons.length} buttons. First 10:`, buttons.slice(0, 10));
+			const bodyText = await page.textContent('body');
+			console.log('Page body (first 500 chars):', bodyText?.slice(0, 500));
+			throw new Error('Burundi button not found after /api/beans responded');
+		});
 }
 
 // ============================================================
