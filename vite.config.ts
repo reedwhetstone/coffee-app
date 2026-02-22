@@ -5,7 +5,11 @@ export default defineConfig({
 	plugins: [sveltekit()],
 
 	test: {
-		include: ['src/**/*.{test,spec}.{js,ts}']
+		include: ['src/**/*.{test,spec}.{js,ts}'],
+		// Use happy-dom for component tests (faster than jsdom)
+		environment: 'happy-dom',
+		// Setup file for @testing-library/jest-dom matchers
+		setupFiles: ['./src/test-setup.ts']
 	},
 
 	build: {
