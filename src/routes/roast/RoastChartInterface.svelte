@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import MilestoneBar from '$lib/components/roast/MilestoneBar.svelte';
+	import RoastControls from '$lib/components/roast/RoastControls.svelte';
 	import {
 		select,
 		scaleLinear,
@@ -88,14 +90,6 @@
 	}
 
 	// Define the functions locally to avoid import issues
-	function formatTimeDisplay(ms: number): string {
-		if (!ms || ms <= 0) return '--:--';
-		const totalSeconds = Math.floor(ms / 1000);
-		const minutes = Math.floor(totalSeconds / 60);
-		const seconds = totalSeconds % 60;
-		return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-	}
-
 	// Remove local extractMilestones - now using import from stores
 
 	function calculateMilestones(
@@ -1993,25 +1987,6 @@
 		return calculateMilestones(milestones, isDuringRoasting ? currentElapsedTime : undefined);
 	});
 
-	// Formatted display values
-	let dryingDisplay = $derived(
-		milestoneCalculations().dryingPercent > 0
-			? `${milestoneCalculations().dryingPercent.toFixed(1)}%`
-			: '--:--'
-	);
-	let tpDisplay = $derived(formatTimeDisplay(milestoneCalculations().tpTime));
-	let maillardDisplay = $derived(
-		milestoneCalculations().maillardPercent > 0
-			? `${milestoneCalculations().maillardPercent.toFixed(1)}%`
-			: '--:--'
-	);
-	let fcDisplay = $derived(formatTimeDisplay(milestoneCalculations().fcTime));
-	let devDisplay = $derived(
-		milestoneCalculations().devPercent > 0
-			? `${milestoneCalculations().devPercent.toFixed(1)}%`
-			: '--:--'
-	);
-
 	// Convert temperature entries and events to roast data format for chart display
 	function convertToRoastData(
 		temperatures: TemperatureEntry[],
@@ -2582,155 +2557,21 @@
 		</div>
 
 		<div class="flex flex-col gap-4 sm:flex-row sm:gap-6">
-			<!-- Fan and Heat controls (left side) -->
 			{#if isBeforeRoasting || isDuringRoasting}
-				<div
-					class="flex w-full flex-row justify-center gap-8 bg-background-primary-light p-3 sm:w-64 sm:p-4 md:mr-4 md:border-r md:border-border-light lg:mr-4 lg:border-r lg:border-border-light"
-				>
-					<!-- Fan control -->
-					<div class="flex flex-col items-center gap-2">
-						<span class="text-sm font-medium text-text-secondary-light">FAN</span>
-						<div class="flex flex-col items-center rounded-lg border-2 border-indigo-800">
-							<button
-								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-indigo-900/80 hover:text-white"
-								onclick={() => handleFanChange(Math.min(10, fanValue + 1))}
-								disabled={fanValue >= 10}
-							>
-								+
-							</button>
-							<div
-								class="flex h-10 w-10 items-center justify-center text-lg font-bold text-text-primary-light sm:h-12 sm:w-12 sm:text-xl"
-							>
-								{fanValue}
-							</div>
-							<button
-								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-indigo-900/80 hover:text-white"
-								onclick={() => handleFanChange(Math.max(0, fanValue - 1))}
-								disabled={fanValue <= 0}
-							>
-								-
-							</button>
-						</div>
-					</div>
-
-					<!-- Heat control -->
-					<div class="flex flex-col items-center gap-2">
-						<span class="text-sm font-medium text-text-secondary-light">HEAT</span>
-						<div class="flex flex-col items-center rounded-lg border-2 border-amber-800">
-							<button
-								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-amber-900/80 hover:text-white"
-								onclick={() => handleHeatChange(Math.min(10, heatValue + 1))}
-								disabled={heatValue >= 10}
-							>
-								+
-							</button>
-							<div
-								class="flex h-10 w-10 items-center justify-center text-lg font-bold text-text-primary-light sm:h-12 sm:w-12 sm:text-xl"
-							>
-								{heatValue}
-							</div>
-							<button
-								class="flex h-8 w-full items-center justify-center text-text-primary-light hover:bg-amber-900/80 hover:text-white"
-								onclick={() => handleHeatChange(Math.max(0, heatValue - 1))}
-								disabled={heatValue <= 0}
-							>
-								-
-							</button>
-						</div>
-					</div>
-				</div>
+				<RoastControls
+					bind:fanValue
+					bind:heatValue
+					{isRoasting}
+					bind:selectedEvent
+					onFanChange={handleFanChange}
+					onHeatChange={handleHeatChange}
+					onEventLog={handleEventLog}
+				/>
 			{/if}
 
-			<!-- Roast events timeline (right side) -->
 			<div class="flex-grow">
-				{#if isBeforeRoasting || isDuringRoasting}
-					<div class="mb-4">
-						<h3 class="mb-2 text-sm font-medium text-text-secondary-light">ROAST EVENTS</h3>
-						<div class="relative overflow-x-auto">
-							<div
-								class="rounded-lg border border-border-light bg-background-primary-light shadow-sm"
-							>
-								<!-- Mobile view: Grid layout with 2 buttons per row -->
-								<div class="grid grid-cols-2 sm:hidden">
-									{#each ['Charge', 'Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop', 'Cool End'] as event, i}
-										<button
-											type="button"
-											class="cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
-											event
-												? 'bg-background-tertiary-light text-text-primary-light'
-												: 'text-text-primary-light'} {!isRoasting
-												? 'cursor-not-allowed opacity-50'
-												: ''} {i % 2 !== 0 ? 'border-l border-border-light' : ''} {i > 1
-												? 'border-t border-border-light'
-												: ''}"
-											onclick={() => isRoasting && handleEventLog(event)}
-											disabled={!isRoasting}
-										>
-											<span class="block text-xs font-medium">{event}</span>
-										</button>
-									{/each}
-								</div>
-
-								<!-- Desktop view: Flex layout with all buttons in one row -->
-								<div class="hidden w-full sm:flex">
-									{#each ['Charge', 'Maillard', 'FC Start', 'FC Rolling', 'FC End', 'SC Start', 'Drop', 'Cool End'] as event, i}
-										<button
-											type="button"
-											class="flex-1 cursor-pointer whitespace-nowrap p-3 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
-											event
-												? 'bg-background-tertiary-light text-text-primary-light'
-												: 'text-text-primary-light'} {!isRoasting
-												? 'cursor-not-allowed opacity-50'
-												: ''} {i !== 0 ? 'border-l border-border-light' : ''}"
-											onclick={() => isRoasting && handleEventLog(event)}
-											disabled={!isRoasting}
-										>
-											<span class="block text-sm font-medium">{event}</span>
-										</button>
-									{/each}
-								</div>
-							</div>
-						</div>
-					</div>
-				{/if}
-
 				<!-- Roast milestone timestamps -->
-				<div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
-					<div
-						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
-					>
-						<span class="text-xs text-text-secondary-light">DRYING %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">
-							{dryingDisplay}
-						</div>
-					</div>
-					<div
-						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
-					>
-						<span class="text-xs text-text-secondary-light">DRY END</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">{tpDisplay}</div>
-					</div>
-					<div
-						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
-					>
-						<span class="text-xs text-text-secondary-light">MAILLARD %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">
-							{maillardDisplay}
-						</div>
-					</div>
-					<div
-						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
-					>
-						<span class="text-xs text-text-secondary-light">FIRST CRACK</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">{fcDisplay}</div>
-					</div>
-					<div
-						class="rounded border border-border-light bg-background-primary-light p-1 text-center sm:p-2"
-					>
-						<span class="text-xs text-text-secondary-light">DEV %</span>
-						<div class="text-base font-bold text-text-primary-light sm:text-lg">{devDisplay}</div>
-					</div>
-				</div>
+				<MilestoneBar calculations={milestoneCalculations()} />
 			</div>
 		</div>
 	</div>
