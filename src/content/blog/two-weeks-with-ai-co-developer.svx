@@ -1,0 +1,115 @@
+---
+title: "What I Learned Running OpenClaw as a Solo Dev for Two Weeks"
+date: "2026-02-22"
+description: "Agentic harnesses solve the orchestration problem. The models are the bottleneck. Here's what actually works after 43 PRs and a zettelkasten full of operational data."
+tags: ["openclaw", "ai-agents", "agentic-stack", "development"]
+pillar: "agentic-stack"
+draft: false
+readingTime: 10
+---
+
+# What I Learned Running OpenClaw as a Solo Dev for Two Weeks
+
+OpenClaw is an agentic harness. It gives an LLM persistent memory, cron scheduling, tool access, and a workspace that survives between sessions. It's the orchestration layer that turns a stateless model into something that can maintain context across days of work, run background jobs, and operate across multiple codebases.
+
+I've been running it as my primary co-developer for about two weeks. 43 PRs across 3 repositories. 16 daily log files. A zettelkasten-style second brain that the agent reads and writes to. The data is interesting. Here's what it shows.
+
+## The harness solves orchestration. The model is the bottleneck.
+
+The single clearest lesson: OpenClaw's value isn't making the model smarter. It's giving a model the infrastructure to be useful across time. Memory files, cron jobs, tool integrations, persistent workspace. These are solved problems at the harness level.
+
+The failures are almost always model-level. Spatial reasoning (suggesting restaurants 45 minutes away as "nearby"). Factual confabulation (inventing a company name that sounds plausible). Fixing the obvious symptom of a bug instead of reading the logs to find the root cause. No amount of harness engineering fixes these. They're LLM limitations, and you need to design your workflows around them rather than pretending they'll go away with better prompting.
+
+Practical takeaway: invest your time in workflow design that routes around model weaknesses, not in prompt engineering that tries to eliminate them.
+
+## Memory is a database, not a brain. Treat it accordingly.
+
+OpenClaw persists memory in markdown files: `MEMORY.md` for curated long-term knowledge, `memory/YYYY-MM-DD.md` for daily logs, and a `brain/` directory organized as a zettelkasten (people, projects, ideas, references, tasks).
+
+The critical insight: agent memory doesn't self-correct. Human memory updates through repeated exposure to reality. Agent memory is a flat file. If bad data gets written, it stays there and poisons every downstream session until someone catches it. I've had factual errors in memory files propagate into generated content for days before anyone noticed. The agent doesn't flag its own stale data. It treats everything in its memory as ground truth.
+
+**What works:**
+- Atomic notes in a zettelkasten structure. Each person, project, and idea gets its own file. Cross-references use wiki-links. The agent can grep for context before responding, which dramatically reduces confabulation about things it should already know.
+- Daily logs as raw append-only data. No editing, no curating in the daily files. They're the audit trail.
+- A curated `MEMORY.md` as the distilled knowledge base. Reviewed weekly, kept lean. This is what loads into context at session start.
+- An explicit "no mental notes" rule. If the agent wants to remember something, it writes to a file. Mental notes don't survive session restarts.
+
+**What doesn't:**
+- Trusting the agent to maintain its own memory accuracy. Periodic human audits are mandatory. The agent doesn't know what it doesn't know.
+- Large memory files. Anything over ~100 lines starts competing for context window space. Keep atomic, keep small.
+- Storing completed tasks. They accumulate, bloat context, and add no value. Completed work gets noted in dailies, then deleted from living docs.
+
+## Context loss is a systems problem, not a model problem.
+
+The most frustrating failure mode early on was the agent "forgetting" things mid-conversation. It felt like model unreliability. It wasn't.
+
+Root cause: bloated tool outputs eating the context window. A single verbose shell command could dump thousands of tokens of output, pushing earlier conversation history out of the window. The agent wasn't forgetting; it literally couldn't see the earlier context anymore.
+
+Fix: context pruning configuration (cache-TTL with a 5-minute window, keeping only the last 5 assistant responses active). This turned context loss from a constant problem into a rare one.
+
+The broader lesson: when an agentic system behaves unreliably, check the infrastructure before blaming the model. Context window management, token budgets, tool output verbosity. These are engineering problems with engineering solutions.
+
+## Channel-based task routing eliminates context bleed.
+
+One operational win that surprised me: running agent conversations in categorized Discord channels (#scraper, #career, #blog, #purveyors, etc.) instead of a single thread. Each channel scopes the agent's focus to a specific domain. The scraper channel doesn't carry context from the blog channel. Career discussions don't pollute code review.
+
+This is a cheap, effective form of context management. Instead of relying on the model to mentally separate concerns within one massive conversation, you give it separate conversations with separate contexts. The agent loads relevant memory files per channel, stays focused, and doesn't burn tokens on irrelevant history.
+
+If you're running a multi-project agentic setup, split by domain early. The alternative, one long conversation covering everything, is how context windows die.
+
+## Clear pass/fail criteria are the unlock for autonomous work.
+
+The agent's best work happened on tasks with deterministic quality signals. Data pipeline work: the extracted field is either correct or it isn't. Unit tests: they pass or they don't. Schema validation: the data conforms or it doesn't.
+
+The agent's worst work happened on tasks requiring judgment. Writing LinkedIn outreach messages that sound human. Suggesting restaurants near a specific neighborhood. Deciding whether a PR addresses the real root cause or just the visible symptom.
+
+This maps cleanly to where you should and shouldn't trust autonomous execution. If you can write a programmatic check for the output, let the agent run the full cycle. If quality assessment requires human judgment, the agent produces drafts for review. Analytics Vidhya's [2026 agent trends analysis](https://www.analyticsvidhya.com/blog/2026/01/ai-agents-trends/) frames this as the shift from task completion to intent-setting: "The core human skill becomes intent-setting, with clearly defined goals and constraints." The corollary is that without clear constraints, the agent is guessing.
+
+## The system configuration is scar tissue.
+
+The agent's operating instructions (`AGENTS.md`, `SOUL.md`, etc.) grew from a basic setup document to a comprehensive operating manual over two weeks. Almost every rule was added reactively, in response to a specific failure.
+
+Examples:
+- **"Never push additional commits to an existing PR."** Added after the agent stacked commits on a PR, causing merge confusion.
+- **"Confirm the actual failure before fixing."** Added after the agent wrote a clean, well-tested fix for the wrong root cause, wasting a PR cycle.
+- **"Root cause analysis, not apologies."** Added after noticing the agent's default failure response was to apologize rather than diagnose.
+
+The pattern: something breaks, the failure gets diagnosed, a rule gets codified, the system improves. This is the real feedback loop. Not the scraping pipeline or the CI checks. The system configuration itself is a living document of operational lessons.
+
+If you're setting up an agentic system, expect your configuration to double in size within the first week. That's not a bug. It's the system learning.
+
+## The zettelkasten structure actually works for agent context.
+
+I was skeptical about maintaining a full zettelkasten (`brain/people/`, `brain/projects/`, `brain/ideas/`, `brain/references/`) for an AI agent. It seemed like overhead. It turned out to be one of the highest-leverage decisions.
+
+Why it works: before responding about a person, project, or topic, the agent can search the brain directory for existing notes. This grounds its responses in accumulated context rather than generating from scratch each time. When someone comes up in conversation, the agent checks `brain/people/` for their file. When a project is discussed, it reads the project notes. The context lookup is fast and cheap. The alternative, re-explaining everything every session, is expensive and error-prone.
+
+The atomic structure matters. One file per entity, cross-referenced with wiki-links, means the agent can pull exactly the context it needs without loading everything. A monolithic "notes.md" file would be useless at scale.
+
+The capture workflow matters too. I use emoji prefixes in messages (🧠 for captures, 📋 for tasks, 💡 for ideas) that trigger automatic filing. Low friction capture means things actually get written down. High friction capture means they don't, and the agent reinvents context every session.
+
+## Velocity is real, but it's not free.
+
+43 PRs in 18 days. That's real throughput. But the hidden cost is review overhead. Every PR needs a human pass. Some are trivial (config changes, documentation updates). Some require careful review (new supplier integrations, refactoring with test coverage). The agent produces work at a pace that can outrun your ability to review it if you're not careful.
+
+The practical limit isn't how fast the agent can produce. It's how fast you can review, provide direction, and course-correct. This is the actual bottleneck in the economy of directors: the director's bandwidth.
+
+What helps: clear conventions that reduce review burden. If every PR follows the same structure, every commit message follows the same format, every test follows the same patterns, then review becomes pattern matching instead of deep reading. Invest in conventions early. They pay compound returns.
+
+## Design for next month's model, not today's.
+
+This might be the most counterintuitive lesson. Many of the agent's current failure modes, the spatial reasoning gaps, the occasional confabulation, the symptom-fixing before root-cause analysis, are model-level limitations that could disappear with the next generation of models. And model generations are measured in months, not years.
+
+This changes how you should design agentic workflows. Build simple, elegant solutions with clear interfaces. Don't over-engineer workarounds for current model weaknesses. For most tasks, the criteria are binary: it works or it doesn't. The next model release could solve something that was impossible last version. If your workaround is deeply embedded in your architecture, you now have technical debt instead of a capability upgrade.
+
+Anthropic's research on [building effective agents](https://www.anthropic.com/research/building-effective-agents) found the same pattern: "the most successful implementations use simple, composable patterns rather than complex frameworks." A [recent arXiv paper on production-grade agentic workflows](https://arxiv.org/abs/2512.08769) lists the KISS principle as a core best practice, alongside single-responsibility agents and clean separation of concerns.
+
+The practical advice: when a model fails at a task, note the failure, add a lightweight check, and move on. Don't build a Rube Goldberg machine to compensate. Keep the architecture simple enough that when a better model drops in, the improvement is instant. The workaround you spend a week building might be obsolete in a month.
+
+## Honest unknowns.
+
+Two weeks isn't enough to know whether this scales. The zettelkasten is small enough to stay manageable. The codebases are small enough to fit in context. The number of active projects is small enough to track.
+
+What happens at 6 months? When the brain directory has hundreds of files? When the daily logs span thousands of entries? When the model needs context from three conversations ago about a decision made in a project it hasn't touched in weeks?
+
+I don't know. Nobody does yet. But the data is accumulating, and I'll keep publishing what it shows.
