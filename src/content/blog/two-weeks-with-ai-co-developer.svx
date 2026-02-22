@@ -1,0 +1,130 @@
+---
+title: "Two Weeks with an AI Co-Developer: What Works and What Breaks"
+date: "2026-02-22"
+description: "43 PRs, 16 daily logs, and an evolving system of rules. An honest account of building software with an AI agent as a genuine collaborator."
+tags: ["ai-agents", "openclaw", "development", "agentic-stack"]
+pillar: "agentic-stack"
+draft: false
+readingTime: 14
+---
+
+# Two Weeks with an AI Co-Developer: What Works and What Breaks
+
+For the past two weeks, I've been building purveyors.io with an AI agent as my primary co-developer. Not a chatbot in a browser tab. A persistent agent running on my homeserver with its own memory files, cron jobs, tool access, and a workspace it maintains between sessions.
+
+The agent is called OpenClaw. It wakes up, reads its daily files, checks the calendar, reviews overnight audit reports, and gets to work. It writes code, opens PRs, manages the coffee scraper pipeline, drafts job applications, plans travel, and maintains a second brain of notes about everything we've discussed. When it makes a mistake, it's supposed to do root cause analysis and write a fix, not apologize.
+
+That last part took some iteration to get right.
+
+This post is the honest record. What actually works when you treat an AI as a collaborator rather than a tool. What breaks. And what we learned along the way, backed by the actual data: 43 PRs across 3 repositories, 16 daily logs, and a system configuration that evolved every few days based on what went wrong.
+
+## What Works
+
+### The Scraper Pipeline: Economy of Directors in Practice
+
+The biggest win has been the coffee data scraper. Over two weeks, the agent added 8 new suppliers to the pipeline, taking it from 6 live sources to 14. The workflow is simple: I say "add this supplier." The agent researches the site, writes the adapter, tests it, opens a PR with sample data. I review and merge.
+
+In the best cases, my involvement is one sentence of direction and a PR review. The agent handled everything in between: identifying whether the site uses Shopify, WooCommerce, or a custom stack; writing the source config or adapter; running the test harness; validating output against the schema. One supplier (Klatch Coffee, Shopify) went from "add this" to "PR merged" in under an hour.
+
+This is the pattern I described in my [data pipeline post](/blog/building-a-coffee-data-pipeline): the economy of directors. The human sets direction, the agent executes the full cycle, and deterministic quality signals (clean data or dirty data) let the agent self-correct. It works best when the output is verifiable, and data pipeline work is about as verifiable as it gets.
+
+### Application Generation: Full Packages in Minutes
+
+The job search pipeline was another clear win. The agent generates complete application packages: tailored resume, cover letter, company research brief, and interview prep document. A full application prep that would take me an afternoon runs in about 8 minutes and costs roughly $1.13 in API calls.
+
+The quality isn't publish-and-forget. I review everything, and the first drafts always need voice adjustments. But the research is thorough, the structure is solid, and the tailoring to specific job descriptions is genuinely good. It turns a 3-hour task into a 20-minute review.
+
+### Codebase Refactoring: Phased, Tested, Disciplined
+
+The purveyors.io roast chart refactoring has been a multi-phase project. The main component was 2,969 lines of tightly coupled Svelte code. The agent executed a 5-phase extraction plan: pure functions first (48 unit tests), then timer state machine (20 tests), session management (13 tests), component extraction, and finally wiring it all together.
+
+By the end of two weeks: 81 unit tests, the component reduced by 159 lines, and clean module boundaries at `src/lib/roast/`. Each phase was a separate PR. Each PR passed all CI checks. Each PR was additive; nothing broke between phases.
+
+This is work the agent genuinely excels at. It can hold the full codebase in context, identify extraction boundaries, write comprehensive tests, and produce clean, incremental PRs. The phased approach was my direction. The execution was the agent's.
+
+### Blog Infrastructure: Built and Shipped
+
+The blog you're reading was built from scratch in a single day. Blog infrastructure (MDsveX integration, routing, RSS feed, tag system, Giscus comments), design system integration (brand orange accents, visual structure), and two full posts drafted and published. All through the same workflow: I provide direction and feedback, the agent writes code and content, PRs get reviewed and merged.
+
+## What Breaks
+
+### Context Loss: A Systems Problem, Not a Personality Quirk
+
+The most frustrating failure mode is context loss. The agent forgets things it knew an hour ago. Mid-conversation, it loses track of what we were working on. It repeats questions it already asked.
+
+Early on, I treated this as the agent being unreliable. The breakthrough came when we diagnosed it as a systems problem: bloated tool outputs were eating the context window. A single shell command dumping verbose logs could consume thousands of tokens of context, pushing earlier conversation history out of the window.
+
+The fix was configuration: context pruning with a 5-minute cache TTL, keeping only the last 5 assistant responses in active context. This didn't eliminate context loss entirely, but it changed it from a constant problem to an occasional one. The lesson: when your AI agent seems forgetful, check the plumbing before blaming the model.
+
+### Memory Corruption: Factual Errors That Propagate
+
+One of the more insidious failure modes: the agent stored "Gates Foundation" in its memory files instead of "Gates Corporation" (the industrial rubber manufacturer where I actually worked). This error then propagated into generated content, cover letters, and application materials.
+
+The root cause was simple. The agent made a factual error during initial information capture, wrote it to `MEMORY.md`, and then every subsequent session loaded that incorrect fact as ground truth. Memory files are the agent's source of continuity between sessions. If bad data gets in, it poisons everything downstream.
+
+The fix was equally simple: periodic memory audits. But it revealed a deeper truth about working with persistent AI agents. Their memory isn't like human memory, which self-corrects through repeated exposure to reality. Agent memory is more like a database: garbage in, garbage out, and it doesn't know it's wrong.
+
+### Automated Content: Always a Starting Point
+
+The agent's first attempts at LinkedIn outreach DMs were too templated, too resume-forward, and contained factual errors about the companies it was reaching out to. The drafts read like a chatbot wrote them, which is exactly what happened.
+
+It took several rounds of explicit style rules to get the quality up: "Lead with something specific about the company. No buzzwords. Sound like a human who researched them, not a bot that scraped their about page." The quality improved with each iteration of feedback, but it never reached "fire and forget." Every draft still needs a human pass.
+
+This is a consistent pattern. Automated drafts are starting points, not finished products. The agent is excellent at structure, research, and initial framing. It struggles with voice, nuance, and the kind of judgment that comes from actually being a person who's had conversations with other people.
+
+### Fixing Symptoms Instead of Root Causes
+
+The most expensive failure mode in terms of wasted time: the agent fixing what looks wrong instead of diagnosing what's actually wrong.
+
+During the roast chart refactoring, E2E tests started failing. The agent looked at the test code, saw a navigation race condition, and wrote a fix. The fix was clean, well-tested, and wrong. The actual root cause was that a test data seeding script was accumulating profiles on each CI run, eventually flipping inventory flags that broke the test's hardcoded selectors.
+
+That was a wasted PR cycle. The fix got closed, the root cause required reading CI logs carefully, and the eventual solution was completely different from the agent's first attempt. We codified a rule after this: "Confirm the actual failure before fixing. Read CI logs to identify the exact error before writing a fix."
+
+### Geographic and Spatial Reasoning
+
+A minor but illustrative failure: when I asked for date night ideas near our neighborhood, the agent suggested restaurants and venues that were geographically nonsensical. It could research businesses and write compelling descriptions, but it lacked the spatial reasoning to know that a 45-minute drive doesn't qualify as "nearby."
+
+This isn't a fixable problem with better prompting. It's a fundamental limitation of language models. They process text about places without understanding physical space. For now, location-dependent suggestions always need a sanity check.
+
+## How the System Evolved
+
+The most interesting part of this experiment isn't any single success or failure. It's watching the system configuration evolve in response to what went wrong. The agent's operating instructions (stored in `AGENTS.md`, `SOUL.md`, and related files) grew from basic setup notes to a comprehensive operating manual, and almost every addition was reactive.
+
+**Safety rules came from incidents.** Early in the process, the agent included a defense company in a batch of job applications. I rejected it immediately, and a hard exclusion rule for military, law enforcement, and weapons companies was added that day. Later, after encountering prompt injection attempts in web search results, web content hardening rules were written. These aren't hypothetical policies. They're scar tissue from things that actually happened.
+
+**Memory discipline came from forgetting.** After the Gates Foundation/Corporation error and several context loss incidents, we added explicit rules: "Write it down. No mental notes." If the agent wants to remember something, it writes to a file. If it learns a lesson, it updates the relevant system file immediately. Mental notes don't survive session restarts. Files do.
+
+**Git workflow discipline came from PR mistakes.** After the agent pushed additional commits to an already-open PR (causing merge confusion), we codified: "One PR, one purpose. Never push additional commits to a PR that's already been opened." After a fix was attempted without reading CI logs first, we added: "Confirm the actual failure before fixing."
+
+**Self-monitoring came from repeated errors.** The agent's default response to making a mistake was to apologize. We replaced that with a directive: "When you make a mistake, your first instinct should be root cause analysis and a corrective action. Not an apology." This actually changed behavior. The evening reflection cron now produces structured retrospectives instead of feel-good summaries.
+
+Each of these rules exists because something went wrong. The system file isn't a theoretical framework. It's a living document of lessons learned, and it gets updated in real time. The agent itself often proposes the rule change after making the mistake, which is one of the more interesting feedback loops in this setup.
+
+## The Numbers
+
+Two weeks is enough to generate some real data:
+
+- **43 PRs** across 3 repositories (coffee-app, coffee-scraper, Career) in 18 days
+- **27 PRs merged**, 12 closed (superseded or approach changed), 4 open
+- **8 new coffee suppliers** integrated into the scraper pipeline
+- **81 unit tests** written for the purveyors.io roast chart refactoring
+- **2 blog posts** written and published (including the infrastructure to serve them)
+- **16 daily logs** and **9 structured reflections** in the memory system
+- **~$1.13** average cost per full job application package
+- **6 system file updates** to AGENTS.md, SOUL.md, and related configuration
+
+The PR velocity is the number that surprised me. 43 PRs in 18 days is more than 2 per day. Some are small (config fixes, documentation), some are substantial (new supplier integrations, full blog posts, multi-phase refactors with test suites). But the throughput is real, and it comes from the agent handling the full cycle: research, implementation, testing, PR creation, documentation.
+
+## Is This the Future?
+
+Honest assessment: the leverage is real, but it's not magic.
+
+The wins compound. Once the scraper pipeline had good patterns established, each new supplier was faster than the last. Once the refactoring approach was proven in Phase 1, subsequent phases followed the template. The agent's institutional memory means it doesn't re-learn the codebase conventions each time.
+
+But the failure modes also compound. A factual error in memory corrupts downstream output until someone catches it. A bad habit (like fixing symptoms instead of root causes) repeats until you write an explicit rule against it. The system needs constant tuning, and the tuning itself is a skill that takes time to develop.
+
+The interesting question isn't "can AI agents write code?" They obviously can. The question is whether this style of work, where a human directs and an agent executes the full cycle, gets better faster than the problems multiply. Two weeks in, I think it does. But I'm not certain, and I think anyone claiming certainty is selling something.
+
+What I am certain about: the daily log files, the reflections, the evolving system configuration, all of this is real data about a real workflow. Not a demo. Not a pitch. If you're curious about what it actually looks like to build software with an AI co-developer, this is what it looks like. Messy, iterative, occasionally frustrating, and genuinely productive in ways I didn't expect.
+
+The blog will keep tracking it.
