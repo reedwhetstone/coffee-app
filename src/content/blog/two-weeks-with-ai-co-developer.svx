@@ -26,7 +26,7 @@ Practical takeaway: invest your time in workflow design that routes around model
 
 OpenClaw persists memory in markdown files: `MEMORY.md` for curated long-term knowledge, `memory/YYYY-MM-DD.md` for daily logs, and a `brain/` directory organized as a zettelkasten (people, projects, ideas, references, tasks).
 
-The critical insight: agent memory doesn't self-correct. Human memory updates through repeated exposure to reality. Agent memory is a flat file. If bad data gets written, it stays there and poisons every downstream session until someone catches it. Early on, the agent stored "Gates Foundation" instead of "Gates Corporation" in its memory. That error propagated into generated cover letters and application materials for days before I noticed.
+The critical insight: agent memory doesn't self-correct. Human memory updates through repeated exposure to reality. Agent memory is a flat file. If bad data gets written, it stays there and poisons every downstream session until someone catches it. I've had factual errors in memory files propagate into generated content for days before anyone noticed. The agent doesn't flag its own stale data. It treats everything in its memory as ground truth.
 
 **What works:**
 - Atomic notes in a zettelkasten structure. Each person, project, and idea gets its own file. Cross-references use wiki-links. The agent can grep for context before responding, which dramatically reduces confabulation about things it should already know.
@@ -49,13 +49,21 @@ Fix: context pruning configuration (cache-TTL with a 5-minute window, keeping on
 
 The broader lesson: when an agentic system behaves unreliably, check the infrastructure before blaming the model. Context window management, token budgets, tool output verbosity. These are engineering problems with engineering solutions.
 
+## Channel-based task routing eliminates context bleed.
+
+One operational win that surprised me: running agent conversations in categorized Discord channels (#scraper, #career, #blog, #purveyors, etc.) instead of a single thread. Each channel scopes the agent's focus to a specific domain. The scraper channel doesn't carry context from the blog channel. Career discussions don't pollute code review.
+
+This is a cheap, effective form of context management. Instead of relying on the model to mentally separate concerns within one massive conversation, you give it separate conversations with separate contexts. The agent loads relevant memory files per channel, stays focused, and doesn't burn tokens on irrelevant history.
+
+If you're running a multi-project agentic setup, split by domain early. The alternative, one long conversation covering everything, is how context windows die.
+
 ## Clear pass/fail criteria are the unlock for autonomous work.
 
 The agent's best work happened on tasks with deterministic quality signals. Data pipeline work: the extracted field is either correct or it isn't. Unit tests: they pass or they don't. Schema validation: the data conforms or it doesn't.
 
 The agent's worst work happened on tasks requiring judgment. Writing LinkedIn outreach messages that sound human. Suggesting restaurants near a specific neighborhood. Deciding whether a PR addresses the real root cause or just the visible symptom.
 
-This maps cleanly to where you should and shouldn't trust autonomous execution. If you can write a programmatic check for the output, let the agent run the full cycle. If quality assessment requires human judgment, the agent produces drafts for review. Mixing these up, letting agents auto-ship judgment-dependent work, or manually reviewing work that has clear pass/fail criteria, is where time gets wasted.
+This maps cleanly to where you should and shouldn't trust autonomous execution. If you can write a programmatic check for the output, let the agent run the full cycle. If quality assessment requires human judgment, the agent produces drafts for review. Analytics Vidhya's [2026 agent trends analysis](https://www.analyticsvidhya.com/blog/2026/01/ai-agents-trends/) frames this as the shift from task completion to intent-setting: "The core human skill becomes intent-setting, with clearly defined goals and constraints." The corollary is that without clear constraints, the agent is guessing.
 
 ## The system configuration is scar tissue.
 
@@ -64,7 +72,6 @@ The agent's operating instructions (`AGENTS.md`, `SOUL.md`, etc.) grew from a ba
 Examples:
 - **"Never push additional commits to an existing PR."** Added after the agent stacked commits on a PR, causing merge confusion.
 - **"Confirm the actual failure before fixing."** Added after the agent wrote a clean, well-tested fix for the wrong root cause, wasting a PR cycle.
-- **"No military, law enforcement, or weapons companies."** Added after the agent included a defense contractor in a batch of job applications.
 - **"Root cause analysis, not apologies."** Added after noticing the agent's default failure response was to apologize rather than diagnose.
 
 The pattern: something breaks, the failure gets diagnosed, a rule gets codified, the system improves. This is the real feedback loop. Not the scraping pipeline or the CI checks. The system configuration itself is a living document of operational lessons.
@@ -88,6 +95,16 @@ The capture workflow matters too. I use emoji prefixes in messages (🧠 for cap
 The practical limit isn't how fast the agent can produce. It's how fast you can review, provide direction, and course-correct. This is the actual bottleneck in the economy of directors: the director's bandwidth.
 
 What helps: clear conventions that reduce review burden. If every PR follows the same structure, every commit message follows the same format, every test follows the same patterns, then review becomes pattern matching instead of deep reading. Invest in conventions early. They pay compound returns.
+
+## Design for next month's model, not today's.
+
+This might be the most counterintuitive lesson. Many of the agent's current failure modes, the spatial reasoning gaps, the occasional confabulation, the symptom-fixing before root-cause analysis, are model-level limitations that could disappear with the next generation of models. And model generations are measured in months, not years.
+
+This changes how you should design agentic workflows. Build simple, elegant solutions with clear interfaces. Don't over-engineer workarounds for current model weaknesses. For most tasks, the criteria are binary: it works or it doesn't. The next model release could solve something that was impossible last version. If your workaround is deeply embedded in your architecture, you now have technical debt instead of a capability upgrade.
+
+Anthropic's research on [building effective agents](https://www.anthropic.com/research/building-effective-agents) found the same pattern: "the most successful implementations use simple, composable patterns rather than complex frameworks." A [recent arXiv paper on production-grade agentic workflows](https://arxiv.org/abs/2512.08769) lists the KISS principle as a core best practice, alongside single-responsibility agents and clean separation of concerns.
+
+The practical advice: when a model fails at a task, note the failure, add a lightweight check, and move on. Don't build a Rube Goldberg machine to compensate. Keep the architecture simple enough that when a better model drops in, the improvement is instant. The workaround you spend a week building might be obsolete in a month.
 
 ## Honest unknowns.
 
