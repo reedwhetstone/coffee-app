@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { select, scaleBand, scaleLinear, axisBottom, axisLeft, max, group, sum } from 'd3';
-	import { onMount } from 'svelte';
+	import { max, sum, group } from 'd3-array';
+	import { scaleBand, scaleLinear } from 'd3-scale';
+	import { LayerCake, Svg } from 'layercake';
 	import { formatDateForDisplay } from '$lib/utils/dates';
+	import SalesChartSvg from './SalesChartSvg.svelte';
 
 	// Data interfaces
 	interface ProfitData {
@@ -59,11 +61,7 @@
 		salesData: SaleData[];
 	}>();
 
-	// Chart dimensions and container
-	let chartContainer: HTMLDivElement;
-	let width: number;
-	let height = 400;
-	let margin = { top: 40, right: 80, bottom: 80, left: 80 };
+	const padding = { top: 40, right: 80, bottom: 80, left: 80 };
 
 	// Filter states
 	let selectedMetric = $state('revenue');
@@ -294,152 +292,17 @@
 		return metricOptions.find((m) => m.value === selectedMetric) || metricOptions[3];
 	});
 
-	// Chart creation effect
-	$effect(() => {
-		if (chartContainer && chartData().length > 0) {
-			createChart();
-		}
-	});
+	// Compute domains for LayerCake
+	let xDomain = $derived(() => chartData().map((d: ChartDataPoint) => d.beanName));
+	let yDomain = $derived(
+		() => [0, max(chartData(), (d: ChartDataPoint) => d.value) || 0] as [number, number]
+	);
 
-	function createChart() {
-		// Get container width
-		width = chartContainer.clientWidth - margin.left - margin.right;
-
-		// Clear existing chart
-		select(chartContainer).selectAll('*').remove();
-
-		// Create SVG
-		const svg = select(chartContainer)
-			.append('svg')
-			.attr('width', '100%')
-			.attr('height', height + margin.top + margin.bottom)
-			.append('g')
-			.attr('transform', `translate(${margin.left},${margin.top})`);
-
-		// Create scales
-		const xScale = scaleBand()
-			.domain(chartData().map((d: ChartDataPoint) => d.beanName))
-			.range([0, width])
-			.padding(0.2);
-
-		const yScale = scaleLinear()
-			.domain([0, max(chartData(), (d: ChartDataPoint) => d.value) || 0])
-			.range([height, 0])
-			.nice();
-
-		// Add grid lines
-		svg
-			.append('g')
-			.attr('class', 'grid')
-			.attr('transform', `translate(0,${height})`)
-			.call(
-				axisBottom(xScale)
-					.tickSize(-height)
-					.tickFormat(() => '')
-			)
-			.style('stroke-dasharray', '2,2')
-			.style('opacity', 0.1)
-			.style('stroke', 'rgb(156 163 175)');
-
-		svg
-			.append('g')
-			.attr('class', 'grid')
-			.call(
-				axisLeft(yScale)
-					.tickSize(-width)
-					.tickFormat(() => '')
-			)
-			.style('stroke-dasharray', '2,2')
-			.style('opacity', 0.1)
-			.style('stroke', 'rgb(156 163 175)');
-
-		// Add axes
-		svg
-			.append('g')
-			.attr('class', 'x-axis')
-			.attr('transform', `translate(0,${height})`)
-			.call(axisBottom(xScale))
-			.style('color', 'rgb(156 163 175)')
-			.selectAll('text')
-			.style('fill', 'rgb(156 163 175)')
-			.style('font-size', '12px')
-			.attr('transform', 'rotate(-45)')
-			.style('text-anchor', 'end');
-
-		svg
-			.append('g')
-			.attr('class', 'y-axis')
-			.call(axisLeft(yScale).tickFormat((d) => currentMetric().format(d as number)))
-			.style('color', 'rgb(156 163 175)')
-			.selectAll('text')
-			.style('fill', 'rgb(156 163 175)')
-			.style('font-size', '12px');
-
-		// Create bars with colors based on metric
-		const bars = svg
-			.selectAll('.bar')
-			.data(chartData())
-			.enter()
-			.append('rect')
-			.attr('class', 'bar')
-			.attr('x', (d: ChartDataPoint) => xScale(d.beanName) || 0)
-			.attr('width', xScale.bandwidth())
-			.attr('y', height)
-			.attr('height', 0)
-			.attr('fill', getMetricColor(selectedMetric))
-			.style('cursor', 'pointer')
-			.on('mouseover', function (event: MouseEvent, d: ChartDataPoint) {
-				// Highlight bar
-				select(this).attr('fill', getMetricColor(selectedMetric, true));
-
-				// Show tooltip
-				tooltipState.visible = true;
-				tooltipState.x = event.clientX;
-				tooltipState.y = event.clientY;
-				tooltipState.data = d;
-			})
-			.on('mouseout', function () {
-				// Reset bar color
-				select(this).attr('fill', getMetricColor(selectedMetric));
-
-				// Hide tooltip
-				tooltipState.visible = false;
-				tooltipState.data = null;
-			});
-
-		// Animate bars
-		bars
-			.transition()
-			.duration(750)
-			.attr('y', (d: ChartDataPoint) => yScale(d.value))
-			.attr('height', (d: ChartDataPoint) => height - yScale(d.value));
-
-		// Add axis labels
-		svg
-			.append('text')
-			.attr('transform', 'rotate(-90)')
-			.attr('y', 0 - margin.left)
-			.attr('x', 0 - height / 2)
-			.attr('dy', '1em')
-			.style('text-anchor', 'middle')
-			.style('fill', 'rgb(156 163 175)')
-			.style('font-size', '12px')
-			.text(currentMetric().label);
-
-		svg
-			.append('text')
-			.attr('transform', `translate(${width / 2}, ${height + margin.bottom - 10})`)
-			.style('text-anchor', 'middle')
-			.style('fill', 'rgb(156 163 175)')
-			.style('font-size', '12px')
-			.text('Coffee Beans');
-	}
-
+	// Metric colors for the bar chart
 	function getMetricColor(metric: string, hover = false) {
 		const metricConfig = metricOptions.find((m) => m.value === metric);
 		if (!metricConfig) return 'rgb(156 163 175)';
 
-		// Convert Tailwind color class to RGB
 		const colorMap: Record<string, string> = {
 			'text-indigo-500': hover ? 'rgb(99 102 241)' : 'rgb(79 70 229)',
 			'text-cyan-500': hover ? 'rgb(6 182 212)' : 'rgb(14 165 233)',
@@ -453,6 +316,15 @@
 		};
 
 		return colorMap[metricConfig.color] || 'rgb(156 163 175)';
+	}
+
+	function handleTooltipChange(state: {
+		visible: boolean;
+		x: number;
+		y: number;
+		data: ChartDataPoint | null;
+	}) {
+		tooltipState = state;
 	}
 
 	// Purchase date management functions
@@ -479,18 +351,6 @@
 		`$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 	const formatPercent = (value: number) => `${value.toFixed(1)}%`;
 	const formatNumber = (value: number) => value.toLocaleString();
-
-	// Resize handler
-	onMount(() => {
-		const handleResize = () => {
-			if (chartData().length > 0) {
-				createChart();
-			}
-		};
-
-		window.addEventListener('resize', handleResize);
-		return () => window.removeEventListener('resize', handleResize);
-	});
 </script>
 
 <!-- Sales Chart Component -->
@@ -671,19 +531,43 @@
 
 	<!-- Chart Container -->
 	<div class="relative">
-		<div bind:this={chartContainer} class="w-full" style="min-height: 400px;"></div>
-		{#if chartData().length === 0}
-			<div
-				class="absolute inset-0 flex items-center justify-center rounded bg-background-secondary-light bg-opacity-90"
-			>
-				<div class="text-center">
-					<div class="mb-2 text-4xl opacity-50">📊</div>
-					<div class="text-sm text-text-secondary-light">
-						No data available for selected filters
+		<div class="w-full" style="min-height: 400px; height: 520px;">
+			{#if chartData().length > 0}
+				<LayerCake
+					data={chartData()}
+					x={(d: ChartDataPoint) => d.beanName}
+					y={(d: ChartDataPoint) => d.value}
+					xScale={scaleBand().padding(0.2)}
+					yScale={scaleLinear().nice()}
+					xDomain={xDomain()}
+					yDomain={yDomain()}
+					yReverse
+					{padding}
+				>
+					<Svg>
+						<SalesChartSvg
+							chartData={chartData()}
+							metricColor={getMetricColor(selectedMetric)}
+							metricHoverColor={getMetricColor(selectedMetric, true)}
+							metricLabel={currentMetric().label}
+							metricFormat={currentMetric().format}
+							onTooltipChange={handleTooltipChange}
+						/>
+					</Svg>
+				</LayerCake>
+			{:else}
+				<div
+					class="flex h-full items-center justify-center rounded bg-background-secondary-light bg-opacity-90"
+				>
+					<div class="text-center">
+						<div class="mb-2 text-4xl opacity-50">📊</div>
+						<div class="text-sm text-text-secondary-light">
+							No data available for selected filters
+						</div>
 					</div>
 				</div>
-			</div>
-		{/if}
+			{/if}
+		</div>
 	</div>
 </div>
 
