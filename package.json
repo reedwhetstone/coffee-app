@@ -81,6 +81,7 @@
 		"glob": "^10.3.10",
 		"jose": "^5.9.6",
 		"jwt-decode": "^4.0.0",
+		"layercake": "^10.0.2",
 		"lodash": "^4.17.21",
 		"papaparse": "^5.5.3",
 		"playwright": "^1.58.1",
