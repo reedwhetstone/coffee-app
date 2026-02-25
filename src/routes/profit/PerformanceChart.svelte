@@ -1,22 +1,8 @@
 <script lang="ts">
-	import {
-		sum,
-		group,
-		select,
-		extent,
-		max,
-		axisBottom,
-		axisLeft,
-		scaleLinear,
-		scaleTime,
-		curveMonotoneX,
-		line,
-		area,
-		pointer,
-		type ScaleTime
-	} from 'd3';
-	import { onMount } from 'svelte';
-	import type { D3GSelection, PerformanceDataPoint } from '$lib/types/d3.types';
+	import { sum, group, max, extent } from 'd3-array';
+	import { LayerCake, Svg } from 'layercake';
+	import type { PerformanceDataPoint } from '$lib/types/d3.types';
+	import PerformanceChartSvg from './PerformanceChartSvg.svelte';
 
 	interface SaleData {
 		id: number;
@@ -53,11 +39,7 @@
 		profitData: ProfitData[];
 	}>();
 
-	// Chart dimensions and container
-	let chartContainer: HTMLDivElement;
-	let width: number;
-	let height = 400;
-	let margin = { top: 40, right: 80, bottom: 60, left: 80 };
+	const padding = { top: 40, right: 80, bottom: 60, left: 80 };
 
 	// Chart control states
 	let selectedTimeRange = $state('All');
@@ -201,364 +183,37 @@
 		}));
 	}
 
-	// Reactive chart updates
-	$effect(() => {
-		if (chartContainer && (salesData.length > 0 || profitData.length > 0)) {
-			createChart();
-		}
+	// Compute domains reactively for LayerCake
+	let xDomain = $derived.by(() => {
+		const data = processedChartData();
+		if (data.length === 0) return [new Date(), new Date()] as [Date, Date];
+		const ext = extent(data, (d) => new Date(d.date));
+		return [ext[0] ?? new Date(), ext[1] ?? new Date()] as [Date, Date];
 	});
 
-	// Main chart creation function
-	function createChart() {
-		// Get the container width
-		width = chartContainer.clientWidth - margin.left - margin.right;
-
-		// Clear existing chart
-		select(chartContainer).selectAll('*').remove();
-
-		const chartData = processedChartData();
-		if (!chartData.length) return;
-
-		// Create SVG
-		const svg = select(chartContainer)
-			.append('svg')
-			.attr('width', '100%')
-			.attr('height', height + margin.top + margin.bottom)
-			.append('g')
-			.attr('transform', `translate(${margin.left},${margin.top})`);
-
-		// Create dynamic scales based on view type
-		const extent_result = extent(chartData, (d) => new Date(d.date));
-		const xScale = scaleTime()
-			.domain(
-				extent_result[0] && extent_result[1]
-					? [extent_result[0], extent_result[1]]
-					: [new Date(), new Date()]
-			)
-			.range([0, width]);
-
-		let yDomain: [number, number];
+	let yDomain = $derived.by(() => {
+		const data = processedChartData();
+		if (data.length === 0) return [0, 100] as [number, number];
 		if (selectedViewType === 'margin') {
-			yDomain = [0, Math.max(max(chartData, (d) => d.margin) || 0, 100)];
-		} else {
-			yDomain = [
-				0,
-				Math.max(
-					max(chartData, (d) => d.revenue) || 0,
-					max(chartData, (d) => d.cost) || 0,
-					max(chartData, (d) => d.target) || 0
-				)
-			];
+			return [0, Math.max(max(data, (d) => d.margin) || 0, 100)] as [number, number];
 		}
-
-		const yScale = scaleLinear().domain(yDomain).range([height, 0]);
-
-		// Enhanced axes with better formatting
-		const xAxis = axisBottom(xScale)
-			.tickFormat((d) => {
-				const date = d as Date;
-				if (selectedViewType === 'monthly') {
-					return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-				}
-				return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-			})
-			.ticks(6);
-
-		const yAxisFormat =
-			selectedViewType === 'margin'
-				? (d: number | { valueOf(): number }) => `${Number(d)}%`
-				: (d: number | { valueOf(): number }) => `$${Number(d).toLocaleString()}`;
-
-		const yAxis = axisLeft(yScale).tickFormat(yAxisFormat).ticks(6);
-
-		// Add grid lines (following UI framework subtle styling)
-		svg
-			.append('g')
-			.attr('class', 'grid')
-			.attr('transform', `translate(0,${height})`)
-			.call(
-				axisBottom(xScale)
-					.tickSize(-height)
-					.tickFormat(() => '')
+		return [
+			0,
+			Math.max(
+				max(data, (d) => d.revenue) || 0,
+				max(data, (d) => d.cost) || 0,
+				max(data, (d) => d.target) || 0
 			)
-			.style('stroke-dasharray', '2,2')
-			.style('opacity', 0.1)
-			.style('stroke', 'rgb(156 163 175)');
+		] as [number, number];
+	});
 
-		svg
-			.append('g')
-			.attr('class', 'grid')
-			.call(
-				axisLeft(yScale)
-					.tickSize(-width)
-					.tickFormat(() => '')
-			)
-			.style('stroke-dasharray', '2,2')
-			.style('opacity', 0.1)
-			.style('stroke', 'rgb(156 163 175)');
-
-		// Add styled axes
-		svg
-			.append('g')
-			.attr('class', 'x-axis')
-			.attr('transform', `translate(0,${height})`)
-			.call(xAxis)
-			.style('color', 'rgb(156 163 175)')
-			.selectAll('text')
-			.style('fill', 'rgb(156 163 175)')
-			.style('font-size', '12px');
-
-		svg
-			.append('g')
-			.attr('class', 'y-axis')
-			.call(yAxis)
-			.style('color', 'rgb(156 163 175)')
-			.selectAll('text')
-			.style('fill', 'rgb(156 163 175)')
-			.style('font-size', '12px');
-
-		// Create line generators with improved styling
-		const revenueLine = line<PerformanceDataPoint>()
-			.x((d) => xScale(new Date(d.date)))
-			.y((d) => yScale(d.revenue))
-			.curve(curveMonotoneX);
-
-		const costLine = line<PerformanceDataPoint>()
-			.x((d) => xScale(new Date(d.date)))
-			.y((d) => yScale(d.cost))
-			.curve(curveMonotoneX);
-
-		const targetLine = line<PerformanceDataPoint>()
-			.x((d) => xScale(new Date(d.date)))
-			.y((d) => yScale(d.target))
-			.curve(curveMonotoneX);
-
-		// Add gradient definitions (following UI framework semantic colors)
-		const defs = svg.append('defs');
-
-		// Revenue gradient (semantic green)
-		const revenueGradient = defs
-			.append('linearGradient')
-			.attr('id', 'revenueGradient')
-			.attr('x1', '0%')
-			.attr('y1', '0%')
-			.attr('x2', '0%')
-			.attr('y2', '100%');
-		revenueGradient
-			.append('stop')
-			.attr('offset', '0%')
-			.attr('stop-color', 'rgb(34 197 94)')
-			.attr('stop-opacity', 0.8);
-		revenueGradient
-			.append('stop')
-			.attr('offset', '100%')
-			.attr('stop-color', 'rgb(34 197 94)')
-			.attr('stop-opacity', 0.1);
-
-		// Add area fills first (behind lines)
-		if (showProfitLine && selectedViewType !== 'margin') {
-			svg
-				.append('path')
-				.datum(chartData)
-				.attr('fill', 'url(#revenueGradient)')
-				.attr(
-					'd',
-					area<PerformanceDataPoint>()
-						.x((d) => xScale(new Date(d.date)))
-						.y0(height)
-						.y1((d) => yScale(d.revenue))
-						.curve(curveMonotoneX)
-				);
-		}
-
-		// Add enhanced lines with conditional visibility (semantic colors from UI framework)
-		if (showProfitLine) {
-			svg
-				.append('path')
-				.datum(chartData)
-				.attr('fill', 'none')
-				.attr('stroke', selectedViewType === 'margin' ? 'rgb(59 130 246)' : 'rgb(34 197 94)')
-				.attr('stroke-width', 3)
-				.attr('stroke-linecap', 'round')
-				.attr('d', revenueLine)
-				.style('filter', 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))');
-		}
-
-		if (showCostLine && selectedViewType !== 'margin') {
-			svg
-				.append('path')
-				.datum(chartData)
-				.attr('fill', 'none')
-				.attr('stroke', 'rgb(239 68 68)')
-				.attr('stroke-width', 2)
-				.attr('stroke-linecap', 'round')
-				.attr('d', costLine)
-				.style('filter', 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))');
-		}
-
-		if (showTargetLine) {
-			svg
-				.append('path')
-				.datum(chartData)
-				.attr('fill', 'none')
-				.attr('stroke', 'rgb(139 92 246)')
-				.attr('stroke-width', 2)
-				.attr('stroke-dasharray', '8,4')
-				.attr('stroke-linecap', 'round')
-				.attr('d', targetLine)
-				.style('opacity', 0.7);
-		}
-
-		// Add interactive overlay for smooth tooltip management
-		addInteractiveOverlay(svg, chartData, xScale);
-
-		// Enhanced interactive legend
-		addLegend(svg, width);
-	}
-
-	function addInteractiveOverlay(
-		svg: D3GSelection,
-		chartData: PerformanceDataPoint[],
-		xScale: ScaleTime<number, number>
-	) {
-		// Create overlay for capturing mouse events
-		const overlay = svg
-			.append('rect')
-			.attr('class', 'overlay')
-			.attr('width', width)
-			.attr('height', height)
-			.attr('fill', 'transparent')
-			.style('cursor', 'crosshair');
-
-		// Mouse tracking with smooth state management
-		overlay
-			.on('mouseover', function () {
-				tooltipState.visible = true;
-			})
-			.on('mousemove', function (this: SVGRectElement, event: MouseEvent) {
-				try {
-					const [mouseX] = pointer(event, this);
-					const x0 = xScale.invert(mouseX);
-
-					// Find closest data point
-					let closestIndex = 0;
-					let minDistance = Math.abs(new Date(chartData[0].date).getTime() - x0.getTime());
-
-					for (let i = 1; i < chartData.length; i++) {
-						const distance = Math.abs(new Date(chartData[i].date).getTime() - x0.getTime());
-						if (distance < minDistance) {
-							minDistance = distance;
-							closestIndex = i;
-						}
-					}
-
-					const d = chartData[closestIndex];
-
-					if (d) {
-						const mouseX = event.clientX;
-						const mouseY = event.clientY;
-
-						// Update tooltip state smoothly
-						tooltipState.data = d;
-						tooltipState.x = mouseX;
-						tooltipState.y = mouseY;
-
-						// Show vertical line indicator
-						showVerticalIndicator(svg, xScale(new Date(d.date)));
-					}
-				} catch (error) {
-					console.warn('Tooltip error:', error);
-				}
-			})
-			.on('mouseout', function () {
-				tooltipState.visible = false;
-				tooltipState.data = null;
-				hideVerticalIndicator(svg);
-			});
-	}
-
-	function showVerticalIndicator(svg: D3GSelection, xPos: number) {
-		// Remove existing indicator
-		svg.selectAll('.hover-line').remove();
-
-		// Add new indicator
-		svg
-			.append('line')
-			.attr('class', 'hover-line')
-			.attr('x1', xPos)
-			.attr('x2', xPos)
-			.attr('y1', 0)
-			.attr('y2', height)
-			.attr('stroke', 'rgb(156 163 175)')
-			.attr('stroke-width', 1)
-			.attr('stroke-dasharray', '3,3')
-			.style('opacity', 0.7);
-	}
-
-	function hideVerticalIndicator(svg: D3GSelection) {
-		svg.selectAll('.hover-line').remove();
-	}
-
-	function addLegend(svg: D3GSelection, width: number) {
-		const legend = svg
-			.append('g')
-			.attr('class', 'legend')
-			.attr('transform', `translate(${width - 140}, 20)`);
-
-		const legendItems = [
-			{
-				label: selectedViewType === 'margin' ? 'Profit Margin' : 'Revenue',
-				color: selectedViewType === 'margin' ? 'rgb(59 130 246)' : 'rgb(34 197 94)',
-				visible: showProfitLine,
-				dashed: false
-			},
-			{
-				label: 'Costs',
-				color: 'rgb(239 68 68)',
-				visible: showCostLine && selectedViewType !== 'margin',
-				dashed: false
-			},
-			{
-				label: selectedViewType === 'margin' ? 'Target (25%)' : 'Target',
-				color: 'rgb(139 92 246)',
-				visible: showTargetLine,
-				dashed: true
-			}
-		].filter((item) => item.visible);
-
-		legendItems.forEach((item, i) => {
-			const legendGroup = legend
-				.append('g')
-				.attr('transform', `translate(0, ${i * 22})`)
-				.style('cursor', 'pointer')
-				.style('opacity', 0.9)
-				.on('mouseover', function (this: SVGGElement) {
-					select(this).style('opacity', 1);
-				})
-				.on('mouseout', function (this: SVGGElement) {
-					select(this).style('opacity', 0.9);
-				});
-
-			legendGroup
-				.append('line')
-				.attr('x1', 0)
-				.attr('x2', 20)
-				.attr('y1', 0)
-				.attr('y2', 0)
-				.attr('stroke', item.color)
-				.attr('stroke-width', 2.5)
-				.attr('stroke-linecap', 'round')
-				.attr('stroke-dasharray', item.dashed ? '6,3' : 'none');
-
-			legendGroup
-				.append('text')
-				.attr('x', 28)
-				.attr('y', 4)
-				.text(item.label)
-				.style('fill', 'rgb(156 163 175)')
-				.style('font-size', '12px')
-				.style('font-weight', '500');
-		});
+	function handleTooltipChange(state: {
+		visible: boolean;
+		x: number;
+		y: number;
+		data: PerformanceDataPoint | null;
+	}) {
+		tooltipState = state;
 	}
 
 	// Format functions for tooltip
@@ -572,19 +227,6 @@
 			day: 'numeric',
 			year: 'numeric'
 		});
-
-	// Resize handler
-	onMount(() => {
-		const handleResize = () => {
-			createChart();
-		};
-
-		window.addEventListener('resize', handleResize);
-
-		return () => {
-			window.removeEventListener('resize', handleResize);
-		};
-	});
 </script>
 
 <!-- Enhanced Performance Chart Component -->
@@ -699,17 +341,39 @@
 
 	<!-- Chart Container -->
 	<div class="relative">
-		<div bind:this={chartContainer} class="w-full" style="min-height: 400px;"></div>
-		{#if !processedChartData().length}
-			<div
-				class="absolute inset-0 flex items-center justify-center rounded bg-background-secondary-light bg-opacity-90"
-			>
-				<div class="text-center">
-					<div class="mb-2 text-4xl opacity-50">📊</div>
-					<div class="text-sm text-text-secondary-light">No sales data for selected period</div>
+		<div class="w-full" style="min-height: 400px; height: 500px;">
+			{#if processedChartData().length > 0}
+				<LayerCake
+					data={processedChartData()}
+					x={(d: PerformanceDataPoint) => new Date(d.date).getTime()}
+					y={(d: PerformanceDataPoint) => d.revenue}
+					xDomain={[xDomain[0].getTime(), xDomain[1].getTime()]}
+					{yDomain}
+					yReverse
+					{padding}
+				>
+					<Svg>
+						<PerformanceChartSvg
+							chartData={processedChartData()}
+							{selectedViewType}
+							{showProfitLine}
+							{showCostLine}
+							{showTargetLine}
+							onTooltipChange={handleTooltipChange}
+						/>
+					</Svg>
+				</LayerCake>
+			{:else}
+				<div
+					class="flex h-full items-center justify-center rounded bg-background-secondary-light bg-opacity-90"
+				>
+					<div class="text-center">
+						<div class="mb-2 text-4xl opacity-50">📊</div>
+						<div class="text-sm text-text-secondary-light">No sales data for selected period</div>
+					</div>
 				</div>
-			</div>
-		{/if}
+			{/if}
+		</div>
 	</div>
 
 	<!-- Smart Insights Panel -->
