@@ -20,8 +20,6 @@
 	import {
 		roastData,
 		roastEvents,
-		startTime,
-		accumulatedTime,
 		temperatureEntries,
 		eventEntries,
 		type RoastPoint,
@@ -31,6 +29,7 @@
 		secondsToMs,
 		extractMilestones
 	} from './stores';
+	import type { RoastTimer } from '$lib/roast';
 	// Import the new RawChartData interface for frontend processing
 	import type { RawChartData } from '../api/roast-chart-data/+server.js';
 
@@ -144,8 +143,7 @@
 	}
 
 	let {
-		isRoasting = $bindable(false),
-		isPaused = $bindable(false),
+		timer,
 		fanValue = $bindable(),
 		heatValue = $bindable(),
 		currentRoastProfile = $bindable(null),
@@ -156,8 +154,7 @@
 		selectedBean,
 		clearRoastData
 	}: {
-		isRoasting?: boolean;
-		isPaused?: boolean;
+		timer: RoastTimer;
 		fanValue: number;
 		heatValue: number;
 		currentRoastProfile?: RoastProfile | null;
@@ -169,13 +166,14 @@
 		clearRoastData: () => void;
 	} = $props();
 
+	// Derive roasting state from timer
+	let isRoasting = $derived(!timer.isIdle);
+	let isPaused = $derived(timer.isPaused);
+
 	// Artisan import state
 	let artisanImportFile = $state<File | null>(null);
 	let showArtisanImport = $state(false);
 
-	let seconds = $state(0);
-	let milliseconds = $state(0);
-	let timerInterval: ReturnType<typeof setInterval> | null = null;
 	let dataLoggingInterval: ReturnType<typeof setInterval> | null = null;
 
 	let pressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -264,13 +262,28 @@
 	});
 
 	// Timer function
-	function toggleTimer() {
-		if (!isRoasting) {
-			// Initial start
-			$startTime = performance.now();
-			$accumulatedTime = 0;
+	function startDataLogging() {
+		if (dataLoggingInterval) clearInterval(dataLoggingInterval);
+		dataLoggingInterval = setInterval(() => {
+			$roastData = [
+				...$roastData,
+				{
+					time: timer.elapsed,
+					heat: heatValue,
+					fan: fanValue
+				}
+			];
+		}, 2000);
+	}
 
-			// Create initial start event in new structure
+	function stopDataLogging() {
+		if (dataLoggingInterval) clearInterval(dataLoggingInterval);
+		dataLoggingInterval = null;
+	}
+
+	function toggleTimer() {
+		if (timer.isIdle) {
+			// Initial start — initialize data stores
 			$eventEntries = [
 				{
 					roast_id: currentRoastProfile?.roast_id || 0,
@@ -285,7 +298,6 @@
 				}
 			];
 
-			// Create initial temperature entry
 			$temperatureEntries = [
 				{
 					roast_id: currentRoastProfile?.roast_id || 0,
@@ -298,86 +310,30 @@
 				}
 			];
 
-			// Start the timer
-			timerInterval = setInterval(() => {
-				const elapsed = performance.now() - $startTime! + $accumulatedTime;
-				seconds = Math.floor(elapsed / 1000);
-				milliseconds = elapsed % 1000;
-			}, 1);
-
-			// Optimized data logging - reduced frequency for better performance
-			dataLoggingInterval = setInterval(() => {
-				const currentTime = performance.now() - $startTime! + $accumulatedTime;
-				$roastData = [
-					...$roastData,
-					{
-						time: currentTime,
-						heat: heatValue,
-						fan: fanValue
-					}
-				];
-			}, 2000); // Log data every 2 seconds for better performance
-
-			isRoasting = true;
-		} else if (!isPaused) {
+			timer.start();
+			startDataLogging();
+		} else if (timer.isRunning) {
 			// Pausing
-			if (timerInterval) clearInterval(timerInterval);
-			if (dataLoggingInterval) clearInterval(dataLoggingInterval);
-			timerInterval = null;
-			dataLoggingInterval = null;
-			$accumulatedTime += performance.now() - $startTime!;
-			isPaused = true;
-		} else {
+			timer.pause();
+			stopDataLogging();
+		} else if (timer.isPaused) {
 			// Resuming
-			$startTime = performance.now();
-			timerInterval = setInterval(() => {
-				const elapsed = performance.now() - $startTime! + $accumulatedTime;
-				seconds = Math.floor(elapsed / 1000);
-				milliseconds = elapsed % 1000;
-			}, 1);
-
-			// Resume data logging with optimized frequency
-			dataLoggingInterval = setInterval(() => {
-				const currentTime = performance.now() - $startTime! + $accumulatedTime;
-				$roastData = [
-					...$roastData,
-					{
-						time: currentTime,
-						heat: heatValue,
-						fan: fanValue
-					}
-				];
-			}, 2000); // Optimized: 2 seconds for better performance
-
-			isPaused = false;
+			timer.resume();
+			startDataLogging();
 		}
 	}
 
 	function resetTimer() {
-		if (timerInterval) clearInterval(timerInterval);
-		if (dataLoggingInterval) clearInterval(dataLoggingInterval);
-		seconds = 0;
-		milliseconds = 0;
-		timerInterval = null;
-		dataLoggingInterval = null;
-		$startTime = null;
-		$accumulatedTime = 0;
+		stopDataLogging();
+		timer.reset();
 		$roastData = [];
 		$roastEvents = [];
 		$temperatureEntries = [];
 		$eventEntries = [];
-		isRoasting = false;
-		isPaused = false;
 	}
 
-	// Timer display - only show during active recording
-	let formattedTime = $derived(
-		`${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}.${Math.floor(
-			milliseconds / 10
-		)
-			.toString()
-			.padStart(2, '0')}`
-	);
+	// Timer display from module (rAF-based, CPU-efficient)
+	let formattedTime = $derived(timer.formattedTime);
 
 	// Update current values when roastData changes
 	$effect(() => {
@@ -1270,8 +1226,7 @@
 			if (now - lastTimeTrackerUpdate < 16) return; // ~60fps
 			lastTimeTrackerUpdate = now;
 
-			const currentTime =
-				(performance.now() - $startTime! + $accumulatedTime - chargeTime) / (1000 * 60);
+			const currentTime = (timer.elapsed - chargeTime) / (1000 * 60);
 
 			// Use requestAnimationFrame for smooth updates
 			if (timeTrackerUpdateId) {
@@ -1794,12 +1749,10 @@
 	});
 
 	function handleEventLog(event: string) {
-		if ($startTime === null || !currentRoastProfile?.roast_id) return;
+		if (timer.isIdle || !currentRoastProfile?.roast_id) return;
 
 		selectedEvent = event;
-		const currentTime = isPaused
-			? $accumulatedTime
-			: performance.now() - $startTime + $accumulatedTime;
+		const currentTime = timer.elapsed;
 
 		// Check if this event already exists at this time
 		const existingEvent = $roastEvents.find(
@@ -1820,12 +1773,8 @@
 			heatValue = 0; // Set heat to 0 when Drop is logged
 		} else if (event === 'Cool End') {
 			// Just pause the timer like the stop button - user will save manually
-			if (timerInterval) clearInterval(timerInterval);
-			if (dataLoggingInterval) clearInterval(dataLoggingInterval);
-			timerInterval = null;
-			dataLoggingInterval = null;
-			$accumulatedTime += performance.now() - $startTime!;
-			isPaused = true;
+			timer.pause();
+			stopDataLogging();
 			// Show visual feedback
 			showEventFeedback(
 				'Cool End logged - Timer paused. Click "Save Roast" to save your data.',
@@ -1878,11 +1827,9 @@
 
 	// Add this function to handle settings changes
 	function handleSettingsChange() {
-		if ($startTime === null) return;
+		if (timer.isIdle) return;
 
-		const currentTime = isPaused
-			? $accumulatedTime
-			: performance.now() - $startTime + $accumulatedTime;
+		const currentTime = timer.elapsed;
 
 		// Create control event entries for settings change
 		const timeSeconds = msToSeconds(currentTime);
@@ -1960,9 +1907,8 @@
 		// Fallback to live calculations for active roasting or when no DB data available
 		const events = isDuringRoasting ? $eventEntries : savedEventEntries;
 
-		// Include seconds and milliseconds in dependency to trigger updates every tick
-		void seconds; // Dependency for live updates
-		void milliseconds; // Dependency for live updates
+		// Include timer elapsed in dependency to trigger updates during live roasting
+		void timer.elapsed;
 
 		if (events.length === 0) {
 			return {
@@ -1978,12 +1924,7 @@
 		const milestones = extractMilestones(events);
 
 		// For live calculations, pass current elapsed time
-		let currentElapsedTime = 0;
-		if (isDuringRoasting && $startTime !== null) {
-			currentElapsedTime = isPaused
-				? $accumulatedTime
-				: performance.now() - $startTime + $accumulatedTime;
-		}
+		const currentElapsedTime = isDuringRoasting ? timer.elapsed : 0;
 
 		return calculateMilestones(milestones, isDuringRoasting ? currentElapsedTime : undefined);
 	});
