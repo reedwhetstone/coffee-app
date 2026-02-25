@@ -407,6 +407,59 @@ export const PUT: RequestHandler = async ({
 					eventEntries.map((e: any) => ({ ...e, roast_id: roastIdNum }))
 				: [];
 			await saveRoastData(supabase, roastIdNum, temps, events, 'live');
+
+			// Compute and persist milestone percentages from event data
+			if (events.length > 0) {
+				const milestoneEvents = events.filter(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(e: any) => e.category === 'milestone'
+				);
+				if (milestoneEvents.length > 0) {
+					// Extract milestone times (in seconds)
+					const milestones: Record<string, number> = {};
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					for (const evt of milestoneEvents as any[]) {
+						milestones[evt.event_string] = parseFloat(evt.time_seconds);
+					}
+
+					const chargeTime = milestones['charge'] ?? milestones['start'] ?? 0;
+					const dropTime = milestones['drop'] ?? milestones['end'] ?? milestones['cool'] ?? 0;
+					const dryEndTime = milestones['dry_end'] ?? milestones['maillard'] ?? 0;
+					const fcStartTime = milestones['fc_start'] ?? 0;
+					const totalTime = dropTime > chargeTime ? dropTime - chargeTime : 0;
+
+					const milestoneUpdate: Record<string, number | null> = {
+						charge_time: chargeTime || null,
+						dry_end_time: dryEndTime || null,
+						fc_start_time: fcStartTime || null,
+						total_roast_time: totalTime || null,
+						dry_percent: null,
+						maillard_percent: null,
+						development_percent: null
+					};
+
+					if (totalTime > 0) {
+						if (dryEndTime > chargeTime) {
+							milestoneUpdate.dry_percent =
+								Math.round(((dryEndTime - chargeTime) / totalTime) * 1000) / 10;
+						}
+						if (fcStartTime > dryEndTime && dryEndTime > 0) {
+							milestoneUpdate.maillard_percent =
+								Math.round(((fcStartTime - dryEndTime) / totalTime) * 1000) / 10;
+						}
+						if (dropTime > fcStartTime && fcStartTime > 0) {
+							milestoneUpdate.development_percent =
+								Math.round(((dropTime - fcStartTime) / totalTime) * 1000) / 10;
+						}
+					}
+
+					await supabase
+						.from('roast_profiles')
+						.update(milestoneUpdate)
+						.eq('roast_id', roastIdNum)
+						.eq('user', user.id);
+				}
+			}
 		}
 
 		// Update stocked status for this coffee after updating roast profile
