@@ -7,15 +7,8 @@
 
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import {
-		roastData,
-		roastEvents,
-		startTime,
-		accumulatedTime,
-		temperatureEntries,
-		eventEntries,
-		msToSeconds
-	} from './stores';
+	import { roastData, roastEvents, temperatureEntries, eventEntries, msToSeconds } from './stores';
+	import { createRoastTimer } from '$lib/roast';
 
 	import RoastProfileTabs from './RoastProfileTabs.svelte';
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
@@ -53,8 +46,9 @@
 	// Main state variables
 	let isFormVisible = $state(false);
 	let selectedBean = $state<{ id?: number; name: string }>({ name: 'No Bean Selected' });
-	let isRoasting = $state(false);
-	let isPaused = $state(false);
+	const timer = createRoastTimer();
+	let isRoasting = $derived(!timer.isIdle);
+	let isPaused = $derived(timer.isPaused);
 	let fanValue = $state(8);
 	let heatValue = $state(1);
 	let selectedEvent = $state<string | null>(null);
@@ -411,11 +405,9 @@
 	// Update the fan control handler
 	function updateFan(value: number) {
 		fanValue = value;
-		if ($startTime === null || !currentRoastProfile?.roast_id) return;
+		if (timer.isIdle || !currentRoastProfile?.roast_id) return;
 
-		const currentTime = isPaused
-			? $accumulatedTime
-			: performance.now() - $startTime + $accumulatedTime;
+		const currentTime = timer.elapsed;
 
 		// Add control event to normalized structure
 		const timeSeconds = msToSeconds(currentTime);
@@ -437,11 +429,9 @@
 	// Update the heat control handler
 	function updateHeat(value: number) {
 		heatValue = value;
-		if ($startTime === null || !currentRoastProfile?.roast_id) return;
+		if (timer.isIdle || !currentRoastProfile?.roast_id) return;
 
-		const currentTime = isPaused
-			? $accumulatedTime
-			: performance.now() - $startTime + $accumulatedTime;
+		const currentTime = timer.elapsed;
 
 		// Add control event to normalized structure
 		const timeSeconds = msToSeconds(currentTime);
@@ -585,8 +575,7 @@
 			}
 
 			// Reset roasting state
-			isRoasting = false;
-			isPaused = false;
+			timer.reset();
 
 			// Update URL to reflect the selected profile
 			const currentUrl = new URL(window.location.href);
@@ -597,13 +586,11 @@
 				noScroll: true
 			});
 
-			// Clear live roasting state when switching to saved profile
+			// Clear live roasting data when switching to saved profile
 			$temperatureEntries = [];
 			$eventEntries = [];
 			$roastData = [];
 			$roastEvents = [];
-			$startTime = null;
-			$accumulatedTime = 0;
 
 			console.log('Profile selection completed successfully');
 		} catch (error) {
@@ -797,16 +784,13 @@
 		selectionState.lastSelectedId = null;
 
 		// Clear roasting state
-		isRoasting = false;
-		isPaused = false;
+		timer.reset();
 
 		// Clear live roasting data
 		$temperatureEntries = [];
 		$eventEntries = [];
 		$roastData = [];
 		$roastEvents = [];
-		$startTime = null;
-		$accumulatedTime = 0;
 
 		// Clear URL params
 		const currentUrl = new URL(window.location.href);
@@ -905,10 +889,9 @@
 		onBatchDelete={handleBatchDelete}
 		onClearProfile={handleClearProfile}
 		{selectedBean}
-		bind:isPaused
+		{timer}
 		bind:fanValue
 		bind:heatValue
-		bind:isRoasting
 		bind:selectedEvent
 		{updateFan}
 		{updateHeat}

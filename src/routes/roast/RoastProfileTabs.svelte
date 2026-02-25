@@ -6,6 +6,7 @@
 	import type { RoastProfile } from '$lib/types/component.types';
 	import type { ComponentType } from 'svelte';
 	import { replaceState } from '$app/navigation';
+	import type { RoastTimer } from '$lib/roast';
 
 	let {
 		sortedBatchNames,
@@ -22,10 +23,9 @@
 		onBatchDelete,
 		onClearProfile,
 		selectedBean,
-		isPaused = $bindable(),
+		timer,
 		fanValue = $bindable(),
 		heatValue = $bindable(),
-		isRoasting = $bindable(),
 		selectedEvent = $bindable(),
 		updateFan,
 		updateHeat,
@@ -46,10 +46,9 @@
 		onBatchDelete: () => void;
 		onClearProfile: () => void;
 		selectedBean: { id?: number; name: string };
-		isPaused: boolean;
+		timer: RoastTimer;
 		fanValue: number;
 		heatValue: number;
-		isRoasting: boolean;
 		selectedEvent: string | null;
 		updateFan: (value: number) => void;
 		updateHeat: (value: number) => void;
@@ -253,11 +252,10 @@
 							<ChartSkeleton height="500px" title="Loading roasting interface..." />
 						{:else if RoastChartInterface}
 							<RoastChartInterface
-								bind:isPaused
+								{timer}
 								{currentRoastProfile}
 								bind:fanValue
 								bind:heatValue
-								bind:isRoasting
 								bind:selectedEvent
 								{updateFan}
 								{updateHeat}
