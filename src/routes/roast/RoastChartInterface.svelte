@@ -3,6 +3,7 @@
 	import MilestoneBar from '$lib/components/roast/MilestoneBar.svelte';
 	import RoastControls from '$lib/components/roast/RoastControls.svelte';
 	import EventTimeline from '$lib/components/roast/EventTimeline.svelte';
+	import ArtisanImportDialog from '$lib/components/roast/ArtisanImportDialog.svelte';
 	import {
 		select,
 		scaleLinear,
@@ -170,9 +171,8 @@
 	let isRoasting = $derived(!timer.isIdle);
 	let isPaused = $derived(timer.isPaused);
 
-	// Artisan import state
-	let artisanImportFile = $state<File | null>(null);
-	let showArtisanImport = $state(false);
+	// Artisan import dialog ref
+	let artisanImportDialog = $state<ArtisanImportDialog>();
 
 	let dataLoggingInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -2291,122 +2291,11 @@
 		}
 	});
 
-	// Artisan import functions
-	function handleArtisanFileSelect(event: Event) {
-		const file = (event.target as HTMLInputElement).files?.[0];
-		if (file) {
-			// Validate file format
-			const fileName = file.name.toLowerCase();
-			if (
-				!fileName.endsWith('.alog') &&
-				!fileName.endsWith('.alog.json') &&
-				!fileName.endsWith('.json')
-			) {
-				alert('Please select a valid Artisan .alog file.');
-				return;
-			}
-
-			// Additional validation: check file size (reasonable limit)
-			if (file.size > 50 * 1024 * 1024) {
-				// 50MB limit
-				alert('File is too large. Please select a file smaller than 50MB.');
-				return;
-			}
-
-			artisanImportFile = file;
+	async function handleArtisanImportComplete() {
+		if (currentRoastProfile?.roast_id) {
+			await loadSavedRoastData(currentRoastProfile.roast_id);
+			await loadChartSettings(currentRoastProfile.roast_id);
 		}
-	}
-
-	function showArtisanImportDialog() {
-		if (!currentRoastProfile?.roast_id) {
-			alert('Please select a roast profile first');
-			return;
-		}
-
-		// Check if there's existing data
-		if ($roastData.length > 0) {
-			const confirmed = confirm(
-				'Warning: Importing an Artisan file will replace all existing roast data for this profile. This action cannot be undone. Continue?'
-			);
-			if (!confirmed) {
-				return;
-			}
-		}
-
-		showArtisanImport = true;
-	}
-
-	async function importArtisanFile() {
-		if (!artisanImportFile || !currentRoastProfile?.roast_id) {
-			alert('Please select a file and roast profile');
-			return;
-		}
-
-		try {
-			console.log(
-				`Importing Artisan file ${artisanImportFile.name} for roast ID ${currentRoastProfile.roast_id}`
-			);
-
-			const formData = new FormData();
-			formData.append('file', artisanImportFile);
-			formData.append('roastId', currentRoastProfile.roast_id.toString());
-
-			const response = await fetch('/api/artisan-import', {
-				method: 'POST',
-				body: formData
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.error || 'Failed to import Artisan file');
-			}
-
-			const result = await response.json();
-			console.log('Artisan import successful:', result);
-
-			// Show detailed success message with comprehensive import information
-			const totalMinutes = Math.floor((result.total_time || 0) / 60);
-			const totalSeconds = Math.floor((result.total_time || 0) % 60);
-			const milestoneCount = Object.keys(result.milestones || {}).filter(
-				(key) => result.milestones[key] > 0
-			).length;
-
-			const message =
-				`✅ Successfully imported Artisan roast profile!\n\n` +
-				`📁 File: ${artisanImportFile.name}\n` +
-				`📊 Temperature points: ${result.message.match(/\d+/)?.[0] || 'Unknown'}\n` +
-				`⏱️ Roast duration: ${totalMinutes}:${totalSeconds.toString().padStart(2, '0')}\n` +
-				`🌡️ Temperature unit: ${result.temperature_unit}\n` +
-				`🎯 Milestones: ${milestoneCount} detected\n` +
-				`📈 Roast events: ${result.roast_events || 0}\n` +
-				`📋 Roast phases: ${result.roast_phases || 0}\n` +
-				`⚙️ Device data points: ${result.extra_device_points || 0}\n\n` +
-				`Your coffee name has been preserved. The chart now shows both bean temperature (BT) and environmental temperature (ET) curves.`;
-
-			alert(message);
-
-			// Reload the profile data to show the imported data without reloading the page
-			// This prevents the roast form from being triggered by page reload events
-			if (currentRoastProfile?.roast_id) {
-				// Reload just the roast data for this profile
-				await loadSavedRoastData(currentRoastProfile.roast_id);
-				await loadChartSettings(currentRoastProfile.roast_id);
-			}
-		} catch (error) {
-			console.error('Artisan import failed:', error);
-			alert(
-				`Failed to import Artisan file: ${error instanceof Error ? error.message : 'Unknown error'}`
-			);
-		} finally {
-			// Reset the import state
-			showArtisanImport = false;
-			artisanImportFile = null;
-		}
-	}
-
-	function cancelArtisanImport() {
-		showArtisanImport = false;
-		artisanImportFile = null;
 	}
 </script>
 
@@ -2571,7 +2460,7 @@
 		{#if currentRoastProfile?.roast_id}
 			<button
 				class="w-full rounded border-2 border-blue-600 px-3 py-1 text-text-primary-light hover:bg-blue-900 sm:w-auto"
-				onclick={showArtisanImportDialog}
+				onclick={() => artisanImportDialog?.open()}
 			>
 				Import Artisan File
 			</button>
@@ -2594,71 +2483,14 @@
 	</div>
 </div>
 
-<!-- Artisan Import Modal -->
-{#if showArtisanImport}
-	<div class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
-		<button
-			type="button"
-			class="fixed inset-0 bg-black/50"
-			onclick={cancelArtisanImport}
-			aria-label="Close modal"
-		></button>
-		<div class="flex min-h-screen items-center justify-center p-4">
-			<div
-				class="relative w-full max-w-md rounded-lg bg-background-secondary-light p-6 shadow-xl"
-				role="dialog"
-				aria-modal="true"
-			>
-				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">
-					Import Artisan Roast File
-				</h3>
-
-				<div class="mb-4">
-					<label
-						for="artisan-file-input"
-						class="mb-2 block text-sm font-medium text-text-primary-light"
-					>
-						Select Artisan .alog file:
-					</label>
-					<input
-						id="artisan-file-input"
-						type="file"
-						accept=".alog,.alog.json,.json"
-						onchange={handleArtisanFileSelect}
-						class="block w-full text-sm text-text-primary-light file:mr-4 file:rounded file:border-0 file:bg-background-tertiary-light file:px-4 file:py-2 file:text-sm file:font-semibold file:text-text-primary-light hover:file:bg-background-primary-light"
-					/>
-					<p class="mt-2 text-xs text-text-secondary-light">
-						Import roast profile data from Artisan roasting software. This will replace all existing
-						imported data for this profile.
-					</p>
-				</div>
-
-				{#if artisanImportFile}
-					<p class="mb-4 text-sm text-green-600">
-						Selected: {artisanImportFile.name}
-					</p>
-				{/if}
-
-				<div class="flex justify-end space-x-3">
-					<button
-						type="button"
-						class="rounded bg-background-primary-light px-4 py-2 text-text-primary-light hover:bg-background-tertiary-light"
-						onclick={cancelArtisanImport}
-					>
-						Cancel
-					</button>
-					<button
-						type="button"
-						class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-						onclick={importArtisanFile}
-						disabled={!artisanImportFile}
-					>
-						Import File
-					</button>
-				</div>
-			</div>
-		</div>
-	</div>
+<!-- Artisan Import Dialog -->
+{#if currentRoastProfile?.roast_id}
+	<ArtisanImportDialog
+		bind:this={artisanImportDialog}
+		roastId={currentRoastProfile.roast_id}
+		hasExistingData={$roastData.length > 0}
+		onImportComplete={handleArtisanImportComplete}
+	/>
 {/if}
 
 <!-- Tooltip for roast data (only visible when viewing saved profiles) -->
