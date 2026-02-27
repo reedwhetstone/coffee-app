@@ -1,0 +1,65 @@
+---
+title: "The Real AI Moats Aren't Software"
+date: "2026-02-27"
+description: "Citrini's viral doomsday report and Citadel's rebuttal are both missing the interesting question. If software isn't the moat anymore, what is?"
+tags: ["ai", "saas", "moats", "data", "pricing"]
+pillar: "ai-first-product"
+draft: true
+readingTime: 7
+---
+
+# The Real AI Moats Aren't Software
+
+Citrini Research's ["2028 Global Intelligence Crisis"](https://www.citriniresearch.com/p/2028gic) rattled markets last week. The thesis: AI agents will hollow out the SaaS economy, trigger a white-collar employment spiral, and crash the S&P 38% by 2028. Citadel Securities [fired back](https://fortune.com/2026/02/26/citadel-demolishes-viral-doomsday-ai-essay-citrini-macro-fundamentals-engels-pause/) within days, calling it a "profound misunderstanding of macroeconomic fundamentals and technological adoption curves."
+
+They're both half right. And they're both missing the more interesting question.
+
+## Citrini Is Right About One Thing
+
+The core claim holds up: AI compresses the value of software-as-product. Citrini's money quote is hard to argue with: "A competent developer working with Claude Code or Codex could now replicate the core functionality of a mid-market SaaS product in weeks."
+
+That procurement conversation is real. The CIO reviewing a $500k annual renewal IS starting to ask "what if we just built this ourselves?" That's not speculation. That's happening in budget meetings right now.
+
+But Citrini models this playing out by 2028. Two years. Citadel's rebuttal points to actual data: software engineer job postings are up 11% year-over-year in early 2026. The St. Louis Fed's analysis of generative AI adoption shows daily workplace use remaining "unexpectedly stable" with "little evidence of any imminent displacement risk."
+
+The gap between "technically possible" and "actually adopted at enterprise scale" is measured in years, not quarters. People still run businesses on fax machines. "Technically possible" is not the same as "happening."
+
+## The Stickiness Problem
+
+Here's a number Citrini doesn't mention: [enterprise SaaS has less than 1% monthly churn](https://www.hubifi.com/blog/calculate-saas-churn-rate). That's not because the software is irreplaceable. It's because switching costs are enormous. Data migration. Workflow retraining. Integration dependencies. Compliance certification. Institutional knowledge embedded in years of custom configuration.
+
+Citrini models SaaS disruption like consumer app switching. Delete Asana, download the AI replacement, move on. Enterprise procurement doesn't work that way. And the anecdote in Citrini's own report proves it: the Fortune 500 procurement manager didn't cancel the vendor. He renewed at a 30% discount. That's the actual near-term dynamic. Pricing pressure, not replacement.
+
+What AI will replace is the long tail. Small efficiency tools, single-purpose apps, anything that isn't mission critical and doesn't touch regulatory compliance. The $50-200/month SaaS products companies bought because building them wasn't worth the effort. Now building them is trivial. That market compresses hard.
+
+Enterprise systems of record? ServiceNow, Salesforce, Workday? Those face margin pressure and pricing negotiation. That's a different thing than extinction.
+
+## Where the Moat Moves
+
+This is the question neither Citrini nor Citadel is asking: if software is increasingly replicable, where does value actually accrue?
+
+**Data.** Netflix's value isn't its streaming interface. You could replicate that UI in a month. It's the content library, the recommendation engine trained on billions of viewing hours, the licensing relationships. Facebook's value isn't the feed algorithm. It's the social graph. In my own work, the value of the coffee intelligence platform I'm building isn't the web app. It's the normalized dataset across 14 suppliers that nobody else has assembled. Software can be rebuilt in weeks. A proprietary dataset built over years of daily scraping, cleaning, and enrichment cannot.
+
+Data moats deepen with time. Every cycle of collection adds signal. Every user interaction sharpens the model. That's a compounding advantage that gets harder to replicate the longer it runs.
+
+**Work-output pricing.** The subscription model assumes a human sits in the seat. When AI can do the seat's work, per-seat pricing breaks. Why pay per-agent for a customer support tool when you could pay per-resolved-ticket? Why pay per-user for a data pipeline when you could pay per-clean-record?
+
+The shift from "pay for access" to "pay for outcomes" realigns incentives entirely. It also creates a new kind of moat: whoever can demonstrate measurable results keeps the contract. Incumbents bolting AI onto seat-based pricing are structurally disadvantaged against companies built from the ground up around outcome measurement.
+
+## The Real Gap
+
+The story Citrini should be telling isn't about SaaS collapse. It's about the widening gap between businesses that leverage AI and those that don't.
+
+A company running AI-assisted development, automated data pipelines, and outcome-based pricing operates at fundamentally different velocity than one still negotiating $500k/yr SaaS renewals and managing 200-person dev teams. But the disruption isn't "the second company dies." It's "the second company pays more for worse outcomes, slowly, over years." That's how enterprise technology transitions actually work. Not overnight collapse. Gradual margin compression.
+
+The M365 Copilot experience is instructive here. Microsoft shipped AI to every enterprise desktop, and most users report it ranges from underwhelming to useless for actual work. The models keep getting better, but most people outside research and coding aren't seeing transformative differences yet. Massive hype, mediocre execution, slow adoption. That's the actual curve.
+
+It's never as bad or as good as they say. Citrini's scenario is a useful stress test. It's a terrible forecast.
+
+## What This Means for Builders
+
+Build on data, not just software. The software layer is increasingly commodity. The intelligence layer, the proprietary data, the domain expertise encoded in your pipeline, that's what compounds.
+
+Price on outcomes, not access. Per-seat is a legacy model that assumes human operators. If your product delivers measurable results, charge for the results.
+
+The moats are shifting, not vanishing. Everything that can be replicated in a sprint will be. Everything that takes years of accumulated data and domain knowledge to build won't be. Choose accordingly.
