@@ -4,7 +4,7 @@ date: "2026-02-27"
 description: "Citrini's viral doomsday report and Citadel's rebuttal are both missing the interesting question. If software isn't the moat anymore, what is?"
 tags: ["ai", "saas", "moats", "data", "pricing"]
 pillar: "ai-first-product"
-draft: true
+draft: false
 readingTime: 7
 ---
 
