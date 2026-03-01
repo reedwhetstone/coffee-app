@@ -13,125 +13,21 @@
 		roastEvents,
 		temperatureEntries,
 		eventEntries,
-		type RoastPoint,
-		type TemperatureEntry,
 		type RoastEventEntry,
-		msToSeconds,
-		secondsToMs,
 		extractMilestones
 	} from './stores';
-	import type { RoastTimer } from '$lib/roast';
-	// Import the new RawChartData interface for frontend processing
+	import {
+		type RoastTimer,
+		calculatePhasePercentages,
+		createMilestoneEvents,
+		createControlEvents,
+		fetchChartSettings,
+		loadAndProcessRoastData,
+		type ChartAxisSettings,
+		type ChartEventValueSeries,
+		type RawChartDataRow
+	} from '$lib/roast';
 	import type { RawChartData } from '../api/roast-chart-data/+server.js';
-
-	// Normalize event names for database storage - minimal formatting only
-	function normalizeEventName(eventName: string): string {
-		// Only do basic formatting: lowercase and replace spaces with underscores
-		return eventName.toLowerCase().replace(/\s+/g, '_');
-	}
-
-	// Frontend formatting utility - visible and maintainable
-	function formatDisplayName(eventString: string): string {
-		return eventString
-			.split('_')
-			.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-			.join(' ');
-	}
-
-	// Frontend control mapping configuration - visible and adjustable
-	const CONTROL_MAPPING = {
-		useSimplified: true, // User preference
-		mappings: {
-			burner: 'heat',
-			air: 'fan'
-		}
-	};
-
-	function getControlMapping(eventString: string): string {
-		// TODO: Evaluate if these conversions are actually necessary
-		// Current mapping preserves existing chart functionality
-		if (CONTROL_MAPPING.useSimplified) {
-			return (
-				CONTROL_MAPPING.mappings[eventString as keyof typeof CONTROL_MAPPING.mappings] ||
-				eventString
-			);
-		}
-		return eventString; // Use raw event_string if no mapping needed
-	}
-
-	// Define milestone interfaces locally to avoid import issues
-	interface MilestoneData {
-		start?: number;
-		charge?: number;
-		maillard?: number;
-		fc_start?: number;
-		fc_end?: number;
-		sc_start?: number;
-		drop?: number;
-		end?: number;
-	}
-
-	interface MilestoneCalculations {
-		totalTime: number;
-		dryingPercent: number;
-		tpTime: number;
-		maillardPercent: number;
-		fcTime: number;
-		devPercent: number;
-	}
-
-	// Define the functions locally to avoid import issues
-	// Remove local extractMilestones - now using import from stores
-
-	function calculateMilestones(
-		milestones: MilestoneData,
-		currentTime?: number
-	): MilestoneCalculations {
-		// Use charge time if available, otherwise fall back to start time
-		const start = milestones.charge || milestones.start || 0;
-		const drop = milestones.drop || milestones.end || 0;
-
-		// For live calculations, use current elapsed time if roast is ongoing
-		// For completed roasts, use actual drop time
-		const effectiveEndTime = currentTime && currentTime > 0 && !drop ? currentTime : drop;
-		const totalTime = effectiveEndTime - start;
-
-		const tpTime = milestones.maillard || 0;
-		const fcTime = milestones.fc_start || 0;
-
-		let dryingPercent = 0;
-		let maillardPercent = 0;
-		let devPercent = 0;
-
-		if (totalTime > 0) {
-			// DRYING % = time from start/charge to turning point (maillard)
-			if (tpTime > start) {
-				dryingPercent = ((tpTime - start) / totalTime) * 100;
-			}
-
-			// MAILLARD % = time from turning point to first crack
-			if (fcTime > tpTime && tpTime > 0) {
-				maillardPercent = ((fcTime - tpTime) / totalTime) * 100;
-			}
-
-			// DEV % = time from first crack to current time (live) or drop (completed)
-			if (fcTime > 0) {
-				const devEndTime = effectiveEndTime;
-				if (devEndTime > fcTime) {
-					devPercent = ((devEndTime - fcTime) / totalTime) * 100;
-				}
-			}
-		}
-
-		return {
-			totalTime,
-			dryingPercent,
-			tpTime: tpTime - start, // Relative time from start/charge
-			maillardPercent,
-			fcTime: fcTime - start, // Relative time from start/charge
-			devPercent
-		};
-	}
 
 	let {
 		timer,
@@ -170,33 +66,12 @@
 	let isLongPressing = $state(false);
 	const LONG_PRESS_DURATION = 1000;
 
-	// Saved profile data for milestone calculations
-	interface EventValuePoint {
-		time_seconds: number;
-		value: number;
-	}
-
-	interface EventValueSeries {
-		event_string: string;
-		category: string;
-		values: EventValuePoint[];
-		value_range: {
-			min: number;
-			max: number;
-			detected_scale: string;
-		};
-	}
-
-	let savedTemperatureEntries = $state<TemperatureEntry[]>([]);
+	// Saved profile data for chart rendering (types from roast-data module)
 	let savedEventEntries = $state<RoastEventEntry[]>([]);
-	let savedEventValueSeries = $state<EventValueSeries[]>([]);
+	let savedEventValueSeries = $state<ChartEventValueSeries[]>([]);
 
 	// Chart boundary settings from roast_profiles table
-	let chartSettings = $state<{
-		xRange: [number | null, number | null];
-		yRange: [number | null, number | null];
-		zRange: [number | null, number | null];
-	} | null>(null);
+	let chartSettings = $state<ChartAxisSettings | null>(null);
 
 	// Tooltip state for mouse interactions (only for saved data viewing)
 	let tooltipState = $state({
@@ -358,103 +233,38 @@
 		// Add to roastEvents for chart display
 		$roastEvents = [...$roastEvents, { time: currentTime, name: event }];
 
-		// Create milestone and control events
-		const timeSeconds = msToSeconds(currentTime);
-		const roastId = currentRoastProfile.roast_id;
-
 		// Handle special event behaviors
 		if (event === 'Drop') {
-			heatValue = 0; // Set heat to 0 when Drop is logged
+			heatValue = 0;
 		} else if (event === 'Cool End') {
-			// Just pause the timer like the stop button - user will save manually
 			timer.pause();
 			stopDataLogging();
-			// Show visual feedback
 			showEventFeedback(
 				'Cool End logged - Timer paused. Click "Save Roast" to save your data.',
 				'success'
 			);
 		}
 
-		// Create milestone event
-		const milestoneEvent: RoastEventEntry = {
-			roast_id: roastId,
-			time_seconds: timeSeconds,
-			event_type: 10,
-			event_value: null,
-			event_string: normalizeEventName(event),
-			category: 'milestone',
-			subcategory: 'roast_phase',
-			user_generated: true,
-			automatic: false
-		};
+		// Create milestone and control events via shared module
+		const { milestoneEvent, controlEvents } = createMilestoneEvents(
+			event,
+			currentRoastProfile.roast_id,
+			currentTime,
+			fanValue,
+			heatValue
+		);
 
-		// Create control events for current settings
-		const controlEvents: RoastEventEntry[] = [
-			{
-				roast_id: roastId,
-				time_seconds: timeSeconds,
-				event_type: 1,
-				event_value: fanValue.toString(),
-				event_string: 'fan_setting',
-				category: 'control',
-				subcategory: 'machine_setting',
-				user_generated: true,
-				automatic: false
-			},
-			{
-				roast_id: roastId,
-				time_seconds: timeSeconds,
-				event_type: 1,
-				event_value: event === 'Drop' ? '0' : heatValue.toString(),
-				event_string: 'heat_setting',
-				category: 'control',
-				subcategory: 'machine_setting',
-				user_generated: true,
-				automatic: false
-			}
-		];
-
-		// Add all events to store
 		$eventEntries = [...$eventEntries, milestoneEvent, ...controlEvents];
 	}
 
-	// Add this function to handle settings changes
 	function handleSettingsChange() {
 		if (timer.isIdle) return;
-
-		const currentTime = timer.elapsed;
-
-		// Create control event entries for settings change
-		const timeSeconds = msToSeconds(currentTime);
-		const roastId = currentRoastProfile?.roast_id || 0;
-
-		const controlEvents: RoastEventEntry[] = [];
-
-		controlEvents.push({
-			roast_id: roastId,
-			time_seconds: timeSeconds,
-			event_type: 1,
-			event_value: fanValue.toString(),
-			event_string: 'fan_setting',
-			category: 'control',
-			subcategory: 'machine_setting',
-			user_generated: true,
-			automatic: false
-		});
-
-		controlEvents.push({
-			roast_id: roastId,
-			time_seconds: timeSeconds,
-			event_type: 1,
-			event_value: heatValue.toString(),
-			event_string: 'heat_setting',
-			category: 'control',
-			subcategory: 'machine_setting',
-			user_generated: true,
-			automatic: false
-		});
-
+		const controlEvents = createControlEvents(
+			currentRoastProfile?.roast_id || 0,
+			timer.elapsed,
+			fanValue,
+			heatValue
+		);
 		$eventEntries = [...$eventEntries, ...controlEvents];
 	}
 
@@ -520,303 +330,34 @@
 		// For live calculations, pass current elapsed time
 		const currentElapsedTime = isDuringRoasting ? timer.elapsed : 0;
 
-		return calculateMilestones(milestones, isDuringRoasting ? currentElapsedTime : undefined);
+		return calculatePhasePercentages(milestones, isDuringRoasting ? currentElapsedTime : undefined);
 	});
 
-	// Convert temperature entries and events to roast data format for chart display
-	function convertToRoastData(
-		temperatures: TemperatureEntry[],
-		events: RoastEventEntry[]
-	): RoastPoint[] {
-		// Sort control events by time for carry-forward logic - handle string/number conversion
-		const fanEvents = events
-			.filter((e) => e.event_string === 'fan_setting')
-			.sort((a, b) => parseFloat(String(a.time_seconds)) - parseFloat(String(b.time_seconds)));
-		const heatEvents = events
-			.filter((e) => e.event_string === 'heat_setting')
-			.sort((a, b) => parseFloat(String(a.time_seconds)) - parseFloat(String(b.time_seconds)));
-
-		// If no temperature data, create minimal data points from events for timeline
-		if (temperatures.length === 0 && events.length > 0) {
-			// Get all unique time points from events
-			const allTimes = [...new Set(events.map((e) => parseFloat(String(e.time_seconds))))].sort(
-				(a, b) => a - b
-			);
-
-			return allTimes.map((timeSeconds) => {
-				// Find the most recent control event before or at this time (carry-forward logic)
-				const fanEvent = fanEvents
-					.filter((e) => parseFloat(String(e.time_seconds)) <= timeSeconds)
-					.pop();
-				const heatEvent = heatEvents
-					.filter((e) => parseFloat(String(e.time_seconds)) <= timeSeconds)
-					.pop();
-
-				// Find milestone events at this time
-				const milestoneEvents = events.filter(
-					(e) =>
-						e.category === 'milestone' &&
-						Math.abs(parseFloat(String(e.time_seconds)) - timeSeconds) < 1
-				);
-
-				return {
-					time: secondsToMs(timeSeconds),
-					heat: heatEvent ? parseInt(heatEvent.event_value || '0') : 0,
-					fan: fanEvent ? parseInt(fanEvent.event_value || '0') : 0,
-					bean_temp: null, // No temperature data for legacy app records
-					environmental_temp: null,
-					ambient_temp: null,
-					ror_bean_temp: null,
-					data_source: 'live' as const,
-					// Include milestone flags for charge detection
-					charge: milestoneEvents.some((e) => e.event_string === 'charge'),
-					start: milestoneEvents.some((e) => e.event_string === 'start'),
-					maillard: milestoneEvents.some(
-						(e) => e.event_string === 'dry_end' || e.event_string === 'maillard'
-					),
-					fc_start: milestoneEvents.some((e) => e.event_string === 'fc_start'),
-					drop: milestoneEvents.some((e) => e.event_string === 'drop'),
-					end: milestoneEvents.some((e) => e.event_string === 'cool' || e.event_string === 'end')
-				};
-			});
-		}
-
-		// Normal case: process temperature entries with event data
-		return temperatures.map((temp) => {
-			const tempTimeSeconds = parseFloat(String(temp.time_seconds));
-
-			// Find the most recent control event before or at this time (carry-forward logic)
-			const fanEvent = fanEvents
-				.filter((e) => parseFloat(String(e.time_seconds)) <= tempTimeSeconds)
-				.pop();
-			const heatEvent = heatEvents
-				.filter((e) => parseFloat(String(e.time_seconds)) <= tempTimeSeconds)
-				.pop();
-
-			// Find milestone events at this time
-			const milestoneEvents = events.filter(
-				(e) =>
-					e.category === 'milestone' &&
-					Math.abs(parseFloat(String(e.time_seconds)) - tempTimeSeconds) < 1
-			);
-
-			return {
-				time: secondsToMs(tempTimeSeconds),
-				heat: heatEvent ? parseInt(heatEvent.event_value || '0') : 0,
-				fan: fanEvent ? parseInt(fanEvent.event_value || '0') : 0,
-				bean_temp: temp.bean_temp,
-				environmental_temp: temp.environmental_temp,
-				ambient_temp: temp.ambient_temp,
-				ror_bean_temp: temp.ror_bean_temp,
-				data_source: temp.data_source,
-				// Include milestone flags for charge detection
-				charge: milestoneEvents.some((e) => e.event_string === 'charge'),
-				start: milestoneEvents.some((e) => e.event_string === 'start'),
-				maillard: milestoneEvents.some(
-					(e) => e.event_string === 'dry_end' || e.event_string === 'maillard'
-				),
-				fc_start: milestoneEvents.some((e) => e.event_string === 'fc_start'),
-				drop: milestoneEvents.some((e) => e.event_string === 'drop'),
-				end: milestoneEvents.some((e) => e.event_string === 'cool' || e.event_string === 'end')
-			};
-		});
-	}
-
-	// Load chart settings from roast_profiles table
 	async function loadChartSettings(roastId: number) {
-		try {
-			// Get chart settings directly from the database
-			const response = await fetch(`/api/roast-chart-settings?roastId=${roastId}`);
-			let settings = null;
-
-			if (response.ok) {
-				const result = await response.json();
-				settings = result.settings;
-			}
-
-			if (settings) {
-				// Normalize xRange to minutes if values appear to be in seconds
-				let xMin = settings.xRange[0];
-				let xMax = settings.xRange[1];
-				const looksLikeSeconds =
-					xMin !== null &&
-					xMax !== null &&
-					typeof xMin === 'number' &&
-					typeof xMax === 'number' &&
-					(xMin > 60 || xMax > 60);
-
-				if (looksLikeSeconds) {
-					xMin = xMin !== null ? xMin / 60 : xMin;
-					xMax = xMax !== null ? xMax / 60 : xMax;
-				}
-
-				chartSettings = {
-					xRange: [xMin, xMax],
-					yRange: [settings.yRange[0], settings.yRange[1]],
-					zRange: [settings.zRange[0], settings.zRange[1]]
-				};
-				console.log('Loaded chart settings:', chartSettings);
-			} else {
-				chartSettings = null;
-				console.log('No chart settings found, using defaults');
-			}
-		} catch (error) {
-			console.error('Error loading chart settings:', error);
-			chartSettings = null;
-		}
+		chartSettings = await fetchChartSettings(roastId);
 	}
 
-	// Load saved roast data using the new simplified API endpoint
-	// Load saved roast data using the new simplified API endpoint with frontend processing
 	async function loadSavedRoastData(roastId: number) {
 		try {
-			const startTime = performance.now();
-
-			// Use the new raw chart data API endpoint
 			const response = await fetch(`/api/roast-chart-data?roastId=${roastId}`);
-			if (!response.ok) {
-				throw new Error(`Failed to load roast data: ${response.status}`);
-			}
+			if (!response.ok) throw new Error(`Failed to load roast data: ${response.status}`);
 
 			const rawData: RawChartData = await response.json();
-			console.log(`=== RAW CHART DATA FRONTEND: Roast ${roastId} ===`);
-			console.log('Raw data points:', rawData.rawData?.length || 0);
-			console.log('API performance:', rawData.metadata?.performanceMetrics);
-
-			const processingStart = performance.now();
-
-			// Frontend processing - transparent and maintainable
-			const temperatureData: TemperatureEntry[] = [];
-			const milestoneEvents: RoastEventEntry[] = [];
-			const controlSeries = new Map<string, EventValuePoint[]>();
-
-			// Process raw data with frontend logic - times already in milliseconds from DB
-			rawData.rawData?.forEach((row) => {
-				const timeMs = row.time_milliseconds; // Already in milliseconds from corrected DB function
-				const timeSeconds = timeMs / 1000; // Convert to seconds for internal data structures
-
-				if (row.data_type === 'temperature') {
-					// Build temperature entries
-					let tempEntry = temperatureData.find((t) => t.time_seconds === timeSeconds);
-					if (!tempEntry) {
-						tempEntry = {
-							roast_id: roastId,
-							time_seconds: timeSeconds,
-							bean_temp: null,
-							environmental_temp: null,
-							ambient_temp: null,
-							ror_bean_temp: null,
-							data_source: 'live' as const
-						};
-						temperatureData.push(tempEntry);
-					}
-					// Map field names to temperature entry properties
-					if (row.field_name === 'bean_temp') tempEntry.bean_temp = row.value_numeric;
-					else if (row.field_name === 'environmental_temp')
-						tempEntry.environmental_temp = row.value_numeric;
-					else if (row.field_name === 'ambient_temp') tempEntry.ambient_temp = row.value_numeric;
-					else if (row.field_name === 'ror_bean_temp') tempEntry.ror_bean_temp = row.value_numeric;
-				} else if (row.data_type === 'milestone') {
-					milestoneEvents.push({
-						roast_id: roastId,
-						time_seconds: timeSeconds,
-						event_type: 10,
-						event_value: null,
-						event_string: row.event_string || '',
-						category: 'milestone' as const,
-						subcategory: 'roast_phase',
-						user_generated: false,
-						automatic: true
-					});
-				} else if (row.data_type === 'control') {
-					// Group control data by event_string for series
-					const mappedControl = getControlMapping(row.event_string || '');
-					if (!controlSeries.has(mappedControl)) {
-						controlSeries.set(mappedControl, []);
-					}
-					controlSeries.get(mappedControl)?.push({
-						time_seconds: timeSeconds,
-						value: row.value_numeric || 0
-					});
-				}
-			});
-
-			// Sort temperature data by time
-			savedTemperatureEntries = temperatureData.sort((a, b) => a.time_seconds - b.time_seconds);
-
-			// Combine milestone and control events for savedEventEntries
-			const controlEvents = Array.from(controlSeries.entries()).flatMap(([eventString, points]) =>
-				points.map((point) => ({
-					roast_id: roastId,
-					time_seconds: point.time_seconds,
-					event_type: 1,
-					event_value: point.value.toString(),
-					event_string: eventString,
-					category: 'control' as const,
-					subcategory: 'machine_setting',
-					user_generated: false,
-					automatic: true
-				}))
-			);
-			savedEventEntries = [...milestoneEvents, ...controlEvents];
-
-			// Build savedEventValueSeries for chart rendering
-			savedEventValueSeries = Array.from(controlSeries.entries()).map(([eventString, values]) => ({
-				event_string: eventString,
-				category: 'control',
-				values: values.sort((a, b) => a.time_seconds - b.time_seconds),
-				value_range: {
-					min: Math.min(...values.map((v) => v.value)),
-					max: Math.max(...values.map((v) => v.value)),
-					detected_scale: 'percentage'
-				}
-			}));
-
-			// Convert milestone events to chart display format with frontend formatting
-			$roastEvents = milestoneEvents.map((milestone) => ({
-				time: milestone.time_seconds * 1000, // Convert to milliseconds for chart
-				name: formatDisplayName(milestone.event_string || 'Unknown')
-			}));
-
-			// Convert temperature data to roast data format
-			if (savedTemperatureEntries.length > 0) {
-				$roastData = convertToRoastData(savedTemperatureEntries, savedEventEntries);
-			} else {
-				// Create basic data points from milestones for chart rendering
-				$roastData = milestoneEvents.map((event) => ({
-					time: event.time_seconds * 1000, // Convert to milliseconds for chart
-					heat: 0,
-					fan: 0,
-					bean_temp: null,
-					environmental_temp: null,
-					ambient_temp: null,
-					ror_bean_temp: null,
-					data_source: 'live' as const,
-					// Include milestone flags for phase detection
-					charge: event.event_string === 'charge',
-					start: event.event_string === 'start',
-					maillard: event.event_string === 'dry_end' || event.event_string === 'maillard',
-					fc_start: event.event_string === 'fc_start',
-					drop: event.event_string === 'drop',
-					end: event.event_string === 'cool' || event.event_string === 'end'
-				}));
+			if (!rawData.rawData?.length) {
+				savedEventEntries = [];
+				savedEventValueSeries = [];
+				$roastData = [];
+				$roastEvents = [];
+				return;
 			}
 
-			const processingTime = performance.now() - processingStart;
-			const totalTime = performance.now() - startTime;
-
-			console.log(`Frontend processing results for ${roastId}:`, {
-				tempPoints: savedTemperatureEntries.length,
-				controlPoints: savedEventEntries.filter((e) => e.category === 'control').length,
-				milestones: milestoneEvents.length,
-				controlSeries: controlSeries.size,
-				processingTime: `${processingTime.toFixed(2)}ms`,
-				totalTime: `${totalTime.toFixed(2)}ms`,
-				apiTime: rawData.metadata?.performanceMetrics?.totalApiTime || 0
-			});
+			const result = loadAndProcessRoastData(rawData.rawData as RawChartDataRow[], roastId);
+			savedEventEntries = result.eventEntries;
+			savedEventValueSeries = result.eventValueSeries;
+			$roastData = result.roastData;
+			$roastEvents = result.roastEvents;
 		} catch (error) {
 			console.error('Error loading roast data:', error);
-			savedTemperatureEntries = [];
 			savedEventEntries = [];
 			savedEventValueSeries = [];
 			$roastData = [];
@@ -832,7 +373,6 @@
 				loadChartSettings(currentRoastProfile.roast_id);
 			});
 		} else if (!currentRoastProfile?.roast_id) {
-			savedTemperatureEntries = [];
 			savedEventEntries = [];
 			savedEventValueSeries = [];
 			chartSettings = null;
