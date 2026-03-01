@@ -25,6 +25,10 @@
 	);
 
 	let showLinkedIn = $state(false);
+
+	function getHeroImage(slug: string): string {
+		return `/blog/images/${slug}/hero.webp`;
+	}
 </script>
 
 <svelte:head>
@@ -71,6 +75,13 @@
 		</h1>
 
 		<p class="text-lg leading-relaxed text-text-secondary-light">{data.metadata.description}</p>
+
+		<img
+			src={getHeroImage(data.metadata.slug)}
+			alt={data.metadata.title}
+			class="mt-6 aspect-[3/2] w-full rounded-md border border-border-light object-cover"
+			onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+		/>
 
 		{#if data.metadata.tags.length > 0}
 			<div class="mt-5 flex flex-wrap gap-1.5">

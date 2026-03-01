@@ -10,6 +10,10 @@
 			day: 'numeric'
 		});
 	}
+
+	function getHeroImage(slug: string): string {
+		return `/blog/images/${slug}/hero.webp`;
+	}
 </script>
 
 <svelte:head>
@@ -46,6 +50,12 @@
 					<span>{post.readingTime} min read</span>
 				</div>
 				<a href="/blog/{post.slug}" class="block">
+					<img
+						src={getHeroImage(post.slug)}
+						alt={post.title}
+						class="mb-4 aspect-[3/2] w-full rounded-md border border-border-light object-cover"
+						onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+					/>
 					<h2
 						class="mb-2 text-2xl font-semibold text-text-primary-light transition-colors group-hover:text-background-tertiary-light"
 					>
