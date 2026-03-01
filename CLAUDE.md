@@ -192,7 +192,7 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 
 ### Tech Stack
 
-- **Frontend**: SvelteKit 5, TypeScript, TailwindCSS, D3.js (charts)
+- **Frontend**: SvelteKit 5, TypeScript, TailwindCSS, LayerCake (charts)
 - **Backend**: SvelteKit API routes, Supabase (PostgreSQL + Auth)
 - **Deployment**: Vercel (adapter-vercel)
 - **AI/ML**: OpenAI embeddings for semantic search/RAG
@@ -233,7 +233,7 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 
 - **Home**: Coffee catalog with RAG-powered search
 - **Beans**: Personal coffee inventory management
-- **Roast**: Roasting profiles with D3.js charts (member-only)
+- **Roast**: Roasting profiles with LayerCake charts (member-only)
 - **Profit**: Sales tracking (member-only)
 - **Subscription**: Stripe payment flow
 
@@ -242,7 +242,7 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - **Semantic Search**: Uses vector embeddings for coffee recommendations
 - **Role Guards**: Route protection handled in hooks
 - **Stripe Webhooks**: Handle subscription state changes
-- **D3.js Integration**: Custom roasting profile charts
+- **LayerCake Integration**: Declarative roasting profile and profit charts
 - **Cookie Management**: Custom middleware for cookie consent
 
 ### Environment Setup
