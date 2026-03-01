@@ -7,7 +7,7 @@ export interface TemperatureDataPoint {
 	environmental_temp?: number | null;
 	ambient_temp?: number | null;
 	ror_bean_temp?: number | null;
-	data_source: 'live' | 'artisan_import';
+	data_source: 'live' | 'artisan_import' | 'manual';
 }
 
 export interface RoastEventData {
@@ -30,7 +30,7 @@ export interface RoastPoint {
 	environmental_temp?: number | null;
 	ambient_temp?: number | null;
 	ror_bean_temp?: number | null;
-	data_source?: 'live' | 'artisan_import';
+	data_source?: 'live' | 'artisan_import' | 'manual';
 	// Milestone flags for charge-relative time calculation
 	charge?: boolean;
 	start?: boolean;
@@ -53,7 +53,7 @@ export interface TemperatureEntry {
 	environmental_temp?: number | null;
 	ambient_temp?: number | null;
 	ror_bean_temp?: number | null;
-	data_source: 'live' | 'artisan_import';
+	data_source: 'live' | 'artisan_import' | 'manual';
 }
 
 // New interface for events from roast_events table
