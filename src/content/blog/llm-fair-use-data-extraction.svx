@@ -4,7 +4,7 @@ date: "2026-03-01"
 description: "The AI copyright debate focuses on training data. But the more commercially relevant question might be extraction, and the legal framework for it may already exist."
 tags: ["ai", "fair-use", "data-pipeline", "extraction"]
 pillar: "coffee-data-pipeline"
-draft: true
+draft: false
 readingTime: 7
 ---
 
