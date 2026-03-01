@@ -1,0 +1,55 @@
+---
+title: "What the Fair Use Conversation Is Missing About LLM Data Extraction"
+date: "2026-03-01"
+description: "The AI copyright debate focuses on training data. But the more commercially relevant question might be extraction, and the legal framework for it may already exist."
+tags: ["ai", "fair-use", "data-pipeline", "extraction"]
+pillar: "coffee-data-pipeline"
+draft: true
+readingTime: 7
+---
+
+# What the Fair Use Conversation Is Missing About LLM Data Extraction
+
+The AI copyright debate right now is almost entirely about training. Can OpenAI train on New York Times articles? Can Stability AI train on Getty images? The [U.S. Copyright Office's Part 3 report](https://www.copyright.gov/ai/Copyright-and-Artificial-Intelligence-Part-3-Generative-AI-Training-Report-Pre-Publication-Version.pdf), the lawsuits, the congressional hearings. All focused on one question: what goes into the model.
+
+That question is genuinely complicated. Both raw source text and cleaned factual data are valuable for training, just in different ways. They expand different parts of the neural network. There's no clean line between "training on facts" and "training on expression" when the model ingests both simultaneously.
+
+But there's a different use of LLMs that doesn't fit neatly into this debate: context consumption and extraction. Using a model not to learn from data, but to read it, pull out the facts, and output structured representations. Not training. Not generation. Extraction. And the legal framework for this might be clearer than people realize.
+
+## What Claims Extraction Looks Like
+
+Microsoft Research published [Claimify](https://www.microsoft.com/en-us/research/blog/claimify-extracting-high-quality-claims-from-language-model-outputs/) last year, accepted at ACL 2025. It's a 3-stage pipeline (Selection, Disambiguation, Decomposition) that breaks text into atomic, verifiable claims. 99% of extracted claims are entailed by their source sentence. Microsoft frames it as a fact-checking tool for LLM outputs, but the underlying pattern is the same thing data companies do commercially every day.
+
+Here's what it looks like in production. A coffee supplier lists a product with a 500-word description full of marketing language: "Our passionate farmers hand-select only the finest cherries at peak ripeness on the misty slopes of Huila..." What a data pipeline actually needs from that: Colombia. Huila. 1,600 MASL. Washed process. Caturra variety. Arrived January 2026.
+
+In the pipeline I built for [purveyors.io](https://purveyors.io), the extraction prompt auto-generates from the canonical data schema. Add a field to the schema, the prompt updates. Each extracted field is essentially an atomic claim. "This coffee is from Colombia." "The elevation is 1,600 MASL." Verifiable against the source text, but structurally independent from the source's expression.
+
+After the LLM pass, deterministic post-processors handle consistency: country name standardization, MASL format validation, date normalization, continent derivation. The LLM handles ambiguity (parsing varied product descriptions). Code handles formatting (ensuring consistent output). The result: structured, factual data. No marketing prose. No creative expression carried over.
+
+Here's the part that's easy to miss: the engineering that makes this data legally clean also makes it better data. Marketing fluff in a database column is useless for search, comparison, or analysis. Clean factual fields are what you want in a structured catalog. Legal hygiene and data quality aren't just aligned; they're the same objective expressed in different vocabularies.
+
+## A Different Legal Surface
+
+Training and extraction occupy different territory under fair use. Training ingests content to build weights. Extraction reads content and outputs facts. The distinction matters because [Feist v. Rural (1991)](https://www.law.cornell.edu/supremecourt/text/499/340) established a principle that maps directly onto extraction: facts are not copyrightable. Only creative selection and arrangement of facts qualifies for protection.
+
+When an LLM reads a product description and outputs `{"country": "Colombia", "elevation": "1600", "process": "washed"}`, those are facts in a new structure. The four-factor fair use analysis looks quite different for extraction than for training:
+
+**Purpose:** Highly transformative. The input is marketing prose; the output is structured data. Different format, different purpose, different audience.
+
+**Nature:** Product descriptions are primarily factual. Copyright protection is thinner for factual works than creative ones.
+
+**Amount:** The model reads the full text but outputs only extracted facts. The purveyors pipeline explicitly caps direct quotation at 6 consecutive words in any generated descriptions.
+
+**Market effect:** Structured data doesn't substitute for the original product page. If anything, it drives discovery traffic back to the supplier.
+
+This isn't a guaranteed safe harbor. The line between "extracting a fact" and "paraphrasing expression" exists and matters. The 6-word consecutive quote cap, the "transformative content" instruction, the factual-only focus in the extraction prompts; these aren't cautious afterthoughts. They're deliberate engineering decisions to stay on the facts side of that line. Fair use constraints you build into your prompts, not your legal briefs.
+
+The USCO Part 3 report barely touches this use case. The legal conversation is debating training while practitioners are building extraction pipelines in production. The gap between what's being litigated and what's being done commercially is notable.
+
+## Where This Is Heading
+
+Claimify points toward a future where claims extraction is formalized tooling, not custom prompts. The pattern is already showing up across the ecosystem: LlamaExtract, Unstract, Simon Willison's structured extraction work with `llm --schema`. The idea that LLMs are universal translators between unstructured text and structured data is becoming mainstream.
+
+The interesting question: as extraction tools become commodity, does the data moat get easier or harder to build? The extraction pattern commoditizes. But the accumulated dataset, the years of daily collection, cleaning, and enrichment, the domain-specific schema refined through thousands of real products, that stays proprietary. The moat isn't the extraction. It's what you've extracted over time.
+
+The fair use conversation will catch up to extraction eventually. When it does, the companies that engineered constraints into their pipelines from the start will have both the legal position and the better dataset. Those two things turning out to be the same thing is the part nobody's talking about yet.
