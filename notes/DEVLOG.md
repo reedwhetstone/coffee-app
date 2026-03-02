@@ -4,6 +4,15 @@
 
 ---
 
+## Priority 0: New Product Priorities (Mar 2026)
+
+- [ ] **Mobile Navigation** - Redesign sidebar behavior on mobile. Current desktop-style sidebar consumes too much horizontal space. Evaluate one of: top nav, bottom nav, or minimal single-button trigger that opens a full-screen menu.
+- [ ] **Wholesale Data Model + Catalog UX** - Add wholesale-ready database structure and catalog support for wholesale products. Include distinct wholesale pricing fields/logic and catalog filters for wholesale-only or mixed views.
+- [ ] **Homepage Routing** - Make `/` the true landing page and move catalog to its own dedicated route. Remove login-driven reroute behavior that hurts first contentful paint and perceived responsiveness.
+- [ ] **Public Catalog Access + Conversion Funnel** - Allow non-auth users to browse catalog with limited access (example: page 1 only) while keeping filters available. Add clear incentives to sign up/log in and promote AI search as a premium conversion lever.
+
+---
+
 ## Priority 1: Critical Bugs
 
 These issues break core functionality and should be fixed first.
