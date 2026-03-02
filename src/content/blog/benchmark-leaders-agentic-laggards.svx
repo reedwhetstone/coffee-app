@@ -1,0 +1,85 @@
+---
+title: "Benchmark Leaders, Agentic Laggards"
+date: "2026-03-02"
+description: "The AI leaderboard tells you which model reasons best in isolation. It tells you almost nothing about which model completes real work."
+tags: ["ai", "agentic", "benchmarks", "coding", "evaluation"]
+pillar: "agentic-stack"
+draft: true
+readingTime: 7
+---
+
+Gemini 3.1 Pro Preview scored 57 on the Artificial Analysis Intelligence Index when it launched in February 2026. Four points ahead of Claude Opus 4.6. Six ahead of GPT-5.2. It leads or ties on MMMU-Pro, ARC-AGI-2, GPQA Diamond, and LiveCodeBench. By the numbers that get cited in press releases, it is the best model available right now.
+
+And yet. Talk to people running agentic coding systems and you hear a different story. Not "Gemini is bad." More like: "I tried it. Went back to Opus." The trust gap between leaderboard position and deployed confidence is real, and it points to something the industry hasn't fully reckoned with.
+
+Benchmarks matter. They correlate with capability in meaningful ways. But that correlation weakens sharply once tasks become long-horizon, tool-mediated, and execution-bound. The question worth asking: what are these leaderboards actually measuring, and what are they missing?
+
+## Two Products Hiding in One Model
+
+When you use a model through a chat interface, you are evaluating one thing: single-turn reasoning quality. Can it parse a complex question? Generate a coherent, well-structured response? Synthesize information across a broad knowledge base? Most benchmarks test some version of this. The model reads a prompt, produces an answer, and gets graded.
+
+Agentic systems ask for something structurally different. The model is not answering a question; it is participating in a loop. It reads context, decides what tool to call, interprets the result, adjusts its plan, calls the next tool, reads an error log, modifies a file, runs a test, reads the output, and continues. For dozens or hundreds of iterations. The failure modes are not "wrong answer." They are trajectory drift, false progress, fragile tool-call sequences, and inability to recover from unexpected states.
+
+These are two different products that happen to share a weights file. Buyers think they are purchasing "the best model." What they operationally need is "the best loop participant." Leaderboard rank measures the first. Almost nothing in a standard benchmark suite measures the second.
+
+## Work Done Is the Metric That Matters
+
+Here is a simple heuristic: the best model is the one that completes verifiable work with the least supervision.
+
+Not the best conversationalist. Not the highest score on graduate-level physics problems. The model that ships a PR, closes a ticket, generates a report, processes a batch of data, and does it without a human stepping in to course-correct every fifteen minutes. If the output does not reduce labor hours, cycle time, or operating cost, benchmark rank is trivia.
+
+This framing is already showing up in how agentic products price themselves. [Intercom's Fin agent charges $0.99 per resolution](https://www.intercom.com/help/en/articles/8205718-fin-ai-agent-resolutions), not per message or per seat. [Sierra prices on outcomes](https://sierra.ai/blog/outcome-based-pricing-for-ai-agents), not API calls. The economic logic is clear: if the agent does the work, you pay for the work. If it doesn't, you don't. That same logic should apply to how we evaluate models.
+
+The operator metrics that actually predict value look nothing like benchmark scores:
+
+- **Tasks completed per day** without human intervention
+- **Interventions per task** (the lower, the better)
+- **Recovery rate** after first failure
+- **False-progress rate**: how often does the model claim completion when verification shows it isn't done?
+- **Cost per completed unit of work**
+
+None of these appear on any major leaderboard.
+
+## Which Benchmarks Actually Test Work
+
+Not all evals are equally disconnected from reality. A new generation of benchmarks is trying to close the gap, and they are the most interesting signals available right now.
+
+**[GDPval](https://arxiv.org/abs/2510.04374)** evaluates models on economically valuable tasks across 44 occupations in the top 9 sectors of U.S. GDP. Tasks are grounded in actual Bureau of Labor Statistics work activities, not synthetic puzzles. On the [Artificial Analysis GDPval-AA leaderboard](https://artificialanalysis.ai/evaluations/gdpval-aa), Claude Sonnet 4.6 leads at 1633 Elo, with Opus 4.6 close behind at 1606. The gap between these and other frontier models is larger than aggregate intelligence indices would predict. The benchmark is measuring something different, and something closer to productive output.
+
+**[FoodTruck Bench](https://foodtruckbench.com/)** gives 12 models $2,000 and a simulated food truck to run for 30 days. It tests long-horizon decision-making with real consequences: pricing, inventory, staffing, weather adaptation, loan management. Eight of twelve models went bankrupt. Every model that took out a loan failed. The survivors (Opus, GPT-5.2, and a few others) won through conservative judgment, not raw intelligence. The benchmark's creator noted on Reddit that "standardized benchmarks don't predict real-world performance. The gap between MMLU scores and business simulation results is massive."
+
+**[SWE-bench Verified](https://www.swebench.com/)** remains the strongest signal for repository-grounded coding. Gemini 3.1 Pro scores 80.6% here, which is genuinely competitive. But SWE-bench tests isolated issue resolution in a controlled repo context. It does not test sustained multi-file refactoring, long session trajectory, or tool-loop reliability across dozens of sequential operations. It is closer to "work done" than MMLU, but still short of the full picture.
+
+The pattern: the benchmarks that approximate work systems produce different rankings than the benchmarks that test knowledge retrieval. That delta is the signal.
+
+## The Gemini Paradox
+
+Gemini 3.1 Pro is a genuinely strong model. Its benchmark numbers are not fabricated. On static reasoning, multimodal understanding, and competitive coding problems, it performs at or near the top. In a chat window, the output quality is often excellent.
+
+The gap shows up when you put it in the loop. Operators running agentic coding frameworks report patterns that erode trust: verbose reasoning chains that sound confident but lose track of the actual task state. Tool-call sequences that are syntactically correct but strategically wrong. A tendency to narrate progress rather than verify it. These are not universal failures; they are surface-specific weaknesses that compound over long task chains.
+
+Compare this with models that may score a few points lower on aggregate intelligence but maintain tighter trajectory in tool-use loops. The difference is not raw capability. It is execution discipline: grounding each step in observed output rather than inferred state, knowing when to verify before proceeding, recovering cleanly when something breaks instead of spiraling into speculative fixes.
+
+To be clear: this is not a permanent verdict on Gemini. It is a hypothesis about a specific capability surface that current benchmarks barely test. Google may close this gap. But the existence of the gap, and the fact that leaderboard position does not predict it, is itself the point.
+
+## A Better Scoreboard
+
+What would an evaluation framework look like if it optimized for work done instead of knowledge demonstrated?
+
+- **Completion rate** on multi-step coding tasks with real dependencies
+- **Median interventions per task**: how often does a human need to step in?
+- **Time-to-correct-PR**: from task assignment to merged, passing pull request
+- **Recovery rate**: after the first failure in a task chain, how often does the model self-correct vs require rescue?
+- **False-progress rate**: percentage of "task complete" claims that fail verification
+- **Cost per completed task**: total inference cost divided by verified completions
+- **Net labor-hours saved**: the number everyone actually cares about
+
+This index maps model quality directly to business value. A model that scores 10% lower on GPQA but completes 40% more tasks autonomously is the better model for anyone doing real work. The industry does not have a standardized version of this yet. GDPval and FoodTruck Bench are steps in the right direction. Someone will build the definitive one.
+
+## What This Means
+
+For labs: publish agentic evals with full execution traces, not just final-answer accuracy. Report reliability under long context windows with sustained tool use. Include outcome-oriented metrics alongside capability scores. The models that win deployment will be the ones teams can trust in the loop, not the ones with the prettiest benchmark table.
+
+For teams evaluating models: run bake-offs inside your own agent framework. The model that performs best in your specific tool-call patterns, your codebase, your error-recovery scenarios is more predictive than any third-party leaderboard. Pick models by completed work per dollar, not by index rank.
+
+Benchmark intelligence is necessary but insufficient. The winning model in this cycle is the one that converts reasoning into verified actions on a real computer and produces measurable work. The leaderboard will catch up eventually. In the meantime, the work is the scoreboard.
