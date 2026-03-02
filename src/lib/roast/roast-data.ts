@@ -304,3 +304,193 @@ export async function fetchRoastChartData(
 		}
 	};
 }
+
+// ─── Chart Settings ──────────────────────────────────────────────────────────
+
+/** Chart axis settings in the range-tuple format used by prepare-chart-data */
+export interface ChartAxisSettings {
+	xRange: [number | null, number | null];
+	yRange: [number | null, number | null];
+	zRange: [number | null, number | null];
+}
+
+/**
+ * Fetch chart axis settings for a roast from the roast_profiles table.
+ * Normalizes xRange from seconds to minutes if needed.
+ */
+export async function fetchChartSettings(
+	roastId: number,
+	fetchFn: typeof fetch = fetch
+): Promise<ChartAxisSettings | null> {
+	try {
+		const response = await fetchFn(`/api/roast-chart-settings?roastId=${roastId}`);
+		if (!response.ok) return null;
+
+		const result = await response.json();
+		const settings = result.settings;
+		if (!settings) return null;
+
+		// Normalize xRange to minutes if values appear to be in seconds
+		let xMin = settings.xRange[0];
+		let xMax = settings.xRange[1];
+		const looksLikeSeconds =
+			xMin !== null &&
+			xMax !== null &&
+			typeof xMin === 'number' &&
+			typeof xMax === 'number' &&
+			(xMin > 60 || xMax > 60);
+
+		if (looksLikeSeconds) {
+			xMin = xMin !== null ? xMin / 60 : xMin;
+			xMax = xMax !== null ? xMax / 60 : xMax;
+		}
+
+		return {
+			xRange: [xMin, xMax],
+			yRange: [settings.yRange[0], settings.yRange[1]],
+			zRange: [settings.zRange[0], settings.zRange[1]]
+		};
+	} catch (error) {
+		console.error('Error loading chart settings:', error);
+		return null;
+	}
+}
+
+// ─── Control Event Creation ──────────────────────────────────────────────────
+
+/**
+ * Create control event entries for a fan/heat settings change snapshot.
+ * Used when fan or heat values change during live roasting.
+ */
+export function createControlEvents(
+	roastId: number,
+	currentTimeMs: number,
+	fanValue: number,
+	heatValue: number
+): RoastEventEntry[] {
+	const timeSeconds = currentTimeMs / 1000;
+	return [
+		{
+			roast_id: roastId,
+			time_seconds: timeSeconds,
+			event_type: 1,
+			event_value: fanValue.toString(),
+			event_string: 'fan_setting',
+			category: 'control',
+			subcategory: 'machine_setting',
+			user_generated: true,
+			automatic: false
+		},
+		{
+			roast_id: roastId,
+			time_seconds: timeSeconds,
+			event_type: 1,
+			event_value: heatValue.toString(),
+			event_string: 'heat_setting',
+			category: 'control',
+			subcategory: 'machine_setting',
+			user_generated: true,
+			automatic: false
+		}
+	];
+}
+
+// ─── Chart Event Value Series ────────────────────────────────────────────────
+
+/** Event value series in the shape prepare-chart-data.ts expects */
+export interface ChartEventValueSeries {
+	event_string: string;
+	category: string;
+	values: Array<{ time_seconds: number; value: number }>;
+	value_range: {
+		min: number;
+		max: number;
+		detected_scale: string;
+	};
+}
+
+// ─── Full Data Loading Pipeline ──────────────────────────────────────────────
+
+/**
+ * Process raw API data into chart-ready state.
+ * Combines processRawChartData + convertToChartData + event value series building.
+ * Returns everything needed to update component stores.
+ */
+export function loadAndProcessRoastData(
+	rawData: RawChartDataRow[],
+	roastId: number
+): {
+	temperatureEntries: TemperatureEntry[];
+	eventEntries: RoastEventEntry[];
+	eventValueSeries: ChartEventValueSeries[];
+	roastData: RoastPoint[];
+	roastEvents: RoastEvent[];
+} {
+	const processed = processRawChartData(rawData, roastId);
+	const allEvents = [...processed.milestoneEvents, ...processed.controlEvents];
+
+	// Build chart-compatible event value series with control mapping
+	const controlSeries = new Map<string, Array<{ time_seconds: number; value: number }>>();
+	for (const event of processed.controlEvents) {
+		if (!event.event_value) continue;
+		const mapped = mapControlName(event.event_string);
+		if (!controlSeries.has(mapped)) controlSeries.set(mapped, []);
+		controlSeries.get(mapped)!.push({
+			time_seconds: event.time_seconds,
+			value: parseFloat(event.event_value)
+		});
+	}
+
+	const eventValueSeries: ChartEventValueSeries[] = Array.from(controlSeries.entries()).map(
+		([eventString, values]) => ({
+			event_string: eventString,
+			category: 'control',
+			values: values.sort((a, b) => a.time_seconds - b.time_seconds),
+			value_range: {
+				min: Math.min(...values.map((v) => v.value)),
+				max: Math.max(...values.map((v) => v.value)),
+				detected_scale: 'percentage'
+			}
+		})
+	);
+
+	// Convert to chart-ready format
+	let roastData: RoastPoint[];
+	let roastEvents: RoastEvent[];
+
+	if (processed.temperatures.length > 0) {
+		const chartResult = convertToChartData(processed.temperatures, allEvents);
+		roastData = chartResult.roastData;
+		roastEvents = chartResult.roastEvents;
+	} else {
+		// No temp data; create minimal points from milestones for timeline display
+		roastData = processed.milestoneEvents.map((event) => ({
+			time: secondsToMs(event.time_seconds),
+			heat: 0,
+			fan: 0,
+			bean_temp: null,
+			environmental_temp: null,
+			ambient_temp: null,
+			ror_bean_temp: null,
+			data_source: 'live' as const,
+			charge: event.event_string === 'charge',
+			start: event.event_string === 'start',
+			maillard: event.event_string === 'dry_end' || event.event_string === 'maillard',
+			fc_start: event.event_string === 'fc_start',
+			drop: event.event_string === 'drop',
+			end: event.event_string === 'cool' || event.event_string === 'end'
+		}));
+		roastEvents = processed.milestoneEvents.map((e) => ({
+			time: secondsToMs(e.time_seconds),
+			name: formatDisplayName(e.event_string)
+		}));
+	}
+
+	return {
+		temperatureEntries: processed.temperatures,
+		eventEntries: allEvents,
+		eventValueSeries,
+		roastData,
+		roastEvents
+	};
+}
