@@ -2,7 +2,7 @@
 title: "What the Fair Use Conversation Is Missing About LLM Data Extraction"
 date: "2026-03-01"
 description: "The AI copyright debate focuses on training data. But the more commercially relevant question might be extraction, and the legal framework for it may already exist."
-tags: ["ai", "fair-use", "data-pipeline", "extraction"]
+tags: ["ai", "fair-use", "data-pipeline"]
 pillar: "coffee-data-pipeline"
 draft: false
 readingTime: 7

@@ -2,7 +2,7 @@
 title: "What I Learned Running OpenClaw as a Solo Dev for Two Weeks"
 date: "2026-02-22"
 description: "Agentic harnesses solve the orchestration problem. The models are the bottleneck. Here's what actually works after 43 PRs and a zettelkasten full of operational data."
-tags: ["openclaw", "ai-agents", "agentic-stack", "development"]
+tags: ["agentic", "infrastructure", "coding"]
 pillar: "agentic-stack"
 draft: false
 readingTime: 10
