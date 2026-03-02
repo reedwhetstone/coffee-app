@@ -2,7 +2,7 @@
 title: "What is Purveyors?"
 date: "2026-02-20"
 description: "The green coffee supply chain is built for commercial buyers. If you're a hobbyist, you're an afterthought. That's the problem purveyors.io exists to solve."
-tags: ["purveyors", "coffee", "supply-chain", "vision"]
+tags: ["purveyors", "coffee", "supply-chain"]
 pillar: "supply-chain"
 draft: false
 readingTime: 8

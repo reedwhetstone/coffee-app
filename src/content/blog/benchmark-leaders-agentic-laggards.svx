@@ -2,7 +2,7 @@
 title: "Benchmark Leaders, Agentic Laggards"
 date: "2026-03-02"
 description: "The AI leaderboard tells you which model reasons best in isolation. It tells you almost nothing about which model completes real work."
-tags: ["ai", "agentic", "benchmarks", "coding", "evaluation"]
+tags: ["ai", "agentic", "benchmarks", "coding"]
 pillar: "agentic-stack"
 draft: false
 readingTime: 7
