@@ -14,6 +14,7 @@ type FilterState = {
 	routeId: string;
 	sortField: string | null;
 	sortDirection: 'asc' | 'desc' | null;
+	showWholesale: boolean;
 	filters: Record<string, FilterValue>;
 	uniqueValues: Record<string, unknown[]>;
 	originalData: DataItem[]; // Keep for backward compatibility
@@ -42,6 +43,7 @@ const initialState: FilterState = {
 	routeId: '',
 	sortField: null,
 	sortDirection: null,
+	showWholesale: false,
 	filters: {},
 	uniqueValues: {},
 	originalData: [],
@@ -86,6 +88,11 @@ function createFilterStore() {
 		}
 		if (state.sortDirection) {
 			params.append('sortDirection', state.sortDirection);
+		}
+
+		// Catalog wholesale visibility toggle
+		if (state.showWholesale) {
+			params.append('showWholesale', 'true');
 		}
 
 		// Add filter parameters
@@ -163,7 +170,13 @@ function createFilterStore() {
 	 */
 	async function fetchUniqueValues() {
 		try {
-			const response = await fetch('/api/catalog/filters');
+			const state = get({ subscribe });
+			const params = new URLSearchParams();
+			if (state.showWholesale) {
+				params.append('showWholesale', 'true');
+			}
+
+			const response = await fetch(`/api/catalog/filters?${params.toString()}`);
 
 			if (!response.ok) {
 				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -202,6 +215,7 @@ function createFilterStore() {
 			state.routeId = routeId;
 			state.originalData = data;
 			state.filters = {};
+			state.showWholesale = false;
 			state.processing = false;
 			state.lastProcessedCacheKey = null;
 
@@ -229,7 +243,13 @@ function createFilterStore() {
 				state.filteredData = []; // Start empty, will be populated by server
 			} else {
 				// For other routes, use client-side processing
-				state.filteredData = processData(data, state.sortField, state.sortDirection, state.filters);
+				state.filteredData = processData(
+					data,
+					state.sortField,
+					state.sortDirection,
+					state.filters,
+					state.showWholesale
+				);
 			}
 
 			state.initialized = true;
@@ -358,6 +378,29 @@ function createFilterStore() {
 		}
 	}
 
+	/**
+	 * Toggles wholesale visibility on catalog routes.
+	 * false (default): retail only
+	 * true: show retail + wholesale
+	 */
+	function setShowWholesale(showWholesale: boolean) {
+		update((state) => {
+			state.showWholesale = showWholesale;
+			if (state.routeId.includes('/catalog') || state.routeId === '/') {
+				state.pagination.page = 1;
+			}
+			return state;
+		});
+
+		const currentState = get({ subscribe });
+		if (currentState.routeId.includes('/catalog') || currentState.routeId === '/') {
+			fetchServerData();
+			fetchUniqueValues();
+		} else {
+			processAndUpdateFilteredData();
+		}
+	}
+
 	// Toggle sort field or direction
 	function toggleSort(field: string) {
 		update((state) => {
@@ -386,6 +429,7 @@ function createFilterStore() {
 	function clearFilters() {
 		update((state) => {
 			state.filters = {};
+			state.showWholesale = false;
 			// Reset to first page for server-side routes
 			if (state.routeId.includes('/catalog') || state.routeId === '/') {
 				state.pagination.page = 1;
@@ -568,13 +612,20 @@ function createFilterStore() {
 	}
 
 	// Filter data based on filters
-	function filterData(data: DataItem[], filters: Record<string, FilterValue>): DataItem[] {
+	function filterData(
+		data: DataItem[],
+		filters: Record<string, FilterValue>,
+		showWholesale: boolean
+	): DataItem[] {
+		// Default catalog behavior: hide wholesale unless explicitly enabled
+		const wholesaleFiltered = showWholesale ? data : data.filter((item) => item.wholesale !== true);
+
 		// Skip if no filters
-		if (!Object.keys(filters).length) return data;
+		if (!Object.keys(filters).length) return wholesaleFiltered;
 
 		//console.log('Filtering data with filters:', filters);
 
-		return data.filter((item) => {
+		return wholesaleFiltered.filter((item) => {
 			// Check each filter
 			return Object.entries(filters).every(([key, value]) => {
 				// Skip empty filters
@@ -750,10 +801,11 @@ function createFilterStore() {
 		data: DataItem[],
 		sortField: string | null,
 		sortDirection: 'asc' | 'desc' | null,
-		filters: Record<string, FilterValue>
+		filters: Record<string, FilterValue>,
+		showWholesale: boolean
 	): DataItem[] {
 		// Start by filtering
-		const filtered = filterData(data, filters);
+		const filtered = filterData(data, filters, showWholesale);
 		//	console.log('After filtering:', filtered.length, 'items');
 
 		// Then sort
@@ -792,7 +844,7 @@ function createFilterStore() {
 					}
 
 					// Optimized processing - avoid unnecessary work
-					const cacheKey = `${state.sortField}-${state.sortDirection}-${JSON.stringify(state.filters)}`;
+					const cacheKey = `${state.sortField}-${state.sortDirection}-${state.showWholesale}-${JSON.stringify(state.filters)}`;
 					if (cacheKey === state.lastProcessedString && state.filteredData.length > 0) {
 						state.processing = false;
 						return state;
@@ -803,7 +855,8 @@ function createFilterStore() {
 						state.originalData,
 						state.sortField,
 						state.sortDirection,
-						state.filters
+						state.filters,
+						state.showWholesale
 					);
 
 					// Efficient change detection using IDs
@@ -909,6 +962,7 @@ function createFilterStore() {
 		setSortField,
 		setSortDirection,
 		setFilter,
+		setShowWholesale,
 		toggleSort,
 		clearFilters,
 		getFilterableColumns,

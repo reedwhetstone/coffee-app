@@ -119,6 +119,25 @@
 			<section class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 				<h4 class="mb-3 text-sm font-medium text-text-primary-light">Filters</h4>
 				<div class="space-y-3">
+					{#if routeId === '/' || routeId === '/catalog'}
+						<div class="rounded-md border border-border-light bg-background-primary-light p-3">
+							<label class="flex items-center justify-between gap-3">
+								<div>
+									<div class="text-xs font-medium text-text-primary-light">Show Wholesale</div>
+									<p class="text-[11px] text-text-secondary-light">
+										Off by default. Enable to include wholesale coffees in catalog results.
+									</p>
+								</div>
+								<input
+									type="checkbox"
+									checked={$filterStore.showWholesale}
+									onchange={(e) => filterStore.setShowWholesale(e.currentTarget.checked)}
+									class="h-4 w-4 rounded border border-border-light bg-background-primary-light text-background-tertiary-light focus:ring-2 focus:ring-background-tertiary-light"
+								/>
+							</label>
+						</div>
+					{/if}
+
 					{#each filterStore.getFilterableColumns(routeId) as column}
 						<div class="space-y-1">
 							<label for={column} class="block text-xs font-medium text-text-primary-light">

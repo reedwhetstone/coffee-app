@@ -1,20 +1,31 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }, url }) => {
 	try {
 		const { session } = await safeGetSession();
 		if (!session) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
+		const showWholesale = url.searchParams.get('showWholesale') === 'true';
+		const wholesaleOnly = url.searchParams.get('wholesaleOnly') === 'true';
+
 		// Fetch unique values for filter dropdowns from stocked coffee
-		const { data: rows, error } = await supabase
+		let query = supabase
 			.from('coffee_catalog')
 			.select(
 				'source, continent, country, processing, cultivar_detail, type, grade, appearance, arrival_date'
 			)
 			.eq('stocked', true);
+
+		if (wholesaleOnly) {
+			query = query.eq('wholesale', true);
+		} else if (!showWholesale) {
+			query = query.eq('wholesale', false);
+		}
+
+		const { data: rows, error } = await query;
 
 		if (error) throw error;
 
