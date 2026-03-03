@@ -74,6 +74,9 @@ async function ensureBeanExists(page: Page) {
 	// Click the "Add Your First Bean" button in the empty state
 	await page.getByRole('button', { name: /Add Your First Bean|Add New Coffee/i }).click();
 
+	// Switch from Manual Entry (default) to Catalog mode
+	await page.getByText('Select from Catalog').click();
+
 	// Wait for the form modal and catalog dropdown to appear
 	const catalogSelect = page.locator('select[id^="catalog-bean-"]').first();
 	await catalogSelect.waitFor({ state: 'visible', timeout: 10000 });
@@ -88,11 +91,11 @@ async function ensureBeanExists(page: Page) {
 	const qtyInput = page.locator('input[id^="purchased_qty-"]').first();
 	await qtyInput.fill('5');
 
-	// Submit the form
-	await page.getByRole('button', { name: /Add Bean/i }).click();
+	// Submit the form (target the LoadingButton submit, not the "+ Add Bean" batch button)
+	await page.locator('form button').getByText(/^Add Bean$/).click();
 
 	// Wait for the form to close and bean card to appear
-	await expect(catalogSelect).not.toBeVisible({ timeout: 10000 });
+	await expect(catalogSelect).not.toBeVisible({ timeout: 15000 });
 	const beanCard = page.locator('button.group.relative').first();
 	await beanCard.waitFor({ state: 'visible', timeout: 15000 });
 }
