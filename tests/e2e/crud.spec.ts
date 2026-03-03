@@ -64,15 +64,41 @@ async function hasBeans(page: Page): Promise<boolean> {
 }
 
 /**
- * Guard: skip test if the test user has no beans in inventory.
- * The test user is a real prod user; we never seed synthetic data.
+ * Ensure at least one bean exists for this user by adding from live catalog via UI.
+ * This uses real app flows and does not seed synthetic DB rows.
  */
-function skipIfNoBeans(hasBeans: boolean, consoleErrors: string[], networkErrors: string[]) {
-	if (!hasBeans) {
-		console.log('Skipping: test user has no beans in inventory');
-		logErrors(consoleErrors, networkErrors);
+async function ensureBeanExists(page: Page) {
+	if (await hasBeans(page)) return;
+
+	await page.getByRole('button', { name: /Add Your First Bean|Add New Coffee/i }).click();
+	await page.getByText('Select from Catalog').click();
+
+	const catalogSelect = page.locator('select[id^="catalog-bean-"]').first();
+	await catalogSelect.waitFor({ state: 'visible', timeout: 10000 });
+	await expect(catalogSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
+	await catalogSelect.selectOption({ index: 1 });
+
+	const today = new Date().toISOString().split('T')[0];
+	await page.locator('#purchase_date').fill(today);
+	await page.locator('#tax_ship_cost').fill('0');
+	await page.locator('input[id^="purchased_qty-"]').first().fill('5');
+	await page.locator('input[id^="bean_cost-"]').first().fill('50');
+
+	const createResponse = page.waitForResponse(
+		(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'POST',
+		{ timeout: 15000 }
+	);
+
+	await page.getByRole('button', { name: 'Add Bean', exact: true }).click();
+	const response = await createResponse;
+
+	if (!response.ok()) {
+		const body = await response.text();
+		throw new Error(`Failed to create bean from form (${response.status()}): ${body}`);
 	}
-	return !hasBeans;
+
+	await navigateToBeans(page);
+	await expect(page.locator('button.group.relative').first()).toBeVisible({ timeout: 15000 });
 }
 
 /**
@@ -226,7 +252,7 @@ test.describe('Bean Management', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await ensureBeanExists(page);
 
 		// Select first available bean
 		await selectFirstBean(page);
@@ -241,25 +267,35 @@ test.describe('Bean Management', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
-
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
-
+		await ensureBeanExists(page);
 		await selectFirstBean(page);
 
 		// Click Edit
 		await page.getByRole('button', { name: 'Edit' }).click();
 
-		// Edit a field - use labeled inputs when possible
-		const textarea = page.locator('textarea').first();
-		await textarea.fill('Test notes update ' + Date.now());
+		// Notes textarea only exists when original notes are present; update if available.
+		const notesField = page.locator('textarea').first();
+		if (await notesField.isVisible({ timeout: 1500 }).catch(() => false)) {
+			await notesField.fill('Test notes update ' + Date.now());
+		}
 
-		// Update a numeric field
-		const spinbutton = page.getByRole('spinbutton').first();
-		await spinbutton.fill('12');
+		// Update a numeric field that should always be editable in overview.
+		const qtyField = page.locator('input[type="number"][step="0.1"]').first();
+		if (await qtyField.isVisible({ timeout: 1500 }).catch(() => false)) {
+			await qtyField.fill('12');
+		} else {
+			await page.getByRole('spinbutton').first().fill('12');
+		}
 
-		// Save and wait for response
+		// Save and assert the update request succeeds.
+		const updateResponse = page.waitForResponse(
+			(resp) =>
+				resp.url().includes('/api/beans?id=') &&
+				resp.request().method() === 'PUT' &&
+				resp.status() === 200
+		);
 		await page.getByRole('button', { name: 'Save' }).click();
-		await waitForNetworkIdle(page);
+		await updateResponse;
 
 		// Verify save completed (button should return to normal state)
 		await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
@@ -274,7 +310,7 @@ test.describe('Cupping Notes', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await ensureBeanExists(page);
 
 		await selectFirstBean(page);
 
@@ -324,7 +360,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await ensureBeanExists(page);
 
 		await selectFirstBean(page);
 
@@ -357,6 +393,10 @@ test.describe('Roast Profiles', () => {
 	test('can create roast profile from dropdown without pre-selected bean', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
+		// Ensure at least one bean exists for dropdown population
+		await navigateToBeans(page);
+		await ensureBeanExists(page);
+
 		// Navigate directly to /roast (no pre-selected bean)
 		await page.goto('/roast');
 		await page.waitForLoadState('networkidle');
@@ -376,17 +416,12 @@ test.describe('Roast Profiles', () => {
 		const coffeeSelect = page.locator('#coffee_select_0');
 		await coffeeSelect.waitFor({ state: 'visible' });
 
-		// Wait for options to load; skip if test user has no beans
-		const optionCount = await coffeeSelect.locator('option').count();
-		if (optionCount <= 1) {
-			console.log('Skipping: test user has no beans for roast dropdown');
-			logErrors(consoleErrors, networkErrors);
-			return;
-		}
+		// Wait for options to load (must include at least one real coffee option)
+		await expect(coffeeSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
 
 		// Select the first real coffee option (skip placeholder at index 0)
 		const options = await coffeeSelect.locator('option').allTextContents();
-		expect(options.length).toBeGreaterThan(1); // Must have at least placeholder + 1 coffee
+		expect(options.length, 'Expected at least one selectable coffee bean').toBeGreaterThan(1);
 		await coffeeSelect.selectOption({ index: 1 });
 
 		// Assert the dropdown retained its value (the bug was it would revert)
@@ -427,7 +462,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await ensureBeanExists(page);
 
 		await selectFirstBean(page);
 
@@ -436,35 +471,18 @@ test.describe('Roast Profiles', () => {
 		await roastingTab.click();
 		await page.waitForTimeout(500);
 
-		// Check if there are any roast profiles
-		const hasExistingProfiles = await page
-			.getByText(/Roast #|ID: \d+/)
-			.first()
-			.isVisible({ timeout: 2000 })
-			.catch(() => false);
-
-		if (!hasExistingProfiles) {
-			console.log('No existing roast profiles found - skipping roast phases test');
-			logErrors(consoleErrors, networkErrors);
-			return;
-		}
-
-		// Click on a profile card (flexible matcher for dynamic content)
+		// Open the first profile card and assert roast content appears
 		const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
-		if (await profileCard.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await profileCard.click();
+		await expect(profileCard, 'Expected at least one roast profile card').toBeVisible({
+			timeout: 5000
+		});
+		await profileCard.click();
 
-			// The roast page should open - look for roast controls
-			await page.waitForTimeout(1000);
-
-			// Just verify we can see some roast-related content
-			const roastContent = page.getByText(/Weight Loss|Roast Notes|oz/i).first();
-			if (await roastContent.isVisible({ timeout: 3000 }).catch(() => false)) {
-				console.log('Successfully navigated to roast profile');
-			}
-		} else {
-			console.log('No profile cards found to click');
-		}
+		// The roast page should open - look for roast controls/content
+		const roastContent = page.getByText(/Weight Loss|Roast Notes|oz/i).first();
+		await expect(roastContent, 'Expected roast profile detail content').toBeVisible({
+			timeout: 5000
+		});
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -474,7 +492,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await ensureBeanExists(page);
 
 		await selectFirstBean(page);
 
@@ -498,24 +516,24 @@ test.describe('Roast Profiles', () => {
 
 		// Click on any profile card
 		const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
-		if (await profileCard.isVisible({ timeout: 3000 }).catch(() => false)) {
-			await profileCard.click();
+		await expect(profileCard, 'Expected at least one roast profile to delete').toBeVisible({
+			timeout: 5000
+		});
+		await profileCard.click();
 
-			// Set up dialog handler before clicking delete
-			page.once('dialog', (dialog) => {
-				console.log(`Dialog message: ${dialog.message()}`);
-				dialog.accept().catch(() => {});
-			});
+		// Set up dialog handler before clicking delete
+		page.once('dialog', (dialog) => {
+			console.log(`Dialog message: ${dialog.message()}`);
+			dialog.accept().catch(() => {});
+		});
 
-			// Click delete
-			const deleteBtn = page.getByRole('button', { name: 'Delete', exact: true });
-			if (await deleteBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-				await deleteBtn.click();
-				await waitForNetworkIdle(page);
-			}
-		} else {
-			console.log('No roast profiles found to delete - skipping deletion test');
-		}
+		// Click delete
+		const deleteBtn = page.getByRole('button', { name: 'Delete', exact: true });
+		await expect(deleteBtn, 'Expected delete button on roast profile').toBeVisible({
+			timeout: 5000
+		});
+		await deleteBtn.click();
+		await waitForNetworkIdle(page);
 
 		logErrors(consoleErrors, networkErrors);
 	});

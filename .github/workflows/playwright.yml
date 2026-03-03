@@ -13,6 +13,8 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      DISCORD_CODEBASE_WEBHOOK_URL: ${{ secrets.DISCORD_CODEBASE_WEBHOOK_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,7 +54,9 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright tests
-        run: pnpm run test:e2e
+        run: |
+          set -o pipefail
+          pnpm run test:e2e 2>&1 | tee playwright-test-output.log
         env:
           CI: true
           E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
@@ -65,6 +69,83 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
-          path: playwright-report/
+          name: playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+            playwright-test-output.log
           retention-days: 30
+
+      - name: Warn if Discord webhook secret is missing
+        if: ${{ failure() && env.DISCORD_CODEBASE_WEBHOOK_URL == '' }}
+        run: |
+          echo "::warning::DISCORD_CODEBASE_WEBHOOK_URL is not set; skipping failure notification."
+
+      - name: Notify Discord on Playwright failure
+        if: ${{ failure() && env.DISCORD_CODEBASE_WEBHOOK_URL != '' }}
+        env:
+          DISCORD_WEBHOOK_URL: ${{ env.DISCORD_CODEBASE_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+          const runUrl = process.env.RUN_URL;
+          const repo = process.env.REPO;
+          const branch = process.env.BRANCH;
+          const sha = (process.env.SHA || '').slice(0, 7);
+          const actor = process.env.ACTOR;
+          const eventName = process.env.EVENT_NAME;
+          const workflowName = process.env.WORKFLOW_NAME;
+
+          let logTail = 'No playwright-test-output.log found.';
+          if (fs.existsSync('playwright-test-output.log')) {
+            const lines = fs.readFileSync('playwright-test-output.log', 'utf8').split('\n');
+            logTail = lines.slice(-80).join('\n').trim() || logTail;
+          }
+
+          const maxLogChars = 1200;
+          if (logTail.length > maxLogChars) {
+            logTail = `...\n${logTail.slice(-maxLogChars)}`;
+          }
+
+          const content = [
+            '🚨 **Playwright CI Failed**',
+            `• Repo: \`${repo}\``,
+            `• Branch: \`${branch}\``,
+            `• Commit: \`${sha}\``,
+            `• Trigger: \`${eventName}\` by \`${actor}\``,
+            `• Workflow: \`${workflowName}\``,
+            `• Run: <${runUrl}>`,
+            '',
+            '**Last log lines**',
+            '```',
+            logTail,
+            '```',
+            '',
+            '_Full traces/reports are attached as workflow artifacts._'
+          ].join('\n');
+
+          fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content.slice(0, 1900) })
+          }).then(async (res) => {
+            if (!res.ok) {
+              const body = await res.text();
+              console.error(`Webhook post failed: ${res.status} ${body}`);
+              process.exit(1);
+            }
+            console.log('Posted Playwright failure notification to Discord webhook.');
+          }).catch((err) => {
+            console.error('Webhook post error:', err);
+            process.exit(1);
+          });
+          NODE

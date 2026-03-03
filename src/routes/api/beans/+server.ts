@@ -145,8 +145,7 @@ export const POST: RequestHandler = async (event) => {
 			// Ensure numeric fields are properly formatted
 			tax_ship_cost:
 				typeof bean.tax_ship_cost === 'number' ? parseFloat(bean.tax_ship_cost.toFixed(2)) : 0.0,
-			bean_cost: typeof bean.bean_cost === 'number' ? parseFloat(bean.bean_cost.toFixed(2)) : 0.0,
-			name: bean.manual_name || 'Unknown Bean' // Required field
+			bean_cost: typeof bean.bean_cost === 'number' ? parseFloat(bean.bean_cost.toFixed(2)) : 0.0
 		};
 
 		// Add only valid inventory columns
