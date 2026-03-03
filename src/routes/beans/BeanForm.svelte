@@ -1,5 +1,12 @@
 <script lang="ts">
 	import LoadingButton from '$lib/components/LoadingButton.svelte';
+	import {
+		calculatePurchaseTotal,
+		formatPricePerLb,
+		getApplicableTier,
+		getMinOrderLbs,
+		parsePriceTiers
+	} from '$lib/utils/pricing';
 	import type {
 		InventoryWithCatalog,
 		CoffeeCatalog,
@@ -58,6 +65,10 @@
 
 	// Array to store multiple beans in the batch
 	let batchBeans = $state(initBatchBeans());
+
+	let taxShipPerBean = $derived(
+		batchBeans.length > 0 ? sharedFormData.tax_ship_cost / batchBeans.length : 0
+	);
 
 	function initBatchBeans() {
 		if (bean) {
@@ -129,18 +140,72 @@
 	// Filter catalog beans based on stocked status
 	let filteredCatalogBeans = $derived(catalogBeans.filter((bean: CoffeeCatalog) => bean.stocked));
 
+	// When selecting from catalog, auto-calculate bean_cost from price_tiers when available.
+	// This keeps the form aligned with the tiered pricing model (bean_cost is total $ for this line item).
+	$effect(() => {
+		if (isManualEntry) return;
+
+		let changed = false;
+		const next = batchBeans.map((b) => {
+			if (!b.catalog_id) return b;
+
+			const catalogBean = filteredCatalogBeans.find((c: CoffeeCatalog) => c.id === b.catalog_id);
+			if (!catalogBean) return b;
+
+			const tiers = parsePriceTiers(catalogBean.price_tiers);
+			if (!tiers) return b;
+
+			const qty =
+				typeof b.purchased_qty_lbs === 'number'
+					? b.purchased_qty_lbs
+					: parseFloat(String(b.purchased_qty_lbs || 0));
+			const subtotal = calculatePurchaseTotal(tiers, qty);
+			if (subtotal == null) {
+				// Quantity below minimum tier; keep UI honest by clearing subtotal.
+				if (b.bean_cost !== 0) {
+					changed = true;
+					return { ...b, bean_cost: 0 };
+				}
+				return b;
+			}
+
+			if (b.bean_cost !== subtotal) {
+				changed = true;
+				return { ...b, bean_cost: subtotal };
+			}
+			return b;
+		});
+
+		if (changed) {
+			batchBeans = next;
+		}
+	});
+
 	function populateFromCatalog(catalogBean: CoffeeCatalog, beanIndex: number = 0) {
 		if (!catalogBean) return;
+
+		const tiers = parsePriceTiers(catalogBean.price_tiers);
+		const minOrder = tiers ? getMinOrderLbs(catalogBean) : 0;
+
+		const existingQty =
+			typeof batchBeans[beanIndex].purchased_qty_lbs === 'number'
+				? batchBeans[beanIndex].purchased_qty_lbs
+				: parseFloat(String(batchBeans[beanIndex].purchased_qty_lbs || 0));
+
+		// If this coffee has tiers, default quantity to the minimum order so the form is valid immediately.
+		const qty = existingQty > 0 ? existingQty : tiers ? minOrder : existingQty;
+
+		const subtotalFromTiers = tiers ? calculatePurchaseTotal(tiers, qty) : null;
+		const perLbFallback = typeof catalogBean.cost_lb === 'number' ? catalogBean.cost_lb : null;
+		const subtotalFallback =
+			perLbFallback != null && qty > 0 ? Math.round(perLbFallback * qty * 100) / 100 : null;
 
 		// Only set catalog_id and default cost from catalog for the specific bean
 		batchBeans[beanIndex] = {
 			...batchBeans[beanIndex], // Keep existing user fields
 			catalog_id: catalogBean.id,
-			// Set default bean cost from catalog cost if available
-			bean_cost:
-				typeof catalogBean.cost_lb === 'number'
-					? parseFloat(catalogBean.cost_lb.toFixed(2))
-					: batchBeans[beanIndex].bean_cost
+			purchased_qty_lbs: qty,
+			bean_cost: subtotalFromTiers ?? subtotalFallback ?? batchBeans[beanIndex].bean_cost
 		};
 		batchBeans = [...batchBeans]; // Trigger reactivity
 
@@ -183,6 +248,29 @@
 				if (isManualEntry && !beanData.manual_name?.trim()) {
 					alert(`Please enter a coffee name for bean ${i + 1}`);
 					return;
+				}
+
+				// Purchased quantity must be > 0
+				if (!beanData.purchased_qty_lbs || beanData.purchased_qty_lbs <= 0) {
+					alert(`Please enter a purchased quantity > 0 for bean ${i + 1}`);
+					return;
+				}
+
+				// If this is a tiered/wholesale coffee, ensure quantity meets minimum tier
+				if (!isManualEntry && beanData.catalog_id) {
+					const catalogBean = filteredCatalogBeans.find(
+						(b: CoffeeCatalog) => b.id === beanData.catalog_id
+					);
+					const tiers = catalogBean ? parsePriceTiers(catalogBean.price_tiers) : null;
+					if (tiers && tiers.length > 0) {
+						const minOrder = tiers[0].min_lbs;
+						if (beanData.purchased_qty_lbs < minOrder) {
+							alert(
+								`Minimum order for this coffee is ${minOrder} lb. Please increase quantity for bean ${i + 1}.`
+							);
+							return;
+						}
+					}
 				}
 
 				// Prepare bean data for submission
@@ -420,6 +508,21 @@
 
 			<div class="space-y-4">
 				{#each batchBeans as beanData, index}
+					{@const selectedCatalogBean =
+						!isManualEntry && beanData.catalog_id
+							? filteredCatalogBeans.find((b: CoffeeCatalog) => b.id === beanData.catalog_id)
+							: null}
+					{@const tiers = selectedCatalogBean
+						? parsePriceTiers(selectedCatalogBean.price_tiers)
+						: null}
+					{@const qty =
+						typeof beanData.purchased_qty_lbs === 'number'
+							? beanData.purchased_qty_lbs
+							: parseFloat(String(beanData.purchased_qty_lbs || 0))}
+					{@const applicableTier = tiers ? getApplicableTier(tiers, qty) : null}
+					{@const subtotal = tiers ? calculatePurchaseTotal(tiers, qty) : null}
+					{@const minOrder = tiers && tiers.length > 0 ? tiers[0].min_lbs : null}
+
 					<div
 						class="relative rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
 					>
@@ -476,6 +579,58 @@
 								</div>
 							{/if}
 
+							{#if !isManualEntry && tiers}
+								<div class="space-y-2 sm:col-span-2">
+									<div
+										class="rounded-md border border-border-light bg-background-primary-light p-3"
+									>
+										<div class="mb-2 flex items-center justify-between">
+											<div class="text-xs font-semibold text-text-primary-light">
+												Volume pricing
+											</div>
+											{#if selectedCatalogBean?.wholesale}
+												<span
+													class="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700"
+													>Wholesale</span
+												>
+											{/if}
+										</div>
+
+										{#each tiers as tier (tier.min_lbs)}
+											<div class="flex justify-between py-0.5 text-xs text-text-secondary-light">
+												<span>{tier.min_lbs}+ lb</span>
+												<span class="font-medium text-text-primary-light"
+													>{formatPricePerLb(tier.price)}</span
+												>
+											</div>
+										{/each}
+
+										{#if qty > 0}
+											{#if applicableTier && subtotal != null}
+												<div class="mt-2 text-xs text-text-secondary-light">
+													Applied tier: {applicableTier.min_lbs}+ lb ({formatPricePerLb(
+														applicableTier.price
+													)})
+												</div>
+												<div class="text-xs text-text-secondary-light">
+													Subtotal: ${subtotal.toFixed(2)}
+												</div>
+												<div class="text-xs text-text-secondary-light">
+													Tax/ship allocation: ${taxShipPerBean.toFixed(2)}
+												</div>
+												<div class="text-xs font-semibold text-text-primary-light">
+													Estimated total: ${(subtotal + taxShipPerBean).toFixed(2)}
+												</div>
+											{:else if minOrder}
+												<div class="mt-2 text-xs text-red-500">
+													Minimum order is {minOrder} lb
+												</div>
+											{/if}
+										{/if}
+									</div>
+								</div>
+							{/if}
+
 							<div class="space-y-2">
 								<label
 									for="purchased_qty-{index}"
@@ -486,7 +641,7 @@
 								<input
 									id="purchased_qty-{index}"
 									type="number"
-									step="1"
+									step="0.1"
 									min="0"
 									bind:value={beanData.purchased_qty_lbs}
 									placeholder="0"
@@ -500,7 +655,11 @@
 									for="bean_cost-{index}"
 									class="block text-sm font-medium text-text-primary-light"
 								>
-									Bean Cost ($)
+									{#if !isManualEntry && tiers}
+										Bean Subtotal ($)
+									{:else}
+										Bean Cost ($)
+									{/if}
 								</label>
 								<input
 									id="bean_cost-{index}"
@@ -509,9 +668,15 @@
 									min="0"
 									placeholder="0.00"
 									bind:value={beanData.bean_cost}
+									disabled={!isManualEntry && !!tiers}
 									class="block w-full rounded-md border-0 bg-background-primary-light px-3 py-2 text-text-primary-light placeholder-text-secondary-light shadow-sm ring-1 ring-border-light focus:ring-2 focus:ring-background-tertiary-light"
 									required
 								/>
+								{#if !isManualEntry && tiers}
+									<p class="text-xs text-text-secondary-light">
+										Auto-calculated from volume pricing tiers. Adjust quantity to update.
+									</p>
+								{/if}
 							</div>
 						</div>
 					</div>
