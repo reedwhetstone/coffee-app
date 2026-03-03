@@ -91,8 +91,8 @@ async function ensureBeanExists(page: Page) {
 	const qtyInput = page.locator('input[id^="purchased_qty-"]').first();
 	await qtyInput.fill('5');
 
-	// Submit the form (target the LoadingButton submit, not the "+ Add Bean" batch button)
-	await page.locator('form button').getByText(/^Add Bean$/).click();
+	// Submit the form (target the LoadingButton, not the "+ Add Bean" batch button)
+	await page.getByRole('button', { name: 'Add Bean', exact: true }).click();
 
 	// Wait for the form to close and bean card to appear
 	await expect(catalogSelect).not.toBeVisible({ timeout: 15000 });
