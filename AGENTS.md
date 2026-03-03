@@ -6,7 +6,7 @@
 - Assets: `static/` (served at site root). Styles in `src/app.css` with Tailwind.
 - Config: `svelte.config.js`, `vite.config.ts`, `tailwind.config.ts`, `eslint.config.js`, `tsconfig.json`.
 - Backend/services: Supabase config in `supabase/`.
-- Tests: colocated under `src/**/*.{test,spec}.{ts,js}`. E2E placeholder in `e2e/`.
+- Tests: unit tests colocated under `src/**/*.{test,spec}.{ts,js}`. Playwright E2E tests in `tests/e2e/`.
 
 ## Build, Test, and Development Commands
 
@@ -24,7 +24,7 @@ Prereqs: Node `22.x` (see `package.json` engines) and PNPM. Example: `corepack e
 
 ## Coding Style & Naming Conventions
 
-- Language: TypeScript (strict) + Svelte 5. Use `.svelte` and `.svx` for mdsvex.
+- Language: TypeScript (strict) + Svelte 5. Use rune-based APIs (`$props`, `$state`, `$derived`, `$effect`) in components. Use `.svelte` and `.svx` for mdsvex.
 - Formatting: Prettier (see `.prettierrc`, `.prettierignore`); run `pnpm format`.
 - Linting: ESLint flat config with `eslint-plugin-svelte` and TypeScript. Run `pnpm lint`.
 - Components: Prefer `PascalCase.svelte` in `src/lib/components`. Utilities in `src/lib/utils`.
