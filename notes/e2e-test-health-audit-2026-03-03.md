@@ -30,21 +30,28 @@ This audit defines the reliability baseline and the refactor plan for determinis
 
 ## P0 Remediation (this PR)
 
-1. **Deterministic seed in `tests/e2e/auth.setup.ts`**
+1. **No synthetic DB seeding (prod-safe policy)**
 
-   - After auth session creation, use service-role REST calls to ensure:
-     - at least one `green_coffee_inv` row for the test user
-     - at least one `roast_profiles` row tied to that inventory bean
-   - This removes the need for skip guards and enforces real assertions.
+   - Keep auth setup focused on authentication only.
+   - Do not write synthetic seed rows via service-role in CI against prod DB.
 
-2. **Remove skip-based logic in `tests/e2e/crud.spec.ts`**
+2. **Replace skip-based logic with real precondition setup in `tests/e2e/crud.spec.ts`**
 
-   - Replace `skipIfNoBeans` pattern with hard precondition assertions.
-   - Roast dropdown test now asserts selectable coffee options must exist.
-   - Roast phase/delete tests now assert profile presence instead of logging/skipping.
+   - Add `ensureBeanExists()` that uses the real UI flow:
+     - open Add Bean form
+     - select a live catalog product
+     - fill required fields
+     - submit and assert `POST /api/beans` succeeds
+   - This preserves end-to-end integrity and avoids skip-pass false positives.
+   - Roast dropdown flow now ensures bean preconditions first, then asserts options load.
 
-3. **Keep failures explicit**
-   - If seed or preconditions fail, test fails with actionable error text.
+3. **Fix app-level blocker discovered by E2E**
+
+   - `/api/beans` POST was sending a non-existent `name` field to `green_coffee_inv` inserts.
+   - Removed invalid field from insert payload so form-based bean creation can succeed.
+
+4. **Keep failures explicit**
+   - If preconditions fail (form/API), tests fail with actionable error text.
 
 ## P1 Refactor Plan (next PRs)
 
@@ -68,4 +75,4 @@ This audit defines the reliability baseline and the refactor plan for determinis
 - Rewriting every spec into page objects in one pass
 - Adding Stripe/admin/chat full coverage immediately
 
-This PR is about restoring test integrity first: deterministic data + no skip-based passing.
+This PR is about restoring test integrity first: no skip-based passing, real precondition setup through app flows, and explicit failures.

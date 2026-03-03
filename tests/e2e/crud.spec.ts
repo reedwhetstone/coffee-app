@@ -64,12 +64,41 @@ async function hasBeans(page: Page): Promise<boolean> {
 }
 
 /**
- * Hard assertion helper: inventory precondition must exist.
- * We seed deterministic data in auth.setup; missing beans is a test failure.
+ * Ensure at least one bean exists for this user by adding from live catalog via UI.
+ * This uses real app flows and does not seed synthetic DB rows.
  */
-async function assertHasBeans(page: Page, context: string) {
-	const beansExist = await hasBeans(page);
-	expect(beansExist, `${context}: expected at least one bean in inventory`).toBe(true);
+async function ensureBeanExists(page: Page) {
+	if (await hasBeans(page)) return;
+
+	await page.getByRole('button', { name: /Add Your First Bean|Add New Coffee/i }).click();
+	await page.getByText('Select from Catalog').click();
+
+	const catalogSelect = page.locator('select[id^="catalog-bean-"]').first();
+	await catalogSelect.waitFor({ state: 'visible', timeout: 10000 });
+	await expect(catalogSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
+	await catalogSelect.selectOption({ index: 1 });
+
+	const today = new Date().toISOString().split('T')[0];
+	await page.locator('#purchase_date').fill(today);
+	await page.locator('#tax_ship_cost').fill('0');
+	await page.locator('input[id^="purchased_qty-"]').first().fill('5');
+	await page.locator('input[id^="bean_cost-"]').first().fill('50');
+
+	const createResponse = page.waitForResponse(
+		(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'POST',
+		{ timeout: 15000 }
+	);
+
+	await page.getByRole('button', { name: 'Add Bean', exact: true }).click();
+	const response = await createResponse;
+
+	if (!response.ok()) {
+		const body = await response.text();
+		throw new Error(`Failed to create bean from form (${response.status()}): ${body}`);
+	}
+
+	await navigateToBeans(page);
+	await expect(page.locator('button.group.relative').first()).toBeVisible({ timeout: 15000 });
 }
 
 /**
@@ -223,7 +252,7 @@ test.describe('Bean Management', () => {
 
 		await navigateToBeans(page);
 
-		await assertHasBeans(page, 'Bean precondition');
+		await ensureBeanExists(page);
 
 		// Select first available bean
 		await selectFirstBean(page);
@@ -239,7 +268,7 @@ test.describe('Bean Management', () => {
 
 		await navigateToBeans(page);
 
-		await assertHasBeans(page, 'Bean precondition');
+		await ensureBeanExists(page);
 
 		await selectFirstBean(page);
 
@@ -271,7 +300,7 @@ test.describe('Cupping Notes', () => {
 
 		await navigateToBeans(page);
 
-		await assertHasBeans(page, 'Bean precondition');
+		await ensureBeanExists(page);
 
 		await selectFirstBean(page);
 
@@ -321,7 +350,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		await assertHasBeans(page, 'Bean precondition');
+		await ensureBeanExists(page);
 
 		await selectFirstBean(page);
 
@@ -353,6 +382,10 @@ test.describe('Roast Profiles', () => {
 
 	test('can create roast profile from dropdown without pre-selected bean', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
+
+		// Ensure at least one bean exists for dropdown population
+		await navigateToBeans(page);
+		await ensureBeanExists(page);
 
 		// Navigate directly to /roast (no pre-selected bean)
 		await page.goto('/roast');
@@ -419,7 +452,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		await assertHasBeans(page, 'Bean precondition');
+		await ensureBeanExists(page);
 
 		await selectFirstBean(page);
 
@@ -449,7 +482,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		await assertHasBeans(page, 'Bean precondition');
+		await ensureBeanExists(page);
 
 		await selectFirstBean(page);
 
