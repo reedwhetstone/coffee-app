@@ -77,7 +77,7 @@ async function ensureBeanExists(page: Page) {
 	// Switch from Manual Entry (default) to Catalog mode
 	await page.getByText('Select from Catalog').click();
 
-	// Wait for the form modal and catalog dropdown to appear
+	// Wait for the catalog dropdown to appear
 	const catalogSelect = page.locator('select[id^="catalog-bean-"]').first();
 	await catalogSelect.waitFor({ state: 'visible', timeout: 10000 });
 
@@ -87,9 +87,12 @@ async function ensureBeanExists(page: Page) {
 	// Select the first real coffee option (skip placeholder at index 0)
 	await catalogSelect.selectOption({ index: 1 });
 
-	// Fill purchased quantity (required field)
-	const qtyInput = page.locator('input[id^="purchased_qty-"]').first();
-	await qtyInput.fill('5');
+	// Fill all required fields
+	const today = new Date().toISOString().split('T')[0];
+	await page.locator('#purchase_date').fill(today);
+	await page.locator('#tax_ship_cost').fill('0');
+	await page.locator('input[id^="purchased_qty-"]').first().fill('5');
+	await page.locator('input[id^="bean_cost-"]').first().fill('50');
 
 	// Submit the form (target the LoadingButton, not the "+ Add Bean" batch button)
 	await page.getByRole('button', { name: 'Add Bean', exact: true }).click();
