@@ -9,7 +9,7 @@ This is a SvelteKit web application for coffee purveyors. It allows users to tra
 ### Prerequisites
 
 - Node.js (version 22.x)
-- pnpm
+- pnpm (activate with: `corepack enable && corepack prepare pnpm@latest --activate`)
 
 ### Installation
 
