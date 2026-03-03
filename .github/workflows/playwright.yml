@@ -13,6 +13,8 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    env:
+      DISCORD_CODEBASE_WEBHOOK_URL: ${{ secrets.DISCORD_CODEBASE_WEBHOOK_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -75,14 +77,14 @@ jobs:
           retention-days: 30
 
       - name: Warn if Discord webhook secret is missing
-        if: ${{ failure() && secrets.DISCORD_CODEBASE_WEBHOOK_URL == '' }}
+        if: ${{ failure() && env.DISCORD_CODEBASE_WEBHOOK_URL == '' }}
         run: |
           echo "::warning::DISCORD_CODEBASE_WEBHOOK_URL is not set; skipping failure notification."
 
       - name: Notify Discord on Playwright failure
-        if: ${{ failure() && secrets.DISCORD_CODEBASE_WEBHOOK_URL != '' }}
+        if: ${{ failure() && env.DISCORD_CODEBASE_WEBHOOK_URL != '' }}
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_CODEBASE_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ env.DISCORD_CODEBASE_WEBHOOK_URL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REPO: ${{ github.repository }}
           BRANCH: ${{ github.ref_name }}
