@@ -42,9 +42,59 @@ async function navigateToBeans(page: Page) {
 	// Wait for the API response to complete
 	await beansResponse;
 
-	// Wait for at least one bean card button to render in the DOM
-	const beanCard = page.locator('.grid button').first();
-	await beanCard.waitFor({ state: 'visible', timeout: 10000 });
+	// Wait for either bean cards OR the empty state to render
+	const beanCard = page.locator('button.group.relative').first();
+	const emptyState = page.getByText(/No Coffee Beans Yet|No Coffees Match/);
+	await Promise.race([
+		beanCard.waitFor({ state: 'visible', timeout: 20000 }),
+		emptyState.waitFor({ state: 'visible', timeout: 20000 })
+	]);
+}
+
+/**
+ * Check if the test user has beans in inventory.
+ * Call after navigateToBeans().
+ */
+async function hasBeans(page: Page): Promise<boolean> {
+	return page
+		.locator('button.group.relative')
+		.first()
+		.isVisible({ timeout: 2000 })
+		.catch(() => false);
+}
+
+/**
+ * Ensure at least one bean exists in the test user's inventory.
+ * If empty, adds a bean from the catalog via the UI form.
+ * Call after navigateToBeans().
+ */
+async function ensureBeanExists(page: Page) {
+	if (await hasBeans(page)) return;
+
+	// Click the "Add Your First Bean" button in the empty state
+	await page.getByRole('button', { name: /Add Your First Bean|Add New Coffee/i }).click();
+
+	// Wait for the form modal and catalog dropdown to appear
+	const catalogSelect = page.locator('select[id^="catalog-bean-"]').first();
+	await catalogSelect.waitFor({ state: 'visible', timeout: 10000 });
+
+	// Wait for catalog options to load (more than just the placeholder)
+	await expect(catalogSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
+
+	// Select the first real coffee option (skip placeholder at index 0)
+	await catalogSelect.selectOption({ index: 1 });
+
+	// Fill purchased quantity (required field)
+	const qtyInput = page.locator('input[id^="purchased_qty-"]').first();
+	await qtyInput.fill('5');
+
+	// Submit the form
+	await page.getByRole('button', { name: /Add Bean/i }).click();
+
+	// Wait for the form to close and bean card to appear
+	await expect(catalogSelect).not.toBeVisible({ timeout: 10000 });
+	const beanCard = page.locator('button.group.relative').first();
+	await beanCard.waitFor({ state: 'visible', timeout: 15000 });
 }
 
 /**
@@ -52,8 +102,8 @@ async function navigateToBeans(page: Page) {
  * Returns the button locator for the selected bean.
  */
 async function selectFirstBean(page: Page) {
-	const firstBean = page.locator('.grid button').first();
-	await firstBean.waitFor({ state: 'visible', timeout: 10000 });
+	const firstBean = page.locator('button.group.relative').first();
+	await firstBean.waitFor({ state: 'visible', timeout: 15000 });
 	await firstBean.click();
 	// Wait for the detail panel to open
 	await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible({ timeout: 5000 });
@@ -198,6 +248,8 @@ test.describe('Bean Management', () => {
 
 		await navigateToBeans(page);
 
+		await ensureBeanExists(page);
+
 		// Select first available bean
 		await selectFirstBean(page);
 
@@ -211,6 +263,9 @@ test.describe('Bean Management', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
+
+		await ensureBeanExists(page);
+
 		await selectFirstBean(page);
 
 		// Click Edit
@@ -240,6 +295,9 @@ test.describe('Cupping Notes', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
+
+		await ensureBeanExists(page);
+
 		await selectFirstBean(page);
 
 		// Navigate to cupping tab - click the text directly in the tab bar area
@@ -287,6 +345,9 @@ test.describe('Roast Profiles', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
+
+		await ensureBeanExists(page);
+
 		await selectFirstBean(page);
 
 		// Navigate to roasting tab
@@ -382,6 +443,9 @@ test.describe('Roast Profiles', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
+
+		await ensureBeanExists(page);
+
 		await selectFirstBean(page);
 
 		// Navigate to roasting tab
@@ -426,6 +490,9 @@ test.describe('Roast Profiles', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
+
+		await ensureBeanExists(page);
+
 		await selectFirstBean(page);
 
 		// Navigate to roasting tab
