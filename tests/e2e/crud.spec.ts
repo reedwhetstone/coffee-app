@@ -84,7 +84,7 @@ async function ensureBeanExists(page: Page) {
 	// Wait for catalog options to load (more than just the placeholder)
 	await expect(catalogSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
 
-	// Select the first real coffee option (skip placeholder at index 0)
+	// Select first catalog bean
 	await catalogSelect.selectOption({ index: 1 });
 
 	// Fill all required fields
@@ -94,13 +94,21 @@ async function ensureBeanExists(page: Page) {
 	await page.locator('input[id^="purchased_qty-"]').first().fill('5');
 	await page.locator('input[id^="bean_cost-"]').first().fill('50');
 
-	// Submit the form (target the LoadingButton, not the "+ Add Bean" batch button)
+	// Submit and wait for the API response
+	const apiResponse = page.waitForResponse(
+		(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'POST',
+		{ timeout: 15000 }
+	);
 	await page.getByRole('button', { name: 'Add Bean', exact: true }).click();
+	const response = await apiResponse;
 
-	// Wait for the form to close and bean card to appear
-	await expect(catalogSelect).not.toBeVisible({ timeout: 15000 });
-	const beanCard = page.locator('button.group.relative').first();
-	await beanCard.waitFor({ state: 'visible', timeout: 15000 });
+	if (!response.ok()) {
+		const body = await response.text();
+		throw new Error(`Bean creation API failed (${response.status()}): ${body}`);
+	}
+
+	// Re-navigate to beans page to see the new bean
+	await navigateToBeans(page);
 }
 
 /**
