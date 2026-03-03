@@ -64,51 +64,15 @@ async function hasBeans(page: Page): Promise<boolean> {
 }
 
 /**
- * Ensure at least one bean exists in the test user's inventory.
- * If empty, adds a bean from the catalog via the UI form.
- * Call after navigateToBeans().
+ * Guard: skip test if the test user has no beans in inventory.
+ * The test user is a real prod user; we never seed synthetic data.
  */
-async function ensureBeanExists(page: Page) {
-	if (await hasBeans(page)) return;
-
-	// Click the "Add Your First Bean" button in the empty state
-	await page.getByRole('button', { name: /Add Your First Bean|Add New Coffee/i }).click();
-
-	// Switch from Manual Entry (default) to Catalog mode
-	await page.getByText('Select from Catalog').click();
-
-	// Wait for the catalog dropdown to appear
-	const catalogSelect = page.locator('select[id^="catalog-bean-"]').first();
-	await catalogSelect.waitFor({ state: 'visible', timeout: 10000 });
-
-	// Wait for catalog options to load (more than just the placeholder)
-	await expect(catalogSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
-
-	// Select first catalog bean
-	await catalogSelect.selectOption({ index: 1 });
-
-	// Fill all required fields
-	const today = new Date().toISOString().split('T')[0];
-	await page.locator('#purchase_date').fill(today);
-	await page.locator('#tax_ship_cost').fill('0');
-	await page.locator('input[id^="purchased_qty-"]').first().fill('5');
-	await page.locator('input[id^="bean_cost-"]').first().fill('50');
-
-	// Submit and wait for the API response
-	const apiResponse = page.waitForResponse(
-		(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'POST',
-		{ timeout: 15000 }
-	);
-	await page.getByRole('button', { name: 'Add Bean', exact: true }).click();
-	const response = await apiResponse;
-
-	if (!response.ok()) {
-		const body = await response.text();
-		throw new Error(`Bean creation API failed (${response.status()}): ${body}`);
+function skipIfNoBeans(hasBeans: boolean, consoleErrors: string[], networkErrors: string[]) {
+	if (!hasBeans) {
+		console.log('Skipping: test user has no beans in inventory');
+		logErrors(consoleErrors, networkErrors);
 	}
-
-	// Re-navigate to beans page to see the new bean
-	await navigateToBeans(page);
+	return !hasBeans;
 }
 
 /**
@@ -262,7 +226,7 @@ test.describe('Bean Management', () => {
 
 		await navigateToBeans(page);
 
-		await ensureBeanExists(page);
+		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
 
 		// Select first available bean
 		await selectFirstBean(page);
@@ -278,7 +242,7 @@ test.describe('Bean Management', () => {
 
 		await navigateToBeans(page);
 
-		await ensureBeanExists(page);
+		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
 
 		await selectFirstBean(page);
 
@@ -310,7 +274,7 @@ test.describe('Cupping Notes', () => {
 
 		await navigateToBeans(page);
 
-		await ensureBeanExists(page);
+		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
 
 		await selectFirstBean(page);
 
@@ -360,7 +324,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		await ensureBeanExists(page);
+		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
 
 		await selectFirstBean(page);
 
@@ -458,7 +422,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		await ensureBeanExists(page);
+		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
 
 		await selectFirstBean(page);
 
@@ -505,7 +469,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		await ensureBeanExists(page);
+		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
 
 		await selectFirstBean(page);
 
