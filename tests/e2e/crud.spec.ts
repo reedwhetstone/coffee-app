@@ -64,15 +64,12 @@ async function hasBeans(page: Page): Promise<boolean> {
 }
 
 /**
- * Guard: skip test if the test user has no beans in inventory.
- * The test user is a real prod user; we never seed synthetic data.
+ * Hard assertion helper: inventory precondition must exist.
+ * We seed deterministic data in auth.setup; missing beans is a test failure.
  */
-function skipIfNoBeans(hasBeans: boolean, consoleErrors: string[], networkErrors: string[]) {
-	if (!hasBeans) {
-		console.log('Skipping: test user has no beans in inventory');
-		logErrors(consoleErrors, networkErrors);
-	}
-	return !hasBeans;
+async function assertHasBeans(page: Page, context: string) {
+	const beansExist = await hasBeans(page);
+	expect(beansExist, `${context}: expected at least one bean in inventory`).toBe(true);
 }
 
 /**
@@ -226,7 +223,7 @@ test.describe('Bean Management', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await assertHasBeans(page, 'Bean precondition');
 
 		// Select first available bean
 		await selectFirstBean(page);
@@ -242,7 +239,7 @@ test.describe('Bean Management', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await assertHasBeans(page, 'Bean precondition');
 
 		await selectFirstBean(page);
 
@@ -274,7 +271,7 @@ test.describe('Cupping Notes', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await assertHasBeans(page, 'Bean precondition');
 
 		await selectFirstBean(page);
 
@@ -324,7 +321,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await assertHasBeans(page, 'Bean precondition');
 
 		await selectFirstBean(page);
 
@@ -376,17 +373,12 @@ test.describe('Roast Profiles', () => {
 		const coffeeSelect = page.locator('#coffee_select_0');
 		await coffeeSelect.waitFor({ state: 'visible' });
 
-		// Wait for options to load; skip if test user has no beans
-		const optionCount = await coffeeSelect.locator('option').count();
-		if (optionCount <= 1) {
-			console.log('Skipping: test user has no beans for roast dropdown');
-			logErrors(consoleErrors, networkErrors);
-			return;
-		}
+		// Wait for options to load (must include at least one real coffee option)
+		await expect(coffeeSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
 
 		// Select the first real coffee option (skip placeholder at index 0)
 		const options = await coffeeSelect.locator('option').allTextContents();
-		expect(options.length).toBeGreaterThan(1); // Must have at least placeholder + 1 coffee
+		expect(options.length, 'Expected at least one selectable coffee bean').toBeGreaterThan(1);
 		await coffeeSelect.selectOption({ index: 1 });
 
 		// Assert the dropdown retained its value (the bug was it would revert)
@@ -427,7 +419,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await assertHasBeans(page, 'Bean precondition');
 
 		await selectFirstBean(page);
 
@@ -436,35 +428,18 @@ test.describe('Roast Profiles', () => {
 		await roastingTab.click();
 		await page.waitForTimeout(500);
 
-		// Check if there are any roast profiles
-		const hasExistingProfiles = await page
-			.getByText(/Roast #|ID: \d+/)
-			.first()
-			.isVisible({ timeout: 2000 })
-			.catch(() => false);
-
-		if (!hasExistingProfiles) {
-			console.log('No existing roast profiles found - skipping roast phases test');
-			logErrors(consoleErrors, networkErrors);
-			return;
-		}
-
-		// Click on a profile card (flexible matcher for dynamic content)
+		// Open the first profile card and assert roast content appears
 		const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
-		if (await profileCard.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await profileCard.click();
+		await expect(profileCard, 'Expected at least one roast profile card').toBeVisible({
+			timeout: 5000
+		});
+		await profileCard.click();
 
-			// The roast page should open - look for roast controls
-			await page.waitForTimeout(1000);
-
-			// Just verify we can see some roast-related content
-			const roastContent = page.getByText(/Weight Loss|Roast Notes|oz/i).first();
-			if (await roastContent.isVisible({ timeout: 3000 }).catch(() => false)) {
-				console.log('Successfully navigated to roast profile');
-			}
-		} else {
-			console.log('No profile cards found to click');
-		}
+		// The roast page should open - look for roast controls/content
+		const roastContent = page.getByText(/Weight Loss|Roast Notes|oz/i).first();
+		await expect(roastContent, 'Expected roast profile detail content').toBeVisible({
+			timeout: 5000
+		});
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -474,7 +449,7 @@ test.describe('Roast Profiles', () => {
 
 		await navigateToBeans(page);
 
-		if (skipIfNoBeans(await hasBeans(page), consoleErrors, networkErrors)) return;
+		await assertHasBeans(page, 'Bean precondition');
 
 		await selectFirstBean(page);
 
@@ -498,24 +473,24 @@ test.describe('Roast Profiles', () => {
 
 		// Click on any profile card
 		const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
-		if (await profileCard.isVisible({ timeout: 3000 }).catch(() => false)) {
-			await profileCard.click();
+		await expect(profileCard, 'Expected at least one roast profile to delete').toBeVisible({
+			timeout: 5000
+		});
+		await profileCard.click();
 
-			// Set up dialog handler before clicking delete
-			page.once('dialog', (dialog) => {
-				console.log(`Dialog message: ${dialog.message()}`);
-				dialog.accept().catch(() => {});
-			});
+		// Set up dialog handler before clicking delete
+		page.once('dialog', (dialog) => {
+			console.log(`Dialog message: ${dialog.message()}`);
+			dialog.accept().catch(() => {});
+		});
 
-			// Click delete
-			const deleteBtn = page.getByRole('button', { name: 'Delete', exact: true });
-			if (await deleteBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-				await deleteBtn.click();
-				await waitForNetworkIdle(page);
-			}
-		} else {
-			console.log('No roast profiles found to delete - skipping deletion test');
-		}
+		// Click delete
+		const deleteBtn = page.getByRole('button', { name: 'Delete', exact: true });
+		await expect(deleteBtn, 'Expected delete button on roast profile').toBeVisible({
+			timeout: 5000
+		});
+		await deleteBtn.click();
+		await waitForNetworkIdle(page);
 
 		logErrors(consoleErrors, networkErrors);
 	});
