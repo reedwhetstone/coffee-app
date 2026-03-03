@@ -1,14 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-// Simple in-memory cache for catalog data
-let catalogCache: {
-	data: Record<string, unknown>[] | null;
-	timestamp: number;
-} = {
-	data: null,
-	timestamp: 0
-};
+// Simple in-memory cache for catalog data (keyed by wholesale visibility mode)
+const catalogCache: Record<
+	string,
+	{
+		data: Record<string, unknown>[] | null;
+		timestamp: number;
+	}
+> = {};
 
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
 
@@ -63,6 +63,10 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		const sortField = url.searchParams.get('sortField');
 		const sortDirection = url.searchParams.get('sortDirection') as 'asc' | 'desc' | null;
 
+		// Wholesale visibility parameters
+		const showWholesale = url.searchParams.get('showWholesale') === 'true';
+		const wholesaleOnly = url.searchParams.get('wholesaleOnly') === 'true';
+
 		// Check if this is a paginated request
 		const isPaginated = url.searchParams.has('page') || url.searchParams.has('limit');
 
@@ -75,6 +79,13 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 				.from('coffee_catalog')
 				.select('*', { count: 'exact' })
 				.eq('stocked', true);
+
+			// Default catalog behavior: hide wholesale coffees unless explicitly requested
+			if (wholesaleOnly) {
+				query = query.eq('wholesale', true);
+			} else if (!showWholesale) {
+				query = query.eq('wholesale', false);
+			}
 
 			// Apply filters
 			if (filters.continent) query = query.eq('continent', filters.continent);
@@ -134,19 +145,33 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		// Legacy full catalog fetch (for backwards compatibility)
 		const now = Date.now();
-		if (catalogCache.data && now - catalogCache.timestamp < CACHE_TTL) {
-			return json(catalogCache.data);
+		const cacheKey = wholesaleOnly
+			? 'wholesaleOnly'
+			: showWholesale
+				? 'showWholesale'
+				: 'retailOnly';
+		const cached = catalogCache[cacheKey];
+		if (cached?.data && now - cached.timestamp < CACHE_TTL) {
+			return json(cached.data);
 		}
 
-		const { data: rows, error } = await supabase
+		let legacyQuery = supabase
 			.from('coffee_catalog')
 			.select('*')
 			.eq('stocked', true)
 			.order('arrival_date', { ascending: false });
 
+		if (wholesaleOnly) {
+			legacyQuery = legacyQuery.eq('wholesale', true);
+		} else if (!showWholesale) {
+			legacyQuery = legacyQuery.eq('wholesale', false);
+		}
+
+		const { data: rows, error } = await legacyQuery;
+
 		if (error) throw error;
 
-		catalogCache = {
+		catalogCache[cacheKey] = {
 			data: rows || [],
 			timestamp: now
 		};

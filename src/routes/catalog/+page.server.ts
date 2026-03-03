@@ -8,6 +8,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.from('coffee_catalog')
 		.select('*')
 		.eq('stocked', true)
+		.eq('wholesale', false)
 		.order('arrival_date', { ascending: false })
 		.limit(5); // Reduced for faster initial load - remaining items loaded client-side
 
