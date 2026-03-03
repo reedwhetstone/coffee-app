@@ -267,25 +267,35 @@ test.describe('Bean Management', () => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
 		await navigateToBeans(page);
-
 		await ensureBeanExists(page);
-
 		await selectFirstBean(page);
 
 		// Click Edit
 		await page.getByRole('button', { name: 'Edit' }).click();
 
-		// Edit a field - use labeled inputs when possible
-		const textarea = page.locator('textarea').first();
-		await textarea.fill('Test notes update ' + Date.now());
+		// Notes textarea only exists when original notes are present; update if available.
+		const notesField = page.locator('textarea').first();
+		if (await notesField.isVisible({ timeout: 1500 }).catch(() => false)) {
+			await notesField.fill('Test notes update ' + Date.now());
+		}
 
-		// Update a numeric field
-		const spinbutton = page.getByRole('spinbutton').first();
-		await spinbutton.fill('12');
+		// Update a numeric field that should always be editable in overview.
+		const qtyField = page.locator('input[type="number"][step="0.1"]').first();
+		if (await qtyField.isVisible({ timeout: 1500 }).catch(() => false)) {
+			await qtyField.fill('12');
+		} else {
+			await page.getByRole('spinbutton').first().fill('12');
+		}
 
-		// Save and wait for response
+		// Save and assert the update request succeeds.
+		const updateResponse = page.waitForResponse(
+			(resp) =>
+				resp.url().includes('/api/beans?id=') &&
+				resp.request().method() === 'PUT' &&
+				resp.status() === 200
+		);
 		await page.getByRole('button', { name: 'Save' }).click();
-		await waitForNetworkIdle(page);
+		await updateResponse;
 
 		// Verify save completed (button should return to normal state)
 		await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
