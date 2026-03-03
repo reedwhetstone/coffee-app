@@ -156,6 +156,7 @@ export type Database = {
 					lot_size: string | null;
 					name: string;
 					packaging: string | null;
+					price_tiers: Json | null;
 					processing: string | null;
 					public_coffee: boolean | null;
 					region: string | null;
@@ -166,6 +167,7 @@ export type Database = {
 					stocked_date: string | null;
 					type: string | null;
 					unstocked_date: string | null;
+					wholesale: boolean;
 				};
 				Insert: {
 					ai_description?: string | null;
@@ -190,6 +192,7 @@ export type Database = {
 					lot_size?: string | null;
 					name: string;
 					packaging?: string | null;
+					price_tiers?: Json | null;
 					processing?: string | null;
 					public_coffee?: boolean | null;
 					region?: string | null;
@@ -200,6 +203,7 @@ export type Database = {
 					stocked_date?: string | null;
 					type?: string | null;
 					unstocked_date?: string | null;
+					wholesale?: boolean;
 				};
 				Update: {
 					ai_description?: string | null;
@@ -224,6 +228,7 @@ export type Database = {
 					lot_size?: string | null;
 					name?: string;
 					packaging?: string | null;
+					price_tiers?: Json | null;
 					processing?: string | null;
 					public_coffee?: boolean | null;
 					region?: string | null;
@@ -234,6 +239,7 @@ export type Database = {
 					stocked_date?: string | null;
 					type?: string | null;
 					unstocked_date?: string | null;
+					wholesale?: boolean;
 				};
 				Relationships: [];
 			};
@@ -1053,6 +1059,7 @@ export type Database = {
 					lot_size: string;
 					name: string;
 					packaging: string;
+					price_tiers: Json;
 					processing: string;
 					region: string;
 					roast_recs: string;
@@ -1061,6 +1068,7 @@ export type Database = {
 					source: string;
 					stocked: boolean;
 					type: string;
+					wholesale: boolean;
 				}[];
 			};
 			match_coffee_chunks: {
@@ -1103,6 +1111,7 @@ export type Database = {
 					lot_size: string;
 					name: string;
 					packaging: string;
+					price_tiers: Json;
 					processing: string;
 					region: string;
 					roast_recs: string;
@@ -1113,6 +1122,7 @@ export type Database = {
 					stocked_date: string;
 					type: string;
 					unstocked_date: string;
+					wholesale: boolean;
 				}[];
 			};
 			match_coffee_historical: {
@@ -1139,6 +1149,7 @@ export type Database = {
 					lot_size: string;
 					name: string;
 					packaging: string;
+					price_tiers: Json;
 					processing: string;
 					region: string;
 					roast_recs: string;
@@ -1149,6 +1160,7 @@ export type Database = {
 					stocked_date: string;
 					type: string;
 					unstocked_date: string;
+					wholesale: boolean;
 				}[];
 			};
 			seconds_to_mmss: { Args: { seconds: number }; Returns: string };
