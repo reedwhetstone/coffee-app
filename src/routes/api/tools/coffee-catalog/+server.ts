@@ -9,8 +9,7 @@ interface CoffeeCatalogToolInput {
 	variety?: string;
 	price_range?: [number, number];
 	flavor_keywords?: string[];
-	score_min?: number;
-	score_max?: number;
+
 	limit?: number;
 	stocked_only?: boolean;
 	// New search parameters
@@ -44,8 +43,7 @@ export const POST: RequestHandler = async (event) => {
 			variety,
 			price_range,
 			flavor_keywords = [],
-			score_min,
-			score_max,
+
 			limit = 10,
 			stocked_only = true,
 			name,
@@ -112,14 +110,6 @@ export const POST: RequestHandler = async (event) => {
 			query = query.gte('cost_lb', price_range[0]).lte('cost_lb', price_range[1]);
 		}
 
-		if (score_min) {
-			query = query.gte('score_value', score_min);
-		}
-
-		if (score_max) {
-			query = query.lte('score_value', score_max);
-		}
-
 		// Apply flavor keywords to multiple text fields
 		if (flavor_keywords.length > 0) {
 			// Build OR conditions for each keyword across all searchable text fields
@@ -140,7 +130,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// Apply limit and ordering - enforce maximum of 15 items
 		const finalLimit = Math.min(limit || 10, 15);
-		query = query.order('score_value', { ascending: false }).limit(finalLimit);
+		query = query.order('stocked_date', { ascending: false }).limit(finalLimit);
 
 		const { data: coffees, error } = await query;
 
@@ -157,8 +147,11 @@ export const POST: RequestHandler = async (event) => {
 			searchStrategy = 'fallback';
 		}
 
+		// Strip score_value from results — cupping scores are noise for the chat model
+		const sanitizedCoffees = (coffees || []).map(({ score_value: _score_value, ...rest }) => rest);
+
 		const response: CoffeeCatalogToolResponse = {
-			coffees: coffees || [],
+			coffees: sanitizedCoffees,
 			total: coffees?.length || 0,
 			filters_applied: {
 				origin,
@@ -166,8 +159,7 @@ export const POST: RequestHandler = async (event) => {
 				variety,
 				price_range,
 				flavor_keywords,
-				score_min,
-				score_max,
+
 				limit: finalLimit,
 				stocked_only,
 				name,

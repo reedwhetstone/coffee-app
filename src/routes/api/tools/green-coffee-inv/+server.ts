@@ -68,7 +68,7 @@ export const POST: RequestHandler = async (event) => {
 			*,
 			coffee_catalog!catalog_id (
 				name,
-				score_value,
+
 				arrival_date,
 				region,
 				processing,
