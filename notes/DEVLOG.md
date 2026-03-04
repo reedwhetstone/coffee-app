@@ -200,6 +200,16 @@ Longer-term feature concepts to explore.
 - [ ] **Feature Ideation** - Focus on viral, shareable tools. Filter URLs, recommendation engines, easy-share API outputs.
 - [ ] **Feature Ideation** - License cleaned coffee dataset to roast machine companies (like RoastWorld) for integration.
 
+### Beyond the Coffee Belt: Platform Feature Ideas (Mar 2026)
+
+- [ ] **Feature Ideation** - Schema upgrades for resilience metadata: `species`, `cultivar_lineage_confidence`, `isolation_profile`, `microclimate_driver`, and `resilience_notes`.
+- [ ] **Feature Ideation** - Portfolio concentration risk dashboard (country/region/species/supplier concentration, single-point-of-failure alerts).
+- [ ] **Feature Ideation** - Barbell sourcing planner (core reliability vs edge discovery mix targets with gap detection).
+- [ ] **Feature Ideation** - Supplier diversification scoring model (optionality contribution, uniqueness contribution, resilience contribution).
+- [ ] **Feature Ideation** - Risk-adjusted economics calculator: `effective_cost = landed_cost + concentration_risk_premium - differentiation_value`.
+- [ ] **Feature Ideation** - Buyer intent mode in catalog/chat: Reliability intent vs Discovery intent with different ranking strategies.
+- [ ] **Feature Ideation** - Edge-origin watchlist and alerts for low-volume/high-differentiation lots and emerging non-traditional origins.
+
 ---
 
 ## Priority 17: Open Source & Community
