@@ -967,14 +967,32 @@
 													{collapsedSummary}
 												</button>
 											{:else}
-												{#each message.parts as part}
+												{@const _lookup = canvasBlockLookup()}
+												{@const _canvasIds = _lookup.get(message.id) || []}
+												{@const _partCanvasMap = (() => {
+													const map = new Map<number, string>();
+													let blockIdx = 0;
+													for (let i = 0; i < message.parts.length; i++) {
+														const p = message.parts[i];
+														if (p.type.startsWith('tool-')) {
+															const b = extractBlockFromPart(
+																p as Record<string, unknown>,
+																extractorOptions
+															);
+															if (b) {
+																map.set(i, _canvasIds[blockIdx] ?? '');
+																blockIdx++;
+															}
+														}
+													}
+													return map;
+												})()}
+												{#each message.parts as part, partIndex}
 													{#if part.type.startsWith('tool-')}
 														{@const toolPart = part as Record<string, unknown>}
 														{@const block = extractBlockFromPart(toolPart, extractorOptions)}
 														{#if block}
-															{@const lookup = canvasBlockLookup()}
-															{@const canvasIds = lookup.get(message.id) || []}
-															{@const canvasId = canvasIds[0]}
+															{@const canvasId = _partCanvasMap.get(partIndex) ?? ''}
 															<div class="preview-fade-in my-1">
 																<GenUIBlockRenderer
 																	{block}
