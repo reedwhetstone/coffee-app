@@ -10,7 +10,6 @@
 	let count = $derived(block.data.length);
 	let firstCoffee = $derived(block.data[0]);
 	let origin = $derived(firstCoffee?.country || firstCoffee?.continent || '');
-	let score = $derived(firstCoffee?.score ? `${firstCoffee.score}pts` : '');
 
 	function handleClick() {
 		if (canvasBlockId) {
@@ -34,7 +33,6 @@
 	{#if count === 1}
 		<span>{firstCoffee?.name || 'Coffee'}</span>
 		{#if origin}<span class="text-emerald-500">{origin}</span>{/if}
-		{#if score}<span class="text-emerald-500">{score}</span>{/if}
 	{:else}
 		<span>{count} coffees</span>
 	{/if}

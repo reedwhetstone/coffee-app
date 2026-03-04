@@ -34,8 +34,7 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				variety: z.string().optional().describe('Coffee variety/cultivar'),
 				price_range: z.array(z.number()).length(2).optional().describe('Price range [min, max]'),
 				flavor_keywords: z.array(z.string()).optional().describe('Flavor descriptors'),
-				score_min: z.number().optional().describe('Minimum cupping score'),
-				score_max: z.number().optional().describe('Maximum cupping score'),
+
 				limit: z.number().optional().default(10).describe('Number of results to return (max 15)'),
 				stocked_only: z
 					.boolean()
