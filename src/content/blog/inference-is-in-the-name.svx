@@ -4,7 +4,7 @@ date: "2026-03-05"
 description: "If your workflow has no unknowns, runtime LLM inference is often the wrong architecture. Build deterministic cores, then add AI where adaptation actually matters."
 tags: ["ai", "agentic", "infrastructure", "operations"]
 pillar: "agentic-stack"
-draft: true
+draft: false
 readingTime: 9
 ---
 
