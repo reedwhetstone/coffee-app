@@ -1,0 +1,142 @@
+---
+title: "Inference Is in the Name"
+date: "2026-03-05"
+description: "If your workflow has no unknowns, runtime LLM inference is often the wrong architecture. Build deterministic cores, then add AI where adaptation actually matters."
+tags: ["ai", "agentic", "infrastructure", "operations"]
+pillar: "agentic-stack"
+draft: false
+readingTime: 9
+---
+
+If the data source is known, the schedule is fixed, the transform is predictable, and the output shape never changes, why are you calling a model at runtime?
+
+That is not an anti-AI question. It is an architecture question.
+
+Inference is in the name. If nothing is unknown, there is very little to infer.
+
+A lot of teams are still framing this as app vs agent, old stack vs AI-native, deterministic vs innovative. That framing is noisy. The useful split is simpler:
+
+- deterministic core for guarantees
+- adaptive edge for uncertainty
+
+When teams invert that order, they ship fragile products that look magical in demos and expensive in production.
+
+## Deterministic Problems Should Compile Into Software
+
+Some workloads are almost fully specifiable:
+
+- known input contracts
+- fixed cadence
+- stable business rules
+- fixed output schema
+- clear pass/fail tests
+
+In these cases, a deterministic pipeline is usually better than runtime inference on every request. You get reproducibility, lower variance, easier debugging, and lower operating cost.
+
+None of this means you should avoid AI. It means you should place AI where it has structural advantage.
+
+Use AI to build the dashboard; do not make the dashboard itself an unbounded prompt loop unless the task truly needs adaptation.
+
+## Data First Is Still the Hard Constraint
+
+Model quality cannot outrun data quality for long.
+
+If data access is brittle, entities are inconsistent, and lineage is unclear, your product quality will plateau no matter how good the model is. You can prompt around missing connective tissue for a while, then reality wins.
+
+For production systems, the minimum viable foundation is boring and non-negotiable:
+
+- durable source access
+- normalized canonical entities
+- schema governance
+- quality checks and drift detection
+- observable lineage from source to decision
+
+This is where most AI roadmaps are upside down. Teams debate agent frameworks while their data layer is still probabilistic in all the wrong places.
+
+## Where AI Actually Earns Its Keep
+
+AI is strongest where deterministic code gets expensive or brittle:
+
+- ambiguous inputs
+- unbounded user requests
+- ranking and prioritization under uncertainty
+- exception handling
+- language interfaces over structured systems
+
+That is the adaptive edge.
+
+The key is feedback loops. If the model does not learn from outcomes, corrections, and error patterns, you are not really compounding capability. You are renting a clever beta.
+
+Adaptive systems need recursive improvement loops:
+
+- user correction capture
+- outcome scoring
+- policy updates
+- eval refresh
+- retraining or prompt/policy tuning
+
+No loop, no compounding.
+
+## Human-in-the-Loop vs Human-out-of-the-Loop Is Not Binary
+
+A second confusion in the market: people treat human-in-the-loop as morally and technically superior by default.
+
+It is often necessary, especially for high-consequence decisions. It is not automatically safer.
+
+Research on automation bias has repeatedly shown that humans who are nominally “in the loop” can become weak monitors, over-trust system output, or fail handoffs under pressure. Georgetown CSET’s 2024 brief puts it plainly: human-in-the-loop alone does not prevent all failures.
+
+At the same time, regulatory and standards guidance is not saying “remove humans everywhere.” It says calibrate oversight to context and risk.
+
+- **NIST AI RMF 1.0** frames oversight and intervention as context- and lifecycle-dependent risk management.
+- **EU AI Act Article 14** requires oversight measures proportional to risk, autonomy level, and context of use, and explicitly calls out automation bias.
+
+That points to a practical model:
+
+- **Human-in-the-loop** for high consequence, low reversibility, weak confidence signals
+- **Human-on-the-loop** for monitored automation with override and stop controls
+- **Human-out-of-the-loop** for bounded, high-volume, well-tested decision paths with strong guardrails and rollback
+
+The goal is not ideological purity. The goal is safer outcomes.
+
+## Are Automated Tests and CI/CD in Opposition to Human Oversight?
+
+No. They are table stakes for both models.
+
+Automated tests, policy checks, and CI/CD feedback are not a substitute for governance. They are the infrastructure that makes any oversight model workable.
+
+DORA’s continuous delivery research has been consistent here: strong automation and fast feedback reduce software risk and improve reliability, including in regulated environments.
+
+If you cannot automatically verify basic system behavior, you do not have a meaningful loop-placement strategy. You have hope.
+
+## A Simple Placement Heuristic
+
+Before you put an LLM in a runtime path, ask:
+
+1. What is actually unknown at decision time?
+2. How expensive is a wrong answer?
+3. Can the decision be deterministically tested?
+4. Is there a reliable rollback path?
+5. Do we have outcome feedback to improve behavior over time?
+
+If unknowns are low and tests are strong, prefer deterministic code.
+If unknowns are high and adaptation is valuable, use AI with guardrails and feedback.
+If consequence is high and reversibility is low, increase human authority.
+
+This is not anti-agent. It is anti-category error.
+
+## The Reframe
+
+Most AI platform failures are not model failures. They are architecture failures.
+
+Teams are putting inference into deterministic layers and removing deterministic discipline from adaptive layers. Then they wonder why costs drift up, reliability drifts down, and users stop trusting output.
+
+Build deterministic cores first. Add adaptive edges second. Place humans where they create net safety, not symbolic comfort.
+
+That is how AI stops being a demo and starts being infrastructure.
+
+## References
+
+- NIST AI RMF 1.0: https://www.nist.gov/itl/ai-risk-management-framework
+- CSET, *AI Safety and Automation Bias* (2024): https://cset.georgetown.edu/publication/ai-safety-and-automation-bias/
+- EU AI Act Article 14 (Human Oversight): https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14
+- DORA Continuous Delivery capability: https://dora.dev/capabilities/continuous-delivery/
