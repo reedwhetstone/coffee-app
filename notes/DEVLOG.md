@@ -349,6 +349,7 @@ Additional detailed notes are available in the `/notes` folder:
 - `MARKET_ANALYSIS.md` - Market analysis and user targeting
 - `MIGRATION-NOTES.md` - API migration notes and missing features
 - `page-loading-optimization-plan.md` - Performance optimization plan
+- `DEVLOG-DAILY-PR-AUDIT.md` - Daily PR automation audit and easy-win selection rubric
 - `lint-issues-prioritized.md` - TypeScript/lint issue tracking
 - `UI-FRAMEWORK.md` - Design system documentation
 - `svelte5README.md` - SvelteKit 5 migration reference
