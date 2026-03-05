@@ -78,6 +78,20 @@ Skip candidates that involve:
 - vague or unclear requirements (`??` items)
 - unresolved product ambiguity requiring discovery first
 
+## Strategy alignment gate (mandatory)
+
+Before selecting a daily feature, planning must cross-check current strategy context:
+
+- DEVLOG priorities and latest notes
+- Most recent published blog posts (`src/content/blog/*.svx`, non-draft)
+- Active outlines (`brain/blog/outlines/`) when relevant
+
+Each plan must include a **Strategy Alignment Audit** section that states:
+
+- Which active strategy themes the feature supports
+- Whether it conflicts with any current direction
+- Why this is still the right next move now
+
 ## Deliverable contract (daily planning run)
 
 The planning run must always produce:
@@ -86,6 +100,7 @@ The planning run must always produce:
 2. `notes/implementation-plans/YYYY-MM-DD-<slug>.md`
 3. Concise summary with:
    - why selected
+   - strategy alignment verdict
    - implementation outline
    - acceptance criteria
    - explicit questions for approval
