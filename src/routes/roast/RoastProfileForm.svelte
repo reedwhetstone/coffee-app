@@ -253,7 +253,7 @@
 </script>
 
 <!-- Modal with improved overlay -->
-<div class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+<div class="fixed inset-0 z-50" role="dialog" aria-modal="true">
 	<button
 		type="button"
 		class="fixed inset-0 bg-black/50"
@@ -261,14 +261,14 @@
 		onkeydown={(e) => e.key === 'Escape' && onClose()}
 		aria-label="Close modal"
 	></button>
-	<div class="flex min-h-screen items-center justify-center p-2 sm:p-4">
+	<div class="fixed inset-0 flex items-center justify-center p-2 sm:p-4">
 		<div
-			class="relative w-full max-w-4xl rounded-lg bg-background-secondary-light p-6 shadow-xl"
+			class="relative flex max-h-full w-full max-w-4xl flex-col rounded-lg bg-background-secondary-light shadow-xl"
 			role="dialog"
 			aria-modal="true"
 		>
-			<!-- Header -->
-			<div class="mb-6">
+			<!-- Header (pinned) -->
+			<div class="shrink-0 border-b border-background-tertiary-light/20 p-4 sm:p-6">
 				<h2 class="text-2xl font-bold text-text-primary-light">Add New Roast Profile</h2>
 				<p class="mt-2 text-text-secondary-light">
 					Create a new roast batch with multiple beans and optional Artisan data
@@ -281,7 +281,7 @@
 					e.preventDefault();
 					handleSubmit();
 				}}
-				class="max-h-[70vh] space-y-6 overflow-y-auto pr-2"
+				class="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 sm:p-6"
 			>
 				<!-- Batch Details -->
 				<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
@@ -476,8 +476,8 @@
 				</div>
 			</form>
 
-			<!-- Footer -->
-			<div class="mt-6 border-t border-background-tertiary-light/20 pt-6">
+			<!-- Footer (pinned) -->
+			<div class="shrink-0 border-t border-background-tertiary-light/20 p-4 sm:p-6">
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
 					<button
 						type="button"
