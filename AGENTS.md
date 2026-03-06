@@ -71,7 +71,6 @@ Prereqs: Node `22.x` (see `package.json` engines) and PNPM. Example: `corepack e
 - Cursor / Copilot rules:
 
   - Cursor rules: follow repository `.cursorrules` (present at repo root). Honor navigation and edit restrictions.
-  - Copilot: respect `.github/copilot-instructions.md` if present; do not commit AI-generated secrets.
 
 - Automation notes for agents:
   - Always run `pnpm lint` and `pnpm test:unit` after changes; run `pnpm check` for type safety.
