@@ -17,10 +17,10 @@ gemini command:
 ### Examples:
 
 **Single file analysis:**
-gemini -p "@src/main.py Explain this file's purpose and structure"
+gemini -p "@src/app.d.ts Explain this file's purpose and structure"
 
 Multiple files:
-gemini -p "@package.json @src/index.js Analyze the dependencies used in the code"
+gemini -p "@package.json @src/lib/index.ts Analyze the dependencies used in the code"
 
 Entire directory:
 gemini -p "@src/ Summarize the architecture of this codebase"
@@ -38,28 +38,28 @@ gemini --all_files -p "Analyze the project structure and dependencies"
 Implementation Verification Examples
 
 Check if a feature is implemented:
-gemini -p "@src/ @lib/ Has dark mode been implemented in this codebase? Show me the relevant files and functions"
+gemini -p "@src/ @src/lib/ Has dark mode been implemented in this codebase? Show me the relevant files and functions"
 
 Verify authentication implementation:
-gemini -p "@src/ @middleware/ Is JWT authentication implemented? List all auth-related endpoints and middleware"
+gemini -p "@src/ @src/lib/middleware/ Is JWT authentication implemented? List all auth-related endpoints and middleware"
 
 Check for specific patterns:
-gemini -p "@src/ Are there any React hooks that handle WebSocket connections? List them with file paths"
+gemini -p "@src/ Are there any Svelte components that handle WebSocket connections? List them with file paths"
 
 Verify error handling:
-gemini -p "@src/ @api/ Is proper error handling implemented for all API endpoints? Show examples of try-catch blocks"
+gemini -p "@src/ @src/routes/api/ Is proper error handling implemented for all API endpoints? Show examples of try-catch blocks"
 
 Check for rate limiting:
-gemini -p "@backend/ @middleware/ Is rate limiting implemented for the API? Show the implementation details"
+gemini -p "@src/lib/server/apiAuth.ts @src/lib/middleware/cookieCheck.ts Is rate limiting implemented for the API? Show the implementation details"
 
 Verify caching strategy:
-gemini -p "@src/ @lib/ @services/ Is Redis caching implemented? List all cache-related functions and their usage"
+gemini -p "@src/lib/services/ @src/routes/api/catalog-api/+server.ts Are there any caching mechanisms implemented? List all cache-related functions and their usage"
 
 Check for specific security measures:
-gemini -p "@src/ @api/ Are SQL injection protections implemented? Show how user inputs are sanitized"
+gemini -p "@src/ @src/routes/api/beans/+server.ts Are user inputs sanitized before database operations? Show examples."
 
 Verify test coverage for features:
-gemini -p "@src/payment/ @tests/ Is the payment processing module fully tested? List all test cases"
+gemini -p "@src/lib/services/stripe.ts @src/routes/api/stripe/ @tests/e2e/ Is the payment processing module fully tested? List all test cases"
 
 When to Use Gemini CLI
 
@@ -201,7 +201,7 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 ### Authentication & Authorization
 
 - **Supabase Auth** with Google OAuth integration
-- **Role-based access**: `viewer`, `member` roles
+- **Role-based access**: `viewer`, `member`, `api-member`, `api-enterprise`, `admin` roles
 - **Protected routes**: Some routes require `member` role
 - **Session management**: JWT validation in `hooks.server.ts`
 - **Auth flow**: OAuth callback handling
