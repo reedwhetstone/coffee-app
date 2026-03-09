@@ -2,7 +2,9 @@
 
 ## Vision
 
-The coffee-app currently has a traditional page-based architecture: `/beans`, `/roast`, `/profit`, `/catalog`, and a `/chat` page with streaming AI powered by LangChain + GPT-5-mini. The vision is to transform `/chat` into an **AI-first workspace platform** that progressively replaces page-based navigation. Instead of clicking through pages, the AI orchestrates the user's experience — rendering the right UI components, proposing structured actions, and maintaining persistent memory of what the user has been working on across sessions.
+The coffee-app currently has a traditional page-based architecture: `/beans`, `/roast`, `/profit`, `/catalog`, and a `/chat` page with streaming AI. The vision is to transform `/chat` into an **AI-first workspace platform** that progressively replaces page-based navigation.
+
+> **Status note (2026-03-09):** PR #72 switched the chat backend from LangChain + GPT-5-mini to OpenRouter. References to `langchainService.ts`, LangChain deps, and GPT-5-mini in this plan are now partially outdated — the tool extraction and AI SDK migration work described in Phase 0 still applies directionally, but the starting point has changed. Update this section before executing Phase 0. Instead of clicking through pages, the AI orchestrates the user's experience — rendering the right UI components, proposing structured actions, and maintaining persistent memory of what the user has been working on across sessions.
 
 **The north star**: if you squint, using the app should feel like reading a really thoughtful, personalized article that happens to have interactive elements — not like using a chatbot that sometimes shows widgets.
 
