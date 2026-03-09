@@ -1,11 +1,11 @@
 <script lang="ts">
 	import SaleForm from './SaleForm.svelte';
+	import FormShell from '$lib/components/FormShell.svelte';
 	import PerformanceChart from './PerformanceChart.svelte';
 	import SalesChart from './SalesChart.svelte';
 	import ProfitPageSkeleton from '$lib/components/ProfitPageSkeleton.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import type { PageData } from './$types';
 	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
 
 	interface ProfitData {
@@ -48,18 +48,6 @@
 	// Form data state
 	let availableCoffees = $state<AvailableCoffee[]>([]);
 	let availableBatches = $state<BatchItem[]>([]);
-
-	let { data } = $props<{ data: PageData }>();
-
-	// Sync from server-provided form data whenever data updates
-	$effect(() => {
-		if (data.formCoffees && Array.isArray(data.formCoffees) && data.formCoffees.length > 0) {
-			availableCoffees = data.formCoffees;
-		}
-		if (data.formBatches && Array.isArray(data.formBatches) && data.formBatches.length > 0) {
-			availableBatches = data.formBatches;
-		}
-	});
 
 	// Convert reactive statements to use $derived
 	// Removed unused derived values (totalRevenue, totalCost, totalProfit)
@@ -153,10 +141,7 @@
 	$effect(() => {
 		const fetchData = async () => {
 			await fetchInitialSalesData();
-			// Only fetch form data client-side if server didn't provide it
-			if (availableCoffees.length === 0 || availableBatches.length === 0) {
-				await fetchFormData();
-			}
+			await fetchFormData();
 		};
 
 		fetchData();
@@ -192,24 +177,18 @@
 </script>
 
 <!-- Add form modal -->
-{#if isFormVisible}
-	<div
-		class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm"
-	>
-		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-6 shadow-2xl">
-			<SaleForm
-				sale={selectedSale as unknown as Record<string, unknown> | undefined}
-				{availableCoffees}
-				{availableBatches}
-				onClose={() => {
-					hideForm();
-					selectedSale = null;
-				}}
-				onSubmit={handleFormSubmit}
-			/>
-		</div>
-	</div>
-{/if}
+<FormShell visible={isFormVisible}>
+	<SaleForm
+		sale={selectedSale as unknown as Record<string, unknown> | undefined}
+		{availableCoffees}
+		{availableBatches}
+		onClose={() => {
+			hideForm();
+			selectedSale = null;
+		}}
+		onSubmit={handleFormSubmit}
+	/>
+</FormShell>
 
 <!-- Show instant skeleton only briefly while data loads -->
 {#if profitData.length === 0 && salesData.length === 0}

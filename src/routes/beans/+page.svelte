@@ -1,5 +1,6 @@
 <script lang="ts">
 	import BeanForm from './BeanForm.svelte';
+	import FormShell from '$lib/components/FormShell.svelte';
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -125,14 +126,6 @@
 		fetchData();
 	});
 
-	// Sync from server-provided catalog whenever data updates
-	$effect(() => {
-		const serverCatalog = data.formCatalog as CoffeeCatalog[] | null;
-		if (serverCatalog && serverCatalog.length > 0) {
-			catalogData = serverCatalog;
-		}
-	});
-
 	// State for form and bean selection
 	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
 	let selectedBean = $state<InventoryWithCatalog | null>(null);
@@ -240,7 +233,7 @@
 		if (catalogData.length === 0) {
 			// catalog is already fetched in the $effect, but ensure it's available
 			const fetchCatalog = async () => {
-				const catalogResponse = await fetch('/api/catalog');
+				const catalogResponse = await fetch('/api/catalog?fields=dropdown');
 				if (catalogResponse.ok) {
 					const catalogResult = await catalogResponse.json();
 					catalogData = Array.isArray(catalogResult) ? catalogResult : catalogResult.data || [];
@@ -494,18 +487,14 @@
 		{/if}
 
 		<!-- Form Modal -->
-		{#if isFormVisible}
-			<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
-				<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 md:p-6">
-					<BeanForm
-						bean={null}
-						onClose={hideForm}
-						onSubmit={handleFormSubmit}
-						catalogBeans={catalogData}
-					/>
-				</div>
-			</div>
-		{/if}
+		<FormShell visible={isFormVisible}>
+			<BeanForm
+				bean={null}
+				onClose={hideForm}
+				onSubmit={handleFormSubmit}
+				catalogBeans={catalogData}
+			/>
+		</FormShell>
 
 		<!-- Quick Actions -->
 		{#if !isLoading && typedFilteredData && typedFilteredData.length > 0}
