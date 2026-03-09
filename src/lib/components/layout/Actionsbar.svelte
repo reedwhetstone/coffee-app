@@ -35,21 +35,10 @@
 
 	// Action handlers
 	function handleNewBean() {
-		console.log('handleNewBean called, routeId:', routeId);
-
-		// If we're on the beans page, use the custom event
-		if (routeId === '/beans') {
-			console.log('Dispatching show-bean-form event');
-			window.dispatchEvent(new CustomEvent('show-bean-form'));
-		} else {
-			// Navigate to beans page with form state
-			console.log('Navigating to beans page with showBeanForm state');
-			goto('/beans', {
-				state: {
-					showBeanForm: true
-				}
-			});
-		}
+		// URL-driven modal intent: works consistently whether we're already on /beans or not
+		goto('/beans?modal=new', {
+			replaceState: routeId === '/beans'
+		});
 		onClose();
 	}
 

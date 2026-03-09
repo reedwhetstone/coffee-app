@@ -1,8 +1,8 @@
 <script lang="ts">
 	import BeanForm from './BeanForm.svelte';
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
@@ -125,8 +125,16 @@
 		fetchData();
 	});
 
+	// Sync from server-provided catalog whenever data updates
+	$effect(() => {
+		const serverCatalog = data.formCatalog as CoffeeCatalog[] | null;
+		if (serverCatalog && serverCatalog.length > 0) {
+			catalogData = serverCatalog;
+		}
+	});
+
 	// State for form and bean selection
-	let isFormVisible = $state(false);
+	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
 	let selectedBean = $state<InventoryWithCatalog | null>(null);
 	let beanProfileElement = $state<HTMLElement | null>(null);
 
@@ -203,8 +211,7 @@
 
 	async function handleFormSubmit(_formData: CoffeeFormData) {
 		await refreshData();
-		// For form submission, we don't have the full bean data immediately
-		// The bean will be selected from the refreshed data if needed
+		hideForm();
 	}
 
 	// Handle search state and navigation after data loads
@@ -224,29 +231,41 @@
 					}, 100);
 				}
 			}
-
-			// Check if we should show the bean form
-			if (searchState?.showBeanForm) {
-				setTimeout(() => {
-					handleAddNewBean();
-				}, 100);
-			}
 		}
-	});
-
-	onMount(() => {
-		// Add event listener for the custom show-bean-form event
-		window.addEventListener('show-bean-form', handleAddNewBean);
-
-		// Clean up the event listener when the component is destroyed
-		return () => {
-			window.removeEventListener('show-bean-form', handleAddNewBean);
-		};
 	});
 
 	function handleAddNewBean() {
 		selectedBean = null;
-		isFormVisible = true;
+		// Ensure catalog data is loaded (fallback for client-side navigation)
+		if (catalogData.length === 0) {
+			// catalog is already fetched in the $effect, but ensure it's available
+			const fetchCatalog = async () => {
+				const catalogResponse = await fetch('/api/catalog');
+				if (catalogResponse.ok) {
+					const catalogResult = await catalogResponse.json();
+					catalogData = Array.isArray(catalogResult) ? catalogResult : catalogResult.data || [];
+				}
+			};
+			fetchCatalog();
+		}
+		const url = new URL(page.url);
+		url.searchParams.set('modal', 'new');
+		goto(url.pathname + '?' + url.searchParams.toString(), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
+	}
+
+	function hideForm() {
+		const url = new URL(page.url);
+		url.searchParams.delete('modal');
+		const search = url.searchParams.toString();
+		goto(url.pathname + (search ? '?' + search : ''), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	}
 
 	// Remove selectedBean from data object - use URL params for navigation instead
@@ -480,7 +499,7 @@
 				<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-4 md:p-6">
 					<BeanForm
 						bean={null}
-						onClose={() => (isFormVisible = false)}
+						onClose={hideForm}
 						onSubmit={handleFormSubmit}
 						catalogBeans={catalogData}
 					/>
