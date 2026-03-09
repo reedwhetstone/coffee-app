@@ -46,6 +46,7 @@ These issues affect perceived performance and page transitions.
 - [ ] **Performance** - Implement page loading optimization plan. Convert blocking server loads to client-side loading for `/catalog`, `/beans`, `/roast` routes to match `/profit` page transition speed. See `notes/page-loading-optimization-plan.md`.
 - [ ] **Performance** - Profit page doesn't auto-refresh on new sale form submission. Data should reload after successful sale creation.
 - [ ] **Performance** - Improve skeleton loading states. Current skeleton conditions never trigger because server loads provide data immediately.
+- [ ] **Performance** - Lazy-load catalog data in BeanForm. Currently fetches entire `coffee_catalog` (`SELECT *`) on form open, causing 10+ second load on mobile. Proposed fix: (1) New `/api/catalog/sources` endpoint returning unique source names only (tiny payload). (2) Add `source` filter param to `/api/catalog?source=X` returning only beans from that supplier with minimal fields (`id`, `name`, `source`, `cost_lb`, `price_tiers`, `wholesale`). (3) BeanForm shows source dropdown immediately, fetches beans on source selection. Initial payload drops from full catalog to ~20 source names. Manual entry mode needs zero catalog data.
 
 ---
 
