@@ -29,9 +29,9 @@ export class RAGService {
 	private supabase: SupabaseClient;
 	private queryEmbeddingService: QueryEmbeddingService;
 
-	constructor(supabase: SupabaseClient, openaiApiKey: string) {
+	constructor(supabase: SupabaseClient, apiKey: string) {
 		this.supabase = supabase;
-		this.queryEmbeddingService = new QueryEmbeddingService(openaiApiKey);
+		this.queryEmbeddingService = new QueryEmbeddingService(apiKey);
 	}
 
 	/**

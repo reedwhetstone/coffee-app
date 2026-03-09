@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { requireMemberRole } from '$lib/server/auth';
 import { RAGService } from '$lib/services/ragService';
-import { OPENAI_API_KEY } from '$env/static/private';
+import { OPENROUTER_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 
 // Interface for tool input validation
@@ -44,16 +44,16 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'context_string is required and cannot be empty' }, { status: 400 });
 		}
 
-		// Validate OPENAI_API_KEY
-		if (!OPENAI_API_KEY) {
+		// Validate OpenRouter API key (used for embeddings via Qwen)
+		if (!OPENROUTER_API_KEY) {
 			return json(
-				{ error: 'OpenAI API key not configured for knowledge retrieval' },
+				{ error: 'OpenRouter API key not configured for knowledge retrieval' },
 				{ status: 500 }
 			);
 		}
 
 		// Initialize RAG service
-		const ragService = new RAGService(supabase, OPENAI_API_KEY);
+		const ragService = new RAGService(supabase, OPENROUTER_API_KEY);
 
 		// Perform semantic search using the existing RAG service
 		const searchOptions = {

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { requireMemberRole } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
-import { OPENAI_API_KEY } from '$env/static/private';
+import { OPENROUTER_API_KEY } from '$env/static/private';
 
 // POST /api/workspaces/[id]/summarize - Trigger context compaction
 export const POST: RequestHandler = async (event) => {
@@ -55,14 +55,14 @@ Produce a concise summary (max 500 words) that captures:
 
 Keep only what's relevant for continuing the conversation. Drop pleasantries and resolved questions.`;
 
-		const response = await fetch('https://api.openai.com/v1/chat/completions', {
+		const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				Authorization: `Bearer ${OPENAI_API_KEY}`
+				Authorization: `Bearer ${OPENROUTER_API_KEY}`
 			},
 			body: JSON.stringify({
-				model: 'gpt-4o-mini',
+				model: '@preset/coffee-app-chat-agent',
 				messages: [{ role: 'user', content: prompt }],
 				max_tokens: 800,
 				temperature: 0.3
@@ -71,7 +71,7 @@ Keep only what's relevant for continuing the conversation. Drop pleasantries and
 
 		if (!response.ok) {
 			const err = await response.text();
-			return json({ error: `OpenAI error: ${err}` }, { status: 502 });
+			return json({ error: `OpenRouter error: ${err}` }, { status: 502 });
 		}
 
 		const result = await response.json();

@@ -1,12 +1,15 @@
 /**
- * Simple embedding service for generating query embeddings
- * Used by RAGService to embed user search queries
+ * Embedding service for generating query embeddings via OpenRouter
+ * Uses Qwen3 embedding model with Matryoshka truncation for DB compatibility
  */
 export class QueryEmbeddingService {
-	private openaiApiKey: string;
+	private apiKey: string;
+	private baseUrl = 'https://openrouter.ai/api/v1';
+	private embeddingModel = 'qwen/qwen3-embedding-8b';
+	private embeddingDimensions = 1536; // Matryoshka truncation for DB compatibility
 
 	constructor(apiKey: string) {
-		this.openaiApiKey = apiKey;
+		this.apiKey = apiKey;
 	}
 
 	/**
@@ -21,32 +24,34 @@ export class QueryEmbeddingService {
 		const baseDelay = 1000; // 1 second base delay
 
 		try {
-			const response = await fetch('https://api.openai.com/v1/embeddings', {
+			const response = await fetch(`${this.baseUrl}/embeddings`, {
 				method: 'POST',
 				headers: {
-					Authorization: `Bearer ${this.openaiApiKey}`,
+					Authorization: `Bearer ${this.apiKey}`,
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					input: text,
-					model: 'text-embedding-3-small'
+					model: this.embeddingModel,
+					dimensions: this.embeddingDimensions
 				})
 			});
 
 			if (!response.ok) {
-				// Check if it's a retryable error
 				if (
 					(response.status === 502 || response.status === 503 || response.status === 429) &&
 					retryCount < maxRetries
 				) {
-					const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
+					const delay = baseDelay * Math.pow(2, retryCount);
 					console.warn(
-						`OpenAI API error ${response.status}, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`
+						`OpenRouter embedding API error ${response.status}, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`
 					);
 					await new Promise((resolve) => setTimeout(resolve, delay));
 					return this.generateEmbedding(text, retryCount + 1);
 				}
-				throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+				throw new Error(
+					`OpenRouter embedding API error: ${response.status} ${response.statusText}`
+				);
 			}
 
 			const data = await response.json();

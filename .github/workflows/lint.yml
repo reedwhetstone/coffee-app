@@ -39,7 +39,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY=dummy
           STRIPE_SECRET_KEY=dummy
           STRIPE_WEBHOOK_SECRET=dummy
-          OPENAI_API_KEY=dummy
+          OPENROUTER_API_KEY=dummy
           EOF
 
       - name: Check formatting

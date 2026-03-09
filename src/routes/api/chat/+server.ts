@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { OPENAI_API_KEY } from '$env/static/private';
+import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, stepCountIs, type UIMessage, convertToModelMessages } from 'ai';
 import { createChatTools } from '$lib/services/tools';
@@ -147,10 +147,10 @@ export const POST: RequestHandler = async (event) => {
 		// Require member role for chat features
 		await requireMemberRole(event);
 
-		// Validate OpenAI API key
-		if (!OPENAI_API_KEY) {
-			console.error('OPENAI_API_KEY is missing or empty');
-			return json({ error: 'OpenAI API key not configured' }, { status: 500 });
+		// Validate OpenRouter API key
+		if (!OPENROUTER_API_KEY) {
+			console.error('OPENROUTER_API_KEY is missing or empty');
+			return json({ error: 'OpenRouter API key not configured' }, { status: 500 });
 		}
 
 		const {
@@ -171,16 +171,19 @@ export const POST: RequestHandler = async (event) => {
 			authHeaders['cookie'] = sessionCookie;
 		}
 
-		// Create OpenAI provider and tools
-		const openai = createOpenAI({ apiKey: OPENAI_API_KEY });
+		// Create OpenRouter provider (OpenAI-compatible) and tools
+		const openrouter = createOpenAI({
+			apiKey: OPENROUTER_API_KEY,
+			baseURL: 'https://openrouter.ai/api/v1'
+		});
 		const tools = createChatTools(baseUrl, authHeaders);
 
 		// Build dynamic system prompt with workspace context
 		const systemPrompt = buildSystemPrompt(workspaceContext);
 
-		// Stream the response using Vercel AI SDK
+		// Stream the response using Vercel AI SDK via OpenRouter preset
 		const result = streamText({
-			model: openai('gpt-5-mini-2025-08-07'),
+			model: openrouter('@preset/coffee-app-chat-agent'),
 			system: systemPrompt,
 			messages: await convertToModelMessages(messages),
 			tools,
