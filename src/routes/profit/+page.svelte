@@ -62,6 +62,13 @@
 		}
 	});
 
+	// Fetch form data client-side when form opens without server-provided data (e.g. replaceState navigation)
+	$effect(() => {
+		if (isFormVisible && (availableCoffees.length === 0 || availableBatches.length === 0)) {
+			fetchFormData();
+		}
+	});
+
 	// Convert reactive statements to use $derived
 	// Removed unused derived values (totalRevenue, totalCost, totalProfit)
 

@@ -92,6 +92,13 @@
 		}
 	});
 
+	// Fetch coffees client-side when form opens without server-provided data (e.g. replaceState navigation)
+	$effect(() => {
+		if (isFormVisible && availableCoffees.length === 0) {
+			ensureFormCoffees();
+		}
+	});
+
 	// Seed pre-selected bean from server URL params (handles SSR and client navigation)
 	$effect(() => {
 		if (data.preSelectedBean && !currentRoastProfile) {
