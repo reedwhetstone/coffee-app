@@ -1,7 +1,7 @@
 <!-- src/lib/components/layout/Actionsbar.svelte -->
 <script lang="ts">
 	import { page } from '$app/state';
-	import { afterNavigate, goto } from '$app/navigation';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';
 
 	// Props declaration
@@ -35,28 +35,32 @@
 
 	// Action handlers
 	function handleNewBean() {
-		// URL-driven modal intent: works consistently whether we're already on /beans or not
-		goto('/beans?modal=new', {
-			replaceState: routeId === '/beans'
-		});
+		if (routeId === '/beans') {
+			// Already on beans page: update URL without server reload
+			replaceState(new URL('/beans?modal=new', window.location.origin), {});
+		} else {
+			goto('/beans?modal=new');
+		}
 		onClose();
 	}
 
 	function handleNewRoast() {
-		console.log('handleNewRoast called, routeId:', routeId);
-
-		// URL-driven modal intent: works consistently whether we're already on /roast or not
-		goto('/roast?modal=new', {
-			replaceState: routeId === '/roast'
-		});
+		if (routeId === '/roast') {
+			// Already on roast page: update URL without server reload
+			replaceState(new URL('/roast?modal=new', window.location.origin), {});
+		} else {
+			goto('/roast?modal=new');
+		}
 		onClose();
 	}
 
 	function handleNewSale() {
-		// URL-driven modal intent: works consistently whether we're already on /profit or not
-		goto('/profit?modal=new', {
-			replaceState: routeId === '/profit'
-		});
+		if (routeId === '/profit') {
+			// Already on profit page: update URL without server reload
+			replaceState(new URL('/profit?modal=new', window.location.origin), {});
+		} else {
+			goto('/profit?modal=new');
+		}
 		onClose();
 	}
 

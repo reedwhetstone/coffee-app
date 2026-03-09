@@ -5,7 +5,7 @@
 	import SalesChart from './SalesChart.svelte';
 	import ProfitPageSkeleton from '$lib/components/ProfitPageSkeleton.svelte';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { replaceState } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
 
@@ -183,12 +183,7 @@
 	function hideForm() {
 		const url = new URL(page.url);
 		url.searchParams.delete('modal');
-		const search = url.searchParams.toString();
-		goto(url.pathname + (search ? '?' + search : ''), {
-			replaceState: true,
-			keepFocus: true,
-			noScroll: true
-		});
+		replaceState(url, {});
 	}
 </script>
 

@@ -7,7 +7,7 @@
 	import FormShell from '$lib/components/FormShell.svelte';
 
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { roastData, roastEvents, temperatureEntries, eventEntries, msToSeconds } from './stores';
 	import { createRoastTimer } from '$lib/roast';
 
@@ -671,12 +671,7 @@
 		url.searchParams.delete('modal');
 		url.searchParams.delete('beanId');
 		url.searchParams.delete('beanName');
-		const search = url.searchParams.toString();
-		goto(url.pathname + (search ? '?' + search : ''), {
-			replaceState: true,
-			keepFocus: true,
-			noScroll: true
-		});
+		replaceState(url, {});
 	}
 
 	async function handleClearRoastData() {

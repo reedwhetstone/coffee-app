@@ -3,7 +3,7 @@
 	import FormShell from '$lib/components/FormShell.svelte';
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { replaceState } from '$app/navigation';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
@@ -251,22 +251,13 @@
 		}
 		const url = new URL(page.url);
 		url.searchParams.set('modal', 'new');
-		goto(url.pathname + '?' + url.searchParams.toString(), {
-			replaceState: true,
-			keepFocus: true,
-			noScroll: true
-		});
+		replaceState(url, {});
 	}
 
 	function hideForm() {
 		const url = new URL(page.url);
 		url.searchParams.delete('modal');
-		const search = url.searchParams.toString();
-		goto(url.pathname + (search ? '?' + search : ''), {
-			replaceState: true,
-			keepFocus: true,
-			noScroll: true
-		});
+		replaceState(url, {});
 	}
 
 	// Remove selectedBean from data object - use URL params for navigation instead
