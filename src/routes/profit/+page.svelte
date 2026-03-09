@@ -1,5 +1,6 @@
 <script lang="ts">
 	import SaleForm from './SaleForm.svelte';
+	import FormShell from '$lib/components/FormShell.svelte';
 	import PerformanceChart from './PerformanceChart.svelte';
 	import SalesChart from './SalesChart.svelte';
 	import ProfitPageSkeleton from '$lib/components/ProfitPageSkeleton.svelte';
@@ -192,24 +193,18 @@
 </script>
 
 <!-- Add form modal -->
-{#if isFormVisible}
-	<div
-		class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm"
-	>
-		<div class="w-full max-w-2xl rounded-lg bg-background-secondary-light p-6 shadow-2xl">
-			<SaleForm
-				sale={selectedSale as unknown as Record<string, unknown> | undefined}
-				{availableCoffees}
-				{availableBatches}
-				onClose={() => {
-					hideForm();
-					selectedSale = null;
-				}}
-				onSubmit={handleFormSubmit}
-			/>
-		</div>
-	</div>
-{/if}
+<FormShell visible={isFormVisible}>
+	<SaleForm
+		sale={selectedSale as unknown as Record<string, unknown> | undefined}
+		{availableCoffees}
+		{availableBatches}
+		onClose={() => {
+			hideForm();
+			selectedSale = null;
+		}}
+		onSubmit={handleFormSubmit}
+	/>
+</FormShell>
 
 <!-- Show instant skeleton only briefly while data loads -->
 {#if profitData.length === 0 && salesData.length === 0}

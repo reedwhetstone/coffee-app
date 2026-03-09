@@ -4,6 +4,7 @@
 
 	// import RoastChart from './RoastChart.svelte';
 	import RoastProfileForm from './RoastProfileForm.svelte';
+	import FormShell from '$lib/components/FormShell.svelte';
 
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -757,18 +758,14 @@
 	}
 </script>
 
-{#if isFormVisible}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 p-4">
-		<div class="mb-6 rounded-lg bg-background-secondary-light p-4 shadow-md">
-			<RoastProfileForm
-				{selectedBean}
-				{availableCoffees}
-				onClose={hideRoastForm}
-				onSubmit={handleFormSubmit}
-			/>
-		</div>
-	</div>
-{/if}
+<FormShell visible={isFormVisible} maxWidth="max-w-4xl">
+	<RoastProfileForm
+		{selectedBean}
+		{availableCoffees}
+		onClose={hideRoastForm}
+		onSubmit={handleFormSubmit}
+	/>
+</FormShell>
 
 <!-- Global Loading Overlay -->
 <SimpleLoadingScreen show={false} overlay={true} />
