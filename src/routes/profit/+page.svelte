@@ -4,6 +4,7 @@
 	import SalesChart from './SalesChart.svelte';
 	import ProfitPageSkeleton from '$lib/components/ProfitPageSkeleton.svelte';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
 
@@ -41,7 +42,7 @@
 	let profitData = $state<ProfitData[]>([]);
 	// Removed unused roastProfileData
 	let salesData = $state<SaleData[]>([]);
-	let isFormVisible = $state(false);
+	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
 	let selectedSale = $state<SaleData | null>(null);
 
 	// Form data state
@@ -49,6 +50,16 @@
 	let availableBatches = $state<BatchItem[]>([]);
 
 	let { data } = $props<{ data: PageData }>();
+
+	// Sync from server-provided form data whenever data updates
+	$effect(() => {
+		if (data.formCoffees && Array.isArray(data.formCoffees) && data.formCoffees.length > 0) {
+			availableCoffees = data.formCoffees;
+		}
+		if (data.formBatches && Array.isArray(data.formBatches) && data.formBatches.length > 0) {
+			availableBatches = data.formBatches;
+		}
+	});
 
 	// Convert reactive statements to use $derived
 	// Removed unused derived values (totalRevenue, totalCost, totalProfit)
@@ -83,7 +94,7 @@
 			console.error('Error updating sales data:', error);
 			alert(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
 		}
-		isFormVisible = false;
+		hideForm();
 		selectedSale = null;
 	}
 
@@ -141,32 +152,14 @@
 	// Convert onMount to use $effect
 	$effect(() => {
 		const fetchData = async () => {
-			await Promise.all([fetchInitialSalesData(), fetchFormData()]);
-
-			// Check if we should show the sale form based on the page state
-			const state = page.state as Record<string, unknown>;
-			if (state?.showSaleForm) {
-				setTimeout(() => {
-					showSaleForm();
-				}, 100);
+			await fetchInitialSalesData();
+			// Only fetch form data client-side if server didn't provide it
+			if (availableCoffees.length === 0 || availableBatches.length === 0) {
+				await fetchFormData();
 			}
 		};
 
 		fetchData();
-
-		// Add event listener for the custom show-sale-form event
-		const handleShowSaleForm = (e: Event) => {
-			const customEvent = e as CustomEvent;
-			showSaleForm(customEvent.detail);
-		};
-
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		window.addEventListener('show-sale-form', handleShowSaleForm as any);
-
-		return () => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			window.removeEventListener('show-sale-form', handleShowSaleForm as any);
-		};
 	});
 
 	// Removed unused fetchProfitData
@@ -186,26 +179,16 @@
 		}
 	}
 
-	// Add function to show sale form
-	function showSaleForm(selectedBean?: AvailableCoffee) {
-		isFormVisible = true;
-		selectedSale = null;
-		// Store the selected bean data for the form
-		if (selectedBean) {
-			selectedSale = {
-				...(selectedSale || {}),
-				defaultBean: selectedBean
-			} as unknown as SaleData;
-		}
+	function hideForm() {
+		const url = new URL(page.url);
+		url.searchParams.delete('modal');
+		const search = url.searchParams.toString();
+		goto(url.pathname + (search ? '?' + search : ''), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	}
-
-	// Ensure the data object always has the callback
-	$effect(() => {
-		if (data) {
-			// Always ensure the callback is attached
-			data.onAddNewSale = showSaleForm;
-		}
-	});
 </script>
 
 <!-- Add form modal -->
@@ -219,7 +202,7 @@
 				{availableCoffees}
 				{availableBatches}
 				onClose={() => {
-					isFormVisible = false;
+					hideForm();
 					selectedSale = null;
 				}}
 				onSubmit={handleFormSubmit}
