@@ -7,7 +7,6 @@
 ## Priority 0: New Product Priorities (Mar 2026)
 
 - [ ] **Mobile Navigation** - Redesign sidebar behavior on mobile. Current desktop-style sidebar consumes too much horizontal space. Evaluate one of: top nav, bottom nav, or minimal single-button trigger that opens a full-screen menu.
-- [ ] **Wholesale Data Model + Catalog UX** - Add wholesale-ready database structure and catalog support for wholesale products. Include distinct wholesale pricing fields/logic and catalog filters for wholesale-only or mixed views.
 - [ ] **Homepage Routing** - Make `/` the true landing page and move catalog to its own dedicated route. Remove login-driven reroute behavior that hurts first contentful paint and perceived responsiveness.
 - [ ] **Public Catalog Access + Conversion Funnel** - Allow non-auth users to browse catalog with limited access (example: page 1 only) while keeping filters available. Add clear incentives to sign up/log in and promote AI search as a premium conversion lever.
 
@@ -20,7 +19,6 @@ These issues break core functionality and should be fixed first.
 - [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row or roast profile. Needs cascade delete function or proper dependency handling to prevent orphaned records.
 - [ ] **Bug** - User rating editing is broken. The rating input/save mechanism on bean profiles doesn't persist changes to the database.
 - [ ] **Bug** - "New Roast" link on bean page doesn't navigate to roast form correctly. The link routing is malformed or missing coffee_id parameter.
-- [ ] **Bug** - Roast form layout overflow. The form doesn't fit within the page viewport on certain screen sizes, requiring horizontal scrolling.
 - [ ] **Bug** - Bean profile data collection incomplete. The `/beans` profile should pull all non-null data fields into the form display in an organized layout.
 
 ---
@@ -35,6 +33,9 @@ These issues impact usability but don't break core functionality.
 - [ ] **UI/UX** - Clean up beans catalog profiles to remove exposed user reference fields from the display.
 - [ ] **UI/UX** - Roast chart doesn't resize when navigating between pages. Chart container needs ResizeObserver or layout recalculation on route change.
 - [ ] **UI/UX** - Poor page refresh management across the app. Forms/edits save but page data doesn't update reactively to show changes.
+- [ ] **UI/UX** - Add wholesale markers/indicators to green coffee inventory page. Catalog has wholesale support; extend visibility to inventory views.
+- [ ] **UI/UX** - Add wholesale markers/filtering to roast profiles page. Show which roasts used wholesale beans.
+- [ ] **UI/UX** - Add wholesale markers/filtering to sales page. Track wholesale vs retail sales distinctly.
 
 ---
 
@@ -43,7 +44,7 @@ These issues impact usability but don't break core functionality.
 These issues affect perceived performance and page transitions.
 
 - [ ] **Performance** - Fix real experience score (Core Web Vitals). Address First Contentful Paint and Time to First Byte issues identified in performance analysis.
-- [ ] **Performance** - Implement page loading optimization plan. Convert blocking server loads to client-side loading for `/catalog`, `/beans`, `/roast` routes to match `/profit` page transition speed. See `notes/page-loading-optimization-plan.md`.
+- [ ] **Performance** - Implement page loading optimization plan. Server loads stripped for beans/profit/roast forms (PR #77); remaining: convert blocking server loads for page data on `/catalog` route. See `notes/page-loading-optimization-plan.md`.
 - [ ] **Performance** - Profit page doesn't auto-refresh on new sale form submission. Data should reload after successful sale creation.
 - [ ] **Performance** - Improve skeleton loading states. Current skeleton conditions never trigger because server loads provide data immediately.
 
@@ -145,16 +146,7 @@ Improvements to app navigation and user flows.
 
 ---
 
-## Priority 12: Web Scraping & Data Import
-
-Tools for adding new coffee data.
-
-- [ ] **Web Scraping** - Add option to add a bean based on a URL. User pastes supplier URL and system extracts coffee data.
-- [ ] **Web Scraping** - Implement automatic scraping for supported supplier URLs. Auto-detect and parse known supplier page formats.
-
----
-
-## Priority 13: Tasting Notes & Cupping
+## Priority 12: Tasting Notes & Cupping
 
 Improvements to tasting and evaluation features.
 
@@ -163,7 +155,7 @@ Improvements to tasting and evaluation features.
 
 ---
 
-## Priority 14: Analytics & Insights
+## Priority 13: Analytics & Insights
 
 Data analysis and visualization features.
 
@@ -172,7 +164,7 @@ Data analysis and visualization features.
 
 ---
 
-## Priority 15: API Product Development
+## Priority 14: API Product Development
 
 Public API for external developers and integrations.
 
@@ -186,7 +178,7 @@ Public API for external developers and integrations.
 
 ---
 
-## Priority 16: Feature Ideas & Future Development
+## Priority 15: Feature Ideas & Future Development
 
 Longer-term feature concepts to explore.
 
@@ -212,7 +204,7 @@ Longer-term feature concepts to explore.
 
 ---
 
-## Priority 17: Open Source & Community
+## Priority 16: Open Source & Community
 
 Community and open-source initiatives.
 
@@ -221,7 +213,7 @@ Community and open-source initiatives.
 
 ---
 
-## Priority 18: Code Quality & Technical Debt
+## Priority 17: Code Quality & Technical Debt
 
 Ongoing code maintenance tasks.
 
@@ -243,6 +235,11 @@ Items that need more context before they can be actionable.
 
 ## Completed Items
 
+- [x] **Forms** - Extract shared FormShell component with unified scroll containment, body scroll lock, and ARIA attributes (PR #77)
+- [x] **Performance** - Remove server-side form data queries; forms fetch data client-side for instant navigation (PR #77)
+- [x] **Performance** - Add lightweight `?fields=dropdown` param to catalog API for form dropdowns (PR #77)
+- [x] **Bug** - Roast form layout overflow. Fixed by FormShell unified scroll containment (PR #77)
+- [x] **Wholesale** - Wholesale data model and catalog UX implemented (price_tiers, wholesale flag, catalog filters)
 - [x] **Bug** - The loading screen shows "No Beans" dialog before the db returns data
 - [x] **Form Validation** - Limit bean selection in forms to stocked items only (beans, roast, sales)
 - [x] **Web Scraping** - Automate vector embedding in the scrape workflow
