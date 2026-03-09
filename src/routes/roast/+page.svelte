@@ -44,7 +44,7 @@
 	let currentRoastProfile = $state<RoastProfile | null>(null);
 
 	// Main state variables
-	let isFormVisible = $state(false);
+	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
 	let selectedBean = $state<{ id?: number; name: string }>({ name: 'No Bean Selected' });
 	const timer = createRoastTimer();
 	let isRoasting = $derived(!timer.isIdle);
@@ -82,6 +82,21 @@
 	// Available coffees for form
 	let availableCoffees = $state<CoffeeCatalog[]>([]);
 	let coffeesLoading = $state(false);
+
+	// Sync from server-provided coffees whenever data updates (handles both SSR and client navigation)
+	$effect(() => {
+		const serverCoffees = (data.formCoffees as unknown as CoffeeCatalog[]) ?? null;
+		if (serverCoffees && serverCoffees.length > 0) {
+			availableCoffees = serverCoffees;
+		}
+	});
+
+	// Seed pre-selected bean from server URL params (handles SSR and client navigation)
+	$effect(() => {
+		if (data.preSelectedBean && !currentRoastProfile) {
+			selectedBean = data.preSelectedBean;
+		}
+	});
 
 	// // Debug data in the component
 	// $effect(() => {
@@ -223,24 +238,19 @@
 
 	// Removed the sort effect since it's redundant - the filtered data effect will handle updates
 
-	// Function to fetch available coffees
-	async function fetchAvailableCoffees() {
+	async function ensureFormCoffees() {
+		if (availableCoffees.length > 0 || coffeesLoading) return;
+		coffeesLoading = true;
 		try {
-			coffeesLoading = true;
 			const response = await fetch('/api/beans');
 			if (response.ok) {
 				const result = await response.json();
-				// Filter for stocked coffees only
-				const stockedCoffees = (result.data || []).filter(
+				availableCoffees = (result.data || []).filter(
 					(coffee: CoffeeCatalog) => coffee.stocked === true
 				);
-				availableCoffees = stockedCoffees;
-			} else {
-				console.error('Failed to fetch available coffees');
-				availableCoffees = [];
 			}
-		} catch (error) {
-			console.error('Error fetching available coffees:', error);
+		} catch (err) {
+			console.error('Error fetching available coffees:', err);
 			availableCoffees = [];
 		} finally {
 			coffeesLoading = false;
@@ -248,93 +258,42 @@
 	}
 
 	onMount(() => {
-		let shouldShowForm = false;
-		let profileIdToLoad: string | null = null;
+		// If the server didn't provide form coffees but the form is showing, fetch client-side
+		if (isFormVisible && availableCoffees.length === 0) {
+			ensureFormCoffees();
+		}
 
-		// Fetch available coffees immediately on mount
-		fetchAvailableCoffees();
-
+		// Check URL params for pre-selected bean (client-side navigation fallback)
 		if (typeof window !== 'undefined' && !currentRoastProfile) {
 			const params = new URLSearchParams(window.location.search);
 			const beanId = params.get('beanId');
 			const beanName = params.get('beanName');
-			const profileId = params.get('profileId');
 
-			// Check for profileId parameter to load existing profile
-			if (profileId) {
-				profileIdToLoad = profileId;
-				console.log('Found profileId in URL params:', profileId);
-			}
-			// Check for beanId/beanName to create new roast
-			else if (beanId && beanName) {
+			if (beanId && beanName && !data.preSelectedBean) {
 				selectedBean = {
 					id: parseInt(beanId),
 					name: decodeURIComponent(beanName)
 				};
-				console.log('Set selectedBean from URL params:', selectedBean);
-				shouldShowForm = true; // Auto-show form when URL params are present
 			}
-		}
-
-		// Check if we should show the roast form based on navigation state
-		const state = page.state as {
-			showRoastForm?: boolean;
-			selectedBean?: { id: number; name: string };
-		};
-		console.log('Page state on mount:', state);
-
-		if (state?.showRoastForm) {
-			console.log('Should show roast form based on state flag');
-
-			// If a bean was passed in the state, use it
-			if (state.selectedBean) {
-				console.log('Found selectedBean in state:', state.selectedBean);
-				selectedBean = state.selectedBean;
-			}
-			shouldShowForm = true;
-		}
-
-		// Show the form if either URL params or state indicate we should
-		if (shouldShowForm) {
-			setTimeout(() => {
-				isFormVisible = true;
-			}, 100);
 		}
 
 		// Load roast profiles and handle URL-based profile selection
 		syncData().then(() => {
-			// Wait a bit for the filter store to process the data
 			setTimeout(() => {
-				// Only proceed if we have a profileId to load and no profile is currently selected
-				if (profileIdToLoad && !currentRoastProfile) {
-					const targetProfileId = parseInt(profileIdToLoad);
-
-					// Use typed filtered data to ensure consistency with the UI
+				const profileIdParam = page.url.searchParams.get('profileId');
+				if (profileIdParam && !currentRoastProfile) {
+					const targetProfileId = parseInt(profileIdParam);
 					const filteredProfiles = typedFilteredData || [];
 					let targetProfile = filteredProfiles.find((p) => p.roast_id === targetProfileId);
-
-					// Fallback to client data if not found in filtered data
 					if (!targetProfile && clientData.length > 0) {
 						targetProfile = clientData.find((p) => p.roast_id === targetProfileId);
 					}
-
 					if (targetProfile) {
-						console.log('Loading profile from URL parameter:', targetProfile);
 						selectProfile(targetProfile);
-					} else {
-						console.warn(`Profile with ID ${profileIdToLoad} not found in available data`);
 					}
 				}
-			}, 100); // Small delay to ensure filter store is ready
+			}, 100);
 		});
-
-		// Add event listener for the custom show-roast-form event
-		window.addEventListener('show-roast-form', showRoastForm);
-
-		// Clean up the event listener when the component is destroyed
-		return () => {
-			window.removeEventListener('show-roast-form', showRoastForm);
-		};
 	});
 
 	// Form submission handler for new roast profiles
@@ -361,7 +320,7 @@
 			const profiles = result.profiles || result; // Handle both new and legacy response formats
 
 			// Close form immediately on successful response
-			isFormVisible = false;
+			hideRoastForm();
 
 			// Refresh data to get updated profiles
 			await syncData();
@@ -706,18 +665,17 @@
 		}
 	}
 
-	function showRoastForm() {
-		console.log('showRoastForm called with selectedBean:', selectedBean);
-		// Coffee data is already fetched on mount, just show the form
-		// Only fetch again if we don't have any coffees loaded
-		if (availableCoffees.length === 0 && !coffeesLoading) {
-			fetchAvailableCoffees();
-		}
-		isFormVisible = true;
-	}
-
 	function hideRoastForm() {
-		isFormVisible = false;
+		const url = new URL(page.url);
+		url.searchParams.delete('modal');
+		url.searchParams.delete('beanId');
+		url.searchParams.delete('beanName');
+		const search = url.searchParams.toString();
+		goto(url.pathname + (search ? '?' + search : ''), {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
 	}
 
 	async function handleClearRoastData() {
