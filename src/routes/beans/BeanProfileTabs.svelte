@@ -689,7 +689,7 @@
 					{#if role === 'admin' || role === 'member'}
 						<button
 							onclick={() => {
-								window.location.href = `/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
+								window.location.href = `/roast?modal=new&beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
 							}}
 							class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 						>
@@ -794,7 +794,7 @@
 						{#if role === 'admin' || role === 'member'}
 							<button
 								onclick={() => {
-									window.location.href = `/roast?beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
+									window.location.href = `/roast?modal=new&beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
 								}}
 								class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 							>

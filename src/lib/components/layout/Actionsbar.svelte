@@ -56,20 +56,10 @@
 	function handleNewRoast() {
 		console.log('handleNewRoast called, routeId:', routeId);
 
-		// If we're on the roast page, use the custom event
-		if (routeId === '/roast') {
-			console.log('Dispatching show-roast-form event');
-			window.dispatchEvent(new CustomEvent('show-roast-form'));
-		} else {
-			// Navigate to roast page with form state
-			// Always navigate to roast page without pre-selected bean
-			// Users can select a bean from the roast form
-			goto('/roast', {
-				state: {
-					showRoastForm: true
-				}
-			});
-		}
+		// URL-driven modal intent: works consistently whether we're already on /roast or not
+		goto('/roast?modal=new', {
+			replaceState: routeId === '/roast'
+		});
 		onClose();
 	}
 
