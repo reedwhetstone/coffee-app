@@ -53,21 +53,10 @@
 	}
 
 	function handleNewSale() {
-		console.log('handleNewSale called, routeId:', routeId);
-
-		// If we're on the profit page, use the custom event
-		if (routeId === '/profit') {
-			console.log('Dispatching show-sale-form event');
-			window.dispatchEvent(new CustomEvent('show-sale-form'));
-		} else {
-			// Navigate to profit page with form state
-			console.log('Navigating to profit page with showSaleForm state');
-			goto('/profit', {
-				state: {
-					showSaleForm: true
-				}
-			});
-		}
+		// URL-driven modal intent: works consistently whether we're already on /profit or not
+		goto('/profit?modal=new', {
+			replaceState: routeId === '/profit'
+		});
 		onClose();
 	}
 
