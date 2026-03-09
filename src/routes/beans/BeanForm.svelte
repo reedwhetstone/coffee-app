@@ -390,7 +390,7 @@
 			e.preventDefault();
 			handleSubmit();
 		}}
-		class="max-h-[70vh] space-y-6 overflow-y-auto pr-2"
+		class="space-y-6"
 	>
 		<!-- Entry Type Selection -->
 		<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">

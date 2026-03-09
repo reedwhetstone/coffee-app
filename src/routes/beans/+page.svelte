@@ -126,14 +126,6 @@
 		fetchData();
 	});
 
-	// Sync from server-provided catalog whenever data updates
-	$effect(() => {
-		const serverCatalog = data.formCatalog as CoffeeCatalog[] | null;
-		if (serverCatalog && serverCatalog.length > 0) {
-			catalogData = serverCatalog;
-		}
-	});
-
 	// State for form and bean selection
 	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
 	let selectedBean = $state<InventoryWithCatalog | null>(null);
@@ -241,7 +233,7 @@
 		if (catalogData.length === 0) {
 			// catalog is already fetched in the $effect, but ensure it's available
 			const fetchCatalog = async () => {
-				const catalogResponse = await fetch('/api/catalog');
+				const catalogResponse = await fetch('/api/catalog?fields=dropdown');
 				if (catalogResponse.ok) {
 					const catalogResult = await catalogResponse.json();
 					catalogData = Array.isArray(catalogResult) ? catalogResult : catalogResult.data || [];

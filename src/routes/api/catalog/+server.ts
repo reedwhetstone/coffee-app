@@ -144,12 +144,16 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		}
 
 		// Legacy full catalog fetch (for backwards compatibility)
+		const fieldsParam = url.searchParams.get('fields');
+		const selectColumns =
+			fieldsParam === 'dropdown' ? 'id, source, name, stocked, cost_lb, price_tiers' : '*';
+
 		const now = Date.now();
 		const cacheKey = wholesaleOnly
-			? 'wholesaleOnly'
+			? `wholesaleOnly_${fieldsParam ?? 'full'}`
 			: showWholesale
-				? 'showWholesale'
-				: 'retailOnly';
+				? `showWholesale_${fieldsParam ?? 'full'}`
+				: `retailOnly_${fieldsParam ?? 'full'}`;
 		const cached = catalogCache[cacheKey];
 		if (cached?.data && now - cached.timestamp < CACHE_TTL) {
 			return json(cached.data);
@@ -157,7 +161,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		let legacyQuery = supabase
 			.from('coffee_catalog')
-			.select('*')
+			.select(selectColumns)
 			.eq('stocked', true)
 			.order('arrival_date', { ascending: false });
 
@@ -171,12 +175,14 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 
 		if (error) throw error;
 
+		const rowsData = (rows as unknown as Record<string, unknown>[]) || [];
+
 		catalogCache[cacheKey] = {
-			data: rows || [],
+			data: rowsData,
 			timestamp: now
 		};
 
-		return json(rows || []);
+		return json(rowsData);
 	} catch (error) {
 		console.error('Error querying catalog:', error);
 		return json({ error: 'Failed to fetch catalog data' }, { status: 500 });

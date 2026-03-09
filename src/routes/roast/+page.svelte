@@ -84,18 +84,10 @@
 	let availableCoffees = $state<CoffeeCatalog[]>([]);
 	let coffeesLoading = $state(false);
 
-	// Sync from server-provided coffees whenever data updates (handles both SSR and client navigation)
+	// Fetch form coffees reactively when the form becomes visible
 	$effect(() => {
-		const serverCoffees = (data.formCoffees as unknown as CoffeeCatalog[]) ?? null;
-		if (serverCoffees && serverCoffees.length > 0) {
-			availableCoffees = serverCoffees;
-		}
-	});
-
-	// Seed pre-selected bean from server URL params (handles SSR and client navigation)
-	$effect(() => {
-		if (data.preSelectedBean && !currentRoastProfile) {
-			selectedBean = data.preSelectedBean;
+		if (isFormVisible) {
+			ensureFormCoffees();
 		}
 	});
 
@@ -259,18 +251,13 @@
 	}
 
 	onMount(() => {
-		// If the server didn't provide form coffees but the form is showing, fetch client-side
-		if (isFormVisible && availableCoffees.length === 0) {
-			ensureFormCoffees();
-		}
-
 		// Check URL params for pre-selected bean (client-side navigation fallback)
 		if (typeof window !== 'undefined' && !currentRoastProfile) {
 			const params = new URLSearchParams(window.location.search);
 			const beanId = params.get('beanId');
 			const beanName = params.get('beanName');
 
-			if (beanId && beanName && !data.preSelectedBean) {
+			if (beanId && beanName) {
 				selectedBean = {
 					id: parseInt(beanId),
 					name: decodeURIComponent(beanName)

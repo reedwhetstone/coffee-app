@@ -6,7 +6,6 @@
 	import ProfitPageSkeleton from '$lib/components/ProfitPageSkeleton.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import type { PageData } from './$types';
 	import type { AvailableCoffee, BatchItem } from '$lib/types/component.types';
 
 	interface ProfitData {
@@ -49,18 +48,6 @@
 	// Form data state
 	let availableCoffees = $state<AvailableCoffee[]>([]);
 	let availableBatches = $state<BatchItem[]>([]);
-
-	let { data } = $props<{ data: PageData }>();
-
-	// Sync from server-provided form data whenever data updates
-	$effect(() => {
-		if (data.formCoffees && Array.isArray(data.formCoffees) && data.formCoffees.length > 0) {
-			availableCoffees = data.formCoffees;
-		}
-		if (data.formBatches && Array.isArray(data.formBatches) && data.formBatches.length > 0) {
-			availableBatches = data.formBatches;
-		}
-	});
 
 	// Convert reactive statements to use $derived
 	// Removed unused derived values (totalRevenue, totalCost, totalProfit)
@@ -154,10 +141,7 @@
 	$effect(() => {
 		const fetchData = async () => {
 			await fetchInitialSalesData();
-			// Only fetch form data client-side if server didn't provide it
-			if (availableCoffees.length === 0 || availableBatches.length === 0) {
-				await fetchFormData();
-			}
+			await fetchFormData();
 		};
 
 		fetchData();
