@@ -249,7 +249,7 @@
 				{selectedBean.coffee_catalog?.name || selectedBean.name}
 			</h2>
 			<div>
-				{#if selectedBean.rank !== undefined}
+				{#if selectedBean.rank != null && typeof selectedBean.rank === 'number'}
 					<div class="flex items-center justify-center gap-4 sm:justify-end md:gap-6">
 						<div class="flex flex-col items-center">
 							<div class="relative h-14 w-14 md:h-16 md:w-16">
@@ -277,9 +277,7 @@
 								<!-- Rank value in the center -->
 								<div class="absolute inset-0 flex items-center justify-center">
 									<span class="text-xl font-bold text-amber-500 md:text-2xl">
-										{typeof selectedBean.rank === 'number'
-											? Math.round(selectedBean.rank)
-											: selectedBean.rank}
+										{Math.round(selectedBean.rank)}
 									</span>
 								</div>
 								<span
@@ -625,10 +623,10 @@
 							<!-- User Rating -->
 							<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 								<h4 class="mb-2 font-medium text-text-primary-light">Your Rating</h4>
-								{#if selectedBean.rank !== undefined}
+								{#if selectedBean.rank != null && typeof selectedBean.rank === 'number'}
 									<div class="flex items-center gap-3">
 										<span class="text-2xl font-bold text-background-tertiary-light">
-											{selectedBean.rank}
+											{Math.round(selectedBean.rank)}
 										</span>
 										<span class="text-text-secondary-light">/10</span>
 									</div>

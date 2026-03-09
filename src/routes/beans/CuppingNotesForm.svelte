@@ -52,6 +52,8 @@
 		}
 		if (initialRating !== null) {
 			overallRating = initialRating;
+		} else {
+			overallRating = 5; // Default to midpoint for new ratings
 		}
 	});
 
@@ -80,9 +82,18 @@
 	}
 
 	// Validation - check if form has meaningful data
-	let isValidForm = $derived(() => {
-		return dimensions.some((dim) => formData[dim.key].tag.trim() !== '');
+	let isValidForm = $derived.by(() => {
+		return overallRating !== null || dimensions.some((dim) => formData[dim.key].tag.trim() !== '');
 	});
+
+	// Color for each rating value
+	function getRatingButtonColor(value: number): string {
+		if (value >= 9) return 'bg-emerald-500 text-white';
+		if (value >= 7) return 'bg-green-500 text-white';
+		if (value >= 5) return 'bg-yellow-500 text-white';
+		if (value >= 3) return 'bg-orange-500 text-white';
+		return 'bg-red-500 text-white';
+	}
 </script>
 
 <div class="cupping-notes-form">
@@ -113,25 +124,21 @@
 			</div>
 		</div>
 		<div class="mt-4">
-			<input
-				type="range"
-				min="1"
-				max="10"
-				step="1"
-				bind:value={overallRating}
-				class="slider h-2 w-full cursor-pointer appearance-none rounded-lg bg-background-primary-light"
-			/>
-			<div class="mt-1 flex justify-between text-xs text-text-secondary-light">
-				<span>1</span>
-				<span>2</span>
-				<span>3</span>
-				<span>4</span>
-				<span>5</span>
-				<span>6</span>
-				<span>7</span>
-				<span>8</span>
-				<span>9</span>
-				<span>10</span>
+			<div class="flex gap-1">
+				{#each [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as value}
+					<button
+						type="button"
+						onclick={() => {
+							overallRating = overallRating === value ? null : value;
+						}}
+						class="flex-1 rounded-md border py-2 text-center text-sm font-medium transition-all duration-150 {overallRating ===
+						value
+							? getRatingButtonColor(value) + ' border-transparent shadow-sm'
+							: 'border-border-light bg-background-primary-light text-text-secondary-light hover:bg-background-tertiary-light/10 hover:text-text-primary-light'}"
+					>
+						{value}
+					</button>
+				{/each}
 			</div>
 		</div>
 		<div class="mt-2 text-center">
