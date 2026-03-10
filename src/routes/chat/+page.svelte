@@ -111,9 +111,18 @@
 	onMount(() => {
 		if (!hasRequiredRole('member')) return;
 
+		// Capture workspace ID locally to ensure it's available in cleanup
+		// even if store state hasn't synchronized yet
+		let activeWorkspaceId: string | null = null;
+		const unsubscribeWorkspace = $effect.root(() => {
+			$effect(() => {
+				activeWorkspaceId = workspaceStore.currentWorkspaceId;
+			});
+		});
+
 		// beforeunload: persist state via sendBeacon (reliable during tab close/nav)
 		const handleBeforeUnload = () => {
-			const wsId = workspaceStore.currentWorkspaceId;
+			const wsId = activeWorkspaceId;
 			if (!wsId) return;
 			// Save unsaved messages
 			const savedCount = workspaceStore.getSavedMessageCount(wsId);
@@ -188,6 +197,7 @@
 			workspaceStore.unregisterUICallbacks();
 			window.removeEventListener('beforeunload', handleBeforeUnload);
 			handleBeforeUnload(); // Also fires on SvelteKit client-side navigation
+			unsubscribeWorkspace(); // Clean up the workspace ID tracker
 		};
 	});
 
@@ -214,6 +224,27 @@
 			}));
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			chat.messages = restored as any;
+		}
+
+		// Mark all tool parts from restored messages as already dispatched
+		// This prevents the $effect from re-dispatching blocks that are
+		// already represented in the restored canvas state
+		for (const msg of result.messages) {
+			if (msg.role !== 'assistant') continue;
+			const parts = Array.isArray(msg.parts) ? msg.parts : [];
+			for (const part of parts) {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const p = part as any;
+				if (p?.type?.startsWith('tool-')) {
+					const partKey = `${msg.id}-${p.toolInvocationId ?? p.toolName ?? p.type}`;
+					dispatchedParts.add(partKey);
+					// Also mark companion blocks
+					const companions = extractCompanionBlocks(p);
+					for (let ci = 0; ci < companions.length; ci++) {
+						dispatchedParts.add(`${partKey}-companion-${ci}`);
+					}
+				}
+			}
 		}
 
 		// Restore canvas state (including pinned, minimized, focusBlockId)
