@@ -251,18 +251,23 @@
 	}
 
 	onMount(() => {
-		// Check URL params for pre-selected bean (client-side navigation fallback)
-		if (typeof window !== 'undefined' && !currentRoastProfile) {
-			const params = new URLSearchParams(window.location.search);
-			const beanId = params.get('beanId');
-			const beanName = params.get('beanName');
+		// Check URL params for pre-selected bean — always takes priority regardless of
+		// currentRoastProfile so navigating from a bean profile always pre-fills the form.
+		const beanId = page.url.searchParams.get('beanId');
+		const beanName = page.url.searchParams.get('beanName');
 
-			if (beanId && beanName) {
-				selectedBean = {
-					id: parseInt(beanId),
-					name: decodeURIComponent(beanName)
-				};
+		if (beanId) {
+			const decodedName = beanName ? decodeURIComponent(beanName) : null;
+			if (!decodedName || decodedName === 'undefined') {
+				console.warn(
+					`[RoastPage] beanId=${beanId} present in URL but beanName is missing or "undefined". ` +
+						'The bean name could not be pre-filled. Check the navigation source.'
+				);
 			}
+			selectedBean = {
+				id: parseInt(beanId),
+				name: decodedName && decodedName !== 'undefined' ? decodedName : 'No Bean Selected'
+			};
 		}
 
 		// Load roast profiles and handle URL-based profile selection

@@ -537,6 +537,65 @@ test.describe('Roast Profiles', () => {
 
 		logErrors(consoleErrors, networkErrors);
 	});
+
+	test('can pre-select bean when navigating from bean profile', async ({ page }) => {
+		const { consoleErrors, networkErrors } = setupErrorCollection(page);
+
+		await navigateToBeans(page);
+		await ensureBeanExists(page);
+
+		// Capture the first bean's display name from its card
+		const firstBeanCard = page.locator('button.group.relative').first();
+		const beanName = (await firstBeanCard.locator('h3').textContent())?.trim() ?? '';
+		expect(beanName.length, 'Expected a non-empty bean name on the card').toBeGreaterThan(0);
+
+		await selectFirstBean(page);
+
+		// Navigate to Roasting tab
+		const roastingTab = page.locator('button').filter({ hasText: /^🔥\s*Roasting$/ });
+		await roastingTab.click();
+		await page.waitForTimeout(500);
+
+		// Click "Start New Roast" (present even when there are no roasts yet, in the empty state)
+		await page
+			.getByRole('button', { name: /Start New Roast|Start First Roast/i })
+			.first()
+			.click();
+
+		// Wait for the roast page to open with the correct URL params
+		await page.waitForURL(
+			(url) => url.searchParams.has('modal') && url.searchParams.has('beanId'),
+			{
+				timeout: 10000
+			}
+		);
+
+		// Confirm beanName param is not "undefined"
+		const urlBeanName = page.url();
+		expect(urlBeanName).not.toContain('beanName=undefined');
+
+		// Wait for the roast form's coffee dropdown to appear and options to load
+		const coffeeSelect = page.locator('#coffee_select_0');
+		await coffeeSelect.waitFor({ state: 'visible', timeout: 10000 });
+		await expect(coffeeSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
+
+		// Assert the pre-selected option is the correct bean — not placeholder, not "undefined"
+		const selectedText = await coffeeSelect.evaluate(
+			(el) => (el as HTMLSelectElement).options[(el as HTMLSelectElement).selectedIndex]?.text ?? ''
+		);
+		expect(selectedText, 'Bean dropdown should show the selected bean, not a placeholder').not.toBe(
+			'Select a coffee...'
+		);
+		expect(selectedText, 'Bean dropdown should not show "undefined"').not.toContain('undefined');
+		expect(selectedText.length, 'Bean dropdown should have a non-empty selection').toBeGreaterThan(
+			0
+		);
+
+		// The selected text should match the bean name we saw on the inventory card
+		expect(selectedText).toBe(beanName);
+
+		logErrors(consoleErrors, networkErrors);
+	});
 });
 
 test.describe('Sales Management', () => {

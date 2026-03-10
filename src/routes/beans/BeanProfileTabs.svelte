@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { prepareDateForAPI } from '$lib/utils/dates';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import CuppingNotesForm from './CuppingNotesForm.svelte';
@@ -91,6 +92,23 @@
 		{ id: 'roasting', label: 'Roasting', icon: '🔥' },
 		{ id: 'analytics', label: 'Analytics', icon: '📈' }
 	];
+
+	/**
+	 * Navigate to the roast page pre-seeded with this bean.
+	 * Uses goto() for client-side navigation (no full page reload).
+	 * Falls back to 'Unknown Coffee' with a warning if catalog name is missing.
+	 */
+	function startNewRoast() {
+		const beanName = selectedBean.coffee_catalog?.name;
+		if (!beanName) {
+			console.warn(
+				`[BeanProfileTabs] coffee_catalog.name is missing for bean id=${selectedBean.id}. ` +
+					'Using fallback name. The catalog join may have failed.'
+			);
+		}
+		const safeName = beanName || 'Unknown Coffee';
+		goto(`/roast?modal=new&beanId=${selectedBean.id}&beanName=${encodeURIComponent(safeName)}`);
+	}
 
 	// Function to handle editing
 	function toggleEdit() {
@@ -688,9 +706,7 @@
 					<h3 class="text-lg font-semibold text-text-primary-light">Roasting History</h3>
 					{#if role === 'admin' || role === 'member'}
 						<button
-							onclick={() => {
-								window.location.href = `/roast?modal=new&beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
-							}}
+							onclick={startNewRoast}
 							class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 						>
 							Start New Roast
@@ -793,9 +809,7 @@
 						</p>
 						{#if role === 'admin' || role === 'member'}
 							<button
-								onclick={() => {
-									window.location.href = `/roast?modal=new&beanId=${selectedBean.id}&beanName=${encodeURIComponent(selectedBean.coffee_catalog?.name || selectedBean.name)}`;
-								}}
+								onclick={startNewRoast}
 								class="rounded-md bg-background-tertiary-light px-4 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 							>
 								Start First Roast
