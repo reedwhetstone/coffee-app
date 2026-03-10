@@ -183,7 +183,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// Stream the response using Vercel AI SDK via OpenRouter preset
 		const result = streamText({
-			model: openrouter('@preset/coffee-app-chat-agent'),
+			model: openrouter.chat('@preset/coffee-app-chat-agent'),
 			system: systemPrompt,
 			messages: await convertToModelMessages(messages),
 			tools,
