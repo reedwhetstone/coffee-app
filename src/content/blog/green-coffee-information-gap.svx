@@ -1,0 +1,145 @@
+---
+title: "The 13x Information Gap"
+date: "2026-03-11"
+description: "Green coffee's real transparency problem isn't price. It's the product metadata that 83% of suppliers don't disclose."
+tags: ["coffee", "data", "supply-chain", "market-intelligence"]
+pillar: "market-intelligence"
+draft: true
+readingTime: 9
+---
+
+The specialty coffee industry has made real progress on price transparency. The SCA/Emory [Sustainable Coffee Buyer's Guide](https://www.coffeebuyers.org/) publishes farmer-reported cost-of-production data. Counter Culture prints FOB prices on their bags. Azahar and others have pushed the norm toward disclosing what buyers pay and what growers receive.
+
+This is genuinely good work. It is also solving the wrong problem first.
+
+When I set out to build a comparison layer across 30 green coffee suppliers, price was the easy part. Every listing has a price. The hard part was everything else. Across those 30 suppliers, the number of structured product attributes per listing ranges from 1 to 13. The median is 7. That means the typical listing is missing over half the attributes that exist somewhere in the market.
+
+The industry built price transparency while the metadata gap grew unchecked. That gap is where the real information asymmetry lives, and it is shaping purchasing decisions in ways most buyers never see.
+
+## The Wrong Transparency Got Solved First
+
+Price transparency answers a specific question: is this transaction fair? That matters. But it does not answer the question that precedes every transaction: is this the right coffee to buy?
+
+To answer that, you need product metadata. Processing method. Cultivar. Cup score. Arrival date. Farm provenance. These are the attributes that separate an informed purchase from a guess.
+
+The problem is that no standard requires sellers to disclose any of them. Unlike price, which is table stakes for a commercial listing, metadata is entirely voluntary. Each supplier decides which fields to populate, and those decisions vary wildly.
+
+The result looks like a functioning market until you try to compare across it.
+
+## What 30 Suppliers Actually Disclose
+
+I scraped and normalized product data from 30 live green coffee suppliers. The dataset contains 17 unique product attributes. Here is how consistently each one appears.
+
+**Near-universal (the easy stuff):**
+- Country of origin: 93%
+- Processing method: 90%
+- Region: 77%
+- Cultivar/variety: 77%
+
+**Common but inconsistent:**
+- Cupping notes: 67%
+- Grade: 63%
+- Roast recommendations: 43%
+
+**Decision-critical (the hard stuff):**
+- Farm provenance: 33%
+- Arrival date: 27%
+- Cup score: 17%
+
+The pattern is not random. Near-universal attributes are the cheap ones. Country is printed on every bag. Processing is usually on the label. These fields require zero additional work from the seller.
+
+Decision-critical attributes are expensive to produce. Cup scores require someone to cup the coffee and record a number. Arrival dates require tracking logistics. Farm provenance requires maintaining relationships and records that go beyond "we bought this from an exporter."
+
+The information gap maps directly to the cost of generating the information.
+
+## This Is the Lemons Problem, Wearing a Different Hat
+
+George Akerlof's 1970 paper "[The Market for 'Lemons'](https://academic.oup.com/qje/article-abstract/84/3/488/1896241)" described a specific market failure: when sellers know more than buyers about product quality and disclosure is voluntary, the market gradually selects against quality. Buyers who cannot distinguish good from bad pay average-quality prices. High-quality sellers, unable to capture the premium their products deserve, eventually exit or stop investing in quality signals.
+
+Green coffee has a variant of this dynamic. The selection pressure is not directly on coffee quality. It acts on information density.
+
+Consider two $7/lb Ethiopian naturals from different suppliers. One listing includes: Yirgacheffe Kochere origin, Heirloom cultivar, 87-point cup score, January 2026 arrival, Daye Bensa washing station, tasting notes of blueberry and jasmine. Eleven fields.
+
+The other listing says: "Ethiopian Natural." Two fields. Same price.
+
+A buyer shopping across suppliers has no frame of reference to compare these two products. The listing with 11 fields and the listing with 2 fields are presented as equivalent options in a market that has no mechanism for rewarding disclosure.
+
+The supplier who invested in cupping, tracking logistics, and documenting farm relationships gets no market premium for that work. Not because buyers would not value the information, but because the information is invisible at the point of comparison.
+
+Jon Allen of Onyx Coffee Lab captured the broader dynamic in a [Perfect Daily Grind interview](https://perfectdailygrind.com/2018/04/green-coffee-pricing-transparency-is-critical-and-complicated/): "No one really shares anything about buying green coffee... many people have really no idea what something is worth."
+
+He was talking about price. The same sentence applies even more forcefully to product metadata.
+
+## The 13x Gap in Practice
+
+The widest disclosure gap in the dataset is instructive. Sweet Maria's provides 13 structured fields per product: country, region, grade, appearance, processing, drying method, cultivar, arrival date, lot size, bag size, packaging, roast recommendations, and type. At the other end, one supplier provides exactly 1 field: country.
+
+That is a 13x difference in information density between two sellers in the same market, selling functionally similar products to functionally similar buyers.
+
+This is not a quality judgment on either supplier. The one-field supplier may sell excellent coffee. But their listing is structurally invisible to any comparison system, and their buyer is structurally uninformed relative to what the market could provide.
+
+The median supplier provides 7 of 17 possible fields. That means even in the middle of the distribution, buyers are missing 59% of the information that exists somewhere in the market.
+
+Here is another way to frame it. Five of 30 suppliers (17%) provide cup scores. Eight (27%) provide arrival dates. Ten (33%) provide farm-level provenance. These are arguably the three most decision-relevant attributes for a buyer making a quality-conscious sourcing choice, and they are available from a minority of sellers.
+
+## Immediate Risk vs Tail Risk
+
+The information gap creates two categories of market damage.
+
+### Immediate risks (already visible)
+
+1. **Mispriced inventory.** Coffees with identical listed attributes (origin, price) differ by 10x in information density. Buyers paying the same price for a 2-field listing and an 11-field listing are not making equivalent transactions. They just cannot see the difference.
+
+2. **Disclosure flight.** Suppliers who invest in cupping, tracking arrivals, and documenting farm relationships have no market mechanism to recoup that investment. Over time, this creates pressure to stop investing. Why cup 200 lots a year if nobody can see the scores in a comparison context?
+
+3. **Stale inventory camouflage.** Without arrival dates (available from only 27% of suppliers), buyers cannot distinguish fresh-crop coffee from inventory that has been sitting in a warehouse for 18 months. In a market where freshness materially affects cup quality, this is not a minor gap.
+
+4. **Grade inflation through omission.** When 37% of suppliers do not list grade at all, and those who do use different scales (SCA numeric, letter grade, screen size), the field becomes unreliable as a comparison tool even where it exists.
+
+### Tail risks (slow and compounding)
+
+1. **Market segmentation failure.** The specialty market's claim to differentiation depends on buyers being able to identify and pay for quality distinctions. If the data layer does not support that identification, the premium collapses toward commodity pricing. Specialty becomes a brand label rather than a measurable quality tier.
+
+2. **Discovery channel erosion.** New and small-production origins need information-rich listings to compete against established names. An unknown Ethiopian washing station cannot rely on brand recognition; it needs a cup score, a processing description, and a story. The metadata gap systematically disadvantages discovery-oriented coffees.
+
+3. **Aggregation arbitrage.** Any entity that normalizes this data will have structural pricing power over those who do not. This is not speculative; it is the Zillow/Redfin playbook applied to a new vertical. The question is whether the coffee industry builds this infrastructure itself or lets an outside platform capture the margin.
+
+## This Pattern Is Not Unique to Coffee
+
+The metadata transparency problem shows up in any market where three conditions hold: products are semi-commoditized (the underlying good is similar; differentiation happens through attributes), quality is hard to assess pre-purchase (you cannot cup the coffee before buying it), and sellers control which attributes they disclose (no mandatory reporting standard).
+
+Wine has a version of this. Vintage, appellation, vineyard designation, and winemaking method vary wildly across listings. A "red wine from France" and a "2019 Chambolle-Musigny 1er Cru, Domaine Comte Georges de Vogüé" are both Burgundy. The information gap between those two listings is where pricing power and informed purchasing actually live.
+
+Real estate had this problem before Zillow and its competitors forced standardization. Job postings have it right now, which is exactly why salary transparency laws are proliferating. The regulatory response is always downstream of the same structural failure: voluntary disclosure in markets with information asymmetry favors the party that controls disclosure.
+
+The general principle: in any market where sellers choose what to reveal, the information gap between listings will be larger than the quality gap between products. Aggregators who normalize seller data create value precisely because they make that gap visible.
+
+## What Normalization Actually Reveals
+
+When you force 30 different data schemas into a common format, three things become apparent.
+
+**"Comparable" products stop looking comparable.** Two coffees from the same origin at the same price diverge sharply once their metadata is aligned. The buyer with access to normalized data and the buyer shopping supplier by supplier are operating in functionally different markets.
+
+**Missing data becomes a signal, not just a gap.** A supplier that does not list arrival dates is probably not tracking freshness. A supplier that does not provide cup scores is probably not cupping. Absence is informative. Right now, it is invisible.
+
+**Some suppliers are underpriced relative to their information density.** The supplier providing 11 fields and scoring their coffees is often charging the same per-pound as the supplier providing 3 fields. The market has not priced in disclosure quality because nobody could see it until the data was aggregated.
+
+This last point is the most important one for buyers. Information density is a proxy for operational investment. The supplier doing more work to characterize their inventory is, on average, more likely to be offering a product that matches its description. That is not a guarantee. But it is a signal that currently has zero market weight because the market cannot see it.
+
+## Opportunity Map
+
+Three plays emerge from this data, each actionable now.
+
+**Play 1: Disclosure scoring as a supplier metric.** Treat information density as a first-class signal. A supplier providing 11 of 17 fields is operationally different from one providing 3. Surfacing a "disclosure completeness" score alongside price and cup score changes how buyers evaluate sellers. It also creates market incentive for suppliers to fill gaps, because their investment becomes visible for the first time.
+
+**Play 2: Freshness as a filterable dimension.** Arrival date is the sleeper field. Only 27% of suppliers provide it, but it directly affects cup quality. Coffee that landed 3 months ago and coffee that landed 14 months ago are different products at the same price. Any sourcing tool that can surface arrival freshness immediately differentiates itself from the catalog status quo.
+
+**Play 3: Aggregation as infrastructure, not competition.** Individual supplier catalogs will never solve this. The value comes from normalization across sellers, which makes the gap visible and comparison possible. Suppliers with strong disclosure benefit most from aggregation because their investment finally becomes visible. This is the Zillow model: standardize the listing, let the best product win on the data, raise the floor for everyone.
+
+## The Product Implication
+
+For anyone building sourcing tools, the takeaway is concrete. Price is a column. Metadata density is the row you should be sorting by. A comparison engine that can surface not just what a coffee costs but how much you know about it, relative to the market, changes the decision architecture.
+
+The fields the product should prioritize tracking next: arrival date freshness (months since landing), score coverage ratio (scored vs. unscored inventory per supplier), and disclosure completeness as a first-class supplier metric. These are not nice-to-haves. They are the minimum viable signals for a market that claims to care about quality transparency but has only built half the infrastructure.
+
+Before you can fix information asymmetry, you have to make the asymmetry visible. In green coffee, the first step is not better data. It is showing buyers how much data they are missing.
