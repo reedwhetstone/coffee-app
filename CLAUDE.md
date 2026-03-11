@@ -195,7 +195,7 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - **Frontend**: SvelteKit 5, TypeScript, TailwindCSS, LayerCake (charts)
 - **Backend**: SvelteKit API routes, Supabase (PostgreSQL + Auth)
 - **Deployment**: Vercel (adapter-vercel)
-- **AI/ML**: OpenAI embeddings for semantic search/RAG
+- **AI/ML**: OpenRouter (Qwen3) embeddings for semantic search/RAG
 - **Payments**: Stripe integration
 
 ### Authentication & Authorization
@@ -225,8 +225,8 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 
 ### Key Services
 
-- **RAGService**: Semantic search using OpenAI embeddings
-- **EmbeddingService**: OpenAI embedding generation
+- **RAGService**: Semantic search using OpenRouter (Qwen3) embeddings
+- **EmbeddingService**: OpenRouter (Qwen3) embedding generation
 - **Stripe integration**: Full payment flow with webhooks
 
 ### Route Structure
@@ -247,7 +247,7 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 
 ### Environment Setup
 
-- Requires `OPENAI_API_KEY` for embeddings
+- Requires `OPENROUTER_API_KEY` for embeddings
 - Supabase keys: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`
 - Stripe keys for payment processing
 

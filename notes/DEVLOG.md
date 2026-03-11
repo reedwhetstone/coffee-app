@@ -17,7 +17,6 @@
 These issues break core functionality and should be fixed first.
 
 - [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row or roast profile. Needs cascade delete function or proper dependency handling to prevent orphaned records.
-- [ ] **Bug** - "New Roast" link on bean page doesn't navigate to roast form correctly. The link routing is malformed or missing coffee_id parameter.
 - [ ] **Bug** - Bean profile data collection incomplete. The `/beans` profile should pull all non-null data fields into the form display in an organized layout.
 
 ---
@@ -151,7 +150,6 @@ Improvements to tasting and evaluation features.
 
 - [ ] **Tasting Notes** - Add brew method field to cupping form. Different brew methods affect tasting notes.
 
-
 ---
 
 ## Priority 13: Analytics & Insights
@@ -234,6 +232,14 @@ Items that need more context before they can be actionable.
 
 ## Completed Items
 
+- [x] **fix: use Chat Completions API for OpenRouter instead of Responses API** (PR #83)
+- [x] **fix: reliable bean pre-selection in roast form from bean profile** (PR #82)
+- [x] **refactor(profit): URL-driven form architecture (Phase C)** (PR #76)
+- [x] **refactor(beans): URL-driven form architecture (Phase B)** (PR #75)
+- [x] **refactor(roast): URL-driven form architecture** (PR #74)
+- [x] **Fix user rating editing: null checks, validation, segmented UI** (PR #73)
+- [x] **Switch embeddings to Qwen3 via OpenRouter, drop OPENAI_API_KEY; switch chat/summarize to OpenRouter** (PR #72)
+- [x] **Fix roast form double-scroll on mobile** (PR #70)
 - [x] **Forms** - Extract shared FormShell component with unified scroll containment, body scroll lock, and ARIA attributes (PR #77)
 - [x] **Performance** - Remove server-side form data queries; forms fetch data client-side for instant navigation (PR #77)
 - [x] **Performance** - Add lightweight `?fields=dropdown` param to catalog API for form dropdowns (PR #77)
@@ -358,7 +364,7 @@ Additional detailed notes are available in the `/notes` folder:
 - **Frontend**: SvelteKit 5, TypeScript, TailwindCSS, D3.js
 - **Backend**: SvelteKit API routes, Supabase (PostgreSQL + Auth)
 - **Deployment**: Vercel (adapter-vercel)
-- **AI/ML**: OpenAI embeddings, Google AI
+- **AI/ML**: OpenRouter (Qwen3) embeddings, Google AI
 - **Payments**: Stripe
 - **Web Scraping**: Playwright (Oracle Cloud hosted)
 

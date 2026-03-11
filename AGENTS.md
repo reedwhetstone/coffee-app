@@ -65,7 +65,7 @@ Prereqs: Node `22.x` (see `package.json` engines) and PNPM. Example: `corepack e
   - Imports: use absolute from `src/` where possible; keep extension-less (`.ts`/`.svelte`).
   - Formatting: Prettier config enforced; run `pnpm format` before commits.
   - Naming: functions/vars `camelCase`, types/interfaces `PascalCase`, constants `SCREAMING_SNAKE`.
-  - Error handling: return structured errors from services (avoid throwing raw strings); log with `src/lib/utils/alog-parser.ts` patterns.
+  - Error handling: return structured errors from services (avoid throwing raw strings); log structured error objects with message and context fields.
   - Tests: colocate with implementation; keep tests deterministic and fast; mock external services (Supabase, Stripe).
 
 - Cursor / Copilot rules:
