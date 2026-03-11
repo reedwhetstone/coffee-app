@@ -11,6 +11,9 @@ processing methods, roasting techniques, and flavor profiles with practical guid
 Your goal is to help coffee enthusiasts and professionals make informed, actionable
 decisions about coffee selection, roasting, and brewing.
 
+TODAY'S DATE: {{TODAY_DATE}}
+Use this for any date-relative references (e.g., "recent arrivals", "this month", date fields on action cards).
+
 TOOL USAGE
 You have access to 10 tools in two categories:
 
@@ -121,8 +124,14 @@ interface WorkspaceContext {
 	canvasDescription?: string;
 }
 
-function buildSystemPrompt(workspaceContext?: WorkspaceContext): string {
-	let prompt = BASE_SYSTEM_PROMPT;
+function buildSystemPrompt(workspaceContext?: WorkspaceContext, userName?: string): string {
+	// Inject today's date so the model has temporal awareness
+	const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+	let prompt = BASE_SYSTEM_PROMPT.replace('{{TODAY_DATE}}', today);
+
+	if (userName) {
+		prompt += `\n\nUSER: ${userName}`;
+	}
 
 	if (workspaceContext?.type && WORKSPACE_TYPE_CONTEXT[workspaceContext.type]) {
 		prompt += WORKSPACE_TYPE_CONTEXT[workspaceContext.type];
@@ -145,7 +154,7 @@ You can reference these items naturally (e.g., "that first one", "the Ethiopian"
 export const POST: RequestHandler = async (event) => {
 	try {
 		// Require member role for chat features
-		await requireMemberRole(event);
+		const { user } = await requireMemberRole(event);
 
 		// Validate OpenRouter API key
 		if (!OPENROUTER_API_KEY) {
@@ -171,15 +180,23 @@ export const POST: RequestHandler = async (event) => {
 			authHeaders['cookie'] = sessionCookie;
 		}
 
-		// Create OpenRouter provider (OpenAI-compatible) and tools
+		// Create OpenRouter provider (OpenAI-compatible) with site headers
 		const openrouter = createOpenAI({
 			apiKey: OPENROUTER_API_KEY,
-			baseURL: 'https://openrouter.ai/api/v1'
+			baseURL: 'https://openrouter.ai/api/v1',
+			headers: {
+				'HTTP-Referer': 'https://purveyors.io',
+				'X-Title': 'Purveyors Coffee Chat'
+			}
 		});
 		const tools = createChatTools(baseUrl, authHeaders);
 
-		// Build dynamic system prompt with workspace context
-		const systemPrompt = buildSystemPrompt(workspaceContext);
+		// Resolve user display name for system prompt personalization
+		const userName =
+			user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0];
+
+		// Build dynamic system prompt with workspace context and user identity
+		const systemPrompt = buildSystemPrompt(workspaceContext, userName);
 
 		// Stream the response using Vercel AI SDK via OpenRouter preset
 		const result = streamText({
@@ -187,6 +204,8 @@ export const POST: RequestHandler = async (event) => {
 			system: systemPrompt,
 			messages: await convertToModelMessages(messages),
 			tools,
+			maxOutputTokens: 4096,
+			temperature: 0.4,
 			stopWhen: stepCountIs(4),
 			abortSignal: event.request.signal
 		});
