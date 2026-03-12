@@ -147,6 +147,21 @@
 		}
 	}
 
+	// Single source of truth for reloading a profile after any mutation.
+	// Syncs fresh data from the API and re-selects the profile so the chart
+	// reloads from the database (input mode → display mode transition).
+	async function reloadProfile(roastId: number): Promise<RoastProfile | null> {
+		await syncData();
+		const profile = clientData.find((p) => p.roast_id === roastId);
+		if (!profile) return null;
+
+		// Reset the selection guard so selectProfile actually runs even if
+		// we're re-selecting the same profile (the whole point of a reload).
+		selectionState.lastSelectedId = null;
+		await selectProfile(profile);
+		return profile;
+	}
+
 	// Derived values for grouped profiles - directly computed from typedFilteredData
 	let sortedGroupedProfiles = $derived(() => {
 		if (!typedFilteredData || typedFilteredData.length === 0) {
@@ -322,14 +337,8 @@
 					name: profiles[0].coffee_name
 				};
 
-				// Refresh the profiles list
-				await syncData();
-
-				// Then find and select the newly created profile
-				const newProfile = clientData.find((p) => p.roast_id === profiles[0].roast_id);
-				if (newProfile) {
-					await selectProfile(newProfile);
-				}
+				// Reload fresh data and re-select the new profile
+				await reloadProfile(profiles[0].roast_id);
 
 				// Return the result for Artisan file upload (already has roast_ids if using new format)
 				return result.roast_ids
@@ -403,11 +412,8 @@
 		clearProfileError();
 
 		try {
-			await syncData(); // Refresh the profiles list first
-			const profile = clientData.find((p) => p.roast_id === updatedProfile.roast_id);
-			if (profile) {
-				await selectProfile(profile);
-			} else {
+			const profile = await reloadProfile(updatedProfile.roast_id);
+			if (!profile) {
 				throw new Error('Updated profile not found in refreshed data');
 			}
 		} catch (error) {
@@ -624,20 +630,8 @@
 				}
 			}
 
-			// For active roasting sessions, avoid full data sync that clears state
-			if (isRoasting || isPaused) {
-				// Just update the current profile with the saved roast_id
-				if (currentRoastProfile) {
-					currentRoastProfile.roast_id = roastId;
-				}
-			} else {
-				// Only sync data and reload profile if not actively roasting
-				await syncData();
-				const savedProfile = clientData.find((p) => p.roast_id === roastId);
-				if (savedProfile) {
-					await selectProfile(savedProfile);
-				}
-			}
+			// Save marks completion — always reload to switch to display mode
+			await reloadProfile(roastId);
 
 			// Success - no alert needed, just clear any errors
 			clearProfileError();

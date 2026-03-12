@@ -31,6 +31,7 @@ Additionally, `wholesale` is not currently included in `buildGreenCoffeeQuery`'s
 3. **Feature completeness for existing users** — Wholesale lots have distinct purchasing economics (tier pricing, higher minimums). Users who sourced wholesale beans have context the UI currently strips from them once they leave the catalog.
 
 **Contradictions or concerns:**
+
 - None. This is a display-only extension of a fully shipped data model. No schema changes, no new API surface.
 
 **Verdict: Strongly aligned.** Closes a feature gap, supports the sourcing intelligence narrative, zero architectural risk.
@@ -40,12 +41,14 @@ Additionally, `wholesale` is not currently included in `buildGreenCoffeeQuery`'s
 ## Scope
 
 **In:**
+
 - Add `wholesale` to the `buildGreenCoffeeQuery` coffee_catalog select
 - Add a "Wholesale" badge to each bean card on `/beans` where `catalogData?.wholesale === true`
 - Badge placement: alongside existing ⭐ rating and ☕ cupped indicators
 - Style: consistent with existing badge pattern (small colored pill)
 
 **Out:**
+
 - No filtering by wholesale on inventory page (separate future item)
 - No wholesale indicators on roast profiles or sales page (separate future items in DEVLOG)
 - No price_tiers display (already handled in BeanForm; not needed in list view)
@@ -66,6 +69,7 @@ Badge appears both in the desktop flex row and mobile layout where rating badges
 ## Files to Change
 
 1. **`src/lib/server/greenCoffeeUtils.ts`**
+
    - In `buildGreenCoffeeQuery`, add `wholesale` to the `coffee_catalog!catalog_id (...)` select list (alongside existing fields like `cost_lb`, `source`, `stocked`, etc.)
 
 2. **`src/routes/beans/+page.svelte`**
@@ -73,7 +77,7 @@ Badge appears both in the desktop flex row and mobile layout where rating badges
    - Add wholesale badge in the badge row alongside ⭐ and ☕ badges:
      ```svelte
      {#if isWholesale}
-       <span class="rounded bg-blue-100 px-1 text-xs text-blue-800">Wholesale</span>
+     	<span class="rounded bg-blue-100 px-1 text-xs text-blue-800">Wholesale</span>
      {/if}
      ```
    - Ensure badge appears in both the `sm:flex` desktop row and is accessible on mobile layout
