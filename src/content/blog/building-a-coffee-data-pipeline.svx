@@ -12,7 +12,7 @@ readingTime: 12
 
 Every morning, I review a PR over coffee. The PR was written by an AI agent. It fixes a data quality issue the agent found overnight, tested against live supplier pages, and documented with before/after extraction rates. I check the diff, merge it, and move on. By the next morning, the data is cleaner.
 
-This has been the rhythm for weeks now. The scraper runs overnight across 12 green coffee suppliers. An audit system checks data quality. Findings get surfaced. The agent investigates, writes a fix, opens a PR. I review. Merge. The pipeline improves. Repeat.
+This has been the rhythm for weeks now. The scraper runs overnight across 31 green coffee suppliers. An audit system checks data quality. Findings get surfaced. The agent investigates, writes a fix, opens a PR. I review. Merge. The pipeline improves. Repeat.
 
 The scraper itself is interesting. Normalizing coffee data across a dozen suppliers with different tech stacks, different grading systems, and different conventions for describing the same product is a genuinely hard problem. But the most valuable thing we've built isn't the scraper. It's the loop.
 
@@ -52,7 +52,7 @@ I think of this as the economy of directors. The leverage right now isn't in doi
 
 For the technically curious, here's the architecture:
 
-**Source adapters.** Each supplier gets a Source class. Three patterns: custom Playwright scrapers for complex sites that need browser rendering, a generic Shopify adapter that hits `/products.json` (no browser, just HTTP), and a generic WooCommerce adapter. Eight suppliers use custom scrapers. Four are Shopify configs that took minutes to set up.
+**Source adapters.** Each supplier gets a Source class. Three patterns: custom Playwright scrapers for complex sites that need browser rendering, a generic Shopify adapter that hits `/products.json` (no browser, just HTTP), and HTTP fetch adapters for WooCommerce and other APIs. Seven suppliers use Playwright scrapers, six use the generic Shopify adapter, and eighteen use HTTP fetch adapters.
 
 **URL collection and stock sync.** Each source implements `collectInitUrlsData()`, which returns product URLs, prices, and basic metadata. The pipeline compares these against the database: mark missing products as unstocked, update prices for existing products, queue new products for full scraping.
 
@@ -84,7 +84,7 @@ This is the economy of directors in practice. I'm not writing scraper code. I'm 
 
 ## What the Data Shows
 
-The pipeline currently tracks 1,258 coffees across 12 suppliers. Pricing data, availability patterns, origin distribution, processing method breakdowns. This normalized dataset doesn't exist anywhere else. No single supplier has visibility into the broader market. We do, because we aggregate and normalize across all of them.
+The pipeline currently tracks over 3,000 coffees across 31 suppliers. Pricing data, availability patterns, origin distribution, processing method breakdowns. This normalized dataset doesn't exist anywhere else. No single supplier has visibility into the broader market. We do, because we aggregate and normalize across all of them.
 
 That data tells a story about the green coffee market that nobody else is publishing. Seasonal availability shifts, pricing trends by origin, which suppliers carry the most unique lots. We're going to start sharing that analysis publicly. (More on this in a future market intelligence post.)
 
