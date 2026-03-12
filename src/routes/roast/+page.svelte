@@ -326,6 +326,8 @@
 				await syncData();
 
 				// Then find and select the newly created profile
+				// Reset lastSelectedId so selectProfile doesn't skip (same profile after save)
+				selectionState.lastSelectedId = null;
 				const newProfile = clientData.find((p) => p.roast_id === profiles[0].roast_id);
 				if (newProfile) {
 					await selectProfile(newProfile);
@@ -404,6 +406,8 @@
 
 		try {
 			await syncData(); // Refresh the profiles list first
+			// Reset lastSelectedId so selectProfile reloads chart data from DB
+			selectionState.lastSelectedId = null;
 			const profile = clientData.find((p) => p.roast_id === updatedProfile.roast_id);
 			if (profile) {
 				await selectProfile(profile);
@@ -633,6 +637,8 @@
 			} else {
 				// Only sync data and reload profile if not actively roasting
 				await syncData();
+				// Reset lastSelectedId so selectProfile reloads chart data from DB
+				selectionState.lastSelectedId = null;
 				const savedProfile = clientData.find((p) => p.roast_id === roastId);
 				if (savedProfile) {
 					await selectProfile(savedProfile);
