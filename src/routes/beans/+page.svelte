@@ -83,6 +83,7 @@
 	let clientData = $state<PageData['data']>([]);
 	let catalogData = $state<CoffeeCatalog[]>([]);
 	let error = $state<string | null>(null);
+	let isSaving = $state<string | null>(null);
 
 	// Client-side data fetching
 	$effect(() => {
@@ -181,6 +182,7 @@
 
 	// Function to handle bean deletion
 	async function deleteBean(id: number) {
+		isSaving = 'Deleting bean...';
 		try {
 			selectedBean = null;
 			const response = await fetch(`/api/beans?id=${id}`, {
@@ -197,14 +199,21 @@
 		} catch (error) {
 			console.error('Error deleting bean:', error);
 			await refreshData();
+		} finally {
+			isSaving = null;
 		}
 	}
 
 	// Function to handle editing
 
 	async function handleFormSubmit(_formData: CoffeeFormData) {
-		await refreshData();
-		hideForm();
+		isSaving = 'Saving...';
+		try {
+			await refreshData();
+		} finally {
+			isSaving = null;
+			hideForm();
+		}
 	}
 
 	// Handle search state and navigation after data loads
@@ -298,6 +307,18 @@
 		return null;
 	}
 </script>
+
+<!-- Saving Operation Status -->
+{#if isSaving}
+	<div class="fixed right-4 top-4 z-50 rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
+		<div class="flex items-center">
+			<div
+				class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"
+			></div>
+			<span class="text-sm font-medium text-blue-900">{isSaving}</span>
+		</div>
+	</div>
+{/if}
 
 {#if isLoading}
 	<BeansPageSkeleton />
