@@ -315,9 +315,6 @@
 			// Close form immediately on successful response
 			hideRoastForm();
 
-			// Refresh data to get updated profiles
-			await syncData();
-
 			if (profiles && profiles.length > 0) {
 				// Update the selected bean and current profile
 				selectedBean = {
@@ -325,13 +322,11 @@
 					name: profiles[0].coffee_name
 				};
 
-				// First refresh the profiles list
+				// Refresh the profiles list
 				await syncData();
 
 				// Then find and select the newly created profile
-				const newProfile = (data?.data || []).find(
-					(p: { roast_id: number }) => p.roast_id === profiles[0].roast_id
-				);
+				const newProfile = clientData.find((p) => p.roast_id === profiles[0].roast_id);
 				if (newProfile) {
 					await selectProfile(newProfile);
 				}
@@ -409,9 +404,7 @@
 
 		try {
 			await syncData(); // Refresh the profiles list first
-			const profile = (data?.data || []).find(
-				(p: { roast_id: number }) => p.roast_id === updatedProfile.roast_id
-			);
+			const profile = clientData.find((p) => p.roast_id === updatedProfile.roast_id);
 			if (profile) {
 				await selectProfile(profile);
 			} else {
@@ -640,9 +633,7 @@
 			} else {
 				// Only sync data and reload profile if not actively roasting
 				await syncData();
-				const savedProfile = (data?.data || []).find(
-					(p: { roast_id: number }) => p.roast_id === roastId
-				);
+				const savedProfile = clientData.find((p) => p.roast_id === roastId);
 				if (savedProfile) {
 					await selectProfile(savedProfile);
 				}

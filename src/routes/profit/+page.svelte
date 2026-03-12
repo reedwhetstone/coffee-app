@@ -44,6 +44,7 @@
 	let salesData = $state<SaleData[]>([]);
 	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
 	let selectedSale = $state<SaleData | null>(null);
+	let isSaving = $state<string | null>(null);
 
 	// Form data state
 	let availableCoffees = $state<AvailableCoffee[]>([]);
@@ -58,8 +59,9 @@
 	async function handleFormSubmit(data: unknown) {
 		const saleData = data as SaleData;
 		// Keeping simple since form just passes object
+		const isUpdate = selectedSale?.id !== undefined && selectedSale?.id !== null;
+		isSaving = isUpdate ? 'Updating sale...' : 'Saving sale...';
 		try {
-			const isUpdate = selectedSale?.id !== undefined && selectedSale?.id !== null;
 			const response = await fetch(
 				`/api/profit${isUpdate && selectedSale ? `?id=${selectedSale.id}` : ''}`,
 				{
@@ -81,6 +83,8 @@
 		} catch (error) {
 			console.error('Error updating sales data:', error);
 			alert(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+		} finally {
+			isSaving = null;
 		}
 		hideForm();
 		selectedSale = null;
@@ -175,6 +179,18 @@
 		});
 	}
 </script>
+
+<!-- Saving Operation Status -->
+{#if isSaving}
+	<div class="fixed right-4 top-4 z-50 rounded-lg bg-blue-50 p-4 ring-1 ring-blue-200">
+		<div class="flex items-center">
+			<div
+				class="mr-3 h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"
+			></div>
+			<span class="text-sm font-medium text-blue-900">{isSaving}</span>
+		</div>
+	</div>
+{/if}
 
 <!-- Add form modal -->
 <FormShell visible={isFormVisible}>
