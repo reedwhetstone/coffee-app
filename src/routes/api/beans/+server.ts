@@ -3,12 +3,7 @@ import { requireUserAuth } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import type { Database } from '$lib/types/database.types';
 import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
-import {
-	addToInventory,
-	updateInventory,
-	deleteInventoryItem,
-	updateStockedStatus
-} from '$lib/data/inventory.js';
+import { addToInventory, updateInventory, deleteInventoryItem } from '$lib/data/inventory.js';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
@@ -206,16 +201,8 @@ export const PUT: RequestHandler = async (event) => {
 			throw err;
 		}
 
-		// Auto-update stocked status if inventory quantities changed and stocked wasn't manually set
-		if (updateData.purchased_qty_lbs !== undefined && updateData.stocked === undefined) {
-			try {
-				await updateStockedStatus(supabase, parseInt(id), user.id);
-			} catch (stockError) {
-				console.warn('Failed to auto-update stocked status:', stockError);
-				// Don't fail the whole operation if stocked status update fails
-			}
-		}
-
+		// Stocked status auto-update is handled inside updateInventory()
+		// when purchased_qty_lbs changes, so the returned data is always fresh.
 		return json(updated);
 	} catch (error) {
 		console.error('Error updating bean:', error);

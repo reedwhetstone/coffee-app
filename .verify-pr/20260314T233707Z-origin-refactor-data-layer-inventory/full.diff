@@ -1,0 +1,1075 @@
+diff --git a/src/lib/data/inventory.ts b/src/lib/data/inventory.ts
+new file mode 100644
+index 0000000..85ff019
+--- /dev/null
++++ b/src/lib/data/inventory.ts
+@@ -0,0 +1,518 @@
++/**
++ * Inventory data layer — single source of truth for all green_coffee_inv queries.
++ *
++ * Auth is intentionally excluded from this module. Route handlers are responsible
++ * for validating sessions / API keys before calling these functions.
++ *
++ * Key design decisions:
++ *  - buildGreenCoffeeQuery / processGreenCoffeeData from greenCoffeeUtils are
++ *    re-used here to avoid query duplication.
++ *  - updateStockedStatus is absorbed from stockedStatusUtils.ts (which becomes
++ *    a re-export shim for backwards compatibility).
++ *  - getInventoryWithRoastSummary handles the GenUI tool's joined query; the
++ *    route handler is responsible for reshaping into its response envelope.
++ *  - deleteInventoryItem cascades to roast_profiles via the roast data layer,
++ *    then deletes the inventory row and optionally the user-owned catalog entry.
++ */
++
++import type { SupabaseClient } from '@supabase/supabase-js';
++import type { Database } from '$lib/types/database.types';
++import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
++
++// ── Re-export shared types for consumers ──────────────────────────────────────
++
++export type {
++	GreenCoffeeRow as InventoryItem,
++	CoffeeCatalog,
++	RoastProfile
++} from '$lib/server/greenCoffeeUtils.js';
++
++// ── Input / option types ──────────────────────────────────────────────────────
++
++export interface InventoryListOptions {
++	/** Filter to a single item by ID */
++	id?: number;
++	/** Filter to only stocked items */
++	stockedOnly?: boolean;
++	/** Max number of results */
++	limit?: number;
++	/** Order by field (default: purchase_date) */
++	orderBy?: string;
++	ascending?: boolean;
++}
++
++export interface InventoryCreateInput {
++	catalog_id?: number | null;
++	rank?: number | null;
++	notes?: string | null;
++	purchase_date?: string | null;
++	purchased_qty_lbs?: number | null;
++	bean_cost?: number | null;
++	tax_ship_cost?: number | null;
++	stocked?: boolean | null;
++	cupping_notes?: Database['public']['Tables']['green_coffee_inv']['Insert']['cupping_notes'];
++}
++
++export interface InventoryUpdateInput {
++	rank?: number | null;
++	notes?: string | null;
++	purchase_date?: string | null;
++	purchased_qty_lbs?: number | null;
++	bean_cost?: number | null;
++	tax_ship_cost?: number | null;
++	last_updated?: string | null;
++	user?: string | null;
++	catalog_id?: number | null;
++	stocked?: boolean | null;
++	cupping_notes?: Database['public']['Tables']['green_coffee_inv']['Update']['cupping_notes'];
++}
++
++export interface InventoryWithSummaryOptions {
++	stockedOnly?: boolean;
++	includeCatalogDetails?: boolean;
++	includeRoastSummary?: boolean;
++	limit?: number;
++}
++
++export interface RoastSummary {
++	total_roasts: number;
++	total_oz_in: number;
++	total_oz_out: number;
++}
++
++// Raw shape returned by the GenUI join query
++export interface InventoryWithSummaryRow {
++	id: number;
++	purchased_qty_lbs?: number | null;
++	bean_cost?: number | null;
++	tax_ship_cost?: number | null;
++	stocked: boolean | null;
++	coffee_catalog?: {
++		name?: string;
++		arrival_date?: string | null;
++		region?: string | null;
++		processing?: string | null;
++		drying_method?: string | null;
++		lot_size?: string | null;
++		bag_size?: string | null;
++		packaging?: string | null;
++		cultivar_detail?: string | null;
++		grade?: string | null;
++		appearance?: string | null;
++		roast_recs?: string | null;
++		type?: string | null;
++		description_short?: string | null;
++		description_long?: string | null;
++		farm_notes?: string | null;
++		link?: string | null;
++		cost_lb?: number | null;
++		source?: string | null;
++		cupping_notes?: string | null;
++		stocked?: boolean | null;
++		stocked_date?: string | null;
++		unstocked_date?: string | null;
++		ai_description?: string | null;
++		ai_tasting_notes?: Record<string, unknown> | null;
++		public_coffee?: boolean | null;
++		[key: string]: unknown;
++	} | null;
++	roast_summary?: RoastSummary;
++	coffee_name?: string;
++	[key: string]: unknown;
++}
++
++// ── Public API ────────────────────────────────────────────────────────────────
++
++/**
++ * List inventory for a user, using the standard joined query (catalog + roast profiles).
++ * Supports optional id filter, stocked filter, limit, and ordering.
++ */
++export async function listInventory(
++	supabase: SupabaseClient,
++	userId: string,
++	options: InventoryListOptions = {}
++) {
++	let query = buildGreenCoffeeQuery(supabase).eq('user', userId);
++
++	if (options.id !== undefined) {
++		query = query.eq('id', options.id);
++	}
++	if (options.stockedOnly) {
++		query = query.eq('stocked', true);
++	}
++	if (options.limit) {
++		query = query.limit(options.limit);
++	}
++
++	const { data: rows, error } = await query;
++	if (error) throw error;
++
++	return processGreenCoffeeData(rows ?? []);
++}
++
++/**
++ * Get a single inventory item by ID, verifying user ownership.
++ * Returns null when not found or not owned by the user.
++ */
++export async function getInventoryItem(supabase: SupabaseClient, id: number, userId: string) {
++	const { data, error } = await buildGreenCoffeeQuery(supabase)
++		.eq('id', id)
++		.eq('user', userId)
++		.single();
++
++	if (error) {
++		if (error.code === 'PGRST116') return null;
++		throw error;
++	}
++
++	return processGreenCoffeeData([data])[0] ?? null;
++}
++
++/**
++ * Add a new item to the user's inventory.
++ * Returns the created item with full catalog + roast profile joins.
++ */
++export async function addToInventory(
++	supabase: SupabaseClient,
++	userId: string,
++	data: InventoryCreateInput
++) {
++	const insertData: Database['public']['Tables']['green_coffee_inv']['Insert'] = {
++		user: userId,
++		catalog_id: data.catalog_id ?? null,
++		last_updated: new Date().toISOString(),
++		tax_ship_cost:
++			typeof data.tax_ship_cost === 'number' ? parseFloat(data.tax_ship_cost.toFixed(2)) : 0.0,
++		bean_cost: typeof data.bean_cost === 'number' ? parseFloat(data.bean_cost.toFixed(2)) : 0.0,
++		rank: data.rank ?? null,
++		notes: data.notes ?? null,
++		purchase_date: data.purchase_date ?? null,
++		purchased_qty_lbs: data.purchased_qty_lbs ?? null,
++		stocked: data.stocked ?? null,
++		cupping_notes: data.cupping_notes ?? null
++	};
++
++	const { data: newRow, error } = await supabase
++		.from('green_coffee_inv')
++		.insert(insertData)
++		.select()
++		.single();
++
++	if (error) throw error;
++
++	// Fetch with full joins
++	const { data: fullRow } = await buildGreenCoffeeQuery(supabase).eq('id', newRow.id).single();
++
++	return processGreenCoffeeData([fullRow])[0];
++}
++
++/**
++ * Update an inventory item, verifying user ownership.
++ * Returns the updated item with full catalog + roast profile joins.
++ */
++export async function updateInventory(
++	supabase: SupabaseClient,
++	id: number,
++	userId: string,
++	data: InventoryUpdateInput
++) {
++	// Verify ownership
++	const { data: existing } = await supabase
++		.from('green_coffee_inv')
++		.select('user')
++		.eq('id', id)
++		.single();
++
++	if (!existing || existing.user !== userId) {
++		throw new Error('Unauthorized');
++	}
++
++	const { error: updateError } = await supabase
++		.from('green_coffee_inv')
++		.update(data as Database['public']['Tables']['green_coffee_inv']['Update'])
++		.eq('id', id);
++
++	if (updateError) throw updateError;
++
++	// Fetch with full joins
++	const { data: updatedRow } = await buildGreenCoffeeQuery(supabase).eq('id', id).single();
++
++	return processGreenCoffeeData([updatedRow])[0];
++}
++
++/**
++ * Delete an inventory item, cascading to roast_profiles (and their temps/events),
++ * then optionally the user-owned private catalog entry.
++ *
++ * Verifies user ownership before deleting.
++ */
++export async function deleteInventoryItem(
++	supabase: SupabaseClient,
++	id: number,
++	userId: string
++): Promise<void> {
++	// Verify ownership and get catalog_id for potential cascade
++	const { data: existing } = await supabase
++		.from('green_coffee_inv')
++		.select('user, catalog_id')
++		.eq('id', id)
++		.single();
++
++	if (!existing || existing.user !== userId) {
++		throw new Error('Unauthorized');
++	}
++
++	// Cascade-delete roast profiles: temps and events first, then profiles
++	const { data: roastProfiles, error: selectError } = await supabase
++		.from('roast_profiles')
++		.select('roast_id')
++		.eq('coffee_id', id);
++
++	if (selectError) throw selectError;
++
++	if (roastProfiles && roastProfiles.length > 0) {
++		const roastIds = roastProfiles.map((p: { roast_id: number }) => p.roast_id);
++
++		const { error: tempError } = await supabase
++			.from('roast_temperatures')
++			.delete()
++			.in('roast_id', roastIds);
++		if (tempError) throw tempError;
++
++		const { error: eventError } = await supabase
++			.from('roast_events')
++			.delete()
++			.in('roast_id', roastIds);
++		if (eventError) throw eventError;
++
++		const { error: profileError } = await supabase
++			.from('roast_profiles')
++			.delete()
++			.eq('coffee_id', id);
++		if (profileError) throw profileError;
++	}
++
++	// Delete the inventory row
++	const { error: deleteError } = await supabase.from('green_coffee_inv').delete().eq('id', id);
++
++	if (deleteError) throw deleteError;
++
++	// Optionally cascade-delete the private user-owned catalog entry
++	if (existing.catalog_id) {
++		const { data: catalogEntry } = await supabase
++			.from('coffee_catalog')
++			.select('coffee_user, public_coffee')
++			.eq('id', existing.catalog_id)
++			.single();
++
++		if (
++			catalogEntry &&
++			catalogEntry.coffee_user === userId &&
++			catalogEntry.public_coffee === false
++		) {
++			const { error: catalogDeleteError } = await supabase
++				.from('coffee_catalog')
++				.delete()
++				.eq('id', existing.catalog_id);
++
++			if (catalogDeleteError) {
++				console.error('Error deleting user-owned catalog entry:', catalogDeleteError);
++				// Don't fail the whole operation if catalog deletion fails
++			}
++		}
++	}
++}
++
++/**
++ * Update stocked status for a bean based on purchased quantity vs total oz roasted.
++ * Absorbed from stockedStatusUtils.ts (which now re-exports this function).
++ */
++export async function updateStockedStatus(
++	supabase: SupabaseClient,
++	coffeeId: number,
++	userId: string
++): Promise<{
++	success: boolean;
++	stocked: boolean;
++	coffee_id?: number;
++	remaining_oz?: number;
++	error?: string;
++}> {
++	try {
++		// Get the green coffee inventory record
++		const { data: coffee, error: coffeeError } = await supabase
++			.from('green_coffee_inv')
++			.select('id, purchased_qty_lbs')
++			.eq('id', coffeeId)
++			.eq('user', userId)
++			.single();
++
++		if (coffeeError || !coffee) {
++			console.error('Coffee not found for stocked status update:', coffeeId);
++			return { success: false, stocked: false, error: 'Coffee not found' };
++		}
++
++		// Calculate total roasted quantity
++		const { data: roastProfiles, error: roastError } = await supabase
++			.from('roast_profiles')
++			.select('oz_in')
++			.eq('coffee_id', coffeeId)
++			.eq('user', userId);
++
++		if (roastError) {
++			console.error('Error fetching roast profiles for stocked status update:', roastError);
++			return { success: false, stocked: false, error: 'Error fetching roast profiles' };
++		}
++
++		// Calculate remaining quantity
++		const totalOzIn =
++			roastProfiles?.reduce(
++				(sum: number, profile: { oz_in: number | null }) => sum + (profile.oz_in || 0),
++				0
++			) || 0;
++		const purchasedOz = (coffee.purchased_qty_lbs || 0) * 16;
++		const remainingOz = purchasedOz - totalOzIn;
++
++		// Update stocked status: stocked if remaining quantity is at least 4 oz
++		const shouldBeStocked = remainingOz >= 4;
++
++		const { error: updateError } = await supabase
++			.from('green_coffee_inv')
++			.update({ stocked: shouldBeStocked })
++			.eq('id', coffeeId)
++			.eq('user', userId);
++
++		if (updateError) {
++			console.error('Error updating stocked status:', updateError);
++			return { success: false, stocked: false, error: 'Error updating stocked status' };
++		}
++
++		return {
++			success: true,
++			stocked: shouldBeStocked,
++			coffee_id: coffeeId,
++			remaining_oz: remainingOz
++		};
++	} catch (error) {
++		console.error('Error in updateStockedStatus:', error);
++		return { success: false, stocked: false, error: 'Unexpected error' };
++	}
++}
++
++/**
++ * Get inventory with roast summary data for the GenUI tool endpoint.
++ * Returns raw rows; the route handler reshapes them into its response envelope.
++ */
++export async function getInventoryWithRoastSummary(
++	supabase: SupabaseClient,
++	userId: string,
++	options: InventoryWithSummaryOptions = {}
++): Promise<InventoryWithSummaryRow[]> {
++	const {
++		stockedOnly = true,
++		includeRoastSummary = true,
++		includeCatalogDetails = true,
++		limit = 15
++	} = options;
++
++	let query = supabase
++		.from('green_coffee_inv')
++		.select(
++			`
++			*,
++			coffee_catalog!catalog_id (
++				name,
++				arrival_date,
++				region,
++				processing,
++				drying_method,
++				lot_size,
++				bag_size,
++				packaging,
++				cultivar_detail,
++				grade,
++				appearance,
++				roast_recs,
++				type,
++				description_short,
++				description_long,
++				farm_notes,
++				link,
++				cost_lb,
++				source,
++				stocked,
++				cupping_notes,
++				stocked_date,
++				unstocked_date,
++				ai_description,
++				ai_tasting_notes,
++				public_coffee
++			)
++		`
++		)
++		.eq('user', userId)
++		.order('purchase_date', { ascending: false });
++
++	if (stockedOnly !== false) {
++		query = query.eq('stocked', true);
++	}
++
++	const finalLimit = Math.min(limit || 15, 15);
++	if (finalLimit > 0) {
++		query = query.limit(finalLimit);
++	}
++
++	const { data: inventoryData, error } = await query;
++
++	if (error) throw error;
++
++	let processedInventory = (inventoryData as unknown as InventoryWithSummaryRow[]) ?? [];
++
++	// Optionally attach roast summary
++	if (includeRoastSummary && processedInventory.length > 0) {
++		const coffeeIds = processedInventory.map((bean) => bean.id);
++
++		const { data: roastProfiles } = (await supabase
++			.from('roast_profiles')
++			.select('coffee_id, oz_in, oz_out, roast_id, batch_name, roast_date')
++			.in('coffee_id', coffeeIds)
++			.eq('user', userId)) as {
++			data: Array<{
++				coffee_id: number;
++				oz_in: number | null;
++				oz_out: number | null;
++				roast_id: number;
++				batch_name: string;
++				roast_date: string;
++			}> | null;
++		};
++
++		processedInventory = processedInventory.map((bean) => ({
++			...bean,
++			roast_summary: {
++				total_roasts: roastProfiles?.filter((p) => p.coffee_id === bean.id).length || 0,
++				total_oz_in:
++					roastProfiles
++						?.filter((p) => p.coffee_id === bean.id)
++						.reduce((sum, p) => sum + (p.oz_in || 0), 0) || 0,
++				total_oz_out:
++					roastProfiles
++						?.filter((p) => p.coffee_id === bean.id)
++						.reduce((sum, p) => sum + (p.oz_out || 0), 0) || 0
++			}
++		}));
++	}
++
++	// Optionally strip catalog details, retaining only the coffee name
++	if (!includeCatalogDetails) {
++		processedInventory = processedInventory.map((bean) => {
++			const { coffee_catalog, ...beanWithoutCatalog } = bean;
++			return {
++				...beanWithoutCatalog,
++				coffee_name: coffee_catalog?.name || 'Unknown'
++			};
++		});
++	}
++
++	return processedInventory;
++}
+diff --git a/src/lib/server/stockedStatusUtils.ts b/src/lib/server/stockedStatusUtils.ts
+index 6a226ae..032f030 100644
+--- a/src/lib/server/stockedStatusUtils.ts
++++ b/src/lib/server/stockedStatusUtils.ts
+@@ -1,68 +1,5 @@
+-import type { SupabaseClient } from '@supabase/supabase-js';
+-
+-// Utility function to update stocked status based on remaining quantity
+-export async function updateStockedStatus(
+-	supabase: SupabaseClient,
+-	coffee_id: number,
+-	user_id: string
+-) {
+-	try {
+-		// Get the green coffee inventory record
+-		const { data: coffee, error: coffeeError } = await supabase
+-			.from('green_coffee_inv')
+-			.select('id, purchased_qty_lbs')
+-			.eq('id', coffee_id)
+-			.eq('user', user_id)
+-			.single();
+-
+-		if (coffeeError || !coffee) {
+-			console.error('Coffee not found for stocked status update:', coffee_id);
+-			return { success: false, error: 'Coffee not found' };
+-		}
+-
+-		// Calculate total roasted quantity
+-		const { data: roastProfiles, error: roastError } = await supabase
+-			.from('roast_profiles')
+-			.select('oz_in')
+-			.eq('coffee_id', coffee_id)
+-			.eq('user', user_id);
+-
+-		if (roastError) {
+-			console.error('Error fetching roast profiles for stocked status update:', roastError);
+-			return { success: false, error: 'Error fetching roast profiles' };
+-		}
+-
+-		// Calculate remaining quantity
+-		const totalOzIn =
+-			roastProfiles?.reduce(
+-				(sum: number, profile: { oz_in: number | null }) => sum + (profile.oz_in || 0),
+-				0
+-			) || 0;
+-		const purchasedOz = (coffee.purchased_qty_lbs || 0) * 16;
+-		const remainingOz = purchasedOz - totalOzIn;
+-
+-		// Update stocked status if remaining quantity is below 4 oz
+-		const shouldBeStocked = remainingOz >= 4;
+-
+-		const { error: updateError } = await supabase
+-			.from('green_coffee_inv')
+-			.update({ stocked: shouldBeStocked })
+-			.eq('id', coffee_id)
+-			.eq('user', user_id);
+-
+-		if (updateError) {
+-			console.error('Error updating stocked status:', updateError);
+-			return { success: false, error: 'Error updating stocked status' };
+-		}
+-
+-		return {
+-			success: true,
+-			coffee_id,
+-			remaining_oz: remainingOz,
+-			stocked: shouldBeStocked
+-		};
+-	} catch (error) {
+-		console.error('Error in updateStockedStatus:', error);
+-		return { success: false, error: 'Unexpected error' };
+-	}
+-}
++/**
++ * @deprecated Re-export shim for backwards compatibility.
++ * Import directly from '$lib/data/inventory.js' in new code.
++ */
++export { updateStockedStatus } from '$lib/data/inventory.js';
+diff --git a/src/routes/api/beans/+server.ts b/src/routes/api/beans/+server.ts
+index 0939bb6..9b57208 100644
+--- a/src/routes/api/beans/+server.ts
++++ b/src/routes/api/beans/+server.ts
+@@ -3,7 +3,12 @@ import { requireUserAuth } from '$lib/server/auth';
+ import type { RequestHandler } from './$types';
+ import type { Database } from '$lib/types/database.types';
+ import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
+-import { updateStockedStatus } from '$lib/server/stockedStatusUtils.js';
++import {
++	addToInventory,
++	updateInventory,
++	deleteInventoryItem,
++	updateStockedStatus
++} from '$lib/data/inventory.js';
+ 
+ export const GET: RequestHandler = async ({ url, locals }) => {
+ 	try {
+@@ -126,37 +131,6 @@ export const POST: RequestHandler = async (event) => {
+ 			catalogId = newCatalogEntry.id;
+ 		}
+ 
+-		// Clean and prepare the green_coffee_inv data for insertion
+-		const validInventoryColumns = [
+-			'rank',
+-			'notes',
+-			'purchase_date',
+-			'purchased_qty_lbs',
+-			'bean_cost',
+-			'tax_ship_cost',
+-			'stocked',
+-			'cupping_notes'
+-		];
+-
+-		const cleanedBean: Record<string, unknown> = {
+-			user: user.id,
+-			catalog_id: catalogId,
+-			last_updated: new Date().toISOString(),
+-			// Ensure numeric fields are properly formatted
+-			tax_ship_cost:
+-				typeof bean.tax_ship_cost === 'number' ? parseFloat(bean.tax_ship_cost.toFixed(2)) : 0.0,
+-			bean_cost: typeof bean.bean_cost === 'number' ? parseFloat(bean.bean_cost.toFixed(2)) : 0.0
+-		};
+-
+-		// Add only valid inventory columns
+-		// Add only valid inventory columns (ignoring keys that don't match or are explicitly handled)
+-		validInventoryColumns.forEach((field) => {
+-			if (bean[field] !== undefined) {
+-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+-				(cleanedBean as any)[field] = bean[field];
+-			}
+-		});
+-
+ 		// If this bean references a catalog item, verify it exists
+ 		if (catalogId) {
+ 			const { data: catalogBean, error: catalogError } = await supabase
+@@ -170,18 +144,19 @@ export const POST: RequestHandler = async (event) => {
+ 			}
+ 		}
+ 
+-		const { data: newBean, error } = await supabase
+-			.from('green_coffee_inv')
+-			.insert(cleanedBean as Database['public']['Tables']['green_coffee_inv']['Insert'])
+-			.select()
+-			.single();
+-
+-		if (error) throw error;
+-
+-		// Get the full bean data with joins
+-		const { data: fullBean } = await buildGreenCoffeeQuery(supabase).eq('id', newBean.id).single();
++		const created = await addToInventory(supabase, user.id, {
++			catalog_id: catalogId ?? null,
++			rank: bean.rank,
++			notes: bean.notes,
++			purchase_date: bean.purchase_date,
++			purchased_qty_lbs: bean.purchased_qty_lbs,
++			bean_cost: bean.bean_cost,
++			tax_ship_cost: bean.tax_ship_cost,
++			stocked: bean.stocked,
++			cupping_notes: bean.cupping_notes
++		});
+ 
+-		return json(processGreenCoffeeData([fullBean])[0]);
++		return json(created);
+ 	} catch (error) {
+ 		console.error('Error creating bean:', error);
+ 		return json({ error: 'Failed to create bean' }, { status: 500 });
+@@ -199,17 +174,6 @@ export const PUT: RequestHandler = async (event) => {
+ 			return json({ error: 'No ID provided' }, { status: 400 });
+ 		}
+ 
+-		// Verify ownership
+-		const { data: existing } = await supabase
+-			.from('green_coffee_inv')
+-			.select('user')
+-			.eq('id', Number(id))
+-			.single();
+-
+-		if (!existing || existing.user !== user.id) {
+-			return json({ error: 'Unauthorized' }, { status: 403 });
+-		}
+-
+ 		const updates = await request.json();
+ 		const { id: _, ...rawUpdateData } = updates;
+ 
+@@ -232,15 +196,14 @@ export const PUT: RequestHandler = async (event) => {
+ 			Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
+ 		);
+ 
+-		// First do the update without the join to avoid schema cache issues
+-		const { error: updateError } = await supabase
+-			.from('green_coffee_inv')
+-			.update(updateData as Database['public']['Tables']['green_coffee_inv']['Update'])
+-			.eq('id', Number(id));
+-
+-		if (updateError) {
+-			console.error('Update error:', updateError);
+-			throw updateError;
++		let updated;
++		try {
++			updated = await updateInventory(supabase, Number(id), user.id, updateData);
++		} catch (err) {
++			if (err instanceof Error && err.message === 'Unauthorized') {
++				return json({ error: 'Unauthorized' }, { status: 403 });
++			}
++			throw err;
+ 		}
+ 
+ 		// Auto-update stocked status if inventory quantities changed and stocked wasn't manually set
+@@ -253,10 +216,7 @@ export const PUT: RequestHandler = async (event) => {
+ 			}
+ 		}
+ 
+-		// Then fetch the updated data with the join
+-		const { data: updatedBean } = await buildGreenCoffeeQuery(supabase).eq('id', id).single();
+-
+-		return json(processGreenCoffeeData([updatedBean])[0]);
++		return json(updated);
+ 	} catch (error) {
+ 		console.error('Error updating bean:', error);
+ 		return json({ success: false, error: 'Failed to update bean' }, { status: 500 });
+@@ -274,84 +234,13 @@ export const DELETE: RequestHandler = async (event) => {
+ 			return json({ success: false, error: 'No ID provided' }, { status: 400 });
+ 		}
+ 
+-		// Verify ownership and get catalog_id for potential cascade deletion
+-		const { data: existing } = await supabase
+-			.from('green_coffee_inv')
+-			.select('user, catalog_id')
+-			.eq('id', Number(id))
+-			.single();
+-
+-		if (!existing || existing.user !== user.id) {
+-			return json({ error: 'Unauthorized' }, { status: 403 });
+-		}
+-
+-		// Get roast profiles first
+-		const { data: roastProfiles, error: selectError } = await supabase
+-			.from('roast_profiles')
+-			.select('roast_id')
+-			.eq('coffee_id', Number(id));
+-
+-		if (selectError) throw selectError;
+-
+-		// If there are roast profiles, delete their associated data
+-		if (roastProfiles && roastProfiles.length > 0) {
+-			const roastIds = roastProfiles.map((profile) => profile.roast_id);
+-
+-			// Delete from normalized tables
+-			const { error: tempError } = await supabase
+-				.from('roast_temperatures')
+-				.delete()
+-				.in('roast_id', roastIds);
+-			if (tempError) throw tempError;
+-
+-			const { error: eventError } = await supabase
+-				.from('roast_events')
+-				.delete()
+-				.in('roast_id', roastIds);
+-			if (eventError) throw eventError;
+-		}
+-
+-		// Delete roast profiles
+-		const { error: profileError } = await supabase
+-			.from('roast_profiles')
+-			.delete()
+-			.eq('coffee_id', Number(id));
+-
+-		if (profileError) throw profileError;
+-
+-		// Finally, delete the coffee
+-		const { error: deleteError } = await supabase
+-			.from('green_coffee_inv')
+-			.delete()
+-			.eq('id', Number(id));
+-
+-		if (deleteError) throw deleteError;
+-
+-		// Check if we need to cascade delete the coffee_catalog entry
+-		// Only delete if the catalog entry is user-owned (coffee_user = user.id)
+-		if (existing.catalog_id) {
+-			const { data: catalogEntry } = await supabase
+-				.from('coffee_catalog')
+-				.select('coffee_user, public_coffee')
+-				.eq('id', existing.catalog_id)
+-				.single();
+-
+-			// Delete catalog entry if it's user-owned and private (manual entry)
+-			if (
+-				catalogEntry &&
+-				catalogEntry.coffee_user === user.id &&
+-				catalogEntry.public_coffee === false
+-			) {
+-				const { error: catalogDeleteError } = await supabase
+-					.from('coffee_catalog')
+-					.delete()
+-					.eq('id', existing.catalog_id);
+-
+-				if (catalogDeleteError) {
+-					console.error('Error deleting user-owned catalog entry:', catalogDeleteError);
+-					// Don't fail the whole operation if catalog deletion fails
+-				}
++		try {
++			await deleteInventoryItem(supabase, Number(id), user.id);
++		} catch (err) {
++			if (err instanceof Error && err.message === 'Unauthorized') {
++				return json({ error: 'Unauthorized' }, { status: 403 });
+ 			}
++			throw err;
+ 		}
+ 
+ 		return json({ success: true });
+diff --git a/src/routes/api/tools/green-coffee-inv/+server.ts b/src/routes/api/tools/green-coffee-inv/+server.ts
+index a1c62e4..2dab7ec 100644
+--- a/src/routes/api/tools/green-coffee-inv/+server.ts
++++ b/src/routes/api/tools/green-coffee-inv/+server.ts
+@@ -1,6 +1,7 @@
+ import { json } from '@sveltejs/kit';
+ import { requireMemberRole } from '$lib/server/auth';
+ import type { RequestHandler } from './$types';
++import { getInventoryWithRoastSummary } from '$lib/data/inventory.js';
+ 
+ // Interface for tool input validation
+ interface GreenCoffeeInvToolInput {
+@@ -10,40 +11,6 @@ interface GreenCoffeeInvToolInput {
+ 	limit?: number;
+ }
+ 
+-// Tool response interface
+-// Interface for inventory item
+-interface InventoryItem {
+-	id: number;
+-	name?: string;
+-	purchased_qty_lbs?: number | null;
+-	bean_cost?: number | null;
+-	tax_ship_cost?: number | null;
+-	stocked: boolean;
+-	coffee_catalog?: {
+-		name?: string;
+-		[key: string]: unknown;
+-	} | null;
+-	roast_summary?: {
+-		total_roasts: number;
+-		total_oz_in: number;
+-		total_oz_out: number;
+-	};
+-	coffee_name?: string;
+-	[key: string]: unknown;
+-}
+-
+-interface GreenCoffeeInvToolResponse {
+-	inventory: InventoryItem[];
+-	total: number;
+-	summary: {
+-		total_beans: number;
+-		total_weight_lbs: number;
+-		total_value: number;
+-		stocked_beans: number;
+-	};
+-	filters_applied: GreenCoffeeInvToolInput;
+-}
+-
+ export const POST: RequestHandler = async (event) => {
+ 	try {
+ 		// Require member role for tool access
+@@ -60,134 +27,30 @@ export const POST: RequestHandler = async (event) => {
+ 			limit = 15
+ 		} = input;
+ 
+-		// Build base query similar to existing /data endpoint
+-		let query = supabase
+-			.from('green_coffee_inv')
+-			.select(
+-				`
+-			*,
+-			coffee_catalog!catalog_id (
+-				name,
+-
+-				arrival_date,
+-				region,
+-				processing,
+-				drying_method,
+-				lot_size,
+-				bag_size,
+-				packaging,
+-				cultivar_detail,
+-				grade,
+-				appearance,
+-				roast_recs,
+-				type,
+-				description_short,
+-				description_long,
+-				farm_notes,
+-				link,
+-				cost_lb,
+-				source,
+-				stocked,
+-				cupping_notes,
+-				stocked_date,
+-				unstocked_date,
+-				ai_description,
+-				ai_tasting_notes,
+-				public_coffee
+-			)
+-		`
+-			)
+-			.eq('user', user.id)
+-			.order('purchase_date', { ascending: false });
+-
+-		// Apply stocked filter - default to stocked inventory unless explicitly disabled
+-		// This focuses on currently available beans for roasting
+-		if (stocked_only !== false) {
+-			query = query.eq('stocked', true);
+-		}
+-
+-		// Apply limit - enforce maximum of 15 items
+ 		const finalLimit = Math.min(limit || 15, 15);
+-		if (finalLimit > 0) {
+-			query = query.limit(finalLimit);
+-		}
+-
+-		const { data: inventoryData, error } = await query;
+-		const inventory = inventoryData as unknown as InventoryItem[] | null;
+ 
+-		if (error) {
+-			console.error('Green coffee inventory tool error:', error);
+-			return json({ error: 'Failed to fetch inventory' }, { status: 500 });
+-		}
++		const inventory = await getInventoryWithRoastSummary(supabase, user.id, {
++			stockedOnly: stocked_only,
++			includeCatalogDetails: include_catalog_details,
++			includeRoastSummary: include_roast_summary,
++			limit: finalLimit
++		});
+ 
+ 		// Calculate summary statistics
+ 		const summary = {
+-			total_beans: inventory?.length || 0,
+-			total_weight_lbs:
+-				inventory?.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0) || 0,
+-			total_value:
+-				inventory?.reduce((sum, bean) => {
+-					const beanCost = bean.bean_cost || 0;
+-					const taxShipCost = bean.tax_ship_cost || 0;
+-					return sum + beanCost + taxShipCost;
+-				}, 0) || 0,
+-			stocked_beans: inventory?.filter((bean) => bean.stocked).length || 0
++			total_beans: inventory.length,
++			total_weight_lbs: inventory.reduce((sum, bean) => sum + (bean.purchased_qty_lbs || 0), 0),
++			total_value: inventory.reduce((sum, bean) => {
++				const beanCost = bean.bean_cost || 0;
++				const taxShipCost = bean.tax_ship_cost || 0;
++				return sum + beanCost + taxShipCost;
++			}, 0),
++			stocked_beans: inventory.filter((bean) => bean.stocked).length
+ 		};
+ 
+-		// If roast summary is requested, get roast profile counts
+-		let processedInventory = inventory || [];
+-		if (include_roast_summary && inventory) {
+-			const coffeeIds = inventory.map((bean) => bean.id);
+-
+-			if (coffeeIds.length > 0) {
+-				const { data: roastProfiles } = (await supabase
+-					.from('roast_profiles')
+-					.select('coffee_id, oz_in, oz_out, roast_id, batch_name, roast_date')
+-					.in('coffee_id', coffeeIds)
+-					.eq('user', user.id)) as {
+-					data: Array<{
+-						coffee_id: number;
+-						oz_in: number | null;
+-						oz_out: number | null;
+-						roast_id: number;
+-						batch_name: string;
+-						roast_date: string;
+-					}> | null;
+-				};
+-
+-				// Add roast summary to each inventory item
+-				processedInventory = inventory.map((bean) => ({
+-					...bean,
+-					roast_summary: {
+-						total_roasts:
+-							roastProfiles?.filter((profile) => profile.coffee_id === bean.id).length || 0,
+-						total_oz_in:
+-							roastProfiles
+-								?.filter((profile) => profile.coffee_id === bean.id)
+-								.reduce((sum, profile) => sum + (profile.oz_in || 0), 0) || 0,
+-						total_oz_out:
+-							roastProfiles
+-								?.filter((profile) => profile.coffee_id === bean.id)
+-								.reduce((sum, profile) => sum + (profile.oz_out || 0), 0) || 0
+-					}
+-				}));
+-			}
+-		}
+-
+-		// Clean up catalog data if not requested
+-		if (!include_catalog_details) {
+-			processedInventory = processedInventory.map((bean) => {
+-				const { coffee_catalog, ...beanWithoutCatalog } = bean;
+-				return {
+-					...beanWithoutCatalog,
+-					coffee_name: coffee_catalog?.name || 'Unknown'
+-				};
+-			});
+-		}
+-
+-		const response: GreenCoffeeInvToolResponse = {
+-			inventory: processedInventory,
+-			total: processedInventory.length,
++		return json({
++			inventory,
++			total: inventory.length,
+ 			summary,
+ 			filters_applied: {
+ 				stocked_only,
+@@ -195,9 +58,7 @@ export const POST: RequestHandler = async (event) => {
+ 				include_roast_summary,
+ 				limit: finalLimit
+ 			}
+-		};
+-
+-		return json(response);
++		});
+ 	} catch (error) {
+ 		console.error('Green coffee inventory tool error:', error);
+ 		return json(
+diff --git a/src/routes/api/update-stocked-status/+server.ts b/src/routes/api/update-stocked-status/+server.ts
+index ce2e5ac..5e14c51 100644
+--- a/src/routes/api/update-stocked-status/+server.ts
++++ b/src/routes/api/update-stocked-status/+server.ts
+@@ -1,6 +1,6 @@
+ import { json } from '@sveltejs/kit';
+ import type { RequestHandler } from './$types';
+-import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
++import { updateStockedStatus } from '$lib/data/inventory.js';
+ 
+ interface CoffeeInventoryItem {
+ 	id: number;
+diff --git a/tests/e2e/crud.spec.ts b/tests/e2e/crud.spec.ts
+index 67120ea..968b390 100644
+--- a/tests/e2e/crud.spec.ts
++++ b/tests/e2e/crud.spec.ts
+@@ -328,7 +328,7 @@ test.describe('Cupping Notes', () => {
+ 			// Adjust sliders and selects
+ 			const slider = page.getByRole('slider').first();
+ 			if (await slider.isVisible({ timeout: 1000 }).catch(() => false)) {
+-				await slider.fill('6');
++				await slider.fill('5'); // slider max is 5 (1-5 scale)
+ 			}
+ 
+ 			const brewMethod = page.locator('#brew-method');

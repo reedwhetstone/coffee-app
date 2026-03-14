@@ -234,7 +234,15 @@ export async function updateInventory(
 
 	if (updateError) throw updateError;
 
-	// Fetch with full joins
+	// If purchased_qty_lbs changed and stocked wasn't manually set, auto-update
+	// stocked status BEFORE the final fetch so the returned data is fresh
+	if (data.purchased_qty_lbs !== undefined && data.stocked === undefined) {
+		await updateStockedStatus(supabase, id, userId).catch((err) => {
+			console.warn('Failed to auto-update stocked status after inventory update:', err);
+		});
+	}
+
+	// Fetch with full joins — reflects any stocked status change above
 	const { data: updatedRow } = await buildGreenCoffeeQuery(supabase).eq('id', id).single();
 
 	return processGreenCoffeeData([updatedRow])[0];
@@ -333,7 +341,7 @@ export async function updateStockedStatus(
 	userId: string
 ): Promise<{
 	success: boolean;
-	stocked: boolean;
+	stocked?: boolean;
 	coffee_id?: number;
 	remaining_oz?: number;
 	error?: string;
@@ -349,7 +357,7 @@ export async function updateStockedStatus(
 
 		if (coffeeError || !coffee) {
 			console.error('Coffee not found for stocked status update:', coffeeId);
-			return { success: false, stocked: false, error: 'Coffee not found' };
+			return { success: false, error: 'Coffee not found' };
 		}
 
 		// Calculate total roasted quantity
@@ -361,7 +369,7 @@ export async function updateStockedStatus(
 
 		if (roastError) {
 			console.error('Error fetching roast profiles for stocked status update:', roastError);
-			return { success: false, stocked: false, error: 'Error fetching roast profiles' };
+			return { success: false, error: 'Error fetching roast profiles' };
 		}
 
 		// Calculate remaining quantity
@@ -384,7 +392,7 @@ export async function updateStockedStatus(
 
 		if (updateError) {
 			console.error('Error updating stocked status:', updateError);
-			return { success: false, stocked: false, error: 'Error updating stocked status' };
+			return { success: false, error: 'Error updating stocked status' };
 		}
 
 		return {
@@ -395,7 +403,7 @@ export async function updateStockedStatus(
 		};
 	} catch (error) {
 		console.error('Error in updateStockedStatus:', error);
-		return { success: false, stocked: false, error: 'Unexpected error' };
+		return { success: false, error: 'Unexpected error' };
 	}
 }
 
