@@ -328,7 +328,7 @@ test.describe('Cupping Notes', () => {
 			// Adjust sliders and selects
 			const slider = page.getByRole('slider').first();
 			if (await slider.isVisible({ timeout: 1000 }).catch(() => false)) {
-				await slider.fill('6');
+				await slider.fill('5'); // slider max is 5 (1-5 scale)
 			}
 
 			const brewMethod = page.locator('#brew-method');
