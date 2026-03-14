@@ -1,0 +1,7 @@
+ src/lib/data/roast.ts                    | 775 +++++++++++++++++++++++++++++++
+ src/lib/server/roastDataUtils.ts         | 221 +--------
+ src/routes/api/beans/+server.ts          |  31 +-
+ src/routes/api/clear-roast/+server.ts    | 110 +----
+ src/routes/api/roast-profiles/+server.ts | 407 ++--------------
+ tests/e2e/crud.spec.ts                   |   2 +-
+ 6 files changed, 845 insertions(+), 701 deletions(-)

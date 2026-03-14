@@ -72,21 +72,9 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 
 		if (id) {
 			const parsedId = Number(id);
-
-			// Need coffee_id before deletion for stocked status update
-			const { data: existing } = await supabase
-				.from('roast_profiles')
-				.select('user, coffee_id')
-				.eq('roast_id', parsedId)
-				.single();
-
-			const row = existing as { user: string; coffee_id: number } | null;
-			if (!row || row.user !== user.id) {
-				return json({ error: 'Unauthorized' }, { status: 403 });
-			}
-
-			await deleteRoast(supabase, parsedId, user.id);
-			await updateStockedStatus(supabase, row.coffee_id, user.id);
+			// deleteRoast verifies ownership and returns coffeeId in one query
+			const { coffeeId } = await deleteRoast(supabase, parsedId, user.id);
+			await updateStockedStatus(supabase, coffeeId, user.id);
 		} else if (batchName) {
 			const { coffeeIds } = await deleteBatch(supabase, batchName, user.id);
 			for (const coffee_id of coffeeIds) {
@@ -123,24 +111,10 @@ export const PUT: RequestHandler = async ({
 		const parsedId = Number(id);
 		const body = (await request.json()) as RoastUpdateInput;
 
-		// Need coffee_id before update for stocked status
-		const { data: existing } = await supabase
-			.from('roast_profiles')
-			.select('user, coffee_id')
-			.eq('roast_id', parsedId)
-			.single();
-
-		const row = existing as { user: string; coffee_id: number } | null;
-		if (!row || row.user !== user.id) {
-			return json({ error: 'Unauthorized' }, { status: 403 });
-		}
-
-		const updated = await updateRoast(supabase, parsedId, user.id, body);
-
-		// Update stocked status for this coffee after updating roast profile
-		await updateStockedStatus(supabase, row.coffee_id, user.id);
-
-		return json(updated);
+		// updateRoast verifies ownership and returns coffeeId in one query
+		const { profile, coffeeId } = await updateRoast(supabase, parsedId, user.id, body);
+		await updateStockedStatus(supabase, coffeeId, user.id);
+		return json(profile);
 	} catch (error) {
 		console.error('Error updating roast profile:', error);
 		return json({ error: 'Failed to update roast profile' }, { status: 500 });

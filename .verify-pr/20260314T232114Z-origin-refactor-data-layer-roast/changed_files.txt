@@ -1,0 +1,6 @@
+src/lib/data/roast.ts
+src/lib/server/roastDataUtils.ts
+src/routes/api/beans/+server.ts
+src/routes/api/clear-roast/+server.ts
+src/routes/api/roast-profiles/+server.ts
+tests/e2e/crud.spec.ts

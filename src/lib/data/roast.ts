@@ -225,16 +225,16 @@ export async function verifyRoastOwnership(
 	supabase: SupabaseClient,
 	roastId: number,
 	userId: string
-): Promise<RoastProfile> {
+): Promise<{ roast_id: number; user: string; coffee_id: number }> {
 	const { data, error } = await supabase
 		.from('roast_profiles')
-		.select('*')
+		.select('roast_id, user, coffee_id')
 		.eq('roast_id', roastId)
 		.single();
 
 	if (error || !data) throw new Error('Roast profile not found');
-	if ((data as RoastProfile).user !== userId) throw new Error('Unauthorized');
-	return data as RoastProfile;
+	if (data.user !== userId) throw new Error('Unauthorized');
+	return data as { roast_id: number; user: string; coffee_id: number };
 }
 
 /**
@@ -394,7 +394,7 @@ export async function updateRoast(
 	roastId: number,
 	userId: string,
 	data: RoastUpdateInput
-): Promise<RoastProfile> {
+): Promise<{ profile: RoastProfile; coffeeId: number }> {
 	const { temperatureEntries, eventEntries, ...profileData } = data;
 	const updateData = profileData as RoastProfileUpdate;
 
@@ -422,8 +422,8 @@ export async function updateRoast(
 		}
 	}
 
-	// Verify ownership (also verifies the record exists)
-	await verifyRoastOwnership(supabase, roastId, userId);
+	// Verify ownership — returns coffee_id to avoid a second query in the caller
+	const existing = await verifyRoastOwnership(supabase, roastId, userId);
 
 	const { data: updated, error } = await supabase
 		.from('roast_profiles')
@@ -456,26 +456,27 @@ export async function updateRoast(
 		}
 	}
 
-	return updated as RoastProfile;
+	return { profile: updated as RoastProfile, coffeeId: existing.coffee_id };
 }
 
 /**
  * Delete a single roast profile (with cascade to temps/events).
- * Caller is responsible for any stocked-status updates.
+ * Returns the coffee_id so callers can update stocked status without a second query.
  */
 export async function deleteRoast(
 	supabase: SupabaseClient,
 	roastId: number,
 	userId: string
-): Promise<void> {
-	// Verify ownership
-	await verifyRoastOwnership(supabase, roastId, userId);
+): Promise<{ coffeeId: number }> {
+	// Verify ownership — returns coffee_id so we don't need a second query
+	const existing = await verifyRoastOwnership(supabase, roastId, userId);
 
 	// Delete associated data first
 	await supabase.from('roast_temperatures').delete().eq('roast_id', roastId);
 	await supabase.from('roast_events').delete().eq('roast_id', roastId);
 	// Then delete the profile
 	await supabase.from('roast_profiles').delete().eq('roast_id', roastId).eq('user', userId);
+	return { coffeeId: existing.coffee_id };
 }
 
 /**
