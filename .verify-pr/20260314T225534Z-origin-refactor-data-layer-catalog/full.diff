@@ -1,0 +1,870 @@
+diff --git a/src/lib/data/catalog.ts b/src/lib/data/catalog.ts
+new file mode 100644
+index 0000000..611fc61
+--- /dev/null
++++ b/src/lib/data/catalog.ts
+@@ -0,0 +1,373 @@
++/**
++ * Catalog data layer — single source of truth for all coffee_catalog queries.
++ *
++ * Auth is intentionally excluded from this module. Route handlers are responsible
++ * for validating sessions / API keys before calling these functions.
++ */
++
++import type { SupabaseClient } from '@supabase/supabase-js';
++import type { Database } from '$lib/types/database.types';
++
++// ── Types ────────────────────────────────────────────────────────────────────
++
++/** Full coffee_catalog row as returned by Supabase. */
++export type CatalogItem = Database['public']['Tables']['coffee_catalog']['Row'];
++
++/** Lightweight item for dropdowns and pickers. */
++export interface CatalogDropdownItem {
++	id: number;
++	source: string | null;
++	name: string;
++	stocked: boolean | null;
++	cost_lb: number | null;
++	price_tiers: Database['public']['Tables']['coffee_catalog']['Row']['price_tiers'];
++}
++
++/** Options for the shared catalog search. */
++export interface CatalogSearchOptions {
++	// Content filters
++	origin?: string; // matches continent, country, region (OR)
++	process?: string; // ilike processing
++	variety?: string; // ilike cultivar_detail
++	priceRange?: [number, number]; // [min, max] on cost_lb
++	flavorKeywords?: string[]; // ilike across description/notes fields
++	name?: string; // ilike name
++	dryingMethod?: string; // ilike processing OR drying_method
++	supplier?: string; // ilike source
++	coffeeIds?: number[]; // exact IN filter
++
++	// Stock filters
++	stockedOnly?: boolean; // eq stocked=true (default: false — caller decides)
++	stockedDays?: number; // gte stocked_date = N days ago
++
++	// Visibility filters (for internal catalog endpoint)
++	publicOnly?: boolean; // eq public_coffee=true
++	showWholesale?: boolean; // include wholesale=true rows (default: false hides them)
++	wholesaleOnly?: boolean; // eq wholesale=true
++
++	// Pagination
++	limit?: number; // row limit (no offset — use range() call for paginated)
++	offset?: number; // pagination offset
++
++	// Field set
++	fields?: 'full' | 'dropdown'; // dropdown → id,source,name,stocked,cost_lb,price_tiers
++
++	// Sorting
++	orderBy?: string;
++	orderDirection?: 'asc' | 'desc';
++
++	// Catalog-specific filters (internal endpoint)
++	continent?: string;
++	country?: string;
++	source?: string[];
++	processing?: string;
++	cultivarDetail?: string;
++	type?: string;
++	grade?: string;
++	appearance?: string;
++	region?: string;
++	scoreValueMin?: number;
++	scoreValueMax?: number;
++	costLbMin?: number;
++	costLbMax?: number;
++	arrivalDate?: string;
++	stockedDate?: string; // number-as-string: days back
++}
++
++/** Standard response from searchCatalog. */
++export interface CatalogSearchResult {
++	data: CatalogItem[];
++	count: number;
++	filtersApplied: Record<string, unknown>;
++}
++
++/** Response from searchCatalogDropdown (lightweight query). */
++export interface CatalogDropdownResult {
++	data: CatalogDropdownItem[];
++	count: number;
++}
++
++// ── Columns ──────────────────────────────────────────────────────────────────
++
++const DROPDOWN_COLUMNS = 'id, source, name, stocked, cost_lb, price_tiers' as const;
++
++/** Columns exposed via the external catalog API (excludes sensitive fields). */
++export const CATALOG_API_COLUMNS = [
++	'id',
++	'name',
++	'score_value',
++	'arrival_date',
++	'region',
++	'processing',
++	'drying_method',
++	'roast_recs',
++	'lot_size',
++	'bag_size',
++	'packaging',
++	'cultivar_detail',
++	'grade',
++	'appearance',
++	'type',
++	'link',
++	'cost_lb',
++	'last_updated',
++	'source',
++	'stocked',
++	'unstocked_date',
++	'stocked_date',
++	'ai_description',
++	'ai_tasting_notes',
++	'country',
++	'continent'
++].join(',');
++
++// ── Core functions ────────────────────────────────────────────────────────────
++
++/**
++ * Primary catalog search — single source of truth for all query consumers.
++ * Applies filters, sorting, and optional pagination. Returns data + count.
++ */
++export async function searchCatalog(
++	supabase: SupabaseClient,
++	options: CatalogSearchOptions = {}
++): Promise<CatalogSearchResult> {
++	const {
++		origin,
++		process,
++		variety,
++		priceRange,
++		flavorKeywords = [],
++		name,
++		dryingMethod,
++		supplier,
++		coffeeIds,
++		stockedOnly,
++		stockedDays,
++		publicOnly,
++		showWholesale,
++		wholesaleOnly,
++		limit,
++		offset,
++		orderBy = 'arrival_date',
++		orderDirection = 'desc',
++		// Internal catalog filters
++		continent,
++		country,
++		source,
++		processing,
++		cultivarDetail,
++		type,
++		grade,
++		appearance,
++		region,
++		scoreValueMin,
++		scoreValueMax,
++		costLbMin,
++		costLbMax,
++		arrivalDate,
++		stockedDate
++	} = options;
++
++	const usePagination = offset !== undefined || limit !== undefined;
++	const selectClause = usePagination ? ('*' as const) : ('*' as const);
++
++	let query = supabase
++		.from('coffee_catalog')
++		.select(selectClause, usePagination ? { count: 'exact' } : { count: 'exact' });
++
++	// ── Visibility filters ────────────────────────────────────────────────────
++	if (stockedOnly) {
++		query = query.eq('stocked', true);
++	}
++	if (publicOnly) {
++		query = query.eq('public_coffee', true);
++	}
++	if (wholesaleOnly) {
++		query = query.eq('wholesale', true);
++	} else if (!showWholesale) {
++		// Default internal behavior: hide wholesale rows
++		query = query.eq('wholesale', false);
++	}
++
++	// ── ID filter ────────────────────────────────────────────────────────────
++	if (coffeeIds && coffeeIds.length > 0) {
++		query = query.in('id', coffeeIds);
++	}
++
++	// ── Geographic / origin filters ───────────────────────────────────────────
++	if (origin) {
++		query = query.or(
++			`continent.ilike.%${origin}%,country.ilike.%${origin}%,region.ilike.%${origin}%`
++		);
++	}
++	if (continent) query = query.eq('continent', continent);
++	if (country) query = query.eq('country', country);
++	if (region) query = query.ilike('region', `%${region}%`);
++	if (source && source.length > 0) query = query.in('source', source);
++
++	// ── Text search filters ───────────────────────────────────────────────────
++	if (name) query = query.ilike('name', `%${name}%`);
++	if (process) query = query.ilike('processing', `%${process}%`);
++	if (processing) query = query.ilike('processing', `%${processing}%`);
++	if (variety) query = query.ilike('cultivar_detail', `%${variety}%`);
++	if (cultivarDetail) query = query.ilike('cultivar_detail', `%${cultivarDetail}%`);
++	if (type) query = query.ilike('type', `%${type}%`);
++	if (grade) query = query.ilike('grade', `%${grade}%`);
++	if (appearance) query = query.ilike('appearance', `%${appearance}%`);
++	if (supplier) query = query.ilike('source', `%${supplier}%`);
++	if (dryingMethod) {
++		query = query.or(`processing.ilike.%${dryingMethod}%,drying_method.ilike.%${dryingMethod}%`);
++	}
++
++	// ── Flavor keyword search ─────────────────────────────────────────────────
++	if (flavorKeywords.length > 0) {
++		const conditions: string[] = [];
++		for (const keyword of flavorKeywords) {
++			conditions.push(`description_short.ilike.%${keyword}%`);
++			conditions.push(`description_long.ilike.%${keyword}%`);
++			conditions.push(`farm_notes.ilike.%${keyword}%`);
++			conditions.push(`ai_description.ilike.%${keyword}%`);
++			conditions.push(`cupping_notes.ilike.%${keyword}%`);
++		}
++		query = query.or(conditions.join(','));
++	}
++
++	// ── Numeric range filters ─────────────────────────────────────────────────
++	if (priceRange && priceRange.length === 2) {
++		query = query.gte('cost_lb', priceRange[0]).lte('cost_lb', priceRange[1]);
++	}
++	if (scoreValueMin !== undefined) query = query.gte('score_value', scoreValueMin);
++	if (scoreValueMax !== undefined) query = query.lte('score_value', scoreValueMax);
++	if (costLbMin !== undefined) query = query.gte('cost_lb', costLbMin);
++	if (costLbMax !== undefined) query = query.lte('cost_lb', costLbMax);
++
++	// ── Date filters ──────────────────────────────────────────────────────────
++	if (arrivalDate) query = query.eq('arrival_date', arrivalDate);
++	if (stockedDate && stockedDate !== '') {
++		const daysBack = parseInt(stockedDate, 10);
++		const cutoff = new Date();
++		cutoff.setDate(cutoff.getDate() - daysBack);
++		query = query.gte('stocked_date', cutoff.toISOString().split('T')[0]);
++	}
++	if (stockedDays && stockedDays > 0) {
++		const cutoff = new Date();
++		cutoff.setDate(cutoff.getDate() - stockedDays);
++		query = query.gte('stocked_date', cutoff.toISOString().split('T')[0]);
++	}
++
++	// ── Sorting ───────────────────────────────────────────────────────────────
++	query = query.order(orderBy, { ascending: orderDirection === 'asc' });
++
++	// ── Pagination ────────────────────────────────────────────────────────────
++	if (offset !== undefined && limit !== undefined) {
++		query = query.range(offset, offset + limit - 1);
++	} else if (limit !== undefined) {
++		query = query.limit(limit);
++	}
++
++	const { data, error, count } = await query;
++	if (error) throw error;
++
++	const filtersApplied: Record<string, unknown> = {};
++	if (origin) filtersApplied.origin = origin;
++	if (process) filtersApplied.process = process;
++	if (variety) filtersApplied.variety = variety;
++	if (priceRange) filtersApplied.priceRange = priceRange;
++	if (flavorKeywords.length) filtersApplied.flavorKeywords = flavorKeywords;
++	if (name) filtersApplied.name = name;
++	if (dryingMethod) filtersApplied.dryingMethod = dryingMethod;
++	if (supplier) filtersApplied.supplier = supplier;
++	if (coffeeIds) filtersApplied.coffeeIds = coffeeIds;
++	if (stockedOnly) filtersApplied.stockedOnly = stockedOnly;
++	if (stockedDays) filtersApplied.stockedDays = stockedDays;
++	if (limit) filtersApplied.limit = limit;
++
++	return {
++		data: (data as CatalogItem[]) || [],
++		count: count ?? data?.length ?? 0,
++		filtersApplied
++	};
++}
++
++/**
++ * Fetch a single catalog item by ID. Returns null if not found.
++ */
++export async function getCatalogItem(
++	supabase: SupabaseClient,
++	id: number
++): Promise<CatalogItem | null> {
++	const { data, error } = await supabase.from('coffee_catalog').select('*').eq('id', id).single();
++
++	if (error) {
++		if (error.code === 'PGRST116') return null; // not found
++		throw error;
++	}
++	return data as CatalogItem;
++}
++
++/**
++ * Lightweight dropdown query — returns only the fields needed for pickers.
++ * Consumers: /api/catalog?fields=dropdown, bean pickers.
++ */
++export async function getCatalogDropdown(
++	supabase: SupabaseClient,
++	options: { stockedOnly?: boolean; showWholesale?: boolean; wholesaleOnly?: boolean } = {}
++): Promise<CatalogDropdownItem[]> {
++	const { stockedOnly = true, showWholesale = false, wholesaleOnly = false } = options;
++
++	let query = supabase
++		.from('coffee_catalog')
++		.select(DROPDOWN_COLUMNS)
++		.order('arrival_date', { ascending: false });
++
++	if (stockedOnly) {
++		query = query.eq('stocked', true);
++	}
++
++	if (wholesaleOnly) {
++		query = query.eq('wholesale', true);
++	} else if (!showWholesale) {
++		query = query.eq('wholesale', false);
++	}
++
++	const { data, error } = await query;
++	if (error) throw error;
++	return (data as CatalogDropdownItem[]) || [];
++}
++
++/**
++ * Fetch a batch of catalog items by IDs (legacy ?ids= support).
++ * Returns rows ordered by name.
++ */
++export async function getCatalogItemsByIds(
++	supabase: SupabaseClient,
++	ids: number[]
++): Promise<CatalogItem[]> {
++	if (ids.length === 0) return [];
++	const { data, error } = await supabase
++		.from('coffee_catalog')
++		.select('*')
++		.in('id', ids)
++		.order('name');
++
++	if (error) throw error;
++	return (data as CatalogItem[]) || [];
++}
++
++/**
++ * Fetch all publicly visible catalog items with a specific column subset.
++ * Used by the external catalog API.
++ */
++export async function getPublicCatalog(
++	supabase: SupabaseClient,
++	columns: string = CATALOG_API_COLUMNS
++): Promise<Record<string, unknown>[]> {
++	const { data, error } = await supabase
++		.from('coffee_catalog')
++		.select(columns)
++		.eq('public_coffee', true)
++		.order('name');
++
++	if (error) throw error;
++	return (data as unknown as Record<string, unknown>[]) || [];
++}
+diff --git a/src/routes/(home)/+page.server.ts b/src/routes/(home)/+page.server.ts
+index b3dd23c..3e9e63d 100644
+--- a/src/routes/(home)/+page.server.ts
++++ b/src/routes/(home)/+page.server.ts
+@@ -1,5 +1,6 @@
+ import type { PageServerLoad } from '../(home)/$types';
+ import { createSchemaService } from '$lib/services/schemaService';
++import { searchCatalog } from '$lib/data/catalog';
+ 
+ export const load: PageServerLoad = async ({ locals, url }) => {
+ 	// Get session data - no longer redirecting server-side for better performance
+@@ -8,18 +9,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
+ 	// Get limited coffee data for preview section with error handling
+ 	let stockedData: Record<string, unknown>[] = [];
+ 	try {
+-		const { data, error } = await locals.supabase
+-			.from('coffee_catalog')
+-			.select('*')
+-			.eq('stocked', true)
+-			.order('arrival_date', { ascending: false })
+-			.limit(6); // Only need 6 for preview
+-
+-		if (error) {
+-			console.warn('Failed to load coffee catalog for home preview:', error);
+-		} else {
+-			stockedData = data || [];
+-		}
++		const result = await searchCatalog(locals.supabase, {
++			stockedOnly: true,
++			showWholesale: false,
++			orderBy: 'arrival_date',
++			orderDirection: 'desc',
++			limit: 6 // Only need 6 for preview
++		});
++		stockedData = result.data as unknown as Record<string, unknown>[];
+ 	} catch (error) {
+ 		console.error('Error loading coffee catalog:', error);
+ 		// Continue with empty array, don't block page load
+diff --git a/src/routes/api/catalog-api/+server.ts b/src/routes/api/catalog-api/+server.ts
+index 881e45a..faf0a10 100644
+--- a/src/routes/api/catalog-api/+server.ts
++++ b/src/routes/api/catalog-api/+server.ts
+@@ -8,6 +8,7 @@ import {
+ 	getApiRowLimit
+ } from '$lib/server/apiAuth';
+ import { createAdminClient } from '$lib/supabase-admin';
++import { getPublicCatalog, CATALOG_API_COLUMNS } from '$lib/data/catalog';
+ 
+ // Cache for catalog API data
+ let catalogApiCache: {
+@@ -20,36 +21,6 @@ let catalogApiCache: {
+ 
+ const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
+ 
+-// Columns to include in catalog API (excluding sensitive/unnecessary fields)
+-const CATALOG_API_COLUMNS = [
+-	'id',
+-	'name',
+-	'score_value',
+-	'arrival_date',
+-	'region',
+-	'processing',
+-	'drying_method',
+-	'roast_recs',
+-	'lot_size',
+-	'bag_size',
+-	'packaging',
+-	'cultivar_detail',
+-	'grade',
+-	'appearance',
+-	'type',
+-	'link',
+-	'cost_lb',
+-	'last_updated',
+-	'source',
+-	'stocked',
+-	'unstocked_date',
+-	'stocked_date',
+-	'ai_description',
+-	'ai_tasting_notes',
+-	'country',
+-	'continent'
+-].join(',');
+-
+ export const GET: RequestHandler = async ({ request }) => {
+ 	const startTime = Date.now();
+ 	let apiKeyId: string | undefined;
+@@ -216,36 +187,16 @@ export const GET: RequestHandler = async ({ request }) => {
+ 		console.log('Fetching catalog API data from database');
+ 
+ 		// Fetch only public coffees with specified columns
+-		const { data: rows, error: dbError } = await supabase
+-			.from('coffee_catalog')
+-			.select(CATALOG_API_COLUMNS)
+-			.eq('public_coffee', true)
+-			.order('name');
+-
+-		if (dbError) {
+-			console.error('Database error:', dbError);
+-
+-			// Log database error
+-			await logApiUsage(
+-				apiKeyId,
+-				'/api/catalog-api',
+-				500,
+-				Date.now() - startTime,
+-				request.headers.get('User-Agent') || undefined,
+-				request.headers.get('X-Forwarded-For') || undefined
+-			);
+-
+-			throw dbError;
+-		}
++		const rows = await getPublicCatalog(supabase, CATALOG_API_COLUMNS);
+ 
+ 		// Update cache
+ 		catalogApiCache = {
+-			data: (rows || []) as unknown as Record<string, unknown>[],
++			data: rows,
+ 			timestamp: now
+ 		};
+ 
+ 		// Apply row limiting for free tier
+-		let responseData = rows || [];
++		let responseData = rows;
+ 		let isLimited = false;
+ 		if (rowLimit > 0 && responseData.length > rowLimit) {
+ 			responseData = responseData.slice(0, rowLimit);
+diff --git a/src/routes/api/catalog/+server.ts b/src/routes/api/catalog/+server.ts
+index 72f0ded..223635c 100644
+--- a/src/routes/api/catalog/+server.ts
++++ b/src/routes/api/catalog/+server.ts
+@@ -1,5 +1,6 @@
+ import { json } from '@sveltejs/kit';
+ import type { RequestHandler } from './$types';
++import { getCatalogItemsByIds, getCatalogDropdown, searchCatalog } from '$lib/data/catalog';
+ 
+ // Simple in-memory cache for catalog data (keyed by wholesale visibility mode)
+ const catalogCache: Record<
+@@ -24,14 +25,8 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
+ 		const requestedIds = idsParam.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+ 
+ 		if (requestedIds.length > 0) {
+-			const { data: rows, error } = await supabase
+-				.from('coffee_catalog')
+-				.select('*')
+-				.in('id', requestedIds)
+-				.order('name');
+-
+-			if (error) throw error;
+-			return json(rows || []);
++			const rows = await getCatalogItemsByIds(supabase, requestedIds);
++			return json(rows);
+ 		}
+ 
+ 		// Extract pagination parameters
+@@ -41,27 +36,27 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
+ 
+ 		// Extract filter parameters
+ 		const filters = {
+-			continent: url.searchParams.get('continent'),
+-			country: url.searchParams.get('country'),
++			continent: url.searchParams.get('continent') ?? undefined,
++			country: url.searchParams.get('country') ?? undefined,
+ 			source: url.searchParams.getAll('source'),
+-			processing: url.searchParams.get('processing'),
+-			cultivar_detail: url.searchParams.get('cultivar_detail'),
+-			type: url.searchParams.get('type'),
+-			grade: url.searchParams.get('grade'),
+-			appearance: url.searchParams.get('appearance'),
++			processing: url.searchParams.get('processing') ?? undefined,
++			cultivar_detail: url.searchParams.get('cultivar_detail') ?? undefined,
++			type: url.searchParams.get('type') ?? undefined,
++			grade: url.searchParams.get('grade') ?? undefined,
++			appearance: url.searchParams.get('appearance') ?? undefined,
+ 			score_value_min: url.searchParams.get('score_value_min'),
+ 			score_value_max: url.searchParams.get('score_value_max'),
+ 			cost_lb_min: url.searchParams.get('cost_lb_min'),
+ 			cost_lb_max: url.searchParams.get('cost_lb_max'),
+-			arrival_date: url.searchParams.get('arrival_date'),
+-			stocked_date: url.searchParams.get('stocked_date'),
+-			name: url.searchParams.get('name'),
+-			region: url.searchParams.get('region')
++			arrival_date: url.searchParams.get('arrival_date') ?? undefined,
++			stocked_date: url.searchParams.get('stocked_date') ?? undefined,
++			name: url.searchParams.get('name') ?? undefined,
++			region: url.searchParams.get('region') ?? undefined
+ 		};
+ 
+ 		// Extract sort parameters
+-		const sortField = url.searchParams.get('sortField');
+-		const sortDirection = url.searchParams.get('sortDirection') as 'asc' | 'desc' | null;
++		const sortField = url.searchParams.get('sortField') ?? undefined;
++		const sortDirection = (url.searchParams.get('sortDirection') as 'asc' | 'desc') ?? undefined;
+ 
+ 		// Wholesale visibility parameters
+ 		const showWholesale = url.searchParams.get('showWholesale') === 'true';
+@@ -71,71 +66,40 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
+ 		const isPaginated = url.searchParams.has('page') || url.searchParams.has('limit');
+ 
+ 		if (isPaginated) {
+-			// Debug: Log filter parameters
+-			//	console.log('Received filter parameters:', filters);
+-
+-			// Build query with server-side filtering and sorting
+-			let query = supabase
+-				.from('coffee_catalog')
+-				.select('*', { count: 'exact' })
+-				.eq('stocked', true);
+-
+-			// Default catalog behavior: hide wholesale coffees unless explicitly requested
+-			if (wholesaleOnly) {
+-				query = query.eq('wholesale', true);
+-			} else if (!showWholesale) {
+-				query = query.eq('wholesale', false);
+-			}
+-
+-			// Apply filters
+-			if (filters.continent) query = query.eq('continent', filters.continent);
+-			if (filters.country) query = query.eq('country', filters.country);
+-			if (filters.source.length > 0) query = query.in('source', filters.source);
+-			if (filters.processing) query = query.ilike('processing', `%${filters.processing}%`);
+-			if (filters.cultivar_detail)
+-				query = query.ilike('cultivar_detail', `%${filters.cultivar_detail}%`);
+-			if (filters.type) query = query.ilike('type', `%${filters.type}%`);
+-			if (filters.grade) query = query.ilike('grade', `%${filters.grade}%`);
+-			if (filters.appearance) query = query.ilike('appearance', `%${filters.appearance}%`);
+-			if (filters.name) query = query.ilike('name', `%${filters.name}%`);
+-			if (filters.region) query = query.ilike('region', `%${filters.region}%`);
+-
+-			// Apply numeric range filters
+-			if (filters.score_value_min)
+-				query = query.gte('score_value', parseFloat(filters.score_value_min));
+-			if (filters.score_value_max)
+-				query = query.lte('score_value', parseFloat(filters.score_value_max));
+-			if (filters.cost_lb_min) query = query.gte('cost_lb', parseFloat(filters.cost_lb_min));
+-			if (filters.cost_lb_max) query = query.lte('cost_lb', parseFloat(filters.cost_lb_max));
+-
+-			// Apply date filters
+-			if (filters.arrival_date) query = query.eq('arrival_date', filters.arrival_date);
+-			if (filters.stocked_date && filters.stocked_date !== '') {
+-				const daysBack = parseInt(filters.stocked_date);
+-				const cutoffDate = new Date();
+-				cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+-				const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
+-				query = query.gte('stocked_date', cutoffDateStr);
+-			}
+-
+-			// Apply sorting (default to arrival_date desc if no sort specified)
+-			const defaultSortField = sortField || 'arrival_date';
+-			const defaultSortDirection = sortDirection || 'desc';
+-			query = query.order(defaultSortField, { ascending: defaultSortDirection === 'asc' });
+-
+-			// Apply pagination
+-			const { data: rows, error, count } = await query.range(offset, offset + limit - 1);
+-
+-			if (error) throw error;
+-
+-			const totalPages = Math.ceil((count || 0) / limit);
++			const result = await searchCatalog(supabase, {
++				stockedOnly: true,
++				showWholesale,
++				wholesaleOnly,
++				continent: filters.continent,
++				country: filters.country,
++				source: filters.source.length > 0 ? filters.source : undefined,
++				processing: filters.processing,
++				cultivarDetail: filters.cultivar_detail,
++				type: filters.type,
++				grade: filters.grade,
++				appearance: filters.appearance,
++				name: filters.name,
++				region: filters.region,
++				scoreValueMin: filters.score_value_min ? parseFloat(filters.score_value_min) : undefined,
++				scoreValueMax: filters.score_value_max ? parseFloat(filters.score_value_max) : undefined,
++				costLbMin: filters.cost_lb_min ? parseFloat(filters.cost_lb_min) : undefined,
++				costLbMax: filters.cost_lb_max ? parseFloat(filters.cost_lb_max) : undefined,
++				arrivalDate: filters.arrival_date,
++				stockedDate: filters.stocked_date,
++				orderBy: sortField || 'arrival_date',
++				orderDirection: sortDirection || 'desc',
++				limit,
++				offset
++			});
++
++			const totalPages = Math.ceil((result.count || 0) / limit);
+ 
+ 			return json({
+-				data: rows || [],
++				data: result.data,
+ 				pagination: {
+ 					page,
+ 					limit,
+-					total: count || 0,
++					total: result.count || 0,
+ 					totalPages,
+ 					hasNext: page < totalPages,
+ 					hasPrev: page > 1
+@@ -145,8 +109,6 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
+ 
+ 		// Legacy full catalog fetch (for backwards compatibility)
+ 		const fieldsParam = url.searchParams.get('fields');
+-		const selectColumns =
+-			fieldsParam === 'dropdown' ? 'id, source, name, stocked, cost_lb, price_tiers' : '*';
+ 
+ 		const now = Date.now();
+ 		const cacheKey = wholesaleOnly
+@@ -159,24 +121,26 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
+ 			return json(cached.data);
+ 		}
+ 
+-		let legacyQuery = supabase
+-			.from('coffee_catalog')
+-			.select(selectColumns)
+-			.eq('stocked', true)
+-			.order('arrival_date', { ascending: false });
++		let rowsData: Record<string, unknown>[];
+ 
+-		if (wholesaleOnly) {
+-			legacyQuery = legacyQuery.eq('wholesale', true);
+-		} else if (!showWholesale) {
+-			legacyQuery = legacyQuery.eq('wholesale', false);
++		if (fieldsParam === 'dropdown') {
++			const dropdownRows = await getCatalogDropdown(supabase, {
++				stockedOnly: true,
++				showWholesale,
++				wholesaleOnly
++			});
++			rowsData = dropdownRows as unknown as Record<string, unknown>[];
++		} else {
++			const result = await searchCatalog(supabase, {
++				stockedOnly: true,
++				showWholesale,
++				wholesaleOnly,
++				orderBy: 'arrival_date',
++				orderDirection: 'desc'
++			});
++			rowsData = result.data as unknown as Record<string, unknown>[];
+ 		}
+ 
+-		const { data: rows, error } = await legacyQuery;
+-
+-		if (error) throw error;
+-
+-		const rowsData = (rows as unknown as Record<string, unknown>[]) || [];
+-
+ 		catalogCache[cacheKey] = {
+ 			data: rowsData,
+ 			timestamp: now
+diff --git a/src/routes/api/tools/coffee-catalog/+server.ts b/src/routes/api/tools/coffee-catalog/+server.ts
+index 230f444..84ea9aa 100644
+--- a/src/routes/api/tools/coffee-catalog/+server.ts
++++ b/src/routes/api/tools/coffee-catalog/+server.ts
+@@ -1,6 +1,7 @@
+ import { json } from '@sveltejs/kit';
+ import { requireMemberRole } from '$lib/server/auth';
+ import type { RequestHandler } from './$types';
++import { searchCatalog } from '$lib/data/catalog';
+ 
+ // Interface for tool input validation
+ interface CoffeeCatalogToolInput {
+@@ -53,106 +54,41 @@ export const POST: RequestHandler = async (event) => {
+ 			coffee_ids
+ 		} = input;
+ 
+-		// Build query
+-		let query = supabase.from('coffee_catalog').select('*').eq('public_coffee', true);
+-
+-		// Apply stocked filter - default to stocked coffees unless explicitly disabled
+-		// This keeps results focused on currently available inventory
+-		if (stocked_only !== false) {
+-			query = query.eq('stocked', true);
+-		}
+-
+-		// Apply structured filters
+-		if (origin) {
+-			// Check continent, country, and region
+-			query = query.or(
+-				`continent.ilike.%${origin}%,country.ilike.%${origin}%,region.ilike.%${origin}%`
+-			);
+-		}
+-
+-		if (process) {
+-			query = query.ilike('processing', `%${process}%`);
+-		}
+-
+-		if (variety) {
+-			query = query.ilike('cultivar_detail', `%${variety}%`);
+-		}
+-
+-		// New search parameters
+-		if (name) {
+-			query = query.ilike('name', `%${name}%`);
+-		}
+-
+-		if (drying_method) {
+-			// Search both processing and drying_method fields
+-			query = query.or(
+-				`processing.ilike.%${drying_method}%,drying_method.ilike.%${drying_method}%`
+-			);
+-		}
+-
+-		if (supplier) {
+-			query = query.ilike('source', `%${supplier}%`);
+-		}
+-
+-		if (coffee_ids && coffee_ids.length > 0) {
+-			query = query.in('id', coffee_ids);
+-		}
+-
+-		if (stocked_days && stocked_days > 0) {
+-			// Calculate date N days ago
+-			const cutoffDate = new Date();
+-			cutoffDate.setDate(cutoffDate.getDate() - stocked_days);
+-			const cutoffISOString = cutoffDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+-			query = query.gte('stocked_date', cutoffISOString);
+-		}
+-
+-		if (price_range && price_range.length === 2) {
+-			query = query.gte('cost_lb', price_range[0]).lte('cost_lb', price_range[1]);
+-		}
+-
+-		// Apply flavor keywords to multiple text fields
+-		if (flavor_keywords.length > 0) {
+-			// Build OR conditions for each keyword across all searchable text fields
+-			const allFieldConditions: string[] = [];
+-
+-			for (const keyword of flavor_keywords) {
+-				// Add conditions for each text field from the schema
+-				allFieldConditions.push(`description_short.ilike.%${keyword}%`);
+-				allFieldConditions.push(`description_long.ilike.%${keyword}%`);
+-				allFieldConditions.push(`farm_notes.ilike.%${keyword}%`);
+-				allFieldConditions.push(`ai_description.ilike.%${keyword}%`);
+-				allFieldConditions.push(`cupping_notes.ilike.%${keyword}%`);
+-			}
+-
+-			// Apply all conditions as a single OR query
+-			query = query.or(allFieldConditions.join(','));
+-		}
+-
+-		// Apply limit and ordering - enforce maximum of 15 items
++		// Enforce maximum of 15 items
+ 		const finalLimit = Math.min(limit || 10, 15);
+-		query = query.order('stocked_date', { ascending: false }).limit(finalLimit);
+ 
+-		const { data: coffees, error } = await query;
+-
+-		if (error) {
+-			console.error('Coffee catalog tool error:', error);
+-			return json({ error: 'Failed to search coffee catalog' }, { status: 500 });
+-		}
++		const result = await searchCatalog(supabase, {
++			origin,
++			process,
++			variety,
++			priceRange: price_range,
++			flavorKeywords: flavor_keywords,
++			name,
++			stockedDays: stocked_days,
++			dryingMethod: drying_method,
++			supplier,
++			coffeeIds: coffee_ids,
++			stockedOnly: stocked_only !== false,
++			publicOnly: true,
++			// Tools endpoint hides wholesale by default (same as before)
++			showWholesale: false,
++			limit: finalLimit,
++			orderBy: 'stocked_date',
++			orderDirection: 'desc'
++		});
+ 
+ 		// Determine search strategy used
+ 		let searchStrategy: 'structured' | 'hybrid' | 'fallback' = 'structured';
+-
+-		// If no results with strict filters, could implement fallback logic here
+-		if (!coffees || coffees.length === 0) {
++		if (!result.data || result.data.length === 0) {
+ 			searchStrategy = 'fallback';
+ 		}
+ 
+ 		// Strip score_value from results — cupping scores are noise for the chat model
+-		const sanitizedCoffees = (coffees || []).map(({ score_value: _score_value, ...rest }) => rest);
++		const sanitizedCoffees = result.data.map(({ score_value: _score_value, ...rest }) => rest);
+ 
+ 		const response: CoffeeCatalogToolResponse = {
+-			coffees: sanitizedCoffees,
+-			total: coffees?.length || 0,
++			coffees: sanitizedCoffees as Record<string, unknown>[],
++			total: result.data.length,
+ 			filters_applied: {
+ 				origin,
+ 				process,

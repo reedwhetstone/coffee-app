@@ -11,7 +11,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	try {
 		const result = await searchCatalog(locals.supabase, {
 			stockedOnly: true,
-			showWholesale: false,
 			orderBy: 'arrival_date',
 			orderDirection: 'desc',
 			limit: 6 // Only need 6 for preview

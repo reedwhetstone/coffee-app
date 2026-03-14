@@ -70,8 +70,6 @@ export const POST: RequestHandler = async (event) => {
 			coffeeIds: coffee_ids,
 			stockedOnly: stocked_only !== false,
 			publicOnly: true,
-			// Tools endpoint hides wholesale by default (same as before)
-			showWholesale: false,
 			limit: finalLimit,
 			orderBy: 'stocked_date',
 			orderDirection: 'desc'

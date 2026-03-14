@@ -168,12 +168,12 @@ export async function searchCatalog(
 		stockedDate
 	} = options;
 
-	const usePagination = offset !== undefined || limit !== undefined;
-	const selectClause = usePagination ? ('*' as const) : ('*' as const);
+	const usePagination = offset !== undefined;
 
 	let query = supabase
 		.from('coffee_catalog')
-		.select(selectClause, usePagination ? { count: 'exact' } : { count: 'exact' });
+		// Only request an exact count when paginating — it adds an extra DB pass
+		.select('*', usePagination ? { count: 'exact' } : undefined);
 
 	// ── Visibility filters ────────────────────────────────────────────────────
 	if (stockedOnly) {
@@ -184,8 +184,9 @@ export async function searchCatalog(
 	}
 	if (wholesaleOnly) {
 		query = query.eq('wholesale', true);
-	} else if (!showWholesale) {
-		// Default internal behavior: hide wholesale rows
+	} else if (showWholesale === false) {
+		// Only filter out wholesale rows when caller explicitly opts out.
+		// Default (undefined) shows all rows to preserve pre-refactor behavior.
 		query = query.eq('wholesale', false);
 	}
 
@@ -313,7 +314,7 @@ export async function getCatalogDropdown(
 	supabase: SupabaseClient,
 	options: { stockedOnly?: boolean; showWholesale?: boolean; wholesaleOnly?: boolean } = {}
 ): Promise<CatalogDropdownItem[]> {
-	const { stockedOnly = true, showWholesale = false, wholesaleOnly = false } = options;
+	const { stockedOnly = true, showWholesale, wholesaleOnly = false } = options;
 
 	let query = supabase
 		.from('coffee_catalog')
@@ -326,7 +327,8 @@ export async function getCatalogDropdown(
 
 	if (wholesaleOnly) {
 		query = query.eq('wholesale', true);
-	} else if (!showWholesale) {
+	} else if (showWholesale === false) {
+		// Only filter out wholesale rows when caller explicitly opts out.
 		query = query.eq('wholesale', false);
 	}
 
