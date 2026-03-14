@@ -8,6 +8,7 @@ import {
 	getApiRowLimit
 } from '$lib/server/apiAuth';
 import { createAdminClient } from '$lib/supabase-admin';
+import { getPublicCatalog, CATALOG_API_COLUMNS } from '$lib/data/catalog';
 
 // Cache for catalog API data
 let catalogApiCache: {
@@ -19,36 +20,6 @@ let catalogApiCache: {
 };
 
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
-
-// Columns to include in catalog API (excluding sensitive/unnecessary fields)
-const CATALOG_API_COLUMNS = [
-	'id',
-	'name',
-	'score_value',
-	'arrival_date',
-	'region',
-	'processing',
-	'drying_method',
-	'roast_recs',
-	'lot_size',
-	'bag_size',
-	'packaging',
-	'cultivar_detail',
-	'grade',
-	'appearance',
-	'type',
-	'link',
-	'cost_lb',
-	'last_updated',
-	'source',
-	'stocked',
-	'unstocked_date',
-	'stocked_date',
-	'ai_description',
-	'ai_tasting_notes',
-	'country',
-	'continent'
-].join(',');
 
 export const GET: RequestHandler = async ({ request }) => {
 	const startTime = Date.now();
@@ -216,36 +187,16 @@ export const GET: RequestHandler = async ({ request }) => {
 		console.log('Fetching catalog API data from database');
 
 		// Fetch only public coffees with specified columns
-		const { data: rows, error: dbError } = await supabase
-			.from('coffee_catalog')
-			.select(CATALOG_API_COLUMNS)
-			.eq('public_coffee', true)
-			.order('name');
-
-		if (dbError) {
-			console.error('Database error:', dbError);
-
-			// Log database error
-			await logApiUsage(
-				apiKeyId,
-				'/api/catalog-api',
-				500,
-				Date.now() - startTime,
-				request.headers.get('User-Agent') || undefined,
-				request.headers.get('X-Forwarded-For') || undefined
-			);
-
-			throw dbError;
-		}
+		const rows = await getPublicCatalog(supabase, CATALOG_API_COLUMNS);
 
 		// Update cache
 		catalogApiCache = {
-			data: (rows || []) as unknown as Record<string, unknown>[],
+			data: rows,
 			timestamp: now
 		};
 
 		// Apply row limiting for free tier
-		let responseData = rows || [];
+		let responseData = rows;
 		let isLimited = false;
 		if (rowLimit > 0 && responseData.length > rowLimit) {
 			responseData = responseData.slice(0, rowLimit);
