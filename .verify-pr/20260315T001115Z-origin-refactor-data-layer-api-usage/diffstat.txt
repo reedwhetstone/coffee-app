@@ -1,0 +1,5 @@
+ src/lib/data/api-usage.ts                      | 187 +++++++++++++++++++++++++
+ src/routes/api-dashboard/+page.server.ts       |  71 +---------
+ src/routes/api-dashboard/usage/+page.server.ts |  66 +--------
+ tests/e2e/crud.spec.ts                         |   2 +-
+ 4 files changed, 197 insertions(+), 129 deletions(-)

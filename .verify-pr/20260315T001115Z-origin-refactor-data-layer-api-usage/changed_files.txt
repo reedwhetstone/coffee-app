@@ -1,0 +1,4 @@
+src/lib/data/api-usage.ts
+src/routes/api-dashboard/+page.server.ts
+src/routes/api-dashboard/usage/+page.server.ts
+tests/e2e/crud.spec.ts
