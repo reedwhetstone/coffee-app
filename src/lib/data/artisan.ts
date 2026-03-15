@@ -404,7 +404,8 @@ export async function importArtisanData(
 	roastId: number,
 	userId: string,
 	fileContent: string,
-	fileName: string
+	fileName: string,
+	fileSize?: number // original file.size in bytes; falls back to content length if not provided
 ): Promise<ArtisanImportResult> {
 	// Verify ownership and get existing roast profile data
 	const { data: profile } = (await supabase
@@ -516,7 +517,7 @@ export async function importArtisanData(
 		user_id: userId,
 		roast_id: roastId,
 		filename: fileName,
-		file_size: fileContent.length,
+		file_size: fileSize ?? fileContent.length,
 		artisan_version: artisanData.version || 'Unknown',
 		total_data_points: processedData.temperatureData.length,
 		processing_status: 'success',

@@ -42,7 +42,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			parseInt(roastId),
 			user.id,
 			fileContent,
-			file.name
+			file.name,
+			file.size // pass original byte size for accurate import log metadata
 		);
 
 		return json(result);
