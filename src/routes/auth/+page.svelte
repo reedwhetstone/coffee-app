@@ -26,10 +26,10 @@
 		}
 	}
 
-	// If user is already authenticated, redirect them
+	// If user is already authenticated, send them to the catalog
 	onMount(() => {
 		if (data.session) {
-			goto('/');
+			goto('/catalog');
 		}
 	});
 </script>
