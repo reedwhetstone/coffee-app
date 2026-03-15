@@ -4,6 +4,7 @@ import type { RequestHandler } from './$types';
 import type { Database } from '$lib/types/database.types';
 import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils.js';
+import { deleteRoast } from '$lib/data/roast.js';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
@@ -285,39 +286,19 @@ export const DELETE: RequestHandler = async (event) => {
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
-		// Get roast profiles first
+		// Get roast profiles and cascade-delete each one via the shared data layer
 		const { data: roastProfiles, error: selectError } = await supabase
 			.from('roast_profiles')
-			.select('roast_id')
+			.select('roast_id, user')
 			.eq('coffee_id', Number(id));
 
 		if (selectError) throw selectError;
 
-		// If there are roast profiles, delete their associated data
 		if (roastProfiles && roastProfiles.length > 0) {
-			const roastIds = roastProfiles.map((profile) => profile.roast_id);
-
-			// Delete from normalized tables
-			const { error: tempError } = await supabase
-				.from('roast_temperatures')
-				.delete()
-				.in('roast_id', roastIds);
-			if (tempError) throw tempError;
-
-			const { error: eventError } = await supabase
-				.from('roast_events')
-				.delete()
-				.in('roast_id', roastIds);
-			if (eventError) throw eventError;
+			for (const profile of roastProfiles as { roast_id: number; user: string }[]) {
+				await deleteRoast(supabase, profile.roast_id, profile.user);
+			}
 		}
-
-		// Delete roast profiles
-		const { error: profileError } = await supabase
-			.from('roast_profiles')
-			.delete()
-			.eq('coffee_id', Number(id));
-
-		if (profileError) throw profileError;
 
 		// Finally, delete the coffee
 		const { error: deleteError } = await supabase

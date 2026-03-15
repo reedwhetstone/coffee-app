@@ -1,22 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
-import { saveRoastData } from '$lib/server/roastDataUtils.js';
-import type { Database } from '$lib/types/database.types';
-
-type CoffeeCatalogName = { name: string };
-type GreenCoffeeWithCatalog = Database['public']['Tables']['green_coffee_inv']['Row'] & {
-	coffee_catalog: CoffeeCatalogName | CoffeeCatalogName[] | null;
-};
-type RoastProfileInsert = Database['public']['Tables']['roast_profiles']['Insert'];
-
-// Helper function to calculate weight loss percentage
-function calculateWeightLoss(ozIn: number | null, ozOut: number | null): number | null {
-	if (!ozIn || !ozOut || ozIn <= 0) return null;
-	const weightLoss = ((ozIn - ozOut) / ozIn) * 100;
-	// Round to 2 decimal places to avoid serialization issues
-	return Math.round(weightLoss * 100) / 100;
-}
+import {
+	listRoasts,
+	createRoasts,
+	updateRoast,
+	deleteRoast,
+	deleteBatch,
+	type RoastCreateInput,
+	type RoastUpdateInput
+} from '$lib/data/roast.js';
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
@@ -25,13 +18,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const { data, error } = await supabase
-			.from('roast_profiles')
-			.select('*')
-			.eq('user', user.id)
-			.order('roast_date', { ascending: false });
-
-		if (error) throw error;
+		const data = await listRoasts(supabase, user.id);
 		return json({ data });
 	} catch (error) {
 		console.error('Error fetching roast profiles:', error);
@@ -46,208 +33,23 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const requestData = await request.json();
+		const requestData = (await request.json()) as RoastCreateInput;
+		const { profiles, roastIds } = await createRoasts(supabase, user.id, requestData);
 
-		// Handle both single profiles and batch creation
-		if (requestData.batch_beans) {
-			// Batch creation from form
-			const { batch_name, batch_beans, roast_date, roast_notes, roast_targets } = requestData;
-
-			// Validate all beans have coffee_id
-			for (const bean of batch_beans) {
-				if (!bean.coffee_id) {
-					throw new Error('coffee_id is required for all beans in batch');
-				}
-			}
-
-			// Fetch all coffee data in single query to avoid N+1 problem
-			const coffeeIds: number[] = batch_beans.map(
-				(bean: Record<string, unknown>) => bean.coffee_id as number
-			);
-			const uniqueCoffeeIds: number[] = [...new Set(coffeeIds)]; // Remove duplicates for query
-
-			const { data: coffeesRaw, error: coffeeError } = await supabase
-				.from('green_coffee_inv')
-				.select(
-					`
-					id,
-					coffee_catalog!catalog_id (
-						name
-					)
-				`
-				)
-				.in('id', uniqueCoffeeIds)
-				.eq('user', user.id);
-
-			const coffees = coffeesRaw as unknown as GreenCoffeeWithCatalog[];
-
-			if (coffeeError) throw coffeeError;
-			if (!coffees || coffees.length === 0) {
-				throw new Error('No valid coffee_ids found for this user');
-			}
-
-			// Check that all unique coffee IDs were found (allows for duplicates in batch_beans)
-			if (coffees.length !== uniqueCoffeeIds.length) {
-				const foundIds = coffees.map((c) => c.id);
-				const missingIds = uniqueCoffeeIds.filter((id) => !foundIds.includes(id as number));
-				throw new Error(`Coffee IDs not found or not owned by user: ${missingIds.join(', ')}`);
-			}
-
-			// Create lookup map for efficient access
-			const coffeeMap = new Map(coffees.map((coffee) => [coffee.id, coffee]));
-
-			// Create profiles with coffee data from map
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const profilesData: RoastProfileInsert[] = batch_beans.map((bean: any) => {
-				const coffee = coffeeMap.get(bean.coffee_id);
-				if (!coffee) {
-					throw new Error(`Invalid coffee_id - coffee not found: ${bean.coffee_id}`);
-				}
-
-				// Handle coffee_catalog which can be object or array
-				const catalog = coffee.coffee_catalog;
-				const catalogName = Array.isArray(catalog)
-					? catalog[0]?.name
-					: (catalog as { name: string })?.name;
-
-				return {
-					user: user.id,
-					batch_name:
-						batch_name || `${catalogName || 'Unknown Coffee'} - ${new Date().toLocaleDateString()}`,
-					coffee_id: bean.coffee_id,
-					coffee_name:
-						bean.coffee_name ||
-						catalogName ||
-						(Array.isArray(coffee.coffee_catalog)
-							? (coffee.coffee_catalog[0] as { name: string })?.name
-							: (coffee.coffee_catalog as { name: string })?.name),
-					roast_date: roast_date
-						? new Date(roast_date).toISOString().slice(0, 19).replace('T', ' ')
-						: new Date().toISOString().slice(0, 19).replace('T', ' '),
-					last_updated: new Date().toISOString().slice(0, 19).replace('T', ' '),
-					oz_in: bean.oz_in || null,
-					oz_out: bean.oz_out || null,
-					weight_loss_percent: calculateWeightLoss(bean.oz_in, bean.oz_out),
-					roast_notes: roast_notes || null,
-					roast_targets: roast_targets || null
-				};
-			});
-
-			// Insert all profiles in batch
-			const { data: profiles, error } = await supabase
-				.from('roast_profiles')
-				.insert(profilesData as Database['public']['Tables']['roast_profiles']['Insert'][])
-				.select();
-
-			if (error) throw error;
-
-			// Update stocked status for all affected coffees
-			await Promise.all(
-				coffeeIds.map((coffee_id: number) => updateStockedStatus(supabase, coffee_id, user.id))
-			);
-
-			// Return in format expected by form
-			return json({
-				profiles,
-				roast_ids: (profiles as { roast_id: number }[]).map((p) => p.roast_id)
-			});
+		// Update stocked status for all affected coffees
+		const isBatch = 'batch_beans' in requestData && Array.isArray(requestData.batch_beans);
+		if (isBatch) {
+			const batchData = requestData as { batch_beans: { coffee_id: number }[] };
+			const coffeeIds = batchData.batch_beans.map((b) => b.coffee_id);
+			await Promise.all(coffeeIds.map((id) => updateStockedStatus(supabase, id, user.id)));
+			return json({ profiles, roast_ids: roastIds });
 		} else {
-			// Single profile creation (legacy support)
-			const profiles = Array.isArray(requestData) ? requestData : [requestData];
-
-			// Validate all profiles have coffee_id
-			for (const profileData of profiles) {
-				if (!profileData.coffee_id) {
-					throw new Error('coffee_id is required for all profiles');
-				}
-			}
-
-			// Fetch all coffee data in single query to avoid N+1 problem
-			const coffeeIds = profiles.map(
-				(profileData: Record<string, unknown>) => profileData.coffee_id
-			) as number[];
-
-			const { data: coffeesRaw, error: coffeeError } = await supabase
-				.from('green_coffee_inv')
-				.select(
-					`
-					id,
-					coffee_catalog!catalog_id (
-						name
-					)
-				`
-				)
-				.in('id', coffeeIds)
-				.eq('user', user.id);
-
-			const coffees = coffeesRaw as unknown as GreenCoffeeWithCatalog[];
-
-			if (coffeeError) throw coffeeError;
-			if (!coffees || coffees.length === 0) {
-				throw new Error('No valid coffee_ids found for this user');
-			}
-			if (coffees.length !== profiles.length) {
-				const foundIds = coffees.map((c) => c.id);
-				const missingIds = coffeeIds.filter((id: number) => !foundIds.includes(id));
-				throw new Error(`Coffee IDs not found or not owned by user: ${missingIds.join(', ')}`);
-			}
-
-			// Create lookup map for efficient access
-			const coffeeMap = new Map(coffees.map((coffee) => [coffee.id, coffee]));
-
-			// Create profiles with coffee data from map
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const profilesData: RoastProfileInsert[] = profiles.map((profileData: any) => {
-				const coffee = coffeeMap.get(profileData.coffee_id);
-				if (!coffee) {
-					throw new Error(`Invalid coffee_id - coffee not found: ${profileData.coffee_id}`);
-				}
-
-				const catalog = coffee.coffee_catalog;
-				const catalogName = Array.isArray(catalog)
-					? catalog[0]?.name
-					: (catalog as { name: string })?.name;
-
-				return {
-					...profileData,
-					user: user.id,
-					batch_name:
-						profileData.batch_name ||
-						`${catalogName || 'Unknown Coffee'} - ${new Date().toLocaleDateString()}`,
-					coffee_id: profileData.coffee_id,
-					coffee_name:
-						profileData.coffee_name ||
-						catalogName ||
-						(Array.isArray(coffee.coffee_catalog)
-							? (coffee.coffee_catalog[0] as { name: string })?.name
-							: (coffee.coffee_catalog as { name: string })?.name),
-					roast_date: profileData.roast_date
-						? new Date(profileData.roast_date).toISOString().slice(0, 19).replace('T', ' ')
-						: new Date().toISOString().slice(0, 19).replace('T', ' '),
-					last_updated: profileData.last_updated
-						? new Date(profileData.last_updated).toISOString().slice(0, 19).replace('T', ' ')
-						: new Date().toISOString().slice(0, 19).replace('T', ' '),
-					oz_in: profileData.oz_in || null,
-					oz_out: profileData.oz_out || null,
-					roast_notes: profileData.roast_notes || null,
-					roast_targets: profileData.roast_targets || null
-				};
-			});
-
-			// Insert all profiles in batch
-			const { data: results, error } = await supabase
-				.from('roast_profiles')
-				.insert(profilesData as Database['public']['Tables']['roast_profiles']['Insert'][])
-				.select();
-
-			if (error) throw error;
-
-			// Update stocked status for all affected coffees
-			await Promise.all(
-				coffeeIds.map((coffee_id: number) => updateStockedStatus(supabase, coffee_id, user.id))
-			);
-
-			return json(results);
+			// Single / legacy array path — profiles already inserted
+			const singleData = requestData as { coffee_id?: number };
+			const profileArray = Array.isArray(requestData) ? requestData : [singleData];
+			const coffeeIds = profileArray.map((p) => (p as { coffee_id: number }).coffee_id);
+			await Promise.all(coffeeIds.map((id) => updateStockedStatus(supabase, id, user.id)));
+			return json(profiles);
 		}
 	} catch (error) {
 		console.error('Error creating roast profiles:', error);
@@ -270,57 +72,13 @@ export const DELETE: RequestHandler = async ({ url, locals: { supabase, safeGetS
 
 		if (id) {
 			const parsedId = Number(id);
-			// Verify ownership and get coffee_id for stocked status update
-			const { data: existingRaw } = await supabase
-				.from('roast_profiles')
-				.select('user, coffee_id')
-				.eq('roast_id', parsedId)
-				.single();
-
-			const existing = existingRaw as { user: string; coffee_id: number } | null;
-
-			if (!existing || existing.user !== user.id) {
-				return json({ error: 'Unauthorized' }, { status: 403 });
-			}
-
-			const coffee_id = existing.coffee_id;
-
-			// Delete associated data from normalized tables first
-			await supabase.from('roast_temperatures').delete().eq('roast_id', parsedId);
-			await supabase.from('roast_events').delete().eq('roast_id', parsedId);
-			// Then delete the profile
-			await supabase.from('roast_profiles').delete().eq('roast_id', parsedId).eq('user', user.id);
-
-			// Update stocked status for this coffee after deletion
-			await updateStockedStatus(supabase, coffee_id, user.id);
+			// deleteRoast verifies ownership and returns coffeeId in one query
+			const { coffeeId } = await deleteRoast(supabase, parsedId, user.id);
+			await updateStockedStatus(supabase, coffeeId, user.id);
 		} else if (batchName) {
-			// Get all profile IDs and coffee_ids in the batch that belong to the user
-			const { data: profilesRaw } = await supabase
-				.from('roast_profiles')
-				.select('roast_id, coffee_id')
-				.eq('batch_name', batchName)
-				.eq('user', user.id);
-
-			const profiles = profilesRaw as { roast_id: number; coffee_id: number }[] | null;
-
-			if (profiles && profiles.length > 0) {
-				const roastIds = profiles.map((p) => p.roast_id);
-				const coffeeIds = [...new Set(profiles.map((p) => p.coffee_id))];
-
-				// Delete associated data from normalized tables first
-				await supabase.from('roast_temperatures').delete().in('roast_id', roastIds);
-				await supabase.from('roast_events').delete().in('roast_id', roastIds);
-				// Then delete all profiles in the batch
-				await supabase
-					.from('roast_profiles')
-					.delete()
-					.eq('batch_name', batchName)
-					.eq('user', user.id);
-
-				// Update stocked status for all affected coffees after batch deletion
-				for (const coffee_id of coffeeIds) {
-					await updateStockedStatus(supabase, coffee_id, user.id);
-				}
+			const { coffeeIds } = await deleteBatch(supabase, batchName, user.id);
+			for (const coffee_id of coffeeIds) {
+				await updateStockedStatus(supabase, coffee_id, user.id);
 			}
 		} else {
 			return json({ error: 'No ID or batch name provided' }, { status: 400 });
@@ -350,122 +108,13 @@ export const PUT: RequestHandler = async ({
 			return json({ error: 'No ID provided' }, { status: 400 });
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const { temperatureEntries, eventEntries, ...profileData } = (await request.json()) as any;
-		const data = profileData;
 		const parsedId = Number(id);
+		const body = (await request.json()) as RoastUpdateInput;
 
-		// Add weight_loss_percent calculation if oz_in or oz_out are provided
-		if (data.oz_in !== undefined || data.oz_out !== undefined) {
-			// For updates, we need to get the current values if only one is being updated
-			if (data.oz_in === undefined || data.oz_out === undefined) {
-				const { data: current } = await supabase
-					.from('roast_profiles')
-					.select('oz_in, oz_out')
-					.eq('roast_id', parsedId)
-					.single();
-
-				const ozIn = data.oz_in !== undefined ? data.oz_in : current?.oz_in;
-				const ozOut = data.oz_out !== undefined ? data.oz_out : current?.oz_out;
-				data.weight_loss_percent = calculateWeightLoss(ozIn, ozOut);
-			} else {
-				data.weight_loss_percent = calculateWeightLoss(data.oz_in, data.oz_out);
-			}
-		}
-
-		// Verify ownership and get coffee_id for stocked status update
-		const { data: existing } = await supabase
-			.from('roast_profiles')
-			.select('user, coffee_id')
-			.eq('roast_id', parsedId)
-			.single();
-
-		if (!existing || existing.user !== user.id) {
-			return json({ error: 'Unauthorized' }, { status: 403 });
-		}
-
-		const coffee_id = existing.coffee_id;
-
-		const { data: updated, error } = await supabase
-			.from('roast_profiles')
-			.update(data)
-			.eq('roast_id', parsedId)
-			.eq('user', user.id)
-			.select()
-			.single();
-
-		if (error) throw error;
-
-		// If temperature/event data was provided, persist it
-		if (Array.isArray(temperatureEntries) && temperatureEntries.length > 0) {
-			const roastIdNum = parseInt(id);
-			// Ensure all entries have the correct roast_id
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const temps = temperatureEntries.map((t: any) => ({ ...t, roast_id: roastIdNum }));
-			const events = Array.isArray(eventEntries)
-				? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-					eventEntries.map((e: any) => ({ ...e, roast_id: roastIdNum }))
-				: [];
-			await saveRoastData(supabase, roastIdNum, temps, events, 'live');
-
-			// Compute and persist milestone percentages from event data
-			if (events.length > 0) {
-				const milestoneEvents = events.filter(
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					(e: any) => e.category === 'milestone'
-				);
-				if (milestoneEvents.length > 0) {
-					// Extract milestone times (in seconds)
-					const milestones: Record<string, number> = {};
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					for (const evt of milestoneEvents as any[]) {
-						milestones[evt.event_string] = parseFloat(evt.time_seconds);
-					}
-
-					const chargeTime = milestones['charge'] ?? milestones['start'] ?? 0;
-					const dropTime = milestones['drop'] ?? milestones['end'] ?? milestones['cool'] ?? 0;
-					const dryEndTime = milestones['dry_end'] ?? milestones['maillard'] ?? 0;
-					const fcStartTime = milestones['fc_start'] ?? 0;
-					const totalTime = dropTime > chargeTime ? dropTime - chargeTime : 0;
-
-					const milestoneUpdate: Record<string, number | null> = {
-						charge_time: chargeTime || null,
-						dry_end_time: dryEndTime || null,
-						fc_start_time: fcStartTime || null,
-						total_roast_time: totalTime || null,
-						dry_percent: null,
-						maillard_percent: null,
-						development_percent: null
-					};
-
-					if (totalTime > 0) {
-						if (dryEndTime > chargeTime) {
-							milestoneUpdate.dry_percent =
-								Math.round(((dryEndTime - chargeTime) / totalTime) * 1000) / 10;
-						}
-						if (fcStartTime > dryEndTime && dryEndTime > 0) {
-							milestoneUpdate.maillard_percent =
-								Math.round(((fcStartTime - dryEndTime) / totalTime) * 1000) / 10;
-						}
-						if (dropTime > fcStartTime && fcStartTime > 0) {
-							milestoneUpdate.development_percent =
-								Math.round(((dropTime - fcStartTime) / totalTime) * 1000) / 10;
-						}
-					}
-
-					await supabase
-						.from('roast_profiles')
-						.update(milestoneUpdate)
-						.eq('roast_id', roastIdNum)
-						.eq('user', user.id);
-				}
-			}
-		}
-
-		// Update stocked status for this coffee after updating roast profile
-		await updateStockedStatus(supabase, coffee_id, user.id);
-
-		return json(updated);
+		// updateRoast verifies ownership and returns coffeeId in one query
+		const { profile, coffeeId } = await updateRoast(supabase, parsedId, user.id, body);
+		await updateStockedStatus(supabase, coffeeId, user.id);
+		return json(profile);
 	} catch (error) {
 		console.error('Error updating roast profile:', error);
 		return json({ error: 'Failed to update roast profile' }, { status: 500 });
