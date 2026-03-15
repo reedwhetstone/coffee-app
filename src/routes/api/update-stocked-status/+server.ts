@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
+import { updateStockedStatus } from '$lib/data/inventory.js';
 
 interface CoffeeInventoryItem {
 	id: number;
