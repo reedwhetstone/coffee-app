@@ -1,0 +1,2 @@
+60be948 (origin/refactor/data-layer-api-usage, refactor/data-layer-api-usage) fix: slider.fill max value 6→5 in crud e2e test (slider max is 1-5)
+87eee88 refactor: extract API usage data layer (Phase 0.0 PR 6/6)
