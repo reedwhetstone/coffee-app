@@ -22,6 +22,6 @@ export const actions: Actions = {
 		if (error) {
 			return redirect(303, '/auth/error');
 		}
-		return redirect(303, '/private');
+		return redirect(303, '/catalog');
 	}
 };
