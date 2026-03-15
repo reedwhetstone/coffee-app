@@ -213,7 +213,7 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - **coffee_catalog**: Master coffee data (name, description, processing details)
 - **green_coffee_inv**: User's personal inventory → `catalog_id` FK to `coffee_catalog`
 - **roast_profiles**: Roasting sessions → `coffee_id` FK to `green_coffee_inv`
-- **profile_log**: Temperature/time data → `roast_id` FK to `roast_profiles`
+- **roast_temperatures**: Time-series temperature data → `roast_id` FK to `roast_profiles` (replaces deprecated `profile_log`)
 - **user_roles**: User auth/permissions → Referenced by all user-owned tables
 
 **Key Foreign Key Patterns:**
