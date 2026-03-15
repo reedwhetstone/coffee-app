@@ -1,0 +1,2 @@
+21ea72f (origin/refactor/data-layer-sales-tasting, refactor/data-layer-sales-tasting) fix: clamp slider fill to max=5 in cupping notes e2e test
+a9c6d2b refactor: extract sales and tasting data layers (Phase 0.0 PR 4/6)

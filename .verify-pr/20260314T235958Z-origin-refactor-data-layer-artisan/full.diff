@@ -1,0 +1,1338 @@
+diff --git a/notes/pr-audits/2026-03-14-pr100-sales-tasting-data-layer.md b/notes/pr-audits/2026-03-14-pr100-sales-tasting-data-layer.md
+new file mode 100644
+index 0000000..09d1fe2
+--- /dev/null
++++ b/notes/pr-audits/2026-03-14-pr100-sales-tasting-data-layer.md
+@@ -0,0 +1,167 @@
++# PR Verification Report
++
++## Metadata
++
++- Repo: reedwhetstone/coffee-app
++- Base: origin/main (352533d)
++- Head: origin/refactor/data-layer-sales-tasting (21ea72f)
++- PR #100
++- Reviewer model: anthropic/claude-opus-4-6
++- Confidence: High
++- Scope note: Full line-by-line comparison of all extracted functions against original inline implementations
++
++## Executive Verdict
++
++- Merge readiness: **Ready**
++- Intent coverage: **Full**
++- Priority summary: P0: 0, P1: 0, P2: 0, P3: 2
++
++## Intent Verification
++
++- **Stated intent:** Extract sales/profit queries into `src/lib/data/sales.ts` and tasting notes queries into `src/lib/data/tasting.ts`. Phase 0.0 PR 4/6. No behavior changes.
++- **What was implemented:** All sales CRUD and profit queries extracted to `sales.ts`. Tasting notes query extracted to `tasting.ts`. Route handlers thinned to auth + delegation. Profit GET now uses `Promise.all` for parallel fetch. E2E test fix for slider max value.
++- **Coverage gaps:** None. All four goals met.
++
++## Findings by Severity
++
++### P0 (must fix before merge)
++
++None.
++
++### P1 (should fix before merge)
++
++None.
++
++### P2 (important improvements)
++
++None.
++
++### P3 (nice to have)
++
++- **Title:** Error message specificity reduced at API boundary
++- **Evidence:** In `src/routes/api/profit/+server.ts` GET handler, the original code returned specific Supabase error messages (`salesError.message`, `profitError.message`) as 500 responses. The new code throws from data layer functions, caught by the generic catch block returning `'Failed to fetch data'`. Same pattern applies to PUT (original returned `error.message`, now returns `'Failed to update sale'`).
++- **Impact:** Negligible. Clients lose specific error strings in 500 responses, but the specific error is still logged via `console.error`. This is arguably more secure (avoids leaking internal DB error details to clients).
++- **Correction:** No action needed. Document as intentional if desired.
++
++- **Title:** E2E test fix bundled with data layer PR
++- **Evidence:** `tests/e2e/crud.spec.ts` changes `slider.fill('6')` to `slider.fill('5')` with comment "slider max is 5 (1-5 scale)". This is a legitimate bug fix but is unrelated to the data layer extraction.
++- **Impact:** None. The fix is correct and low-risk. Bundling it here just makes the commit history slightly less granular.
++- **Correction:** Acceptable as-is. Purely a commit hygiene note.
++
++## Detailed Verification
++
++### getProfitData() - Profit Margin Calculation
++
++Compared line-by-line against original `formattedProfitRows` logic in GET handler:
++
++- `totalSales` reduce: identical (`sale.price || 0`)
++- `totalOzSold` reduce: identical (`sale.oz_sold || 0`)
++- `totalOzIn`/`totalOzOut` reduces: identical
++- `totalCost` formula: identical (`(bean_cost || 0) + (tax_ship_cost || 0)`)
++- `profit` formula: identical (`totalSales - totalCost`)
++- `profitMargin` formula: identical (`totalCost > 0 ? (profit / totalCost) * 100 : 0`)
++- Supabase query selects identical columns
++- `purchase_date?.split('T')[0]` date formatting preserved
++- `purchased_qty_oz` calculation `(purchased_qty_lbs || 0) * 16` preserved
++- Coffee name extraction (Array.isArray check) identical
++
++**Verdict: PASS** - Calculations are byte-for-byte identical.
++
++### listSales() - Join and Ordering
++
++- Query: `sales` table with `green_coffee_inv!inner` join and nested `coffee_catalog!catalog_id` - identical
++- Filter: `.eq('user', userId)` - identical
++- Order: `.order('sell_date', { ascending: false })` - identical
++- Coffee name extraction: same Array.isArray + fallback pattern
++- Null guard: original `(sales || [])` vs new `(salesRaw ?? [])` - functionally equivalent
++- Response includes full `...sale` spread (including nested join data) + `coffee_name` - wire shape identical
++
++**Verdict: PASS**
++
++### recordSale() - Response Shape
++
++- Insert: `{ ...data, user: userId }` - matches original `{ ...insertData, user: user.id }`
++- Re-fetch: same `green_coffee_inv` query with `purchase_date, coffee_catalog!catalog_id (name)`
++- Response: `{ ...newSale, coffee_name: ..., purchase_date: ... }` - identical shape
++- Coffee name extraction: same Array.isArray pattern with `|| null` fallback
++
++**Verdict: PASS**
++
++### updateSale() / deleteSale() - Ownership Verification
++
++- Route handler still performs explicit ownership check (select user, compare `existing.user !== user.id`) before calling data layer functions
++- `updateSale()` additionally applies `.eq('user', userId)` in the update query (defense-in-depth)
++- `deleteSale()` applies `.eq('user', userId)` in the delete query (defense-in-depth)
++- PUT handler still strips `coffee_name` before passing to `updateSale()`
++
++**Verdict: PASS**
++
++### getTastingNotes() - Filter Modes and Radar Data
++
++All three filter modes verified against original bean-tasting handler:
++
++- `user` filter: inventory query with `maybeSingle()`, user_notes construction, message variants - identical
++- `supplier` filter: `cupping_notes` and `source` from catalog - identical
++- `both` filter: combined_notes with filtered descriptions and sliced sources array - identical
++- AI notes always included regardless of filter - identical
++- Radar data: JSON.parse with try/catch, same 5 fields (body, flavor, acidity, sweetness, fragrance_aroma) with `|| 0` defaults - identical
++- 404 handling: throws with `.status = 404`, route handler catches and returns same JSON error shape as original
++
++**Verdict: PASS**
++
++### Promise.all in Profit GET - Race Conditions
++
++- `listSales` and `getProfitData` are independent read queries for the same user
++- No shared mutable state, no write-then-read dependencies
++- If either throws, the error propagates to the catch block which returns a 500 response
++- This is strictly better than the original sequential pattern (latency improvement)
++
++**Verdict: PASS** - No race conditions or error handling gaps.
++
++### DELETE Ownership Check
++
++The DELETE handler retains the full ownership verification flow:
++
++1. Parse ID from query params
++2. Select user from sales table by ID
++3. Compare `existing.user !== user.id`
++4. Return 403 if unauthorized
++5. Only then call `deleteSale()`
++
++**Verdict: PASS** - Identical to original.
++
++## Assumptions Review
++
++- **Assumption:** Data layer functions throw errors instead of returning error objects
++- **Validity:** Valid
++- **Why:** Route handlers wrap calls in try/catch and return appropriate HTTP error responses. The pattern is consistent and clean.
++
++- **Assumption:** Ownership verification stays at the route layer, not in data layer
++- **Validity:** Valid
++- **Why:** Explicitly documented in `sales.ts` header comments. Route handlers still perform ownership checks. Data layer functions add `.eq('user', userId)` as defense-in-depth.
++
++- **Assumption:** Wire-level response shapes are unchanged
++- **Validity:** Valid
++- **Why:** Verified by comparing the spread patterns, field names, and value transformations. The `...sale` spread in `listSales()` includes the same nested join data. `recordSale()` returns the same `coffee_name` + `purchase_date` augmented shape.
++
++## Tech Debt Notes
++
++- **Debt introduced:** None
++- **Debt worsened:** None
++- **Debt reduced:** Significant. ~350 lines of inline query logic extracted to reusable, well-typed, well-documented modules. Type definitions centralized. Route handlers reduced to auth + delegation.
++- **Suggested follow-up tickets:** None required
++
++## Product Alignment Notes
++
++- **Alignment wins:** Cleaner separation of concerns. Data layer ready for reuse by future consumers.
++- **Misalignments:** None
++
++## Test Coverage Assessment
++
++- **Existing tests that validate changes:** `tests/e2e/crud.spec.ts` covers the sales CRUD flows and cupping notes. The slider fix (6 -> 5) corrects a genuine test bug.
++- **Missing tests:** No unit tests for the new data layer modules. This is acceptable for a pure extraction (no new logic), but unit tests would add confidence for future modifications.
++- **Suggested test additions:** Consider adding unit tests for `getProfitData` margin calculations and `getTastingNotes` filter modes in a future PR.
++
++## Minimal Correction Plan
++
++No corrections required. PR is ready to merge as-is.
+diff --git a/src/lib/data/artisan.ts b/src/lib/data/artisan.ts
+new file mode 100644
+index 0000000..ecc7ece
+--- /dev/null
++++ b/src/lib/data/artisan.ts
+@@ -0,0 +1,551 @@
++import type { SupabaseClient } from '@supabase/supabase-js';
++import type { ArtisanRoastData, MilestoneData, ProcessedRoastData } from '$lib/types/artisan.js';
++import { validateArtisanData, validateProcessedData } from '$lib/utils/artisan-validator.js';
++import { normalizeArtisanTemperatures, artisanModeToUnit } from '$lib/utils/temperature.js';
++import { processAlogFile } from '$lib/utils/alog-parser.js';
++import { clearRoastData, insertTemperatures, insertEvents } from '$lib/server/roastDataUtils.js';
++
++export interface ArtisanImportResult {
++	success: boolean;
++	message: string;
++	milestones: MilestoneData;
++	phases: ProcessedRoastData['phases'];
++	total_time: number;
++	temperature_unit: 'F' | 'C';
++	milestone_events: number;
++	control_events: number;
++}
++
++// Parse Artisan .alog or .alog.json data
++export async function parseArtisanFile(
++	fileContent: string,
++	fileName: string
++): Promise<ArtisanRoastData> {
++	try {
++		let data: unknown;
++
++		if (fileName.toLowerCase().endsWith('.alog')) {
++			// Parse Python literal syntax (.alog file)
++			data = processAlogFile(fileContent);
++		} else {
++			// Parse standard JSON (.alog.json file)
++			data = JSON.parse(fileContent);
++		}
++
++		// Validate the basic structure
++		const validation = validateArtisanData(data);
++		if (!validation.valid) {
++			throw new Error(`Invalid Artisan file: ${validation.errors.join(', ')}`);
++		}
++
++		// Map 'mode' to 'temperature_unit' for consistency
++		(data as ArtisanRoastData).temperature_unit = artisanModeToUnit(
++			(data as ArtisanRoastData).mode
++		);
++
++		return data as ArtisanRoastData;
++	} catch (error) {
++		if (error instanceof Error) {
++			throw error;
++		}
++		throw new Error('Failed to parse Artisan file');
++	}
++}
++
++// Extract milestone events from Artisan timeindex array
++function extractMilestones(artisanData: ArtisanRoastData): MilestoneData {
++	const milestones: MilestoneData = {};
++	const { timex, timeindex } = artisanData;
++
++	// timeindex maps: [CHARGE, DRY_END, FC_START, FC_END, SC_START, SC_END, DROP, COOL]
++	if (timeindex[0] > 0 && timeindex[0] < timex.length) {
++		milestones.charge = timex[timeindex[0]];
++	}
++	if (timeindex[1] > 0 && timeindex[1] < timex.length) {
++		milestones.dry_end = timex[timeindex[1]];
++	}
++	if (timeindex[2] > 0 && timeindex[2] < timex.length) {
++		milestones.fc_start = timex[timeindex[2]];
++	}
++	if (timeindex[3] > 0 && timeindex[3] < timex.length) {
++		milestones.fc_end = timex[timeindex[3]];
++	}
++	if (timeindex[4] > 0 && timeindex[4] < timex.length) {
++		milestones.sc_start = timex[timeindex[4]];
++	}
++	if (timeindex[5] > 0 && timeindex[5] < timex.length) {
++		milestones.sc_end = timex[timeindex[5]];
++	}
++	if (timeindex[6] > 0 && timeindex[6] < timex.length) {
++		milestones.drop = timex[timeindex[6]];
++	}
++	if (timeindex[7] > 0 && timeindex[7] < timex.length) {
++		milestones.cool = timex[timeindex[7]];
++	}
++
++	return milestones;
++}
++
++// Transform parsed Artisan data into database format
++export function transformArtisanData(
++	parsedData: ArtisanRoastData,
++	roastId: number
++): ProcessedRoastData {
++	const { timex, temp1, temp2, extratemp1, extratemp2 } = parsedData;
++
++	// Extract milestones
++	const milestones = extractMilestones(parsedData);
++
++	// Extract computed data from Artisan
++	const computedData = parsedData.computed || {};
++
++	// Normalize temperatures to Fahrenheit for consistency
++	const { beanTemps, envTemps } = normalizeArtisanTemperatures(
++		temp1,
++		temp2,
++		parsedData.temperature_unit,
++		'F' // Store everything in Fahrenheit
++	);
++
++	// Extract control device data from extra devices with proper etypes mapping
++	const extraDeviceData: { name: string; data: number[] }[] = [];
++
++	// Map extratemp1 channels to their corresponding etype names
++	if (extratemp1 && parsedData.extraname1) {
++		extratemp1.forEach((channelData, channelIndex) => {
++			if (channelData && channelData.length > 0 && parsedData.extraname1) {
++				const deviceName = parsedData.extraname1[channelIndex];
++				// Map device names to etypes if available
++				let etypeName = deviceName;
++				if (parsedData.etypes && parsedData.etypes.length > channelIndex) {
++					const etype = parsedData.etypes[channelIndex];
++					if (etype && etype !== '--') {
++						etypeName = etype.toLowerCase();
++					}
++				}
++				extraDeviceData.push({
++					name: etypeName,
++					data: channelData
++				});
++			}
++		});
++	}
++
++	// Map extratemp2 channels to their corresponding etype names
++	if (extratemp2 && parsedData.extraname2) {
++		extratemp2.forEach((channelData, channelIndex) => {
++			if (channelData && channelData.length > 0 && parsedData.extraname2) {
++				const deviceName = parsedData.extraname2[channelIndex];
++				// Map device names to etypes if available, offset by extratemp1 length
++				let etypeName = deviceName;
++				const etypeIndex = channelIndex + (parsedData.extratemp1?.length || 0);
++				if (parsedData.etypes && parsedData.etypes.length > etypeIndex) {
++					const etype = parsedData.etypes[etypeIndex];
++					if (etype && etype !== '--') {
++						etypeName = etype.toLowerCase();
++					}
++				}
++				extraDeviceData.push({
++					name: etypeName,
++					data: channelData
++				});
++			}
++		});
++	}
++
++	// Process special events if extra temp arrays are empty (fallback for newer Artisan files)
++	const specialEvents: { time: number; name: string; value: string }[] = [];
++	if (extraDeviceData.length === 0 && parsedData.specialevents && parsedData.specialeventsStrings) {
++		console.log('Processing special events with direct device mapping:');
++		console.log('specialevents (indices):', parsedData.specialevents);
++		console.log('specialeventstype:', parsedData.specialeventstype);
++		console.log('specialeventsvalue:', parsedData.specialeventsvalue);
++		console.log('specialeventsStrings:', parsedData.specialeventsStrings);
++		console.log('etypes:', parsedData.etypes);
++
++		parsedData.specialevents.forEach((eventIndex: number, index: number) => {
++			const eventType = parsedData.specialeventstype?.[index];
++			const valueString = parsedData.specialeventsStrings?.[index];
++
++			// Resolve special event index -> absolute time in seconds
++			let timeSeconds: number | undefined;
++			if (
++				typeof eventIndex === 'number' &&
++				Number.isFinite(eventIndex) &&
++				eventIndex >= 0 &&
++				eventIndex < timex.length &&
++				typeof timex[eventIndex] === 'number' &&
++				Number.isFinite(timex[eventIndex])
++			) {
++				timeSeconds = timex[eventIndex];
++			} else {
++				console.warn(
++					`Skipping special event with invalid index: index=${eventIndex}, timex.length=${timex.length}`
++				);
++				return;
++			}
++
++			// Process ALL events that have non-empty string values (keep "0" as valid)
++			if (valueString && valueString !== '' && eventType !== undefined) {
++				// Direct device mapping using etypes array
++				const deviceName = parsedData.etypes?.[eventType];
++
++				if (deviceName && deviceName !== '--') {
++					console.log(
++						`Control event: index=${eventIndex} → time=${timeSeconds}s, device=${deviceName}, value="${valueString}"`
++					);
++
++					specialEvents.push({
++						time: timeSeconds,
++						name: deviceName.toLowerCase(), // "air", "burner", "drum", "damper"
++						value: valueString
++					});
++				} else if (deviceName === '--') {
++					console.log(`Skipping -- device event at ${timeSeconds}s`);
++				} else {
++					console.log(`Unknown event type ${eventType} at ${timeSeconds}s`);
++				}
++			} else {
++				console.log(`Skipping empty value event at ${timeSeconds}s (type=${eventType})`);
++			}
++		});
++
++		// Log summary of processed control events by device type
++		const deviceSummary = specialEvents.reduce(
++			(acc, event) => {
++				acc[event.name] = acc[event.name] || [];
++				acc[event.name].push(event.value);
++				return acc;
++			},
++			{} as Record<string, string[]>
++		);
++
++		console.log('Control events summary by device:');
++		Object.entries(deviceSummary).forEach(([device, values]) => {
++			console.log(`${device}: [${values.join(', ')}] (${values.length} events)`);
++		});
++	}
++
++	// Create temperature data for roast_temperatures table
++	const temperatureData: ProcessedRoastData['temperatureData'] = [];
++
++	// Add temperature data points (sample to avoid overwhelming database)
++	const sampleRate = Math.max(1, Math.floor(timex.length / 1000)); // Limit to ~1000 points
++	timex.forEach((timeSeconds, index) => {
++		// Include every Nth point, or points with significant temperature changes
++		if (
++			index % sampleRate === 0 ||
++			(index > 0 && Math.abs((beanTemps[index] || 0) - (beanTemps[index - 1] || 0)) > 5)
++		) {
++			temperatureData.push({
++				roast_id: roastId,
++				time_seconds: timeSeconds,
++				bean_temp: beanTemps[index] || null,
++				environmental_temp: envTemps[index] || null,
++				ambient_temp: null, // Artisan doesn't typically have ambient temp
++				data_source: 'artisan_import'
++			});
++		}
++	});
++
++	// Calculate phase percentages
++	const chargeTime = milestones.charge || 0;
++	const dropTime = milestones.drop || timex[timex.length - 1];
++	const totalTime = dropTime - chargeTime;
++
++	let dryingPercent = 0;
++	let maillardPercent = 0;
++	let developmentPercent = 0;
++
++	if (totalTime > 0) {
++		if (milestones.dry_end && milestones.dry_end > chargeTime) {
++			dryingPercent = ((milestones.dry_end - chargeTime) / totalTime) * 100;
++		}
++		if (milestones.fc_start && milestones.dry_end && milestones.fc_start > milestones.dry_end) {
++			maillardPercent = ((milestones.fc_start - milestones.dry_end) / totalTime) * 100;
++		}
++		if (milestones.fc_start && dropTime > milestones.fc_start) {
++			developmentPercent = ((dropTime - milestones.fc_start) / totalTime) * 100;
++		}
++	}
++
++	// Prepare profile data for roast_profiles table (matching schema columns)
++	const profileData = {
++		roaster_type: parsedData.roastertype || 'Unknown',
++		roaster_size: parsedData.roastersize || 0,
++		temperature_unit: 'F' as const, // Always store as Fahrenheit after conversion
++		roast_notes:
++			`Imported from Artisan\nRoaster: ${parsedData.roastertype || 'Unknown'}\nOriginal temp unit: ${parsedData.mode}\nWeight unit: ${parsedData.weight?.[2] || 'g'}` +
++			(parsedData.roastingnotes ? `\n\nNotes: ${parsedData.roastingnotes}` : ''),
++		roast_uuid: crypto.randomUUID(), // Generate a unique identifier
++		data_source: 'artisan_import' as const
++	};
++
++	// Create milestone events for roast_events table
++	const milestoneEvents: ProcessedRoastData['milestoneEvents'] = [];
++	Object.entries(milestones).forEach(([eventName, timeSeconds]) => {
++		if (timeSeconds && timeSeconds > 0) {
++			milestoneEvents.push({
++				roast_id: roastId,
++				time_seconds: timeSeconds,
++				event_type: 10, // Milestone event type
++				event_value: null, // Milestone events have NULL values
++				event_string: eventName, // 'charge', 'dry_end', 'fc_start', etc.
++				category: 'milestone',
++				subcategory: 'roast_phase',
++				user_generated: false,
++				automatic: true,
++				notes: `Imported from Artisan: ${eventName.replace('_', ' ')}`
++			});
++		}
++	});
++
++	// Add turning point milestone if available from computed data
++	if (computedData.TP_time && computedData.TP_time > 0) {
++		milestoneEvents.push({
++			roast_id: roastId,
++			time_seconds: computedData.TP_time,
++			event_type: 10, // Milestone event type
++			event_value: null, // Milestone events have NULL values
++			event_string: 'turning_point', // TP milestone
++			category: 'milestone',
++			subcategory: 'roast_phase',
++			user_generated: false,
++			automatic: true,
++			notes: `Imported from Artisan: turning point at ${computedData.TP_time}s, ${computedData.TP_BT}°F`
++		});
++	}
++
++	// Create control events for all extra devices using actual etypes names
++	const controlEvents: ProcessedRoastData['controlEvents'] = [];
++
++	// Process extratemp device data if available
++	timex.forEach((timeSeconds, index) => {
++		// Sample control events to avoid overwhelming database
++		if (index % sampleRate === 0) {
++			extraDeviceData.forEach((device) => {
++				const value = device.data[index];
++				if (value !== null && value !== undefined && value !== 0) {
++					controlEvents.push({
++						roast_id: roastId,
++						time_seconds: timeSeconds,
++						event_type: 1, // Control event type
++						event_value: value.toString(),
++						event_string: device.name, // Use actual etype name from Artisan
++						category: 'control',
++						subcategory: 'machine_setting',
++						user_generated: false,
++						automatic: true
++					});
++				}
++			});
++		}
++	});
++
++	// Add special events as control events if extratemp data was empty
++	specialEvents.forEach((event) => {
++		controlEvents.push({
++			roast_id: roastId,
++			time_seconds: event.time,
++			event_type: 1, // Control event type
++			event_value: event.value,
++			event_string: event.name, // Use mapped etype name (air, drum, damper, burner)
++			category: 'control',
++			subcategory: 'machine_setting',
++			user_generated: false,
++			automatic: true,
++			notes: `Imported from Artisan special events: ${event.name} set to ${event.value}`
++		});
++	});
++
++	// Note: roast_phases table no longer exists in normalized schema
++	// Phase percentages are now stored directly in roast_profiles table
++
++	return {
++		profileData,
++		temperatureData: temperatureData.sort((a, b) => a.time_seconds - b.time_seconds),
++		milestones,
++		phases: {
++			drying_percent: dryingPercent,
++			maillard_percent: maillardPercent,
++			development_percent: developmentPercent,
++			total_time_seconds: totalTime
++		},
++		computed: {
++			// Turning point data
++			tp_time: computedData.TP_time || null,
++			tp_temp: computedData.TP_BT || null,
++			// Rate of rise metrics
++			dry_phase_ror: computedData.dry_phase_ror || null,
++			mid_phase_ror: computedData.mid_phase_ror || null,
++			finish_phase_ror: computedData.finish_phase_ror || null,
++			total_ror: computedData.total_ror || null,
++			// Advanced metrics
++			auc: computedData.AUC || null,
++			dry_phase_delta_temp: computedData.dry_phase_delta_temp || null,
++			// Temperature mappings to existing columns (use computed when available)
++			charge_temp_computed: computedData.CHARGE_BT || null,
++			dry_end_temp_computed: computedData.DRY_BT || null,
++			drop_temp_computed: computedData.DROP_BT || null,
++			cool_temp_computed: computedData.COOL_BT || null,
++			// Time mappings to existing columns
++			dry_end_time_computed: computedData.DRY_time || null,
++			drop_time_computed: computedData.DROP_time || null,
++			cool_time_computed: computedData.COOL_time || null
++		},
++		milestoneEvents,
++		controlEvents
++	};
++}
++
++// Full import: parse, transform, persist to DB, update profile
++export async function importArtisanData(
++	supabase: SupabaseClient,
++	roastId: number,
++	userId: string,
++	fileContent: string,
++	fileName: string
++): Promise<ArtisanImportResult> {
++	// Verify ownership and get existing roast profile data
++	const { data: profile } = (await supabase
++		.from('roast_profiles')
++		.select('user, coffee_name, batch_name')
++		.eq('roast_id', roastId)
++		.single()) as {
++		data: { user: string; coffee_name: string; batch_name: string } | null;
++		error: unknown;
++	};
++
++	if (!profile || profile.user !== userId) {
++		throw new Error('Unauthorized');
++	}
++
++	// Parse file content
++	const artisanData = await parseArtisanFile(fileContent, fileName);
++
++	console.log(
++		`Parsed Artisan data: ${artisanData.title} (${artisanData.timex.length} data points)`
++	);
++
++	// Transform to database format
++	const processedData = transformArtisanData(artisanData, roastId);
++
++	// Validate processed data
++	const validation = validateProcessedData(processedData);
++	if (!validation.valid) {
++		throw new Error(`Data processing failed: ${validation.errors.join(', ')}`);
++	}
++
++	console.log(
++		`Generated ${processedData.temperatureData.length} temperature points for roast ${roastId}`
++	);
++
++	// Update roast profile metadata (preserve original coffee_name + add chart ranges)
++	const { error: updateError } = await supabase
++		.from('roast_profiles')
++		.update({
++			// Keep original coffee_name and batch_name
++			coffee_name: profile.coffee_name, // Preserve original coffee
++			batch_name: profile.batch_name, // Preserve original batch name without modification
++			roaster_type: artisanData.roastertype || 'Unknown',
++			roaster_size: artisanData.roastersize || 0,
++			temperature_unit: 'F', // Always store as Fahrenheit
++			// Chart display settings from Artisan
++			chart_x_min: artisanData.xmin || null,
++			chart_x_max: artisanData.xmax || null,
++			chart_y_min: artisanData.ymin || null,
++			chart_y_max: artisanData.ymax || null,
++			chart_z_min: artisanData.zmin || null,
++			chart_z_max: artisanData.zmax || null,
++			// Milestone data for quick access (use computed when available)
++			charge_time: processedData.milestones.charge || null,
++			dry_end_time:
++				processedData.computed.dry_end_time_computed || processedData.milestones.dry_end || null,
++			fc_start_time: processedData.milestones.fc_start || null,
++			fc_end_time: processedData.milestones.fc_end || null,
++			sc_start_time: processedData.milestones.sc_start || null,
++			drop_time: processedData.computed.drop_time_computed || processedData.milestones.drop || null,
++			cool_time: processedData.computed.cool_time_computed || processedData.milestones.cool || null,
++			// Milestone temperatures (use computed when available)
++			charge_temp: processedData.computed.charge_temp_computed || null,
++			dry_end_temp: processedData.computed.dry_end_temp_computed || null,
++			drop_temp: processedData.computed.drop_temp_computed || null,
++			cool_temp: processedData.computed.cool_temp_computed || null,
++			// Phase calculations
++			dry_percent: processedData.phases.drying_percent || null,
++			maillard_percent: processedData.phases.maillard_percent || null,
++			development_percent: processedData.phases.development_percent || null,
++			total_roast_time: processedData.phases.total_time_seconds || null,
++			// New computed data fields
++			tp_time: processedData.computed.tp_time || null,
++			tp_temp: processedData.computed.tp_temp || null,
++			dry_phase_ror: processedData.computed.dry_phase_ror || null,
++			mid_phase_ror: processedData.computed.mid_phase_ror || null,
++			finish_phase_ror: processedData.computed.finish_phase_ror || null,
++			total_ror: processedData.computed.total_ror || null,
++			auc: processedData.computed.auc || null,
++			dry_phase_delta_temp: processedData.computed.dry_phase_delta_temp || null,
++			roast_uuid: processedData.profileData.roast_uuid,
++			data_source: 'artisan_import'
++		})
++		.eq('roast_id', roastId);
++
++	if (updateError) {
++		console.error('Error updating roast profile:', updateError);
++		throw updateError;
++	}
++
++	// 1. Clear existing imported data for this roast
++	await clearRoastData(supabase, roastId, 'artisan_import');
++
++	// 2. Insert temperature data
++	console.log(`Inserting ${processedData.temperatureData.length} temperature points...`);
++	await insertTemperatures(supabase, processedData.temperatureData);
++
++	// 3. Insert milestone + control events
++	const allEvents = [...processedData.milestoneEvents, ...processedData.controlEvents];
++	if (allEvents.length > 0) {
++		console.log(
++			`Inserting ${allEvents.length} events (${processedData.milestoneEvents.length} milestones, ${processedData.controlEvents.length} control)...`
++		);
++		await insertEvents(supabase, allEvents);
++	}
++
++	// Create import log entry
++	const { error: logError } = await supabase.from('artisan_import_log').insert({
++		user_id: userId,
++		roast_id: roastId,
++		filename: fileName,
++		file_size: fileContent.length,
++		artisan_version: artisanData.version || 'Unknown',
++		total_data_points: processedData.temperatureData.length,
++		processing_status: 'success',
++		processing_messages: [
++			`Imported ${processedData.temperatureData.length} temperature points`,
++			`Created ${processedData.milestoneEvents.length} milestone events`,
++			`Generated ${processedData.controlEvents.length} control events`
++		],
++		original_data: JSON.stringify({
++			title: artisanData.title,
++			roaster: artisanData.roastertype,
++			weight: artisanData.weight,
++			temperature_unit: artisanData.mode,
++			timeindex: artisanData.timeindex
++		})
++	});
++	if (logError) {
++		console.error('Error creating import log:', logError);
++		// Non-critical, continue
++	}
++
++	return {
++		success: true,
++		message: `Successfully imported ${processedData.temperatureData.length} data points from ${fileName}`,
++		milestones: processedData.milestones,
++		phases: processedData.phases,
++		total_time: processedData.phases.total_time_seconds,
++		temperature_unit: 'F',
++		milestone_events: processedData.milestoneEvents.length,
++		control_events: processedData.controlEvents.length
++	};
++}
+diff --git a/src/routes/api/artisan-import/+server.ts b/src/routes/api/artisan-import/+server.ts
+index 2f64982..a982f43 100644
+--- a/src/routes/api/artisan-import/+server.ts
++++ b/src/routes/api/artisan-import/+server.ts
+@@ -1,398 +1,6 @@
+ import { json } from '@sveltejs/kit';
+ import type { RequestHandler } from './$types';
+-import type { ArtisanRoastData, ProcessedRoastData, MilestoneData } from '$lib/types/artisan.js';
+-import { validateArtisanData, validateProcessedData } from '$lib/utils/artisan-validator.js';
+-import { normalizeArtisanTemperatures, artisanModeToUnit } from '$lib/utils/temperature.js';
+-import { processAlogFile } from '$lib/utils/alog-parser.js';
+-import { clearRoastData, insertTemperatures, insertEvents } from '$lib/server/roastDataUtils.js';
+-
+-// Legacy interfaces removed - now using comprehensive types from artisan.ts
+-
+-// Time conversion utilities for database storage
+-
+-// Parse Artisan .alog or .alog.json data
+-function parseArtisanFile(fileContent: string, fileName: string): ArtisanRoastData {
+-	try {
+-		let data: unknown;
+-
+-		if (fileName.toLowerCase().endsWith('.alog')) {
+-			// Parse Python literal syntax (.alog file)
+-			data = processAlogFile(fileContent);
+-		} else {
+-			// Parse standard JSON (.alog.json file)
+-			data = JSON.parse(fileContent);
+-		}
+-
+-		// Validate the basic structure
+-		const validation = validateArtisanData(data);
+-		if (!validation.valid) {
+-			throw new Error(`Invalid Artisan file: ${validation.errors.join(', ')}`);
+-		}
+-
+-		// Map 'mode' to 'temperature_unit' for consistency
+-		(data as ArtisanRoastData).temperature_unit = artisanModeToUnit(
+-			(data as ArtisanRoastData).mode
+-		);
+-
+-		return data as ArtisanRoastData;
+-	} catch (error) {
+-		if (error instanceof Error) {
+-			throw error;
+-		}
+-		throw new Error('Failed to parse Artisan file');
+-	}
+-}
+-
+-// Extract milestone events from Artisan timeindex array
+-function extractMilestones(artisanData: ArtisanRoastData): MilestoneData {
+-	const milestones: MilestoneData = {};
+-	const { timex, timeindex } = artisanData;
+-
+-	// timeindex maps: [CHARGE, DRY_END, FC_START, FC_END, SC_START, SC_END, DROP, COOL]
+-	if (timeindex[0] > 0 && timeindex[0] < timex.length) {
+-		milestones.charge = timex[timeindex[0]];
+-	}
+-	if (timeindex[1] > 0 && timeindex[1] < timex.length) {
+-		milestones.dry_end = timex[timeindex[1]];
+-	}
+-	if (timeindex[2] > 0 && timeindex[2] < timex.length) {
+-		milestones.fc_start = timex[timeindex[2]];
+-	}
+-	if (timeindex[3] > 0 && timeindex[3] < timex.length) {
+-		milestones.fc_end = timex[timeindex[3]];
+-	}
+-	if (timeindex[4] > 0 && timeindex[4] < timex.length) {
+-		milestones.sc_start = timex[timeindex[4]];
+-	}
+-	if (timeindex[5] > 0 && timeindex[5] < timex.length) {
+-		milestones.sc_end = timex[timeindex[5]];
+-	}
+-	if (timeindex[6] > 0 && timeindex[6] < timex.length) {
+-		milestones.drop = timex[timeindex[6]];
+-	}
+-	if (timeindex[7] > 0 && timeindex[7] < timex.length) {
+-		milestones.cool = timex[timeindex[7]];
+-	}
+-
+-	return milestones;
+-}
+-
+-// Transform Artisan data into database format
+-function transformArtisanData(
+-	roastId: number,
+-	artisanData: ArtisanRoastData,
+-	_userId: string
+-): ProcessedRoastData {
+-	const { timex, temp1, temp2, extratemp1, extratemp2 } = artisanData;
+-
+-	// Extract milestones
+-	const milestones = extractMilestones(artisanData);
+-
+-	// Extract computed data from Artisan
+-	const computedData = artisanData.computed || {};
+-
+-	// Normalize temperatures to Fahrenheit for consistency
+-	const { beanTemps, envTemps } = normalizeArtisanTemperatures(
+-		temp1,
+-		temp2,
+-		artisanData.temperature_unit,
+-		'F' // Store everything in Fahrenheit
+-	);
+-
+-	// Extract control device data from extra devices with proper etypes mapping
+-	const extraDeviceData: { name: string; data: number[] }[] = [];
+-
+-	// Map extratemp1 channels to their corresponding etype names
+-	if (extratemp1 && artisanData.extraname1) {
+-		extratemp1.forEach((channelData, channelIndex) => {
+-			if (channelData && channelData.length > 0 && artisanData.extraname1) {
+-				const deviceName = artisanData.extraname1[channelIndex];
+-				// Map device names to etypes if available
+-				let etypeName = deviceName;
+-				if (artisanData.etypes && artisanData.etypes.length > channelIndex) {
+-					const etype = artisanData.etypes[channelIndex];
+-					if (etype && etype !== '--') {
+-						etypeName = etype.toLowerCase();
+-					}
+-				}
+-				extraDeviceData.push({
+-					name: etypeName,
+-					data: channelData
+-				});
+-			}
+-		});
+-	}
+-
+-	// Map extratemp2 channels to their corresponding etype names
+-	if (extratemp2 && artisanData.extraname2) {
+-		extratemp2.forEach((channelData, channelIndex) => {
+-			if (channelData && channelData.length > 0 && artisanData.extraname2) {
+-				const deviceName = artisanData.extraname2[channelIndex];
+-				// Map device names to etypes if available, offset by extratemp1 length
+-				let etypeName = deviceName;
+-				const etypeIndex = channelIndex + (artisanData.extratemp1?.length || 0);
+-				if (artisanData.etypes && artisanData.etypes.length > etypeIndex) {
+-					const etype = artisanData.etypes[etypeIndex];
+-					if (etype && etype !== '--') {
+-						etypeName = etype.toLowerCase();
+-					}
+-				}
+-				extraDeviceData.push({
+-					name: etypeName,
+-					data: channelData
+-				});
+-			}
+-		});
+-	}
+-
+-	// Process special events if extra temp arrays are empty (fallback for newer Artisan files)
+-	const specialEvents: { time: number; name: string; value: string }[] = [];
+-	if (
+-		extraDeviceData.length === 0 &&
+-		artisanData.specialevents &&
+-		artisanData.specialeventsStrings
+-	) {
+-		console.log('Processing special events with direct device mapping:');
+-		console.log('specialevents (indices):', artisanData.specialevents);
+-		console.log('specialeventstype:', artisanData.specialeventstype);
+-		console.log('specialeventsvalue:', artisanData.specialeventsvalue);
+-		console.log('specialeventsStrings:', artisanData.specialeventsStrings);
+-		console.log('etypes:', artisanData.etypes);
+-
+-		artisanData.specialevents.forEach((eventIndex: number, index: number) => {
+-			const eventType = artisanData.specialeventstype?.[index];
+-			const valueString = artisanData.specialeventsStrings?.[index];
+-
+-			// Resolve special event index -> absolute time in seconds
+-			let timeSeconds: number | undefined;
+-			if (
+-				typeof eventIndex === 'number' &&
+-				Number.isFinite(eventIndex) &&
+-				eventIndex >= 0 &&
+-				eventIndex < timex.length &&
+-				typeof timex[eventIndex] === 'number' &&
+-				Number.isFinite(timex[eventIndex])
+-			) {
+-				timeSeconds = timex[eventIndex];
+-			} else {
+-				console.warn(
+-					`Skipping special event with invalid index: index=${eventIndex}, timex.length=${timex.length}`
+-				);
+-				return;
+-			}
+-
+-			// Process ALL events that have non-empty string values (keep "0" as valid)
+-			if (valueString && valueString !== '' && eventType !== undefined) {
+-				// Direct device mapping using etypes array
+-				const deviceName = artisanData.etypes?.[eventType];
+-
+-				if (deviceName && deviceName !== '--') {
+-					console.log(
+-						`Control event: index=${eventIndex} → time=${timeSeconds}s, device=${deviceName}, value="${valueString}"`
+-					);
+-
+-					specialEvents.push({
+-						time: timeSeconds,
+-						name: deviceName.toLowerCase(), // "air", "burner", "drum", "damper"
+-						value: valueString
+-					});
+-				} else if (deviceName === '--') {
+-					console.log(`Skipping -- device event at ${timeSeconds}s`);
+-				} else {
+-					console.log(`Unknown event type ${eventType} at ${timeSeconds}s`);
+-				}
+-			} else {
+-				console.log(`Skipping empty value event at ${timeSeconds}s (type=${eventType})`);
+-			}
+-		});
+-
+-		// Log summary of processed control events by device type
+-		const deviceSummary = specialEvents.reduce(
+-			(acc, event) => {
+-				acc[event.name] = acc[event.name] || [];
+-				acc[event.name].push(event.value);
+-				return acc;
+-			},
+-			{} as Record<string, string[]>
+-		);
+-
+-		console.log('Control events summary by device:');
+-		Object.entries(deviceSummary).forEach(([device, values]) => {
+-			console.log(`${device}: [${values.join(', ')}] (${values.length} events)`);
+-		});
+-	}
+-
+-	// Create temperature data for roast_temperatures table
+-	const temperatureData: ProcessedRoastData['temperatureData'] = [];
+-
+-	// Add temperature data points (sample to avoid overwhelming database)
+-	const sampleRate = Math.max(1, Math.floor(timex.length / 1000)); // Limit to ~1000 points
+-	timex.forEach((timeSeconds, index) => {
+-		// Include every Nth point, or points with significant temperature changes
+-		if (
+-			index % sampleRate === 0 ||
+-			(index > 0 && Math.abs((beanTemps[index] || 0) - (beanTemps[index - 1] || 0)) > 5)
+-		) {
+-			temperatureData.push({
+-				roast_id: roastId,
+-				time_seconds: timeSeconds,
+-				bean_temp: beanTemps[index] || null,
+-				environmental_temp: envTemps[index] || null,
+-				ambient_temp: null, // Artisan doesn't typically have ambient temp
+-				data_source: 'artisan_import'
+-			});
+-		}
+-	});
+-
+-	// Calculate phase percentages
+-	const chargeTime = milestones.charge || 0;
+-	const dropTime = milestones.drop || timex[timex.length - 1];
+-	const totalTime = dropTime - chargeTime;
+-
+-	let dryingPercent = 0;
+-	let maillardPercent = 0;
+-	let developmentPercent = 0;
+-
+-	if (totalTime > 0) {
+-		if (milestones.dry_end && milestones.dry_end > chargeTime) {
+-			dryingPercent = ((milestones.dry_end - chargeTime) / totalTime) * 100;
+-		}
+-		if (milestones.fc_start && milestones.dry_end && milestones.fc_start > milestones.dry_end) {
+-			maillardPercent = ((milestones.fc_start - milestones.dry_end) / totalTime) * 100;
+-		}
+-		if (milestones.fc_start && dropTime > milestones.fc_start) {
+-			developmentPercent = ((dropTime - milestones.fc_start) / totalTime) * 100;
+-		}
+-	}
+-
+-	// Prepare profile data for roast_profiles table (matching schema columns)
+-	const profileData = {
+-		roaster_type: artisanData.roastertype || 'Unknown',
+-		roaster_size: artisanData.roastersize || 0,
+-		temperature_unit: 'F' as const, // Always store as Fahrenheit after conversion
+-		roast_notes:
+-			`Imported from Artisan\nRoaster: ${artisanData.roastertype || 'Unknown'}\nOriginal temp unit: ${artisanData.mode}\nWeight unit: ${artisanData.weight?.[2] || 'g'}` +
+-			(artisanData.roastingnotes ? `\n\nNotes: ${artisanData.roastingnotes}` : ''),
+-		roast_uuid: crypto.randomUUID(), // Generate a unique identifier
+-		data_source: 'artisan_import' as const
+-	};
+-
+-	// Create milestone events for roast_events table
+-	const milestoneEvents: ProcessedRoastData['milestoneEvents'] = [];
+-	Object.entries(milestones).forEach(([eventName, timeSeconds]) => {
+-		if (timeSeconds && timeSeconds > 0) {
+-			milestoneEvents.push({
+-				roast_id: roastId,
+-				time_seconds: timeSeconds,
+-				event_type: 10, // Milestone event type
+-				event_value: null, // Milestone events have NULL values
+-				event_string: eventName, // 'charge', 'dry_end', 'fc_start', etc.
+-				category: 'milestone',
+-				subcategory: 'roast_phase',
+-				user_generated: false,
+-				automatic: true,
+-				notes: `Imported from Artisan: ${eventName.replace('_', ' ')}`
+-			});
+-		}
+-	});
+-
+-	// Add turning point milestone if available from computed data
+-	if (computedData.TP_time && computedData.TP_time > 0) {
+-		milestoneEvents.push({
+-			roast_id: roastId,
+-			time_seconds: computedData.TP_time,
+-			event_type: 10, // Milestone event type
+-			event_value: null, // Milestone events have NULL values
+-			event_string: 'turning_point', // TP milestone
+-			category: 'milestone',
+-			subcategory: 'roast_phase',
+-			user_generated: false,
+-			automatic: true,
+-			notes: `Imported from Artisan: turning point at ${computedData.TP_time}s, ${computedData.TP_BT}°F`
+-		});
+-	}
+-
+-	// Create control events for all extra devices using actual etypes names
+-	const controlEvents: ProcessedRoastData['controlEvents'] = [];
+-
+-	// Process extratemp device data if available
+-	timex.forEach((timeSeconds, index) => {
+-		// Sample control events to avoid overwhelming database
+-		if (index % sampleRate === 0) {
+-			extraDeviceData.forEach((device) => {
+-				const value = device.data[index];
+-				if (value !== null && value !== undefined && value !== 0) {
+-					controlEvents.push({
+-						roast_id: roastId,
+-						time_seconds: timeSeconds,
+-						event_type: 1, // Control event type
+-						event_value: value.toString(),
+-						event_string: device.name, // Use actual etype name from Artisan
+-						category: 'control',
+-						subcategory: 'machine_setting',
+-						user_generated: false,
+-						automatic: true
+-					});
+-				}
+-			});
+-		}
+-	});
+-
+-	// Add special events as control events if extratemp data was empty
+-	specialEvents.forEach((event) => {
+-		controlEvents.push({
+-			roast_id: roastId,
+-			time_seconds: event.time,
+-			event_type: 1, // Control event type
+-			event_value: event.value,
+-			event_string: event.name, // Use mapped etype name (air, drum, damper, burner)
+-			category: 'control',
+-			subcategory: 'machine_setting',
+-			user_generated: false,
+-			automatic: true,
+-			notes: `Imported from Artisan special events: ${event.name} set to ${event.value}`
+-		});
+-	});
+-
+-	// Note: roast_phases table no longer exists in normalized schema
+-	// Phase percentages are now stored directly in roast_profiles table
+-
+-	return {
+-		profileData,
+-		temperatureData: temperatureData.sort((a, b) => a.time_seconds - b.time_seconds),
+-		milestones,
+-		phases: {
+-			drying_percent: dryingPercent,
+-			maillard_percent: maillardPercent,
+-			development_percent: developmentPercent,
+-			total_time_seconds: totalTime
+-		},
+-		computed: {
+-			// Turning point data
+-			tp_time: computedData.TP_time || null,
+-			tp_temp: computedData.TP_BT || null,
+-			// Rate of rise metrics
+-			dry_phase_ror: computedData.dry_phase_ror || null,
+-			mid_phase_ror: computedData.mid_phase_ror || null,
+-			finish_phase_ror: computedData.finish_phase_ror || null,
+-			total_ror: computedData.total_ror || null,
+-			// Advanced metrics
+-			auc: computedData.AUC || null,
+-			dry_phase_delta_temp: computedData.dry_phase_delta_temp || null,
+-			// Temperature mappings to existing columns (use computed when available)
+-			charge_temp_computed: computedData.CHARGE_BT || null,
+-			dry_end_temp_computed: computedData.DRY_BT || null,
+-			drop_temp_computed: computedData.DROP_BT || null,
+-			cool_temp_computed: computedData.COOL_BT || null,
+-			// Time mappings to existing columns
+-			dry_end_time_computed: computedData.DRY_time || null,
+-			drop_time_computed: computedData.DROP_time || null,
+-			cool_time_computed: computedData.COOL_time || null
+-		},
+-		milestoneEvents,
+-		controlEvents
+-	};
+-}
++import { importArtisanData } from '$lib/data/artisan.js';
+ 
+ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+ 	try {
+@@ -408,25 +16,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
+ 		if (!file) {
+ 			return json({ error: 'No file provided' }, { status: 400 });
+ 		}
+-
+ 		if (!roastId) {
+ 			return json({ error: 'No roast ID provided' }, { status: 400 });
+ 		}
+ 
+-		// Verify ownership and get existing roast profile data
+-		const { data: profile } = (await supabase
+-			.from('roast_profiles')
+-			.select('user, coffee_name, batch_name')
+-			.eq('roast_id', Number(roastId))
+-			.single()) as {
+-			data: { user: string; coffee_name: string; batch_name: string } | null;
+-			error: unknown;
+-		};
+-
+-		if (!profile || profile.user !== user.id) {
+-			return json({ error: 'Unauthorized' }, { status: 403 });
+-		}
+-
+ 		// Validate file format - accept .alog, .alog.json, or .json files
+ 		const fileName = file.name.toLowerCase();
+ 		if (
+@@ -443,154 +36,28 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
+ 			);
+ 		}
+ 
+-		// Parse file content
+ 		const fileContent = await file.text();
+-		const artisanData = parseArtisanFile(fileContent, file.name);
+-
+-		console.log(
+-			`Parsed Artisan data: ${artisanData.title} (${artisanData.timex.length} data points)`
++		const result = await importArtisanData(
++			supabase,
++			parseInt(roastId),
++			user.id,
++			fileContent,
++			file.name
+ 		);
+ 
+-		// Transform to database format
+-		const processedData = transformArtisanData(parseInt(roastId), artisanData, user.id);
+-
+-		// Validate processed data
+-		const validation = validateProcessedData(processedData);
+-		if (!validation.valid) {
+-			throw new Error(`Data processing failed: ${validation.errors.join(', ')}`);
+-		}
+-
+-		console.log(
+-			`Generated ${processedData.temperatureData.length} temperature points for roast ${roastId}`
+-		);
+-
+-		// Update roast profile metadata (preserve original coffee_name + add chart ranges)
+-		const { error: updateError } = await supabase
+-			.from('roast_profiles')
+-			.update({
+-				// Keep original coffee_name and batch_name
+-				coffee_name: profile.coffee_name, // Preserve original coffee
+-				batch_name: profile.batch_name, // Preserve original batch name without modification
+-				roaster_type: artisanData.roastertype || 'Unknown',
+-				roaster_size: artisanData.roastersize || 0,
+-				temperature_unit: 'F', // Always store as Fahrenheit
+-				// Chart display settings from Artisan
+-				chart_x_min: artisanData.xmin || null,
+-				chart_x_max: artisanData.xmax || null,
+-				chart_y_min: artisanData.ymin || null,
+-				chart_y_max: artisanData.ymax || null,
+-				chart_z_min: artisanData.zmin || null,
+-				chart_z_max: artisanData.zmax || null,
+-				// Milestone data for quick access (use computed when available)
+-				charge_time: processedData.milestones.charge || null,
+-				dry_end_time:
+-					processedData.computed.dry_end_time_computed || processedData.milestones.dry_end || null,
+-				fc_start_time: processedData.milestones.fc_start || null,
+-				fc_end_time: processedData.milestones.fc_end || null,
+-				sc_start_time: processedData.milestones.sc_start || null,
+-				drop_time:
+-					processedData.computed.drop_time_computed || processedData.milestones.drop || null,
+-				cool_time:
+-					processedData.computed.cool_time_computed || processedData.milestones.cool || null,
+-				// Milestone temperatures (use computed when available)
+-				charge_temp: processedData.computed.charge_temp_computed || null,
+-				dry_end_temp: processedData.computed.dry_end_temp_computed || null,
+-				drop_temp: processedData.computed.drop_temp_computed || null,
+-				cool_temp: processedData.computed.cool_temp_computed || null,
+-				// Phase calculations
+-				dry_percent: processedData.phases.drying_percent || null,
+-				maillard_percent: processedData.phases.maillard_percent || null,
+-				development_percent: processedData.phases.development_percent || null,
+-				total_roast_time: processedData.phases.total_time_seconds || null,
+-				// New computed data fields
+-				tp_time: processedData.computed.tp_time || null,
+-				tp_temp: processedData.computed.tp_temp || null,
+-				dry_phase_ror: processedData.computed.dry_phase_ror || null,
+-				mid_phase_ror: processedData.computed.mid_phase_ror || null,
+-				finish_phase_ror: processedData.computed.finish_phase_ror || null,
+-				total_ror: processedData.computed.total_ror || null,
+-				auc: processedData.computed.auc || null,
+-				dry_phase_delta_temp: processedData.computed.dry_phase_delta_temp || null,
+-				roast_uuid: processedData.profileData.roast_uuid,
+-				data_source: 'artisan_import'
+-			})
+-			.eq('roast_id', parseInt(roastId));
+-
+-		if (updateError) {
+-			console.error('Error updating roast profile:', updateError);
+-			throw updateError;
+-		}
+-
+-		// Insert data into normalized tables using shared utilities
+-		const roastIdNum = parseInt(roastId);
+-
+-		// 1. Clear existing imported data for this roast
+-		await clearRoastData(supabase, roastIdNum, 'artisan_import');
+-
+-		// 2. Insert temperature data
+-		console.log(`Inserting ${processedData.temperatureData.length} temperature points...`);
+-		await insertTemperatures(supabase, processedData.temperatureData);
+-
+-		// 3. Insert milestone + control events
+-		const allEvents = [...processedData.milestoneEvents, ...processedData.controlEvents];
+-		if (allEvents.length > 0) {
+-			console.log(
+-				`Inserting ${allEvents.length} events (${processedData.milestoneEvents.length} milestones, ${processedData.controlEvents.length} control)...`
+-			);
+-			await insertEvents(supabase, allEvents);
+-		}
+-
+-		// Note: roast_phases table no longer exists, skipping phase insertion
+-
+-		// Create import log entry
+-		const { error: logError } = await supabase.from('artisan_import_log').insert({
+-			user_id: user.id,
+-			roast_id: parseInt(roastId),
+-			filename: file.name,
+-			file_size: file.size,
+-			artisan_version: artisanData.version || 'Unknown',
+-			total_data_points: processedData.temperatureData.length,
+-			processing_status: 'success',
+-			processing_messages: [
+-				`Imported ${processedData.temperatureData.length} temperature points`,
+-				`Created ${processedData.milestoneEvents.length} milestone events`,
+-				`Generated ${processedData.controlEvents.length} control events`
+-			],
+-			original_data: JSON.stringify({
+-				title: artisanData.title,
+-				roaster: artisanData.roastertype,
+-				weight: artisanData.weight,
+-				temperature_unit: artisanData.mode,
+-				timeindex: artisanData.timeindex
+-			})
+-		});
+-		if (logError) {
+-			console.error('Error creating import log:', logError);
+-			// Non-critical, continue
+-		}
+-
+-		return json({
+-			success: true,
+-			message: `Successfully imported ${processedData.temperatureData.length} data points from ${file.name}`,
+-			milestones: processedData.milestones,
+-			phases: processedData.phases,
+-			total_time: processedData.phases.total_time_seconds,
+-			temperature_unit: 'F',
+-			milestone_events: processedData.milestoneEvents.length,
+-			control_events: processedData.controlEvents.length
+-		});
++		return json(result);
+ 	} catch (error) {
+ 		console.error('Error importing Artisan file:', error);
+ 
+-		// Provide more specific error messages
+ 		let errorMessage = 'Failed to import Artisan file';
+ 		let statusCode = 500;
+ 
+ 		if (error instanceof Error) {
+ 			errorMessage = error.message;
+ 
+-			// Client errors
+-			if (
++			if (error.message === 'Unauthorized') {
++				statusCode = 403;
++			} else if (
+ 				error.message.includes('Invalid Artisan file') ||
+ 				error.message.includes('Missing required field') ||
+ 				error.message.includes('Failed to parse JSON')
+diff --git a/tests/e2e/crud.spec.ts b/tests/e2e/crud.spec.ts
+index 67120ea..968b390 100644
+--- a/tests/e2e/crud.spec.ts
++++ b/tests/e2e/crud.spec.ts
+@@ -328,7 +328,7 @@ test.describe('Cupping Notes', () => {
+ 			// Adjust sliders and selects
+ 			const slider = page.getByRole('slider').first();
+ 			if (await slider.isVisible({ timeout: 1000 }).catch(() => false)) {
+-				await slider.fill('6');
++				await slider.fill('5'); // slider max is 5 (1-5 scale)
+ 			}
+ 
+ 			const brewMethod = page.locator('#brew-method');
