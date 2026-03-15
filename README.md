@@ -128,7 +128,7 @@ Browser
 
 ### Auth Model
 
-Supabase SSR manages sessions via `@supabase/ssr`. `hooks.server.ts` refreshes tokens on every server request and attaches the session to `event.locals`. A four-tier role model (viewer, roaster, api-member, enterprise) is stored in Supabase user metadata and updated via Stripe webhooks on subscription events. The external catalog API uses a separate `bcrypt`-hashed API key system with per-tier rate limits.
+Supabase SSR manages sessions via `@supabase/ssr`. `hooks.server.ts` refreshes tokens on every server request and attaches the session to `event.locals`. A five-tier role model (viewer, member, api-member, api-enterprise, admin) is stored in Supabase user metadata and updated via Stripe webhooks on subscription events. The external catalog API uses a separate `bcrypt`-hashed API key system with per-tier rate limits.
 
 ### AI Chat Architecture
 
