@@ -177,7 +177,13 @@
 			</div>
 		{:else if viewMode === 'active' && currentRoastProfile}
 			<!-- Tiered Active Profile Content -->
-			{@const batchProfiles = sortedGroupedProfiles[currentRoastProfile.batch_name] || []}
+			{@const batchKey =
+				Object.keys(sortedGroupedProfiles).find((key) =>
+					sortedGroupedProfiles[key]?.some(
+						(p: RoastProfile) => p.roast_id === currentRoastProfile.roast_id
+					)
+				) || ''}
+			{@const batchProfiles = sortedGroupedProfiles[batchKey] || []}
 			{@const batchSummary = getBatchSummary(batchProfiles)}
 			<div class="mt-6">
 				<!-- Tier 1: Batch Header -->

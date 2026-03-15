@@ -168,16 +168,19 @@
 			return {};
 		}
 
-		// Group profiles by batch name
+		// Group profiles by batch name + roast date.
+		// Same batch name on different days = different batch.
 		const newGroupedProfiles: Record<string, RoastProfile[]> = {};
 
 		// Process each profile
 		typedFilteredData.forEach((profile) => {
-			const batchName = profile.batch_name || 'Unknown Batch';
-			if (!newGroupedProfiles[batchName]) {
-				newGroupedProfiles[batchName] = [];
+			const name = profile.batch_name || 'Unknown Batch';
+			const date = profile.roast_date ? profile.roast_date.split('T')[0] : 'unknown';
+			const batchKey = `${name}|||${date}`;
+			if (!newGroupedProfiles[batchKey]) {
+				newGroupedProfiles[batchKey] = [];
 			}
-			newGroupedProfiles[batchName].push(profile);
+			newGroupedProfiles[batchKey].push(profile);
 		});
 
 		// Sort profiles within each batch by date (newest first)
@@ -496,10 +499,13 @@
 		try {
 			console.log('Selecting profile:', profile.roast_id, profile.coffee_name);
 
-			// Find the batch and index of the profile - with fallback for data consistency
-			const batchName = profile.batch_name || 'Unknown Batch';
+			// Find the batch key containing this profile (keys are composite name|||date)
 			const groupedProfiles = sortedGroupedProfiles();
-			const profiles = groupedProfiles[batchName] || [];
+			const batchKey =
+				Object.keys(groupedProfiles).find((key) =>
+					groupedProfiles[key]?.some((p) => p.roast_id === profile.roast_id)
+				) || '';
+			const profiles = groupedProfiles[batchKey] || [];
 			const index = profiles.findIndex((p) => p.roast_id === profile.roast_id);
 
 			// If not found in grouped profiles, it might be a timing issue
@@ -519,8 +525,8 @@
 			};
 
 			// Ensure the batch is expanded
-			if (!expandedBatches.has(batchName)) {
-				expandedBatches.add(batchName);
+			if (batchKey && !expandedBatches.has(batchKey)) {
+				expandedBatches.add(batchKey);
 				// Force reactivity by reassigning the Set
 				expandedBatches = new Set(expandedBatches);
 			}
