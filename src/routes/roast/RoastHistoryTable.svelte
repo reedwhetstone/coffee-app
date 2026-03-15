@@ -29,7 +29,7 @@
 
 	import { formatDateForDisplay } from '$lib/utils/dates';
 
-	let isBatchExpanded = $derived((batchName: string) => expandedBatches.has(batchName));
+	let isBatchExpanded = $derived((batchKey: string) => expandedBatches.has(batchKey));
 
 	// Helper functions for data calculations
 	function calculateRoastDuration(profile: TableRoastProfile): string {
@@ -118,28 +118,29 @@
 		</div>
 	{:else}
 		<div class="space-y-6">
-			{#each safeBatchNames as batchName}
-				{@const profiles = safeGroupedProfiles[batchName] || []}
+			{#each safeBatchNames as batchKey}
+				{@const batchName = batchKey.includes('|||') ? batchKey.split('|||')[0] : batchKey}
+				{@const profiles = safeGroupedProfiles[batchKey] || []}
 				{@const batchSummary = getBatchSummary(profiles)}
 				<div class="rounded-lg bg-background-secondary-light ring-1 ring-border-light">
 					<!-- Batch Header - Following ProfitCards Pattern -->
 					<button
 						type="button"
 						class="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-background-primary-light focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
-						onclick={() => onToggleBatch(batchName)}
+						onclick={() => onToggleBatch(batchKey)}
 						onkeydown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
 								e.preventDefault();
-								onToggleBatch(batchName);
+								onToggleBatch(batchKey);
 							}
 						}}
-						aria-expanded={isBatchExpanded(batchName)}
-						aria-controls="batch-{batchName.replace(/\s+/g, '-').toLowerCase()}"
+						aria-expanded={isBatchExpanded(batchKey)}
+						aria-controls="batch-{batchKey.replace(/\s+/g, '-').toLowerCase()}"
 						aria-label="Toggle {batchName} batch ({batchSummary.count} roasts)"
 					>
 						<div class="flex items-center gap-3">
 							<div class="text-text-primary-light">
-								{isBatchExpanded(batchName) ? '▼' : '▶'}
+								{isBatchExpanded(batchKey) ? '▼' : '▶'}
 							</div>
 							<div>
 								<h3 class="text-lg font-semibold text-text-primary-light">
@@ -171,10 +172,10 @@
 					</button>
 
 					<!-- Roast Profile Cards -->
-					{#if isBatchExpanded(batchName) && profiles.length > 0}
+					{#if isBatchExpanded(batchKey) && profiles.length > 0}
 						<div
 							class="border-t border-border-light bg-background-primary-light p-4"
-							id="batch-{batchName.replace(/\s+/g, '-').toLowerCase()}"
+							id="batch-{batchKey.replace(/\s+/g, '-').toLowerCase()}"
 							role="region"
 							aria-label="Roast profiles for {batchName}"
 						>
