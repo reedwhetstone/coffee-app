@@ -1,5 +1,6 @@
 import type { PageServerLoad } from '../(home)/$types';
 import { createSchemaService } from '$lib/services/schemaService';
+import { searchCatalog } from '$lib/data/catalog';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	// Get session data - no longer redirecting server-side for better performance
@@ -8,18 +9,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	// Get limited coffee data for preview section with error handling
 	let stockedData: Record<string, unknown>[] = [];
 	try {
-		const { data, error } = await locals.supabase
-			.from('coffee_catalog')
-			.select('*')
-			.eq('stocked', true)
-			.order('arrival_date', { ascending: false })
-			.limit(6); // Only need 6 for preview
-
-		if (error) {
-			console.warn('Failed to load coffee catalog for home preview:', error);
-		} else {
-			stockedData = data || [];
-		}
+		const result = await searchCatalog(locals.supabase, {
+			stockedOnly: true,
+			orderBy: 'arrival_date',
+			orderDirection: 'desc',
+			limit: 6 // Only need 6 for preview
+		});
+		stockedData = result.data as unknown as Record<string, unknown>[];
 	} catch (error) {
 		console.error('Error loading coffee catalog:', error);
 		// Continue with empty array, don't block page load

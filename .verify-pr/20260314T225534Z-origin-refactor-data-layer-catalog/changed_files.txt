@@ -1,0 +1,5 @@
+src/lib/data/catalog.ts
+src/routes/(home)/+page.server.ts
+src/routes/api/catalog-api/+server.ts
+src/routes/api/catalog/+server.ts
+src/routes/api/tools/coffee-catalog/+server.ts
