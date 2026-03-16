@@ -52,7 +52,7 @@ I think of this as the economy of directors. The leverage right now isn't in doi
 
 For the technically curious, here's the architecture:
 
-**Source adapters.** Each supplier gets a Source class. Three patterns: custom Playwright scrapers for complex sites that need browser rendering, a generic Shopify adapter that hits `/products.json` (no browser, just HTTP), and HTTP fetch adapters for WooCommerce and other APIs. Seven suppliers use Playwright scrapers, six use the generic Shopify adapter, and eighteen use HTTP fetch adapters.
+**Source adapters.** Each supplier gets a Source class. Three patterns: custom Playwright scrapers for complex sites that need browser rendering, a generic Shopify adapter that hits `/products.json` (no browser, just HTTP), and HTTP fetch adapters for WooCommerce and other APIs. Five suppliers use Playwright scrapers, seven use the generic Shopify adapter, and the rest use HTTP fetch adapters for WooCommerce and Shopify APIs.
 
 **URL collection and stock sync.** Each source implements `collectInitUrlsData()`, which returns product URLs, prices, and basic metadata. The pipeline compares these against the database: mark missing products as unstocked, update prices for existing products, queue new products for full scraping.
 
@@ -84,7 +84,7 @@ This is the economy of directors in practice. I'm not writing scraper code. I'm 
 
 ## What the Data Shows
 
-The pipeline currently tracks 1,876 coffees across 31 suppliers. Pricing data, availability patterns, origin distribution, processing method breakdowns. This normalized dataset doesn't exist anywhere else. No single supplier has visibility into the broader market. We do, because we aggregate and normalize across all of them.
+The pipeline currently tracks 1,876 coffees across 35 suppliers. Pricing data, availability patterns, origin distribution, processing method breakdowns. This normalized dataset doesn't exist anywhere else. No single supplier has visibility into the broader market. We do, because we aggregate and normalize across all of them.
 
 That data tells a story about the green coffee market that nobody else is publishing. Seasonal availability shifts, pricing trends by origin, which suppliers carry the most unique lots. We're going to start sharing that analysis publicly. (More on this in a future market intelligence post.)
 
