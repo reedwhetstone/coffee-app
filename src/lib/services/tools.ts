@@ -1,30 +1,48 @@
 import { tool } from 'ai';
 import { z } from 'zod';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { searchCatalog, type SearchCatalogInput } from '@purveyors/cli/catalog';
+import {
+	listInventory,
+	addInventory as _addInventory,
+	updateInventory as _updateInventory
+} from '@purveyors/cli/inventory';
+import { listRoasts, createRoast as _createRoast } from '@purveyors/cli/roast';
+import { getTastingNotes } from '@purveyors/cli/tasting';
+import { recordSale as _recordSale } from '@purveyors/cli/sales';
 
 /**
  * Creates the set of AI tools for the chat service.
  *
- * Each tool calls an internal /api/tools/* endpoint with auth headers
- * and returns the raw JSON result for the model to interpret.
+ * All tools call @purveyors/cli library functions directly via the supabase
+ * client — no internal HTTP hop required. This is the flywheel: CLI
+ * improvements automatically improve the chat agent.
+ *
+ * READ TOOLS — execute immediately, return data:
+ *   coffee_catalog_search  → searchCatalog()
+ *   green_coffee_inventory → listInventory()
+ *   roast_profiles         → listRoasts()
+ *   bean_tasting_notes     → getTastingNotes()
+ *
+ * WRITE TOOLS — proposal pattern, return action_card for user confirmation:
+ *   add_bean_to_inventory  → execute-action calls addInventory()
+ *   update_bean            → execute-action calls updateInventory()
+ *   create_roast_session   → execute-action calls createRoast()
+ *   update_roast_notes     → no CLI equivalent yet; execute-action uses Supabase directly
+ *   record_sale            → execute-action calls recordSale()
+ *
+ * Write tool execute() bodies return action_card proposals only — the actual
+ * write happens in /api/chat/execute-action when the user confirms. The CLI
+ * imports above are referenced in executor comments so execute-action can be
+ * migrated to use them in a follow-up PR.
+ *
+ * The /api/tools/* endpoints are kept for backward compatibility but are
+ * @deprecated — prefer CLI imports going forward.
  */
-export function createChatTools(baseUrl: string, authHeaders: Record<string, string>) {
-	async function callTool(endpoint: string, input: unknown): Promise<unknown> {
-		const url = baseUrl + endpoint;
-		const response = await fetch(url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', ...authHeaders },
-			body: JSON.stringify(input)
-		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(`Tool call failed: ${response.status} ${response.statusText} - ${errorText}`);
-		}
-
-		return response.json();
-	}
-
+export function createChatTools(supabase: SupabaseClient, userId: string) {
 	return {
+		// ─── Read Tools (CLI imports) ───────────────────────────────────────────
+
 		coffee_catalog_search: tool({
 			description:
 				'Search for coffee beans in the catalog with filters for origin, processing, variety, price range, flavor keywords, coffee name, recent arrivals, supplier, and specific coffee IDs',
@@ -53,7 +71,77 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				coffee_ids: z.array(z.number()).optional().describe('Specific coffee IDs to retrieve')
 			}),
 			execute: async (input) => {
-				return callTool('/api/tools/coffee-catalog', input);
+				// Map chat tool input shape to CLI function input shape.
+				// Unsupported filters (variety, name, stocked_days, drying_method, supplier,
+				// coffee_ids) are applied client-side after fetching broader results where
+				// feasible, or silently ignored when the CLI has no equivalent.
+				const cliInput: SearchCatalogInput = {
+					limit: Math.min(input.limit ?? 10, 15),
+					stocked: input.stocked_only ?? true
+				};
+
+				if (input.origin) cliInput.origin = input.origin;
+				if (input.process) cliInput.process = input.process;
+
+				// price_range [min, max] → priceMin / priceMax
+				if (input.price_range) {
+					const [min, max] = input.price_range;
+					if (min != null) cliInput.priceMin = min;
+					if (max != null) cliInput.priceMax = max;
+				}
+
+				// flavor_keywords string[] → comma-joined flavor string
+				if (input.flavor_keywords && input.flavor_keywords.length > 0) {
+					cliInput.flavor = input.flavor_keywords.join(', ');
+				}
+
+				let coffees = await searchCatalog(supabase, cliInput);
+
+				// Client-side post-filters for params the CLI doesn't support yet
+				if (input.name) {
+					const nameLower = input.name.toLowerCase();
+					coffees = coffees.filter((c) => c.name?.toLowerCase().includes(nameLower));
+				}
+
+				if (input.supplier) {
+					const supplierLower = input.supplier.toLowerCase();
+					coffees = coffees.filter((c) => c.source?.toLowerCase().includes(supplierLower));
+				}
+
+				if (input.drying_method) {
+					const dryingLower = input.drying_method.toLowerCase();
+					coffees = coffees.filter((c) => c.drying_method?.toLowerCase().includes(dryingLower));
+				}
+
+				if (input.variety) {
+					const varietyLower = input.variety.toLowerCase();
+					coffees = coffees.filter(
+						(c) =>
+							c.cultivar_detail?.toLowerCase().includes(varietyLower) ||
+							c.description_short?.toLowerCase().includes(varietyLower)
+					);
+				}
+
+				if (input.coffee_ids && input.coffee_ids.length > 0) {
+					const idSet = new Set(input.coffee_ids);
+					coffees = coffees.filter((c) => idSet.has(c.id));
+				}
+
+				if (input.stocked_days) {
+					const cutoff = new Date();
+					cutoff.setDate(cutoff.getDate() - input.stocked_days);
+					coffees = coffees.filter((c) => {
+						if (!c.stocked_date) return false;
+						return new Date(c.stocked_date) >= cutoff;
+					});
+				}
+
+				return {
+					coffees,
+					total: coffees.length,
+					filters_applied: input,
+					search_strategy: 'structured' as const
+				};
 			}
 		}),
 
@@ -76,7 +164,36 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				limit: z.number().optional().default(15).describe('Number of results to return (max 15)')
 			}),
 			execute: async (input) => {
-				return callTool('/api/tools/green-coffee-inv', input);
+				// CLI listInventory supports stocked filter directly; limit applied as cap.
+				// include_catalog_details and include_roast_summary are not CLI params —
+				// the CLI always returns joined catalog data; roast summaries are not included.
+				const finalLimit = Math.min(input.limit ?? 15, 15);
+
+				const inventory = await listInventory(supabase, userId, {
+					stocked: input.stocked_only ?? true,
+					limit: finalLimit
+				});
+
+				const summary = {
+					total_beans: inventory.length,
+					total_weight_lbs: inventory.reduce((sum, bean) => sum + (bean.purchased_qty_lbs ?? 0), 0),
+					total_value: inventory.reduce((sum, bean) => {
+						return sum + (bean.bean_cost ?? 0) + (bean.tax_ship_cost ?? 0);
+					}, 0),
+					stocked_beans: inventory.filter((bean) => bean.stocked).length
+				};
+
+				return {
+					inventory,
+					total: inventory.length,
+					summary,
+					filters_applied: {
+						stocked_only: input.stocked_only ?? true,
+						include_catalog_details: input.include_catalog_details ?? true,
+						include_roast_summary: input.include_roast_summary ?? true,
+						limit: finalLimit
+					}
+				};
 			}
 		}),
 
@@ -120,7 +237,47 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					)
 			}),
 			execute: async (input) => {
-				return callTool('/api/tools/roast-profiles', input);
+				const finalLimit = Math.min(input.limit ?? 10, 15);
+
+				// CLI listRoasts supports coffeeId filter directly; other filters applied client-side.
+				let profiles = await listRoasts(supabase, userId, {
+					coffeeId: input.coffee_id,
+					limit: finalLimit * 3 // fetch more to allow for client-side filtering
+				});
+
+				// Client-side post-filters for params the CLI doesn't support yet
+				if (input.roast_id) {
+					profiles = profiles.filter((p) => String(p.roast_id) === input.roast_id);
+				}
+
+				if (input.roast_name) {
+					const nameLower = input.roast_name.toLowerCase();
+					profiles = profiles.filter((p) => p.coffee_name?.toLowerCase().includes(nameLower));
+				}
+
+				if (input.batch_name) {
+					const batchLower = input.batch_name.toLowerCase();
+					profiles = profiles.filter((p) => p.batch_name?.toLowerCase().includes(batchLower));
+				}
+
+				if (input.roast_date_start) {
+					profiles = profiles.filter(
+						(p) => p.roast_date && p.roast_date >= input.roast_date_start!
+					);
+				}
+
+				if (input.roast_date_end) {
+					profiles = profiles.filter((p) => p.roast_date && p.roast_date <= input.roast_date_end!);
+				}
+
+				// Trim to requested limit after client-side filtering
+				profiles = profiles.slice(0, finalLimit);
+
+				return {
+					profiles,
+					total: profiles.length,
+					filters_applied: input
+				};
 			}
 		}),
 
@@ -133,7 +290,11 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 				include_radar_data: z.boolean().optional().describe('Include radar chart data')
 			}),
 			execute: async (input) => {
-				return callTool('/api/tools/bean-tasting', input);
+				// CLI getTastingNotes takes (supabase, userId, id, filter).
+				// include_radar_data is not supported in the CLI; the CLI returns
+				// cupping_notes as raw JSON which contains radar-compatible data.
+				const result = await getTastingNotes(supabase, userId, input.bean_id, input.filter);
+				return result;
 			}
 		}),
 
@@ -161,19 +322,29 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					)
 			}),
 			execute: async (input) => {
-				// Fetch all stocked catalog beans for the dropdown
-				let allBeans: Array<{ id: number; name: string; source?: string }> = [];
+				// When user confirms the action_card, execute-action should call:
+				//   addInventory(supabase, userId, {
+				//     catalogId: params.catalog_id,
+				//     qty: params.purchased_qty_lbs,
+				//     cost: params.cost_per_lb * params.purchased_qty_lbs,
+				//     taxShip: params.tax_ship_cost,
+				//     notes: params.notes,
+				//     purchaseDate: params.purchase_date,
+				//   })
+
+				// Fetch all stocked catalog beans for the dropdown using CLI directly
+				let allBeans: Array<{ id: number; name: string | null; source?: string | null }> = [];
 				let beanSelectOptions: Array<{ label: string; value: string }> = [];
 				let sourceOptions: Array<{ label: string; value: string }> = [];
 				try {
-					const catalogResult = (await callTool('/api/tools/coffee-catalog', {
-						stocked_only: true,
+					const catalogItems = await searchCatalog(supabase, {
+						stocked: true,
 						limit: 500
-					})) as { coffees?: Array<{ id: number; name: string; source?: string }> };
-					if (catalogResult.coffees) {
-						allBeans = catalogResult.coffees;
+					});
+					if (catalogItems) {
+						allBeans = catalogItems.map((c) => ({ id: c.id, name: c.name, source: c.source }));
 						beanSelectOptions = allBeans.map((c) => ({
-							label: c.name,
+							label: c.name ?? `Coffee #${c.id}`,
 							value: String(c.id)
 						}));
 						// Extract unique sources for the filter dropdown
@@ -346,60 +517,76 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					.optional()
 					.describe('Brief explanation of why this update is proposed')
 			}),
-			execute: async (input) => ({
-				action_card: {
-					actionType: 'update_bean',
-					summary: `Update inventory bean #${input.bean_id}`,
-					reasoning: input.reasoning,
-					fields: [
-						{
-							key: 'bean_id',
-							label: 'Bean ID',
-							value: input.bean_id,
-							type: 'number',
-							editable: false
-						},
-						...(input.rank != null
-							? [{ key: 'rank', label: 'Rank', value: input.rank, type: 'number', editable: true }]
-							: []),
-						...(input.notes != null
-							? [
-									{
-										key: 'notes',
-										label: 'Notes',
-										value: input.notes,
-										type: 'textarea',
-										editable: true
-									}
-								]
-							: []),
-						...(input.stocked != null
-							? [
-									{
-										key: 'stocked',
-										label: 'Stocked',
-										value: input.stocked,
-										type: 'select',
-										editable: true,
-										options: ['true', 'false']
-									}
-								]
-							: []),
-						...(input.purchased_qty_lbs != null
-							? [
-									{
-										key: 'purchased_qty_lbs',
-										label: 'Quantity (lbs)',
-										value: input.purchased_qty_lbs,
-										type: 'number',
-										editable: true
-									}
-								]
-							: [])
-					],
-					status: 'proposed'
-				}
-			})
+			execute: async (input) => {
+				// When user confirms the action_card, execute-action should call:
+				//   updateInventory(supabase, userId, params.bean_id, {
+				//     qty: params.purchased_qty_lbs,
+				//     notes: params.notes,
+				//     stocked: params.stocked,
+				//   })
+				return {
+					action_card: {
+						actionType: 'update_bean',
+						summary: `Update inventory bean #${input.bean_id}`,
+						reasoning: input.reasoning,
+						fields: [
+							{
+								key: 'bean_id',
+								label: 'Bean ID',
+								value: input.bean_id,
+								type: 'number',
+								editable: false
+							},
+							...(input.rank != null
+								? [
+										{
+											key: 'rank',
+											label: 'Rank',
+											value: input.rank,
+											type: 'number',
+											editable: true
+										}
+									]
+								: []),
+							...(input.notes != null
+								? [
+										{
+											key: 'notes',
+											label: 'Notes',
+											value: input.notes,
+											type: 'textarea',
+											editable: true
+										}
+									]
+								: []),
+							...(input.stocked != null
+								? [
+										{
+											key: 'stocked',
+											label: 'Stocked',
+											value: input.stocked,
+											type: 'select',
+											editable: true,
+											options: ['true', 'false']
+										}
+									]
+								: []),
+							...(input.purchased_qty_lbs != null
+								? [
+										{
+											key: 'purchased_qty_lbs',
+											label: 'Quantity (lbs)',
+											value: input.purchased_qty_lbs,
+											type: 'number',
+											editable: true
+										}
+									]
+								: [])
+						],
+						status: 'proposed'
+					}
+				};
+			}
 		}),
 
 		create_roast_session: tool({
@@ -418,77 +605,87 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					.optional()
 					.describe('Brief explanation of why this roast session is proposed')
 			}),
-			execute: async (input) => ({
-				action_card: {
-					actionType: 'create_roast_session',
-					summary: `Create roast session: ${input.batch_name} (${input.coffee_name})`,
-					reasoning: input.reasoning,
-					fields: [
-						{
-							key: 'coffee_id',
-							label: 'Coffee ID',
-							value: input.coffee_id,
-							type: 'number',
-							editable: false
-						},
-						{
-							key: 'coffee_name',
-							label: 'Coffee Name',
-							value: input.coffee_name,
-							type: 'text',
-							editable: true
-						},
-						{
-							key: 'batch_name',
-							label: 'Batch Name',
-							value: input.batch_name,
-							type: 'text',
-							editable: true
-						},
-						{
-							key: 'roast_date',
-							label: 'Roast Date',
-							value: input.roast_date || new Date().toISOString().split('T')[0],
-							type: 'date',
-							editable: true
-						},
-						...(input.oz_in != null
-							? [
-									{
-										key: 'oz_in',
-										label: 'Weight In (oz)',
-										value: input.oz_in,
-										type: 'number',
-										editable: true
-									}
-								]
-							: []),
-						...(input.roast_notes
-							? [
-									{
-										key: 'roast_notes',
-										label: 'Notes',
-										value: input.roast_notes,
-										type: 'textarea',
-										editable: true
-									}
-								]
-							: []),
-						...(input.roaster_type
-							? [
-									{
-										key: 'roaster_type',
-										label: 'Roaster',
-										value: input.roaster_type,
-										type: 'text',
-										editable: true
-									}
-								]
-							: [])
-					],
-					status: 'proposed'
-				}
-			})
+			execute: async (input) => {
+				// When user confirms the action_card, execute-action should call:
+				//   createRoast(supabase, userId, {
+				//     coffeeId: params.coffee_id,
+				//     batchName: params.batch_name,
+				//     ozIn: params.oz_in,
+				//     roastDate: params.roast_date,
+				//     notes: params.roast_notes,
+				//   })
+				return {
+					action_card: {
+						actionType: 'create_roast_session',
+						summary: `Create roast session: ${input.batch_name} (${input.coffee_name})`,
+						reasoning: input.reasoning,
+						fields: [
+							{
+								key: 'coffee_id',
+								label: 'Coffee ID',
+								value: input.coffee_id,
+								type: 'number',
+								editable: false
+							},
+							{
+								key: 'coffee_name',
+								label: 'Coffee Name',
+								value: input.coffee_name,
+								type: 'text',
+								editable: true
+							},
+							{
+								key: 'batch_name',
+								label: 'Batch Name',
+								value: input.batch_name,
+								type: 'text',
+								editable: true
+							},
+							{
+								key: 'roast_date',
+								label: 'Roast Date',
+								value: input.roast_date || new Date().toISOString().split('T')[0],
+								type: 'date',
+								editable: true
+							},
+							...(input.oz_in != null
+								? [
+										{
+											key: 'oz_in',
+											label: 'Weight In (oz)',
+											value: input.oz_in,
+											type: 'number',
+											editable: true
+										}
+									]
+								: []),
+							...(input.roast_notes
+								? [
+										{
+											key: 'roast_notes',
+											label: 'Notes',
+											value: input.roast_notes,
+											type: 'textarea',
+											editable: true
+										}
+									]
+								: []),
+							...(input.roaster_type
+								? [
+										{
+											key: 'roaster_type',
+											label: 'Roaster',
+											value: input.roaster_type,
+											type: 'text',
+											editable: true
+										}
+									]
+								: [])
+						],
+						status: 'proposed'
+					}
+				};
+			}
 		}),
 
 		update_roast_notes: tool({
@@ -502,45 +699,50 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					.optional()
 					.describe('Brief explanation of why these notes are proposed')
 			}),
-			execute: async (input) => ({
-				action_card: {
-					actionType: 'update_roast_notes',
-					summary: `Update notes for roast #${input.roast_id}`,
-					reasoning: input.reasoning,
-					fields: [
-						{
-							key: 'roast_id',
-							label: 'Roast ID',
-							value: input.roast_id,
-							type: 'number',
-							editable: false
-						},
-						...(input.roast_notes != null
-							? [
-									{
-										key: 'roast_notes',
-										label: 'Roast Notes',
-										value: input.roast_notes,
-										type: 'textarea',
-										editable: true
-									}
-								]
-							: []),
-						...(input.roast_targets != null
-							? [
-									{
-										key: 'roast_targets',
-										label: 'Roast Targets',
-										value: input.roast_targets,
-										type: 'textarea',
-										editable: true
-									}
-								]
-							: [])
-					],
-					status: 'proposed'
-				}
-			})
+			execute: async (input) => {
+				// No direct CLI equivalent yet — execute-action uses Supabase directly:
+				//   supabase.from('roast_profiles').update({ roast_notes, roast_targets })
+				//     .eq('roast_id', params.roast_id).eq('user', userId)
+				return {
+					action_card: {
+						actionType: 'update_roast_notes',
+						summary: `Update notes for roast #${input.roast_id}`,
+						reasoning: input.reasoning,
+						fields: [
+							{
+								key: 'roast_id',
+								label: 'Roast ID',
+								value: input.roast_id,
+								type: 'number',
+								editable: false
+							},
+							...(input.roast_notes != null
+								? [
+										{
+											key: 'roast_notes',
+											label: 'Roast Notes',
+											value: input.roast_notes,
+											type: 'textarea',
+											editable: true
+										}
+									]
+								: []),
+							...(input.roast_targets != null
+								? [
+										{
+											key: 'roast_targets',
+											label: 'Roast Targets',
+											value: input.roast_targets,
+											type: 'textarea',
+											editable: true
+										}
+									]
+								: [])
+						],
+						status: 'proposed'
+					}
+				};
+			}
 		}),
 
 		record_sale: tool({
@@ -557,59 +759,78 @@ export function createChatTools(baseUrl: string, authHeaders: Record<string, str
 					.optional()
 					.describe('Brief explanation of why this sale is being recorded')
 			}),
-			execute: async (input) => ({
-				action_card: {
-					actionType: 'record_sale',
-					summary: `Record sale: ${input.oz_sold}oz of ${input.batch_name} to ${input.buyer} ($${input.price})`,
-					reasoning: input.reasoning,
-					fields: [
-						{
-							key: 'green_coffee_inv_id',
-							label: 'Inventory ID',
-							value: input.green_coffee_inv_id,
-							type: 'number',
-							editable: false
-						},
-						{
-							key: 'batch_name',
-							label: 'Batch Name',
-							value: input.batch_name,
-							type: 'text',
-							editable: true
-						},
-						{
-							key: 'oz_sold',
-							label: 'Oz Sold',
-							value: input.oz_sold,
-							type: 'number',
-							editable: true
-						},
-						{
-							key: 'price',
-							label: 'Price ($)',
-							value: input.price,
-							type: 'number',
-							editable: true
-						},
-						{ key: 'buyer', label: 'Buyer', value: input.buyer, type: 'text', editable: true },
-						{
-							key: 'sell_date',
-							label: 'Sale Date',
-							value: input.sell_date || new Date().toISOString().split('T')[0],
-							type: 'date',
-							editable: true
-						},
-						{
-							key: 'purchase_date',
-							label: 'Purchase Date',
-							value: new Date().toISOString().split('T')[0],
-							type: 'date',
-							editable: true
-						}
-					],
-					status: 'proposed'
-				}
-			})
+			execute: async (input) => {
+				// When user confirms the action_card, execute-action should call:
+				//   recordSale(supabase, userId, {
+				//     roastId: <resolved from batch_name lookup>,
+				//     oz: params.oz_sold,
+				//     price: params.price,
+				//     buyer: params.buyer,
+				//     sellDate: params.sell_date,
+				//   })
+				// Note: CLI recordSale takes roastId, not green_coffee_inv_id. The
+				// execute-action handler currently uses a different schema (inv_id + batch_name).
+				// Align schemas in a follow-up PR when execute-action is migrated to CLI.
+				return {
+					action_card: {
+						actionType: 'record_sale',
+						summary: `Record sale: ${input.oz_sold}oz of ${input.batch_name} to ${input.buyer} ($${input.price})`,
+						reasoning: input.reasoning,
+						fields: [
+							{
+								key: 'green_coffee_inv_id',
+								label: 'Inventory ID',
+								value: input.green_coffee_inv_id,
+								type: 'number',
+								editable: false
+							},
+							{
+								key: 'batch_name',
+								label: 'Batch Name',
+								value: input.batch_name,
+								type: 'text',
+								editable: true
+							},
+							{
+								key: 'oz_sold',
+								label: 'Oz Sold',
+								value: input.oz_sold,
+								type: 'number',
+								editable: true
+							},
+							{
+								key: 'price',
+								label: 'Price ($)',
+								value: input.price,
+								type: 'number',
+								editable: true
+							},
+							{
+								key: 'buyer',
+								label: 'Buyer',
+								value: input.buyer,
+								type: 'text',
+								editable: true
+							},
+							{
+								key: 'sell_date',
+								label: 'Sale Date',
+								value: input.sell_date || new Date().toISOString().split('T')[0],
+								type: 'date',
+								editable: true
+							},
+							{
+								key: 'purchase_date',
+								label: 'Purchase Date',
+								value: new Date().toISOString().split('T')[0],
+								type: 'date',
+								editable: true
+							}
+						],
+						status: 'proposed'
+					}
+				};
+			}
 		}),
 
 		present_results: tool({

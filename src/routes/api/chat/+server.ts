@@ -172,13 +172,8 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Messages array is required' }, { status: 400 });
 		}
 
-		// Set up auth headers for tool calls
-		const baseUrl = event.url.origin;
-		const sessionCookie = event.request.headers.get('cookie');
-		const authHeaders: Record<string, string> = {};
-		if (sessionCookie) {
-			authHeaders['cookie'] = sessionCookie;
-		}
+		// Get supabase client for CLI-based tool calls
+		const { supabase } = event.locals;
 
 		// Create OpenRouter provider (OpenAI-compatible) with site headers
 		const openrouter = createOpenAI({
@@ -189,7 +184,7 @@ export const POST: RequestHandler = async (event) => {
 				'X-Title': 'Purveyors Coffee Chat'
 			}
 		});
-		const tools = createChatTools(baseUrl, authHeaders);
+		const tools = createChatTools(supabase, user.id);
 
 		// Resolve user display name for system prompt personalization
 		const userName =
