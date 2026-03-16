@@ -68,7 +68,7 @@
 		"@ai-sdk/openai": "^3.0.0",
 		"@ai-sdk/svelte": "^4.0.0",
 		"@humanspeak/svelte-markdown": "^0.8.10",
-		"@purveyors/cli": "0.4.0",
+		"@purveyors/cli": "^0.4.0",
 		"@supabase/ssr": "^0.5.2",
 		"@supabase/supabase-js": "^2.99.1",
 		"@tailwindcss/container-queries": "^0.1.1",
