@@ -38,7 +38,7 @@ Enterprise systems of record? ServiceNow, Salesforce, Workday? Those face margin
 
 This is the question neither Citrini nor Citadel is asking: if software is increasingly replicable, where does value actually accrue?
 
-**Data.** Netflix's value isn't its streaming interface. You could replicate that UI in a month. It's the content library, the recommendation engine trained on billions of viewing hours, the licensing relationships. Facebook's value isn't the feed algorithm. It's the social graph. In my own work, the value of the coffee intelligence platform I'm building isn't the web app. It's the normalized dataset across 48 suppliers that nobody else has assembled. Software can be rebuilt in weeks. A proprietary dataset built over years of daily scraping, cleaning, and enrichment cannot.
+**Data.** Netflix's value isn't its streaming interface. You could replicate that UI in a month. It's the content library, the recommendation engine trained on billions of viewing hours, the licensing relationships. Facebook's value isn't the feed algorithm. It's the social graph. In my own work, the value of the coffee intelligence platform I'm building isn't the web app. It's the normalized dataset across 35 suppliers that nobody else has assembled. Software can be rebuilt in weeks. A proprietary dataset built over years of daily scraping, cleaning, and enrichment cannot.
 
 Data moats deepen with time. Every cycle of collection adds signal. Every user interaction sharpens the model. That's a compounding advantage that gets harder to replicate the longer it runs.
 

@@ -84,7 +84,7 @@ This is the economy of directors in practice. I'm not writing scraper code. I'm 
 
 ## What the Data Shows
 
-The pipeline currently tracks 1,876 coffees across 48 suppliers. Pricing data, availability patterns, origin distribution, processing method breakdowns. This normalized dataset doesn't exist anywhere else. No single supplier has visibility into the broader market. We do, because we aggregate and normalize across all of them.
+The pipeline currently tracks 1,876 coffees across 35 suppliers. Pricing data, availability patterns, origin distribution, processing method breakdowns. This normalized dataset doesn't exist anywhere else. No single supplier has visibility into the broader market. We do, because we aggregate and normalize across all of them.
 
 That data tells a story about the green coffee market that nobody else is publishing. Seasonal availability shifts, pricing trends by origin, which suppliers carry the most unique lots. We're going to start sharing that analysis publicly. (More on this in a future market intelligence post.)
 

@@ -36,7 +36,7 @@ Purveyors is a coffee intelligence platform. Not an e-commerce site. I don't sel
 
 In practice, that means a few things:
 
-**A unified data pipeline.** Scrapers pull green coffee listings from 48 suppliers, normalize them into a single schema, and make them searchable in one place. Different grading systems, inconsistent origin naming, varying levels of detail per supplier: all of that gets flattened into a consistent, comparable format.
+**A unified data pipeline.** Scrapers pull green coffee listings from 35 suppliers, normalize them into a single schema, and make them searchable in one place. Different grading systems, inconsistent origin naming, varying levels of detail per supplier: all of that gets flattened into a consistent, comparable format.
 
 **An AI layer.** Semantic search across the entire catalog. Ask for "a washed Ethiopian under $8/lb with bright acidity" and get results ranked by relevance, not keyword matching. Tasting note generation, recommendations based on your roasting history, and a conversational interface for exploring the market.
 
@@ -52,7 +52,7 @@ The key insight, and the reason this isn't just another coffee tool, is that the
 
 **API-first architecture.** Everything the web app does goes through the same API available externally. This is how the hobbyist tools and the commercial integrations live on the same platform without compromise. A home roaster uses the web app to find interesting coffees. A roastery management tool integrates via API to pull inventory data. Same data, same infrastructure, different interfaces. I'll write more about this B2C-to-B2B convergence soon.
 
-**Market intelligence.** The scraper data tells a story about the market that nobody else is publishing. Pricing trends, availability patterns, seasonal origin shifts, supplier comparisons. I'm going to start sharing that analysis publicly. When you have normalized data across 48 suppliers, you can see things that no single supplier's catalog reveals.
+**Market intelligence.** The scraper data tells a story about the market that nobody else is publishing. Pricing trends, availability patterns, seasonal origin shifts, supplier comparisons. I'm going to start sharing that analysis publicly. When you have normalized data across 35 suppliers, you can see things that no single supplier's catalog reveals.
 
 **This blog.** This blog is part of the product. It's where the thinking happens in public. It's where architecture decisions get stress-tested by explaining them. If you write about how something works and the explanation doesn't hold together, that's a signal the implementation needs work too. The blog doesn't just document the product. Writing about the product improves the product.
 
