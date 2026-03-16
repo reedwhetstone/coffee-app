@@ -1,3 +1,8 @@
+/**
+ * @deprecated This endpoint is kept for backward compatibility only.
+ * The chat agent now calls @purveyors/cli getTastingNotes() directly.
+ * Do not add new consumers — use the CLI library instead.
+ */
 import { json } from '@sveltejs/kit';
 import { requireMemberRole } from '$lib/server/auth';
 import type { RequestHandler } from './$types';

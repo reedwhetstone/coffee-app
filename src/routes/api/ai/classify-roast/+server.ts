@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
-import { requireMemberRole } from '$lib/server/auth';
+import { requireAuth } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
 interface AlogMetadata {
@@ -34,8 +34,21 @@ interface MatchResult {
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		// Require member role
-		await requireMemberRole(event);
+		// Require auth via Bearer token (CLI sends Authorization header, not cookies)
+		const user = await requireAuth(event);
+
+		// Check member role
+		const { supabase } = event.locals;
+		const { data: roleData } = await supabase
+			.from('user_roles')
+			.select('user_role')
+			.eq('id', user.id)
+			.single();
+		const userRoles: string[] = (roleData?.user_role as string[]) ?? [];
+		const allowed = ['member', 'admin', 'api_member', 'api_enterprise'];
+		if (!userRoles.some((r) => allowed.includes(r))) {
+			return json({ error: 'Member role required' }, { status: 403 });
+		}
 
 		// Validate OpenRouter API key
 		if (!OPENROUTER_API_KEY) {
@@ -107,25 +120,47 @@ IMPORTANT: Respond with ONLY the JSON object, no markdown formatting.`,
 
 		const rawText = result.text.trim();
 
-		// Parse AI response
+		// Parse AI response with runtime shape validation
 		let match: MatchResult | null = null;
-		try {
-			const parsed = JSON.parse(rawText);
-			if (parsed === null) {
-				match = null;
-			} else {
-				match = parsed as MatchResult;
+
+		function isValidMatchResult(obj: unknown): obj is MatchResult {
+			if (typeof obj !== 'object' || obj === null) return false;
+			const m = obj as Record<string, unknown>;
+			return (
+				typeof m.inventoryId === 'number' &&
+				typeof m.coffeeName === 'string' &&
+				typeof m.confidence === 'number' &&
+				m.confidence >= 0 &&
+				m.confidence <= 100 &&
+				typeof m.reasoning === 'string'
+			);
+		}
+
+		function tryParseMatch(text: string): MatchResult | null | undefined {
+			try {
+				const parsed = JSON.parse(text);
+				if (parsed === null) return null;
+				if (isValidMatchResult(parsed)) return parsed;
+				console.warn('classify-roast: AI response has invalid shape:', parsed);
+				return undefined; // signal parse failure
+			} catch {
+				return undefined;
 			}
-		} catch {
-			// If the model wrapped it in markdown code fences, try stripping them
+		}
+
+		const directParse = tryParseMatch(rawText);
+		if (directParse !== undefined) {
+			match = directParse;
+		} else {
+			// Try stripping markdown code fences
 			const stripped = rawText
 				.replace(/^```(?:json)?\n?/, '')
 				.replace(/\n?```$/, '')
 				.trim();
-			try {
-				const parsed = JSON.parse(stripped);
-				match = parsed === null ? null : (parsed as MatchResult);
-			} catch {
+			const strippedParse = tryParseMatch(stripped);
+			if (strippedParse !== undefined) {
+				match = strippedParse;
+			} else {
 				console.warn('classify-roast: failed to parse AI response:', rawText);
 				return json({ match: null, warning: 'AI response could not be parsed' });
 			}
