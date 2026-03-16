@@ -1,7 +1,7 @@
 ---
 title: "Who Profits When Coffee Data Stays Scarce?"
 date: "2026-03-11"
-description: "The specialty coffee industry solved price transparency. The harder problem, product metadata, remains relationship-gated. Across 30 suppliers, disclosure ranges from 1 to 13 attributes per listing. That gap is not an accident; it is an economic structure with beneficiaries."
+description: "The specialty coffee industry solved price transparency. The harder problem, product metadata, remains relationship-gated. Across 48 suppliers, disclosure ranges from 1 to 13 attributes per listing. That gap is not an accident; it is an economic structure with beneficiaries."
 tags: ["coffee", "data", "supply-chain", "market-intelligence"]
 pillar: "market-intelligence"
 draft: false
@@ -12,7 +12,7 @@ The specialty coffee industry has made real progress on price transparency. The 
 
 This is genuinely good work. It is also solving the wrong problem first.
 
-When I set out to build a comparison layer across 30 green coffee suppliers, price was the easy part. Every listing has a price. The hard part was everything else. Across those 30 suppliers, the number of structured product attributes per listing ranges from 1 to 13. The median is 7. The typical listing is missing over half the attributes that exist somewhere in the market.
+When I set out to build a comparison layer across 30 green coffee suppliers, price was the easy part. Every listing has a price. The hard part was everything else. Across those 48 suppliers, the number of structured product attributes per listing ranges from 1 to 13. The median is 7. The typical listing is missing over half the attributes that exist somewhere in the market.
 
 The industry built price transparency while the metadata gap grew unchecked. That gap is where the real information asymmetry lives. And unlike price, where the gap was a coordination failure, the metadata gap has beneficiaries.
 
