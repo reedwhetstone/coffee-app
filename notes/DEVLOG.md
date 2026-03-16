@@ -6,6 +6,7 @@
 
 ## Priority 0: New Product Priorities (Mar 2026)
 
+- [ ] **Purveyors Price Index (PPI)** — First revenue-generating data product. Daily specialty green coffee price index by origin, process, and grade, derived from 34 scraped suppliers. `/api/v1/price-index` endpoint with tier-based access (free/member $29/enterprise $199). Blog teaser page as top-of-funnel. Revenue target: $35K+/year at modest adoption. Existing auth + Stripe infrastructure reused. Full plan: `notes/implementation-plans/2026-03-16-purveyors-price-index.md`.
 - [ ] **Mobile Navigation** - Redesign sidebar behavior on mobile. Current desktop-style sidebar consumes too much horizontal space. Evaluate one of: top nav, bottom nav, or minimal single-button trigger that opens a full-screen menu.
 - [ ] **Homepage Routing** - Make `/` the true landing page and move catalog to its own dedicated route. Remove login-driven reroute behavior that hurts first contentful paint and perceived responsiveness.
 - [ ] **Public Catalog Access + Conversion Funnel** - Allow non-auth users to browse catalog with limited access (example: page 1 only) while keeping filters available. Add clear incentives to sign up/log in and promote AI search as a premium conversion lever.

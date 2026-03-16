@@ -1,13 +1,13 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { searchCatalog, type SearchCatalogInput } from '@purveyors/cli/catalog';
+import { searchCatalog, type SearchCatalogInput, type CatalogItem } from '@purveyors/cli/catalog';
 import {
 	listInventory,
 	addInventory as _addInventory,
 	updateInventory as _updateInventory
 } from '@purveyors/cli/inventory';
-import { listRoasts, createRoast as _createRoast } from '@purveyors/cli/roast';
+import { listRoasts, createRoast as _createRoast, type RoastProfile } from '@purveyors/cli/roast';
 import { getTastingNotes } from '@purveyors/cli/tasting';
 import { recordSale as _recordSale } from '@purveyors/cli/sales';
 
@@ -240,7 +240,7 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				const finalLimit = Math.min(input.limit ?? 10, 15);
 
 				// CLI listRoasts supports coffeeId filter directly; other filters applied client-side.
-				let profiles = await listRoasts(supabase, userId, {
+				let profiles: RoastProfile[] = await listRoasts(supabase, userId, {
 					coffeeId: input.coffee_id,
 					limit: finalLimit * 3 // fetch more to allow for client-side filtering
 				});
@@ -337,7 +337,7 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				let beanSelectOptions: Array<{ label: string; value: string }> = [];
 				let sourceOptions: Array<{ label: string; value: string }> = [];
 				try {
-					const catalogItems = await searchCatalog(supabase, {
+					const catalogItems: CatalogItem[] = await searchCatalog(supabase, {
 						stocked: true,
 						limit: 500
 					});
