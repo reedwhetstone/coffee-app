@@ -22,11 +22,11 @@ We already have 34 suppliers scraped daily with price_tiers, origin, process, an
 
 ## Product Tiers
 
-| Tier | Price | Access |
-|------|-------|--------|
-| Free | $0 | 7-day lookback, 3 origins, 100 req/day |
-| Member | $29/mo | Full history, all origins/processes, CSV export, 1K req/day |
-| Enterprise | $199/mo | Full API access, webhooks on price changes, 10K req/day |
+| Tier       | Price   | Access                                                      |
+| ---------- | ------- | ----------------------------------------------------------- |
+| Free       | $0      | 7-day lookback, 3 origins, 100 req/day                      |
+| Member     | $29/mo  | Full history, all origins/processes, CSV export, 1K req/day |
+| Enterprise | $199/mo | Full API access, webhooks on price changes, 10K req/day     |
 
 Stripe integration already exists. Tier auth already exists (`validateApiRequest`, `getUserApiTier`).
 
@@ -37,8 +37,9 @@ Stripe integration already exists. Tier auth already exists (`validateApiRequest
 Before writing the endpoint, verify:
 
 1. **Schema completeness**: How many `coffee_catalog` rows have non-null `origin`, `process`, `grade`, AND `price_tiers`? Run against prod:
+
    ```sql
-   SELECT 
+   SELECT
      COUNT(*) as total,
      COUNT(origin) as has_origin,
      COUNT(process) as has_process,
@@ -69,7 +70,7 @@ CREATE TABLE price_index_snapshots (
   grade text,                     -- normalized (G1, G2, etc.)
   supplier_count int NOT NULL,    -- how many suppliers had this combo
   price_min numeric(10,2),        -- lowest price_tiers[0].price seen
-  price_max numeric(10,2),        -- highest price_tiers[0].price seen  
+  price_max numeric(10,2),        -- highest price_tiers[0].price seen
   price_avg numeric(10,2),        -- mean across suppliers
   price_median numeric(10,2),     -- median across suppliers
   sample_size int NOT NULL,       -- number of SKUs in this bucket
@@ -106,30 +107,35 @@ Seed manually from current scraper data. ~50-100 entries covers 90%+ of cases.
 ## Build Phases
 
 ### Phase 0: Data Audit + Normalization Seed (0.5 days)
+
 - Run coverage query against prod
 - Export distinct origin/process/grade values from catalog
 - Write normalization seed data (SQL INSERTs for alias tables)
 - If `scraped_at` doesn't exist on `coffee_catalog`, add it via migration (nullable, no existing data impact)
 
 ### Phase 1: Snapshot Backfill Job (0.5 days)
+
 Build `src/lib/server/priceIndex.ts`:
+
 ```typescript
 // Run after scraper, once per day
 export async function snapshotPriceIndex(date: Date) {
-  // 1. Fetch today's catalog data with non-null price_tiers + origin
-  // 2. Normalize origin/process/grade via alias tables
-  // 3. Group by (origin, process, grade)
-  // 4. Compute min/max/avg/median price across group
-  // 5. Upsert into price_index_snapshots
+	// 1. Fetch today's catalog data with non-null price_tiers + origin
+	// 2. Normalize origin/process/grade via alias tables
+	// 3. Group by (origin, process, grade)
+	// 4. Compute min/max/avg/median price across group
+	// 5. Upsert into price_index_snapshots
 }
 ```
 
 Wire this to run after the scraper completes (can be a Supabase scheduled function or an endpoint called by the scraper cron).
 
 ### Phase 2: API Endpoint (1 day)
+
 New route: `src/routes/api/price-index/+server.ts`
 
 Query params:
+
 - `origins` — comma-separated list (required if not enterprise)
 - `process` — optional filter
 - `grade` — optional filter
@@ -137,27 +143,28 @@ Query params:
 - `format` — `json` (default) or `csv` (member+ only)
 
 Response shape:
+
 ```json
 {
-  "meta": {
-    "origins": ["Ethiopia", "Colombia"],
-    "from": "2026-01-01",
-    "to": "2026-03-16",
-    "data_points": 156
-  },
-  "data": [
-    {
-      "date": "2026-03-16",
-      "origin": "Ethiopia",
-      "process": "Washed",
-      "grade": "G1",
-      "price_min": 6.25,
-      "price_max": 9.80,
-      "price_avg": 7.45,
-      "price_median": 7.20,
-      "supplier_count": 8
-    }
-  ]
+	"meta": {
+		"origins": ["Ethiopia", "Colombia"],
+		"from": "2026-01-01",
+		"to": "2026-03-16",
+		"data_points": 156
+	},
+	"data": [
+		{
+			"date": "2026-03-16",
+			"origin": "Ethiopia",
+			"process": "Washed",
+			"grade": "G1",
+			"price_min": 6.25,
+			"price_max": 9.8,
+			"price_avg": 7.45,
+			"price_median": 7.2,
+			"supplier_count": 8
+		}
+	]
 }
 ```
 
@@ -166,12 +173,15 @@ Reuse existing: `validateApiRequest`, `checkRateLimit`, `logApiUsage`, `getUserA
 Add new tier enforcement: free tier caps `from` to `now() - 7 days` and limits `origins` to 3.
 
 ### Phase 3: Webhook Support (Enterprise, Phase 2+)
+
 - `price_index_webhooks` table: user_id, url, origins[], threshold_pct (trigger when avg moves >X%)
 - Daily job after snapshot: compare to prior day, fire webhooks if threshold crossed
 - Defer to Phase 2+ — don't block initial launch
 
 ### Phase 4: Blog Teaser Page (0.5 days)
+
 `/blog/price-index` — public page with:
+
 - Embedded chart: top 5 origins, 30-day price trend (uses public aggregate, no auth required)
 - "Powered by Purveyors" attribution
 - CTA to sign up for member API access
@@ -180,6 +190,7 @@ Add new tier enforcement: free tier caps `from` to `now() - 7 days` and limits `
 This is the top-of-funnel / SEO surface. Builds the brand before there's significant paid adoption.
 
 ### Phase 5: Stripe Billing Tier (0.5 days)
+
 - Add `price_index_member` and `price_index_enterprise` Stripe products
 - Wire to user_roles upgrade on checkout
 - Free tier is the existing viewer role with new rate limits applied
