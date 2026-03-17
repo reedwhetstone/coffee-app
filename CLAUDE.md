@@ -195,7 +195,7 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 - **Frontend**: SvelteKit 5, TypeScript, TailwindCSS, LayerCake (charts)
 - **Backend**: SvelteKit API routes, Supabase (PostgreSQL + Auth)
 - **Deployment**: Vercel (adapter-vercel)
-- **AI/ML**: OpenRouter (Qwen3) embeddings for semantic search/RAG; OpenRouter (preset model) for chat completions
+- **AI/ML**: OpenRouter (Qwen3) embeddings for semantic search/RAG; OpenRouter (`@preset/coffee-app-chat-agent`) for chat completions
 - **Payments**: Stripe integration
 
 ### Authentication & Authorization
