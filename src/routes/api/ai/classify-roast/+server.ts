@@ -3,6 +3,7 @@ import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { requireAuth } from '$lib/server/auth';
+import { createAdminClient } from '$lib/supabase-admin';
 import type { RequestHandler } from './$types';
 
 interface AlogMetadata {
@@ -37,15 +38,16 @@ export const POST: RequestHandler = async (event) => {
 		// Require auth via Bearer token (CLI sends Authorization header, not cookies)
 		const user = await requireAuth(event);
 
-		// Check member role
-		const { supabase } = event.locals;
-		const { data: roleData } = await supabase
+		// Check member role using admin client (bypass RLS — user already validated by requireAuth)
+		const adminClient = createAdminClient();
+		const { data: roleData } = await adminClient
 			.from('user_roles')
 			.select('user_role')
 			.eq('id', user.id)
 			.single();
 		const userRoles: string[] = (roleData?.user_role as string[]) ?? [];
-		const allowed = ['member', 'admin', 'api_member', 'api_enterprise'];
+		// Use hyphens to match actual DB values (api-member, api-enterprise)
+		const allowed = ['member', 'admin', 'api-member', 'api-enterprise'];
 		if (!userRoles.some((r) => allowed.includes(r))) {
 			return json({ error: 'Member role required' }, { status: 403 });
 		}
