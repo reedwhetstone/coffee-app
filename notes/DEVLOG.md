@@ -6,7 +6,7 @@
 
 ## Priority 0: New Product Priorities (Mar 2026)
 
-- [ ] **Purveyors Price Index (PPI)** — First revenue-generating data product. Daily specialty green coffee price index by origin, process, and grade, derived from 34 scraped suppliers. `/api/v1/price-index` endpoint with tier-based access (free/member $29/enterprise $199). Blog teaser page as top-of-funnel. Revenue target: $35K+/year at modest adoption. Existing auth + Stripe infrastructure reused. Full plan: `notes/implementation-plans/2026-03-16-purveyors-price-index.md`.
+- [ ] **Purveyors Price Index (PPI)** — First revenue-generating data product. Daily specialty green coffee price index by origin, process, and grade, derived from 35 scraped suppliers. `/api/v1/price-index` endpoint with tier-based access (free/member $29/enterprise $199). Blog teaser page as top-of-funnel. Revenue target: $35K+/year at modest adoption. Existing auth + Stripe infrastructure reused. Full plan: `notes/implementation-plans/2026-03-16-purveyors-price-index.md`.
 - [ ] **Mobile Navigation** - Redesign sidebar behavior on mobile. Current desktop-style sidebar consumes too much horizontal space. Evaluate one of: top nav, bottom nav, or minimal single-button trigger that opens a full-screen menu.
 - [ ] **Homepage Routing** - Make `/` the true landing page and move catalog to its own dedicated route. Remove login-driven reroute behavior that hurts first contentful paint and perceived responsiveness.
 - [ ] **Public Catalog Access + Conversion Funnel** - Allow non-auth users to browse catalog with limited access (example: page 1 only) while keeping filters available. Add clear incentives to sign up/log in and promote AI search as a premium conversion lever.
@@ -72,7 +72,7 @@ The roast chart is a core feature that needs refinement.
 - [ ] **Roast Chart** - Make up/down arrows work consistently for both temp and fan adjustments.
 - [ ] **Roast Chart** - Smooth out temperature curve display to reduce noise/jitter.
 - [ ] **Roast Chart** - Remove fan and heat Y-axis labels; keep only external temp labels for clarity.
-- [ ] **Roast Chart** - Complete chart data refactoring project. Simplify the 8+ step data transformation pipeline to 2-3 steps. See `notes/Chart.md`.
+- [x] **Roast Chart** - Complete chart data refactoring project. Simplify the 8+ step data transformation pipeline to 2-3 steps. See `notes/archive/Chart.md`.
 - [ ] **Roast Chart** - Fix chart timer stopping when phone screen locks/closes. Timer should continue running in background.
 
 ---
@@ -170,7 +170,7 @@ Public API for external developers and integrations.
 - [ ] **API** - Green coffee processing API endpoint. Input a URL or coffee name, output a cleaned, normalized data row.
 - [ ] **API** - Tasting notes API endpoint. Input tasting notes text, output a cupping score chart with custom visualization.
 - [ ] **API** - Roast calculations API endpoint. Input roast tracking data, output full charted interface with RoR calculations.
-- [ ] **API** - Implement API tier row limits. Free tier: limited rows, Member: more rows, Enterprise: unlimited.
+- [x] **API** - Implement API tier row limits. Free tier: limited rows, Member: more rows, Enterprise: unlimited.
 - [ ] **API** - Implement API key limits per tier. Free: 1 key, Member: up to 10 keys, Enterprise: unlimited keys.
 - [ ] **API** - Add roast IDs to profiles for more accurate tagging and API reference.
 
@@ -215,7 +215,7 @@ Community and open-source initiatives.
 
 Ongoing code maintenance tasks.
 
-- [ ] **TypeScript** - Fix 5 critical generic type issues in `VirtualScrollList.svelte`. 'T' is not defined errors.
+- [x] **TypeScript** - Fix 5 critical generic type issues in `VirtualScrollList.svelte`. 'T' is not defined errors.
 - [ ] **TypeScript** - Address ~380 explicit `any` type violations across codebase. Major files: RoastLogChart (~151), roast/+page (~49), beans/+page (~34). See `notes/lint-issues-prioritized.md`.
 - [ ] **API Migration** - Implement share token support in `/api/roast-profiles` endpoint. Currently missing from new endpoint. See `notes/MIGRATION-NOTES.md`.
 
@@ -274,14 +274,16 @@ Items that need more context before they can be actionable.
 
 ## Supplier Tracking
 
-### Integrated Suppliers
+### Integrated Suppliers (35 live as of 2026-03-17)
 
-- [x] Bodhi Leaf (SHIP59 coupon code)
-- [x] Showroom Coffee
-- [x] The Captain's Coffee
+See `coffee-scraper` repo `SUPPLIERS.md` for the full list. Representative examples:
+- [x] Bodhi Leaf
 - [x] Sweet Maria's
 - [x] Coffee Bean Corral
 - [x] Burman Coffee Traders
+- [x] Happy Mug
+- [x] Mill City Roasters
+- [x] T.M. Ward Coffee (added PR #99 2026-03-17)
 
 ### Suppliers to Add
 
