@@ -287,44 +287,15 @@ See `coffee-scraper` repo `SUPPLIERS.md` for the full list. Representative examp
 
 ### Suppliers to Add
 
-- [ ] Theta Ridge Coffee - Low prices but limited farm info; Daterra importer
-- [ ] Prime Green Coffee - https://primegreencoffee.org/shop/ - has coferments
-- [ ] Onyx Green Coffee - Onyx Box (20/40lbs) Guatemala with $10 Fedex
-- [ ] Sleepy Mango Coffee - https://sleepymangocoffee.com/collections/frontpage
-- [ ] Royal Coffee Crown Jewels - 22lb and 1lb bags, preferred decaf source
-- [ ] Genuine Origin - 65lb grain pro bags, $7.50 300g samples
-- [ ] Hacea Coffee Source - https://haceacoffee.com/collections/green-coffee
-- [ ] Aida Batlle Direct
-- [ ] Primos Nicaragua
-- [ ] Cafe Juan Ana
-- [ ] Cafe Kreyol - https://cafekreyol.com/shop/type/green-coffee/
+- [ ] ~~Onyx Green Coffee~~ — Onyx Box is not a public green bean offering; excluded
+- [ ] Genuine Origin - 65lb grain pro bags, $7.50 300g samples (borderline wholesale)
 - [ ] Green Coffee Buying Club
-- [ ] Java Beans Plus
 - [ ] Len's Coffee
 - [ ] Leverhead Coffee
 - [ ] Lost Dutchman
-- [ ] Lavanta Coffee - https://lavantacoffee.com/product-category/green-coffee/
-- [ ] The Coffee Project
 - [ ] Roast Coffee Company
-- [ ] Sea Island Coffee - https://seaislandcoffee.com/collections/unroasted
 - [ ] Blazing Bean Roasters
-- [ ] Smokin' Beans Coffee Co.
-- [ ] Invalsa
-- [ ] CopanTrade
-- [ ] Rhodes Roast - 5lb bags, free shipping
-- [ ] Yellow Rooster
-- [ ] Mill City Roasters
-- [ ] Roastmasters - 50lb grain pro bags, $22 flat rate shipping
-- [ ] Royal New York - 22lb boxes
-- [ ] Coffee Shrub - 50lb bags, 200g samples wholesale only
-- [ ] Ally Coffee - Open Core 50lb, Microlots 50lb, Reserve 25lb
-- [ ] Coffee Crafters Green - 10/20lb bags
 - [ ] Crop to Cup
-- [ ] Covoya
-- [ ] Klatch - https://www.klatchcoffee.com/collections/green-coffee
-- [ ] Cofinet - 52.5lb units - https://www.cofinet.com.au/store/
-- [ ] Forest Coffee - https://coffeegreenbeans.com/collections/greencoffeestore
-- [ ] Good Brothers Coffee - https://goodbrotherscoffee.com/collections/green-coffee-beans
 
 ---
 
