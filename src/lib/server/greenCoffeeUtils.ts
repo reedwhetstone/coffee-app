@@ -37,6 +37,7 @@ export interface CoffeeCatalog {
 	ai_description: string | null;
 	ai_tasting_notes: Record<string, unknown> | null;
 	public_coffee: boolean | null;
+	wholesale: boolean | null;
 }
 
 export interface GreenCoffeeRow {
@@ -88,7 +89,8 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
 			unstocked_date,
 			ai_description,
 			ai_tasting_notes,
-			public_coffee
+			public_coffee,
+			wholesale
 		),
 		roast_profiles!coffee_id (
 			oz_in,
