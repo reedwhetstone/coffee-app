@@ -8,6 +8,7 @@ import type { RequestHandler } from './$types';
 
 interface AlogMetadata {
 	title: string;
+	filename?: string;
 	roastertype?: string;
 	beans?: string;
 	roastingnotes?: string;
@@ -86,6 +87,7 @@ export const POST: RequestHandler = async (event) => {
 
 		// Build prompt lines conditionally to avoid blank lines for missing fields
 		const promptLines: string[] = ['Roast metadata:', `Title: ${alogMetadata.title}`];
+		if (alogMetadata.filename) promptLines.push(`Filename: ${alogMetadata.filename}`);
 		if (alogMetadata.roastertype) promptLines.push(`Roaster: ${alogMetadata.roastertype}`);
 		if (alogMetadata.beans) promptLines.push(`Bean name: ${alogMetadata.beans}`);
 		if (alogMetadata.roastingnotes) promptLines.push(`Notes: ${alogMetadata.roastingnotes}`);
@@ -105,6 +107,20 @@ export const POST: RequestHandler = async (event) => {
 		const result = await generateText({
 			model: openrouter.chat('@preset/cli-agent'),
 			system: `You are a coffee roast classifier. Given metadata from an Artisan .alog roast file and a list of the user's inventory beans, determine which inventory bean this roast most likely corresponds to.
+
+MATCHING PRIORITY:
+1. Filename — users typically name .alog files after the bean (e.g. "Sweet classic 3-16.alog" = Sweet/Classic bean)
+2. Bean name field — explicit bean name from the .alog XML
+3. Roast notes — may mention the bean
+4. Title — often a generic profile name, least reliable for matching
+
+IGNORE GENERIC/DEFAULT VALUES — these are Artisan defaults, not user data:
+- Titles: "Roaster Scope", "Untitled", "Default", "Profile", "New Profile", "My Roast"
+- Bean names that match the title exactly (copy-paste artifact)
+- Weight "0g out" means the user didn't record output weight — don't infer from it
+- Empty or placeholder notes
+
+Focus on fields that contain specific coffee terminology (origin names, variety names, processing methods, roaster shorthand).
 
 Respond with a JSON object containing:
 - inventoryId: the ID of the best matching bean

@@ -969,7 +969,6 @@ if (!response.ok) {
 - Handle loading states and error conditions gracefully
 - Test with realistic data volumes
 
-
 ## Project Structure
 
 - Source: `src/` (routes in `src/routes`, shared code in `src/lib`, types in `src/types`).
