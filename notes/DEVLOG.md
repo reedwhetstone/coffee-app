@@ -277,6 +277,7 @@ Items that need more context before they can be actionable.
 ### Integrated Suppliers (35 live as of 2026-03-17)
 
 See `coffee-scraper` repo `SUPPLIERS.md` for the full list. Representative examples:
+
 - [x] Bodhi Leaf
 - [x] Sweet Maria's
 - [x] Coffee Bean Corral
