@@ -587,6 +587,7 @@
 						{@const userCuppingNotes = parseTastingNotes(
 							bean.cupping_notes as string | object | null
 						)}
+						{@const isWholesale = catalogData?.wholesale === true}
 						{@const hasUserRating = bean.rank !== undefined && bean.rank !== null}
 						{@const hasUserCupping = userCuppingNotes !== null}
 						{@const purchasedOz = (bean.purchased_qty_lbs || 0) * 16}
@@ -609,7 +610,8 @@
 								<div class="flex-1">
 									<h3
 										class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light {hasUserRating ||
-										hasUserCupping
+										hasUserCupping ||
+										isWholesale
 											? 'pr-16 sm:pr-0'
 											: ''}"
 									>
@@ -620,8 +622,13 @@
 											<p class="text-sm font-medium text-background-tertiary-light">
 												{displaySource}
 											</p>
-											{#if hasUserRating || hasUserCupping}
+											{#if hasUserRating || hasUserCupping || isWholesale}
 												<div class="hidden gap-1 sm:flex">
+													{#if isWholesale}
+														<span class="rounded bg-blue-100 px-1 text-xs text-blue-800">
+															Wholesale
+														</span>
+													{/if}
 													{#if hasUserRating}
 														<span class="rounded bg-amber-100 px-1 text-xs text-amber-800">
 															⭐ {bean.rank}
