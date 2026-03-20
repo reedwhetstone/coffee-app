@@ -13,6 +13,8 @@ export interface CoffeeCatalog {
 	name: string;
 	score_value: number | null;
 	arrival_date: string | null;
+	continent: string | null;
+	country: string | null;
 	region: string | null;
 	processing: string | null;
 	drying_method: string | null;
@@ -38,6 +40,7 @@ export interface CoffeeCatalog {
 	ai_tasting_notes: Record<string, unknown> | null;
 	public_coffee: boolean | null;
 	wholesale: boolean | null;
+	price_tiers: Array<{ min_lbs: number; price: number }> | null;
 }
 
 export interface GreenCoffeeRow {
@@ -66,6 +69,8 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
 			name,
 			score_value,
 			arrival_date,
+			continent,
+			country,
 			region,
 			processing,
 			drying_method,
@@ -90,7 +95,8 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
 			ai_description,
 			ai_tasting_notes,
 			public_coffee,
-			wholesale
+			wholesale,
+			price_tiers
 		),
 		roast_profiles!coffee_id (
 			oz_in,

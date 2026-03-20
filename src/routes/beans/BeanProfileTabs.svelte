@@ -2,6 +2,14 @@
 	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { prepareDateForAPI } from '$lib/utils/dates';
+	import {
+		formatPriceTiers,
+		formatDisplayDate,
+		formatSourceName,
+		formatLocation,
+		formatCostPerLb,
+		formatScore
+	} from '$lib/utils/formatters';
 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
 	import CuppingNotesForm from './CuppingNotesForm.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
@@ -462,59 +470,59 @@
 					{/if}
 				</div>
 
-				<!-- Supplier Information Section -->
+				<!-- Catalog Bean Information -->
 				{#if selectedBean.coffee_catalog}
-					{@const catalogData = selectedBean.coffee_catalog}
-					{@const isPrivateCoffee = catalogData.public_coffee === false}
-					{@const baseFields = [
-						'arrival_date',
-						'region',
-						'processing',
-						'drying_method',
-						'cultivar_detail',
-						'grade',
-						'appearance',
-						'type',
-						'lot_size',
-						'bag_size',
-						'packaging',
-						'cost_lb'
-					]}
-					{@const privateFields = [
-						'description_short',
-						'description_long',
-						'farm_notes',
-						'roast_recs'
-					]}
-					{@const availableFields = isPrivateCoffee
-						? [...baseFields, ...privateFields]
-						: baseFields}
-					{@const displayFields = availableFields.filter(
-						(field) =>
-							catalogData[field] !== undefined &&
-							catalogData[field] !== null &&
-							catalogData[field] !== ''
+					{@const cat = selectedBean.coffee_catalog}
+					{@const locationStr = formatLocation(cat.continent, cat.country, cat.region)}
+					{@const hasOriginData = !!(
+						locationStr ||
+						cat.cultivar_detail ||
+						cat.processing ||
+						cat.drying_method ||
+						cat.grade ||
+						cat.appearance ||
+						cat.arrival_date
 					)}
-					{@const formatSupplierName = (source: string) => {
-						if (!source) return '';
-						return source
-							.split('_')
-							.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-							.join(' ');
-					}}
+					{@const hasPricingData = !!(
+						cat.cost_lb != null ||
+						(cat.price_tiers && Array.isArray(cat.price_tiers) && cat.price_tiers.length > 0) ||
+						cat.lot_size ||
+						cat.bag_size ||
+						cat.packaging ||
+						cat.wholesale
+					)}
+					{@const hasDescriptionData = !!(
+						cat.description_short ||
+						cat.description_long ||
+						cat.farm_notes ||
+						cat.roast_recs
+					)}
+					{@const hasSupplierData = !!(cat.source || cat.type || cat.link)}
 
-					{#if displayFields.length > 0 || catalogData.source || catalogData.ai_description}
-						<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
-							<div class="mb-4 flex items-center justify-between">
-								<h3 class="font-semibold text-text-primary-light">
-									{catalogData.source
-										? formatSupplierName(catalogData.source) + ' Bean Information'
-										: 'Supplier Information'}
-								</h3>
-								{#if catalogData.link}
+					<!-- Header with source name and product link -->
+					<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+						<div class="mb-4 flex items-center justify-between">
+							<h3 class="font-semibold text-text-primary-light">
+								{cat.source
+									? formatSourceName(cat.source) + ' Bean Information'
+									: 'Bean Information'}
+							</h3>
+							<div class="flex items-center gap-2">
+								{#if cat.wholesale}
+									<span class="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
+										>Wholesale</span
+									>
+								{/if}
+								{#if cat.score_value != null}
+									<span class="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+										>Score: {formatScore(cat.score_value)}</span
+									>
+								{/if}
+								{#if cat.link}
 									<a
-										href={catalogData.link}
+										href={cat.link}
 										target="_blank"
+										rel="noopener noreferrer"
 										class="inline-flex items-center rounded-md bg-background-tertiary-light px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 									>
 										View Product Page
@@ -534,54 +542,237 @@
 									</a>
 								{/if}
 							</div>
+						</div>
 
-							<!-- AI Description without border -->
-							{#if catalogData.ai_description}
-								<div class="mb-4">
-									<div class="whitespace-pre-wrap text-text-primary-light">
-										{catalogData.ai_description}
-									</div>
+						<!-- AI Description -->
+						{#if cat.ai_description}
+							<div class="mb-4">
+								<div class="whitespace-pre-wrap text-text-primary-light">
+									{cat.ai_description}
 								</div>
-							{/if}
+							</div>
+						{/if}
 
-							<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-								{#each displayFields as key}
-									<div
-										class={key === 'description_short' ||
-										key === 'description_long' ||
-										key === 'farm_notes' ||
-										key === 'roast_recs'
-											? 'lg:col-span-2'
-											: ''}
-									>
+						<!-- Origin & Source -->
+						{#if hasOriginData}
+							<div class="mb-4">
+								<h4
+									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
+								>
+									Origin & Source
+								</h4>
+								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+									{#if locationStr}
 										<div
-											class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
 										>
-											<h4 class="text-sm font-medium text-text-primary-light">
-												{key.replace(/_/g, ' ').toUpperCase()}
-											</h4>
-											<div
-												class="mt-2 text-text-primary-light {key === 'description_short' ||
-												key === 'description_long' ||
-												key === 'farm_notes' ||
-												key === 'roast_recs'
-													? 'whitespace-pre-wrap'
-													: ''}"
-											>
-												{#if key === 'cost_lb'}
-													${typeof catalogData[key] === 'number'
-														? catalogData[key].toFixed(2)
-														: catalogData[key]}/lb
-												{:else}
-													{catalogData[key]}
-												{/if}
+											<h5 class="text-xs font-medium text-text-secondary-light">LOCATION</h5>
+											<div class="mt-1 text-sm text-text-primary-light">{locationStr}</div>
+										</div>
+									{/if}
+									{#if cat.cultivar_detail}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">CULTIVAR</h5>
+											<div class="mt-1 text-sm text-text-primary-light">{cat.cultivar_detail}</div>
+										</div>
+									{/if}
+									{#if cat.processing}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">PROCESSING</h5>
+											<div class="mt-1 text-sm text-text-primary-light">{cat.processing}</div>
+										</div>
+									{/if}
+									{#if cat.drying_method}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">DRYING METHOD</h5>
+											<div class="mt-1 text-sm text-text-primary-light">{cat.drying_method}</div>
+										</div>
+									{/if}
+									{#if cat.grade}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">
+												GRADE / ELEVATION
+											</h5>
+											<div class="mt-1 text-sm text-text-primary-light">{cat.grade}</div>
+										</div>
+									{/if}
+									{#if cat.appearance}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">APPEARANCE</h5>
+											<div class="mt-1 text-sm text-text-primary-light">{cat.appearance}</div>
+										</div>
+									{/if}
+									{#if cat.arrival_date}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">ARRIVAL DATE</h5>
+											<div class="mt-1 text-sm text-text-primary-light">
+												{formatDisplayDate(cat.arrival_date)}
 											</div>
 										</div>
-									</div>
-								{/each}
+									{/if}
+								</div>
 							</div>
-						</div>
-					{/if}
+						{/if}
+
+						<!-- Pricing & Availability -->
+						{#if hasPricingData}
+							<div class="mb-4">
+								<h4
+									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
+								>
+									Pricing & Availability
+								</h4>
+								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+									{#if cat.cost_lb != null}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">COST PER LB</h5>
+											<div class="mt-1 text-sm font-medium text-text-primary-light">
+												{formatCostPerLb(cat.cost_lb)}
+											</div>
+										</div>
+									{/if}
+									{#if cat.price_tiers && Array.isArray(cat.price_tiers) && cat.price_tiers.length > 0}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light sm:col-span-2"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">PRICE TIERS</h5>
+											<div class="mt-1 text-sm text-text-primary-light">
+												{formatPriceTiers(cat.price_tiers)}
+											</div>
+										</div>
+									{/if}
+									{#if cat.lot_size}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">LOT SIZE</h5>
+											<div class="mt-1 text-sm text-text-primary-light">{cat.lot_size}</div>
+										</div>
+									{/if}
+									{#if cat.bag_size}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">BAG SIZE</h5>
+											<div class="mt-1 text-sm text-text-primary-light">{cat.bag_size}</div>
+										</div>
+									{/if}
+									{#if cat.packaging}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">PACKAGING</h5>
+											<div class="mt-1 text-sm text-text-primary-light">{cat.packaging}</div>
+										</div>
+									{/if}
+								</div>
+							</div>
+						{/if}
+
+						<!-- Descriptions & Notes -->
+						{#if hasDescriptionData}
+							<div class="mb-4">
+								<h4
+									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
+								>
+									Descriptions & Notes
+								</h4>
+								<div class="space-y-3">
+									{#if cat.description_short}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">
+												SHORT DESCRIPTION
+											</h5>
+											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
+												{cat.description_short}
+											</div>
+										</div>
+									{/if}
+									{#if cat.description_long}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">
+												FULL DESCRIPTION
+											</h5>
+											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
+												{cat.description_long}
+											</div>
+										</div>
+									{/if}
+									{#if cat.farm_notes}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">FARM NOTES</h5>
+											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
+												{cat.farm_notes}
+											</div>
+										</div>
+									{/if}
+									{#if cat.roast_recs}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">
+												ROAST RECOMMENDATIONS
+											</h5>
+											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
+												{cat.roast_recs}
+											</div>
+										</div>
+									{/if}
+								</div>
+							</div>
+						{/if}
+
+						<!-- Supplier Info -->
+						{#if hasSupplierData}
+							<div>
+								<h4
+									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
+								>
+									Supplier
+								</h4>
+								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+									{#if cat.source}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">SOURCE</h5>
+											<div class="mt-1 text-sm text-text-primary-light">
+												{formatSourceName(cat.source)}
+											</div>
+										</div>
+									{/if}
+									{#if cat.type}
+										<div
+											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+										>
+											<h5 class="text-xs font-medium text-text-secondary-light">IMPORTER / TYPE</h5>
+											<div class="mt-1 text-sm text-text-primary-light">{cat.type}</div>
+										</div>
+									{/if}
+								</div>
+							</div>
+						{/if}
+					</div>
 				{/if}
 			</div>
 		{:else if currentTab === 'cupping'}
