@@ -64,41 +64,92 @@ async function hasBeans(page: Page): Promise<boolean> {
 }
 
 /**
- * Ensure at least one bean exists for this user by adding from live catalog via UI.
- * This uses real app flows and does not seed synthetic DB rows.
+ * Add a fresh green coffee bean to inventory.
+ * Always runs the full BeanForm submission flow (no shortcuts).
+ * Uses the same UI path a real user would: navigate to /beans, click
+ * "Add New Coffee" or "Add Your First Bean", fill the form, submit.
  */
-async function ensureBeanExists(page: Page) {
-	if (await hasBeans(page)) return;
+async function addBeanToInventory(page: Page) {
+	// Step 1: Navigate to beans page
+	await navigateToBeans(page);
 
-	await page.getByRole('button', { name: /Add Your First Bean|Add New Coffee/i }).click();
-	await page.getByText('Select from Catalog').click();
+	// Step 2: Open the add bean form via the button (not URL params)
+	const addBtn = page.getByRole('button', { name: /Add Your First Bean|Add New Coffee/i });
+	await addBtn.waitFor({ state: 'visible', timeout: 10000 });
+	await addBtn.click();
 
+	// Step 3: Wait for the form to be visible
+	const formHeading = page.getByText('Add New Coffee Bean');
+	await formHeading.waitFor({ state: 'visible', timeout: 10000 });
+
+	// Step 4: Switch to "Select from Catalog" mode
+	// The form defaults to "Manual Entry"; click the catalog radio label
+	const catalogLabel = page.locator('label').filter({ hasText: 'Select from Catalog' });
+	await catalogLabel.click();
+	await page.waitForTimeout(500); // Let catalog data fetch
+
+	// Step 5: Wait for catalog dropdown to appear and have options
 	const catalogSelect = page.locator('select[id^="catalog-bean-"]').first();
-	await catalogSelect.waitFor({ state: 'visible', timeout: 10000 });
-	await expect(catalogSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
-	await catalogSelect.selectOption({ index: 1 });
+	await catalogSelect.waitFor({ state: 'visible', timeout: 15000 });
 
-	const today = new Date().toISOString().split('T')[0];
-	await page.locator('#purchase_date').fill(today);
-	await page.locator('#tax_ship_cost').fill('0');
-	await page.locator('input[id^="purchased_qty-"]').first().fill('100');
-	await page.locator('input[id^="bean_cost-"]').first().fill('50');
-
-	const createResponse = page.waitForResponse(
-		(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'POST',
-		{ timeout: 15000 }
+	// Wait until there are real options (not just the placeholder)
+	await page.waitForFunction(
+		(selector) => {
+			const el = document.querySelector(selector) as HTMLSelectElement;
+			return el && el.options.length > 1;
+		},
+		'select[id^="catalog-bean-"]',
+		{ timeout: 20000 }
 	);
 
-	await page.getByRole('button', { name: 'Add Bean', exact: true }).click();
+	// Step 6: Select the first real catalog bean
+	await catalogSelect.selectOption({ index: 1 });
+	await page.waitForTimeout(300); // Let price tiers compute
+
+	// Step 7: Fill purchase details
+	const today = new Date().toISOString().split('T')[0];
+	const purchaseDate = page.locator('#purchase_date');
+	await purchaseDate.fill(today);
+
+	const taxShip = page.locator('#tax_ship_cost');
+	await taxShip.fill('0');
+
+	const qtyInput = page.locator('input[id^="purchased_qty-"]').first();
+	await qtyInput.fill('12');
+
+	// bean_cost may auto-calculate from price_tiers; only fill if editable
+	const beanCostInput = page.locator('input[id^="bean_cost-"]').first();
+	if (await beanCostInput.isEnabled()) {
+		await beanCostInput.fill('50');
+	}
+
+	// Step 8: Submit
+	const createResponse = page.waitForResponse(
+		(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'POST',
+		{ timeout: 20000 }
+	);
+
+	const submitBtn = page.getByRole('button', { name: /^Add Bean$/i });
+	await submitBtn.click();
 	const response = await createResponse;
 
 	if (!response.ok()) {
 		const body = await response.text();
-		throw new Error(`Failed to create bean from form (${response.status()}): ${body}`);
+		throw new Error(`Failed to add bean to inventory (${response.status()}): ${body}`);
 	}
 
+	// Step 9: Wait for modal to close and beans list to show the new bean
+	await page.waitForTimeout(1000);
 	await navigateToBeans(page);
-	await expect(page.locator('button.group.relative').first()).toBeVisible({ timeout: 15000 });
+	await expect(page.locator('button.group.relative').first()).toBeVisible({ timeout: 20000 });
+}
+
+/**
+ * Ensure beans exist in inventory. Always adds a fresh bean to guarantee
+ * sufficient stock for roast tests that consume inventory.
+ */
+async function ensureBeanExists(page: Page) {
+	await addBeanToInventory(page);
 }
 
 /**
@@ -394,9 +445,9 @@ test.describe('Roast Profiles', () => {
 	test('can create and start a new roast profile', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
+		// Always add fresh inventory so roasts never deplete stock
 		await navigateToBeans(page);
-
-		await ensureBeanExists(page);
+		await addBeanToInventory(page);
 
 		await selectFirstBean(page);
 
@@ -432,9 +483,9 @@ test.describe('Roast Profiles', () => {
 	test('can create roast profile from dropdown without pre-selected bean', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
-		// Ensure at least one bean exists for dropdown population
+		// Always add fresh inventory so roasts never deplete stock
 		await navigateToBeans(page);
-		await ensureBeanExists(page);
+		await addBeanToInventory(page);
 
 		// Navigate directly to /roast (no pre-selected bean)
 		await page.goto('/roast');
@@ -581,8 +632,9 @@ test.describe('Roast Profiles', () => {
 	test('can pre-select bean when navigating from bean profile', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
+		// Always add fresh inventory so beans are visible
 		await navigateToBeans(page);
-		await ensureBeanExists(page);
+		await addBeanToInventory(page);
 
 		// Capture the first bean's display name from its card
 		const firstBeanCard = page.locator('button.group.relative').first();
