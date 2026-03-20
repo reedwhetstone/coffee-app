@@ -431,6 +431,8 @@ export async function getInventoryWithRoastSummary(
 			coffee_catalog!catalog_id (
 				name,
 				arrival_date,
+				continent,
+				country,
 				region,
 				processing,
 				drying_method,
@@ -448,13 +450,16 @@ export async function getInventoryWithRoastSummary(
 				link,
 				cost_lb,
 				source,
+				score_value,
 				stocked,
 				cupping_notes,
 				stocked_date,
 				unstocked_date,
 				ai_description,
 				ai_tasting_notes,
-				public_coffee
+				public_coffee,
+				wholesale,
+				price_tiers
 			)
 		`
 		)

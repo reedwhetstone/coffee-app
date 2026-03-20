@@ -1,0 +1,1726 @@
+diff --git a/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/changed_files.txt b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/changed_files.txt
+new file mode 100644
+index 0000000..d290dc8
+--- /dev/null
++++ b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/changed_files.txt
+@@ -0,0 +1,2 @@
++src/lib/server/greenCoffeeUtils.ts
++src/routes/beans/+page.svelte
+diff --git a/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/commits.txt b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/commits.txt
+new file mode 100644
+index 0000000..285c853
+--- /dev/null
++++ b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/commits.txt
+@@ -0,0 +1 @@
++4d51c3e (HEAD -> feat/wholesale-markers-inventory, origin/feat/wholesale-markers-inventory) feat: add wholesale badge to green coffee inventory
+diff --git a/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/diffstat.txt b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/diffstat.txt
+new file mode 100644
+index 0000000..aecdb8e
+--- /dev/null
++++ b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/diffstat.txt
+@@ -0,0 +1,3 @@
++ src/lib/server/greenCoffeeUtils.ts |  4 +++-
++ src/routes/beans/+page.svelte      | 11 +++++++++--
++ 2 files changed, 12 insertions(+), 3 deletions(-)
+diff --git a/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/full.diff b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/full.diff
+new file mode 100644
+index 0000000..bc8d7be
+--- /dev/null
++++ b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/full.diff
+@@ -0,0 +1,59 @@
++diff --git a/src/lib/server/greenCoffeeUtils.ts b/src/lib/server/greenCoffeeUtils.ts
++index 39e22ca..4e23941 100644
++--- a/src/lib/server/greenCoffeeUtils.ts
+++++ b/src/lib/server/greenCoffeeUtils.ts
++@@ -37,6 +37,7 @@ export interface CoffeeCatalog {
++ 	ai_description: string | null;
++ 	ai_tasting_notes: Record<string, unknown> | null;
++ 	public_coffee: boolean | null;
+++	wholesale: boolean | null;
++ }
++ 
++ export interface GreenCoffeeRow {
++@@ -88,7 +89,8 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
++ 			unstocked_date,
++ 			ai_description,
++ 			ai_tasting_notes,
++-			public_coffee
+++			public_coffee,
+++			wholesale
++ 		),
++ 		roast_profiles!coffee_id (
++ 			oz_in,
++diff --git a/src/routes/beans/+page.svelte b/src/routes/beans/+page.svelte
++index 32e0137..0cc505e 100644
++--- a/src/routes/beans/+page.svelte
+++++ b/src/routes/beans/+page.svelte
++@@ -587,6 +587,7 @@
++ 						{@const userCuppingNotes = parseTastingNotes(
++ 							bean.cupping_notes as string | object | null
++ 						)}
+++						{@const isWholesale = catalogData?.wholesale === true}
++ 						{@const hasUserRating = bean.rank !== undefined && bean.rank !== null}
++ 						{@const hasUserCupping = userCuppingNotes !== null}
++ 						{@const purchasedOz = (bean.purchased_qty_lbs || 0) * 16}
++@@ -609,7 +610,8 @@
++ 								<div class="flex-1">
++ 									<h3
++ 										class="font-semibold text-text-primary-light group-hover:text-background-tertiary-light {hasUserRating ||
++-										hasUserCupping
+++										hasUserCupping ||
+++										isWholesale
++ 											? 'pr-16 sm:pr-0'
++ 											: ''}"
++ 									>
++@@ -620,8 +622,13 @@
++ 											<p class="text-sm font-medium text-background-tertiary-light">
++ 												{displaySource}
++ 											</p>
++-											{#if hasUserRating || hasUserCupping}
+++											{#if hasUserRating || hasUserCupping || isWholesale}
++ 												<div class="hidden gap-1 sm:flex">
+++													{#if isWholesale}
+++														<span class="rounded bg-blue-100 px-1 text-xs text-blue-800">
+++															Wholesale
+++														</span>
+++													{/if}
++ 													{#if hasUserRating}
++ 														<span class="rounded bg-amber-100 px-1 text-xs text-amber-800">
++ 															⭐ {bean.rank}
+diff --git a/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/metadata.txt b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/metadata.txt
+new file mode 100644
+index 0000000..def9d18
+--- /dev/null
++++ b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/metadata.txt
+@@ -0,0 +1,7 @@
++repo_root: /root/.openclaw/workspace/repos/coffee-app
++base_ref: origin/main
++head_ref: HEAD
++merge_base: ae2b1133db915b5ad80c2c132153d25cd6df1ff1
++branch_name: feat/wholesale-markers-inventory
++generated_at_utc: 2026-03-19T11:07:22Z
++pr_number: 121
+diff --git a/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/pr.json b/.verify-pr/20260319T110721Z-feat-wholesale-markers-inventory/pr.json
+new file mode 100644
+index 0000000..e69de29
+diff --git a/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/changed_files.txt b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/changed_files.txt
+new file mode 100644
+index 0000000..f0d5436
+--- /dev/null
++++ b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/changed_files.txt
+@@ -0,0 +1,3 @@
++src/lib/server/greenCoffeeUtils.ts
++src/lib/utils/formatters.ts
++src/routes/beans/BeanProfileTabs.svelte
+diff --git a/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/commits.txt b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/commits.txt
+new file mode 100644
+index 0000000..7fe4b73
+--- /dev/null
++++ b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/commits.txt
+@@ -0,0 +1 @@
++6cc633b (HEAD -> feat/bean-profile-data-completeness, origin/feat/bean-profile-data-completeness) feat: display all non-null catalog fields on bean profile
+diff --git a/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/diffstat.txt b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/diffstat.txt
+new file mode 100644
+index 0000000..37faa93
+--- /dev/null
++++ b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/diffstat.txt
+@@ -0,0 +1,4 @@
++ src/lib/server/greenCoffeeUtils.ts      |   8 +-
++ src/lib/utils/formatters.ts             |  85 ++++++++
++ src/routes/beans/BeanProfileTabs.svelte | 369 ++++++++++++++++++++++++--------
++ 3 files changed, 372 insertions(+), 90 deletions(-)
+diff --git a/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/full.diff b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/full.diff
+new file mode 100644
+index 0000000..e435e6a
+--- /dev/null
++++ b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/full.diff
+@@ -0,0 +1,537 @@
++diff --git a/src/lib/server/greenCoffeeUtils.ts b/src/lib/server/greenCoffeeUtils.ts
++index 4e23941..634f62d 100644
++--- a/src/lib/server/greenCoffeeUtils.ts
+++++ b/src/lib/server/greenCoffeeUtils.ts
++@@ -13,6 +13,8 @@ export interface CoffeeCatalog {
++ 	name: string;
++ 	score_value: number | null;
++ 	arrival_date: string | null;
+++	continent: string | null;
+++	country: string | null;
++ 	region: string | null;
++ 	processing: string | null;
++ 	drying_method: string | null;
++@@ -38,6 +40,7 @@ export interface CoffeeCatalog {
++ 	ai_tasting_notes: Record<string, unknown> | null;
++ 	public_coffee: boolean | null;
++ 	wholesale: boolean | null;
+++	price_tiers: Array<{ min_lbs: number; price: number }> | null;
++ }
++ 
++ export interface GreenCoffeeRow {
++@@ -66,6 +69,8 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
++ 			name,
++ 			score_value,
++ 			arrival_date,
+++			continent,
+++			country,
++ 			region,
++ 			processing,
++ 			drying_method,
++@@ -90,7 +95,8 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
++ 			ai_description,
++ 			ai_tasting_notes,
++ 			public_coffee,
++-			wholesale
+++			wholesale,
+++			price_tiers
++ 		),
++ 		roast_profiles!coffee_id (
++ 			oz_in,
++diff --git a/src/lib/utils/formatters.ts b/src/lib/utils/formatters.ts
++new file mode 100644
++index 0000000..8b0ba78
++--- /dev/null
+++++ b/src/lib/utils/formatters.ts
++@@ -0,0 +1,85 @@
+++/**
+++ * Formatting utilities for bean profile data display.
+++ */
+++
+++export interface PriceTier {
+++	min_lbs: number;
+++	price: number;
+++}
+++
+++/**
+++ * Format price tiers into a readable string.
+++ * Example: "1 lb: $8.50 | 10 lb: $7.20 | 50 lb: $6.00"
+++ */
+++export function formatPriceTiers(tiers: PriceTier[] | null | undefined): string {
+++	if (!tiers || !Array.isArray(tiers) || tiers.length === 0) return '';
+++	return tiers
+++		.sort((a, b) => a.min_lbs - b.min_lbs)
+++		.map((t) => `${t.min_lbs} lb: $${t.price.toFixed(2)}`)
+++		.join(' | ');
+++}
+++
+++/**
+++ * Format a date string for display. Returns "Mar 15, 2026" style.
+++ */
+++export function formatDisplayDate(dateStr: string | null | undefined): string {
+++	if (!dateStr) return '';
+++	try {
+++		const date = new Date(dateStr);
+++		if (isNaN(date.getTime())) return dateStr;
+++		return date.toLocaleDateString('en-US', {
+++			month: 'short',
+++			day: 'numeric',
+++			year: 'numeric'
+++		});
+++	} catch {
+++		return dateStr;
+++	}
+++}
+++
+++/**
+++ * Format a supplier source name for display.
+++ * "sweet_marias" -> "Sweet Marias"
+++ */
+++export function formatSourceName(source: string | null | undefined): string {
+++	if (!source) return '';
+++	return source
+++		.split('_')
+++		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+++		.join(' ');
+++}
+++
+++/**
+++ * Format a field key into a human-readable label.
+++ * "cultivar_detail" -> "Cultivar Detail"
+++ */
+++export function formatFieldLabel(key: string): string {
+++	return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+++}
+++
+++/**
+++ * Build a location string from continent, country, region.
+++ */
+++export function formatLocation(
+++	continent: string | null | undefined,
+++	country: string | null | undefined,
+++	region: string | null | undefined
+++): string {
+++	return [continent, country, region].filter(Boolean).join(' > ');
+++}
+++
+++/**
+++ * Format cost per pound with dollar sign.
+++ */
+++export function formatCostPerLb(cost: number | null | undefined): string {
+++	if (cost == null) return '';
+++	return `$${cost.toFixed(2)}/lb`;
+++}
+++
+++/**
+++ * Format a cupping score value.
+++ */
+++export function formatScore(score: number | null | undefined): string {
+++	if (score == null) return '';
+++	return score.toFixed(1);
+++}
++diff --git a/src/routes/beans/BeanProfileTabs.svelte b/src/routes/beans/BeanProfileTabs.svelte
++index 9d8ecd0..4a4ccaa 100644
++--- a/src/routes/beans/BeanProfileTabs.svelte
+++++ b/src/routes/beans/BeanProfileTabs.svelte
++@@ -2,6 +2,14 @@
++ 	import { untrack } from 'svelte';
++ 	import { goto } from '$app/navigation';
++ 	import { prepareDateForAPI } from '$lib/utils/dates';
+++	import {
+++		formatPriceTiers,
+++		formatDisplayDate,
+++		formatSourceName,
+++		formatLocation,
+++		formatCostPerLb,
+++		formatScore
+++	} from '$lib/utils/formatters';
++ 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
++ 	import CuppingNotesForm from './CuppingNotesForm.svelte';
++ 	import type { TastingNotes } from '$lib/types/coffee.types';
++@@ -462,59 +470,59 @@
++ 					{/if}
++ 				</div>
++ 
++-				<!-- Supplier Information Section -->
+++				<!-- Catalog Bean Information -->
++ 				{#if selectedBean.coffee_catalog}
++-					{@const catalogData = selectedBean.coffee_catalog}
++-					{@const isPrivateCoffee = catalogData.public_coffee === false}
++-					{@const baseFields = [
++-						'arrival_date',
++-						'region',
++-						'processing',
++-						'drying_method',
++-						'cultivar_detail',
++-						'grade',
++-						'appearance',
++-						'type',
++-						'lot_size',
++-						'bag_size',
++-						'packaging',
++-						'cost_lb'
++-					]}
++-					{@const privateFields = [
++-						'description_short',
++-						'description_long',
++-						'farm_notes',
++-						'roast_recs'
++-					]}
++-					{@const availableFields = isPrivateCoffee
++-						? [...baseFields, ...privateFields]
++-						: baseFields}
++-					{@const displayFields = availableFields.filter(
++-						(field) =>
++-							catalogData[field] !== undefined &&
++-							catalogData[field] !== null &&
++-							catalogData[field] !== ''
+++					{@const cat = selectedBean.coffee_catalog}
+++					{@const locationStr = formatLocation(cat.continent, cat.country, cat.region)}
+++					{@const hasOriginData = !!(
+++						locationStr ||
+++						cat.cultivar_detail ||
+++						cat.processing ||
+++						cat.drying_method ||
+++						cat.grade ||
+++						cat.appearance ||
+++						cat.arrival_date
++ 					)}
++-					{@const formatSupplierName = (source: string) => {
++-						if (!source) return '';
++-						return source
++-							.split('_')
++-							.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
++-							.join(' ');
++-					}}
++-
++-					{#if displayFields.length > 0 || catalogData.source || catalogData.ai_description}
++-						<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
++-							<div class="mb-4 flex items-center justify-between">
++-								<h3 class="font-semibold text-text-primary-light">
++-									{catalogData.source
++-										? formatSupplierName(catalogData.source) + ' Bean Information'
++-										: 'Supplier Information'}
++-								</h3>
++-								{#if catalogData.link}
+++					{@const hasPricingData = !!(
+++						cat.cost_lb != null ||
+++						(cat.price_tiers && Array.isArray(cat.price_tiers) && cat.price_tiers.length > 0) ||
+++						cat.lot_size ||
+++						cat.bag_size ||
+++						cat.packaging ||
+++						cat.wholesale
+++					)}
+++					{@const hasDescriptionData = !!(
+++						cat.description_short ||
+++						cat.description_long ||
+++						cat.farm_notes ||
+++						cat.roast_recs
+++					)}
+++					{@const hasSupplierData = !!(cat.source || cat.type || cat.link)}
+++
+++					<!-- Header with source name and product link -->
+++					<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+++						<div class="mb-4 flex items-center justify-between">
+++							<h3 class="font-semibold text-text-primary-light">
+++								{cat.source
+++									? formatSourceName(cat.source) + ' Bean Information'
+++									: 'Bean Information'}
+++							</h3>
+++							<div class="flex items-center gap-2">
+++								{#if cat.wholesale}
+++									<span class="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
+++										>Wholesale</span
+++									>
+++								{/if}
+++								{#if cat.score_value != null}
+++									<span class="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+++										>Score: {formatScore(cat.score_value)}</span
+++									>
+++								{/if}
+++								{#if cat.link}
++ 									<a
++-										href={catalogData.link}
+++										href={cat.link}
++ 										target="_blank"
+++										rel="noopener noreferrer"
++ 										class="inline-flex items-center rounded-md bg-background-tertiary-light px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
++ 									>
++ 										View Product Page
++@@ -534,54 +542,237 @@
++ 									</a>
++ 								{/if}
++ 							</div>
+++						</div>
++ 
++-							<!-- AI Description without border -->
++-							{#if catalogData.ai_description}
++-								<div class="mb-4">
++-									<div class="whitespace-pre-wrap text-text-primary-light">
++-										{catalogData.ai_description}
++-									</div>
+++						<!-- AI Description -->
+++						{#if cat.ai_description}
+++							<div class="mb-4">
+++								<div class="whitespace-pre-wrap text-text-primary-light">
+++									{cat.ai_description}
++ 								</div>
++-							{/if}
+++							</div>
+++						{/if}
++ 
++-							<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
++-								{#each displayFields as key}
++-									<div
++-										class={key === 'description_short' ||
++-										key === 'description_long' ||
++-										key === 'farm_notes' ||
++-										key === 'roast_recs'
++-											? 'lg:col-span-2'
++-											: ''}
++-									>
+++						<!-- Origin & Source -->
+++						{#if hasOriginData}
+++							<div class="mb-4">
+++								<h4
+++									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
+++								>
+++									Origin & Source
+++								</h4>
+++								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+++									{#if locationStr}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">LOCATION</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">{locationStr}</div>
+++										</div>
+++									{/if}
+++									{#if cat.cultivar_detail}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">CULTIVAR</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">{cat.cultivar_detail}</div>
+++										</div>
+++									{/if}
+++									{#if cat.processing}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">PROCESSING</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">{cat.processing}</div>
+++										</div>
+++									{/if}
+++									{#if cat.drying_method}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">DRYING METHOD</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">{cat.drying_method}</div>
+++										</div>
+++									{/if}
+++									{#if cat.grade}
++ 										<div
++-											class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++ 										>
++-											<h4 class="text-sm font-medium text-text-primary-light">
++-												{key.replace(/_/g, ' ').toUpperCase()}
++-											</h4>
++-											<div
++-												class="mt-2 text-text-primary-light {key === 'description_short' ||
++-												key === 'description_long' ||
++-												key === 'farm_notes' ||
++-												key === 'roast_recs'
++-													? 'whitespace-pre-wrap'
++-													: ''}"
++-											>
++-												{#if key === 'cost_lb'}
++-													${typeof catalogData[key] === 'number'
++-														? catalogData[key].toFixed(2)
++-														: catalogData[key]}/lb
++-												{:else}
++-													{catalogData[key]}
++-												{/if}
+++											<h5 class="text-xs font-medium text-text-secondary-light">
+++												GRADE / ELEVATION
+++											</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">{cat.grade}</div>
+++										</div>
+++									{/if}
+++									{#if cat.appearance}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">APPEARANCE</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">{cat.appearance}</div>
+++										</div>
+++									{/if}
+++									{#if cat.arrival_date}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">ARRIVAL DATE</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">
+++												{formatDisplayDate(cat.arrival_date)}
++ 											</div>
++ 										</div>
++-									</div>
++-								{/each}
+++									{/if}
+++								</div>
++ 							</div>
++-						</div>
++-					{/if}
+++						{/if}
+++
+++						<!-- Pricing & Availability -->
+++						{#if hasPricingData}
+++							<div class="mb-4">
+++								<h4
+++									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
+++								>
+++									Pricing & Availability
+++								</h4>
+++								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+++									{#if cat.cost_lb != null}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">COST PER LB</h5>
+++											<div class="mt-1 text-sm font-medium text-text-primary-light">
+++												{formatCostPerLb(cat.cost_lb)}
+++											</div>
+++										</div>
+++									{/if}
+++									{#if cat.price_tiers && Array.isArray(cat.price_tiers) && cat.price_tiers.length > 0}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light sm:col-span-2"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">PRICE TIERS</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">
+++												{formatPriceTiers(cat.price_tiers)}
+++											</div>
+++										</div>
+++									{/if}
+++									{#if cat.lot_size}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">LOT SIZE</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">{cat.lot_size}</div>
+++										</div>
+++									{/if}
+++									{#if cat.bag_size}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">BAG SIZE</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">{cat.bag_size}</div>
+++										</div>
+++									{/if}
+++									{#if cat.packaging}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">PACKAGING</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">{cat.packaging}</div>
+++										</div>
+++									{/if}
+++								</div>
+++							</div>
+++						{/if}
+++
+++						<!-- Descriptions & Notes -->
+++						{#if hasDescriptionData}
+++							<div class="mb-4">
+++								<h4
+++									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
+++								>
+++									Descriptions & Notes
+++								</h4>
+++								<div class="space-y-3">
+++									{#if cat.description_short}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">
+++												SHORT DESCRIPTION
+++											</h5>
+++											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
+++												{cat.description_short}
+++											</div>
+++										</div>
+++									{/if}
+++									{#if cat.description_long}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">
+++												FULL DESCRIPTION
+++											</h5>
+++											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
+++												{cat.description_long}
+++											</div>
+++										</div>
+++									{/if}
+++									{#if cat.farm_notes}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">FARM NOTES</h5>
+++											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
+++												{cat.farm_notes}
+++											</div>
+++										</div>
+++									{/if}
+++									{#if cat.roast_recs}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">
+++												ROAST RECOMMENDATIONS
+++											</h5>
+++											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
+++												{cat.roast_recs}
+++											</div>
+++										</div>
+++									{/if}
+++								</div>
+++							</div>
+++						{/if}
+++
+++						<!-- Supplier Info -->
+++						{#if hasSupplierData}
+++							<div>
+++								<h4
+++									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
+++								>
+++									Supplier
+++								</h4>
+++								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+++									{#if cat.source}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">SOURCE</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">
+++												{formatSourceName(cat.source)}
+++											</div>
+++										</div>
+++									{/if}
+++									{#if cat.type}
+++										<div
+++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+++										>
+++											<h5 class="text-xs font-medium text-text-secondary-light">IMPORTER / TYPE</h5>
+++											<div class="mt-1 text-sm text-text-primary-light">{cat.type}</div>
+++										</div>
+++									{/if}
+++								</div>
+++							</div>
+++						{/if}
+++					</div>
++ 				{/if}
++ 			</div>
++ 		{:else if currentTab === 'cupping'}
+diff --git a/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/metadata.txt b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/metadata.txt
+new file mode 100644
+index 0000000..7348617
+--- /dev/null
++++ b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/metadata.txt
+@@ -0,0 +1,7 @@
++repo_root: /root/.openclaw/workspace/repos/coffee-app
++base_ref: origin/main
++head_ref: HEAD
++merge_base: 0786c9cc7016987a77ab7cfcca6082058a155eb8
++branch_name: feat/bean-profile-data-completeness
++generated_at_utc: 2026-03-20T11:19:54Z
++pr_number: 123
+diff --git a/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/pr.json b/.verify-pr/20260320T111953Z-feat-bean-profile-data-completeness/pr.json
+new file mode 100644
+index 0000000..e69de29
+diff --git a/notes/bean-similarity-project-plan.md b/notes/bean-similarity-project-plan.md
+new file mode 100644
+index 0000000..b4d56aa
+--- /dev/null
++++ b/notes/bean-similarity-project-plan.md
+@@ -0,0 +1,167 @@
++# Bean Similarity & Entity Resolution — Project Plan
++
++_Created: 2026-03-19_
++_Status: Planning_
++_Priority: #1 data target — bridges marketplace to supply chain analysis_
++
++## Problem
++
++"Ethiopia Yirgacheffe Washed Grade 2" from Burman, "Ethiopian Yirgacheffe Grade 2 Washed" from Sweet Maria's, and "Yirgacheffe Natural Gr.2 Washed Process" from Bodhi Leaf are probably the same origin lot, same washing station, same harvest — just sold through different importers with different naming conventions. Today they're 3 separate catalog entries with no connection.
++
++## Why It Matters
++
++Bean similarity is the foundation for:
++
++- **Price comparison**: same bean, N suppliers, N prices
++- **Purveyors Price Index (PPI)**: track price of a canonical bean over time
++- **Supply chain intelligence**: which importers carry this lot, when does it arrive, when does it sell out
++- **Marketplace unlock**: "alert me when this bean is available from a cheaper supplier"
++- **Blog content**: data-driven supply chain analysis backed by real cross-supplier matching
++
++## Architecture
++
++### Layer 1: Similarity Search (no new tables)
++
++Use existing `coffee_chunks` embeddings (pgvector) to find similar beans across suppliers. The embeddings already encode tasting profile, origin story, and processing method — not just name string matching.
++
++**What exists today:**
++
++- `coffee_chunks` table with pgvector embeddings
++- 5 chunk types per bean: profile, tasting, origin, commercial, processing
++- `embeddingService.ts` generates and stores chunks
++- Embeddings use OpenRouter (Qwen3-Embedding-8B, essentially free)
++
++**What's needed:**
++
++- Supabase RPC function: given a `coffee_catalog.id`, return top N similar beans via cosine similarity on origin + processing chunks
++- CLI command: `purvey catalog similar <id>` — returns ranked matches with similarity scores
++- Threshold calibration: ~0.85 = "likely same bean", 0.70-0.85 = "similar profile", <0.70 = different
++
++### Layer 2: Canonical Bean Identity (new table)
++
++A `bean_identity` table representing "this physical lot of coffee":
++
++```sql
++CREATE TABLE bean_identity (
++  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
++  country TEXT NOT NULL,
++  region TEXT,
++  farm_or_station TEXT,
++  variety TEXT,
++  processing TEXT,           -- normalized: washed, natural, honey, anaerobic
++  harvest_year INT,
++  grade TEXT,                -- normalized
++  altitude_range TEXT,
++  created_at TIMESTAMPTZ DEFAULT now(),
++  updated_at TIMESTAMPTZ DEFAULT now()
++);
++
++-- FK on coffee_catalog
++ALTER TABLE coffee_catalog ADD COLUMN bean_identity_id UUID REFERENCES bean_identity(id);
++
++-- Index for lookups
++CREATE INDEX idx_catalog_bean_identity ON coffee_catalog(bean_identity_id);
++```
++
++Multiple `coffee_catalog` rows link to one `bean_identity`. This makes price comparison trivial: query all catalog entries sharing a `bean_identity_id`.
++
++### Layer 3: Resolution Pipeline (scraper post-processing)
++
++Runs after each scrape:
++
++1. For each new/updated catalog entry, compute embedding similarity against existing beans
++2. If similarity > 0.85 AND key fields match (country, processing, grade): auto-link to existing `bean_identity`
++3. If 0.70-0.85: flag for human review (or LLM-assisted resolution)
++4. If no match: create new `bean_identity`
++5. LLM assist for edge cases: name normalization, variety inference, washing station identification
++
++### Layer 4: UI + API Surface
++
++- Bean detail page: "Available from N suppliers" with price comparison
++- Catalog search: filter by `bean_identity` to see all listings of the same bean
++- CLI: `purvey catalog similar <id>`, `purvey catalog identity <id>`
++- API: similarity endpoint for external consumers
++
++## Where Each Piece Lives
++
++| Component                         | Repo                      | Why                                   |
++| --------------------------------- | ------------------------- | ------------------------------------- |
++| `bean_identity` table + migration | Supabase (via coffee-app) | Data model change                     |
++| Similarity RPC function (SQL)     | Supabase                  | pgvector lives in Postgres            |
++| Resolution pipeline               | coffee-scraper            | Runs post-scrape, has raw data access |
++| `purvey catalog similar` command  | purveyors-cli             | Agent/human interface                 |
++| Bean identity UI                  | coffee-app                | "Same bean from other suppliers"      |
++
++## Why NOT a Column on coffee_catalog
++
++- Similarity is relational (bean A is similar to beans B, C, D at different scores)
++- A simple column would be a FK to `bean_identity`, not a score
++- The similarity score itself is computed on-demand via pgvector, not stored
++- Storing all pairwise scores would be N^2; computed search is O(N) with pgvector indexes
++
++## What Makes This Better Than String Matching
++
++- Embeddings encode semantic meaning: "Finca La Laja, Veracruz" = "La Laja Estate, Tlaltetela" even when names differ completely
++- Origin chunk embeddings capture washing station + altitude + region context
++- Processing chunk embeddings normalize "fully washed" = "wet processed" = "washed"
++- Tasting embeddings catch "jasmine, citrus, honey" profiles that confirm same-origin beans
++- Combined similarity across chunk types gives much higher confidence than any single field
++
++## CRITICAL PREREQUISITE: Stop Deleting Unstocked Embeddings
++
++**Current behavior:** `embeddingService.ts` deletes all `coffee_chunks` for beans that go out of stock. This destroys historical data needed for similarity matching.
++
++**Required change (scraper PR, do first):**
++
++- Remove the `cleanupUnstockedEmbeddings()` function or make it no-op
++- Embeddings should persist regardless of stock status
++- A bean going out of stock at one supplier doesn't reduce its value for matching, price history, or identity resolution
++- The `stocked` field on `coffee_catalog` already tracks availability; embeddings don't need to mirror this
++
++**Impact of not fixing:** Every scrape cycle deletes chunks for unstocked beans, permanently losing the embedding data needed for cross-supplier matching. The longer this runs, the more historical data we lose.
++
++## Phased Implementation
++
++### Phase 0: Stop Embedding Deletion (scraper, 1 hour)
++
++- Remove/disable `cleanupUnstockedEmbeddings()` in `embeddingService.ts`
++- Ensure embedding backfill runs for all sources (already does as of PR #101)
++- **Do this immediately — every scrape cycle loses data**
++
++### Phase 1: Similarity Search (CLI + SQL, 1-2 days)
++
++- Write Supabase RPC function for pgvector cosine similarity across origin chunks
++- Add `purvey catalog similar <id>` CLI command
++- Test with known same-beans across suppliers
++- Calibrate similarity thresholds with real data
++- No new tables needed; uses existing `coffee_chunks`
++
++### Phase 2: Bean Identity Table (migration + scraper, 2-3 days)
++
++- Create `bean_identity` table and FK on `coffee_catalog`
++- Build initial clustering: run similarity across all catalog entries, group into identities
++- LLM-assisted golden record creation (normalize country, processing, variety)
++- Backfill `bean_identity_id` on existing catalog rows
++
++### Phase 3: Resolution Pipeline (scraper, 2-3 days)
++
++- Post-scrape hook: auto-resolve new beans against existing identities
++- Confidence-based auto-link vs human review queue
++- Edge case handling: seasonal lots, blend components, experimental processing
++- Logging and audit trail for resolution decisions
++
++### Phase 4: UI + API (coffee-app, 2-3 days)
++
++- Bean detail: "Available from N suppliers" card with price comparison
++- Cross-supplier price history chart
++- Catalog filter: "Show all listings of this bean"
++- API endpoint for external consumers
++- Blog: data-backed supply chain analysis using real matching data
++
++## Open Questions
++
++1. How to handle seasonal lots? Same farm, same variety, different harvest year = same identity or new?
++2. Blends: some catalog entries are blends (e.g., "Sweet Classic Espresso"). Do these get an identity?
++3. How granular should `bean_identity` be? Farm-level? Region-level? Washing station?
++4. Should we expose similarity scores to users, or just "same bean / similar bean" buckets?
++5. Rate of false positives at 0.85 threshold — need to calibrate with known matches
+diff --git a/notes/implementation-plans/2026-03-19-bean-profile-data-completeness.md b/notes/implementation-plans/2026-03-19-bean-profile-data-completeness.md
+new file mode 100644
+index 0000000..8f5dfc5
+--- /dev/null
++++ b/notes/implementation-plans/2026-03-19-bean-profile-data-completeness.md
+@@ -0,0 +1,272 @@
++# Implementation Plan: Bean Profile Data Completeness
++
++**Date:** 2026-03-19  
++**Priority:** P1 (Critical Bug)  
++**Complexity:** Easy  
++**Score:** 18 (P1=8 + easy=10 + low risk=0 + no deps=0)  
++**Target PR:** Single, focused PR to coffee-app
++
++---
++
++## Feature
++
++The `/beans` profile page should display **all non-null data fields** from the `green_coffee_inv` table in an organized, readable layout. Currently, only a subset of fields is shown, leaving users unable to see complete bean metadata even when it exists in the database.
++
++---
++
++## Why Now
++
++1. **Priority 1 bug** — marked as breaking core functionality (users can't access their own data)
++2. **Data transparency gap** — we collect rich metadata but don't surface it; this contradicts our platform positioning
++3. **Fits one clean PR** — pure UI/UX work, no backend changes, no schema migrations
++4. **High user impact** — every bean profile view is currently incomplete
++
++---
++
++## Strategy Alignment Audit
++
++### Active Strategy Themes (from recent blog posts and DEVLOG)
++
++1. **Data completeness as competitive moat** — "Who Profits When Coffee Data Stays Scarce" (Mar 11) establishes that metadata transparency is our core value proposition
++2. **AI-first workspace / GenUI transition** — beans page will eventually become part of the conversational workspace; fixing data display prepares the foundation
++3. **Market intelligence foundation** — upcoming Price Index product depends on users trusting that we surface all available data
++4. **Discovery vs reliability** — complete bean profiles help users make informed sourcing decisions
++
++### Alignment Assessment: **STRONGLY ALIGNED**
++
++This fix directly supports the thesis that "metadata transparency is our core value proposition." The blog post explicitly calls out that the industry has "solved price transparency" but left "product metadata" as relationship-gated. By showing all available fields, we demonstrate that our platform doesn't hide information.
++
++### Contradictions: None
++
++No conflicts with current direction. This is a pure bug fix that improves data surfacing without changing behavior.
++
++---
++
++## Scope
++
++### In Scope
++
++- Audit all fields in `green_coffee_inv` table schema
++- Identify which fields are currently displayed vs. hidden
++- Design organized layout sections (e.g., Origin Info, Physical Characteristics, Supplier Info, Metadata)
++- Implement display for all non-null fields with appropriate formatting
++- Handle edge cases: long text, missing data, array fields (price_tiers), dates
++
++### Out of Scope
++
++- Editing capability for new fields (display only)
++- New data collection (work with existing schema)
++- Schema changes or migrations
++- Mobile-specific layout changes (responsive is fine, no mobile redesign)
++- Related features like wholesale markers (separate item in DEVLOG)
++
++---
++
++## Proposed UX Behavior
++
++### Current State
++
++Bean profile shows a limited subset: name, origin, process, cost, maybe a few others. Many fields from `green_coffee_inv` are invisible.
++
++### Target State
++
++Organized sections with logical grouping:
++
++**Section: Origin & Source**
++
++- Origin, Region, Farm/Washing Station
++- Cultivar/Variety, Process, Grade
++- Arrival Date, Crop Year
++
++**Section: Physical & Cupping**
++
++- Altitude (formatted as MASL)
++- Cup Score, Cupping Notes
++- Roast Recommendation
++
++**Section: Pricing & Availability**
++
++- Price Tiers (formatted table)
++- Stocked status, Quantity Available
++- Bag Size
++
++**Section: Supplier & Metadata**
++
++- Supplier Name, External URL
++- Added Date, Last Updated
++- Scraper source info (if relevant)
++
++**Formatting Rules:**
++
++- Hide entire section if all fields are null
++- Show "—" or omit for null individual fields
++- Price tiers render as: "1 lb: $8.50 | 10 lb: $7.20 | 50 lb: $6.00"
++- Dates formatted: "Mar 15, 2026"
++- URLs as clickable external links
++
++---
++
++## Files to Change
++
++1. **`src/routes/beans/BeanProfile.svelte`** (or equivalent profile component)
++
++   - Add sections for missing field groups
++   - Implement conditional rendering logic
++   - Add formatting helpers for price_tiers, dates, MASL
++
++2. **`src/lib/utils/formatters.ts`** (new or existing)
++
++   - `formatPriceTiers(tiers)` → formatted string
++   - `formatAltitude(altitude)` → "X MASL" or range
++   - `formatDate(date)` → localized date string
++
++3. **`src/lib/types/greenCoffee.ts`** (if not exists, check existing types)
++
++   - Verify type definitions match actual DB schema
++
++4. **Tests (optional but recommended)**
++   - Unit tests for formatter utilities
++   - Component test verifying all fields render when data present
++
++---
++
++## API/Data Impact
++
++- **No new API endpoints**
++- **No schema changes**
++- **Data source:** Existing `+page.server.ts` load function (already fetches full row)
++- **GraphQL/REST:** N/A — uses existing SvelteKit server load
++
++Verify the current server load includes all columns:
++
++```typescript
++// In src/routes/beans/[id]/+page.server.ts or similar
++const { data } = await supabase
++	.from('green_coffee_inv')
++	.select('*') // Should already be * or explicit list
++	.eq('id', params.id)
++	.single();
++```
++
++---
++
++## Acceptance Criteria
++
++- [ ] All non-null fields from `green_coffee_inv` display on bean profile
++- [ ] Fields organized into logical sections (Origin, Physical, Pricing, Metadata)
++- [ ] Empty sections hidden entirely (don't show "Origin" with no origin fields)
++- [ ] Price tiers formatted as readable string with quantity breakpoints
++- [ ] Altitude formatted with MASL suffix
++- [ ] Dates formatted in readable format (no ISO strings)
++- [ ] URLs rendered as clickable external links
++- [ ] No TypeScript errors (strict null checks pass)
++- [ ] Responsive layout maintained (no mobile regressions)
++- [ ] No performance degradation (no new DB queries)
++
++---
++
++## Test Plan
++
++### Local Validation
++
++```bash
++# Lint + type check
++npm run lint
++npm run check
++
++# Unit tests for formatters
++npm run test -- src/lib/utils/formatters.test.ts
++
++# Manual verification
++# 1. Navigate to /beans
++# 2. Click a bean with rich metadata (Sweet Maria's beans usually have most fields)
++# 3. Verify all populated fields display
++# 4. Check a bean with minimal data — should show available fields, hide empty sections
++```
++
++### CI Expectations
++
++- `code-quality` job: pass (lint + check)
++- `test` job: pass (vitest)
++- `playwright` job: pass (if bean profile E2E exists)
++
++---
++
++## Risks and Rollback
++
++### Risks
++
++| Risk                                    | Likelihood | Impact | Mitigation                                              |
++| --------------------------------------- | ---------- | ------ | ------------------------------------------------------- |
++| Layout breaks on very long text (notes) | Medium     | Low    | CSS `overflow-wrap: break-word`, max-height with expand |
++| Null/undefined edge cases               | Low        | Medium | Defensive checks `value ?? null`, section hide logic    |
++| Type mismatch between DB and UI         | Low        | High   | Run `npm run check`, verify against Supabase types      |
++
++### Rollback
++
++- Single PR, single commit → `git revert` if needed
++- No DB changes → no data migration rollback needed
++- Feature flag not required (this is a bug fix, not new behavior)
++
++---
++
++## Open Questions for Reed
++
++1. **Field priority:** Should any specific fields be highlighted/promoted above others? (e.g., Cup Score prominent, Scraper metadata collapsed?)
++
++2. **Empty state:** For fields that are null, prefer showing "—" or simply omitting the row entirely?
++
++3. **Price tier display:** Table format, inline string, or something else? Current mock shows inline: "1 lb: $8.50 | 10 lb: $7.20"
++
++4. **Edit scope:** Confirm we should NOT add edit capability for these fields in this PR — display only?
++
++5. **Source attribution:** Should we show internal metadata like `scraped_at`, `source_id`? Or keep it user-facing only?
++
++---
++
++## CLI Cross-Cutting Assessment
++
++**CLI relevance:** Low — this is a web UI display feature.
++
++The `@purveyors/cli` already has `purvey beans list` and `purvey beans show <id>` commands that display bean data. After this web PR ships, we should create a follow-up issue to align CLI output with the new field organization. CLI users deserve the same data completeness.
++
++**This PR:** coffee-app only  
++**Future CLI issue:** Sync `purvey beans show` field display with web profile completeness
++
++---
++
++## Related DEVLOG Items
++
++- P1: "Bean profile data collection incomplete" ← **this PR**
++- P2: "Add wholesale markers/indicators to green coffee inventory page" — can reuse formatter utilities built here
++- P2: "Clean up beans catalog profiles to remove exposed user reference fields" — complementary cleanup, could bundle or sequence
++
++---
++
++## Implementation Notes
++
++### Schema Discovery Query
++
++Run against dev database to see all columns:
++
++```sql
++SELECT column_name, data_type, is_nullable
++FROM information_schema.columns
++WHERE table_name = 'green_coffee_inv'
++ORDER BY ordinal_position;
++```
++
++### Expected Fields to Surface
++
++Based on catalog schema knowledge:
++
++- `origin`, `region`, `farm`, `cultivar_variety`, `process`, `grade`
++- `altitude`, `cup_score`, `cupping_notes`, `roast_recommendation`
++- `price_tiers` (jsonb array), `cost_lb` (legacy), `wholesale`
++- `bag_size`, `stocked`, `quantity_available`
++- `supplier_name`, `supplier_url`, `arrival_date`, `crop_year`
++- `scraped_at`, `created_at`, `updated_at` (decide if user-facing)
++
++### Type Safety
++
++Import types from `src/lib/types/database.ts` or Supabase generated types to ensure field access is type-safe.
+diff --git a/notes/pr-audits/2026-03-19-feat-wholesale-markers-inventory.md b/notes/pr-audits/2026-03-19-feat-wholesale-markers-inventory.md
+new file mode 100644
+index 0000000..6015693
+--- /dev/null
++++ b/notes/pr-audits/2026-03-19-feat-wholesale-markers-inventory.md
+@@ -0,0 +1,43 @@
++# PR Audit: feat/wholesale-markers-inventory (PR #121)
++
++**Date:** 2026-03-19
++**Reviewer:** claude-opus-4-6 (independent subagent)
++**Verdict:** SHIP IT ✅
++
++## Summary
++
++P0: 0 | P1: 0 | P2: 0 | P3: 2 (both pre-existing patterns, not regressions)
++
++## Intent Validation: PASS
++
++PR adds wholesale badge to bean cards on `/beans`. Satisfies all acceptance criteria:
++
++- `wholesale` added to `CoffeeCatalog` TS interface
++- `wholesale` added to `buildGreenCoffeeQuery` Supabase select
++- Blue pill badge (`bg-blue-100 text-blue-800`) in desktop badge row
++- Strict equality check handles `null`/`false` correctly
++
++## Findings
++
++### P3 — Wholesale badge is desktop-only
++
++`class="hidden gap-1 sm:flex"` means badges are invisible below `sm` (640px). This matches the existing `hasUserRating` and `hasUserCupping` pattern exactly — not a regression. Future mobile badge work should address all three badge types together.
++
++### P3 — `pr-16 sm:pr-0` title padding includes `isWholesale`
++
++Consistent with how `hasUserRating` and `hasUserCupping` handle this. Negligible extra padding on mobile for wholesale-only beans.
++
++## Areas With No Issues
++
++- Type safety: strict `=== true`, `boolean | null` matches DB schema
++- Query correctness: correct FK join path
++- UI consistency: matches existing badge pattern
++- Performance: one boolean added to existing query, negligible
++- Security: `wholesale` already exposed via catalog API, no new surface
++- Accessibility: WCAG AA contrast passes, screen-reader readable
++- Edge cases: null catalog_id handled by optional chain
++
++## Pre-Existing Tech Debt (Not Introduced)
++
++- Mobile badge visibility gap — all badge types are desktop-only
++- Beans page uses hand-rolled cards instead of `CoffeeCard.svelte`, which already has wholesale badge support. Unifying could be future work.
+diff --git a/src/lib/server/greenCoffeeUtils.ts b/src/lib/server/greenCoffeeUtils.ts
+index 4e23941..634f62d 100644
+--- a/src/lib/server/greenCoffeeUtils.ts
++++ b/src/lib/server/greenCoffeeUtils.ts
+@@ -13,6 +13,8 @@ export interface CoffeeCatalog {
+ 	name: string;
+ 	score_value: number | null;
+ 	arrival_date: string | null;
++	continent: string | null;
++	country: string | null;
+ 	region: string | null;
+ 	processing: string | null;
+ 	drying_method: string | null;
+@@ -38,6 +40,7 @@ export interface CoffeeCatalog {
+ 	ai_tasting_notes: Record<string, unknown> | null;
+ 	public_coffee: boolean | null;
+ 	wholesale: boolean | null;
++	price_tiers: Array<{ min_lbs: number; price: number }> | null;
+ }
+ 
+ export interface GreenCoffeeRow {
+@@ -66,6 +69,8 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
+ 			name,
+ 			score_value,
+ 			arrival_date,
++			continent,
++			country,
+ 			region,
+ 			processing,
+ 			drying_method,
+@@ -90,7 +95,8 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
+ 			ai_description,
+ 			ai_tasting_notes,
+ 			public_coffee,
+-			wholesale
++			wholesale,
++			price_tiers
+ 		),
+ 		roast_profiles!coffee_id (
+ 			oz_in,
+diff --git a/src/lib/utils/formatters.ts b/src/lib/utils/formatters.ts
+new file mode 100644
+index 0000000..ed48f1e
+--- /dev/null
++++ b/src/lib/utils/formatters.ts
+@@ -0,0 +1,85 @@
++/**
++ * Formatting utilities for bean profile data display.
++ */
++
++export interface PriceTier {
++	min_lbs: number;
++	price: number;
++}
++
++/**
++ * Format price tiers into a readable string.
++ * Example: "1 lb: $8.50 | 10 lb: $7.20 | 50 lb: $6.00"
++ */
++export function formatPriceTiers(tiers: PriceTier[] | null | undefined): string {
++	if (!tiers || !Array.isArray(tiers) || tiers.length === 0) return '';
++	return [...tiers]
++		.sort((a, b) => a.min_lbs - b.min_lbs)
++		.map((t) => `${t.min_lbs} lb: $${t.price.toFixed(2)}`)
++		.join(' | ');
++}
++
++/**
++ * Format a date string for display. Returns "Mar 15, 2026" style.
++ */
++export function formatDisplayDate(dateStr: string | null | undefined): string {
++	if (!dateStr) return '';
++	try {
++		const date = new Date(dateStr);
++		if (isNaN(date.getTime())) return dateStr;
++		return date.toLocaleDateString('en-US', {
++			month: 'short',
++			day: 'numeric',
++			year: 'numeric'
++		});
++	} catch {
++		return dateStr;
++	}
++}
++
++/**
++ * Format a supplier source name for display.
++ * "sweet_marias" -> "Sweet Marias"
++ */
++export function formatSourceName(source: string | null | undefined): string {
++	if (!source) return '';
++	return source
++		.split('_')
++		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
++		.join(' ');
++}
++
++/**
++ * Format a field key into a human-readable label.
++ * "cultivar_detail" -> "Cultivar Detail"
++ */
++export function formatFieldLabel(key: string): string {
++	return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
++}
++
++/**
++ * Build a location string from continent, country, region.
++ */
++export function formatLocation(
++	continent: string | null | undefined,
++	country: string | null | undefined,
++	region: string | null | undefined
++): string {
++	return [continent, country, region].filter(Boolean).join(' > ');
++}
++
++/**
++ * Format cost per pound with dollar sign.
++ */
++export function formatCostPerLb(cost: number | null | undefined): string {
++	if (cost == null) return '';
++	return `$${cost.toFixed(2)}/lb`;
++}
++
++/**
++ * Format a cupping score value.
++ */
++export function formatScore(score: number | null | undefined): string {
++	if (score == null) return '';
++	return score.toFixed(1);
++}
+diff --git a/src/routes/beans/BeanProfileTabs.svelte b/src/routes/beans/BeanProfileTabs.svelte
+index 9d8ecd0..62d17b3 100644
+--- a/src/routes/beans/BeanProfileTabs.svelte
++++ b/src/routes/beans/BeanProfileTabs.svelte
+@@ -2,6 +2,14 @@
+ 	import { untrack } from 'svelte';
+ 	import { goto } from '$app/navigation';
+ 	import { prepareDateForAPI } from '$lib/utils/dates';
++	import {
++		formatPriceTiers,
++		formatDisplayDate,
++		formatSourceName,
++		formatLocation,
++		formatCostPerLb,
++		formatScore
++	} from '$lib/utils/formatters';
+ 	import TastingNotesRadar from '$lib/components/TastingNotesRadar.svelte';
+ 	import CuppingNotesForm from './CuppingNotesForm.svelte';
+ 	import type { TastingNotes } from '$lib/types/coffee.types';
+@@ -462,59 +470,58 @@
+ 					{/if}
+ 				</div>
+ 
+-				<!-- Supplier Information Section -->
++				<!-- Catalog Bean Information -->
+ 				{#if selectedBean.coffee_catalog}
+-					{@const catalogData = selectedBean.coffee_catalog}
+-					{@const isPrivateCoffee = catalogData.public_coffee === false}
+-					{@const baseFields = [
+-						'arrival_date',
+-						'region',
+-						'processing',
+-						'drying_method',
+-						'cultivar_detail',
+-						'grade',
+-						'appearance',
+-						'type',
+-						'lot_size',
+-						'bag_size',
+-						'packaging',
+-						'cost_lb'
+-					]}
+-					{@const privateFields = [
+-						'description_short',
+-						'description_long',
+-						'farm_notes',
+-						'roast_recs'
+-					]}
+-					{@const availableFields = isPrivateCoffee
+-						? [...baseFields, ...privateFields]
+-						: baseFields}
+-					{@const displayFields = availableFields.filter(
+-						(field) =>
+-							catalogData[field] !== undefined &&
+-							catalogData[field] !== null &&
+-							catalogData[field] !== ''
++					{@const cat = selectedBean.coffee_catalog}
++					{@const locationStr = formatLocation(cat.continent, cat.country, cat.region)}
++					{@const hasOriginData = !!(
++						locationStr ||
++						cat.cultivar_detail ||
++						cat.processing ||
++						cat.drying_method ||
++						cat.grade ||
++						cat.appearance ||
++						cat.arrival_date
+ 					)}
+-					{@const formatSupplierName = (source: string) => {
+-						if (!source) return '';
+-						return source
+-							.split('_')
+-							.map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+-							.join(' ');
+-					}}
+-
+-					{#if displayFields.length > 0 || catalogData.source || catalogData.ai_description}
+-						<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
+-							<div class="mb-4 flex items-center justify-between">
+-								<h3 class="font-semibold text-text-primary-light">
+-									{catalogData.source
+-										? formatSupplierName(catalogData.source) + ' Bean Information'
+-										: 'Supplier Information'}
+-								</h3>
+-								{#if catalogData.link}
++					{@const hasPricingData = !!(
++						cat.cost_lb != null ||
++						(cat.price_tiers && Array.isArray(cat.price_tiers) && cat.price_tiers.length > 0) ||
++						cat.lot_size ||
++						cat.bag_size ||
++						cat.packaging
++					)}
++					{@const hasDescriptionData = !!(
++						cat.description_short ||
++						cat.description_long ||
++						cat.farm_notes ||
++						cat.roast_recs
++					)}
++					{@const hasSupplierData = !!(cat.source || cat.type || cat.link)}
++
++					<!-- Header with source name and product link -->
++					<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
++						<div class="mb-4 flex items-center justify-between">
++							<h3 class="font-semibold text-text-primary-light">
++								{cat.source
++									? formatSourceName(cat.source) + ' Bean Information'
++									: 'Bean Information'}
++							</h3>
++							<div class="flex items-center gap-2">
++								{#if cat.wholesale}
++									<span class="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
++										>Wholesale</span
++									>
++								{/if}
++								{#if cat.score_value != null}
++									<span class="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
++										>Score: {formatScore(cat.score_value)}</span
++									>
++								{/if}
++								{#if cat.link}
+ 									<a
+-										href={catalogData.link}
++										href={cat.link}
+ 										target="_blank"
++										rel="noopener noreferrer"
+ 										class="inline-flex items-center rounded-md bg-background-tertiary-light px-3 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+ 									>
+ 										View Product Page
+@@ -534,54 +541,237 @@
+ 									</a>
+ 								{/if}
+ 							</div>
++						</div>
+ 
+-							<!-- AI Description without border -->
+-							{#if catalogData.ai_description}
+-								<div class="mb-4">
+-									<div class="whitespace-pre-wrap text-text-primary-light">
+-										{catalogData.ai_description}
+-									</div>
++						<!-- AI Description -->
++						{#if cat.ai_description}
++							<div class="mb-4">
++								<div class="whitespace-pre-wrap text-text-primary-light">
++									{cat.ai_description}
+ 								</div>
+-							{/if}
++							</div>
++						{/if}
+ 
+-							<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+-								{#each displayFields as key}
+-									<div
+-										class={key === 'description_short' ||
+-										key === 'description_long' ||
+-										key === 'farm_notes' ||
+-										key === 'roast_recs'
+-											? 'lg:col-span-2'
+-											: ''}
+-									>
++						<!-- Origin & Source -->
++						{#if hasOriginData}
++							<div class="mb-4">
++								<h4
++									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
++								>
++									Origin & Source
++								</h4>
++								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
++									{#if locationStr}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">LOCATION</h5>
++											<div class="mt-1 text-sm text-text-primary-light">{locationStr}</div>
++										</div>
++									{/if}
++									{#if cat.cultivar_detail}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">CULTIVAR</h5>
++											<div class="mt-1 text-sm text-text-primary-light">{cat.cultivar_detail}</div>
++										</div>
++									{/if}
++									{#if cat.processing}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">PROCESSING</h5>
++											<div class="mt-1 text-sm text-text-primary-light">{cat.processing}</div>
++										</div>
++									{/if}
++									{#if cat.drying_method}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">DRYING METHOD</h5>
++											<div class="mt-1 text-sm text-text-primary-light">{cat.drying_method}</div>
++										</div>
++									{/if}
++									{#if cat.grade}
+ 										<div
+-											class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light"
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
+ 										>
+-											<h4 class="text-sm font-medium text-text-primary-light">
+-												{key.replace(/_/g, ' ').toUpperCase()}
+-											</h4>
+-											<div
+-												class="mt-2 text-text-primary-light {key === 'description_short' ||
+-												key === 'description_long' ||
+-												key === 'farm_notes' ||
+-												key === 'roast_recs'
+-													? 'whitespace-pre-wrap'
+-													: ''}"
+-											>
+-												{#if key === 'cost_lb'}
+-													${typeof catalogData[key] === 'number'
+-														? catalogData[key].toFixed(2)
+-														: catalogData[key]}/lb
+-												{:else}
+-													{catalogData[key]}
+-												{/if}
++											<h5 class="text-xs font-medium text-text-secondary-light">
++												GRADE / ELEVATION
++											</h5>
++											<div class="mt-1 text-sm text-text-primary-light">{cat.grade}</div>
++										</div>
++									{/if}
++									{#if cat.appearance}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">APPEARANCE</h5>
++											<div class="mt-1 text-sm text-text-primary-light">{cat.appearance}</div>
++										</div>
++									{/if}
++									{#if cat.arrival_date}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">ARRIVAL DATE</h5>
++											<div class="mt-1 text-sm text-text-primary-light">
++												{formatDisplayDate(cat.arrival_date)}
+ 											</div>
+ 										</div>
+-									</div>
+-								{/each}
++									{/if}
++								</div>
+ 							</div>
+-						</div>
+-					{/if}
++						{/if}
++
++						<!-- Pricing & Availability -->
++						{#if hasPricingData}
++							<div class="mb-4">
++								<h4
++									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
++								>
++									Pricing & Availability
++								</h4>
++								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
++									{#if cat.cost_lb != null}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">COST PER LB</h5>
++											<div class="mt-1 text-sm font-medium text-text-primary-light">
++												{formatCostPerLb(cat.cost_lb)}
++											</div>
++										</div>
++									{/if}
++									{#if cat.price_tiers && Array.isArray(cat.price_tiers) && cat.price_tiers.length > 0}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light sm:col-span-2"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">PRICE TIERS</h5>
++											<div class="mt-1 text-sm text-text-primary-light">
++												{formatPriceTiers(cat.price_tiers)}
++											</div>
++										</div>
++									{/if}
++									{#if cat.lot_size}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">LOT SIZE</h5>
++											<div class="mt-1 text-sm text-text-primary-light">{cat.lot_size}</div>
++										</div>
++									{/if}
++									{#if cat.bag_size}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">BAG SIZE</h5>
++											<div class="mt-1 text-sm text-text-primary-light">{cat.bag_size}</div>
++										</div>
++									{/if}
++									{#if cat.packaging}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">PACKAGING</h5>
++											<div class="mt-1 text-sm text-text-primary-light">{cat.packaging}</div>
++										</div>
++									{/if}
++								</div>
++							</div>
++						{/if}
++
++						<!-- Descriptions & Notes -->
++						{#if hasDescriptionData}
++							<div class="mb-4">
++								<h4
++									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
++								>
++									Descriptions & Notes
++								</h4>
++								<div class="space-y-3">
++									{#if cat.description_short}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">
++												SHORT DESCRIPTION
++											</h5>
++											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
++												{cat.description_short}
++											</div>
++										</div>
++									{/if}
++									{#if cat.description_long}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">
++												FULL DESCRIPTION
++											</h5>
++											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
++												{cat.description_long}
++											</div>
++										</div>
++									{/if}
++									{#if cat.farm_notes}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">FARM NOTES</h5>
++											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
++												{cat.farm_notes}
++											</div>
++										</div>
++									{/if}
++									{#if cat.roast_recs}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">
++												ROAST RECOMMENDATIONS
++											</h5>
++											<div class="mt-1 whitespace-pre-wrap text-sm text-text-primary-light">
++												{cat.roast_recs}
++											</div>
++										</div>
++									{/if}
++								</div>
++							</div>
++						{/if}
++
++						<!-- Supplier Info -->
++						{#if hasSupplierData}
++							<div>
++								<h4
++									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
++								>
++									Supplier
++								</h4>
++								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
++									{#if cat.source}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">SOURCE</h5>
++											<div class="mt-1 text-sm text-text-primary-light">
++												{formatSourceName(cat.source)}
++											</div>
++										</div>
++									{/if}
++									{#if cat.type}
++										<div
++											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
++										>
++											<h5 class="text-xs font-medium text-text-secondary-light">IMPORTER / TYPE</h5>
++											<div class="mt-1 text-sm text-text-primary-light">{cat.type}</div>
++										</div>
++									{/if}
++								</div>
++							</div>
++						{/if}
++					</div>
+ 				{/if}
+ 			</div>
+ 		{:else if currentTab === 'cupping'}

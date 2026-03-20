@@ -486,6 +486,7 @@
 					{@const hasPricingData = !!(
 						cat.cost_lb != null ||
 						(cat.price_tiers && Array.isArray(cat.price_tiers) && cat.price_tiers.length > 0) ||
+						cat.wholesale ||
 						cat.lot_size ||
 						cat.bag_size ||
 						cat.packaging
@@ -508,7 +509,8 @@
 							</h3>
 							<div class="flex items-center gap-2">
 								{#if cat.wholesale}
-									<span class="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
+									<span
+										class="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700"
 										>Wholesale</span
 									>
 								{/if}

@@ -1,0 +1,19 @@
+ .../changed_files.txt                              |   2 +
+ .../commits.txt                                    |   1 +
+ .../diffstat.txt                                   |   3 +
+ .../full.diff                                      |  59 +++
+ .../metadata.txt                                   |   7 +
+ .../pr.json                                        |   0
+ .../changed_files.txt                              |   3 +
+ .../commits.txt                                    |   1 +
+ .../diffstat.txt                                   |   4 +
+ .../full.diff                                      | 537 +++++++++++++++++++++
+ .../metadata.txt                                   |   7 +
+ .../pr.json                                        |   0
+ notes/bean-similarity-project-plan.md              | 167 +++++++
+ .../2026-03-19-bean-profile-data-completeness.md   | 272 +++++++++++
+ .../2026-03-19-feat-wholesale-markers-inventory.md |  43 ++
+ src/lib/server/greenCoffeeUtils.ts                 |   8 +-
+ src/lib/utils/formatters.ts                        |  85 ++++
+ src/routes/beans/BeanProfileTabs.svelte            | 368 ++++++++++----
+ 18 files changed, 1477 insertions(+), 90 deletions(-)
