@@ -188,7 +188,12 @@ export async function addToInventory(
 		notes: data.notes ?? null,
 		purchase_date: data.purchase_date ?? null,
 		purchased_qty_lbs: data.purchased_qty_lbs ?? null,
-		stocked: data.stocked ?? null,
+		stocked:
+			data.stocked !== undefined && data.stocked !== null
+				? data.stocked
+				: typeof data.purchased_qty_lbs === 'number' && data.purchased_qty_lbs * 16 >= 4
+					? true
+					: false,
 		cupping_notes: data.cupping_notes ?? null
 	};
 
