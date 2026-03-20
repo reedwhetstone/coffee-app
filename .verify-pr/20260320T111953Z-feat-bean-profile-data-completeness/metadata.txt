@@ -1,0 +1,7 @@
+repo_root: /root/.openclaw/workspace/repos/coffee-app
+base_ref: origin/main
+head_ref: HEAD
+merge_base: 0786c9cc7016987a77ab7cfcca6082058a155eb8
+branch_name: feat/bean-profile-data-completeness
+generated_at_utc: 2026-03-20T11:19:54Z
+pr_number: 123

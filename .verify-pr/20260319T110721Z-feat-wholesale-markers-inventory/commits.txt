@@ -1,0 +1,1 @@
+4d51c3e (HEAD -> feat/wholesale-markers-inventory, origin/feat/wholesale-markers-inventory) feat: add wholesale badge to green coffee inventory

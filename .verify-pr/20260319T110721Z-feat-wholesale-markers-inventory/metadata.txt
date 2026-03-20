@@ -1,0 +1,7 @@
+repo_root: /root/.openclaw/workspace/repos/coffee-app
+base_ref: origin/main
+head_ref: HEAD
+merge_base: ae2b1133db915b5ad80c2c132153d25cd6df1ff1
+branch_name: feat/wholesale-markers-inventory
+generated_at_utc: 2026-03-19T11:07:22Z
+pr_number: 121

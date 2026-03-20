@@ -488,8 +488,7 @@
 						(cat.price_tiers && Array.isArray(cat.price_tiers) && cat.price_tiers.length > 0) ||
 						cat.lot_size ||
 						cat.bag_size ||
-						cat.packaging ||
-						cat.wholesale
+						cat.packaging
 					)}
 					{@const hasDescriptionData = !!(
 						cat.description_short ||

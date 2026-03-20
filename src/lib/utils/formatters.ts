@@ -13,7 +13,7 @@ export interface PriceTier {
  */
 export function formatPriceTiers(tiers: PriceTier[] | null | undefined): string {
 	if (!tiers || !Array.isArray(tiers) || tiers.length === 0) return '';
-	return tiers
+	return [...tiers]
 		.sort((a, b) => a.min_lbs - b.min_lbs)
 		.map((t) => `${t.min_lbs} lb: $${t.price.toFixed(2)}`)
 		.join(' | ');
