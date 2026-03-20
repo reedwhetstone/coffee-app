@@ -1,6 +1,0 @@
- src/lib/data/sales.ts                        | 281 +++++++++++++++++++++++++++
- src/lib/data/tasting.ts                      | 200 +++++++++++++++++++
- src/routes/api/profit/+server.ts             | 204 ++-----------------
- src/routes/api/tools/bean-tasting/+server.ts | 175 ++---------------
- tests/e2e/crud.spec.ts                       |   2 +-
- 5 files changed, 515 insertions(+), 347 deletions(-)

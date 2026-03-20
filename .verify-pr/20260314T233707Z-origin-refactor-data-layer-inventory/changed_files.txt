@@ -1,6 +1,0 @@
-src/lib/data/inventory.ts
-src/lib/server/stockedStatusUtils.ts
-src/routes/api/beans/+server.ts
-src/routes/api/tools/green-coffee-inv/+server.ts
-src/routes/api/update-stocked-status/+server.ts
-tests/e2e/crud.spec.ts

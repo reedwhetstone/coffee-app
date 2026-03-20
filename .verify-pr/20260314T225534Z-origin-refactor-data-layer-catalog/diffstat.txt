@@ -1,6 +1,0 @@
- src/lib/data/catalog.ts                        | 373 +++++++++++++++++++++++++
- src/routes/(home)/+page.server.ts              |  21 +-
- src/routes/api/catalog-api/+server.ts          |  57 +---
- src/routes/api/catalog/+server.ts              | 160 ++++-------
- src/routes/api/tools/coffee-catalog/+server.ts | 114 ++------
- 5 files changed, 473 insertions(+), 252 deletions(-)

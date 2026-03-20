@@ -1,2 +1,0 @@
-50be8f8 (HEAD -> refactor/data-layer-roast, origin/refactor/data-layer-roast) fix: cupping notes E2E slider value out of range (max=5)
-80fe588 refactor: extract roast data layer (Phase 0.0 PR 2/6)

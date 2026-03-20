@@ -1,5 +1,0 @@
-src/lib/data/sales.ts
-src/lib/data/tasting.ts
-src/routes/api/profit/+server.ts
-src/routes/api/tools/bean-tasting/+server.ts
-tests/e2e/crud.spec.ts

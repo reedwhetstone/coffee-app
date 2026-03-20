@@ -1,5 +1,0 @@
- .../2026-03-14-pr100-sales-tasting-data-layer.md   | 167 +++++++
- src/lib/data/artisan.ts                            | 551 ++++++++++++++++++++
- src/routes/api/artisan-import/+server.ts           | 555 +--------------------
- tests/e2e/crud.spec.ts                             |   2 +-
- 4 files changed, 730 insertions(+), 545 deletions(-)
