@@ -52,18 +52,6 @@ async function navigateToBeans(page: Page) {
 }
 
 /**
- * Check if the test user has beans in inventory.
- * Call after navigateToBeans().
- */
-async function hasBeans(page: Page): Promise<boolean> {
-	return page
-		.locator('button.group.relative')
-		.first()
-		.isVisible({ timeout: 2000 })
-		.catch(() => false);
-}
-
-/**
  * Add a fresh green coffee bean to inventory.
  * Always runs the full BeanForm submission flow (no shortcuts).
  * Uses the same UI path a real user would: navigate to /beans, click
