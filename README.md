@@ -308,7 +308,7 @@ Two API layers exist with intentionally separate authentication paths.
 | Member     | Unlimited        | 10,000        |
 | Enterprise | Unlimited        | Unlimited     |
 
-API keys are generated and managed at `/api-dashboard/`. Usage is logged per key with full analytics. API documentation lives at `/api/docs/`.
+API keys are generated and managed at `/api-dashboard/`. Usage is logged per key with full analytics. API documentation lives at `/api-dashboard/docs`.
 
 The longer-term goal is an API-first architecture where internal server load functions become thin consumers of the same versioned endpoints sold externally. See `notes/API_notes/API-strategy.md` for the migration plan.
 
