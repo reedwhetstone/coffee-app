@@ -105,7 +105,7 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		const result = await generateText({
-			model: openrouter.chat('@preset/cli-agent'),
+			model: openrouter.chat('@preset/data-processing-agent'),
 			system: `You are a coffee roast classifier. Given metadata from an Artisan .alog roast file and a list of the user's inventory beans, determine which inventory bean this roast most likely corresponds to.
 
 MATCHING PRIORITY:

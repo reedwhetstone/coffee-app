@@ -62,7 +62,7 @@ Keep only what's relevant for continuing the conversation. Drop pleasantries and
 				Authorization: `Bearer ${OPENROUTER_API_KEY}`
 			},
 			body: JSON.stringify({
-				model: '@preset/coffee-app-chat-agent',
+				model: '@preset/test-workhorse-agent',
 				messages: [{ role: 'user', content: prompt }],
 				max_tokens: 800,
 				temperature: 0.3
