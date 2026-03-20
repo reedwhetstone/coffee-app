@@ -274,7 +274,7 @@ Items that need more context before they can be actionable.
 
 ## Supplier Tracking
 
-### Integrated Suppliers (35 live as of 2026-03-17)
+### Integrated Suppliers (39 live as of 2026-03-20)
 
 See `coffee-scraper` repo `SUPPLIERS.md` for the full list. Representative examples:
 
@@ -285,11 +285,14 @@ See `coffee-scraper` repo `SUPPLIERS.md` for the full list. Representative examp
 - [x] Happy Mug
 - [x] Mill City Roasters
 - [x] T.M. Ward Coffee (added PR #99 2026-03-17)
+- [x] Ally Coffee (wholesale catalog, added PR #107 2026-03-20)
+- [x] Roastmasters (Miva Merchant, added PR #105 2026-03-20)
+- [x] Genuine Origin (NetSuite, added PR #109 2026-03-20)
+- [x] Ally Open (Shopify, added PR #106 2026-03-20)
 
 ### Suppliers to Add
 
 - [ ] ~~Onyx Green Coffee~~ — Onyx Box is not a public green bean offering; excluded
-- [ ] Genuine Origin - 65lb grain pro bags, $7.50 300g samples (borderline wholesale)
 - [ ] Green Coffee Buying Club
 - [ ] Len's Coffee
 - [ ] Leverhead Coffee
