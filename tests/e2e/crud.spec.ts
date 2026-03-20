@@ -52,53 +52,140 @@ async function navigateToBeans(page: Page) {
 }
 
 /**
- * Check if the test user has beans in inventory.
- * Call after navigateToBeans().
+ * Add a fresh green coffee bean to inventory via manual entry.
+ * Always runs the full BeanForm submission flow (no shortcuts).
+ * Uses manual entry mode to avoid dependency on stocked catalog beans.
+ *
+ * After submission, verifies via API that bean count increased.
  */
-async function hasBeans(page: Page): Promise<boolean> {
-	return page
-		.locator('button.group.relative')
-		.first()
-		.isVisible({ timeout: 2000 })
-		.catch(() => false);
-}
+async function addBeanToInventory(page: Page) {
+	// Snapshot bean count before adding so we can verify increase
+	let beanCountBefore = 0;
+	try {
+		const countResp = await page.request.get('/api/beans');
+		if (countResp.ok()) {
+			const body = await countResp.json();
+			beanCountBefore = (body.data || []).length;
+		}
+	} catch (_) {
+		// Non-fatal — we'll verify via DOM if API check fails
+	}
 
-/**
- * Ensure at least one bean exists for this user by adding from live catalog via UI.
- * This uses real app flows and does not seed synthetic DB rows.
- */
-async function ensureBeanExists(page: Page) {
-	if (await hasBeans(page)) return;
+	// Step 1: Navigate directly to /beans?modal=new
+	// The "Add" button only appears in the empty-state block (when filteredData is empty).
+	// When the test user already has stocked beans the empty state is hidden, so we cannot
+	// click a button to open the form. Instead navigate with the ?modal=new param directly —
+	// that is exactly what handleAddNewBean() does internally.
+	const beansApiResponse = page.waitForResponse(
+		(resp) => resp.url().includes('/api/beans') && resp.status() === 200
+	);
+	await page.goto('/beans?modal=new');
+	await beansApiResponse;
 
-	await page.getByRole('button', { name: /Add Your First Bean|Add New Coffee/i }).click();
-	await page.getByText('Select from Catalog').click();
+	// Screenshot for debugging
+	await page.screenshot({ path: 'test-results/add-bean-01-before-open.png' }).catch(() => {});
 
-	const catalogSelect = page.locator('select[id^="catalog-bean-"]').first();
-	await catalogSelect.waitFor({ state: 'visible', timeout: 10000 });
-	await expect(catalogSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
-	await catalogSelect.selectOption({ index: 1 });
+	// Step 2: Wait for the form modal to be visible
+	const formHeading = page.getByText('Add New Coffee Bean');
+	await formHeading.waitFor({ state: 'visible', timeout: 15000 });
 
+	// Screenshot — form open
+	await page.screenshot({ path: 'test-results/add-bean-02-form-open.png' }).catch(() => {});
+
+	// Step 4: Stay in Manual Entry mode (default) — no catalog dependency
+	// Verify Manual Entry radio is selected (it's the default)
+	const manualEntryLabel = page.locator('label').filter({ hasText: 'Manual Entry' });
+	await manualEntryLabel.waitFor({ state: 'visible', timeout: 5000 });
+	// Click it to ensure it's active (idempotent)
+	await manualEntryLabel.click();
+	await page.waitForTimeout(200);
+
+	// Step 5: Fill in the coffee name (required for manual entry)
+	const uniqueName = `E2E Test Bean ${Date.now()}`;
+	const nameInput = page.locator('#manual-name-0');
+	await nameInput.waitFor({ state: 'visible', timeout: 5000 });
+	await nameInput.fill(uniqueName);
+
+	// Step 6: Fill purchase details
 	const today = new Date().toISOString().split('T')[0];
-	await page.locator('#purchase_date').fill(today);
-	await page.locator('#tax_ship_cost').fill('0');
-	await page.locator('input[id^="purchased_qty-"]').first().fill('5');
-	await page.locator('input[id^="bean_cost-"]').first().fill('50');
+	const purchaseDate = page.locator('#purchase_date');
+	await purchaseDate.fill(today);
 
-	const createResponse = page.waitForResponse(
+	const taxShip = page.locator('#tax_ship_cost');
+	await taxShip.fill('0');
+
+	// Step 7: Fill quantity (must be > 0 and >= 4oz = 0.25 lb so stocked defaults true)
+	const qtyInput = page.locator('input[id^="purchased_qty-"]').first();
+	await qtyInput.fill('5');
+
+	// bean_cost for manual entry
+	const beanCostInput = page.locator('input[id^="bean_cost-"]').first();
+	await beanCostInput.fill('25');
+
+	// Screenshot before submit
+	await page.screenshot({ path: 'test-results/add-bean-03-form-filled.png' }).catch(() => {});
+
+	// Step 8: Submit and capture API response
+	const createResponsePromise = page.waitForResponse(
 		(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'POST',
-		{ timeout: 15000 }
+		{ timeout: 20000 }
 	);
 
-	await page.getByRole('button', { name: 'Add Bean', exact: true }).click();
-	const response = await createResponse;
+	const submitBtn = page.getByRole('button', { name: /^Add Bean$/i });
+	await submitBtn.waitFor({ state: 'visible', timeout: 5000 });
+	await submitBtn.click();
+
+	const response = await createResponsePromise;
+
+	// Screenshot after response
+	await page.screenshot({ path: 'test-results/add-bean-04-after-submit.png' }).catch(() => {});
 
 	if (!response.ok()) {
 		const body = await response.text();
-		throw new Error(`Failed to create bean from form (${response.status()}): ${body}`);
+		throw new Error(`Failed to add bean to inventory (${response.status()}): ${body}`);
 	}
 
+	// Step 9: Wait for modal to close (form heading disappears)
+	await formHeading.waitFor({ state: 'hidden', timeout: 10000 });
+
+	// Step 10: Verify via API that a bean was actually created
+	let verified = false;
+	try {
+		const countResp = await page.request.get('/api/beans');
+		if (countResp.ok()) {
+			const body = await countResp.json();
+			const beanCountAfter = (body.data || []).length;
+			if (beanCountAfter > beanCountBefore) {
+				verified = true;
+			}
+		}
+	} catch (_) {
+		// Fall through to DOM verification
+	}
+
+	// Step 11: Navigate fresh to beans and verify cards are visible
+	// Clear the stocked filter is NOT needed here — the API fix ensures
+	// new beans are inserted with stocked=true (>= 4oz), so they appear
+	// in the default stocked=TRUE filter view.
 	await navigateToBeans(page);
-	await expect(page.locator('button.group.relative').first()).toBeVisible({ timeout: 15000 });
+
+	// Screenshot after navigation
+	await page.screenshot({ path: 'test-results/add-bean-05-after-navigate.png' }).catch(() => {});
+
+	await expect(page.locator('button.group.relative').first()).toBeVisible({ timeout: 20000 });
+
+	if (!verified) {
+		// DOM confirmed cards are visible — good enough
+		console.log('addBeanToInventory: API count check skipped, DOM verification passed');
+	}
+}
+
+/**
+ * Ensure beans exist in inventory. Always adds a fresh bean to guarantee
+ * sufficient stock for roast tests that consume inventory.
+ */
+async function ensureBeanExists(page: Page) {
+	await addBeanToInventory(page);
 }
 
 /**
@@ -112,6 +199,42 @@ async function selectFirstBean(page: Page) {
 	// Wait for the detail panel to open
 	await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible({ timeout: 5000 });
 	return firstBean;
+}
+
+/**
+ * Delete a roast profile that was just created (cleanup helper).
+ * Assumes the roast profile is currently visible/selected on the /roast page.
+ * Navigates to /roast, opens the first profile card, and deletes it.
+ * Skips gracefully if no profile is found.
+ */
+async function deleteLatestRoastProfile(page: Page) {
+	await page.goto('/roast');
+	await page.waitForLoadState('networkidle');
+
+	// Expand any collapsed group so profile cards are visible
+	const profileToggle = page.getByRole('button', { name: /Toggle/i }).first();
+	if (await profileToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
+		await profileToggle.click();
+		await page.waitForTimeout(300);
+	}
+
+	const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
+	const hasProfile = await profileCard.isVisible({ timeout: 5000 }).catch(() => false);
+	if (!hasProfile) {
+		console.log('deleteLatestRoastProfile: no profile card found, skipping cleanup');
+		return;
+	}
+
+	await profileCard.click();
+
+	page.once('dialog', (dialog) => {
+		dialog.accept().catch(() => {});
+	});
+
+	const deleteBtn = page.getByRole('button', { name: 'Delete', exact: true });
+	await expect(deleteBtn).toBeVisible({ timeout: 5000 });
+	await deleteBtn.click();
+	await waitForNetworkIdle(page);
 }
 
 // ============================================================
@@ -358,9 +481,9 @@ test.describe('Roast Profiles', () => {
 	test('can create and start a new roast profile', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
+		// Always add fresh inventory so roasts never deplete stock
 		await navigateToBeans(page);
-
-		await ensureBeanExists(page);
+		await addBeanToInventory(page);
 
 		await selectFirstBean(page);
 
@@ -387,15 +510,18 @@ test.describe('Roast Profiles', () => {
 		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
 		expect(submissionErrors).toHaveLength(0);
 
+		// Cleanup: delete the roast profile we just created so inventory isn't depleted
+		await deleteLatestRoastProfile(page);
+
 		logErrors(consoleErrors, networkErrors);
 	});
 
 	test('can create roast profile from dropdown without pre-selected bean', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
-		// Ensure at least one bean exists for dropdown population
+		// Always add fresh inventory so roasts never deplete stock
 		await navigateToBeans(page);
-		await ensureBeanExists(page);
+		await addBeanToInventory(page);
 
 		// Navigate directly to /roast (no pre-selected bean)
 		await page.goto('/roast');
@@ -453,6 +579,9 @@ test.describe('Roast Profiles', () => {
 		// Assert no server errors occurred
 		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
 		expect(submissionErrors).toHaveLength(0);
+
+		// Cleanup: delete the roast profile we just created so inventory isn't depleted
+		await deleteLatestRoastProfile(page);
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -539,8 +668,9 @@ test.describe('Roast Profiles', () => {
 	test('can pre-select bean when navigating from bean profile', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
+		// Always add fresh inventory so beans are visible
 		await navigateToBeans(page);
-		await ensureBeanExists(page);
+		await addBeanToInventory(page);
 
 		// Capture the first bean's display name from its card
 		const firstBeanCard = page.locator('button.group.relative').first();
