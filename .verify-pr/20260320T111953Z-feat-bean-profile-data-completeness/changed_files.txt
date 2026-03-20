@@ -1,3 +1,0 @@
-src/lib/server/greenCoffeeUtils.ts
-src/lib/utils/formatters.ts
-src/routes/beans/BeanProfileTabs.svelte

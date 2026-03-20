@@ -1,4 +1,0 @@
-notes/pr-audits/2026-03-14-pr100-sales-tasting-data-layer.md
-src/lib/data/artisan.ts
-src/routes/api/artisan-import/+server.ts
-tests/e2e/crud.spec.ts

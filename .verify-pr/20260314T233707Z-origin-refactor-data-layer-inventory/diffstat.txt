@@ -1,7 +1,0 @@
- src/lib/data/inventory.ts                        | 518 +++++++++++++++++++++++
- src/lib/server/stockedStatusUtils.ts             |  73 +---
- src/routes/api/beans/+server.ts                  | 177 ++------
- src/routes/api/tools/green-coffee-inv/+server.ts | 177 +-------
- src/routes/api/update-stocked-status/+server.ts  |   2 +-
- tests/e2e/crud.spec.ts                           |   2 +-
- 6 files changed, 577 insertions(+), 372 deletions(-)

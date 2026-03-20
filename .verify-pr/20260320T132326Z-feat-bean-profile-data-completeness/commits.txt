@@ -1,2 +1,0 @@
-f182480 (HEAD -> feat/bean-profile-data-completeness, origin/feat/bean-profile-data-completeness) fix: audit P1 issues in bean-profile-data-completeness
-6cc633b feat: display all non-null catalog fields on bean profile

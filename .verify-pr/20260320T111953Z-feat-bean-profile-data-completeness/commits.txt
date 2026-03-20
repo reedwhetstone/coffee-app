@@ -1,1 +1,0 @@
-6cc633b (HEAD -> feat/bean-profile-data-completeness, origin/feat/bean-profile-data-completeness) feat: display all non-null catalog fields on bean profile

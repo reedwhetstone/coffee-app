@@ -1,7 +1,0 @@
-repo_root: /root/.openclaw/workspace/repos/coffee-app
-base_ref: origin/main
-head_ref: origin/refactor/data-layer-roast
-merge_base: 352533d558cc39af7ea5cf08995182e17fab0469
-branch_name: origin/refactor/data-layer-roast
-generated_at_utc: 2026-03-14T23:21:15Z
-pr_number: 98

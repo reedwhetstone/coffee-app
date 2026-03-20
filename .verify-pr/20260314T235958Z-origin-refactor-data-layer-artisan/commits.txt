@@ -1,2 +1,0 @@
-6ea4a7d (HEAD -> refactor/data-layer-artisan, origin/refactor/data-layer-artisan) fix: slider.fill value exceeds max (6 > 5) in cupping notes E2E test
-6a5e50e refactor: extract Artisan file parser to data layer (Phase 0.0 PR 5/6)
