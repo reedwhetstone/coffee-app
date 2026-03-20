@@ -71,24 +71,23 @@ async function addBeanToInventory(page: Page) {
 		// Non-fatal — we'll verify via DOM if API check fails
 	}
 
-	// Step 1: Navigate to beans page
-	await navigateToBeans(page);
+	// Step 1: Navigate directly to /beans?modal=new
+	// The "Add" button only appears in the empty-state block (when filteredData is empty).
+	// When the test user already has stocked beans the empty state is hidden, so we cannot
+	// click a button to open the form. Instead navigate with the ?modal=new param directly —
+	// that is exactly what handleAddNewBean() does internally.
+	const beansApiResponse = page.waitForResponse(
+		(resp) => resp.url().includes('/api/beans') && resp.status() === 200
+	);
+	await page.goto('/beans?modal=new');
+	await beansApiResponse;
 
 	// Screenshot for debugging
 	await page.screenshot({ path: 'test-results/add-bean-01-before-open.png' }).catch(() => {});
 
-	// Step 2: Open the add bean form
-	// The button text depends on whether inventory is empty or not.
-	// Empty state: "Add Your First Bean" (inside the empty-state card)
-	// Non-empty state: "Add New Coffee" (inside the empty-state card when filtered to 0 results)
-	// Both cases live in the empty-state block; the header toolbar doesn't have an add button.
-	const addBtn = page.getByRole('button', { name: /Add Your First Bean|Add New Coffee/i }).first();
-	await addBtn.waitFor({ state: 'visible', timeout: 10000 });
-	await addBtn.click();
-
-	// Step 3: Wait for the form modal to be visible
+	// Step 2: Wait for the form modal to be visible
 	const formHeading = page.getByText('Add New Coffee Bean');
-	await formHeading.waitFor({ state: 'visible', timeout: 10000 });
+	await formHeading.waitFor({ state: 'visible', timeout: 15000 });
 
 	// Screenshot — form open
 	await page.screenshot({ path: 'test-results/add-bean-02-form-open.png' }).catch(() => {});
