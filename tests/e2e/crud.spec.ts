@@ -81,7 +81,7 @@ async function ensureBeanExists(page: Page) {
 	const today = new Date().toISOString().split('T')[0];
 	await page.locator('#purchase_date').fill(today);
 	await page.locator('#tax_ship_cost').fill('0');
-	await page.locator('input[id^="purchased_qty-"]').first().fill('5');
+	await page.locator('input[id^="purchased_qty-"]').first().fill('100');
 	await page.locator('input[id^="bean_cost-"]').first().fill('50');
 
 	const createResponse = page.waitForResponse(
@@ -112,6 +112,42 @@ async function selectFirstBean(page: Page) {
 	// Wait for the detail panel to open
 	await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible({ timeout: 5000 });
 	return firstBean;
+}
+
+/**
+ * Delete a roast profile that was just created (cleanup helper).
+ * Assumes the roast profile is currently visible/selected on the /roast page.
+ * Navigates to /roast, opens the first profile card, and deletes it.
+ * Skips gracefully if no profile is found.
+ */
+async function deleteLatestRoastProfile(page: Page) {
+	await page.goto('/roast');
+	await page.waitForLoadState('networkidle');
+
+	// Expand any collapsed group so profile cards are visible
+	const profileToggle = page.getByRole('button', { name: /Toggle/i }).first();
+	if (await profileToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
+		await profileToggle.click();
+		await page.waitForTimeout(300);
+	}
+
+	const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
+	const hasProfile = await profileCard.isVisible({ timeout: 5000 }).catch(() => false);
+	if (!hasProfile) {
+		console.log('deleteLatestRoastProfile: no profile card found, skipping cleanup');
+		return;
+	}
+
+	await profileCard.click();
+
+	page.once('dialog', (dialog) => {
+		dialog.accept().catch(() => {});
+	});
+
+	const deleteBtn = page.getByRole('button', { name: 'Delete', exact: true });
+	await expect(deleteBtn).toBeVisible({ timeout: 5000 });
+	await deleteBtn.click();
+	await waitForNetworkIdle(page);
 }
 
 // ============================================================
@@ -387,6 +423,9 @@ test.describe('Roast Profiles', () => {
 		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
 		expect(submissionErrors).toHaveLength(0);
 
+		// Cleanup: delete the roast profile we just created so inventory isn't depleted
+		await deleteLatestRoastProfile(page);
+
 		logErrors(consoleErrors, networkErrors);
 	});
 
@@ -453,6 +492,9 @@ test.describe('Roast Profiles', () => {
 		// Assert no server errors occurred
 		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
 		expect(submissionErrors).toHaveLength(0);
+
+		// Cleanup: delete the roast profile we just created so inventory isn't depleted
+		await deleteLatestRoastProfile(page);
 
 		logErrors(consoleErrors, networkErrors);
 	});
