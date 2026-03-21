@@ -117,6 +117,21 @@
 				</a>
 			</li>
 
+			<!-- Analytics - Public page, visible to all -->
+			<li>
+				<a
+					href="/analytics"
+					onclick={handleNavClick}
+					class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath.startsWith(
+						'/analytics'
+					)
+						? 'bg-background-tertiary-light text-white'
+						: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
+				>
+					Analytics
+				</a>
+			</li>
+
 			<!-- Member-only navigation -->
 			{#if hasRequiredRole('member')}
 				<li>
