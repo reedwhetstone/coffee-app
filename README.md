@@ -84,7 +84,7 @@ Purveyors.io is a coffee intelligence platform that bridges green coffee sourcin
 
 | Layer           | Technology                                                                                             |
 | --------------- | ------------------------------------------------------------------------------------------------------ |
-| Framework       | [SvelteKit 2](https://kit.svelte.dev) with [Svelte 5](https://svelte.dev) runes API                    |
+| Framework       | [SvelteKit](https://kit.svelte.dev) with [Svelte 5](https://svelte.dev) runes API                      |
 | Database + Auth | [Supabase](https://supabase.com) (PostgreSQL, SSR session auth, service role key)                      |
 | Payments        | [Stripe](https://stripe.com) (subscriptions, webhooks, customer management)                            |
 | AI              | [OpenRouter](https://openrouter.ai) via [Vercel AI SDK 6](https://sdk.vercel.ai) (`streamText`, tools) |
