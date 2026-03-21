@@ -18,7 +18,7 @@
 These issues break core functionality and should be fixed first.
 
 - [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row or roast profile. Needs cascade delete function or proper dependency handling to prevent orphaned records.
-- [ ] **Bug** - Bean profile data collection incomplete. The `/beans` profile should pull all non-null data fields into the form display in an organized layout.
+- [x] **Bug** - Bean profile data collection incomplete. The `/beans` profile should pull all non-null data fields into the form display in an organized layout. (Fixed PR #123)
 
 ---
 
@@ -32,7 +32,7 @@ These issues impact usability but don't break core functionality.
 - [ ] **UI/UX** - Clean up beans catalog profiles to remove exposed user reference fields from the display.
 - [ ] **UI/UX** - Roast chart doesn't resize when navigating between pages. Chart container needs ResizeObserver or layout recalculation on route change.
 - [ ] **UI/UX** - Poor page refresh management across the app. Forms/edits save but page data doesn't update reactively to show changes.
-- [ ] **UI/UX** - Add wholesale markers/indicators to green coffee inventory page. Catalog has wholesale support; extend visibility to inventory views.
+- [x] **UI/UX** - Add wholesale markers/indicators to green coffee inventory page. Catalog has wholesale support; extend visibility to inventory views. (Fixed PR #121)
 - [ ] **UI/UX** - Add wholesale markers/filtering to roast profiles page. Show which roasts used wholesale beans.
 - [ ] **UI/UX** - Add wholesale markers/filtering to sales page. Track wholesale vs retail sales distinctly.
 
