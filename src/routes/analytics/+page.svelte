@@ -2,7 +2,6 @@
 	import type { PageData } from './$types';
 	import type { PriceSnapshot, ProcessBucket } from './+page.server';
 	import { goto } from '$app/navigation';
-	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import OriginLineChart from '$lib/components/analytics/OriginLineChart.svelte';
 	import OriginBarChart from '$lib/components/analytics/OriginBarChart.svelte';
 	import ProcessDonutChart from '$lib/components/analytics/ProcessDonutChart.svelte';
@@ -197,7 +196,7 @@
 						Supplier Price Comparison Matrix
 					</h2>
 					<div class="grid grid-cols-3 gap-3">
-						{#each Array(9) as _, i}
+						{#each Array(9) as _}
 							<div class="rounded bg-background-secondary-light p-3">
 								<div class="h-4 w-3/4 rounded bg-background-tertiary-light/30"></div>
 								<div class="mt-2 h-6 w-1/2 rounded bg-background-tertiary-light/20"></div>
