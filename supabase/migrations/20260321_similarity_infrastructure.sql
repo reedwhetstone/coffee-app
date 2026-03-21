@@ -11,12 +11,13 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- 2. INDEXES for similarity performance
 -- ============================================================
 
--- Vector similarity index (ivfflat for our scale ~5K-10K chunks)
--- Switch to HNSW if >100K chunks
+-- NOTE: idx_coffee_chunks_embedding already exists in prod (001_full_schema.sql)
+-- with lists=100. The IF NOT EXISTS makes this a safe no-op.
+-- Keeping for documentation; the existing lists=100 is correct for current scale.
 CREATE INDEX IF NOT EXISTS idx_coffee_chunks_embedding
 ON coffee_chunks
 USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 50);
+WITH (lists = 100);
 
 -- Filter index on chunk_type
 CREATE INDEX IF NOT EXISTS idx_coffee_chunks_type
@@ -51,6 +52,7 @@ RETURNS TABLE (
   chunk_type TEXT
 )
 LANGUAGE plpgsql
+STABLE
 AS $$
 BEGIN
   RETURN QUERY
@@ -123,6 +125,7 @@ RETURNS TABLE (
   chunk_matches INT
 )
 LANGUAGE plpgsql
+STABLE
 AS $$
 BEGIN
   RETURN QUERY
@@ -210,7 +213,15 @@ END
 $$;
 
 -- ============================================================
--- 6. TEST QUERIES (run after embedding backfill)
+-- 6. GRANT EXECUTE to anon and authenticated roles
+-- Explicit grants prevent breakage if default PUBLIC is revoked
+-- ============================================================
+
+GRANT EXECUTE ON FUNCTION find_similar_beans(INT, FLOAT, INT, TEXT[]) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION find_similar_beans_aggregated(INT, FLOAT, INT) TO anon, authenticated;
+
+-- ============================================================
+-- 7. TEST QUERIES (run after embedding backfill)
 -- Uncomment and run manually to verify.
 -- Replace 1182 with any coffee_catalog ID that has embeddings.
 -- ============================================================
