@@ -1,4 +1,10 @@
-export type UserRole = 'viewer' | 'member' | 'api-member' | 'api-enterprise' | 'admin';
+export type UserRole =
+	| 'viewer'
+	| 'member'
+	| 'api-member'
+	| 'api-enterprise'
+	| 'ppi-member'
+	| 'admin';
 
 // Support for multiple roles per user
 export type UserRoles = UserRole | UserRole[];
@@ -7,6 +13,7 @@ export const roleHierarchy = {
 	viewer: 0,
 	'api-member': 0, // Same level as viewer - enhanced API access only
 	'api-enterprise': 0, // Same level as viewer - unlimited API access only
+	'ppi-member': 0, // PPI data tier — price index access
 	member: 1,
 	admin: 2
 } as const;
