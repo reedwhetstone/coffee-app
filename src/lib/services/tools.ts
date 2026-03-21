@@ -1,7 +1,13 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { searchCatalog, type SearchCatalogInput, type CatalogItem } from '@purveyors/cli/catalog';
+import {
+	searchCatalog,
+	findSimilarBeans,
+	type SearchCatalogInput,
+	type CatalogItem,
+	type SimilarBean
+} from '@purveyors/cli/catalog';
 import {
 	listInventory,
 	addInventory as _addInventory,
@@ -295,6 +301,36 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				// cupping_notes as raw JSON which contains radar-compatible data.
 				const result = await getTastingNotes(supabase, userId, input.bean_id, input.filter);
 				return result;
+			}
+		}),
+
+		find_similar_beans: tool({
+			description:
+				'Find beans similar to a specific coffee across all suppliers. Uses embedding similarity on origin, processing, and tasting profiles. Returns ranked matches with similarity scores.',
+			inputSchema: z.object({
+				coffee_id: z.number().describe('The coffee_catalog ID to find similar beans for'),
+				threshold: z
+					.number()
+					.min(0)
+					.max(1)
+					.default(0.7)
+					.optional()
+					.describe('Minimum similarity score (0-1)'),
+				limit: z
+					.number()
+					.min(1)
+					.max(50)
+					.default(10)
+					.optional()
+					.describe('Maximum results to return')
+			}),
+			execute: async ({ coffee_id, threshold, limit }) => {
+				const results: SimilarBean[] = await findSimilarBeans(supabase, {
+					target_coffee_id: coffee_id,
+					match_threshold: threshold ?? 0.7,
+					match_count: limit ?? 10
+				});
+				return results;
 			}
 		}),
 
