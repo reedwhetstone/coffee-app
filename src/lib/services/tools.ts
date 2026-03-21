@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	searchCatalog,
 	findSimilarBeans,
+	findSimilarBeansSchema,
 	type SearchCatalogInput,
 	type CatalogItem,
 	type SimilarBean
@@ -14,7 +15,7 @@ import {
 	updateInventory as _updateInventory
 } from '@purveyors/cli/inventory';
 import { listRoasts, createRoast as _createRoast, type RoastProfile } from '@purveyors/cli/roast';
-import { getTastingNotes } from '@purveyors/cli/tasting';
+import { getTastingNotes, getTastingNotesSchema } from '@purveyors/cli/tasting';
 import { recordSale as _recordSale } from '@purveyors/cli/sales';
 
 /**
@@ -29,6 +30,7 @@ import { recordSale as _recordSale } from '@purveyors/cli/sales';
  *   green_coffee_inventory → listInventory()
  *   roast_profiles         → listRoasts()
  *   bean_tasting_notes     → getTastingNotes()
+ *   find_similar_beans     → findSimilarBeans()
  *
  * WRITE TOOLS — proposal pattern, return action_card for user confirmation:
  *   add_bean_to_inventory  → execute-action calls addInventory()
@@ -44,6 +46,20 @@ import { recordSale as _recordSale } from '@purveyors/cli/sales';
  *
  * The /api/tools/* endpoints are kept for backward compatibility but are
  * @deprecated — prefer CLI imports going forward.
+ *
+ * ## Schema source-of-truth strategy (Never Repeat Truth)
+ *
+ * Where the CLI schema matches what the LLM needs, we import it directly so
+ * the CLI is the single source of truth:
+ *   bean_tasting_notes  → getTastingNotesSchema  (from @purveyors/cli/tasting)
+ *   find_similar_beans  → findSimilarBeansSchema  (from @purveyors/cli/catalog)
+ *
+ * Tools with intentionally richer LLM-facing schemas keep manual schemas:
+ *   coffee_catalog_search  — 12 LLM fields vs CLI's 7; extras client-side filtered
+ *   green_coffee_inventory — 4 LLM hint fields vs CLI's 2
+ *   roast_profiles         — 10 LLM fields vs CLI's 2; extras client-side filtered
+ *
+ * Write tools always keep manual schemas (action_card shape is chat-specific).
  */
 export function createChatTools(supabase: SupabaseClient, userId: string) {
 	return {
@@ -176,7 +192,7 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				const finalLimit = Math.min(input.limit ?? 15, 15);
 
 				const inventory = await listInventory(supabase, userId, {
-					stocked: input.stocked_only ?? true,
+					stocked_only: input.stocked_only ?? true,
 					limit: finalLimit
 				});
 
@@ -245,9 +261,9 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 			execute: async (input) => {
 				const finalLimit = Math.min(input.limit ?? 10, 15);
 
-				// CLI listRoasts supports coffeeId filter directly; other filters applied client-side.
+				// CLI listRoasts supports coffee_id filter directly; other filters applied client-side.
 				let profiles: RoastProfile[] = await listRoasts(supabase, userId, {
-					coffeeId: input.coffee_id,
+					coffee_id: input.coffee_id,
 					limit: finalLimit * 3 // fetch more to allow for client-side filtering
 				});
 
@@ -290,15 +306,11 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 		bean_tasting_notes: tool({
 			description:
 				'Get tasting notes and radar chart data for a specific coffee bean; user data, supplier data, or both',
-			inputSchema: z.object({
-				bean_id: z.number().describe('Required coffee bean ID'),
-				filter: z.enum(['user', 'supplier', 'both']).describe('Which tasting notes to include'),
-				include_radar_data: z.boolean().optional().describe('Include radar chart data')
-			}),
+			inputSchema: getTastingNotesSchema,
 			execute: async (input) => {
-				// CLI getTastingNotes takes (supabase, userId, id, filter).
-				// include_radar_data is not supported in the CLI; the CLI returns
-				// cupping_notes as raw JSON which contains radar-compatible data.
+				// CLI schema field names match execute params (bean_id, filter).
+				// include_radar_data was chat-specific; CLI returns cupping_notes
+				// as raw JSON which contains radar-compatible data.
 				const result = await getTastingNotes(supabase, userId, input.bean_id, input.filter);
 				return result;
 			}
@@ -307,29 +319,11 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 		find_similar_beans: tool({
 			description:
 				'Find beans similar to a specific coffee across all suppliers. Uses embedding similarity on origin, processing, and tasting profiles. Returns ranked matches with similarity scores.',
-			inputSchema: z.object({
-				coffee_id: z.number().describe('The coffee_catalog ID to find similar beans for'),
-				threshold: z
-					.number()
-					.min(0)
-					.max(1)
-					.default(0.7)
-					.optional()
-					.describe('Minimum similarity score (0-1)'),
-				limit: z
-					.number()
-					.min(1)
-					.max(50)
-					.default(10)
-					.optional()
-					.describe('Maximum results to return')
-			}),
-			execute: async ({ coffee_id, threshold, limit }) => {
-				const results: SimilarBean[] = await findSimilarBeans(supabase, {
-					target_coffee_id: coffee_id,
-					match_threshold: threshold ?? 0.7,
-					match_count: limit ?? 10
-				});
+			inputSchema: findSimilarBeansSchema,
+			execute: async (input) => {
+				// CLI schema field names match execute params (coffee_id, threshold, limit).
+				// The CLI function maps these internally to RPC parameter names.
+				const results: SimilarBean[] = await findSimilarBeans(supabase, input);
 				return results;
 			}
 		}),
