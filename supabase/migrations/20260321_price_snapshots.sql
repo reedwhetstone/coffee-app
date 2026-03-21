@@ -121,11 +121,13 @@ CREATE TABLE IF NOT EXISTS public.price_index_snapshots (
   wholesale_only  boolean     NOT NULL DEFAULT false,
 
   -- Audit
-  created_at      timestamptz DEFAULT now(),
+  created_at      timestamptz DEFAULT now()
+);
 
-  -- One row per (date, origin, process, grade, wholesale_only)
-  CONSTRAINT uq_ppi_segment_date
-    UNIQUE (snapshot_date, origin, COALESCE(process, ''), COALESCE(grade, ''), wholesale_only)
+-- Unique index handles NULLs in process/grade via COALESCE
+CREATE UNIQUE INDEX uq_ppi_segment_date
+ON price_index_snapshots (
+  snapshot_date, origin, COALESCE(process, ''), COALESCE(grade, ''), wholesale_only
 );
 
 COMMENT ON TABLE public.price_index_snapshots IS
