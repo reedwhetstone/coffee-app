@@ -383,6 +383,11 @@ test.describe('Bean Management', () => {
 		// Verify bean modal/details opened
 		await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
 
+		// Filter to only actionable errors (ignore known patterns already filtered by setupErrorCollection)
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing warnings are fixed
+
 		logErrors(consoleErrors, networkErrors);
 	});
 
@@ -422,6 +427,11 @@ test.describe('Bean Management', () => {
 
 		// Verify save completed (button should return to normal state)
 		await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
+
+		// Filter to only actionable errors (ignore known patterns already filtered by setupErrorCollection)
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -464,14 +474,24 @@ test.describe('Cupping Notes', () => {
 				await bodyScore.fill('5');
 			}
 
-			// Save
-			await page.getByRole('button', { name: /Save Cupping Notes/i }).click();
-			await waitForNetworkIdle(page);
+			// Save — intercept the PUT to /api/beans (cupping notes save via beans endpoint)
+			const [cuppingResponse] = await Promise.all([
+				page.waitForResponse(
+					(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'PUT'
+				),
+				page.getByRole('button', { name: /Save Cupping Notes/i }).click()
+			]);
+			expect(cuppingResponse.status(), 'Cupping notes save should succeed').toBeLessThan(400);
 		} else {
 			console.log('Cupping notes edit button not found, verifying tab is visible');
 			// Verify we at least see the cupping content
 			await expect(page.getByText(/Tasting Profile|Your Rating/i).first()).toBeVisible();
 		}
+
+		// Filter to only actionable errors (ignore known patterns already filtered by setupErrorCollection)
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -499,9 +519,14 @@ test.describe('Roast Profiles', () => {
 		await page.getByRole('textbox', { name: /Roast Targets/i }).fill('Medium roast, city+');
 		await page.getByRole('textbox', { name: /Roast Notes/i }).fill('Test profile ' + Date.now());
 
-		// Create the profile
-		await page.getByRole('button', { name: /Create Roast Profile/i }).click();
-		await waitForNetworkIdle(page);
+		// Create the profile — intercept the POST to /api/roast-profiles
+		const [roastCreateResponse] = await Promise.all([
+			page.waitForResponse(
+				(resp) => resp.url().includes('/api/roast-profiles') && resp.request().method() === 'POST'
+			),
+			page.getByRole('button', { name: /Create Roast Profile/i }).click()
+		]);
+		expect(roastCreateResponse.status(), 'Roast profile creation should succeed').toBeLessThan(400);
 
 		// Verify profile was created (should see it in the list)
 		await expect(page.getByRole('button', { name: /Browse Profiles/i })).toBeVisible();
@@ -583,6 +608,11 @@ test.describe('Roast Profiles', () => {
 		// Cleanup: delete the roast profile we just created so inventory isn't depleted
 		await deleteLatestRoastProfile(page);
 
+		// Filter to only actionable errors (ignore known patterns already filtered by setupErrorCollection)
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing warnings are fixed
+
 		logErrors(consoleErrors, networkErrors);
 	});
 
@@ -593,13 +623,20 @@ test.describe('Roast Profiles', () => {
 		await page.goto('/roast');
 		await page.waitForLoadState('networkidle');
 
+		// Verify the roast page itself loaded (even if empty)
+		await expect(
+			page.getByText(/Roast Profiles|No roast profiles|Browse Profiles/i).first()
+		).toBeVisible({ timeout: 10000 });
+
 		// Look for any profile card — skip if none exist (user may not have roasts)
 		const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
 		const hasProfile = await profileCard.isVisible({ timeout: 5000 }).catch(() => false);
 
 		if (!hasProfile) {
-			// No roast profiles for this user — skip gracefully
-			console.log('No roast profiles found for test user; skipping roast phases test');
+			// Legitimate empty state: verify the page rendered correctly
+			await expect(
+				page.getByRole('button', { name: /New Roast|Toggle actions/i }).first()
+			).toBeVisible({ timeout: 5000 });
 			logErrors(consoleErrors, networkErrors);
 			return;
 		}
@@ -612,6 +649,11 @@ test.describe('Roast Profiles', () => {
 			timeout: 5000
 		});
 
+		// Filter to only actionable errors (ignore known patterns already filtered by setupErrorCollection)
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing warnings are fixed
+
 		logErrors(consoleErrors, networkErrors);
 	});
 
@@ -621,6 +663,11 @@ test.describe('Roast Profiles', () => {
 		// Navigate to /roast directly (user-scoped via RLS)
 		await page.goto('/roast');
 		await page.waitForLoadState('networkidle');
+
+		// Verify the roast page itself loaded (even if empty)
+		await expect(
+			page.getByText(/Roast Profiles|No roast profiles|Browse Profiles/i).first()
+		).toBeVisible({ timeout: 10000 });
 
 		// Try to browse profiles
 		const browseBtn = page.getByRole('button', { name: /Browse Profiles/i });
@@ -635,13 +682,15 @@ test.describe('Roast Profiles', () => {
 			await page.waitForTimeout(300);
 		}
 
-		// Look for any profile card — skip if none exist (user may not have roasts)
+		// If no profile cards exist, that's a valid state - but verify we're on the right page
 		const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
 		const hasProfile = await profileCard.isVisible({ timeout: 5000 }).catch(() => false);
 
 		if (!hasProfile) {
-			// No roast profiles for this user — skip gracefully
-			console.log('No roast profiles found for test user; skipping delete test');
+			// Legitimate empty state: verify the page rendered correctly
+			await expect(
+				page.getByRole('button', { name: /New Roast|Toggle actions/i }).first()
+			).toBeVisible({ timeout: 5000 });
 			logErrors(consoleErrors, networkErrors);
 			return;
 		}
@@ -654,13 +703,23 @@ test.describe('Roast Profiles', () => {
 			dialog.accept().catch(() => {});
 		});
 
-		// Click delete
+		// Click delete — intercept the DELETE response
 		const deleteBtn = page.getByRole('button', { name: 'Delete', exact: true });
 		await expect(deleteBtn, 'Expected delete button on roast profile').toBeVisible({
 			timeout: 5000
 		});
-		await deleteBtn.click();
-		await waitForNetworkIdle(page);
+		const [deleteResponse] = await Promise.all([
+			page.waitForResponse(
+				(resp) => resp.url().includes('/api/roast-profiles') && resp.request().method() === 'DELETE'
+			),
+			deleteBtn.click()
+		]);
+		expect(deleteResponse.status(), 'Roast profile deletion should succeed').toBeLessThan(400);
+
+		// Filter to only actionable errors (ignore known patterns already filtered by setupErrorCollection)
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -722,6 +781,11 @@ test.describe('Roast Profiles', () => {
 		// The selected text should match the bean name we saw on the inventory card
 		expect(selectedText).toBe(beanName);
 
+		// Filter to only actionable errors (ignore known patterns already filtered by setupErrorCollection)
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing warnings are fixed
+
 		logErrors(consoleErrors, networkErrors);
 	});
 });
@@ -767,13 +831,19 @@ test.describe('Sales Management', () => {
 		await page.getByRole('spinbutton', { name: /Sale Price/i }).fill('15');
 		await page.getByRole('textbox', { name: /Buyer/i }).fill('Test Customer');
 
-		// Create sale
-		await page.getByRole('button', { name: /Create Sale/i }).click();
-		await waitForNetworkIdle(page);
+		// Create sale — intercept the POST to /api/profit
+		const [saleResponse] = await Promise.all([
+			page.waitForResponse(
+				(resp) => resp.url().includes('/api/profit') && resp.request().method() === 'POST'
+			),
+			page.getByRole('button', { name: /Create Sale/i }).click()
+		]);
+		expect(saleResponse.status(), 'Sale creation should succeed').toBeLessThan(400);
 
-		// Assert no server errors during submission
-		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
-		expect(submissionErrors).toHaveLength(0);
+		// Filter to only actionable errors (ignore known patterns already filtered by setupErrorCollection)
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
