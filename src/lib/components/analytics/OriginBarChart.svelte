@@ -7,6 +7,7 @@
 		origin: string;
 		price_avg: number;
 		supplier_count: number;
+		sample_size: number;
 	}
 
 	let { data = [] }: { data: OriginBar[] } = $props();
@@ -14,12 +15,13 @@
 	let containerH = $state(0);
 	let containerW = $state(0);
 
-	const padding = { top: 10, right: 80, bottom: 10, left: 120 };
+	const padding = { top: 10, right: 100, bottom: 10, left: 120 };
 
 	let innerW = $derived(Math.max(0, containerW - padding.left - padding.right));
 	let innerH = $derived(Math.max(0, containerH - padding.top - padding.bottom));
 
-	let sortedData = $derived([...data].sort((a, b) => b.price_avg - a.price_avg).slice(0, 12));
+	// Sort by sample_size (volume) descending; show price as bar width
+	let sortedData = $derived([...data].sort((a, b) => b.sample_size - a.sample_size).slice(0, 12));
 
 	let yScale = $derived(
 		scaleBand()
@@ -108,7 +110,7 @@
 						fill-opacity="0.8"
 						rx="2"
 					/>
-					<!-- Price label at end of bar -->
+					<!-- Price + volume label at end of bar -->
 					<text
 						x={barW + 4}
 						y={y + yScale.bandwidth() / 2}
@@ -117,8 +119,8 @@
 						fill="rgb(156 163 175)"
 					>
 						${d.price_avg.toFixed(2)}
-						{#if d.supplier_count > 1}
-							<tspan fill="rgb(107 114 128)" font-size="10">({d.supplier_count})</tspan>
+						{#if d.sample_size > 0}
+							<tspan fill="rgb(107 114 128)" font-size="10">, {d.sample_size}</tspan>
 						{/if}
 					</text>
 				{/each}
