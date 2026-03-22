@@ -179,7 +179,8 @@ CREATE INDEX IF NOT EXISTS idx_ppi_retail_date
 -- Called by scraper after all sources complete each day.
 -- Reads coffee_price_snapshots, joins coffee_catalog for origin/process/grade,
 -- computes aggregates, upserts to price_index_snapshots.
--- Normalizes origin via origin_aliases table (if it exists; falls back to raw value).
+-- Aggregates price data from coffee_price_snapshots into price_index_snapshots.
+-- Origin/processing normalization is handled at scraper ingest time.
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.compute_price_index(
@@ -209,20 +210,11 @@ BEGIN
       ps.cost_lb,
       ps.stocked,
       ps.wholesale,
-      -- Normalize origin: prefer origin_aliases lookup, fall back to catalog.country
-      COALESCE(
-        (SELECT oa.canonical FROM public.origin_aliases oa
-         WHERE lower(oa.alias) = lower(COALESCE(cc.country, ''))
-         LIMIT 1),
-        cc.country
-      ) AS origin,
-      -- Normalize process: prefer process_aliases lookup, fall back to catalog.processing
-      COALESCE(
-        (SELECT pa.canonical FROM public.process_aliases pa
-         WHERE lower(pa.alias) = lower(COALESCE(cc.processing, ''))
-         LIMIT 1),
-        cc.processing
-      ) AS process,
+      -- Origin and processing are normalized at scraper ingest time
+      -- (normalizeOrigin/normalizeProcessing in dataValidators.ts)
+      -- No DB-side alias lookup needed.
+      cc.country AS origin,
+      cc.processing AS process,
       cc.grade,
       cc.source
     FROM public.coffee_price_snapshots ps
@@ -311,7 +303,7 @@ $$;
 COMMENT ON FUNCTION public.compute_price_index(date) IS
   'Aggregates coffee_price_snapshots into price_index_snapshots for a given date. '
   'Called by coffee-scraper after all sources complete. Safe to re-run (idempotent upsert). '
-  'Uses origin_aliases and process_aliases if they exist (Phase 0.3); falls back to raw values.';
+  'Normalization done at scraper ingest (normalizeOrigin/normalizeProcessing in dataValidators.ts).';
 
 -- ============================================================
 -- PART 5: RLS Policies
