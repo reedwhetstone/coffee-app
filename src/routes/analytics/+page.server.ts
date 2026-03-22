@@ -1,6 +1,16 @@
 import type { PageServerLoad } from './$types';
 import { getUserRoles } from '$lib/server/auth';
 
+export interface ComparisonBean {
+	name: string;
+	country: string;
+	processing: string | null;
+	cost_lb: number;
+	source: string;
+	wholesale: boolean;
+	bag_size: string | null;
+}
+
 export interface PriceSnapshot {
 	snapshot_date: string;
 	origin: string;
@@ -194,6 +204,16 @@ export const load: PageServerLoad = async (event) => {
 		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 15);
 	})();
 
+	// Supplier comparison — all stocked beans with price, filtered client-side by origin
+	const { data: comparisonBeansRaw } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('name, country, processing, cost_lb, source, wholesale, bag_size')
+		.eq('stocked', true)
+		.not('cost_lb', 'is', null)
+		.not('country', 'is', null)
+		.order('cost_lb', { ascending: true })
+		.limit(2000);
+
 	return {
 		session,
 		role,
@@ -208,6 +228,7 @@ export const load: PageServerLoad = async (event) => {
 		},
 		snapshots,
 		processDistribution,
-		originRangeData
+		originRangeData,
+		comparisonBeans: (comparisonBeansRaw ?? []) as ComparisonBean[]
 	};
 };

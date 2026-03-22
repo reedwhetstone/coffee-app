@@ -1,14 +1,28 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type { PriceSnapshot, ProcessBucket, OriginRangeRow } from './+page.server';
+	import type {
+		PriceSnapshot,
+		ProcessBucket,
+		OriginRangeRow,
+		ComparisonBean
+	} from './+page.server';
 	import { goto } from '$app/navigation';
 	import OriginLineChart from '$lib/components/analytics/OriginLineChart.svelte';
 	import OriginBarChart from '$lib/components/analytics/OriginBarChart.svelte';
 	import ProcessDonutChart from '$lib/components/analytics/ProcessDonutChart.svelte';
+	import SupplierComparisonTable from '$lib/components/analytics/SupplierComparisonTable.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
-	let { session, isPpiMember, stats, snapshots, processDistribution, originRangeData } = $derived(
+	let {
+		session,
+		isPpiMember,
+		stats,
+		snapshots,
+		processDistribution,
+		originRangeData,
+		comparisonBeans
+	} = $derived(
 		data as {
 			session: PageData['session'];
 			isPpiMember: boolean;
@@ -23,6 +37,7 @@
 			snapshots: PriceSnapshot[];
 			processDistribution: ProcessBucket[];
 			originRangeData: OriginRangeRow[];
+			comparisonBeans: ComparisonBean[];
 		}
 	);
 
@@ -289,6 +304,11 @@
 			{/if}
 		</div>
 	</div>
+</div>
+
+<!-- Supplier Price Comparison -->
+<div class="mb-8">
+	<SupplierComparisonTable beans={comparisonBeans} />
 </div>
 
 <!-- Gated Section -->
