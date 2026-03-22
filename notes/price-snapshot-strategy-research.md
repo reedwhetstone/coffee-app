@@ -23,16 +23,16 @@ Also: add `scraped_at timestamptz` to `coffee_catalog` immediately (per the mast
 
 Reading `scrape/utils/database.ts`, the `updateDatabase(source)` function runs in 9 steps:
 
-| Step | Action | Columns written |
-|------|--------|-----------------|
-| 1 | Collect URLs from site | — |
-| 2 | Mark no-longer-stocked items | `stocked=false`, `unstocked_date=now()`, `last_updated=now()` |
-| 3 | **Update prices for in-stock items** | `cost_lb`, `stocked=true` only — NO `last_updated` |
-| 4 | Check for new URLs | — |
-| 5 | Insert new products | `last_updated=now()`, `stocked_date=now()`, all fields |
-| 7 | Embedding generation/backfill | `coffee_chunks` table only |
-| 8 | Data hygiene (continent, grade fixes) | `continent`, `grade`, `appearance` |
-| 9 | Re-scrape incomplete products | Various fields + `last_updated=now()` |
+| Step | Action                                | Columns written                                               |
+| ---- | ------------------------------------- | ------------------------------------------------------------- |
+| 1    | Collect URLs from site                | —                                                             |
+| 2    | Mark no-longer-stocked items          | `stocked=false`, `unstocked_date=now()`, `last_updated=now()` |
+| 3    | **Update prices for in-stock items**  | `cost_lb`, `stocked=true` only — NO `last_updated`            |
+| 4    | Check for new URLs                    | —                                                             |
+| 5    | Insert new products                   | `last_updated=now()`, `stocked_date=now()`, all fields        |
+| 7    | Embedding generation/backfill         | `coffee_chunks` table only                                    |
+| 8    | Data hygiene (continent, grade fixes) | `continent`, `grade`, `appearance`                            |
+| 9    | Re-scrape incomplete products         | Various fields + `last_updated=now()`                         |
 
 **Critical finding:** When updating existing product prices (Step 3), `last_updated` is NOT set. Only `cost_lb` and `stocked` are written. This means `last_updated` cannot be used to determine when a price last changed. It's updated on: new inserts, unstocking events, and data-quality re-scrapes — but not routine price updates.
 
@@ -59,11 +59,13 @@ link        text (unique)
 ```
 
 **Missing columns (exist in prod but not in 001 migration):**
+
 - `price_tiers jsonb` — multi-tier pricing, e.g. `[{"min_lbs": 1, "price": 7.50}, {"min_lbs": 50, "price": 5.20}]`
 - `wholesale boolean` — true when minimum tier > 5 lbs
 - `price_tiers` and `wholesale` are confirmed live in prod per TOOLS.md (added via dashboard or separate migration)
 
 **Absent columns that matter for PPI:**
+
 - `scraped_at timestamptz` — does not exist. Phase 0.1 of the master plan flags this as urgent.
 - `price_index_snapshots` table — does not exist yet.
 
@@ -102,6 +104,7 @@ coffee_price_snapshots
 ```
 
 **Pros:**
+
 - Explicit and simple
 - Scraper owns the logic (Reed's directive)
 - Deduplication with `ON CONFLICT DO NOTHING` is trivial
@@ -109,6 +112,7 @@ coffee_price_snapshots
 - Queryable directly, no transformation needed
 
 **Cons:**
+
 - Requires scraper code change (1 new function + 1 call at end of `updateDatabase()`)
 - Storage grows at ~87 MB/year (see projections below — completely negligible)
 
@@ -117,10 +121,12 @@ coffee_price_snapshots
 A trigger on `UPDATE` fires when `cost_lb` changes and writes to a history table.
 
 **Pros:**
+
 - Zero scraper code change
 - Captures any update, even outside the scraper
 
 **Cons:**
+
 - Violates Reed's directive (scraper should own write logic)
 - Trigger fires on EVERY UPDATE including hygiene fixes, embedding backfill metadata, unstocking — needs careful filtering
 - Harder to debug in Supabase environment
@@ -133,9 +139,11 @@ A trigger on `UPDATE` fires when `cost_lb` changes and writes to a history table
 Use Supabase Realtime publication changes or database webhooks to capture `coffee_catalog` updates.
 
 **Pros:**
+
 - No DB migration, no scraper changes
 
 **Cons:**
+
 - High complexity for low value at this scale
 - Realtime is designed for push-to-client, not for ETL pipelines
 - Webhook retry/ordering guarantees are weaker than direct DB writes
@@ -147,10 +155,12 @@ Use Supabase Realtime publication changes or database webhooks to capture `coffe
 Use the `last_updated` timestamp on `coffee_catalog` to infer when prices changed, possibly combined with git diffs.
 
 **Pros:**
+
 - No migration needed
 - No code changes needed
 
 **Cons:**
+
 - `last_updated` is NOT updated on price changes (confirmed from code — Step 3 in `updateDatabase()` only writes `cost_lb` and `stocked`)
 - `last_updated` type is `date`, not `timestamptz` — sub-day precision impossible
 - Git history doesn't contain DB state
@@ -216,14 +226,15 @@ Total: ~100 MB/year for both tables. Zero concern for Supabase storage.
 ```typescript
 // Step 10: Record daily price snapshot for all stocked beans in this source
 try {
-  await recordPriceSnapshots(source.name);
+	await recordPriceSnapshots(source.name);
 } catch (error) {
-  logger.addLog('Warning', source.name, `Price snapshot failed: ${formatError(error)}`);
-  // Non-fatal: don't abort the run if snapshot fails
+	logger.addLog('Warning', source.name, `Price snapshot failed: ${formatError(error)}`);
+	// Non-fatal: don't abort the run if snapshot fails
 }
 ```
 
 The `recordPriceSnapshots(sourceName)` function:
+
 1. Fetches all stocked beans for this source from `coffee_catalog`
 2. Batch inserts into `coffee_price_snapshots` with today's date
 3. Uses `ON CONFLICT (catalog_id, snapshot_date) DO NOTHING` — safe to call multiple times
@@ -237,45 +248,49 @@ After all sources complete (in `index.ts` after `Promise.all()`), call `snapshot
 // In database.ts — add after Step 9
 
 export async function recordPriceSnapshots(sourceName: string): Promise<void> {
-  const today = new Date().toISOString().split('T')[0]!; // 'YYYY-MM-DD'
+	const today = new Date().toISOString().split('T')[0]!; // 'YYYY-MM-DD'
 
-  const { data: stockedBeans, error: fetchError } = await supabase
-    .from('coffee_catalog')
-    .select('id, cost_lb, price_tiers, stocked, wholesale')
-    .eq('source', sourceName)
-    .eq('stocked', true);
+	const { data: stockedBeans, error: fetchError } = await supabase
+		.from('coffee_catalog')
+		.select('id, cost_lb, price_tiers, stocked, wholesale')
+		.eq('source', sourceName)
+		.eq('stocked', true);
 
-  if (fetchError) throw fetchError;
-  if (!stockedBeans || stockedBeans.length === 0) return;
+	if (fetchError) throw fetchError;
+	if (!stockedBeans || stockedBeans.length === 0) return;
 
-  const rows = stockedBeans.map(bean => ({
-    catalog_id: bean.id,
-    snapshot_date: today,
-    cost_lb: bean.cost_lb,
-    price_tiers: bean.price_tiers,
-    stocked: bean.stocked,
-    wholesale: bean.wholesale ?? false,
-  }));
+	const rows = stockedBeans.map((bean) => ({
+		catalog_id: bean.id,
+		snapshot_date: today,
+		cost_lb: bean.cost_lb,
+		price_tiers: bean.price_tiers,
+		stocked: bean.stocked,
+		wholesale: bean.wholesale ?? false
+	}));
 
-  // Batch insert — ON CONFLICT DO NOTHING ensures idempotency
-  const BATCH = 200;
-  for (let i = 0; i < rows.length; i += BATCH) {
-    const { error } = await supabase
-      .from('coffee_price_snapshots')
-      .insert(rows.slice(i, i + BATCH), { onConflict: 'catalog_id,snapshot_date' });
-    if (error) throw error;
-  }
+	// Batch insert — ON CONFLICT DO NOTHING ensures idempotency
+	const BATCH = 200;
+	for (let i = 0; i < rows.length; i += BATCH) {
+		const { error } = await supabase
+			.from('coffee_price_snapshots')
+			.insert(rows.slice(i, i + BATCH), { onConflict: 'catalog_id,snapshot_date' });
+		if (error) throw error;
+	}
 
-  logger.addLog('Step 10: Price Snapshot', sourceName,
-    `Recorded ${stockedBeans.length} price snapshots for ${today}`);
+	logger.addLog(
+		'Step 10: Price Snapshot',
+		sourceName,
+		`Recorded ${stockedBeans.length} price snapshots for ${today}`
+	);
 }
 ```
 
 And in `index.ts`, after the `Promise.all()` resolves:
+
 ```typescript
 // After all sources complete:
 const { error } = await supabase.rpc('compute_price_index', {
-  p_date: new Date().toISOString().split('T')[0]
+	p_date: new Date().toISOString().split('T')[0]
 });
 ```
 
@@ -286,6 +301,7 @@ const { error } = await supabase.rpc('compute_price_index', {
 **`UNIQUE(catalog_id, snapshot_date)`** on `coffee_price_snapshots` + `ON CONFLICT DO NOTHING`.
 
 This means:
+
 - If a source scrapes twice in one day (re-run, re-audit), only the first snapshot is kept
 - No duplicates possible
 - The first scrape's prices are canonical for that day (this is fine — price changes within a day are rare and not relevant to a daily index)
@@ -298,16 +314,17 @@ For `price_index_snapshots`: `UNIQUE(snapshot_date, origin, process, grade)` + `
 
 The raw `coffee_price_snapshots` table should capture:
 
-| Column | Why |
-|--------|-----|
-| `catalog_id` | Link back to bean identity |
-| `snapshot_date` | The date dimension |
-| `cost_lb` | Retail 1-lb price — comparable across all suppliers |
-| `price_tiers` | Full tier array — needed for "price at your quantity" queries |
-| `stocked` | Availability at snapshot time — availability patterns = market insight |
-| `wholesale` | Wholesale flag — needed to segment retail vs wholesale in PPI |
+| Column          | Why                                                                    |
+| --------------- | ---------------------------------------------------------------------- |
+| `catalog_id`    | Link back to bean identity                                             |
+| `snapshot_date` | The date dimension                                                     |
+| `cost_lb`       | Retail 1-lb price — comparable across all suppliers                    |
+| `price_tiers`   | Full tier array — needed for "price at your quantity" queries          |
+| `stocked`       | Availability at snapshot time — availability patterns = market insight |
+| `wholesale`     | Wholesale flag — needed to segment retail vs wholesale in PPI          |
 
 What NOT to snapshot per row:
+
 - `source` — can be joined from `coffee_catalog`
 - `country`/`continent`/`origin`/`processing`/`grade` — static attributes, join from `coffee_catalog`
 - `name`, `description*`, `cupping_notes` etc. — not price data
@@ -332,28 +349,30 @@ The migration must include `ALTER TABLE coffee_catalog ADD COLUMN IF NOT EXISTS 
 
 ## Option Comparison Matrix
 
-| | App-Level Snapshot (Rec.) | DB Trigger | Supabase Realtime | `last_updated` reconstruct |
-|---|---|---|---|---|
-| Scraper owns writes | ✅ Yes | ❌ No | ❌ No | ✅ (but no writes) |
-| Implementation complexity | Low | Medium | High | Impossible |
-| Debuggability | High | Low | Low | N/A |
-| Query simplicity | High | High | High | N/A |
-| Storage efficiency | Daily full snapshot | Change-only (lower) | Depends | N/A |
-| Deduplication | UNIQUE constraint | Need NEW vs OLD compare | Idempotency gap | N/A |
-| Supabase compatible | ✅ | ✅ (with caution) | ✅ | ❌ |
-| Works with current schema | Needs new table | Needs new table | Needs receiver | ❌ |
+|                           | App-Level Snapshot (Rec.) | DB Trigger              | Supabase Realtime | `last_updated` reconstruct |
+| ------------------------- | ------------------------- | ----------------------- | ----------------- | -------------------------- |
+| Scraper owns writes       | ✅ Yes                    | ❌ No                   | ❌ No             | ✅ (but no writes)         |
+| Implementation complexity | Low                       | Medium                  | High              | Impossible                 |
+| Debuggability             | High                      | Low                     | Low               | N/A                        |
+| Query simplicity          | High                      | High                    | High              | N/A                        |
+| Storage efficiency        | Daily full snapshot       | Change-only (lower)     | Depends           | N/A                        |
+| Deduplication             | UNIQUE constraint         | Need NEW vs OLD compare | Idempotency gap   | N/A                        |
+| Supabase compatible       | ✅                        | ✅ (with caution)       | ✅                | ❌                         |
+| Works with current schema | Needs new table           | Needs new table         | Needs receiver    | ❌                         |
 
 ---
 
 ## Web Research Summary
 
 **PostgreSQL temporal/history patterns (community consensus):**
+
 - The "temporal tables" feature (SQL:2011 standard) is natively implemented in SQL Server and MariaDB; PostgreSQL requires manual implementation via triggers or application code
 - For audit trails: triggers work but add hidden side effects and fire on all updates (including no-data-change updates), requiring `NEW.field != OLD.field` filtering
 - Community preference for application-level history tables when the write path is controlled and known (our case: scraper owns all writes)
 - For time-series price data specifically: append-only tables with a timestamp dimension are the universal pattern (Timescale, QuestDB, standard PostgreSQL all recommend this)
 
 **Commodity price index schema patterns:**
+
 - Two-layer architecture is standard: raw ticks/observations → aggregated indices
 - Separation enables: re-aggregation with different normalization, historical corrections, flexible segmentation
 - IMF, ICO, and FRED all store raw prices separately from computed indices
