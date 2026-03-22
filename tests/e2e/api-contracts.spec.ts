@@ -7,18 +7,17 @@
  *   2. Returns the expected status with auth
  *   3. Returns the expected response shape
  *
- * Auth is provided via storageState via the chromium project's config.
- * Unauthenticated tests use the raw playwright API directly
- * (playwright.request.newContext) to bypass any storageState defaults.
- * Test data cleanup happens in afterAll via API DELETE.
+ * Auth for tests that use { request } is set via test.use() in each
+ * authenticated describe block (not at file level — that would also
+ * affect playwright.request.newContext() calls used for unauthenticated tests).
+ *
+ * Unauthenticated tests use playwright.request.newContext() directly,
+ * which creates a truly fresh APIRequestContext with no storageState.
  *
  * Target: < 30 seconds (no browser, pure HTTP)
  */
 
 import { test, expect } from '@playwright/test';
-
-// Chromium project applies storageState: authFile via playwright.config.ts
-// No file-level test.use() here — the 'request' fixture uses project storageState.
 
 // IDs for test data created during this run — cleaned up in afterAll
 let testBeanId: number | null = null;
@@ -41,13 +40,12 @@ test.afterAll(async ({ request }) => {
 });
 
 // ---------------------------------------------------------------------------
-// Unauthenticated requests — use raw playwright.request to get a
-// completely fresh API context that has NO storage state whatsoever.
+// Unauthenticated requests — use raw playwright.request.newContext() which
+// creates a completely fresh APIRequestContext that has NO storage state.
 // ---------------------------------------------------------------------------
 
 test.describe('Unauthenticated requests are rejected', () => {
 	test('GET /api/beans without auth returns empty data', async ({ playwright }) => {
-		// playwright.request is the raw APIRequestContext — no project storageState
 		const fresh = await playwright.request.newContext();
 		const resp = await fresh.get('/api/beans');
 		expect(resp.status()).toBe(200);
@@ -88,10 +86,12 @@ test.describe('Unauthenticated requests are rejected', () => {
 });
 
 // ---------------------------------------------------------------------------
-// GET endpoints — shape assertions (authenticated via project storageState)
+// GET endpoints — shape assertions
 // ---------------------------------------------------------------------------
 
 test.describe('GET endpoints return expected shapes', () => {
+	test.use({ storageState: 'tests/e2e/.auth/user.json' });
+
 	test('GET /api/beans returns { data: [...] }', async ({ request }) => {
 		const resp = await request.get('/api/beans');
 		expect(resp.status()).toBe(200);
@@ -130,7 +130,6 @@ test.describe('GET endpoints return expected shapes', () => {
 
 	test('GET /api/roast-chart-data with no roastId returns 400', async ({ request }) => {
 		const resp = await request.get('/api/roast-chart-data');
-		// No roastId param — should be a 400, not a crash
 		expect(resp.status()).toBeGreaterThanOrEqual(400);
 		expect(resp.status()).toBeLessThan(500);
 	});
@@ -146,6 +145,8 @@ test.describe('GET endpoints return expected shapes', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('POST /api/beans — create inventory', () => {
+	test.use({ storageState: 'tests/e2e/.auth/user.json' });
+
 	test('creates a bean with manual_name and returns the new inventory item', async ({
 		request
 	}) => {
@@ -172,6 +173,8 @@ test.describe('POST /api/beans — create inventory', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('PUT /api/beans — update inventory', () => {
+	test.use({ storageState: 'tests/e2e/.auth/user.json' });
+
 	test('updates the test bean notes field', async ({ request }) => {
 		if (!testBeanId) {
 			test.skip();
@@ -193,6 +196,8 @@ test.describe('PUT /api/beans — update inventory', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('POST /api/roast-profiles — create roast', () => {
+	test.use({ storageState: 'tests/e2e/.auth/user.json' });
+
 	test('creates a roast profile for the test bean', async ({ request }) => {
 		if (!testBeanId) {
 			test.skip();
@@ -221,6 +226,8 @@ test.describe('POST /api/roast-profiles — create roast', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('POST /api/profit — create sale', () => {
+	test.use({ storageState: 'tests/e2e/.auth/user.json' });
+
 	test('creates a sale for the test bean', async ({ request }) => {
 		if (!testBeanId) {
 			test.skip();
@@ -250,6 +257,8 @@ test.describe('POST /api/profit — create sale', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('DELETE endpoints return success', () => {
+	test.use({ storageState: 'tests/e2e/.auth/user.json' });
+
 	test('DELETE /api/profit?id=X deletes the test sale', async ({ request }) => {
 		if (!testSaleId) {
 			test.skip();
