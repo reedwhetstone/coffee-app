@@ -7,6 +7,8 @@
 	let isHomePage = $derived(currentPath === '/');
 	let isApiPage = $derived(currentPath === '/api');
 	let isBlogPage = $derived(currentPath.startsWith('/blog'));
+	let isCatalogPage = $derived(currentPath === '/catalog');
+	let isAnalyticsPage = $derived(currentPath.startsWith('/analytics'));
 
 	function handleSignIn() {
 		goto('/auth');
@@ -27,6 +29,14 @@
 	function navigateToBlog() {
 		goto('/blog');
 	}
+
+	function navigateToCatalog() {
+		goto('/catalog');
+	}
+
+	function navigateToAnalytics() {
+		goto('/analytics');
+	}
 </script>
 
 <header
@@ -46,6 +56,22 @@
 
 			<!-- Navigation Links -->
 			<nav class="hidden items-center space-x-8 md:flex">
+				<button
+					onclick={navigateToCatalog}
+					class="text-sm font-medium transition-colors duration-200 {isCatalogPage
+						? 'text-background-tertiary-light'
+						: 'text-text-secondary-light hover:text-text-primary-light'}"
+				>
+					Catalog
+				</button>
+				<button
+					onclick={navigateToAnalytics}
+					class="text-sm font-medium transition-colors duration-200 {isAnalyticsPage
+						? 'text-background-tertiary-light'
+						: 'text-text-secondary-light hover:text-text-primary-light'}"
+				>
+					Market Data
+				</button>
 				<button
 					onclick={navigateToHome}
 					class="text-sm font-medium transition-colors duration-200 {isHomePage
@@ -121,6 +147,22 @@
 		<!-- Mobile menu -->
 		<div class="hidden md:hidden" id="mobile-menu">
 			<div class="space-y-1 pb-3 pt-2">
+				<button
+					onclick={navigateToCatalog}
+					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isCatalogPage
+						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
+						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
+				>
+					Catalog
+				</button>
+				<button
+					onclick={navigateToAnalytics}
+					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isAnalyticsPage
+						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
+						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
+				>
+					Market Data
+				</button>
 				<button
 					onclick={navigateToHome}
 					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isHomePage

@@ -1,13 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }, url }) => {
+export const GET: RequestHandler = async ({ locals: { supabase }, url }) => {
 	try {
-		const { session } = await safeGetSession();
-		if (!session) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
 		const showWholesale = url.searchParams.get('showWholesale') === 'true';
 		const wholesaleOnly = url.searchParams.get('wholesaleOnly') === 'true';
 

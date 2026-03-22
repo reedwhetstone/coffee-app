@@ -63,6 +63,11 @@
 	 * Handles pagination for server-side or infinite scroll for client-side
 	 */
 	async function handleScroll() {
+		// No infinite scroll for unauthenticated users
+		if (!session) {
+			return;
+		}
+
 		// For server-side routes, don't use infinite scroll - use proper pagination
 		if ($filterStore.routeId.includes('/catalog') || $filterStore.routeId === '/') {
 			return;
@@ -131,9 +136,9 @@
 {#if $filterStore.isLoading}
 	<CatalogPageSkeleton />
 {:else}
-	<!-- Coffee Catalog App for Authenticated Users -->
+	<!-- Coffee Catalog -->
 	<div class="space-y-4">
-		<!-- Upgrade Banner for Viewers -->
+		<!-- Upgrade Banner for logged-in Viewers only -->
 		{#if session && !hasRequiredRole('member')}
 			<div
 				class="rounded-lg border border-background-tertiary-light/20 bg-gradient-to-r from-background-tertiary-light/10 to-harvest-gold/10 p-6"
@@ -183,7 +188,7 @@
 					</p>
 				{:else}
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-						{#each displayData() as coffee}
+						{#each session ? displayData() : displayData().slice(0, 15) as coffee}
 							<CoffeeCard {coffee} {parseTastingNotes} />
 						{/each}
 
@@ -195,8 +200,43 @@
 							</div>
 						{/if}
 
-						<!-- Server-side pagination controls -->
-						{#if $filterStore.pagination.totalPages > 1}
+						<!-- Public preview CTA banner (unauthenticated only) -->
+						{#if !session && ($filterStore.pagination.total > 15 || displayData().length >= 15)}
+							<div class="col-span-full mt-2">
+								<div
+									class="rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 px-8 py-10 text-center shadow-sm ring-1 ring-amber-200"
+								>
+									<p class="mb-1 text-sm font-medium text-amber-700">
+										You're viewing 15 of {$filterStore.pagination.total || displayData().length} specialty
+										coffees
+									</p>
+									<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
+										Unlock the full catalog
+									</h3>
+									<p class="mb-6 text-sm text-text-secondary-light">
+										Create a free account to browse all coffees, use AI-powered search, and set
+										price alerts.
+									</p>
+									<div class="flex flex-col items-center justify-center gap-3 sm:flex-row">
+										<button
+											onclick={() => goto('/auth')}
+											class="rounded-md bg-background-tertiary-light px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
+										>
+											Sign Up Free
+										</button>
+										<button
+											onclick={() => goto('/auth')}
+											class="rounded-md border border-background-tertiary-light px-6 py-2.5 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+										>
+											Sign In
+										</button>
+									</div>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Server-side pagination controls (authenticated users only) -->
+						{#if session && $filterStore.pagination.totalPages > 1}
 							<div class="col-span-full flex items-center justify-center gap-4 p-4">
 								<button
 									onclick={() => filterStore.loadPrevPage()}
@@ -221,14 +261,14 @@
 							</div>
 						{/if}
 
-						<!-- Client-side infinite scroll indicators -->
-						{#if !$filterStore.pagination.totalPages && !isLoadingMore && displayLimit < $filteredData.length}
+						<!-- Client-side infinite scroll indicators (authenticated users only) -->
+						{#if session && !$filterStore.pagination.totalPages && !isLoadingMore && displayLimit < $filteredData.length}
 							<div class="flex justify-center p-4">
 								<p class="text-primary-light text-sm">Scroll for more coffees...</p>
 							</div>
 						{/if}
 
-						{#if !$filterStore.pagination.totalPages && displayLimit >= $filteredData.length && $filteredData.length > 0}
+						{#if session && !$filterStore.pagination.totalPages && displayLimit >= $filteredData.length && $filteredData.length > 0}
 							<div class="flex justify-center p-4">
 								<p class="text-primary-light text-sm">No more coffees to load</p>
 							</div>
