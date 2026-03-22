@@ -7,17 +7,25 @@
  *   2. Returns the expected status with auth
  *   3. Returns the expected response shape
  *
- * Auth for tests that use { request } is set via test.use() in each
- * authenticated describe block (not at file level — that would also
- * affect playwright.request.newContext() calls used for unauthenticated tests).
+ * Auth for tests using Playwright's { request } fixture is set via
+ * test.use() in each authenticated describe block.
  *
- * Unauthenticated tests use playwright.request.newContext() directly,
- * which creates a truly fresh APIRequestContext with no storageState.
+ * Unauthenticated tests use Node.js native fetch() which is completely
+ * isolated — Playwright's APIRequestContext shares the browser cookie jar
+ * and would incorrectly authenticate requests otherwise.
  *
  * Target: < 30 seconds (no browser, pure HTTP)
  */
 
 import { test, expect } from '@playwright/test';
+
+// Native fetch — completely isolated from Playwright's cookie jar.
+// Used for all unauthenticated request tests.
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173';
+async function rawFetch(path: string, options?: RequestInit) {
+	const resp = await fetch(`${BASE_URL}${path}`, options);
+	return { status: resp.status, url: resp.url, json: () => resp.json() as Promise<unknown> };
+}
 
 // IDs for test data created during this run — cleaned up in afterAll
 let testBeanId: number | null = null;
@@ -40,48 +48,36 @@ test.afterAll(async ({ request }) => {
 });
 
 // ---------------------------------------------------------------------------
-// Unauthenticated requests — use raw playwright.request.newContext() which
-// creates a completely fresh APIRequestContext that has NO storage state.
+// Unauthenticated requests — Node.js native fetch has no shared state
 // ---------------------------------------------------------------------------
 
 test.describe('Unauthenticated requests are rejected', () => {
-	test('GET /api/beans without auth returns empty data', async ({ playwright }) => {
-		const fresh = await playwright.request.newContext();
-		const resp = await fresh.get('/api/beans');
-		expect(resp.status()).toBe(200);
-		const body = await resp.json();
-		// Unauthenticated beans GET returns { data: [] } — not 401
+	test('GET /api/beans without auth returns empty data', async () => {
+		const resp = await rawFetch('/api/beans');
+		expect(resp.status).toBe(200);
+		const body = (await resp.json()) as Record<string, unknown>;
 		expect(body).toHaveProperty('data');
 		expect(body.data).toEqual([]);
-		await fresh.dispose();
 	});
 
-	test('GET /api/profit without auth returns 401', async ({ playwright }) => {
-		const fresh = await playwright.request.newContext();
-		const resp = await fresh.get('/api/profit');
-		expect(resp.status()).toBe(401);
-		await fresh.dispose();
+	test('GET /api/profit without auth returns 401', async () => {
+		const resp = await rawFetch('/api/profit');
+		expect(resp.status).toBe(401);
 	});
 
-	test('GET /api/roast-profiles without auth returns 401', async ({ playwright }) => {
-		const fresh = await playwright.request.newContext();
-		const resp = await fresh.get('/api/roast-profiles');
-		expect(resp.status()).toBe(401);
-		await fresh.dispose();
+	test('GET /api/roast-profiles without auth returns 401', async () => {
+		const resp = await rawFetch('/api/roast-profiles');
+		expect(resp.status).toBe(401);
 	});
 
-	test('GET /api/roast-chart-data without auth returns 401', async ({ playwright }) => {
-		const fresh = await playwright.request.newContext();
-		const resp = await fresh.get('/api/roast-chart-data?roastId=1');
-		expect(resp.status()).toBe(401);
-		await fresh.dispose();
+	test('GET /api/roast-chart-data without auth returns 401', async () => {
+		const resp = await rawFetch('/api/roast-chart-data?roastId=1');
+		expect(resp.status).toBe(401);
 	});
 
-	test('GET /api/roast-chart-settings without auth returns 401', async ({ playwright }) => {
-		const fresh = await playwright.request.newContext();
-		const resp = await fresh.get('/api/roast-chart-settings?roastId=1');
-		expect(resp.status()).toBe(401);
-		await fresh.dispose();
+	test('GET /api/roast-chart-settings without auth returns 401', async () => {
+		const resp = await rawFetch('/api/roast-chart-settings?roastId=1');
+		expect(resp.status).toBe(401);
 	});
 });
 

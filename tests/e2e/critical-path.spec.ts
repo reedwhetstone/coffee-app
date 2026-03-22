@@ -169,11 +169,25 @@ test.describe.serial('Critical business workflow', () => {
 	// -------------------------------------------------------------------------
 
 	test('profit page loads without crashing', async ({ page }) => {
-		// Use 'commit' — charts block networkidle and domcontentloaded on profit page
+		test.setTimeout(120000); // profit page charts are heavy on CI
 		await page.goto('/profit', { waitUntil: 'commit' });
 		await expect(page).toHaveURL(/profit/);
-		// Give the page a moment to render before checking for crashes
-		await page.waitForTimeout(1000);
-		await expect(page.locator('body')).not.toContainText('Internal Server Error');
+		// Use page.evaluate to check content — Playwright locator APIs freeze when
+		// LayerCake charts block the main thread on slow CI runners
+		const hasContent = await page.evaluate(() => {
+			return new Promise<boolean>((resolve) => {
+				const check = () => {
+					const body = document.body?.textContent || '';
+					if (body.length > 50 && !body.includes('Internal Server Error')) {
+						resolve(true);
+					} else {
+						setTimeout(check, 500);
+					}
+				};
+				check();
+				setTimeout(() => resolve(false), 15000);
+			});
+		});
+		expect(hasContent).toBe(true);
 	});
 });
