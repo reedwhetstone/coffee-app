@@ -17,6 +17,12 @@
 	// Build top-5 origins by total sample_size (volume-ranked)
 	const COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
 
+	// Minimum distinct snapshot dates required before showing chart
+	const MIN_DISTINCT_DATES = 7;
+
+	let distinctDateCount = $derived(new Set(snapshots.map((s) => s.snapshot_date)).size);
+	let hasEnoughData = $derived(distinctDateCount >= MIN_DISTINCT_DATES);
+
 	let originMap = $derived.by(() => {
 		const map = new Map<string, { date: Date; value: number }[]>();
 		for (const row of snapshots) {
@@ -94,6 +100,8 @@
 			.attr('y2', 0)
 			.attr('stroke', 'rgb(156 163 175)');
 		const dateRange = xDomain[1].getTime() - xDomain[0].getTime();
+		// Guard against degenerate scale (0 or 1 date)
+		if (dateRange === 0) return;
 		const tickCount = Math.max(2, Math.min(6, Math.floor(innerW / 80)));
 		const step = Math.max(1, Math.floor(dateRange / tickCount / 86400000));
 		const ticks: Date[] = [];
@@ -160,7 +168,25 @@
 </script>
 
 <div class="h-full w-full" bind:clientHeight={containerH} bind:clientWidth={containerW}>
-	{#if containerW > 0 && containerH > 0}
+	{#if !hasEnoughData}
+		<!-- Not enough data: show informative placeholder -->
+		<div
+			class="flex h-full w-full flex-col items-center justify-center rounded-lg bg-background-secondary-light px-6 text-center"
+		>
+			<div class="mb-2 text-2xl">📈</div>
+			<p class="text-sm font-medium text-text-secondary-light">
+				Price trend data collection started March 21, 2026.
+			</p>
+			<p class="mt-1 text-xs text-text-secondary-light">
+				Charts will populate once 7+ days of data are available.
+				{#if distinctDateCount > 0}
+					<span class="mt-0.5 block text-text-secondary-light/60"
+						>({distinctDateCount} of {MIN_DISTINCT_DATES} days collected)</span
+					>
+				{/if}
+			</p>
+		</div>
+	{:else if containerW > 0 && containerH > 0}
 		<svg width={containerW} height={containerH}>
 			<g transform="translate({padding.left},{padding.top})">
 				<!-- Axes -->

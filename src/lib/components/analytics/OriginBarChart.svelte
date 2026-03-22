@@ -24,6 +24,24 @@
 	let innerW = $derived(Math.max(0, containerW - padding.left - padding.right));
 	let innerH = $derived(Math.max(0, containerH - padding.top - padding.bottom));
 
+	// Narrow container threshold for label abbreviation
+	let isNarrow = $derived(containerW < 500);
+
+	// Abbreviate long origin names when viewport is narrow
+	function abbreviateOrigin(name: string, narrow: boolean): string {
+		if (!narrow) return name;
+		const abbrevMap: Record<string, string> = {
+			'Papua New Guinea': 'P. New Guinea',
+			'Dominican Republic': 'Dom. Republic',
+			'Democratic Republic of Congo': 'DR Congo',
+			'Central African Republic': 'C. African Rep.'
+		};
+		if (abbrevMap[name]) return abbrevMap[name];
+		// Generic: truncate at 14 chars with ellipsis
+		if (name.length > 14) return name.slice(0, 13) + '…';
+		return name;
+	}
+
 	// Sort by median price ascending
 	let sortedData = $derived([...data].sort((a, b) => a.price_median - b.price_median));
 
@@ -63,7 +81,7 @@
 				.attr('dominant-baseline', 'middle')
 				.attr('fill', 'rgb(107 114 128)')
 				.attr('font-size', '12')
-				.text(d.origin);
+				.text(abbreviateOrigin(d.origin, isNarrow));
 		});
 	});
 
@@ -220,15 +238,15 @@
 						width={Math.max(0, xQ3 - xQ1)}
 						height={yScale.bandwidth() * 0.56}
 						fill="#f59e0b"
-						fill-opacity="0.3"
+						fill-opacity="0.4"
 						rx="2"
 					/>
 
 					<!-- Median circle (solid amber) -->
 					<circle cx={xMedian} {cy} r="5" fill="#f59e0b" />
 
-					<!-- Mean diamond (teal) -->
-					{#if Math.abs(xMean - xMedian) > 1}
+					<!-- Mean diamond (teal): show when |mean - median| / median > 5% -->
+					{#if row.price_median > 0 && Math.abs(row.price_avg - row.price_median) / row.price_median > 0.05}
 						<polygon
 							points="{xMean},{cy - 5} {xMean + 4},{cy} {xMean},{cy + 5} {xMean - 4},{cy}"
 							fill="#14b8a6"
@@ -258,7 +276,7 @@
 				<span>Full range</span>
 			</div>
 			<div class="flex items-center gap-1">
-				<div class="h-3 w-5 rounded bg-amber-400 opacity-30"></div>
+				<div class="h-3 w-5 rounded bg-amber-400 opacity-40"></div>
 				<span>IQR (Q1–Q3)</span>
 			</div>
 			<div class="flex items-center gap-1">
