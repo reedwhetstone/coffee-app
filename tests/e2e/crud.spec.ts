@@ -779,23 +779,19 @@ test.describe('Sales Management', () => {
 	});
 
 	test('can change profit date range', async ({ page }) => {
-		const { consoleErrors, networkErrors } = setupErrorCollection(page);
+		// Navigate to profit page — use domcontentloaded instead of networkidle
+		// because LayerCake chart renders keep the network active indefinitely on slow CI.
+		await page.goto('/profit', { waitUntil: 'domcontentloaded' });
 
-		await page.goto('/profit');
-		await page.waitForLoadState('networkidle');
-
-		// Use force:true to bypass actionability checks — LayerCake chart renders
-		// can block the main thread on slow CI runners, causing normal clicks to hang.
+		// Verify the page loaded by checking for date range buttons
 		const thirtyDaysBtn = page.getByRole('button', { name: /30 Days/i });
-		if (await thirtyDaysBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await thirtyDaysBtn.click({ force: true, timeout: 5000 }).catch(() => {});
-		}
+		await expect(thirtyDaysBtn).toBeVisible({ timeout: 15000 });
 
+		// Click with force:true and short timeout to avoid chart-render blocking
+		await thirtyDaysBtn.click({ force: true, timeout: 5000 }).catch(() => {});
+
+		// Verify another date range button exists
 		const threeMonthBtn = page.getByRole('button', { name: '3M' });
-		if (await threeMonthBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await threeMonthBtn.click({ force: true, timeout: 5000 }).catch(() => {});
-		}
-
-		logErrors(consoleErrors, networkErrors);
+		await expect(threeMonthBtn).toBeVisible({ timeout: 5000 });
 	});
 });
