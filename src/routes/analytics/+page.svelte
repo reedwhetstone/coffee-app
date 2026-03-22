@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type { PriceSnapshot, ProcessBucket } from './+page.server';
+	import type { PriceSnapshot, ProcessBucket, OriginRangeRow } from './+page.server';
 	import { goto } from '$app/navigation';
 	import OriginLineChart from '$lib/components/analytics/OriginLineChart.svelte';
 	import OriginBarChart from '$lib/components/analytics/OriginBarChart.svelte';
@@ -8,7 +8,7 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	let { session, isPpiMember, stats, snapshots, processDistribution } = $derived(
+	let { session, isPpiMember, stats, snapshots, processDistribution, originRangeData } = $derived(
 		data as {
 			session: PageData['session'];
 			isPpiMember: boolean;
@@ -22,6 +22,7 @@
 			};
 			snapshots: PriceSnapshot[];
 			processDistribution: ProcessBucket[];
+			originRangeData: OriginRangeRow[];
 		}
 	);
 
@@ -90,6 +91,9 @@
 
 	let hasSnapshots = $derived(filteredSnapshots.length > 0);
 
+	// Stocked beans count for lead headline (retail + wholesale combined)
+	let stockedBeans = $derived(stats.stockedRetailBeans + stats.stockedWholesaleBeans);
+
 	function formatDate(dateStr: string | null) {
 		if (!dateStr) return 'N/A';
 		return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
@@ -97,6 +101,26 @@
 			day: 'numeric',
 			year: 'numeric'
 		});
+	}
+
+	// Relative time for freshness indicator
+	function formatRelativeTime(dateStr: string | null): string {
+		if (!dateStr) return 'Daily';
+		const now = new Date();
+		const todayStr = now.toISOString().split('T')[0];
+		const yesterdayDate = new Date(now);
+		yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+		const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+		if (dateStr === todayStr) {
+			const updated = new Date(dateStr + 'T00:00:00');
+			const hoursAgo = Math.floor((now.getTime() - updated.getTime()) / 3600000);
+			if (hoursAgo < 1) return 'Just now';
+			if (hoursAgo === 1) return '1h ago';
+			return `${hoursAgo}h ago`;
+		}
+		if (dateStr === yesterdayStr) return 'Yesterday';
+		return formatDate(dateStr);
 	}
 
 	const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
@@ -171,7 +195,7 @@
 		class="rounded-lg border border-border-light bg-background-primary-light p-4 text-center shadow-sm"
 	>
 		<div class="text-xl font-bold text-background-tertiary-light">
-			{stats.lastUpdated ? formatDate(stats.lastUpdated) : 'Daily'}
+			{formatRelativeTime(stats.lastUpdated)}
 		</div>
 		<div class="mt-1 text-sm text-text-secondary-light">Last updated</div>
 	</div>
@@ -197,6 +221,17 @@
 	</div>
 </div>
 
+<!-- Lead Insight Headline -->
+<div class="mb-6 rounded-lg border border-border-light bg-background-secondary-light px-5 py-3">
+	<p class="text-sm font-medium text-text-primary-light">
+		Tracking live prices across <span class="text-background-tertiary-light"
+			>{stats.totalSuppliers}</span
+		>
+		suppliers. <span class="text-background-tertiary-light">{stockedBeans.toLocaleString()}</span>
+		stocked beans from <span class="text-background-tertiary-light">{stats.originsCount}</span> origins.
+	</p>
+</div>
+
 <!-- Public Charts Section -->
 <div class="mb-8 space-y-6">
 	<!-- Price Over Time — Origin Line Chart -->
@@ -206,22 +241,9 @@
 			Average $/lb by top origins over the last 30 days — ranked by market volume
 			{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 		</p>
-		{#if hasSnapshots}
-			<div class="h-64 w-full">
-				<OriginLineChart snapshots={lineSnapshots} />
-			</div>
-		{:else}
-			<div
-				class="flex h-48 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
-			>
-				<p class="text-sm font-medium text-text-secondary-light">
-					📊 Price data collection started March 21, 2026
-				</p>
-				<p class="mt-1 text-xs text-text-secondary-light">
-					Charts will populate as daily snapshots accumulate.
-				</p>
-			</div>
-		{/if}
+		<div class="h-64 w-full">
+			<OriginLineChart snapshots={lineSnapshots} />
+		</div>
 	</div>
 
 	<!-- Two-column: Donut + Bar -->
@@ -244,26 +266,24 @@
 			{/if}
 		</div>
 
-		<!-- Origin Price Comparison Bar Chart -->
+		<!-- Origin Price Range Chart -->
 		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Comparison</h2>
+			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Ranges</h2>
 			<p class="mb-4 text-sm text-text-secondary-light">
-				Avg $/lb by origin — ranked by volume (bean count)
-				{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
+				Price spread by origin — IQR box, median &amp; mean markers, full min/max range. Live from
+				catalog.
 			</p>
-			{#if originBarData.length > 0}
-				<div class="h-56 w-full">
-					<OriginBarChart data={originBarData} />
+			{#if originRangeData.length > 0}
+				<div class="h-64 w-full sm:h-80">
+					<OriginBarChart data={originRangeData} />
 				</div>
 			{:else}
 				<div
 					class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
 				>
-					<p class="text-sm font-medium text-text-secondary-light">
-						📊 Awaiting first price snapshot
-					</p>
+					<p class="text-sm font-medium text-text-secondary-light">📊 No origin data available</p>
 					<p class="mt-1 text-xs text-text-secondary-light">
-						First chart will appear after today's scraper run.
+						Requires stocked beans with cost_lb values in the catalog.
 					</p>
 				</div>
 			{/if}
