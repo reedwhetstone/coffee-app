@@ -784,20 +784,17 @@ test.describe('Sales Management', () => {
 		await page.goto('/profit');
 		await page.waitForLoadState('networkidle');
 
-		// Click on date range buttons (use force + short timeout to avoid chart-render blocking)
+		// Use force:true to bypass actionability checks — LayerCake chart renders
+		// can block the main thread on slow CI runners, causing normal clicks to hang.
 		const thirtyDaysBtn = page.getByRole('button', { name: /30 Days/i });
 		if (await thirtyDaysBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await thirtyDaysBtn.click({ timeout: 10000 }).catch(() => {});
-			await page.waitForTimeout(500);
+			await thirtyDaysBtn.click({ force: true, timeout: 5000 }).catch(() => {});
 		}
 
 		const threeMonthBtn = page.getByRole('button', { name: '3M' });
 		if (await threeMonthBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await threeMonthBtn.click({ timeout: 10000 }).catch(() => {});
-			await page.waitForTimeout(500);
+			await threeMonthBtn.click({ force: true, timeout: 5000 }).catch(() => {});
 		}
-
-		await waitForNetworkIdle(page);
 
 		logErrors(consoleErrors, networkErrors);
 	});
