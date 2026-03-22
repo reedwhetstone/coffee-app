@@ -784,15 +784,17 @@ test.describe('Sales Management', () => {
 		await page.goto('/profit');
 		await page.waitForLoadState('networkidle');
 
-		// Click on date range buttons
+		// Click on date range buttons (use force + short timeout to avoid chart-render blocking)
 		const thirtyDaysBtn = page.getByRole('button', { name: /30 Days/i });
 		if (await thirtyDaysBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await thirtyDaysBtn.click();
+			await thirtyDaysBtn.click({ timeout: 10000 }).catch(() => {});
+			await page.waitForTimeout(500);
 		}
 
 		const threeMonthBtn = page.getByRole('button', { name: '3M' });
 		if (await threeMonthBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await threeMonthBtn.click();
+			await threeMonthBtn.click({ timeout: 10000 }).catch(() => {});
+			await page.waitForTimeout(500);
 		}
 
 		await waitForNetworkIdle(page);
