@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { line as d3Line, curveMonotoneX } from 'd3-shape';
 	import { scaleTime, scaleLinear } from 'd3-scale';
-	import { extent, max, min } from 'd3-array';
+	import { extent, min } from 'd3-array';
 	import { select } from 'd3-selection';
 
 	interface SnapshotRow {
 		snapshot_date: string;
 		origin: string;
 		price_avg: number | null;
+		price_median: number | null;
 		sample_size: number;
 		wholesale_only: boolean;
 	}
@@ -26,9 +27,10 @@
 	let originMap = $derived.by(() => {
 		const map = new Map<string, { date: Date; value: number }[]>();
 		for (const row of snapshots) {
-			if (row.price_avg == null) continue;
+			const price = row.price_median ?? row.price_avg;
+			if (price == null) continue;
 			if (!map.has(row.origin)) map.set(row.origin, []);
-			map.get(row.origin)!.push({ date: new Date(row.snapshot_date), value: row.price_avg });
+			map.get(row.origin)!.push({ date: new Date(row.snapshot_date), value: price });
 		}
 		return map;
 	});
@@ -37,7 +39,8 @@
 	let originVolume = $derived.by(() => {
 		const vol = new Map<string, number>();
 		for (const row of snapshots) {
-			if (row.price_avg == null) continue;
+			const price = row.price_median ?? row.price_avg;
+			if (price == null) continue;
 			vol.set(row.origin, (vol.get(row.origin) ?? 0) + (row.sample_size ?? 0));
 		}
 		return vol;
@@ -70,7 +73,14 @@
 	);
 	let yDomain = $derived(
 		allValues.length >= 2
-			? [Math.max(0, (min(allValues) ?? 0) * 0.9), (max(allValues) ?? 10) * 1.05]
+			? [
+					Math.max(0, (min(allValues) ?? 0) * 0.9),
+					(() => {
+						const sorted = [...allValues].sort((a, b) => a - b);
+						const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 10;
+						return p95 * 1.15;
+					})()
+				]
 			: [0, 10]
 	);
 
