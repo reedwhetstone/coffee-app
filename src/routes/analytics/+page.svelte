@@ -4,6 +4,8 @@
 		PriceSnapshot,
 		ProcessBucket,
 		OriginRangeRow,
+		ComparisonBean,
+		SupplierHealthRow
 	} from './+page.server';
 	import { goto } from '$app/navigation';
 	import OriginLineChart from '$lib/components/analytics/OriginLineChart.svelte';
@@ -40,16 +42,8 @@
 			snapshots: PriceSnapshot[];
 			processDistribution: ProcessBucket[];
 			originRangeData: OriginRangeRow[];
-			supplierHealth: Array<{
-				source: string;
-				stockedCount: number;
-				origins: number;
-				avgPrice: number;
-				minPrice: number;
-				maxPrice: number;
-				retailCount: number;
-				wholesaleCount: number;
-			}>;
+			recentArrivals: unknown[];
+			recentDelistings: unknown[];
 			comparisonBeans: ComparisonBean[];
 			supplierHealth: SupplierHealthRow[];
 		}
@@ -330,8 +324,8 @@
 	<div class="mb-3">
 		<h2 class="text-xl font-semibold text-text-primary-light">Supplier Overview</h2>
 		<p class="mt-1 text-sm text-text-secondary-light">
-			Catalog breadth and pricing by supplier — click any column header to sort. A quick answer
-			to "which suppliers should I be looking at?"
+			Catalog breadth and pricing by supplier — click any column header to sort. A quick answer to
+			"which suppliers should I be looking at?"
 		</p>
 	</div>
 	{#if supplierHealth && supplierHealth.length > 0}
