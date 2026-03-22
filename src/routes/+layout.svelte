@@ -67,7 +67,12 @@
 	// Determine if we should show the unified header (unauthenticated users on public pages)
 	let isBlogPage = $derived(page.url.pathname.startsWith('/blog'));
 	let shouldShowUnifiedHeader = $derived(
-		!data.session && (page.url.pathname === '/' || page.url.pathname === '/api' || isBlogPage)
+		!data.session &&
+			(page.url.pathname === '/' ||
+				page.url.pathname === '/api' ||
+				page.url.pathname === '/catalog' ||
+				page.url.pathname.startsWith('/analytics') ||
+				isBlogPage)
 	);
 </script>
 
