@@ -13,7 +13,8 @@
 			session: PageData['session'];
 			isPpiMember: boolean;
 			stats: {
-				totalBeans: number;
+				totalBeansTracked: number;
+				stockedBeans: number;
 				totalSuppliers: number;
 				originsCount: number;
 				lastUpdated: string | null;
@@ -93,8 +94,13 @@
 	<div
 		class="rounded-lg border border-border-light bg-background-primary-light p-4 text-center shadow-sm"
 	>
-		<div class="text-3xl font-bold text-background-tertiary-light">{stats.totalBeans}</div>
-		<div class="mt-1 text-sm text-text-secondary-light">Active beans</div>
+		<div class="text-3xl font-bold text-background-tertiary-light">
+			{stats.stockedBeans.toLocaleString()}
+		</div>
+		<div class="mt-1 text-sm text-text-secondary-light">Stocked beans</div>
+		<div class="mt-0.5 text-xs text-text-secondary-light/60">
+			{stats.totalBeansTracked.toLocaleString()} total tracked
+		</div>
 	</div>
 	<div
 		class="rounded-lg border border-border-light bg-background-primary-light p-4 text-center shadow-sm"
@@ -144,7 +150,7 @@
 		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing Methods</h2>
 			<p class="mb-4 text-sm text-text-secondary-light">
-				Distribution of processing methods across {stats.totalBeans} stocked beans
+				Distribution of processing methods across {stats.stockedBeans.toLocaleString()} stocked beans
 			</p>
 			{#if processDistribution.length > 0}
 				<div class="h-56 w-full">
