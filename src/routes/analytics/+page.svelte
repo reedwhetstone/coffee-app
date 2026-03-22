@@ -15,6 +15,7 @@
 	import ProcessDonutChart from '$lib/components/analytics/ProcessDonutChart.svelte';
 	import SupplierComparisonTable from '$lib/components/analytics/SupplierComparisonTable.svelte';
 	import SupplierHealthTable from '$lib/components/analytics/SupplierHealthTable.svelte';
+	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -320,78 +321,113 @@
 <!-- Public Charts Section -->
 <div class="mb-8 space-y-6">
 	<!-- Price Over Time — Origin Line Chart -->
-	<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-		<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
-		<p class="mb-4 text-sm text-text-secondary-light">
-			Average $/lb by top origins over the last 30 days — ranked by market volume
-			{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
-		</p>
-		<div class="h-64 w-full">
-			<OriginLineChart snapshots={lineSnapshots} />
+	<ExpandablePanel
+		title="Price Trends by Origin"
+		subtitle="Average $/lb by top origins over the last 30 days — ranked by market volume"
+		collapsedMaxHeight="360px"
+		showGradient={false}
+	>
+		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
+			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
+			<p class="mb-4 text-sm text-text-secondary-light">
+				Average $/lb by top origins over the last 30 days — ranked by market volume
+				{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
+			</p>
+			<div class="h-64 w-full">
+				<OriginLineChart snapshots={lineSnapshots} />
+			</div>
 		</div>
-	</div>
+	</ExpandablePanel>
 
 	<!-- Two-column: Donut + Bar -->
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 		<!-- Processing Method Distribution -->
-		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing Methods</h2>
-			<p class="mb-4 text-sm text-text-secondary-light">
-				Distribution across {displayStockedCount.toLocaleString()} stocked beans
-				{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
-			</p>
-			{#if filteredProcessDist.length > 0}
-				<div class="h-56 w-full">
-					<ProcessDonutChart data={filteredProcessDist} />
-				</div>
-			{:else}
-				<div class="flex h-40 items-center justify-center rounded-lg bg-background-secondary-light">
-					<p class="text-sm text-text-secondary-light">No catalog data yet.</p>
-				</div>
-			{/if}
-		</div>
+		<ExpandablePanel
+			title="Processing Methods"
+			subtitle="Distribution across stocked beans"
+			collapsedMaxHeight="360px"
+			showGradient={false}
+		>
+			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
+				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing Methods</h2>
+				<p class="mb-4 text-sm text-text-secondary-light">
+					Distribution across {displayStockedCount.toLocaleString()} stocked beans
+					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
+				</p>
+				{#if filteredProcessDist.length > 0}
+					<div class="h-56 w-full">
+						<ProcessDonutChart data={filteredProcessDist} />
+					</div>
+				{:else}
+					<div
+						class="flex h-40 items-center justify-center rounded-lg bg-background-secondary-light"
+					>
+						<p class="text-sm text-text-secondary-light">No catalog data yet.</p>
+					</div>
+				{/if}
+			</div>
+		</ExpandablePanel>
 
 		<!-- Origin Price Range Chart -->
-		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Ranges</h2>
-			<p class="mb-4 text-sm text-text-secondary-light">
-				Price spread by origin — IQR box, median &amp; mean markers, full min/max range. Live from
-				catalog.
-			</p>
-			{#if originRangeData.length > 0}
-				<div class="h-64 w-full sm:h-80">
-					<OriginBarChart data={originRangeData} />
-				</div>
-			{:else}
-				<div
-					class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
-				>
-					<p class="text-sm font-medium text-text-secondary-light">📊 No origin data available</p>
-					<p class="mt-1 text-xs text-text-secondary-light">
-						Requires stocked beans with price_per_lb values in the catalog.
-					</p>
-				</div>
-			{/if}
-		</div>
+		<ExpandablePanel
+			title="Origin Price Ranges"
+			subtitle="Price spread by origin — IQR box, median & mean markers, full min/max range"
+			collapsedMaxHeight="400px"
+			showGradient={false}
+		>
+			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
+				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Ranges</h2>
+				<p class="mb-4 text-sm text-text-secondary-light">
+					Price spread by origin — IQR box, median &amp; mean markers, full min/max range. Live from
+					catalog.
+				</p>
+				{#if originRangeData.length > 0}
+					<div class="h-64 w-full sm:h-80">
+						<OriginBarChart data={originRangeData} />
+					</div>
+				{:else}
+					<div
+						class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
+					>
+						<p class="text-sm font-medium text-text-secondary-light">📊 No origin data available</p>
+						<p class="mt-1 text-xs text-text-secondary-light">
+							Requires stocked beans with price_per_lb values in the catalog.
+						</p>
+					</div>
+				{/if}
+			</div>
+		</ExpandablePanel>
 	</div>
 </div>
 
 <!-- Supplier Price Comparison -->
 <div class="mb-8">
-	<SupplierComparisonTable beans={comparisonBeans} />
+	<ExpandablePanel
+		title="Supplier Price Comparison"
+		subtitle="All stocked beans for a selected origin, sorted by price — cheapest first."
+		totalItems={comparisonBeans.length}
+	>
+		<SupplierComparisonTable beans={comparisonBeans} />
+	</ExpandablePanel>
 </div>
 
 <!-- Supplier Overview -->
 <div class="mb-8">
 	<div class="mb-3">
-		<h2 class="text-xl font-semibold text-text-primary-light">Supplier Overview</h2>
+		<h2 class="text-xl font-semibold text-text-primary-light">Supplier Catalog Health</h2>
 		<p class="mt-1 text-sm text-text-secondary-light">
 			Catalog breadth and pricing by supplier — click any column header to sort. A quick answer to
 			"which suppliers should I be looking at?"
 		</p>
 	</div>
 	{#if supplierHealth && supplierHealth.length > 0}
-		<SupplierHealthTable rows={supplierHealth} />
+		<ExpandablePanel
+			title="Supplier Catalog Health"
+			subtitle="Catalog breadth and pricing by supplier — click any column header to sort."
+			totalItems={supplierHealth.length}
+		>
+			<SupplierHealthTable rows={supplierHealth} />
+		</ExpandablePanel>
 	{:else}
 		<div
 			class="flex h-24 items-center justify-center rounded-lg border border-border-light bg-background-secondary-light"
@@ -620,166 +656,184 @@
 
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 		<!-- New Arrivals -->
-		<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
-			<div class="mb-3 flex items-center justify-between">
-				<div>
-					<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
-					<p class="mt-0.5 text-sm text-text-secondary-light">
-						{filteredArrivals.length} new arrival{filteredArrivals.length === 1 ? '' : 's'} this {windowMode ===
-						'7d'
-							? 'week'
-							: 'month'}
-					</p>
+		<ExpandablePanel
+			title="New Arrivals"
+			badge="+{filteredArrivals.length}"
+			badgeColor="amber"
+			totalItems={filteredArrivals.length}
+		>
+			<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
+				<div class="mb-3 flex items-center justify-between">
+					<div>
+						<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
+						<p class="mt-0.5 text-sm text-text-secondary-light">
+							{filteredArrivals.length} new arrival{filteredArrivals.length === 1 ? '' : 's'} this {windowMode ===
+							'7d'
+								? 'week'
+								: 'month'}
+						</p>
+					</div>
+					<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700"
+						>+{filteredArrivals.length}</span
+					>
 				</div>
-				<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700"
-					>+{filteredArrivals.length}</span
-				>
-			</div>
-			{#if filteredArrivals.length > 0}
-				<div class="overflow-x-auto">
-					<table class="min-w-full text-sm">
-						<thead>
-							<tr class="border-b border-border-light">
-								<th
-									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Bean</th
-								>
-								<th
-									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Origin</th
-								>
-								<th
-									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Process</th
-								>
-								<th
-									class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>$/lb</th
-								>
-								<th
-									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Supplier</th
-								>
-								<th
-									class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Days</th
-								>
-							</tr>
-						</thead>
-						<tbody>
-							{#each filteredArrivals as bean}
-								{@const days = daysSince(bean.stocked_date)}
-								<tr class="border-b border-border-light/40 hover:bg-amber-50">
-									<td class="py-2 pr-3 font-medium text-text-primary-light" title={bean.name}
-										>{truncateName(bean.name)}</td
+				{#if filteredArrivals.length > 0}
+					<div class="overflow-x-auto">
+						<table class="min-w-full text-sm">
+							<thead>
+								<tr class="border-b border-border-light">
+									<th
+										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Bean</th
 									>
-									<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
-									<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
-									<td class="py-2 pr-3 text-right font-semibold text-text-primary-light"
-										>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
+									<th
+										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Origin</th
 									>
-									<td class="py-2 pr-3 text-text-secondary-light">{formatSource(bean.source)}</td>
-									<td class="py-2 text-right"
-										><span
-											class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
-											>{days === 0 ? 'Today' : days + 'd'}</span
-										></td
+									<th
+										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Process</th
+									>
+									<th
+										class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>$/lb</th
+									>
+									<th
+										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Supplier</th
+									>
+									<th
+										class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Days</th
 									>
 								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			{:else}
-				<div class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light">
-					<p class="text-sm text-text-secondary-light">No new arrivals in the selected window.</p>
-				</div>
-			{/if}
-		</div>
+							</thead>
+							<tbody>
+								{#each filteredArrivals as bean}
+									{@const days = daysSince(bean.stocked_date)}
+									<tr class="border-b border-border-light/40 hover:bg-amber-50">
+										<td class="py-2 pr-3 font-medium text-text-primary-light" title={bean.name}
+											>{truncateName(bean.name)}</td
+										>
+										<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
+										<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
+										<td class="py-2 pr-3 text-right font-semibold text-text-primary-light"
+											>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
+										>
+										<td class="py-2 pr-3 text-text-secondary-light">{formatSource(bean.source)}</td>
+										<td class="py-2 text-right"
+											><span
+												class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+												>{days === 0 ? 'Today' : days + 'd'}</span
+											></td
+										>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{:else}
+					<div
+						class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
+					>
+						<p class="text-sm text-text-secondary-light">No new arrivals in the selected window.</p>
+					</div>
+				{/if}
+			</div>
+		</ExpandablePanel>
 
 		<!-- Recent Delistings -->
-		<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
-			<div class="mb-3 flex items-center justify-between">
-				<div>
-					<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
-					<p class="mt-0.5 text-sm text-text-secondary-light">
-						{filteredDelistings.length} bean{filteredDelistings.length === 1 ? '' : 's'} delisted this
-						{windowMode === '7d' ? 'week' : 'month'}
-					</p>
+		<ExpandablePanel
+			title="Recent Delistings"
+			badge="-{filteredDelistings.length}"
+			badgeColor="red"
+			totalItems={filteredDelistings.length}
+		>
+			<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
+				<div class="mb-3 flex items-center justify-between">
+					<div>
+						<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
+						<p class="mt-0.5 text-sm text-text-secondary-light">
+							{filteredDelistings.length} bean{filteredDelistings.length === 1 ? '' : 's'} delisted this
+							{windowMode === '7d' ? 'week' : 'month'}
+						</p>
+					</div>
+					<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600"
+						>-{filteredDelistings.length}</span
+					>
 				</div>
-				<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600"
-					>-{filteredDelistings.length}</span
-				>
-			</div>
-			{#if delistingsByCountry.length > 0}
-				<p class="mb-3 text-xs text-text-secondary-light">
-					{delistingsByCountry
-						.slice(0, 5)
-						.map((d) => d.country + ': ' + d.count)
-						.join(' · ')}
-				</p>
-			{/if}
-			{#if filteredDelistings.length > 0}
-				<div class="overflow-x-auto">
-					<table class="min-w-full text-sm">
-						<thead>
-							<tr class="border-b border-border-light">
-								<th
-									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Bean</th
-								>
-								<th
-									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Origin</th
-								>
-								<th
-									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Process</th
-								>
-								<th
-									class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Last $/lb</th
-								>
-								<th
-									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Supplier</th
-								>
-								<th
-									class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-									>Days</th
-								>
-							</tr>
-						</thead>
-						<tbody>
-							{#each filteredDelistings as bean}
-								{@const days = daysSince(bean.unstocked_date)}
-								<tr class="border-b border-border-light/40 hover:bg-red-50">
-									<td class="py-2 pr-3 font-medium text-text-secondary-light" title={bean.name}
-										>{truncateName(bean.name)}</td
+				{#if delistingsByCountry.length > 0}
+					<p class="mb-3 text-xs text-text-secondary-light">
+						{delistingsByCountry
+							.slice(0, 5)
+							.map((d) => d.country + ': ' + d.count)
+							.join(' · ')}
+					</p>
+				{/if}
+				{#if filteredDelistings.length > 0}
+					<div class="overflow-x-auto">
+						<table class="min-w-full text-sm">
+							<thead>
+								<tr class="border-b border-border-light">
+									<th
+										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Bean</th
 									>
-									<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
-									<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
-									<td class="py-2 pr-3 text-right text-text-secondary-light"
-										>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
+									<th
+										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Origin</th
 									>
-									<td class="py-2 pr-3 text-text-secondary-light">{formatSource(bean.source)}</td>
-									<td class="py-2 text-right"
-										><span
-											class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600"
-											>{days === 0 ? 'Today' : days + 'd'}</span
-										></td
+									<th
+										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Process</th
+									>
+									<th
+										class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Last $/lb</th
+									>
+									<th
+										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Supplier</th
+									>
+									<th
+										class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+										>Days</th
 									>
 								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			{:else}
-				<div class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light">
-					<p class="text-sm text-text-secondary-light">No delistings in the selected window.</p>
-				</div>
-			{/if}
-		</div>
+							</thead>
+							<tbody>
+								{#each filteredDelistings as bean}
+									{@const days = daysSince(bean.unstocked_date)}
+									<tr class="border-b border-border-light/40 hover:bg-red-50">
+										<td class="py-2 pr-3 font-medium text-text-secondary-light" title={bean.name}
+											>{truncateName(bean.name)}</td
+										>
+										<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
+										<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
+										<td class="py-2 pr-3 text-right text-text-secondary-light"
+											>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
+										>
+										<td class="py-2 pr-3 text-text-secondary-light">{formatSource(bean.source)}</td>
+										<td class="py-2 text-right"
+											><span
+												class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600"
+												>{days === 0 ? 'Today' : days + 'd'}</span
+											></td
+										>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{:else}
+					<div
+						class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
+					>
+						<p class="text-sm text-text-secondary-light">No delistings in the selected window.</p>
+					</div>
+				{/if}
+			</div>
+		</ExpandablePanel>
 	</div>
 </div>
 

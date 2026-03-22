@@ -14,7 +14,7 @@
 ## Strategy
 
 1. **Backfill**: Copy `cost_lb` → `price_tiers` for rows that have `cost_lb` but no `price_tiers`
-2. **Code**: Replace all `cost_lb` reads with `price_tiers[0].price` across all codebases  
+2. **Code**: Replace all `cost_lb` reads with `price_tiers[0].price` across all codebases
 3. **Snapshots**: Update price snapshot recording to use `price_tiers[0].price`
 4. **RPC**: Update `compute_price_index` to use `price_tiers` instead of `cost_lb`
 5. **Keep column**: Don't drop `cost_lb` yet; stop writing to it in Step 3, keep writing on insert for backward compat
@@ -126,6 +126,7 @@ $$;
 ### scrape/utils/database.ts
 
 **recordPriceSnapshots()** — line ~495:
+
 - Change `.not("cost_lb", "is", null)` → `.not("price_tiers", "is", null)`
 - Change `cost_lb: bean.cost_lb` → `cost_lb: bean.price_tiers?.[0]?.price ?? bean.cost_lb`
 
@@ -149,19 +150,24 @@ $$;
 ### src/routes/analytics/+page.server.ts
 
 All queries selecting `cost_lb` need to switch:
+
 - Lines 189-204: Origin price range chart — change `.select('country, cost_lb')` and `.not('cost_lb', ...)` to use price_tiers
 - Lines 242-246: Supplier health table — same pattern
-- Lines 252-279: Supplier comparison — same pattern  
+- Lines 252-279: Supplier comparison — same pattern
 - Lines 313, 325: Arrivals/delistings — same pattern
 
 **Helper function** (add to top of file):
+
 ```typescript
 /** Extract per-lb price from price_tiers, falling back to cost_lb for legacy rows */
-function getPerLbPrice(row: { price_tiers?: Array<{price: number}> | null; cost_lb?: number | null }): number | null {
-  if (row.price_tiers?.length && typeof row.price_tiers[0].price === 'number') {
-    return row.price_tiers[0].price;
-  }
-  return row.cost_lb ?? null;
+function getPerLbPrice(row: {
+	price_tiers?: Array<{ price: number }> | null;
+	cost_lb?: number | null;
+}): number | null {
+	if (row.price_tiers?.length && typeof row.price_tiers[0].price === 'number') {
+		return row.price_tiers[0].price;
+	}
+	return row.cost_lb ?? null;
 }
 ```
 
@@ -241,7 +247,7 @@ This lets all existing `.gte('cost_lb', ...)` / `.order('cost_lb', ...)` queries
 2. **Reed runs SQL 0c** — update compute_price_index RPC
 3. **(Optional) Reed runs SQL Step 4** — generated column for query perf
 4. **PR: coffee-scraper** — Step 1 changes (extend existing PR #131)
-5. **PR: coffee-app** — Step 2 changes  
+5. **PR: coffee-app** — Step 2 changes
 6. **PR: purveyors-cli** — Step 3 changes
 7. After all merged: cost_lb is write-only on insert, read from price_tiers everywhere
 
