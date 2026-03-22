@@ -72,24 +72,23 @@ test.describe.serial('Critical business workflow', () => {
 	test('bean appears in inventory UI', async ({ page }) => {
 		expect(testBeanId).toBeTruthy();
 
-		await page.goto('/beans', { waitUntil: 'domcontentloaded' });
-
-		// Wait for the inventory API response to complete
-		await page.waitForResponse(
+		// Set up response listener BEFORE navigation
+		const beansResponse = page.waitForResponse(
 			(resp) => resp.url().includes('/api/beans') && resp.status() === 200,
-			{ timeout: 15000 }
+			{ timeout: 20000 }
 		);
+		await page.goto('/beans', { waitUntil: 'domcontentloaded' });
+		await beansResponse;
 
-		// Either a bean card or the empty state renders — both are valid
+		// Either a bean card or the empty state renders
 		const beanCard = page.locator('button.group.relative').first();
 		const emptyState = page.getByText(/No Coffee Beans Yet|No Coffees Match/i);
 
 		await Promise.race([
-			beanCard.waitFor({ state: 'visible', timeout: 10000 }),
-			emptyState.waitFor({ state: 'visible', timeout: 10000 })
+			beanCard.waitFor({ state: 'visible', timeout: 15000 }),
+			emptyState.waitFor({ state: 'visible', timeout: 15000 })
 		]);
 
-		// URL should still be /beans (no redirect happened)
 		await expect(page).toHaveURL(/beans/);
 	});
 
@@ -125,14 +124,14 @@ test.describe.serial('Critical business workflow', () => {
 	// -------------------------------------------------------------------------
 
 	test('roast page loads and renders', async ({ page }) => {
+		// Set up response listener BEFORE navigation
+		const roastResponse = page.waitForResponse(
+			(resp) => resp.url().includes('/api/roast-profiles') && resp.status() === 200,
+			{ timeout: 20000 }
+		);
 		await page.goto('/roast', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL(/roast/);
-
-		// Wait for roast profiles to load
-		await page.waitForResponse(
-			(resp) => resp.url().includes('/api/roast-profiles') && resp.status() === 200,
-			{ timeout: 15000 }
-		);
+		await roastResponse;
 
 		// Either a profile is shown or the empty-state "Browse Profiles" text
 		await expect(
