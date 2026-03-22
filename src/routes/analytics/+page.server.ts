@@ -42,20 +42,49 @@ export const load: PageServerLoad = async (event) => {
 		}
 	}
 
-	// Catalog stats — stocked retail beans (always public)
-	const { data: catalogRows } = await event.locals.supabase
+	// Catalog stats — use count queries to avoid Supabase 1000-row default limit
+
+	// Total beans tracked (all catalog entries, stocked or not)
+	const { count: totalBeansTracked } = await event.locals.supabase
 		.from('coffee_catalog')
-		.select('source, country, processing')
+		.select('*', { count: 'exact', head: true });
+
+	// Currently stocked (retail only)
+	const { count: stockedBeans } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('*', { count: 'exact', head: true })
 		.eq('stocked', true)
 		.eq('wholesale', false);
 
-	const totalBeans = catalogRows?.length ?? 0;
-	const totalSuppliers = new Set((catalogRows ?? []).map((r) => r.source).filter(Boolean)).size;
-	const originsCount = new Set((catalogRows ?? []).map((r) => r.country).filter(Boolean)).size;
+	// Distinct suppliers and origins — need to fetch columns for uniqueness
+	// Use a larger limit to capture all sources
+	const { data: supplierRows } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('source')
+		.eq('stocked', true)
+		.not('source', 'is', null)
+		.limit(5000);
+	const totalSuppliers = new Set((supplierRows ?? []).map((r) => r.source)).size;
 
-	// Processing method distribution (from catalog — always has data)
+	const { data: originRows } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('country')
+		.eq('stocked', true)
+		.not('country', 'is', null)
+		.limit(5000);
+	const originsCount = new Set((originRows ?? []).map((r) => r.country)).size;
+
+	// Processing method distribution (from stocked catalog)
+	const { data: processingRows } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('processing')
+		.eq('stocked', true)
+		.eq('wholesale', false)
+		.not('processing', 'is', null)
+		.limit(5000);
+
 	const rawDist: Record<string, number> = {};
-	for (const row of catalogRows ?? []) {
+	for (const row of processingRows ?? []) {
 		const key = normalizeProcess(row.processing);
 		rawDist[key] = (rawDist[key] ?? 0) + 1;
 	}
@@ -86,7 +115,13 @@ export const load: PageServerLoad = async (event) => {
 		session,
 		role,
 		isPpiMember,
-		stats: { totalBeans, totalSuppliers, originsCount, lastUpdated },
+		stats: {
+			totalBeansTracked: totalBeansTracked ?? 0,
+			stockedBeans: stockedBeans ?? 0,
+			totalSuppliers,
+			originsCount,
+			lastUpdated
+		},
 		snapshots,
 		processDistribution
 	};
