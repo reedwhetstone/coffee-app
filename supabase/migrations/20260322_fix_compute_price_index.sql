@@ -5,6 +5,8 @@
 -- Fix: Use catalog columns directly (normalization happens at scraper ingest time)
 -- ============================================================
 
+DROP FUNCTION IF EXISTS public.compute_price_index(date);
+
 CREATE OR REPLACE FUNCTION public.compute_price_index(p_date date DEFAULT CURRENT_DATE)
 RETURNS void
 LANGUAGE plpgsql
