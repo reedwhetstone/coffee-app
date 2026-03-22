@@ -4,13 +4,13 @@
 		PriceSnapshot,
 		ProcessBucket,
 		OriginRangeRow,
-		ArrivalBean,
-		DelistingBean
 	} from './+page.server';
 	import { goto } from '$app/navigation';
 	import OriginLineChart from '$lib/components/analytics/OriginLineChart.svelte';
 	import OriginBarChart from '$lib/components/analytics/OriginBarChart.svelte';
 	import ProcessDonutChart from '$lib/components/analytics/ProcessDonutChart.svelte';
+	import SupplierComparisonTable from '$lib/components/analytics/SupplierComparisonTable.svelte';
+	import SupplierHealthTable from '$lib/components/analytics/SupplierHealthTable.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -21,8 +21,10 @@
 		snapshots,
 		processDistribution,
 		originRangeData,
-		recentArrivals,
-		recentDelistings
+		recentArrivals: _recentArrivals,
+		recentDelistings: _recentDelistings,
+		comparisonBeans,
+		supplierHealth
 	} = $derived(
 		data as {
 			session: PageData['session'];
@@ -38,8 +40,18 @@
 			snapshots: PriceSnapshot[];
 			processDistribution: ProcessBucket[];
 			originRangeData: OriginRangeRow[];
-			recentArrivals: ArrivalBean[];
-			recentDelistings: DelistingBean[];
+			supplierHealth: Array<{
+				source: string;
+				stockedCount: number;
+				origins: number;
+				avgPrice: number;
+				minPrice: number;
+				maxPrice: number;
+				retailCount: number;
+				wholesaleCount: number;
+			}>;
+			comparisonBeans: ComparisonBean[];
+			supplierHealth: SupplierHealthRow[];
 		}
 	);
 
@@ -306,6 +318,31 @@
 			{/if}
 		</div>
 	</div>
+</div>
+
+<!-- Supplier Price Comparison -->
+<div class="mb-8">
+	<SupplierComparisonTable beans={comparisonBeans} />
+</div>
+
+<!-- Supplier Overview -->
+<div class="mb-8">
+	<div class="mb-3">
+		<h2 class="text-xl font-semibold text-text-primary-light">Supplier Overview</h2>
+		<p class="mt-1 text-sm text-text-secondary-light">
+			Catalog breadth and pricing by supplier — click any column header to sort. A quick answer
+			to "which suppliers should I be looking at?"
+		</p>
+	</div>
+	{#if supplierHealth && supplierHealth.length > 0}
+		<SupplierHealthTable rows={supplierHealth} />
+	{:else}
+		<div
+			class="flex h-24 items-center justify-center rounded-lg border border-border-light bg-background-secondary-light"
+		>
+			<p class="text-sm text-text-secondary-light">No supplier data available yet.</p>
+		</div>
+	{/if}
 </div>
 
 <!-- Gated Section -->

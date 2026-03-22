@@ -19,6 +19,27 @@ export interface DelistingBean {
 	unstocked_date: string | null;
 }
 
+export interface ComparisonBean {
+	name: string;
+	country: string;
+	processing: string | null;
+	cost_lb: number;
+	source: string;
+	wholesale: boolean;
+	bag_size: string | null;
+}
+
+export interface SupplierHealthRow {
+	source: string;
+	stockedCount: number;
+	origins: number;
+	avgCostLb: number;
+	minCostLb: number;
+	maxCostLb: number;
+	wholesaleCount: number;
+	retailCount: number;
+}
+
 export interface PriceSnapshot {
 	snapshot_date: string;
 	origin: string;
@@ -214,6 +235,74 @@ export const load: PageServerLoad = async (event) => {
 		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 15);
 	})();
 
+	// Supplier comparison data — all stocked beans with price, filtered client-side by origin
+	const { data: comparisonBeans } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('name, country, processing, cost_lb, source, wholesale, bag_size')
+		.eq('stocked', true)
+		.not('cost_lb', 'is', null)
+		.not('country', 'is', null)
+		.order('cost_lb', { ascending: true })
+		.limit(2000);
+
+	// Supplier health: all stocked beans grouped by source
+	const { data: supplierBeans } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('source, country, cost_lb, wholesale, stocked')
+		.eq('stocked', true)
+		.not('cost_lb', 'is', null)
+		.limit(5000);
+
+	const supplierHealth: SupplierHealthRow[] = (() => {
+		if (!supplierBeans || supplierBeans.length === 0) return [];
+
+		const bySource = new Map<
+			string,
+			{
+				countries: Set<string>;
+				costs: number[];
+				wholesaleCount: number;
+				retailCount: number;
+			}
+		>();
+
+		for (const row of supplierBeans) {
+			if (!row.source || row.cost_lb == null) continue;
+			const entry = bySource.get(row.source) ?? {
+				countries: new Set<string>(),
+				costs: [],
+				wholesaleCount: 0,
+				retailCount: 0
+			};
+			if (row.country) entry.countries.add(row.country);
+			entry.costs.push(row.cost_lb as number);
+			if (row.wholesale) {
+				entry.wholesaleCount += 1;
+			} else {
+				entry.retailCount += 1;
+			}
+			bySource.set(row.source, entry);
+		}
+
+		const result: SupplierHealthRow[] = [];
+		for (const [source, entry] of bySource) {
+			if (entry.costs.length === 0) continue;
+			const avg = entry.costs.reduce((s, v) => s + v, 0) / entry.costs.length;
+			result.push({
+				source,
+				stockedCount: entry.costs.length,
+				origins: entry.countries.size,
+				avgCostLb: avg,
+				minCostLb: Math.min(...entry.costs),
+				maxCostLb: Math.max(...entry.costs),
+				wholesaleCount: entry.wholesaleCount,
+				retailCount: entry.retailCount
+			});
+		}
+
+		return result.sort((a, b) => b.stockedCount - a.stockedCount);
+	})();
+
 	// New arrivals — stocked beans with stocked_date in last 30 days (supports 7-day/30-day toggle)
 	const thirtyDaysAgoArrivals = new Date();
 	thirtyDaysAgoArrivals.setDate(thirtyDaysAgoArrivals.getDate() - 30);
@@ -254,6 +343,8 @@ export const load: PageServerLoad = async (event) => {
 		processDistribution,
 		originRangeData,
 		recentArrivals: (recentArrivals30 ?? []) as ArrivalBean[],
-		recentDelistings: (recentDelistings30 ?? []) as DelistingBean[]
+		recentDelistings: (recentDelistings30 ?? []) as DelistingBean[],
+		comparisonBeans: (comparisonBeans ?? []) as ComparisonBean[],
+		supplierHealth
 	};
 };

@@ -24,7 +24,8 @@
 		"test:e2e:auth": "pnpm exec playwright test --project=setup",
 		"test:codegen": "pnpm exec playwright codegen http://localhost:5173",
 		"test:codegen:auth": "pnpm exec playwright codegen --load-storage=tests/e2e/.auth/user.json http://localhost:5173",
-		"vercel-dev": "vercel dev"
+		"vercel-dev": "vercel dev",
+		"backfill:supply-index": "npx tsx scripts/backfill-supply-index.ts"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.3",
