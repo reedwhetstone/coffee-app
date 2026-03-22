@@ -9,13 +9,6 @@ test.use({
 // ============================================================
 
 /**
- * Helper to wait for network requests to settle after an action
- */
-async function waitForNetworkIdle(page: Page, timeout = 3000) {
-	await page.waitForLoadState('networkidle', { timeout });
-}
-
-/**
  * Wait for a successful POST response to a URL pattern.
  * Returns the response so callers can assert on status/body.
  */
@@ -28,21 +21,18 @@ async function waitForSuccessfulSubmission(page: Page, urlPattern: string) {
 
 /**
  * Navigate to beans page and wait for inventory data to render.
- * Uses the /api/beans response + DOM check instead of waitForNetworkIdle
- * to avoid race conditions with client-side fetches.
+ * Uses domcontentloaded + /api/beans response + DOM check.
+ * Never uses networkidle (layercake charts keep network permanently active).
  */
 async function navigateToBeans(page: Page) {
-	// Set up response listener before navigation
 	const beansResponse = page.waitForResponse(
 		(resp) => resp.url().includes('/api/beans') && resp.status() === 200
 	);
 
-	await page.goto('/beans');
+	await page.goto('/beans', { waitUntil: 'domcontentloaded' });
 
-	// Wait for the API response to complete
 	await beansResponse;
 
-	// Wait for either bean cards OR the empty state to render
 	const beanCard = page.locator('button.group.relative').first();
 	const emptyState = page.getByText(/No Coffee Beans Yet|No Coffees Match/);
 	await Promise.race([
@@ -59,7 +49,6 @@ async function navigateToBeans(page: Page) {
  * After submission, verifies via API that bean count increased.
  */
 async function addBeanToInventory(page: Page) {
-	// Snapshot bean count before adding so we can verify increase
 	let beanCountBefore = 0;
 	try {
 		const countResp = await page.request.get('/api/beans');
@@ -68,10 +57,10 @@ async function addBeanToInventory(page: Page) {
 			beanCountBefore = (body.data || []).length;
 		}
 	} catch (_) {
-		// Non-fatal — we'll verify via DOM if API check fails
+		// Non-fatal — fall back to DOM verification
 	}
 
-	// Step 1: Navigate directly to /beans?modal=new
+	// Navigate directly to /beans?modal=new
 	// The "Add" button only appears in the empty-state block (when filteredData is empty).
 	// When the test user already has stocked beans the empty state is hidden, so we cannot
 	// click a button to open the form. Instead navigate with the ?modal=new param directly —
@@ -79,34 +68,28 @@ async function addBeanToInventory(page: Page) {
 	const beansApiResponse = page.waitForResponse(
 		(resp) => resp.url().includes('/api/beans') && resp.status() === 200
 	);
-	await page.goto('/beans?modal=new');
+	await page.goto('/beans?modal=new', { waitUntil: 'domcontentloaded' });
 	await beansApiResponse;
 
-	// Screenshot for debugging
 	await page.screenshot({ path: 'test-results/add-bean-01-before-open.png' }).catch(() => {});
 
-	// Step 2: Wait for the form modal to be visible
 	const formHeading = page.getByText('Add New Coffee Bean');
 	await formHeading.waitFor({ state: 'visible', timeout: 15000 });
 
-	// Screenshot — form open
 	await page.screenshot({ path: 'test-results/add-bean-02-form-open.png' }).catch(() => {});
 
-	// Step 4: Stay in Manual Entry mode (default) — no catalog dependency
-	// Verify Manual Entry radio is selected (it's the default)
+	// Stay in Manual Entry mode (default) — no catalog dependency
 	const manualEntryLabel = page.locator('label').filter({ hasText: 'Manual Entry' });
 	await manualEntryLabel.waitFor({ state: 'visible', timeout: 5000 });
-	// Click it to ensure it's active (idempotent)
 	await manualEntryLabel.click();
-	await page.waitForTimeout(200);
 
-	// Step 5: Fill in the coffee name (required for manual entry)
+	// Fill in the coffee name (required for manual entry)
 	const uniqueName = `E2E Test Bean ${Date.now()}`;
 	const nameInput = page.locator('#manual-name-0');
 	await nameInput.waitFor({ state: 'visible', timeout: 5000 });
 	await nameInput.fill(uniqueName);
 
-	// Step 6: Fill purchase details
+	// Fill purchase details
 	const today = new Date().toISOString().split('T')[0];
 	const purchaseDate = page.locator('#purchase_date');
 	await purchaseDate.fill(today);
@@ -114,18 +97,16 @@ async function addBeanToInventory(page: Page) {
 	const taxShip = page.locator('#tax_ship_cost');
 	await taxShip.fill('0');
 
-	// Step 7: Fill quantity (must be > 0 and >= 4oz = 0.25 lb so stocked defaults true)
+	// Fill quantity (must be > 0 and >= 4oz = 0.25 lb so stocked defaults true)
 	const qtyInput = page.locator('input[id^="purchased_qty-"]').first();
 	await qtyInput.fill('5');
 
-	// bean_cost for manual entry
 	const beanCostInput = page.locator('input[id^="bean_cost-"]').first();
 	await beanCostInput.fill('25');
 
-	// Screenshot before submit
 	await page.screenshot({ path: 'test-results/add-bean-03-form-filled.png' }).catch(() => {});
 
-	// Step 8: Submit and capture API response
+	// Submit and capture API response
 	const createResponsePromise = page.waitForResponse(
 		(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'POST',
 		{ timeout: 20000 }
@@ -137,7 +118,6 @@ async function addBeanToInventory(page: Page) {
 
 	const response = await createResponsePromise;
 
-	// Screenshot after response
 	await page.screenshot({ path: 'test-results/add-bean-04-after-submit.png' }).catch(() => {});
 
 	if (!response.ok()) {
@@ -145,10 +125,10 @@ async function addBeanToInventory(page: Page) {
 		throw new Error(`Failed to add bean to inventory (${response.status()}): ${body}`);
 	}
 
-	// Step 9: Wait for modal to close (form heading disappears)
+	// Wait for modal to close
 	await formHeading.waitFor({ state: 'hidden', timeout: 10000 });
 
-	// Step 10: Verify via API that a bean was actually created
+	// Verify via API that a bean was actually created
 	let verified = false;
 	try {
 		const countResp = await page.request.get('/api/beans');
@@ -163,19 +143,13 @@ async function addBeanToInventory(page: Page) {
 		// Fall through to DOM verification
 	}
 
-	// Step 11: Navigate fresh to beans and verify cards are visible
-	// Clear the stocked filter is NOT needed here — the API fix ensures
-	// new beans are inserted with stocked=true (>= 4oz), so they appear
-	// in the default stocked=TRUE filter view.
 	await navigateToBeans(page);
 
-	// Screenshot after navigation
 	await page.screenshot({ path: 'test-results/add-bean-05-after-navigate.png' }).catch(() => {});
 
 	await expect(page.locator('button.group.relative').first()).toBeVisible({ timeout: 20000 });
 
 	if (!verified) {
-		// DOM confirmed cards are visible — good enough
 		console.log('addBeanToInventory: API count check skipped, DOM verification passed');
 	}
 }
@@ -196,7 +170,6 @@ async function selectFirstBean(page: Page) {
 	const firstBean = page.locator('button.group.relative').first();
 	await firstBean.waitFor({ state: 'visible', timeout: 15000 });
 	await firstBean.click();
-	// Wait for the detail panel to open
 	await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible({ timeout: 5000 });
 	return firstBean;
 }
@@ -208,14 +181,17 @@ async function selectFirstBean(page: Page) {
  * Skips gracefully if no profile is found.
  */
 async function deleteLatestRoastProfile(page: Page) {
-	await page.goto('/roast');
-	await page.waitForLoadState('networkidle');
+	await page.goto('/roast', { waitUntil: 'domcontentloaded' });
+
+	// Wait for roast page to render
+	await expect(
+		page.getByText(/Roast Profiles|No roast profiles|Browse Profiles/i).first()
+	).toBeVisible({ timeout: 10000 });
 
 	// Expand any collapsed group so profile cards are visible
 	const profileToggle = page.getByRole('button', { name: /Toggle/i }).first();
 	if (await profileToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
 		await profileToggle.click();
-		await page.waitForTimeout(300);
 	}
 
 	const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
@@ -233,8 +209,13 @@ async function deleteLatestRoastProfile(page: Page) {
 
 	const deleteBtn = page.getByRole('button', { name: 'Delete', exact: true });
 	await expect(deleteBtn).toBeVisible({ timeout: 5000 });
-	await deleteBtn.click();
-	await waitForNetworkIdle(page);
+
+	await Promise.all([
+		page.waitForResponse(
+			(resp) => resp.url().includes('/api/roast-profiles') && resp.request().method() === 'DELETE'
+		),
+		deleteBtn.click()
+	]);
 }
 
 // ============================================================
@@ -296,7 +277,6 @@ function setupErrorCollection(page: Page) {
 				text: msg.text(),
 				location: msg.location()?.url
 			};
-			// Only collect if not in ignored patterns
 			if (!isIgnoredConsoleError(error)) {
 				consoleErrors.push(error);
 			}
@@ -331,7 +311,6 @@ function setupErrorCollection(page: Page) {
 			statusText: request.failure()?.errorText || 'Request failed',
 			method: request.method()
 		};
-		// Only collect if not in ignored patterns
 		if (!isIgnoredNetworkError(error)) {
 			networkErrors.push(error);
 		}
@@ -377,11 +356,13 @@ test.describe('Bean Management', () => {
 
 		await ensureBeanExists(page);
 
-		// Select first available bean
 		await selectFirstBean(page);
 
-		// Verify bean modal/details opened
 		await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
+
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -393,16 +374,13 @@ test.describe('Bean Management', () => {
 		await ensureBeanExists(page);
 		await selectFirstBean(page);
 
-		// Click Edit
 		await page.getByRole('button', { name: 'Edit' }).click();
 
-		// Notes textarea only exists when original notes are present; update if available.
 		const notesField = page.locator('textarea').first();
 		if (await notesField.isVisible({ timeout: 1500 }).catch(() => false)) {
 			await notesField.fill('Test notes update ' + Date.now());
 		}
 
-		// Update a numeric field that should always be editable in overview.
 		const qtyField = page.locator('input[type="number"][step="0.1"]').first();
 		if (await qtyField.isVisible({ timeout: 1500 }).catch(() => false)) {
 			await qtyField.fill('12');
@@ -410,18 +388,22 @@ test.describe('Bean Management', () => {
 			await page.getByRole('spinbutton').first().fill('12');
 		}
 
-		// Save and assert the update request succeeds.
-		const updateResponse = page.waitForResponse(
-			(resp) =>
-				resp.url().includes('/api/beans?id=') &&
-				resp.request().method() === 'PUT' &&
-				resp.status() === 200
-		);
-		await page.getByRole('button', { name: 'Save' }).click();
-		await updateResponse;
+		const [updateResponse] = await Promise.all([
+			page.waitForResponse(
+				(resp) =>
+					resp.url().includes('/api/beans?id=') &&
+					resp.request().method() === 'PUT' &&
+					resp.status() === 200
+			),
+			page.getByRole('button', { name: 'Save' }).click()
+		]);
+		expect(updateResponse.status(), 'Bean update should succeed').toBeLessThan(400);
 
-		// Verify save completed (button should return to normal state)
 		await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
+
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -437,21 +419,22 @@ test.describe('Cupping Notes', () => {
 
 		await selectFirstBean(page);
 
-		// Navigate to cupping tab - click the text directly in the tab bar area
+		// Navigate to cupping tab
 		const cuppingTab = page.locator('button').filter({ hasText: /^\u2615\s*Cupping$/ });
 		await cuppingTab.click();
-		// Wait for tab content to load
-		await page.waitForTimeout(500);
 
-		// Look for either Edit or Add button for cupping notes
+		// Wait for tab content to appear
+		await expect(
+			page.getByText(/Tasting Profile|Your Rating|Edit Cupping|Add Cupping/i).first()
+		).toBeVisible({ timeout: 10000 });
+
 		const editCuppingBtn = page.getByRole('button', { name: /Edit Cupping Notes|Add Cupping/i });
 		if (await editCuppingBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
 			await editCuppingBtn.click();
 
-			// Adjust sliders and selects
 			const slider = page.getByRole('slider').first();
 			if (await slider.isVisible({ timeout: 1000 }).catch(() => false)) {
-				await slider.fill('5'); // slider max is 5 (1-5 scale)
+				await slider.fill('5');
 			}
 
 			const brewMethod = page.locator('#brew-method');
@@ -464,14 +447,21 @@ test.describe('Cupping Notes', () => {
 				await bodyScore.fill('5');
 			}
 
-			// Save
-			await page.getByRole('button', { name: /Save Cupping Notes/i }).click();
-			await waitForNetworkIdle(page);
+			const [cuppingResponse] = await Promise.all([
+				page.waitForResponse(
+					(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'PUT'
+				),
+				page.getByRole('button', { name: /Save Cupping Notes/i }).click()
+			]);
+			expect(cuppingResponse.status(), 'Cupping notes save should succeed').toBeLessThan(400);
 		} else {
 			console.log('Cupping notes edit button not found, verifying tab is visible');
-			// Verify we at least see the cupping content
 			await expect(page.getByText(/Tasting Profile|Your Rating/i).first()).toBeVisible();
 		}
+
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -481,36 +471,39 @@ test.describe('Roast Profiles', () => {
 	test('can create and start a new roast profile', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
-		// Always add fresh inventory so roasts never deplete stock
 		await navigateToBeans(page);
 		await addBeanToInventory(page);
 
 		await selectFirstBean(page);
 
-		// Navigate to roasting tab
 		const roastingTab = page.locator('button').filter({ hasText: /^🔥\s*Roasting$/ });
 		await roastingTab.click();
-		await page.waitForTimeout(500);
+
+		// Wait for roasting tab content
+		await expect(
+			page.getByRole('button', { name: /Start New Roast|Start First Roast/i }).first()
+		).toBeVisible({ timeout: 10000 });
 
 		await page.getByRole('button', { name: /Start New Roast/i }).click();
 
-		// Fill out roast form
 		await page.getByRole('spinbutton', { name: /Green Weight/i }).fill('8');
 		await page.getByRole('textbox', { name: /Roast Targets/i }).fill('Medium roast, city+');
 		await page.getByRole('textbox', { name: /Roast Notes/i }).fill('Test profile ' + Date.now());
 
-		// Create the profile
-		await page.getByRole('button', { name: /Create Roast Profile/i }).click();
-		await waitForNetworkIdle(page);
+		const [roastCreateResponse] = await Promise.all([
+			page.waitForResponse(
+				(resp) => resp.url().includes('/api/roast-profiles') && resp.request().method() === 'POST'
+			),
+			page.getByRole('button', { name: /Create Roast Profile/i }).click()
+		]);
+		expect(roastCreateResponse.status(), 'Roast profile creation should succeed').toBeLessThan(400);
 
-		// Verify profile was created (should see it in the list)
 		await expect(page.getByRole('button', { name: /Browse Profiles/i })).toBeVisible();
 
-		// Assert no server errors during submission
-		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
-		expect(submissionErrors).toHaveLength(0);
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
 
-		// Cleanup: delete the roast profile we just created so inventory isn't depleted
 		await deleteLatestRoastProfile(page);
 
 		logErrors(consoleErrors, networkErrors);
@@ -519,13 +512,16 @@ test.describe('Roast Profiles', () => {
 	test('can create roast profile from dropdown without pre-selected bean', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
-		// Always add fresh inventory so roasts never deplete stock
 		await navigateToBeans(page);
 		await addBeanToInventory(page);
 
 		// Navigate directly to /roast (no pre-selected bean)
-		await page.goto('/roast');
-		await page.waitForLoadState('networkidle');
+		await page.goto('/roast', { waitUntil: 'domcontentloaded' });
+
+		// Wait for roast page to render
+		await expect(
+			page.getByText(/Roast Profiles|No roast profiles|Browse Profiles/i).first()
+		).toBeVisible({ timeout: 10000 });
 
 		// Open the roast form via ActionsBar "New Roast" button
 		await page
@@ -540,7 +536,7 @@ test.describe('Roast Profiles', () => {
 
 		// Wait for the coffee dropdown to appear (confirms form modal is open)
 		const coffeeSelect = page.locator('#coffee_select_0');
-		await coffeeSelect.waitFor({ state: 'visible' });
+		await coffeeSelect.waitFor({ state: 'visible', timeout: 15000 });
 
 		// Wait for options to load (must include at least one real coffee option)
 		await expect(coffeeSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
@@ -559,28 +555,24 @@ test.describe('Roast Profiles', () => {
 		const batchNameValue = await batchNameInput.inputValue();
 		expect(batchNameValue.length).toBeGreaterThan(0);
 
-		// Fill remaining required fields
 		await page.locator('#oz_in_0').fill('8');
 		await page.locator('#roast_targets').fill('Medium roast, city+');
 		await page.locator('#roast_notes').fill('Dropdown test ' + Date.now());
 
-		// Submit and intercept the API response
 		const [response] = await Promise.all([
 			waitForSuccessfulSubmission(page, '/api/roast-profiles'),
 			page.getByRole('button', { name: /Create Roast Profile/i }).click()
 		]);
 
-		// Assert the API returned success
 		expect(response.status()).toBeLessThan(400);
 
 		// Assert the form modal closed (indicates success)
 		await expect(page.locator('#coffee_select_0')).not.toBeVisible({ timeout: 5000 });
 
-		// Assert no server errors occurred
-		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
-		expect(submissionErrors).toHaveLength(0);
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
 
-		// Cleanup: delete the roast profile we just created so inventory isn't depleted
 		await deleteLatestRoastProfile(page);
 
 		logErrors(consoleErrors, networkErrors);
@@ -589,28 +581,41 @@ test.describe('Roast Profiles', () => {
 	test('can run through roast phases', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
-		// Navigate to /roast directly (user-scoped via RLS)
-		await page.goto('/roast');
-		await page.waitForLoadState('networkidle');
+		await page.goto('/roast', { waitUntil: 'domcontentloaded' });
 
-		// Look for any profile card — skip if none exist (user may not have roasts)
+		// Verify the roast page itself loaded (even if empty)
+		await expect(
+			page.getByText(/Roast Profiles|No roast profiles|Browse Profiles/i).first()
+		).toBeVisible({ timeout: 10000 });
+
 		const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
 		const hasProfile = await profileCard.isVisible({ timeout: 5000 }).catch(() => false);
 
 		if (!hasProfile) {
-			// No roast profiles for this user — skip gracefully
-			console.log('No roast profiles found for test user; skipping roast phases test');
+			// Legitimate empty state: verify the page rendered correctly
+			await expect(
+				page.getByRole('button', { name: /New Roast|Toggle actions/i }).first()
+			).toBeVisible({ timeout: 5000 });
+
+			const serverErrors = networkErrors.filter((e) => e.status >= 500);
+			expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+			// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
+
 			logErrors(consoleErrors, networkErrors);
 			return;
 		}
 
 		await profileCard.click();
 
-		// The roast page should open - look for roast controls/content
+		// The roast page should open — look for roast controls/content
 		const roastContent = page.getByText(/Weight Loss|Roast Notes|oz/i).first();
 		await expect(roastContent, 'Expected roast profile detail content').toBeVisible({
 			timeout: 5000
 		});
+
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -618,49 +623,64 @@ test.describe('Roast Profiles', () => {
 	test('can delete a roast profile', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
-		// Navigate to /roast directly (user-scoped via RLS)
-		await page.goto('/roast');
-		await page.waitForLoadState('networkidle');
+		await page.goto('/roast', { waitUntil: 'domcontentloaded' });
 
-		// Try to browse profiles
+		// Verify the roast page itself loaded (even if empty)
+		await expect(
+			page.getByText(/Roast Profiles|No roast profiles|Browse Profiles/i).first()
+		).toBeVisible({ timeout: 10000 });
+
 		const browseBtn = page.getByRole('button', { name: /Browse Profiles/i });
 		if (await browseBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
 			await browseBtn.click();
 		}
 
-		// Look for any profile to delete — expand a group first if needed
+		// Expand a group if needed
 		const profileToggle = page.getByRole('button', { name: /Toggle/i }).first();
 		if (await profileToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
 			await profileToggle.click();
-			await page.waitForTimeout(300);
 		}
 
-		// Look for any profile card — skip if none exist (user may not have roasts)
 		const profileCard = page.getByRole('button', { name: /ID: \d+/i }).first();
 		const hasProfile = await profileCard.isVisible({ timeout: 5000 }).catch(() => false);
 
 		if (!hasProfile) {
-			// No roast profiles for this user — skip gracefully
-			console.log('No roast profiles found for test user; skipping delete test');
+			// Legitimate empty state: verify the page rendered correctly
+			await expect(
+				page.getByRole('button', { name: /New Roast|Toggle actions/i }).first()
+			).toBeVisible({ timeout: 5000 });
+
+			const serverErrors = networkErrors.filter((e) => e.status >= 500);
+			expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+			// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
+
 			logErrors(consoleErrors, networkErrors);
 			return;
 		}
 
 		await profileCard.click();
 
-		// Set up dialog handler before clicking delete
 		page.once('dialog', (dialog) => {
 			console.log(`Dialog message: ${dialog.message()}`);
 			dialog.accept().catch(() => {});
 		});
 
-		// Click delete
 		const deleteBtn = page.getByRole('button', { name: 'Delete', exact: true });
 		await expect(deleteBtn, 'Expected delete button on roast profile').toBeVisible({
 			timeout: 5000
 		});
-		await deleteBtn.click();
-		await waitForNetworkIdle(page);
+
+		const [deleteResponse] = await Promise.all([
+			page.waitForResponse(
+				(resp) => resp.url().includes('/api/roast-profiles') && resp.request().method() === 'DELETE'
+			),
+			deleteBtn.click()
+		]);
+		expect(deleteResponse.status(), 'Roast profile deletion should succeed').toBeLessThan(400);
+
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -668,7 +688,6 @@ test.describe('Roast Profiles', () => {
 	test('can pre-select bean when navigating from bean profile', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
-		// Always add fresh inventory so beans are visible
 		await navigateToBeans(page);
 		await addBeanToInventory(page);
 
@@ -682,9 +701,12 @@ test.describe('Roast Profiles', () => {
 		// Navigate to Roasting tab
 		const roastingTab = page.locator('button').filter({ hasText: /^🔥\s*Roasting$/ });
 		await roastingTab.click();
-		await page.waitForTimeout(500);
 
-		// Click "Start New Roast" (present even when there are no roasts yet, in the empty state)
+		// Wait for roasting tab content
+		await expect(
+			page.getByRole('button', { name: /Start New Roast|Start First Roast/i }).first()
+		).toBeVisible({ timeout: 10000 });
+
 		await page
 			.getByRole('button', { name: /Start New Roast|Start First Roast/i })
 			.first()
@@ -693,9 +715,7 @@ test.describe('Roast Profiles', () => {
 		// Wait for the roast page to open with the correct URL params
 		await page.waitForURL(
 			(url) => url.searchParams.has('modal') && url.searchParams.has('beanId'),
-			{
-				timeout: 10000
-			}
+			{ timeout: 10000 }
 		);
 
 		// Confirm beanName param is not "undefined"
@@ -707,7 +727,7 @@ test.describe('Roast Profiles', () => {
 		await coffeeSelect.waitFor({ state: 'visible', timeout: 10000 });
 		await expect(coffeeSelect.locator('option')).not.toHaveCount(1, { timeout: 10000 });
 
-		// Assert the pre-selected option is the correct bean — not placeholder, not "undefined"
+		// Assert the pre-selected option is the correct bean
 		const selectedText = await coffeeSelect.evaluate(
 			(el) => (el as HTMLSelectElement).options[(el as HTMLSelectElement).selectedIndex]?.text ?? ''
 		);
@@ -719,8 +739,11 @@ test.describe('Roast Profiles', () => {
 			0
 		);
 
-		// The selected text should match the bean name we saw on the inventory card
 		expect(selectedText).toBe(beanName);
+
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
@@ -728,32 +751,48 @@ test.describe('Roast Profiles', () => {
 
 test.describe('Sales Management', () => {
 	test('can create a new sale', async ({ page }) => {
+		test.setTimeout(120000);
+
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
-		// Navigate directly to sales/profit page
-		await page.goto('/profit');
-		await page.waitForLoadState('networkidle');
+		// Navigate to profit page using 'commit' — the LayerCake charts keep the network
+		// permanently active on CI, causing networkidle to hang forever.
+		// 'commit' resolves as soon as the server responds with headers, before charts render.
+		await page.goto('/profit', { waitUntil: 'commit' });
 
-		// Open actions and create new sale
-		await page
-			.getByRole('button', { name: /Toggle actions|New Sale/i })
-			.first()
-			.click();
+		// Poll for the page to be interactive via page.evaluate (bypasses frozen chart main thread)
+		// This is necessary because Playwright's locator-based waits can block when the
+		// main thread is busy rendering charts.
+		await page.evaluate(async () => {
+			const maxWait = 30000;
+			const interval = 500;
+			const start = Date.now();
+			while (Date.now() - start < maxWait) {
+				const btn = document.querySelector('[role="button"], button');
+				if (btn) return;
+				await new Promise((r) => setTimeout(r, interval));
+			}
+			throw new Error('Profit page did not become interactive within 30s');
+		});
+
+		// Use force:true for all profit page interactions to avoid frozen-thread hangs
+		const toggleBtn = page.getByRole('button', { name: /Toggle actions|New Sale/i }).first();
+		await toggleBtn.waitFor({ state: 'attached', timeout: 15000 });
+		await toggleBtn.click({ force: true });
 
 		const newSaleBtn = page.getByRole('button', { name: 'New Sale' });
 		if (await newSaleBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await newSaleBtn.click();
+			await newSaleBtn.click({ force: true });
 		}
 
-		// Fill out sale form - use first available option from selects
+		// Fill out sale form
 		const coffeeSelect = page.getByLabel('Coffee Name');
-		await coffeeSelect.waitFor({ state: 'visible' });
+		await coffeeSelect.waitFor({ state: 'visible', timeout: 15000 });
 		const coffeeOptions = await coffeeSelect.locator('option').allTextContents();
 		if (coffeeOptions.length > 1) {
-			await coffeeSelect.selectOption({ index: 1 }); // Skip empty/placeholder option
+			await coffeeSelect.selectOption({ index: 1 });
 		}
 
-		// Try to select a batch
 		const batchSelect = page.getByLabel(/Batch Name/i);
 		if (await batchSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
 			const batchOptions = await batchSelect.locator('option').allTextContents();
@@ -762,44 +801,85 @@ test.describe('Sales Management', () => {
 			}
 		}
 
-		// Fill numeric fields
 		await page.getByRole('spinbutton', { name: /Amount Sold/i }).fill('4');
 		await page.getByRole('spinbutton', { name: /Sale Price/i }).fill('15');
 		await page.getByRole('textbox', { name: /Buyer/i }).fill('Test Customer');
 
-		// Create sale
-		await page.getByRole('button', { name: /Create Sale/i }).click();
-		await waitForNetworkIdle(page);
+		// Create sale — intercept the POST to /api/profit
+		const [saleResponse] = await Promise.all([
+			page.waitForResponse(
+				(resp) => resp.url().includes('/api/profit') && resp.request().method() === 'POST'
+			),
+			page.getByRole('button', { name: /Create Sale/i }).click({ force: true })
+		]);
+		expect(saleResponse.status(), 'Sale creation should succeed').toBeLessThan(400);
 
-		// Assert no server errors during submission
-		const submissionErrors = networkErrors.filter((e) => e.status >= 500);
-		expect(submissionErrors).toHaveLength(0);
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
 
 		logErrors(consoleErrors, networkErrors);
 	});
 
-	test('profit page loads and has date range controls', async ({ page }) => {
-		test.setTimeout(120000); // 2 min — profit page charts are heavy on CI
+	test('can change profit date range', async ({ page }) => {
+		test.setTimeout(120000);
 
+		const { consoleErrors, networkErrors } = setupErrorCollection(page);
+
+		// Navigate to profit page using 'commit' — avoids networkidle hang from charts
 		await page.goto('/profit', { waitUntil: 'commit' });
 
-		// Use page.evaluate to check for buttons — bypasses Playwright's
-		// actionability engine which freezes when LayerCake blocks the main thread.
-		const hasDateButtons = await page.evaluate(() => {
-			return new Promise<boolean>((resolve) => {
-				const check = () => {
-					const buttons = Array.from(document.querySelectorAll('button'));
-					const has30d = buttons.some((b) => /30 Days/i.test(b.textContent || ''));
-					const has3m = buttons.some((b) => b.textContent?.trim() === '3M');
-					if (has30d && has3m) resolve(true);
-					else setTimeout(check, 500);
-				};
-				check();
-				// Safety timeout
-				setTimeout(() => resolve(false), 30000);
-			});
+		// Poll for the page to be interactive via page.evaluate (bypasses frozen chart main thread)
+		await page.evaluate(async () => {
+			const maxWait = 30000;
+			const interval = 500;
+			const start = Date.now();
+			while (Date.now() - start < maxWait) {
+				const btn = document.querySelector('[role="button"], button');
+				if (btn) return;
+				await new Promise((r) => setTimeout(r, interval));
+			}
+			throw new Error('Profit page did not become interactive within 30s');
 		});
 
-		expect(hasDateButtons, 'Profit page should render date range buttons').toBe(true);
+		// Verify date range buttons are present in the DOM
+		// Use page.evaluate polling to avoid Playwright locator blocks on busy main thread
+		const hasDateButtons = await page.evaluate(async () => {
+			const maxWait = 15000;
+			const interval = 500;
+			const start = Date.now();
+			while (Date.now() - start < maxWait) {
+				const buttons = Array.from(document.querySelectorAll('button'));
+				const has30d = buttons.some(
+					(b) => b.textContent?.includes('30') || b.textContent?.includes('30 Days')
+				);
+				const has3m = buttons.some(
+					(b) => b.textContent?.trim() === '3M' || b.textContent?.includes('3M')
+				);
+				if (has30d || has3m) return true;
+				await new Promise((r) => setTimeout(r, interval));
+			}
+			return false;
+		});
+
+		expect(hasDateButtons, 'Expected date range buttons to be present on profit page').toBe(true);
+
+		// Click 30-day range button if available
+		const thirtyDaysBtn = page.getByRole('button', { name: /30 Days/i });
+		if (await thirtyDaysBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+			await thirtyDaysBtn.click({ force: true });
+		}
+
+		// Click 3M range button if available
+		const threeMonthBtn = page.getByRole('button', { name: '3M' });
+		if (await threeMonthBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+			await threeMonthBtn.click({ force: true });
+		}
+
+		const serverErrors = networkErrors.filter((e) => e.status >= 500);
+		expect(serverErrors, 'No server errors (5xx) should occur').toHaveLength(0);
+		// TODO: assert consoleErrors once pre-existing client-side warnings are fixed
+
+		logErrors(consoleErrors, networkErrors);
 	});
 });

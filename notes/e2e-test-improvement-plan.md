@@ -53,8 +53,8 @@ Several tests use patterns like:
 ```typescript
 const hasProfile = await profileCard.isVisible({ timeout: 5000 }).catch(() => false);
 if (!hasProfile) {
-  console.log('No roast profiles found; skipping...');
-  return;
+	console.log('No roast profiles found; skipping...');
+	return;
 }
 ```
 
@@ -68,8 +68,8 @@ await expect(page.getByText(/Roast Profiles|No profiles yet/i)).toBeVisible({ ti
 
 // If empty state, verify it's the real empty state, not a crash
 if (await page.getByText(/No profiles yet/).isVisible()) {
-  await expect(page.getByRole('button', { name: /New Roast/i })).toBeVisible();
-  return; // Legitimate empty state
+	await expect(page.getByRole('button', { name: /New Roast/i })).toBeVisible();
+	return; // Legitimate empty state
 }
 ```
 
@@ -96,8 +96,10 @@ await waitForNetworkIdle(page);
 
 // Good
 const [response] = await Promise.all([
-  page.waitForResponse(resp => resp.url().includes('/api/beans') && resp.request().method() === 'PUT'),
-  submitBtn.click()
+	page.waitForResponse(
+		(resp) => resp.url().includes('/api/beans') && resp.request().method() === 'PUT'
+	),
+	submitBtn.click()
 ]);
 expect(response.status()).toBeLessThan(400);
 ```
@@ -172,6 +174,7 @@ Code Quality -> Unit Tests (Vitest) -> E2E Smoke (fast, 2 min) -> E2E Full (thor
 **Add Vitest unit tests** for server load functions, utility functions, chat tools, and API route handlers.
 
 **Split E2E into two tiers:**
+
 - **Smoke** (every PR): page loads, critical path (login -> add bean -> create roast -> record sale)
 - **Full** (merge to main): all tests including edge cases, errors, and performance
 
