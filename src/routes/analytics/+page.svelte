@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type { PriceSnapshot, ProcessBucket } from './+page.server';
+	import type { PriceSnapshot, ProcessBucket, OriginRangeRow } from './+page.server';
 	import { goto } from '$app/navigation';
 	import OriginLineChart from '$lib/components/analytics/OriginLineChart.svelte';
 	import OriginBarChart from '$lib/components/analytics/OriginBarChart.svelte';
@@ -8,7 +8,7 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	let { session, isPpiMember, stats, snapshots, processDistribution } = $derived(
+	let { session, isPpiMember, stats, snapshots, processDistribution, originRangeData } = $derived(
 		data as {
 			session: PageData['session'];
 			isPpiMember: boolean;
@@ -22,6 +22,7 @@
 			};
 			snapshots: PriceSnapshot[];
 			processDistribution: ProcessBucket[];
+			originRangeData: OriginRangeRow[];
 		}
 	);
 
@@ -244,26 +245,24 @@
 			{/if}
 		</div>
 
-		<!-- Origin Price Comparison Bar Chart -->
+		<!-- Origin Price Range Chart -->
 		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Comparison</h2>
+			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Ranges</h2>
 			<p class="mb-4 text-sm text-text-secondary-light">
-				Avg $/lb by origin — ranked by volume (bean count)
-				{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
+				Price spread by origin — IQR box, median &amp; mean markers, full min/max range. Live from
+				catalog.
 			</p>
-			{#if originBarData.length > 0}
-				<div class="h-56 w-full">
-					<OriginBarChart data={originBarData} />
+			{#if originRangeData.length > 0}
+				<div class="h-80 w-full">
+					<OriginBarChart data={originRangeData} />
 				</div>
 			{:else}
 				<div
 					class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
 				>
-					<p class="text-sm font-medium text-text-secondary-light">
-						📊 Awaiting first price snapshot
-					</p>
+					<p class="text-sm font-medium text-text-secondary-light">📊 No origin data available</p>
 					<p class="mt-1 text-xs text-text-secondary-light">
-						First chart will appear after today's scraper run.
+						Requires stocked beans with cost_lb values in the catalog.
 					</p>
 				</div>
 			{/if}

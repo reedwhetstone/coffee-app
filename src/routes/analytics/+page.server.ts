@@ -19,6 +19,17 @@ export interface ProcessBucket {
 	wholesale: boolean;
 }
 
+export interface OriginRangeRow {
+	origin: string;
+	price_min: number;
+	price_max: number;
+	price_avg: number;
+	price_median: number;
+	price_q1: number;
+	price_q3: number;
+	sample_size: number;
+}
+
 function normalizeProcess(raw: string | null | undefined): string {
 	if (!raw) return 'Unknown';
 	const s = raw.toLowerCase().trim();
@@ -130,6 +141,59 @@ export const load: PageServerLoad = async (event) => {
 	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
 	const lastUpdated = snapshots.length ? snapshots[snapshots.length - 1].snapshot_date : null;
 
+	// Origin range data — live cross-section from coffee_catalog, percentiles computed in JS
+	const { data: catalogPriceRows } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('country, cost_lb')
+		.eq('stocked', true)
+		.not('country', 'is', null)
+		.not('cost_lb', 'is', null)
+		.gt('cost_lb', 0)
+		.limit(5000);
+
+	const originRangeData: OriginRangeRow[] = (() => {
+		if (!catalogPriceRows || catalogPriceRows.length === 0) return [];
+
+		// Group by country
+		const byCountry = new Map<string, number[]>();
+		for (const row of catalogPriceRows) {
+			if (!row.country || row.cost_lb == null) continue;
+			const prices = byCountry.get(row.country) ?? [];
+			prices.push(row.cost_lb as number);
+			byCountry.set(row.country, prices);
+		}
+
+		// Compute percentile from sorted array
+		function percentile(sorted: number[], p: number): number {
+			if (sorted.length === 0) return 0;
+			if (sorted.length === 1) return sorted[0];
+			const idx = p * (sorted.length - 1);
+			const lo = Math.floor(idx);
+			const hi = Math.ceil(idx);
+			return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+		}
+
+		const result: OriginRangeRow[] = [];
+		for (const [origin, prices] of byCountry) {
+			if (prices.length < 3) continue;
+			const sorted = [...prices].sort((a, b) => a - b);
+			const avg = sorted.reduce((s, v) => s + v, 0) / sorted.length;
+			result.push({
+				origin,
+				price_min: sorted[0],
+				price_max: sorted[sorted.length - 1],
+				price_avg: avg,
+				price_median: percentile(sorted, 0.5),
+				price_q1: percentile(sorted, 0.25),
+				price_q3: percentile(sorted, 0.75),
+				sample_size: sorted.length
+			});
+		}
+
+		// Sort by sample_size descending, top 15
+		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 15);
+	})();
+
 	return {
 		session,
 		role,
@@ -143,6 +207,7 @@ export const load: PageServerLoad = async (event) => {
 			lastUpdated
 		},
 		snapshots,
-		processDistribution
+		processDistribution,
+		originRangeData
 	};
 };
