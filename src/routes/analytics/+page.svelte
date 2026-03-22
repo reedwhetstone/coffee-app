@@ -400,6 +400,7 @@
 	</div>
 </div>
 
+{#if session}
 <!-- Supplier Price Comparison -->
 <div class="mb-8">
 	<ExpandablePanel
@@ -940,6 +941,98 @@
 		</div>
 	{/if}
 </div>
+
+{:else}
+<!-- Blurred preview for unauthenticated users — everything below the 3 public charts -->
+<div class="relative mb-8">
+	<div class="pointer-events-none select-none">
+		<div class="space-y-6 blur-sm filter">
+			<!-- Supplier Comparison skeleton -->
+			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
+				<h2 class="mb-2 text-xl font-semibold text-text-primary-light">Supplier Price Comparison</h2>
+				<p class="mb-4 text-sm text-text-secondary-light">Compare prices across suppliers by origin</p>
+				<div class="space-y-2">
+					{#each Array(6) as _}
+						<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
+							<div class="h-4 w-28 rounded bg-background-secondary-light"></div>
+							<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
+							<div class="h-4 w-20 rounded bg-background-secondary-light"></div>
+							<div class="ml-auto h-4 w-14 rounded bg-background-secondary-light"></div>
+						</div>
+					{/each}
+				</div>
+			</div>
+			<!-- Supplier Health skeleton -->
+			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
+				<h2 class="mb-2 text-xl font-semibold text-text-primary-light">Supplier Catalog Health</h2>
+				<p class="mb-4 text-sm text-text-secondary-light">Catalog breadth and pricing by supplier</p>
+				<div class="space-y-2">
+					{#each Array(6) as _}
+						<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
+							<div class="h-4 w-24 rounded bg-background-secondary-light"></div>
+							<div class="h-4 w-12 rounded bg-background-secondary-light"></div>
+							<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
+							<div class="ml-auto h-4 w-14 rounded bg-background-secondary-light"></div>
+						</div>
+					{/each}
+				</div>
+			</div>
+			<!-- Arrivals + Delistings skeleton -->
+			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+				<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
+					<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
+					<div class="mt-3 space-y-2">
+						{#each Array(4) as _}
+							<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
+								<div class="h-4 w-32 rounded bg-background-secondary-light"></div>
+								<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
+								<div class="ml-auto h-4 w-12 rounded bg-amber-100"></div>
+							</div>
+						{/each}
+					</div>
+				</div>
+				<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
+					<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
+					<div class="mt-3 space-y-2">
+						{#each Array(4) as _}
+							<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
+								<div class="h-4 w-32 rounded bg-background-secondary-light"></div>
+								<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
+								<div class="ml-auto h-4 w-12 rounded bg-red-100"></div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- CTA overlay -->
+	<div class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-gradient-to-b from-background-primary-light/60 to-background-primary-light">
+		<div class="mx-4 max-w-md rounded-xl border border-background-tertiary-light/30 bg-background-primary-light p-8 text-center shadow-lg">
+			<div class="mb-3 text-3xl">📊</div>
+			<h3 class="mb-2 text-2xl font-bold text-text-primary-light">Unlock Full Market Intelligence</h3>
+			<p class="mb-6 text-text-secondary-light">
+				Create a free account to access supplier comparisons, catalog health metrics, new arrivals tracking, and more — across {stats.totalSuppliers} suppliers, updated daily.
+			</p>
+			<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
+				<button
+					onclick={() => goto('/auth')}
+					class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
+				>
+					Sign Up Free
+				</button>
+				<button
+					onclick={() => goto('/auth')}
+					class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+				>
+					Sign In
+				</button>
+			</div>
+		</div>
+	</div>
+</div>
+{/if}
 
 <!-- Data source note -->
 <div class="mt-4 rounded-lg bg-background-secondary-light p-4 text-xs text-text-secondary-light">
