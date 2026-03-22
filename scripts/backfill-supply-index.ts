@@ -412,7 +412,7 @@ async function main() {
 
 	const BATCH_SIZE = 100;
 	let inserted = 0;
-	let skipped = 0;
+	const skipped = 0;
 
 	for (let i = 0; i < ppiRows.length; i += BATCH_SIZE) {
 		const batch = ppiRows.slice(i, i + BATCH_SIZE);
