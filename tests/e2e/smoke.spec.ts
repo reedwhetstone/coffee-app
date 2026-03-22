@@ -5,9 +5,9 @@
  * No business logic — just "does the page render without a 4xx/5xx error?"
  *
  * Split into three groups:
- *   1. Public pages — accessible without auth
- *   2. Protected pages — redirect away without auth (server-side)
- *   3. Protected pages — render correctly with auth
+ *   1. Public pages — accessible without auth (via HTTP request)
+ *   2. Protected pages — redirect away without auth (via HTTP request)
+ *   3. Protected pages — render correctly with auth (via browser page)
  *
  * Target: < 1 minute
  * Wait strategy: domcontentloaded (never networkidle)
@@ -21,37 +21,37 @@ import { test, expect } from '@playwright/test';
 // ---------------------------------------------------------------------------
 
 test.describe('Public pages load without auth', () => {
-	test('homepage /', async ({ playwright, baseURL }) => {
-		const ctx = await playwright.request.newContext({ baseURL });
-		const resp = await ctx.get('/', { maxRedirects: 5 });
+	test('homepage /', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/');
 		expect(resp.status()).toBeLessThan(400);
 		await ctx.dispose();
 	});
 
-	test('/blog', async ({ playwright, baseURL }) => {
-		const ctx = await playwright.request.newContext({ baseURL });
-		const resp = await ctx.get('/blog', { maxRedirects: 5 });
+	test('/blog', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/blog');
 		expect(resp.status()).toBeLessThan(500);
 		await ctx.dispose();
 	});
 
-	test('/contact', async ({ playwright, baseURL }) => {
-		const ctx = await playwright.request.newContext({ baseURL });
-		const resp = await ctx.get('/contact', { maxRedirects: 5 });
+	test('/contact', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/contact');
 		expect(resp.status()).toBeLessThan(500);
 		await ctx.dispose();
 	});
 
-	test('/privacy', async ({ playwright, baseURL }) => {
-		const ctx = await playwright.request.newContext({ baseURL });
-		const resp = await ctx.get('/privacy', { maxRedirects: 5 });
+	test('/privacy', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/privacy');
 		expect(resp.status()).toBeLessThan(500);
 		await ctx.dispose();
 	});
 
-	test('/terms', async ({ playwright, baseURL }) => {
-		const ctx = await playwright.request.newContext({ baseURL });
-		const resp = await ctx.get('/terms', { maxRedirects: 5 });
+	test('/terms', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/terms');
 		expect(resp.status()).toBeLessThan(500);
 		await ctx.dispose();
 	});
@@ -60,48 +60,47 @@ test.describe('Public pages load without auth', () => {
 // ---------------------------------------------------------------------------
 // Protected pages — redirect to /catalog when not authenticated
 // The SvelteKit authGuard hook redirects unauthenticated requests server-side.
-// We verify the final URL is NOT the protected route.
+// Use playwright.request for a clean HTTP-level check without browser cookies.
 // ---------------------------------------------------------------------------
 
 test.describe('Protected pages redirect without auth', () => {
-	test('/beans redirects to /catalog without auth', async ({ playwright, baseURL }) => {
-		const ctx = await playwright.request.newContext({ baseURL });
-		// Follow redirects and check final URL
-		const resp = await ctx.get('/beans', { maxRedirects: 5 });
-		// The server sends a 303 → catalog; after following, status should be 200
+	test('/beans redirects to /catalog without auth', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/beans');
+		// Server sends 303 → catalog; we verify it's NOT staying at /beans
 		expect(resp.status()).toBeLessThan(400);
-		// Final URL should not be /beans
+		// The final URL (after following redirects) should not be /beans
 		expect(resp.url()).not.toMatch(/\/beans$/);
 		await ctx.dispose();
 	});
 
-	test('/roast redirects to /catalog without auth', async ({ playwright, baseURL }) => {
-		const ctx = await playwright.request.newContext({ baseURL });
-		const resp = await ctx.get('/roast', { maxRedirects: 5 });
+	test('/roast redirects to /catalog without auth', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/roast');
 		expect(resp.status()).toBeLessThan(400);
 		expect(resp.url()).not.toMatch(/\/roast$/);
 		await ctx.dispose();
 	});
 
-	test('/profit redirects to /catalog without auth', async ({ playwright, baseURL }) => {
-		const ctx = await playwright.request.newContext({ baseURL });
-		const resp = await ctx.get('/profit', { maxRedirects: 5 });
+	test('/profit redirects to /catalog without auth', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/profit');
 		expect(resp.status()).toBeLessThan(400);
 		expect(resp.url()).not.toMatch(/\/profit$/);
 		await ctx.dispose();
 	});
 
-	test('/chat redirects without auth', async ({ playwright, baseURL }) => {
-		const ctx = await playwright.request.newContext({ baseURL });
-		const resp = await ctx.get('/chat', { maxRedirects: 5 });
+	test('/chat redirects without auth', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/chat');
 		expect(resp.status()).toBeLessThan(400);
 		expect(resp.url()).not.toMatch(/\/chat$/);
 		await ctx.dispose();
 	});
 
-	test('/admin redirects without auth', async ({ playwright, baseURL }) => {
-		const ctx = await playwright.request.newContext({ baseURL });
-		const resp = await ctx.get('/admin', { maxRedirects: 5 });
+	test('/admin redirects without auth', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/admin');
 		expect(resp.status()).toBeLessThan(400);
 		expect(resp.url()).not.toMatch(/\/admin$/);
 		await ctx.dispose();
@@ -110,7 +109,7 @@ test.describe('Protected pages redirect without auth', () => {
 
 // ---------------------------------------------------------------------------
 // Protected pages — load correctly with auth
-// Uses storageState set by the setup project.
+// Chromium project sets storageState: authFile in playwright.config.ts.
 // ---------------------------------------------------------------------------
 
 test.use({ storageState: 'tests/e2e/.auth/user.json' });
@@ -163,7 +162,7 @@ test.describe('Protected pages load with auth', () => {
 
 	test('/admin renders without crashing (may redirect non-admins)', async ({ page }) => {
 		await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-		// Admin redirects non-admin users to catalog — verify no 5xx either way
+		// Admin redirects non-admin users to catalog; verify no 5xx either way
 		await expect(page.locator('body')).not.toContainText('Internal Server Error');
 	});
 });
