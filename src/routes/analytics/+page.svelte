@@ -14,7 +14,8 @@
 			isPpiMember: boolean;
 			stats: {
 				totalBeansTracked: number;
-				stockedBeans: number;
+				stockedRetailBeans: number;
+				stockedWholesaleBeans: number;
 				totalSuppliers: number;
 				originsCount: number;
 				lastUpdated: string | null;
@@ -24,33 +25,70 @@
 		}
 	);
 
-	// Derive origin bar chart data from most-recent snapshot date
+	// Wholesale/Retail/All toggle state
+	type ViewMode = 'retail' | 'wholesale' | 'all';
+	let viewMode = $state<ViewMode>('retail');
+
+	// Derive filtered snapshots based on viewMode
+	let filteredSnapshots = $derived.by(() => {
+		if (viewMode === 'retail') return snapshots.filter((s) => !s.wholesale_only);
+		if (viewMode === 'wholesale') return snapshots.filter((s) => s.wholesale_only);
+		return snapshots;
+	});
+
+	// Derive filtered process distribution based on viewMode
+	let filteredProcessDist = $derived.by((): ProcessBucket[] => {
+		if (viewMode === 'retail') return processDistribution.filter((b) => !b.wholesale);
+		if (viewMode === 'wholesale') return processDistribution.filter((b) => b.wholesale);
+		// All: merge retail + wholesale counts by name
+		const merged = new Map<string, number>();
+		for (const b of processDistribution) {
+			merged.set(b.name, (merged.get(b.name) ?? 0) + b.count);
+		}
+		return Array.from(merged.entries())
+			.sort((a, b) => b[1] - a[1])
+			.map(([name, count]) => ({ name, count, wholesale: false }));
+	});
+
+	// Stocked count shown in the stats tile based on viewMode
+	let displayStockedCount = $derived.by(() => {
+		if (viewMode === 'retail') return stats.stockedRetailBeans;
+		if (viewMode === 'wholesale') return stats.stockedWholesaleBeans;
+		return stats.stockedRetailBeans + stats.stockedWholesaleBeans;
+	});
+
+	// Derive origin bar chart data from most-recent snapshot date (filtered)
 	let originBarData = $derived.by(() => {
-		if (!snapshots || snapshots.length === 0) return [];
-		const latestDate = snapshots.reduce(
+		if (!filteredSnapshots || filteredSnapshots.length === 0) return [];
+		const latestDate = filteredSnapshots.reduce(
 			(max, s) => (s.snapshot_date > max ? s.snapshot_date : max),
 			''
 		);
-		const byOrigin = new Map<string, { sum: number; count: number; suppliers: number }>();
-		for (const s of snapshots) {
+		const byOrigin = new Map<
+			string,
+			{ sum: number; count: number; suppliers: number; sample_size: number }
+		>();
+		for (const s of filteredSnapshots) {
 			if (s.snapshot_date !== latestDate || s.price_avg == null) continue;
-			const cur = byOrigin.get(s.origin) ?? { sum: 0, count: 0, suppliers: 0 };
+			const cur = byOrigin.get(s.origin) ?? { sum: 0, count: 0, suppliers: 0, sample_size: 0 };
 			cur.sum += s.price_avg;
 			cur.count += 1;
 			cur.suppliers = Math.max(cur.suppliers, s.supplier_count);
+			cur.sample_size += s.sample_size ?? 0;
 			byOrigin.set(s.origin, cur);
 		}
 		return Array.from(byOrigin.entries()).map(([origin, v]) => ({
 			origin,
 			price_avg: Math.round((v.sum / v.count) * 100) / 100,
-			supplier_count: v.suppliers
+			supplier_count: v.suppliers,
+			sample_size: v.sample_size
 		}));
 	});
 
-	// Origin line chart: all snapshots (null process = all-process aggregated, or pick any)
-	let lineSnapshots = $derived(snapshots.filter((s) => s.price_avg != null));
+	// Line chart: filtered snapshots with price data
+	let lineSnapshots = $derived(filteredSnapshots.filter((s) => s.price_avg != null));
 
-	let hasSnapshots = $derived(snapshots.length > 0);
+	let hasSnapshots = $derived(filteredSnapshots.length > 0);
 
 	function formatDate(dateStr: string | null) {
 		if (!dateStr) return 'N/A';
@@ -60,6 +98,12 @@
 			year: 'numeric'
 		});
 	}
+
+	const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
+		{ value: 'retail', label: 'Retail' },
+		{ value: 'wholesale', label: 'Wholesale' },
+		{ value: 'all', label: 'All' }
+	];
 </script>
 
 <svelte:head>
@@ -95,12 +139,27 @@
 		class="rounded-lg border border-border-light bg-background-primary-light p-4 text-center shadow-sm"
 	>
 		<div class="text-3xl font-bold text-background-tertiary-light">
-			{stats.stockedBeans.toLocaleString()}
+			{displayStockedCount.toLocaleString()}
 		</div>
-		<div class="mt-1 text-sm text-text-secondary-light">Stocked beans</div>
-		<div class="mt-0.5 text-xs text-text-secondary-light/60">
-			{stats.totalBeansTracked.toLocaleString()} total tracked
+		<div class="mt-1 text-sm text-text-secondary-light">
+			{#if viewMode === 'retail'}
+				Stocked retail
+			{:else if viewMode === 'wholesale'}
+				Stocked wholesale
+			{:else}
+				Stocked beans
+			{/if}
 		</div>
+		{#if viewMode === 'all'}
+			<div class="mt-0.5 text-xs text-text-secondary-light/60">
+				{stats.stockedRetailBeans.toLocaleString()} retail · {stats.stockedWholesaleBeans.toLocaleString()}
+				wholesale
+			</div>
+		{:else}
+			<div class="mt-0.5 text-xs text-text-secondary-light/60">
+				{stats.totalBeansTracked.toLocaleString()} total tracked
+			</div>
+		{/if}
 	</div>
 	<div
 		class="rounded-lg border border-border-light bg-background-primary-light p-4 text-center shadow-sm"
@@ -118,13 +177,34 @@
 	</div>
 </div>
 
+<!-- Wholesale/Retail Toggle -->
+<div class="mb-6 flex items-center gap-3">
+	<span class="text-sm font-medium text-text-secondary-light">View:</span>
+	<div
+		class="flex rounded-full border border-border-light bg-background-secondary-light p-1 shadow-sm"
+	>
+		{#each VIEW_OPTIONS as opt}
+			<button
+				onclick={() => (viewMode = opt.value)}
+				class="rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150
+				{viewMode === opt.value
+					? 'bg-background-tertiary-light text-white shadow-sm'
+					: 'text-text-secondary-light hover:text-text-primary-light'}"
+			>
+				{opt.label}
+			</button>
+		{/each}
+	</div>
+</div>
+
 <!-- Public Charts Section -->
 <div class="mb-8 space-y-6">
 	<!-- Price Over Time — Origin Line Chart -->
 	<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 		<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
 		<p class="mb-4 text-sm text-text-secondary-light">
-			Average $/lb by top origins over the last 30 days (retail, non-wholesale)
+			Average $/lb by top origins over the last 30 days — ranked by market volume
+			{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 		</p>
 		{#if hasSnapshots}
 			<div class="h-64 w-full">
@@ -150,11 +230,12 @@
 		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing Methods</h2>
 			<p class="mb-4 text-sm text-text-secondary-light">
-				Distribution of processing methods across {stats.stockedBeans.toLocaleString()} stocked beans
+				Distribution across {displayStockedCount.toLocaleString()} stocked beans
+				{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 			</p>
-			{#if processDistribution.length > 0}
+			{#if filteredProcessDist.length > 0}
 				<div class="h-56 w-full">
-					<ProcessDonutChart data={processDistribution} />
+					<ProcessDonutChart data={filteredProcessDist} />
 				</div>
 			{:else}
 				<div class="flex h-40 items-center justify-center rounded-lg bg-background-secondary-light">
@@ -167,7 +248,8 @@
 		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Comparison</h2>
 			<p class="mb-4 text-sm text-text-secondary-light">
-				Average $/lb by origin — most recent snapshot
+				Avg $/lb by origin — ranked by volume (bean count)
+				{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 			</p>
 			{#if originBarData.length > 0}
 				<div class="h-56 w-full">
@@ -306,17 +388,19 @@
 											>${row.price_avg.toFixed(2)}</td
 										>
 										<td class="py-2 pr-4 text-right text-text-secondary-light">
-											{#if snapshots.find((s) => s.origin === row.origin && s.price_min != null)}
-												${snapshots.find((s) => s.origin === row.origin)?.price_min?.toFixed(2) ??
-													'—'}
+											{#if filteredSnapshots.find((s) => s.origin === row.origin && s.price_min != null)}
+												${filteredSnapshots
+													.find((s) => s.origin === row.origin)
+													?.price_min?.toFixed(2) ?? '—'}
 											{:else}
 												—
 											{/if}
 										</td>
 										<td class="py-2 pr-4 text-right text-text-secondary-light">
-											{#if snapshots.find((s) => s.origin === row.origin && s.price_max != null)}
-												${snapshots.find((s) => s.origin === row.origin)?.price_max?.toFixed(2) ??
-													'—'}
+											{#if filteredSnapshots.find((s) => s.origin === row.origin && s.price_max != null)}
+												${filteredSnapshots
+													.find((s) => s.origin === row.origin)
+													?.price_max?.toFixed(2) ?? '—'}
 											{:else}
 												—
 											{/if}
@@ -385,7 +469,7 @@
 <!-- Data source note -->
 <div class="mt-4 rounded-lg bg-background-secondary-light p-4 text-xs text-text-secondary-light">
 	<strong class="text-text-primary-light">Data source:</strong> Prices aggregated daily from
-	{stats.totalSuppliers} US green coffee importers and roasters. Retail (non-wholesale) beans only. The
-	Purveyors Price Index (PPI) is updated each morning after scraper completion. Origin and processing
-	method data is sourced directly from supplier listings.
+	{stats.totalSuppliers} US green coffee importers and roasters. The Purveyors Price Index (PPI) is updated
+	each morning after scraper completion. Origin and processing method data is sourced directly from supplier
+	listings.
 </div>

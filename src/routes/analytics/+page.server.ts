@@ -10,11 +10,13 @@ export interface PriceSnapshot {
 	price_max: number | null;
 	supplier_count: number;
 	sample_size: number;
+	wholesale_only: boolean;
 }
 
 export interface ProcessBucket {
 	name: string;
 	count: number;
+	wholesale: boolean;
 }
 
 function normalizeProcess(raw: string | null | undefined): string {
@@ -49,12 +51,19 @@ export const load: PageServerLoad = async (event) => {
 		.from('coffee_catalog')
 		.select('*', { count: 'exact', head: true });
 
-	// Currently stocked (retail only)
-	const { count: stockedBeans } = await event.locals.supabase
+	// Currently stocked retail only
+	const { count: stockedRetailBeans } = await event.locals.supabase
 		.from('coffee_catalog')
 		.select('*', { count: 'exact', head: true })
 		.eq('stocked', true)
 		.eq('wholesale', false);
+
+	// Currently stocked wholesale only
+	const { count: stockedWholesaleBeans } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('*', { count: 'exact', head: true })
+		.eq('stocked', true)
+		.eq('wholesale', true);
 
 	// Distinct suppliers and origins — need to fetch columns for uniqueness
 	// Use a larger limit to capture all sources
@@ -74,25 +83,36 @@ export const load: PageServerLoad = async (event) => {
 		.limit(5000);
 	const originsCount = new Set((originRows ?? []).map((r) => r.country)).size;
 
-	// Processing method distribution (from stocked catalog)
+	// Processing method distribution — load ALL stocked beans with wholesale flag
 	const { data: processingRows } = await event.locals.supabase
 		.from('coffee_catalog')
-		.select('processing')
+		.select('processing, wholesale')
 		.eq('stocked', true)
-		.eq('wholesale', false)
 		.not('processing', 'is', null)
 		.limit(5000);
 
-	const rawDist: Record<string, number> = {};
-	for (const row of processingRows ?? []) {
-		const key = normalizeProcess(row.processing);
-		rawDist[key] = (rawDist[key] ?? 0) + 1;
-	}
-	const processDistribution: ProcessBucket[] = Object.entries(rawDist)
-		.sort((a, b) => b[1] - a[1])
-		.map(([name, count]) => ({ name, count }));
+	const processDistribution: ProcessBucket[] = (() => {
+		const retailDist: Record<string, number> = {};
+		const wholesaleDist: Record<string, number> = {};
+		for (const row of processingRows ?? []) {
+			const key = normalizeProcess(row.processing);
+			if (row.wholesale) {
+				wholesaleDist[key] = (wholesaleDist[key] ?? 0) + 1;
+			} else {
+				retailDist[key] = (retailDist[key] ?? 0) + 1;
+			}
+		}
+		// Return both retail and wholesale entries with a wholesale flag
+		const entries: ProcessBucket[] = [];
+		const allKeys = new Set([...Object.keys(retailDist), ...Object.keys(wholesaleDist)]);
+		for (const name of allKeys) {
+			if (retailDist[name]) entries.push({ name, count: retailDist[name], wholesale: false });
+			if (wholesaleDist[name]) entries.push({ name, count: wholesaleDist[name], wholesale: true });
+		}
+		return entries.sort((a, b) => b.count - a.count);
+	})();
 
-	// Price index snapshots — table added 2026-03-21, not yet in generated DB types
+	// Price index snapshots — load BOTH retail and wholesale rows
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 	const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
@@ -101,12 +121,11 @@ export const load: PageServerLoad = async (event) => {
 	const { data: snapshotsRaw } = await (event.locals.supabase as any)
 		.from('price_index_snapshots')
 		.select(
-			'snapshot_date, origin, process, price_avg, price_min, price_max, supplier_count, sample_size'
+			'snapshot_date, origin, process, price_avg, price_min, price_max, supplier_count, sample_size, wholesale_only'
 		)
-		.eq('wholesale_only', false)
 		.gte('snapshot_date', fromDate)
 		.order('snapshot_date', { ascending: true })
-		.limit(500);
+		.limit(1000);
 
 	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
 	const lastUpdated = snapshots.length ? snapshots[snapshots.length - 1].snapshot_date : null;
@@ -117,7 +136,8 @@ export const load: PageServerLoad = async (event) => {
 		isPpiMember,
 		stats: {
 			totalBeansTracked: totalBeansTracked ?? 0,
-			stockedBeans: stockedBeans ?? 0,
+			stockedRetailBeans: stockedRetailBeans ?? 0,
+			stockedWholesaleBeans: stockedWholesaleBeans ?? 0,
 			totalSuppliers,
 			originsCount,
 			lastUpdated

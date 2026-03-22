@@ -8,11 +8,13 @@
 		snapshot_date: string;
 		origin: string;
 		price_avg: number | null;
+		sample_size: number;
+		wholesale_only: boolean;
 	}
 
 	let { snapshots = [] }: { snapshots: SnapshotRow[] } = $props();
 
-	// Build top-5 origins by most-recent avg price descending
+	// Build top-5 origins by total sample_size (volume-ranked)
 	const COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6'];
 
 	let originMap = $derived.by(() => {
@@ -25,14 +27,23 @@
 		return map;
 	});
 
-	let topOrigins = $derived.by(() => {
-		// rank by most recent avg (last row per origin)
-		const ranked: { origin: string; lastAvg: number }[] = [];
-		for (const [origin, pts] of originMap) {
-			const sorted = [...pts].sort((a, b) => a.date.getTime() - b.date.getTime());
-			ranked.push({ origin, lastAvg: sorted[sorted.length - 1]?.value ?? 0 });
+	// Compute total sample_size per origin for volume ranking
+	let originVolume = $derived.by(() => {
+		const vol = new Map<string, number>();
+		for (const row of snapshots) {
+			if (row.price_avg == null) continue;
+			vol.set(row.origin, (vol.get(row.origin) ?? 0) + (row.sample_size ?? 0));
 		}
-		ranked.sort((a, b) => b.lastAvg - a.lastAvg);
+		return vol;
+	});
+
+	let topOrigins = $derived.by(() => {
+		// rank by total sample_size (market depth) descending
+		const ranked: { origin: string; totalSamples: number }[] = [];
+		for (const [origin] of originMap) {
+			ranked.push({ origin, totalSamples: originVolume.get(origin) ?? 0 });
+		}
+		ranked.sort((a, b) => b.totalSamples - a.totalSamples);
 		return ranked.slice(0, 5).map((r) => r.origin);
 	});
 
@@ -188,9 +199,13 @@
 		{#if seriesData.length > 0}
 			<div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 px-4">
 				{#each seriesData as series}
+					{@const vol = originVolume.get(series.origin) ?? 0}
 					<div class="flex items-center gap-1.5 text-xs text-text-secondary-light">
 						<div class="h-2.5 w-5 rounded-sm" style="background:{series.color}"></div>
 						{series.origin}
+						{#if vol > 0}
+							<span class="text-text-secondary-light/60">({vol})</span>
+						{/if}
 					</div>
 				{/each}
 			</div>
