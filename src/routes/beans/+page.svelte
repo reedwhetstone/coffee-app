@@ -489,15 +489,15 @@
 				<BeanProfileTabs
 					{selectedBean}
 					role={data?.role || 'viewer'}
-					onUpdate={async (updatedBean) => {
-						// Update selectedBean and refresh data
+					onUpdate={(updatedBean) => {
+						// Update selectedBean immediately for instant UI feedback
 						selectedBean = updatedBean;
-						await refreshData();
-						// Update selectedBean from refreshed data
-						const refreshedBean = typedFilteredData.find((bean) => bean.id === updatedBean.id);
-						if (refreshedBean) {
-							selectedBean = refreshedBean;
-						}
+						// Update clientData in place without triggering loading skeleton
+						clientData = clientData.map((bean) =>
+							bean.id === updatedBean.id ? (updatedBean as (typeof clientData)[0]) : bean
+						);
+						// Re-initialize filter store with updated data (no isLoading flash)
+						filterStore.initializeForRoute(page.url.pathname, clientData);
 					}}
 					onDelete={async (id) => {
 						await deleteBean(id);
