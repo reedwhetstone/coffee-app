@@ -4,6 +4,8 @@
 		PriceSnapshot,
 		ProcessBucket,
 		OriginRangeRow,
+		ArrivalBean,
+		DelistingBean,
 		ComparisonBean,
 		SupplierHealthRow
 	} from './+page.server';
@@ -23,8 +25,8 @@
 		snapshots,
 		processDistribution,
 		originRangeData,
-		recentArrivals: _recentArrivals,
-		recentDelistings: _recentDelistings,
+		recentArrivals,
+		recentDelistings,
 		comparisonBeans,
 		supplierHealth
 	} = $derived(
@@ -42,8 +44,8 @@
 			snapshots: PriceSnapshot[];
 			processDistribution: ProcessBucket[];
 			originRangeData: OriginRangeRow[];
-			recentArrivals: unknown[];
-			recentDelistings: unknown[];
+			recentArrivals: ArrivalBean[];
+			recentDelistings: DelistingBean[];
 			comparisonBeans: ComparisonBean[];
 			supplierHealth: SupplierHealthRow[];
 		}
@@ -151,6 +153,66 @@
 		{ value: 'wholesale', label: 'Wholesale' },
 		{ value: 'all', label: 'All' }
 	];
+
+	// Arrivals/Delistings window toggle
+	type WindowMode = '7d' | '30d';
+	let windowMode = $state<WindowMode>('7d');
+
+	const WINDOW_OPTIONS: { value: WindowMode; label: string }[] = [
+		{ value: '7d', label: 'Last 7 days' },
+		{ value: '30d', label: 'Last 30 days' }
+	];
+
+	let filteredArrivals = $derived.by(() => {
+		if (!recentArrivals) return [];
+		if (windowMode === '30d') return recentArrivals;
+		const cutoff = new Date();
+		cutoff.setDate(cutoff.getDate() - 7);
+		const cutoffStr = cutoff.toISOString().split('T')[0];
+		return recentArrivals.filter((b) => b.stocked_date != null && b.stocked_date >= cutoffStr);
+	});
+
+	let filteredDelistings = $derived.by(() => {
+		if (!recentDelistings) return [];
+		if (windowMode === '30d') return recentDelistings;
+		const cutoff = new Date();
+		cutoff.setDate(cutoff.getDate() - 7);
+		const cutoffStr = cutoff.toISOString().split('T')[0];
+		return recentDelistings.filter(
+			(b) => b.unstocked_date != null && b.unstocked_date >= cutoffStr
+		);
+	});
+
+	let delistingsByCountry = $derived.by(() => {
+		const counts = new Map<string, number>();
+		for (const b of filteredDelistings) {
+			const key = b.country ?? 'Unknown';
+			counts.set(key, (counts.get(key) ?? 0) + 1);
+		}
+		return Array.from(counts.entries())
+			.sort((a, b) => b[1] - a[1])
+			.map(([country, count]) => ({ country, count }));
+	});
+
+	function daysSince(dateStr: string | null): number {
+		if (!dateStr) return 0;
+		const then = new Date(dateStr + 'T00:00:00');
+		const now = new Date();
+		return Math.floor((now.getTime() - then.getTime()) / 86400000);
+	}
+
+	function formatSource(source: string | null): string {
+		if (!source) return '—';
+		return source
+			.split(/[_-]+/)
+			.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+			.join(' ');
+	}
+
+	function truncateName(name: string | null): string {
+		if (!name) return '—';
+		return name.length > 30 ? name.slice(0, 28) + '…' : name;
+	}
 </script>
 
 <svelte:head>
@@ -532,6 +594,193 @@
 			</div>
 		</div>
 	{/if}
+</div>
+
+<!-- New Arrivals + Recent Delistings -->
+<div class="mb-8">
+	<!-- Window Toggle -->
+	<div class="mb-4 flex items-center gap-3">
+		<span class="text-sm font-medium text-text-secondary-light">Show:</span>
+		<div
+			class="flex rounded-full border border-border-light bg-background-secondary-light p-1 shadow-sm"
+		>
+			{#each WINDOW_OPTIONS as opt}
+				<button
+					onclick={() => (windowMode = opt.value)}
+					class="rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150
+					{windowMode === opt.value
+						? 'bg-background-tertiary-light text-white shadow-sm'
+						: 'text-text-secondary-light hover:text-text-primary-light'}"
+				>
+					{opt.label}
+				</button>
+			{/each}
+		</div>
+	</div>
+
+	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+		<!-- New Arrivals -->
+		<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
+			<div class="mb-3 flex items-center justify-between">
+				<div>
+					<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
+					<p class="mt-0.5 text-sm text-text-secondary-light">
+						{filteredArrivals.length} new arrival{filteredArrivals.length === 1 ? '' : 's'} this {windowMode ===
+						'7d'
+							? 'week'
+							: 'month'}
+					</p>
+				</div>
+				<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700"
+					>+{filteredArrivals.length}</span
+				>
+			</div>
+			{#if filteredArrivals.length > 0}
+				<div class="overflow-x-auto">
+					<table class="min-w-full text-sm">
+						<thead>
+							<tr class="border-b border-border-light">
+								<th
+									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Bean</th
+								>
+								<th
+									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Origin</th
+								>
+								<th
+									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Process</th
+								>
+								<th
+									class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>$/lb</th
+								>
+								<th
+									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Supplier</th
+								>
+								<th
+									class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Days</th
+								>
+							</tr>
+						</thead>
+						<tbody>
+							{#each filteredArrivals as bean}
+								{@const days = daysSince(bean.stocked_date)}
+								<tr class="border-b border-border-light/40 hover:bg-amber-50">
+									<td class="py-2 pr-3 font-medium text-text-primary-light" title={bean.name}
+										>{truncateName(bean.name)}</td
+									>
+									<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
+									<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
+									<td class="py-2 pr-3 text-right font-semibold text-text-primary-light"
+										>{bean.cost_lb != null ? '$' + bean.cost_lb.toFixed(2) : '—'}</td
+									>
+									<td class="py-2 pr-3 text-text-secondary-light">{formatSource(bean.source)}</td>
+									<td class="py-2 text-right"
+										><span
+											class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+											>{days === 0 ? 'Today' : days + 'd'}</span
+										></td
+									>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{:else}
+				<div class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light">
+					<p class="text-sm text-text-secondary-light">No new arrivals in the selected window.</p>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Recent Delistings -->
+		<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
+			<div class="mb-3 flex items-center justify-between">
+				<div>
+					<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
+					<p class="mt-0.5 text-sm text-text-secondary-light">
+						{filteredDelistings.length} bean{filteredDelistings.length === 1 ? '' : 's'} delisted this
+						{windowMode === '7d' ? 'week' : 'month'}
+					</p>
+				</div>
+				<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600"
+					>-{filteredDelistings.length}</span
+				>
+			</div>
+			{#if delistingsByCountry.length > 0}
+				<p class="mb-3 text-xs text-text-secondary-light">
+					{delistingsByCountry
+						.slice(0, 5)
+						.map((d) => d.country + ': ' + d.count)
+						.join(' · ')}
+				</p>
+			{/if}
+			{#if filteredDelistings.length > 0}
+				<div class="overflow-x-auto">
+					<table class="min-w-full text-sm">
+						<thead>
+							<tr class="border-b border-border-light">
+								<th
+									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Bean</th
+								>
+								<th
+									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Origin</th
+								>
+								<th
+									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Process</th
+								>
+								<th
+									class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Last $/lb</th
+								>
+								<th
+									class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Supplier</th
+								>
+								<th
+									class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+									>Days</th
+								>
+							</tr>
+						</thead>
+						<tbody>
+							{#each filteredDelistings as bean}
+								{@const days = daysSince(bean.unstocked_date)}
+								<tr class="border-b border-border-light/40 hover:bg-red-50">
+									<td class="py-2 pr-3 font-medium text-text-secondary-light" title={bean.name}
+										>{truncateName(bean.name)}</td
+									>
+									<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
+									<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
+									<td class="py-2 pr-3 text-right text-text-secondary-light"
+										>{bean.cost_lb != null ? '$' + bean.cost_lb.toFixed(2) : '—'}</td
+									>
+									<td class="py-2 pr-3 text-text-secondary-light">{formatSource(bean.source)}</td>
+									<td class="py-2 text-right"
+										><span
+											class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600"
+											>{days === 0 ? 'Today' : days + 'd'}</span
+										></td
+									>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{:else}
+				<div class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light">
+					<p class="text-sm text-text-secondary-light">No delistings in the selected window.</p>
+				</div>
+			{/if}
+		</div>
+	</div>
 </div>
 
 <!-- Data source note -->
