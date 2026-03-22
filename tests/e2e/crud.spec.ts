@@ -794,21 +794,14 @@ test.describe('Sales Management', () => {
 	test('can create a new sale', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
-		// Navigate directly to sales/profit page.
-		// Use 'commit' — the profit page's LayerCake charts keep the network active
-		// indefinitely, causing networkidle to time out before the button is reachable.
-		await page.goto('/profit', { waitUntil: 'commit' });
-
-		// Open actions and create new sale
-		await page
-			.getByRole('button', { name: /Toggle actions|New Sale/i })
-			.first()
-			.click();
-
-		const newSaleBtn = page.getByRole('button', { name: 'New Sale' });
-		if (await newSaleBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-			await newSaleBtn.click();
-		}
+		// Navigate directly to /profit with modal=new — opens the sale form via URL-driven intent.
+		// The form requires beans data (availableCoffees) to be fetched before form elements are ready.
+		// Using 'commit' instead of 'networkidle' because profit page charts keep network active indefinitely.
+		// Waiting for the beans API response ensures select options are populated before interaction.
+		await page.goto('/profit?modal=new', { waitUntil: 'commit' });
+		await page.waitForResponse(
+			(resp) => resp.url().includes('/api/beans') && resp.status() === 200
+		);
 
 		// Fill out sale form - use first available option from selects
 		const coffeeSelect = page.getByLabel('Coffee Name');
