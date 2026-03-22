@@ -13,13 +13,8 @@ const catalogCache: Record<
 
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
 
-export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }, url }) => {
+export const GET: RequestHandler = async ({ locals: { supabase }, url }) => {
 	try {
-		const { session } = await safeGetSession();
-		if (!session) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
 		// Check for specific IDs filter (legacy support)
 		const idsParam = url.searchParams.getAll('ids');
 		const requestedIds = idsParam.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
