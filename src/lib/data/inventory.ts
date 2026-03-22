@@ -11,8 +11,9 @@
  *    a re-export shim for backwards compatibility).
  *  - getInventoryWithRoastSummary handles the GenUI tool's joined query; the
  *    route handler is responsible for reshaping into its response envelope.
- *  - deleteInventoryItem cascades to roast_profiles via the roast data layer,
- *    then deletes the inventory row and optionally the user-owned catalog entry.
+ *  - deleteInventoryItem cascades to sales, roast_profiles (and their
+ *    temps/events), then deletes the inventory row and optionally the
+ *    user-owned catalog entry.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -274,6 +275,10 @@ export async function deleteInventoryItem(
 	if (!existing || existing.user !== userId) {
 		throw new Error('Unauthorized');
 	}
+
+	// Cascade-delete sales rows referencing this inventory item
+	const { error: salesError } = await supabase.from('sales').delete().eq('green_coffee_inv_id', id);
+	if (salesError) throw salesError;
 
 	// Cascade-delete roast profiles: temps and events first, then profiles
 	const { data: roastProfiles, error: selectError } = await supabase

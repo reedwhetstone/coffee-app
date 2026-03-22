@@ -202,7 +202,7 @@
 
 		if (
 			confirm(
-				'Are you sure you want to delete this bean? This will also delete all associated roast profiles and logs.'
+				'Are you sure you want to delete this bean? This will also delete all associated sales records, roast profiles, and logs.'
 			)
 		) {
 			try {
