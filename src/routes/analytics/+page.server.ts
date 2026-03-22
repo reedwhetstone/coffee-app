@@ -1,6 +1,23 @@
 import type { PageServerLoad } from './$types';
 import { getUserRoles } from '$lib/server/auth';
 
+export interface ArrivalBean {
+	name: string;
+	country: string | null;
+	processing: string | null;
+	cost_lb: number | null;
+	source: string | null;
+	stocked_date: string | null;
+}
+
+export interface DelistingBean {
+	name: string;
+	country: string | null;
+	processing: string | null;
+	cost_lb: number | null;
+	source: string | null;
+	unstocked_date: string | null;
+}
 export interface PriceSnapshot {
 	snapshot_date: string;
 	origin: string;
@@ -194,6 +211,30 @@ export const load: PageServerLoad = async (event) => {
 		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 15);
 	})();
 
+	// New arrivals — stocked beans with stocked_date in last 30 days (7d/30d client toggle)
+	const thirtyDaysAgoArrivals = new Date();
+	thirtyDaysAgoArrivals.setDate(thirtyDaysAgoArrivals.getDate() - 30);
+
+	const { data: recentArrivals30 } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('name, country, processing, cost_lb, source, stocked_date')
+		.eq('stocked', true)
+		.gte('stocked_date', thirtyDaysAgoArrivals.toISOString().split('T')[0])
+		.order('stocked_date', { ascending: false })
+		.limit(50);
+
+	// Recent delistings — unstocked beans with unstocked_date in last 30 days
+	const thirtyDaysAgoDelistings = new Date();
+	thirtyDaysAgoDelistings.setDate(thirtyDaysAgoDelistings.getDate() - 30);
+
+	const { data: recentDelistings30 } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('name, country, processing, cost_lb, source, unstocked_date')
+		.eq('stocked', false)
+		.gte('unstocked_date', thirtyDaysAgoDelistings.toISOString().split('T')[0])
+		.order('unstocked_date', { ascending: false })
+		.limit(50);
+
 	return {
 		session,
 		role,
@@ -208,6 +249,8 @@ export const load: PageServerLoad = async (event) => {
 		},
 		snapshots,
 		processDistribution,
-		originRangeData
+		originRangeData,
+		recentArrivals: (recentArrivals30 ?? []) as ArrivalBean[],
+		recentDelistings: (recentDelistings30 ?? []) as DelistingBean[]
 	};
 };
