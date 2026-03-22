@@ -1,12 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type {
-		PriceSnapshot,
-		ProcessBucket,
-		OriginRangeRow,
-		ArrivalBean,
-		DelistingBean
-	} from './+page.server';
+	import type { PriceSnapshot, ProcessBucket, OriginRangeRow } from './+page.server';
 	import { goto } from '$app/navigation';
 	import OriginLineChart from '$lib/components/analytics/OriginLineChart.svelte';
 	import OriginBarChart from '$lib/components/analytics/OriginBarChart.svelte';
@@ -14,16 +8,7 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	let {
-		session,
-		isPpiMember,
-		stats,
-		snapshots,
-		processDistribution,
-		originRangeData,
-		recentArrivals,
-		recentDelistings
-	} = $derived(
+	let { session, isPpiMember, stats, snapshots, processDistribution, originRangeData } = $derived(
 		data as {
 			session: PageData['session'];
 			isPpiMember: boolean;
@@ -38,8 +23,6 @@
 			snapshots: PriceSnapshot[];
 			processDistribution: ProcessBucket[];
 			originRangeData: OriginRangeRow[];
-			recentArrivals: ArrivalBean[];
-			recentDelistings: DelistingBean[];
 		}
 	);
 
