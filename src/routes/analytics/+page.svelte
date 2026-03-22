@@ -447,7 +447,7 @@
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
 					<h2 class="mb-4 text-xl font-semibold text-text-primary-light">
-						Supplier Price Comparison Matrix
+						Origin Price Index
 					</h2>
 					<div class="grid grid-cols-3 gap-3">
 						{#each Array(9) as _}
@@ -529,9 +529,14 @@
 						>PPI Member</span
 					>
 					<span class="text-text-secondary-light">·</span>
-					<h2 class="text-xl font-semibold text-text-primary-light">Supplier Price Comparison</h2>
+					<h2 class="text-xl font-semibold text-text-primary-light">Origin Price Index</h2>
 				</div>
 				{#if hasSnapshots}
+				<ExpandablePanel
+					title="Origin Price Index"
+					subtitle="Daily origin-level pricing from the Purveyors Price Index — averages, ranges, and supplier coverage."
+					totalItems={originBarData.length}
+				>
 					<div class="overflow-x-auto">
 						<table class="min-w-full text-sm">
 							<thead>
@@ -577,6 +582,7 @@
 							</tbody>
 						</table>
 					</div>
+				</ExpandablePanel>
 				{:else}
 					<div
 						class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
