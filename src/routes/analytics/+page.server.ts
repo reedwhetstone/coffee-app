@@ -45,6 +45,7 @@ export interface PriceSnapshot {
 	origin: string;
 	process: string | null;
 	price_avg: number | null;
+	price_median: number | null;
 	price_min: number | null;
 	price_max: number | null;
 	supplier_count: number;
@@ -173,7 +174,7 @@ export const load: PageServerLoad = async (event) => {
 	const { data: snapshotsRaw } = await (event.locals.supabase as any)
 		.from('price_index_snapshots')
 		.select(
-			'snapshot_date, origin, process, price_avg, price_min, price_max, supplier_count, sample_size, wholesale_only'
+			'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, supplier_count, sample_size, wholesale_only'
 		)
 		.gte('snapshot_date', fromDate)
 		.order('snapshot_date', { ascending: true })
