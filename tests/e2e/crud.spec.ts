@@ -794,9 +794,10 @@ test.describe('Sales Management', () => {
 	test('can create a new sale', async ({ page }) => {
 		const { consoleErrors, networkErrors } = setupErrorCollection(page);
 
-		// Navigate directly to sales/profit page
-		await page.goto('/profit');
-		await page.waitForLoadState('networkidle');
+		// Navigate directly to sales/profit page.
+		// Use 'commit' — the profit page's LayerCake charts keep the network active
+		// indefinitely, causing networkidle to time out before the button is reachable.
+		await page.goto('/profit', { waitUntil: 'commit' });
 
 		// Open actions and create new sale
 		await page

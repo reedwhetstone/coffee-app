@@ -21,8 +21,9 @@ test.describe('Authenticated routes', () => {
 	});
 
 	test('can access /profit (member-only)', async ({ page }) => {
-		await page.goto('/profit');
-		await page.waitForLoadState('networkidle');
+		// Use 'commit' instead of networkidle — the profit page's LayerCake charts
+		// keep the network active indefinitely, causing networkidle to time out.
+		await page.goto('/profit', { waitUntil: 'commit' });
 		await expect(page).toHaveURL(/profit/);
 	});
 
