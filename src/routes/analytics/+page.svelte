@@ -1,14 +1,33 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import type { PriceSnapshot, ProcessBucket, OriginRangeRow } from './+page.server';
+	import type {
+		PriceSnapshot,
+		ProcessBucket,
+		OriginRangeRow,
+		ComparisonBean,
+		SupplierHealthRow
+	} from './+page.server';
 	import { goto } from '$app/navigation';
 	import OriginLineChart from '$lib/components/analytics/OriginLineChart.svelte';
 	import OriginBarChart from '$lib/components/analytics/OriginBarChart.svelte';
 	import ProcessDonutChart from '$lib/components/analytics/ProcessDonutChart.svelte';
+	import SupplierComparisonTable from '$lib/components/analytics/SupplierComparisonTable.svelte';
+	import SupplierHealthTable from '$lib/components/analytics/SupplierHealthTable.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
-	let { session, isPpiMember, stats, snapshots, processDistribution, originRangeData } = $derived(
+	let {
+		session,
+		isPpiMember,
+		stats,
+		snapshots,
+		processDistribution,
+		originRangeData,
+		recentArrivals: _recentArrivals,
+		recentDelistings: _recentDelistings,
+		comparisonBeans,
+		supplierHealth
+	} = $derived(
 		data as {
 			session: PageData['session'];
 			isPpiMember: boolean;
@@ -23,6 +42,10 @@
 			snapshots: PriceSnapshot[];
 			processDistribution: ProcessBucket[];
 			originRangeData: OriginRangeRow[];
+			recentArrivals: unknown[];
+			recentDelistings: unknown[];
+			comparisonBeans: ComparisonBean[];
+			supplierHealth: SupplierHealthRow[];
 		}
 	);
 
@@ -289,6 +312,31 @@
 			{/if}
 		</div>
 	</div>
+</div>
+
+<!-- Supplier Price Comparison -->
+<div class="mb-8">
+	<SupplierComparisonTable beans={comparisonBeans} />
+</div>
+
+<!-- Supplier Overview -->
+<div class="mb-8">
+	<div class="mb-3">
+		<h2 class="text-xl font-semibold text-text-primary-light">Supplier Overview</h2>
+		<p class="mt-1 text-sm text-text-secondary-light">
+			Catalog breadth and pricing by supplier — click any column header to sort. A quick answer to
+			"which suppliers should I be looking at?"
+		</p>
+	</div>
+	{#if supplierHealth && supplierHealth.length > 0}
+		<SupplierHealthTable rows={supplierHealth} />
+	{:else}
+		<div
+			class="flex h-24 items-center justify-center rounded-lg border border-border-light bg-background-secondary-light"
+		>
+			<p class="text-sm text-text-secondary-light">No supplier data available yet.</p>
+		</div>
+	{/if}
 </div>
 
 <!-- Gated Section -->
