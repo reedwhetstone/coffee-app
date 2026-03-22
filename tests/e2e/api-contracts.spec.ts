@@ -3,11 +3,13 @@
  *
  * Direct HTTP tests using Playwright's request context — no browser.
  * Validates that every API endpoint:
- *   1. Returns 401/302 without auth
+ *   1. Returns 401 (or empty) without auth
  *   2. Returns the expected status with auth
  *   3. Returns the expected response shape
  *
  * Auth is provided via storageState (shared with other tests).
+ * Unauthenticated tests use playwright.request.newContext() for a completely
+ * fresh HTTP context that bypasses all project-level storageState.
  * Test data cleanup happens in afterAll via API DELETE.
  *
  * Target: < 30 seconds (no browser, pure HTTP)
@@ -39,49 +41,56 @@ test.afterAll(async ({ request }) => {
 
 // ---------------------------------------------------------------------------
 // Unauthenticated requests — should be rejected
+// Use playwright.request.newContext() to get a truly fresh, cookieless context
+// that bypasses the project-level storageState entirely.
 // ---------------------------------------------------------------------------
 
-test.describe('Unauthenticated requests are handled safely', () => {
-	test('GET /api/beans without auth returns no private data', async ({ browser }) => {
-		const ctx = await browser.newContext(); // no storageState
-		const resp = await ctx.request.get('/api/beans');
-		// Should not crash — returns 200 with empty or 401
-		expect(resp.status()).toBeLessThan(500);
-		await ctx.close();
+test.describe('Unauthenticated requests are rejected', () => {
+	test('GET /api/beans without auth returns empty data', async ({ playwright, baseURL }) => {
+		const ctx = await playwright.request.newContext({ baseURL });
+		const resp = await ctx.get('/api/beans');
+		expect(resp.status()).toBe(200);
+		const body = await resp.json();
+		// Unauthenticated beans GET returns { data: [] } — not 401
+		expect(body).toHaveProperty('data');
+		expect(body.data).toEqual([]);
+		await ctx.dispose();
 	});
 
-	test('GET /api/profit without auth does not crash', async ({ browser }) => {
-		const ctx = await browser.newContext();
-		const resp = await ctx.request.get('/api/profit');
-		// Returns 401 or 200 with empty data depending on session handling
-		expect(resp.status()).toBeLessThan(500);
-		await ctx.close();
+	test('GET /api/profit without auth returns 401', async ({ playwright, baseURL }) => {
+		const ctx = await playwright.request.newContext({ baseURL });
+		const resp = await ctx.get('/api/profit');
+		expect(resp.status()).toBe(401);
+		await ctx.dispose();
 	});
 
-	test('GET /api/roast-profiles without auth does not crash', async ({ browser }) => {
-		const ctx = await browser.newContext();
-		const resp = await ctx.request.get('/api/roast-profiles');
-		expect(resp.status()).toBeLessThan(500);
-		await ctx.close();
+	test('GET /api/roast-profiles without auth returns 401', async ({ playwright, baseURL }) => {
+		const ctx = await playwright.request.newContext({ baseURL });
+		const resp = await ctx.get('/api/roast-profiles');
+		expect(resp.status()).toBe(401);
+		await ctx.dispose();
 	});
 
-	test('GET /api/roast-chart-data without auth does not crash', async ({ browser }) => {
-		const ctx = await browser.newContext();
-		const resp = await ctx.request.get('/api/roast-chart-data?roastId=1');
-		expect(resp.status()).toBeLessThan(500);
-		await ctx.close();
+	test('GET /api/roast-chart-data without auth returns 401', async ({ playwright, baseURL }) => {
+		const ctx = await playwright.request.newContext({ baseURL });
+		const resp = await ctx.get('/api/roast-chart-data?roastId=1');
+		expect(resp.status()).toBe(401);
+		await ctx.dispose();
 	});
 
-	test('GET /api/roast-chart-settings without auth does not crash', async ({ browser }) => {
-		const ctx = await browser.newContext();
-		const resp = await ctx.request.get('/api/roast-chart-settings?roastId=1');
-		expect(resp.status()).toBeLessThan(500);
-		await ctx.close();
+	test('GET /api/roast-chart-settings without auth returns 401', async ({
+		playwright,
+		baseURL
+	}) => {
+		const ctx = await playwright.request.newContext({ baseURL });
+		const resp = await ctx.get('/api/roast-chart-settings?roastId=1');
+		expect(resp.status()).toBe(401);
+		await ctx.dispose();
 	});
 });
 
 // ---------------------------------------------------------------------------
-// GET endpoints — shape assertions
+// GET endpoints — shape assertions (authenticated)
 // ---------------------------------------------------------------------------
 
 test.describe('GET endpoints return expected shapes', () => {
@@ -114,7 +123,6 @@ test.describe('GET endpoints return expected shapes', () => {
 		const resp = await request.get('/api/catalog');
 		expect(resp.status()).toBe(200);
 		const body = await resp.json();
-		// Catalog returns an object with data array or directly an array
 		const isValidShape =
 			Array.isArray(body) ||
 			Array.isArray(body.data) ||
@@ -124,7 +132,7 @@ test.describe('GET endpoints return expected shapes', () => {
 
 	test('GET /api/roast-chart-data with no roastId returns 400', async ({ request }) => {
 		const resp = await request.get('/api/roast-chart-data');
-		// No roastId param — should be a 400 or similar error, not a crash
+		// No roastId param — should be a 400, not a crash
 		expect(resp.status()).toBeGreaterThanOrEqual(400);
 		expect(resp.status()).toBeLessThan(500);
 	});
@@ -154,10 +162,8 @@ test.describe('POST /api/beans — create inventory', () => {
 		});
 		expect(resp.status()).toBeLessThan(400);
 		const body = await resp.json();
-		// The response is the processed inventory item
 		expect(body).toBeTruthy();
 		expect(typeof body).toBe('object');
-		// Store the ID for cleanup and downstream tests
 		testBeanId = body.id ?? body.data?.[0]?.id ?? null;
 		expect(testBeanId).toBeTruthy();
 	});
@@ -169,8 +175,6 @@ test.describe('POST /api/beans — create inventory', () => {
 
 test.describe('PUT /api/beans — update inventory', () => {
 	test('updates the test bean notes field', async ({ request }) => {
-		// This test depends on the POST test having run first
-		// If testBeanId is null, skip gracefully
 		if (!testBeanId) {
 			test.skip();
 			return;
@@ -208,7 +212,6 @@ test.describe('POST /api/roast-profiles — create roast', () => {
 		expect(resp.status()).toBeLessThan(400);
 		const body = await resp.json();
 		expect(body).toBeTruthy();
-		// Response is either an array of profiles or an object with profiles
 		const profiles = Array.isArray(body) ? body : (body.profiles ?? [body]);
 		testRoastId = profiles[0]?.roast_id ?? profiles[0]?.id ?? null;
 		expect(testRoastId).toBeTruthy();
