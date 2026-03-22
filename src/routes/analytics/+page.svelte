@@ -446,9 +446,7 @@
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
-					<h2 class="mb-4 text-xl font-semibold text-text-primary-light">
-						Supplier Price Comparison Matrix
-					</h2>
+					<h2 class="mb-4 text-xl font-semibold text-text-primary-light">Origin Price Index</h2>
 					<div class="grid grid-cols-3 gap-3">
 						{#each Array(9) as _}
 							<div class="rounded bg-background-secondary-light p-3">
@@ -634,207 +632,313 @@
 
 <!-- New Arrivals + Recent Delistings -->
 <div class="mb-8">
-	<!-- Window Toggle -->
-	<div class="mb-4 flex items-center gap-3">
-		<span class="text-sm font-medium text-text-secondary-light">Show:</span>
-		<div
-			class="flex rounded-full border border-border-light bg-background-secondary-light p-1 shadow-sm"
-		>
-			{#each WINDOW_OPTIONS as opt}
-				<button
-					onclick={() => (windowMode = opt.value)}
-					class="rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150
-					{windowMode === opt.value
-						? 'bg-background-tertiary-light text-white shadow-sm'
-						: 'text-text-secondary-light hover:text-text-primary-light'}"
-				>
-					{opt.label}
-				</button>
-			{/each}
+	{#if session}
+		<!-- Window Toggle -->
+		<div class="mb-4 flex items-center gap-3">
+			<span class="text-sm font-medium text-text-secondary-light">Show:</span>
+			<div
+				class="flex rounded-full border border-border-light bg-background-secondary-light p-1 shadow-sm"
+			>
+				{#each WINDOW_OPTIONS as opt}
+					<button
+						onclick={() => (windowMode = opt.value)}
+						class="rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150
+						{windowMode === opt.value
+							? 'bg-background-tertiary-light text-white shadow-sm'
+							: 'text-text-secondary-light hover:text-text-primary-light'}"
+					>
+						{opt.label}
+					</button>
+				{/each}
+			</div>
 		</div>
-	</div>
 
-	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-		<!-- New Arrivals -->
-		<ExpandablePanel
-			title="New Arrivals"
-			badge="+{filteredArrivals.length}"
-			badgeColor="amber"
-			totalItems={filteredArrivals.length}
-		>
-			<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
-				<div class="mb-3 flex items-center justify-between">
-					<div>
-						<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
-						<p class="mt-0.5 text-sm text-text-secondary-light">
-							{filteredArrivals.length} new arrival{filteredArrivals.length === 1 ? '' : 's'} this {windowMode ===
-							'7d'
-								? 'week'
-								: 'month'}
-						</p>
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+			<!-- New Arrivals -->
+			<ExpandablePanel
+				title="New Arrivals"
+				badge="+{filteredArrivals.length}"
+				badgeColor="amber"
+				totalItems={filteredArrivals.length}
+			>
+				<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
+					<div class="mb-3 flex items-center justify-between">
+						<div>
+							<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
+							<p class="mt-0.5 text-sm text-text-secondary-light">
+								{filteredArrivals.length} new arrival{filteredArrivals.length === 1 ? '' : 's'} this
+								{windowMode === '7d' ? 'week' : 'month'}
+							</p>
+						</div>
+						<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700"
+							>+{filteredArrivals.length}</span
+						>
 					</div>
-					<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700"
-						>+{filteredArrivals.length}</span
-					>
-				</div>
-				{#if filteredArrivals.length > 0}
-					<div class="overflow-x-auto">
-						<table class="min-w-full text-sm">
-							<thead>
-								<tr class="border-b border-border-light">
-									<th
-										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Bean</th
-									>
-									<th
-										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Origin</th
-									>
-									<th
-										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Process</th
-									>
-									<th
-										class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>$/lb</th
-									>
-									<th
-										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Supplier</th
-									>
-									<th
-										class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Days</th
-									>
-								</tr>
-							</thead>
-							<tbody>
-								{#each filteredArrivals as bean}
-									{@const days = daysSince(bean.stocked_date)}
-									<tr class="border-b border-border-light/40 hover:bg-amber-50">
-										<td class="py-2 pr-3 font-medium text-text-primary-light" title={bean.name}
-											>{truncateName(bean.name)}</td
+					{#if filteredArrivals.length > 0}
+						<div class="overflow-x-auto">
+							<table class="min-w-full text-sm">
+								<thead>
+									<tr class="border-b border-border-light">
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Bean</th
 										>
-										<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
-										<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
-										<td class="py-2 pr-3 text-right font-semibold text-text-primary-light"
-											>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Origin</th
 										>
-										<td class="py-2 pr-3 text-text-secondary-light">{formatSource(bean.source)}</td>
-										<td class="py-2 text-right"
-											><span
-												class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
-												>{days === 0 ? 'Today' : days + 'd'}</span
-											></td
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Process</th
+										>
+										<th
+											class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>$/lb</th
+										>
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Supplier</th
+										>
+										<th
+											class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Days</th
 										>
 									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				{:else}
-					<div
-						class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
-					>
-						<p class="text-sm text-text-secondary-light">No new arrivals in the selected window.</p>
-					</div>
-				{/if}
-			</div>
-		</ExpandablePanel>
-
-		<!-- Recent Delistings -->
-		<ExpandablePanel
-			title="Recent Delistings"
-			badge="-{filteredDelistings.length}"
-			badgeColor="red"
-			totalItems={filteredDelistings.length}
-		>
-			<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
-				<div class="mb-3 flex items-center justify-between">
-					<div>
-						<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
-						<p class="mt-0.5 text-sm text-text-secondary-light">
-							{filteredDelistings.length} bean{filteredDelistings.length === 1 ? '' : 's'} delisted this
-							{windowMode === '7d' ? 'week' : 'month'}
-						</p>
-					</div>
-					<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600"
-						>-{filteredDelistings.length}</span
-					>
+								</thead>
+								<tbody>
+									{#each filteredArrivals as bean}
+										{@const days = daysSince(bean.stocked_date)}
+										<tr class="border-b border-border-light/40 hover:bg-amber-50">
+											<td class="py-2 pr-3 font-medium text-text-primary-light" title={bean.name}
+												>{truncateName(bean.name)}</td
+											>
+											<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
+											<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
+											<td class="py-2 pr-3 text-right font-semibold text-text-primary-light"
+												>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
+											>
+											<td class="py-2 pr-3 text-text-secondary-light"
+												>{formatSource(bean.source)}</td
+											>
+											<td class="py-2 text-right"
+												><span
+													class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+													>{days === 0 ? 'Today' : days + 'd'}</span
+												></td
+											>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{:else}
+						<div
+							class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
+						>
+							<p class="text-sm text-text-secondary-light">
+								No new arrivals in the selected window.
+							</p>
+						</div>
+					{/if}
 				</div>
-				{#if delistingsByCountry.length > 0}
-					<p class="mb-3 text-xs text-text-secondary-light">
-						{delistingsByCountry
-							.slice(0, 5)
-							.map((d) => d.country + ': ' + d.count)
-							.join(' · ')}
+			</ExpandablePanel>
+
+			<!-- Recent Delistings -->
+			<ExpandablePanel
+				title="Recent Delistings"
+				badge="-{filteredDelistings.length}"
+				badgeColor="red"
+				totalItems={filteredDelistings.length}
+			>
+				<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
+					<div class="mb-3 flex items-center justify-between">
+						<div>
+							<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
+							<p class="mt-0.5 text-sm text-text-secondary-light">
+								{filteredDelistings.length} bean{filteredDelistings.length === 1 ? '' : 's'} delisted
+								this
+								{windowMode === '7d' ? 'week' : 'month'}
+							</p>
+						</div>
+						<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600"
+							>-{filteredDelistings.length}</span
+						>
+					</div>
+					{#if delistingsByCountry.length > 0}
+						<p class="mb-3 text-xs text-text-secondary-light">
+							{delistingsByCountry
+								.slice(0, 5)
+								.map((d) => d.country + ': ' + d.count)
+								.join(' · ')}
+						</p>
+					{/if}
+					{#if filteredDelistings.length > 0}
+						<div class="overflow-x-auto">
+							<table class="min-w-full text-sm">
+								<thead>
+									<tr class="border-b border-border-light">
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Bean</th
+										>
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Origin</th
+										>
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Process</th
+										>
+										<th
+											class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Last $/lb</th
+										>
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Supplier</th
+										>
+										<th
+											class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Days</th
+										>
+									</tr>
+								</thead>
+								<tbody>
+									{#each filteredDelistings as bean}
+										{@const days = daysSince(bean.unstocked_date)}
+										<tr class="border-b border-border-light/40 hover:bg-red-50">
+											<td class="py-2 pr-3 font-medium text-text-secondary-light" title={bean.name}
+												>{truncateName(bean.name)}</td
+											>
+											<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
+											<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
+											<td class="py-2 pr-3 text-right text-text-secondary-light"
+												>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
+											>
+											<td class="py-2 pr-3 text-text-secondary-light"
+												>{formatSource(bean.source)}</td
+											>
+											<td class="py-2 text-right"
+												><span
+													class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600"
+													>{days === 0 ? 'Today' : days + 'd'}</span
+												></td
+											>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{:else}
+						<div
+							class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
+						>
+							<p class="text-sm text-text-secondary-light">No delistings in the selected window.</p>
+						</div>
+					{/if}
+				</div>
+			</ExpandablePanel>
+		</div>
+	{:else}
+		<!-- Blurred preview for unauthenticated users -->
+		<div class="relative">
+			<div class="pointer-events-none select-none blur-sm filter">
+				<div class="mb-4 flex items-center gap-3">
+					<span class="text-sm font-medium text-text-secondary-light">Show:</span>
+					<div
+						class="flex rounded-full border border-border-light bg-background-secondary-light p-1 shadow-sm"
+					>
+						<button
+							class="rounded-full bg-background-tertiary-light px-4 py-1.5 text-sm font-medium text-white shadow-sm"
+						>
+							Last 7 days
+						</button>
+						<button class="rounded-full px-4 py-1.5 text-sm font-medium text-text-secondary-light">
+							Last 30 days
+						</button>
+					</div>
+				</div>
+				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+					<!-- Arrivals skeleton -->
+					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-3 flex items-center justify-between">
+							<div>
+								<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
+								<p class="mt-0.5 text-sm text-text-secondary-light">12 new arrivals this week</p>
+							</div>
+							<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700"
+								>+12</span
+							>
+						</div>
+						<div class="space-y-2">
+							{#each Array(5) as _}
+								<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
+									<div class="h-4 w-32 rounded bg-background-secondary-light"></div>
+									<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
+									<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
+									<div class="ml-auto h-4 w-12 rounded bg-amber-100"></div>
+								</div>
+							{/each}
+						</div>
+					</div>
+					<!-- Delistings skeleton -->
+					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-3 flex items-center justify-between">
+							<div>
+								<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
+								<p class="mt-0.5 text-sm text-text-secondary-light">8 beans delisted this week</p>
+							</div>
+							<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600"
+								>-8</span
+							>
+						</div>
+						<div class="space-y-2">
+							{#each Array(5) as _}
+								<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
+									<div class="h-4 w-32 rounded bg-background-secondary-light"></div>
+									<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
+									<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
+									<div class="ml-auto h-4 w-12 rounded bg-red-100"></div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- CTA overlay -->
+			<div
+				class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-gradient-to-b from-background-primary-light/60 to-background-primary-light"
+			>
+				<div
+					class="mx-4 max-w-md rounded-xl border border-background-tertiary-light/30 bg-background-primary-light p-8 text-center shadow-lg"
+				>
+					<div class="mb-3 text-3xl">📦</div>
+					<h3 class="mb-2 text-2xl font-bold text-text-primary-light">
+						Track New Arrivals & Delistings
+					</h3>
+					<p class="mb-6 text-text-secondary-light">
+						Sign up free to track new arrivals and delistings across {stats.totalSuppliers} suppliers
+						— updated daily.
 					</p>
-				{/if}
-				{#if filteredDelistings.length > 0}
-					<div class="overflow-x-auto">
-						<table class="min-w-full text-sm">
-							<thead>
-								<tr class="border-b border-border-light">
-									<th
-										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Bean</th
-									>
-									<th
-										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Origin</th
-									>
-									<th
-										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Process</th
-									>
-									<th
-										class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Last $/lb</th
-									>
-									<th
-										class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Supplier</th
-									>
-									<th
-										class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>Days</th
-									>
-								</tr>
-							</thead>
-							<tbody>
-								{#each filteredDelistings as bean}
-									{@const days = daysSince(bean.unstocked_date)}
-									<tr class="border-b border-border-light/40 hover:bg-red-50">
-										<td class="py-2 pr-3 font-medium text-text-secondary-light" title={bean.name}
-											>{truncateName(bean.name)}</td
-										>
-										<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
-										<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
-										<td class="py-2 pr-3 text-right text-text-secondary-light"
-											>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
-										>
-										<td class="py-2 pr-3 text-text-secondary-light">{formatSource(bean.source)}</td>
-										<td class="py-2 text-right"
-											><span
-												class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600"
-												>{days === 0 ? 'Today' : days + 'd'}</span
-											></td
-										>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
+					<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
+						<button
+							onclick={() => goto('/auth')}
+							class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
+						>
+							Sign Up Free
+						</button>
+						<button
+							onclick={() => goto('/auth')}
+							class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						>
+							Sign In
+						</button>
 					</div>
-				{:else}
-					<div
-						class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
-					>
-						<p class="text-sm text-text-secondary-light">No delistings in the selected window.</p>
-					</div>
-				{/if}
+				</div>
 			</div>
-		</ExpandablePanel>
-	</div>
+		</div>
+	{/if}
 </div>
 
 <!-- Data source note -->
