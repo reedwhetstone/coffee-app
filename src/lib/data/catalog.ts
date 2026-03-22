@@ -20,6 +20,7 @@ export interface CatalogDropdownItem {
 	name: string;
 	stocked: boolean | null;
 	cost_lb: number | null;
+	price_per_lb: number | null;
 	price_tiers: Database['public']['Tables']['coffee_catalog']['Row']['price_tiers'];
 }
 
@@ -89,7 +90,7 @@ export interface CatalogDropdownResult {
 
 // ── Columns ──────────────────────────────────────────────────────────────────
 
-const DROPDOWN_COLUMNS = 'id, source, name, stocked, cost_lb, price_tiers' as const;
+const DROPDOWN_COLUMNS = 'id, source, name, stocked, cost_lb, price_per_lb, price_tiers' as const;
 
 /** Columns exposed via the external catalog API (excludes sensitive fields). */
 export const CATALOG_API_COLUMNS = [
@@ -235,12 +236,12 @@ export async function searchCatalog(
 
 	// ── Numeric range filters ─────────────────────────────────────────────────
 	if (priceRange && priceRange.length === 2) {
-		query = query.gte('cost_lb', priceRange[0]).lte('cost_lb', priceRange[1]);
+		query = query.gte('price_per_lb', priceRange[0]).lte('price_per_lb', priceRange[1]);
 	}
 	if (scoreValueMin !== undefined) query = query.gte('score_value', scoreValueMin);
 	if (scoreValueMax !== undefined) query = query.lte('score_value', scoreValueMax);
-	if (costLbMin !== undefined) query = query.gte('cost_lb', costLbMin);
-	if (costLbMax !== undefined) query = query.lte('cost_lb', costLbMax);
+	if (costLbMin !== undefined) query = query.gte('price_per_lb', costLbMin);
+	if (costLbMax !== undefined) query = query.lte('price_per_lb', costLbMax);
 
 	// ── Date filters ──────────────────────────────────────────────────────────
 	if (arrivalDate) query = query.eq('arrival_date', arrivalDate);

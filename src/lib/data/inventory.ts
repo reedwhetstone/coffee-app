@@ -107,6 +107,7 @@ export interface InventoryWithSummaryRow {
 		farm_notes?: string | null;
 		link?: string | null;
 		cost_lb?: number | null;
+		price_per_lb?: number | null;
 		source?: string | null;
 		cupping_notes?: string | null;
 		stocked?: boolean | null;
@@ -459,6 +460,7 @@ export async function getInventoryWithRoastSummary(
 				farm_notes,
 				link,
 				cost_lb,
+				price_per_lb,
 				source,
 				score_value,
 				stocked,

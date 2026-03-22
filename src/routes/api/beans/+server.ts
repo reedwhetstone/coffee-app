@@ -98,6 +98,8 @@ export const POST: RequestHandler = async (event) => {
 				'type',
 				'description_long',
 				'cost_lb',
+				'price_per_lb',
+				'price_tiers',
 				'source',
 				'cupping_notes',
 				'arrival_date',

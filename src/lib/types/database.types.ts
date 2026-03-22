@@ -156,6 +156,7 @@ export type Database = {
 					lot_size: string | null;
 					name: string;
 					packaging: string | null;
+					price_per_lb: number | null;
 					price_tiers: Json | null;
 					processing: string | null;
 					public_coffee: boolean | null;

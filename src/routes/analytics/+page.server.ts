@@ -5,7 +5,7 @@ export interface ArrivalBean {
 	name: string;
 	country: string | null;
 	processing: string | null;
-	cost_lb: number | null;
+	price_per_lb: number | null;
 	source: string | null;
 	stocked_date: string | null;
 }
@@ -14,7 +14,7 @@ export interface DelistingBean {
 	name: string;
 	country: string | null;
 	processing: string | null;
-	cost_lb: number | null;
+	price_per_lb: number | null;
 	source: string | null;
 	unstocked_date: string | null;
 }
@@ -23,10 +23,17 @@ export interface ComparisonBean {
 	name: string;
 	country: string;
 	processing: string | null;
-	cost_lb: number;
+	price_per_lb: number;
 	source: string;
 	wholesale: boolean;
 	bag_size: string | null;
+}
+
+function getPerLbPrice(row: {
+	price_per_lb?: number | null;
+	cost_lb?: number | null;
+}): number | null {
+	return row.price_per_lb ?? row.cost_lb ?? null;
 }
 
 export interface SupplierHealthRow {
@@ -186,11 +193,11 @@ export const load: PageServerLoad = async (event) => {
 	// Origin range data — live cross-section from coffee_catalog, percentiles computed in JS
 	const { data: catalogPriceRows } = await event.locals.supabase
 		.from('coffee_catalog')
-		.select('country, cost_lb')
+		.select('country, price_per_lb')
 		.eq('stocked', true)
 		.not('country', 'is', null)
-		.not('cost_lb', 'is', null)
-		.gt('cost_lb', 0)
+		.not('price_per_lb', 'is', null)
+		.gt('price_per_lb', 0)
 		.limit(5000);
 
 	const originRangeData: OriginRangeRow[] = (() => {
@@ -199,9 +206,10 @@ export const load: PageServerLoad = async (event) => {
 		// Group by country
 		const byCountry = new Map<string, number[]>();
 		for (const row of catalogPriceRows) {
-			if (!row.country || row.cost_lb == null) continue;
+			const price = getPerLbPrice(row);
+			if (!row.country || price == null) continue;
 			const prices = byCountry.get(row.country) ?? [];
-			prices.push(row.cost_lb as number);
+			prices.push(price);
 			byCountry.set(row.country, prices);
 		}
 
@@ -239,19 +247,19 @@ export const load: PageServerLoad = async (event) => {
 	// Supplier comparison data — all stocked beans with price, filtered client-side by origin
 	const { data: comparisonBeans } = await event.locals.supabase
 		.from('coffee_catalog')
-		.select('name, country, processing, cost_lb, source, wholesale, bag_size')
+		.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
 		.eq('stocked', true)
-		.not('cost_lb', 'is', null)
+		.not('price_per_lb', 'is', null)
 		.not('country', 'is', null)
-		.order('cost_lb', { ascending: true })
+		.order('price_per_lb', { ascending: true })
 		.limit(2000);
 
 	// Supplier health: all stocked beans grouped by source
 	const { data: supplierBeans } = await event.locals.supabase
 		.from('coffee_catalog')
-		.select('source, country, cost_lb, wholesale, stocked')
+		.select('source, country, price_per_lb, wholesale, stocked')
 		.eq('stocked', true)
-		.not('cost_lb', 'is', null)
+		.not('price_per_lb', 'is', null)
 		.limit(5000);
 
 	const supplierHealth: SupplierHealthRow[] = (() => {
@@ -268,7 +276,8 @@ export const load: PageServerLoad = async (event) => {
 		>();
 
 		for (const row of supplierBeans) {
-			if (!row.source || row.cost_lb == null) continue;
+			const price = getPerLbPrice(row);
+			if (!row.source || price == null) continue;
 			const entry = bySource.get(row.source) ?? {
 				countries: new Set<string>(),
 				costs: [],
@@ -276,7 +285,7 @@ export const load: PageServerLoad = async (event) => {
 				retailCount: 0
 			};
 			if (row.country) entry.countries.add(row.country);
-			entry.costs.push(row.cost_lb as number);
+			entry.costs.push(price);
 			if (row.wholesale) {
 				entry.wholesaleCount += 1;
 			} else {
@@ -310,7 +319,7 @@ export const load: PageServerLoad = async (event) => {
 
 	const { data: recentArrivals30 } = await event.locals.supabase
 		.from('coffee_catalog')
-		.select('name, country, processing, cost_lb, source, stocked_date')
+		.select('name, country, processing, price_per_lb, source, stocked_date')
 		.eq('stocked', true)
 		.gte('stocked_date', thirtyDaysAgoArrivals.toISOString().split('T')[0])
 		.order('stocked_date', { ascending: false })
@@ -322,7 +331,7 @@ export const load: PageServerLoad = async (event) => {
 
 	const { data: recentDelistings30 } = await event.locals.supabase
 		.from('coffee_catalog')
-		.select('name, country, processing, cost_lb, source, unstocked_date')
+		.select('name, country, processing, price_per_lb, source, unstocked_date')
 		.eq('stocked', false)
 		.gte('unstocked_date', thirtyDaysAgoDelistings.toISOString().split('T')[0])
 		.order('unstocked_date', { ascending: false })
