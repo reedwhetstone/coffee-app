@@ -1,6 +1,24 @@
 import type { PageServerLoad } from './$types';
 import { getUserRoles } from '$lib/server/auth';
 
+export interface ArrivalBean {
+	name: string;
+	country: string | null;
+	processing: string | null;
+	cost_lb: number | null;
+	source: string | null;
+	stocked_date: string | null;
+}
+
+export interface DelistingBean {
+	name: string;
+	country: string | null;
+	processing: string | null;
+	cost_lb: number | null;
+	source: string | null;
+	unstocked_date: string | null;
+}
+
 export interface PriceSnapshot {
 	snapshot_date: string;
 	origin: string;
@@ -123,10 +141,12 @@ export const load: PageServerLoad = async (event) => {
 		return entries.sort((a, b) => b.count - a.count);
 	})();
 
-	// Price index snapshots — load BOTH retail and wholesale rows
-	const thirtyDaysAgo = new Date();
-	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-	const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
+	// Price index snapshots — load BOTH retail and wholesale rows.
+	// Use 26-week window to capture synthetic backfill data (weekly Saturdays).
+	// 30 days only covers ~4 weekly snapshots, not enough to render the line chart.
+	const sixMonthsAgo = new Date();
+	sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 182); // 26 weeks
+	const fromDate = sixMonthsAgo.toISOString().split('T')[0];
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const { data: snapshotsRaw } = await (event.locals.supabase as any)
@@ -194,6 +214,30 @@ export const load: PageServerLoad = async (event) => {
 		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 15);
 	})();
 
+	// New arrivals — stocked beans with stocked_date in last 30 days (supports 7-day/30-day toggle)
+	const thirtyDaysAgoArrivals = new Date();
+	thirtyDaysAgoArrivals.setDate(thirtyDaysAgoArrivals.getDate() - 30);
+
+	const { data: recentArrivals30 } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('name, country, processing, cost_lb, source, stocked_date')
+		.eq('stocked', true)
+		.gte('stocked_date', thirtyDaysAgoArrivals.toISOString().split('T')[0])
+		.order('stocked_date', { ascending: false })
+		.limit(50);
+
+	// Recent delistings — unstocked beans with unstocked_date in last 30 days
+	const thirtyDaysAgoDelistings = new Date();
+	thirtyDaysAgoDelistings.setDate(thirtyDaysAgoDelistings.getDate() - 30);
+
+	const { data: recentDelistings30 } = await event.locals.supabase
+		.from('coffee_catalog')
+		.select('name, country, processing, cost_lb, source, unstocked_date')
+		.eq('stocked', false)
+		.gte('unstocked_date', thirtyDaysAgoDelistings.toISOString().split('T')[0])
+		.order('unstocked_date', { ascending: false })
+		.limit(50);
+
 	return {
 		session,
 		role,
@@ -208,6 +252,8 @@ export const load: PageServerLoad = async (event) => {
 		},
 		snapshots,
 		processDistribution,
-		originRangeData
+		originRangeData,
+		recentArrivals: (recentArrivals30 ?? []) as ArrivalBean[],
+		recentDelistings: (recentDelistings30 ?? []) as DelistingBean[]
 	};
 };
