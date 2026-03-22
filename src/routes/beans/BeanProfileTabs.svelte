@@ -484,7 +484,7 @@
 						cat.arrival_date
 					)}
 					{@const hasPricingData = !!(
-						cat.cost_lb != null ||
+						(cat.price_per_lb ?? cat.cost_lb) != null ||
 						(cat.price_tiers && Array.isArray(cat.price_tiers) && cat.price_tiers.length > 0) ||
 						cat.wholesale ||
 						cat.lot_size ||
@@ -636,13 +636,13 @@
 									Pricing & Availability
 								</h4>
 								<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-									{#if cat.cost_lb != null}
+									{#if (cat.price_per_lb ?? cat.cost_lb) != null}
 										<div
 											class="rounded-lg bg-background-secondary-light p-3 ring-1 ring-border-light"
 										>
 											<h5 class="text-xs font-medium text-text-secondary-light">COST PER LB</h5>
 											<div class="mt-1 text-sm font-medium text-text-primary-light">
-												{formatCostPerLb(cat.cost_lb)}
+												{formatCostPerLb((cat.price_per_lb ?? cat.cost_lb) as number)}
 											</div>
 										</div>
 									{/if}
@@ -1073,12 +1073,13 @@
 				</div>
 
 				<!-- Purchase vs Current Market -->
-				{#if selectedBean.coffee_catalog?.cost_lb}
+				{#if selectedBean.coffee_catalog?.price_per_lb ?? selectedBean.coffee_catalog?.cost_lb}
 					{@const paidPerLb = selectedBean.purchased_qty_lbs
 						? ((selectedBean.bean_cost || 0) + (selectedBean.tax_ship_cost || 0)) /
 							selectedBean.purchased_qty_lbs
 						: 0}
-					{@const marketPrice = selectedBean.coffee_catalog.cost_lb}
+					{@const marketPrice = (selectedBean.coffee_catalog?.price_per_lb ??
+						selectedBean.coffee_catalog?.cost_lb) as number}
 					{@const savings = marketPrice - paidPerLb}
 					<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 						<h4 class="mb-3 font-medium text-text-primary-light">Market Comparison</h4>

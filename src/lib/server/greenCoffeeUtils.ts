@@ -31,6 +31,7 @@ export interface CoffeeCatalog {
 	farm_notes: string | null;
 	link: string | null;
 	cost_lb: number | null;
+	price_per_lb: number | null;
 	source: string | null;
 	stocked: boolean | null;
 	cupping_notes: string | null;
@@ -87,6 +88,7 @@ export function buildGreenCoffeeQuery(supabase: SupabaseClient) {
 			farm_notes,
 			link,
 			cost_lb,
+			price_per_lb,
 			source,
 			stocked,
 			cupping_notes,

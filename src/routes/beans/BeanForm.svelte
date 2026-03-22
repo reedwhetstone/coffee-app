@@ -196,7 +196,17 @@
 		const qty = existingQty > 0 ? existingQty : tiers ? minOrder : existingQty;
 
 		const subtotalFromTiers = tiers ? calculatePurchaseTotal(tiers, qty) : null;
-		const perLbFallback = typeof catalogBean.cost_lb === 'number' ? catalogBean.cost_lb : null;
+		const priceTiersArr = Array.isArray(catalogBean.price_tiers)
+			? (catalogBean.price_tiers as Array<{ min_lbs: number; price: number }>)
+			: null;
+		const perLbFallback =
+			typeof catalogBean.price_per_lb === 'number'
+				? catalogBean.price_per_lb
+				: typeof priceTiersArr?.[0]?.price === 'number'
+					? priceTiersArr[0].price
+					: typeof catalogBean.cost_lb === 'number'
+						? catalogBean.cost_lb
+						: null;
 		const subtotalFallback =
 			perLbFallback != null && qty > 0 ? Math.round(perLbFallback * qty * 100) / 100 : null;
 

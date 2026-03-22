@@ -3,7 +3,7 @@
 		name: string;
 		country: string;
 		processing: string | null;
-		cost_lb: number;
+		price_per_lb: number;
 		source: string;
 		wholesale: boolean;
 		bag_size: string | null;
@@ -29,18 +29,20 @@
 		}
 	});
 
-	// Filter beans for selected origin, sorted by cost_lb ascending
+	// Filter beans for selected origin, sorted by price_per_lb ascending
 	let filteredBeans = $derived.by(() => {
 		if (!selectedOrigin) return [];
-		return beans.filter((b) => b.country === selectedOrigin).sort((a, b) => a.cost_lb - b.cost_lb);
+		return beans
+			.filter((b) => b.country === selectedOrigin)
+			.sort((a, b) => a.price_per_lb - b.price_per_lb);
 	});
 
 	// Stats for the summary line
 	let beanCount = $derived(filteredBeans.length);
 	let supplierCount = $derived(new Set(filteredBeans.map((b) => b.source)).size);
 
-	// Cheapest cost_lb (already sorted ascending, so index 0)
-	let cheapestCostLb = $derived(filteredBeans.length > 0 ? filteredBeans[0].cost_lb : null);
+	// Cheapest price_per_lb (already sorted ascending, so index 0)
+	let cheapestCostLb = $derived(filteredBeans.length > 0 ? filteredBeans[0].price_per_lb : null);
 
 	function formatSourceName(source: string): string {
 		// Special-case known sources for better display names
@@ -123,7 +125,7 @@
 				</thead>
 				<tbody>
 					{#each filteredBeans as bean, i}
-						{@const isCheapest = bean.cost_lb === cheapestCostLb}
+						{@const isCheapest = bean.price_per_lb === cheapestCostLb}
 						<tr
 							class="border-b border-border-light/50 transition-colors
 								{i % 2 === 0 ? 'bg-background-primary-light' : 'bg-background-secondary-light/50'}
@@ -147,7 +149,7 @@
 									class="font-semibold
 										{isCheapest ? 'text-background-tertiary-light' : 'text-text-primary-light'}"
 								>
-									${bean.cost_lb.toFixed(2)}/lb
+									${bean.price_per_lb.toFixed(2)}/lb
 								</span>
 								{#if isCheapest}
 									<span

@@ -368,7 +368,7 @@
 				>
 					<p class="text-sm font-medium text-text-secondary-light">📊 No origin data available</p>
 					<p class="mt-1 text-xs text-text-secondary-light">
-						Requires stocked beans with cost_lb values in the catalog.
+						Requires stocked beans with price_per_lb values in the catalog.
 					</p>
 				</div>
 			{/if}
@@ -676,7 +676,7 @@
 									<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
 									<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
 									<td class="py-2 pr-3 text-right font-semibold text-text-primary-light"
-										>{bean.cost_lb != null ? '$' + bean.cost_lb.toFixed(2) : '—'}</td
+										>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
 									>
 									<td class="py-2 pr-3 text-text-secondary-light">{formatSource(bean.source)}</td>
 									<td class="py-2 text-right"
@@ -760,7 +760,7 @@
 									<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
 									<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td>
 									<td class="py-2 pr-3 text-right text-text-secondary-light"
-										>{bean.cost_lb != null ? '$' + bean.cost_lb.toFixed(2) : '—'}</td
+										>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
 									>
 									<td class="py-2 pr-3 text-text-secondary-light">{formatSource(bean.source)}</td>
 									<td class="py-2 text-right"
