@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { line as d3Line, area as d3Area, curveMonotoneX } from 'd3-shape';
+	import { line as d3Line, curveMonotoneX } from 'd3-shape';
 	import { scaleTime, scaleLinear } from 'd3-scale';
 	import { extent, min } from 'd3-array';
 	import { select } from 'd3-selection';
@@ -121,8 +121,7 @@
 				color: originColor(origin),
 				points: [...(originMap.get(origin) ?? [])].sort(
 					(a, b) => a.date.getTime() - b.date.getTime()
-				),
-				hasBands: (originMap.get(origin) ?? []).some((p) => p.min != null && p.max != null)
+				)
 			}))
 	);
 
@@ -237,16 +236,24 @@
 	// Hover tooltip state
 	let mouseX = $state<number | null>(null);
 
+	interface TooltipRow {
+		origin: string;
+		color: string;
+		price: number;
+		min: number | null;
+		max: number | null;
+	}
+
 	interface TooltipData {
 		x: number;
 		date: Date;
-		rows: { origin: string; color: string; price: number }[];
+		rows: TooltipRow[];
 	}
 
 	let tooltipData = $derived.by((): TooltipData | null => {
 		if (mouseX === null || innerW <= 0) return null;
 		const hoveredDate = xScale.invert(mouseX);
-		const rows: { origin: string; color: string; price: number }[] = [];
+		const rows: TooltipRow[] = [];
 		for (const s of seriesData) {
 			if (s.points.length === 0) continue;
 			let closest = s.points[0];
@@ -258,7 +265,13 @@
 					closestDist = dist;
 				}
 			}
-			rows.push({ origin: s.origin, color: s.color, price: closest.value });
+			rows.push({
+				origin: s.origin,
+				color: s.color,
+				price: closest.value,
+				min: closest.min,
+				max: closest.max
+			});
 		}
 		return rows.length > 0 ? { x: mouseX, date: hoveredDate, rows } : null;
 	});
@@ -387,22 +400,6 @@
 						<g bind:this={xAxisEl} transform="translate(0,{innerH})"></g>
 						<g bind:this={yAxisEl}></g>
 
-						<!-- Min/max confidence bands (rendered behind lines) -->
-						{#each seriesData as series}
-							{#if series.hasBands}
-								{@const bandPoints = series.points.filter((p) => p.min != null && p.max != null)}
-								{@const areaGen = d3Area<DataPoint>()
-									.x((d) => xScale(d.date))
-									.y0((d) => yScale(d.min ?? d.value))
-									.y1((d) => yScale(d.max ?? d.value))
-									.curve(curveMonotoneX)}
-								{@const areaD = areaGen(bandPoints)}
-								{#if areaD}
-									<path d={areaD} fill={series.color} fill-opacity="0.1" stroke="none" />
-								{/if}
-							{/if}
-						{/each}
-
 						<!-- Lines -->
 						{#each seriesData as series}
 							{@const lineGen = d3Line<DataPoint>()
@@ -457,7 +454,7 @@
 								x={tooltipLeft}
 								y={tooltipTop}
 								width="164"
-								height={tooltipData.rows.length * 22 + 38}
+								height={tooltipData.rows.length * 36 + 38}
 								pointer-events="none"
 							>
 								<div
@@ -483,6 +480,11 @@
 												>${row.price.toFixed(2)}</span
 											>
 										</div>
+										{#if row.min != null && row.max != null}
+											<div style="margin-left:13px; font-size:10px; color:#9ca3af;">
+												${row.min.toFixed(2)} – ${row.max.toFixed(2)}
+											</div>
+										{/if}
 									{/each}
 								</div>
 							</foreignObject>
