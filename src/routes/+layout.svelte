@@ -217,7 +217,7 @@
 		<!-- Non-authenticated Layout without Sidebar -->
 		<div class="min-h-screen">
 			<main class="flex-1">
-				<div class="h-full px-4 py-4">
+				<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 					<!-- Page Content -->
 					{@render children()}
 				</div>
