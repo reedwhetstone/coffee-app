@@ -15,10 +15,8 @@
 		wholesale_only: boolean;
 	}
 
-	let {
-		snapshots = [],
-		expanded = false
-	}: { snapshots: SnapshotRow[]; expanded?: boolean } = $props();
+	let { snapshots = [], expanded = false }: { snapshots: SnapshotRow[]; expanded?: boolean } =
+		$props();
 
 	const COLORS = [
 		'#f59e0b',
@@ -92,9 +90,7 @@
 	});
 
 	// Dashboard mode always uses top 5, expanded mode uses user selection
-	let visibleOrigins = $derived(
-		expanded ? [...enabledOrigins] : allRankedOrigins.slice(0, 5)
-	);
+	let visibleOrigins = $derived(expanded ? [...enabledOrigins] : allRankedOrigins.slice(0, 5));
 
 	function toggleOrigin(origin: string) {
 		const next = new Set(enabledOrigins);
@@ -115,14 +111,11 @@
 	}
 
 	let seriesData = $derived.by(() =>
-		visibleOrigins
-			.map((origin) => ({
-				origin,
-				color: originColor(origin),
-				points: [...(originMap.get(origin) ?? [])].sort(
-					(a, b) => a.date.getTime() - b.date.getTime()
-				)
-			}))
+		visibleOrigins.map((origin) => ({
+			origin,
+			color: originColor(origin),
+			points: [...(originMap.get(origin) ?? [])].sort((a, b) => a.date.getTime() - b.date.getTime())
+		}))
 	);
 
 	let allValues = $derived(seriesData.flatMap((s) => s.points.map((p) => p.value)));
@@ -323,35 +316,57 @@
 						class="flex items-center gap-1.5 rounded-md border border-border-light bg-background-secondary-light px-3 py-1.5 text-sm text-text-primary-light transition-colors hover:border-background-tertiary-light"
 					>
 						{enabledOrigins.size} of {allRankedOrigins.length} selected
-						<svg class="h-4 w-4 text-text-secondary-light" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						<svg
+							class="h-4 w-4 text-text-secondary-light"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19 9l-7 7-7-7"
+							/>
 						</svg>
 					</button>
 					{#if selectorOpen}
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div class="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-border-light bg-background-primary-light shadow-lg">
+						<div
+							class="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-border-light bg-background-primary-light shadow-lg"
+						>
 							<div class="border-b border-border-light px-3 py-2">
 								<div class="flex gap-2">
 									<button
 										type="button"
-										onclick={() => { enabledOrigins = new Set(allRankedOrigins.slice(0, 5)); }}
+										onclick={() => {
+											enabledOrigins = new Set(allRankedOrigins.slice(0, 5));
+										}}
 										class="text-xs font-medium text-background-tertiary-light hover:underline"
-									>Top 5</button>
+										>Top 5</button
+									>
 									<button
 										type="button"
-										onclick={() => { enabledOrigins = new Set(allRankedOrigins.slice(0, 10)); }}
+										onclick={() => {
+											enabledOrigins = new Set(allRankedOrigins.slice(0, 10));
+										}}
 										class="text-xs font-medium text-background-tertiary-light hover:underline"
-									>Top 10</button>
+										>Top 10</button
+									>
 									<button
 										type="button"
-										onclick={() => { enabledOrigins = new Set(allRankedOrigins); }}
+										onclick={() => {
+											enabledOrigins = new Set(allRankedOrigins);
+										}}
 										class="text-xs font-medium text-background-tertiary-light hover:underline"
-									>All</button>
+										>All</button
+									>
 									<button
 										type="button"
-										onclick={() => { enabledOrigins = new Set(); }}
-										class="text-xs font-medium text-red-500 hover:underline"
-									>Clear</button>
+										onclick={() => {
+											enabledOrigins = new Set();
+										}}
+										class="text-xs font-medium text-red-500 hover:underline">Clear</button
+									>
 								</div>
 							</div>
 							{#each allRankedOrigins as origin}
@@ -369,7 +384,9 @@
 											? `background:${color}; border-color:${color};`
 											: 'background:transparent; border-color:#d1d5db;'}
 									></div>
-									<span class={active ? 'text-text-primary-light' : 'text-text-secondary-light'}>{origin}</span>
+									<span class={active ? 'text-text-primary-light' : 'text-text-secondary-light'}
+										>{origin}</span
+									>
 									<span class="ml-auto text-xs text-text-secondary-light/60">({vol})</span>
 								</button>
 							{/each}

@@ -435,6 +435,11 @@ async function main() {
 
 		inserted += batch.length;
 		process.stderr.write(`\r  Progress: ${inserted}/${ppiRows.length} rows`);
+
+		// Rate-limit: 200ms pause between batches to avoid overwhelming Supabase
+		if (i + BATCH_SIZE < ppiRows.length) {
+			await new Promise((r) => setTimeout(r, 200));
+		}
 	}
 
 	console.error(
