@@ -115,7 +115,11 @@
 	});
 
 	// Line chart: filtered snapshots with price data
-	let lineSnapshots = $derived(filteredSnapshots.filter((s) => s.price_avg != null));
+	// Line chart: use only origin-level aggregate rows (process=null)
+	// to avoid multiple data points per origin per date causing vertical spikes
+	let lineSnapshots = $derived(
+		filteredSnapshots.filter((s) => s.price_avg != null && s.process == null)
+	);
 
 	let hasSnapshots = $derived(filteredSnapshots.length > 0);
 
