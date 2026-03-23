@@ -5,6 +5,7 @@
 	interface TableRoastProfile extends RoastProfile {
 		roast_duration_minutes?: number;
 		end_temperature?: number;
+		is_wholesale?: boolean;
 	}
 
 	let {
@@ -26,6 +27,21 @@
 	// Create derived values with defaults
 	let safeBatchNames = $derived(sortedBatchNames ?? []);
 	let safeGroupedProfiles = $derived(sortedGroupedProfiles ?? {});
+
+	// Wholesale filter state
+	let wholesaleFilter = $state<'all' | 'retail' | 'wholesale'>('all');
+
+	let filteredBatchNames = $derived(
+		wholesaleFilter === 'all'
+			? safeBatchNames
+			: safeBatchNames.filter((batchKey: string) => {
+					const profiles: TableRoastProfile[] = safeGroupedProfiles[batchKey] || [];
+					if (wholesaleFilter === 'wholesale') {
+						return profiles.some((p: TableRoastProfile) => p.is_wholesale);
+					}
+					return profiles.some((p: TableRoastProfile) => !p.is_wholesale);
+				})
+	);
 
 	import { formatDateForDisplay } from '$lib/utils/dates';
 
@@ -117,8 +133,31 @@
 			</p>
 		</div>
 	{:else}
+		<div class="mb-4 flex items-center gap-2">
+			<button
+				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {wholesaleFilter ===
+				'all'
+					? 'bg-background-tertiary-light text-white'
+					: 'bg-background-secondary-light text-text-secondary-light ring-1 ring-border-light hover:bg-background-primary-light'}"
+				onclick={() => (wholesaleFilter = 'all')}>All</button
+			>
+			<button
+				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {wholesaleFilter ===
+				'retail'
+					? 'bg-background-tertiary-light text-white'
+					: 'bg-background-secondary-light text-text-secondary-light ring-1 ring-border-light hover:bg-background-primary-light'}"
+				onclick={() => (wholesaleFilter = 'retail')}>Retail</button
+			>
+			<button
+				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {wholesaleFilter ===
+				'wholesale'
+					? 'bg-background-tertiary-light text-white'
+					: 'bg-background-secondary-light text-text-secondary-light ring-1 ring-border-light hover:bg-background-primary-light'}"
+				onclick={() => (wholesaleFilter = 'wholesale')}>Wholesale</button
+			>
+		</div>
 		<div class="space-y-6">
-			{#each safeBatchNames as batchKey}
+			{#each filteredBatchNames as batchKey}
 				{@const batchName = batchKey.includes('|||') ? batchKey.split('|||')[0] : batchKey}
 				{@const profiles = safeGroupedProfiles[batchKey] || []}
 				{@const batchSummary = getBatchSummary(profiles)}
@@ -191,9 +230,16 @@
 									>
 										<div class="mb-3 flex items-start justify-between">
 											<div>
-												<h4 class="font-semibold text-text-primary-light">
-													{profile.coffee_name}
-												</h4>
+												<div class="flex items-center gap-1.5">
+													<h4 class="font-semibold text-text-primary-light">
+														{profile.coffee_name}
+													</h4>
+													{#if profile.is_wholesale}
+														<span class="rounded bg-blue-100 px-1 text-xs text-blue-800"
+															>Wholesale</span
+														>
+													{/if}
+												</div>
 												<p class="text-sm text-text-secondary-light">
 													ID: {profile.roast_id} • {formatDateForDisplay(profile.roast_date)}
 												</p>
