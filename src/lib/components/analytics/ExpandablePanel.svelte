@@ -10,6 +10,7 @@
 		totalItems,
 		collapsedMaxHeight = '280px',
 		showGradient = true,
+		onExpandChange,
 		children
 	}: {
 		title: string;
@@ -19,6 +20,7 @@
 		totalItems?: number;
 		collapsedMaxHeight?: string;
 		showGradient?: boolean;
+		onExpandChange?: (expanded: boolean) => void;
 		children: Snippet;
 	} = $props();
 
@@ -26,10 +28,12 @@
 
 	function open() {
 		expanded = true;
+		onExpandChange?.(true);
 	}
 
 	function close() {
 		expanded = false;
+		onExpandChange?.(false);
 	}
 
 	// Lock body scroll while modal is open

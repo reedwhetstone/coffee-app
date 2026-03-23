@@ -19,6 +19,8 @@
 
 	let { data } = $props<{ data: PageData }>();
 
+	let lineChartExpanded = $state(false);
+
 	let {
 		session,
 		isPpiMember,
@@ -324,8 +326,9 @@
 	<ExpandablePanel
 		title="Price Trends by Origin"
 		subtitle="Average $/lb by top origins over the last 30 days — ranked by market volume"
-		collapsedMaxHeight="360px"
+		collapsedMaxHeight="420px"
 		showGradient={false}
+		onExpandChange={(v) => (lineChartExpanded = v)}
 	>
 		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
@@ -333,8 +336,8 @@
 				Average $/lb by top origins over the last 30 days — ranked by market volume
 				{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 			</p>
-			<div class="h-64 w-full">
-				<OriginLineChart snapshots={lineSnapshots} />
+			<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
+				<OriginLineChart snapshots={lineSnapshots} expanded={lineChartExpanded} />
 			</div>
 		</div>
 	</ExpandablePanel>

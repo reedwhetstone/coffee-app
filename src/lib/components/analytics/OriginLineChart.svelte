@@ -13,9 +13,11 @@
 		wholesale_only: boolean;
 	}
 
-	let { snapshots = [] }: { snapshots: SnapshotRow[] } = $props();
+	let {
+		snapshots = [],
+		expanded = false
+	}: { snapshots: SnapshotRow[]; expanded?: boolean } = $props();
 
-	// Build top-5 origins by total sample_size (volume-ranked)
 	const COLORS = [
 		'#f59e0b',
 		'#10b981',
@@ -29,7 +31,6 @@
 		'#84cc16'
 	];
 
-	// Minimum distinct snapshot dates required before showing chart
 	const MIN_DISTINCT_DATES = 7;
 
 	let distinctDateCount = $derived(new Set(snapshots.map((s) => s.snapshot_date)).size);
@@ -46,7 +47,6 @@
 		return map;
 	});
 
-	// Compute total sample_size per origin for volume ranking
 	let originVolume = $derived.by(() => {
 		const vol = new Map<string, number>();
 		for (const row of snapshots) {
@@ -57,7 +57,6 @@
 		return vol;
 	});
 
-	// All origins ranked by volume
 	let allRankedOrigins = $derived.by(() => {
 		const ranked: { origin: string; totalSamples: number }[] = [];
 		for (const [origin] of originMap) {
@@ -67,17 +66,21 @@
 		return ranked.map((r) => r.origin);
 	});
 
-	// User-selectable origins — default top 5 enabled
+	// In dashboard mode: always top 5. In expanded mode: user-selectable.
 	let enabledOrigins = $state<Set<string>>(new Set());
 	let enabledOriginsInitialized = $state(false);
 
-	// Initialize enabledOrigins once we have data
 	$effect(() => {
 		if (!enabledOriginsInitialized && allRankedOrigins.length > 0) {
 			enabledOrigins = new Set(allRankedOrigins.slice(0, 5));
 			enabledOriginsInitialized = true;
 		}
 	});
+
+	// Dashboard mode always uses top 5, expanded mode uses user selection
+	let visibleOrigins = $derived(
+		expanded ? [...enabledOrigins] : allRankedOrigins.slice(0, 5)
+	);
 
 	function toggleOrigin(origin: string) {
 		const next = new Set(enabledOrigins);
@@ -89,15 +92,16 @@
 		enabledOrigins = next;
 	}
 
-	// Color is assigned by rank in allRankedOrigins (stable palette)
+	// Origin selector dropdown state (expanded mode only)
+	let selectorOpen = $state(false);
+
 	function originColor(origin: string): string {
 		const idx = allRankedOrigins.indexOf(origin);
 		return COLORS[idx % COLORS.length];
 	}
 
 	let seriesData = $derived.by(() =>
-		allRankedOrigins
-			.filter((origin) => enabledOrigins.has(origin))
+		visibleOrigins
 			.map((origin) => ({
 				origin,
 				color: originColor(origin),
@@ -107,7 +111,6 @@
 			}))
 	);
 
-	// All price values for yDomain
 	let allValues = $derived(seriesData.flatMap((s) => s.points.map((p) => p.value)));
 	let allDates = $derived(seriesData.flatMap((s) => s.points.map((p) => p.date)));
 
@@ -138,7 +141,6 @@
 	let xScale = $derived(scaleTime().domain(xDomain).range([0, innerW]));
 	let yScale = $derived(scaleLinear().domain(yDomain).range([innerH, 0]));
 
-	// Axes
 	let xAxisEl: SVGGElement | undefined = $state();
 	let yAxisEl: SVGGElement | undefined = $state();
 
@@ -153,7 +155,6 @@
 			.attr('y2', 0)
 			.attr('stroke', 'rgb(156 163 175)');
 		const dateRange = xDomain[1].getTime() - xDomain[0].getTime();
-		// Guard against degenerate scale (0 or 1 date)
 		if (dateRange === 0) return;
 		const tickCount = Math.max(2, Math.min(6, Math.floor(innerW / 80)));
 		const step = Math.max(1, Math.floor(dateRange / tickCount / 86400000));
@@ -207,7 +208,6 @@
 				.attr('fill', 'rgb(156 163 175)')
 				.attr('font-size', '11')
 				.text(`$${t.toFixed(2)}`);
-			// Gridline
 			g.append('line')
 				.attr('x1', 0)
 				.attr('x2', innerW)
@@ -221,84 +221,52 @@
 
 	// Hover tooltip state
 	let mouseX = $state<number | null>(null);
-	let mouseY = $state<number | null>(null);
-	let isHovering = $state(false);
-
-	interface TooltipRow {
-		origin: string;
-		color: string;
-		price: number;
-	}
 
 	interface TooltipData {
-		date: Date;
 		x: number;
-		rows: TooltipRow[];
+		date: Date;
+		rows: { origin: string; color: string; price: number }[];
 	}
 
 	let tooltipData = $derived.by((): TooltipData | null => {
-		if (!isHovering || mouseX === null || innerW <= 0 || xScale == null || seriesData.length === 0)
-			return null;
-
-		// Convert pixel position to date
+		if (mouseX === null || innerW <= 0) return null;
 		const hoveredDate = xScale.invert(mouseX);
-		const hoveredTime = hoveredDate.getTime();
-
-		const rows: TooltipRow[] = [];
-		for (const series of seriesData) {
-			if (series.points.length === 0) continue;
-			// Find nearest point
-			let nearest = series.points[0];
-			let minDiff = Math.abs(nearest.date.getTime() - hoveredTime);
-			for (const pt of series.points) {
-				const diff = Math.abs(pt.date.getTime() - hoveredTime);
-				if (diff < minDiff) {
-					minDiff = diff;
-					nearest = pt;
+		const rows: { origin: string; color: string; price: number }[] = [];
+		for (const s of seriesData) {
+			if (s.points.length === 0) continue;
+			let closest = s.points[0];
+			let closestDist = Math.abs(closest.date.getTime() - hoveredDate.getTime());
+			for (const p of s.points) {
+				const dist = Math.abs(p.date.getTime() - hoveredDate.getTime());
+				if (dist < closestDist) {
+					closest = p;
+					closestDist = dist;
 				}
 			}
-			rows.push({ origin: series.origin, color: series.color, price: nearest.value });
+			rows.push({ origin: s.origin, color: s.color, price: closest.value });
 		}
-
-		return { date: hoveredDate, x: mouseX, rows };
+		return rows.length > 0 ? { x: mouseX, date: hoveredDate, rows } : null;
 	});
+
+	let tooltipLeft = $derived.by(() => {
+		if (!tooltipData) return 0;
+		return tooltipData.x > innerW - 180 ? tooltipData.x - 170 : tooltipData.x + 12;
+	});
+
+	let tooltipTop = $derived(10);
 
 	function handleMouseMove(e: MouseEvent) {
 		const rect = (e.currentTarget as SVGRectElement).getBoundingClientRect();
 		mouseX = e.clientX - rect.left;
-		mouseY = e.clientY - rect.top;
-		isHovering = true;
 	}
 
 	function handleMouseLeave() {
-		isHovering = false;
 		mouseX = null;
-		mouseY = null;
 	}
-
-	// Tooltip position: keep within chart bounds
-	let tooltipLeft = $derived.by(() => {
-		if (tooltipData === null || mouseX === null) return 0;
-		const tipWidth = 160;
-		const chartRight = innerW;
-		const x = tooltipData.x;
-		// Flip to left side of cursor if near right edge
-		if (x + 16 + tipWidth > chartRight) {
-			return Math.max(0, x - tipWidth - 8);
-		}
-		return x + 16;
-	});
-
-	let tooltipTop = $derived.by(() => {
-		if (mouseY === null) return 0;
-		const tipHeight = (tooltipData?.rows.length ?? 0) * 22 + 36;
-		return Math.max(0, Math.min(mouseY - tipHeight / 2, innerH - tipHeight));
-	});
 </script>
 
 <div class="flex h-full w-full flex-col">
 	{#if !hasEnoughData}
-		<!-- Not enough data: show informative placeholder -->
 		<div
 			class="flex h-full w-full flex-col items-center justify-center rounded-lg bg-background-secondary-light px-6 text-center"
 		>
@@ -316,15 +284,94 @@
 			</p>
 		</div>
 	{:else}
+		<!-- Origin selector: only in expanded mode -->
+		{#if expanded}
+			<div class="mb-3 flex flex-wrap items-center gap-2">
+				<span class="text-sm font-medium text-text-secondary-light">Origins:</span>
+				<div class="relative">
+					<button
+						type="button"
+						onclick={() => (selectorOpen = !selectorOpen)}
+						class="flex items-center gap-1.5 rounded-md border border-border-light bg-background-secondary-light px-3 py-1.5 text-sm text-text-primary-light transition-colors hover:border-background-tertiary-light"
+					>
+						{enabledOrigins.size} of {allRankedOrigins.length} selected
+						<svg class="h-4 w-4 text-text-secondary-light" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						</svg>
+					</button>
+					{#if selectorOpen}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div class="absolute left-0 top-full z-20 mt-1 max-h-64 w-64 overflow-y-auto rounded-lg border border-border-light bg-background-primary-light shadow-lg">
+							<div class="border-b border-border-light px-3 py-2">
+								<div class="flex gap-2">
+									<button
+										type="button"
+										onclick={() => { enabledOrigins = new Set(allRankedOrigins.slice(0, 5)); }}
+										class="text-xs font-medium text-background-tertiary-light hover:underline"
+									>Top 5</button>
+									<button
+										type="button"
+										onclick={() => { enabledOrigins = new Set(allRankedOrigins.slice(0, 10)); }}
+										class="text-xs font-medium text-background-tertiary-light hover:underline"
+									>Top 10</button>
+									<button
+										type="button"
+										onclick={() => { enabledOrigins = new Set(allRankedOrigins); }}
+										class="text-xs font-medium text-background-tertiary-light hover:underline"
+									>All</button>
+									<button
+										type="button"
+										onclick={() => { enabledOrigins = new Set(); }}
+										class="text-xs font-medium text-red-500 hover:underline"
+									>Clear</button>
+								</div>
+							</div>
+							{#each allRankedOrigins as origin}
+								{@const active = enabledOrigins.has(origin)}
+								{@const color = originColor(origin)}
+								{@const vol = originVolume.get(origin) ?? 0}
+								<button
+									type="button"
+									onclick={() => toggleOrigin(origin)}
+									class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-background-secondary-light"
+								>
+									<div
+										class="h-3 w-3 flex-shrink-0 rounded-sm border"
+										style={active
+											? `background:${color}; border-color:${color};`
+											: 'background:transparent; border-color:#d1d5db;'}
+									></div>
+									<span class={active ? 'text-text-primary-light' : 'text-text-secondary-light'}>{origin}</span>
+									<span class="ml-auto text-xs text-text-secondary-light/60">({vol})</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+				<!-- Active origin chips (compact) -->
+				{#each visibleOrigins.slice(0, 8) as origin}
+					<span
+						class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+						style="background:{originColor(origin)}15; color:{originColor(origin)};"
+					>
+						<div class="h-1.5 w-1.5 rounded-full" style="background:{originColor(origin)};"></div>
+						{origin}
+					</span>
+				{/each}
+				{#if visibleOrigins.length > 8}
+					<span class="text-xs text-text-secondary-light">+{visibleOrigins.length - 8} more</span>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Chart area: flexible height -->
 		<div class="min-h-0 flex-1" bind:clientHeight={containerH} bind:clientWidth={containerW}>
 			{#if containerW > 0 && containerH > 0}
-				<svg width={containerW} height={containerH} style="overflow: visible;">
+				<svg width={containerW} height={containerH}>
 					<g transform="translate({padding.left},{padding.top})">
-						<!-- Axes -->
 						<g bind:this={xAxisEl} transform="translate(0,{innerH})"></g>
 						<g bind:this={yAxisEl}></g>
 
-						<!-- Lines -->
 						{#each seriesData as series}
 							{@const lineGen = d3Line<{ date: Date; value: number }>()
 								.x((d) => xScale(d.date))
@@ -334,7 +381,6 @@
 							{#if pathD}
 								<path d={pathD} fill="none" stroke={series.color} stroke-width="2.5" />
 							{/if}
-							<!-- Dot + label on last point only -->
 							{#if series.points.length > 0}
 								{@const last = series.points[series.points.length - 1]}
 								<circle cx={xScale(last.date)} cy={yScale(last.value)} r="4" fill={series.color} />
@@ -350,7 +396,6 @@
 							{/if}
 						{/each}
 
-						<!-- Hover crosshair -->
 						{#if tooltipData !== null}
 							<line
 								x1={tooltipData.x}
@@ -364,7 +409,6 @@
 							/>
 						{/if}
 
-						<!-- Invisible mouse capture rect -->
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<rect
 							x={0}
@@ -376,7 +420,6 @@
 							onmouseleave={handleMouseLeave}
 						/>
 
-						<!-- Tooltip (rendered in SVG foreignObject for HTML styling) -->
 						{#if tooltipData !== null}
 							<foreignObject
 								x={tooltipLeft}
@@ -417,30 +460,14 @@
 			{/if}
 		</div>
 
-		<!-- Legend: all origins as clickable toggles -->
-		{#if allRankedOrigins.length > 0}
-			<div class="mt-4 flex flex-wrap gap-x-3 gap-y-2 border-t border-gray-200 px-6 pt-3">
-				{#each allRankedOrigins as origin}
-					{@const color = originColor(origin)}
-					{@const active = enabledOrigins.has(origin)}
-					{@const vol = originVolume.get(origin) ?? 0}
-					<button
-						type="button"
-						onclick={() => toggleOrigin(origin)}
-						class="flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-all"
-						style={active
-							? `background:${color}20; border-color:${color}; color:#374151;`
-							: 'background:transparent; border-color:#d1d5db; color:#9ca3af;'}
-					>
-						<div
-							class="h-2 w-2 flex-shrink-0 rounded-full"
-							style={active ? `background:${color};` : 'background:#d1d5db;'}
-						></div>
-						{origin}
-						{#if vol > 0}
-							<span style="opacity:0.6;">({vol})</span>
-						{/if}
-					</button>
+		<!-- Dashboard legend: simple color dots + names (no toggles) -->
+		{#if !expanded && seriesData.length > 0}
+			<div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-gray-200 px-4 pt-2">
+				{#each seriesData as series}
+					<div class="flex items-center gap-1.5 text-xs text-text-secondary-light">
+						<div class="h-2.5 w-2.5 rounded-full" style="background:{series.color}"></div>
+						{series.origin}
+					</div>
 				{/each}
 			</div>
 		{/if}
