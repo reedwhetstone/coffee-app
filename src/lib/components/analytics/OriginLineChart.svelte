@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { line as d3Line, curveMonotoneX } from 'd3-shape';
+	import { line as d3Line, area as d3Area, curveMonotoneX } from 'd3-shape';
 	import { scaleTime, scaleLinear } from 'd3-scale';
 	import { extent, min } from 'd3-array';
 	import { select } from 'd3-selection';
@@ -9,6 +9,8 @@
 		origin: string;
 		price_avg: number | null;
 		price_median: number | null;
+		price_min: number | null;
+		price_max: number | null;
 		sample_size: number;
 		wholesale_only: boolean;
 	}
@@ -36,13 +38,25 @@
 	let distinctDateCount = $derived(new Set(snapshots.map((s) => s.snapshot_date)).size);
 	let hasEnoughData = $derived(distinctDateCount >= MIN_DISTINCT_DATES);
 
+	interface DataPoint {
+		date: Date;
+		value: number;
+		min: number | null;
+		max: number | null;
+	}
+
 	let originMap = $derived.by(() => {
-		const map = new Map<string, { date: Date; value: number }[]>();
+		const map = new Map<string, DataPoint[]>();
 		for (const row of snapshots) {
 			const price = row.price_median ?? row.price_avg;
 			if (price == null) continue;
 			if (!map.has(row.origin)) map.set(row.origin, []);
-			map.get(row.origin)!.push({ date: new Date(row.snapshot_date), value: price });
+			map.get(row.origin)!.push({
+				date: new Date(row.snapshot_date),
+				value: price,
+				min: row.price_min ?? null,
+				max: row.price_max ?? null
+			});
 		}
 		return map;
 	});
@@ -107,7 +121,8 @@
 				color: originColor(origin),
 				points: [...(originMap.get(origin) ?? [])].sort(
 					(a, b) => a.date.getTime() - b.date.getTime()
-				)
+				),
+				hasBands: (originMap.get(origin) ?? []).some((p) => p.min != null && p.max != null)
 			}))
 	);
 
@@ -372,8 +387,25 @@
 						<g bind:this={xAxisEl} transform="translate(0,{innerH})"></g>
 						<g bind:this={yAxisEl}></g>
 
+						<!-- Min/max confidence bands (rendered behind lines) -->
 						{#each seriesData as series}
-							{@const lineGen = d3Line<{ date: Date; value: number }>()
+							{#if series.hasBands}
+								{@const bandPoints = series.points.filter((p) => p.min != null && p.max != null)}
+								{@const areaGen = d3Area<DataPoint>()
+									.x((d) => xScale(d.date))
+									.y0((d) => yScale(d.min ?? d.value))
+									.y1((d) => yScale(d.max ?? d.value))
+									.curve(curveMonotoneX)}
+								{@const areaD = areaGen(bandPoints)}
+								{#if areaD}
+									<path d={areaD} fill={series.color} fill-opacity="0.1" stroke="none" />
+								{/if}
+							{/if}
+						{/each}
+
+						<!-- Lines -->
+						{#each seriesData as series}
+							{@const lineGen = d3Line<DataPoint>()
 								.x((d) => xScale(d.date))
 								.y((d) => yScale(d.value))
 								.curve(curveMonotoneX)}
