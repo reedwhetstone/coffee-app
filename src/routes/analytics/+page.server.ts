@@ -107,7 +107,32 @@ export const load: PageServerLoad = async (event) => {
 		}
 	}
 
-	// Catalog stats — use count queries to avoid Supabase 1000-row default limit
+	const today = new Date().toISOString().split('T')[0];
+
+	// --- Market summary (pre-computed by compute_market_summary RPC) ---
+	// Fetch most recent row up to today; falls back gracefully if the RPC hasn't run yet.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const { data: marketSummaryRaw } = await (event.locals.supabase as any)
+		.from('market_daily_summary')
+		.select('*')
+		.lte('snapshot_date', today)
+		.order('snapshot_date', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+
+	const marketSummary = marketSummaryRaw as {
+		snapshot_date: string;
+		total_stocked: number;
+		total_suppliers: number;
+		total_origins: number;
+		retail_median: number | null;
+		retail_median_7d_change: number | null;
+		retail_median_30d_change: number | null;
+		supply_7d_change?: number | null;
+		supply_30d_change?: number | null;
+	} | null;
+
+	// --- Counts still requiring live queries (not yet in market_daily_summary) ---
 
 	// Total beans tracked (all catalog entries, stocked or not)
 	const { count: totalBeansTracked } = await event.locals.supabase
@@ -127,24 +152,6 @@ export const load: PageServerLoad = async (event) => {
 		.select('*', { count: 'exact', head: true })
 		.eq('stocked', true)
 		.eq('wholesale', true);
-
-	// Distinct suppliers and origins — need to fetch columns for uniqueness
-	// Use a larger limit to capture all sources
-	const { data: supplierRows } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('source')
-		.eq('stocked', true)
-		.not('source', 'is', null)
-		.limit(5000);
-	const totalSuppliers = new Set((supplierRows ?? []).map((r) => r.source)).size;
-
-	const { data: originRows } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('country')
-		.eq('stocked', true)
-		.not('country', 'is', null)
-		.limit(5000);
-	const originsCount = new Set((originRows ?? []).map((r) => r.country)).size;
 
 	// Processing method distribution — load ALL stocked beans with wholesale flag
 	const { data: processingRows } = await event.locals.supabase
@@ -260,64 +267,47 @@ export const load: PageServerLoad = async (event) => {
 		.order('price_per_lb', { ascending: true })
 		.limit(2000);
 
-	// Supplier health: all stocked beans grouped by source
-	const { data: supplierBeans } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('source, country, price_per_lb, wholesale, stocked')
-		.eq('stocked', true)
-		.not('price_per_lb', 'is', null)
-		.limit(5000);
+	// --- Supplier health (pre-computed by compute_supplier_stats RPC) ---
+	// Read from supplier_daily_stats for the most recent date up to today.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const { data: supplierStatsRaw } = await (event.locals.supabase as any)
+		.from('supplier_daily_stats')
+		.select('*')
+		.lte('snapshot_date', today)
+		.order('snapshot_date', { ascending: false })
+		.order('stocked_count', { ascending: false })
+		.limit(200);
 
-	const supplierHealth: SupplierHealthRow[] = (() => {
-		if (!supplierBeans || supplierBeans.length === 0) return [];
+	interface SupplierStatRow {
+		snapshot_date: string;
+		source: string;
+		stocked_count: number;
+		origins_count: number;
+		price_avg: number | null;
+		price_min: number | null;
+		price_max: number | null;
+		wholesale_count: number;
+		retail_count: number;
+	}
 
-		const bySource = new Map<
-			string,
-			{
-				countries: Set<string>;
-				costs: number[];
-				wholesaleCount: number;
-				retailCount: number;
-			}
-		>();
+	const typedSupplierStats: SupplierStatRow[] = supplierStatsRaw ?? [];
 
-		for (const row of supplierBeans) {
-			const price = getPerLbPrice(row);
-			if (!row.source || price == null) continue;
-			const entry = bySource.get(row.source) ?? {
-				countries: new Set<string>(),
-				costs: [],
-				wholesaleCount: 0,
-				retailCount: 0
-			};
-			if (row.country) entry.countries.add(row.country);
-			entry.costs.push(price);
-			if (row.wholesale) {
-				entry.wholesaleCount += 1;
-			} else {
-				entry.retailCount += 1;
-			}
-			bySource.set(row.source, entry);
-		}
+	// Keep only the most recent snapshot date's rows (all suppliers for that date)
+	const mostRecentSupplierDate =
+		typedSupplierStats.length > 0 ? typedSupplierStats[0].snapshot_date : null;
 
-		const result: SupplierHealthRow[] = [];
-		for (const [source, entry] of bySource) {
-			if (entry.costs.length === 0) continue;
-			const avg = entry.costs.reduce((s, v) => s + v, 0) / entry.costs.length;
-			result.push({
-				source,
-				stockedCount: entry.costs.length,
-				origins: entry.countries.size,
-				avgCostLb: avg,
-				minCostLb: Math.min(...entry.costs),
-				maxCostLb: Math.max(...entry.costs),
-				wholesaleCount: entry.wholesaleCount,
-				retailCount: entry.retailCount
-			});
-		}
-
-		return result.sort((a, b) => b.stockedCount - a.stockedCount);
-	})();
+	const supplierHealth: SupplierHealthRow[] = typedSupplierStats
+		.filter((row) => row.snapshot_date === mostRecentSupplierDate)
+		.map((row) => ({
+			source: row.source,
+			stockedCount: row.stocked_count ?? 0,
+			origins: row.origins_count ?? 0,
+			avgCostLb: row.price_avg ?? 0,
+			minCostLb: row.price_min ?? 0,
+			maxCostLb: row.price_max ?? 0,
+			wholesaleCount: row.wholesale_count ?? 0,
+			retailCount: row.retail_count ?? 0
+		}));
 
 	// New arrivals — stocked beans with stocked_date in last 30 days (supports 7-day/30-day toggle)
 	const thirtyDaysAgoArrivals = new Date();
@@ -379,9 +369,15 @@ export const load: PageServerLoad = async (event) => {
 			totalBeansTracked: totalBeansTracked ?? 0,
 			stockedRetailBeans: stockedRetailBeans ?? 0,
 			stockedWholesaleBeans: stockedWholesaleBeans ?? 0,
-			totalSuppliers,
-			originsCount,
+			totalSuppliers: marketSummary?.total_suppliers ?? 0,
+			originsCount: marketSummary?.total_origins ?? 0,
 			lastUpdated
+		},
+		marketSummary: {
+			retail_median_7d_change: marketSummary?.retail_median_7d_change ?? null,
+			retail_median_30d_change: marketSummary?.retail_median_30d_change ?? null,
+			supply_7d_change: marketSummary?.supply_7d_change ?? null,
+			supply_30d_change: marketSummary?.supply_30d_change ?? null
 		},
 		snapshots,
 		processDistribution,
