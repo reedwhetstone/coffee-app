@@ -176,21 +176,31 @@ function resolveCatalogName(
 
 /**
  * List roast profiles for a user, ordered by roast_date desc by default.
+ * Joins through green_coffee_inv → coffee_catalog to attach is_wholesale.
  */
 export async function listRoasts(
 	supabase: SupabaseClient,
 	userId: string,
 	options: RoastListOptions = {}
-): Promise<RoastProfile[]> {
+): Promise<(RoastProfile & { is_wholesale: boolean })[]> {
 	const { orderBy = 'roast_date', ascending = false } = options;
 	const { data, error } = await supabase
 		.from('roast_profiles')
-		.select('*')
+		.select('*, green_coffee_inv!coffee_id ( coffee_catalog!catalog_id ( wholesale ) )')
 		.eq('user', userId)
 		.order(orderBy, { ascending });
 
 	if (error) throw error;
-	return (data as RoastProfile[]) ?? [];
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const profiles = (data ?? []).map((row: any) => {
+		const inv = row.green_coffee_inv;
+		const catalog = inv?.coffee_catalog;
+		const wholesale = Array.isArray(catalog) ? catalog[0]?.wholesale : catalog?.wholesale;
+		const { green_coffee_inv: _, ...profile } = row;
+		return { ...profile, is_wholesale: wholesale === true };
+	});
+	return profiles;
 }
 
 /**
