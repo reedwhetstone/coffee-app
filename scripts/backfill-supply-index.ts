@@ -94,9 +94,13 @@ interface PpiRow {
 	price_max: number | null;
 	price_avg: number | null;
 	price_median: number | null;
+	price_p25: number | null;
+	price_p75: number | null;
+	price_stdev: number | null;
 	sample_size: number;
 	wholesale_only: boolean;
 	synthetic: boolean;
+	aggregation_tier: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +194,23 @@ function median(values: number[]): number | null {
 	return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
+function percentile(values: number[], p: number): number | null {
+	if (values.length === 0) return null;
+	const sorted = [...values].sort((a, b) => a - b);
+	const idx = (sorted.length - 1) * p;
+	const lower = Math.floor(idx);
+	const upper = Math.ceil(idx);
+	if (lower === upper) return sorted[lower];
+	return sorted[lower] + (sorted[upper] - sorted[lower]) * (idx - lower);
+}
+
+function stdev(values: number[]): number | null {
+	if (values.length < 2) return null;
+	const mean = values.reduce((a, b) => a + b, 0) / values.length;
+	const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (values.length - 1);
+	return Math.sqrt(variance);
+}
+
 function round2(n: number | null): number | null {
 	return n === null ? null : Math.round(n * 100) / 100;
 }
@@ -209,14 +230,15 @@ function rowToSql(row: PpiRow): string {
 	return (
 		`INSERT INTO public.price_index_snapshots ` +
 		`(snapshot_date, origin, process, grade, supplier_count, ` +
-		`price_min, price_max, price_avg, price_median, sample_size, ` +
-		`wholesale_only, synthetic) VALUES (` +
+		`price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, ` +
+		`sample_size, wholesale_only, synthetic, aggregation_tier) VALUES (` +
 		`${v(row.snapshot_date)}, ${v(row.origin)}, ${v(row.process)}, ${v(row.grade)}, ` +
 		`${v(row.supplier_count)}, ${v(row.price_min)}, ${v(row.price_max)}, ` +
-		`${v(row.price_avg)}, ${v(row.price_median)}, ${v(row.sample_size)}, ` +
-		`${v(row.wholesale_only)}, ${v(row.synthetic)}` +
+		`${v(row.price_avg)}, ${v(row.price_median)}, ${v(row.price_p25)}, ${v(row.price_p75)}, ${v(row.price_stdev)}, ` +
+		`${v(row.sample_size)}, ${v(row.wholesale_only)}, ${v(row.synthetic)}, ${v(row.aggregation_tier)}` +
 		`) ON CONFLICT (snapshot_date, origin, COALESCE(process, ''), COALESCE(grade, ''), wholesale_only, synthetic) ` +
-		`DO NOTHING;`
+		`DO UPDATE SET price_p25 = EXCLUDED.price_p25, price_p75 = EXCLUDED.price_p75, ` +
+		`price_stdev = EXCLUDED.price_stdev, aggregation_tier = EXCLUDED.aggregation_tier;`
 	);
 }
 
@@ -330,9 +352,13 @@ async function main() {
 				price_max: round2(prices.length ? Math.max(...prices) : null),
 				price_avg: round2(prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : null),
 				price_median: round2(median(prices)),
+				price_p25: round2(percentile(prices, 0.25)),
+				price_p75: round2(percentile(prices, 0.75)),
+				price_stdev: round2(stdev(prices)),
 				sample_size: retailBeans.length,
 				wholesale_only: false,
-				synthetic: true
+				synthetic: true,
+				aggregation_tier: 1
 			});
 		}
 
@@ -353,9 +379,13 @@ async function main() {
 				price_max: round2(prices.length ? Math.max(...prices) : null),
 				price_avg: round2(prices.length ? prices.reduce((a, b) => a + b, 0) / prices.length : null),
 				price_median: round2(median(prices)),
+				price_p25: round2(percentile(prices, 0.25)),
+				price_p75: round2(percentile(prices, 0.75)),
+				price_stdev: round2(stdev(prices)),
 				sample_size: wholesaleBeans.length,
 				wholesale_only: true,
-				synthetic: true
+				synthetic: true,
+				aggregation_tier: 1
 			});
 		}
 	}
@@ -419,7 +449,7 @@ async function main() {
 
 		const { error } = await supabase.from('price_index_snapshots').upsert(batch, {
 			onConflict: 'snapshot_date,origin,process,grade,wholesale_only,synthetic',
-			ignoreDuplicates: true
+			ignoreDuplicates: false
 		});
 
 		if (error) {
