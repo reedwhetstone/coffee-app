@@ -34,13 +34,38 @@
 <svelte:head>
 	<title>{data.metadata.title} | Purveyors Blog</title>
 	<meta name="description" content={data.metadata.description} />
+	<link rel="canonical" href="https://purveyors.io/blog/{data.metadata.slug}" />
 	<meta property="og:title" content={data.metadata.title} />
 	<meta property="og:description" content={data.metadata.description} />
 	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://purveyors.io/blog/{data.metadata.slug}" />
+	<meta
+		property="og:image"
+		content="https://purveyors.io/blog/images/{data.metadata.slug}/hero.webp"
+	/>
+	<meta property="og:site_name" content="Purveyors" />
 	<meta property="article:published_time" content={data.metadata.date} />
 	{#each data.metadata.tags as tag}
 		<meta property="article:tag" content={tag} />
 	{/each}
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content={data.metadata.title} />
+	<meta name="twitter:description" content={data.metadata.description} />
+	<meta
+		name="twitter:image"
+		content="https://purveyors.io/blog/images/{data.metadata.slug}/hero.webp"
+	/>
+	{@html `<script type="application/ld+json">${JSON.stringify({
+		'@context': 'https://schema.org',
+		'@type': 'Article',
+		headline: data.metadata.title,
+		description: data.metadata.description,
+		datePublished: data.metadata.date,
+		author: { '@type': 'Person', name: 'Reed Whetstone' },
+		publisher: { '@type': 'Organization', name: 'Purveyors', url: 'https://purveyors.io' },
+		image: `https://purveyors.io/blog/images/${data.metadata.slug}/hero.webp`,
+		mainEntityOfPage: `https://purveyors.io/blog/${data.metadata.slug}`
+	})}</script>`}
 </svelte:head>
 
 <!-- Back link -->

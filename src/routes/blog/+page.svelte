@@ -29,6 +29,15 @@
 		name="description"
 		content="Insights on coffee intelligence, AI-first product development, and supply chain technology."
 	/>
+	<link rel="canonical" href="https://purveyors.io/blog" />
+	<meta property="og:title" content="Purveyors Blog — Coffee Intelligence & AI-First Development" />
+	<meta
+		property="og:description"
+		content="Insights on green coffee market data, AI-first product development, and supply chain technology from the team behind Purveyors.io."
+	/>
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://purveyors.io/blog" />
+	<meta property="og:site_name" content="Purveyors" />
 </svelte:head>
 
 <!-- Header with accent border -->

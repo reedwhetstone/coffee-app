@@ -478,6 +478,41 @@ export class SchemaService {
 	}
 
 	/**
+	 * Generate Dataset schema for analytics/data pages
+	 */
+	generateDatasetSchema(dataset: {
+		name: string;
+		description: string;
+		url: string;
+		keywords?: string[];
+		creator?: string;
+		dateModified?: string;
+		variableMeasured?: string[];
+	}): object {
+		return {
+			'@context': 'https://schema.org',
+			'@type': 'Dataset',
+			name: dataset.name,
+			description: dataset.description,
+			url: dataset.url,
+			...(dataset.keywords && { keywords: dataset.keywords }),
+			creator: {
+				'@type': 'Organization',
+				name: dataset.creator ?? this.config.organizationName
+			},
+			...(dataset.dateModified && { dateModified: dataset.dateModified }),
+			...(dataset.variableMeasured && {
+				variableMeasured: dataset.variableMeasured.map((v) => ({
+					'@type': 'PropertyValue',
+					name: v
+				}))
+			}),
+			license: 'https://purveyors.io/api',
+			isAccessibleForFree: true
+		};
+	}
+
+	/**
 	 * Helper method to generate page-specific schema combinations
 	 */
 	generatePageSchema(

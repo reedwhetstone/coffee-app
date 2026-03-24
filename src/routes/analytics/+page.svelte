@@ -227,11 +227,19 @@
 </script>
 
 <svelte:head>
-	<title>Analytics | Purveyors</title>
-	<meta
-		name="description"
-		content="Green coffee market intelligence — daily price trends by origin, processing method distribution, and supplier coverage from 34 US importers."
-	/>
+	<title>{data.meta.title}</title>
+	<meta name="description" content={data.meta.description} />
+	<meta name="keywords" content={data.meta.keywords} />
+	<link rel="canonical" href={data.meta.canonical} />
+	<meta property="og:title" content={data.meta.ogTitle} />
+	<meta property="og:description" content={data.meta.ogDescription} />
+	<meta property="og:type" content={data.meta.ogType} />
+	<meta property="og:url" content={data.meta.ogUrl} />
+	<meta property="og:image" content={data.meta.ogImage} />
+	<meta name="twitter:card" content={data.meta.twitterCard} />
+	<meta name="twitter:title" content={data.meta.twitterTitle} />
+	<meta name="twitter:description" content={data.meta.twitterDescription} />
+	{@html `<script type="application/ld+json">${JSON.stringify(data.meta.schemaData)}</script>`}
 </svelte:head>
 
 <!-- Hero -->

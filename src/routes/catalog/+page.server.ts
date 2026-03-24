@@ -12,26 +12,30 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.order('arrival_date', { ascending: false })
 		.limit(5); // Reduced for faster initial load - remaining items loaded client-side
 
-	// Generate schema for authenticated coffee catalog page
+	// Generate schema for public coffee catalog page
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const schemaService = createSchemaService(baseUrl);
 
-	// Authenticated users see full coffee platform with collection data
-	const schemaData = schemaService.generatePageSchema('homepage', baseUrl, {
-		coffees: stockedData
-	});
+	// Coffee collection schema for catalog page
+	const schemaData = schemaService.generateSchemaGraph([
+		schemaService.generateOrganizationSchema(),
+		schemaService.generateCoffeeCollectionSchema(
+			(stockedData ?? []) as Record<string, unknown>[],
+			`${baseUrl}/catalog`
+		)
+	]);
 
 	// Catalog-specific meta information
 	const metaInfo = {
-		title: 'Purveyors - Coffee Marketplace & Roasting Platform',
+		title: 'Green Coffee Catalog — 1,200+ Specialty Coffees | Purveyors',
 		description:
-			'Browse premium green coffee, track roasts, and manage your coffee business with AI-powered recommendations and comprehensive analytics.',
-		ogTitle: 'Purveyors Coffee Platform - Premium Green Coffee Marketplace',
+			'Browse 1,200+ specialty and commercial green coffees from 39+ US importers and roasters. Filter by origin, processing method, altitude, and price. Updated daily with real-time inventory.',
+		ogTitle: 'Green Coffee Catalog — 1,200+ Specialty Coffees | Purveyors',
 		ogDescription:
-			'Discover premium green coffee with AI recommendations, roast tracking, and business analytics.',
-		twitterTitle: 'Purveyors Coffee Platform',
+			'Browse 1,200+ specialty green coffees from 39+ US suppliers. Filter by Ethiopian, Colombian, Guatemalan origins; washed, natural, and honey processing. Real-time pricing and daily inventory updates.',
+		twitterTitle: 'Green Coffee Catalog | Purveyors',
 		twitterDescription:
-			'Premium green coffee marketplace with AI recommendations and roast tracking.'
+			'1,200+ specialty green coffees from 39+ US importers. Origin, processing, altitude, and daily pricing.'
 	};
 
 	return {
@@ -40,7 +44,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		meta: {
 			...metaInfo,
 			keywords:
-				'coffee roasting, green coffee, coffee API, roast tracking, coffee inventory, specialty coffee, coffee platform',
+				'green coffee, specialty coffee catalog, green coffee prices, Ethiopian green coffee, Colombian green coffee, washed natural honey processing, coffee importers, green coffee suppliers, buy green coffee, coffee roasters',
 			canonical: `${baseUrl}/catalog`,
 			ogImage: `${baseUrl}/purveyors_orange.svg`,
 			ogUrl: `${baseUrl}/catalog`,
