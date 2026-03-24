@@ -283,9 +283,9 @@ export const load: PageServerLoad = async (event) => {
 		source: string;
 		stocked_count: number;
 		origins_count: number;
-		price_avg: number | null;
-		price_min: number | null;
-		price_max: number | null;
+		retail_avg: number | null;
+		retail_min: number | null;
+		retail_max: number | null;
 		wholesale_count: number;
 		retail_count: number;
 	}
@@ -302,9 +302,9 @@ export const load: PageServerLoad = async (event) => {
 			source: row.source,
 			stockedCount: row.stocked_count ?? 0,
 			origins: row.origins_count ?? 0,
-			avgCostLb: row.price_avg ?? 0,
-			minCostLb: row.price_min ?? 0,
-			maxCostLb: row.price_max ?? 0,
+			avgCostLb: row.retail_avg ?? 0,
+			minCostLb: row.retail_min ?? 0,
+			maxCostLb: row.retail_max ?? 0,
 			wholesaleCount: row.wholesale_count ?? 0,
 			retailCount: row.retail_count ?? 0
 		}));
