@@ -76,7 +76,7 @@
 				.attr('fill', 'none')
 				.attr('stroke', '#e5e7eb')
 				.attr('stroke-width', 1)
-				.attr('opacity', 0.3);
+				.attr('opacity', 0.1);
 		}
 
 		// Draw axis lines (neutral color)
@@ -93,7 +93,7 @@
 				.attr('y2', y2)
 				.attr('stroke', '#e5e7eb')
 				.attr('stroke-width', 1)
-				.attr('opacity', 0.5);
+				.attr('opacity', 0.2);
 
 			// Add axis labels
 			const labelDistance = radius + 8;

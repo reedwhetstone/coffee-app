@@ -219,6 +219,7 @@
 	// Handle cupping notes save
 	async function handleCuppingSave(notes: TastingNotes, rating: number | null) {
 		try {
+			processingUpdate = true;
 			const dataForAPI = {
 				...selectedBean,
 				cupping_notes: JSON.stringify(notes),
@@ -235,16 +236,35 @@
 			});
 
 			if (response.ok) {
-				const updatedBean = await response.json();
-				showCuppingForm = false;
-				onUpdate(updatedBean);
+				// Fetch full bean with catalog join to avoid losing AI notes in the UI
+				const refreshResponse = await fetch(`/api/beans?id=${selectedBean.id}`);
+				if (refreshResponse.ok) {
+					const result = await refreshResponse.json();
+					const fullUpdatedBean = result.data?.[0];
+					if (fullUpdatedBean) {
+						showCuppingForm = false;
+						onUpdate(fullUpdatedBean);
+					} else {
+						// Fallback to the PUT response if GET-by-ID fails
+						const updatedBean = await response.json();
+						showCuppingForm = false;
+						onUpdate(updatedBean);
+					}
+				} else {
+					const updatedBean = await response.json();
+					showCuppingForm = false;
+					onUpdate(updatedBean);
+				}
+				processingUpdate = false;
 			} else {
 				const data = await response.json();
 				alert(`Failed to save cupping notes: ${data.error}`);
+				processingUpdate = false;
 			}
 		} catch (error) {
 			console.error('Error saving cupping notes:', error);
 			alert('Error saving cupping notes');
+			processingUpdate = false;
 		}
 	}
 
