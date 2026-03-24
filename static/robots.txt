@@ -17,6 +17,11 @@ Allow: /subscription
 Allow: /contact
 Allow: /no-cookies
 Allow: /api
+Allow: /catalog
+Allow: /analytics
+Allow: /blog
+Allow: /llms.txt
+Allow: /sitemap.xml
 
 # Sitemap location
 Sitemap: /sitemap.xml

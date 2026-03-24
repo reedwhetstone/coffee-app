@@ -34,13 +34,6 @@
 <svelte:head>
 	<title>{data.metadata.title} | Purveyors Blog</title>
 	<meta name="description" content={data.metadata.description} />
-	<meta property="og:title" content={data.metadata.title} />
-	<meta property="og:description" content={data.metadata.description} />
-	<meta property="og:type" content="article" />
-	<meta property="article:published_time" content={data.metadata.date} />
-	{#each data.metadata.tags as tag}
-		<meta property="article:tag" content={tag} />
-	{/each}
 </svelte:head>
 
 <!-- Back link -->

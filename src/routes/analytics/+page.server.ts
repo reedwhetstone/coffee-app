@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getUserRoles } from '$lib/server/auth';
+import { createSchemaService } from '$lib/services/schemaService';
 
 export interface ArrivalBean {
 	name: string;
@@ -337,6 +338,34 @@ export const load: PageServerLoad = async (event) => {
 		.order('unstocked_date', { ascending: false })
 		.limit(50);
 
+	const baseUrl = `${event.url.protocol}//${event.url.host}`;
+	const schemaService = createSchemaService(baseUrl);
+	const schemaData = schemaService.generateSchemaGraph([
+		schemaService.generateOrganizationSchema(),
+		schemaService.generateDatasetSchema({
+			name: 'Purveyors Price Index — Green Coffee Market Data',
+			description:
+				'Daily green coffee price snapshots from 39+ US importers and roasters. Includes origin pricing, processing method distribution, and supplier comparison data.',
+			url: `${baseUrl}/analytics`,
+			keywords: [
+				'green coffee prices',
+				'coffee market data',
+				'coffee price index',
+				'specialty coffee analytics',
+				'coffee origin prices',
+				'coffee supplier comparison'
+			],
+			dateModified: lastUpdated ?? new Date().toISOString().split('T')[0],
+			variableMeasured: [
+				'Price per pound (USD)',
+				'Origin country',
+				'Processing method',
+				'Supplier count',
+				'Sample size'
+			]
+		})
+	]);
+
 	return {
 		session,
 		role,
@@ -355,6 +384,25 @@ export const load: PageServerLoad = async (event) => {
 		recentArrivals: (recentArrivals30 ?? []) as ArrivalBean[],
 		recentDelistings: (recentDelistings30 ?? []) as DelistingBean[],
 		comparisonBeans: (comparisonBeans ?? []) as ComparisonBean[],
-		supplierHealth
+		supplierHealth,
+		meta: {
+			title: 'Green Coffee Market Analytics | Purveyors Price Index',
+			description:
+				'Live green coffee price trends, origin analysis, and supplier data from 39+ US importers. Updated daily. Free market intelligence for coffee professionals.',
+			keywords:
+				'green coffee prices, coffee market data, coffee price index, specialty coffee analytics, coffee origin prices, coffee supplier comparison',
+			canonical: `${baseUrl}/analytics`,
+			ogTitle: 'Green Coffee Market Analytics — Purveyors Price Index',
+			ogDescription:
+				'Real-time green coffee price trends by origin, processing methods, and supplier comparison. Data from 39+ US green coffee importers, updated daily.',
+			ogImage: `${baseUrl}/purveyors_orange.svg`,
+			ogUrl: `${baseUrl}/analytics`,
+			ogType: 'website' as const,
+			twitterCard: 'summary_large_image' as const,
+			twitterTitle: 'Green Coffee Market Analytics — Purveyors',
+			twitterDescription:
+				'Live green coffee price trends from 39+ US importers. Free market intelligence.',
+			schemaData
+		}
 	};
 };

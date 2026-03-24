@@ -227,11 +227,8 @@
 </script>
 
 <svelte:head>
-	<title>Analytics | Purveyors</title>
-	<meta
-		name="description"
-		content="Green coffee market intelligence — daily price trends by origin, processing method distribution, and supplier coverage from 34 US importers."
-	/>
+	<title>{data.meta.title}</title>
+	<meta name="description" content={data.meta.description} />
 </svelte:head>
 
 <!-- Hero -->
