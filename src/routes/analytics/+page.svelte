@@ -59,10 +59,51 @@
 	let viewMode = $state<ViewMode>('retail');
 
 	// Derive filtered snapshots based on viewMode
+	// "All" merges retail + wholesale rows for same origin+date via weighted average
 	let filteredSnapshots = $derived.by(() => {
 		if (viewMode === 'retail') return snapshots.filter((s) => !s.wholesale_only);
 		if (viewMode === 'wholesale') return snapshots.filter((s) => s.wholesale_only);
-		return snapshots;
+
+		// Merge retail + wholesale rows by origin+date (weighted average by sample_size)
+		const merged = new Map<string, PriceSnapshot>();
+		for (const s of snapshots) {
+			const key = `${s.origin}|${s.snapshot_date}`;
+			const existing = merged.get(key);
+			if (!existing) {
+				merged.set(key, { ...s, wholesale_only: false });
+			} else {
+				// Weighted average merge
+				const w1 = existing.sample_size || 1;
+				const w2 = s.sample_size || 1;
+				const totalW = w1 + w2;
+				const wavg = (a: number | null, b: number | null): number | null => {
+					if (a == null && b == null) return null;
+					if (a == null) return b;
+					if (b == null) return a;
+					return (a * w1 + b * w2) / totalW;
+				};
+				merged.set(key, {
+					...existing,
+					price_avg: wavg(existing.price_avg, s.price_avg),
+					price_median: wavg(existing.price_median, s.price_median),
+					price_min:
+						existing.price_min != null && s.price_min != null
+							? Math.min(existing.price_min, s.price_min)
+							: (existing.price_min ?? s.price_min),
+					price_max:
+						existing.price_max != null && s.price_max != null
+							? Math.max(existing.price_max, s.price_max)
+							: (existing.price_max ?? s.price_max),
+					price_p25: wavg(existing.price_p25, s.price_p25),
+					price_p75: wavg(existing.price_p75, s.price_p75),
+					supplier_count: existing.supplier_count + s.supplier_count,
+					sample_size: totalW
+				});
+			}
+		}
+		return Array.from(merged.values()).sort(
+			(a, b) => a.snapshot_date.localeCompare(b.snapshot_date) || a.origin.localeCompare(b.origin)
+		);
 	});
 
 	// Derive filtered process distribution based on viewMode
