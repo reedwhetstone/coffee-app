@@ -15,6 +15,7 @@
 		purchase_date: string;
 		coffee_name?: string;
 		totalCost?: number;
+		wholesale?: boolean;
 	}
 
 	interface ProfitData {
@@ -31,6 +32,7 @@
 		oz_out: number;
 		profit: number;
 		profit_margin: number;
+		wholesale?: boolean;
 	}
 
 	// Props
@@ -498,6 +500,11 @@
 		>
 			<div class="mb-3 text-sm font-semibold text-text-primary-light">
 				📅 {formatDate(d.date)}
+				{#if d.saleData?.wholesale}
+					<span class="ml-1 rounded bg-blue-100 px-1 text-xs font-normal text-blue-800"
+						>Wholesale</span
+					>
+				{/if}
 			</div>
 
 			<div class="space-y-2 text-xs">

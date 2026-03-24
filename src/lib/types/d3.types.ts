@@ -144,6 +144,7 @@ export interface PerformanceDataPoint {
 		purchase_date: string;
 		coffee_name?: string;
 		totalCost?: number;
+		wholesale?: boolean;
 	};
 	salesCount?: number;
 }
