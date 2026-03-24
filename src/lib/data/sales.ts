@@ -19,7 +19,7 @@ import type { Database } from '$lib/types/database.types';
 
 // ── Internal query types ──────────────────────────────────────────────────────
 
-type CoffeeCatalogName = { name: string };
+type CoffeeCatalogName = { name: string; wholesale?: boolean };
 type GreenCoffeeWithCatalog = Database['public']['Tables']['green_coffee_inv']['Row'] & {
 	coffee_catalog: CoffeeCatalogName | CoffeeCatalogName[] | null;
 };
@@ -41,6 +41,7 @@ type ProfitDataRow = Database['public']['Tables']['green_coffee_inv']['Row'] & {
 /** Enriched sale row as returned by listSales. */
 export type Sale = Database['public']['Tables']['sales']['Row'] & {
 	coffee_name: string | null;
+	wholesale: boolean;
 };
 
 /** Per-inventory-item profit summary as returned by getProfitData. */
@@ -58,6 +59,7 @@ export interface ProfitItem {
 	oz_in: number;
 	oz_out: number;
 	profit_margin: number;
+	wholesale: boolean;
 }
 
 // ── Input types ───────────────────────────────────────────────────────────────
@@ -85,7 +87,8 @@ export async function listSales(supabase: SupabaseClient, userId: string): Promi
 				id,
 				catalog_id,
 				coffee_catalog!catalog_id (
-					name
+					name,
+					wholesale
 				)
 			)
 		`
@@ -103,11 +106,15 @@ export async function listSales(supabase: SupabaseClient, userId: string): Promi
 		const catalog = sale.green_coffee_inv?.coffee_catalog;
 		const coffeeName = Array.isArray(catalog)
 			? catalog[0]?.name
-			: (catalog as { name: string })?.name;
+			: (catalog as CoffeeCatalogName)?.name;
+		const wholesale = Array.isArray(catalog)
+			? catalog[0]?.wholesale
+			: (catalog as CoffeeCatalogName)?.wholesale;
 
 		return {
 			...sale,
-			coffee_name: coffeeName || null
+			coffee_name: coffeeName || null,
+			wholesale: wholesale ?? false
 		};
 	});
 }
@@ -139,7 +146,8 @@ export async function getProfitData(
 				cultivar_detail,
 				cost_lb,
 				source,
-				stocked
+				stocked,
+				wholesale
 			),
 			sales(
 				price,
@@ -174,6 +182,9 @@ export async function getProfitData(
 		const displayName = Array.isArray(row.coffee_catalog)
 			? row.coffee_catalog[0]?.name
 			: row.coffee_catalog?.name;
+		const wholesale = Array.isArray(row.coffee_catalog)
+			? row.coffee_catalog[0]?.wholesale
+			: row.coffee_catalog?.wholesale;
 
 		return {
 			id: row.id,
@@ -188,7 +199,8 @@ export async function getProfitData(
 			profit: profit,
 			oz_in: totalOzIn,
 			oz_out: totalOzOut,
-			profit_margin: profitMargin
+			profit_margin: profitMargin,
+			wholesale: wholesale ?? false
 		};
 	});
 }

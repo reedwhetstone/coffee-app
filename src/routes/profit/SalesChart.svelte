@@ -20,6 +20,7 @@
 		oz_out: number;
 		profit: number;
 		profit_margin: number;
+		wholesale?: boolean;
 	}
 
 	interface SaleData {
@@ -33,6 +34,7 @@
 		purchase_date: string;
 		coffee_name?: string;
 		totalCost?: number;
+		wholesale?: boolean;
 	}
 
 	interface ChartDataPoint {
@@ -68,6 +70,7 @@
 	let selectedDateRange = $state('all');
 	let selectedPurchaseDates = $state<Set<string>>(new Set());
 	let purchaseDatesPanelExpanded = $state(false);
+	let selectedWholesaleFilter = $state('all');
 
 	// Tooltip state
 	let tooltipState = $state({
@@ -188,6 +191,13 @@
 		// Filter by selected purchase dates
 		if (selectedPurchaseDates.size > 0) {
 			filtered = filtered.filter((d: ProfitData) => selectedPurchaseDates.has(d.purchase_date));
+		}
+
+		// Filter by wholesale/retail
+		if (selectedWholesaleFilter === 'wholesale') {
+			filtered = filtered.filter((d: ProfitData) => d.wholesale === true);
+		} else if (selectedWholesaleFilter === 'retail') {
+			filtered = filtered.filter((d: ProfitData) => d.wholesale !== true);
 		}
 
 		return filtered;
@@ -483,6 +493,45 @@
 					{/each}
 				</select>
 			</div>
+
+			<!-- Wholesale / Retail Filter -->
+			<div class="flex items-center gap-2">
+				<span class="text-xs font-medium text-text-secondary-light">Source:</span>
+				<div
+					class="flex overflow-hidden rounded-md border border-border-light bg-background-primary-light"
+				>
+					<button
+						type="button"
+						class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedWholesaleFilter ===
+						'all'
+							? 'bg-background-tertiary-light text-white'
+							: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+						onclick={() => (selectedWholesaleFilter = 'all')}
+					>
+						All
+					</button>
+					<button
+						type="button"
+						class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedWholesaleFilter ===
+						'wholesale'
+							? 'bg-background-tertiary-light text-white'
+							: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+						onclick={() => (selectedWholesaleFilter = 'wholesale')}
+					>
+						Wholesale
+					</button>
+					<button
+						type="button"
+						class="px-3 py-1.5 text-xs font-medium transition-all duration-200 {selectedWholesaleFilter ===
+						'retail'
+							? 'bg-background-tertiary-light text-white'
+							: 'text-text-secondary-light hover:bg-background-tertiary-light hover:bg-opacity-10 hover:text-text-primary-light'}"
+						onclick={() => (selectedWholesaleFilter = 'retail')}
+					>
+						Retail
+					</button>
+				</div>
+			</div>
 		</div>
 	</div>
 
@@ -596,6 +645,11 @@
 		>
 			<div class="mb-3 text-sm font-semibold text-text-primary-light">
 				☕ {d.beanName}
+				{#if d.rawData.profitData.some((p) => p.wholesale)}
+					<span class="ml-1 rounded bg-blue-100 px-1 text-xs font-normal text-blue-800"
+						>Wholesale</span
+					>
+				{/if}
 			</div>
 
 			<div class="space-y-2 text-xs">

@@ -22,6 +22,7 @@
 		oz_out: number; // output after roast (accounts for water loss during roast)
 		profit: number; // Calculated profit
 		profit_margin: number; // Profit margin as percentage
+		wholesale?: boolean;
 	}
 
 	// Add new interfaces and variables for sales functionality
@@ -36,6 +37,7 @@
 		purchase_date: string;
 		coffee_name?: string;
 		totalCost?: number;
+		wholesale?: boolean;
 	}
 
 	// Convert state variables to use $state
