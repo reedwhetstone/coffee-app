@@ -56,9 +56,13 @@ export interface PriceSnapshot {
 	price_median: number | null;
 	price_min: number | null;
 	price_max: number | null;
+	price_p25: number | null;
+	price_p75: number | null;
+	price_stdev: number | null;
 	supplier_count: number;
 	sample_size: number;
 	wholesale_only: boolean;
+	aggregation_tier: number;
 }
 
 export interface ProcessBucket {
@@ -182,9 +186,10 @@ export const load: PageServerLoad = async (event) => {
 	const { data: snapshotsRaw } = await (event.locals.supabase as any)
 		.from('price_index_snapshots')
 		.select(
-			'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, supplier_count, sample_size, wholesale_only'
+			'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier'
 		)
 		.gte('snapshot_date', fromDate)
+		.eq('aggregation_tier', 1) // origin-level rollups only
 		.order('snapshot_date', { ascending: true })
 		.limit(1000);
 

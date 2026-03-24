@@ -11,6 +11,8 @@
 		price_median: number | null;
 		price_min: number | null;
 		price_max: number | null;
+		price_p25: number | null;
+		price_p75: number | null;
 		sample_size: number;
 		wholesale_only: boolean;
 	}
@@ -39,8 +41,8 @@
 	interface DataPoint {
 		date: Date;
 		value: number;
-		min: number | null;
-		max: number | null;
+		p25: number | null;
+		p75: number | null;
 	}
 
 	let originMap = $derived.by(() => {
@@ -52,8 +54,8 @@
 			map.get(row.origin)!.push({
 				date: new Date(row.snapshot_date),
 				value: price,
-				min: row.price_min ?? null,
-				max: row.price_max ?? null
+				p25: row.price_p25 ?? null,
+				p75: row.price_p75 ?? null
 			});
 		}
 		return map;
@@ -233,8 +235,8 @@
 		origin: string;
 		color: string;
 		price: number;
-		min: number | null;
-		max: number | null;
+		p25: number | null;
+		p75: number | null;
 	}
 
 	interface TooltipData {
@@ -262,8 +264,8 @@
 				origin: s.origin,
 				color: s.color,
 				price: closest.value,
-				min: closest.min,
-				max: closest.max
+				p25: closest.p25,
+				p75: closest.p75
 			});
 		}
 		return rows.length > 0 ? { x: mouseX, date: hoveredDate, rows } : null;
@@ -497,9 +499,9 @@
 												>${row.price.toFixed(2)}</span
 											>
 										</div>
-										{#if row.min != null && row.max != null}
+										{#if row.p25 != null && row.p75 != null}
 											<div style="margin-left:13px; font-size:10px; color:#9ca3af;">
-												${row.min.toFixed(2)} – ${row.max.toFixed(2)}
+												IQR: ${row.p25.toFixed(2)} – ${row.p75.toFixed(2)}
 											</div>
 										{/if}
 									{/each}
