@@ -98,9 +98,7 @@
 			{ sum: number; count: number; suppliers: number; sample_size: number }
 		>();
 		for (const s of filteredSnapshots) {
-			// Use only origin-level aggregate rows (process=null) to avoid
-			// double-counting per-process detail rows
-			if (s.snapshot_date !== latestDate || s.price_avg == null || s.process != null) continue;
+			if (s.snapshot_date !== latestDate || s.price_avg == null) continue;
 			const cur = byOrigin.get(s.origin) ?? { sum: 0, count: 0, suppliers: 0, sample_size: 0 };
 			cur.sum += s.price_avg;
 			cur.count += 1;
@@ -116,14 +114,10 @@
 		}));
 	});
 
-	// Line chart: filtered snapshots with price data
-	// Line chart: use only origin-level aggregate rows (process=null)
-	// to avoid multiple data points per origin per date causing vertical spikes.
-	// Convention: process=null rows are the origin-level aggregate in price_index_snapshots.
-	// Per-process rows are detail breakdowns for PPI member deep-dive.
-	let lineSnapshots = $derived(
-		filteredSnapshots.filter((s) => s.price_avg != null && s.process == null)
-	);
+	// Line chart: all filtered snapshots with price data.
+	// DB query already filters to aggregation_tier = 1 (origin-level rollups only),
+	// so no additional client-side process filter is needed.
+	let lineSnapshots = $derived(filteredSnapshots.filter((s) => s.price_avg != null));
 
 	let hasSnapshots = $derived(filteredSnapshots.length > 0);
 
@@ -567,18 +561,18 @@
 												>${row.price_avg.toFixed(2)}</td
 											>
 											<td class="py-2 pr-4 text-right text-text-secondary-light">
-												{#if filteredSnapshots.find((s) => s.origin === row.origin && s.process == null && s.price_min != null)}
+												{#if filteredSnapshots.find((s) => s.origin === row.origin && s.price_min != null)}
 													${filteredSnapshots
-														.find((s) => s.origin === row.origin && s.process == null)
+														.find((s) => s.origin === row.origin)
 														?.price_min?.toFixed(2) ?? '—'}
 												{:else}
 													—
 												{/if}
 											</td>
 											<td class="py-2 pr-4 text-right text-text-secondary-light">
-												{#if filteredSnapshots.find((s) => s.origin === row.origin && s.process == null && s.price_max != null)}
+												{#if filteredSnapshots.find((s) => s.origin === row.origin && s.price_max != null)}
 													${filteredSnapshots
-														.find((s) => s.origin === row.origin && s.process == null)
+														.find((s) => s.origin === row.origin)
 														?.price_max?.toFixed(2) ?? '—'}
 												{:else}
 													—
