@@ -31,6 +31,7 @@ export default defineConfig({
 	reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'html',
 
 	globalSetup: './tests/e2e/global-setup.ts',
+	globalTeardown: './tests/e2e/global-teardown.ts',
 
 	/* Test timeout - 60 seconds is plenty with proper waits */
 	timeout: 60000,
