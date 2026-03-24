@@ -108,17 +108,80 @@ export const load: PageServerLoad = async (event) => {
 	}
 
 	const today = new Date().toISOString().split('T')[0];
-
-	// --- Market summary (pre-computed by compute_market_summary RPC) ---
-	// Fetch most recent row up to today; falls back gracefully if the RPC hasn't run yet.
+	const supabase = event.locals.supabase;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const { data: marketSummaryRaw } = await (event.locals.supabase as any)
-		.from('market_daily_summary')
-		.select('*')
-		.lte('snapshot_date', today)
-		.order('snapshot_date', { ascending: false })
-		.limit(1)
-		.maybeSingle();
+	const sb = supabase as any;
+
+	// ─── PUBLIC QUERIES (run for all visitors, in parallel) ─────────────────────
+	const thirtyDaysAgo = new Date();
+	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+	const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+	const [
+		{ data: marketSummaryRaw },
+		{ count: totalBeansTracked },
+		{ count: stockedRetailBeans },
+		{ count: stockedWholesaleBeans },
+		{ data: processingRows },
+		{ data: catalogPriceRows },
+		{ data: recentArrivals30 },
+		{ data: recentDelistings30 }
+	] = await Promise.all([
+		// Market summary (pre-computed)
+		sb
+			.from('market_daily_summary')
+			.select('*')
+			.lte('snapshot_date', today)
+			.order('snapshot_date', { ascending: false })
+			.limit(1)
+			.maybeSingle(),
+		// Total beans tracked
+		supabase.from('coffee_catalog').select('*', { count: 'exact', head: true }),
+		// Stocked retail count
+		supabase
+			.from('coffee_catalog')
+			.select('*', { count: 'exact', head: true })
+			.eq('stocked', true)
+			.eq('wholesale', false),
+		// Stocked wholesale count
+		supabase
+			.from('coffee_catalog')
+			.select('*', { count: 'exact', head: true })
+			.eq('stocked', true)
+			.eq('wholesale', true),
+		// Processing method distribution
+		supabase
+			.from('coffee_catalog')
+			.select('processing, wholesale')
+			.eq('stocked', true)
+			.not('processing', 'is', null)
+			.limit(5000),
+		// Origin range data (live cross-section)
+		supabase
+			.from('coffee_catalog')
+			.select('country, price_per_lb')
+			.eq('stocked', true)
+			.not('country', 'is', null)
+			.not('price_per_lb', 'is', null)
+			.gt('price_per_lb', 0)
+			.limit(5000),
+		// Recent arrivals (30 days)
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, stocked_date')
+			.eq('stocked', true)
+			.gte('stocked_date', thirtyDaysAgoStr)
+			.order('stocked_date', { ascending: false })
+			.limit(50),
+		// Recent delistings (30 days)
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, unstocked_date')
+			.eq('stocked', false)
+			.gte('unstocked_date', thirtyDaysAgoStr)
+			.order('unstocked_date', { ascending: false })
+			.limit(50)
+	]);
 
 	const marketSummary = marketSummaryRaw as {
 		snapshot_date: string;
@@ -132,35 +195,9 @@ export const load: PageServerLoad = async (event) => {
 		supply_30d_change?: number | null;
 	} | null;
 
-	// --- Counts still requiring live queries (not yet in market_daily_summary) ---
+	const lastUpdated = marketSummary?.snapshot_date ?? null;
 
-	// Total beans tracked (all catalog entries, stocked or not)
-	const { count: totalBeansTracked } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('*', { count: 'exact', head: true });
-
-	// Currently stocked retail only
-	const { count: stockedRetailBeans } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('*', { count: 'exact', head: true })
-		.eq('stocked', true)
-		.eq('wholesale', false);
-
-	// Currently stocked wholesale only
-	const { count: stockedWholesaleBeans } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('*', { count: 'exact', head: true })
-		.eq('stocked', true)
-		.eq('wholesale', true);
-
-	// Processing method distribution — load ALL stocked beans with wholesale flag
-	const { data: processingRows } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('processing, wholesale')
-		.eq('stocked', true)
-		.not('processing', 'is', null)
-		.limit(5000);
-
+	// Process distribution
 	const processDistribution: ProcessBucket[] = (() => {
 		const retailDist: Record<string, number> = {};
 		const wholesaleDist: Record<string, number> = {};
@@ -172,7 +209,6 @@ export const load: PageServerLoad = async (event) => {
 				retailDist[key] = (retailDist[key] ?? 0) + 1;
 			}
 		}
-		// Return both retail and wholesale entries with a wholesale flag
 		const entries: ProcessBucket[] = [];
 		const allKeys = new Set([...Object.keys(retailDist), ...Object.keys(wholesaleDist)]);
 		for (const name of allKeys) {
@@ -182,41 +218,10 @@ export const load: PageServerLoad = async (event) => {
 		return entries.sort((a, b) => b.count - a.count);
 	})();
 
-	// Price index snapshots — load BOTH retail and wholesale rows.
-	// Use 26-week window to capture synthetic backfill data (weekly Saturdays).
-	// 30 days only covers ~4 weekly snapshots, not enough to render the line chart.
-	const sixMonthsAgo = new Date();
-	sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 182); // 26 weeks
-	const fromDate = sixMonthsAgo.toISOString().split('T')[0];
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const { data: snapshotsRaw } = await (event.locals.supabase as any)
-		.from('price_index_snapshots')
-		.select(
-			'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier'
-		)
-		.gte('snapshot_date', fromDate)
-		.eq('aggregation_tier', 1) // origin-level rollups only
-		.order('snapshot_date', { ascending: true })
-		.limit(1000);
-
-	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
-	const lastUpdated = snapshots.length ? snapshots[snapshots.length - 1].snapshot_date : null;
-
-	// Origin range data — live cross-section from coffee_catalog, percentiles computed in JS
-	const { data: catalogPriceRows } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('country, price_per_lb')
-		.eq('stocked', true)
-		.not('country', 'is', null)
-		.not('price_per_lb', 'is', null)
-		.gt('price_per_lb', 0)
-		.limit(5000);
-
+	// Origin range data
 	const originRangeData: OriginRangeRow[] = (() => {
 		if (!catalogPriceRows || catalogPriceRows.length === 0) return [];
 
-		// Group by country
 		const byCountry = new Map<string, number[]>();
 		for (const row of catalogPriceRows) {
 			const price = getPerLbPrice(row);
@@ -226,7 +231,6 @@ export const load: PageServerLoad = async (event) => {
 			byCountry.set(row.country, prices);
 		}
 
-		// Compute percentile from sorted array
 		function percentile(sorted: number[], p: number): number {
 			if (sorted.length === 0) return 0;
 			if (sorted.length === 1) return sorted[0];
@@ -253,85 +257,82 @@ export const load: PageServerLoad = async (event) => {
 			});
 		}
 
-		// Sort by sample_size descending, top 15
 		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 15);
 	})();
 
-	// Supplier comparison data — all stocked beans with price, filtered client-side by origin
-	const { data: comparisonBeans } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
-		.eq('stocked', true)
-		.not('price_per_lb', 'is', null)
-		.not('country', 'is', null)
-		.order('price_per_lb', { ascending: true })
-		.limit(2000);
+	// ─── PPI MEMBER QUERIES (only run for authenticated members) ────────────────
+	let snapshots: PriceSnapshot[] = [];
+	let comparisonBeans: ComparisonBean[] = [];
+	let supplierHealth: SupplierHealthRow[] = [];
 
-	// --- Supplier health (pre-computed by compute_supplier_stats RPC) ---
-	// Read from supplier_daily_stats for the most recent date up to today.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const { data: supplierStatsRaw } = await (event.locals.supabase as any)
-		.from('supplier_daily_stats')
-		.select('*')
-		.lte('snapshot_date', today)
-		.order('snapshot_date', { ascending: false })
-		.order('stocked_count', { ascending: false })
-		.limit(200);
+	if (isPpiMember) {
+		const sixMonthsAgo = new Date();
+		sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 182);
+		const fromDate = sixMonthsAgo.toISOString().split('T')[0];
 
-	interface SupplierStatRow {
-		snapshot_date: string;
-		source: string;
-		stocked_count: number;
-		origins_count: number;
-		retail_avg: number | null;
-		retail_min: number | null;
-		retail_max: number | null;
-		wholesale_count: number;
-		retail_count: number;
+		const [{ data: snapshotsRaw }, { data: comparisonBeansRaw }, { data: supplierStatsRaw }] =
+			await Promise.all([
+				// Price index snapshots (26 weeks)
+				sb
+					.from('price_index_snapshots')
+					.select(
+						'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier'
+					)
+					.gte('snapshot_date', fromDate)
+					.eq('aggregation_tier', 1)
+					.order('snapshot_date', { ascending: true })
+					.limit(1000),
+				// Supplier comparison beans
+				supabase
+					.from('coffee_catalog')
+					.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
+					.eq('stocked', true)
+					.not('price_per_lb', 'is', null)
+					.not('country', 'is', null)
+					.order('price_per_lb', { ascending: true })
+					.limit(2000),
+				// Supplier health (pre-computed)
+				sb
+					.from('supplier_daily_stats')
+					.select('*')
+					.lte('snapshot_date', today)
+					.order('snapshot_date', { ascending: false })
+					.order('stocked_count', { ascending: false })
+					.limit(200)
+			]);
+
+		snapshots = snapshotsRaw ?? [];
+		comparisonBeans = (comparisonBeansRaw ?? []) as ComparisonBean[];
+
+		interface SupplierStatRow {
+			snapshot_date: string;
+			source: string;
+			stocked_count: number;
+			origins_count: number;
+			retail_avg: number | null;
+			retail_min: number | null;
+			retail_max: number | null;
+			wholesale_count: number;
+			retail_count: number;
+		}
+
+		const typedSupplierStats: SupplierStatRow[] = supplierStatsRaw ?? [];
+		const mostRecentSupplierDate =
+			typedSupplierStats.length > 0 ? typedSupplierStats[0].snapshot_date : null;
+
+		supplierHealth = typedSupplierStats
+			.filter((row) => row.snapshot_date === mostRecentSupplierDate)
+			.map((row) => ({
+				source: row.source,
+				stockedCount: row.stocked_count ?? 0,
+				origins: row.origins_count ?? 0,
+				avgCostLb: row.retail_avg ?? 0,
+				minCostLb: row.retail_min ?? 0,
+				maxCostLb: row.retail_max ?? 0,
+				wholesaleCount: row.wholesale_count ?? 0,
+				retailCount: row.retail_count ?? 0
+			}));
 	}
-
-	const typedSupplierStats: SupplierStatRow[] = supplierStatsRaw ?? [];
-
-	// Keep only the most recent snapshot date's rows (all suppliers for that date)
-	const mostRecentSupplierDate =
-		typedSupplierStats.length > 0 ? typedSupplierStats[0].snapshot_date : null;
-
-	const supplierHealth: SupplierHealthRow[] = typedSupplierStats
-		.filter((row) => row.snapshot_date === mostRecentSupplierDate)
-		.map((row) => ({
-			source: row.source,
-			stockedCount: row.stocked_count ?? 0,
-			origins: row.origins_count ?? 0,
-			avgCostLb: row.retail_avg ?? 0,
-			minCostLb: row.retail_min ?? 0,
-			maxCostLb: row.retail_max ?? 0,
-			wholesaleCount: row.wholesale_count ?? 0,
-			retailCount: row.retail_count ?? 0
-		}));
-
-	// New arrivals — stocked beans with stocked_date in last 30 days (supports 7-day/30-day toggle)
-	const thirtyDaysAgoArrivals = new Date();
-	thirtyDaysAgoArrivals.setDate(thirtyDaysAgoArrivals.getDate() - 30);
-
-	const { data: recentArrivals30 } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('name, country, processing, price_per_lb, source, stocked_date')
-		.eq('stocked', true)
-		.gte('stocked_date', thirtyDaysAgoArrivals.toISOString().split('T')[0])
-		.order('stocked_date', { ascending: false })
-		.limit(50);
-
-	// Recent delistings — unstocked beans with unstocked_date in last 30 days
-	const thirtyDaysAgoDelistings = new Date();
-	thirtyDaysAgoDelistings.setDate(thirtyDaysAgoDelistings.getDate() - 30);
-
-	const { data: recentDelistings30 } = await event.locals.supabase
-		.from('coffee_catalog')
-		.select('name, country, processing, price_per_lb, source, unstocked_date')
-		.eq('stocked', false)
-		.gte('unstocked_date', thirtyDaysAgoDelistings.toISOString().split('T')[0])
-		.order('unstocked_date', { ascending: false })
-		.limit(50);
 
 	const baseUrl = `${event.url.protocol}//${event.url.host}`;
 	const schemaService = createSchemaService(baseUrl);
@@ -384,7 +385,7 @@ export const load: PageServerLoad = async (event) => {
 		originRangeData,
 		recentArrivals: (recentArrivals30 ?? []) as ArrivalBean[],
 		recentDelistings: (recentDelistings30 ?? []) as DelistingBean[],
-		comparisonBeans: (comparisonBeans ?? []) as ComparisonBean[],
+		comparisonBeans,
 		supplierHealth,
 		meta: {
 			title: 'Green Coffee Market Analytics | Purveyors Price Index',
