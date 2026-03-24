@@ -192,6 +192,7 @@ export async function listRoasts(
 
 	if (error) throw error;
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const profiles = (data ?? []).map((row: any) => {
 		const inv = row.green_coffee_inv;
 		const catalog = inv?.coffee_catalog;

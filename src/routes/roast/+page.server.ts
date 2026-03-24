@@ -18,6 +18,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.eq('user', user.id)
 		.order('roast_date', { ascending: false });
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const profiles = (rawProfiles ?? []).map((row: any) => {
 		const inv = row.green_coffee_inv;
 		const catalog = inv?.coffee_catalog;
