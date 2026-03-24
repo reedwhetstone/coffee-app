@@ -522,79 +522,82 @@
 		{:else}
 			<!-- Full content for ppi-members -->
 			<div class="space-y-6">
-				<div
-					class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
+				<ExpandablePanel
+					title="Origin Price Index"
+					subtitle="PPI Member — Origin-level price aggregates: averages, ranges, and supplier coverage from the daily index."
+					totalItems={originBarData.length}
 				>
-					<div class="mb-4 flex items-center gap-2">
-						<span
-							class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
-							>PPI Member</span
-						>
-						<span class="text-text-secondary-light">·</span>
-						<h2 class="text-xl font-semibold text-text-primary-light">Supplier Price Comparison</h2>
-					</div>
-					{#if hasSnapshots}
-						<div class="overflow-x-auto">
-							<table class="min-w-full text-sm">
-								<thead>
-									<tr class="border-b border-border-light">
-										<th class="py-2 pr-4 text-left font-semibold text-text-secondary-light"
-											>Origin</th
-										>
-										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
-											>Avg $/lb</th
-										>
-										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">Min</th
-										>
-										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">Max</th
-										>
-										<th class="py-2 text-right font-semibold text-text-secondary-light"
-											>Suppliers</th
-										>
-									</tr>
-								</thead>
-								<tbody>
-									{#each originBarData as row}
-										<tr class="border-b border-border-light/50 hover:bg-background-secondary-light">
-											<td class="py-2 pr-4 font-medium text-text-primary-light">{row.origin}</td>
-											<td class="py-2 pr-4 text-right font-semibold text-text-primary-light"
-												>${row.price_avg.toFixed(2)}</td
+					<div
+						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
+					>
+						{#if hasSnapshots}
+							<div class="overflow-x-auto">
+								<table class="min-w-full text-sm">
+									<thead>
+										<tr class="border-b border-border-light">
+											<th class="py-2 pr-4 text-left font-semibold text-text-secondary-light"
+												>Origin</th
 											>
-											<td class="py-2 pr-4 text-right text-text-secondary-light">
-												{#if filteredSnapshots.find((s) => s.origin === row.origin && s.price_min != null)}
-													${filteredSnapshots
-														.find((s) => s.origin === row.origin)
-														?.price_min?.toFixed(2) ?? '—'}
-												{:else}
-													—
-												{/if}
-											</td>
-											<td class="py-2 pr-4 text-right text-text-secondary-light">
-												{#if filteredSnapshots.find((s) => s.origin === row.origin && s.price_max != null)}
-													${filteredSnapshots
-														.find((s) => s.origin === row.origin)
-														?.price_max?.toFixed(2) ?? '—'}
-												{:else}
-													—
-												{/if}
-											</td>
-											<td class="py-2 text-right text-text-secondary-light">{row.supplier_count}</td
+											<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
+												>Avg $/lb</th
+											>
+											<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
+												>Min</th
+											>
+											<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
+												>Max</th
+											>
+											<th class="py-2 text-right font-semibold text-text-secondary-light"
+												>Suppliers</th
 											>
 										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					{:else}
-						<div
-							class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
-						>
-							<p class="text-sm text-text-secondary-light">
-								Awaiting first price snapshot (today's scraper run).
-							</p>
-						</div>
-					{/if}
-				</div>
+									</thead>
+									<tbody>
+										{#each originBarData as row}
+											<tr
+												class="border-b border-border-light/50 hover:bg-background-secondary-light"
+											>
+												<td class="py-2 pr-4 font-medium text-text-primary-light">{row.origin}</td>
+												<td class="py-2 pr-4 text-right font-semibold text-text-primary-light"
+													>${row.price_avg.toFixed(2)}</td
+												>
+												<td class="py-2 pr-4 text-right text-text-secondary-light">
+													{#if filteredSnapshots.find((s) => s.origin === row.origin && s.price_min != null)}
+														${filteredSnapshots
+															.find((s) => s.origin === row.origin)
+															?.price_min?.toFixed(2) ?? '—'}
+													{:else}
+														—
+													{/if}
+												</td>
+												<td class="py-2 pr-4 text-right text-text-secondary-light">
+													{#if filteredSnapshots.find((s) => s.origin === row.origin && s.price_max != null)}
+														${filteredSnapshots
+															.find((s) => s.origin === row.origin)
+															?.price_max?.toFixed(2) ?? '—'}
+													{:else}
+														—
+													{/if}
+												</td>
+												<td class="py-2 text-right text-text-secondary-light"
+													>{row.supplier_count}</td
+												>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+						{:else}
+							<div
+								class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
+							>
+								<p class="text-sm text-text-secondary-light">
+									Awaiting first price snapshot (today's scraper run).
+								</p>
+							</div>
+						{/if}
+					</div>
+				</ExpandablePanel>
 
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 					<div
