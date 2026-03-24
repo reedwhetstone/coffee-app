@@ -161,6 +161,7 @@
 				{@const batchName = batchKey.includes('|||') ? batchKey.split('|||')[0] : batchKey}
 				{@const profiles = safeGroupedProfiles[batchKey] || []}
 				{@const batchSummary = getBatchSummary(profiles)}
+				{@const hasWholesale = profiles.some((p: TableRoastProfile) => p.is_wholesale)}
 				<div class="rounded-lg bg-background-secondary-light ring-1 ring-border-light">
 					<!-- Batch Header - Following ProfitCards Pattern -->
 					<button
@@ -182,9 +183,14 @@
 								{isBatchExpanded(batchKey) ? '▼' : '▶'}
 							</div>
 							<div>
-								<h3 class="text-lg font-semibold text-text-primary-light">
-									{batchName}
-								</h3>
+								<div class="flex items-center gap-1.5">
+									<h3 class="text-lg font-semibold text-text-primary-light">
+										{batchName}
+									</h3>
+									{#if hasWholesale}
+										<span class="rounded bg-blue-100 px-1 text-xs text-blue-800">Wholesale</span>
+									{/if}
+								</div>
 								<p class="text-sm text-text-secondary-light">
 									{batchSummary.count} roast{batchSummary.count !== 1 ? 's' : ''} • {formatDateForDisplay(
 										profiles[0]?.roast_date
