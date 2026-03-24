@@ -438,7 +438,21 @@ async function main() {
 	// ------------------------------------------------------------------
 	// Step 6: Insert into DB (batched)
 	// ------------------------------------------------------------------
-	console.error('\nInserting into price_index_snapshots...');
+	// Delete existing synthetic rows first — the unique index uses COALESCE expressions
+	// which are incompatible with Supabase JS client's upsert onConflict column names.
+	console.error('\nDeleting existing synthetic rows...');
+	const { error: deleteError } = await supabase
+		.from('price_index_snapshots')
+		.delete()
+		.eq('synthetic', true);
+
+	if (deleteError) {
+		console.error('ERROR deleting synthetic rows:', deleteError.message);
+		process.exit(1);
+	}
+	console.error('Existing synthetic rows cleared.');
+
+	console.error('Inserting into price_index_snapshots...');
 
 	const BATCH_SIZE = 100;
 	let inserted = 0;
@@ -447,10 +461,7 @@ async function main() {
 	for (let i = 0; i < ppiRows.length; i += BATCH_SIZE) {
 		const batch = ppiRows.slice(i, i + BATCH_SIZE);
 
-		const { error } = await supabase.from('price_index_snapshots').upsert(batch, {
-			onConflict: 'snapshot_date,origin,process,grade,wholesale_only,synthetic',
-			ignoreDuplicates: false
-		});
+		const { error } = await supabase.from('price_index_snapshots').insert(batch);
 
 		if (error) {
 			console.error(`ERROR inserting batch ${Math.floor(i / BATCH_SIZE) + 1}:`, error.message);
