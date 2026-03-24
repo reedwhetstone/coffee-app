@@ -94,9 +94,8 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 			}),
 			execute: async (input) => {
 				// Map chat tool input shape to CLI function input shape.
-				// Unsupported filters (variety, name, stocked_days, drying_method, supplier,
-				// coffee_ids) are applied client-side after fetching broader results where
-				// feasible, or silently ignored when the CLI has no equivalent.
+				// name, supplier, ids are now natively supported by the CLI (v0.8.3+).
+				// Remaining client-side filters: variety, stocked_days, drying_method.
 				const cliInput: SearchCatalogInput = {
 					limit: Math.min(input.limit ?? 10, 15),
 					stocked: input.stocked_only ?? true
@@ -104,6 +103,9 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 
 				if (input.origin) cliInput.origin = input.origin;
 				if (input.process) cliInput.process = input.process;
+				if (input.name) cliInput.name = input.name;
+				if (input.supplier) cliInput.supplier = input.supplier;
+				if (input.coffee_ids && input.coffee_ids.length > 0) cliInput.ids = input.coffee_ids;
 
 				// price_range [min, max] → priceMin / priceMax
 				if (input.price_range) {
@@ -120,16 +122,6 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				let coffees = await searchCatalog(supabase, cliInput);
 
 				// Client-side post-filters for params the CLI doesn't support yet
-				if (input.name) {
-					const nameLower = input.name.toLowerCase();
-					coffees = coffees.filter((c) => c.name?.toLowerCase().includes(nameLower));
-				}
-
-				if (input.supplier) {
-					const supplierLower = input.supplier.toLowerCase();
-					coffees = coffees.filter((c) => c.source?.toLowerCase().includes(supplierLower));
-				}
-
 				if (input.drying_method) {
 					const dryingLower = input.drying_method.toLowerCase();
 					coffees = coffees.filter((c) => c.drying_method?.toLowerCase().includes(dryingLower));
@@ -142,11 +134,6 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 							c.cultivar_detail?.toLowerCase().includes(varietyLower) ||
 							c.description_short?.toLowerCase().includes(varietyLower)
 					);
-				}
-
-				if (input.coffee_ids && input.coffee_ids.length > 0) {
-					const idSet = new Set(input.coffee_ids);
-					coffees = coffees.filter((c) => idSet.has(c.id));
 				}
 
 				if (input.stocked_days) {
