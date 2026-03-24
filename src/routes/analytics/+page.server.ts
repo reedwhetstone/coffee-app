@@ -179,12 +179,17 @@ export const load: PageServerLoad = async (event) => {
 	const fromDate = sixMonthsAgo.toISOString().split('T')[0];
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// Fetch only origin-level aggregate rows (process=null, grade=null).
+	// The RPC creates per-process/per-grade detail rows, but charts only use aggregates.
+	// This eliminates vertical spikes from multiple data points per origin per date.
 	const { data: snapshotsRaw } = await (event.locals.supabase as any)
 		.from('price_index_snapshots')
 		.select(
 			'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, supplier_count, sample_size, wholesale_only'
 		)
 		.gte('snapshot_date', fromDate)
+		.is('process', null)
+		.is('grade', null)
 		.order('snapshot_date', { ascending: true })
 		.limit(1000);
 
