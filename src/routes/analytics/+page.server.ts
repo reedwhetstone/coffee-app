@@ -117,6 +117,10 @@ export const load: PageServerLoad = async (event) => {
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 	const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
 
+	const sixMonthsAgo = new Date();
+	sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 182);
+	const fromDate = sixMonthsAgo.toISOString().split('T')[0];
+
 	const [
 		{ data: marketSummaryRaw },
 		{ count: totalBeansTracked },
@@ -125,7 +129,8 @@ export const load: PageServerLoad = async (event) => {
 		{ data: processingRows },
 		{ data: catalogPriceRows },
 		{ data: recentArrivals30 },
-		{ data: recentDelistings30 }
+		{ data: recentDelistings30 },
+		{ data: snapshotsRaw }
 	] = await Promise.all([
 		// Market summary (pre-computed)
 		sb
@@ -180,7 +185,17 @@ export const load: PageServerLoad = async (event) => {
 			.eq('stocked', false)
 			.gte('unstocked_date', thirtyDaysAgoStr)
 			.order('unstocked_date', { ascending: false })
-			.limit(50)
+			.limit(50),
+		// Price index snapshots (public — powers line chart)
+		sb
+			.from('price_index_snapshots')
+			.select(
+				'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier'
+			)
+			.gte('snapshot_date', fromDate)
+			.eq('aggregation_tier', 1)
+			.order('snapshot_date', { ascending: true })
+			.limit(1000)
 	]);
 
 	const marketSummary = marketSummaryRaw as {
@@ -261,47 +276,31 @@ export const load: PageServerLoad = async (event) => {
 	})();
 
 	// ─── PPI MEMBER QUERIES (only run for authenticated members) ────────────────
-	let snapshots: PriceSnapshot[] = [];
+	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
 	let comparisonBeans: ComparisonBean[] = [];
 	let supplierHealth: SupplierHealthRow[] = [];
 
 	if (isPpiMember) {
-		const sixMonthsAgo = new Date();
-		sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 182);
-		const fromDate = sixMonthsAgo.toISOString().split('T')[0];
+		const [{ data: comparisonBeansRaw }, { data: supplierStatsRaw }] = await Promise.all([
+			// Supplier comparison beans
+			supabase
+				.from('coffee_catalog')
+				.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
+				.eq('stocked', true)
+				.not('price_per_lb', 'is', null)
+				.not('country', 'is', null)
+				.order('price_per_lb', { ascending: true })
+				.limit(2000),
+			// Supplier health (pre-computed)
+			sb
+				.from('supplier_daily_stats')
+				.select('*')
+				.lte('snapshot_date', today)
+				.order('snapshot_date', { ascending: false })
+				.order('stocked_count', { ascending: false })
+				.limit(200)
+		]);
 
-		const [{ data: snapshotsRaw }, { data: comparisonBeansRaw }, { data: supplierStatsRaw }] =
-			await Promise.all([
-				// Price index snapshots (26 weeks)
-				sb
-					.from('price_index_snapshots')
-					.select(
-						'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier'
-					)
-					.gte('snapshot_date', fromDate)
-					.eq('aggregation_tier', 1)
-					.order('snapshot_date', { ascending: true })
-					.limit(1000),
-				// Supplier comparison beans
-				supabase
-					.from('coffee_catalog')
-					.select('name, country, processing, price_per_lb, source, wholesale, bag_size')
-					.eq('stocked', true)
-					.not('price_per_lb', 'is', null)
-					.not('country', 'is', null)
-					.order('price_per_lb', { ascending: true })
-					.limit(2000),
-				// Supplier health (pre-computed)
-				sb
-					.from('supplier_daily_stats')
-					.select('*')
-					.lte('snapshot_date', today)
-					.order('snapshot_date', { ascending: false })
-					.order('stocked_count', { ascending: false })
-					.limit(200)
-			]);
-
-		snapshots = snapshotsRaw ?? [];
 		comparisonBeans = (comparisonBeansRaw ?? []) as ComparisonBean[];
 
 		interface SupplierStatRow {
