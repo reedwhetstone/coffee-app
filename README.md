@@ -108,6 +108,7 @@ Browser
         ├── +layout.server.ts        # Auth session propagated to all routes
         │
         ├── /catalog                 # Green coffee marketplace (public + auth)
+        ├── /analytics               # Market data + PPI charts (public preview, full auth)
         ├── /beans                   # Inventory management (auth required)
         ├── /roast                   # Roast tracking + Artisan import (auth required)
         ├── /profit                  # Sales and profit analytics (auth required)
@@ -229,6 +230,7 @@ coffee-app/
 │   ├── routes/                   # SvelteKit file-based routing
 │   │   ├── (home)/               # Landing page (grouped layout route)
 │   │   ├── catalog/              # Green coffee marketplace
+│   │   ├── analytics/            # Market data + PPI charts (public preview, full auth)
 │   │   ├── beans/                # Green coffee inventory management
 │   │   ├── roast/                # Roast session tracking and chart
 │   │   ├── profit/               # Sales and profit analytics
