@@ -146,11 +146,11 @@
 						if (showOverlay && userRadarData.length > 0) {
 							circle
 
-								.attr('fill-opacity', 0) // % opacity
+								.attr('fill-opacity', 0)
 								.attr('stroke', '#f9a57b')
-								.attr('stroke-width', 1.5)
-								.attr('stroke-opacity', 0.5)
-								.attr('stroke-dasharray', '4,4');
+								.attr('stroke-width', 1)
+								.attr('stroke-opacity', 0.3)
+								.attr('stroke-dasharray', '3,6');
 						} else {
 							// Original AI styling when no overlay
 							circle
@@ -192,9 +192,9 @@
 				.attr('r', 6)
 				.attr('fill-opacity', 0)
 				.attr('stroke', '#f9a57b')
-				.attr('stroke-width', 1.5)
-				.attr('stroke-opacity', 0.5)
-				.attr('stroke-dasharray', '4,4');
+				.attr('stroke-width', 1)
+				.attr('stroke-opacity', 0.3)
+				.attr('stroke-dasharray', '3,6');
 
 			legend
 				.append('text')
