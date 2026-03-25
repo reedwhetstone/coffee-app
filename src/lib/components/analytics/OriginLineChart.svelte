@@ -17,8 +17,25 @@
 		wholesale_only: boolean;
 	}
 
-	let { snapshots = [], expanded = false }: { snapshots: SnapshotRow[]; expanded?: boolean } =
-		$props();
+	interface SpreadRow {
+		origin: string;
+		snapshot_date: string;
+		spread_pct: number;
+		retail_price: number;
+		wholesale_price: number;
+	}
+
+	let {
+		snapshots = [],
+		expanded = false,
+		mode = 'price',
+		spreadData = []
+	}: {
+		snapshots: SnapshotRow[];
+		expanded?: boolean;
+		mode?: 'price' | 'spread';
+		spreadData?: SpreadRow[];
+	} = $props();
 
 	const COLORS = [
 		'#f59e0b',
@@ -35,7 +52,8 @@
 
 	const MIN_DISTINCT_DATES = 7;
 
-	let distinctDateCount = $derived(new Set(snapshots.map((s) => s.snapshot_date)).size);
+	let activeData = $derived(mode === 'spread' ? spreadData : snapshots);
+	let distinctDateCount = $derived(new Set(activeData.map((s) => s.snapshot_date)).size);
 	let hasEnoughData = $derived(distinctDateCount >= MIN_DISTINCT_DATES);
 
 	interface DataPoint {
@@ -43,30 +61,53 @@
 		value: number;
 		p25: number | null;
 		p75: number | null;
+		retailPrice?: number;
+		wholesalePrice?: number;
 	}
 
 	let originMap = $derived.by(() => {
 		const map = new Map<string, DataPoint[]>();
-		for (const row of snapshots) {
-			const price = row.price_median ?? row.price_avg;
-			if (price == null) continue;
-			if (!map.has(row.origin)) map.set(row.origin, []);
-			map.get(row.origin)!.push({
-				date: new Date(row.snapshot_date),
-				value: price,
-				p25: row.price_p25 ?? null,
-				p75: row.price_p75 ?? null
-			});
+		if (mode === 'spread') {
+			for (const row of spreadData) {
+				if (!map.has(row.origin)) map.set(row.origin, []);
+				map.get(row.origin)!.push({
+					date: new Date(row.snapshot_date),
+					value: row.spread_pct,
+					p25: null,
+					p75: null,
+					retailPrice: row.retail_price,
+					wholesalePrice: row.wholesale_price
+				});
+			}
+		} else {
+			for (const row of snapshots) {
+				const price = row.price_median ?? row.price_avg;
+				if (price == null) continue;
+				if (!map.has(row.origin)) map.set(row.origin, []);
+				map.get(row.origin)!.push({
+					date: new Date(row.snapshot_date),
+					value: price,
+					p25: row.price_p25 ?? null,
+					p75: row.price_p75 ?? null
+				});
+			}
 		}
 		return map;
 	});
 
 	let originVolume = $derived.by(() => {
 		const vol = new Map<string, number>();
-		for (const row of snapshots) {
-			const price = row.price_median ?? row.price_avg;
-			if (price == null) continue;
-			vol.set(row.origin, (vol.get(row.origin) ?? 0) + (row.sample_size ?? 0));
+		if (mode === 'spread') {
+			// In spread mode, volume = number of data points per origin
+			for (const row of spreadData) {
+				vol.set(row.origin, (vol.get(row.origin) ?? 0) + 1);
+			}
+		} else {
+			for (const row of snapshots) {
+				const price = row.price_median ?? row.price_avg;
+				if (price == null) continue;
+				vol.set(row.origin, (vol.get(row.origin) ?? 0) + (row.sample_size ?? 0));
+			}
 		}
 		return vol;
 	});
@@ -128,15 +169,27 @@
 	);
 	let yDomain = $derived(
 		allValues.length >= 2
-			? [
-					Math.max(0, (min(allValues) ?? 0) * 0.9),
-					(() => {
-						const sorted = [...allValues].sort((a, b) => a - b);
-						const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 10;
-						return p95 * 1.15;
-					})()
-				]
-			: [0, 10]
+			? mode === 'spread'
+				? [
+						// Spread mode: allow negative values, pad both sides
+						Math.min(0, min(allValues) ?? 0) * 1.1 - 2,
+						(() => {
+							const sorted = [...allValues].sort((a, b) => a - b);
+							const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 10;
+							return Math.max(p95 * 1.15, 5);
+						})()
+					]
+				: [
+						Math.max(0, (min(allValues) ?? 0) * 0.9),
+						(() => {
+							const sorted = [...allValues].sort((a, b) => a - b);
+							const p95 = sorted[Math.floor(sorted.length * 0.95)] ?? 10;
+							return p95 * 1.15;
+						})()
+					]
+			: mode === 'spread'
+				? [-5, 50]
+				: [0, 10]
 	);
 
 	const padding = { top: 20, right: 70, bottom: 40, left: 60 };
@@ -216,7 +269,7 @@
 				.attr('dominant-baseline', 'middle')
 				.attr('fill', 'rgb(156 163 175)')
 				.attr('font-size', '11')
-				.text(`$${t.toFixed(2)}`);
+				.text(mode === 'spread' ? `${t > 0 ? '+' : ''}${t.toFixed(1)}%` : `$${t.toFixed(2)}`);
 			g.append('line')
 				.attr('x1', 0)
 				.attr('x2', innerW)
@@ -226,6 +279,21 @@
 				.attr('stroke-opacity', '0.2')
 				.attr('stroke-dasharray', '4 4');
 		});
+
+		// Zero reference line for spread mode
+		if (mode === 'spread') {
+			const zeroY = yScale(0);
+			if (zeroY >= 0 && zeroY <= innerH) {
+				g.append('line')
+					.attr('x1', 0)
+					.attr('x2', innerW)
+					.attr('y1', zeroY)
+					.attr('y2', zeroY)
+					.attr('stroke', 'rgb(107 114 128)')
+					.attr('stroke-width', '1.5')
+					.attr('stroke-dasharray', '6 3');
+			}
+		}
 	});
 
 	// Hover tooltip state
@@ -237,6 +305,8 @@
 		price: number;
 		p25: number | null;
 		p75: number | null;
+		retailPrice?: number;
+		wholesalePrice?: number;
 	}
 
 	interface TooltipData {
@@ -265,15 +335,20 @@
 				color: s.color,
 				price: closest.value,
 				p25: closest.p25,
-				p75: closest.p75
+				p75: closest.p75,
+				retailPrice: closest.retailPrice,
+				wholesalePrice: closest.wholesalePrice
 			});
 		}
 		return rows.length > 0 ? { x: mouseX, date: hoveredDate, rows } : null;
 	});
 
+	let tooltipWidth = $derived(mode === 'spread' ? 230 : 180);
 	let tooltipLeft = $derived.by(() => {
 		if (!tooltipData) return 0;
-		return tooltipData.x > innerW - 180 ? tooltipData.x - 170 : tooltipData.x + 12;
+		return tooltipData.x > innerW - tooltipWidth
+			? tooltipData.x - (tooltipWidth - 10)
+			: tooltipData.x + 12;
 	});
 
 	let tooltipTop = $derived(10);
@@ -439,7 +514,9 @@
 									font-size="10"
 									fill={series.color}
 								>
-									${last.value.toFixed(2)}
+									{mode === 'spread'
+										? `${last.value > 0 ? '+' : ''}${last.value.toFixed(1)}%`
+										: `$${last.value.toFixed(2)}`}
 								</text>
 							{/if}
 						{/each}
@@ -472,8 +549,8 @@
 							<foreignObject
 								x={tooltipLeft}
 								y={tooltipTop}
-								width="164"
-								height={tooltipData.rows.length * 36 + 38}
+								width={mode === 'spread' ? 220 : 164}
+								height={tooltipData.rows.length * (mode === 'spread' ? 44 : 36) + 38}
 								pointer-events="none"
 							>
 								<div
@@ -496,10 +573,18 @@
 												>{row.origin}</span
 											>
 											<span style="color:#111827; font-weight:600; flex-shrink:0;"
-												>${row.price.toFixed(2)}</span
+												>{mode === 'spread'
+													? `${row.price > 0 ? '+' : ''}${row.price.toFixed(1)}%`
+													: `$${row.price.toFixed(2)}`}</span
 											>
 										</div>
-										{#if row.p25 != null && row.p75 != null}
+										{#if mode === 'spread' && row.retailPrice != null && row.wholesalePrice != null}
+											<div style="margin-left:13px; font-size:10px; color:#9ca3af;">
+												Retail: ${row.retailPrice.toFixed(2)} · Wholesale: ${row.wholesalePrice.toFixed(
+													2
+												)}
+											</div>
+										{:else if row.p25 != null && row.p75 != null}
 											<div style="margin-left:13px; font-size:10px; color:#9ca3af;">
 												IQR: ${row.p25.toFixed(2)} – ${row.p75.toFixed(2)}
 											</div>
