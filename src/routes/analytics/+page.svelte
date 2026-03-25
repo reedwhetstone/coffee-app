@@ -54,9 +54,17 @@
 		}
 	);
 
-	// Wholesale/Retail/All toggle state
-	type ViewMode = 'retail' | 'wholesale' | 'all';
+	// Wholesale/Retail/All/Spread toggle state
+	type ViewMode = 'retail' | 'wholesale' | 'all' | 'spread';
 	let viewMode = $state<ViewMode>('retail');
+
+	interface SpreadDataPoint {
+		origin: string;
+		snapshot_date: string;
+		spread_pct: number;
+		retail_price: number;
+		wholesale_price: number;
+	}
 
 	// Derive filtered snapshots based on viewMode
 	// "All" merges retail + wholesale rows for same origin+date via weighted average
@@ -102,6 +110,43 @@
 			}
 		}
 		return Array.from(merged.values()).sort(
+			(a, b) => a.snapshot_date.localeCompare(b.snapshot_date) || a.origin.localeCompare(b.origin)
+		);
+	});
+
+	// Compute spread data: pair retail + wholesale rows by origin+date
+	let spreadData = $derived.by((): SpreadDataPoint[] => {
+		const MIN_SAMPLES = 3; // require >= 3 beans on each side
+		const pairs = new Map<string, { retail?: PriceSnapshot; wholesale?: PriceSnapshot }>();
+
+		for (const s of snapshots) {
+			const key = `${s.origin}|${s.snapshot_date}`;
+			const pair = pairs.get(key) ?? {};
+			if (s.wholesale_only) pair.wholesale = s;
+			else pair.retail = s;
+			pairs.set(key, pair);
+		}
+
+		const result: SpreadDataPoint[] = [];
+		for (const [, pair] of pairs) {
+			if (!pair.retail || !pair.wholesale) continue;
+			if (pair.retail.sample_size < MIN_SAMPLES || pair.wholesale.sample_size < MIN_SAMPLES)
+				continue;
+			const retailPrice = pair.retail.price_median ?? pair.retail.price_avg;
+			const wholesalePrice = pair.wholesale.price_median ?? pair.wholesale.price_avg;
+			if (retailPrice == null || wholesalePrice == null || wholesalePrice === 0) continue;
+
+			const spreadPct = ((retailPrice - wholesalePrice) / wholesalePrice) * 100;
+			result.push({
+				origin: pair.retail.origin,
+				snapshot_date: pair.retail.snapshot_date,
+				spread_pct: Math.round(spreadPct * 10) / 10,
+				retail_price: Math.round(retailPrice * 100) / 100,
+				wholesale_price: Math.round(wholesalePrice * 100) / 100
+			});
+		}
+
+		return result.sort(
 			(a, b) => a.snapshot_date.localeCompare(b.snapshot_date) || a.origin.localeCompare(b.origin)
 		);
 	});
@@ -194,11 +239,17 @@
 		return formatDate(dateStr);
 	}
 
-	const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
-		{ value: 'retail', label: 'Retail' },
-		{ value: 'wholesale', label: 'Wholesale' },
-		{ value: 'all', label: 'All' }
-	];
+	let VIEW_OPTIONS = $derived.by((): { value: ViewMode; label: string }[] => {
+		const base: { value: ViewMode; label: string }[] = [
+			{ value: 'retail', label: 'Retail' },
+			{ value: 'wholesale', label: 'Wholesale' },
+			{ value: 'all', label: 'All' }
+		];
+		if (isPpiMember) {
+			base.push({ value: 'spread', label: 'Spread' });
+		}
+		return base;
+	});
 
 	// Arrivals/Delistings window toggle
 	type WindowMode = '7d' | '30d';
@@ -373,11 +424,17 @@
 		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
 			<p class="mb-4 text-sm text-text-secondary-light">
-				Average $/lb by top origins over the last 30 days — ranked by market volume
-				{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
+				{#if viewMode === 'spread'}Retail premium % over wholesale by origin — ranked by data
+					coverage{:else}Average $/lb by top origins over the last 30 days — ranked by market volume
+					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}{/if}
 			</p>
 			<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
-				<OriginLineChart snapshots={lineSnapshots} expanded={lineChartExpanded} />
+				<OriginLineChart
+					snapshots={lineSnapshots}
+					expanded={lineChartExpanded}
+					mode={viewMode === 'spread' ? 'spread' : 'price'}
+					spreadData={viewMode === 'spread' ? spreadData : []}
+				/>
 			</div>
 		</div>
 	</ExpandablePanel>
