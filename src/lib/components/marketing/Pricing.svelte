@@ -1,9 +1,21 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 
+	interface SessionData {
+		user?: {
+			email?: string;
+		};
+	}
+
+	let { session = null } = $props<{
+		session?: SessionData | null;
+	}>();
+
+	let isSignedIn = $derived(Boolean(session?.user));
+
 	function handleSelectPlan(plan: string) {
 		if (plan === 'free') {
-			goto('/auth');
+			goto(isSignedIn ? '/dashboard' : '/auth');
 		} else if (plan === 'enterprise') {
 			goto('/contact');
 		} else {
@@ -114,7 +126,7 @@
 					}}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
-					Get started free
+					{isSignedIn ? 'Open dashboard' : 'Get started free'}
 				</button>
 			</div>
 

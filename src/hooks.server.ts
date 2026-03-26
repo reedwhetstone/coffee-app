@@ -10,13 +10,10 @@ import type { UserRole } from '$lib/types/auth.types';
 import type { Session, User } from '@supabase/supabase-js';
 import type { CookieSerializeOptions } from 'cookie';
 
-// Handle Stripe checkout success redirects
 const handleStripeRedirects: Handle = async ({ event, resolve }) => {
 	const url = event.url;
 
-	// Check for Stripe checkout success
 	if (url.searchParams.has('checkout_session_id') && url.pathname === '/subscription') {
-		// Stripe has redirected with checkout_session_id which means successful payment
 		console.log('Detected Stripe checkout success, redirecting to success page');
 		throw redirect(303, '/subscription/success');
 	}
@@ -25,7 +22,6 @@ const handleStripeRedirects: Handle = async ({ event, resolve }) => {
 };
 
 const handleSupabase: Handle = async ({ event, resolve }) => {
-	// Cast needed: @supabase/ssr@0.5.2 createServerClient generic doesn't fully support __InternalSupabase
 	event.locals.supabase = createServerClient<Database>(
 		PUBLIC_SUPABASE_URL,
 		PUBLIC_SUPABASE_ANON_KEY,
@@ -43,7 +39,6 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	) as unknown as App.Locals['supabase'];
 
-	// Implement safeGetSession function that properly validates the JWT
 	event.locals.safeGetSession = async () => {
 		const {
 			data: { session }
@@ -53,24 +48,20 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			return { session: null, user: null, role: 'viewer' as const };
 		}
 
-		// Always validate the user with getUser() to ensure the JWT is valid
 		const {
 			data: { user },
 			error: userError
 		} = await event.locals.supabase.auth.getUser();
 
 		if (userError) {
-			// JWT validation has failed
 			return { session: null, user: null, role: 'viewer' as const };
 		}
 
-		// Get user role
 		const role = user ? await getUserRole(event.locals.supabase, user.id) : 'viewer';
 
 		return { session, user, role };
 	};
 
-	// Get validated session and user data
 	const sessionData = await event.locals.safeGetSession();
 	const { session, user, role } = sessionData as {
 		session: Session | null;
@@ -78,12 +69,9 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		role: UserRole;
 	};
 
-	// Set initial state
 	event.locals.session = session;
 	event.locals.user = user;
 	event.locals.role = role;
-
-	// Make data available to the frontend
 	event.locals.data = {
 		session: event.locals.session,
 		user: event.locals.user,
@@ -101,42 +89,41 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	const protectedRoutes = ['/roast', '/profit', '/beans', '/chat'];
 	const adminRoutes = ['/admin'];
 	const apiRoutes = ['/api-dashboard'];
+	const dashboardRoutes = ['/dashboard'];
 	const currentPath = event.url.pathname;
 	const requiresProtection = protectedRoutes.some((route) => currentPath.startsWith(route));
 	const requiresAdminAccess = adminRoutes.some((route) => currentPath.startsWith(route));
 	const requiresApiAccess = apiRoutes.some((route) => currentPath.startsWith(route));
+	const requiresDashboardAccess = dashboardRoutes.some((route) => currentPath.startsWith(route));
 
-	// Get session and verified user data
-	const sessionData2 = await event.locals.safeGetSession();
-	const { session, user, role } = sessionData2 as {
+	const sessionData = await event.locals.safeGetSession();
+	const { session, user, role } = sessionData as {
 		session: Session | null;
 		user: User | null;
 		role: UserRole;
 	};
 
-	// Set default values
 	event.locals.session = session;
 	event.locals.user = user;
 	event.locals.role = role;
-
-	// Make sure these values are available to the frontend
 	event.locals.data = {
 		session: event.locals.session,
 		user: event.locals.user,
 		role: event.locals.role
 	};
 
-	// Use requireRole for protected route checks
+	if (requiresDashboardAccess && !session) {
+		throw redirect(303, '/auth');
+	}
+
 	if (requiresProtection && !requireRole(event.locals.role, 'member')) {
-		throw redirect(303, '/catalog');
+		throw redirect(303, session ? '/dashboard' : '/catalog');
 	}
 
-	// Check admin route access
 	if (requiresAdminAccess && !requireRole(event.locals.role, 'admin')) {
-		throw redirect(303, '/catalog');
+		throw redirect(303, session ? '/dashboard' : '/catalog');
 	}
 
-	// Check API dashboard access - allow any authenticated user (viewer gets free tier API access)
 	if (requiresApiAccess && !session) {
 		throw redirect(303, '/catalog');
 	}
@@ -144,5 +131,4 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-// Add handleStripeRedirects to the sequence, before the other handlers
 export const handle = sequence(handleStripeRedirects, handleCookieCheck, handleSupabase, authGuard);

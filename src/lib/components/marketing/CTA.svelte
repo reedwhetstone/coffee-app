@@ -1,8 +1,24 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 
-	function handleGetStarted() {
-		goto('/auth');
+	interface SessionData {
+		user?: {
+			email?: string;
+		};
+	}
+
+	let { session = null } = $props<{
+		session?: SessionData | null;
+	}>();
+
+	let isSignedIn = $derived(Boolean(session?.user));
+
+	function handlePrimaryAction() {
+		goto(isSignedIn ? '/dashboard' : '/auth');
+	}
+
+	function handleSecondaryAction() {
+		goto(isSignedIn ? '/catalog' : '/auth');
 	}
 </script>
 
@@ -19,16 +35,16 @@
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
 				<button
-					onclick={handleGetStarted}
+					onclick={handlePrimaryAction}
 					class="w-full rounded-md bg-white px-6 py-3 text-sm font-semibold text-background-tertiary-light shadow-sm transition-all duration-200 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:w-auto"
 				>
-					Start free trial
+					{isSignedIn ? 'Open dashboard' : 'Start free trial'}
 				</button>
 				<button
-					onclick={() => goto('/auth')}
+					onclick={handleSecondaryAction}
 					class="w-full rounded-md border border-orange-100 px-6 py-3 text-sm font-semibold text-orange-100 transition-all duration-200 hover:bg-orange-100 hover:text-background-tertiary-light sm:w-auto"
 				>
-					Sign In
+					{isSignedIn ? 'Browse catalog' : 'Sign In'}
 				</button>
 				<a
 					href="#features"

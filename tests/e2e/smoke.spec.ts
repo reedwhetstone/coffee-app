@@ -1,22 +1,22 @@
 /**
  * Tier 2: Page Load Smoke Tests
  *
- * Verifies that every route in the app loads without crashing.
- * No business logic — just "does the page render without a 4xx/5xx error?"
+ * Verifies that key routes in the app load without crashing.
+ * No business logic, just "does the page render without a 4xx/5xx error?"
  *
  * Split into three groups:
- *   1. Public pages — accessible without auth (via HTTP request)
- *   2. Protected pages — redirect away without auth (via HTTP request)
- *   3. Protected pages — render correctly with auth (via browser page)
+ *   1. Public pages, accessible without auth (via HTTP request)
+ *   2. Protected pages, redirect or degrade gracefully without auth (via HTTP request)
+ *   3. Protected pages, render correctly with auth (via browser page)
  *
  * Target: < 1 minute
- * Wait strategy: domcontentloaded (never networkidle)
+ * Wait strategy: domcontentloaded (never networkidle unless required by a setup step)
  */
 
 import { test, expect } from '@playwright/test';
 
 // ---------------------------------------------------------------------------
-// Public pages — no auth required
+// Public pages, no auth required.
 // Use playwright.request.newContext() for genuinely cookieless HTTP requests.
 // ---------------------------------------------------------------------------
 
@@ -24,6 +24,13 @@ test.describe('Public pages load without auth', () => {
 	test('homepage /', async ({ playwright }) => {
 		const ctx = await playwright.request.newContext();
 		const resp = await ctx.get('/');
+		expect(resp.status()).toBeLessThan(400);
+		await ctx.dispose();
+	});
+
+	test('/catalog', async ({ playwright }) => {
+		const ctx = await playwright.request.newContext();
+		const resp = await ctx.get('/catalog');
 		expect(resp.status()).toBeLessThan(400);
 		await ctx.dispose();
 	});
@@ -58,19 +65,17 @@ test.describe('Public pages load without auth', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Protected pages — redirect to /catalog when not authenticated
-// The SvelteKit authGuard hook redirects unauthenticated requests server-side.
+// Protected pages, redirect or degrade gracefully without auth.
 // Use playwright.request for a clean HTTP-level check without browser cookies.
 // ---------------------------------------------------------------------------
 
 test.describe('Protected pages handled without auth', () => {
-	const protectedRoutes = ['/beans', '/roast', '/profit', '/chat', '/admin'];
+	const protectedRoutes = ['/dashboard', '/beans', '/roast', '/profit', '/chat', '/admin'];
 
 	for (const route of protectedRoutes) {
 		test(`${route} does not crash without auth`, async ({ playwright }) => {
 			const ctx = await playwright.request.newContext();
 			const resp = await ctx.get(route);
-			// Should not return a server error — may redirect (303) or return 200
 			expect(resp.status()).toBeLessThan(500);
 			await ctx.dispose();
 		});
@@ -78,13 +83,47 @@ test.describe('Protected pages handled without auth', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Protected pages — load correctly with auth
+// Protected pages, load correctly with auth.
 // Chromium project sets storageState: authFile in playwright.config.ts.
 // ---------------------------------------------------------------------------
 
 test.use({ storageState: 'tests/e2e/.auth/user.json' });
 
 test.describe('Protected pages load with auth', () => {
+	test('/ renders the marketing homepage for signed-in users', async ({ page }) => {
+		await page.goto('/', { waitUntil: 'domcontentloaded' });
+		await expect(page).toHaveURL('/');
+		await expect(
+			page.getByRole('heading', { name: 'Smarter Sourcing. Better Roasting.' })
+		).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Dashboard' }).first()).toBeVisible();
+		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(0);
+	});
+
+	test('/blog keeps the public shell for signed-in users', async ({ page }) => {
+		await page.goto('/blog', { waitUntil: 'domcontentloaded' });
+		await expect(page).toHaveURL('/blog');
+		await expect(page.getByRole('heading', { name: 'Blog' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Dashboard' }).first()).toBeVisible();
+		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(0);
+	});
+
+	test('/api keeps the public shell for signed-in users', async ({ page }) => {
+		await page.goto('/api', { waitUntil: 'domcontentloaded' });
+		await expect(page).toHaveURL('/api');
+		await expect(page.getByRole('heading', { name: 'Parchment API' }).first()).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Dashboard' }).first()).toBeVisible();
+		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(0);
+	});
+
+	test('/dashboard renders as the signed-in app home', async ({ page }) => {
+		await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+		await expect(page).toHaveURL(/dashboard/);
+		await expect(page.getByRole('heading', { name: /Welcome back,/ })).toBeVisible();
+		await expect(page.getByText('Quick start')).toBeVisible();
+		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(1);
+	});
+
 	test('/beans renders without server error', async ({ page }) => {
 		await page.goto('/beans', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL(/beans/);
@@ -98,7 +137,6 @@ test.describe('Protected pages load with auth', () => {
 	});
 
 	test('/profit renders without server error', async ({ page }) => {
-		// Charts block networkidle — use commit to avoid hanging
 		await page.goto('/profit', { waitUntil: 'commit' });
 		await expect(page).toHaveURL(/profit/);
 	});
@@ -113,6 +151,7 @@ test.describe('Protected pages load with auth', () => {
 		await page.goto('/catalog', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL(/catalog/);
 		await expect(page.locator('body')).not.toContainText('Internal Server Error');
+		await expect(page.getByRole('heading', { name: 'Green Coffee Catalog' })).toBeVisible();
 	});
 
 	test('/analytics renders without server error', async ({ page }) => {
@@ -132,7 +171,6 @@ test.describe('Protected pages load with auth', () => {
 
 	test('/admin renders without crashing (may redirect non-admins)', async ({ page }) => {
 		await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-		// Admin redirects non-admin users to catalog; verify no 5xx either way
 		await expect(page.locator('body')).not.toContainText('Internal Server Error');
 	});
 });
