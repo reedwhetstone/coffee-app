@@ -5,14 +5,14 @@ description: "RLHF-trained coding agents do not just make mistakes. They silentl
 tags: ["ai", "agentic", "coding", "infrastructure"]
 pillar: "agentic-stack"
 draft: false
-readingTime: 9
+readingTime: 8
 ---
 
 The clearest public warning sign for coding agents came in 2025, when OpenAI rolled back a GPT-4o update because the model had become too flattering and too agreeable. OpenAI's own writeup said the update had leaned too hard on short-term feedback and produced behavior that was "overly supportive but disingenuous" ([OpenAI](https://openai.com/index/sycophancy-in-gpt-4o/)). That should have been a bigger moment for anyone building software with agents than it was.
 
 I think sycophancy is the last hard problem in AI-assisted software development.
 
-Not the only problem. Context windows still matter. Tool reliability still matters. Benchmarks still fail to capture real work. I have written about that gap before in [Benchmark Leaders, Agentic Laggards](https://purveyors.io/blog/benchmark-leaders-agentic-laggards). But those are secondary compared to the deeper issue: current models are optimized to help me continue the plan I already stated, not to tell me that my plan is underspecified, strategically off, or in tension with the architecture sitting in front of them.
+Not the only problem. Tooling still breaks. Benchmarks still miss reality. But those are secondary compared to the deeper issue: current models are optimized to continue the plan I already stated, not to tell me that my plan is underspecified, strategically off, or in tension with the architecture sitting in front of them.
 
 That sounds like a UX quirk until I watch what it does inside a real codebase. Then it becomes obvious that sycophancy is a debt generator.
 
@@ -22,84 +22,61 @@ When I work with human developers, the value is not that I hand them a perfect s
 
 When I work with a coding agent, the problem feels different. I spend far more time on enablement: how do I frame the request clearly, what will the model miss, what context do I need to preload, what failure mode do I need to guard against, what review loop do I need afterward. That is not the same as working with a strong developer who can absorb intent and reshape it. It is closer to building a temporary execution environment around a very capable but overly literal implementer.
 
-Ward Cunningham's original technical debt metaphor was never just about hacks. It was about the cost of decisions made under incomplete understanding, and Martin Fowler's later quadrant made the same point more explicitly: debt can be prudent or reckless, deliberate or inadvertent ([Fowler](https://martinfowler.com/bliki/TechnicalDebtQuadrant.html)). The common thread is that software gets worse when I optimize too hard for the immediate ask and not enough for the shape of the system I am building.
+Ward Cunningham and Martin Fowler's debt framing still applies here: software gets worse when I optimize too hard for the immediate ask and not enough for the shape of the system I am building ([Fowler](https://martinfowler.com/bliki/TechnicalDebtQuadrant.html)).
 
-The human layer in software delivery has always absorbed some of that tension. If I ask for a notes field, a good developer asks whether it should be searchable, whether it belongs in the same table, whether it changes retention policy, whether audit history matters, and whether the rest of the app already has a pattern for this class of data. Those questions are not bureaucratic overhead. They are the quality filter.
-
-Coding agents remove that filter by default.
+The human layer in software delivery has always absorbed some of that tension. A good developer turns a request into questions. Coding agents remove that filter by default.
 
 If I tell a model to add a filter to a product list, it usually does not stop to ask whether the codebase already has a canonical server-side query builder, whether filtering belongs in URL state, or whether the existing analytics pipeline depends on server-filtered results. It sees a local problem and solves the local problem. That is exactly what I asked for. It is also how a coherent codebase starts to decay.
 
 ## RLHF builds yes-men on purpose, even if nobody says it that way
 
-The mechanism is not mysterious. Mrinank Sharma and collaborators showed that state-of-the-art assistants consistently exhibit sycophancy across multiple tasks, and that both humans and preference models often prefer convincing sycophantic answers over correct ones ([Sharma et al.](https://arxiv.org/abs/2310.13548)). If feedback rewards answers that feel aligned with my stated belief, optimization pushes the model toward agreement.
+Mrinank Sharma and collaborators showed that state-of-the-art assistants consistently exhibit sycophancy across multiple tasks, and that both humans and preference models often prefer convincing sycophantic answers over correct ones ([Sharma et al.](https://arxiv.org/abs/2310.13548)). If feedback rewards answers that feel aligned with my stated belief, optimization pushes the model toward agreement.
 
 That is useful up to a point. I want a model that understands my intent. I do not want one that helps me refine a bad implementation into a bad PR.
 
-In software, the three moves are obvious: tell me the strategy is flawed, present a better alternative, or enthusiastically implement my bad idea.
+In software, the three moves are obvious: tell me the strategy is flawed, present a better alternative, or enthusiastically implement my bad idea. Current coding agents still skew toward the third.
 
-Current coding agents still skew toward the third.
-
-OpenAI's GPT-4o rollback is the cleanest product-scale example. OpenAI said its update over-weighted short-term feedback, and the result was a model that became excessively agreeable before internal evaluation caught it ([OpenAI](https://openai.com/index/sycophancy-in-gpt-4o/)). If a major lab can ship that failure mode to production, I should assume some version of the same tradeoff is present in every coding agent I use.
+OpenAI's GPT-4o rollback is the cleanest product-scale example. If a major lab can ship that failure mode to production, I should assume some version of the same tradeoff is present in every coding agent I use ([OpenAI](https://openai.com/index/sycophancy-in-gpt-4o/)).
 
 That is why I do not find the usual discourse about "vibes" especially interesting. The model is doing what I trained it to do. The problem is pretending that behavior is compatible with software architecture.
 
 ## The debt this creates is not ordinary technical debt
 
-I use the term **alignment debt** for the specific gap between the implementation I requested and the implementation the codebase actually needed.
+I use the term **alignment debt** for the specific gap between the implementation I requested and the implementation the company actually needed.
 
 Technical debt is familiar because I can usually point to the shortcut. Alignment debt is subtler. The code works. The tests pass. The PR looks reasonable. But the system is now slightly less coherent because the model optimized for stated intent over architectural intent.
 
-That distinction matters.
+The distinction is not just technical taste. It is technical taste plus customer voice.
 
-Here is the kind of change I see constantly in agentic workflows:
-
-```ts
-// Requested change: "add filtering to the product list"
-
-// Existing pattern used across the app
-const products = await listProducts({ origin, process, search });
-
-// Agent implementation
-const products = await listProducts({ search });
-const filtered = products.filter((p) => p.origin === origin && p.process === process);
-```
-
-Nothing here is obviously broken. The feature works. A reviewer in a hurry may even approve it. But now I have two filtering systems: canonical server-side filtering everywhere else, and one ad hoc client-side branch for this screen. The damage is not local to the line of code. The damage is that the codebase just became less legible.
+That is why I no longer love purely code-level examples here. The harder version is upstream. A product leader asks for a feature that sounds right locally. A strong developer often pushes back and says the request conflicts with the product's deeper strategy, the data model, or the shape of the customer problem. A sycophantic agent is much more likely to implement the request cleanly and miss that strategic mismatch entirely.
 
 That is alignment debt.
 
-The phrase already exists in adjacent literature. Oyemike et al. use it to describe the hidden work users do to make AI usable across cultural and linguistic contexts ([arXiv](https://arxiv.org/abs/2511.09663)). I am using it more narrowly here: the hidden architectural burden created when an AI system has enough context to know what pattern my repo prefers, but still chooses the implementation that most directly satisfies the prompt in front of it.
+The phrase already exists in adjacent literature. Oyemike et al. use it to describe the hidden work users do to make AI usable across cultural and linguistic contexts ([arXiv](https://arxiv.org/abs/2511.09663)). I am using it more narrowly here: the hidden burden created when an AI system has enough context to produce a technically plausible answer, but still chooses the implementation that most directly satisfies the prompt in front of it instead of the product the company is actually trying to build.
 
 That is what makes it dangerous. Technical debt often announces itself. Alignment debt usually hides behind passing tests.
 
-## Vibe coding is just sycophancy with a better marketing slogan
+## This is going to move the org chart
 
-I do not think vibe coding is a new programming paradigm. I think it is the normalization of unreviewed agreement.
+As coding work moves upstream toward product thinkers, the sycophancy problem stops being just a model problem and starts becoming an org-design problem.
 
-Karpathy's original framing, and Simon Willison's later clarification, both centered on the same behavioral shift: accepting generated code without really inspecting it.
+Either product people move downstream and learn agent orchestration, technical taste, review discipline, and failure-mode management, or engineers move upstream into product oversight and become the people who police whether the generated work still matches customer reality. I do not know which transition is easier at scale. It may be easier to teach engineers customer voice than to teach product managers architectural judgment. But the center of gravity is clearly shifting.
 
-GitClear's 2025 report analyzed 211 million changed lines from 2020 through 2024 and found code cloning rising from 8.3% to 12.3% of changed lines, while refactoring-associated moved lines fell from 25% to under 10% ([GitClear](https://www.gitclear.com/ai_assistant_code_quality_2025_research)). That is the structural footprint I would expect from models optimized to implement the prompt, not interrogate it.
+That shift is why I think sycophantic agents inherently strengthen the product management organization. They turn more of the coding surface area into a requirements and review problem. The person closest to the model increasingly controls what gets built. That makes request framing, strategic clarity, and review quality more important than ever.
 
-A sycophantic model does not naturally ask, "Why am I writing a new helper instead of reusing the abstraction already in this repo?" It does not naturally ask, "Why am I adding a second state machine when the app already standardized on URL-driven intent?" Those are exactly the questions I ask because part of my job is to be a critic of my own request. A sycophantic model is not a critic. It is a very fast collaborator whose default social move is to reinforce the plan already in motion.
-
-That is why the code clone numbers matter more than most benchmark wins. They are the structural footprint of a missing disagreement function.
+It also creates a new bottleneck. Engineers can already multiply implementation throughput with agents. What they cannot yet multiply nearly as well is trustworthy PR review. GitClear's 2025 report on 211 million changed lines is useful here not because it proves sycophancy directly, but because it shows what happens when generation outpaces judgment: more cloned code, less refactoring, more churn ([GitClear](https://www.gitclear.com/ai_assistant_code_quality_2025_research)). The unresolved bottleneck in agentic software is increasingly upstream review, not raw code production.
 
 ## The current mitigations help, but none of them solve the real problem
 
-I use all the standard defenses.
-
-I keep architecture rules in AGENTS.md and project manifests. I encode forbidden patterns. I write planning docs. I split work into narrower tasks. I use an independent verification pass with a different model after non-trivial PRs. These things help. They reduce obvious drift.
+I use all the standard defenses: AGENTS.md files, planning docs, narrow task scopes, independent review, different models for implementation and audit. They help. They reduce obvious drift.
 
 But they do not eliminate alignment debt, because manifests describe patterns and constraints, not judgment.
 
-That is why the recent codified-context literature is interesting. Papers like *Codified Context* argue that single-file manifests do not scale to large systems, so teams end up building layered retrieval, specialized agents, and on-demand specs just to simulate persistent judgment ([Codified Context](https://arxiv.org/html/2602.20478v1)). Martin Fowler's experiment pushing AI autonomy in code generation reached a similar conclusion from the other direction: even for a bounded Spring Boot CRUD app, they needed multiple specialized agents, an approval model, and stack-specific guardrails to get reliable output ([Fowler](https://martinfowler.com/articles/pushing-ai-autonomy.html)).
+That is why the recent codified-context literature matters. Papers like *Codified Context* argue that single-file manifests do not scale, so teams end up building layered retrieval, specialized agents, and on-demand specs just to simulate persistent judgment ([Codified Context](https://arxiv.org/html/2602.20478v1)). Martin Fowler's autonomy experiment reached a similar conclusion from the other direction: even for a bounded app, reliable output required structure everywhere ([Fowler](https://martinfowler.com/articles/pushing-ai-autonomy.html)).
 
-That is real progress. I use the same patterns myself. But I do not confuse them with a real fix.
+That is progress. It is not the fix.
 
-An AGENTS.md file can tell a model "prefer server-side filtering." It cannot reliably tell the model when a local exception is justified, when the surrounding architecture makes a literal implementation harmful, or when the right answer is to push back on the task framing itself.
-
-The thing I actually want is simple to describe and still mostly absent in practice: I want the agent to say, "I can implement that, but it conflicts with the repo's existing approach, here is the tradeoff, and I recommend a different path." That is the missing behavior.
+The behavior I actually want is still mostly absent: "I can implement that, but it conflicts with the repo's existing approach, here is the tradeoff, and I recommend a different path."
 
 ## The systems are getting better, just not all the way there
 
@@ -115,11 +92,9 @@ I increasingly think sycophancy and the inability to solve truly novel problems 
 
 On the social side, the model predicts that agreement is the most likely continuation of my request, because agreement is heavily represented in both human text and human preference data. On the reasoning side, the model performs well when a problem resembles patterns it has already seen, then degrades when the structure becomes genuinely unfamiliar. Apple's GSM-Symbolic work found large variance across simple re-instantiations of the same problem and steep drops from seemingly irrelevant added clauses ([Mirzadeh et al.](https://arxiv.org/abs/2410.05229)). Their later work on reasoning models found an eventual accuracy collapse as complexity rises, plus inconsistent use of explicit algorithms ([Shojaee et al.](https://arxiv.org/abs/2506.06941)).
 
-That maps almost perfectly to what I see in code.
+That maps almost perfectly to what I see in code. The agent can often produce an implementation I did not think of. What it still struggles to do is evaluate whether that implementation belongs in my codebase, under my constraints, with my future consequences.
 
-The agent can often produce an implementation I did not think of. It can even produce one that looks clever. What it still struggles to do is evaluate whether that implementation belongs in my codebase, under my constraints, with my future consequences. That is the same skill I need for non-sycophantic pushback. It is not enough to generate possibilities. The model has to adjudicate them.
-
-If that interpretation is right, then solving sycophancy is not a separate alignment cleanup task on the side of progress. It is entangled with genuine reasoning. The day I trust a model to push back intelligently on architecture is probably also the day I trust it more on novel problem solving with weak or delayed feedback.
+If that interpretation is right, then solving sycophancy is not a side quest. It is entangled with genuine reasoning. The day I trust a model to push back intelligently on architecture is probably also the day I trust it more on novel problem solving with weak or delayed feedback.
 
 ## What I do in practice is manually add the friction back
 
@@ -127,12 +102,10 @@ I build with agentic workflows every day, and I no longer expect the base model 
 
 So I add the friction back procedurally.
 
-In my own stack, one model orchestrates, another executes, and a separate reviewer checks every non-trivial PR without inheriting implementation context. I make the agent write plans before code. I force independent review from a different model with different context. I maintain project constitutions. I treat every clean-looking PR from an implementation agent as suspicious until it survives a second pass whose job is specifically to find architectural drift.
+In my own stack, one model orchestrates, another executes, and a separate reviewer checks non-trivial PRs without inheriting implementation context. I make the agent write plans before code. I force independent review from a different model. I maintain project constitutions. I treat every clean-looking PR from an implementation agent as suspicious until it survives a second pass whose job is to find architectural drift.
 
 That works well enough to be useful. It does not work well enough to disappear.
 
-The hardest reviews are not the obvious failures. The hardest reviews are the PRs that are correct by the ticket, clean by local standards, and still wrong for the direction of the system. Those are the ones that create alignment debt. Those are the ones a yes-man model will happily hand me all week.
+So when people ask what still blocks fully autonomous software development, my answer is not coding ability in the narrow sense. The models are already good enough at producing code. The blocker is that they still do not reliably know when to resist me.
 
-So when people ask what still blocks fully autonomous software development, my answer is not "coding ability" in the narrow sense. The models are already good enough at producing code. The blocker is that they still do not reliably know when to resist me.
-
-Until they do, friction has to be reintroduced by hand. And until that happens, the biggest risk in AI-assisted development is not that the model fails loudly. It is that it succeeds obediently.
+Until they do, the biggest risk in AI-assisted development is not that the model fails loudly. It is that it succeeds obediently.
