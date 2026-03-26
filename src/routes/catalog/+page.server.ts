@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -25,33 +26,39 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		)
 	]);
 
-	// Catalog-specific meta information
-	const metaInfo = {
-		title: 'Green Coffee Catalog — 1,200+ Specialty Coffees | Purveyors',
-		description:
-			'Browse 1,200+ specialty and commercial green coffees from 39+ US importers and roasters. Filter by origin, processing method, altitude, and price. Updated daily with real-time inventory.',
-		ogTitle: 'Green Coffee Catalog — 1,200+ Specialty Coffees | Purveyors',
-		ogDescription:
-			'Browse 1,200+ specialty green coffees from 39+ US suppliers. Filter by Ethiopian, Colombian, Guatemalan origins; washed, natural, and honey processing. Real-time pricing and daily inventory updates.',
-		twitterTitle: 'Green Coffee Catalog | Purveyors',
-		twitterDescription:
-			'1,200+ specialty green coffees from 39+ US importers. Origin, processing, altitude, and daily pricing.'
-	};
-
 	return {
 		data: stockedData || [],
 		trainingData: stockedData || [],
-		meta: {
-			...metaInfo,
-			keywords:
-				'green coffee, specialty coffee catalog, green coffee prices, Ethiopian green coffee, Colombian green coffee, washed natural honey processing, coffee importers, green coffee suppliers, buy green coffee, coffee roasters',
-			canonical: `${baseUrl}/catalog`,
-			ogImage: `${baseUrl}/purveyors_orange.svg`,
-			ogUrl: `${baseUrl}/catalog`,
-			ogType: 'website',
-			twitterCard: 'summary_large_image',
-			twitterImage: `${baseUrl}/purveyors_orange.svg`,
+		meta: buildPublicMeta({
+			baseUrl,
+			path: '/catalog',
+			title: 'Green Coffee Catalog — 1,200+ Specialty Coffees | Purveyors',
+			description:
+				'Browse 1,200+ specialty and commercial green coffees from 39+ US importers and roasters. Filter by origin, processing method, altitude, and price. Updated daily with real-time inventory.',
+			keywords: [
+				'green coffee',
+				'specialty coffee catalog',
+				'green coffee prices',
+				'Ethiopian green coffee',
+				'Colombian green coffee',
+				'washed natural honey processing',
+				'coffee importers',
+				'green coffee suppliers',
+				'buy green coffee',
+				'coffee roasters'
+			],
+			ogTitle: 'Green Coffee Catalog — 1,200+ Specialty Coffees | Purveyors',
+			ogDescription:
+				'Browse 1,200+ specialty green coffees from 39+ US suppliers. Filter by Ethiopian, Colombian, and Guatemalan origins; washed, natural, and honey processing; plus real-time pricing and daily inventory updates.',
+			twitterTitle: 'Green Coffee Catalog | Purveyors',
+			twitterDescription:
+				'1,200+ specialty green coffees from 39+ US importers. Origin, processing, altitude, and daily pricing.',
+			image: resolvePublicPageSocialImage({
+				baseUrl,
+				preferredPath: '/og/catalog.jpg',
+				alt: 'Purveyors catalog social preview card'
+			}),
 			schemaData
-		}
+		})
 	};
 };

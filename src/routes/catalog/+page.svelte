@@ -138,6 +138,14 @@
 {:else}
 	<!-- Coffee Catalog -->
 	<div class="space-y-4">
+		<div class="rounded-lg border border-border-light bg-background-secondary-light px-5 py-4">
+			<h1 class="text-2xl font-bold text-text-primary-light sm:text-3xl">Green Coffee Catalog</h1>
+			<p class="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary-light sm:text-base">
+				Browse stocked green coffees from Purveyors supplier integrations with origin, processing,
+				tasting context, and live pricing. Filter by origin, process, and name to explore what is
+				currently available.
+			</p>
+		</div>
 		<!-- Inline filter bar for unauthenticated users (sidebar filters handle this for auth'd users) -->
 		{#if !session}
 			<div

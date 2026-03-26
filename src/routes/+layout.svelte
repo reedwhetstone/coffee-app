@@ -1,10 +1,11 @@
 <script lang="ts">
 	import '../app.css';
 	import CookieBanner from '$lib/components/CookieBanner.svelte';
+	import SeoHead from '$lib/components/SeoHead.svelte';
 	import UnifiedHeader from '$lib/components/layout/UnifiedHeader.svelte';
 	import LeftSidebar from '$lib/components/layout/LeftSidebar.svelte';
 	import { setContext } from 'svelte';
-	import { page } from '$app/state';
+	import { page } from '$app/stores';
 
 	import type { PageMeta } from '$lib/types/meta.types';
 
@@ -62,129 +63,19 @@
 	let contentMargin = $derived(`${activeMenu ? 'ml-[22rem]' : 'ml-24'} ${rightMargin}`);
 
 	// Determine if we should show marketing layout (no sidebar)
-	let isMarketingPage = $derived(!data.session && page.url.pathname === '/');
+	let isMarketingPage = $derived(!data.session && $page.url.pathname === '/');
 
 	// Determine if we should show the unified header (unauthenticated users on public pages)
-	let isBlogPage = $derived(page.url.pathname.startsWith('/blog'));
+	let isBlogPage = $derived($page.url.pathname.startsWith('/blog'));
 	let shouldShowUnifiedHeader = $derived(
 		!data.session &&
-			(page.url.pathname === '/' ||
-				page.url.pathname === '/api' ||
-				page.url.pathname === '/catalog' ||
-				page.url.pathname.startsWith('/analytics') ||
+			($page.url.pathname === '/' ||
+				$page.url.pathname === '/api' ||
+				$page.url.pathname === '/catalog' ||
+				$page.url.pathname.startsWith('/analytics') ||
 				isBlogPage)
 	);
 </script>
-
-<!-- SEO Meta Tags -->
-<svelte:head>
-	{#if data.meta}
-		<title>{data.meta.title || 'Purveyors'}</title>
-		{#if data.meta.description}
-			<meta name="description" content={data.meta.description} />
-		{/if}
-		{#if data.meta.keywords}
-			<meta name="keywords" content={data.meta.keywords} />
-		{/if}
-		{#if data.meta.canonical}
-			<link rel="canonical" href={data.meta.canonical} />
-		{/if}
-		{#if data.meta.robots}
-			<meta name="robots" content={data.meta.robots} />
-		{/if}
-		{#if data.meta.author}
-			<meta name="author" content={data.meta.author} />
-		{/if}
-		{#if data.meta.viewport}
-			<meta name="viewport" content={data.meta.viewport} />
-		{/if}
-		{#if data.meta.themeColor}
-			<meta name="theme-color" content={data.meta.themeColor} />
-		{/if}
-
-		<!-- Open Graph -->
-		{#if data.meta.ogTitle}
-			<meta property="og:title" content={data.meta.ogTitle} />
-		{/if}
-		{#if data.meta.ogDescription}
-			<meta property="og:description" content={data.meta.ogDescription} />
-		{/if}
-		{#if data.meta.ogImage}
-			<meta property="og:image" content={data.meta.ogImage} />
-		{/if}
-		{#if data.meta.ogUrl}
-			<meta property="og:url" content={data.meta.ogUrl} />
-		{/if}
-		<meta property="og:type" content={data.meta.ogType || 'website'} />
-		{#if data.meta.ogSiteName}
-			<meta property="og:site_name" content={data.meta.ogSiteName} />
-		{/if}
-		{#if data.meta.ogLocale}
-			<meta property="og:locale" content={data.meta.ogLocale} />
-		{/if}
-
-		<!-- Twitter -->
-		{#if data.meta.twitterCard}
-			<meta name="twitter:card" content={data.meta.twitterCard} />
-		{/if}
-		{#if data.meta.twitterTitle}
-			<meta name="twitter:title" content={data.meta.twitterTitle} />
-		{/if}
-		{#if data.meta.twitterDescription}
-			<meta name="twitter:description" content={data.meta.twitterDescription} />
-		{/if}
-		{#if data.meta.twitterImage}
-			<meta name="twitter:image" content={data.meta.twitterImage} />
-		{/if}
-		{#if data.meta.twitterSite}
-			<meta name="twitter:site" content={data.meta.twitterSite} />
-		{/if}
-		{#if data.meta.twitterCreator}
-			<meta name="twitter:creator" content={data.meta.twitterCreator} />
-		{/if}
-
-		<!-- Structured Data -->
-		{#if data.meta.structuredData}
-			<!-- eslint-disable-next-line svelte/no-at-html-tags, no-useless-escape -->
-			{@html `<script type="application/ld+json">${JSON.stringify(data.meta.structuredData)}<\/script>`}
-		{/if}
-		{#if data.meta.schemaData}
-			{#if Array.isArray(data.meta.schemaData)}
-				{#each data.meta.schemaData as schema}
-					<!-- eslint-disable-next-line svelte/no-at-html-tags, no-useless-escape -->
-					{@html `<script type="application/ld+json">${JSON.stringify(schema)}<\/script>`}
-				{/each}
-			{:else}
-				<!-- eslint-disable-next-line svelte/no-at-html-tags, no-useless-escape -->
-				{@html `<script type="application/ld+json">${JSON.stringify(data.meta.schemaData)}<\/script>`}
-			{/if}
-		{/if}
-
-		<!-- Hreflang for international SEO -->
-		{#if data.meta.hreflang}
-			{#each data.meta.hreflang as lang}
-				<link rel="alternate" hreflang={lang.lang} href={lang.href} />
-			{/each}
-		{/if}
-
-		<!-- Performance hints -->
-		{#if data.meta.preconnect}
-			{#each data.meta.preconnect as url}
-				<link rel="preconnect" href={url} />
-			{/each}
-		{/if}
-		{#if data.meta.dnsPrefetch}
-			{#each data.meta.dnsPrefetch as url}
-				<link rel="dns-prefetch" href={url} />
-			{/each}
-		{/if}
-	{:else}
-		<title>Purveyors</title>
-		<meta name="description" content="Professional coffee roasting platform" />
-		<meta name="robots" content="index, follow" />
-		<meta name="theme-color" content="#D97706" />
-	{/if}
-</svelte:head>
 
 <!-- Show Unified Header for unauthenticated users on home/api pages -->
 {#if shouldShowUnifiedHeader}
@@ -225,3 +116,5 @@
 		</div>
 	{/if}
 {/if}
+
+<SeoHead meta={$page.data.meta as PageMeta | undefined} />

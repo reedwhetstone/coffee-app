@@ -1,11 +1,3 @@
-<svelte:head>
-	<title>About Purveyors - Meet the Team & Project</title>
-	<meta
-		name="description"
-		content="Learn about Purveyors, our open source coffee platform, and meet the founder. Get in touch with questions about our coffee roasting tools."
-	/>
-</svelte:head>
-
 <div class="min-h-screen bg-background-primary-light">
 	<div class="mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
 		<!-- Header -->

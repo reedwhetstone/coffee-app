@@ -312,11 +312,6 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{data.meta.title}</title>
-	<meta name="description" content={data.meta.description} />
-</svelte:head>
-
 <!-- Hero -->
 <div class="mb-8 border-l-4 border-background-tertiary-light pl-6">
 	<h1 class="mb-2 text-4xl font-bold text-text-primary-light">Green Coffee Market Intelligence</h1>

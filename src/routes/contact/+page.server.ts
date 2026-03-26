@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 import { generateBreadcrumbs } from '$lib/utils/breadcrumbs';
 
@@ -50,25 +51,34 @@ export const load: PageServerLoad = async ({ url }) => {
 	});
 
 	return {
-		meta: {
+		meta: buildPublicMeta({
+			baseUrl,
+			path: '/contact',
 			title: 'About Purveyors - Meet the Team & Open Source Coffee Project',
 			description:
 				'Learn about Purveyors, our open source coffee platform, and meet founder Reed Whetstone. Get in touch with questions about our coffee roasting tools and green coffee API.',
-			keywords:
-				'about purveyors, reed whetstone, coffee platform founder, open source coffee, green coffee API creator, coffee roasting tools',
-			canonical: pageUrl,
+			keywords: [
+				'about purveyors',
+				'reed whetstone',
+				'coffee platform founder',
+				'open source coffee',
+				'green coffee API creator',
+				'coffee roasting tools'
+			],
 			ogTitle: 'About Purveyors - Open Source Coffee Platform',
 			ogDescription:
 				'Meet the team behind Purveyors and learn about our mission to democratize coffee sourcing through open source tools.',
-			ogImage: `${baseUrl}/founder.JPG`,
-			ogUrl: pageUrl,
-			ogType: 'profile',
-			twitterCard: 'summary_large_image',
 			twitterTitle: 'About Purveyors - Reed Whetstone, Founder',
 			twitterDescription:
 				'Meet the founder of Purveyors and learn about our open source coffee platform.',
-			twitterImage: `${baseUrl}/founder.JPG`,
+			type: 'profile',
+			author: 'Reed Whetstone',
+			image: resolvePublicPageSocialImage({
+				baseUrl,
+				preferredPath: '/og/contact.jpg',
+				alt: 'Purveyors contact and company overview social preview card'
+			}),
 			schemaData
-		}
+		})
 	};
 };

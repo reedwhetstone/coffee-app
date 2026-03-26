@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { BlogPost } from '$lib/types/blog.types';
+	import type { PageData } from './$types';
 
-	let { data } = $props<{ data: { posts: BlogPost[]; tag: string } }>();
+	let { data } = $props<{ data: PageData }>();
 
 	function formatDate(dateStr: string): string {
 		return new Date(dateStr).toLocaleDateString('en-US', {
@@ -16,10 +16,6 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Posts tagged "{data.tag}" | Purveyors Blog</title>
-</svelte:head>
-
 <a
 	href="/blog"
 	class="mb-8 inline-flex items-center gap-1 text-sm text-text-secondary-light transition-colors hover:text-background-tertiary-light"
@@ -32,7 +28,7 @@
 		Posts tagged <span class="text-background-tertiary-light">"{data.tag}"</span>
 	</h1>
 	<p class="text-text-secondary-light">
-		{data.posts.length} post{data.posts.length !== 1 ? 's' : ''}
+		{data.posts.length} post{data.posts.length !== 1 ? 's' : ''} on this topic
 	</p>
 </div>
 

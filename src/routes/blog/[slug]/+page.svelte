@@ -1,14 +1,9 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { PILLARS } from '$lib/types/blog.types';
-	import type { BlogPost } from '$lib/types/blog.types';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
 
-	let { data } = $props<{
-		data: {
-			content: typeof import('svelte').SvelteComponent;
-			metadata: BlogPost;
-		};
-	}>();
+	let { data } = $props<{ data: PageData }>();
 
 	function formatDate(dateStr: string): string {
 		return new Date(dateStr).toLocaleDateString('en-US', {
@@ -30,11 +25,6 @@
 		return `/blog/images/${slug}/hero.webp`;
 	}
 </script>
-
-<svelte:head>
-	<title>{data.metadata.title} | Purveyors Blog</title>
-	<meta name="description" content={data.metadata.description} />
-</svelte:head>
 
 <!-- Back link -->
 <a

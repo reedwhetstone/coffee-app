@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { getUserRoles } from '$lib/server/auth';
 import { createSchemaService } from '$lib/services/schemaService';
 
@@ -386,24 +387,32 @@ export const load: PageServerLoad = async (event) => {
 		recentDelistings: (recentDelistings30 ?? []) as DelistingBean[],
 		comparisonBeans,
 		supplierHealth,
-		meta: {
+		meta: buildPublicMeta({
+			baseUrl,
+			path: '/analytics',
 			title: 'Green Coffee Market Analytics | Purveyors Price Index',
 			description:
 				'Live green coffee price trends, origin analysis, and supplier data from 39+ US importers. Updated daily. Free market intelligence for coffee professionals.',
-			keywords:
-				'green coffee prices, coffee market data, coffee price index, specialty coffee analytics, coffee origin prices, coffee supplier comparison',
-			canonical: `${baseUrl}/analytics`,
+			keywords: [
+				'green coffee prices',
+				'coffee market data',
+				'coffee price index',
+				'specialty coffee analytics',
+				'coffee origin prices',
+				'coffee supplier comparison'
+			],
 			ogTitle: 'Green Coffee Market Analytics — Purveyors Price Index',
 			ogDescription:
 				'Real-time green coffee price trends by origin, processing methods, and supplier comparison. Data from 39+ US green coffee importers, updated daily.',
-			ogImage: `${baseUrl}/purveyors_orange.svg`,
-			ogUrl: `${baseUrl}/analytics`,
-			ogType: 'website' as const,
-			twitterCard: 'summary_large_image' as const,
 			twitterTitle: 'Green Coffee Market Analytics — Purveyors',
 			twitterDescription:
 				'Live green coffee price trends from 39+ US importers. Free market intelligence.',
+			image: resolvePublicPageSocialImage({
+				baseUrl,
+				preferredPath: '/og/analytics.jpg',
+				alt: 'Purveyors analytics social preview card'
+			}),
 			schemaData
-		}
+		})
 	};
 };
