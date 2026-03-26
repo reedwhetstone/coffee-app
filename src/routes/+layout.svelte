@@ -71,6 +71,7 @@
 		!data.session &&
 			($page.url.pathname === '/' ||
 				$page.url.pathname === '/api' ||
+				$page.url.pathname.startsWith('/docs') ||
 				$page.url.pathname === '/catalog' ||
 				$page.url.pathname.startsWith('/analytics') ||
 				isBlogPage)

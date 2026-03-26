@@ -194,7 +194,7 @@
 							? 'bg-background-tertiary-light text-white'
 							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 					>
-						Parchment API
+						API Dashboard
 					</a>
 				</li>
 				<li>
