@@ -28,13 +28,23 @@ export class AuthError extends Error {
 	}
 }
 
-export async function requireAuth(event: RequestEvent): Promise<User> {
+async function requireSessionPrincipal(event: RequestEvent): Promise<SessionPrincipal> {
 	const principal = await resolvePrincipal(event);
+
+	if (!principal.isAuthenticated) {
+		throw new AuthError('Authentication required');
+	}
 
 	if (!isSessionPrincipal(principal)) {
 		throw new AuthError('Session authentication required');
 	}
 
+	assertSessionMutationIsTrusted(event, principal);
+	return principal;
+}
+
+export async function requireAuth(event: RequestEvent): Promise<User> {
+	const principal = await requireSessionPrincipal(event);
 	return principal.user;
 }
 
@@ -69,17 +79,7 @@ function assertSessionMutationIsTrusted(event: RequestEvent, principal: SessionP
 export async function requireUserAuth(
 	event: RequestEvent
 ): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {
-	const principal = await resolvePrincipal(event);
-
-	if (!principal.isAuthenticated) {
-		throw new AuthError('Authentication required');
-	}
-
-	if (!isSessionPrincipal(principal)) {
-		throw new AuthError('Session authentication required');
-	}
-
-	assertSessionMutationIsTrusted(event, principal);
+	const principal = await requireSessionPrincipal(event);
 
 	return {
 		user: principal.user,

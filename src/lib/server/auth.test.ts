@@ -48,9 +48,8 @@ vi.mock('$lib/server/apiAuth', () => ({
 	validateApiKey: mockValidateApiKey
 }));
 
-const { AuthError, requireApiKeyAccess, requireUserAuth, validateAdminAccess } = await import(
-	'./auth'
-);
+const { AuthError, requireApiKeyAccess, requireAuth, requireUserAuth, validateAdminAccess } =
+	await import('./auth');
 
 type EventOptions = {
 	method?: string;
@@ -113,23 +112,36 @@ function makeEvent(options: EventOptions = {}) {
 	} as unknown as Parameters<typeof requireUserAuth>[0];
 }
 
-function makeAdminPrincipal(): NonNullable<EventOptions['principal']> {
+function makeSessionPrincipal(
+	overrides: Partial<NonNullable<EventOptions['principal']>> = {}
+): NonNullable<EventOptions['principal']> {
 	return {
 		subjectType: 'user' as const,
 		authKind: 'session' as const,
 		source: 'cookie-session' as const,
 		isAuthenticated: true as const,
-		userId: 'admin-user',
-		user: { id: 'admin-user' },
+		userId: 'member-user',
+		user: { id: 'member-user' },
 		session: { access_token: 'cookie-token' },
-		appRoles: ['admin'],
-		primaryAppRole: 'admin' as const,
-		apiPlan: 'api-enterprise' as const,
+		appRoles: ['member'],
+		primaryAppRole: 'member' as const,
+		apiPlan: 'viewer' as const,
 		apiScopes: ['catalog:read'],
 		apiKeyId: null,
 		apiKeyName: null,
-		apiKeyPermissions: null
+		apiKeyPermissions: null,
+		...overrides
 	};
+}
+
+function makeAdminPrincipal(): NonNullable<EventOptions['principal']> {
+	return makeSessionPrincipal({
+		userId: 'admin-user',
+		user: { id: 'admin-user' },
+		appRoles: ['admin'],
+		primaryAppRole: 'admin',
+		apiPlan: 'api-enterprise'
+	});
 }
 
 beforeEach(() => {
@@ -218,6 +230,46 @@ describe('auth integration', () => {
 		await expect(validateAdminAccess(sameOriginEvent)).resolves.toMatchObject({
 			user: { id: 'admin-user' },
 			role: 'admin'
+		});
+	});
+
+	it('applies the trusted mutation guard to requireAuth for cookie-backed sessions', async () => {
+		const crossOriginEvent = makeEvent({
+			method: 'POST',
+			origin: 'https://evil.test',
+			url: 'https://app.test/api/ai/classify-roast',
+			principal: makeSessionPrincipal()
+		});
+
+		await expect(requireAuth(crossOriginEvent)).rejects.toMatchObject({
+			message: 'Cross-site session mutation blocked',
+			status: 403
+		});
+
+		const sameOriginEvent = makeEvent({
+			method: 'POST',
+			origin: 'https://app.test',
+			url: 'https://app.test/api/ai/classify-roast',
+			principal: makeSessionPrincipal()
+		});
+
+		await expect(requireAuth(sameOriginEvent)).resolves.toMatchObject({
+			id: 'member-user'
+		});
+	});
+
+	it('allows bearer-session mutations without an Origin header', async () => {
+		const event = makeEvent({
+			method: 'POST',
+			url: 'https://app.test/api/ai/classify-roast',
+			principal: makeSessionPrincipal({
+				source: 'bearer-session',
+				session: null
+			})
+		});
+
+		await expect(requireAuth(event)).resolves.toMatchObject({
+			id: 'member-user'
 		});
 	});
 

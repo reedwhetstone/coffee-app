@@ -6,6 +6,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { handleCookieCheck } from '$lib/middleware/cookieCheck';
 import { requireRole } from '$lib/server/auth';
 import {
+	getLegacyAuthState,
 	getPrimaryUserRole,
 	getUserRoles,
 	resolvePrincipal,
@@ -89,16 +90,21 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		return sessionContextPromise;
 	};
 
-	const sessionData = await event.locals.safeGetSession();
-	event.locals.session = sessionData.session;
-	event.locals.user = sessionData.user;
-	event.locals.role = sessionData.role;
+	// Resolve the normalized principal first, then derive legacy locals from that
+	// authoritative auth state so bearer/API-key requests cannot diverge from
+	// event.locals.session/user/role.
+	const principal = await resolvePrincipal(event);
+	const legacyAuthState = getLegacyAuthState(principal);
+
+	event.locals.principal = principal;
+	event.locals.session = legacyAuthState.session;
+	event.locals.user = legacyAuthState.user;
+	event.locals.role = legacyAuthState.role;
 	event.locals.data = {
 		session: event.locals.session,
 		user: event.locals.user,
 		role: event.locals.role
 	};
-	event.locals.principal = await resolvePrincipal(event);
 
 	return resolve(event, {
 		filterSerializedResponseHeaders(name) {

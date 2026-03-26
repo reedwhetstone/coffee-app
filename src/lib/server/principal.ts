@@ -278,6 +278,33 @@ function createApiKeyPrincipal(input: {
 	};
 }
 
+export function getLegacyAuthState(principal: RequestPrincipal): SessionContext {
+	if (isSessionPrincipal(principal)) {
+		return {
+			session: principal.session,
+			user: principal.user,
+			role: principal.primaryAppRole,
+			roles: principal.appRoles
+		};
+	}
+
+	if (isApiKeyPrincipal(principal)) {
+		return {
+			session: null,
+			user: null,
+			role: principal.primaryAppRole,
+			roles: principal.appRoles
+		};
+	}
+
+	return {
+		session: null,
+		user: null,
+		role: 'viewer',
+		roles: ['viewer']
+	};
+}
+
 function getBearerToken(request: Request): string | null {
 	const authHeader = request.headers.get('Authorization');
 
