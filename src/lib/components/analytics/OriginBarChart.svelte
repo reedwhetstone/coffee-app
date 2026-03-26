@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { min, max } from 'd3-array';
+	import { max } from 'd3-array';
 	import { scaleBand, scaleLinear } from 'd3-scale';
 	import { select } from 'd3-selection';
 
@@ -27,15 +27,6 @@
 	let selectorOpen = $state(false);
 	let selectedOrigins = $state<Set<string>>(new Set());
 	let selectionInitialized = $state(false);
-
-	function percentile(sorted: number[], p: number): number {
-		if (sorted.length === 0) return 0;
-		if (sorted.length === 1) return sorted[0];
-		const idx = p * (sorted.length - 1);
-		const lo = Math.floor(idx);
-		const hi = Math.ceil(idx);
-		return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
-	}
 
 	function abbreviateOrigin(name: string, narrow: boolean): string {
 		if (!narrow) return name;
@@ -67,25 +58,48 @@
 		return new Set(rows.slice(0, count).map((row) => row.origin));
 	}
 
-	function computeRobustDomainMax(rows: OriginRangeRow[], domainMin: number): number {
-		if (rows.length === 0) return Math.max(domainMin + 1, 20);
+	function getTailScaleUpper(maxValue: number): number {
+		if (maxValue <= 25) return 25;
+		if (maxValue <= 100) return 100;
+		if (maxValue <= 250) return 250;
+		if (maxValue <= 500) return 500;
+		if (maxValue <= 1000) return 1000;
+		return Math.ceil(maxValue / 250) * 250;
+	}
 
-		const q3Ceiling = max(rows.map((row) => row.price_q3)) ?? 0;
-		const absoluteMax = max(rows.map((row) => row.price_max)) ?? Math.max(q3Ceiling, 1);
+	function getTailTickValues(upper: number): number[] {
+		if (upper <= 25) return [0, 5, 10, 15, 20, 25];
+		if (upper <= 100) return [0, 5, 10, 25, 50, 100];
+		if (upper <= 250) return [0, 10, 25, 100, 250];
+		if (upper <= 500) return [0, 10, 25, 100, 250, 500];
+		if (upper <= 1000) return [0, 10, 25, 100, 250, 500, 1000];
+		return [0, 10, 25, 100, 250, 500, 1000, upper];
+	}
 
-		if (rows.length < 5) {
-			return Math.max(domainMin + 1, absoluteMax * 1.05);
+	function buildTailCompressedScale(width: number, upper: number) {
+		if (upper <= 25) {
+			return scaleLinear()
+				.domain([0, 10, 25])
+				.range([0, width * 0.4, width])
+				.clamp(true);
 		}
 
-		const whiskerMaxes = rows.map((row) => row.price_max).sort((a, b) => a - b);
-		const maxQ1 = percentile(whiskerMaxes, 0.25);
-		const maxQ3 = percentile(whiskerMaxes, 0.75);
-		const maxIqr = Math.max(0, maxQ3 - maxQ1);
-		const upperFence = maxQ3 + maxIqr * 1.5;
-		const p90 = percentile(whiskerMaxes, 0.9);
-		const whiskerFocus = Math.max(q3Ceiling, Math.min(p90, upperFence));
+		if (upper <= 100) {
+			return scaleLinear()
+				.domain([0, 10, 25, 100])
+				.range([0, width * 0.32, width * 0.7, width])
+				.clamp(true);
+		}
 
-		return Math.max(domainMin + 1, Math.min(absoluteMax, whiskerFocus) * 1.06);
+		return scaleLinear()
+			.domain([0, 10, 25, 100, upper])
+			.range([0, width * 0.3, width * 0.68, width * 0.9, width])
+			.clamp(true);
+	}
+
+	function formatTailTick(value: number): string {
+		if (value >= 1000) return `$${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
+		return `$${value.toFixed(0)}`;
 	}
 
 	let rankedRows = $derived.by(() =>
@@ -138,15 +152,12 @@
 			.padding(expanded ? 0.28 : 0.34)
 	);
 
-	let xDomainMin = $derived.by(() => {
-		if (visibleRows.length === 0) return 0;
-		const smallest = min(visibleRows.map((row) => row.price_min)) ?? 0;
-		return Math.max(0, smallest * 0.92);
+	let tailScaleUpper = $derived.by(() => {
+		const absoluteMax = max(visibleRows.map((row) => row.price_max)) ?? 25;
+		return getTailScaleUpper(Math.max(absoluteMax, 25));
 	});
-
-	let xDomainMax = $derived.by(() => computeRobustDomainMax(visibleRows, xDomainMin));
-	let xScale = $derived(scaleLinear().domain([xDomainMin, xDomainMax]).range([0, innerW]).nice());
-	let visibleDomainMax = $derived(xScale.domain()[1] ?? xDomainMax);
+	let tailTicks = $derived(getTailTickValues(tailScaleUpper));
+	let xScale = $derived(buildTailCompressedScale(innerW, tailScaleUpper));
 
 	let xAxisEl: SVGGElement | undefined = $state();
 	let yAxisEl: SVGGElement | undefined = $state();
@@ -178,8 +189,7 @@
 			.attr('y1', 0)
 			.attr('y2', 0)
 			.attr('stroke', 'rgb(156 163 175)');
-		const ticks = xScale.ticks(5);
-		ticks.forEach((tick) => {
+		tailTicks.forEach((tick) => {
 			const x = xScale(tick);
 			g.append('line')
 				.attr('x1', x)
@@ -193,7 +203,7 @@
 				.attr('text-anchor', 'middle')
 				.attr('fill', 'rgb(156 163 175)')
 				.attr('font-size', '11')
-				.text(`$${tick.toFixed(0)}`);
+				.text(formatTailTick(tick));
 		});
 	});
 
@@ -265,7 +275,7 @@
 			{/if}
 		</div>
 		<div>
-			Scale emphasizes the core distribution; clipped max whiskers keep true values in the tooltip.
+			Segmented tail scale reserves most width for $0–25/lb; higher ranges compress progressively.
 		</div>
 	</div>
 
@@ -413,7 +423,7 @@
 						<g bind:this={yAxisEl}></g>
 						<g bind:this={xAxisEl} transform="translate(0,{innerH})"></g>
 
-						{#each xScale.ticks(5) as tick}
+						{#each tailTicks as tick}
 							<line
 								x1={xScale(tick)}
 								x2={xScale(tick)}
@@ -428,7 +438,6 @@
 						{#each visibleRows as row}
 							{@const y = yScale(row.origin) ?? 0}
 							{@const cy = y + yScale.bandwidth() / 2}
-							{@const clippedMax = row.price_max > visibleDomainMax}
 							{@const xMin = clampX(xScale(row.price_min), innerW)}
 							{@const xMax = clampX(xScale(row.price_max), innerW)}
 							{@const xQ1 = clampX(xScale(row.price_q1), innerW)}
@@ -466,32 +475,15 @@
 								stroke-width="1.5"
 								stroke-opacity="0.6"
 							/>
-							{#if clippedMax}
-								<line
-									x1={innerW}
-									x2={innerW}
-									y1={cy - 5}
-									y2={cy + 5}
-									stroke="rgb(156 163 175)"
-									stroke-width="1.5"
-									stroke-opacity="0.85"
-								/>
-								<polygon
-									points="{innerW - 8},{cy - 5} {innerW},{cy} {innerW - 8},{cy + 5}"
-									fill="rgb(156 163 175)"
-									fill-opacity="0.85"
-								/>
-							{:else}
-								<line
-									x1={xMax}
-									x2={xMax}
-									y1={cy - 4}
-									y2={cy + 4}
-									stroke="rgb(156 163 175)"
-									stroke-width="1.5"
-									stroke-opacity="0.6"
-								/>
-							{/if}
+							<line
+								x1={xMax}
+								x2={xMax}
+								y1={cy - 4}
+								y2={cy + 4}
+								stroke="rgb(156 163 175)"
+								stroke-width="1.5"
+								stroke-opacity="0.6"
+							/>
 
 							<rect
 								x={xQ1}
@@ -527,7 +519,6 @@
 
 				{#if tooltip.visible && tooltip.row}
 					{@const row = tooltip.row}
-					{@const rowClipped = row.price_max > visibleDomainMax}
 					<div
 						class="pointer-events-none absolute z-10 rounded-lg border border-border-light bg-background-primary-light px-3 py-2 text-xs shadow-lg"
 						style="left:{Math.min(tooltip.x + 12, Math.max(16, containerW - 210))}px; top:{Math.max(
@@ -567,11 +558,6 @@
 									>${row.price_max.toFixed(2)}</span
 								>
 							</div>
-							{#if rowClipped}
-								<div class="pt-0.5 text-[11px] text-text-secondary-light/80">
-									Max whisker is clipped on the chart to keep the core price range readable.
-								</div>
-							{/if}
 							<div class="mt-1 flex justify-between gap-4 border-t border-border-light pt-1">
 								<span>N beans</span><span class="font-medium text-text-primary-light"
 									>{row.sample_size}</span
@@ -605,12 +591,8 @@
 				></div>
 				<span>Mean</span>
 			</div>
-			<div class="flex items-center gap-1">
-				<div
-					class="h-3 w-4 bg-gray-400 opacity-70"
-					style="clip-path: polygon(0 0, 100% 50%, 0 100%)"
-				></div>
-				<span>Clipped max</span>
+			<div class="flex items-center gap-1 text-text-secondary-light/80">
+				<span>Segmented scale: $0–10, $10–25, $25–100, tail compressed beyond $100</span>
 			</div>
 			<div class="ml-auto flex items-center gap-1 text-text-secondary-light/70">
 				<span>N = bean count</span>
