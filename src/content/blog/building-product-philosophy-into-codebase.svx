@@ -1,0 +1,109 @@
+---
+title: "Building Product Philosophy into the Codebase"
+date: "2026-03-26"
+description: "If agents are blank slate coworkers, product strategy can no longer live in Slack, Notion, or someone else's head. It has to become part of the execution environment."
+tags: ["ai", "agentic", "product", "context"]
+pillar: "agentic-stack"
+draft: false
+readingTime: 8
+---
+
+In a companion piece, I argued that one of the biggest practical problems with coding agents is not raw incompetence. It is eager agreement. Once I accept that diagnosis, the next question is obvious: where do I put the judgment I wish the agent had?
+
+My answer is increasingly blunt. I have to put it in the codebase.
+
+I think a lot of people are still treating agent context like an advanced prompting trick. Add a better system prompt. Add a few rules. Maybe add a memory feature and hope for the best. That framing undersells the problem. If I hire a new engineer, I do not hand them production access, point at Slack, and say good luck. I onboard them. I transfer product intent, architectural rationale, examples of good judgment, escalation paths, and all the tacit stuff that keeps a team from making the same dumb mistake twice.
+
+Agents are blank slate coworkers. Faster ones, cheaper ones, more literal ones, but still blank slate coworkers. The interesting problem is no longer getting them to write code. The interesting problem is getting them to internalize why the product exists, what tradeoffs matter, which shortcuts are forbidden, and where the business is actually trying to go.
+
+That is why I think product strategy is now part of the execution environment.
+
+## The blank slate coworker problem
+
+Software onboarding research already describes the thing I am trying to solve. A [systematic mapping study of onboarding in software organizations](https://doi.org/10.1145/3629479.3629500) treats onboarding as structured integration, communication, and culture transfer, not just tool setup. Work on an [onboarding bot for software newcomers](https://doi.org/10.1145/3379177.3388901) makes the same point from a different angle: mentorship matters, but teams keep trying to encode pieces of it because raw oral tradition does not scale. Even documentation format matters. A recent [field study of developer documentation format](https://doi.org/10.1145/3544549.3585767) and earlier work on [on-demand developer documentation](https://doi.org/10.1109/icsme.2017.17) both point in the same direction. Orientation speed and decision quality are shaped by what documentation exists, how it is structured, and whether developers can find it when they need it.
+
+I do not think agents change that. I think they intensify it.
+
+A human coworker can infer culture from meetings, code review tone, hallway chat, and the embarrassed pause that follows a bad idea. An agent cannot. It only knows what I load, what I retrieve, and what I make legible. Missing context is not social overhead for an agent. It is operational blindness.
+
+That changes the job. Product philosophy stops being a soft layer floating above implementation. It becomes onboarding material for the blank slate coworker who is already editing files.
+
+## Docs in the repo or they do not count
+
+This is the part that feels obvious once I say it out loud.
+
+If the agent is coding inside the repo, then the product philosophy has to be there too.
+
+I am not claiming Notion, Confluence, slide decks, and chat threads are useless. They are useful for humans. I am claiming they are off-graph at the moment of execution unless I do extra work to index, rank, and retrieve them. Most teams do not. So from the agent's point of view, those documents might as well not exist.
+
+That is why the old [docs-as-code argument](https://www.writethedocs.org/guide/docs-as-code/) matters more now than it did a few years ago. Version control, plain text, code review, automated checks, and merge-time proximity were already good documentation practices. In an agentic workflow, they become execution primitives. A plan file next to the code is not just easier to maintain. It is automatically available to the thing doing the implementation.
+
+This is also why I still think Michael Nygard's [ADR essay](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) holds up so well. Large documents rot. Small modular records preserve rationale. More importantly, they protect against two failure modes that agents hit constantly: blind acceptance and blind reversal. An ADR tells the future agent why the strange thing exists, what forces created it, and what would have to become true before simplifying it is actually correct.
+
+I have started treating this as a hard rule. If a document is supposed to steer implementation, I want it near the implementation. Product notes. Pricing logic. Positioning. Market segmentation. Architecture rationale. Blog drafts. Implementation plans. I do not mean this metaphorically. I mean in Git.
+
+## A single manifest file is not enough
+
+The first generation of agentic development normalized the repo manifest file: `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, workspace rules, model memories. Those files are useful. I use them. They are good at stable conventions, forbidden patterns, tooling instructions, architecture summaries, and local behavioral constraints.
+
+They are also not enough.
+
+The most useful articulation of this I have seen is the recent paper [Codified Context: Infrastructure for AI Agents in a Complex Codebase](https://arxiv.org/html/2602.20478v1). The paper starts with the same observation I keep tripping over in practice: a single manifest works for a modest project, then collapses as the system grows. Their answer is a tiered stack: hot memory for always-loaded conventions, specialist agents for domain-specific expertise, and cold memory for on-demand specification documents.
+
+That matches what I see in real work. Style guidance belongs in the always-on layer. Domain knowledge belongs closer to the domain. Rationale belongs in compact records that survive turnover. Low-frequency but high-value material belongs in a retrievable cold layer.
+
+The market is converging on the same shape. Windsurf's [Memories & Rules docs](https://docs.windsurf.com/windsurf/cascade/memories) explicitly tell users to put durable knowledge into Rules or `AGENTS.md` instead of trusting auto-generated memories. Martin Fowler's experiment on [how far AI autonomy can be pushed in code generation](https://martinfowler.com/articles/pushing-ai-autonomy.html) ended up relying on structure everywhere: stack-specific scaffolding, curated command allowlists, multiple agents, reference examples, and review loops. Even the most autonomy-friendly public writeups keep rediscovering the same lesson. What scales is layered context, not longer prompts.
+
+I think ADRs are the missing middle layer in a lot of these setups. A root manifesto tells the agent how to behave. A directory rule tells it local constraints. An ADR tells it why an apparently ugly decision should not be "cleaned up" by a well-meaning model on a Tuesday afternoon.
+
+## Purveyors already works this way
+
+I do not think this is a future pattern. I think I am already doing it in miniature inside Purveyors. Purveyors is the concrete case that keeps pushing this idea out of theory and into operating practice.
+
+The obvious layer is the repo's [`AGENTS.md`](https://github.com/reedwhetstone/coffee-app/blob/main/AGENTS.md). It encodes stable architectural guidance, SvelteKit 5 rules, database safety patterns, debugging procedures, API design norms, and PR expectations. That is the orientation packet. It tells an agent how not to embarrass itself.
+
+But the more interesting layer is everything else I have allowed into the repo.
+
+The daily planning document [`notes/DEVLOG-DAILY-PR-AUDIT.md`](https://github.com/reedwhetstone/coffee-app/blob/main/notes/DEVLOG-DAILY-PR-AUDIT.md) does something I think more teams should copy. It requires every daily feature plan to cross-check DEVLOG priorities, recent published blog posts, and active outlines before choosing what to build. I love that rule because it turns strategy into a build-time dependency. The product narrative is not downstream marketing. It is active input to implementation selection.
+
+The implementation plans go one step further. The plan for [bean profile data completeness](https://github.com/reedwhetstone/coffee-app/blob/main/notes/implementation-plans/2026-03-19-bean-profile-data-completeness.md) includes a formal "Strategy Alignment Audit" that ties the change back to metadata transparency as a product theme. The plan for [wholesale markers on roast profiles](https://github.com/reedwhetstone/coffee-app/blob/main/notes/implementation-plans/2026-03-24-wholesale-markers-roast-profiles.md) scores candidate work not just on difficulty, but on strategic compound value. That is product management expressed in plain text where the coding agent can actually read it.
+
+The longer-horizon plans are even more revealing. The [GenUI platform transition plan](https://github.com/reedwhetstone/coffee-app/blob/main/notes/genui-platform-transition-plan.md) treats workspace memory, global summaries, canvas state, and managed context documents as first-class product primitives. The [API strategy](https://github.com/reedwhetstone/coffee-app/blob/main/notes/API_notes/API-strategy.md) makes the API-first business case in repo. The [market analysis](https://github.com/reedwhetstone/coffee-app/blob/main/notes/MARKET_ANALYSIS.md) spells out segments, ICPs, and messaging in repo. Even my earlier post on [building a coffee data pipeline](https://github.com/reedwhetstone/coffee-app/blob/main/src/content/blog/building-a-coffee-data-pipeline.svx) is not just content. It is a durable explanation of the economy-of-directors model I want future agents to respect.
+
+That is the key shift I think a lot of teams still miss. A blog post, a GTM memo, an implementation plan, and an ADR are now the same class of artifact. They are retrieval surfaces for future execution.
+
+Once I see that, the workflow changes. I stop asking "should this live in the repo?" and start asking "do I want the next agent to know this when it matters?"
+
+## At scale, this becomes a second brain problem
+
+Small teams can get surprisingly far with disciplined markdown in Git. I think they should start there. But I also think it would be naive to pretend that markdown alone solves the enterprise version.
+
+At 500,000 lines across multiple services, the hard problem is not writing context. It is ranking it, routing it, refreshing it, and deciding which document wins when reality disagrees with itself.
+
+That is why the large-scale pattern looks like a second brain, not a single rule file.
+
+I want a constitution layer for always-on product principles and engineering norms. I want service-local rules for constraints and examples. I want ADRs for rationale. I want generated maps and summaries for navigation. I want cold-memory retrieval for lower-frequency specs, prior incidents, and historical decisions. I want an authority model that can tell an agent to trust the current strategy doc over a stale README. And I want an independent review layer that checks not just correctness, but intent alignment.
+
+The public evidence is partial, but it is enough to show the direction. Meta's [REA writeup](https://engineering.fb.com/2026/03/17/developer-tools/ranking-engineer-agent-rea-autonomous-ai-system-accelerating-meta-ads-ranking-innovation/) describes a system with a historical insights database, codebase navigation tools, persistent state across multiday workflows, and a hibernate-and-wake loop for long-running work. That is already much closer to a memory architecture than a prompt. Windsurf separates soft auto memories from durable version-controlled rules. Cognition keeps moving toward indexed code understanding, review surfaces, and parallel managed agents. The implementation details differ, but the architecture keeps rhyming.
+
+I do not think retrieval quality is the final problem either. Retrieval without authority is just a faster way to surface contradictions. Nearest-neighbor similarity cannot tell me whether a stale experiment note should outrank the current pricing strategy. Enterprise memory needs recency, locality, ownership, and strategic authority. Embeddings help find the neighborhood. They do not decide the law.
+
+## The blueprint I would adopt tomorrow
+
+If I were formalizing this for a product team right now, I would build seven layers.
+
+1. **Constitution.** A root `AGENTS.md` or `CLAUDE.md` with product principles, engineering norms, forbidden shortcuts, and review policy.
+2. **Locality.** Directory-scoped rules that capture service-specific contracts, examples, and edge cases.
+3. **Rationale.** ADRs for every weird, durable, or easy-to-misread decision. I treat these as anti-amnesia files.
+4. **Strategy in repo.** Market analysis, GTM notes, positioning, pricing logic, implementation plans, and blog drafts in version control next to the product.
+5. **Generated context.** Code maps, dependency indexes, architecture summaries, and snapshots that make navigation cheap.
+6. **Authority-ranked cold memory.** Lower-frequency documents retrievable on demand, with clear precedence rules.
+7. **Independent review.** A reviewer agent or human reviewer that checks whether the change matches intent, not just whether the tests pass.
+
+I would also avoid a few obvious traps.
+
+I would not build one giant manifesto and pretend size equals coverage. I would not duplicate truth across five near-identical docs. I would not let stale notes outrank current reality. I would not leave product reasoning trapped in Slack or Notion and then act surprised when the agent optimizes for the wrong thing. And I would not trust retrieval without a review loop to catch bad local optimizations.
+
+The deepest change here is conceptual. In a human-only team, product strategy can remain half-explicit because humans absorb it socially. In an agentic team, anything I fail to encode is effectively absent. That is why I think product philosophy should be treated like code. In an organization that builds with agents, it effectively is.
+
+The blank slate coworker metaphor is not cute framing anymore. It is infrastructure design. If I want agents to build the product I mean, not just the ticket I wrote, I have to onboard them the same way I would onboard an ambitious new engineer. The difference is that my agent will actually read the documents.
