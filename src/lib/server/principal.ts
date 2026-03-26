@@ -125,6 +125,9 @@ function normalizeScopeValue(value: unknown): string[] {
 
 function normalizeRoleValue(role: string): UserRole | null {
 	if (role === 'api') return 'api-member';
+	if (role === 'api_viewer') return 'viewer';
+	if (role === 'api_member') return 'api-member';
+	if (role === 'api_enterprise') return 'api-enterprise';
 	if (role === 'viewer') return 'viewer';
 	if (role === 'member') return 'member';
 	if (role === 'api-member') return 'api-member';
@@ -134,9 +137,9 @@ function normalizeRoleValue(role: string): UserRole | null {
 	return null;
 }
 
-export function normalizeUserRoles(rawRoles: unknown): UserRole[] {
+function normalizeResolvedUserRoles(rawRoles: unknown): UserRole[] | null {
 	if (!Array.isArray(rawRoles)) {
-		return ['viewer'];
+		return null;
 	}
 
 	const normalized = rawRoles
@@ -144,13 +147,17 @@ export function normalizeUserRoles(rawRoles: unknown): UserRole[] {
 		.map(normalizeRoleValue)
 		.filter((role): role is UserRole => role !== null);
 
-	return normalized.length > 0 ? Array.from(new Set(normalized)) : ['viewer'];
+	return normalized.length > 0 ? Array.from(new Set(normalized)) : null;
 }
 
-export async function getUserRoles(
+export function normalizeUserRoles(rawRoles: unknown): UserRole[] {
+	return normalizeResolvedUserRoles(rawRoles) ?? ['viewer'];
+}
+
+async function getStrictUserRoles(
 	supabase: SupabaseClient<Database>,
 	userId: string
-): Promise<UserRole[]> {
+): Promise<UserRole[] | null> {
 	const { data, error } = await supabase
 		.from('user_roles')
 		.select('user_role')
@@ -158,10 +165,17 @@ export async function getUserRoles(
 		.single();
 
 	if (error || !data) {
-		return ['viewer'];
+		return null;
 	}
 
-	return normalizeUserRoles(data.user_role);
+	return normalizeResolvedUserRoles(data.user_role);
+}
+
+export async function getUserRoles(
+	supabase: SupabaseClient<Database>,
+	userId: string
+): Promise<UserRole[]> {
+	return (await getStrictUserRoles(supabase, userId)) ?? ['viewer'];
 }
 
 export function getPrimaryUserRole(roles: UserRole[]): UserRole {
@@ -301,7 +315,11 @@ async function resolveApiKeyPrincipal(apiKey: string): Promise<ApiKeyPrincipal |
 		return null;
 	}
 
-	const roles = await getUserRoles(adminSupabase, validation.userId);
+	const roles = await getStrictUserRoles(adminSupabase, validation.userId);
+	if (!roles) {
+		return null;
+	}
+
 	return createApiKeyPrincipal({
 		userId: validation.userId,
 		apiKeyId: validation.keyId,
@@ -316,16 +334,20 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 		return event.locals.principal;
 	}
 
-	const bearerToken = getBearerToken(event.request);
-	if (bearerToken) {
+	const authorizationHeader = event.request.headers.get('Authorization');
+	if (authorizationHeader !== null) {
+		const bearerToken = getBearerToken(event.request);
+		if (!bearerToken) {
+			event.locals.principal = createAnonymousPrincipal();
+			return event.locals.principal;
+		}
+
 		const bearerPrincipal = bearerToken.startsWith(API_KEY_PREFIX)
 			? await resolveApiKeyPrincipal(bearerToken)
 			: await resolveBearerSessionPrincipal(bearerToken);
 
-		if (bearerPrincipal) {
-			event.locals.principal = bearerPrincipal;
-			return bearerPrincipal;
-		}
+		event.locals.principal = bearerPrincipal ?? createAnonymousPrincipal();
+		return event.locals.principal;
 	}
 
 	const sessionContext = await event.locals.safeGetSession();

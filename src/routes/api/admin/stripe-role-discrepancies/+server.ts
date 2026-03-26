@@ -42,10 +42,10 @@ interface AuditLogSummary {
 
 // Remove old admin check function - using centralized validation now
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async (event) => {
 	try {
 		// Verify admin access using centralized validation
-		await validateAdminAccess(locals);
+		await validateAdminAccess(event);
 
 		console.log('🔍 Starting Stripe/role discrepancy check');
 
@@ -233,10 +233,12 @@ export const GET: RequestHandler = async ({ locals }) => {
 };
 
 // POST endpoint to fix a specific discrepancy
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async (event) => {
+	const { request } = event;
+
 	try {
 		// Verify admin access using centralized validation
-		const { user: adminUser } = await validateAdminAccess(locals);
+		const { user: adminUser } = await validateAdminAccess(event);
 
 		const { userId, expectedRole, reason } = await request.json();
 

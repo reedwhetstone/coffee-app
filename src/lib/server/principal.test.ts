@@ -29,6 +29,11 @@ const {
 describe('principal helpers', () => {
 	it('normalizes user roles and preserves the canonical role names', () => {
 		expect(normalizeUserRoles(['api', 'member', 'member'])).toEqual(['api-member', 'member']);
+		expect(normalizeUserRoles(['api_viewer', 'api_member', 'api_enterprise'])).toEqual([
+			'viewer',
+			'api-member',
+			'api-enterprise'
+		]);
 		expect(normalizeUserRoles('nope')).toEqual(['viewer']);
 	});
 

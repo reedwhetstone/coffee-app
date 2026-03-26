@@ -157,21 +157,17 @@ export function createRoleMiddleware(requiredRole: UserRole) {
 
 // Enhanced admin check for admin endpoints
 export async function validateAdminAccess(
-	locals: App.Locals
+	event: RequestEvent
 ): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {
-	const principal = locals.principal;
-
-	if (!principal || !isSessionPrincipal(principal)) {
-		throw new AuthError('Authentication required');
-	}
+	const { user, role, principal } = await requireUserAuth(event);
 
 	if (!principalHasRole(principal, 'admin')) {
 		throw new AuthError('Admin access required', 403);
 	}
 
 	return {
-		user: principal.user,
-		role: principal.primaryAppRole,
+		user,
+		role,
 		principal
 	};
 }
