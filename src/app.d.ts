@@ -5,6 +5,7 @@
 import { SupabaseClient, Session, User } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database.types';
 import type { UserRole } from '$lib/types/auth.types';
+import type { RequestPrincipal } from '$lib/server/principal';
 
 declare global {
 	namespace App {
@@ -14,6 +15,7 @@ declare global {
 			session: Session | null;
 			user: User | null;
 			role: UserRole;
+			principal?: RequestPrincipal;
 			data: {
 				session: Session | null;
 				user: User | null;
@@ -23,6 +25,7 @@ declare global {
 				session: Session | null;
 				user: User | null;
 				role: UserRole;
+				roles: UserRole[];
 			}>;
 		}
 		interface PageData {

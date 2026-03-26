@@ -1,12 +1,24 @@
-import { createClient } from '$lib/supabase';
-import type { RequestEvent } from '@sveltejs/kit';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+	getPrimaryUserRole,
+	getUserRoles,
+	isApiKeyPrincipal,
+	isSessionPrincipal,
+	isTrustedMutationRequest,
+	principalHasApiPlan,
+	principalHasRole,
+	principalHasScope,
+	resolvePrincipal,
+	type ApiKeyPrincipal,
+	type SessionPrincipal
+} from '$lib/server/principal';
+import type { ApiPlan } from '$lib/server/apiAuth';
 import type { UserRole } from '$lib/types/auth.types';
 import { checkRole } from '$lib/types/auth.types';
+import type { RequestEvent } from '@sveltejs/kit';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { Database } from '$lib/types/database.types';
 
-const supabase = createClient();
-
-class AuthError extends Error {
+export class AuthError extends Error {
 	constructor(
 		message: string,
 		public status = 401
@@ -16,25 +28,24 @@ class AuthError extends Error {
 	}
 }
 
-export async function requireAuth(event: RequestEvent) {
-	const authHeader = event.request.headers.get('Authorization');
+async function requireSessionPrincipal(event: RequestEvent): Promise<SessionPrincipal> {
+	const principal = await resolvePrincipal(event);
 
-	if (!authHeader?.startsWith('Bearer ')) {
-		throw new AuthError('No valid authorization header');
+	if (!principal.isAuthenticated) {
+		throw new AuthError('Authentication required');
 	}
 
-	const token = authHeader.split(' ')[1];
-
-	// Get and validate the session and user in one go
-	const {
-		data: { user },
-		error
-	} = await supabase.auth.getUser(token);
-	if (error || !user) {
-		throw new AuthError('Invalid or expired token');
+	if (!isSessionPrincipal(principal)) {
+		throw new AuthError('Session authentication required');
 	}
 
-	return user;
+	assertSessionMutationIsTrusted(event, principal);
+	return principal;
+}
+
+export async function requireAuth(event: RequestEvent): Promise<User> {
+	const principal = await requireSessionPrincipal(event);
+	return principal.user;
 }
 
 export async function requireAuthMiddleware(event: RequestEvent) {
@@ -48,100 +59,95 @@ export async function requireAuthMiddleware(event: RequestEvent) {
 	}
 }
 
-export async function getUserRole(supabase: SupabaseClient, userId: string): Promise<UserRole> {
-	//console.log('Getting role for user:', userId);
-	const { data, error } = await supabase
-		.from('user_roles')
-		.select('user_role')
-		.eq('id', userId)
-		.single();
-
-	//console.log('Role query result:', { data, error });
-
-	if (error || !data || !data.user_role) {
-		//console.log('Defaulting to viewer role due to:', error || 'no data');
-		return 'viewer';
-	}
-
-	// Get primary role from array based on priority: admin > member > api-enterprise > api-member > viewer
-	const roles = data.user_role as UserRole[];
-	if (roles.includes('admin')) return 'admin';
-	if (roles.includes('member')) return 'member';
-	if (roles.includes('api-enterprise')) return 'api-enterprise';
-	if (roles.includes('api-member')) return 'api-member';
-	return 'viewer';
+export async function getUserRole(
+	supabase: SupabaseClient<Database>,
+	userId: string
+): Promise<UserRole> {
+	const roles = await getUserRoles(supabase, userId);
+	return getPrimaryUserRole(roles);
 }
 
-export async function getUserRoles(supabase: SupabaseClient, userId: string): Promise<UserRole[]> {
-	//console.log('Getting roles for user:', userId);
-	const { data, error } = await supabase
-		.from('user_roles')
-		.select('user_role')
-		.eq('id', userId)
-		.single();
-
-	//console.log('Roles query result:', { data, error });
-
-	if (error || !data || !data.user_role) {
-		//console.log('Defaulting to viewer role due to:', error || 'no data');
-		return ['viewer'];
-	}
-
-	return data.user_role as UserRole[];
-}
-
+export { getUserRoles };
 export { checkRole as requireRole };
 
-import type { User, Session } from '@supabase/supabase-js';
-
-// Enhanced role validation utilities for API endpoints
-export async function requireMemberRole(
-	event: RequestEvent
-): Promise<{ user: User; role: UserRole }> {
-	const { user, role } = await requireUserAuth(event);
-
-	if (!checkRole(role, 'member')) {
-		throw new AuthError('Member role required', 403);
+function assertSessionMutationIsTrusted(event: RequestEvent, principal: SessionPrincipal) {
+	if (!isTrustedMutationRequest(event, principal)) {
+		throw new AuthError('Cross-site session mutation blocked', 403);
 	}
-
-	return { user, role };
-}
-
-export async function requireAdminRole(
-	event: RequestEvent
-): Promise<{ user: User; role: UserRole }> {
-	const { user, role } = await requireUserAuth(event);
-
-	if (!checkRole(role, 'admin')) {
-		throw new AuthError('Admin role required', 403);
-	}
-
-	return { user, role };
 }
 
 export async function requireUserAuth(
 	event: RequestEvent
-): Promise<{ user: User; role: UserRole }> {
-	const sessionData = await event.locals.safeGetSession();
-	const { session, user, role } = sessionData as {
-		session: Session | null;
-		user: User | null;
-		role: UserRole;
-	};
+): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {
+	const principal = await requireSessionPrincipal(event);
 
-	if (!session || !user) {
-		throw new AuthError('Authentication required');
+	return {
+		user: principal.user,
+		role: principal.primaryAppRole,
+		principal
+	};
+}
+
+export async function requireMemberRole(
+	event: RequestEvent
+): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {
+	const { user, role, principal } = await requireUserAuth(event);
+
+	if (!principalHasRole(principal, 'member')) {
+		throw new AuthError('Member role required', 403);
 	}
 
-	return { user, role };
+	return { user, role, principal };
+}
+
+export async function requireAdminRole(
+	event: RequestEvent
+): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {
+	const { user, role, principal } = await requireUserAuth(event);
+
+	if (!principalHasRole(principal, 'admin')) {
+		throw new AuthError('Admin role required', 403);
+	}
+
+	return { user, role, principal };
+}
+
+export async function requireApiKeyAuth(event: RequestEvent): Promise<ApiKeyPrincipal> {
+	const principal = await resolvePrincipal(event);
+
+	if (!isApiKeyPrincipal(principal)) {
+		throw new AuthError('API key authentication required');
+	}
+
+	return principal;
+}
+
+export async function requireApiKeyAccess(
+	event: RequestEvent,
+	options: {
+		requiredPlan?: ApiPlan;
+		requiredScope?: string;
+	} = {}
+): Promise<ApiKeyPrincipal> {
+	const principal = await requireApiKeyAuth(event);
+
+	if (options.requiredPlan && !principalHasApiPlan(principal, options.requiredPlan)) {
+		throw new AuthError('Insufficient API plan', 403);
+	}
+
+	if (options.requiredScope && !principalHasScope(principal, options.requiredScope)) {
+		throw new AuthError('Insufficient API scope', 403);
+	}
+
+	return principal;
 }
 
 // Utility for API endpoints to easily enforce role-based access
 export function createRoleMiddleware(requiredRole: UserRole) {
 	return async (event: RequestEvent) => {
-		const { user, role } = await requireUserAuth(event);
+		const { user, role, principal } = await requireUserAuth(event);
 
-		if (!checkRole(role, requiredRole)) {
+		if (!principalHasRole(principal, requiredRole)) {
 			throw new AuthError(`${requiredRole} role required`, 403);
 		}
 
@@ -151,24 +157,17 @@ export function createRoleMiddleware(requiredRole: UserRole) {
 
 // Enhanced admin check for admin endpoints
 export async function validateAdminAccess(
-	locals: App.Locals
-): Promise<{ user: User; role: UserRole }> {
-	try {
-		const { session, user, role } = await locals.safeGetSession();
+	event: RequestEvent
+): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {
+	const { user, role, principal } = await requireUserAuth(event);
 
-		if (!session || !user) {
-			throw new AuthError('Authentication required');
-		}
-
-		if (!checkRole(role, 'admin')) {
-			throw new AuthError('Admin access required', 403);
-		}
-
-		return { user, role: role as UserRole };
-	} catch (error) {
-		if (error instanceof AuthError) {
-			throw error;
-		}
-		throw new AuthError('Authentication validation failed');
+	if (!principalHasRole(principal, 'admin')) {
+		throw new AuthError('Admin access required', 403);
 	}
+
+	return {
+		user,
+		role,
+		principal
+	};
 }

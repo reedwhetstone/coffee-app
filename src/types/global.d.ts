@@ -14,10 +14,12 @@ declare global {
 				session: import('@supabase/supabase-js').Session | null;
 				user: import('@supabase/supabase-js').User | null;
 				role: import('$lib/types/auth.types').UserRole;
+				roles: import('$lib/types/auth.types').UserRole[];
 			}>;
 			session?: import('@supabase/supabase-js').Session | null;
 			user?: import('@supabase/supabase-js').User | null;
 			role?: import('$lib/types/auth.types').UserRole;
+			principal?: import('$lib/server/principal').RequestPrincipal;
 			data?: {
 				session: import('@supabase/supabase-js').Session | null;
 				user: import('@supabase/supabase-js').User | null;
