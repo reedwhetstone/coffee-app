@@ -20,6 +20,7 @@
 	let { data } = $props<{ data: PageData }>();
 
 	let lineChartExpanded = $state(false);
+	let originChartExpanded = $state(false);
 
 	let {
 		session,
@@ -466,19 +467,22 @@
 		<!-- Origin Price Range Chart -->
 		<ExpandablePanel
 			title="Origin Price Ranges"
-			subtitle="Price spread by origin — IQR box, median & mean markers, full min/max range"
-			collapsedMaxHeight="400px"
+			subtitle="Top 8 origins by bean count by default; expand to choose origins. Median and IQR are emphasized, with clipped max outliers still available in tooltips."
+			collapsedMaxHeight="460px"
 			showGradient={false}
+			onExpandChange={(v) => (originChartExpanded = v)}
 		>
 			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Ranges</h2>
 				<p class="mb-4 text-sm text-text-secondary-light">
-					Price spread by origin — IQR box, median &amp; mean markers, full min/max range. Live from
-					catalog.
+					Live catalog price distributions by origin. Collapsed view shows the top 8 origins by bean
+					count; expand to choose the comparison set. Rows stay sorted by median $/lb, while the
+					chart scale prioritizes the core distribution and keeps true min/max values in the
+					tooltip.
 				</p>
 				{#if originRangeData.length > 0}
-					<div class="h-64 w-full sm:h-80">
-						<OriginBarChart data={originRangeData} />
+					<div class="w-full">
+						<OriginBarChart data={originRangeData} expanded={originChartExpanded} />
 					</div>
 				{:else}
 					<div

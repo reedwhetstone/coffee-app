@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { scaleBand, scaleLinear } from 'd3-scale';
 	import { min, max } from 'd3-array';
+	import { scaleBand, scaleLinear } from 'd3-scale';
 	import { select } from 'd3-selection';
 
 	export interface OriginRangeRow {
@@ -14,20 +14,29 @@
 		sample_size: number;
 	}
 
-	let { data = [] }: { data: OriginRangeRow[] } = $props();
+	const DEFAULT_VISIBLE_COUNT = 8;
+	const COLLAPSED_CHART_HEIGHT = 320;
+	const MIN_EXPANDED_CHART_HEIGHT = 360;
+	const EXPANDED_BASE_HEIGHT = 110;
+	const ROW_HEIGHT = 34;
+	const padding = { top: 32, right: 72, bottom: 36, left: 132 };
 
-	let containerH = $state(0);
+	let { data = [], expanded = false }: { data: OriginRangeRow[]; expanded?: boolean } = $props();
+
 	let containerW = $state(0);
+	let selectorOpen = $state(false);
+	let selectedOrigins = $state<Set<string>>(new Set());
+	let selectionInitialized = $state(false);
 
-	const padding = { top: 28, right: 64, bottom: 10, left: 130 };
+	function percentile(sorted: number[], p: number): number {
+		if (sorted.length === 0) return 0;
+		if (sorted.length === 1) return sorted[0];
+		const idx = p * (sorted.length - 1);
+		const lo = Math.floor(idx);
+		const hi = Math.ceil(idx);
+		return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+	}
 
-	let innerW = $derived(Math.max(0, containerW - padding.left - padding.right));
-	let innerH = $derived(Math.max(0, containerH - padding.top - padding.bottom));
-
-	// Narrow container threshold for label abbreviation
-	let isNarrow = $derived(containerW < 500);
-
-	// Abbreviate long origin names when viewport is narrow
 	function abbreviateOrigin(name: string, narrow: boolean): string {
 		if (!narrow) return name;
 		const abbrevMap: Record<string, string> = {
@@ -37,43 +46,117 @@
 			'Central African Republic': 'C. African Rep.'
 		};
 		if (abbrevMap[name]) return abbrevMap[name];
-		// Generic: truncate at 14 chars with ellipsis
 		if (name.length > 14) return name.slice(0, 13) + '…';
 		return name;
 	}
 
-	// Sort by median price ascending
-	let sortedData = $derived([...data].sort((a, b) => a.price_median - b.price_median));
+	function sortRowsByMedian(rows: OriginRangeRow[]): OriginRangeRow[] {
+		return [...rows].sort(
+			(a, b) =>
+				a.price_median - b.price_median ||
+				b.sample_size - a.sample_size ||
+				a.origin.localeCompare(b.origin)
+		);
+	}
+
+	function clampX(value: number, width: number): number {
+		return Math.max(0, Math.min(width, value));
+	}
+
+	function topOriginSet(rows: OriginRangeRow[], count: number): Set<string> {
+		return new Set(rows.slice(0, count).map((row) => row.origin));
+	}
+
+	function computeRobustDomainMax(rows: OriginRangeRow[], domainMin: number): number {
+		if (rows.length === 0) return Math.max(domainMin + 1, 20);
+
+		const q3Ceiling = max(rows.map((row) => row.price_q3)) ?? 0;
+		const absoluteMax = max(rows.map((row) => row.price_max)) ?? Math.max(q3Ceiling, 1);
+
+		if (rows.length < 5) {
+			return Math.max(domainMin + 1, absoluteMax * 1.05);
+		}
+
+		const whiskerMaxes = rows.map((row) => row.price_max).sort((a, b) => a - b);
+		const maxQ1 = percentile(whiskerMaxes, 0.25);
+		const maxQ3 = percentile(whiskerMaxes, 0.75);
+		const maxIqr = Math.max(0, maxQ3 - maxQ1);
+		const upperFence = maxQ3 + maxIqr * 1.5;
+		const p90 = percentile(whiskerMaxes, 0.9);
+		const whiskerFocus = Math.max(q3Ceiling, Math.min(p90, upperFence));
+
+		return Math.max(domainMin + 1, Math.min(absoluteMax, whiskerFocus) * 1.06);
+	}
+
+	let rankedRows = $derived.by(() =>
+		[...data].sort(
+			(a, b) =>
+				b.sample_size - a.sample_size ||
+				a.price_median - b.price_median ||
+				a.origin.localeCompare(b.origin)
+		)
+	);
+
+	$effect(() => {
+		if (!selectionInitialized && rankedRows.length > 0) {
+			selectedOrigins = topOriginSet(rankedRows, DEFAULT_VISIBLE_COUNT);
+			selectionInitialized = true;
+		}
+	});
+
+	$effect(() => {
+		if (!selectionInitialized) return;
+		const validOrigins = new Set(rankedRows.map((row) => row.origin));
+		let changed = false;
+		const next = new Set<string>();
+		for (const origin of selectedOrigins) {
+			if (validOrigins.has(origin)) next.add(origin);
+			else changed = true;
+		}
+		if (changed) selectedOrigins = next;
+	});
+
+	let visibleRows = $derived.by(() => {
+		if (!expanded) return sortRowsByMedian(rankedRows.slice(0, DEFAULT_VISIBLE_COUNT));
+		return sortRowsByMedian(rankedRows.filter((row) => selectedOrigins.has(row.origin)));
+	});
+
+	let chartHeight = $derived(
+		expanded
+			? Math.max(MIN_EXPANDED_CHART_HEIGHT, visibleRows.length * ROW_HEIGHT + EXPANDED_BASE_HEIGHT)
+			: COLLAPSED_CHART_HEIGHT
+	);
+
+	let innerW = $derived(Math.max(0, containerW - padding.left - padding.right));
+	let innerH = $derived(Math.max(0, chartHeight - padding.top - padding.bottom));
+	let isNarrow = $derived(containerW < 500);
 
 	let yScale = $derived(
 		scaleBand()
-			.domain(sortedData.map((d) => d.origin))
+			.domain(visibleRows.map((row) => row.origin))
 			.range([0, innerH])
-			.padding(0.3)
+			.padding(expanded ? 0.28 : 0.34)
 	);
 
-	let xDomainMin = $derived(Math.max(0, (min(sortedData.map((d) => d.price_min)) ?? 0) * 0.9));
-	let xDomainMax = $derived((max(sortedData.map((d) => d.price_max)) ?? 20) * 1.05);
+	let xDomainMin = $derived.by(() => {
+		if (visibleRows.length === 0) return 0;
+		const smallest = min(visibleRows.map((row) => row.price_min)) ?? 0;
+		return Math.max(0, smallest * 0.92);
+	});
 
+	let xDomainMax = $derived.by(() => computeRobustDomainMax(visibleRows, xDomainMin));
 	let xScale = $derived(scaleLinear().domain([xDomainMin, xDomainMax]).range([0, innerW]).nice());
-
-	// Tooltip state
-	let tooltip = $state<{
-		visible: boolean;
-		x: number;
-		y: number;
-		row: OriginRangeRow | null;
-	}>({ visible: false, x: 0, y: 0, row: null });
+	let visibleDomainMax = $derived(xScale.domain()[1] ?? xDomainMax);
 
 	let xAxisEl: SVGGElement | undefined = $state();
 	let yAxisEl: SVGGElement | undefined = $state();
 
 	$effect(() => {
-		if (!yAxisEl || !yScale || innerH <= 0) return;
+		if (!yAxisEl || innerH <= 0) return;
 		const g = select(yAxisEl);
 		g.selectAll('*').remove();
-		sortedData.forEach((d) => {
-			const y = (yScale(d.origin) ?? 0) + yScale.bandwidth() / 2;
+		visibleRows.forEach((row) => {
+			const y = (yScale(row.origin) ?? 0) + yScale.bandwidth() / 2;
 			g.append('text')
 				.attr('x', -8)
 				.attr('y', y)
@@ -81,12 +164,12 @@
 				.attr('dominant-baseline', 'middle')
 				.attr('fill', 'rgb(107 114 128)')
 				.attr('font-size', '12')
-				.text(abbreviateOrigin(d.origin, isNarrow));
+				.text(abbreviateOrigin(row.origin, isNarrow));
 		});
 	});
 
 	$effect(() => {
-		if (!xAxisEl || !xScale || innerW <= 0) return;
+		if (!xAxisEl || innerW <= 0) return;
 		const g = select(xAxisEl);
 		g.selectAll('*').remove();
 		g.append('line')
@@ -96,8 +179,8 @@
 			.attr('y2', 0)
 			.attr('stroke', 'rgb(156 163 175)');
 		const ticks = xScale.ticks(5);
-		ticks.forEach((t) => {
-			const x = xScale(t);
+		ticks.forEach((tick) => {
+			const x = xScale(tick);
 			g.append('line')
 				.attr('x1', x)
 				.attr('x2', x)
@@ -110,9 +193,36 @@
 				.attr('text-anchor', 'middle')
 				.attr('fill', 'rgb(156 163 175)')
 				.attr('font-size', '11')
-				.text(`$${t.toFixed(0)}`);
+				.text(`$${tick.toFixed(0)}`);
 		});
 	});
+
+	function toggleOrigin(origin: string) {
+		const next = new Set(selectedOrigins);
+		if (next.has(origin)) next.delete(origin);
+		else next.add(origin);
+		selectedOrigins = next;
+	}
+
+	function setTopOrigins(count: number) {
+		selectedOrigins = topOriginSet(rankedRows, count);
+	}
+
+	function selectAllOrigins() {
+		selectedOrigins = new Set(rankedRows.map((row) => row.origin));
+	}
+
+	function clearOrigins() {
+		selectedOrigins = new Set();
+	}
+
+	// Tooltip state
+	let tooltip = $state<{
+		visible: boolean;
+		x: number;
+		y: number;
+		row: OriginRangeRow | null;
+	}>({ visible: false, x: 0, y: 0, row: null });
 
 	function handleMouseEnter(e: MouseEvent, row: OriginRangeRow) {
 		const rect = (e.currentTarget as SVGElement).closest('svg')?.getBoundingClientRect();
@@ -137,139 +247,344 @@
 	}
 </script>
 
-<div class="relative h-full w-full" bind:clientHeight={containerH} bind:clientWidth={containerW}>
-	{#if containerW > 0 && containerH > 0 && sortedData.length > 0}
-		<svg
-			width={containerW}
-			height={containerH}
-			role="img"
-			aria-label="Origin price range chart"
-			onmousemove={handleMouseMove}
-		>
-			<!-- X-axis top label -->
-			<text
-				x={padding.left + innerW / 2}
-				y={14}
-				text-anchor="middle"
-				font-size="10"
-				fill="rgb(156 163 175)"
-			>
-				Price ($/lb)
-			</text>
+<div class="flex w-full flex-col">
+	<div
+		class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary-light"
+	>
+		<div>
+			{#if expanded}
+				{#if visibleRows.length > 0}
+					Showing {visibleRows.length} selected origin{visibleRows.length === 1 ? '' : 's'}; rows
+					stay sorted by median $/lb.
+				{:else}
+					No origins selected yet; use the selector to choose which origins to compare.
+				{/if}
+			{:else}
+				Showing the top {Math.min(DEFAULT_VISIBLE_COUNT, rankedRows.length)} origins by bean count; rows
+				stay sorted by median $/lb.
+			{/if}
+		</div>
+		<div>
+			Scale emphasizes the core distribution; clipped max whiskers keep true values in the tooltip.
+		</div>
+	</div>
 
-			<g transform="translate({padding.left},{padding.top})">
-				<!-- Y axis labels -->
-				<g bind:this={yAxisEl}></g>
-
-				<!-- X axis at bottom -->
-				<g bind:this={xAxisEl} transform="translate(0,{innerH})"></g>
-
-				<!-- Gridlines -->
-				{#each xScale.ticks(5) as t}
-					<line
-						x1={xScale(t)}
-						x2={xScale(t)}
-						y1={0}
-						y2={innerH}
-						stroke="rgb(156 163 175)"
-						stroke-opacity="0.2"
-						stroke-dasharray="4 4"
-					/>
-				{/each}
-
-				<!-- Range rows -->
-				{#each sortedData as row}
-					{@const y = yScale(row.origin) ?? 0}
-					{@const cy = y + yScale.bandwidth() / 2}
-					{@const xMin = xScale(row.price_min)}
-					{@const xMax = xScale(row.price_max)}
-					{@const xQ1 = xScale(row.price_q1)}
-					{@const xQ3 = xScale(row.price_q3)}
-					{@const xMedian = xScale(row.price_median)}
-					{@const xMean = xScale(row.price_avg)}
-
-					<!-- Hit area for tooltip -->
-					<rect
-						role="img"
-						aria-label="{row.origin} price range"
-						x={xMin - 4}
-						{y}
-						width={xMax - xMin + 8}
-						height={yScale.bandwidth()}
-						fill="transparent"
-						onmouseenter={(e) => handleMouseEnter(e, row)}
-						onmouseleave={handleMouseLeave}
-					/>
-
-					<!-- Full range line (thin) -->
-					<line
-						x1={xMin}
-						x2={xMax}
-						y1={cy}
-						y2={cy}
-						stroke="rgb(156 163 175)"
-						stroke-width="1.5"
-						stroke-opacity="0.6"
-					/>
-					<!-- End caps -->
-					<line
-						x1={xMin}
-						x2={xMin}
-						y1={cy - 4}
-						y2={cy + 4}
-						stroke="rgb(156 163 175)"
-						stroke-width="1.5"
-						stroke-opacity="0.6"
-					/>
-					<line
-						x1={xMax}
-						x2={xMax}
-						y1={cy - 4}
-						y2={cy + 4}
-						stroke="rgb(156 163 175)"
-						stroke-width="1.5"
-						stroke-opacity="0.6"
-					/>
-
-					<!-- IQR bar (thicker, amber, semi-transparent) -->
-					<rect
-						x={xQ1}
-						y={cy - yScale.bandwidth() * 0.28}
-						width={Math.max(0, xQ3 - xQ1)}
-						height={yScale.bandwidth() * 0.56}
-						fill="#f59e0b"
-						fill-opacity="0.4"
-						rx="2"
-					/>
-
-					<!-- Median circle (solid amber) -->
-					<circle cx={xMedian} {cy} r="5" fill="#f59e0b" />
-
-					<!-- Mean diamond (teal): show when |mean - median| / median > 5% -->
-					{#if row.price_median > 0 && Math.abs(row.price_avg - row.price_median) / row.price_median > 0.05}
-						<polygon
-							points="{xMean},{cy - 5} {xMean + 4},{cy} {xMean},{cy + 5} {xMean - 4},{cy}"
-							fill="#14b8a6"
-						/>
-					{/if}
-
-					<!-- Sample size label (right-aligned) -->
-					<text
-						x={innerW + 4}
-						y={cy}
-						dominant-baseline="middle"
-						font-size="10"
-						fill="rgb(107 114 128)"
+	{#if expanded}
+		<div class="mb-3 flex flex-wrap items-start gap-2">
+			<span class="pt-1 text-sm font-medium text-text-secondary-light">Origins:</span>
+			<div class="relative">
+				<button
+					type="button"
+					onclick={() => (selectorOpen = !selectorOpen)}
+					class="flex items-center gap-1.5 rounded-md border border-border-light bg-background-secondary-light px-3 py-1.5 text-sm text-text-primary-light transition-colors hover:border-background-tertiary-light"
+				>
+					{selectedOrigins.size} of {rankedRows.length} selected
+					<svg
+						class="h-4 w-4 text-text-secondary-light"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
 					>
-						{row.sample_size}
-					</text>
-				{/each}
-			</g>
-		</svg>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M19 9l-7 7-7-7"
+						/>
+					</svg>
+				</button>
+				{#if selectorOpen}
+					<div
+						class="absolute left-0 top-full z-20 mt-1 max-h-72 w-72 overflow-y-auto rounded-lg border border-border-light bg-background-primary-light shadow-lg"
+					>
+						<div class="border-b border-border-light px-3 py-2">
+							<div class="mb-1 text-xs text-text-secondary-light">
+								Default selection = top {DEFAULT_VISIBLE_COUNT} origins by bean count.
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<button
+									type="button"
+									onclick={() => setTopOrigins(8)}
+									class="text-xs font-medium text-background-tertiary-light hover:underline"
+								>
+									Top 8
+								</button>
+								<button
+									type="button"
+									onclick={() => setTopOrigins(12)}
+									class="text-xs font-medium text-background-tertiary-light hover:underline"
+								>
+									Top 12
+								</button>
+								<button
+									type="button"
+									onclick={() => setTopOrigins(20)}
+									class="text-xs font-medium text-background-tertiary-light hover:underline"
+								>
+									Top 20
+								</button>
+								<button
+									type="button"
+									onclick={selectAllOrigins}
+									class="text-xs font-medium text-background-tertiary-light hover:underline"
+								>
+									All
+								</button>
+								<button
+									type="button"
+									onclick={clearOrigins}
+									class="text-xs font-medium text-red-500 hover:underline"
+								>
+									Clear
+								</button>
+							</div>
+						</div>
+						{#each rankedRows as row}
+							{@const active = selectedOrigins.has(row.origin)}
+							<button
+								type="button"
+								onclick={() => toggleOrigin(row.origin)}
+								class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-background-secondary-light"
+							>
+								<div
+									class="h-3 w-3 flex-shrink-0 rounded-sm border"
+									class:border-background-tertiary-light={active}
+									class:bg-background-tertiary-light={active}
+									class:border-border-light={!active}
+								></div>
+								<div class={active ? 'text-text-primary-light' : 'text-text-secondary-light'}>
+									{row.origin}
+								</div>
+								<div class="ml-auto text-xs text-text-secondary-light/60">N {row.sample_size}</div>
+							</button>
+						{/each}
+					</div>
+				{/if}
+			</div>
+			{#each visibleRows.slice(0, 8) as row}
+				<span
+					class="inline-flex items-center rounded-full bg-background-secondary-light px-2 py-0.5 text-xs text-text-secondary-light"
+				>
+					{row.origin}
+				</span>
+			{/each}
+			{#if visibleRows.length > 8}
+				<span class="pt-1 text-xs text-text-secondary-light">+{visibleRows.length - 8} more</span>
+			{/if}
+		</div>
+	{/if}
 
-		<!-- Legend -->
+	{#if rankedRows.length === 0}
 		<div
-			class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 text-xs text-text-secondary-light"
+			class="flex h-40 items-center justify-center rounded-lg bg-background-secondary-light text-sm text-text-secondary-light"
+		>
+			No origin price data available yet.
+		</div>
+	{:else if visibleRows.length === 0}
+		<div
+			class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light px-6 text-center"
+		>
+			<p class="text-sm font-medium text-text-secondary-light">No origins selected</p>
+			<p class="mt-1 text-xs text-text-secondary-light">
+				Choose one or more origins from the selector to render the chart.
+			</p>
+		</div>
+	{:else}
+		<div class="relative w-full" style={`height:${chartHeight}px`} bind:clientWidth={containerW}>
+			{#if containerW > 0}
+				<svg
+					width={containerW}
+					height={chartHeight}
+					role="img"
+					aria-label="Origin price range chart"
+					onmousemove={handleMouseMove}
+				>
+					<text
+						x={padding.left + innerW / 2}
+						y={14}
+						text-anchor="middle"
+						font-size="10"
+						fill="rgb(156 163 175)"
+					>
+						Price ($/lb)
+					</text>
+
+					<g transform="translate({padding.left},{padding.top})">
+						<g bind:this={yAxisEl}></g>
+						<g bind:this={xAxisEl} transform="translate(0,{innerH})"></g>
+
+						{#each xScale.ticks(5) as tick}
+							<line
+								x1={xScale(tick)}
+								x2={xScale(tick)}
+								y1={0}
+								y2={innerH}
+								stroke="rgb(156 163 175)"
+								stroke-opacity="0.2"
+								stroke-dasharray="4 4"
+							/>
+						{/each}
+
+						{#each visibleRows as row}
+							{@const y = yScale(row.origin) ?? 0}
+							{@const cy = y + yScale.bandwidth() / 2}
+							{@const clippedMax = row.price_max > visibleDomainMax}
+							{@const xMin = clampX(xScale(row.price_min), innerW)}
+							{@const xMax = clampX(xScale(row.price_max), innerW)}
+							{@const xQ1 = clampX(xScale(row.price_q1), innerW)}
+							{@const xQ3 = clampX(xScale(row.price_q3), innerW)}
+							{@const xMedian = clampX(xScale(row.price_median), innerW)}
+							{@const xMean = clampX(xScale(row.price_avg), innerW)}
+
+							<rect
+								role="img"
+								aria-label="{row.origin} price range"
+								x={0}
+								{y}
+								width={innerW}
+								height={yScale.bandwidth()}
+								fill="transparent"
+								onmouseenter={(e) => handleMouseEnter(e, row)}
+								onmouseleave={handleMouseLeave}
+							/>
+
+							<line
+								x1={xMin}
+								x2={xMax}
+								y1={cy}
+								y2={cy}
+								stroke="rgb(156 163 175)"
+								stroke-width="1.5"
+								stroke-opacity="0.6"
+							/>
+							<line
+								x1={xMin}
+								x2={xMin}
+								y1={cy - 4}
+								y2={cy + 4}
+								stroke="rgb(156 163 175)"
+								stroke-width="1.5"
+								stroke-opacity="0.6"
+							/>
+							{#if clippedMax}
+								<line
+									x1={innerW}
+									x2={innerW}
+									y1={cy - 5}
+									y2={cy + 5}
+									stroke="rgb(156 163 175)"
+									stroke-width="1.5"
+									stroke-opacity="0.85"
+								/>
+								<polygon
+									points="{innerW - 8},{cy - 5} {innerW},{cy} {innerW - 8},{cy + 5}"
+									fill="rgb(156 163 175)"
+									fill-opacity="0.85"
+								/>
+							{:else}
+								<line
+									x1={xMax}
+									x2={xMax}
+									y1={cy - 4}
+									y2={cy + 4}
+									stroke="rgb(156 163 175)"
+									stroke-width="1.5"
+									stroke-opacity="0.6"
+								/>
+							{/if}
+
+							<rect
+								x={xQ1}
+								y={cy - yScale.bandwidth() * 0.28}
+								width={Math.max(4, xQ3 - xQ1)}
+								height={yScale.bandwidth() * 0.56}
+								fill="#f59e0b"
+								fill-opacity="0.4"
+								rx="2"
+							/>
+
+							<circle cx={xMedian} {cy} r="5" fill="#f59e0b" />
+
+							{#if row.price_median > 0 && Math.abs(row.price_avg - row.price_median) / row.price_median > 0.05}
+								<polygon
+									points="{xMean},{cy - 5} {xMean + 4},{cy} {xMean},{cy + 5} {xMean - 4},{cy}"
+									fill="#14b8a6"
+								/>
+							{/if}
+
+							<text
+								x={innerW + 8}
+								y={cy}
+								dominant-baseline="middle"
+								font-size="10"
+								fill="rgb(107 114 128)"
+							>
+								{row.sample_size}
+							</text>
+						{/each}
+					</g>
+				</svg>
+
+				{#if tooltip.visible && tooltip.row}
+					{@const row = tooltip.row}
+					{@const rowClipped = row.price_max > visibleDomainMax}
+					<div
+						class="pointer-events-none absolute z-10 rounded-lg border border-border-light bg-background-primary-light px-3 py-2 text-xs shadow-lg"
+						style="left:{Math.min(tooltip.x + 12, Math.max(16, containerW - 210))}px; top:{Math.max(
+							4,
+							Math.min(tooltip.y - 110, chartHeight - 150)
+						)}px; min-width:180px"
+					>
+						<div class="mb-1 font-semibold text-text-primary-light">{row.origin}</div>
+						<div class="space-y-0.5 text-text-secondary-light">
+							<div class="flex justify-between gap-4">
+								<span>Min</span><span class="font-medium text-text-primary-light"
+									>${row.price_min.toFixed(2)}</span
+								>
+							</div>
+							<div class="flex justify-between gap-4">
+								<span>Q1</span><span class="font-medium text-text-primary-light"
+									>${row.price_q1.toFixed(2)}</span
+								>
+							</div>
+							<div class="flex justify-between gap-4">
+								<span class="font-medium text-amber-500">Median</span><span
+									class="font-semibold text-amber-500">${row.price_median.toFixed(2)}</span
+								>
+							</div>
+							<div class="flex justify-between gap-4">
+								<span class="text-teal-500">Mean</span><span class="font-medium text-teal-500"
+									>${row.price_avg.toFixed(2)}</span
+								>
+							</div>
+							<div class="flex justify-between gap-4">
+								<span>Q3</span><span class="font-medium text-text-primary-light"
+									>${row.price_q3.toFixed(2)}</span
+								>
+							</div>
+							<div class="flex justify-between gap-4">
+								<span>Max</span><span class="font-medium text-text-primary-light"
+									>${row.price_max.toFixed(2)}</span
+								>
+							</div>
+							{#if rowClipped}
+								<div class="pt-0.5 text-[11px] text-text-secondary-light/80">
+									Max whisker is clipped on the chart to keep the core price range readable.
+								</div>
+							{/if}
+							<div class="mt-1 flex justify-between gap-4 border-t border-border-light pt-1">
+								<span>N beans</span><span class="font-medium text-text-primary-light"
+									>{row.sample_size}</span
+								>
+							</div>
+						</div>
+					</div>
+				{/if}
+			{/if}
+		</div>
+
+		<div
+			class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 text-xs text-text-secondary-light"
 		>
 			<div class="flex items-center gap-1">
 				<div class="h-1 w-5 rounded bg-gray-400 opacity-60"></div>
@@ -290,60 +605,16 @@
 				></div>
 				<span>Mean</span>
 			</div>
+			<div class="flex items-center gap-1">
+				<div
+					class="h-3 w-4 bg-gray-400 opacity-70"
+					style="clip-path: polygon(0 0, 100% 50%, 0 100%)"
+				></div>
+				<span>Clipped max</span>
+			</div>
 			<div class="ml-auto flex items-center gap-1 text-text-secondary-light/70">
 				<span>N = bean count</span>
 			</div>
 		</div>
-
-		<!-- Tooltip -->
-		{#if tooltip.visible && tooltip.row}
-			{@const r = tooltip.row}
-			<div
-				class="pointer-events-none absolute z-10 rounded-lg border border-border-light bg-background-primary-light px-3 py-2 text-xs shadow-lg"
-				style="left:{Math.min(tooltip.x + 12, containerW - 180)}px; top:{Math.max(
-					4,
-					tooltip.y - 100
-				)}px; min-width:160px"
-			>
-				<div class="mb-1 font-semibold text-text-primary-light">{r.origin}</div>
-				<div class="space-y-0.5 text-text-secondary-light">
-					<div class="flex justify-between gap-4">
-						<span>Min</span><span class="font-medium text-text-primary-light"
-							>${r.price_min.toFixed(2)}</span
-						>
-					</div>
-					<div class="flex justify-between gap-4">
-						<span>Q1</span><span class="font-medium text-text-primary-light"
-							>${r.price_q1.toFixed(2)}</span
-						>
-					</div>
-					<div class="flex justify-between gap-4">
-						<span class="font-medium text-amber-500">Median</span><span
-							class="font-semibold text-amber-500">${r.price_median.toFixed(2)}</span
-						>
-					</div>
-					<div class="flex justify-between gap-4">
-						<span class="text-teal-500">Mean</span><span class="font-medium text-teal-500"
-							>${r.price_avg.toFixed(2)}</span
-						>
-					</div>
-					<div class="flex justify-between gap-4">
-						<span>Q3</span><span class="font-medium text-text-primary-light"
-							>${r.price_q3.toFixed(2)}</span
-						>
-					</div>
-					<div class="flex justify-between gap-4">
-						<span>Max</span><span class="font-medium text-text-primary-light"
-							>${r.price_max.toFixed(2)}</span
-						>
-					</div>
-					<div class="mt-1 flex justify-between gap-4 border-t border-border-light pt-1">
-						<span>N beans</span><span class="font-medium text-text-primary-light"
-							>{r.sample_size}</span
-						>
-					</div>
-				</div>
-			</div>
-		{/if}
 	{/if}
 </div>

@@ -273,7 +273,7 @@ export const load: PageServerLoad = async (event) => {
 			});
 		}
 
-		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 15);
+		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 50);
 	})();
 
 	// ─── PPI MEMBER QUERIES (only run for authenticated members) ────────────────
