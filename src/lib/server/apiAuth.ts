@@ -1,7 +1,7 @@
 import { createAdminClient } from '$lib/supabase-admin';
 import { randomBytes } from 'crypto';
 import bcrypt from 'bcryptjs';
-import type { Database } from '$lib/types/database.types';
+import type { Database, Json } from '$lib/types/database.types';
 
 const supabase = createAdminClient();
 
@@ -12,7 +12,7 @@ type ApiKeyRow = Database['public']['Tables']['api_keys']['Row'];
 //type ApiUsageInsert = Database['public']['Tables']['api_usage']['Insert'];
 
 // API key configuration
-const API_KEY_PREFIX = 'pk_live_';
+export const API_KEY_PREFIX = 'pk_live_';
 const API_KEY_LENGTH = 32;
 const HASH_ROUNDS = 12;
 
@@ -45,10 +45,14 @@ const LEGACY_TIER_MAPPING = {
 export const API_RATE_LIMITS = RATE_LIMITS;
 export const API_ROW_LIMITS = ROW_LIMITS;
 
+export type ApiPlan = keyof typeof RATE_LIMITS;
+
 export interface ApiKeyValidationResult {
 	valid: boolean;
 	userId?: string;
 	keyId?: string;
+	keyName?: string;
+	permissions?: Json | null;
 	error?: string;
 }
 
@@ -88,13 +92,13 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 		// Type alias for the select result
 		type ApiKeySelectResult = Pick<
 			ApiKeyRow,
-			'id' | 'user_id' | 'key_hash' | 'is_active' | 'last_used_at'
+			'id' | 'user_id' | 'key_hash' | 'is_active' | 'last_used_at' | 'name' | 'permissions'
 		>;
 
 		// Get all active API keys (we need to check hashes)
 		const { data: apiKeysData, error } = await supabase
 			.from('api_keys')
-			.select('id, user_id, key_hash, is_active, last_used_at')
+			.select('id, user_id, key_hash, is_active, last_used_at, name, permissions')
 			.eq('is_active', true);
 
 		const apiKeys = apiKeysData as ApiKeySelectResult[] | null;
@@ -117,7 +121,9 @@ export async function validateApiKey(key: string): Promise<ApiKeyValidationResul
 				return {
 					valid: true,
 					userId: apiKey.user_id ?? undefined,
-					keyId: apiKey.id
+					keyId: apiKey.id,
+					keyName: apiKey.name,
+					permissions: apiKey.permissions
 				};
 			}
 		}
@@ -419,7 +425,7 @@ export async function validateApiRequest(request: Request): Promise<{
 /**
  * Get user's API subscription tier from their role
  */
-export function getUserApiTier(role: string | null): 'viewer' | 'api-member' | 'api-enterprise' {
+export function getUserApiTier(role: string | string[] | null): ApiPlan {
 	if (!role) return 'viewer';
 
 	// Parse role (could be array or single role)
@@ -447,8 +453,16 @@ export function getUserApiTier(role: string | null): 'viewer' | 'api-member' | '
 /**
  * Get row limit for user's API tier
  */
-export function getApiRowLimit(tier: 'viewer' | 'api-member' | 'api-enterprise'): number {
+export function getApiRowLimit(tier: ApiPlan): number {
 	return ROW_LIMITS[tier];
+}
+
+export function getLegacyRateLimitTier(
+	tier: ApiPlan
+): 'api_viewer' | 'api_member' | 'api_enterprise' {
+	if (tier === 'viewer') return 'api_viewer';
+	if (tier === 'api-member') return 'api_member';
+	return 'api_enterprise';
 }
 
 /**

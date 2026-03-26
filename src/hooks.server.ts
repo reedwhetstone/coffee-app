@@ -4,10 +4,13 @@ import type { Database } from '$lib/types/database.types';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { handleCookieCheck } from '$lib/middleware/cookieCheck';
-import { getUserRole } from '$lib/server/auth';
 import { requireRole } from '$lib/server/auth';
-import type { UserRole } from '$lib/types/auth.types';
-import type { Session, User } from '@supabase/supabase-js';
+import {
+	getPrimaryUserRole,
+	getUserRoles,
+	resolvePrincipal,
+	type SessionContext
+} from '$lib/server/principal';
 import type { CookieSerializeOptions } from 'cookie';
 
 const handleStripeRedirects: Handle = async ({ event, resolve }) => {
@@ -39,44 +42,63 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	) as unknown as App.Locals['supabase'];
 
+	let sessionContextPromise: Promise<SessionContext> | null = null;
 	event.locals.safeGetSession = async () => {
-		const {
-			data: { session }
-		} = await event.locals.supabase.auth.getSession();
-
-		if (!session) {
-			return { session: null, user: null, role: 'viewer' as const };
+		if (sessionContextPromise) {
+			return sessionContextPromise;
 		}
 
-		const {
-			data: { user },
-			error: userError
-		} = await event.locals.supabase.auth.getUser();
+		sessionContextPromise = (async () => {
+			const {
+				data: { session }
+			} = await event.locals.supabase.auth.getSession();
 
-		if (userError) {
-			return { session: null, user: null, role: 'viewer' as const };
-		}
+			if (!session) {
+				return {
+					session: null,
+					user: null,
+					role: 'viewer' as const,
+					roles: ['viewer']
+				};
+			}
 
-		const role = user ? await getUserRole(event.locals.supabase, user.id) : 'viewer';
+			const {
+				data: { user },
+				error: userError
+			} = await event.locals.supabase.auth.getUser();
 
-		return { session, user, role };
+			if (userError || !user) {
+				return {
+					session: null,
+					user: null,
+					role: 'viewer' as const,
+					roles: ['viewer']
+				};
+			}
+
+			const roles = await getUserRoles(event.locals.supabase, user.id);
+
+			return {
+				session,
+				user,
+				role: getPrimaryUserRole(roles),
+				roles
+			};
+		})();
+
+		return sessionContextPromise;
 	};
 
 	const sessionData = await event.locals.safeGetSession();
-	const { session, user, role } = sessionData as {
-		session: Session | null;
-		user: User | null;
-		role: UserRole;
-	};
-
-	event.locals.session = session;
-	event.locals.user = user;
-	event.locals.role = role;
+	event.locals.session = sessionData.session;
+	event.locals.user = sessionData.user;
+	event.locals.role = sessionData.role;
 	event.locals.data = {
 		session: event.locals.session,
 		user: event.locals.user,
 		role: event.locals.role
 	};
+	event.locals.principal = await resolvePrincipal(event);
 
 	return resolve(event, {
 		filterSerializedResponseHeaders(name) {
@@ -96,21 +118,7 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	const requiresApiAccess = apiRoutes.some((route) => currentPath.startsWith(route));
 	const requiresDashboardAccess = dashboardRoutes.some((route) => currentPath.startsWith(route));
 
-	const sessionData = await event.locals.safeGetSession();
-	const { session, user, role } = sessionData as {
-		session: Session | null;
-		user: User | null;
-		role: UserRole;
-	};
-
-	event.locals.session = session;
-	event.locals.user = user;
-	event.locals.role = role;
-	event.locals.data = {
-		session: event.locals.session,
-		user: event.locals.user,
-		role: event.locals.role
-	};
+	const { session } = await event.locals.safeGetSession();
 
 	if (requiresDashboardAccess && !session) {
 		throw redirect(303, '/auth');

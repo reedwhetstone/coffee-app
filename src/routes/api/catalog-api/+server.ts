@@ -1,12 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import {
-	validateApiRequest,
-	logApiUsage,
 	checkRateLimit,
-	getUserApiTier,
-	getApiRowLimit
+	getApiRowLimit,
+	getLegacyRateLimitTier,
+	logApiUsage
 } from '$lib/server/apiAuth';
+import { AuthError, requireApiKeyAccess } from '$lib/server/auth';
 import { createAdminClient } from '$lib/supabase-admin';
 import { getPublicCatalog, CATALOG_API_COLUMNS } from '$lib/data/catalog';
 
@@ -21,94 +21,23 @@ let catalogApiCache: {
 
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
 
-export const GET: RequestHandler = async ({ request }) => {
+export const GET: RequestHandler = async (event) => {
+	const { request } = event;
 	const startTime = Date.now();
 	let apiKeyId: string | undefined;
 
 	try {
-		// Validate API key from Bearer token
-		const { valid, userId, keyId, error: authError } = await validateApiRequest(request);
+		const principal = await requireApiKeyAccess(event, {
+			requiredPlan: 'viewer',
+			requiredScope: 'catalog:read'
+		});
+		apiKeyId = principal.apiKeyId;
 
-		if (!valid) {
-			return json(
-				{
-					error: 'Authentication required',
-					message: authError || 'Valid API key required for access'
-				},
-				{ status: 401 }
-			);
-		}
-
-		if (!keyId) {
-			return json(
-				{
-					error: 'Authentication required',
-					message: 'API key validation failed'
-				},
-				{ status: 401 }
-			);
-		}
-
-		apiKeyId = keyId;
-		const supabase = createAdminClient();
-
-		// Check user role - require API access only
-		if (!userId) {
-			return json(
-				{
-					error: 'Authentication required',
-					message: 'User ID not found'
-				},
-				{ status: 401 }
-			);
-		}
-		const { data: userRoleData, error: roleError } = await supabase
-			.from('user_roles')
-			.select('user_role')
-			.eq('id', userId)
-			.single();
-
-		// Any authenticated user can access API endpoints (viewer gets free tier, others get enhanced access)
-		const hasApiAccess = userRoleData && !roleError;
-
-		if (roleError || !hasApiAccess) {
-			// Log failed request
-			if (apiKeyId) {
-				await logApiUsage(
-					apiKeyId,
-					'/api/catalog-api',
-					403,
-					Date.now() - startTime,
-					request.headers.get('User-Agent') || undefined,
-					request.headers.get('X-Forwarded-For') || undefined
-				);
-			}
-
-			return json(
-				{
-					error: 'Insufficient permissions',
-					message: 'API subscription required for catalog API access'
-				},
-				{ status: 403 }
-			);
-		}
-
-		// Get user's API tier and determine limits
-		const userRoles = userRoleData?.user_role || ['viewer'];
-		const userTier = getUserApiTier(userRoles.join(','));
+		const userTier = principal.apiPlan;
 		const rowLimit = getApiRowLimit(userTier);
-
-		// Check rate limit (map tier to legacy format for compatibility)
-		const legacyTier =
-			userTier === 'viewer'
-				? 'api_viewer'
-				: userTier === 'api-member'
-					? 'api_member'
-					: 'api_enterprise';
-		const rateLimitResult = await checkRateLimit(apiKeyId, legacyTier);
+		const rateLimitResult = await checkRateLimit(apiKeyId, getLegacyRateLimitTier(userTier));
 
 		if (!rateLimitResult.allowed) {
-			// Log rate limited request
 			await logApiUsage(
 				apiKeyId,
 				'/api/catalog-api',
@@ -185,6 +114,7 @@ export const GET: RequestHandler = async ({ request }) => {
 		}
 
 		console.log('Fetching catalog API data from database');
+		const supabase = createAdminClient();
 
 		// Fetch only public coffees with specified columns
 		const rows = await getPublicCatalog(supabase, CATALOG_API_COLUMNS);
@@ -226,7 +156,6 @@ export const GET: RequestHandler = async ({ request }) => {
 			api_version: '1.0'
 		});
 
-		// Add rate limit headers
 		response.headers.set('X-RateLimit-Limit', rateLimitResult.limit.toString());
 		response.headers.set('X-RateLimit-Remaining', rateLimitResult.remaining.toString());
 		response.headers.set(
@@ -236,9 +165,29 @@ export const GET: RequestHandler = async ({ request }) => {
 
 		return response;
 	} catch (error) {
+		if (error instanceof AuthError) {
+			if (apiKeyId) {
+				await logApiUsage(
+					apiKeyId,
+					'/api/catalog-api',
+					error.status,
+					Date.now() - startTime,
+					request.headers.get('User-Agent') || undefined,
+					request.headers.get('X-Forwarded-For') || undefined
+				);
+			}
+
+			return json(
+				{
+					error: error.status === 403 ? 'Insufficient permissions' : 'Authentication required',
+					message: error.message
+				},
+				{ status: error.status }
+			);
+		}
+
 		console.error('Error querying catalog API:', error);
 
-		// Log error if we have apiKeyId
 		if (apiKeyId) {
 			await logApiUsage(
 				apiKeyId,
