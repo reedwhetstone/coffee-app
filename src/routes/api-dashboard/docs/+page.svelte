@@ -114,7 +114,7 @@
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
 								<h4 class="font-medium text-text-primary-light">Base URL</h4>
-								<code class="text-sm text-background-tertiary-light">https://purveyors.io/api</code>
+								<code class="text-sm text-background-tertiary-light">https://purveyors.io/v1</code>
 							</div>
 							<div>
 								<h4 class="font-medium text-text-primary-light">API Version</h4>
@@ -124,7 +124,7 @@
 						<div class="mt-4">
 							<h4 class="font-medium text-text-primary-light">Full Endpoint</h4>
 							<code class="text-sm text-background-tertiary-light"
-								>https://purveyors.io/api/catalog-api</code
+								>https://purveyors.io/v1/catalog</code
 							>
 						</div>
 					</div>
@@ -189,7 +189,7 @@
 								<span class="rounded bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800"
 									>GET</span
 								>
-								<code class="text-lg text-text-primary-light">/api/catalog-api</code>
+								<code class="text-lg text-text-primary-light">/v1/catalog</code>
 							</div>
 							<p class="mb-4 text-text-secondary-light">
 								Retrieves the complete catalog of public green coffee offerings with normalized data
@@ -219,10 +219,8 @@
       "type": "Arabica",
       "link": "https://supplier.com/product/123",
       "cost_lb": 7.50,
-      "last_updated": "2024-01-20",
       "source": "sweet_maria",
       "stocked": true,
-      "unstocked_date": null,
       "stocked_date": "2024-01-15",
       "ai_description": "Clean, bright coffee with floral notes...",
       "ai_tasting_notes": {
@@ -235,10 +233,24 @@
       "continent": "Africa"
     }
   ],
-  "total": 1,
-  "cached": false,
-  "last_updated": "2024-01-20T10:30:00Z",
-  "api_version": "1.0"
+  "pagination": {
+    "page": 1,
+    "limit": 25,
+    "total": 1,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrev": false
+  },
+  "meta": {
+    "resource": "catalog",
+    "namespace": "/v1/catalog",
+    "version": "v1",
+    "auth": {
+      "kind": "api-key",
+      "role": "api-member",
+      "apiPlan": "api-member"
+    }
+  }
 }`}</code
 									></pre>
 							</div>
@@ -350,8 +362,8 @@
 							<h3 class="mb-3 text-lg font-semibold text-text-primary-light">JavaScript (Fetch)</h3>
 							<div class="rounded-md bg-background-primary-light p-4">
 								<pre class="text-sm"><code
-										>{`// Fetch catalog data
-const response = await fetch('https://purveyors.io/api/catalog-api', {
+										>{`// Fetch the first page of catalog data
+const response = await fetch('https://purveyors.io/v1/catalog?page=1&limit=25', {
   method: 'GET',
   headers: {
     'Authorization': 'Bearer {data.exampleApiKey}',
@@ -360,9 +372,9 @@ const response = await fetch('https://purveyors.io/api/catalog-api', {
 });
 
 if (response.ok) {
-  const data = await response.json();
-  console.log('Total coffees:', data.total);
-  console.log('Coffees:', data.data);
+  const body = await response.json();
+  console.log('Total coffees:', body.pagination?.total ?? body.data.length);
+  console.log('Coffees:', body.data);
 } else {
   const error = await response.json();
   console.error('API Error:', error.message);
@@ -376,7 +388,7 @@ if (response.ok) {
 							<h3 class="mb-3 text-lg font-semibold text-text-primary-light">cURL</h3>
 							<div class="rounded-md bg-background-primary-light p-4">
 								<pre class="text-sm"><code
-										>{`curl -X GET "https://purveyors.io/api/catalog-api" \\
+										>{`curl -X GET "https://purveyors.io/v1/catalog?page=1&limit=25" \\
   -H "Authorization: Bearer {data.exampleApiKey}" \\
   -H "Content-Type: application/json"`}</code
 									></pre>
@@ -394,20 +406,21 @@ if (response.ok) {
 						</p>
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 							<div class="rounded-md bg-background-primary-light p-4">
-								<h4 class="font-medium text-text-primary-light">Developer</h4>
-								<p class="text-text-secondary-light">1,000 calls/month</p>
+								<h4 class="font-medium text-text-primary-light">Explorer</h4>
+								<p class="text-text-secondary-light">200 calls/month, 25 rows/request</p>
 							</div>
 							<div class="rounded-md bg-background-primary-light p-4">
-								<h4 class="font-medium text-text-primary-light">Growth</h4>
-								<p class="text-text-secondary-light">10,000 calls/month</p>
+								<h4 class="font-medium text-text-primary-light">Roaster+</h4>
+								<p class="text-text-secondary-light">10,000 calls/month, unlimited rows</p>
 							</div>
 							<div class="rounded-md bg-background-primary-light p-4">
 								<h4 class="font-medium text-text-primary-light">Enterprise</h4>
-								<p class="text-text-secondary-light">100,000 calls/month</p>
+								<p class="text-text-secondary-light">Unlimited calls, unlimited rows</p>
 							</div>
 						</div>
 						<p class="mt-4 text-text-secondary-light">
-							Data is cached for 1 hour to optimize performance and reduce API calls.
+							Legacy aliases remain available at <code>/api/catalog</code> and
+							<code>/api/catalog-api</code>, but <code>/v1/catalog</code> is now the canonical contract.
 						</p>
 					</div>
 				</section>
@@ -426,7 +439,8 @@ if (response.ok) {
 									<pre class="text-sm"><code
 											>{`200 OK          - Success
 401 Unauthorized - Authentication required
-403 Forbidden    - Insufficient permissions  
+403 Forbidden    - Insufficient permissions
+429 Too Many Requests - Rate limit exceeded
 500 Server Error - Internal server error`}</code
 										></pre>
 								</div>

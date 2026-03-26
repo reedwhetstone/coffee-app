@@ -1,8 +1,8 @@
 import type { LayoutServerLoad } from './$types';
+import { getPageAuthState } from '$lib/server/pageAuth';
 
 export const load: LayoutServerLoad = async ({ locals, cookies }) => {
-	const { session, user } = await locals.safeGetSession();
-	//	console.log('Layout server data:', JSON.stringify(data, null, 2));
+	const { session, user, role } = getPageAuthState(locals);
 
 	return {
 		session:
@@ -26,7 +26,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
 					role: user.role
 				}
 			: null,
-		role: locals.role,
+		role,
 		cookies: cookies.getAll().map((cookie: { name: string; value: string }) => ({
 			name: cookie.name,
 			value: cookie.value

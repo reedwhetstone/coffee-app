@@ -124,18 +124,30 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	const requiresApiAccess = apiRoutes.some((route) => currentPath.startsWith(route));
 	const requiresDashboardAccess = dashboardRoutes.some((route) => currentPath.startsWith(route));
 
-	const { session } = await event.locals.safeGetSession();
+	const session = event.locals.session;
 
 	if (requiresDashboardAccess && !session) {
 		throw redirect(303, '/auth');
 	}
 
-	if (requiresProtection && !requireRole(event.locals.role, 'member')) {
-		throw redirect(303, session ? '/dashboard' : '/catalog');
+	if (requiresProtection) {
+		if (!session) {
+			throw redirect(303, '/catalog');
+		}
+
+		if (!requireRole(event.locals.role, 'member')) {
+			throw redirect(303, '/dashboard');
+		}
 	}
 
-	if (requiresAdminAccess && !requireRole(event.locals.role, 'admin')) {
-		throw redirect(303, session ? '/dashboard' : '/catalog');
+	if (requiresAdminAccess) {
+		if (!session) {
+			throw redirect(303, '/catalog');
+		}
+
+		if (!requireRole(event.locals.role, 'admin')) {
+			throw redirect(303, '/dashboard');
+		}
 	}
 
 	if (requiresApiAccess && !session) {

@@ -22,6 +22,7 @@ export interface CatalogDropdownItem {
 	cost_lb: number | null;
 	price_per_lb: number | null;
 	price_tiers: Database['public']['Tables']['coffee_catalog']['Row']['price_tiers'];
+	public_coffee: boolean | null;
 }
 
 /** Options for the shared catalog search. */
@@ -90,7 +91,8 @@ export interface CatalogDropdownResult {
 
 // ── Columns ──────────────────────────────────────────────────────────────────
 
-const DROPDOWN_COLUMNS = 'id, source, name, stocked, cost_lb, price_per_lb, price_tiers' as const;
+const DROPDOWN_COLUMNS =
+	'id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee' as const;
 
 /** Columns exposed via the external catalog API (excludes sensitive fields). */
 export const CATALOG_API_COLUMNS = [
@@ -313,9 +315,14 @@ export async function getCatalogItem(
  */
 export async function getCatalogDropdown(
 	supabase: SupabaseClient,
-	options: { stockedOnly?: boolean; showWholesale?: boolean; wholesaleOnly?: boolean } = {}
+	options: {
+		stockedOnly?: boolean;
+		publicOnly?: boolean;
+		showWholesale?: boolean;
+		wholesaleOnly?: boolean;
+	} = {}
 ): Promise<CatalogDropdownItem[]> {
-	const { stockedOnly = true, showWholesale, wholesaleOnly = false } = options;
+	const { stockedOnly = true, publicOnly = false, showWholesale, wholesaleOnly = false } = options;
 
 	let query = supabase
 		.from('coffee_catalog')
@@ -324,6 +331,10 @@ export async function getCatalogDropdown(
 
 	if (stockedOnly) {
 		query = query.eq('stocked', true);
+	}
+
+	if (publicOnly) {
+		query = query.eq('public_coffee', true);
 	}
 
 	if (wholesaleOnly) {

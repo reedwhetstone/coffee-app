@@ -3,21 +3,24 @@ import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	// Progressive hydration: Load minimal initial data for faster SSR
-	// Client will lazy-load remaining items for better perceived performance
-	const { data: stockedData } = await locals.supabase
+	// Progressive hydration: load a small public preview for SSR; the client hydrates
+	// from the canonical /v1/catalog resource after mount.
+	let catalogQuery = locals.supabase
 		.from('coffee_catalog')
 		.select('*')
 		.eq('stocked', true)
 		.eq('wholesale', false)
 		.order('arrival_date', { ascending: false })
-		.limit(5); // Reduced for faster initial load - remaining items loaded client-side
+		.limit(5);
 
-	// Generate schema for public coffee catalog page
+	if (!locals.session) {
+		catalogQuery = catalogQuery.eq('public_coffee', true);
+	}
+
+	const { data: stockedData } = await catalogQuery;
+
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const schemaService = createSchemaService(baseUrl);
-
-	// Coffee collection schema for catalog page
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),
 		schemaService.generateCoffeeCollectionSchema(
