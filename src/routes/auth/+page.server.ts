@@ -11,7 +11,7 @@ export const actions: Actions = {
 		if (error) {
 			return redirect(303, '/auth/error');
 		}
-		return redirect(303, '/catalog');
+		return redirect(303, '/dashboard');
 	},
 	signin: async ({ request, locals: { supabase } }) => {
 		const formData = await request.formData();
@@ -22,6 +22,6 @@ export const actions: Actions = {
 		if (error) {
 			return redirect(303, '/auth/error');
 		}
-		return redirect(303, '/catalog');
+		return redirect(303, '/dashboard');
 	}
 };

@@ -2,7 +2,6 @@ import { createBrowserClient } from '@supabase/ssr';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import type { Database } from './types/database.types';
 
-// Browser client with SSR support
 export const createClient = (
 	options: {
 		cookies?: {
@@ -25,12 +24,13 @@ export const createClient = (
 	});
 };
 
-// Auth helpers
 export const signInWithGoogle = (supabase: ReturnType<typeof createClient>) => {
+	const next = encodeURIComponent('/dashboard');
+
 	return supabase.auth.signInWithOAuth({
 		provider: 'google',
 		options: {
-			redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+			redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback?next=${next}`,
 			queryParams: {
 				access_type: 'offline',
 				prompt: 'consent'

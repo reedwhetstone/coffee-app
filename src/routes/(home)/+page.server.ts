@@ -4,38 +4,33 @@ import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	// Get session data - no longer redirecting server-side for better performance
 	const { session } = await locals.safeGetSession();
 
-	// Get limited coffee data for preview section with error handling
 	let stockedData: Record<string, unknown>[] = [];
 	try {
 		const result = await searchCatalog(locals.supabase, {
 			stockedOnly: true,
 			orderBy: 'arrival_date',
 			orderDirection: 'desc',
-			limit: 6 // Only need 6 for preview
+			limit: 6
 		});
 		stockedData = result.data as unknown as Record<string, unknown>[];
 	} catch (error) {
-		console.error('Error loading coffee catalog:', error);
-		// Continue with empty array, don't block page load
+		console.error('Error loading homepage coffee preview:', error);
 	}
 
 	const baseUrl = `${url.protocol}//${url.host}`;
 
-	// Generate marketing landing page schema with error handling
 	let schemaData = {};
 	try {
 		const schemaService = createSchemaService(baseUrl);
 		schemaData = schemaService.generatePageSchema('homepage-marketing', baseUrl);
 	} catch (error) {
-		console.error('Error generating schema data:', error);
-		// Continue without schema data
+		console.error('Error generating homepage schema data:', error);
 	}
 
 	return {
-		session, // Include session data for client-side redirect logic
+		session,
 		data: stockedData,
 		trainingData: stockedData,
 		meta: buildPublicMeta({

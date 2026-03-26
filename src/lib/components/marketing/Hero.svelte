@@ -1,8 +1,30 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { checkRole } from '$lib/types/auth.types';
 
-	function handleGetStarted() {
-		goto('/auth');
+	import type { UserRole } from '$lib/types/auth.types';
+
+	interface SessionData {
+		user?: {
+			email?: string;
+		};
+	}
+
+	let { session = null, role = 'viewer' } = $props<{
+		session?: SessionData | null;
+		role?: UserRole;
+	}>();
+
+	let isSignedIn = $derived(Boolean(session?.user));
+	let canAccessMemberRoutes = $derived(checkRole(role, 'member'));
+	let userLabel = $derived(session?.user?.email?.split('@')[0] ?? 'there');
+
+	function handlePrimaryAction() {
+		goto(isSignedIn ? '/dashboard' : '/auth');
+	}
+
+	function handleSecondaryAction() {
+		goto(isSignedIn ? '/catalog' : '/auth');
 	}
 
 	function handleLearnMore() {
@@ -15,28 +37,40 @@
 >
 	<div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
 		<div class="flex flex-col items-center justify-center">
+			{#if isSignedIn}
+				<div
+					class="mb-6 inline-flex items-center rounded-full border border-background-tertiary-light/20 bg-background-tertiary-light/10 px-4 py-1.5 text-sm font-medium text-background-tertiary-light"
+				>
+					Signed in as {userLabel}. Your app home now lives at /dashboard.
+				</div>
+			{/if}
 			<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
 				Smarter Sourcing. Better Roasting.
 			</h1>
 		</div>
 		<div class="mx-auto max-w-2xl text-center">
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				The only roasting platform build to scale from small-batch home roasting to commercial
-				operations. Discover premium green coffees and grow your roasting journey with
-				enterprise-grade tools, at a fraction of the cost.
+				{#if isSignedIn}
+					Purveyors keeps the homepage public-first so the product story stays clear. Jump back into
+					your dashboard when you are ready, or keep browsing live coffee data from here.
+				{:else}
+					The only roasting platform built to scale from small-batch home roasting to commercial
+					operations. Discover premium green coffees and grow your roasting journey with
+					enterprise-grade tools, at a fraction of the cost.
+				{/if}
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
 				<button
-					onclick={handleGetStarted}
+					onclick={handlePrimaryAction}
 					class="w-full rounded-md bg-background-tertiary-light px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light sm:w-auto"
 				>
-					Get started free
+					{isSignedIn ? 'Dashboard' : 'Get started free'}
 				</button>
 				<button
-					onclick={() => goto('/auth')}
+					onclick={handleSecondaryAction}
 					class="w-full rounded-md border border-background-tertiary-light px-6 py-3 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:w-auto"
 				>
-					Sign In
+					{isSignedIn ? 'Catalog' : 'Sign In'}
 				</button>
 				<button
 					onclick={handleLearnMore}
@@ -45,9 +79,24 @@
 					Learn more <span aria-hidden="true">→</span>
 				</button>
 			</div>
+			{#if isSignedIn && canAccessMemberRoutes}
+				<div class="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm">
+					<button
+						onclick={() => goto('/beans')}
+						class="font-medium text-text-secondary-light transition-colors duration-200 hover:text-background-tertiary-light"
+					>
+						Inventory
+					</button>
+					<button
+						onclick={() => goto('/roast')}
+						class="font-medium text-text-secondary-light transition-colors duration-200 hover:text-background-tertiary-light"
+					>
+						Roast
+					</button>
+				</div>
+			{/if}
 		</div>
 
-		<!-- Hero Visual -->
 		<div class="mt-16 flow-root sm:mt-24">
 			<div
 				class="-m-2 rounded-xl bg-background-tertiary-light/5 p-2 ring-1 ring-inset ring-background-tertiary-light/10 lg:-m-4 lg:rounded-2xl lg:p-4"
@@ -56,7 +105,6 @@
 					class="rounded-md bg-background-secondary-light p-8 shadow-2xl ring-1 ring-border-light"
 				>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-						<!-- Coffee Card Preview -->
 						<div
 							class="rounded-lg bg-background-primary-light p-4 shadow-sm ring-1 ring-border-light"
 						>
@@ -71,7 +119,6 @@
 							</div>
 						</div>
 
-						<!-- AI Chat Preview -->
 						<div
 							class="rounded-lg bg-background-primary-light p-4 shadow-sm ring-1 ring-border-light sm:col-span-2"
 						>
@@ -92,7 +139,6 @@
 		</div>
 	</div>
 
-	<!-- Background decoration -->
 	<div
 		class="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]"
 	>

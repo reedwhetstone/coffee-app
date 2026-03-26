@@ -17,7 +17,6 @@
 
 		try {
 			await signInWithGoogle(data.supabase);
-			// The auth callback will handle the redirect
 		} catch (err) {
 			console.error('Sign in error:', err);
 			error = 'Failed to sign in. Please try again.';
@@ -26,10 +25,9 @@
 		}
 	}
 
-	// If user is already authenticated, send them to the catalog
 	onMount(() => {
 		if (data.session) {
-			goto('/catalog');
+			goto('/dashboard');
 		}
 	});
 </script>
