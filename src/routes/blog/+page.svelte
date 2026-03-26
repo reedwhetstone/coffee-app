@@ -1,8 +1,10 @@
 <script lang="ts">
+	import type { PageData } from './$types';
+	import SeoHead from '$lib/components/SeoHead.svelte';
 	import { PILLARS } from '$lib/types/blog.types';
 	import type { BlogPost } from '$lib/types/blog.types';
 
-	let { data } = $props<{ data: { posts: BlogPost[]; tags: string[] } }>();
+	let { data } = $props<{ data: PageData }>();
 
 	let selectedTag = $state<string | null>(null);
 
@@ -23,22 +25,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Blog | Purveyors</title>
-	<meta
-		name="description"
-		content="Insights on coffee intelligence, AI-first product development, and supply chain technology."
-	/>
-	<link rel="canonical" href="https://purveyors.io/blog" />
-	<meta property="og:title" content="Purveyors Blog — Coffee Intelligence & AI-First Development" />
-	<meta
-		property="og:description"
-		content="Insights on green coffee market data, AI-first product development, and supply chain technology from the team behind Purveyors.io."
-	/>
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://purveyors.io/blog" />
-	<meta property="og:site_name" content="Purveyors" />
-</svelte:head>
+<SeoHead meta={data.meta} />
 
 <!-- Header with accent border -->
 <div class="mb-10 border-l-4 border-background-tertiary-light pl-6">

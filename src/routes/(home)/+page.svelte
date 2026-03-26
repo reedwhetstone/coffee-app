@@ -6,6 +6,7 @@
 	import Hero from '$lib/components/marketing/Hero.svelte';
 	import LazyLoad from '$lib/components/LazyLoad.svelte';
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
+	import SeoHead from '$lib/components/SeoHead.svelte';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 
 	let { data } = $props<{ data: PageData }>();
@@ -76,6 +77,8 @@
 		}
 	];
 </script>
+
+<SeoHead meta={data.meta} />
 
 {#if data.session}
 	<!-- Authenticated Dashboard View -->

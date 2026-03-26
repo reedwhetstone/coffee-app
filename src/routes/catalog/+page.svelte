@@ -9,6 +9,7 @@
 	// Import components
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
+	import SeoHead from '$lib/components/SeoHead.svelte';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
@@ -131,6 +132,8 @@
 		return null;
 	}
 </script>
+
+<SeoHead meta={data.meta} />
 
 <!-- Show skeleton during FilterStore loading -->
 {#if $filterStore.isLoading}

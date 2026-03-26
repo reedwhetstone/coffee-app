@@ -1,10 +1,12 @@
-import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
+import { buildPublicMeta, resolveBlogPostSocialImage } from '$lib/seo/meta';
 import { getAllPosts } from '$lib/server/blog';
+import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	const posts = await getAllPosts();
-	const post = posts.find((p) => p.slug === params.slug);
+	const post = posts.find((candidate) => candidate.slug === params.slug);
 
 	if (!post) {
 		throw error(404, `Post not found: ${params.slug}`);
@@ -12,36 +14,56 @@ export const load: PageServerLoad = async ({ params, url }) => {
 
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const postUrl = `${baseUrl}/blog/${post.slug}`;
-	const heroImage = `${baseUrl}/blog/images/${post.slug}/hero.webp`;
+	const author = post.author || 'Reed Whetstone';
+	const socialImage = resolveBlogPostSocialImage({
+		baseUrl,
+		slug: post.slug,
+		title: post.title
+	});
+	const schemaService = createSchemaService(baseUrl);
+	const schemaData = schemaService.generateSchemaGraph([
+		schemaService.generateOrganizationSchema(),
+		{
+			'@type': 'BlogPosting',
+			headline: post.title,
+			description: post.description,
+			datePublished: post.date,
+			dateModified: post.date,
+			author: { '@type': 'Person', name: author },
+			publisher: { '@type': 'Organization', name: 'Purveyors', url: baseUrl },
+			image: {
+				'@type': 'ImageObject',
+				url: socialImage.url,
+				width: socialImage.width,
+				height: socialImage.height
+			},
+			keywords: post.tags,
+			mainEntityOfPage: postUrl
+		}
+	]);
 
 	return {
-		meta: {
+		meta: buildPublicMeta({
+			baseUrl,
+			path: `/blog/${post.slug}`,
 			title: `${post.title} | Purveyors Blog`,
 			description: post.description,
-			canonical: postUrl,
+			keywords: post.tags,
 			ogTitle: post.title,
 			ogDescription: post.description,
-			ogType: 'article' as const,
-			ogUrl: postUrl,
-			ogImage: heroImage,
-			ogSiteName: 'Purveyors',
-			twitterCard: 'summary_large_image' as const,
 			twitterTitle: post.title,
 			twitterDescription: post.description,
-			twitterImage: heroImage,
-			articlePublishedTime: post.date,
-			articleTags: post.tags,
-			schemaData: {
-				'@context': 'https://schema.org',
-				'@type': 'Article',
-				headline: post.title,
-				description: post.description,
-				datePublished: post.date,
-				author: { '@type': 'Person', name: 'Reed Whetstone' },
-				publisher: { '@type': 'Organization', name: 'Purveyors', url: 'https://purveyors.io' },
-				image: heroImage,
-				mainEntityOfPage: postUrl
+			type: 'article',
+			author,
+			image: socialImage,
+			schemaData,
+			article: {
+				publishedTime: post.date,
+				modifiedTime: post.date,
+				author,
+				section: post.pillar,
+				tags: post.tags
 			}
-		}
+		})
 	};
 };

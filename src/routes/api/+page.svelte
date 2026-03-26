@@ -1,6 +1,9 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import SeoHead from '$lib/components/SeoHead.svelte';
+
+	let { data } = $props<{ data: PageData }>();
 
 	function handleContactUs() {
 		goto('/contact');
@@ -13,20 +16,9 @@
 	function scrollToSection(sectionId: string) {
 		document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
 	}
-
-	onMount(() => {
-		// Set page title for API page
-		document.title = 'Purveyors.io Parchment API - Transform Your Roasting Platform';
-	});
 </script>
 
-<svelte:head>
-	<title>Purveyors.io Parchment API - Transform Your Roasting Platform</title>
-	<meta
-		name="description"
-		content="The first normalized, daily-updated API for specialty green coffee. Integrate real-time green coffee data into your roasting software with our comprehensive Parchment API."
-	/>
-</svelte:head>
+<SeoHead meta={data.meta} />
 
 <div class="min-h-screen bg-background-primary-light">
 	<!-- Hero Section -->

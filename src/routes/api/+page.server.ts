@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 import { generateBreadcrumbs } from '$lib/utils/breadcrumbs';
 
@@ -141,25 +142,33 @@ export const load: PageServerLoad = async ({ url }) => {
 	});
 
 	return {
-		meta: {
+		meta: buildPublicMeta({
+			baseUrl,
+			path: '/api',
 			title: 'Purveyors.io Green Coffee API - Transform Your Roasting Platform',
 			description:
 				'The first normalized, daily-updated API for specialty green coffee. Integrate real-time green coffee data into your roasting software with our comprehensive REST API.',
-			keywords:
-				'green coffee API, coffee data API, specialty coffee API, roasting software integration, coffee inventory API, normalized coffee data',
-			canonical: pageUrl,
+			keywords: [
+				'green coffee API',
+				'coffee data API',
+				'specialty coffee API',
+				'roasting software integration',
+				'coffee inventory API',
+				'normalized coffee data'
+			],
 			ogTitle: 'Purveyors Green Coffee API - Coffee Data Integration',
 			ogDescription:
 				'The first normalized, daily-updated API for specialty green coffee. Real-time inventory data from top U.S. suppliers.',
-			ogImage: `${baseUrl}/purveyors_orange.svg`,
-			ogUrl: pageUrl,
-			ogType: 'product',
-			twitterCard: 'summary_large_image',
 			twitterTitle: 'Purveyors Green Coffee API',
 			twitterDescription:
 				'Integrate real-time green coffee data into your roasting software with our comprehensive REST API.',
-			twitterImage: `${baseUrl}/purveyors_orange.svg`,
+			type: 'product',
+			image: resolvePublicPageSocialImage({
+				baseUrl,
+				preferredPath: '/og/api.jpg',
+				alt: 'Purveyors API social preview card'
+			}),
 			schemaData
-		}
+		})
 	};
 };

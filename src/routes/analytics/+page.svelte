@@ -16,6 +16,7 @@
 	import SupplierComparisonTable from '$lib/components/analytics/SupplierComparisonTable.svelte';
 	import SupplierHealthTable from '$lib/components/analytics/SupplierHealthTable.svelte';
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
+	import SeoHead from '$lib/components/SeoHead.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -312,10 +313,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{data.meta.title}</title>
-	<meta name="description" content={data.meta.description} />
-</svelte:head>
+<SeoHead meta={data.meta} />
 
 <!-- Hero -->
 <div class="mb-8 border-l-4 border-background-tertiary-light pl-6">

@@ -13,6 +13,9 @@ export interface PageMeta {
 	ogTitle?: string;
 	ogDescription?: string;
 	ogImage?: string;
+	ogImageAlt?: string;
+	ogImageWidth?: number;
+	ogImageHeight?: number;
 	ogUrl?: string;
 	ogType?: 'website' | 'article' | 'product' | 'profile';
 	ogSiteName?: string;
@@ -23,6 +26,7 @@ export interface PageMeta {
 	twitterTitle?: string;
 	twitterDescription?: string;
 	twitterImage?: string;
+	twitterImageAlt?: string;
 	twitterSite?: string;
 	twitterCreator?: string;
 
@@ -68,10 +72,12 @@ export function createDefaultMeta(overrides: Partial<PageMeta> = {}): PageMeta {
 		title: 'Purveyors',
 		description: 'Professional coffee roasting platform',
 		ogType: 'website',
-		twitterCard: 'summary',
+		ogSiteName: 'Purveyors',
+		ogLocale: 'en_US',
+		twitterCard: 'summary_large_image',
 		robots: 'index, follow',
 		viewport: 'width=device-width, initial-scale=1',
-		themeColor: '#D97706', // Orange theme color
+		themeColor: '#D97706',
 		...overrides
 	};
 }
@@ -92,6 +98,8 @@ export function createCoffeeProductMeta(
 	baseUrl: string
 ): PageMeta {
 	const coffeeUrl = `${baseUrl}/coffee/${coffee.name.toLowerCase().replace(/\s+/g, '-')}`;
+	const imageUrl = coffee.imageUrl || `${baseUrl}/og/default.jpg`;
+	const imageAlt = `Preview image for ${coffee.name}`;
 
 	return createDefaultMeta({
 		title: `${coffee.name} - ${coffee.origin || 'Premium Coffee'} | Purveyors`,
@@ -103,9 +111,12 @@ export function createCoffeeProductMeta(
 		ogTitle: coffee.name,
 		ogDescription:
 			coffee.description || `Premium coffee from ${coffee.origin || 'specialty origins'}`,
-		ogImage: coffee.imageUrl || `${baseUrl}/purveyors_orange.svg`,
+		ogImage: imageUrl,
+		ogImageAlt: imageAlt,
 		ogUrl: coffeeUrl,
 		ogType: 'product',
+		twitterImage: imageUrl,
+		twitterImageAlt: imageAlt,
 		productPrice: coffee.price?.toString(),
 		productCurrency: 'USD',
 		productAvailability: coffee.availability ? 'in stock' : 'out of stock',
@@ -132,22 +143,30 @@ export function createArticleMeta(
 	articlePath: string
 ): PageMeta {
 	const articleUrl = `${baseUrl}${articlePath}`;
+	const imageUrl = article.imageUrl || `${baseUrl}/og/default.jpg`;
+	const author = article.author || 'Reed Whetstone';
+	const imageAlt = `Social preview for ${article.title}`;
 
 	return createDefaultMeta({
 		title: `${article.title} | Purveyors Blog`,
 		description: article.description,
 		keywords: article.tags?.join(', '),
 		canonical: articleUrl,
-		author: article.author,
+		author,
 		ogTitle: article.title,
 		ogDescription: article.description,
-		ogImage: article.imageUrl || `${baseUrl}/purveyors_orange.svg`,
+		ogImage: imageUrl,
+		ogImageAlt: imageAlt,
 		ogUrl: articleUrl,
 		ogType: 'article',
 		twitterCard: 'summary_large_image',
+		twitterTitle: article.title,
+		twitterDescription: article.description,
+		twitterImage: imageUrl,
+		twitterImageAlt: imageAlt,
 		articlePublishedTime: article.publishedDate,
-		articleModifiedTime: article.modifiedDate,
-		articleAuthor: article.author,
+		articleModifiedTime: article.modifiedDate ?? article.publishedDate,
+		articleAuthor: author,
 		articleSection: article.section,
 		articleTags: article.tags
 	});

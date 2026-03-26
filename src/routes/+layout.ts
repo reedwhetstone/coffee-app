@@ -7,6 +7,7 @@ export const load: LayoutLoad = async ({ data, depends }) => {
 	const supabase = createSupabaseLoadClient();
 
 	return {
+		...data,
 		supabase,
 		session: data.session,
 		role: data.role,
