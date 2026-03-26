@@ -9,7 +9,6 @@
 	// Import components
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
-	import SeoHead from '$lib/components/SeoHead.svelte';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
@@ -133,14 +132,20 @@
 	}
 </script>
 
-<SeoHead meta={data.meta} />
-
 <!-- Show skeleton during FilterStore loading -->
 {#if $filterStore.isLoading}
 	<CatalogPageSkeleton />
 {:else}
 	<!-- Coffee Catalog -->
 	<div class="space-y-4">
+		<div class="rounded-lg border border-border-light bg-background-secondary-light px-5 py-4">
+			<h1 class="text-2xl font-bold text-text-primary-light sm:text-3xl">Green Coffee Catalog</h1>
+			<p class="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary-light sm:text-base">
+				Browse stocked green coffees from Purveyors supplier integrations with origin, processing,
+				tasting context, and live pricing. Filter by origin, process, and name to explore what is
+				currently available.
+			</p>
+		</div>
 		<!-- Inline filter bar for unauthenticated users (sidebar filters handle this for auth'd users) -->
 		{#if !session}
 			<div

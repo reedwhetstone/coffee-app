@@ -1,9 +1,5 @@
 <script lang="ts">
-	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
-	import SeoHead from '$lib/components/SeoHead.svelte';
-
-	let { data } = $props<{ data: PageData }>();
 
 	function handleContactUs() {
 		goto('/contact');
@@ -17,8 +13,6 @@
 		document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
 	}
 </script>
-
-<SeoHead meta={data.meta} />
 
 <div class="min-h-screen bg-background-primary-light">
 	<!-- Hero Section -->

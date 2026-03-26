@@ -1,12 +1,3 @@
-<script lang="ts">
-	import type { PageData } from './$types';
-	import SeoHead from '$lib/components/SeoHead.svelte';
-
-	let { data } = $props<{ data: PageData }>();
-</script>
-
-<SeoHead meta={data.meta} />
-
 <div class="min-h-screen bg-background-primary-light">
 	<div class="mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
 		<!-- Header -->

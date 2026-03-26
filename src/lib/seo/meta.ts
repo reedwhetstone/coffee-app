@@ -62,7 +62,7 @@ interface BuildPublicMetaInput {
 	};
 }
 
-export const DEFAULT_SOCIAL_IMAGE_PATH = '/og/default.jpg';
+export const DEFAULT_SOCIAL_IMAGE_PATH = '/og/default.png';
 const DEFAULT_SOCIAL_IMAGE_ALT =
 	'Purveyors green coffee marketplace, market intelligence, and API platform';
 const DEFAULT_SOCIAL_IMAGE_WIDTH = 1200;

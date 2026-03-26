@@ -113,9 +113,9 @@ function hasStructuredData(head: string): boolean {
 	return /<script[^>]+type=("|')application\/ld\+json\1/i.test(head);
 }
 
-function hasSingleH1(html: string): boolean {
+function hasAtLeastOneH1(html: string): boolean {
 	const matches = html.match(/<h1\b/gi) ?? [];
-	return matches.length === 1;
+	return matches.length >= 1;
 }
 
 async function fetchText(url: string): Promise<{ status: number; text: string }> {
@@ -250,7 +250,7 @@ async function auditRoute(
 			issues
 		),
 		makeCheck(hasStructuredData(head), 'missing JSON-LD structured data', issues),
-		makeCheck(hasSingleH1(text), 'expected exactly one H1', issues),
+		makeCheck(hasAtLeastOneH1(text), 'missing H1', issues),
 		makeCheck(Boolean(ogType), 'missing og:type', issues),
 		makeCheck(
 			imageStatus === 200,

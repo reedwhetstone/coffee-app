@@ -1,12 +1,13 @@
 import type { RequestHandler } from './$types';
 import { getAllPosts } from '$lib/server/blog';
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ url }) => {
 	const posts = await getAllPosts();
 	const publishedPosts = posts.filter((post) => !post.draft);
+	const baseUrl = `${url.protocol}//${url.host}`;
 
 	const blogPostLines = publishedPosts
-		.map((post) => `- [${post.title}](https://purveyors.io/blog/${post.slug}): ${post.description}`)
+		.map((post) => `- [${post.title}](${baseUrl}/blog/${post.slug}): ${post.description}`)
 		.join('\n');
 
 	const content = `# Purveyors.io
@@ -15,14 +16,14 @@ export const GET: RequestHandler = async () => {
 
 ## Public Pages
 
-- [Market Analytics](https://purveyors.io/analytics): Live green coffee price trends by origin, processing method distribution, origin price ranges. Updated daily from the Purveyors Price Index (PPI).
-- [Coffee Catalog](https://purveyors.io/catalog): Browse 1,200+ specialty and commercial green coffees from 39 suppliers with origin, processing, altitude, tasting notes, and pricing.
-- [Blog](https://purveyors.io/blog): Coffee intelligence, AI-first product development, supply chain analysis. 10+ articles on coffee data, market structure, and technology.
+- [Market Analytics](${baseUrl}/analytics): Live green coffee price trends by origin, processing method distribution, origin price ranges. Updated daily from the Purveyors Price Index (PPI).
+- [Coffee Catalog](${baseUrl}/catalog): Browse 1,200+ specialty and commercial green coffees from 39 suppliers with origin, processing, altitude, tasting notes, and pricing.
+- [Blog](${baseUrl}/blog): Coffee intelligence, AI-first product development, supply chain analysis. 10+ articles on coffee data, market structure, and technology.
 
 ## API
 
-- [Parchment API](https://purveyors.io/api): RESTful API for green coffee catalog data. Free tier available.
-- [API Dashboard](https://purveyors.io/api-dashboard): Interactive API explorer and documentation.
+- [Parchment API](${baseUrl}/api): RESTful API for green coffee catalog data. Free tier available.
+- [API Dashboard](${baseUrl}/api-dashboard): Interactive API explorer and documentation.
 
 ## Blog Posts
 

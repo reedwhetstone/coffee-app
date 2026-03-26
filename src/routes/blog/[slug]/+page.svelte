@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import SeoHead from '$lib/components/SeoHead.svelte';
 	import { PILLARS } from '$lib/types/blog.types';
 	import LinkedInDraft from '$lib/components/blog/LinkedInDraft.svelte';
 
@@ -26,8 +25,6 @@
 		return `/blog/images/${slug}/hero.webp`;
 	}
 </script>
-
-<SeoHead meta={data.meta} />
 
 <!-- Back link -->
 <a

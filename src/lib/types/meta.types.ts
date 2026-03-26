@@ -98,7 +98,7 @@ export function createCoffeeProductMeta(
 	baseUrl: string
 ): PageMeta {
 	const coffeeUrl = `${baseUrl}/coffee/${coffee.name.toLowerCase().replace(/\s+/g, '-')}`;
-	const imageUrl = coffee.imageUrl || `${baseUrl}/og/default.jpg`;
+	const imageUrl = coffee.imageUrl || `${baseUrl}/og/default.png`;
 	const imageAlt = `Preview image for ${coffee.name}`;
 
 	return createDefaultMeta({
@@ -143,7 +143,7 @@ export function createArticleMeta(
 	articlePath: string
 ): PageMeta {
 	const articleUrl = `${baseUrl}${articlePath}`;
-	const imageUrl = article.imageUrl || `${baseUrl}/og/default.jpg`;
+	const imageUrl = article.imageUrl || `${baseUrl}/og/default.png`;
 	const author = article.author || 'Reed Whetstone';
 	const imageAlt = `Social preview for ${article.title}`;
 

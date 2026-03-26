@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import SeoHead from '$lib/components/SeoHead.svelte';
 	import { PILLARS } from '$lib/types/blog.types';
 	import type { BlogPost } from '$lib/types/blog.types';
 
@@ -24,8 +23,6 @@
 		return `/blog/images/${slug}/hero.webp`;
 	}
 </script>
-
-<SeoHead meta={data.meta} />
 
 <!-- Header with accent border -->
 <div class="mb-10 border-l-4 border-background-tertiary-light pl-6">

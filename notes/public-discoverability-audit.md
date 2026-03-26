@@ -63,11 +63,11 @@ Article pages should also emit:
 Generic public pages now go through a shared resolver with this convention:
 
 1. use a route-specific social asset when present, for example `/og/catalog.jpg`
-2. otherwise fall back to `/og/default.jpg`
+2. otherwise fall back to `/og/default.png`
 
 Current MVP default:
 
-- `/og/default.jpg`
+- `/og/default.png`
 
 This keeps the code path standardized now, while still allowing dedicated per-page cards to be added later without more route logic.
 

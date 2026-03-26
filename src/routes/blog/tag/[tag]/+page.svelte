@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import SeoHead from '$lib/components/SeoHead.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -16,8 +15,6 @@
 		return `/blog/images/${slug}/hero.webp`;
 	}
 </script>
-
-<SeoHead meta={data.meta} />
 
 <a
 	href="/blog"
