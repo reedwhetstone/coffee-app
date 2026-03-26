@@ -57,15 +57,14 @@
 	let rightMargin = $derived(rightSidebarOpen ? 'md:mr-[32rem]' : 'mr-0');
 	let contentMargin = $derived(`${activeMenu ? 'ml-[22rem]' : 'ml-24'} ${rightMargin}`);
 
-	let isMarketingPage = $derived($page.url.pathname === '/');
-	let isBlogPage = $derived($page.url.pathname.startsWith('/blog'));
+	let pathname = $derived($page.url.pathname);
+	let isMarketingPage = $derived(pathname === '/');
+	let usesPublicShell = $derived(
+		pathname === '/' || pathname === '/api' || pathname.startsWith('/blog')
+	);
 	let shouldShowUnifiedHeader = $derived(
-		$page.url.pathname === '/' ||
-			(!data.session &&
-				($page.url.pathname === '/api' ||
-					$page.url.pathname === '/catalog' ||
-					$page.url.pathname.startsWith('/analytics') ||
-					isBlogPage))
+		usesPublicShell ||
+			(!data.session && (pathname === '/catalog' || pathname.startsWith('/analytics')))
 	);
 </script>
 
@@ -78,7 +77,7 @@
 		{@render children()}
 		<CookieBanner />
 	</div>
-{:else if data?.session?.user}
+{:else if data?.session?.user && !usesPublicShell}
 	<div class="flex min-h-screen">
 		<LeftSidebar {data} onMenuChange={handleMenuChange} />
 

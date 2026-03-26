@@ -22,7 +22,8 @@
 
 	let isHomePage = $derived(currentPath === '/');
 	let isDashboardPage = $derived(currentPath === '/dashboard');
-	let isApiPage = $derived(currentPath === '/api');
+	let apiNavTarget = $derived(isSignedIn ? '/api-dashboard' : '/api');
+	let isApiNavActive = $derived(currentPath === '/api' || currentPath.startsWith('/api-dashboard'));
 	let isBlogPage = $derived(currentPath.startsWith('/blog'));
 	let isCatalogPage = $derived(currentPath === '/catalog');
 	let isAnalyticsPage = $derived(currentPath.startsWith('/analytics'));
@@ -84,8 +85,8 @@
 					Maillard Studio
 				</button>
 				<button
-					onclick={() => navigateTo('/api')}
-					class="text-sm font-medium transition-colors duration-200 {isApiPage
+					onclick={() => navigateTo(apiNavTarget)}
+					class="text-sm font-medium transition-colors duration-200 {isApiNavActive
 						? 'text-background-tertiary-light'
 						: 'text-text-secondary-light hover:text-text-primary-light'}"
 				>
@@ -193,8 +194,8 @@
 					Maillard Studio
 				</button>
 				<button
-					onclick={() => navigateTo('/api')}
-					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isApiPage
+					onclick={() => navigateTo(apiNavTarget)}
+					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isApiNavActive
 						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
 						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
 				>

@@ -100,6 +100,22 @@ test.describe('Protected pages load with auth', () => {
 		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(0);
 	});
 
+	test('/blog keeps the public shell for signed-in users', async ({ page }) => {
+		await page.goto('/blog', { waitUntil: 'domcontentloaded' });
+		await expect(page).toHaveURL('/blog');
+		await expect(page.getByRole('heading', { name: 'Blog' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Dashboard' }).first()).toBeVisible();
+		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(0);
+	});
+
+	test('/api keeps the public shell for signed-in users', async ({ page }) => {
+		await page.goto('/api', { waitUntil: 'domcontentloaded' });
+		await expect(page).toHaveURL('/api');
+		await expect(page.getByRole('heading', { name: 'Parchment API' }).first()).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Dashboard' }).first()).toBeVisible();
+		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(0);
+	});
+
 	test('/dashboard renders as the signed-in app home', async ({ page }) => {
 		await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL(/dashboard/);
