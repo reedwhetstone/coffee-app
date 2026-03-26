@@ -117,11 +117,11 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	}
 
 	if (requiresProtection && !requireRole(event.locals.role, 'member')) {
-		throw redirect(303, '/catalog');
+		throw redirect(303, session ? '/dashboard' : '/catalog');
 	}
 
 	if (requiresAdminAccess && !requireRole(event.locals.role, 'admin')) {
-		throw redirect(303, '/catalog');
+		throw redirect(303, session ? '/dashboard' : '/catalog');
 	}
 
 	if (requiresApiAccess && !session) {

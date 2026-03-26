@@ -29,15 +29,12 @@
 	let isAnalyticsPage = $derived(currentPath.startsWith('/analytics'));
 
 	const signedInQuickLinks = $derived.by(() => {
-		if (!isSignedIn) return [] as Array<{ href: string; label: string }>;
+		if (!isSignedIn || !canAccessMemberRoutes) return [] as Array<{ href: string; label: string }>;
 
-		const links = [{ href: '/catalog', label: 'Catalog' }];
-		if (canAccessMemberRoutes) {
-			links.push({ href: '/beans', label: 'Inventory' });
-			links.push({ href: '/roast', label: 'Roast' });
-		}
-
-		return links;
+		return [
+			{ href: '/beans', label: 'Inventory' },
+			{ href: '/roast', label: 'Roast' }
+		];
 	});
 
 	function navigateTo(path: string) {

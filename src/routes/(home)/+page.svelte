@@ -32,7 +32,7 @@
 		{#snippet children()}
 			{#await import('$lib/components/marketing/Pricing.svelte') then module}
 				{@const Pricing = module.default}
-				<Pricing />
+				<Pricing session={data.session} />
 			{:catch}
 				<div class="py-16 text-center">
 					<p class="text-text-secondary-light">Content temporarily unavailable</p>
@@ -44,7 +44,7 @@
 		{#snippet children()}
 			{#await import('$lib/components/marketing/CTA.svelte') then module}
 				{@const CTA = module.default}
-				<CTA />
+				<CTA session={data.session} />
 			{:catch}
 				<div class="py-16 text-center">
 					<p class="text-text-secondary-light">Content temporarily unavailable</p>
