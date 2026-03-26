@@ -24,6 +24,7 @@
 	let isDashboardPage = $derived(currentPath === '/dashboard');
 	let apiNavTarget = $derived(isSignedIn ? '/api-dashboard' : '/api');
 	let isApiNavActive = $derived(currentPath === '/api' || currentPath.startsWith('/api-dashboard'));
+	let isDocsPage = $derived(currentPath.startsWith('/docs'));
 	let isBlogPage = $derived(currentPath.startsWith('/blog'));
 	let isCatalogPage = $derived(currentPath === '/catalog');
 	let isAnalyticsPage = $derived(currentPath.startsWith('/analytics'));
@@ -87,7 +88,15 @@
 						? 'text-background-tertiary-light'
 						: 'text-text-secondary-light hover:text-text-primary-light'}"
 				>
-					Parchment API
+					API
+				</button>
+				<button
+					onclick={() => navigateTo('/docs')}
+					class="text-sm font-medium transition-colors duration-200 {isDocsPage
+						? 'text-background-tertiary-light'
+						: 'text-text-secondary-light hover:text-text-primary-light'}"
+				>
+					Docs
 				</button>
 				<button
 					onclick={() => navigateTo('/blog')}
@@ -196,7 +205,15 @@
 						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
 						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
 				>
-					Parchment API
+					API
+				</button>
+				<button
+					onclick={() => navigateTo('/docs')}
+					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isDocsPage
+						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
+						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
+				>
+					Docs
 				</button>
 				<button
 					onclick={() => navigateTo('/blog')}

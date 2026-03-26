@@ -22,8 +22,8 @@ export const GET: RequestHandler = async ({ url }) => {
 
 ## API
 
-- [Parchment API](${baseUrl}/api): RESTful API for green coffee catalog data. Free tier available.
-- [API Dashboard](${baseUrl}/api-dashboard): Interactive API explorer and documentation.
+- [Parchment API](${baseUrl}/api): Public catalog API, Parchment Console, and unified docs.
+- [Parchment Console](${baseUrl}/api-dashboard): API keys, usage analytics, and docs access for Parchment API.
 
 ## Blog Posts
 

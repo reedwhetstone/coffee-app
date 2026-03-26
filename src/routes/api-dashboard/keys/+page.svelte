@@ -14,7 +14,7 @@
 
 	// Set page title
 	onMount(() => {
-		document.title = 'API Keys - Purveyors Dashboard';
+		document.title = 'API Keys - Parchment Console';
 	});
 
 	async function createApiKey() {
@@ -93,8 +93,8 @@
 </script>
 
 <svelte:head>
-	<title>API Keys - Purveyors Dashboard</title>
-	<meta name="description" content="Manage your Purveyors API keys" />
+	<title>API Keys - Parchment Console</title>
+	<meta name="description" content="Manage your Parchment API keys in Parchment Console" />
 </svelte:head>
 
 <div class="min-h-screen bg-background-primary-light">
@@ -106,7 +106,7 @@
 					href="/api-dashboard"
 					class="text-sm text-text-secondary-light hover:text-text-primary-light"
 				>
-					← Back to Dashboard
+					← Back to Parchment Console
 				</a>
 			</nav>
 			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">API Keys</h1>

@@ -52,12 +52,12 @@
 	}
 
 	onMount(() => {
-		document.title = 'Usage Analytics - API Dashboard';
+		document.title = 'Usage Analytics - Parchment Console';
 	});
 </script>
 
 <svelte:head>
-	<title>Usage Analytics - API Dashboard</title>
+	<title>Usage Analytics - Parchment Console</title>
 	<meta name="description" content="Monitor your API usage and performance metrics" />
 </svelte:head>
 
@@ -70,7 +70,7 @@
 					href="/api-dashboard"
 					class="text-sm text-text-secondary-light hover:text-text-primary-light"
 				>
-					← Back to Dashboard
+					← Back to Parchment Console
 				</a>
 			</nav>
 			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">Usage Analytics</h1>

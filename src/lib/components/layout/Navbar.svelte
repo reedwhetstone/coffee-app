@@ -190,7 +190,7 @@
 			{/if}
 		</ul>
 
-		<!-- API Dashboard and Contact links for all users -->
+		<!-- Parchment Console and Contact links for all users -->
 		<div class="mt-6 border-t border-text-primary-light border-opacity-20 pt-4">
 			<ul class="space-y-2">
 				<li>
@@ -203,7 +203,7 @@
 							? 'bg-background-tertiary-light text-white'
 							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 					>
-						Parchment API
+						Parchment Console
 					</a>
 				</li>
 				<li>
