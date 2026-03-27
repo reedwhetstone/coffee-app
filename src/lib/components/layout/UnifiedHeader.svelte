@@ -27,6 +27,7 @@
 	let isBlogPage = $derived(currentPath.startsWith('/blog'));
 	let isCatalogPage = $derived(currentPath === '/catalog');
 	let isAnalyticsPage = $derived(currentPath.startsWith('/analytics'));
+	let isDocsPage = $derived(currentPath.startsWith('/docs'));
 
 	const signedInQuickLinks = $derived.by(() => {
 		if (!isSignedIn || !canAccessMemberRoutes) return [] as Array<{ href: string; label: string }>;
@@ -96,6 +97,14 @@
 						: 'text-text-secondary-light hover:text-text-primary-light'}"
 				>
 					Blog
+				</button>
+				<button
+					onclick={() => navigateTo('/docs')}
+					class="text-sm font-medium transition-colors duration-200 {isDocsPage
+						? 'text-background-tertiary-light'
+						: 'text-text-secondary-light hover:text-text-primary-light'}"
+				>
+					Docs
 				</button>
 			</nav>
 
@@ -205,6 +214,14 @@
 						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
 				>
 					Blog
+				</button>
+				<button
+					onclick={() => navigateTo('/docs')}
+					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isDocsPage
+						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
+						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
+				>
+					Docs
 				</button>
 			</div>
 			<div class="border-t border-border-light pb-3 pt-3">

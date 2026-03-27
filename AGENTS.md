@@ -231,11 +231,18 @@ This is a **SvelteKit 5** coffee tracking and roasting application with the foll
 
 ### Route Structure
 
-- **Home**: Coffee catalog with RAG-powered search
-- **Beans**: Personal coffee inventory management
-- **Roast**: Roasting profiles with LayerCake charts (member-only)
-- **Profit**: Sales tracking (member-only)
-- **Subscription**: Stripe payment flow
+- **Home** (`/`): Landing / marketing page (public)
+- **Catalog** (`/catalog`): Green coffee marketplace (public + auth)
+- **Analytics** (`/analytics`): Market data and pricing charts (public preview, full auth)
+- **Beans** (`/beans`): Personal green coffee inventory management (member-only)
+- **Roast** (`/roast`): Roasting profiles with D3/LayerCake charts (member-only)
+- **Profit** (`/profit`): Sales and profit analytics (member-only)
+- **Chat** (`/chat`): GenUI AI workspace (member-only)
+- **Blog** (`/blog`): MDsveX blog, public
+- **Docs** (`/docs`): Platform documentation (public); API reference at `/docs/api/overview`, CLI at `/docs/cli/overview`
+- **API Dashboard** (`/api-dashboard`): API key management and in-dashboard docs
+- **Subscription** (`/subscription`): Stripe payment flow
+- **External API**: `GET /v1/catalog` is the canonical external endpoint (API key auth). Legacy aliases: `/api/catalog-api`, `/api/catalog`
 
 ### Important Implementation Details
 

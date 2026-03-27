@@ -60,7 +60,10 @@
 	let pathname = $derived($page.url.pathname);
 	let isMarketingPage = $derived(pathname === '/');
 	let usesPublicShell = $derived(
-		pathname === '/' || pathname === '/api' || pathname.startsWith('/blog')
+		pathname === '/' ||
+			pathname === '/api' ||
+			pathname.startsWith('/blog') ||
+			pathname.startsWith('/docs')
 	);
 	let shouldShowUnifiedHeader = $derived(
 		usesPublicShell ||

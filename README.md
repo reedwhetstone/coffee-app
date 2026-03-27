@@ -114,12 +114,16 @@ Browser
         ├── /profit                  # Sales and profit analytics (auth required)
         ├── /chat                    # GenUI AI workspace (auth required)
         ├── /blog                    # MDsveX blog (public)
+        ├── /docs                    # Platform documentation (public)
         ├── /api-dashboard           # API key management (auth required)
         ├── /subscription            # Stripe subscription management
         │
-        └── /api/*                   # Server-side API routes
+        ├── /v1/*                    # Versioned external REST API
+        │     └── /v1/catalog        # Canonical catalog endpoint (API key auth)
+        │
+        └── /api/*                   # Server-side routes
               ├── /api/catalog        # Internal catalog queries (session auth)
-              ├── /api/catalog-api    # External REST API (API key auth, tier limits)
+              ├── /api/catalog-api    # Legacy external catalog alias (API key auth)
               ├── /api/chat           # Streaming AI: OpenRouter via Vercel AI SDK
               ├── /api/tools/*        # GenUI tool-call handlers (catalog, inventory, roasts)
               ├── /api/workspaces/*   # Chat workspace CRUD and summarization
@@ -300,19 +304,26 @@ coffee-app/
 
 Two API layers exist with intentionally separate authentication paths.
 
-**Internal API** (`/api/*`): Consumed by the SvelteKit front-end. Authenticated via Supabase session cookies set by `hooks.server.ts`. Not rate-limited.
+**External Parchment API** (`/v1/*`): Versioned REST endpoints for third-party and developer access. Authenticated with hashed API keys prefixed `pk_live_`. Tier-based limits:
 
-**External catalog API** (`/api/catalog-api/`): Public REST endpoint for third-party and developer access. Authenticated with hashed API keys. Tier-based limits:
-
-| Tier       | Rows per request | Monthly calls |
+| Plan       | Rows per request | Monthly calls |
 | ---------- | ---------------- | ------------- |
-| Viewer     | 25               | 200           |
-| Member     | Unlimited        | 10,000        |
+| Explorer   | 25               | 200           |
+| Roaster+   | Unlimited        | 10,000        |
 | Enterprise | Unlimited        | Unlimited     |
 
-API keys are generated and managed at `/api-dashboard/`. Usage is logged per key with full analytics. API documentation lives at `/api-dashboard/docs`.
+The canonical catalog endpoint is `GET /v1/catalog`. Legacy aliases at `/api/catalog-api` and `/api/catalog` remain for backward compatibility but are not recommended for new integrations.
 
-The longer-term goal is an API-first architecture where internal server load functions become thin consumers of the same versioned endpoints sold externally. See `notes/API_notes/API-strategy.md` for the migration plan.
+API keys are generated and managed at `/api-dashboard/keys`. Usage is logged per key with full analytics.
+
+**Internal App API** (`/api/*`): Consumed by the SvelteKit front-end. Authenticated via Supabase session cookies. Not rate-limited. Not intended for external consumers.
+
+**Platform documentation** lives at `/docs`:
+
+- API reference: `/docs/api/overview`
+- CLI reference: `/docs/cli/overview`
+
+See also the in-dashboard docs at `/api-dashboard/docs` for a personalized view with your API keys pre-filled in examples.
 
 ---
 
