@@ -53,6 +53,7 @@ vi.mock('$lib/supabase-admin', () => ({
 }));
 
 let buildCanonicalCatalogResponse: typeof import('./catalogResource').buildCanonicalCatalogResponse;
+let buildLegacyAppCatalogResponse: typeof import('./catalogResource').buildLegacyAppCatalogResponse;
 let buildLegacyExternalCatalogResponse: typeof import('./catalogResource').buildLegacyExternalCatalogResponse;
 
 const sampleCatalogItem = {
@@ -125,9 +126,11 @@ beforeEach(async () => {
 		filtersApplied: {}
 	});
 
-	({ buildCanonicalCatalogResponse, buildLegacyExternalCatalogResponse } = await import(
-		'./catalogResource'
-	));
+	({
+		buildCanonicalCatalogResponse,
+		buildLegacyAppCatalogResponse,
+		buildLegacyExternalCatalogResponse
+	} = await import('./catalogResource'));
 });
 
 describe('buildCanonicalCatalogResponse', () => {
@@ -319,6 +322,58 @@ describe('buildCanonicalCatalogResponse', () => {
 			undefined,
 			undefined
 		);
+	});
+});
+
+describe('buildLegacyAppCatalogResponse', () => {
+	it('returns the legacy array shape for unpaginated requests without reparsing a Response', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			primaryAppRole: 'member',
+			apiPlan: 'viewer',
+			session: { access_token: 'cookie-token' }
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
+
+		const response = await buildLegacyAppCatalogResponse(makeEvent('https://app.test/api/catalog'));
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body).toEqual([expect.objectContaining({ id: 1, name: 'Ethiopia Sidamo Grade 1' })]);
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				stockedOnly: true,
+				publicOnly: false,
+				showWholesale: false,
+				limit: undefined,
+				offset: undefined
+			})
+		);
+	});
+
+	it('preserves the legacy paginated shape for compatibility consumers', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildLegacyAppCatalogResponse(
+			makeEvent('https://app.test/api/catalog?page=2&limit=10')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body).toEqual({
+			data: [expect.objectContaining({ id: 1, name: 'Ethiopia Sidamo Grade 1' })],
+			pagination: expect.objectContaining({ page: 2, limit: 10 })
+		});
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
 	});
 });
 

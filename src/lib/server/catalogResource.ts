@@ -420,10 +420,16 @@ async function queryCatalogData(
 	};
 }
 
-export async function buildCanonicalCatalogResponse(
+// Share the resolved catalog payload across route adapters so legacy shims do not
+// pay an extra parse/stringify pass on large unpaginated responses.
+async function resolveCatalogRouteResult(
 	event: RequestEvent,
 	options: { requestPath?: string } = {}
-): Promise<Response> {
+): Promise<{
+	status: number;
+	body: CanonicalCatalogResponse | Record<string, unknown>;
+	headers: Headers;
+}> {
 	const requestPath = options.requestPath ?? event.url.pathname;
 	const startTime = Date.now();
 	const query = parseCatalogQuery(event.url);
@@ -434,13 +440,18 @@ export async function buildCanonicalCatalogResponse(
 		const body = await queryCatalogData(context, query);
 		await logCatalogApiUsage(context, event, 200, startTime);
 
-		const response = json(body);
+		const headers = new Headers();
 		if (context.rateLimitHeaders) {
 			for (const [name, value] of context.rateLimitHeaders.entries()) {
-				response.headers.set(name, value);
+				headers.set(name, value);
 			}
 		}
-		return response;
+
+		return {
+			status: 200,
+			body,
+			headers
+		};
 	} catch (error) {
 		if (error instanceof CatalogRateLimitError) {
 			await logApiUsage(
@@ -452,24 +463,22 @@ export async function buildCanonicalCatalogResponse(
 				event.request.headers.get('X-Forwarded-For') || undefined
 			);
 
-			return json(
-				{
+			return {
+				status: 429,
+				body: {
 					error: 'Rate limit exceeded',
 					message: error.message,
 					limit: error.result.limit,
 					remaining: error.result.remaining,
 					resetTime: error.result.resetTime
 				},
-				{
-					status: 429,
-					headers: {
-						'X-RateLimit-Limit': error.result.limit.toString(),
-						'X-RateLimit-Remaining': error.result.remaining.toString(),
-						'X-RateLimit-Reset': Math.floor(error.result.resetTime.getTime() / 1000).toString(),
-						'Retry-After': error.result.retryAfter?.toString() || '3600'
-					}
-				}
-			);
+				headers: new Headers({
+					'X-RateLimit-Limit': error.result.limit.toString(),
+					'X-RateLimit-Remaining': error.result.remaining.toString(),
+					'X-RateLimit-Reset': Math.floor(error.result.resetTime.getTime() / 1000).toString(),
+					'Retry-After': error.result.retryAfter?.toString() || '3600'
+				})
+			};
 		}
 
 		if (error instanceof AuthError) {
@@ -477,54 +486,62 @@ export async function buildCanonicalCatalogResponse(
 				await logCatalogApiUsage(context, event, error.status, startTime);
 			}
 
-			return json(
-				{
+			return {
+				status: error.status,
+				body: {
 					error: error.status === 403 ? 'Insufficient permissions' : 'Authentication required',
 					message: error.message
 				},
-				{ status: error.status }
-			);
+				headers: new Headers()
+			};
 		}
 
 		console.error('Error querying canonical catalog:', error);
 		if (context) {
 			await logCatalogApiUsage(context, event, 500, startTime);
 		}
-		return json(
-			{ error: 'Failed to fetch catalog data', message: 'Internal server error' },
-			{ status: 500 }
-		);
+		return {
+			status: 500,
+			body: { error: 'Failed to fetch catalog data', message: 'Internal server error' },
+			headers: new Headers()
+		};
 	}
+}
+
+export async function buildCanonicalCatalogResponse(
+	event: RequestEvent,
+	options: { requestPath?: string } = {}
+): Promise<Response> {
+	const result = await resolveCatalogRouteResult(event, options);
+	return json(result.body, {
+		status: result.status,
+		headers: result.headers
+	});
 }
 
 export async function buildLegacyAppCatalogResponse(
 	event: RequestEvent,
 	options: { requestPath?: string } = {}
 ): Promise<Response> {
-	const canonicalResponse = await buildCanonicalCatalogResponse(event, {
-		requestPath: options.requestPath
-	});
-	const body = await canonicalResponse.json();
+	const result = await resolveCatalogRouteResult(event, options);
 
-	if (!canonicalResponse.ok) {
-		return json(body, {
-			status: canonicalResponse.status,
-			headers: Object.fromEntries(canonicalResponse.headers.entries())
+	if (result.status >= 400) {
+		return json(result.body, {
+			status: result.status,
+			headers: result.headers
 		});
 	}
 
+	const body = result.body as CanonicalCatalogResponse;
 	const hasPagination = body.pagination !== null;
 	const legacyBody = hasPagination ? { data: body.data, pagination: body.pagination } : body.data;
-	const response = json(legacyBody, {
-		status: canonicalResponse.status
+	const headers = new Headers(result.headers);
+	headers.set('X-Purveyors-Canonical-Resource', '/v1/catalog');
+
+	return json(legacyBody, {
+		status: result.status,
+		headers
 	});
-
-	for (const [name, value] of canonicalResponse.headers.entries()) {
-		response.headers.set(name, value);
-	}
-
-	response.headers.set('X-Purveyors-Canonical-Resource', '/v1/catalog');
-	return response;
 }
 
 function projectLegacyCatalogRow(row: Record<string, unknown>): Record<string, unknown> {
