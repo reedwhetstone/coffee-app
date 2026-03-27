@@ -84,6 +84,33 @@
 	let catalogData = $state<CoffeeCatalog[]>([]);
 	let error = $state<string | null>(null);
 	let isSaving = $state<string | null>(null);
+	let catalogLoadPromise: Promise<void> | null = null;
+
+	async function loadCatalogData() {
+		if (catalogData.length > 0) {
+			return;
+		}
+
+		if (catalogLoadPromise) {
+			return catalogLoadPromise;
+		}
+
+		catalogLoadPromise = (async () => {
+			const catalogResponse = await fetch('/api/catalog');
+			if (!catalogResponse.ok) {
+				throw new Error('Failed to fetch catalog data');
+			}
+
+			const catalogResult = await catalogResponse.json();
+			catalogData = Array.isArray(catalogResult) ? catalogResult : catalogResult.data || [];
+		})();
+
+		try {
+			await catalogLoadPromise;
+		} finally {
+			catalogLoadPromise = null;
+		}
+	}
 
 	// Client-side data fetching
 	$effect(() => {
@@ -104,15 +131,6 @@
 				const result = await response.json();
 				clientData = result.data || [];
 
-				// Only fetch catalog data if not sharing (for forms)
-				if (!shareToken) {
-					const catalogResponse = await fetch('/api/catalog');
-					if (catalogResponse.ok) {
-						const catalogResult = await catalogResponse.json();
-						catalogData = Array.isArray(catalogResult) ? catalogResult : catalogResult.data || [];
-					}
-				}
-
 				// Initialize FilterStore with client data
 				const currentRoute = page.url.pathname;
 				filterStore.initializeForRoute(currentRoute, clientData);
@@ -131,6 +149,17 @@
 	let isFormVisible = $derived(page.url.searchParams.get('modal') === 'new');
 	let selectedBean = $state<InventoryWithCatalog | null>(null);
 	let beanProfileElement = $state<HTMLElement | null>(null);
+
+	$effect(() => {
+		const shareToken = page.url.searchParams.get('share');
+		if (!isFormVisible || shareToken || catalogData.length > 0 || catalogLoadPromise) {
+			return;
+		}
+
+		loadCatalogData().catch((err) => {
+			console.error('Error fetching catalog data:', err);
+		});
+	});
 
 	// Reset selectedBean if it's filtered out
 	$effect(() => {
@@ -238,18 +267,6 @@
 
 	function handleAddNewBean() {
 		selectedBean = null;
-		// Ensure catalog data is loaded (fallback for client-side navigation)
-		if (catalogData.length === 0) {
-			// catalog is already fetched in the $effect, but ensure it's available
-			const fetchCatalog = async () => {
-				const catalogResponse = await fetch('/api/catalog?fields=dropdown');
-				if (catalogResponse.ok) {
-					const catalogResult = await catalogResponse.json();
-					catalogData = Array.isArray(catalogResult) ? catalogResult : catalogResult.data || [];
-				}
-			};
-			fetchCatalog();
-		}
 		const url = new URL(page.url);
 		url.searchParams.set('modal', 'new');
 		goto(url.pathname + '?' + url.searchParams.toString(), {

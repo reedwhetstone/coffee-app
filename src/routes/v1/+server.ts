@@ -13,7 +13,8 @@ export const GET: RequestHandler = async () => {
 		resources: {
 			catalog: {
 				href: '/v1/catalog',
-				status: 'scaffolded'
+				status: 'live',
+				legacyAliases: ['/api/catalog', '/api/catalog-api']
 			}
 		}
 	});

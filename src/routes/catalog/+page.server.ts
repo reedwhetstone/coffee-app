@@ -1,23 +1,26 @@
 import type { PageServerLoad } from './$types';
+import { searchCatalog } from '$lib/data/catalog';
+import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	// Progressive hydration: Load minimal initial data for faster SSR
-	// Client will lazy-load remaining items for better perceived performance
-	const { data: stockedData } = await locals.supabase
-		.from('coffee_catalog')
-		.select('*')
-		.eq('stocked', true)
-		.eq('wholesale', false)
-		.order('arrival_date', { ascending: false })
-		.limit(5); // Reduced for faster initial load - remaining items loaded client-side
+	const visibility = resolveCatalogVisibility({
+		session: locals.session,
+		role: locals.role
+	});
+	const { data: stockedData } = await searchCatalog(locals.supabase, {
+		stockedOnly: true,
+		publicOnly: visibility.publicOnly,
+		showWholesale: visibility.showWholesale,
+		wholesaleOnly: visibility.wholesaleOnly,
+		orderBy: 'arrival_date',
+		orderDirection: 'desc',
+		limit: 5
+	});
 
-	// Generate schema for public coffee catalog page
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const schemaService = createSchemaService(baseUrl);
-
-	// Coffee collection schema for catalog page
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),
 		schemaService.generateCoffeeCollectionSchema(

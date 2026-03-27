@@ -1,8 +1,8 @@
 import type { PageServerLoad } from './$types';
+import { getPageAuthState } from '$lib/server/pageAuth';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const { user } = await locals.safeGetSession();
-	const role = locals.role || 'viewer';
+	const { user, role } = getPageAuthState(locals);
 
 	if (!user) {
 		return {

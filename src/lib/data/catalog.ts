@@ -22,6 +22,7 @@ export interface CatalogDropdownItem {
 	cost_lb: number | null;
 	price_per_lb: number | null;
 	price_tiers: Database['public']['Tables']['coffee_catalog']['Row']['price_tiers'];
+	public_coffee: boolean | null;
 }
 
 /** Options for the shared catalog search. */
@@ -30,7 +31,7 @@ export interface CatalogSearchOptions {
 	origin?: string; // matches continent, country, region (OR)
 	process?: string; // ilike processing
 	variety?: string; // ilike cultivar_detail
-	priceRange?: [number, number]; // [min, max] on cost_lb
+	priceRange?: [number, number]; // [min, max] on price_per_lb
 	flavorKeywords?: string[]; // ilike across description/notes fields
 	name?: string; // ilike name
 	dryingMethod?: string; // ilike processing OR drying_method
@@ -69,8 +70,8 @@ export interface CatalogSearchOptions {
 	region?: string;
 	scoreValueMin?: number;
 	scoreValueMax?: number;
-	costLbMin?: number;
-	costLbMax?: number;
+	pricePerLbMin?: number;
+	pricePerLbMax?: number;
 	arrivalDate?: string;
 	stockedDate?: string; // number-as-string: days back
 }
@@ -90,7 +91,8 @@ export interface CatalogDropdownResult {
 
 // ── Columns ──────────────────────────────────────────────────────────────────
 
-const DROPDOWN_COLUMNS = 'id, source, name, stocked, cost_lb, price_per_lb, price_tiers' as const;
+const DROPDOWN_COLUMNS =
+	'id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee' as const;
 
 /** Columns exposed via the external catalog API (excludes sensitive fields). */
 export const CATALOG_API_COLUMNS = [
@@ -163,8 +165,8 @@ export async function searchCatalog(
 		region,
 		scoreValueMin,
 		scoreValueMax,
-		costLbMin,
-		costLbMax,
+		pricePerLbMin,
+		pricePerLbMax,
 		arrivalDate,
 		stockedDate
 	} = options;
@@ -240,8 +242,8 @@ export async function searchCatalog(
 	}
 	if (scoreValueMin !== undefined) query = query.gte('score_value', scoreValueMin);
 	if (scoreValueMax !== undefined) query = query.lte('score_value', scoreValueMax);
-	if (costLbMin !== undefined) query = query.gte('price_per_lb', costLbMin);
-	if (costLbMax !== undefined) query = query.lte('price_per_lb', costLbMax);
+	if (pricePerLbMin !== undefined) query = query.gte('price_per_lb', pricePerLbMin);
+	if (pricePerLbMax !== undefined) query = query.lte('price_per_lb', pricePerLbMax);
 
 	// ── Date filters ──────────────────────────────────────────────────────────
 	if (arrivalDate) query = query.eq('arrival_date', arrivalDate);
@@ -281,6 +283,8 @@ export async function searchCatalog(
 	if (supplier) filtersApplied.supplier = supplier;
 	if (coffeeIds) filtersApplied.coffeeIds = coffeeIds;
 	if (stockedOnly) filtersApplied.stockedOnly = stockedOnly;
+	if (pricePerLbMin !== undefined) filtersApplied.pricePerLbMin = pricePerLbMin;
+	if (pricePerLbMax !== undefined) filtersApplied.pricePerLbMax = pricePerLbMax;
 	if (stockedDays) filtersApplied.stockedDays = stockedDays;
 	if (limit) filtersApplied.limit = limit;
 
@@ -313,9 +317,14 @@ export async function getCatalogItem(
  */
 export async function getCatalogDropdown(
 	supabase: SupabaseClient,
-	options: { stockedOnly?: boolean; showWholesale?: boolean; wholesaleOnly?: boolean } = {}
+	options: {
+		stockedOnly?: boolean;
+		publicOnly?: boolean;
+		showWholesale?: boolean;
+		wholesaleOnly?: boolean;
+	} = {}
 ): Promise<CatalogDropdownItem[]> {
-	const { stockedOnly = true, showWholesale, wholesaleOnly = false } = options;
+	const { stockedOnly = true, publicOnly = false, showWholesale, wholesaleOnly = false } = options;
 
 	let query = supabase
 		.from('coffee_catalog')
@@ -324,6 +333,10 @@ export async function getCatalogDropdown(
 
 	if (stockedOnly) {
 		query = query.eq('stocked', true);
+	}
+
+	if (publicOnly) {
+		query = query.eq('public_coffee', true);
 	}
 
 	if (wholesaleOnly) {

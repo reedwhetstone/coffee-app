@@ -54,10 +54,8 @@
 
 		try {
 			if (route === '/beans') {
-				// Preload beans data
-				const beansResponse = fetch('/api/beans');
-				const catalogResponse = fetch('/api/catalog');
-				await Promise.allSettled([beansResponse, catalogResponse]);
+				// Preload the inventory list; catalog data is only needed when opening the add-bean form.
+				await fetch('/api/beans');
 			} else if (route === '/roast') {
 				// Preload roast data
 				await fetch('/api/roast-profiles');

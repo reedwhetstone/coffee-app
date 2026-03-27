@@ -75,7 +75,7 @@
 									<span class="text-sm font-medium text-text-secondary-light">GET Request</span>
 								</div>
 								<pre class="text-xs text-text-primary-light"><code
-										>GET /api/catalog-api
+										>GET /v1/catalog?page=1&limit=25
 Authorization: Bearer your_api_key
 Content-Type: application/json</code
 									></pre>
@@ -100,15 +100,22 @@ Content-Type: application/json</code
     "cost_lb": 7.50,
     "stocked": true,
     "source": "sweet_maria",
-    "ai_tasting_notes": {
-      "fruity": 8, "floral": 6, "nutty": 2
-    },
     "country": "Ethiopia",
     "continent": "Africa"
   }],
-  "total": 1,
-  "cached": false,
-  "api_version": "1.0"
+  "pagination": {
+    "page": 1,
+    "limit": 25,
+    "total": 1,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrev": false
+  },
+  "meta": {
+    "resource": "catalog",
+    "namespace": "/v1/catalog",
+    "version": "v1"
+  }
 }`}</code
 									></pre>
 							</div>
