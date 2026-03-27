@@ -496,7 +496,8 @@ async function resolveCatalogRouteResult(
 			};
 		}
 
-		console.error('Error querying canonical catalog:', error);
+		const safeError = error instanceof Error ? error.message : String(error);
+		console.error('Error querying canonical catalog:', safeError);
 		if (context) {
 			await logCatalogApiUsage(context, event, 500, startTime);
 		}
@@ -723,7 +724,8 @@ export async function buildLegacyExternalCatalogResponse(
 			);
 		}
 
-		console.error('Error querying legacy external catalog compatibility route:', error);
+		const safeError = error instanceof Error ? error.message : String(error);
+		console.error('Error querying legacy external catalog compatibility route:', safeError);
 		if (apiKeyId) {
 			await logApiUsage(
 				apiKeyId,
