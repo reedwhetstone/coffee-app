@@ -15,7 +15,7 @@ export interface UsageStats {
 	monthlyUsage: number;
 	hourlyUsage: number;
 	monthlyLimit: number;
-	userTier: 'viewer' | 'api-member' | 'api-enterprise';
+	userTier: 'viewer' | 'member' | 'enterprise';
 	monthlyPercent: number;
 	nearLimit: boolean;
 	atLimit: boolean;
@@ -79,7 +79,7 @@ export async function getApiUsage(
  */
 export function calculateUsageStats(
 	usageRecords: ApiUsageRecord[],
-	userTier: 'viewer' | 'api-member' | 'api-enterprise'
+	userTier: 'viewer' | 'member' | 'enterprise'
 ): UsageStats {
 	const monthlyLimit = API_RATE_LIMITS[userTier];
 

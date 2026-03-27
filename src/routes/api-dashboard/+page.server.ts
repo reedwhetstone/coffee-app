@@ -1,15 +1,17 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { getUserApiKeys, getUserApiTier } from '$lib/server/apiAuth';
+import { getUserApiKeys } from '$lib/server/apiAuth';
+import { resolvePrincipal } from '$lib/server/principal';
 import { createAdminClient } from '$lib/supabase-admin';
 import { getApiUsage, calculateUsageStats } from '$lib/data/api-usage';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	// Get authenticated session
-	const { session, user, role } = await locals.safeGetSession();
+export const load: PageServerLoad = async (event) => {
+	const { locals } = event;
 
-	// Allow authenticated users (free tier defaults to api_viewer)
-	// Require API role, admin access, or allow any authenticated user for free tier
+	// Get authenticated session
+	const { session, user } = await locals.safeGetSession();
+
+	// Allow authenticated users
 	if (!session || !user) {
 		throw redirect(303, '/');
 	}
@@ -33,7 +35,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	let usageStats = null;
 	if (apiKeys.length > 0) {
 		try {
-			const userTier = getUserApiTier(role);
+			// Resolve principal to get explicit API plan entitlement
+			const principal = await resolvePrincipal(event);
+			const userTier = principal.isAuthenticated ? (principal.apiPlan ?? 'viewer') : 'viewer';
 			const usageRecords = await getApiUsage(supabase, user.id);
 			usageStats = calculateUsageStats(usageRecords, userTier);
 		} catch (error) {

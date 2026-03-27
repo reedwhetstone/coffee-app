@@ -271,7 +271,7 @@ describe('buildCanonicalCatalogResponse', () => {
 	it('applies api-key rate limits and row limits while keeping the canonical response shape', async () => {
 		const apiKeyPrincipal = {
 			isAuthenticated: true,
-			primaryAppRole: 'api-member',
+			primaryAppRole: 'viewer',
 			apiPlan: 'viewer',
 			apiKeyId: 'key-1'
 		};

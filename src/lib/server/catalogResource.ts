@@ -10,7 +10,6 @@ import {
 import {
 	checkRateLimit,
 	getApiRowLimit,
-	getLegacyRateLimitTier,
 	logApiUsage,
 	type ApiPlan,
 	type RateLimitResult
@@ -242,10 +241,7 @@ async function resolveCatalogAccessContext(
 			requiredScope: 'catalog:read'
 		});
 		const rowLimit = getApiRowLimit(apiPrincipal.apiPlan);
-		const rateLimit = await checkRateLimit(
-			apiPrincipal.apiKeyId,
-			getLegacyRateLimitTier(apiPrincipal.apiPlan)
-		);
+		const rateLimit = await checkRateLimit(apiPrincipal.apiKeyId, apiPrincipal.apiPlan);
 
 		if (!rateLimit.allowed) {
 			throw new CatalogRateLimitError(apiPrincipal.apiKeyId, requestPath, rateLimit);
@@ -579,10 +575,7 @@ export async function buildLegacyExternalCatalogResponse(
 		apiKeyId = principal.apiKeyId;
 
 		const rowLimit = getApiRowLimit(principal.apiPlan);
-		const rateLimit = await checkRateLimit(
-			principal.apiKeyId,
-			getLegacyRateLimitTier(principal.apiPlan)
-		);
+		const rateLimit = await checkRateLimit(principal.apiKeyId, principal.apiPlan);
 
 		if (!rateLimit.allowed) {
 			await logApiUsage(

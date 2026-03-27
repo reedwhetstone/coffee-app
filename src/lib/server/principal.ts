@@ -1,4 +1,9 @@
-import { API_KEY_PREFIX, getUserApiTier, validateApiKey, type ApiPlan } from '$lib/server/apiAuth';
+import {
+	API_KEY_PREFIX,
+	deriveApiPlanFromRoles,
+	validateApiKey,
+	type ApiPlan
+} from '$lib/server/apiAuth';
 import { createAdminClient } from '$lib/supabase-admin';
 import { createClient } from '$lib/supabase';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
@@ -9,23 +14,20 @@ import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 const bearerSupabase = createClient();
 const adminSupabase = createAdminClient() as SupabaseClient<Database>;
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const USER_ROLE_PRIORITY: UserRole[] = [
-	'admin',
-	'member',
-	'api-enterprise',
-	'api-member',
-	'ppi-member',
-	'viewer'
-];
+
+// App role priority — only clean app roles; pseudo-roles are gone.
+const USER_ROLE_PRIORITY: UserRole[] = ['admin', 'member', 'viewer'];
+
 const API_PLAN_HIERARCHY: Record<ApiPlan, number> = {
 	viewer: 0,
-	'api-member': 1,
-	'api-enterprise': 2
+	member: 1,
+	enterprise: 2
 };
+
 const DEFAULT_API_SCOPES_BY_PLAN: Record<ApiPlan, string[]> = {
 	viewer: ['catalog:read'],
-	'api-member': ['catalog:read'],
-	'api-enterprise': ['catalog:read']
+	member: ['catalog:read'],
+	enterprise: ['catalog:read']
 };
 
 export interface SessionContext {
@@ -44,6 +46,7 @@ interface PrincipalBase {
 	appRoles: UserRole[];
 	primaryAppRole: UserRole | null;
 	apiPlan: ApiPlan | null;
+	ppiAccess: boolean;
 	apiScopes: string[];
 	apiKeyId: string | null;
 	apiKeyName: string | null;
@@ -59,6 +62,7 @@ export interface AnonymousPrincipal extends PrincipalBase {
 	appRoles: [];
 	primaryAppRole: null;
 	apiPlan: null;
+	ppiAccess: false;
 	apiScopes: [];
 	apiKeyId: null;
 	apiKeyName: null;
@@ -78,6 +82,7 @@ export interface SessionPrincipal extends PrincipalBase {
 	appRoles: UserRole[];
 	primaryAppRole: UserRole;
 	apiPlan: ApiPlan;
+	ppiAccess: boolean;
 	apiScopes: string[];
 	apiKeyId: null;
 	apiKeyName: null;
@@ -95,6 +100,7 @@ export interface ApiKeyPrincipal extends PrincipalBase {
 	appRoles: UserRole[];
 	primaryAppRole: UserRole;
 	apiPlan: ApiPlan;
+	ppiAccess: boolean;
 	apiScopes: string[];
 	apiKeyId: string;
 	apiKeyName: string | null;
@@ -123,17 +129,17 @@ function normalizeScopeValue(value: unknown): string[] {
 	return value.filter((scope): scope is string => typeof scope === 'string' && scope.length > 0);
 }
 
+/**
+ * Normalize a raw role string to a clean UserRole.
+ * Pseudo-roles (api-member, api-enterprise, ppi-member) are dropped here —
+ * they are handled via explicit entitlement fields (apiPlan, ppiAccess) instead.
+ */
 function normalizeRoleValue(role: string): UserRole | null {
-	if (role === 'api') return 'api-member';
-	if (role === 'api_viewer') return 'viewer';
-	if (role === 'api_member') return 'api-member';
-	if (role === 'api_enterprise') return 'api-enterprise';
-	if (role === 'viewer') return 'viewer';
+	if (role === 'viewer' || role === 'api_viewer') return 'viewer';
 	if (role === 'member') return 'member';
-	if (role === 'api-member') return 'api-member';
-	if (role === 'api-enterprise') return 'api-enterprise';
-	if (role === 'ppi-member') return 'ppi-member';
 	if (role === 'admin') return 'admin';
+	// Pseudo-roles: intentionally not mapped to a UserRole.
+	// They are consumed by deriveApiPlanFromRoles / ppiAccess derivation instead.
 	return null;
 }
 
@@ -154,13 +160,41 @@ export function normalizeUserRoles(rawRoles: unknown): UserRole[] {
 	return normalizeResolvedUserRoles(rawRoles) ?? ['viewer'];
 }
 
-async function getStrictUserRoles(
+interface UserEntitlements {
+	roles: UserRole[];
+	apiPlan: ApiPlan;
+	ppiAccess: boolean;
+}
+
+/**
+ * Derive ppiAccess from the raw user_role array (legacy: ppi-member pseudo-role).
+ * Used during backfill transition when ppi_access column is not yet present.
+ */
+function derivePpiAccessFromRoles(rawRoles: string[]): boolean {
+	return rawRoles.includes('ppi-member');
+}
+
+/**
+ * Derive ApiPlan from the explicit api_plan column, falling back to role-based derivation.
+ */
+function resolveApiPlan(explicitPlan: string | null | undefined, rawRoles: string[]): ApiPlan {
+	if (explicitPlan === 'viewer' || explicitPlan === 'member' || explicitPlan === 'enterprise') {
+		return explicitPlan;
+	}
+	// Admin users always get enterprise API access
+	if (rawRoles.includes('admin')) {
+		return 'enterprise';
+	}
+	return deriveApiPlanFromRoles(rawRoles);
+}
+
+async function getUserEntitlements(
 	supabase: SupabaseClient<Database>,
 	userId: string
-): Promise<UserRole[] | null> {
+): Promise<UserEntitlements | null> {
 	const { data, error } = await supabase
 		.from('user_roles')
-		.select('user_role')
+		.select('user_role, api_plan, ppi_access')
 		.eq('id', userId)
 		.single();
 
@@ -168,14 +202,27 @@ async function getStrictUserRoles(
 		return null;
 	}
 
-	return normalizeResolvedUserRoles(data.user_role);
+	const rawRoles: string[] = Array.isArray(data.user_role)
+		? data.user_role.filter((r): r is string => typeof r === 'string')
+		: [];
+
+	const roles = normalizeResolvedUserRoles(rawRoles) ?? ['viewer'];
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const row = data as any;
+	const apiPlan = resolveApiPlan(row.api_plan, rawRoles);
+	const ppiAccess: boolean =
+		typeof row.ppi_access === 'boolean' ? row.ppi_access : derivePpiAccessFromRoles(rawRoles);
+
+	return { roles, apiPlan, ppiAccess };
 }
 
 export async function getUserRoles(
 	supabase: SupabaseClient<Database>,
 	userId: string
 ): Promise<UserRole[]> {
-	return (await getStrictUserRoles(supabase, userId)) ?? ['viewer'];
+	const entitlements = await getUserEntitlements(supabase, userId);
+	return entitlements?.roles ?? ['viewer'];
 }
 
 export function getPrimaryUserRole(roles: UserRole[]): UserRole {
@@ -214,6 +261,7 @@ function createAnonymousPrincipal(): AnonymousPrincipal {
 		appRoles: [],
 		primaryAppRole: null,
 		apiPlan: null,
+		ppiAccess: false,
 		apiScopes: [],
 		apiKeyId: null,
 		apiKeyName: null,
@@ -227,10 +275,9 @@ function createSessionPrincipal(input: {
 	source: SessionPrincipal['source'];
 	session: Session | null;
 	user: User;
-	roles: UserRole[];
+	entitlements: UserEntitlements;
 }): SessionPrincipal {
-	const roles = normalizeUserRoles(input.roles);
-	const apiPlan = getUserApiTier(roles);
+	const { roles, apiPlan, ppiAccess } = input.entitlements;
 
 	return {
 		subjectType: 'user',
@@ -243,6 +290,7 @@ function createSessionPrincipal(input: {
 		appRoles: roles,
 		primaryAppRole: getPrimaryUserRole(roles),
 		apiPlan,
+		ppiAccess,
 		apiScopes: mergeApiScopes(apiPlan, null),
 		apiKeyId: null,
 		apiKeyName: null,
@@ -255,10 +303,9 @@ function createApiKeyPrincipal(input: {
 	apiKeyId: string;
 	apiKeyName?: string;
 	apiKeyPermissions?: Json | null;
-	roles: UserRole[];
+	entitlements: UserEntitlements;
 }): ApiKeyPrincipal {
-	const roles = normalizeUserRoles(input.roles);
-	const apiPlan = getUserApiTier(roles);
+	const { roles, apiPlan, ppiAccess } = input.entitlements;
 
 	return {
 		subjectType: 'api-key',
@@ -271,6 +318,7 @@ function createApiKeyPrincipal(input: {
 		appRoles: roles,
 		primaryAppRole: getPrimaryUserRole(roles),
 		apiPlan,
+		ppiAccess,
 		apiScopes: mergeApiScopes(apiPlan, input.apiKeyPermissions),
 		apiKeyId: input.apiKeyId,
 		apiKeyName: input.apiKeyName ?? null,
@@ -326,24 +374,32 @@ async function resolveBearerSessionPrincipal(token: string): Promise<SessionPrin
 		return null;
 	}
 
-	const roles = await getUserRoles(adminSupabase, user.id);
+	const entitlements = await getUserEntitlements(adminSupabase, user.id);
+	if (!entitlements) {
+		return null;
+	}
+
 	return createSessionPrincipal({
 		source: 'bearer-session',
 		session: null,
 		user,
-		roles
+		entitlements
 	});
 }
 
 async function resolveApiKeyPrincipal(apiKey: string): Promise<ApiKeyPrincipal | null> {
+	if (!apiKey.startsWith(API_KEY_PREFIX)) {
+		return null;
+	}
+
 	const validation = await validateApiKey(apiKey);
 
 	if (!validation.valid || !validation.userId || !validation.keyId) {
 		return null;
 	}
 
-	const roles = await getStrictUserRoles(adminSupabase, validation.userId);
-	if (!roles) {
+	const entitlements = await getUserEntitlements(adminSupabase, validation.userId);
+	if (!entitlements) {
 		return null;
 	}
 
@@ -352,7 +408,7 @@ async function resolveApiKeyPrincipal(apiKey: string): Promise<ApiKeyPrincipal |
 		apiKeyId: validation.keyId,
 		apiKeyName: validation.keyName,
 		apiKeyPermissions: validation.permissions,
-		roles
+		entitlements
 	});
 }
 
@@ -379,11 +435,29 @@ export async function resolvePrincipal(event: RequestEvent): Promise<RequestPrin
 
 	const sessionContext = await event.locals.safeGetSession();
 	if (sessionContext.session && sessionContext.user) {
+		// For cookie sessions, derive entitlements from the session context roles
+		// (already fetched in the session middleware) plus explicit columns.
+		const rawRoles: string[] = Array.isArray(sessionContext.roles)
+			? (sessionContext.roles as string[])
+			: ['viewer'];
+
+		const normalizedRoles = normalizeResolvedUserRoles(rawRoles) ?? ['viewer'];
+		const apiPlan = resolveApiPlan(null, rawRoles);
+		const ppiAccess = derivePpiAccessFromRoles(rawRoles);
+
+		// Attempt to fetch explicit entitlements for the full picture
+		const explicitEntitlements = await getUserEntitlements(adminSupabase, sessionContext.user.id);
+		const entitlements: UserEntitlements = explicitEntitlements ?? {
+			roles: normalizedRoles,
+			apiPlan,
+			ppiAccess
+		};
+
 		event.locals.principal = createSessionPrincipal({
 			source: 'cookie-session',
 			session: sessionContext.session,
 			user: sessionContext.user,
-			roles: sessionContext.roles
+			entitlements
 		});
 		return event.locals.principal;
 	}

@@ -1,24 +1,27 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import {
-	getUserApiKeys,
-	getApiKeyUsage,
-	getUserApiTier,
-	API_RATE_LIMITS
-} from '$lib/server/apiAuth';
+import { getUserApiKeys, getApiKeyUsage, API_RATE_LIMITS } from '$lib/server/apiAuth';
+import { resolvePrincipal } from '$lib/server/principal';
 import { createAdminClient } from '$lib/supabase-admin';
 import { getApiUsage, buildDailySummary } from '$lib/data/api-usage';
+import type { ApiPlan } from '$lib/server/apiAuth';
 
 const supabase = createAdminClient();
 
-export const load: PageServerLoad = async ({ locals }) => {
-	// Get authenticated session
-	const { session, user, role } = await locals.safeGetSession();
+export const load: PageServerLoad = async (event) => {
+	const { locals } = event;
 
-	// Allow authenticated users (free tier defaults to api_viewer)
+	// Get authenticated session
+	const { session, user } = await locals.safeGetSession();
+
+	// Allow authenticated users (free tier defaults to viewer)
 	if (!session || !user) {
 		throw redirect(303, '/');
 	}
+
+	// Resolve principal for explicit entitlement data
+	const principal = await resolvePrincipal(event);
+	const userTier: ApiPlan = principal.isAuthenticated ? (principal.apiPlan ?? 'viewer') : 'viewer';
 
 	try {
 		// Get user's API keys
@@ -53,8 +56,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 			dailySummary = buildDailySummary(allUsageRecords);
 		}
 
-		// Calculate current usage stats with dynamic limits
-		const userTier = getUserApiTier(role);
 		const monthlyLimit = API_RATE_LIMITS[userTier];
 
 		const now = new Date();

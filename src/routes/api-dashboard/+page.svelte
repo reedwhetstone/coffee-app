@@ -78,18 +78,18 @@
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 				<h3 class="text-sm font-medium text-text-secondary-light">Current Plan</h3>
 				<p class="mt-1 text-2xl font-bold text-blue-500">
-					{#if data.usageStats?.userTier === 'api-enterprise'}
+					{#if data.usageStats?.userTier === 'enterprise'}
 						Enterprise
-					{:else if data.usageStats?.userTier === 'api-member'}
+					{:else if data.usageStats?.userTier === 'member'}
 						Roaster+
 					{:else}
 						Explorer
 					{/if}
 				</p>
 				<p class="mt-1 text-xs text-text-secondary-light">
-					{#if data.usageStats?.userTier === 'api-enterprise'}
+					{#if data.usageStats?.userTier === 'enterprise'}
 						Unlimited API calls
-					{:else if data.usageStats?.userTier === 'api-member'}
+					{:else if data.usageStats?.userTier === 'member'}
 						$99/month
 					{:else}
 						Free tier
@@ -106,7 +106,7 @@
 							? 'text-yellow-500'
 							: 'text-green-500'}"
 				>
-					{#if data.usageStats?.userTier === 'api-enterprise'}
+					{#if data.usageStats?.userTier === 'enterprise'}
 						Unlimited
 					{:else if data.usageStats?.atLimit}
 						At Limit
@@ -271,7 +271,7 @@
 		{/if}
 
 		<!-- Usage Accountability Alerts with Upgrade CTAs -->
-		{#if data.usageStats && data.usageStats.userTier !== 'api-enterprise'}
+		{#if data.usageStats && data.usageStats.userTier !== 'enterprise'}
 			{#if data.usageStats.atLimit}
 				<div class="mt-8 rounded-md bg-red-50 p-4 ring-1 ring-red-200">
 					<div class="flex">

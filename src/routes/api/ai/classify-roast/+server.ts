@@ -3,7 +3,6 @@ import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { requireAuth } from '$lib/server/auth';
-import { createAdminClient } from '$lib/supabase-admin';
 import type { RequestHandler } from './$types';
 
 interface AlogMetadata {
@@ -36,20 +35,14 @@ interface MatchResult {
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		// Require auth via Bearer token (CLI sends Authorization header, not cookies)
-		const user = await requireAuth(event);
+		// Require session auth first, then verify member role via principal.
+		// requireAuth ensures the caller is authenticated (cookie or bearer session).
+		await requireAuth(event);
 
-		// Check member role using admin client (bypass RLS — user already validated by requireAuth)
-		const adminClient = createAdminClient();
-		const { data: roleData } = await adminClient
-			.from('user_roles')
-			.select('user_role')
-			.eq('id', user.id)
-			.single();
-		const userRoles: string[] = (roleData?.user_role as string[]) ?? [];
-		// Use hyphens to match actual DB values (api-member, api-enterprise)
-		const allowed = ['member', 'admin', 'api-member', 'api-enterprise'];
-		if (!userRoles.some((r) => allowed.includes(r))) {
+		// Check member role via principal — resolves explicit entitlements from the DB.
+		const { principalHasRole, resolvePrincipal } = await import('$lib/server/principal');
+		const principal = await resolvePrincipal(event);
+		if (!principalHasRole(principal, 'member')) {
 			return json({ error: 'Member role required' }, { status: 403 });
 		}
 
