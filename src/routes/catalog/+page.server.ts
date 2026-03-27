@@ -1,23 +1,23 @@
 import type { PageServerLoad } from './$types';
+import { searchCatalog } from '$lib/data/catalog';
+import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	// Progressive hydration: load a small public preview for SSR; the client hydrates
-	// from the canonical /v1/catalog resource after mount.
-	let catalogQuery = locals.supabase
-		.from('coffee_catalog')
-		.select('*')
-		.eq('stocked', true)
-		.eq('wholesale', false)
-		.order('arrival_date', { ascending: false })
-		.limit(5);
-
-	if (!locals.session) {
-		catalogQuery = catalogQuery.eq('public_coffee', true);
-	}
-
-	const { data: stockedData } = await catalogQuery;
+	const visibility = resolveCatalogVisibility({
+		session: locals.session,
+		role: locals.role
+	});
+	const { data: stockedData } = await searchCatalog(locals.supabase, {
+		stockedOnly: true,
+		publicOnly: visibility.publicOnly,
+		showWholesale: visibility.showWholesale,
+		wholesaleOnly: visibility.wholesaleOnly,
+		orderBy: 'arrival_date',
+		orderDirection: 'desc',
+		limit: 5
+	});
 
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const schemaService = createSchemaService(baseUrl);

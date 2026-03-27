@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockSearchCatalog = vi.fn();
 const mockGetCatalogDropdown = vi.fn();
+const mockGetPublicCatalog = vi.fn();
 const mockCheckRateLimit = vi.fn();
 const mockGetApiRowLimit = vi.fn();
 const mockGetLegacyRateLimitTier = vi.fn();
@@ -10,7 +11,6 @@ const mockRequireApiKeyAccess = vi.fn();
 const mockResolvePrincipal = vi.fn();
 const mockIsApiKeyPrincipal = vi.fn();
 const mockIsSessionPrincipal = vi.fn();
-const mockPrincipalHasRole = vi.fn();
 const mockCreateAdminClient = vi.fn();
 
 class MockAuthError extends Error {
@@ -24,8 +24,10 @@ class MockAuthError extends Error {
 }
 
 vi.mock('$lib/data/catalog', () => ({
+	CATALOG_API_COLUMNS: 'id,name',
 	searchCatalog: mockSearchCatalog,
-	getCatalogDropdown: mockGetCatalogDropdown
+	getCatalogDropdown: mockGetCatalogDropdown,
+	getPublicCatalog: mockGetPublicCatalog
 }));
 
 vi.mock('$lib/server/apiAuth', () => ({
@@ -43,8 +45,7 @@ vi.mock('$lib/server/auth', () => ({
 vi.mock('$lib/server/principal', () => ({
 	resolvePrincipal: mockResolvePrincipal,
 	isApiKeyPrincipal: mockIsApiKeyPrincipal,
-	isSessionPrincipal: mockIsSessionPrincipal,
-	principalHasRole: mockPrincipalHasRole
+	isSessionPrincipal: mockIsSessionPrincipal
 }));
 
 vi.mock('$lib/supabase-admin', () => ({
@@ -52,6 +53,7 @@ vi.mock('$lib/supabase-admin', () => ({
 }));
 
 let buildCanonicalCatalogResponse: typeof import('./catalogResource').buildCanonicalCatalogResponse;
+let buildLegacyExternalCatalogResponse: typeof import('./catalogResource').buildLegacyExternalCatalogResponse;
 
 const sampleCatalogItem = {
 	id: 1,
@@ -116,13 +118,16 @@ beforeEach(async () => {
 	mockLogApiUsage.mockResolvedValue(undefined);
 	mockCreateAdminClient.mockReturnValue({ kind: 'admin-client' });
 	mockGetCatalogDropdown.mockResolvedValue([]);
+	mockGetPublicCatalog.mockResolvedValue([]);
 	mockSearchCatalog.mockResolvedValue({
 		data: [sampleCatalogItem],
 		count: 1,
 		filtersApplied: {}
 	});
 
-	({ buildCanonicalCatalogResponse } = await import('./catalogResource'));
+	({ buildCanonicalCatalogResponse, buildLegacyExternalCatalogResponse } = await import(
+		'./catalogResource'
+	));
 });
 
 describe('buildCanonicalCatalogResponse', () => {
@@ -134,7 +139,6 @@ describe('buildCanonicalCatalogResponse', () => {
 		});
 		mockIsApiKeyPrincipal.mockReturnValue(false);
 		mockIsSessionPrincipal.mockReturnValue(false);
-		mockPrincipalHasRole.mockReturnValue(false);
 
 		const response = await buildCanonicalCatalogResponse(
 			makeEvent('https://app.test/v1/catalog?page=1&limit=15')
@@ -160,11 +164,11 @@ describe('buildCanonicalCatalogResponse', () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,
 			primaryAppRole: 'member',
-			apiPlan: 'viewer'
+			apiPlan: 'viewer',
+			session: { access_token: 'cookie-token' }
 		});
 		mockIsApiKeyPrincipal.mockReturnValue(false);
 		mockIsSessionPrincipal.mockReturnValue(true);
-		mockPrincipalHasRole.mockReturnValue(true);
 
 		const response = await buildCanonicalCatalogResponse(
 			makeEvent('https://app.test/v1/catalog?page=2&limit=10&showWholesale=true')
@@ -183,6 +187,34 @@ describe('buildCanonicalCatalogResponse', () => {
 				showWholesale: true,
 				limit: 10,
 				offset: 10
+			})
+		);
+	});
+
+	it('treats bearer-authenticated requests as public-only for canonical page visibility decisions', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			primaryAppRole: 'member',
+			apiPlan: 'viewer',
+			session: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?showWholesale=true')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.meta.access.publicOnly).toBe(true);
+		expect(body.meta.access.showWholesale).toBe(false);
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				publicOnly: true,
+				showWholesale: false,
+				wholesaleOnly: false
 			})
 		);
 	});
@@ -241,5 +273,106 @@ describe('buildCanonicalCatalogResponse', () => {
 			undefined,
 			undefined
 		);
+	});
+});
+
+describe('buildLegacyExternalCatalogResponse', () => {
+	it('preserves the legacy external auth requirement', async () => {
+		mockRequireApiKeyAccess.mockRejectedValue(new MockAuthError('API key authentication required'));
+
+		const response = await buildLegacyExternalCatalogResponse(
+			makeEvent('https://app.test/api/catalog-api'),
+			{ requestPath: '/api/catalog-api' }
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(401);
+		expect(body).toEqual({
+			error: 'Authentication required',
+			message: 'API key authentication required'
+		});
+	});
+
+	it('restores the legacy external projection, ordering, and fresh-cache metadata', async () => {
+		const apiKeyPrincipal = {
+			apiKeyId: 'key-1',
+			apiPlan: 'viewer'
+		};
+		mockRequireApiKeyAccess.mockResolvedValue(apiKeyPrincipal);
+		mockGetPublicCatalog.mockResolvedValue([
+			{ id: 2, name: 'Zulu', extra: 'ignore-me' },
+			{ id: 1, name: 'Alpha', public_coffee: true }
+		]);
+
+		const response = await buildLegacyExternalCatalogResponse(
+			makeEvent('https://app.test/api/catalog-api', {
+				Authorization: 'Bearer pk_live_valid'
+			}),
+			{ requestPath: '/api/catalog-api' }
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(mockGetPublicCatalog).toHaveBeenCalledWith({ kind: 'admin-client' }, 'id,name');
+		expect(body.data).toEqual([
+			{ id: 1, name: 'Alpha' },
+			{ id: 2, name: 'Zulu' }
+		]);
+		expect(body.total).toBe(2);
+		expect(body.total_available).toBe(2);
+		expect(body.limited).toBe(false);
+		expect(body.limit).toBe(25);
+		expect(body.tier).toBe('viewer');
+		expect(body.cached).toBe(false);
+		expect(body).not.toHaveProperty('cache_timestamp');
+		expect(body).toHaveProperty('last_updated');
+		expect(body.api_version).toBe('1.0');
+		expect(response.headers.get('X-RateLimit-Limit')).toBe('200');
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+		expect(mockLogApiUsage).toHaveBeenCalledWith(
+			'key-1',
+			'/api/catalog-api',
+			200,
+			expect.any(Number),
+			undefined,
+			undefined
+		);
+	});
+
+	it('reuses the legacy cache and applies row limiting on cached responses', async () => {
+		const apiKeyPrincipal = {
+			apiKeyId: 'key-1',
+			apiPlan: 'viewer'
+		};
+		mockRequireApiKeyAccess.mockResolvedValue(apiKeyPrincipal);
+		mockGetApiRowLimit.mockReturnValue(1);
+		mockGetPublicCatalog.mockResolvedValue([
+			{ id: 2, name: 'Zulu' },
+			{ id: 1, name: 'Alpha' }
+		]);
+
+		await buildLegacyExternalCatalogResponse(
+			makeEvent('https://app.test/api/catalog-api', {
+				Authorization: 'Bearer pk_live_valid'
+			}),
+			{ requestPath: '/api/catalog-api' }
+		);
+		const cachedResponse = await buildLegacyExternalCatalogResponse(
+			makeEvent('https://app.test/api/catalog-api', {
+				Authorization: 'Bearer pk_live_valid'
+			}),
+			{ requestPath: '/api/catalog-api' }
+		);
+		const body = await cachedResponse.json();
+
+		expect(mockGetPublicCatalog).toHaveBeenCalledTimes(1);
+		expect(body.data).toEqual([{ id: 1, name: 'Alpha' }]);
+		expect(body.total).toBe(1);
+		expect(body.total_available).toBe(2);
+		expect(body.limited).toBe(true);
+		expect(body.limit).toBe(1);
+		expect(body.cached).toBe(true);
+		expect(body).toHaveProperty('cache_timestamp');
+		expect(body).not.toHaveProperty('last_updated');
 	});
 });

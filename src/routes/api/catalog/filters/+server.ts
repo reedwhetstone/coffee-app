@@ -1,85 +1,52 @@
 import { json } from '@sveltejs/kit';
+import { searchCatalog } from '$lib/data/catalog';
+import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals: { supabase }, url }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
 	try {
-		const showWholesale = url.searchParams.get('showWholesale') === 'true';
-		const wholesaleOnly = url.searchParams.get('wholesaleOnly') === 'true';
-
-		// Fetch unique values for filter dropdowns from stocked coffee
-		let query = supabase
-			.from('coffee_catalog')
-			.select(
-				'source, continent, country, processing, cultivar_detail, type, grade, appearance, arrival_date'
-			)
-			.eq('stocked', true);
-
-		if (wholesaleOnly) {
-			query = query.eq('wholesale', true);
-		} else if (!showWholesale) {
-			query = query.eq('wholesale', false);
-		}
-
-		const { data: rows, error } = await query;
-
-		if (error) throw error;
+		const visibility = resolveCatalogVisibility({
+			session: locals.session,
+			role: locals.role,
+			showWholesaleRequested: url.searchParams.get('showWholesale') === 'true',
+			wholesaleOnlyRequested: url.searchParams.get('wholesaleOnly') === 'true'
+		});
+		const { data: rows } = await searchCatalog(locals.supabase, {
+			stockedOnly: true,
+			publicOnly: visibility.publicOnly,
+			showWholesale: visibility.showWholesale,
+			wholesaleOnly: visibility.wholesaleOnly
+		});
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const uniqueValues: Record<string, any[]> = {};
 
 		if (rows && rows.length > 0) {
-			// Get unique sources
-			const sources = [
-				...new Set(rows.map((r: Record<string, unknown>) => r.source).filter(Boolean))
-			].sort();
+			const sources = [...new Set(rows.map((row) => row.source).filter(Boolean))].sort();
 			if (sources.length > 0) uniqueValues.sources = sources;
 
-			// Get unique continents
-			const continents = [
-				...new Set(rows.map((r: Record<string, unknown>) => r.continent).filter(Boolean))
-			].sort();
+			const continents = [...new Set(rows.map((row) => row.continent).filter(Boolean))].sort();
 			if (continents.length > 0) uniqueValues.continents = continents;
 
-			// Get unique countries
-			const countries = [
-				...new Set(rows.map((r: Record<string, unknown>) => r.country).filter(Boolean))
-			].sort();
+			const countries = [...new Set(rows.map((row) => row.country).filter(Boolean))].sort();
 			if (countries.length > 0) uniqueValues.countries = countries;
 
-			// Get unique processing methods
-			const processing = [
-				...new Set(rows.map((r: Record<string, unknown>) => r.processing).filter(Boolean))
-			].sort();
+			const processing = [...new Set(rows.map((row) => row.processing).filter(Boolean))].sort();
 			if (processing.length > 0) uniqueValues.processing = processing;
 
-			// Get unique cultivar details
-			const cultivars = [
-				...new Set(rows.map((r: Record<string, unknown>) => r.cultivar_detail).filter(Boolean))
-			].sort();
+			const cultivars = [...new Set(rows.map((row) => row.cultivar_detail).filter(Boolean))].sort();
 			if (cultivars.length > 0) uniqueValues.cultivar_detail = cultivars;
 
-			// Get unique types (importers)
-			const types = [
-				...new Set(rows.map((r: Record<string, unknown>) => r.type).filter(Boolean))
-			].sort();
+			const types = [...new Set(rows.map((row) => row.type).filter(Boolean))].sort();
 			if (types.length > 0) uniqueValues.type = types;
 
-			// Get unique grades
-			const grades = [
-				...new Set(rows.map((r: Record<string, unknown>) => r.grade).filter(Boolean))
-			].sort();
+			const grades = [...new Set(rows.map((row) => row.grade).filter(Boolean))].sort();
 			if (grades.length > 0) uniqueValues.grade = grades;
 
-			// Get unique appearances
-			const appearances = [
-				...new Set(rows.map((r: Record<string, unknown>) => r.appearance).filter(Boolean))
-			].sort();
+			const appearances = [...new Set(rows.map((row) => row.appearance).filter(Boolean))].sort();
 			if (appearances.length > 0) uniqueValues.appearance = appearances;
 
-			// Get unique arrival dates
-			const arrivalDates = [
-				...new Set(rows.map((r: Record<string, unknown>) => r.arrival_date).filter(Boolean))
-			].sort();
+			const arrivalDates = [...new Set(rows.map((row) => row.arrival_date).filter(Boolean))].sort();
 			if (arrivalDates.length > 0) uniqueValues.arrivalDates = arrivalDates;
 		}
 

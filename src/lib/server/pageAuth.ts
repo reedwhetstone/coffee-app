@@ -11,6 +11,6 @@ export function getPageAuthState(locals: Pick<App.Locals, 'session' | 'user' | '
 	return {
 		session,
 		user: session ? (locals.user ?? null) : null,
-		role: locals.role ?? 'viewer'
+		role: session ? (locals.role ?? 'viewer') : 'viewer'
 	};
 }
