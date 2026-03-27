@@ -192,13 +192,51 @@ async function getUserEntitlements(
 	supabase: SupabaseClient<Database>,
 	userId: string
 ): Promise<UserEntitlements | null> {
+	// Primary query: select the base role array plus the new entitlement columns.
+	// The new columns (api_plan, ppi_access) are nullable; we fall back to role-derived
+	// values when they are null (pre-migration) or when the query itself fails (pre-schema).
 	const { data, error } = await supabase
 		.from('user_roles')
 		.select('user_role, api_plan, ppi_access')
 		.eq('id', userId)
 		.single();
 
-	if (error || !data) {
+	if (error) {
+		// If the query failed because the new columns don't exist yet (pre-schema-migration),
+		// fall back to the safe user_role-only query.
+		// PostgreSQL error 42703 = undefined_column; Supabase wraps this in the error object.
+		const isColumnMissingError =
+			error.code === '42703' ||
+			error.code === 'PGRST200' ||
+			error.message?.includes('does not exist') ||
+			error.message?.includes('api_plan') ||
+			error.message?.includes('ppi_access');
+		if (isColumnMissingError) {
+			const { data: fallbackData, error: fallbackError } = await supabase
+				.from('user_roles')
+				.select('user_role')
+				.eq('id', userId)
+				.single();
+
+			if (fallbackError || !fallbackData) {
+				return null;
+			}
+
+			const rawRoles: string[] = Array.isArray(fallbackData.user_role)
+				? fallbackData.user_role.filter((r): r is string => typeof r === 'string')
+				: [];
+			const roles = normalizeResolvedUserRoles(rawRoles) ?? ['viewer'];
+			return {
+				roles,
+				apiPlan: resolveApiPlan(null, rawRoles),
+				ppiAccess: derivePpiAccessFromRoles(rawRoles)
+			};
+		}
+		// Other errors (no row found, network error, etc.) — fail closed
+		return null;
+	}
+
+	if (!data) {
 		return null;
 	}
 
