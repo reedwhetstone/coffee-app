@@ -90,8 +90,8 @@ interface ParsedCatalogQuery {
 		region?: string;
 		scoreValueMin?: number;
 		scoreValueMax?: number;
-		costLbMin?: number;
-		costLbMax?: number;
+		pricePerLbMin?: number;
+		pricePerLbMax?: number;
 		arrivalDate?: string;
 		stockedDate?: string;
 	};
@@ -149,6 +149,15 @@ function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
 	return resourceItem;
 }
 
+function parseOptionalNumberFromAliases(url: URL, ...paramNames: string[]): number | undefined {
+	for (const paramName of paramNames) {
+		const value = parseOptionalNumber(url.searchParams.get(paramName));
+		if (value !== undefined) return value;
+	}
+
+	return undefined;
+}
+
 function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 	const page = parsePositiveInteger(url.searchParams.get('page'), 1);
 	const limit = parsePositiveInteger(url.searchParams.get('limit'), 15);
@@ -185,8 +194,10 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 			region: url.searchParams.get('region') ?? undefined,
 			scoreValueMin: parseOptionalNumber(url.searchParams.get('score_value_min')),
 			scoreValueMax: parseOptionalNumber(url.searchParams.get('score_value_max')),
-			costLbMin: parseOptionalNumber(url.searchParams.get('cost_lb_min')),
-			costLbMax: parseOptionalNumber(url.searchParams.get('cost_lb_max')),
+			// cost_lb_* remains as a deprecated compatibility alias. The actual filter
+			// source of truth is price_per_lb, so prefer the canonical params when present.
+			pricePerLbMin: parseOptionalNumberFromAliases(url, 'price_per_lb_min', 'cost_lb_min'),
+			pricePerLbMax: parseOptionalNumberFromAliases(url, 'price_per_lb_max', 'cost_lb_max'),
 			arrivalDate: url.searchParams.get('arrival_date') ?? undefined,
 			stockedDate: url.searchParams.get('stocked_date') ?? undefined
 		}
@@ -357,8 +368,8 @@ async function queryCatalogData(
 		region: query.filters.region,
 		scoreValueMin: query.filters.scoreValueMin,
 		scoreValueMax: query.filters.scoreValueMax,
-		costLbMin: query.filters.costLbMin,
-		costLbMax: query.filters.costLbMax,
+		pricePerLbMin: query.filters.pricePerLbMin,
+		pricePerLbMax: query.filters.pricePerLbMax,
 		arrivalDate: query.filters.arrivalDate,
 		stockedDate: query.filters.stockedDate,
 		orderBy: query.ids.length > 0 ? 'name' : query.sortField || 'arrival_date',

@@ -160,6 +160,52 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
+	it('prefers canonical price_per_lb query params for per-pound price filtering', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		await buildCanonicalCatalogResponse(
+			makeEvent(
+				'https://app.test/v1/catalog?price_per_lb_min=7.25&price_per_lb_max=8.5&cost_lb_min=1&cost_lb_max=2'
+			)
+		);
+
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				pricePerLbMin: 7.25,
+				pricePerLbMax: 8.5
+			})
+		);
+	});
+
+	it('maps deprecated cost_lb query params onto price_per_lb filtering for compatibility', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?cost_lb_min=6.5&cost_lb_max=7.75')
+		);
+
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				pricePerLbMin: 6.5,
+				pricePerLbMax: 7.75
+			})
+		);
+	});
+
 	it('lets member sessions request wholesale-visible catalog data with the same contract', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,

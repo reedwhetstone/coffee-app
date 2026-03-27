@@ -31,7 +31,7 @@ export interface CatalogSearchOptions {
 	origin?: string; // matches continent, country, region (OR)
 	process?: string; // ilike processing
 	variety?: string; // ilike cultivar_detail
-	priceRange?: [number, number]; // [min, max] on cost_lb
+	priceRange?: [number, number]; // [min, max] on price_per_lb
 	flavorKeywords?: string[]; // ilike across description/notes fields
 	name?: string; // ilike name
 	dryingMethod?: string; // ilike processing OR drying_method
@@ -70,8 +70,8 @@ export interface CatalogSearchOptions {
 	region?: string;
 	scoreValueMin?: number;
 	scoreValueMax?: number;
-	costLbMin?: number;
-	costLbMax?: number;
+	pricePerLbMin?: number;
+	pricePerLbMax?: number;
 	arrivalDate?: string;
 	stockedDate?: string; // number-as-string: days back
 }
@@ -165,8 +165,8 @@ export async function searchCatalog(
 		region,
 		scoreValueMin,
 		scoreValueMax,
-		costLbMin,
-		costLbMax,
+		pricePerLbMin,
+		pricePerLbMax,
 		arrivalDate,
 		stockedDate
 	} = options;
@@ -242,8 +242,8 @@ export async function searchCatalog(
 	}
 	if (scoreValueMin !== undefined) query = query.gte('score_value', scoreValueMin);
 	if (scoreValueMax !== undefined) query = query.lte('score_value', scoreValueMax);
-	if (costLbMin !== undefined) query = query.gte('price_per_lb', costLbMin);
-	if (costLbMax !== undefined) query = query.lte('price_per_lb', costLbMax);
+	if (pricePerLbMin !== undefined) query = query.gte('price_per_lb', pricePerLbMin);
+	if (pricePerLbMax !== undefined) query = query.lte('price_per_lb', pricePerLbMax);
 
 	// ── Date filters ──────────────────────────────────────────────────────────
 	if (arrivalDate) query = query.eq('arrival_date', arrivalDate);
@@ -283,6 +283,8 @@ export async function searchCatalog(
 	if (supplier) filtersApplied.supplier = supplier;
 	if (coffeeIds) filtersApplied.coffeeIds = coffeeIds;
 	if (stockedOnly) filtersApplied.stockedOnly = stockedOnly;
+	if (pricePerLbMin !== undefined) filtersApplied.pricePerLbMin = pricePerLbMin;
+	if (pricePerLbMax !== undefined) filtersApplied.pricePerLbMax = pricePerLbMax;
 	if (stockedDays) filtersApplied.stockedDays = stockedDays;
 	if (limit) filtersApplied.limit = limit;
 
