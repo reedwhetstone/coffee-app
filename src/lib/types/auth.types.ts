@@ -1,19 +1,12 @@
-export type UserRole =
-	| 'viewer'
-	| 'member'
-	| 'api-member'
-	| 'api-enterprise'
-	| 'ppi-member'
-	| 'admin';
+// App roles — minimal set used for permission gating in the app.
+// API access levels and product entitlements are separate (see ApiPlan, PpiAccess).
+export type UserRole = 'viewer' | 'member' | 'admin';
 
 // Support for multiple roles per user
 export type UserRoles = UserRole | UserRole[];
 
 export const roleHierarchy = {
 	viewer: 0,
-	'api-member': 0, // Same level as viewer - enhanced API access only
-	'api-enterprise': 0, // Same level as viewer - unlimited API access only
-	'ppi-member': 0, // PPI data tier — price index access
 	member: 1,
 	admin: 2
 } as const;
@@ -24,7 +17,7 @@ export function checkRole(
 ): boolean {
 	if (!userRole) return false;
 
-	// Special handling for member role - API roles should not inherit member permissions
+	// Special handling for member role
 	if (requiredRole === 'member') {
 		if (Array.isArray(userRole)) {
 			return userRole.includes('member') || userRole.includes('admin');

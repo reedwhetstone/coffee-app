@@ -16,29 +16,19 @@ export const API_KEY_PREFIX = 'pk_live_';
 const API_KEY_LENGTH = 32;
 const HASH_ROUNDS = 12;
 
-// Rate limiting configuration (requests per month based on APITIER.md)
+// API access plans — separate from app roles.
+// viewer = free/explorer tier; member = Roaster+ (pro); enterprise = Integrate (unlimited).
 const RATE_LIMITS = {
 	viewer: 200, // Explorer (Free Tier) - basic API access
-	'api-member': 10000, // Roaster+ (Pro Tier) - enhanced API access
-	'api-enterprise': -1 // Integrate (Enterprise Tier) - unlimited API access
+	member: 10000, // Roaster+ (Pro Tier) - enhanced API access
+	enterprise: -1 // Integrate (Enterprise Tier) - unlimited API access
 } as const;
 
 // Row limits per API call by tier
 const ROW_LIMITS = {
 	viewer: 25, // Explorer (Free Tier) - limited rows per call
-	'api-member': -1, // Roaster+ (Pro Tier) - unlimited rows
-	'api-enterprise': -1 // Integrate (Enterprise Tier) - unlimited rows
-} as const;
-
-// Legacy mapping for backward compatibility
-const LEGACY_TIER_MAPPING = {
-	api_viewer: 'viewer',
-	api_member: 'api-member',
-	api_enterprise: 'api-enterprise',
-	developer: 'api-member',
-	growth: 'api-member',
-	enterprise: 'api-enterprise',
-	api: 'api-member' // Migrate old 'api' role to 'api-member'
+	member: -1, // Roaster+ (Pro Tier) - unlimited rows
+	enterprise: -1 // Integrate (Enterprise Tier) - unlimited rows
 } as const;
 
 // Export rate limits and row limits for use in other modules
@@ -243,22 +233,10 @@ export async function logApiUsage(
  */
 export async function checkRateLimit(
 	apiKeyId: string,
-	tier:
-		| 'api_viewer'
-		| 'api_member'
-		| 'api_enterprise'
-		| 'developer'
-		| 'growth'
-		| 'enterprise' = 'api_member'
+	tier: ApiPlan = 'viewer'
 ): Promise<RateLimitResult> {
 	try {
-		// Handle legacy tier mapping
-		const actualTier =
-			tier in LEGACY_TIER_MAPPING
-				? LEGACY_TIER_MAPPING[tier as keyof typeof LEGACY_TIER_MAPPING]
-				: (tier as keyof typeof RATE_LIMITS);
-
-		const limit = RATE_LIMITS[actualTier];
+		const limit = RATE_LIMITS[tier];
 
 		// Enterprise tier has unlimited requests
 		if (limit === -1) {
@@ -311,12 +289,7 @@ export async function checkRateLimit(
 	} catch (error) {
 		console.error('Rate limit check error:', error);
 		// On error, allow the request
-		// Handle legacy tier mapping for error fallback
-		const actualTier =
-			tier in LEGACY_TIER_MAPPING
-				? LEGACY_TIER_MAPPING[tier as keyof typeof LEGACY_TIER_MAPPING]
-				: (tier as keyof typeof RATE_LIMITS);
-		const fallbackLimit = RATE_LIMITS[actualTier] === -1 ? -1 : RATE_LIMITS[actualTier];
+		const fallbackLimit = RATE_LIMITS[tier] === -1 ? -1 : RATE_LIMITS[tier];
 		return {
 			allowed: true,
 			limit: fallbackLimit,
@@ -408,7 +381,7 @@ export async function validateApiRequest(request: Request): Promise<{
 	}
 
 	// Check rate limits (default to member tier)
-	const rateLimit = await checkRateLimit(validation.keyId!, 'api_member');
+	const rateLimit = await checkRateLimit(validation.keyId!, 'member');
 
 	if (!rateLimit.allowed) {
 		return {
@@ -423,31 +396,39 @@ export async function validateApiRequest(request: Request): Promise<{
 }
 
 /**
- * Get user's API subscription tier from their role
+ * Derive API plan from the user's app role array when no explicit entitlement is stored.
+ * This provides backward-compatible fallback during the migration period.
+ * Prefer reading the explicit api_plan column from user_roles instead of calling this.
+ */
+export function deriveApiPlanFromRoles(roles: string[]): ApiPlan {
+	// Legacy pseudo-roles → explicit plan names
+	if (roles.some((r) => r === 'admin' || r === 'api-enterprise' || r === 'api_enterprise')) {
+		return 'enterprise';
+	}
+	if (
+		roles.some(
+			(r) =>
+				r === 'api-member' ||
+				r === 'api_member' ||
+				r === 'api' ||
+				r === 'developer' ||
+				r === 'growth'
+		)
+	) {
+		return 'member';
+	}
+	return 'viewer';
+}
+
+/**
+ * Get user's API subscription tier from their role.
+ * @deprecated Prefer reading the explicit api_plan column via principal.apiPlan.
+ * This function is kept for backward-compatible callers that pass raw role strings.
  */
 export function getUserApiTier(role: string | string[] | null): ApiPlan {
 	if (!role) return 'viewer';
-
-	// Parse role (could be array or single role)
 	const roles = Array.isArray(role) ? role : role.split(',').map((r) => r.trim());
-
-	// Check for enterprise/admin roles (highest priority)
-	if (roles.some((r) => r.includes('admin') || r === 'api-enterprise')) {
-		return 'api-enterprise';
-	}
-
-	// Check for enhanced API access
-	if (roles.some((r) => r === 'api-member')) {
-		return 'api-member';
-	}
-
-	// Legacy API role mapping
-	if (roles.some((r) => r === 'api')) {
-		return 'api-member';
-	}
-
-	// Default to viewer (free) tier - includes basic API access
-	return 'viewer';
+	return deriveApiPlanFromRoles(roles);
 }
 
 /**
@@ -457,12 +438,12 @@ export function getApiRowLimit(tier: ApiPlan): number {
 	return ROW_LIMITS[tier];
 }
 
-export function getLegacyRateLimitTier(
-	tier: ApiPlan
-): 'api_viewer' | 'api_member' | 'api_enterprise' {
-	if (tier === 'viewer') return 'api_viewer';
-	if (tier === 'api-member') return 'api_member';
-	return 'api_enterprise';
+/**
+ * @deprecated No longer needed — checkRateLimit now accepts ApiPlan directly.
+ * Kept temporarily for any callers that haven't been updated yet.
+ */
+export function getLegacyRateLimitTier(tier: ApiPlan): ApiPlan {
+	return tier;
 }
 
 /**

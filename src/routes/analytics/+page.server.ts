@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
-import { getUserRoles } from '$lib/server/auth';
+import { resolvePrincipal } from '$lib/server/principal';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export interface ArrivalBean {
@@ -95,18 +95,10 @@ function normalizeProcess(raw: string | null | undefined): string {
 }
 
 export const load: PageServerLoad = async (event) => {
-	const { session, user, role } = event.locals;
-
-	// Check for ppi-member role (new role, checked via full role array)
-	let isPpiMember = role === 'admin';
-	if (user && !isPpiMember) {
-		try {
-			const roles = await getUserRoles(event.locals.supabase, user.id);
-			isPpiMember = (roles as string[]).includes('ppi-member');
-		} catch {
-			// Non-blocking — default to false
-		}
-	}
+	// Resolve principal to get explicit ppiAccess entitlement.
+	// Falls back to ppi-member pseudo-role detection during the migration period.
+	const principal = await resolvePrincipal(event);
+	const isPpiMember = principal.isAuthenticated ? principal.ppiAccess : false;
 
 	const today = new Date().toISOString().split('T')[0];
 	const supabase = event.locals.supabase;
@@ -361,6 +353,9 @@ export const load: PageServerLoad = async (event) => {
 			]
 		})
 	]);
+
+	const session = event.locals.session ?? null;
+	const role = event.locals.role ?? 'viewer';
 
 	return {
 		session,

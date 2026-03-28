@@ -32,17 +32,9 @@ vi.mock('$lib/supabase-admin', () => ({
 
 vi.mock('$lib/server/apiAuth', () => ({
 	API_KEY_PREFIX: 'pk_live_',
-	getUserApiTier: (role: string | string[] | null) => {
-		const roles = Array.isArray(role) ? role : role ? [role] : [];
-
-		if (roles.includes('admin') || roles.includes('api-enterprise')) {
-			return 'api-enterprise';
-		}
-
-		if (roles.includes('api-member')) {
-			return 'api-member';
-		}
-
+	deriveApiPlanFromRoles: (roles: string[]) => {
+		if (roles.includes('admin') || roles.includes('api-enterprise')) return 'enterprise';
+		if (roles.includes('api-member')) return 'member';
 		return 'viewer';
 	},
 	validateApiKey: mockValidateApiKey
@@ -60,7 +52,7 @@ type EventOptions = {
 		session: unknown;
 		user: unknown;
 		role: 'viewer' | 'member' | 'admin';
-		roles: ('viewer' | 'member' | 'admin' | 'api-member' | 'api-enterprise')[];
+		roles: ('viewer' | 'member' | 'admin')[];
 	};
 	principal?: {
 		subjectType: 'user';
@@ -70,9 +62,10 @@ type EventOptions = {
 		userId: string;
 		user: { id: string };
 		session: unknown;
-		appRoles: ('viewer' | 'member' | 'admin' | 'api-member' | 'api-enterprise')[];
-		primaryAppRole: 'viewer' | 'member' | 'admin' | 'api-member' | 'api-enterprise';
-		apiPlan: 'viewer' | 'api-member' | 'api-enterprise';
+		appRoles: ('viewer' | 'member' | 'admin')[];
+		primaryAppRole: 'viewer' | 'member' | 'admin';
+		apiPlan: 'viewer' | 'member' | 'enterprise';
+		ppiAccess: boolean;
 		apiScopes: string[];
 		apiKeyId: null;
 		apiKeyName: null;
@@ -126,6 +119,7 @@ function makeSessionPrincipal(
 		appRoles: ['member'],
 		primaryAppRole: 'member' as const,
 		apiPlan: 'viewer' as const,
+		ppiAccess: false,
 		apiScopes: ['catalog:read'],
 		apiKeyId: null,
 		apiKeyName: null,
@@ -140,7 +134,7 @@ function makeAdminPrincipal(): NonNullable<EventOptions['principal']> {
 		user: { id: 'admin-user' },
 		appRoles: ['admin'],
 		primaryAppRole: 'admin',
-		apiPlan: 'api-enterprise'
+		apiPlan: 'enterprise'
 	});
 }
 

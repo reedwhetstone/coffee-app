@@ -247,8 +247,8 @@
     "version": "v1",
     "auth": {
       "kind": "api-key",
-      "role": "api-member",
-      "apiPlan": "api-member"
+      "role": "viewer",
+      "apiPlan": "member"
     }
   }
 }`}</code

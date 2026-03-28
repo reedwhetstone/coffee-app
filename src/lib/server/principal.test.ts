@@ -28,19 +28,20 @@ const {
 } = await import('./principal');
 
 describe('principal helpers', () => {
-	it('normalizes user roles and preserves the canonical role names', () => {
-		expect(normalizeUserRoles(['api', 'member', 'member'])).toEqual(['api-member', 'member']);
-		expect(normalizeUserRoles(['api_viewer', 'api_member', 'api_enterprise'])).toEqual([
-			'viewer',
-			'api-member',
-			'api-enterprise'
-		]);
+	it('normalizes user roles — pseudo-roles are dropped, clean app roles are preserved', () => {
+		// api and api-member pseudo-roles no longer map to a UserRole
+		expect(normalizeUserRoles(['member', 'member'])).toEqual(['member']);
+		expect(normalizeUserRoles(['api_viewer', 'member'])).toEqual(['viewer', 'member']);
+		// ppi-member and api-member/api-enterprise are pseudo-roles — they drop from appRoles
+		expect(normalizeUserRoles(['viewer', 'api-member', 'ppi-member'])).toEqual(['viewer']);
+		expect(normalizeUserRoles(['admin', 'api-enterprise'])).toEqual(['admin']);
 		expect(normalizeUserRoles('nope')).toEqual(['viewer']);
 	});
 
 	it('selects the highest-priority primary app role', () => {
-		expect(getPrimaryUserRole(['viewer', 'api-member', 'member'])).toBe('member');
-		expect(getPrimaryUserRole(['viewer', 'api-enterprise'])).toBe('api-enterprise');
+		expect(getPrimaryUserRole(['viewer', 'member'])).toBe('member');
+		expect(getPrimaryUserRole(['viewer', 'admin'])).toBe('admin');
+		expect(getPrimaryUserRole(['member', 'admin'])).toBe('admin');
 	});
 
 	it('parses explicit API scopes from permissions payloads', () => {
@@ -62,9 +63,10 @@ describe('principal helpers', () => {
 			userId: 'user-1',
 			user: null,
 			session: null,
-			appRoles: ['api-member'],
-			primaryAppRole: 'api-member',
-			apiPlan: 'api-enterprise',
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer',
+			apiPlan: 'enterprise',
+			ppiAccess: false,
 			apiScopes: ['catalog:*'],
 			apiKeyId: 'key-1',
 			apiKeyName: 'Test key',
@@ -75,9 +77,33 @@ describe('principal helpers', () => {
 		expect(
 			principalHasRole({ ...principal, appRoles: ['admin'], primaryAppRole: 'admin' }, 'member')
 		).toBe(true);
-		expect(principalHasApiPlan(principal, 'api-member')).toBe(true);
+		expect(principalHasApiPlan(principal, 'member')).toBe(true);
+		expect(principalHasApiPlan(principal, 'enterprise')).toBe(true);
 		expect(principalHasScope(principal, 'catalog:read')).toBe(true);
 		expect(principalHasScope(principal, 'usage:read')).toBe(false);
+	});
+
+	it('api plan hierarchy: enterprise > member > viewer', () => {
+		const memberPrincipal: ApiKeyPrincipal = {
+			subjectType: 'api-key',
+			authKind: 'api-key',
+			source: 'api-key',
+			isAuthenticated: true,
+			userId: 'user-2',
+			user: null,
+			session: null,
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer',
+			apiPlan: 'member',
+			ppiAccess: false,
+			apiScopes: ['catalog:read'],
+			apiKeyId: 'key-2',
+			apiKeyName: null,
+			apiKeyPermissions: null
+		};
+		expect(principalHasApiPlan(memberPrincipal, 'viewer')).toBe(true);
+		expect(principalHasApiPlan(memberPrincipal, 'member')).toBe(true);
+		expect(principalHasApiPlan(memberPrincipal, 'enterprise')).toBe(false);
 	});
 
 	it('derives legacy locals from the authoritative principal state', () => {
@@ -92,6 +118,7 @@ describe('principal helpers', () => {
 			appRoles: ['member'],
 			primaryAppRole: 'member',
 			apiPlan: 'viewer',
+			ppiAccess: false,
 			apiScopes: ['catalog:read'],
 			apiKeyId: null,
 			apiKeyName: null,
@@ -110,9 +137,10 @@ describe('principal helpers', () => {
 			userId: 'user-2',
 			user: null,
 			session: null,
-			appRoles: ['api-member'],
-			primaryAppRole: 'api-member',
-			apiPlan: 'api-member',
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer',
+			apiPlan: 'member',
+			ppiAccess: false,
 			apiScopes: ['catalog:read'],
 			apiKeyId: 'key-1',
 			apiKeyName: 'Test key',
@@ -134,8 +162,8 @@ describe('principal helpers', () => {
 		expect(getLegacyAuthState(apiKeyPrincipal)).toEqual({
 			session: null,
 			user: null,
-			role: 'api-member',
-			roles: ['api-member']
+			role: 'viewer',
+			roles: ['viewer']
 		});
 		expect(
 			getLegacyAuthState({
@@ -147,6 +175,7 @@ describe('principal helpers', () => {
 				appRoles: [],
 				primaryAppRole: null,
 				apiPlan: null,
+				ppiAccess: false,
 				apiScopes: [],
 				apiKeyId: null,
 				apiKeyName: null,
@@ -174,6 +203,7 @@ describe('principal helpers', () => {
 			appRoles: ['member'],
 			primaryAppRole: 'member',
 			apiPlan: 'viewer',
+			ppiAccess: false,
 			apiScopes: ['catalog:read'],
 			apiKeyId: null,
 			apiKeyName: null,
@@ -205,9 +235,10 @@ describe('principal helpers', () => {
 			userId: 'user-1',
 			user: null,
 			session: null,
-			appRoles: ['api-member'],
-			primaryAppRole: 'api-member',
-			apiPlan: 'api-member',
+			appRoles: ['viewer'],
+			primaryAppRole: 'viewer',
+			apiPlan: 'member',
+			ppiAccess: false,
 			apiScopes: ['catalog:read'],
 			apiKeyId: 'key-1',
 			apiKeyName: 'Test key',

@@ -13,9 +13,9 @@
 	let tierDisplayName = $derived(() => {
 		if (!data.currentStats) return 'Explorer';
 		switch (data.currentStats.userTier) {
-			case 'api-enterprise':
+			case 'enterprise':
 				return 'Enterprise';
-			case 'api-member':
+			case 'member':
 				return 'Roaster+';
 			case 'viewer':
 				return 'Explorer';
@@ -125,9 +125,9 @@
 					</p>
 					<div class="mt-2">
 						<div class="text-xs text-text-secondary-light">
-							{#if data.currentStats?.userTier === 'api-enterprise'}
+							{#if data.currentStats?.userTier === 'enterprise'}
 								Unlimited API calls
-							{:else if data.currentStats?.userTier === 'api-member'}
+							{:else if data.currentStats?.userTier === 'member'}
 								$99/month
 							{:else}
 								Free tier
@@ -260,7 +260,7 @@
 			</div>
 
 			<!-- Rate Limit Status with Upgrade CTAs -->
-			{#if data.currentStats?.userTier !== 'api-enterprise' && monthlyUsagePercent() >= 75}
+			{#if data.currentStats?.userTier !== 'enterprise' && monthlyUsagePercent() >= 75}
 				<div class="mt-8 rounded-md bg-yellow-50 p-4 ring-1 ring-yellow-200">
 					<div class="flex">
 						<div class="flex-shrink-0">
