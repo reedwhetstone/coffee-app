@@ -72,6 +72,15 @@ function createFilterStore() {
 	const { subscribe, update } = writable<FilterState>(initialState);
 
 	/**
+	 * Maps internal filter store keys to canonical API query parameter names.
+	 * The UI uses `cost_lb` as the internal key for the price-per-lb range filter,
+	 * but the API's canonical params are `price_per_lb_min` / `price_per_lb_max`.
+	 */
+	const PARAM_NAME_MAP: Record<string, string> = {
+		cost_lb: 'price_per_lb'
+	};
+
+	/**
 	 * Builds query parameters for server-side filtering and sorting
 	 * @returns URLSearchParams object
 	 */
@@ -99,16 +108,19 @@ function createFilterStore() {
 		Object.entries(state.filters).forEach(([key, value]) => {
 			if (value === undefined || value === null || value === '') return;
 
+			// Remap internal filter keys to canonical API param names where they differ
+			const paramKey = PARAM_NAME_MAP[key] ?? key;
+
 			if (Array.isArray(value)) {
 				value.forEach((v) => {
-					if (v) params.append(key, v.toString());
+					if (v) params.append(paramKey, v.toString());
 				});
 			} else if (typeof value === 'object' && value.min !== undefined && value.max !== undefined) {
-				// Handle range filters (score_value, cost_lb)
-				if (value.min !== '') params.append(`${key}_min`, value.min.toString());
-				if (value.max !== '') params.append(`${key}_max`, value.max.toString());
+				// Handle range filters (score_value, price_per_lb / cost_lb)
+				if (value.min !== '') params.append(`${paramKey}_min`, value.min.toString());
+				if (value.max !== '') params.append(`${paramKey}_max`, value.max.toString());
 			} else {
-				params.append(key, value.toString());
+				params.append(paramKey, value.toString());
 			}
 		});
 

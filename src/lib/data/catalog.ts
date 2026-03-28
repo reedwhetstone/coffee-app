@@ -370,6 +370,59 @@ export async function getCatalogItemsByIds(
 	return (data as CatalogItem[]) || [];
 }
 
+// ── Columns for filter metadata ───────────────────────────────────────────────
+
+/** Minimal column set for building unique filter option lists. */
+const FILTER_METADATA_COLUMNS =
+	'source, continent, country, processing, cultivar_detail, type, grade, appearance, arrival_date' as const;
+
+/** Row shape returned by the narrow filter-metadata query. */
+export type CatalogFilterMetadataRow = {
+	source: string | null;
+	continent: string | null;
+	country: string | null;
+	processing: string | null;
+	cultivar_detail: string | null;
+	type: string | null;
+	grade: string | null;
+	appearance: string | null;
+	arrival_date: string | null;
+};
+
+/**
+ * Narrow query for building filter option lists (/api/catalog/filters).
+ * Selects only the 9 columns needed for unique-value extraction instead of
+ * fetching full rows via searchCatalog().
+ */
+export async function getCatalogFilterMetadata(
+	supabase: SupabaseClient,
+	options: {
+		stockedOnly?: boolean;
+		publicOnly?: boolean;
+		showWholesale?: boolean;
+		wholesaleOnly?: boolean;
+	} = {}
+): Promise<CatalogFilterMetadataRow[]> {
+	const { stockedOnly, publicOnly, showWholesale, wholesaleOnly } = options;
+
+	let query = supabase
+		.from('coffee_catalog')
+		.select(FILTER_METADATA_COLUMNS)
+		.order('arrival_date', { ascending: false });
+
+	if (stockedOnly) query = query.eq('stocked', true);
+	if (publicOnly) query = query.eq('public_coffee', true);
+	if (wholesaleOnly) {
+		query = query.eq('wholesale', true);
+	} else if (showWholesale === false) {
+		query = query.eq('wholesale', false);
+	}
+
+	const { data, error } = await query;
+	if (error) throw error;
+	return (data as CatalogFilterMetadataRow[]) || [];
+}
+
 /**
  * Fetch all publicly visible catalog items with a specific column subset.
  * Used by the external catalog API.
