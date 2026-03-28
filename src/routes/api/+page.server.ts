@@ -9,135 +9,85 @@ export const load: PageServerLoad = async ({ url }) => {
 	const schemaService = createSchemaService(baseUrl);
 	const breadcrumbs = generateBreadcrumbs(url.pathname, baseUrl);
 
-	// Comprehensive service information matching actual API page content
 	const serviceData = {
-		name: 'Purveyors Green Coffee API',
+		name: 'Parchment API',
 		description:
-			'The first normalized, daily-updated API for specialty green coffee. Real-time inventory data from top U.S. suppliers with comprehensive coffee details, pricing, and availability.',
+			'Normalized green coffee catalog access, market analytics, and a unified docs path for Parchment Platform on Purveyors.',
 		provider: 'Purveyors',
 		serviceType: 'Data API',
 		url: pageUrl,
 		features: [
-			'Daily-updated green coffee data',
-			'Normalized data from multiple suppliers',
-			'Real-time pricing and availability',
-			'Comprehensive coffee details and tasting notes',
-			'RESTful JSON API',
-			'Authentication and rate limiting',
-			'Developer documentation and examples'
+			'Public catalog feed via API key',
+			'Unified public docs under /docs',
+			'Account-aware key and usage tooling in Parchment Console',
+			'Live market analytics in the web app',
+			'CLI and agent workflows through @purveyors/cli'
 		],
 		audience: [
-			'Coffee roasters',
-			'Developers and data engineers',
-			'Coffee industry professionals',
-			'Specialty coffee businesses'
+			'Coffee software teams',
+			'Roasters and sourcing operators',
+			'Data consumers',
+			'Agents and automation workflows'
 		]
 	};
 
-	// Pricing tiers matching actual API page content
 	const pricingTiers = [
 		{
-			name: 'Free',
+			name: 'Explorer',
 			price: 0,
 			currency: 'USD',
 			billingDuration: 'P1M',
-			description: 'Perfect for testing and small-scale development',
-			features: [
-				'100 API calls per month',
-				'Basic coffee data access',
-				'Standard rate limiting',
-				'Community support'
-			],
+			description: 'Free tier for evaluation and lightweight catalog pulls',
+			features: ['200 requests per month', '25 rows per call', 'Parchment Console access'],
 			popular: false
 		},
 		{
-			name: 'Developer',
-			price: 19,
+			name: 'Roaster+',
+			price: 99,
 			currency: 'USD',
 			billingDuration: 'P1M',
-			description: 'Ideal for small applications and startups',
-			features: [
-				'5,000 API calls per month',
-				'Full coffee data access',
-				'Priority rate limiting',
-				'Email support',
-				'API documentation access'
-			],
+			description: 'Production catalog integrations and higher-volume syncing',
+			features: ['10,000 requests per month', 'Unlimited rows per call', 'Usage analytics'],
 			popular: true
 		},
 		{
-			name: 'Professional',
-			price: 49,
-			currency: 'USD',
-			billingDuration: 'P1M',
-			description: 'For growing businesses and commercial applications',
-			features: [
-				'25,000 API calls per month',
-				'Advanced data features',
-				'Custom rate limits',
-				'Priority support',
-				'Webhook notifications',
-				'Analytics dashboard'
-			],
-			popular: false
-		},
-		{
 			name: 'Enterprise',
-			price: 199,
+			price: 0,
 			currency: 'USD',
 			billingDuration: 'P1M',
-			description: 'For large-scale operations and custom integrations',
-			features: [
-				'Unlimited API calls',
-				'Custom data endpoints',
-				'SLA guarantees',
-				'Dedicated support',
-				'Custom integrations',
-				'White-label options'
-			],
+			description: 'Custom volume, unlimited request ceilings, and premium support',
+			features: ['Unlimited requests', 'Unlimited rows per call', 'Custom commercial terms'],
 			popular: false
 		}
 	];
 
-	// Enhanced FAQ data based on actual API page content
 	const faqs = [
 		{
-			question: 'What makes Purveyors API different from other coffee data sources?',
+			question: 'Which API route is public today?',
 			answer:
-				'Purveyors is the first normalized, daily-updated API specifically for specialty green coffee. We aggregate data from multiple top U.S. suppliers and provide it in a consistent format with real-time pricing and availability.'
+				'The stable external route is GET /api/catalog-api. It uses API-key auth and returns publicly visible catalog rows with tier-based row limits.'
 		},
 		{
-			question: 'How fresh is the data?',
+			question: 'Are analytics exposed as a public REST API?',
 			answer:
-				'Our data is updated daily through automated scraping of supplier websites. This ensures you always have the most current pricing, availability, and coffee details.'
+				'Not yet. Analytics are a major product surface in the web app at /analytics, with deeper authenticated and premium analytics views, but they are not currently sold as a separate public API-key endpoint family.'
 		},
 		{
-			question: 'What data fields are included?',
+			question: 'Where do I generate keys and inspect usage?',
 			answer:
-				'Each coffee entry includes origin details (country, region, farm), processing method, tasting notes, pricing per pound, availability status, arrival dates, grade information, and supplier details.'
+				'Use /api-dashboard to open Parchment Console, create keys, review monthly usage, and confirm your current tier and limits.'
 		},
 		{
-			question: 'Do you offer webhook notifications?',
+			question: 'How does the CLI fit in?',
 			answer:
-				'Yes, Professional and Enterprise plans include webhook notifications for price changes, new coffee arrivals, and availability updates.'
-		},
-		{
-			question: 'Is there an SLA for API uptime?',
-			answer:
-				'Enterprise customers receive SLA guarantees with 99.9% uptime commitment. All other plans benefit from our robust infrastructure but without formal SLA coverage.'
-		},
-		{
-			question: 'Can I get historical pricing data?',
-			answer:
-				'Yes, Professional and Enterprise plans include access to historical pricing trends and seasonal availability patterns for market analysis.'
+				'The CLI is a first-class interface to the platform. The web app imports @purveyors/cli modules directly for several AI and workflow features, so CLI and app behavior stay aligned.'
 		}
 	];
 
-	// Generate comprehensive schema for API service page
 	const schemaData = schemaService.generatePageSchema('api-service', pageUrl, {
 		service: serviceData,
 		pricing: pricingTiers,
-		faqs: faqs,
+		faqs,
 		breadcrumbs
 	});
 
@@ -145,28 +95,27 @@ export const load: PageServerLoad = async ({ url }) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/api',
-			title: 'Purveyors.io Green Coffee API - Transform Your Roasting Platform',
+			title: 'Parchment API | Green Coffee Catalog and Market Intelligence',
 			description:
-				'The first normalized, daily-updated API for specialty green coffee. Integrate real-time green coffee data into your roasting software with our comprehensive REST API.',
+				'Access the Parchment API catalog feed, Parchment Console, and unified Parchment API plus CLI docs.',
 			keywords: [
 				'green coffee API',
-				'coffee data API',
-				'specialty coffee API',
-				'roasting software integration',
-				'coffee inventory API',
-				'normalized coffee data'
+				'coffee catalog API',
+				'coffee market analytics',
+				'purveyors cli',
+				'coffee sourcing data'
 			],
-			ogTitle: 'Purveyors Green Coffee API - Coffee Data Integration',
+			ogTitle: 'Parchment API',
 			ogDescription:
-				'The first normalized, daily-updated API for specialty green coffee. Real-time inventory data from top U.S. suppliers.',
-			twitterTitle: 'Purveyors Green Coffee API',
+				'Normalized green coffee catalog access, market analytics, and unified documentation for Parchment Platform on Purveyors.',
+			twitterTitle: 'Parchment API',
 			twitterDescription:
-				'Integrate real-time green coffee data into your roasting software with our comprehensive REST API.',
+				'Catalog data, analytics, Parchment Console tooling, and CLI workflows on Purveyors.',
 			type: 'product',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/api.jpg',
-				alt: 'Purveyors API social preview card'
+				alt: 'Parchment API social preview card'
 			}),
 			schemaData
 		})

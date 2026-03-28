@@ -220,7 +220,7 @@
 					</dd>
 				</div>
 
-				<!-- Parchment API -->
+				<!-- API platform -->
 				<!-- <div class="flex flex-col">
 					<dt
 						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"

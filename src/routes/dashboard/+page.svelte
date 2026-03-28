@@ -37,8 +37,8 @@
 		{
 			href: '/api-dashboard',
 			icon: '🔑',
-			title: 'API Dashboard',
-			description: 'Manage Parchment API access, docs, and usage.'
+			title: 'Parchment Console',
+			description: 'Manage Parchment API keys, docs, and usage.'
 		},
 		{
 			href: '/beans',

@@ -65,16 +65,9 @@ ${blogPostEntries}
 		<priority>0.5</priority>
 	</url>
 
-	<!-- API Dashboard -->
+	<!-- Parchment Console -->
 	<url>
 		<loc>${baseUrl}/api-dashboard</loc>
-		<lastmod>${currentDate}</lastmod>
-		<changefreq>weekly</changefreq>
-		<priority>0.5</priority>
-	</url>
-
-	<url>
-		<loc>${baseUrl}/api-dashboard/docs</loc>
 		<lastmod>${currentDate}</lastmod>
 		<changefreq>weekly</changefreq>
 		<priority>0.5</priority>

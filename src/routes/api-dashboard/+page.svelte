@@ -7,20 +7,20 @@
 
 	// Set page title
 	onMount(() => {
-		document.title = 'API Dashboard - Purveyors';
+		document.title = 'Parchment Console - Purveyors';
 	});
 </script>
 
 <svelte:head>
-	<title>API Dashboard - Purveyors</title>
-	<meta name="description" content="Manage your Purveyors API keys and monitor usage" />
+	<title>Parchment Console - Purveyors</title>
+	<meta name="description" content="Manage your Parchment API keys, usage, and docs access" />
 </svelte:head>
 
 <div class="min-h-screen bg-background-primary-light">
 	<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 		<!-- Header -->
 		<div class="mb-8">
-			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">API Dashboard</h1>
+			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">Parchment Console</h1>
 			<p class="mt-2 text-lg text-text-secondary-light">
 				Manage your API keys, monitor usage, and access documentation
 			</p>
@@ -143,7 +143,7 @@
 					Usage Analytics
 				</a>
 				<a
-					href="/api-dashboard/docs"
+					href="/docs"
 					class="border-b-2 border-transparent px-1 py-2 text-sm font-medium text-text-secondary-light hover:border-text-secondary-light hover:text-text-primary-light"
 				>
 					Documentation
@@ -255,7 +255,7 @@
 
 				<div class="mt-6">
 					<button
-						onclick={() => goto('/api-dashboard/docs')}
+						onclick={() => goto('/docs/api/overview')}
 						class="w-full rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					>
 						View Documentation
@@ -354,7 +354,7 @@
 										View usage analytics
 									</a>
 									<a
-										href="/api-dashboard/docs"
+										href="/docs/api/errors"
 										class="font-medium text-yellow-800 underline hover:text-yellow-600"
 									>
 										Rate limit documentation
@@ -407,5 +407,5 @@
 </div>
 
 <style>
-	/* Custom styles for the API dashboard */
+	/* Custom styles for Parchment Console */
 </style>

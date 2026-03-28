@@ -111,7 +111,7 @@ test.describe('Protected pages load with auth', () => {
 	test('/api keeps the public shell for signed-in users', async ({ page }) => {
 		await page.goto('/api', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL('/api');
-		await expect(page.getByRole('heading', { name: 'Parchment API' }).first()).toBeVisible();
+		await expect(page.getByRole('heading', { name: /green coffee data/i }).first()).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Dashboard' }).first()).toBeVisible();
 		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(0);
 	});
