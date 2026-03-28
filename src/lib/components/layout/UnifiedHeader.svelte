@@ -88,7 +88,7 @@
 						? 'text-background-tertiary-light'
 						: 'text-text-secondary-light hover:text-text-primary-light'}"
 				>
-					API
+					{isSignedIn ? 'Console' : 'API'}
 				</button>
 				<button
 					onclick={() => navigateTo('/docs')}
@@ -205,7 +205,7 @@
 						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
 						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
 				>
-					API
+					{isSignedIn ? 'Console' : 'API'}
 				</button>
 				<button
 					onclick={() => navigateTo('/docs')}

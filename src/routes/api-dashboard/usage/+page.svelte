@@ -302,7 +302,7 @@
 										href="/api-dashboard"
 										class="font-medium text-yellow-800 underline hover:text-yellow-600"
 									>
-										Back to Dashboard
+										Back to Parchment Console
 									</a>
 								</div>
 							</div>
