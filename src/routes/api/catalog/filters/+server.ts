@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { searchCatalog } from '$lib/data/catalog';
+import { getCatalogFilterMetadata } from '$lib/data/catalog';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import type { RequestHandler } from './$types';
 
@@ -11,7 +11,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			showWholesaleRequested: url.searchParams.get('showWholesale') === 'true',
 			wholesaleOnlyRequested: url.searchParams.get('wholesaleOnly') === 'true'
 		});
-		const { data: rows } = await searchCatalog(locals.supabase, {
+		const rows = await getCatalogFilterMetadata(locals.supabase, {
 			stockedOnly: true,
 			publicOnly: visibility.publicOnly,
 			showWholesale: visibility.showWholesale,

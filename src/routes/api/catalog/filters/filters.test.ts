@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockSearchCatalog = vi.fn();
+const mockGetCatalogFilterMetadata = vi.fn();
 
 vi.mock('$lib/data/catalog', () => ({
-	searchCatalog: mockSearchCatalog
+	getCatalogFilterMetadata: mockGetCatalogFilterMetadata
 }));
 
 let GET: typeof import('./+server').GET;
@@ -36,11 +36,7 @@ const visibleRows = [
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
-	mockSearchCatalog.mockResolvedValue({
-		data: visibleRows,
-		count: visibleRows.length,
-		filtersApplied: {}
-	});
+	mockGetCatalogFilterMetadata.mockResolvedValue(visibleRows);
 	({ GET } = await import('./+server'));
 });
 
@@ -63,7 +59,7 @@ describe('/api/catalog/filters', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
+		expect(mockGetCatalogFilterMetadata).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
 				stockedOnly: true,
@@ -86,7 +82,7 @@ describe('/api/catalog/filters', () => {
 			)
 		);
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
+		expect(mockGetCatalogFilterMetadata).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
 				stockedOnly: true,
@@ -108,7 +104,7 @@ describe('/api/catalog/filters', () => {
 			)
 		);
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
+		expect(mockGetCatalogFilterMetadata).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
 				stockedOnly: true,
