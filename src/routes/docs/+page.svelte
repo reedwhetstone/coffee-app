@@ -6,7 +6,7 @@
 	<title>Parchment Platform docs | Purveyors</title>
 	<meta
 		name="description"
-		content="Unified Parchment Platform documentation for the API, CLI, analytics, and agent integration workflows."
+		content="Developer documentation for the Parchment API and Parchment CLI. Get started with green coffee catalog data in minutes."
 	/>
 </svelte:head>
 
@@ -18,12 +18,12 @@
 			Parchment Platform docs
 		</p>
 		<h1 class="mt-3 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-			Unified documentation for Parchment Platform, Parchment API, and Parchment CLI
+			Documentation
 		</h1>
 		<p class="mt-4 max-w-3xl text-base leading-relaxed text-text-secondary-light sm:text-lg">
-			This docs tree replaces the old split between marketing copy, console-only API pages, and
-			stale monoliths. Start with the API docs if you are integrating over HTTP, or the CLI docs if
-			you want terminal and agent workflows.
+			Parchment Platform gives you normalized green coffee data from 39+ suppliers through a REST
+			API and a command-line interface. Start with the API docs to integrate over HTTP, or the CLI
+			docs for terminal and automation workflows.
 		</p>
 	</section>
 
@@ -71,9 +71,9 @@
 			href="/api"
 			class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<div class="text-sm font-semibold text-text-primary-light">API product page</div>
+			<div class="text-sm font-semibold text-text-primary-light">API overview</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Public positioning, plans, and a clean handoff into the docs.
+				Plans, pricing, and quick start for the Parchment API.
 			</p>
 		</a>
 		<a
@@ -82,7 +82,7 @@
 		>
 			<div class="text-sm font-semibold text-text-primary-light">Parchment Console</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Generate keys, inspect usage, and connect docs to account state.
+				Generate API keys, monitor usage, and manage your account.
 			</p>
 		</a>
 		<a
@@ -91,7 +91,7 @@
 		>
 			<div class="text-sm font-semibold text-text-primary-light">Public catalog</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				See the public marketplace surface that shares domain data with the API and CLI.
+				Browse the green coffee marketplace that the API serves.
 			</p>
 		</a>
 		<a
@@ -100,7 +100,7 @@
 		>
 			<div class="text-sm font-semibold text-text-primary-light">Analytics</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Explore the live market intelligence product and its gating model.
+				Market intelligence: pricing trends, supplier coverage, and origin analysis.
 			</p>
 		</a>
 	</section>
