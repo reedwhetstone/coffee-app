@@ -110,9 +110,9 @@ export const load: PageServerLoad = async (event) => {
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 	const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-	const sixMonthsAgo = new Date();
-	sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 182);
-	const fromDate = sixMonthsAgo.toISOString().split('T')[0];
+	const ninetyDaysAgo = new Date();
+	ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+	const fromDate = ninetyDaysAgo.toISOString().split('T')[0];
 
 	const [
 		{ data: marketSummaryRaw },
