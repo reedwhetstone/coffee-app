@@ -109,6 +109,7 @@ Browser
         │
         ├── /catalog                 # Green coffee marketplace (public + auth)
         ├── /analytics               # Market data + PPI charts (public preview, full auth)
+        ├── /dashboard               # Logged-in app home (auth required)
         ├── /beans                   # Inventory management (auth required)
         ├── /roast                   # Roast tracking + Artisan import (auth required)
         ├── /profit                  # Sales and profit analytics (auth required)
@@ -116,6 +117,7 @@ Browser
         ├── /blog                    # MDsveX blog (public)
         ├── /api-dashboard           # API key management (auth required)
         ├── /subscription            # Stripe subscription management
+        ├── /v1/*                    # Canonical versioned API resources
         │
         └── /api/*                   # Server-side API routes
               ├── /api/catalog        # Internal catalog queries (session auth)
@@ -228,7 +230,8 @@ pnpm test:e2e:auth         # run auth setup fixture only
 coffee-app/
 ├── src/
 │   ├── routes/                   # SvelteKit file-based routing
-│   │   ├── (home)/               # Landing page (grouped layout route)
+│   │   ├── (home)/               # Landing page / public entry point (/)
+│   │   ├── dashboard/            # Logged-in app home (/dashboard)
 │   │   ├── catalog/              # Green coffee marketplace
 │   │   ├── analytics/            # Market data + PPI charts (public preview, full auth)
 │   │   ├── beans/                # Green coffee inventory management
@@ -245,6 +248,7 @@ coffee-app/
 │   │   │   ├── stripe/           # Payment endpoints and webhook handler
 │   │   │   └── artisan-import/   # Artisan .alog CSV importer
 │   │   ├── api-dashboard/        # API key management UI
+│   │   ├── v1/                   # Canonical versioned API resources
 │   │   ├── subscription/         # Stripe subscription flow
 │   │   └── admin/                # Admin utilities
 │   ├── lib/
@@ -306,11 +310,11 @@ Two API layers exist with intentionally separate authentication paths.
 
 | Tier       | Rows per request | Monthly calls |
 | ---------- | ---------------- | ------------- |
-| Viewer     | 25               | 200           |
-| Member     | Unlimited        | 10,000        |
-| Enterprise | Unlimited        | Unlimited     |
+| Explorer   | 25               | 200           |
+| Roaster+   | Unlimited        | 10,000        |
+| Integrate  | Unlimited        | Unlimited     |
 
-API keys are generated and managed at `/api-dashboard/`. Usage is logged per key with full analytics. API documentation lives at `/api-dashboard/docs`.
+API keys are generated and managed at `/api-dashboard/`. Usage is logged per key with full analytics. API documentation lives at `/docs`.
 
 The longer-term goal is an API-first architecture where internal server load functions become thin consumers of the same versioned endpoints sold externally. See `notes/API_notes/API-strategy.md` for the migration plan.
 
