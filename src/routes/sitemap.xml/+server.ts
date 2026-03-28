@@ -1,5 +1,6 @@
 import type { RequestHandler } from './$types';
 import { getAllPosts } from '$lib/server/blog';
+import { DOCS_NAV } from '$lib/docs/content';
 
 export const GET: RequestHandler = async ({ url }) => {
 	// Use the request URL to determine the correct domain
@@ -23,6 +24,18 @@ export const GET: RequestHandler = async ({ url }) => {
 	</url>`
 		)
 		.join('');
+
+	const docsEntries = DOCS_NAV.flatMap((section) =>
+		section.items.map(
+			(item) => `
+	<url>
+		<loc>${baseUrl}${section.basePath}/${item.slug}</loc>
+		<lastmod>${currentDate}</lastmod>
+		<changefreq>monthly</changefreq>
+		<priority>0.7</priority>
+	</url>`
+		)
+	).join('');
 
 	const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -57,6 +70,14 @@ export const GET: RequestHandler = async ({ url }) => {
 		<priority>0.8</priority>
 	</url>
 ${blogPostEntries}
+	<!-- Developer docs tree -->
+	<url>
+		<loc>${baseUrl}/docs</loc>
+		<lastmod>${currentDate}</lastmod>
+		<changefreq>monthly</changefreq>
+		<priority>0.7</priority>
+	</url>
+${docsEntries}
 	<!-- API page - High priority marketing page -->
 	<url>
 		<loc>${baseUrl}/api</loc>
