@@ -2,6 +2,7 @@
 	import type { Component } from 'svelte';
 	import ChartSkeleton from '$lib/components/ChartSkeleton.svelte';
 	import { formatPricePerLb, getDisplayPrice, parsePriceTiers } from '$lib/utils/pricing';
+	import { formatScore } from '$lib/utils/formatters';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 
@@ -108,6 +109,11 @@
 							>Wholesale</span
 						>
 					{/if}
+					{#if coffee.score_value != null}
+						<span class="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+							>Score: {formatScore(coffee.score_value)}</span
+						>
+					{/if}
 				</div>
 				<span class="shrink-0 font-bold text-background-tertiary-light">{priceText}</span>
 			</div>
@@ -163,6 +169,11 @@
 							<span
 								class="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700"
 								>Wholesale</span
+							>
+						{/if}
+						{#if coffee.score_value != null}
+							<span class="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+								>Score: {formatScore(coffee.score_value)}</span
 							>
 						{/if}
 					</div>
