@@ -8,17 +8,13 @@
 	function openDashboard() {
 		goto('/api-dashboard');
 	}
-
-	function openAuth() {
-		goto('/auth');
-	}
 </script>
 
 <svelte:head>
 	<title>Parchment API</title>
 	<meta
 		name="description"
-		content="Normalized green coffee catalog access, market intelligence, and a clean handoff into Parchment API and Parchment CLI docs."
+		content="Access normalized green coffee data from 39+ suppliers through a simple REST API. Daily updates, tiered pricing, built for roasters and coffee tech platforms."
 	/>
 </svelte:head>
 
@@ -31,66 +27,65 @@
 				Parchment API
 			</p>
 			<h1 class="mt-3 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-				Normalized green coffee data for software, operators, and agents
+				Green coffee data, normalized and ready to build on
 			</h1>
 			<p class="mt-5 text-lg leading-relaxed text-text-secondary-light">
-				Parchment Platform on Purveyors combines a public catalog feed, live market analytics, and a
-				first-party app for inventory, roasting, sales, and AI workflows. The public API contract
-				today is the catalog feed; the broader platform surfaces that same domain model through the
-				web app and CLI.
+				One API for green coffee catalog data from 39+ suppliers. Normalized fields, daily updates,
+				and simple REST access. Built for roasters, coffee tech platforms, and developers who need
+				reliable sourcing data without scraping dozens of supplier sites.
 			</p>
 		</div>
 
 		<div class="mt-8 flex flex-col gap-3 sm:flex-row">
 			<button
-				onclick={openDocs}
+				onclick={openDashboard}
 				class="rounded-xl bg-background-tertiary-light px-5 py-3 text-sm font-semibold text-white transition-opacity hover:bg-opacity-90"
+			>
+				Get your API key
+			</button>
+			<button
+				onclick={openDocs}
+				class="rounded-xl border border-background-tertiary-light px-5 py-3 text-sm font-semibold text-background-tertiary-light transition-colors hover:bg-background-tertiary-light hover:text-white"
 			>
 				Read the docs
 			</button>
-			<button
-				onclick={openDashboard}
-				class="rounded-xl border border-background-tertiary-light px-5 py-3 text-sm font-semibold text-background-tertiary-light transition-colors hover:bg-background-tertiary-light hover:text-white"
+			<a
+				href="/catalog"
+				class="rounded-xl border border-border-light px-5 py-3 text-center text-sm font-semibold text-text-primary-light transition-colors hover:bg-background-secondary-light"
 			>
-				Open Parchment Console
-			</button>
-			<button
-				onclick={openAuth}
-				class="rounded-xl border border-border-light px-5 py-3 text-sm font-semibold text-text-primary-light transition-colors hover:bg-background-secondary-light"
-			>
-				Sign in
-			</button>
+				See it in action
+			</a>
 		</div>
 	</section>
 
 	<section class="grid gap-4 lg:grid-cols-4">
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
-			<div class="text-3xl font-bold text-background-tertiary-light">1</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Public API feed</div>
-			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				API-key access to public catalog rows through /api/catalog-api.
-			</p>
-		</div>
-		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
 			<div class="text-3xl font-bold text-background-tertiary-light">39+</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Suppliers in analytics</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Suppliers</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Daily market intelligence powers the public /analytics experience.
+				Green coffee offerings from importers across the U.S., normalized into a single schema.
 			</p>
 		</div>
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
-			<div class="text-3xl font-bold text-background-tertiary-light">1h</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Catalog cache window</div>
+			<div class="text-3xl font-bold text-background-tertiary-light">Daily</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Updates</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				The external feed serves from a one-hour in-memory cache before falling back to the
-				database.
+				Catalog data refreshed every day. New arrivals, delistings, and price changes reflected
+				automatically.
 			</p>
 		</div>
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
-			<div class="text-3xl font-bold text-background-tertiary-light">CLI</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Shared domain contract</div>
+			<div class="text-3xl font-bold text-background-tertiary-light">REST</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Simple integration</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				The web app imports @purveyors/cli modules directly for chat and automation flows.
+				One endpoint, one API key, JSON response. Integrate in minutes, not weeks.
+			</p>
+		</div>
+		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
+			<div class="text-3xl font-bold text-background-tertiary-light">3</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Flexible tiers</div>
+			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
+				From free evaluation access to unlimited enterprise volume. Scale when you are ready.
 			</p>
 		</div>
 	</section>
@@ -99,23 +94,28 @@
 		<div
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 		>
-			<h2 class="text-2xl font-semibold text-text-primary-light">What is public today</h2>
+			<h2 class="text-2xl font-semibold text-text-primary-light">What you get</h2>
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
 				<li class="flex gap-3">
-					<span class="mt-1 h-2.5 w-2.5 rounded-full bg-background-tertiary-light"></span>
-					<span>GET /api/catalog-api for the stable external catalog feed</span>
+					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
+					<span
+						>Normalized catalog with origin, processing method, price, and availability for every
+						listing</span
+					>
 				</li>
 				<li class="flex gap-3">
-					<span class="mt-1 h-2.5 w-2.5 rounded-full bg-background-tertiary-light"></span>
-					<span>/catalog for public marketplace browsing</span>
+					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
+					<span
+						>Rate-limit headers on every response so you can manage your integration confidently</span
+					>
 				</li>
 				<li class="flex gap-3">
-					<span class="mt-1 h-2.5 w-2.5 rounded-full bg-background-tertiary-light"></span>
-					<span>/analytics for public market intelligence with deeper authenticated views</span>
+					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
+					<span>Consistent JSON schema across all suppliers, regardless of source format</span>
 				</li>
 				<li class="flex gap-3">
-					<span class="mt-1 h-2.5 w-2.5 rounded-full bg-background-tertiary-light"></span>
-					<span>/docs for unified API and CLI documentation</span>
+					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
+					<span>Free Explorer tier for evaluation with no credit card required</span>
 				</li>
 			</ul>
 		</div>
@@ -123,26 +123,25 @@
 		<div
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 		>
-			<h2 class="text-2xl font-semibold text-text-primary-light">What stays internal</h2>
+			<h2 class="text-2xl font-semibold text-text-primary-light">Built for</h2>
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
 				<li class="flex gap-3">
-					<span class="mt-1 h-2.5 w-2.5 rounded-full bg-background-tertiary-light"></span>
-					<span>Inventory, roast, profit, chat, workspaces, and Stripe routes under /api/*</span>
-				</li>
-				<li class="flex gap-3">
-					<span class="mt-1 h-2.5 w-2.5 rounded-full bg-background-tertiary-light"></span>
-					<span>Session-auth and member-gated routes used by the first-party app</span>
-				</li>
-				<li class="flex gap-3">
-					<span class="mt-1 h-2.5 w-2.5 rounded-full bg-background-tertiary-light"></span>
-					<span>CLI-backed chat tools and action-card execution flows</span>
-				</li>
-				<li class="flex gap-3">
-					<span class="mt-1 h-2.5 w-2.5 rounded-full bg-background-tertiary-light"></span>
+					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
 					<span
-						>These are documented so contributors understand them, but they are not public HTTP
-						promises.</span
+						>Roasters building sourcing tools, price comparison dashboards, or inventory systems</span
 					>
+				</li>
+				<li class="flex gap-3">
+					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
+					<span>Coffee tech platforms adding green coffee market data to their products</span>
+				</li>
+				<li class="flex gap-3">
+					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
+					<span>Developers and AI agents that need structured coffee supply chain data</span>
+				</li>
+				<li class="flex gap-3">
+					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
+					<span>Analysts tracking sourcing trends, supplier coverage, and pricing dynamics</span>
 				</li>
 			</ul>
 		</div>
@@ -151,7 +150,7 @@
 	<section
 		class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 	>
-		<h2 class="text-2xl font-semibold text-text-primary-light">Plans and limits</h2>
+		<h2 class="text-2xl font-semibold text-text-primary-light">Plans</h2>
 		<div class="mt-5 overflow-x-auto rounded-2xl border border-border-light">
 			<table class="min-w-full divide-y divide-border-light text-sm">
 				<thead class="bg-background-secondary-light text-left text-text-primary-light">
@@ -189,8 +188,11 @@
 			</table>
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-text-secondary-light">
-			Parchment Console shows your current tier, active keys, monthly usage, and rate-limit
-			warnings. The docs detail which routes are public and which remain app-internal.
+			All plans include rate-limit headers, JSON responses, and access to the full normalized
+			catalog. Manage your keys and monitor usage in the
+			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
+				>Parchment Console</a
+			>.
 		</p>
 	</section>
 
@@ -199,18 +201,18 @@
 			href="/docs/api/overview"
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<h2 class="text-xl font-semibold text-text-primary-light">API docs</h2>
+			<h2 class="text-xl font-semibold text-text-primary-light">API reference</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Public catalog reference, internal route map, analytics notes, and auth behavior.
+				Endpoints, authentication, response format, rate limits, and code examples.
 			</p>
 		</a>
 		<a
 			href="/docs/cli/overview"
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<h2 class="text-xl font-semibold text-text-primary-light">CLI docs</h2>
+			<h2 class="text-xl font-semibold text-text-primary-light">CLI reference</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Terminal workflows, auth, inventory, roast imports, and agent integration patterns.
+				Search the catalog, manage inventory, and automate roasting workflows from your terminal.
 			</p>
 		</a>
 		<a
@@ -219,7 +221,7 @@
 		>
 			<h2 class="text-xl font-semibold text-text-primary-light">Market analytics</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				See the public market-intelligence product that makes the catalog and API more useful.
+				Live market intelligence: pricing trends, supplier coverage, origin analysis, and more.
 			</p>
 		</a>
 	</section>
