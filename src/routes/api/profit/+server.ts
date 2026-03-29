@@ -1,7 +1,15 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { Database } from '$lib/types/database.types';
-import { listSales, getProfitData, recordSale, updateSale, deleteSale } from '$lib/data/sales.js';
+import {
+	listSales,
+	getProfitData,
+	recordSale,
+	updateSale,
+	deleteSale,
+	type SaleCreateInput
+} from '$lib/data/sales.js';
+import { SALES_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 
 export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
 	try {
@@ -53,8 +61,13 @@ export const PUT: RequestHandler = async ({
 			return json({ error: 'Unauthorized' }, { status: 403 });
 		}
 
-		const updates = await request.json();
-		const { coffee_name: _, ...updateData } = updates;
+		const raw = await request.json();
+
+		// Strip joined/computed fields — only pass actual sales table columns to Supabase.
+		const updateData = pickColumns(raw, SALES_COLUMNS);
+		// Remove id and user from the update payload (not safe to mutate via client)
+		delete updateData.id;
+		delete updateData.user;
 
 		const data = await updateSale(
 			supabase,
@@ -77,8 +90,13 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const saleData = await request.json();
-		const { coffee_name: _, id: __, ...insertData } = saleData;
+		const raw = await request.json();
+
+		// Strip joined/computed fields — only pass actual sales table columns to Supabase.
+		const insertData = pickColumns(raw, SALES_COLUMNS);
+		// Remove id and user — server controls these
+		delete insertData.id;
+		delete insertData.user;
 
 		if (!insertData.green_coffee_inv_id) {
 			return json({ error: 'green_coffee_inv_id is required' }, { status: 400 });
@@ -100,7 +118,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return json({ error: 'Unauthorized: You do not own this coffee inventory' }, { status: 403 });
 		}
 
-		const formattedSale = await recordSale(supabase, user.id, insertData);
+		const formattedSale = await recordSale(supabase, user.id, insertData as SaleCreateInput);
 
 		return json(formattedSale);
 	} catch (error) {
