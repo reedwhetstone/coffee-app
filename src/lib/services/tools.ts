@@ -248,25 +248,21 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 			execute: async (input) => {
 				const finalLimit = Math.min(input.limit ?? 10, 15);
 
-				// CLI listRoasts supports coffee_id filter directly; other filters applied client-side.
+				// CLI listRoasts supports these filters server-side; roast_name and date range
+				// are applied client-side after fetching.
 				let profiles: RoastProfile[] = await listRoasts(supabase, userId, {
-					coffee_id: input.coffee_id,
+					coffee_id: input.coffee_id && input.coffee_id > 0 ? input.coffee_id : undefined,
+					roast_id: input.roast_id ? parseInt(input.roast_id, 10) : undefined,
+					batch_name: input.batch_name,
+					catalog_id: input.catalog_id,
+					stocked_only: input.stocked_only,
 					limit: finalLimit * 3 // fetch more to allow for client-side filtering
 				});
 
-				// Client-side post-filters for params the CLI doesn't support yet
-				if (input.roast_id) {
-					profiles = profiles.filter((p) => String(p.roast_id) === input.roast_id);
-				}
-
+				// Client-side post-filters for params the CLI doesn't support server-side
 				if (input.roast_name) {
 					const nameLower = input.roast_name.toLowerCase();
 					profiles = profiles.filter((p) => p.coffee_name?.toLowerCase().includes(nameLower));
-				}
-
-				if (input.batch_name) {
-					const batchLower = input.batch_name.toLowerCase();
-					profiles = profiles.filter((p) => p.batch_name?.toLowerCase().includes(batchLower));
 				}
 
 				if (input.roast_date_start) {
