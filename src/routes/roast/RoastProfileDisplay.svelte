@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatDateForDisplay } from '$lib/utils/dates';
+	import { ROAST_PROFILES_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 	import type { RoastProfile } from '$lib/types/component.types';
 
 	let {
@@ -35,26 +36,17 @@
 
 	async function saveChanges() {
 		try {
-			const cleanedProfile = Object.fromEntries(
+			const nulled = Object.fromEntries(
 				Object.entries(editedProfile).map(([key, value]) => [
 					key,
 					value === '' || value === undefined ? null : value
 				])
 			);
 
-			cleanedProfile.last_updated = new Date().toISOString();
+			nulled.last_updated = new Date().toISOString();
 
-			// Strip computed/joined fields that aren't roast_profiles columns
-			const NON_COLUMN_FIELDS = [
-				'is_wholesale',
-				'green_coffee_inv',
-				'roast_temperatures',
-				'roast_events',
-				'coffee_catalog'
-			];
-			for (const field of NON_COLUMN_FIELDS) {
-				delete cleanedProfile[field];
-			}
+			// Use allowlist to strip computed/joined fields — forward-safe vs. denylist
+			const cleanedProfile = pickColumns(nulled, ROAST_PROFILES_COLUMNS);
 
 			const response = await fetch(`/api/roast-profiles?id=${profile.roast_id}`, {
 				method: 'PUT',

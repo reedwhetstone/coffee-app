@@ -4,6 +4,7 @@ import type { RequestHandler } from './$types';
 import type { Database } from '$lib/types/database.types';
 import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
 import { addToInventory, updateInventory, deleteInventoryItem } from '$lib/data/inventory.js';
+import { GREEN_COFFEE_INV_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
@@ -175,23 +176,7 @@ export const PUT: RequestHandler = async (event) => {
 		const { id: _, ...rawUpdateData } = updates;
 
 		// Filter to only include actual green_coffee_inv table columns
-		const validColumns = [
-			'rank',
-			'notes',
-			'purchase_date',
-			'purchased_qty_lbs',
-			'bean_cost',
-			'tax_ship_cost',
-			'last_updated',
-			'user',
-			'catalog_id',
-			'stocked',
-			'cupping_notes'
-		];
-
-		const updateData = Object.fromEntries(
-			Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
-		);
+		const updateData = pickColumns(rawUpdateData, GREEN_COFFEE_INV_COLUMNS);
 
 		let updated;
 		try {
