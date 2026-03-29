@@ -1,9 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createClient } from '$lib/supabase';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
-	const { safeGetSession } = locals;
+	const { supabase, safeGetSession } = locals;
 	const { user } = await safeGetSession();
 
 	if (!user) {
@@ -16,7 +15,6 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	}
 
 	const roastIdNum = parseInt(roastId);
-	const supabase = createClient();
 
 	try {
 		const { data: dataRaw, error } = await supabase
