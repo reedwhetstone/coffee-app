@@ -5,13 +5,11 @@ import {
 	type ApiPlan
 } from '$lib/server/apiAuth';
 import { createAdminClient } from '$lib/supabase-admin';
-import { createClient } from '$lib/supabase';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
 import type { Database, Json } from '$lib/types/database.types';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 
-const bearerSupabase = createClient();
 const adminSupabase = createAdminClient() as SupabaseClient<Database>;
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -406,7 +404,7 @@ async function resolveBearerSessionPrincipal(token: string): Promise<SessionPrin
 	const {
 		data: { user },
 		error
-	} = await bearerSupabase.auth.getUser(token);
+	} = await adminSupabase.auth.getUser(token);
 
 	if (error || !user) {
 		return null;
