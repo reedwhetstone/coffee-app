@@ -1,16 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiKeyPrincipal, SessionPrincipal } from './principal';
 
-vi.mock('$lib/supabase', () => ({
-	createClient: () => ({
-		auth: {
-			getUser: vi.fn()
-		}
-	})
-}));
-
 vi.mock('$lib/supabase-admin', () => ({
 	createAdminClient: () => ({
+		auth: {
+			getUser: vi.fn()
+		},
 		from: vi.fn()
 	})
 }));
