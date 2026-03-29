@@ -44,6 +44,18 @@
 
 			cleanedProfile.last_updated = new Date().toISOString();
 
+			// Strip computed/joined fields that aren't roast_profiles columns
+			const NON_COLUMN_FIELDS = [
+				'is_wholesale',
+				'green_coffee_inv',
+				'roast_temperatures',
+				'roast_events',
+				'coffee_catalog'
+			];
+			for (const field of NON_COLUMN_FIELDS) {
+				delete cleanedProfile[field];
+			}
+
 			const response = await fetch(`/api/roast-profiles?id=${profile.roast_id}`, {
 				method: 'PUT',
 				headers: {
