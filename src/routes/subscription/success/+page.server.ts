@@ -1,5 +1,4 @@
 import type { PageServerLoad } from './$types';
-import { createClient } from '$lib/supabase';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { session, user } = await locals.safeGetSession();
@@ -7,10 +6,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	// If user is logged in, check if they already have a Stripe customer ID
 	if (user) {
-		const supabase = createClient();
-
 		// Check if user already exists in stripe_customers table
-		const { data: customerData, error: customerError } = (await supabase
+		const { data: customerData, error: customerError } = (await locals.supabase
 			.from('stripe_customers')
 			.select('customer_id')
 			.eq('user_id', user.id)

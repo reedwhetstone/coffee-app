@@ -58,32 +58,14 @@
 	// Removed unused derived values (averageMargin, totalPoundsRoasted, sellThroughRate, roastLossRate)
 
 	// Add sales form handlers
-	async function handleFormSubmit(data: unknown) {
-		const saleData = data as SaleData;
-		// Keeping simple since form just passes object
-		const isUpdate = selectedSale?.id !== undefined && selectedSale?.id !== null;
-		isSaving = isUpdate ? 'Updating sale...' : 'Saving sale...';
+	// SaleForm already submits to the API and calls onSubmit(newSale) after success.
+	// This handler just refreshes local data — no second API call needed.
+	async function handleFormSubmit(_data: unknown) {
+		isSaving = 'Refreshing data...';
 		try {
-			const response = await fetch(
-				`/api/profit${isUpdate && selectedSale ? `?id=${selectedSale.id}` : ''}`,
-				{
-					method: isUpdate ? 'PUT' : 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(saleData)
-				}
-			);
-
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.error || `Failed to ${isUpdate ? 'update' : 'create'} sale`);
-			}
-
-			// Refresh all profit and sales data
 			await fetchInitialSalesData();
 		} catch (error) {
-			console.error('Error updating sales data:', error);
+			console.error('Error refreshing sales data:', error);
 			alert(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
 		} finally {
 			isSaving = null;
