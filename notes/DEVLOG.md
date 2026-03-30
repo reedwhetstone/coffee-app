@@ -27,7 +27,7 @@ These issues break core functionality and should be fixed first.
 These issues impact usability but don't break core functionality.
 
 - [ ] **UI/UX** - Supplier cupping note dashed lines are too dark and visually distracting. Reduce opacity or change to lighter color.
-- [ ] **UI/UX** - Score & rating display formatting needs cleanup. Numbers and labels aren't aligned consistently.
+
 - [ ] **UI/UX** - Saving cupping notes doesn't refresh page data. After save, the UI should re-render to show the newly saved data without requiring manual refresh.
 - [ ] **UI/UX** - Clean up beans catalog profiles to remove exposed user reference fields from the display.
 - [ ] **UI/UX** - Roast chart doesn't resize when navigating between pages. Chart container needs ResizeObserver or layout recalculation on route change.
@@ -64,6 +64,8 @@ Mobile-specific improvements for roasters on the go.
 
 The roast chart is a core feature that needs refinement.
 
+- [ ] **Bug** - Artisan file import (`/roast` page "Import Artisan File") has no loading indicator after clicking save. Takes noticeably longer than it used to and gives no feedback during the wait — looks like nothing happened.
+- [ ] **Bug** - Fan/heat settings from `.alog` imports render off-chart. Settings axes need to auto-detect the actual value range from the imported data (e.g., 0–100 in steps of 5 vs. 0–10) and scale accordingly instead of using a fixed axis range.
 - [ ] **Roast Chart** - Add visual save confirmation when clicking "cool end" button. Users need feedback that the action succeeded.
 - [ ] **Roast Chart** - Remove y-axis gridlines for cleaner appearance.
 - [ ] **Roast Chart** - Add average curve overlay for heat and fan settings across multiple roasts of same bean.
