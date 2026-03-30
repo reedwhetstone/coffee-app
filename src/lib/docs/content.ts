@@ -197,7 +197,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Catalog API request',
 						language: 'bash',
-						code: 'curl https://purveyors.io/api/catalog-api \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
+						code: 'curl https://www.purveyors.io/api/catalog-api \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
 					}
 				]
 			},
@@ -250,7 +250,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'GET /api/catalog-api',
 						language: 'json',
-						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "price_per_lb": 7.5,\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "total": 25,\n  "total_available": 814,\n  "limited": true,\n  "limit": 25,\n  "tier": "viewer",\n  "cached": true,\n  "api_version": "1.0"\n}'
+						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "cost_lb": 7.5,\n      "stocked": true,\n      "source": "sweet_maria",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "total": 25,\n  "total_available": 1000,\n  "limited": true,\n  "tier": "viewer",\n  "cached": true,\n  "api_version": "1.0"\n}'
 					}
 				]
 			},
