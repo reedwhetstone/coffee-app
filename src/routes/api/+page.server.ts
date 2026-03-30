@@ -65,7 +65,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		{
 			question: 'Which API route is public today?',
 			answer:
-				'The stable external route is GET /api/catalog-api. It uses API-key auth and returns publicly visible catalog rows with tier-based row limits.'
+				'The canonical external route is GET /v1/catalog. It supports both API-key and session auth, and returns publicly visible catalog rows with tier-based row limits.'
 		},
 		{
 			question: 'Are analytics exposed as a public REST API?',
