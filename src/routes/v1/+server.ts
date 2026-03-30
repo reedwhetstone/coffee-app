@@ -14,7 +14,7 @@ export const GET: RequestHandler = async () => {
 			catalog: {
 				href: '/v1/catalog',
 				status: 'live',
-				legacyAliases: ['/api/catalog', '/api/catalog-api']
+				legacyAliases: ['/api/catalog']
 			}
 		}
 	});
