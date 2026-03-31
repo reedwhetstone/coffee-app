@@ -14,6 +14,9 @@ vi.mock('$lib/supabase', () => ({
 
 vi.mock('$lib/supabase-admin', () => ({
 	createAdminClient: () => ({
+		auth: {
+			getUser: mockBearerGetUser
+		},
 		from: (table: string) => {
 			if (table !== 'user_roles') {
 				throw new Error(`Unexpected table lookup in auth test: ${table}`);
