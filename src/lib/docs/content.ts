@@ -162,7 +162,12 @@ const docsPages: DocsPage[] = [
 				table: {
 					headers: ['Surface', 'Auth', 'Description', 'Access'],
 					rows: [
-						['/api/catalog-api', 'Bearer API key', 'Public catalog feed', 'All tiers'],
+						[
+							'/v1/catalog',
+							'Bearer API key or web session',
+							'Canonical catalog endpoint',
+							'All tiers'
+						],
 						['/api-dashboard', 'Web session', 'Console for keys and usage', 'Authenticated users'],
 						[
 							'/api/catalog',
@@ -188,7 +193,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Authentication',
 				bullets: [
-					'External API consumers send Authorization: Bearer <api_key> to /api/catalog-api.',
+					'External API consumers send Authorization: Bearer <api_key> to /v1/catalog.',
 					'API keys are created and managed in the Parchment Console at /api-dashboard/keys.',
 					'Access tiers (Explorer, Roaster+, Enterprise) determine rate limits and row caps.',
 					'Web app endpoints use Supabase session cookies. Member-only routes require an active membership.'
@@ -197,7 +202,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Catalog API request',
 						language: 'bash',
-						code: 'curl https://www.purveyors.io/api/catalog-api \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
+						code: 'curl https://purveyors.io/v1/catalog \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
 					}
 				]
 			},
@@ -236,21 +241,21 @@ const docsPages: DocsPage[] = [
 			'The public catalog endpoint returns normalized green coffee data from 39+ suppliers with tier-based rate limits.',
 		eyebrow: 'Public endpoint',
 		intro: [
-			'GET /api/catalog-api is the public catalog endpoint. It returns normalized coffee listings with origin, processing method, price, and availability data. Authenticate with your API key to start pulling data.',
-			'Responses include pagination metadata, tier information, and rate-limit headers so you can build reliable integrations.'
+			'GET /v1/catalog is the canonical catalog endpoint. It returns normalized coffee listings with origin, processing method, pricing (including price tiers), and availability data. Authenticate with an API key or web session to start pulling data.',
+			'Responses include structured pagination, access metadata, and rate-limit headers so you can build reliable integrations.'
 		],
 		sections: [
 			{
 				title: 'Request and response',
 				body: [
-					'The catalog endpoint returns the full feed of publicly visible listings. Filter and search on your side after fetching; the API handles normalization and freshness.',
-					'Each response includes data (the listings array), total and total_available counts, your current tier, and whether the response was served from cache.'
+					'The catalog endpoint returns the full feed of publicly visible listings. Use query parameters for filtering, pagination, and sorting.',
+					'Each response includes data (the listings array), pagination metadata, and a meta block with auth, access, and cache details.'
 				],
 				codeBlocks: [
 					{
-						label: 'GET /api/catalog-api',
+						label: 'GET /v1/catalog',
 						language: 'json',
-						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "cost_lb": 7.5,\n      "stocked": true,\n      "source": "sweet_maria",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "total": 25,\n  "total_available": 1000,\n  "limited": true,\n  "tier": "viewer",\n  "cached": true,\n  "api_version": "1.0"\n}'
+						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "price_per_lb": 7.5,\n      "cost_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": { "page": 1, "limit": 25, "total": 814, "totalPages": 33, "hasNext": true, "hasPrev": false },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": { "publicOnly": true, "rowLimit": 25, "limited": true, "totalAvailable": 814 },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
 					}
 				]
 			},
@@ -283,7 +288,7 @@ const docsPages: DocsPage[] = [
 				callout: {
 					tone: 'warning',
 					title: 'Do not confuse the two catalog routes',
-					body: '/api/catalog-api is the public API-key endpoint for external integrations. /api/catalog is the session-authenticated route used by the web app, with different pagination and filtering behavior.'
+					body: '/v1/catalog is the canonical endpoint for both external integrations (API key) and the web app (session auth). /api/catalog is a legacy internal route that delegates to the same resource.'
 				}
 			}
 		],
@@ -552,7 +557,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Troubleshooting',
 				bullets: [
-					'For public catalog access, use an API key with /api/catalog-api or the CLI catalog commands.',
+					'For public catalog access, use an API key with /v1/catalog or the CLI catalog commands.',
 					'A 403 on inventory, roast, or sales routes usually means a role or ownership mismatch, not an authentication failure.',
 					'On 429, check the X-RateLimit-* headers for reset timing, or upgrade your plan in the Parchment Console.',
 					'The Parchment Console at /api-dashboard shows your current usage, active keys, and tier limits.'
@@ -625,7 +630,7 @@ const docsPages: DocsPage[] = [
 				title: 'When to use the CLI vs. the API vs. the web app',
 				bullets: [
 					'Use the CLI for scripting, terminal workflows, and agent automation.',
-					'Use the API (GET /api/catalog-api) for external integrations that run without a human session.',
+					'Use the API (GET /v1/catalog) for external integrations that run without a human session.',
 					'Use the web app for charts, dashboards, and interactive exploration.'
 				]
 			}

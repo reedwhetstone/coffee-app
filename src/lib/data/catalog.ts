@@ -94,36 +94,6 @@ export interface CatalogDropdownResult {
 const DROPDOWN_COLUMNS =
 	'id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee' as const;
 
-/** Columns exposed via the external catalog API (excludes sensitive fields). */
-export const CATALOG_API_COLUMNS = [
-	'id',
-	'name',
-	'score_value',
-	'arrival_date',
-	'region',
-	'processing',
-	'drying_method',
-	'roast_recs',
-	'lot_size',
-	'bag_size',
-	'packaging',
-	'cultivar_detail',
-	'grade',
-	'appearance',
-	'type',
-	'link',
-	'cost_lb',
-	'last_updated',
-	'source',
-	'stocked',
-	'unstocked_date',
-	'stocked_date',
-	'ai_description',
-	'ai_tasting_notes',
-	'country',
-	'continent'
-].join(',');
-
 // ── Core functions ────────────────────────────────────────────────────────────
 
 /**
@@ -421,22 +391,4 @@ export async function getCatalogFilterMetadata(
 	const { data, error } = await query;
 	if (error) throw error;
 	return (data as CatalogFilterMetadataRow[]) || [];
-}
-
-/**
- * Fetch all publicly visible catalog items with a specific column subset.
- * Used by the external catalog API.
- */
-export async function getPublicCatalog(
-	supabase: SupabaseClient,
-	columns: string = CATALOG_API_COLUMNS
-): Promise<Record<string, unknown>[]> {
-	const { data, error } = await supabase
-		.from('coffee_catalog')
-		.select(columns)
-		.eq('public_coffee', true)
-		.order('name');
-
-	if (error) throw error;
-	return (data as unknown as Record<string, unknown>[]) || [];
 }

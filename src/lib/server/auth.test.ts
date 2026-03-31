@@ -14,6 +14,9 @@ vi.mock('$lib/supabase', () => ({
 
 vi.mock('$lib/supabase-admin', () => ({
 	createAdminClient: () => ({
+		auth: {
+			getUser: mockBearerGetUser
+		},
 		from: (table: string) => {
 			if (table !== 'user_roles') {
 				throw new Error(`Unexpected table lookup in auth test: ${table}`);
@@ -82,7 +85,7 @@ function makeEvent(options: EventOptions = {}) {
 		headers.set('origin', options.origin);
 	}
 
-	const url = options.url ?? 'https://app.test/api/catalog-api';
+	const url = options.url ?? 'https://app.test/v1/catalog';
 	const sessionContext =
 		options.sessionContext ??
 		({

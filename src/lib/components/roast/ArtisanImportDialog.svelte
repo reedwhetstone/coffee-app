@@ -11,6 +11,7 @@
 
 	let showDialog = $state(false);
 	let selectedFile = $state<File | null>(null);
+	let isImporting = $state(false);
 
 	function handleFileSelect(event: Event) {
 		const file = (event.target as HTMLInputElement).files?.[0];
@@ -45,13 +46,15 @@
 	}
 
 	function close() {
+		if (isImporting) return;
 		showDialog = false;
 		selectedFile = null;
 	}
 
 	async function importFile() {
-		if (!selectedFile) return;
+		if (!selectedFile || isImporting) return;
 
+		isImporting = true;
 		try {
 			console.log(`Importing Artisan file ${selectedFile.name} for roast ID ${roastId}`);
 
@@ -98,6 +101,7 @@
 				`Failed to import Artisan file: ${error instanceof Error ? error.message : 'Unknown error'}`
 			);
 		} finally {
+			isImporting = false;
 			close();
 		}
 	}
@@ -105,7 +109,12 @@
 
 {#if showDialog}
 	<div class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
-		<button type="button" class="fixed inset-0 bg-black/50" onclick={close} aria-label="Close modal"
+		<button
+			type="button"
+			class="fixed inset-0 bg-black/50"
+			onclick={close}
+			aria-label="Close modal"
+			disabled={isImporting}
 		></button>
 		<div class="flex min-h-screen items-center justify-center p-4">
 			<div
@@ -146,18 +155,43 @@
 				<div class="flex justify-end space-x-3">
 					<button
 						type="button"
-						class="rounded bg-background-primary-light px-4 py-2 text-text-primary-light hover:bg-background-tertiary-light"
+						class="rounded bg-background-primary-light px-4 py-2 text-text-primary-light hover:bg-background-tertiary-light disabled:cursor-not-allowed disabled:opacity-50"
 						onclick={close}
+						disabled={isImporting}
 					>
 						Cancel
 					</button>
 					<button
 						type="button"
-						class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+						class="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
 						onclick={importFile}
-						disabled={!selectedFile}
+						disabled={!selectedFile || isImporting}
 					>
-						Import File
+						{#if isImporting}
+							<svg
+								class="h-4 w-4 animate-spin"
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+							>
+								<circle
+									class="opacity-25"
+									cx="12"
+									cy="12"
+									r="10"
+									stroke="currentColor"
+									stroke-width="4"
+								></circle>
+								<path
+									class="opacity-75"
+									fill="currentColor"
+									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+								></path>
+							</svg>
+							Importing…
+						{:else}
+							Import File
+						{/if}
 					</button>
 				</div>
 			</div>

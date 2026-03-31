@@ -30,7 +30,7 @@ Purveyors ships two API layers:
 
 1. **Public external API**
 
-   - `GET /api/catalog-api`
+   - `GET /v1/catalog`
    - Auth: Bearer API key
    - Purpose: normalized public catalog feed for external integrations
 
