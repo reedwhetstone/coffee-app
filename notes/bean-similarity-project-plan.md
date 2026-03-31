@@ -1,167 +1,310 @@
-# Bean Similarity & Entity Resolution — Project Plan
+# Bean Similarity, Canonical Identity, and Delivery Surfaces — Project Plan
 
-_Created: 2026-03-19_
-_Status: Planning_
-_Priority: #1 data target — bridges marketplace to supply chain analysis_
+_Created: 2026-03-19_  
+_Updated: 2026-03-31_  
+_Status: Active planning (some pieces already shipped)_  
+_Priority: High; this is the core bridge between marketplace listings, supply chain intelligence, and product differentiation_
 
 ## Problem
 
-"Ethiopia Yirgacheffe Washed Grade 2" from Burman, "Ethiopian Yirgacheffe Grade 2 Washed" from Sweet Maria's, and "Yirgacheffe Natural Gr.2 Washed Process" from Bodhi Leaf are probably the same origin lot, same washing station, same harvest — just sold through different importers with different naming conventions. Today they're 3 separate catalog entries with no connection.
+"Ethiopia Yirgacheffe Washed Grade 2" from Burman, "Ethiopian Yirgacheffe Grade 2 Washed" from Sweet Maria's, and "Yirgacheffe Washed Gr.2" from Bodhi Leaf are likely the same (or closely related) physical coffee lots. Today they exist as disconnected catalog rows.
+
+We need a system that:
+- Finds similar coffees across suppliers reliably
+- Graduates high-confidence matches into a canonical identity model
+- Serves the results cleanly through v1 API, CLI, web app UI, and chat tools
+- Does not regress to legacy price fields (`cost_lb`) as the primary pricing source
 
 ## Why It Matters
 
-Bean similarity is the foundation for:
+Bean similarity and identity resolution unlock:
+- Cross-supplier price comparisons for "the same bean"
+- Time-series pricing and availability for canonical beans (PPI)
+- Supply chain intelligence (arrivals, delistings, importer behavior)
+- Marketplace features (cheaper alternatives, restock alerts)
+- High-leverage blog content that is defensible (real matching, not hand-wavy)
 
-- **Price comparison**: same bean, N suppliers, N prices
-- **Purveyors Price Index (PPI)**: track price of a canonical bean over time
-- **Supply chain intelligence**: which importers carry this lot, when does it arrive, when does it sell out
-- **Marketplace unlock**: "alert me when this bean is available from a cheaper supplier"
-- **Blog content**: data-driven supply chain analysis backed by real cross-supplier matching
+## Current State (as of 2026-03-31)
 
-## Architecture
+### Ingestion and embeddings (coffee-scraper)
+- Embeddings are generated and stored in `coffee_chunks`.
+- Embedding generation runs as part of scrape ingestion:
+  - New stocked products: embeddings generated shortly after insert
+  - Backfill: missing embeddings for stocked products are backfilled in small batches
+- Stock status does not control whether embeddings are retained.
+  - Status: embedding cleanup for unstocked coffees is intentionally disabled in the scrape pipeline.
+  - Remaining risk: the `cleanupUnstockedEmbeddings()` function still exists in `scrape/embeddingService.ts`; it must be made impossible to re-enable accidentally.
 
-### Layer 1: Similarity Search (no new tables)
+### Similarity infrastructure (Supabase/Postgres)
+- `coffee_chunks` is pgvector-backed and indexed.
+- General vector search RPCs exist (chunk-level and catalog-level).
+- Dedicated bean-to-bean similarity RPCs exist (added as a migration in this repo):
+  - `find_similar_beans` (per-chunk match rows)
+  - `find_similar_beans_aggregated` (aggregated across origin + processing + tasting)
 
-Use existing `coffee_chunks` embeddings (pgvector) to find similar beans across suppliers. The embeddings already encode tasting profile, origin story, and processing method — not just name string matching.
+### Delivery surfaces
+- CLI: `purvey catalog similar <id>` exists and calls `find_similar_beans_aggregated`.
+- Web chat tools: `find_similar_beans` is wired in `coffee-app/src/lib/services/tools.ts` via the CLI library.
+- Web app UI: no user-facing "similar beans" surface yet.
+- API:
+  - `/v1/catalog` is canonical and returns `price_per_lb`, `price_tiers`, and `cost_lb`.
+  - Similarity is not yet exposed as a first-class `/v1/...` HTTP endpoint.
 
-**What exists today:**
+### Known contract mismatch (pricing)
+The similarity RPCs currently surface `cost_lb` but do not surface canonical pricing fields (`price_per_lb`, `price_tiers`). This is now a correctness issue because we explicitly treat `price_per_lb` / `price_tiers` as the primary price contract across API surfaces.
 
-- `coffee_chunks` table with pgvector embeddings
-- 5 chunk types per bean: profile, tasting, origin, commercial, processing
-- `embeddingService.ts` generates and stores chunks
-- Embeddings use OpenRouter (Qwen3-Embedding-8B, essentially free)
+## Target End State
 
-**What's needed:**
+1) Similarity search is always available:
+- Fast retrieval of top-N similar beans
+- Returns per-dimension scores and an overall score
+- Returns canonical price fields consistently
 
-- Supabase RPC function: given a `coffee_catalog.id`, return top N similar beans via cosine similarity on origin + processing chunks
-- CLI command: `purvey catalog similar <id>` — returns ranked matches with similarity scores
-- Threshold calibration: ~0.85 = "likely same bean", 0.70-0.85 = "similar profile", <0.70 = different
+2) Canonical identity exists for high-confidence matches:
+- Multiple catalog rows link to one `bean_identity`
+- Identity creation and linkage is traceable and reversible
 
-### Layer 2: Canonical Bean Identity (new table)
+3) Delivery surfaces are excellent:
+- v1 API endpoint(s) that wrap the similarity system behind unified auth and tier gating
+- Web app UI that makes similar listings actionable
+- CLI commands that mirror the API and support debugging
+- Chat tools that can explain and cite why beans are similar
 
-A `bean_identity` table representing "this physical lot of coffee":
+## Architecture Layers
 
-```sql
-CREATE TABLE bean_identity (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  country TEXT NOT NULL,
-  region TEXT,
-  farm_or_station TEXT,
-  variety TEXT,
-  processing TEXT,           -- normalized: washed, natural, honey, anaerobic
-  harvest_year INT,
-  grade TEXT,                -- normalized
-  altitude_range TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+### Layer 1: Similarity Search (no new identity tables required)
 
--- FK on coffee_catalog
-ALTER TABLE coffee_catalog ADD COLUMN bean_identity_id UUID REFERENCES bean_identity(id);
+Use existing `coffee_chunks` embeddings to find similar beans across suppliers.
 
--- Index for lookups
-CREATE INDEX idx_catalog_bean_identity ON coffee_catalog(bean_identity_id);
-```
+Deliverables for this layer:
+- RPC returns canonical price fields and match explanations
+- v1 HTTP endpoint wraps RPC and enforces auth + tier limits
+- CLI and chat tools call v1 endpoint (or call RPC through the same library) consistently
 
-Multiple `coffee_catalog` rows link to one `bean_identity`. This makes price comparison trivial: query all catalog entries sharing a `bean_identity_id`.
+### Layer 2: Canonical Bean Identity (new tables)
+
+Introduce a `bean_identity` entity representing the canonical physical lot concept.
+
+Key requirement:
+- This is not “store similarity scores”; it is “store identity relationships” so that product queries are stable.
 
 ### Layer 3: Resolution Pipeline (scraper post-processing)
 
-Runs after each scrape:
-
-1. For each new/updated catalog entry, compute embedding similarity against existing beans
-2. If similarity > 0.85 AND key fields match (country, processing, grade): auto-link to existing `bean_identity`
-3. If 0.70-0.85: flag for human review (or LLM-assisted resolution)
-4. If no match: create new `bean_identity`
-5. LLM assist for edge cases: name normalization, variety inference, washing station identification
+After each scrape:
+- Match new and updated beans against existing identities
+- Auto-link when confidence is high and field constraints agree
+- Produce a review queue when ambiguous
+- Create new identities when no match exists
 
 ### Layer 4: UI + API Surface
 
-- Bean detail page: "Available from N suppliers" with price comparison
-- Catalog search: filter by `bean_identity` to see all listings of the same bean
-- CLI: `purvey catalog similar <id>`, `purvey catalog identity <id>`
-- API: similarity endpoint for external consumers
+- UI:
+  - Catalog detail page: “Also available from other suppliers”
+  - Supplier comparison and price spread
+  - Explainability: “Matched on origin + processing + tasting”
+- API:
+  - v1 endpoints that return structured similarity and identity information
 
-## Where Each Piece Lives
+## The Missing Work (detailed plan)
 
-| Component                         | Repo                      | Why                                   |
-| --------------------------------- | ------------------------- | ------------------------------------- |
-| `bean_identity` table + migration | Supabase (via coffee-app) | Data model change                     |
-| Similarity RPC function (SQL)     | Supabase                  | pgvector lives in Postgres            |
-| Resolution pipeline               | coffee-scraper            | Runs post-scrape, has raw data access |
-| `purvey catalog similar` command  | purveyors-cli             | Agent/human interface                 |
-| Bean identity UI                  | coffee-app                | "Same bean from other suppliers"      |
+This section enumerates the “what else are we missing?” items and turns them into concrete steps.
 
-## Why NOT a Column on coffee_catalog
+### 0) Make embedding retention non-regressable (P0)
 
-- Similarity is relational (bean A is similar to beans B, C, D at different scores)
-- A simple column would be a FK to `bean_identity`, not a score
-- The similarity score itself is computed on-demand via pgvector, not stored
-- Storing all pairwise scores would be N^2; computed search is O(N) with pgvector indexes
+Goal: ensure we never accidentally re-enable deletion of embeddings for unstocked coffees.
 
-## What Makes This Better Than String Matching
+Steps:
+- In coffee-scraper:
+  - Make `cleanupUnstockedEmbeddings()` a no-op OR delete it entirely.
+  - Add a test that asserts scrape ingestion does not delete rows from `coffee_chunks` when a catalog row transitions stocked → unstocked.
+  - Add a comment in the embedding service header that embeddings are part of the warehouse layer and must persist regardless of stock.
 
-- Embeddings encode semantic meaning: "Finca La Laja, Veracruz" = "La Laja Estate, Tlaltetela" even when names differ completely
-- Origin chunk embeddings capture washing station + altitude + region context
-- Processing chunk embeddings normalize "fully washed" = "wet processed" = "washed"
-- Tasting embeddings catch "jasmine, citrus, honey" profiles that confirm same-origin beans
-- Combined similarity across chunk types gives much higher confidence than any single field
+Acceptance criteria:
+- No code path in coffee-scraper deletes embeddings based on stock status.
 
-## CRITICAL PREREQUISITE: Stop Deleting Unstocked Embeddings
+### 1) Fix similarity RPC pricing contract (P0)
 
-**Current behavior:** `embeddingService.ts` deletes all `coffee_chunks` for beans that go out of stock. This destroys historical data needed for similarity matching.
+Goal: similarity results must speak in canonical pricing.
 
-**Required change (scraper PR, do first):**
+Steps:
+- Update `find_similar_beans` and `find_similar_beans_aggregated` to include:
+  - `price_per_lb`
+  - `price_tiers`
+  - Keep `cost_lb` as a legacy fallback only
+- Ensure the SQL functions select from `coffee_catalog`:
+  - `c.price_per_lb`
+  - `c.price_tiers`
+  - `c.cost_lb`
+- Update the CLI `SimilarBean` type and output expectations to match the updated RPC.
 
-- Remove the `cleanupUnstockedEmbeddings()` function or make it no-op
-- Embeddings should persist regardless of stock status
-- A bean going out of stock at one supplier doesn't reduce its value for matching, price history, or identity resolution
-- The `stocked` field on `coffee_catalog` already tracks availability; embeddings don't need to mirror this
+Acceptance criteria:
+- `purvey catalog similar <id>` output contains `price_per_lb` and `price_tiers`.
+- No surface treats `cost_lb` as the default price when canonical fields exist.
 
-**Impact of not fixing:** Every scrape cycle deletes chunks for unstocked beans, permanently losing the embedding data needed for cross-supplier matching. The longer this runs, the more historical data we lose.
+### 2) Add explainability and per-dimension scoring (P1)
 
-## Phased Implementation
+Goal: similarity is actionable only if users can understand why.
 
-### Phase 0: Stop Embedding Deletion (scraper, 1 hour)
+Steps:
+- Extend the aggregated similarity RPC (or add a second RPC) to return:
+  - `origin_similarity`
+  - `processing_similarity`
+  - `tasting_similarity`
+  - `avg_similarity`
+  - `chunk_matches`
+- Optionally return the top matching chunk excerpts for each dimension (short, safe snippets).
 
-- Remove/disable `cleanupUnstockedEmbeddings()` in `embeddingService.ts`
-- Ensure embedding backfill runs for all sources (already does as of PR #101)
-- **Do this immediately — every scrape cycle loses data**
+Acceptance criteria:
+- UI and CLI can show a compact explanation: “Origin 0.92, Processing 0.88, Tasting 0.81.”
 
-### Phase 1: Similarity Search (CLI + SQL, 1-2 days)
+### 3) Access control and tier gating (P1)
 
-- Write Supabase RPC function for pgvector cosine similarity across origin chunks
-- Add `purvey catalog similar <id>` CLI command
-- Test with known same-beans across suppliers
-- Calibrate similarity thresholds with real data
-- No new tables needed; uses existing `coffee_chunks`
+Goal: similarity should be served through the same principal model as v1 resources.
 
-### Phase 2: Bean Identity Table (migration + scraper, 2-3 days)
+Steps:
+- Create `GET /v1/catalog/:id/similar` in coffee-app:
+  - Uses `resolvePrincipal()` (API key or OAuth session)
+  - Enforces:
+    - Max limit per tier
+    - Minimum threshold defaults per tier
+    - Optional `stocked_only` behavior
+  - Calls the RPC internally
+- Decide whether to keep direct RPC grants to `anon`:
+  - Recommendation: remove `anon` execution rights for similarity RPCs once the v1 endpoint is the official path.
 
-- Create `bean_identity` table and FK on `coffee_catalog`
-- Build initial clustering: run similarity across all catalog entries, group into identities
-- LLM-assisted golden record creation (normalize country, processing, variety)
-- Backfill `bean_identity_id` on existing catalog rows
+Acceptance criteria:
+- Similarity can be used by external API-key clients and logged-in users.
+- Anonymous callers do not have unlimited similarity access.
 
-### Phase 3: Resolution Pipeline (scraper, 2-3 days)
+### 4) Canonical endpoint alignment for delivery surfaces (P1)
 
-- Post-scrape hook: auto-resolve new beans against existing identities
-- Confidence-based auto-link vs human review queue
-- Edge case handling: seasonal lots, blend components, experimental processing
-- Logging and audit trail for resolution decisions
+Goal: all clients call the canonical surface.
 
-### Phase 4: UI + API (coffee-app, 2-3 days)
+Steps:
+- CLI:
+  - Option A (preferred): call `/v1/catalog/:id/similar` instead of calling Supabase RPC directly.
+  - Option B: keep RPC calls but share a single library function that matches v1 semantics.
+- Chat tools:
+  - Route `find_similar_beans` tool through the same underlying implementation as CLI.
 
-- Bean detail: "Available from N suppliers" card with price comparison
-- Cross-supplier price history chart
-- Catalog filter: "Show all listings of this bean"
-- API endpoint for external consumers
-- Blog: data-backed supply chain analysis using real matching data
+Acceptance criteria:
+- There is exactly one place to define:
+  - default threshold
+  - max limit
+  - tier gating
+  - response shape
+
+### 5) Threshold calibration and evaluation harness (P1)
+
+Goal: stop guessing at 0.70 and 0.85; measure it.
+
+Steps:
+- Create a small “golden set” dataset:
+  - 50 known match pairs
+  - 50 known non-match pairs
+  - 20 ambiguous pairs
+- Add a script (repo-local) that:
+  - Runs similarity on the set
+  - Produces precision/recall at multiple thresholds
+  - Captures false positives and false negatives for review
+- Decide on threshold buckets:
+  - “Same bean likely”
+  - “Similar profile”
+  - “Not similar”
+
+Acceptance criteria:
+- Threshold choices are documented and tied to measured results.
+
+### 6) Embedding versioning and refresh strategy (P1)
+
+Goal: avoid silent drift when chunk formats or models change.
+
+Steps:
+- Add `embedding_model` and `embedding_version` to `coffee_chunks.metadata` (or explicit columns).
+- When generation code changes chunk templates or model:
+  - write a new version
+  - allow old and new to coexist temporarily
+  - provide a controlled re-embed job
+
+Acceptance criteria:
+- It is always possible to answer: “What model generated these embeddings?”
+- A re-embed does not break similarity queries mid-deploy.
+
+### 7) Performance and caching strategy (P2)
+
+Goal: UI should not run expensive vector queries repeatedly.
+
+Options:
+- Option A: on-demand only (start here)
+- Option B: introduce a cache table `coffee_similarity_cache`:
+  - key: `target_coffee_id`, `threshold`, `limit`, `stocked_only`, `embedding_version`
+  - value: top-K results + computed at timestamp
+  - TTL and invalidation on:
+    - embedding changes
+    - significant catalog row changes
+
+Acceptance criteria:
+- Catalog detail page loads similarity matches quickly.
+
+### 8) Web app UI surfaces (P1)
+
+Goal: make similarity visible and useful.
+
+Steps:
+- Catalog detail page:
+  - “Similar beans across suppliers” module
+  - Shows supplier, price (canonical), similarity score, and why
+  - One-click filter: “show all similar”
+- Catalog list:
+  - Optional “find alternatives” action per row
+
+Acceptance criteria:
+- A user can start on a bean and quickly find the closest alternatives and cheaper listings.
+
+### 9) Canonical identity model (bean_identity) and resolution pipeline (P2)
+
+Goal: graduate from “similar” to “same.”
+
+Steps:
+- Create `bean_identity` table plus `coffee_catalog.bean_identity_id` FK.
+- Define identity granularity rules:
+  - harvest year handling
+  - micro-lot vs region-level
+  - blends and espresso blends
+- Implement pipeline:
+  - auto-link high confidence
+  - review queue for mid confidence
+  - new identity creation for no-match
+- Store an audit trail:
+  - how a link was created
+  - what evidence was used
+  - ability to revert
+
+Acceptance criteria:
+- For a canonical identity, we can query all supplier listings of that same bean deterministically.
+
+## Suggested Execution Order (ship value early)
+
+1) P0: Fix similarity RPC pricing contract (add `price_per_lb`, `price_tiers`)
+2) P0: Make embedding retention non-regressable (remove or no-op cleanup)
+3) P1: Add `/v1/catalog/:id/similar` with unified auth and tier gating
+4) P1: Add explainability fields (per-dimension scores)
+5) P1: Add UI module on catalog detail page
+6) P1: Build calibration harness and document thresholds
+7) P1: Add embedding versioning
+8) P2: Add caching if needed
+9) P2: Implement `bean_identity` + resolution pipeline
 
 ## Open Questions
 
-1. How to handle seasonal lots? Same farm, same variety, different harvest year = same identity or new?
-2. Blends: some catalog entries are blends (e.g., "Sweet Classic Espresso"). Do these get an identity?
-3. How granular should `bean_identity` be? Farm-level? Region-level? Washing station?
-4. Should we expose similarity scores to users, or just "same bean / similar bean" buckets?
-5. Rate of false positives at 0.85 threshold — need to calibrate with known matches
+- Do we treat seasonal lots (same farm, same variety, new harvest year) as the same identity or a new identity linked to a “parent”?
+- How do we treat blends? Are they identities, or do they link to multiple identities?
+- What is the minimum explainability we need for trust? Per-dimension scores, or also chunk excerpts?
+- Should similarity be public, API-key gated only, or partially free?
+
+## References
+
+- Similarity infra migration: `supabase/migrations/20260321_similarity_infrastructure.sql`
+- Existing RAG chunk RPC: `match_coffee_chunks` in `supabase/migrations/001_full_schema.sql`
+- Chat tool wiring: `src/lib/services/tools.ts` (`find_similar_beans`)
+- CLI command: `purvey catalog similar` in `purveyors-cli/src/commands/catalog.ts`
