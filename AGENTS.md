@@ -72,7 +72,7 @@ Treat the API as two layers:
 
 1. **Public external API**
 
-   - `GET /api/catalog-api`
+   - `GET /v1/catalog`
    - Bearer API key auth
    - Stable public contract
 

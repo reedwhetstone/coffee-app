@@ -392,20 +392,3 @@ export async function getCatalogFilterMetadata(
 	if (error) throw error;
 	return (data as CatalogFilterMetadataRow[]) || [];
 }
-
-/**
- * Fetch all publicly visible catalog items.
- */
-export async function getPublicCatalog(
-	supabase: SupabaseClient,
-	columns: string = '*'
-): Promise<Record<string, unknown>[]> {
-	const { data, error } = await supabase
-		.from('coffee_catalog')
-		.select(columns)
-		.eq('public_coffee', true)
-		.order('name');
-
-	if (error) throw error;
-	return (data as unknown as Record<string, unknown>[]) || [];
-}
