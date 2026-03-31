@@ -323,7 +323,7 @@
 								<!-- Rank value in the center -->
 								<div class="absolute inset-0 flex items-center justify-center">
 									<span class="text-xl font-bold text-amber-500 md:text-2xl">
-										{Math.round(selectedBean.rank)}
+										{selectedBean.rank % 1 === 0 ? selectedBean.rank : selectedBean.rank.toFixed(1)}
 									</span>
 								</div>
 								<span
@@ -856,7 +856,9 @@
 								{#if selectedBean.rank != null && typeof selectedBean.rank === 'number'}
 									<div class="flex items-center gap-3">
 										<span class="text-2xl font-bold text-background-tertiary-light">
-											{Math.round(selectedBean.rank)}
+											{selectedBean.rank % 1 === 0
+												? selectedBean.rank
+												: selectedBean.rank.toFixed(1)}
 										</span>
 										<span class="text-text-secondary-light">/10</span>
 									</div>
