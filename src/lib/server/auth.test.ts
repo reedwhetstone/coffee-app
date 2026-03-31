@@ -82,7 +82,7 @@ function makeEvent(options: EventOptions = {}) {
 		headers.set('origin', options.origin);
 	}
 
-	const url = options.url ?? 'https://app.test/api/catalog-api';
+	const url = options.url ?? 'https://app.test/v1/catalog';
 	const sessionContext =
 		options.sessionContext ??
 		({
