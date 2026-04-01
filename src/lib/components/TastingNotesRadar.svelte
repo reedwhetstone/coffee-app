@@ -92,8 +92,8 @@
 				.attr('x2', x2)
 				.attr('y2', y2)
 				.attr('stroke', '#e5e7eb')
-				.attr('stroke-width', 1)
-				.attr('opacity', 0.2);
+				.attr('stroke-width', 0.75)
+				.attr('opacity', 0.15);
 
 			// Add axis labels
 			const labelDistance = radius + 8;
@@ -148,9 +148,9 @@
 
 								.attr('fill-opacity', 0)
 								.attr('stroke', '#f9a57b')
-								.attr('stroke-width', 1)
-								.attr('stroke-opacity', 0.3)
-								.attr('stroke-dasharray', '3,6');
+								.attr('stroke-width', 0.75)
+								.attr('stroke-opacity', 0.18)
+								.attr('stroke-dasharray', '2,8');
 						} else {
 							// Original AI styling when no overlay
 							circle
@@ -192,9 +192,9 @@
 				.attr('r', 6)
 				.attr('fill-opacity', 0)
 				.attr('stroke', '#f9a57b')
-				.attr('stroke-width', 1)
-				.attr('stroke-opacity', 0.3)
-				.attr('stroke-dasharray', '3,6');
+				.attr('stroke-width', 0.75)
+				.attr('stroke-opacity', 0.18)
+				.attr('stroke-dasharray', '2,8');
 
 			legend
 				.append('text')
