@@ -24,7 +24,7 @@ import { recordSale as _recordSale } from '@purveyors/cli/sales';
  * CLI Zod schemas use .positive() and reject 0.
  */
 function positiveOrUndef(val: number | undefined | null): number | undefined {
-	return val && val > 0 ? val : undefined;
+	return typeof val === 'number' && val > 0 ? val : undefined;
 }
 
 /**
@@ -357,6 +357,9 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 					)
 			}),
 			execute: async (input) => {
+				// Sanitize catalog_id early — LLM may pass 0 meaning "no specific bean"
+				const catalogId = positiveOrUndef(input.catalog_id);
+
 				// When user confirms the action_card, execute-action should call:
 				//   addInventory(supabase, userId, {
 				//     catalogId: params.catalog_id,
@@ -400,8 +403,8 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				const totalBeanCost = Math.round(costPerLb * qty * 100) / 100;
 
 				// Determine which bean is pre-selected
-				const preSelectedValue = input.catalog_id
-					? String(input.catalog_id)
+				const preSelectedValue = catalogId
+					? String(catalogId)
 					: beanSelectOptions[0]?.value;
 				const preSelectedBean = allBeans.find((c) => String(c.id) === preSelectedValue);
 				const preSelectedLabel = preSelectedBean?.name || input.manual_name || '';
@@ -410,7 +413,7 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				return {
 					action_card: {
 						actionType: 'add_bean_to_inventory',
-						summary: `Add ${preSelectedLabel || input.manual_name || `catalog #${input.catalog_id}`} to inventory (${qty} lbs)`,
+						summary: `Add ${preSelectedLabel || input.manual_name || `catalog #${catalogId}`} to inventory (${qty} lbs)`,
 						reasoning: input.reasoning,
 						fields: [
 							// Source filter + Bean dropdown (if we have catalog options) or manual name fallback
@@ -444,18 +447,18 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 										{
 											key: 'catalog_id',
 											label: 'Catalog ID',
-											value: input.catalog_id || Number(preSelectedValue),
+											value: catalogId || Number(preSelectedValue),
 											type: 'number' as const,
 											editable: false
 										}
 									]
 								: [
-										...(input.catalog_id
+										...(catalogId
 											? [
 													{
 														key: 'catalog_id',
 														label: 'Catalog ID',
-														value: input.catalog_id,
+														value: catalogId,
 														type: 'number' as const,
 														editable: false
 													}
