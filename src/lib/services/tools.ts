@@ -19,6 +19,15 @@ import { getTastingNotes, getTastingNotesSchema } from '@purveyors/cli/tasting';
 import { recordSale as _recordSale } from '@purveyors/cli/sales';
 
 /**
+ * Coerce falsy or non-positive numeric IDs to undefined.
+ * LLMs sometimes pass 0 for optional ID fields meaning "no filter".
+ * CLI Zod schemas use .positive() and reject 0.
+ */
+function positiveOrUndef(val: number | undefined | null): number | undefined {
+	return val && val > 0 ? val : undefined;
+}
+
+/**
  * Creates the set of AI tools for the chat service.
  *
  * All tools call @purveyors/cli library functions directly via the supabase
@@ -105,7 +114,8 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				if (input.process) cliInput.process = input.process;
 				if (input.name) cliInput.name = input.name;
 				if (input.supplier) cliInput.supplier = input.supplier;
-				if (input.coffee_ids && input.coffee_ids.length > 0) cliInput.ids = input.coffee_ids;
+				const filteredIds = input.coffee_ids?.filter((id) => id > 0);
+				if (filteredIds && filteredIds.length > 0) cliInput.ids = filteredIds;
 
 				// price_range [min, max] → priceMin / priceMax
 				if (input.price_range) {
@@ -251,10 +261,10 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				// CLI listRoasts supports these filters server-side; roast_name and date range
 				// are applied client-side after fetching.
 				let profiles: RoastProfile[] = await listRoasts(supabase, userId, {
-					coffee_id: input.coffee_id && input.coffee_id > 0 ? input.coffee_id : undefined,
-					roast_id: input.roast_id ? parseInt(input.roast_id, 10) : undefined,
+					coffee_id: positiveOrUndef(input.coffee_id),
+					roast_id: positiveOrUndef(input.roast_id ? parseInt(input.roast_id, 10) : undefined),
 					batch_name: input.batch_name,
-					catalog_id: input.catalog_id,
+					catalog_id: positiveOrUndef(input.catalog_id),
 					stocked_only: input.stocked_only,
 					limit: finalLimit * 3 // fetch more to allow for client-side filtering
 				});
@@ -294,6 +304,12 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				// CLI schema field names match execute params (bean_id, filter).
 				// include_radar_data was chat-specific; CLI returns cupping_notes
 				// as raw JSON which contains radar-compatible data.
+				if (!input.bean_id || input.bean_id <= 0) {
+					return {
+						error:
+							'bean_id is required and must be a positive integer. Please specify which bean to get tasting notes for.'
+					};
+				}
 				const result = await getTastingNotes(supabase, userId, input.bean_id, input.filter);
 				return result;
 			}
@@ -306,6 +322,12 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 			execute: async (input) => {
 				// CLI schema field names match execute params (coffee_id, threshold, limit).
 				// The CLI function maps these internally to RPC parameter names.
+				if (!input.coffee_id || input.coffee_id <= 0) {
+					return {
+						error:
+							'coffee_id is required and must be a positive integer. Please specify which coffee to find similar beans for.'
+					};
+				}
 				const results: SimilarBean[] = await findSimilarBeans(supabase, input);
 				return results;
 			}
@@ -537,6 +559,12 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				//     notes: params.notes,
 				//     stocked: params.stocked,
 				//   })
+				if (!input.bean_id || input.bean_id <= 0) {
+					return {
+						error:
+							'bean_id is required and must be a positive integer. Please specify which inventory bean to update.'
+					};
+				}
 				return {
 					action_card: {
 						actionType: 'update_bean',
@@ -627,6 +655,12 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				//     roastDate: params.roast_date,
 				//     notes: params.roast_notes,
 				//   })
+				if (!input.coffee_id || input.coffee_id <= 0) {
+					return {
+						error:
+							'coffee_id is required and must be a positive integer. Please specify which inventory coffee to create a roast session for.'
+					};
+				}
 				return {
 					action_card: {
 						actionType: 'create_roast_session',
@@ -716,6 +750,12 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				// No direct CLI equivalent yet — execute-action uses Supabase directly:
 				//   supabase.from('roast_profiles').update({ roast_notes, roast_targets })
 				//     .eq('roast_id', params.roast_id).eq('user', userId)
+				if (!input.roast_id || input.roast_id <= 0) {
+					return {
+						error:
+							'roast_id is required and must be a positive integer. Please specify which roast profile to update.'
+					};
+				}
 				return {
 					action_card: {
 						actionType: 'update_roast_notes',
@@ -784,6 +824,12 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				// Note: CLI recordSale takes roastId, not green_coffee_inv_id. The
 				// execute-action handler currently uses a different schema (inv_id + batch_name).
 				// Align schemas in a follow-up PR when execute-action is migrated to CLI.
+				if (!input.green_coffee_inv_id || input.green_coffee_inv_id <= 0) {
+					return {
+						error:
+							'green_coffee_inv_id is required and must be a positive integer. Please specify which inventory bean this sale is for.'
+					};
+				}
 				return {
 					action_card: {
 						actionType: 'record_sale',
