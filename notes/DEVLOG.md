@@ -8,7 +8,7 @@
 
 - [ ] **Purveyors Price Index (PPI)** — First revenue-generating data product. Daily specialty green coffee price index by origin, process, and grade, derived from 35 scraped suppliers. `/api/v1/price-index` endpoint with tier-based access (free/member $29/enterprise $199). Blog teaser page as top-of-funnel. Revenue target: $35K+/year at modest adoption. Existing auth + Stripe infrastructure reused. Full plan: `notes/implementation-plans/2026-03-16-purveyors-price-index.md`.
 - [ ] **Mobile Navigation** - Redesign sidebar behavior on mobile. Current desktop-style sidebar consumes too much horizontal space. Evaluate one of: top nav, bottom nav, or minimal single-button trigger that opens a full-screen menu.
-- [ ] **Homepage Routing** - Make `/` the true landing page and move catalog to its own dedicated route. Remove login-driven reroute behavior that hurts first contentful paint and perceived responsiveness.
+- [x] **Homepage Routing** - Make `/` the true landing page and move catalog to its own dedicated route. Remove login-driven reroute behavior that hurts first contentful paint and perceived responsiveness. (Fixed PR #179)
 - [ ] **Public Catalog Access + Conversion Funnel** - Allow non-auth users to browse catalog with limited access (example: page 1 only) while keeping filters available. Add clear incentives to sign up/log in and promote AI search as a premium conversion lever.
 
 ---
@@ -26,15 +26,15 @@ These issues break core functionality and should be fixed first.
 
 These issues impact usability but don't break core functionality.
 
-- [ ] **UI/UX** - Supplier cupping note dashed lines are too dark and visually distracting. Reduce opacity or change to lighter color.
+- [x] **UI/UX** - Supplier cupping note dashed lines are too dark and visually distracting. Reduce opacity or change to lighter color. (Fixed PR #172)
 
-- [ ] **UI/UX** - Saving cupping notes doesn't refresh page data. After save, the UI should re-render to show the newly saved data without requiring manual refresh.
+- [x] **UI/UX** - Saving cupping notes doesn't refresh page data. After save, the UI should re-render to show the newly saved data without requiring manual refresh. (Fixed PR #156)
 - [ ] **UI/UX** - Clean up beans catalog profiles to remove exposed user reference fields from the display.
 - [ ] **UI/UX** - Roast chart doesn't resize when navigating between pages. Chart container needs ResizeObserver or layout recalculation on route change.
 - [ ] **UI/UX** - Poor page refresh management across the app. Forms/edits save but page data doesn't update reactively to show changes.
 - [x] **UI/UX** - Add wholesale markers/indicators to green coffee inventory page. Catalog has wholesale support; extend visibility to inventory views. (Fixed PR #121)
-- [ ] **UI/UX** - Add wholesale markers/filtering to roast profiles page. Show which roasts used wholesale beans.
-- [ ] **UI/UX** - Add wholesale markers/filtering to sales page. Track wholesale vs retail sales distinctly.
+- [x] **UI/UX** - Add wholesale markers/filtering to roast profiles page. Show which roasts used wholesale beans. (Fixed PR #157)
+- [x] **UI/UX** - Add wholesale markers/filtering to sales page. Track wholesale vs retail sales distinctly. (Fixed PR #166)
 
 ---
 
@@ -64,7 +64,7 @@ Mobile-specific improvements for roasters on the go.
 
 The roast chart is a core feature that needs refinement.
 
-- [ ] **Bug** - Artisan file import (`/roast` page "Import Artisan File") has no loading indicator after clicking save. Takes noticeably longer than it used to and gives no feedback during the wait — looks like nothing happened.
+- [x] **Bug** - Artisan file import (`/roast` page "Import Artisan File") has no loading indicator after clicking save. Takes noticeably longer than it used to and gives no feedback during the wait — looks like nothing happened. (Fixed PR #199)
 - [ ] **Bug** - Fan/heat settings from `.alog` imports render off-chart. Settings axes need to auto-detect the actual value range from the imported data (e.g., 0–100 in steps of 5 vs. 0–10) and scale accordingly instead of using a fixed axis range.
 - [ ] **Roast Chart** - Add visual save confirmation when clicking "cool end" button. Users need feedback that the action succeeded.
 - [ ] **Roast Chart** - Remove y-axis gridlines for cleaner appearance.
