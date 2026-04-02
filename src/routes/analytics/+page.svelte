@@ -16,11 +16,16 @@
 	import SupplierComparisonTable from '$lib/components/analytics/SupplierComparisonTable.svelte';
 	import SupplierHealthTable from '$lib/components/analytics/SupplierHealthTable.svelte';
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
+	import PriceTierChart from '$lib/components/analytics/PriceTierChart.svelte';
 
 	let { data } = $props<{ data: PageData }>();
 
 	let lineChartExpanded = $state(false);
 	let originChartExpanded = $state(false);
+
+	// Extended trend time range selector (PPI member feature)
+	type TrendRange = '90d' | '6m' | '1y';
+	let trendRange = $state<TrendRange>('90d');
 
 	let {
 		session,
@@ -150,6 +155,32 @@
 		return result.sort(
 			(a, b) => a.snapshot_date.localeCompare(b.snapshot_date) || a.origin.localeCompare(b.origin)
 		);
+	});
+
+	// Derive snapshots filtered to the selected extended trend range (PPI member feature)
+	let trendSnapshots = $derived.by((): PriceSnapshot[] => {
+		const now = new Date();
+		let daysBack: number;
+		if (trendRange === '6m') daysBack = 183;
+		else if (trendRange === '1y') daysBack = 365;
+		else daysBack = 90;
+		const cutoff = new Date(now);
+		cutoff.setDate(cutoff.getDate() - daysBack);
+		const cutoffStr = cutoff.toISOString().split('T')[0];
+		return snapshots.filter((s) => s.snapshot_date >= cutoffStr && !s.wholesale_only);
+	});
+
+	// Spread data filtered to the selected extended trend range
+	let trendSpreadData = $derived.by(() => {
+		const now = new Date();
+		let daysBack: number;
+		if (trendRange === '6m') daysBack = 183;
+		else if (trendRange === '1y') daysBack = 365;
+		else daysBack = 90;
+		const cutoff = new Date(now);
+		cutoff.setDate(cutoff.getDate() - daysBack);
+		const cutoffStr = cutoff.toISOString().split('T')[0];
+		return spreadData.filter((s) => s.snapshot_date >= cutoffStr);
 	});
 
 	// Derive filtered process distribution based on viewMode
@@ -697,6 +728,7 @@
 				</ExpandablePanel>
 
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+					<!-- Price Tier Analysis -->
 					<div
 						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
 					>
@@ -708,14 +740,12 @@
 						</div>
 						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Tier Analysis</h2>
 						<p class="mb-4 text-sm text-text-secondary-light">
-							Retail vs wholesale spread — coming as data accumulates
+							Retail vs wholesale median price by origin — latest snapshot
 						</p>
-						<div
-							class="flex h-32 items-center justify-center rounded-lg bg-background-secondary-light"
-						>
-							<p class="text-sm text-text-secondary-light">Available after 7+ days of data</p>
-						</div>
+						<PriceTierChart {snapshots} />
 					</div>
+
+					<!-- Extended Trend Detail -->
 					<div
 						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
 					>
@@ -729,12 +759,40 @@
 							Extended Trend Detail
 						</h2>
 						<p class="mb-4 text-sm text-text-secondary-light">
-							90-day and 1-year views — coming as data accumulates
+							Price trends across longer time horizons — retail origins
 						</p>
-						<div
-							class="flex h-32 items-center justify-center rounded-lg bg-background-secondary-light"
-						>
-							<p class="text-sm text-text-secondary-light">Available after 30+ days of data</p>
+
+						<!-- Time range selector -->
+						<div class="mb-3 flex items-center gap-2">
+							<span class="text-xs font-medium text-text-secondary-light">Range:</span>
+							<div
+								class="flex rounded-full border border-border-light bg-background-secondary-light p-0.5 shadow-sm"
+							>
+								{#each [{ value: '90d', label: '90 days' }, { value: '6m', label: '6 months' }, { value: '1y', label: '1 year' }] as opt}
+									<button
+										onclick={() => (trendRange = opt.value as TrendRange)}
+										class="rounded-full px-3 py-1 text-xs font-medium transition-all duration-150
+											{trendRange === opt.value
+											? 'bg-background-tertiary-light text-white shadow-sm'
+											: 'text-text-secondary-light hover:text-text-primary-light'}"
+									>
+										{opt.label}
+									</button>
+								{/each}
+							</div>
+						</div>
+
+						<!-- Line chart using existing OriginLineChart component -->
+						<div class="h-64">
+							{#if viewMode === 'spread'}
+								<OriginLineChart
+									snapshots={trendSnapshots}
+									mode="spread"
+									spreadData={trendSpreadData}
+								/>
+							{:else}
+								<OriginLineChart snapshots={trendSnapshots} mode="price" />
+							{/if}
 						</div>
 					</div>
 				</div>
