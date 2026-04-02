@@ -309,9 +309,9 @@ async function queryCatalogData(
 		query.filters.stocked !== undefined ? query.filters.stocked : true;
 
 	if (query.fields === 'dropdown' && query.ids.length === 0 && !isPaginated) {
-		// getCatalogDropdown uses legacy stockedOnly boolean; map null → false (no filter)
+		// getCatalogDropdown now supports stockedFilter directly (3-way: true/false/null)
 		const rows = await getCatalogDropdown(context.supabase, {
-			stockedOnly: stockedFilter === true,
+			stockedFilter,
 			publicOnly: context.publicOnly,
 			showWholesale: context.showWholesale,
 			wholesaleOnly: context.wholesaleOnly

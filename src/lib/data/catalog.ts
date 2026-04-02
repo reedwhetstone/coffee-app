@@ -265,6 +265,7 @@ export async function searchCatalog(
 	if (supplier) filtersApplied.supplier = supplier;
 	if (coffeeIds) filtersApplied.coffeeIds = coffeeIds;
 	if (stockedOnly) filtersApplied.stockedOnly = stockedOnly;
+	if (stockedFilter !== undefined) filtersApplied.stockedFilter = stockedFilter;
 	if (pricePerLbMin !== undefined) filtersApplied.pricePerLbMin = pricePerLbMin;
 	if (pricePerLbMax !== undefined) filtersApplied.pricePerLbMax = pricePerLbMax;
 	if (stockedDays) filtersApplied.stockedDays = stockedDays;
@@ -301,19 +302,33 @@ export async function getCatalogDropdown(
 	supabase: SupabaseClient,
 	options: {
 		stockedOnly?: boolean;
+		stockedFilter?: boolean | null; // 3-way: true=stocked only, false=unstocked only, null=all; takes precedence over stockedOnly
 		publicOnly?: boolean;
 		showWholesale?: boolean;
 		wholesaleOnly?: boolean;
 	} = {}
 ): Promise<CatalogDropdownItem[]> {
-	const { stockedOnly = true, publicOnly = false, showWholesale, wholesaleOnly = false } = options;
+	const {
+		stockedOnly = true,
+		stockedFilter,
+		publicOnly = false,
+		showWholesale,
+		wholesaleOnly = false
+	} = options;
 
 	let query = supabase
 		.from('coffee_catalog')
 		.select(DROPDOWN_COLUMNS)
 		.order('arrival_date', { ascending: false });
 
-	if (stockedOnly) {
+	if (stockedFilter !== undefined) {
+		if (stockedFilter === true) {
+			query = query.eq('stocked', true);
+		} else if (stockedFilter === false) {
+			query = query.eq('stocked', false);
+		}
+		// null = no filter (all items regardless of stocked state)
+	} else if (stockedOnly) {
 		query = query.eq('stocked', true);
 	}
 

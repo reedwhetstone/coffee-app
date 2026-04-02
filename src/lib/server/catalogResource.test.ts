@@ -419,6 +419,56 @@ describe('buildCanonicalCatalogResponse', () => {
 			);
 		});
 	});
+
+	describe('dropdown path stocked filtering', () => {
+		beforeEach(() => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: false,
+				primaryAppRole: null,
+				apiPlan: null
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(false);
+		});
+
+		it('passes stockedFilter=true to getCatalogDropdown when stocked=true is set', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?fields=dropdown&stocked=true')
+			);
+			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: true })
+			);
+		});
+
+		it('passes stockedFilter=true to getCatalogDropdown when no stocked param provided (backward compat)', async () => {
+			await buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog?fields=dropdown'));
+			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: true })
+			);
+		});
+
+		it('passes stockedFilter=false to getCatalogDropdown when stocked=false is set', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?fields=dropdown&stocked=false')
+			);
+			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: false })
+			);
+		});
+
+		it('passes stockedFilter=null to getCatalogDropdown when stocked=all is set', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?fields=dropdown&stocked=all')
+			);
+			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: null })
+			);
+		});
+	});
 });
 
 describe('buildLegacyAppCatalogResponse', () => {
