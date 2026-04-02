@@ -40,6 +40,7 @@ export interface CatalogSearchOptions {
 
 	// Stock filters
 	stockedOnly?: boolean; // eq stocked=true (default: false — caller decides)
+	stockedFilter?: boolean | null; // explicit 3-way: true=stocked only, false=unstocked only, null=all; takes precedence over stockedOnly when set
 	stockedDays?: number; // gte stocked_date = N days ago
 
 	// Visibility filters (for internal catalog endpoint)
@@ -115,7 +116,9 @@ export async function searchCatalog(
 		supplier,
 		coffeeIds,
 		stockedOnly,
+		stockedFilter,
 		stockedDays,
+
 		publicOnly,
 		showWholesale,
 		wholesaleOnly,
@@ -149,7 +152,16 @@ export async function searchCatalog(
 		.select('*', usePagination ? { count: 'exact' } : undefined);
 
 	// ── Visibility filters ────────────────────────────────────────────────────
-	if (stockedOnly) {
+	// stockedFilter takes precedence: true = stocked only, false = unstocked only, null = no filter
+	// Falls back to legacy stockedOnly when stockedFilter is not provided.
+	if (stockedFilter !== undefined) {
+		if (stockedFilter === true) {
+			query = query.eq('stocked', true);
+		} else if (stockedFilter === false) {
+			query = query.eq('stocked', false);
+		}
+		// null = no filter (all items regardless of stocked state)
+	} else if (stockedOnly) {
 		query = query.eq('stocked', true);
 	}
 	if (publicOnly) {
