@@ -122,6 +122,18 @@
 			alert(error instanceof Error ? error.message : 'Failed to delete batch profiles');
 		}
 	}
+
+	function formatMilestoneTime(seconds: number | null): string {
+		if (seconds == null) return '—';
+		const mins = Math.floor(seconds / 60);
+		const secs = Math.round(seconds % 60);
+		return `${mins}:${secs.toString().padStart(2, '0')}`;
+	}
+
+	function formatMilestoneTemp(temp: number | null): string {
+		if (temp == null) return '';
+		return `@ ${Math.round(temp)}°F`;
+	}
 </script>
 
 <div class="overflow-hidden rounded-lg bg-background-secondary-light p-3 sm:p-6">
@@ -147,6 +159,52 @@
 			</div>
 		</div>
 	</div>
+
+	{#if profile.tp_time != null || profile.fc_start_time != null || profile.drop_time != null || profile.total_roast_time != null}
+		<div class="mb-4 rounded border border-background-tertiary-light p-3">
+			<h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary-light">
+				Milestones
+			</h3>
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+				<div>
+					<span class="text-xs text-text-secondary-light">TP</span>
+					<div class="text-sm font-medium text-text-primary-light">
+						{formatMilestoneTime(profile.tp_time)}
+						{formatMilestoneTemp(profile.tp_temp ?? null)}
+					</div>
+				</div>
+				<div>
+					<span class="text-xs text-text-secondary-light">FC Start</span>
+					<div class="text-sm font-medium text-text-primary-light">
+						{formatMilestoneTime(profile.fc_start_time)}
+						{formatMilestoneTemp(profile.fc_start_temp ?? null)}
+					</div>
+				</div>
+				{#if profile.fc_end_time != null}
+					<div>
+						<span class="text-xs text-text-secondary-light">FC End</span>
+						<div class="text-sm font-medium text-text-primary-light">
+							{formatMilestoneTime(profile.fc_end_time)}
+							{formatMilestoneTemp(profile.fc_end_temp ?? null)}
+						</div>
+					</div>
+				{/if}
+				<div>
+					<span class="text-xs text-text-secondary-light">DROP</span>
+					<div class="text-sm font-medium text-text-primary-light">
+						{formatMilestoneTime(profile.drop_time)}
+						{formatMilestoneTemp(profile.drop_temp ?? null)}
+					</div>
+				</div>
+				<div>
+					<span class="text-xs text-text-secondary-light">Total Time</span>
+					<div class="text-sm font-medium text-text-primary-light">
+						{formatMilestoneTime(profile.total_roast_time)}
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<div class="relative">
 		<div class="overflow-hidden">

@@ -27,6 +27,13 @@ function positiveOrUndef(val: number | undefined | null): number | undefined {
 	return typeof val === 'number' && val > 0 ? val : undefined;
 }
 
+function formatSecondsToTime(seconds: number | null): string | null {
+	if (seconds == null) return null;
+	const mins = Math.floor(seconds / 60);
+	const secs = Math.round(seconds % 60);
+	return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
 /**
  * Creates the set of AI tools for the chat service.
  *
@@ -288,9 +295,19 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				// Trim to requested limit after client-side filtering
 				profiles = profiles.slice(0, finalLimit);
 
+				// Add formatted time display fields so the LLM sees human-readable times
+				const formattedProfiles = profiles.map((p) => ({
+					...p,
+					total_roast_time_display: formatSecondsToTime(p.total_roast_time ?? null),
+					fc_start_time_display: formatSecondsToTime(p.fc_start_time ?? null),
+					fc_end_time_display: formatSecondsToTime(p.fc_end_time ?? null),
+					drop_time_display: formatSecondsToTime(p.drop_time ?? null),
+					charge_time_display: formatSecondsToTime(p.charge_time ?? null)
+				}));
+
 				return {
-					profiles,
-					total: profiles.length,
+					profiles: formattedProfiles,
+					total: formattedProfiles.length,
 					filters_applied: input
 				};
 			}
@@ -403,9 +420,7 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				const totalBeanCost = Math.round(costPerLb * qty * 100) / 100;
 
 				// Determine which bean is pre-selected
-				const preSelectedValue = catalogId
-					? String(catalogId)
-					: beanSelectOptions[0]?.value;
+				const preSelectedValue = catalogId ? String(catalogId) : beanSelectOptions[0]?.value;
 				const preSelectedBean = allBeans.find((c) => String(c.id) === preSelectedValue);
 				const preSelectedLabel = preSelectedBean?.name || input.manual_name || '';
 				const preSelectedSource = preSelectedBean?.source || '__all__';
