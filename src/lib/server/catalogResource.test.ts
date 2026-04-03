@@ -149,7 +149,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
-				stockedOnly: true,
+				stockedFilter: true,
 				publicOnly: true,
 				limit: 15,
 				offset: 0
@@ -302,7 +302,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'admin-client' },
 			expect.objectContaining({
-				stockedOnly: true,
+				stockedFilter: true,
 				publicOnly: true,
 				limit: 25,
 				offset: 0
@@ -316,6 +316,158 @@ describe('buildCanonicalCatalogResponse', () => {
 			undefined,
 			undefined
 		);
+	});
+
+	describe('stocked query parameter', () => {
+		beforeEach(() => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: false,
+				primaryAppRole: null,
+				apiPlan: null
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(false);
+		});
+
+		it('passes stockedFilter=true to searchCatalog when stocked=true is set', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?stocked=true&page=1&limit=10')
+			);
+			expect(mockSearchCatalog).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: true })
+			);
+		});
+
+		it('passes stockedFilter=true when no stocked param is provided (backward compat default)', async () => {
+			await buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog?page=1&limit=10'));
+			expect(mockSearchCatalog).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: true })
+			);
+		});
+
+		it('passes stockedFilter=false to searchCatalog when stocked=false is set', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?stocked=false&page=1&limit=10')
+			);
+			expect(mockSearchCatalog).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: false })
+			);
+		});
+
+		it('passes stockedFilter=null to searchCatalog when stocked=all is set', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?stocked=all&page=1&limit=10')
+			);
+			expect(mockSearchCatalog).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: null })
+			);
+		});
+	});
+
+	describe('origin query parameter', () => {
+		beforeEach(() => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: false,
+				primaryAppRole: null,
+				apiPlan: null
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(false);
+		});
+
+		it('passes origin to searchCatalog when origin param is set', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?origin=Ethiopia&page=1&limit=10')
+			);
+			expect(mockSearchCatalog).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ origin: 'Ethiopia' })
+			);
+		});
+
+		it('passes origin=Africa for continent-level matching', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?origin=Africa&page=1&limit=10')
+			);
+			expect(mockSearchCatalog).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ origin: 'Africa' })
+			);
+		});
+
+		it('does not pass origin when param is absent', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?country=Ethiopia&page=1&limit=10')
+			);
+			expect(mockSearchCatalog).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ origin: undefined })
+			);
+		});
+
+		it('supports both origin and country params simultaneously', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?origin=Africa&country=Ethiopia&page=1&limit=10')
+			);
+			expect(mockSearchCatalog).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ origin: 'Africa', country: 'Ethiopia' })
+			);
+		});
+	});
+
+	describe('dropdown path stocked filtering', () => {
+		beforeEach(() => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: false,
+				primaryAppRole: null,
+				apiPlan: null
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(false);
+		});
+
+		it('passes stockedFilter=true to getCatalogDropdown when stocked=true is set', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?fields=dropdown&stocked=true')
+			);
+			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: true })
+			);
+		});
+
+		it('passes stockedFilter=true to getCatalogDropdown when no stocked param provided (backward compat)', async () => {
+			await buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog?fields=dropdown'));
+			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: true })
+			);
+		});
+
+		it('passes stockedFilter=false to getCatalogDropdown when stocked=false is set', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?fields=dropdown&stocked=false')
+			);
+			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: false })
+			);
+		});
+
+		it('passes stockedFilter=null to getCatalogDropdown when stocked=all is set', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?fields=dropdown&stocked=all')
+			);
+			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ stockedFilter: null })
+			);
+		});
 	});
 });
 
@@ -339,7 +491,7 @@ describe('buildLegacyAppCatalogResponse', () => {
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
-				stockedOnly: true,
+				stockedFilter: true,
 				publicOnly: false,
 				showWholesale: false,
 				limit: undefined,

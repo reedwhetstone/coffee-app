@@ -40,6 +40,7 @@ export interface CatalogSearchOptions {
 
 	// Stock filters
 	stockedOnly?: boolean; // eq stocked=true (default: false — caller decides)
+	stockedFilter?: boolean | null; // explicit 3-way: true=stocked only, false=unstocked only, null=all; takes precedence over stockedOnly when set
 	stockedDays?: number; // gte stocked_date = N days ago
 
 	// Visibility filters (for internal catalog endpoint)
@@ -115,7 +116,9 @@ export async function searchCatalog(
 		supplier,
 		coffeeIds,
 		stockedOnly,
+		stockedFilter,
 		stockedDays,
+
 		publicOnly,
 		showWholesale,
 		wholesaleOnly,
@@ -149,7 +152,16 @@ export async function searchCatalog(
 		.select('*', usePagination ? { count: 'exact' } : undefined);
 
 	// ── Visibility filters ────────────────────────────────────────────────────
-	if (stockedOnly) {
+	// stockedFilter takes precedence: true = stocked only, false = unstocked only, null = no filter
+	// Falls back to legacy stockedOnly when stockedFilter is not provided.
+	if (stockedFilter !== undefined) {
+		if (stockedFilter === true) {
+			query = query.eq('stocked', true);
+		} else if (stockedFilter === false) {
+			query = query.eq('stocked', false);
+		}
+		// null = no filter (all items regardless of stocked state)
+	} else if (stockedOnly) {
 		query = query.eq('stocked', true);
 	}
 	if (publicOnly) {
@@ -253,6 +265,7 @@ export async function searchCatalog(
 	if (supplier) filtersApplied.supplier = supplier;
 	if (coffeeIds) filtersApplied.coffeeIds = coffeeIds;
 	if (stockedOnly) filtersApplied.stockedOnly = stockedOnly;
+	if (stockedFilter !== undefined) filtersApplied.stockedFilter = stockedFilter;
 	if (pricePerLbMin !== undefined) filtersApplied.pricePerLbMin = pricePerLbMin;
 	if (pricePerLbMax !== undefined) filtersApplied.pricePerLbMax = pricePerLbMax;
 	if (stockedDays) filtersApplied.stockedDays = stockedDays;
@@ -289,19 +302,33 @@ export async function getCatalogDropdown(
 	supabase: SupabaseClient,
 	options: {
 		stockedOnly?: boolean;
+		stockedFilter?: boolean | null; // 3-way: true=stocked only, false=unstocked only, null=all; takes precedence over stockedOnly
 		publicOnly?: boolean;
 		showWholesale?: boolean;
 		wholesaleOnly?: boolean;
 	} = {}
 ): Promise<CatalogDropdownItem[]> {
-	const { stockedOnly = true, publicOnly = false, showWholesale, wholesaleOnly = false } = options;
+	const {
+		stockedOnly = true,
+		stockedFilter,
+		publicOnly = false,
+		showWholesale,
+		wholesaleOnly = false
+	} = options;
 
 	let query = supabase
 		.from('coffee_catalog')
 		.select(DROPDOWN_COLUMNS)
 		.order('arrival_date', { ascending: false });
 
-	if (stockedOnly) {
+	if (stockedFilter !== undefined) {
+		if (stockedFilter === true) {
+			query = query.eq('stocked', true);
+		} else if (stockedFilter === false) {
+			query = query.eq('stocked', false);
+		}
+		// null = no filter (all items regardless of stocked state)
+	} else if (stockedOnly) {
 		query = query.eq('stocked', true);
 	}
 

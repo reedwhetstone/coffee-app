@@ -75,6 +75,8 @@ interface ParsedCatalogQuery {
 	showWholesale: boolean;
 	wholesaleOnly: boolean;
 	filters: {
+		stocked?: boolean | null; // true = stocked only (default), false = unstocked only, null = all
+		origin?: string; // cross-field partial match: continent, country, region
 		continent?: string;
 		country?: string;
 		source?: string[];
@@ -153,6 +155,11 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 		.map((value) => Number.parseInt(value, 10))
 		.filter((value) => Number.isFinite(value));
 
+	// Parse stocked param: true (default, no param) | false (unstocked only) | null (all)
+	const stockedParam = url.searchParams.get('stocked');
+	const stockedFilter: boolean | null =
+		stockedParam === 'false' ? false : stockedParam === 'all' ? null : true;
+
 	return {
 		ids,
 		fields: url.searchParams.get('fields') === 'dropdown' ? 'dropdown' : 'full',
@@ -169,6 +176,8 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 		showWholesale: url.searchParams.get('showWholesale') === 'true',
 		wholesaleOnly: url.searchParams.get('wholesaleOnly') === 'true',
 		filters: {
+			stocked: stockedFilter,
+			origin: url.searchParams.get('origin') ?? undefined,
 			continent: url.searchParams.get('continent') ?? undefined,
 			country: url.searchParams.get('country') ?? undefined,
 			source: url.searchParams.getAll('source'),
@@ -294,9 +303,15 @@ async function queryCatalogData(
 	const page = query.isPaginated ? query.page : 1;
 	const offset = query.isPaginated ? query.offset : 0;
 
+	// stocked filter: true = stocked only (default), false = unstocked only, null = all items
+	// parseCatalogQuery always assigns this; no param defaults to true.
+	const stockedFilter: boolean | null =
+		query.filters.stocked !== undefined ? query.filters.stocked : true;
+
 	if (query.fields === 'dropdown' && query.ids.length === 0 && !isPaginated) {
+		// getCatalogDropdown now supports stockedFilter directly (3-way: true/false/null)
 		const rows = await getCatalogDropdown(context.supabase, {
-			stockedOnly: true,
+			stockedFilter,
 			publicOnly: context.publicOnly,
 			showWholesale: context.showWholesale,
 			wholesaleOnly: context.wholesaleOnly
@@ -334,11 +349,12 @@ async function queryCatalogData(
 	}
 
 	const result = await searchCatalog(context.supabase, {
-		stockedOnly: true,
+		stockedFilter,
 		publicOnly: context.publicOnly,
 		showWholesale: context.showWholesale,
 		wholesaleOnly: context.wholesaleOnly,
 		coffeeIds: query.ids.length > 0 ? query.ids : undefined,
+		origin: query.filters.origin,
 		continent: query.filters.continent,
 		country: query.filters.country,
 		source:

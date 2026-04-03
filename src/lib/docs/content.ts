@@ -260,6 +260,48 @@ const docsPages: DocsPage[] = [
 				]
 			},
 			{
+				title: 'Query parameters',
+				table: {
+					headers: ['Parameter', 'Type', 'Default', 'Description'],
+					rows: [
+						['page', 'integer', '1', 'Page number for paginated results.'],
+						['limit', 'integer', '15', 'Rows per page (capped by tier row limit).'],
+						[
+							'stocked',
+							'true | false | all',
+							'true',
+							'Filter by stocked state. true returns only currently available beans. false returns only unstocked/historical items. all returns the full catalog regardless of stocked state.'
+						],
+						[
+							'origin',
+							'string',
+							'—',
+							'Partial match across continent, country, and region fields. origin=Ethiopia matches Ethiopian coffees; origin=Africa matches all African origins.'
+						],
+						['country', 'string', '—', 'Exact match on the country field.'],
+						['continent', 'string', '—', 'Exact match on the continent field.'],
+						[
+							'source',
+							'string (repeatable)',
+							'—',
+							'Filter by supplier slug. Repeat to match multiple sources.'
+						],
+						[
+							'processing',
+							'string',
+							'—',
+							'Partial match on processing method (e.g. washed, natural).'
+						],
+						['name', 'string', '—', 'Partial match on coffee name.'],
+						['region', 'string', '—', 'Partial match on region field.'],
+						['price_per_lb_min', 'number', '—', 'Minimum price per pound (inclusive).'],
+						['price_per_lb_max', 'number', '—', 'Maximum price per pound (inclusive).'],
+						['sortField', 'string', 'arrival_date', 'Field to sort by.'],
+						['sortDirection', 'asc | desc', 'desc', 'Sort direction.']
+					]
+				}
+			},
+			{
 				title: 'Tier limits',
 				table: {
 					headers: ['Tier', 'Monthly requests', 'Rows per call', 'Best for'],
