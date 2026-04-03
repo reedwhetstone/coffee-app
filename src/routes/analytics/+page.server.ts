@@ -114,6 +114,15 @@ export const load: PageServerLoad = async (event) => {
 	ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 	const fromDate = ninetyDaysAgo.toISOString().split('T')[0];
 
+	// PPI members get up to 365 days of snapshot data for extended trend views.
+	const snapshotFromDate = isPpiMember
+		? (() => {
+				const d = new Date();
+				d.setDate(d.getDate() - 365);
+				return d.toISOString().split('T')[0];
+			})()
+		: fromDate;
+
 	const [
 		{ data: marketSummaryRaw },
 		{ count: totalBeansTracked },
@@ -179,16 +188,16 @@ export const load: PageServerLoad = async (event) => {
 			.gte('unstocked_date', thirtyDaysAgoStr)
 			.order('unstocked_date', { ascending: false })
 			.limit(50),
-		// Price index snapshots (public — powers line chart)
+		// Price index snapshots — 90 days public, 365 days for PPI members
 		sb
 			.from('price_index_snapshots')
 			.select(
 				'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier'
 			)
-			.gte('snapshot_date', fromDate)
+			.gte('snapshot_date', snapshotFromDate)
 			.eq('aggregation_tier', 1)
 			.order('snapshot_date', { ascending: true })
-			.limit(1000)
+			.limit(5000)
 	]);
 
 	const marketSummary = marketSummaryRaw as {
