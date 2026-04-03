@@ -45,9 +45,21 @@
 	let controlScale = $derived.by(() => {
 		const innerH = containerHeight - padding.top - padding.bottom;
 		if (innerH <= 0) return scaleLinear().domain([0, 10]).range([0, 0]);
+
+		// Find the actual max across all control series
+		let maxVal = 10;
+		for (const series of chartData.controlSeries) {
+			for (const pt of series.points) {
+				if (pt.value > maxVal) maxVal = pt.value;
+			}
+		}
+		// Snap to clean ceiling
+		const ceiling =
+			maxVal <= 10 ? 10 : maxVal <= 50 ? 50 : maxVal <= 100 ? 100 : Math.ceil(maxVal / 50) * 50;
+
 		// Control values use bottom 30% of chart height
 		return scaleLinear()
-			.domain([0, 10])
+			.domain([0, ceiling])
 			.range([innerH, innerH * 0.7]);
 	});
 
