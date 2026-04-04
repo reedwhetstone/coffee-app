@@ -8,7 +8,7 @@ This repo contains the web app, the public catalog and analytics surfaces, the P
 
 ### Public surfaces
 
-- `/` marketing site and authenticated home dashboard
+- `/` public marketing landing page (authenticated users see featured coffees)
 - `/catalog` public green coffee catalog with filters and live pricing context
 - `/analytics` public market intelligence, with deeper views for authenticated users and premium analytics access
 - `/api` API product page

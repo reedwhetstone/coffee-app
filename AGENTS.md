@@ -26,6 +26,7 @@ It also depends on `@purveyors/cli`, which is a first-class interface to the sam
 - Stripe
 - OpenRouter via Vercel AI SDK
 - `@purveyors/cli`
+- LayerCake (charts and analytics components)
 
 ## Commands
 
