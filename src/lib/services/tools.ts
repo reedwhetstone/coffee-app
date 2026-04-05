@@ -288,9 +288,38 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				// Trim to requested limit after client-side filtering
 				profiles = profiles.slice(0, finalLimit);
 
+				// Add formatted time fields so LLM sees "7:07" not raw seconds
+				const formatTime = (seconds: number | null | undefined): string | null => {
+					if (seconds == null) return null;
+					const m = Math.floor(seconds / 60);
+					const s = Math.floor(seconds % 60);
+					return `${m}:${s.toString().padStart(2, '0')}`;
+				};
+
+				const TIME_FIELDS = [
+					'total_roast_time',
+					'fc_start_time',
+					'fc_end_time',
+					'drop_time',
+					'tp_time',
+					'charge_time',
+					'cool_time',
+					'dry_end_time',
+					'sc_start_time'
+				] as string[];
+
+				const profilesWithFmt = profiles.map((p) => {
+					const extra: Record<string, string | null> = {};
+					for (const field of TIME_FIELDS) {
+						const val = (p as unknown as Record<string, unknown>)[field];
+						extra[`${field}_fmt`] = formatTime(typeof val === 'number' ? val : null);
+					}
+					return { ...p, ...extra };
+				});
+
 				return {
-					profiles,
-					total: profiles.length,
+					profiles: profilesWithFmt,
+					total: profilesWithFmt.length,
 					filters_applied: input
 				};
 			}
@@ -403,9 +432,7 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 				const totalBeanCost = Math.round(costPerLb * qty * 100) / 100;
 
 				// Determine which bean is pre-selected
-				const preSelectedValue = catalogId
-					? String(catalogId)
-					: beanSelectOptions[0]?.value;
+				const preSelectedValue = catalogId ? String(catalogId) : beanSelectOptions[0]?.value;
 				const preSelectedBean = allBeans.find((c) => String(c.id) === preSelectedValue);
 				const preSelectedLabel = preSelectedBean?.name || input.manual_name || '';
 				const preSelectedSource = preSelectedBean?.source || '__all__';

@@ -17,6 +17,13 @@
 		currentIndex?: number;
 	}>();
 
+	function formatMilestoneTime(s: number | null): string {
+		if (s == null) return '—';
+		const m = Math.floor(s / 60);
+		const sec = Math.floor(s % 60);
+		return `${m}:${sec.toString().padStart(2, '0')}`;
+	}
+
 	let isEditing = $state(false);
 	let editedProfile = $state<RoastProfile>({} as RoastProfile);
 
@@ -214,6 +221,65 @@
 			{/key}
 		</div>
 	</div>
+	<!-- Milestones Section (read-only) -->
+	{#if profile.tp_time != null || profile.fc_start_time != null || profile.drop_time != null || profile.total_roast_time != null}
+		<div class="mt-4">
+			<h2 class="text-primary-light mb-2 text-sm font-semibold uppercase tracking-wide">
+				Milestones
+			</h2>
+			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+				{#if profile.tp_time != null}
+					<div class="rounded border border-background-tertiary-light p-3">
+						<div class="text-primary-light mb-1 text-xs font-medium uppercase">TP</div>
+						<div class="text-sm text-text-primary-light">
+							{formatMilestoneTime(profile.tp_time)}{profile.tp_temp != null
+								? ` @ ${profile.tp_temp}°${profile.temperature_unit || 'F'}`
+								: ''}
+						</div>
+					</div>
+				{/if}
+				{#if profile.fc_start_time != null}
+					<div class="rounded border border-background-tertiary-light p-3">
+						<div class="text-primary-light mb-1 text-xs font-medium uppercase">FC</div>
+						<div class="text-sm text-text-primary-light">
+							{formatMilestoneTime(profile.fc_start_time)}{profile.fc_start_temp != null
+								? ` @ ${profile.fc_start_temp}°${profile.temperature_unit || 'F'}`
+								: ''}
+						</div>
+					</div>
+				{/if}
+				{#if profile.fc_end_time != null}
+					<div class="rounded border border-background-tertiary-light p-3">
+						<div class="text-primary-light mb-1 text-xs font-medium uppercase">FC End</div>
+						<div class="text-sm text-text-primary-light">
+							{formatMilestoneTime(profile.fc_end_time)}{profile.fc_end_temp != null
+								? ` @ ${profile.fc_end_temp}°${profile.temperature_unit || 'F'}`
+								: ''}
+						</div>
+					</div>
+				{/if}
+				{#if profile.drop_time != null}
+					<div class="rounded border border-background-tertiary-light p-3">
+						<div class="text-primary-light mb-1 text-xs font-medium uppercase">Drop</div>
+						<div class="text-sm text-text-primary-light">
+							{formatMilestoneTime(profile.drop_time)}{profile.drop_temp != null
+								? ` @ ${profile.drop_temp}°${profile.temperature_unit || 'F'}`
+								: ''}
+						</div>
+					</div>
+				{/if}
+				{#if profile.total_roast_time != null}
+					<div class="rounded border border-background-tertiary-light p-3">
+						<div class="text-primary-light mb-1 text-xs font-medium uppercase">Total</div>
+						<div class="text-sm text-text-primary-light">
+							{formatMilestoneTime(profile.total_roast_time)}
+						</div>
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
+
 	<div>
 		<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row sm:space-x-2">
 			<button
