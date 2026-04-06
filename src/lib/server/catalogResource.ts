@@ -409,7 +409,7 @@ async function queryCatalogData(
 				showWholesale: context.showWholesale,
 				wholesaleOnly: context.wholesaleOnly,
 				rowLimit: context.rowLimit,
-				limited: data.length < totalAvailable,
+				limited: context.rowLimit !== null && totalAvailable > context.rowLimit,
 				totalAvailable
 			},
 			cache: {

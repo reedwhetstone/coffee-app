@@ -157,6 +157,35 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
+	it('keeps access.limited false for paginated requests when no row cap applies', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalog.mockResolvedValue({
+			data: Array.from({ length: 3 }, (_, index) => ({
+				...sampleCatalogItem,
+				id: index + 1,
+				name: `Coffee ${index + 1}`
+			})),
+			count: 1137,
+			filtersApplied: {}
+		});
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?page=1&limit=3')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.meta.access.rowLimit).toBeNull();
+		expect(body.meta.access.limited).toBe(false);
+		expect(body.pagination).toMatchObject({ page: 1, limit: 3, total: 1137, totalPages: 379 });
+	});
+
 	it('prefers canonical price_per_lb query params for per-pound price filtering', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
@@ -316,6 +345,41 @@ describe('buildCanonicalCatalogResponse', () => {
 			undefined,
 			undefined
 		);
+	});
+
+	it('keeps access.limited false when a row-capped response still fits within the cap', async () => {
+		const apiKeyPrincipal = {
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: 'viewer',
+			apiKeyId: 'key-1'
+		};
+
+		mockResolvePrincipal.mockResolvedValue(apiKeyPrincipal);
+		mockIsApiKeyPrincipal.mockReturnValue(true);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockRequireApiKeyAccess.mockResolvedValue(apiKeyPrincipal);
+		mockSearchCatalog.mockResolvedValue({
+			data: Array.from({ length: 10 }, (_, index) => ({
+				...sampleCatalogItem,
+				id: index + 1,
+				name: `Coffee ${index + 1}`
+			})),
+			count: 10,
+			filtersApplied: {}
+		});
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog', {
+				Authorization: 'Bearer pk_live_valid'
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.meta.access.rowLimit).toBe(25);
+		expect(body.meta.access.limited).toBe(false);
+		expect(body.pagination).toMatchObject({ page: 1, limit: 25, total: 10, totalPages: 1 });
 	});
 
 	describe('stocked query parameter', () => {
