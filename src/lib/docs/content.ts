@@ -710,16 +710,36 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Commands',
 				bullets: [
-					'purvey catalog search: search by origin, processing method, price, or flavor.',
+					'purvey catalog search: search by origin, processing method, price, flavor, variety, drying method, and more.',
 					'purvey catalog get <id>: fetch a single coffee by ID.',
+					'purvey catalog similar <id>: find coffees similar to a given catalog entry.',
 					'purvey catalog stats: aggregate catalog statistics.'
 				],
 				codeBlocks: [
 					{
 						label: 'Search examples',
 						language: 'bash',
-						code: 'purvey catalog search --origin "Ethiopia" --process "natural" --pretty\npurvey catalog search --process "natural" --flavor "blueberry,citrus" --stocked\npurvey catalog search --price-min 5 --price-max 12 --stocked --limit 20 --csv'
+						code: 'purvey catalog search --origin "Ethiopia" --process "natural" --pretty\npurvey catalog search --variety "Heirloom" --stocked --pretty\npurvey catalog search --drying-method "raised bed" --stocked --limit 20\npurvey catalog search --stocked-days 30 --sort newest --pretty\npurvey catalog search --ids "1182,1183,1200" --pretty\npurvey catalog similar 1182 --threshold 0.85 --stocked-only --pretty'
 					}
+				]
+			},
+			{
+				title: 'Search filters',
+				bullets: [
+					'--origin <text>: partial match across country, continent, and region fields.',
+					'--process <text>: partial match on processing method (e.g. washed, natural).',
+					'--flavor <text>: partial match on flavor notes (comma-separated for multiple).',
+					'--variety <text>: filter by coffee variety or cultivar (partial match).',
+					'--drying-method <text>: filter by drying method (partial match, e.g. raised bed, patio).',
+					'--name <text>: filter by coffee name (partial match, case-insensitive).',
+					'--supplier <name>: filter by supplier or source name (partial match, case-insensitive).',
+					'--stocked: only show currently available coffees.',
+					'--stocked-days <n>: only show coffees stocked within the last N days.',
+					'--price-min <n> / --price-max <n>: filter by price per pound range.',
+					'--ids <n,n,...>: fetch specific catalog IDs (comma-separated; ignores --limit).',
+					'--sort <price|price-desc|name|origin|newest>: sort results.',
+					'--offset <n>: skip N results for pagination.',
+					'--limit <n>: maximum results returned (default: 10).'
 				]
 			},
 			{
@@ -764,16 +784,27 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Commands',
 				bullets: [
-					'purvey inventory list: list inventory with optional --stocked filtering.',
-					'purvey inventory get <id>: fetch a single inventory item.',
-					'purvey inventory add, update, delete: mutate inventory rows you own.'
+					'purvey inventory list: list inventory with optional filters — --stocked, --catalog-id, --origin, --purchase-date-start, --purchase-date-end, --limit.',
+					'purvey inventory get <id>: fetch a single inventory item by ID.',
+					'purvey inventory add: add a new inventory item (--catalog-id and --qty are required).',
+					'purvey inventory update <id>: update fields on an existing inventory item.',
+					'purvey inventory delete <id>: delete an item; --force cascades to dependent roast profiles and sales.'
 				],
 				codeBlocks: [
 					{
-						label: 'List and export',
+						label: 'List, add, update, and export',
 						language: 'bash',
-						code: 'purvey inventory list --stocked --pretty\npurvey inventory list --limit 50 --csv > inventory.csv'
+						code: 'purvey inventory list --stocked --pretty\npurvey inventory list --origin Ethiopia --pretty\npurvey inventory list --catalog-id 128 --pretty\npurvey inventory list --purchase-date-start 2026-01-01 --purchase-date-end 2026-03-31\npurvey inventory add --catalog-id 128 --qty 10 --cost 8.50 --pretty\npurvey inventory update 7 --stocked false\npurvey inventory delete 7 --yes\npurvey inventory delete 7 --force --yes\npurvey inventory list --limit 50 --csv > inventory.csv'
 					}
+				]
+			},
+			{
+				title: 'add and update flags',
+				bullets: [
+					'add required flags: --catalog-id (catalog entry ID), --qty (pounds).',
+					'add optional flags: --cost, --tax-ship, --notes, --purchase-date, --form.',
+					'update fields: --qty, --cost, --tax-ship, --notes, --stocked <true|false>.',
+					'delete --force cascades to dependent roast profiles and sales records. Without --force, delete fails if dependents exist.'
 				]
 			},
 			{
@@ -818,16 +849,19 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Commands',
 				bullets: [
-					'purvey roast list: list profiles, optionally filtered by --coffee-id.',
+					'purvey roast list: list profiles, optionally filtered by --coffee-id, --coffee-name, --catalog-id, --date-start, or --date-end.',
+					'purvey roast get <id>: fetch a single roast profile (--include-temps, --include-events for full telemetry).',
 					'purvey roast create: create a roast record manually.',
 					'purvey roast import: import an Artisan .alog file.',
+					'purvey roast update <id>: update notes, batch name, oz-out, or targets on an existing profile.',
+					'purvey roast delete <id>: delete a roast profile.',
 					'purvey roast watch: watch a directory for new .alog files and auto-import them.'
 				],
 				codeBlocks: [
 					{
-						label: 'Create and import',
+						label: 'Create, import, list, and update',
 						language: 'bash',
-						code: 'purvey roast create --coffee-id 7 --batch-name "Ethiopia Guji Light" --oz-in 16 --pretty\npurvey roast import ~/artisan/ethiopia-guji.alog --coffee-id 7 --pretty'
+						code: 'purvey roast create --coffee-id 7 --batch-name "Ethiopia Guji Light" --oz-in 16 --pretty\npurvey roast import ~/artisan/ethiopia-guji.alog --coffee-id 7 --pretty\npurvey roast list --coffee-name "Guji" --pretty\npurvey roast list --catalog-id 128 --pretty\npurvey roast list --date-start 2026-01-01 --date-end 2026-03-31\npurvey roast update 123 --targets "Aim for FC at 390F, 18% dev"\npurvey roast update 123 --oz-out 13.2'
 					}
 				]
 			},
@@ -835,6 +869,7 @@ const docsPages: DocsPage[] = [
 				title: 'Behavior notes',
 				bullets: [
 					'--coffee-id always refers to green_coffee_inv.id (use purvey inventory list to find IDs).',
+					'--coffee-name filters by coffee name with a partial match (case-insensitive).',
 					'Import extracts roast curves, events, and milestone timing from .alog files.',
 					'Interactive --form mode provides a guided workflow for create and import.'
 				]
@@ -873,15 +908,32 @@ const docsPages: DocsPage[] = [
 				title: 'Record a sale',
 				codeBlocks: [
 					{
-						label: 'Record a sale',
+						label: 'Record and list sales',
 						language: 'bash',
-						code: 'purvey sales record --roast-id 123 --oz 12 --price 22.00 --buyer "Jane Smith" --pretty'
+						code: 'purvey sales record --roast-id 123 --oz 12 --price 22.00 --buyer "Jane Smith" --pretty\npurvey sales list --pretty\npurvey sales list --roast-id 123 --pretty\npurvey sales list --buyer "Jane" --date-start 2026-01-01\npurvey sales list --csv > sales.csv'
 					}
 				],
 				bullets: [
-					'Required flags: --roast-id, --oz, --price.',
+					'Required flags for record: --roast-id, --oz, --price.',
 					'Use purvey roast list to find roast IDs.',
 					'--price is the total sale price, not per-ounce.'
+				]
+			},
+			{
+				title: 'List sales',
+				bullets: [
+					'--roast-id <id>: filter by roast profile ID.',
+					'--date-start / --date-end <YYYY-MM-DD>: filter by date range.',
+					'--buyer <name>: filter by buyer name (partial match).',
+					'--limit <n>: maximum results returned (default: 20).'
+				]
+			},
+			{
+				title: 'Update and delete',
+				bullets: [
+					'purvey sales update <id>: update oz, price, buyer, or sell-date on an existing sale.',
+					'purvey sales delete <id>: delete a sale record.',
+					'Both commands expect a sale ID from purvey sales list.'
 				]
 			}
 		],
