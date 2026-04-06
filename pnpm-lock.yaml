@@ -18,8 +18,8 @@ importers:
         specifier: ^0.8.10
         version: 0.8.14(svelte@5.48.0)
       '@purveyors/cli':
-        specifier: ^0.9.5
-        version: 0.9.5(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+        specifier: ^0.9.6
+        version: 0.9.6(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.99.1(bufferutil@4.1.0)(utf-8-validate@6.0.6))
@@ -836,8 +836,8 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@purveyors/cli@0.9.5':
-    resolution: {integrity: sha512-IQPLztKUC9FfzlGXiJ/OvjI+f82e4cnD2tNveMQ8+KMEezJNuifiwnvZXDrgyA1vE7/KLaJaoV95XqVXCMvG1w==}
+  '@purveyors/cli@0.9.6':
+    resolution: {integrity: sha512-XX24DTJSl99H5am1aSt2Ps/EuDQAZYH8QzyzdFKwnsmg88L0lLcFYU1NJGVZD4efVjYx9kQOmaLCS5mJsAoHIA==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -3600,7 +3600,7 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@purveyors/cli@0.9.5(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
+  '@purveyors/cli@0.9.6(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
       '@clack/prompts': 1.1.0
       '@supabase/supabase-js': 2.99.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
