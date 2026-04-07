@@ -10,6 +10,22 @@
 	let navSection = $derived(DOCS_NAV.find((item) => item.key === section));
 	let prevNext = $derived(getPrevNextDocs(section, slug));
 
+	// Build a page-level TOC from section titles.
+	// Each entry anchors to a slug derived from the title.
+	function titleToAnchor(title: string): string {
+		return title
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-|-$/g, '');
+	}
+
+	let tocItems = $derived(
+		page.sections.map((s: { title: string }) => ({
+			title: s.title,
+			anchor: titleToAnchor(s.title)
+		}))
+	);
+
 	function calloutClasses(tone: 'note' | 'warning' | 'success') {
 		if (tone === 'warning') {
 			return 'border-amber-200 bg-amber-50 text-amber-950';
@@ -52,6 +68,29 @@
 				{/each}
 			</ul>
 		</nav>
+
+		{#if tocItems.length > 1}
+			<nav
+				aria-label="On this page"
+				class="rounded-2xl border border-border-light bg-background-primary-light p-4"
+			>
+				<p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary-light">
+					On this page
+				</p>
+				<ul class="mt-3 space-y-1">
+					{#each tocItems as toc}
+						<li>
+							<a
+								href={`#${toc.anchor}`}
+								class="block rounded-lg px-2 py-1.5 text-xs leading-snug text-text-secondary-light transition-colors hover:bg-background-secondary-light hover:text-text-primary-light"
+							>
+								{toc.title}
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</nav>
+		{/if}
 	</aside>
 
 	<article class="min-w-0 space-y-8">
@@ -77,6 +116,7 @@
 
 		{#each page.sections as sectionBlock}
 			<section
+				id={titleToAnchor(sectionBlock.title)}
 				class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 			>
 				<h2 class="text-2xl font-semibold text-text-primary-light">{sectionBlock.title}</h2>

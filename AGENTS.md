@@ -74,13 +74,16 @@ Treat the API as two layers:
 1. **Public external API**
 
    - `GET /v1/catalog`
-   - Bearer API key auth
+   - Auth: API key, web session, or anonymous (public-only subset with server-side row cap)
+   - Rate-limit headers (`X-RateLimit-*`) are only included in API-key responses
    - Stable public contract
 
 2. **Internal app API**
    - `/api/catalog`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/stripe/*`, and related helpers
    - Session auth, role checks, ownership checks
    - Important for contributors, but not a broad public compatibility promise
+   - `/api/catalog-api` is a deprecated legacy URL with `Deprecation: true` and `Sunset: Dec 31 2026` headers; migrate to `/v1/catalog`
+   - `/api/tools/*` routes are deprecated; prefer direct CLI-library integration
 
 Do not blur those layers in code comments, docs, or PR descriptions.
 
@@ -106,6 +109,7 @@ When changing docs, keep these sources aligned:
 
 - Verify behavior from source before documenting it
 - Do not claim an endpoint is public unless it truly is
+- Do not claim CLI commands work without auth; all CLI commands require authentication
 - Do not invent filter/query behavior that the route does not implement
 - Be explicit about auth model, tier limits, and session requirements
 - If analytics are a product surface but not a public REST surface, say that clearly
