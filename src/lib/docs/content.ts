@@ -279,14 +279,14 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Public endpoint',
 		intro: [
 			'GET /v1/catalog is the canonical catalog endpoint. It returns normalized coffee listings with origin, processing method, pricing (including price tiers), and availability data.',
-			'The endpoint supports three auth modes: API key (external integrations, rate-limited by tier), web session (first-party web app), and anonymous (no credentials, public-only listings with a server-side row cap). Only API-key requests receive X-RateLimit-* response headers.'
+			'The endpoint supports three auth modes: API key (external integrations, rate-limited by tier), web session (first-party web app), and anonymous (no credentials, public-only listings). Requests without explicit page or limit parameters default to page 1 with up to 100 rows for the standard listing response. Only API-key requests receive X-RateLimit-* response headers.'
 		],
 		sections: [
 			{
 				title: 'Request and response',
 				body: [
-					'The catalog endpoint returns the full feed of publicly visible listings. Use query parameters for filtering, pagination, and sorting.',
-					'Each response includes data (the listings array), pagination metadata, and a meta block with auth, access, and cache details.'
+					'The catalog endpoint returns a paginated listing response by default. Use query parameters for filtering, pagination, and sorting.',
+					'If you omit both page and limit, /v1/catalog automatically serves the first page with up to 100 rows for the standard listing response. Each response includes data (the listings array), pagination metadata, and a meta block with auth, access, and cache details.'
 				],
 				codeBlocks: [
 					{
@@ -298,6 +298,9 @@ const docsPages: DocsPage[] = [
 			},
 			{
 				title: 'Query parameters',
+				body: [
+					'Explicit pagination still uses the limit you provide. If you send page without limit, the endpoint uses 15 rows per page. If you omit both page and limit, the standard listing response defaults to page 1 with 100 rows.'
+				],
 				table: {
 					headers: ['Parameter', 'Type', 'Default', 'Description'],
 					rows: [
@@ -305,7 +308,7 @@ const docsPages: DocsPage[] = [
 						[
 							'limit',
 							'integer',
-							'15',
+							'100 when page+limit are both omitted; otherwise 15 fallback',
 							'Rows per page (capped by tier row limit for API-key requests).'
 						],
 						[

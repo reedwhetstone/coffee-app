@@ -111,6 +111,12 @@ interface CatalogAccessContext {
 	supabase: RequestEvent['locals']['supabase'];
 }
 
+interface QueryCatalogDataOptions {
+	forceDefaultPagination?: boolean;
+}
+
+const DEFAULT_API_PAGE_LIMIT = 100;
+
 class CatalogRateLimitError extends Error {
 	constructor(
 		public apiKeyId: string,
@@ -291,17 +297,34 @@ async function resolveCatalogAccessContext(
 
 async function queryCatalogData(
 	context: CatalogAccessContext,
-	query: ParsedCatalogQuery
+	query: ParsedCatalogQuery,
+	options: QueryCatalogDataOptions = {}
 ): Promise<CanonicalCatalogResponse> {
+	// Preserve the existing specialized contracts for explicit ID fetches and
+	// dropdown projection requests. Default pagination is only for the standard
+	// canonical listing response when callers omit both page and limit.
+	const useDefaultPagination =
+		options.forceDefaultPagination === true &&
+		!query.isPaginated &&
+		query.ids.length === 0 &&
+		query.fields !== 'dropdown';
+	const requestedPage = query.isPaginated ? query.page : 1;
+	const requestedLimit = query.isPaginated
+		? query.limit
+		: useDefaultPagination
+			? DEFAULT_API_PAGE_LIMIT
+			: query.limit;
+	const requestedOffset = query.isPaginated ? query.offset : 0;
+	const useRowLimitedPagination =
+		!query.isPaginated && !useDefaultPagination && context.rowLimit !== null;
+	const isPaginated = query.isPaginated || useDefaultPagination || useRowLimitedPagination;
 	const effectiveLimit = context.rowLimit
-		? query.isPaginated
-			? Math.min(query.limit, context.rowLimit)
+		? isPaginated
+			? Math.min(requestedLimit, context.rowLimit)
 			: context.rowLimit
-		: query.limit;
-	const useRowLimitedPagination = !query.isPaginated && context.rowLimit !== null;
-	const isPaginated = query.isPaginated || useRowLimitedPagination;
-	const page = query.isPaginated ? query.page : 1;
-	const offset = query.isPaginated ? query.offset : 0;
+		: requestedLimit;
+	const page = isPaginated ? requestedPage : 1;
+	const offset = isPaginated ? requestedOffset : 0;
 
 	// stocked filter: true = stocked only (default), false = unstocked only, null = all items
 	// parseCatalogQuery always assigns this; no param defaults to true.
@@ -424,7 +447,7 @@ async function queryCatalogData(
 // pay an extra parse/stringify pass on large unpaginated responses.
 async function resolveCatalogRouteResult(
 	event: RequestEvent,
-	options: { requestPath?: string } = {}
+	options: { requestPath?: string; forceDefaultPagination?: boolean } = {}
 ): Promise<{
 	status: number;
 	body: CanonicalCatalogResponse | Record<string, unknown>;
@@ -437,7 +460,9 @@ async function resolveCatalogRouteResult(
 
 	try {
 		context = await resolveCatalogAccessContext(event, query, requestPath);
-		const body = await queryCatalogData(context, query);
+		const body = await queryCatalogData(context, query, {
+			forceDefaultPagination: options.forceDefaultPagination
+		});
 		await logCatalogApiUsage(context, event, 200, startTime);
 
 		const headers = new Headers();
@@ -513,7 +538,10 @@ export async function buildCanonicalCatalogResponse(
 	event: RequestEvent,
 	options: { requestPath?: string } = {}
 ): Promise<Response> {
-	const result = await resolveCatalogRouteResult(event, options);
+	const result = await resolveCatalogRouteResult(event, {
+		...options,
+		forceDefaultPagination: true
+	});
 	return json(result.body, {
 		status: result.status,
 		headers: result.headers
@@ -524,7 +552,10 @@ export async function buildLegacyAppCatalogResponse(
 	event: RequestEvent,
 	options: { requestPath?: string } = {}
 ): Promise<Response> {
-	const result = await resolveCatalogRouteResult(event, options);
+	const result = await resolveCatalogRouteResult(event, {
+		...options,
+		forceDefaultPagination: false
+	});
 
 	if (result.status >= 400) {
 		return json(result.body, {
