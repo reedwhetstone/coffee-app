@@ -72,9 +72,7 @@ Guild AI is pushing on a different edge of the category: AI developer productivi
 
 AWS Bedrock AgentCore is treating runtime itself as a platform primitive: memory, observability, identity, and secure execution for enterprise agents. That is the infrastructure layer becoming explicit.
 
-These are not side stories. They are evidence that the category is real, and that serious organizations are investing in it.
-
-But laid side by side, they also show the gap.
+Laid side by side, they also show the gap.
 
 Glean strengthens *access and retrieval*. Guild points toward *workflow structure around agentic work*. AgentCore strengthens *runtime and memory infrastructure*.
 
@@ -135,7 +133,5 @@ These are behavioral outcomes, not retrieval benchmarks.
 If I were building this from scratch, I would not start with a bigger vector index. I would start with an authority order. Write one short document that says which source wins when strategy docs, ADRs, plans, local notes, and stale artifacts conflict. Until that exists, retrieval will keep surfacing fragments without producing judgment.
 
 The systems that will win in enterprise AI are not the ones with the largest context windows, the fastest embeddings, or the most connected app integrations. Those matter at the infrastructure layer. The real advantage will come from making judgment portable.
-
-That is the leap from enterprise AI tooling to enterprise institutional cognition.
 
 Enterprise second brains are not systems for storing what the company knows. They are systems for teaching an agent what a good new hire learns, what a strong operator keeps, and what the organization should act on.
