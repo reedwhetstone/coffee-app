@@ -30,19 +30,17 @@ The system that solves judgment is the one the market has not fully built yet. I
 
 ## What a new hire actually learns in six months
 
-The onboarding analogy is doing real work here, so let me make it precise.
+A strong new hire is not absorbing "all the docs." They are absorbing five kinds of context.
 
-A strong new hire with full document access is absorbing something much more structured than "the contents of the company's files." They are absorbing a layered operating model. Five layers, specifically.
+**Canonical truth.** What the company currently says is true: product strategy, official process, stated priorities.
 
-**Canonical truth.** What the company says is true: product strategy, official process, stated priorities. This is the stuff that lives in strategy decks and direction docs. Most enterprises have this documented somewhere, even if it is inconsistently maintained.
+**Decision history.** Why things are the way they are: painful migrations, killed directions, tradeoffs that should not be casually reversed.
 
-**Decision history.** Why things are the way they are. The painful migration that should not be reversed. The customer segment the company stopped serving and why. The product direction that was tried and killed. Architecture Decision Records formalize a small part of this. Most of it lives in people's heads and in pull request descriptions from two years ago.
+**Local context.** What matters inside a specific team, product line, or workflow that never made it into company-wide docs.
 
-**Local context.** What matters inside a specific team, product line, or workflow that does not appear in company-wide docs. The team convention that diverges from the official standard. The practical workaround that everyone uses but nobody wrote down. The scope boundary that is not in any org chart.
+**Working memory.** What a strong operator keeps active because it keeps mattering: current priorities, open problems, recent incidents, near-term patterns.
 
-**Working memory.** What a strong operator keeps active because it keeps mattering: current priorities, open problems, recent incidents, near-term patterns. This is the most perishable layer. It expires on a timescale of days to weeks, not months.
-
-**Escalation judgment.** What can be acted on directly versus what needs a human in the loop. A new hire learns this by watching what happens when they act without checking, and by explicitly being told where the land mines are.
+**Escalation judgment.** What can be acted on directly versus what needs a human checkpoint.
 
 These five layers, assembled together, are what turns information access into reliable action.
 
@@ -50,17 +48,15 @@ An agent is a new hire who absorbs all five layers instantly and forgets them co
 
 ## RAG helps retrieve candidates. It does not create the north star.
 
-Retrieval-Augmented Generation has become the default enterprise AI pattern. Send a query, pull the top-k semantically similar document chunks, pass them to a language model as context, generate an answer. Useful. Widely deployed. And insufficient for the problem described above.
+Retrieval-Augmented Generation has become the default enterprise AI pattern. Send a query, pull the top-k semantically similar chunks, pass them to a model, generate an answer. Useful. Widely deployed. Insufficient.
 
-Here is why.
+Semantic similarity finds what is close to a query. It does not know what is *authoritative*. A superseded policy document from 2022 may rank higher than the current one because the language is identical.
 
-Semantic similarity finds what is conceptually close to a query. It does not know what is *authoritative*. A superseded policy document from 2022 may embed much closer to "what is our vendor approval process?" than the current one, because the terminology is identical. The embedding model has no way to represent the difference between "authoritative and current" and "semantically similar and stale."
+Ranking does not resolve contradictions. If the current strategy doc says one thing and a two-year-old implementation plan says another, retrieval surfaces both. Neither comes with a governance signal that says which one should govern behavior.
 
-Ranking does not resolve contradictions. If the current strategy doc says one thing and a two-year-old implementation plan says another, the retrieval system surfaces both. Neither is marked with a governance signal that tells the agent which one should govern its behavior.
+The similarity layer finds the neighborhood. It does not decide the law.
 
-The similarity layer does not encode authority, recency, or scope. It finds the neighborhood. It does not decide the law.
-
-This is a more specific problem than "embeddings are not search," though that is also true. It is that retrieval without a governance model produces confident, contextually plausible, often wrong behavior. The agent pulls relevant fragments. It cannot tell which fragments should govern the decision in front of it.
+That is the real gap. Retrieval without a governance model produces confident, plausible, often wrong behavior. The agent can find relevant fragments. It still cannot tell which fragments should control the decision in front of it.
 
 The fix is not better embeddings. It is an authority model layered on top of retrieval. Something that can encode: this document wins over that document when they conflict; this context is binding within this scope; this signal is fresh enough to act on; this decision has a history that should not be casually reversed.
 
@@ -88,7 +84,7 @@ The center of the stack is still being assembled.
 
 ## What an enterprise second brain actually is
 
-A useful decomposition has seven layers. I do not mean this as the only possible model. I mean that if you want to compress onboarding into an agent-usable operating system, some version of these layers has to exist.
+The five layers above describe what a human absorbs. The seven below are the system architecture that can approximate that absorption for an agent.
 
 **Hot layer.** Always-loaded operating context: active rules, identity constraints, current session state, the most time-sensitive priorities. This is what loads with every agent interaction. It is the equivalent of the org chart and the "here is how we work" doc that every new hire gets in their first meeting.
 
@@ -103,6 +99,8 @@ A useful decomposition has seven layers. I do not mean this as the only possible
 **Promotion layer.** A mechanism to notice what keeps mattering and make it durable. In my workspace, OpenClaw calls this dreaming: a nightly consolidation pass that promotes recurring signals from daily traces into more durable memory and lets stale context decay. Without this layer, the system becomes either amnesiac or archival junk.
 
 **Review layer.** A way to validate whether the memory system is actually changing behavior in the right direction. This still needs a human in the loop, but the loop has to be tight enough to catch drift before it compounds.
+
+At enterprise scale, the hard part is ownership. Someone has to maintain canonical direction, decision history, and review loops. The minimum viable version is smaller than this framework sounds: one authority order, one canonical direction document, a handful of ADRs, and one execution layer that actually stays current.
 
 These layers together are what makes the difference between an agent that retrieves documents and an agent that operates from judgment.
 
