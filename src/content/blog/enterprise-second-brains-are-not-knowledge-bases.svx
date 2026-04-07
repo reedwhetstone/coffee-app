@@ -1,5 +1,5 @@
 ---
-title: "Enterprise Second Brains Are Not Knowledge Bases"
+title: "What a New Hire Learns That Enterprise AI Still Misses"
 date: "2026-04-07"
 description: "The right model for enterprise AI is not 'better search.' It is compressed onboarding. A real enterprise second brain teaches an agent what a strong new hire learns in the first six months, then turns that knowledge into reliable action."
 tags: ["ai", "agentic", "enterprise", "infrastructure"]
@@ -114,9 +114,9 @@ I run a version of this in miniature at Purveyors, and the difference between "a
 
 The repo contains `AGENTS.md` at the root, which encodes stable architectural guidance, database safety patterns, PR conventions, and review expectations. That is the hot layer equivalent: the orientation packet that loads with every agent interaction.
 
-Implementation plans in `notes/implementation-plans/` include explicit strategy alignment audits that cross-reference active product themes before scoring a change as worth building. The daily planning workflow is required to cross-check recent blog posts and active outlines before deciding what to implement. That is the canonical direction and execution layers working together.
+Implementation plans in `notes/implementation-plans/` include explicit strategy alignment audits that read the canonical `notes/PRODUCT_VISION.md` document and relevant ADRs before scoring a change as worth building. That is the canonical direction, decision, and execution layers working together.
 
-The blog infrastructure itself feeds back into implementation. Published posts are retrieval surfaces that get read before build decisions are made. Not as inspiration. As binding strategic context.
+The blog infrastructure still matters, but in a different role. Published posts are public articulation and supporting retrieval surfaces. They help make strategy legible and reusable. They are not the canonical source of truth. The source of truth is the product direction and decision history that govern behavior upstream of the post.
 
 The result is that agent-generated PRs tend to land with the product direction rather than against it, not because the models are smarter, but because the governance architecture makes "the right thing" legible at execution time.
 
