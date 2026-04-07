@@ -8,7 +8,7 @@ draft: false
 readingTime: 9
 ---
 
-Think about the last strong hire you made.
+Think about the last time you watched a strong new hire become useful.
 
 They probably had access to every internal document within the first week. Onboarding portal, Confluence, Notion, shared drives, maybe a Slack archive dump. All of it was technically available. And they were still months away from being reliably useful.
 
@@ -22,7 +22,9 @@ Now replace "strong new hire" with "agent."
 
 Agents can read faster than any human. They have essentially infinite bandwidth for ingesting documentation. And they are still mostly useless in complex enterprise contexts, for exactly the same reason a well-documented new hire is still useless on day two: *access is not the same thing as onboarding.*
 
-The enterprise AI market has been trying to solve the access problem. Glean calls it "Work AI," a unified search-and-assistant surface that connects to 100-plus enterprise apps so that knowledge can be found wherever it lives. That is a real and valuable product. But it solves retrieval. It does not solve judgment.
+The enterprise AI market has been trying to solve the access problem. Glean calls it "Work AI," which is a useful signal: enterprise search is evolving into a broader layer of assistants, workflows, and agents on top of connected company data.
+
+That is real progress. It still does not solve judgment.
 
 The system that solves judgment is the one the market has not fully built yet. I am calling it an enterprise second brain. And it is not a knowledge base.
 
@@ -68,25 +70,25 @@ That authority model is the missing piece.
 
 Three companies illustrate where the enterprise AI market is landing.
 
-Glean is building toward what it calls "Work AI": agents and assistants layered on top of connected enterprise search. The bet is that if you can surface the right information from wherever it lives across an organization's apps, you can build capable agents on top of that retrieval foundation. Useful layer.
+Glean is building toward what it calls "Work AI": agents and assistants layered on top of connected enterprise search. That is the access and retrieval layer expanding upward into workflows.
 
-Guild AI is attacking a different problem: the control plane. Governed runtime, full execution traceability, managed agent lifecycle, enterprise identity. Every agent action produces an immutable audit record. Identity and access controls extend to autonomous software, not just users. Necessary infrastructure.
+Guild AI is pushing on a different edge of the category: AI developer productivity and agentic development workflows. That is not the whole second-brain system either, but it is another sign that enterprises are trying to operationalize agent behavior rather than treat models as isolated chat surfaces.
 
-AWS Bedrock AgentCore is treating the runtime itself as a platform primitive. Memory, observability, lifecycle management, secure execution environments. Ericsson describes it as the fusion of data and information that enables agents to operate at scale across critical infrastructure. Thomson Reuters says it compresses agentic workflow timelines from months to weeks by abstracting away the infrastructure complexity. Also necessary.
+AWS Bedrock AgentCore is treating runtime itself as a platform primitive: memory, observability, identity, and secure execution for enterprise agents. That is the infrastructure layer becoming explicit.
 
 These are not side stories. They are evidence that the category is real, and that serious organizations are investing in it.
 
-But here is what the map shows when you lay these three alongside each other.
+But laid side by side, they also show the gap.
 
-Glean solves *access and retrieval*. Guild solves *governance and auditability*. AgentCore solves *runtime and memory infrastructure*. 
+Glean strengthens *access and retrieval*. Guild points toward *workflow structure around agentic work*. AgentCore strengthens *runtime and memory infrastructure*.
 
-None of them, by itself, solves *judgment*. None of them ships with the architecture that translates company knowledge into the kind of operating context that tells an agent what a strong operator knows: what is canonical, what has history behind it, what is local versus global, what is fresh, what needs a human checkpoint.
+None of them, by itself, solves *judgment*. None of them, by itself, tells an agent what is canonical, what has decision history behind it, what is local versus global, what is fresh, or what needs a human checkpoint.
 
 The center of the stack is still being assembled.
 
 ## What an enterprise second brain actually is
 
-The architecture needed here has seven layers. This is not a product pitch. It is a description of what has to exist for the compression-of-onboarding problem to be solved.
+A useful decomposition has seven layers. I do not mean this as the only possible model. I mean that if you want to compress onboarding into an agent-usable operating system, some version of these layers has to exist.
 
 **Hot layer.** Always-loaded operating context: active rules, identity constraints, current session state, the most time-sensitive priorities. This is what loads with every agent interaction. It is the equivalent of the org chart and the "here is how we work" doc that every new hire gets in their first meeting.
 
@@ -98,7 +100,7 @@ The architecture needed here has seven layers. This is not a product pitch. It i
 
 **Retrieval layer.** A way to surface relevant fragments from the above when they are needed: search, ranking, similarity, keyword hooks. This is where most enterprise AI investment has gone so far. It is necessary and not sufficient.
 
-**Promotion layer.** A mechanism to notice what keeps mattering and make it durable. This is where dreaming fits: staged consolidation that promotes recurring signals from daily traces into more durable memory and lets stale context decay. Without this layer, the system becomes either amnesiac or archival junk.
+**Promotion layer.** A mechanism to notice what keeps mattering and make it durable. In my workspace, OpenClaw calls this dreaming: a nightly consolidation pass that promotes recurring signals from daily traces into more durable memory and lets stale context decay. Without this layer, the system becomes either amnesiac or archival junk.
 
 **Review layer.** A way to validate whether the memory system is actually changing behavior in the right direction. This still needs a human in the loop, but the loop has to be tight enough to catch drift before it compounds.
 
@@ -116,13 +118,13 @@ The repo root `AGENTS.md` provides stable architectural guidance, database safet
 
 Implementation plans in `notes/implementation-plans/` include explicit strategy alignment audits that read the canonical `notes/PRODUCT_VISION.md` document and relevant ADRs before scoring a change as worth building. That is the canonical direction, decision, and execution layers working together.
 
-The workspace now also uses dreaming to promote recurring signals from daily notes and interaction traces into more durable memory. That turns the promotion layer from theory into operating infrastructure.
+The workspace now uses a nightly consolidation pass, which OpenClaw calls dreaming, to promote recurring signals from daily notes and interaction traces into more durable memory. That turns the promotion layer from theory into operating infrastructure.
 
 The blog infrastructure still matters, but in a different role. Published posts are public articulation and supporting retrieval surfaces. They make strategy legible and reusable. They are not the canonical source of truth.
 
 The result is that agent-generated PRs tend to land with the product direction rather than against it, not because the models are smarter, but because the governance architecture makes the right thing legible at execution time.
 
-What scales this to enterprise is the same pattern with better retrieval, tighter authority ranking, more disciplined ADR maintenance, and a review loop that catches drift early.
+This does not solve the enterprise version. It sidesteps some of the hardest scaling problems: multi-team authority conflicts, stale cross-service docs, and the politics of who gets to define canonical truth. But it does show the core mechanism. When layered context is explicit, agent behavior changes.
 
 ## The real test is whether the system changes behavior
 
@@ -132,7 +134,9 @@ The way to evaluate an enterprise second brain is not "can agents find documents
 
 These are behavioral outcomes, not retrieval benchmarks.
 
-The systems that will win in enterprise AI are not the ones with the largest context windows, the fastest embeddings, or the most connected app integrations. Those matter at the infrastructure layer. At the product layer, the winners will be the systems that most faithfully compress what a strong new hire learns, what a strong operator keeps, and what the organization should act on.
+If I were building this from scratch, I would not start with a bigger vector index. I would start with an authority order. Write one short document that says which source wins when strategy docs, ADRs, plans, local notes, and stale artifacts conflict. Until that exists, retrieval will keep surfacing fragments without producing judgment.
+
+The systems that will win in enterprise AI are not the ones with the largest context windows, the fastest embeddings, or the most connected app integrations. Those matter at the infrastructure layer. The real advantage will come from making judgment portable.
 
 That is the leap from enterprise AI tooling to enterprise institutional cognition.
 
