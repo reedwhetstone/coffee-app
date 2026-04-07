@@ -4,7 +4,7 @@ date: "2026-04-07"
 description: "The right model for enterprise AI is not 'better search.' It is compressed onboarding. A real enterprise second brain teaches an agent what a strong new hire learns in the first six months, then turns that knowledge into reliable action."
 tags: ["ai", "agentic", "enterprise", "infrastructure"]
 pillar: "agentic-stack"
-draft: true
+draft: false
 readingTime: 9
 ---
 
