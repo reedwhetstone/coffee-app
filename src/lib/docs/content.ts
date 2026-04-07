@@ -159,44 +159,81 @@ const docsPages: DocsPage[] = [
 		sections: [
 			{
 				title: 'API surfaces',
+				body: [
+					'The platform ships two distinct API layers. /v1/catalog is the stable public contract for external integrations. All other /api/* routes are internal app routes that power the web app and are not public compatibility promises.'
+				],
 				table: {
-					headers: ['Surface', 'Auth', 'Description', 'Access'],
+					headers: ['Surface', 'Auth', 'Description', 'Stability'],
 					rows: [
 						[
 							'/v1/catalog',
-							'Bearer API key or web session',
-							'Canonical catalog endpoint',
-							'All tiers'
+							'API key, web session, or anonymous',
+							'Canonical catalog endpoint. Stable public contract.',
+							'Public / stable'
 						],
-						['/api-dashboard', 'Web session', 'Console for keys and usage', 'Authenticated users'],
 						[
-							'/api/catalog',
+							'/api/catalog-api',
+							'API key',
+							'Deprecated legacy catalog URL. Delegates to /v1/catalog with Deprecation and Sunset headers. Sunset: Dec 31 2026.',
+							'Deprecated'
+						],
+						[
+							'/api-dashboard',
 							'Web session',
-							'Paginated catalog for the web app',
+							'Parchment Console for API keys, usage, and billing',
 							'Authenticated users'
 						],
 						[
-							'/api/beans, /api/roast-profiles, /api/profit',
+							'/api/catalog',
 							'Web session',
-							'Inventory, roasting, and sales',
-							'Members'
+							'Internal paginated catalog for the web app UI. Not a public contract.',
+							'Internal'
+						],
+						['/api/beans', 'Member session', 'Inventory CRUD and share-token reads', 'Internal'],
+						[
+							'/api/roast-profiles, /api/artisan-import, /api/roast-chart-*',
+							'Member session',
+							'Roast CRUD, Artisan .alog imports, and chart data',
+							'Internal'
+						],
+						['/api/profit', 'Member session', 'Sales recording and profit data', 'Internal'],
+						[
+							'/api/chat, /api/workspaces',
+							'Member session',
+							'AI chat and workspace memory',
+							'Internal'
 						],
 						[
-							'/api/chat, /api/workspaces, /api/tools/*',
+							'/api/tools/*',
 							'Member session',
-							'AI chat, tool execution, workspace memory',
-							'Members'
+							'Deprecated tool execution routes kept for compatibility. Prefer CLI library integration for new work.',
+							'Deprecated'
+						],
+						[
+							'/api/stripe/*',
+							'Session or Stripe webhook',
+							'Billing, subscription, and checkout flows',
+							'Internal'
+						],
+						[
+							'/api/admin/*',
+							'Admin session only',
+							'Admin maintenance and backfill operations. Not a public surface.',
+							'Admin only'
 						]
 					]
 				}
 			},
 			{
 				title: 'Authentication',
+				body: [
+					'/v1/catalog accepts three authentication modes. API-key requests use Authorization: Bearer <api_key> and are subject to tier-based rate limits and row caps. Session requests come from the web app via Supabase cookies. Anonymous requests (no credentials) receive public-only listings with a server-side row cap and do not receive rate-limit headers.'
+				],
 				bullets: [
-					'External API consumers send Authorization: Bearer <api_key> to /v1/catalog.',
+					'External integrations: send Authorization: Bearer <api_key> to /v1/catalog.',
 					'API keys are created and managed in the Parchment Console at /api-dashboard/keys.',
-					'Access tiers (Explorer, Roaster+, Enterprise) determine rate limits and row caps.',
-					'Web app endpoints use Supabase session cookies. Member-only routes require an active membership.'
+					'Access tiers (Explorer, Roaster+, Enterprise) determine rate limits and row caps. Rate-limit headers are only included in API-key responses.',
+					'Internal web app routes use Supabase session cookies. Member-only routes require an active paid membership.'
 				],
 				codeBlocks: [
 					{
@@ -238,11 +275,11 @@ const docsPages: DocsPage[] = [
 		slug: 'catalog',
 		title: 'Catalog API',
 		summary:
-			'The public catalog endpoint returns normalized green coffee data from 39+ suppliers with tier-based rate limits.',
+			'The canonical catalog endpoint returns normalized green coffee data from suppliers across the U.S., supporting API-key, session, and anonymous access.',
 		eyebrow: 'Public endpoint',
 		intro: [
-			'GET /v1/catalog is the canonical catalog endpoint. It returns normalized coffee listings with origin, processing method, pricing (including price tiers), and availability data. Authenticate with an API key or web session to start pulling data.',
-			'Responses include structured pagination, access metadata, and rate-limit headers so you can build reliable integrations.'
+			'GET /v1/catalog is the canonical catalog endpoint. It returns normalized coffee listings with origin, processing method, pricing (including price tiers), and availability data.',
+			'The endpoint supports three auth modes: API key (external integrations, rate-limited by tier), web session (first-party web app), and anonymous (no credentials, public-only listings with a server-side row cap). Only API-key requests receive X-RateLimit-* response headers.'
 		],
 		sections: [
 			{
@@ -265,7 +302,24 @@ const docsPages: DocsPage[] = [
 					headers: ['Parameter', 'Type', 'Default', 'Description'],
 					rows: [
 						['page', 'integer', '1', 'Page number for paginated results.'],
-						['limit', 'integer', '15', 'Rows per page (capped by tier row limit).'],
+						[
+							'limit',
+							'integer',
+							'15',
+							'Rows per page (capped by tier row limit for API-key requests).'
+						],
+						[
+							'ids',
+							'integer (repeatable)',
+							'—',
+							'Fetch specific catalog IDs. Pass ids=N&ids=M to request multiple. When present, pagination params are ignored and results are sorted by name ascending.'
+						],
+						[
+							'fields',
+							'full | dropdown',
+							'full',
+							'Response projection. dropdown returns a minimal set of fields for filter UIs and select menus; full returns the complete listing object.'
+						],
 						[
 							'stocked',
 							'true | false | all',
@@ -284,20 +338,71 @@ const docsPages: DocsPage[] = [
 							'source',
 							'string (repeatable)',
 							'—',
-							'Filter by supplier slug. Repeat to match multiple sources.'
+							'Filter by supplier slug. Repeat to match multiple sources: source=sweet_marias&source=burman_coffee.'
 						],
 						[
 							'processing',
 							'string',
 							'—',
-							'Partial match on processing method (e.g. washed, natural).'
+							'Partial match on processing method (e.g. washed, natural, honey).'
 						],
-						['name', 'string', '—', 'Partial match on coffee name.'],
+						['name', 'string', '—', 'Partial match on coffee name (case-insensitive).'],
 						['region', 'string', '—', 'Partial match on region field.'],
+						[
+							'cultivar_detail',
+							'string',
+							'—',
+							'Partial match on cultivar or variety detail (e.g. Heirloom, Bourbon).'
+						],
+						['type', 'string', '—', 'Partial match on the type field (e.g. single-origin, blend).'],
+						['grade', 'string', '—', 'Partial match on the grade field.'],
+						['appearance', 'string', '—', 'Partial match on the appearance or defect description.'],
 						['price_per_lb_min', 'number', '—', 'Minimum price per pound (inclusive).'],
 						['price_per_lb_max', 'number', '—', 'Maximum price per pound (inclusive).'],
-						['sortField', 'string', 'arrival_date', 'Field to sort by.'],
-						['sortDirection', 'asc | desc', 'desc', 'Sort direction.']
+						[
+							'cost_lb_min / cost_lb_max',
+							'number',
+							'—',
+							'Compatibility aliases for price_per_lb_min / price_per_lb_max. Prefer the canonical params in new integrations.'
+						],
+						['score_value_min', 'number', '—', 'Minimum cupping or quality score (inclusive).'],
+						['score_value_max', 'number', '—', 'Maximum cupping or quality score (inclusive).'],
+						[
+							'arrival_date',
+							'string (YYYY-MM-DD)',
+							'—',
+							'Filter to coffees with a specific arrival date.'
+						],
+						[
+							'stocked_date',
+							'string (YYYY-MM-DD)',
+							'—',
+							'Filter to coffees stocked on or after a given date.'
+						],
+						[
+							'showWholesale',
+							'boolean',
+							'false',
+							'Include wholesale listings in the response. Only effective for session-authenticated requests with appropriate role. Ignored for API-key and anonymous requests.'
+						],
+						[
+							'wholesaleOnly',
+							'boolean',
+							'false',
+							'Return only wholesale listings. Requires showWholesale=true. Only effective for session-authenticated requests with appropriate role.'
+						],
+						[
+							'sortField',
+							'string',
+							'arrival_date',
+							'Field to sort by. Ignored when ids is provided.'
+						],
+						[
+							'sortDirection',
+							'asc | desc',
+							'desc',
+							'Sort direction. Ignored when ids is provided (always asc by name).'
+						]
 					]
 				}
 			},
@@ -314,23 +419,27 @@ const docsPages: DocsPage[] = [
 			},
 			{
 				title: 'Rate-limit headers',
+				body: [
+					'Rate-limit headers are only included in API-key authenticated responses. Session and anonymous requests are not tracked against a monthly quota and do not receive these headers.'
+				],
 				bullets: [
-					'X-RateLimit-Limit: your monthly request cap.',
-					'X-RateLimit-Remaining: requests left in the current billing period.',
-					'X-RateLimit-Reset: timestamp when the limit resets.',
-					'429 responses include a Retry-After header.'
+					'X-RateLimit-Limit: your monthly request cap for the current API key.',
+					'X-RateLimit-Remaining: requests remaining in the current billing period.',
+					'X-RateLimit-Reset: Unix timestamp when the billing period resets.',
+					'429 responses include a Retry-After header indicating seconds to wait.'
 				]
 			},
 			{
-				title: 'Web app catalog route',
+				title: 'Related and deprecated endpoints',
 				bullets: [
-					'The web app uses a separate route (GET /api/catalog) for paginated browsing, dropdown payloads, and filter UI.',
-					'This route uses session authentication and may change with app updates.'
+					'GET /api/catalog is an internal session-auth route used by the web app UI for paginated browsing and dropdown payloads. It delegates to the canonical /v1/catalog resource. Not a public contract.',
+					'GET /api/catalog-api is a deprecated legacy URL that also delegates to /v1/catalog. Responses include Deprecation: true and Sunset headers. Migrate to /v1/catalog before Dec 31 2026.',
+					'GET /api/catalog/filters returns filter metadata (sources, continents, countries, varieties) for the web app filter UI. Session-authenticated, internal.'
 				],
 				callout: {
-					tone: 'warning',
-					title: 'Do not confuse the two catalog routes',
-					body: '/v1/catalog is the canonical endpoint for both external integrations (API key) and the web app (session auth). /api/catalog is a legacy internal route that delegates to the same resource.'
+					tone: 'note',
+					title: 'Use /v1/catalog for all integrations',
+					body: '/v1/catalog is the only catalog endpoint with a stable public contract. The other catalog routes (/api/catalog, /api/catalog-api) are internal app routes. If your integration currently points at /api/catalog-api, migrate to /v1/catalog.'
 				}
 			}
 		],
@@ -599,9 +708,9 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Troubleshooting',
 				bullets: [
-					'For public catalog access, use an API key with /v1/catalog or the CLI catalog commands.',
+					'For external catalog access, use an API key with /v1/catalog or authenticate the CLI with purvey auth login.',
 					'A 403 on inventory, roast, or sales routes usually means a role or ownership mismatch, not an authentication failure.',
-					'On 429, check the X-RateLimit-* headers for reset timing, or upgrade your plan in the Parchment Console.',
+					'On 429, check the X-RateLimit-* headers for reset timing (API-key requests only), or upgrade your plan in the Parchment Console.',
 					'The Parchment Console at /api-dashboard shows your current usage, active keys, and tier limits.'
 				]
 			}
@@ -632,7 +741,7 @@ const docsPages: DocsPage[] = [
 			'The Parchment CLI is a terminal interface for catalog queries, inventory management, roasting workflows, and agent automation.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'The Parchment CLI (purvey) provides terminal access to the same data and workflows available in the web app. Public catalog queries work without authentication; member commands require a login.',
+			'The Parchment CLI (purvey) provides terminal access to the same data and workflows available in the web app. Authentication is required for all commands. Member commands (inventory, roast, sales, tasting) additionally require an active Purveyors membership.',
 			'The CLI is also the integration layer for AI agents and automation tools. The purvey context command outputs a machine-readable reference for onboarding external tools.'
 		],
 		sections: [
@@ -651,8 +760,8 @@ const docsPages: DocsPage[] = [
 					}
 				],
 				bullets: [
-					'purvey catalog commands work without authentication.',
-					'purvey inventory, roast, sales, and tasting commands require a login.',
+					'Authentication is required for all commands, including catalog. Run purvey auth login before first use.',
+					'purvey inventory, roast, sales, and tasting commands additionally require a Purveyors membership.',
 					'purvey context outputs a compact reference for AI agents and coding assistants.'
 				]
 			},
@@ -660,7 +769,7 @@ const docsPages: DocsPage[] = [
 				title: 'Command groups',
 				bullets: [
 					'purvey auth: manage login state.',
-					'purvey catalog: browse the public coffee catalog.',
+					'purvey catalog: search and browse the coffee catalog.',
 					'purvey inventory: list, add, update, and delete green coffee inventory.',
 					'purvey roast: create roast profiles, import Artisan files, watch folders.',
 					'purvey sales: record roasted-coffee sales.',
@@ -700,18 +809,18 @@ const docsPages: DocsPage[] = [
 		slug: 'catalog',
 		title: 'CLI catalog commands',
 		summary:
-			'Search and browse the public green coffee catalog from your terminal. No login required.',
-		eyebrow: 'Public data',
+			'Search and browse the green coffee catalog from your terminal. Authentication required.',
+		eyebrow: 'Catalog data',
 		intro: [
-			'Catalog commands are the fastest way to explore the green coffee feed from the terminal. No authentication is needed.',
-			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits.'
+			'Catalog commands are the fastest way to explore the green coffee feed from the terminal. Authentication is required; run purvey auth login before using catalog commands.',
+			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. See the CLI overview for install and login instructions.'
 		],
 		sections: [
 			{
 				title: 'Commands',
 				bullets: [
-					'purvey catalog search: search by origin, processing method, price, flavor, variety, drying method, and more.',
-					'purvey catalog get <id>: fetch a single coffee by ID.',
+					'purvey catalog search: search by origin, processing method, price, flavor, variety, drying method, and more. Requires authentication.',
+					'purvey catalog get <id>: fetch a single coffee by catalog ID.',
 					'purvey catalog similar <id>: find coffees similar to a given catalog entry.',
 					'purvey catalog stats: aggregate catalog statistics.'
 				],

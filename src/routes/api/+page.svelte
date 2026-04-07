@@ -106,7 +106,8 @@
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
 					<span
-						>Rate-limit headers on every response so you can manage your integration confidently</span
+						>Rate-limit headers on API-key responses so you can track usage and manage your
+						integration confidently</span
 					>
 				</li>
 				<li class="flex gap-3">
