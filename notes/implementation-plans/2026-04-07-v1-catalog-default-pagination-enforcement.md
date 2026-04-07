@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-07
 **Slug:** v1-catalog-default-pagination-enforcement
-**Status:** Planning only; awaiting Reed approval before coding
+**Status:** Implemented (PR #225)
 **Focus area:** Performance (response sizes, unnecessary data in responses)
 
 ## Problem
