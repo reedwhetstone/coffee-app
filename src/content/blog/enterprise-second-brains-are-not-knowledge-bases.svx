@@ -98,9 +98,9 @@ The architecture needed here has seven layers. This is not a product pitch. It i
 
 **Retrieval layer.** A way to surface relevant fragments from the above when they are needed: search, ranking, similarity, keyword hooks. This is where most enterprise AI investment has gone so far. It is necessary and not sufficient.
 
-**Promotion layer.** A mechanism to notice what keeps mattering and make it durable. When a signal recurs enough times, it should get promoted from ephemeral working memory to a more stable layer. When something has not been accessed in a year, it should decay. This is the layer that keeps the architecture from becoming an archive.
+**Promotion layer.** A mechanism to notice what keeps mattering and make it durable. This is where dreaming fits: staged consolidation that promotes recurring signals from daily traces into more durable memory and lets stale context decay. Without this layer, the system becomes either amnesiac or archival junk.
 
-**Review layer.** A way to validate whether the memory system is actually changing behavior in the right direction. This requires a human in the loop, but the loop should be tight enough to catch drift before it compounds.
+**Review layer.** A way to validate whether the memory system is actually changing behavior in the right direction. This still needs a human in the loop, but the loop has to be tight enough to catch drift before it compounds.
 
 These layers together are what makes the difference between an agent that retrieves documents and an agent that operates from judgment.
 
@@ -112,15 +112,17 @@ That distinction is the whole thing. A knowledge base stores what the company kn
 
 I run a version of this in miniature at Purveyors, and the difference between "agent with document access" and "agent with layered context" is not subtle.
 
-The repo contains `AGENTS.md` at the root, which encodes stable architectural guidance, database safety patterns, PR conventions, and review expectations. That is the hot layer equivalent: the orientation packet that loads with every agent interaction.
+The repo root `AGENTS.md` provides stable architectural guidance, database safety patterns, PR conventions, and review expectations. That is the hot layer: the orientation packet that loads with every agent interaction.
 
 Implementation plans in `notes/implementation-plans/` include explicit strategy alignment audits that read the canonical `notes/PRODUCT_VISION.md` document and relevant ADRs before scoring a change as worth building. That is the canonical direction, decision, and execution layers working together.
 
-The blog infrastructure still matters, but in a different role. Published posts are public articulation and supporting retrieval surfaces. They help make strategy legible and reusable. They are not the canonical source of truth. The source of truth is the product direction and decision history that govern behavior upstream of the post.
+The workspace now also uses dreaming to promote recurring signals from daily notes and interaction traces into more durable memory. That turns the promotion layer from theory into operating infrastructure.
 
-The result is that agent-generated PRs tend to land with the product direction rather than against it, not because the models are smarter, but because the governance architecture makes "the right thing" legible at execution time.
+The blog infrastructure still matters, but in a different role. Published posts are public articulation and supporting retrieval surfaces. They make strategy legible and reusable. They are not the canonical source of truth.
 
-What scales this to enterprise is not magic. It is the same pattern with better retrieval infrastructure, more disciplined ADR maintenance, authority ranking on top of semantic search, and a review loop tight enough to catch drift. The architecture is the same. The engineering overhead is higher.
+The result is that agent-generated PRs tend to land with the product direction rather than against it, not because the models are smarter, but because the governance architecture makes the right thing legible at execution time.
+
+What scales this to enterprise is the same pattern with better retrieval, tighter authority ranking, more disciplined ADR maintenance, and a review loop that catches drift early.
 
 ## The real test is whether the system changes behavior
 
