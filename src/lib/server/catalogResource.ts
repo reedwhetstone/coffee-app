@@ -1,4 +1,4 @@
-import { json, type RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 import {
 	getCatalogDropdown,
 	searchCatalog,
@@ -20,6 +20,7 @@ import {
 	type RequestPrincipal
 } from '$lib/server/principal';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
+import { jsonResponse } from '$lib/server/http';
 import { createAdminClient } from '$lib/supabase-admin';
 import type { UserRole } from '$lib/types/auth.types';
 
@@ -542,7 +543,7 @@ export async function buildCanonicalCatalogResponse(
 		...options,
 		forceDefaultPagination: true
 	});
-	return json(result.body, {
+	return jsonResponse(result.body, {
 		status: result.status,
 		headers: result.headers
 	});
@@ -558,7 +559,7 @@ export async function buildLegacyAppCatalogResponse(
 	});
 
 	if (result.status >= 400) {
-		return json(result.body, {
+		return jsonResponse(result.body, {
 			status: result.status,
 			headers: result.headers
 		});
@@ -570,7 +571,7 @@ export async function buildLegacyAppCatalogResponse(
 	const headers = new Headers(result.headers);
 	headers.set('X-Purveyors-Canonical-Resource', '/v1/catalog');
 
-	return json(legacyBody, {
+	return jsonResponse(legacyBody, {
 		status: result.status,
 		headers
 	});

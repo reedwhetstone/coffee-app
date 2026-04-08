@@ -394,6 +394,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(body.pagination).toMatchObject({ page: 1, limit: 25, total: 40 });
 		expect(response.headers.get('X-RateLimit-Limit')).toBe('200');
 		expect(response.headers.get('X-RateLimit-Remaining')).toBe('199');
+		expect(response.headers.get('X-RateLimit-Reset')).toBe('1774569600');
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'admin-client' },
 			expect.objectContaining({
@@ -446,6 +447,82 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(body.meta.access.rowLimit).toBe(25);
 		expect(body.meta.access.limited).toBe(false);
 		expect(body.pagination).toMatchObject({ page: 1, limit: 25, total: 10, totalPages: 1 });
+	});
+
+	it('preserves HTTP 401 for invalid bearer tokens', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog', {
+				Authorization: 'Bearer definitely_invalid'
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(401);
+		expect(response.headers.get('content-type')).toBe('application/json; charset=utf-8');
+		expect(body).toEqual({
+			error: 'Authentication required',
+			message: 'Authentication required'
+		});
+	});
+
+	it('preserves HTTP 429 and rate-limit headers for capped api-key requests', async () => {
+		const resetTime = new Date('2026-03-28T00:00:00Z');
+		const apiKeyPrincipal = {
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: 'viewer',
+			apiKeyId: 'key-1'
+		};
+
+		mockResolvePrincipal.mockResolvedValue(apiKeyPrincipal);
+		mockIsApiKeyPrincipal.mockReturnValue(true);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockRequireApiKeyAccess.mockResolvedValue(apiKeyPrincipal);
+		mockCheckRateLimit.mockResolvedValue({
+			allowed: false,
+			limit: 200,
+			remaining: 0,
+			resetTime,
+			retryAfter: 3600
+		});
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog', {
+				Authorization: 'Bearer pk_live_valid'
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(429);
+		expect(response.headers.get('X-RateLimit-Limit')).toBe('200');
+		expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
+		expect(response.headers.get('X-RateLimit-Reset')).toBe(
+			Math.floor(resetTime.getTime() / 1000).toString()
+		);
+		expect(response.headers.get('Retry-After')).toBe('3600');
+		expect(body).toEqual({
+			error: 'Rate limit exceeded',
+			message: 'API rate limit exceeded for your subscription plan',
+			limit: 200,
+			remaining: 0,
+			resetTime: resetTime.toISOString()
+		});
+		expect(mockLogApiUsage).toHaveBeenCalledWith(
+			'key-1',
+			'/v1/catalog',
+			429,
+			expect.any(Number),
+			undefined,
+			undefined
+		);
 	});
 
 	describe('stocked query parameter', () => {
@@ -650,5 +727,67 @@ describe('buildLegacyAppCatalogResponse', () => {
 			pagination: expect.objectContaining({ page: 2, limit: 10 })
 		});
 		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBe('/v1/catalog');
+	});
+
+	it('preserves upstream auth failures for legacy callers', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildLegacyAppCatalogResponse(
+			makeEvent('https://app.test/api/catalog-api', {
+				Authorization: 'Bearer definitely_invalid'
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(401);
+		expect(body).toEqual({
+			error: 'Authentication required',
+			message: 'Authentication required'
+		});
+	});
+
+	it('preserves upstream rate-limit failures for legacy callers', async () => {
+		const resetTime = new Date('2026-03-28T00:00:00Z');
+		const apiKeyPrincipal = {
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: 'viewer',
+			apiKeyId: 'key-1'
+		};
+
+		mockResolvePrincipal.mockResolvedValue(apiKeyPrincipal);
+		mockIsApiKeyPrincipal.mockReturnValue(true);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockRequireApiKeyAccess.mockResolvedValue(apiKeyPrincipal);
+		mockCheckRateLimit.mockResolvedValue({
+			allowed: false,
+			limit: 200,
+			remaining: 0,
+			resetTime,
+			retryAfter: 3600
+		});
+
+		const response = await buildLegacyAppCatalogResponse(
+			makeEvent('https://app.test/api/catalog-api', {
+				Authorization: 'Bearer pk_live_valid'
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(429);
+		expect(response.headers.get('X-RateLimit-Limit')).toBe('200');
+		expect(body).toEqual({
+			error: 'Rate limit exceeded',
+			message: 'API rate limit exceeded for your subscription plan',
+			limit: 200,
+			remaining: 0,
+			resetTime: resetTime.toISOString()
+		});
 	});
 });

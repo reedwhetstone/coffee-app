@@ -68,8 +68,60 @@ describe('/api/catalog-api legacy delegate', () => {
 		} as Parameters<NonNullable<typeof GET>>[0]);
 
 		const sunset = response.headers.get('Sunset');
-		expect(sunset).toBeTruthy();
-		expect(new Date(sunset!).getTime()).toBeGreaterThan(Date.now());
+		expect(sunset).toBe('Thu, 31 Dec 2026 23:59:59 GMT');
+	});
+
+	it('preserves upstream 401 responses while still adding deprecation headers', async () => {
+		const mockResponse = new Response(
+			JSON.stringify({ error: 'Authentication required', message: 'Authentication required' }),
+			{
+				status: 401,
+				headers: { 'Content-Type': 'application/json; charset=utf-8' }
+			}
+		);
+		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api'),
+			request: new Request('https://app.test/api/catalog-api'),
+			locals: {}
+		} as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(response.status).toBe(401);
+		expect(response.headers.get('Deprecation')).toBe('true');
+		expect(response.headers.get('Sunset')).toBe('Thu, 31 Dec 2026 23:59:59 GMT');
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'Authentication required'
+		});
+	});
+
+	it('preserves upstream 429 responses while still adding deprecation headers', async () => {
+		const mockResponse = new Response(
+			JSON.stringify({ error: 'Rate limit exceeded', message: 'Too many requests' }),
+			{
+				status: 429,
+				headers: {
+					'Content-Type': 'application/json; charset=utf-8',
+					'X-RateLimit-Limit': '200'
+				}
+			}
+		);
+		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api'),
+			request: new Request('https://app.test/api/catalog-api'),
+			locals: {}
+		} as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(response.status).toBe(429);
+		expect(response.headers.get('Deprecation')).toBe('true');
+		expect(response.headers.get('X-RateLimit-Limit')).toBe('200');
+		expect(await response.json()).toEqual({
+			error: 'Rate limit exceeded',
+			message: 'Too many requests'
+		});
 	});
 
 	it('passes query parameters through to the underlying handler', async () => {

@@ -17,7 +17,7 @@ export const GET: RequestHandler = async (event) => {
 	const headers = new Headers(response.headers);
 	headers.set('Deprecation', 'true');
 	headers.set('Link', '</v1/catalog>; rel="successor-version"');
-	headers.set('Sunset', 'Sat, 31 Dec 2026 23:59:59 GMT');
+	headers.set('Sunset', 'Thu, 31 Dec 2026 23:59:59 GMT');
 
 	return new Response(response.body, {
 		status: response.status,
