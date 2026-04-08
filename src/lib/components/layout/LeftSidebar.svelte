@@ -201,7 +201,7 @@
 </script>
 
 <div
-	class="fixed top-0 z-50 h-full {sidebarPosition} transition-all duration-300 ease-out"
+	class="fixed top-0 z-50 hidden h-full {sidebarPosition} transition-all duration-300 ease-out md:block"
 	bind:this={sidebarButtonsContainer}
 >
 	{#if (data?.session as { user?: { email?: string } })?.user}
@@ -398,7 +398,7 @@
 <!-- Menu panels container - positioned fixed to the left of the screen -->
 {#if activeMenu}
 	<div
-		class="fixed left-0 top-0 z-40 h-full"
+		class="fixed left-0 top-0 z-40 hidden h-full md:block"
 		transition:slide={{ duration: 300, easing: quintOut, axis: 'x' }}
 		bind:this={menuPanelsContainer}
 		data-menu-panel="true"

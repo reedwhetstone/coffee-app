@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { checkRole } from '$lib/types/auth.types';
-
-	import type { UserRole } from '$lib/types/auth.types';
+	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import {
+		publicNavItems,
+		isNavItemActive,
+		type NavItem
+	} from '$lib/components/layout/appNavigation';
 
 	interface SessionData {
 		user?: {
@@ -19,15 +22,23 @@
 	let currentPath = $derived(page.url.pathname);
 	let isSignedIn = $derived(Boolean(session?.user));
 	let canAccessMemberRoutes = $derived(checkRole(role, 'member'));
-
-	let isHomePage = $derived(currentPath === '/');
 	let isDashboardPage = $derived(currentPath === '/dashboard');
-	let apiNavTarget = $derived(isSignedIn ? '/api-dashboard' : '/api');
-	let isApiNavActive = $derived(currentPath === '/api' || currentPath.startsWith('/api-dashboard'));
-	let isDocsPage = $derived(currentPath.startsWith('/docs'));
-	let isBlogPage = $derived(currentPath.startsWith('/blog'));
-	let isCatalogPage = $derived(currentPath === '/catalog');
-	let isAnalyticsPage = $derived(currentPath.startsWith('/analytics'));
+	let mobileMenuOpen = $state(false);
+
+	let headerNavItems = $derived.by(() => {
+		return publicNavItems.map((item) => {
+			if (item.href === '/api') {
+				return {
+					...item,
+					label: isSignedIn ? 'Console' : 'API',
+					href: isSignedIn ? '/api-dashboard' : '/api',
+					matches: isSignedIn ? ['/api-dashboard'] : ['/api']
+				} satisfies NavItem;
+			}
+
+			return item;
+		});
+	});
 
 	const signedInQuickLinks = $derived.by(() => {
 		if (!isSignedIn || !canAccessMemberRoutes) return [] as Array<{ href: string; label: string }>;
@@ -39,8 +50,14 @@
 	});
 
 	function navigateTo(path: string) {
+		mobileMenuOpen = false;
 		goto(path);
 	}
+
+	$effect(() => {
+		void currentPath;
+		mobileMenuOpen = false;
+	});
 </script>
 
 <header
@@ -58,54 +75,19 @@
 			</div>
 
 			<nav class="hidden items-center space-x-8 md:flex">
-				<button
-					onclick={() => navigateTo('/catalog')}
-					class="text-sm font-medium transition-colors duration-200 {isCatalogPage
-						? 'text-background-tertiary-light'
-						: 'text-text-secondary-light hover:text-text-primary-light'}"
-				>
-					Catalog
-				</button>
-				<button
-					onclick={() => navigateTo('/analytics')}
-					class="text-sm font-medium transition-colors duration-200 {isAnalyticsPage
-						? 'text-background-tertiary-light'
-						: 'text-text-secondary-light hover:text-text-primary-light'}"
-				>
-					Market Data
-				</button>
-				<button
-					onclick={() => navigateTo('/')}
-					class="text-sm font-medium transition-colors duration-200 {isHomePage
-						? 'text-background-tertiary-light'
-						: 'text-text-secondary-light hover:text-text-primary-light'}"
-				>
-					Maillard Studio
-				</button>
-				<button
-					onclick={() => navigateTo(apiNavTarget)}
-					class="text-sm font-medium transition-colors duration-200 {isApiNavActive
-						? 'text-background-tertiary-light'
-						: 'text-text-secondary-light hover:text-text-primary-light'}"
-				>
-					{isSignedIn ? 'Console' : 'API'}
-				</button>
-				<button
-					onclick={() => navigateTo('/docs')}
-					class="text-sm font-medium transition-colors duration-200 {isDocsPage
-						? 'text-background-tertiary-light'
-						: 'text-text-secondary-light hover:text-text-primary-light'}"
-				>
-					Docs
-				</button>
-				<button
-					onclick={() => navigateTo('/blog')}
-					class="text-sm font-medium transition-colors duration-200 {isBlogPage
-						? 'text-background-tertiary-light'
-						: 'text-text-secondary-light hover:text-text-primary-light'}"
-				>
-					Blog
-				</button>
+				{#each headerNavItems as item (item.href)}
+					<button
+						onclick={() => navigateTo(item.href)}
+						class="text-sm font-medium transition-colors duration-200 {isNavItemActive(
+							item,
+							currentPath
+						)
+							? 'text-background-tertiary-light'
+							: 'text-text-secondary-light hover:text-text-primary-light'}"
+					>
+						{item.label}
+					</button>
+				{/each}
 			</nav>
 
 			<div class="flex items-center space-x-3">
@@ -146,13 +128,10 @@
 				<div class="md:hidden">
 					<button
 						type="button"
-						class="inline-flex items-center justify-center rounded-md p-2 text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light focus:outline-none focus:ring-2 focus:ring-inset focus:ring-background-tertiary-light"
-						onclick={() => {
-							const menu = document.getElementById('mobile-menu');
-							if (menu) {
-								menu.classList.toggle('hidden');
-							}
-						}}
+						class="inline-flex items-center justify-center rounded-md p-2 text-text-secondary-light transition-colors hover:bg-background-secondary-light hover:text-text-primary-light focus:outline-none focus:ring-2 focus:ring-inset focus:ring-background-tertiary-light"
+						onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+						aria-expanded={mobileMenuOpen}
+						aria-controls="public-mobile-menu"
 					>
 						<span class="sr-only">Open main menu</span>
 						<svg
@@ -165,96 +144,66 @@
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
-								d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-							/>
+								d={mobileMenuOpen
+									? 'M6 18 18 6M6 6l12 12'
+									: 'M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5'}
+							></path>
 						</svg>
 					</button>
 				</div>
 			</div>
 		</div>
 
-		<div class="hidden md:hidden" id="mobile-menu">
-			<div class="space-y-1 pb-3 pt-2">
-				<button
-					onclick={() => navigateTo('/catalog')}
-					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isCatalogPage
-						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
-						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
-				>
-					Catalog
-				</button>
-				<button
-					onclick={() => navigateTo('/analytics')}
-					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isAnalyticsPage
-						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
-						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
-				>
-					Market Data
-				</button>
-				<button
-					onclick={() => navigateTo('/')}
-					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isHomePage
-						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
-						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
-				>
-					Maillard Studio
-				</button>
-				<button
-					onclick={() => navigateTo(apiNavTarget)}
-					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isApiNavActive
-						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
-						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
-				>
-					{isSignedIn ? 'Console' : 'API'}
-				</button>
-				<button
-					onclick={() => navigateTo('/docs')}
-					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isDocsPage
-						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
-						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
-				>
-					Docs
-				</button>
-				<button
-					onclick={() => navigateTo('/blog')}
-					class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 {isBlogPage
-						? 'bg-background-tertiary-light/10 text-background-tertiary-light'
-						: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
-				>
-					Blog
-				</button>
-			</div>
-			<div class="border-t border-border-light pb-3 pt-3">
-				{#if isSignedIn}
-					<button
-						onclick={() => navigateTo('/dashboard')}
-						class="mb-2 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-left text-sm font-medium text-white"
-					>
-						Dashboard
-					</button>
-					{#each signedInQuickLinks as link}
+		{#if mobileMenuOpen}
+			<div id="public-mobile-menu" class="border-t border-border-light pb-4 pt-3 md:hidden">
+				<div class="space-y-2">
+					{#each headerNavItems as item (item.href)}
 						<button
-							onclick={() => navigateTo(link.href)}
-							class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-text-secondary-light transition-colors duration-200 hover:bg-background-secondary-light hover:text-text-primary-light"
+							onclick={() => navigateTo(item.href)}
+							class="block w-full rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors duration-200 {isNavItemActive(
+								item,
+								currentPath
+							)
+								? 'bg-background-tertiary-light/10 text-background-tertiary-light'
+								: 'text-text-secondary-light hover:bg-background-secondary-light hover:text-text-primary-light'}"
 						>
-							{link.label}
+							{item.label}
 						</button>
 					{/each}
-				{:else}
-					<button
-						onclick={() => navigateTo('/auth')}
-						class="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-background-tertiary-light transition-colors duration-200 hover:bg-background-secondary-light"
-					>
-						Sign In
-					</button>
-					<button
-						onclick={() => navigateTo('/auth')}
-						class="mt-2 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-left text-sm font-medium text-white"
-					>
-						Get Started
-					</button>
-				{/if}
+				</div>
+
+				<div class="mt-4 border-t border-border-light pt-4">
+					{#if isSignedIn}
+						<button
+							onclick={() => navigateTo('/dashboard')}
+							class="mb-2 block w-full rounded-xl bg-background-tertiary-light px-3 py-3 text-left text-sm font-medium text-white"
+						>
+							Dashboard
+						</button>
+						{#each signedInQuickLinks as link}
+							<button
+								onclick={() => navigateTo(link.href)}
+								class="block w-full rounded-xl px-3 py-3 text-left text-sm font-medium text-text-secondary-light transition-colors duration-200 hover:bg-background-secondary-light hover:text-text-primary-light"
+							>
+								{link.label}
+							</button>
+						{/each}
+					{:else}
+						<button
+							onclick={() => navigateTo('/auth')}
+							class="block w-full rounded-xl px-3 py-3 text-left text-sm font-medium text-background-tertiary-light transition-colors duration-200 hover:bg-background-secondary-light"
+						>
+							Sign In
+						</button>
+						<button
+							onclick={() => navigateTo('/auth')}
+							class="mt-2 block w-full rounded-xl bg-background-tertiary-light px-3 py-3 text-left text-sm font-medium text-white"
+						>
+							Get Started
+						</button>
+					{/if}
+				</div>
 			</div>
-		</div>
+		{/if}
 	</div>
 </header>
