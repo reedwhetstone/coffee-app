@@ -63,6 +63,20 @@ async function main() {
 		'Expected /v1/catalog to include X-RateLimit-Reset'
 	);
 
+	const legacyInvalidKeyResponse = await fetchCheck('/api/catalog-api', {
+		headers: {
+			Authorization: 'Bearer definitely_invalid'
+		}
+	});
+	assert(
+		legacyInvalidKeyResponse.status === 401,
+		`Expected /api/catalog-api invalid key status 401, got ${legacyInvalidKeyResponse.status}`
+	);
+	assert(
+		legacyInvalidKeyResponse.headers.get('Deprecation') === 'true',
+		`Expected legacy invalid-key response to include Deprecation=true, got ${legacyInvalidKeyResponse.headers.get('Deprecation')}`
+	);
+
 	const legacyResponse = await fetchCheck('/api/catalog-api', {
 		headers: {
 			Authorization: `Bearer ${apiKey}`
@@ -79,6 +93,18 @@ async function main() {
 	assert(
 		legacyResponse.headers.get('Link') === '</v1/catalog>; rel="successor-version"',
 		`Expected legacy Link header to point at /v1/catalog, got ${legacyResponse.headers.get('Link')}`
+	);
+	assert(
+		legacyResponse.headers.has('X-RateLimit-Limit'),
+		'Expected /api/catalog-api to include X-RateLimit-Limit'
+	);
+	assert(
+		legacyResponse.headers.has('X-RateLimit-Remaining'),
+		'Expected /api/catalog-api to include X-RateLimit-Remaining'
+	);
+	assert(
+		legacyResponse.headers.has('X-RateLimit-Reset'),
+		'Expected /api/catalog-api to include X-RateLimit-Reset'
 	);
 	assert(
 		legacyResponse.headers.get('Sunset') === 'Thu, 31 Dec 2026 23:59:59 GMT',

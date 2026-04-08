@@ -16,7 +16,7 @@ beforeEach(async () => {
 });
 
 describe('/api/catalog-api legacy delegate', () => {
-	it('delegates to buildCanonicalCatalogResponse with /v1/catalog requestPath', async () => {
+	it('delegates to buildCanonicalCatalogResponse while preserving the legacy requestPath for logging', async () => {
 		const mockBody = JSON.stringify({ data: [], pagination: {} });
 		const mockResponse = new Response(mockBody, {
 			status: 200,
@@ -32,7 +32,7 @@ describe('/api/catalog-api legacy delegate', () => {
 
 		expect(buildCanonicalCatalogResponse).toHaveBeenCalledWith(
 			expect.objectContaining({ url: expect.any(URL) }),
-			{ requestPath: '/v1/catalog' }
+			{ requestPath: '/api/catalog-api' }
 		);
 		expect(response.status).toBe(200);
 	});
