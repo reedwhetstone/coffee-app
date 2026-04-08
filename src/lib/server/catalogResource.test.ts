@@ -157,6 +157,38 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
+	it('applies default pagination to canonical anonymous requests with no explicit page or limit', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalog.mockResolvedValue({
+			data: [sampleCatalogItem],
+			count: 250,
+			filtersApplied: {}
+		});
+
+		const response = await buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog'));
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.meta.auth.kind).toBe('anonymous');
+		expect(body.meta.access.publicOnly).toBe(true);
+		expect(body.pagination).toMatchObject({ page: 1, limit: 100, total: 250, totalPages: 3 });
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				stockedFilter: true,
+				publicOnly: true,
+				limit: 100,
+				offset: 0
+			})
+		);
+	});
+
 	it('keeps access.limited false for paginated requests when no row cap applies', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
@@ -184,6 +216,40 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(body.meta.access.rowLimit).toBeNull();
 		expect(body.meta.access.limited).toBe(false);
 		expect(body.pagination).toMatchObject({ page: 1, limit: 3, total: 1137, totalPages: 379 });
+	});
+
+	it('respects explicit high limits for canonical requests', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalog.mockResolvedValue({
+			data: Array.from({ length: 500 }, (_, index) => ({
+				...sampleCatalogItem,
+				id: index + 1,
+				name: `Coffee ${index + 1}`
+			})),
+			count: 1137,
+			filtersApplied: {}
+		});
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?limit=500')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.pagination).toMatchObject({ page: 1, limit: 500, total: 1137, totalPages: 3 });
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				limit: 500,
+				offset: 0
+			})
+		);
 	});
 
 	it('prefers canonical price_per_lb query params for per-pound price filtering', async () => {
