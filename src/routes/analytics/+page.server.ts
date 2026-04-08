@@ -86,6 +86,18 @@ export interface OriginRangeRow {
 const SNAPSHOT_PAGE_SIZE = 1000;
 const SNAPSHOT_SELECT =
 	'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier';
+// Keep synthetic backfill rows in the analytics history for now. Because real and
+// synthetic rows can coexist for the same segment/date, pagination must use a
+// total order that includes the schema differentiators plus a unique tiebreaker.
+const SNAPSHOT_ORDER_COLUMNS = [
+	'snapshot_date',
+	'origin',
+	'process',
+	'grade',
+	'wholesale_only',
+	'synthetic',
+	'id'
+] as const;
 
 function normalizeProcess(raw: string | null | undefined): string {
 	if (!raw) return 'Unknown';
@@ -99,7 +111,6 @@ function normalizeProcess(raw: string | null | undefined): string {
 }
 
 export async function loadPriceSnapshotsPaginated({
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	supabase,
 	fromDate
 }: {
@@ -111,16 +122,25 @@ export async function loadPriceSnapshotsPaginated({
 
 	for (let start = 0; ; start += SNAPSHOT_PAGE_SIZE) {
 		const end = start + SNAPSHOT_PAGE_SIZE - 1;
-		const { data } = await supabase
+		let query = supabase
 			.from('price_index_snapshots')
 			.select(SNAPSHOT_SELECT)
 			.gte('snapshot_date', fromDate)
-			.eq('aggregation_tier', 1)
-			.order('snapshot_date', { ascending: true })
-			.order('origin', { ascending: true })
-			.order('process', { ascending: true })
-			.order('wholesale_only', { ascending: true })
-			.range(start, end);
+			.eq('aggregation_tier', 1);
+
+		for (const column of SNAPSHOT_ORDER_COLUMNS) {
+			query = query.order(column, { ascending: true });
+		}
+
+		const { data, error } = await query.range(start, end);
+
+		if (error) {
+			const pageNumber = Math.floor(start / SNAPSHOT_PAGE_SIZE) + 1;
+			throw new Error(
+				`Failed to load analytics price snapshots page ${pageNumber}: ${error.message}`,
+				{ cause: error }
+			);
+		}
 
 		const page = (data ?? []) as PriceSnapshot[];
 
