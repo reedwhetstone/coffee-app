@@ -49,7 +49,7 @@
 				persistedId && workspaceStore.workspaces.some((workspace) => workspace.id === persistedId)
 					? persistedId
 					: workspaceStore.workspaces[0].id;
-			await workspaceStore.switchWorkspace(targetId);
+			await workspaceStore.activateWorkspace(targetId);
 		}
 
 		workspacesBootstrapped = true;
@@ -61,7 +61,9 @@
 	}
 
 	async function handleWorkspaceSelect(workspaceId: string) {
-		await workspaceStore.switchWorkspace(workspaceId);
+		const switched = await workspaceStore.activateWorkspace(workspaceId);
+		if (!switched) return;
+
 		onClose();
 
 		if (pathname !== '/chat') {
@@ -70,18 +72,20 @@
 	}
 
 	async function handleCreateWorkspace() {
-		const createdWorkspace = await workspaceStore.createWorkspace(
-			newWorkspaceName.trim() || 'New Workspace',
+		const createdWorkspace = await workspaceStore.createAndActivateWorkspace(
+			newWorkspaceName,
 			newWorkspaceType
 		);
 		if (!createdWorkspace) return;
 
-		await workspaceStore.switchWorkspace(createdWorkspace.id);
 		newWorkspaceName = '';
 		newWorkspaceType = 'general';
 		showCreateForm = false;
 		onClose();
-		await goto('/chat');
+
+		if (pathname !== '/chat') {
+			await goto('/chat');
+		}
 	}
 
 	async function handleSignOut() {
@@ -122,7 +126,9 @@
 			<p class="text-xs font-semibold uppercase tracking-[0.2em] text-text-secondary-light">
 				Purveyors
 			</p>
-			<h2 class="mt-1 text-lg font-semibold text-text-primary-light">App menu</h2>
+			<h2 class="mt-1 text-lg font-semibold text-text-primary-light" id="app-menu-dialog-title">
+				App menu
+			</h2>
 		</div>
 		<button
 			type="button"

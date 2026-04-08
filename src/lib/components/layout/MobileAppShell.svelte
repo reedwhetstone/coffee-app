@@ -110,14 +110,32 @@
 	</div>
 </div>
 
-<MobileOverlayShell open={activeOverlay === 'menu'} variant="full" onClose={closeOverlay}>
+<MobileOverlayShell
+	open={activeOverlay === 'menu'}
+	variant="full"
+	onClose={closeOverlay}
+	label="App menu"
+	labelledBy="app-menu-dialog-title"
+>
 	<MobileAppMenu {data} onClose={closeOverlay} />
 </MobileOverlayShell>
 
-<MobileOverlayShell open={activeOverlay === 'settings'} variant="sheet" onClose={closeOverlay}>
+<MobileOverlayShell
+	open={activeOverlay === 'settings'}
+	variant="sheet"
+	onClose={closeOverlay}
+	label="Filters"
+	labelledBy="filters-dialog-title"
+>
 	<Settingsbar {data} isOpen={true} onClose={closeOverlay} />
 </MobileOverlayShell>
 
-<MobileOverlayShell open={activeOverlay === 'actions'} variant="sheet" onClose={closeOverlay}>
+<MobileOverlayShell
+	open={activeOverlay === 'actions'}
+	variant="sheet"
+	onClose={closeOverlay}
+	label="Actions"
+	labelledBy="actions-dialog-title"
+>
 	<Actionsbar {data} onClose={closeOverlay} />
 </MobileOverlayShell>
