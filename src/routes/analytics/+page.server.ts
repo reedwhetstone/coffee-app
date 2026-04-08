@@ -83,6 +83,10 @@ export interface OriginRangeRow {
 	sample_size: number;
 }
 
+const SNAPSHOT_PAGE_SIZE = 1000;
+const SNAPSHOT_SELECT =
+	'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier';
+
 function normalizeProcess(raw: string | null | undefined): string {
 	if (!raw) return 'Unknown';
 	const s = raw.toLowerCase().trim();
@@ -92,6 +96,42 @@ function normalizeProcess(raw: string | null | undefined): string {
 	if (s.includes('wet hull') || s.includes('giling')) return 'Wet Hulled';
 	if (s.includes('washed') || s.includes('wet') || s.includes('fully')) return 'Washed';
 	return 'Other';
+}
+
+export async function loadPriceSnapshotsPaginated({
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	supabase,
+	fromDate
+}: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	supabase: any;
+	fromDate: string;
+}): Promise<PriceSnapshot[]> {
+	const snapshots: PriceSnapshot[] = [];
+
+	for (let start = 0; ; start += SNAPSHOT_PAGE_SIZE) {
+		const end = start + SNAPSHOT_PAGE_SIZE - 1;
+		const { data } = await supabase
+			.from('price_index_snapshots')
+			.select(SNAPSHOT_SELECT)
+			.gte('snapshot_date', fromDate)
+			.eq('aggregation_tier', 1)
+			.order('snapshot_date', { ascending: true })
+			.order('origin', { ascending: true })
+			.order('process', { ascending: true })
+			.order('wholesale_only', { ascending: true })
+			.range(start, end);
+
+		const page = (data ?? []) as PriceSnapshot[];
+
+		if (page.length === 0) break;
+
+		snapshots.push(...page);
+
+		if (page.length < SNAPSHOT_PAGE_SIZE) break;
+	}
+
+	return snapshots;
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -132,7 +172,7 @@ export const load: PageServerLoad = async (event) => {
 		{ data: catalogPriceRows },
 		{ data: recentArrivals30 },
 		{ data: recentDelistings30 },
-		{ data: snapshotsRaw }
+		snapshotsRaw
 	] = await Promise.all([
 		// Market summary (pre-computed)
 		sb
@@ -189,15 +229,10 @@ export const load: PageServerLoad = async (event) => {
 			.order('unstocked_date', { ascending: false })
 			.limit(50),
 		// Price index snapshots — 90 days public, 365 days for PPI members
-		sb
-			.from('price_index_snapshots')
-			.select(
-				'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier'
-			)
-			.gte('snapshot_date', snapshotFromDate)
-			.eq('aggregation_tier', 1)
-			.order('snapshot_date', { ascending: true })
-			.limit(5000)
+		loadPriceSnapshotsPaginated({
+			supabase: sb,
+			fromDate: snapshotFromDate
+		})
 	]);
 
 	const marketSummary = marketSummaryRaw as {
