@@ -30,9 +30,12 @@
 				Green coffee data, normalized and ready to build on
 			</h1>
 			<p class="mt-5 text-lg leading-relaxed text-text-secondary-light">
-				One API for green coffee catalog data from 39+ suppliers. Normalized fields, daily updates,
-				and simple REST access. Built for roasters, coffee tech platforms, and developers who need
-				reliable sourcing data without scraping dozens of supplier sites.
+				One stable public API for green coffee catalog data from 39+ suppliers, plus a documented
+				platform route layer behind the Purveyors web app. The canonical external contract is
+				<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/v1/catalog</code
+				>; the broader
+				<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/api/*</code> family
+				powers inventory, roast, chat, billing, and admin workflows.
 			</p>
 		</div>
 
@@ -78,7 +81,8 @@
 			<div class="text-3xl font-bold text-background-tertiary-light">REST</div>
 			<div class="mt-2 text-sm font-semibold text-text-primary-light">Simple integration</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				One endpoint, one API key, JSON response. Integrate in minutes, not weeks.
+				Stable public contract at /v1/catalog, JSON responses, and documented platform routes when
+				you need to understand the first-party app.
 			</p>
 		</div>
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
@@ -189,22 +193,37 @@
 			</table>
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-text-secondary-light">
-			All plans include rate-limit headers, JSON responses, and access to the full normalized
-			catalog. Manage your keys and monitor usage in the
+			All plans include JSON responses and access to the full normalized catalog. API-key requests
+			receive rate-limit headers; session and anonymous catalog requests do not. In code and API
+			responses, these marketed plans map to <code
+				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">viewer</code
+			>,
+			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">member</code>, and
+			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">enterprise</code>.
+			Manage your keys and monitor usage in the
 			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
 				>Parchment Console</a
 			>.
 		</p>
 	</section>
 
-	<section class="grid gap-6 xl:grid-cols-3">
+	<section class="grid gap-6 xl:grid-cols-4">
 		<a
 			href="/docs/api/overview"
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
 			<h2 class="text-xl font-semibold text-text-primary-light">API reference</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Endpoints, authentication, response format, rate limits, and code examples.
+				Stable public contract, auth modes, response format, rate limits, and code examples.
+			</p>
+		</a>
+		<a
+			href="/docs/api/platform"
+			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
+		>
+			<h2 class="text-xl font-semibold text-text-primary-light">Platform routes</h2>
+			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
+				Internal route matrix for inventory, roast, chat, workspaces, billing, and admin flows.
 			</p>
 		</a>
 		<a

@@ -21,9 +21,13 @@
 			Documentation
 		</h1>
 		<p class="mt-4 max-w-3xl text-base leading-relaxed text-text-secondary-light sm:text-lg">
-			Parchment Platform gives you normalized green coffee data from 39+ suppliers through a REST
-			API and a command-line interface. Start with the API docs to integrate over HTTP, or the CLI
-			docs for terminal and automation workflows.
+			Parchment Platform gives you normalized green coffee data from 39+ suppliers through a stable
+			public catalog API at <code
+				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/v1/catalog</code
+			>, a broader internal platform route layer under
+			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/api/*</code>, and a
+			command-line interface. Start with API docs for HTTP integrations, then use the platform and
+			CLI docs for product internals and automation workflows.
 		</p>
 	</section>
 
@@ -73,7 +77,7 @@
 		>
 			<div class="text-sm font-semibold text-text-primary-light">API overview</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Plans, pricing, and quick start for the Parchment API.
+				Plans, pricing, quick start, and the public-versus-platform contract split.
 			</p>
 		</a>
 		<a
