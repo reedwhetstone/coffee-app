@@ -31,6 +31,8 @@
 	// Pagination state management
 	let displayLimit = $state(15);
 	let isLoadingMore = $state(false);
+	let copyLinkStatus = $state<'idle' | 'copied' | 'error'>('idle');
+	let copyLinkResetTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	/**
 	 * Initialize filter store when page loads
@@ -38,26 +40,38 @@
 	$effect(() => {
 		const currentRoute = page.url.pathname;
 
-		// Simple initialization: only run if we have data and store isn't initialized for this route
-		if (
-			data?.data?.length > 0 &&
-			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
-		) {
-			filterStore.initializeForRoute(currentRoute, data.data);
+		if (data?.data && (!$filterStore.initialized || $filterStore.routeId !== currentRoute)) {
+			filterStore.initializeForRoute(currentRoute, data.data, {
+				catalogUrlState: data.initialCatalogState,
+				pagination: data.pagination,
+				serverData: data.data
+			});
 		}
 	});
 
-	/**
-	 * Data source - use server data for catalog route, fallback to filtered data
-	 */
+	let hydratedCatalogState = $derived(
+		$filterStore.initialized && $filterStore.routeId === page.url.pathname
+	);
+
+	let activePagination = $derived(hydratedCatalogState ? $filterStore.pagination : data.pagination);
+
 	let displayData = $derived((): CoffeeCatalog[] => {
-		// Use server data if available (for paginated catalog)
-		if ($filterStore.serverData?.length > 0) {
+		if (hydratedCatalogState) {
 			return $filterStore.serverData as unknown as CoffeeCatalog[];
 		}
-		// Fallback to filtered data with pagination for non-server routes
+
+		if (data?.data) {
+			return data.data as unknown as CoffeeCatalog[];
+		}
+
 		return ($filteredData as unknown as CoffeeCatalog[]).slice(0, displayLimit);
 	});
+
+	let hasInlineFilters = $derived(
+		(Array.isArray($filterStore.filters.country) && $filterStore.filters.country.length > 0) ||
+			Boolean($filterStore.filters.processing) ||
+			Boolean($filterStore.filters.name)
+	);
 
 	/**
 	 * Handles pagination for server-side or infinite scroll for client-side
@@ -69,7 +83,7 @@
 		}
 
 		// For server-side routes, don't use infinite scroll - use proper pagination
-		if ($filterStore.routeId.includes('/catalog') || $filterStore.routeId === '/') {
+		if (page.url.pathname.includes('/catalog') || page.url.pathname === '/') {
 			return;
 		}
 
@@ -90,10 +104,55 @@
 	 * Sets up scroll event listeners
 	 */
 	onMount(() => {
-		// Setup scroll handler
 		window.addEventListener('scroll', handleScroll);
-		return () => window.removeEventListener('scroll', handleScroll);
+		return () => {
+			window.removeEventListener('scroll', handleScroll);
+			if (copyLinkResetTimeout) {
+				clearTimeout(copyLinkResetTimeout);
+			}
+		};
 	});
+
+	function updateCopyLinkStatus(status: 'idle' | 'copied' | 'error') {
+		copyLinkStatus = status;
+		if (copyLinkResetTimeout) {
+			clearTimeout(copyLinkResetTimeout);
+		}
+		if (status !== 'idle') {
+			copyLinkResetTimeout = setTimeout(() => {
+				copyLinkStatus = 'idle';
+			}, 2500);
+		}
+	}
+
+	async function copyFilteredCatalogLink() {
+		const currentUrl = window.location.href;
+
+		try {
+			if (navigator.share) {
+				await navigator.share({
+					title: 'Purveyors Green Coffee Catalog',
+					url: currentUrl
+				});
+				updateCopyLinkStatus('copied');
+				return;
+			}
+
+			await navigator.clipboard.writeText(currentUrl);
+			updateCopyLinkStatus('copied');
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				return;
+			}
+
+			try {
+				await navigator.clipboard.writeText(currentUrl);
+				updateCopyLinkStatus('copied');
+			} catch {
+				updateCopyLinkStatus('error');
+			}
+		}
+	}
 
 	/**
 	 * Parses AI tasting notes JSON data safely
@@ -139,12 +198,33 @@
 	<!-- Coffee Catalog -->
 	<div class="space-y-4">
 		<div class="rounded-lg border border-border-light bg-background-secondary-light px-5 py-4">
-			<h1 class="text-2xl font-bold text-text-primary-light sm:text-3xl">Green Coffee Catalog</h1>
-			<p class="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary-light sm:text-base">
-				Browse stocked green coffees from Purveyors supplier integrations with origin, processing,
-				tasting context, and live pricing. Filter by origin, process, and name to explore what is
-				currently available.
-			</p>
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+				<div>
+					<h1 class="text-2xl font-bold text-text-primary-light sm:text-3xl">
+						Green Coffee Catalog
+					</h1>
+					<p class="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary-light sm:text-base">
+						Browse stocked green coffees from Purveyors supplier integrations with origin,
+						processing, tasting context, and live pricing. Filter by origin, process, and name to
+						explore what is currently available.
+					</p>
+				</div>
+				<div class="flex flex-col items-start gap-2 sm:items-end">
+					<button
+						onclick={copyFilteredCatalogLink}
+						class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm font-medium text-text-primary-light shadow-sm transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
+					>
+						{copyLinkStatus === 'copied'
+							? 'Copied filtered link'
+							: copyLinkStatus === 'error'
+								? 'Copy failed'
+								: 'Copy filtered link'}
+					</button>
+					<p class="text-xs text-text-secondary-light">
+						Share the current catalog filters, sort, and page with one link.
+					</p>
+				</div>
+			</div>
 		</div>
 		<!-- Inline filter bar for unauthenticated users (sidebar filters handle this for auth'd users) -->
 		{#if !session}
@@ -190,7 +270,7 @@
 				/>
 
 				<!-- Clear button (only show when filters are active) -->
-				{#if $filterStore.filters.country || $filterStore.filters.processing || $filterStore.filters.name}
+				{#if hasInlineFilters}
 					<button
 						onclick={filterStore.clearFilters}
 						class="rounded-md border border-border-light px-3 py-1.5 text-sm text-text-secondary-light transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
@@ -245,8 +325,8 @@
 					</div>
 				{:else if !displayData() || displayData().length === 0}
 					<p class="p-4 text-text-primary-light">
-						No coffee data available {$filterStore.pagination.total > 0
-							? `(${$filterStore.pagination.total} total items)`
+						No coffee data available {activePagination()?.total > 0
+							? `(${activePagination()?.total} total items)`
 							: ''}
 					</p>
 				{:else}
@@ -264,13 +344,13 @@
 						{/if}
 
 						<!-- Public preview CTA banner (unauthenticated only) -->
-						{#if !session && ($filterStore.pagination.total > 15 || displayData().length >= 15)}
+						{#if !session && ((activePagination()?.total ?? 0) > 15 || displayData().length >= 15)}
 							<div class="col-span-full mt-2">
 								<div
 									class="rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 px-8 py-10 text-center shadow-sm ring-1 ring-amber-200"
 								>
 									<p class="mb-1 text-sm font-medium text-amber-700">
-										You're viewing 15 of {$filterStore.pagination.total || displayData().length} specialty
+										You're viewing 15 of {activePagination()?.total || displayData().length} specialty
 										coffees
 									</p>
 									<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
@@ -299,24 +379,24 @@
 						{/if}
 
 						<!-- Server-side pagination controls (authenticated users only) -->
-						{#if session && $filterStore.pagination.totalPages > 1}
+						{#if session && (activePagination()?.totalPages ?? 0) > 1}
 							<div class="col-span-full flex items-center justify-center gap-4 p-4">
 								<button
 									onclick={() => filterStore.loadPrevPage()}
-									disabled={!$filterStore.pagination.hasPrev || $filterStore.isLoading}
+									disabled={!(activePagination()?.hasPrev ?? false) || $filterStore.isLoading}
 									class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 								>
 									Previous
 								</button>
 
 								<span class="text-sm text-text-secondary-light">
-									Page {$filterStore.pagination.page} of {$filterStore.pagination.totalPages}
-									({$filterStore.pagination.total} total items)
+									Page {activePagination()?.page} of {activePagination()?.totalPages}
+									({activePagination()?.total} total items)
 								</span>
 
 								<button
 									onclick={() => filterStore.loadNextPage()}
-									disabled={!$filterStore.pagination.hasNext || $filterStore.isLoading}
+									disabled={!(activePagination()?.hasNext ?? false) || $filterStore.isLoading}
 									class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 								>
 									Next

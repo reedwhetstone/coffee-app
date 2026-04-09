@@ -3,20 +3,42 @@ import { searchCatalog } from '$lib/data/catalog';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
+import {
+	catalogUrlStateToSearchState,
+	parseCatalogUrlState,
+	type CatalogUrlState
+} from '$lib/catalog/urlState';
+
+function buildPagination(state: CatalogUrlState, total: number) {
+	const totalPages = total > 0 ? Math.ceil(total / state.pagination.limit) : 0;
+	return {
+		page: state.pagination.page,
+		limit: state.pagination.limit,
+		total,
+		totalPages,
+		hasNext: totalPages > 0 && state.pagination.page < totalPages,
+		hasPrev: state.pagination.page > 1
+	};
+}
 
 export const load: PageServerLoad = async ({ locals, url }) => {
+	const requestedCatalogState = parseCatalogUrlState(url, '/catalog');
 	const visibility = resolveCatalogVisibility({
 		session: locals.session,
-		role: locals.role
+		role: locals.role,
+		showWholesaleRequested: requestedCatalogState.showWholesale
 	});
-	const { data: stockedData } = await searchCatalog(locals.supabase, {
+	const initialCatalogState: CatalogUrlState = {
+		...requestedCatalogState,
+		showWholesale: visibility.showWholesale
+	};
+	const searchState = catalogUrlStateToSearchState(initialCatalogState);
+	const { data: catalogData, count } = await searchCatalog(locals.supabase, {
 		stockedOnly: true,
 		publicOnly: visibility.publicOnly,
 		showWholesale: visibility.showWholesale,
 		wholesaleOnly: visibility.wholesaleOnly,
-		orderBy: 'arrival_date',
-		orderDirection: 'desc',
-		limit: 5
+		...searchState
 	});
 
 	const baseUrl = `${url.protocol}//${url.host}`;
@@ -24,14 +46,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),
 		schemaService.generateCoffeeCollectionSchema(
-			(stockedData ?? []) as Record<string, unknown>[],
+			(catalogData ?? []) as Record<string, unknown>[],
 			`${baseUrl}/catalog`
 		)
 	]);
 
 	return {
-		data: stockedData || [],
-		trainingData: stockedData || [],
+		data: catalogData || [],
+		trainingData: catalogData || [],
+		initialCatalogState,
+		pagination: buildPagination(initialCatalogState, count || catalogData.length),
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/catalog',

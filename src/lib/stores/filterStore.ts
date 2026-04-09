@@ -1,14 +1,24 @@
 import { writable, derived, get } from 'svelte/store';
+import {
+	buildCatalogRequestParams,
+	buildCatalogShareParams,
+	createDefaultCatalogUrlState,
+	type CatalogFilterValue,
+	type CatalogUrlState
+} from '$lib/catalog/urlState';
 
 // Define types
 type DataItem = Record<string, unknown>;
-type FilterValue =
-	| string
-	| number
-	| boolean
-	| { min: string | number; max: string | number }
-	| string[]
-	| null;
+type FilterValue = CatalogFilterValue;
+
+type CatalogPaginationState = {
+	page: number;
+	limit: number;
+	total: number;
+	totalPages: number;
+	hasNext: boolean;
+	hasPrev: boolean;
+};
 
 type FilterState = {
 	routeId: string;
@@ -20,14 +30,7 @@ type FilterState = {
 	originalData: DataItem[]; // Keep for backward compatibility
 	filteredData: DataItem[];
 	serverData: DataItem[]; // Server-side filtered/sorted data
-	pagination: {
-		page: number;
-		limit: number;
-		total: number;
-		totalPages: number;
-		hasNext: boolean;
-		hasPrev: boolean;
-	};
+	pagination: CatalogPaginationState;
 	lastProcessedString: string;
 	processing: boolean;
 	isLoading: boolean; // Loading state for server requests
@@ -37,6 +40,28 @@ type FilterState = {
 	lastProcessedCacheKey: string | null;
 	changeCounter: number;
 };
+
+type InitializeRouteOptions = {
+	catalogUrlState?: CatalogUrlState;
+	pagination?: CatalogPaginationState;
+	serverData?: DataItem[];
+};
+
+function createInitialCatalogPagination(): CatalogPaginationState {
+	const defaultCatalogState = createDefaultCatalogUrlState();
+	return {
+		page: defaultCatalogState.pagination.page,
+		limit: defaultCatalogState.pagination.limit,
+		total: 0,
+		totalPages: 0,
+		hasNext: false,
+		hasPrev: false
+	};
+}
+
+function isCatalogRoute(routeId: string): boolean {
+	return routeId.includes('/catalog') || routeId === '/';
+}
 
 // Initialize default state
 const initialState: FilterState = {
@@ -49,14 +74,7 @@ const initialState: FilterState = {
 	originalData: [],
 	filteredData: [],
 	serverData: [],
-	pagination: {
-		page: 1,
-		limit: 15,
-		total: 0,
-		totalPages: 0,
-		hasNext: false,
-		hasPrev: false
-	},
+	pagination: createInitialCatalogPagination(),
 	lastProcessedString: '',
 	processing: false,
 	isLoading: false,
@@ -71,60 +89,42 @@ const initialState: FilterState = {
 function createFilterStore() {
 	const { subscribe, update } = writable<FilterState>(initialState);
 
-	/**
-	 * Maps internal filter store keys to canonical API query parameter names.
-	 * The UI uses `cost_lb` as the internal key for the price-per-lb range filter,
-	 * but the API's canonical params are `price_per_lb_min` / `price_per_lb_max`.
-	 */
-	const PARAM_NAME_MAP: Record<string, string> = {
-		cost_lb: 'price_per_lb'
-	};
-
-	/**
-	 * Builds query parameters for server-side filtering and sorting
-	 * @returns URLSearchParams object
-	 */
-	function buildQueryParams(state: FilterState): URLSearchParams {
-		const params = new URLSearchParams();
-
-		// Add pagination parameters
-		params.append('page', state.pagination.page.toString());
-		params.append('limit', state.pagination.limit.toString());
-
-		// Add sort parameters
-		if (state.sortField) {
-			params.append('sortField', state.sortField);
-		}
-		if (state.sortDirection) {
-			params.append('sortDirection', state.sortDirection);
-		}
-
-		// Catalog wholesale visibility toggle
-		if (state.showWholesale) {
-			params.append('showWholesale', 'true');
-		}
-
-		// Add filter parameters
-		Object.entries(state.filters).forEach(([key, value]) => {
-			if (value === undefined || value === null || value === '') return;
-
-			// Remap internal filter keys to canonical API param names where they differ
-			const paramKey = PARAM_NAME_MAP[key] ?? key;
-
-			if (Array.isArray(value)) {
-				value.forEach((v) => {
-					if (v) params.append(paramKey, v.toString());
-				});
-			} else if (typeof value === 'object' && value.min !== undefined && value.max !== undefined) {
-				// Handle range filters (score_value, price_per_lb / cost_lb)
-				if (value.min !== '') params.append(`${paramKey}_min`, value.min.toString());
-				if (value.max !== '') params.append(`${paramKey}_max`, value.max.toString());
-			} else {
-				params.append(paramKey, value.toString());
+	function toCatalogUrlState(state: FilterState): CatalogUrlState {
+		const defaultCatalogState = createDefaultCatalogUrlState();
+		return {
+			...defaultCatalogState,
+			filters: state.filters,
+			sortField: state.sortField,
+			sortDirection: state.sortDirection,
+			showWholesale: state.showWholesale,
+			pagination: {
+				page: state.pagination.page,
+				limit: state.pagination.limit
 			}
-		});
+		};
+	}
 
-		return params;
+	function buildQueryParams(state: FilterState): URLSearchParams {
+		return buildCatalogRequestParams(toCatalogUrlState(state), state.routeId);
+	}
+
+	function buildShareQueryParams(state: FilterState): URLSearchParams {
+		return buildCatalogShareParams(toCatalogUrlState(state), state.routeId);
+	}
+
+	function syncCatalogUrl(state: FilterState) {
+		if (typeof window === 'undefined' || !isCatalogRoute(state.routeId)) {
+			return;
+		}
+
+		const params = buildShareQueryParams(state);
+		const search = params.toString();
+		const nextUrl = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`;
+		const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+		if (nextUrl !== currentUrl) {
+			window.history.replaceState(window.history.state, '', nextUrl);
+		}
 	}
 
 	// Server fetch debouncing
@@ -138,7 +138,7 @@ function createFilterStore() {
 		const state = get({ subscribe });
 
 		// Only fetch for catalog route
-		if (!state.routeId.includes('/catalog') && state.routeId !== '/') {
+		if (!isCatalogRoute(state.routeId)) {
 			return;
 		}
 
@@ -154,7 +154,8 @@ function createFilterStore() {
 			try {
 				const currentState = get({ subscribe });
 				const params = buildQueryParams(currentState);
-				const response = await fetch(`/v1/catalog?${params}`);
+				const queryString = params.toString();
+				const response = await fetch(`/v1/catalog${queryString ? `?${queryString}` : ''}`);
 
 				if (!response.ok) {
 					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -211,30 +212,34 @@ function createFilterStore() {
 	 * @param routeId - The route identifier (e.g., '/beans', '/roast', '/')
 	 * @param data - Array of data items to initialize with
 	 */
-	function initializeForRoute(routeId: string, data: DataItem[]) {
+	function initializeForRoute(
+		routeId: string,
+		data: DataItem[],
+		options: InitializeRouteOptions = {}
+	) {
 		// Skip if already initializing this route
 		const currentState = get({ subscribe });
 		if (currentState.initializingRoute === routeId) {
 			return;
 		}
 
-		// Determine if this is a server-side route (catalog)
-		const isServerSideRoute = routeId.includes('/catalog') || routeId === '/';
+		const isServerSideRoute = isCatalogRoute(routeId);
+		const catalogUrlState = options.catalogUrlState ?? createDefaultCatalogUrlState();
 
 		// Immediate setup with minimal processing
 		update((state) => {
 			state.initializingRoute = routeId;
 			state.routeId = routeId;
 			state.originalData = data;
-			state.filters = {};
-			state.showWholesale = false;
 			state.processing = false;
 			state.lastProcessedCacheKey = null;
 
 			// Set default sort settings for this route
 			const { field, direction } = getDefaultSortSettings(routeId);
-			state.sortField = field;
-			state.sortDirection = direction;
+			state.filters = isServerSideRoute ? { ...catalogUrlState.filters } : {};
+			state.showWholesale = isServerSideRoute ? catalogUrlState.showWholesale : false;
+			state.sortField = isServerSideRoute ? catalogUrlState.sortField : field;
+			state.sortDirection = isServerSideRoute ? catalogUrlState.sortDirection : direction;
 
 			// Auto-filter beans by green_coffee_inv.stocked = 'TRUE' for beans route (user can change this)
 			if (routeId.includes('beans')) {
@@ -242,19 +247,17 @@ function createFilterStore() {
 			}
 
 			if (isServerSideRoute) {
-				// For catalog route, use server-side mode
-				state.serverData = [];
-				state.pagination = {
-					page: 1,
-					limit: 15,
-					total: 0,
-					totalPages: 0,
-					hasNext: false,
-					hasPrev: false
+				state.serverData = options.serverData ?? data;
+				state.pagination = options.pagination ?? {
+					...createInitialCatalogPagination(),
+					page: catalogUrlState.pagination.page,
+					limit: catalogUrlState.pagination.limit
 				};
-				state.filteredData = []; // Start empty, will be populated by server
+				state.filteredData = options.serverData ?? data;
 			} else {
 				// For other routes, use client-side processing
+				state.serverData = [];
+				state.pagination = createInitialCatalogPagination();
 				state.filteredData = processData(
 					data,
 					state.sortField,
@@ -271,10 +274,12 @@ function createFilterStore() {
 		});
 
 		if (isServerSideRoute) {
-			// For catalog route, fetch server data and unique values
 			setTimeout(() => {
-				fetchServerData();
+				syncCatalogUrl(get({ subscribe }));
 				fetchUniqueValues();
+				if (!options.serverData && data.length === 0) {
+					fetchServerData();
+				}
 			}, 0);
 		} else {
 			// For other routes, use client-side processing
@@ -295,10 +300,32 @@ function createFilterStore() {
 		} else if (routeId.includes('roast')) {
 			return { field: 'roast_date', direction: 'desc' as const };
 		} else if (routeId === '/' || routeId === '' || routeId === '/catalog') {
-			return { field: 'stocked_date', direction: 'desc' as const };
+			return { field: null, direction: null } as const;
 		} else {
 			return { field: null, direction: null } as const;
 		}
+	}
+
+	function isEmptyFilterValue(value: FilterValue): boolean {
+		if (value === undefined || value === null || value === '') {
+			return true;
+		}
+
+		if (Array.isArray(value)) {
+			return value.length === 0;
+		}
+
+		if (typeof value === 'object' && 'min' in value && 'max' in value) {
+			return String(value.min ?? '').trim() === '' && String(value.max ?? '').trim() === '';
+		}
+
+		return false;
+	}
+
+	function sanitizeFilters(filters: Record<string, FilterValue>): Record<string, FilterValue> {
+		return Object.fromEntries(
+			Object.entries(filters).filter(([, value]) => !isEmptyFilterValue(value))
+		) as Record<string, FilterValue>;
 	}
 
 	// Set the default sort for a route
@@ -327,14 +354,15 @@ function createFilterStore() {
 				state.sortDirection = null;
 			}
 			// Reset to first page for server-side routes
-			if (state.routeId.includes('/catalog') || state.routeId === '/') {
+			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
 			return state;
 		});
 
 		const currentState = get({ subscribe });
-		if (currentState.routeId.includes('/catalog') || currentState.routeId === '/') {
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
 			fetchServerData();
 		} else {
 			processAndUpdateFilteredData();
@@ -353,14 +381,15 @@ function createFilterStore() {
 		update((state) => {
 			state.sortDirection = normalizedDirection;
 			// Reset to first page for server-side routes
-			if (state.routeId.includes('/catalog') || state.routeId === '/') {
+			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
 			return state;
 		});
 
 		const currentState = get({ subscribe });
-		if (currentState.routeId.includes('/catalog') || currentState.routeId === '/') {
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
 			fetchServerData();
 		} else {
 			processAndUpdateFilteredData();
@@ -374,16 +403,17 @@ function createFilterStore() {
 	 */
 	function setFilter(key: string, value: FilterValue) {
 		update((state) => {
-			state.filters = { ...state.filters, [key]: value };
+			state.filters = sanitizeFilters({ ...state.filters, [key]: value });
 			// Reset to first page for server-side routes
-			if (state.routeId.includes('/catalog') || state.routeId === '/') {
+			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
 			return state;
 		});
 
 		const currentState = get({ subscribe });
-		if (currentState.routeId.includes('/catalog') || currentState.routeId === '/') {
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
 			fetchServerData();
 		} else {
 			processAndUpdateFilteredData();
@@ -398,14 +428,15 @@ function createFilterStore() {
 	function setShowWholesale(showWholesale: boolean) {
 		update((state) => {
 			state.showWholesale = showWholesale;
-			if (state.routeId.includes('/catalog') || state.routeId === '/') {
+			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
 			return state;
 		});
 
 		const currentState = get({ subscribe });
-		if (currentState.routeId.includes('/catalog') || currentState.routeId === '/') {
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
 			fetchServerData();
 			fetchUniqueValues();
 		} else {
@@ -432,9 +463,18 @@ function createFilterStore() {
 				state.sortField = field;
 				state.sortDirection = 'asc';
 			}
+			if (isCatalogRoute(state.routeId)) {
+				state.pagination.page = 1;
+			}
 			return state;
 		});
-		processAndUpdateFilteredData();
+		const currentState = get({ subscribe });
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
+			fetchServerData();
+		} else {
+			processAndUpdateFilteredData();
+		}
 	}
 
 	// Clear all filters
@@ -442,16 +482,20 @@ function createFilterStore() {
 		update((state) => {
 			state.filters = {};
 			state.showWholesale = false;
+			state.sortField = null;
+			state.sortDirection = null;
 			// Reset to first page for server-side routes
-			if (state.routeId.includes('/catalog') || state.routeId === '/') {
+			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
 			return state;
 		});
 
 		const currentState = get({ subscribe });
-		if (currentState.routeId.includes('/catalog') || currentState.routeId === '/') {
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
 			fetchServerData();
+			fetchUniqueValues();
 		} else {
 			processAndUpdateFilteredData();
 		}
@@ -466,6 +510,8 @@ function createFilterStore() {
 			state.pagination.page = page;
 			return state;
 		});
+		const currentState = get({ subscribe });
+		syncCatalogUrl(currentState);
 		fetchServerData();
 	}
 

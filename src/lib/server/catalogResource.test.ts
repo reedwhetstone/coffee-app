@@ -625,6 +625,16 @@ describe('buildCanonicalCatalogResponse', () => {
 				expect.objectContaining({ origin: 'Africa', country: 'Ethiopia' })
 			);
 		});
+
+		it('passes repeated country params through as a multi-select filter', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?country=Ethiopia&country=Kenya&page=1&limit=10')
+			);
+			expect(mockSearchCatalog).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ country: ['Ethiopia', 'Kenya'] })
+			);
+		});
 	});
 
 	describe('dropdown path stocked filtering', () => {

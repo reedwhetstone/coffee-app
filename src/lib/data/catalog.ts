@@ -61,7 +61,7 @@ export interface CatalogSearchOptions {
 
 	// Catalog-specific filters (internal endpoint)
 	continent?: string;
-	country?: string;
+	country?: string | string[];
 	source?: string[];
 	processing?: string;
 	cultivarDetail?: string;
@@ -187,7 +187,11 @@ export async function searchCatalog(
 		);
 	}
 	if (continent) query = query.eq('continent', continent);
-	if (country) query = query.eq('country', country);
+	if (Array.isArray(country) && country.length > 0) {
+		query = country.length === 1 ? query.eq('country', country[0]) : query.in('country', country);
+	} else if (country) {
+		query = query.eq('country', country);
+	}
 	if (region) query = query.ilike('region', `%${region}%`);
 	if (source && source.length > 0) query = query.in('source', source);
 
