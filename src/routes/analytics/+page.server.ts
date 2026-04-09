@@ -110,7 +110,7 @@ function normalizeProcess(raw: string | null | undefined): string {
 	return 'Other';
 }
 
-export async function loadPriceSnapshotsPaginated({
+export async function _loadPriceSnapshotsPaginated({
 	supabase,
 	fromDate
 }: {
@@ -249,7 +249,7 @@ export const load: PageServerLoad = async (event) => {
 			.order('unstocked_date', { ascending: false })
 			.limit(50),
 		// Price index snapshots — 90 days public, 365 days for PPI members
-		loadPriceSnapshotsPaginated({
+		_loadPriceSnapshotsPaginated({
 			supabase: sb,
 			fromDate: snapshotFromDate
 		})

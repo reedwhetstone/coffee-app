@@ -46,7 +46,7 @@ type SnapshotQueryCall = {
 };
 
 let load: typeof import('./+page.server').load;
-let loadPriceSnapshotsPaginated: typeof import('./+page.server').loadPriceSnapshotsPaginated;
+let loadPriceSnapshotsPaginated: typeof import('./+page.server')._loadPriceSnapshotsPaginated;
 let resolvePrincipalMock: ReturnType<typeof vi.fn>;
 
 beforeEach(async () => {
@@ -55,7 +55,7 @@ beforeEach(async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date('2026-04-08T12:00:00.000Z'));
 
-	({ load, loadPriceSnapshotsPaginated } = await import('./+page.server'));
+	({ load, _loadPriceSnapshotsPaginated: loadPriceSnapshotsPaginated } = await import('./+page.server'));
 
 	const principalModule = await import('$lib/server/principal');
 	resolvePrincipalMock = vi.mocked(principalModule.resolvePrincipal);
