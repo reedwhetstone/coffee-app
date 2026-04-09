@@ -11,13 +11,15 @@ import { buildCanonicalCatalogResponse } from '$lib/server/catalogResource';
 // /v1/catalog. The endpoint continues to serve real data so existing
 // integrations that relied on the old /api/catalog-api URL keep working.
 export const GET: RequestHandler = async (event) => {
-	const response = await buildCanonicalCatalogResponse(event, { requestPath: '/v1/catalog' });
+	const response = await buildCanonicalCatalogResponse(event, {
+		requestPath: '/api/catalog-api'
+	});
 
 	// Clone response to add deprecation headers without mutating the original
 	const headers = new Headers(response.headers);
 	headers.set('Deprecation', 'true');
 	headers.set('Link', '</v1/catalog>; rel="successor-version"');
-	headers.set('Sunset', 'Sat, 31 Dec 2026 23:59:59 GMT');
+	headers.set('Sunset', 'Thu, 31 Dec 2026 23:59:59 GMT');
 
 	return new Response(response.body, {
 		status: response.status,

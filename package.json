@@ -13,6 +13,7 @@
 		"build:analyze": "pnpm run build && vite-bundle-analyzer dist/",
 		"preview": "vite preview",
 		"audit:discoverability": "tsx scripts/audit-public-discoverability.ts",
+		"verify:catalog-http-contract": "tsx scripts/verify-catalog-http-contract.ts",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
