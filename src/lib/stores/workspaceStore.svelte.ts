@@ -20,6 +20,8 @@ export interface WorkspaceMessage {
 	created_at: string;
 }
 
+type WorkspaceCallbackResult = unknown | Promise<unknown>;
+
 // localStorage helpers
 const WORKSPACE_ID_KEY = 'coffee-chat-workspace-id';
 
@@ -228,10 +230,10 @@ function getSavedMessageCount(workspaceId: string): number {
 
 // ─── UI Callbacks (registered by chat page, called by LeftSidebar) ──────────
 export interface WorkspaceUICallbacks {
-	onSwitch: (id: string) => void;
-	onCreate: (name: string, type: Workspace['type']) => void;
-	onDelete: (id: string) => void;
-	onRename: (id: string, title: string) => void;
+	onSwitch: (id: string) => WorkspaceCallbackResult;
+	onCreate: (name: string, type: Workspace['type']) => WorkspaceCallbackResult;
+	onDelete: (id: string) => WorkspaceCallbackResult;
+	onRename: (id: string, title: string) => WorkspaceCallbackResult;
 }
 
 let uiCallbacks = $state<WorkspaceUICallbacks | null>(null);
@@ -245,6 +247,34 @@ function registerUICallbacks(callbacks: WorkspaceUICallbacks) {
 function unregisterUICallbacks() {
 	uiCallbacks = null;
 	workspacesReady = false;
+}
+
+async function activateWorkspace(workspaceId: string): Promise<boolean> {
+	if (uiCallbacks) {
+		await uiCallbacks.onSwitch(workspaceId);
+		return true;
+	}
+
+	return (await switchWorkspace(workspaceId)) !== null;
+}
+
+async function createAndActivateWorkspace(
+	title?: string,
+	type?: Workspace['type']
+): Promise<Workspace | null> {
+	const nextTitle = title?.trim() || 'New Workspace';
+	const nextType = type || 'general';
+
+	if (uiCallbacks) {
+		await uiCallbacks.onCreate(nextTitle, nextType);
+		return currentWorkspace;
+	}
+
+	const workspace = await createWorkspace(nextTitle, nextType);
+	if (!workspace) return null;
+
+	const activated = await switchWorkspace(workspace.id);
+	return activated?.workspace ?? workspace;
 }
 
 export const workspaceStore = {
@@ -272,6 +302,8 @@ export const workspaceStore = {
 	loadWorkspaces,
 	createWorkspace,
 	switchWorkspace,
+	activateWorkspace,
+	createAndActivateWorkspace,
 	saveMessages,
 	saveCanvasState,
 	triggerSummarize,

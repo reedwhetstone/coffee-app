@@ -1,86 +1,89 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import { afterNavigate } from '$app/navigation';
-	import { checkRole } from '$lib/types/auth.types';
+	import { page } from '$app/state';
+	import { checkRole, type UserRole } from '$lib/types/auth.types';
+	import {
+		getAuthenticatedNavSections,
+		isNavItemActive,
+		type NavItem,
+		type NavSection
+	} from '$lib/components/layout/appNavigation';
 
-	// Update the props declaration to include isOpen and onClose
 	let { data, onClose = () => {} } = $props<{
 		data: Record<string, unknown>;
 		onClose?: () => void;
 	}>();
 
-	// Destructure with default values to prevent undefined errors
-	let { role = 'viewer' } = $derived(data as { role?: string });
-
-	// Import global UserRole type
-	import type { UserRole } from '$lib/types/auth.types';
-	let userRole: UserRole = $derived(role as UserRole);
-
-	// Use the imported checkRole function
-	function hasRequiredRole(requiredRole: UserRole): boolean {
-		const hasRole = checkRole(userRole, requiredRole);
-		return hasRole;
-	}
-
-	// Update routeId to use the store value directly
-	let routeId = $state(page.route.id);
 	let currentPath = $state(page.url.pathname);
+	let userRole = $derived(
+		(((data as { role?: string }).role as UserRole | undefined) ?? 'viewer') as UserRole
+	);
+	let navSections = $derived(getAuthenticatedNavSections(userRole));
+	let canAccessMemberRoutes = $derived(checkRole(userRole, 'member'));
+	let canAccessAdminRoutes = $derived(checkRole(userRole, 'admin'));
 
-	// Update `routeId` after each navigation
 	afterNavigate(() => {
-		routeId = page.route.id;
 		currentPath = page.url.pathname;
 	});
 
-	// Update route tracking when navigation completes
-	afterNavigate(() => {
-		routeId = page.route.id;
-		currentPath = page.url.pathname;
-	});
-
-	// Function to handle instant menu close on navigation
 	function handleNavClick() {
-		onClose(); // Close menu immediately, don't wait for navigation to complete
+		onClose();
 	}
 
-	// Preloading cache to avoid duplicate requests
 	const preloadCache = new Set<string>();
 
-	// Function to preload API data on hover
 	async function preloadRouteData(route: string) {
-		if (preloadCache.has(route)) return; // Already preloading or preloaded
-
+		if (preloadCache.has(route)) return;
 		preloadCache.add(route);
 
 		try {
 			if (route === '/beans') {
-				// Preload the inventory list; catalog data is only needed when opening the add-bean form.
 				await fetch('/api/beans');
 			} else if (route === '/roast') {
-				// Preload roast data
 				await fetch('/api/roast-profiles');
 			}
 		} catch (error) {
 			console.log('Preload failed for', route, ':', error);
-			// Remove from cache on failure so it can be retried
 			preloadCache.delete(route);
+		}
+	}
+
+	function handleMouseEnter(item: NavItem) {
+		if (item.href === '/beans' || item.href === '/roast') {
+			void preloadRouteData(item.href);
+		}
+	}
+
+	function sectionIntro(section: NavSection): string {
+		switch (section.id) {
+			case 'core':
+				return 'Primary destinations';
+			case 'secondary':
+				return 'Supporting tools and account links';
+			case 'admin':
+				return 'Administration';
 		}
 	}
 </script>
 
-<!-- Navigation menu panel - full height -->
 <div class="flex h-full flex-col">
-	<!-- Header with close button that handles keyboard events -->
 	<header
 		class="flex items-center justify-between border-b border-text-primary-light border-opacity-20 p-4"
 	>
-		<h2 class="text-lg font-semibold text-text-primary-light" id="nav-dialog-title">Navigation</h2>
+		<div>
+			<h2 class="text-lg font-semibold text-text-primary-light" id="nav-dialog-title">
+				Navigation
+			</h2>
+			<p class="mt-1 text-sm text-text-secondary-light">
+				Mobile and desktop share the same route map now.
+			</p>
+		</div>
 		<button
-			onclick={(e) => {
-				e.stopPropagation();
+			onclick={(event) => {
+				event.stopPropagation();
 				onClose();
 			}}
-			onkeydown={(e) => e.key === 'Escape' && onClose()}
+			onkeydown={(event) => event.key === 'Escape' && onClose()}
 			class="p-2 hover:opacity-80"
 			aria-label="Close navigation panel"
 		>
@@ -100,138 +103,53 @@
 	</header>
 
 	<main class="flex-grow overflow-y-auto p-4">
-		<ul class="space-y-2">
-			<li>
-				<a
-					href="/dashboard"
-					onclick={handleNavClick}
-					class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath ===
-					'/dashboard'
-						? 'bg-background-tertiary-light text-white'
-						: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
-				>
-					Dashboard
-				</a>
-			</li>
-			<li>
-				<a
-					href="/catalog"
-					onclick={handleNavClick}
-					class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath ===
-					'/catalog'
-						? 'bg-background-tertiary-light text-white'
-						: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
-				>
-					Catalog
-				</a>
-			</li>
-
-			<!-- Member-only navigation -->
-			{#if hasRequiredRole('member')}
-				<li>
-					<a
-						href="/beans"
-						onclick={handleNavClick}
-						onmouseenter={() => preloadRouteData('/beans')}
-						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
-						'/beans'
-							? 'bg-background-tertiary-light text-white'
-							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
-					>
-						Beans
-					</a>
-				</li>
-				<li>
-					<a
-						href="/roast"
-						onclick={handleNavClick}
-						onmouseenter={() => preloadRouteData('/roast')}
-						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
-						'/roast'
-							? 'bg-background-tertiary-light text-white'
-							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
-					>
-						Roast
-					</a>
-				</li>
-				<li>
-					<a
-						href="/profit"
-						onclick={handleNavClick}
-						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
-						'/profit'
-							? 'bg-background-tertiary-light text-white'
-							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
-					>
-						Profit
-					</a>
-				</li>
-			{/if}
-
-			<!-- Admin-only navigation -->
-			{#if hasRequiredRole('admin')}
-				<li class="mt-4">
-					<div class="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
-						Administration
+		<div class="space-y-6">
+			{#each navSections as section (section.id)}
+				<section>
+					<div class="mb-3">
+						<h3 class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
+							{section.label}
+						</h3>
+						<p class="mt-1 text-xs text-text-secondary-light/80">{sectionIntro(section)}</p>
 					</div>
-				</li>
-				<li>
-					<a
-						href="/admin"
-						onclick={handleNavClick}
-						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {routeId ===
-						'/admin'
-							? 'bg-background-tertiary-light text-white'
-							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
-					>
-						Admin Dashboard
-					</a>
-				</li>
-			{/if}
-		</ul>
+					<ul class="space-y-2">
+						{#each section.items as item (item.href)}
+							<li>
+								<a
+									href={item.href}
+									onclick={handleNavClick}
+									onmouseenter={() => handleMouseEnter(item)}
+									class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {isNavItemActive(
+										item,
+										currentPath
+									)
+										? 'bg-background-tertiary-light text-white'
+										: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
+								>
+									<div class="font-medium">{item.label}</div>
+									{#if item.description}
+										<p class="mt-1 text-xs opacity-80">{item.description}</p>
+									{/if}
+								</a>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/each}
 
-		<!-- Parchment Console and Contact links for all users -->
-		<div class="mt-6 border-t border-text-primary-light border-opacity-20 pt-4">
-			<ul class="space-y-2">
-				<li>
-					<a
-						href="/api-dashboard"
-						onclick={handleNavClick}
-						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath.startsWith(
-							'/api-dashboard'
-						)
-							? 'bg-background-tertiary-light text-white'
-							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
-					>
-						Parchment Console
-					</a>
-				</li>
-				<li>
-					<a
-						href="/analytics"
-						onclick={handleNavClick}
-						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath.startsWith(
-							'/analytics'
-						)
-							? 'bg-background-tertiary-light text-white'
-							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
-					>
-						Analytics
-					</a>
-				</li>
-				<li>
-					<a
-						href="/contact"
-						onclick={handleNavClick}
-						class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {currentPath ===
-						'/contact'
-							? 'bg-background-tertiary-light text-white'
-							: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
-					>
-						Contact
-					</a>
-				</li>
-			</ul>
+			{#if canAccessMemberRoutes && !navSections.some( (section) => section.items.some((item) => item.href === '/chat') )}
+				<p class="text-xs text-text-secondary-light">
+					Chat is currently unavailable for this account.
+				</p>
+			{/if}
+
+			{#if canAccessAdminRoutes}
+				<p
+					class="rounded-md border border-border-light px-3 py-2 text-xs text-text-secondary-light"
+				>
+					Admin tools remain grouped separately so the main navigation stays readable on mobile.
+				</p>
+			{/if}
 		</div>
 	</main>
 </div>

@@ -4,6 +4,7 @@
 	import SeoHead from '$lib/components/SeoHead.svelte';
 	import UnifiedHeader from '$lib/components/layout/UnifiedHeader.svelte';
 	import LeftSidebar from '$lib/components/layout/LeftSidebar.svelte';
+	import MobileAppShell from '$lib/components/layout/MobileAppShell.svelte';
 	import { setContext } from 'svelte';
 	import { page } from '$app/stores';
 
@@ -54,8 +55,8 @@
 		import('@vercel/analytics/sveltekit').then((m) => m.injectAnalytics());
 	});
 
-	let rightMargin = $derived(rightSidebarOpen ? 'md:mr-[32rem]' : 'mr-0');
-	let contentMargin = $derived(`${activeMenu ? 'ml-[22rem]' : 'ml-24'} ${rightMargin}`);
+	let rightMargin = $derived(rightSidebarOpen ? 'md:mr-[32rem]' : 'md:mr-0');
+	let contentMargin = $derived(`${activeMenu ? 'md:ml-[22rem]' : 'md:ml-24'} ${rightMargin}`);
 
 	let pathname = $derived($page.url.pathname);
 	let isMarketingPage = $derived(pathname === '/');
@@ -83,9 +84,10 @@
 {:else if data?.session?.user && !usesPublicShell}
 	<div class="flex min-h-screen">
 		<LeftSidebar {data} onMenuChange={handleMenuChange} />
+		<MobileAppShell {data} />
 
 		<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
-			<div class="h-full py-4 pr-12">
+			<div class="h-full px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4">
 				{@render children()}
 			</div>
 		</main>
