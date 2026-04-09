@@ -83,6 +83,22 @@ export interface OriginRangeRow {
 	sample_size: number;
 }
 
+const SNAPSHOT_PAGE_SIZE = 1000;
+const SNAPSHOT_SELECT =
+	'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier';
+// Keep synthetic backfill rows in the analytics history for now. Because real and
+// synthetic rows can coexist for the same segment/date, pagination must use a
+// total order that includes the schema differentiators plus a unique tiebreaker.
+const SNAPSHOT_ORDER_COLUMNS = [
+	'snapshot_date',
+	'origin',
+	'process',
+	'grade',
+	'wholesale_only',
+	'synthetic',
+	'id'
+] as const;
+
 function normalizeProcess(raw: string | null | undefined): string {
 	if (!raw) return 'Unknown';
 	const s = raw.toLowerCase().trim();
@@ -92,6 +108,50 @@ function normalizeProcess(raw: string | null | undefined): string {
 	if (s.includes('wet hull') || s.includes('giling')) return 'Wet Hulled';
 	if (s.includes('washed') || s.includes('wet') || s.includes('fully')) return 'Washed';
 	return 'Other';
+}
+
+export async function _loadPriceSnapshotsPaginated({
+	supabase,
+	fromDate
+}: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	supabase: any;
+	fromDate: string;
+}): Promise<PriceSnapshot[]> {
+	const snapshots: PriceSnapshot[] = [];
+
+	for (let start = 0; ; start += SNAPSHOT_PAGE_SIZE) {
+		const end = start + SNAPSHOT_PAGE_SIZE - 1;
+		let query = supabase
+			.from('price_index_snapshots')
+			.select(SNAPSHOT_SELECT)
+			.gte('snapshot_date', fromDate)
+			.eq('aggregation_tier', 1);
+
+		for (const column of SNAPSHOT_ORDER_COLUMNS) {
+			query = query.order(column, { ascending: true });
+		}
+
+		const { data, error } = await query.range(start, end);
+
+		if (error) {
+			const pageNumber = Math.floor(start / SNAPSHOT_PAGE_SIZE) + 1;
+			throw new Error(
+				`Failed to load analytics price snapshots page ${pageNumber}: ${error.message}`,
+				{ cause: error }
+			);
+		}
+
+		const page = (data ?? []) as PriceSnapshot[];
+
+		if (page.length === 0) break;
+
+		snapshots.push(...page);
+
+		if (page.length < SNAPSHOT_PAGE_SIZE) break;
+	}
+
+	return snapshots;
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -132,7 +192,7 @@ export const load: PageServerLoad = async (event) => {
 		{ data: catalogPriceRows },
 		{ data: recentArrivals30 },
 		{ data: recentDelistings30 },
-		{ data: snapshotsRaw }
+		snapshotsRaw
 	] = await Promise.all([
 		// Market summary (pre-computed)
 		sb
@@ -189,15 +249,10 @@ export const load: PageServerLoad = async (event) => {
 			.order('unstocked_date', { ascending: false })
 			.limit(50),
 		// Price index snapshots — 90 days public, 365 days for PPI members
-		sb
-			.from('price_index_snapshots')
-			.select(
-				'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier'
-			)
-			.gte('snapshot_date', snapshotFromDate)
-			.eq('aggregation_tier', 1)
-			.order('snapshot_date', { ascending: true })
-			.limit(5000)
+		_loadPriceSnapshotsPaginated({
+			supabase: sb,
+			fromDate: snapshotFromDate
+		})
 	]);
 
 	const marketSummary = marketSummaryRaw as {
