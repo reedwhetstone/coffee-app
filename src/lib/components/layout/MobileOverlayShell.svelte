@@ -105,10 +105,10 @@
 		<div class="relative flex h-full w-full {variant === 'sheet' ? 'items-end' : 'items-stretch'}">
 			<div
 				bind:this={dialogElement}
-				class="relative w-full overflow-hidden bg-background-primary-light shadow-2xl ring-1 ring-border-light/70 {variant ===
+				class="relative flex w-full flex-col overflow-hidden bg-background-primary-light shadow-2xl ring-1 ring-border-light/70 {variant ===
 				'full'
 					? 'h-full'
-					: 'max-h-[85vh] rounded-t-[1.75rem]'}"
+					: 'max-h-[85dvh] rounded-t-[1.75rem]'}"
 				role="dialog"
 				aria-modal="true"
 				aria-label={label}
@@ -120,7 +120,12 @@
 					duration: 200
 				}}
 			>
-				{@render children()}
+				<div
+					class="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+					data-mobile-overlay-scroll-region
+				>
+					{@render children()}
+				</div>
 			</div>
 		</div>
 	</div>

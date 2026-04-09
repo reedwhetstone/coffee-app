@@ -47,4 +47,17 @@ describe('MobileOverlayShell', () => {
 		expect(opener).toHaveFocus();
 		opener.remove();
 	});
+
+	it('provides an internal scroll region for tall mobile sheet content', async () => {
+		render(MobileOverlayShellHarness, { open: true, onClose: vi.fn() });
+		await tick();
+
+		const dialog = screen.getByRole('dialog', { name: 'App menu' });
+		const scrollRegion = dialog.querySelector('[data-mobile-overlay-scroll-region]');
+
+		expect(scrollRegion).not.toBeNull();
+		expect(scrollRegion).toHaveClass('overflow-y-auto');
+		expect(scrollRegion).toHaveClass('overscroll-contain');
+		expect(scrollRegion).toHaveClass('flex-1');
+	});
 });
