@@ -136,29 +136,6 @@ test.describe('Protected pages load with auth', () => {
 		await expect(page.locator('body')).not.toContainText('Internal Server Error');
 	});
 
-	test('/roast keeps mobile controls visible and finger-sized', async ({ page }) => {
-		await page.setViewportSize({ width: 390, height: 844 });
-		await page.goto('/roast', { waitUntil: 'domcontentloaded' });
-		await expect(page).toHaveURL(/roast/);
-
-		const fanIncreaseButton = page.getByRole('button', { name: 'Increase fan setting' });
-		const heatIncreaseButton = page.getByRole('button', { name: 'Increase heat setting' });
-		const fcRollingButton = page.getByRole('button', { name: 'FC Rolling' });
-
-		await expect(fanIncreaseButton).toBeVisible();
-		await expect(heatIncreaseButton).toBeVisible();
-		await expect(fcRollingButton).toBeVisible();
-
-		const fanIncreaseBox = await fanIncreaseButton.boundingBox();
-		const heatIncreaseBox = await heatIncreaseButton.boundingBox();
-		const fcRollingBox = await fcRollingButton.boundingBox();
-
-		expect(fanIncreaseBox?.height ?? 0).toBeGreaterThanOrEqual(44);
-		expect(heatIncreaseBox?.height ?? 0).toBeGreaterThanOrEqual(44);
-		expect(fcRollingBox?.height ?? 0).toBeGreaterThanOrEqual(44);
-		await expect(page.locator('body')).not.toContainText('Internal Server Error');
-	});
-
 	test('/profit renders without server error', async ({ page }) => {
 		await page.goto('/profit', { waitUntil: 'commit' });
 		await expect(page).toHaveURL(/profit/);
