@@ -115,13 +115,18 @@ export const DOCS_NAV: DocsNavSection[] = [
 		key: 'cli',
 		title: 'CLI docs',
 		description:
-			'Install, authenticate, and use the Parchment CLI for catalog queries, inventory, roasting, and automation.',
+			'Install, authenticate, and use the Parchment CLI for catalog queries, inventory, roasting, scripting, and agent automation.',
 		basePath: '/docs/cli',
 		items: [
 			{
 				slug: 'overview',
 				title: 'Overview',
 				summary: 'Install, authenticate, and explore the CLI command structure.'
+			},
+			{
+				slug: 'auth-output',
+				title: 'Auth, config, and output',
+				summary: 'Viewer versus member auth, local config, output modes, and scripting guarantees.'
 			},
 			{
 				slug: 'catalog',
@@ -149,6 +154,12 @@ export const DOCS_NAV: DocsNavSection[] = [
 				summary: 'Read supplier notes and record personal cupping data.'
 			},
 			{
+				slug: 'context-manifest',
+				title: 'Context and manifest',
+				summary:
+					'Dense reference text, machine-readable manifest output, and onboarding patterns for agents.'
+			},
+			{
 				slug: 'agent-integration',
 				title: 'Agent integration',
 				summary: 'Use the CLI as a stable interface for AI tools and external agents.'
@@ -166,7 +177,7 @@ const docsPages: DocsPage[] = [
 			'Parchment Platform ships one stable public catalog API and a larger internal platform route layer for the web app.',
 		eyebrow: 'Parchment Platform',
 		intro: [
-			'Parchment Platform exposes normalized green coffee catalog data through a small public HTTP contract and a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
+			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data through a small public HTTP contract and a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
 			'The stable public contract is GET /v1/catalog. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
 		],
 		sections: [
@@ -597,7 +608,7 @@ const docsPages: DocsPage[] = [
 							'POST',
 							'Member session',
 							'Internal product route',
-							'Executes a constrained set of proposal-card actions such as inventory add, roast create, and sale record.'
+							'Executes a constrained set of proposal-card actions: add_bean_to_inventory, update_bean, create_roast_session, update_roast_notes, and record_sale.'
 						],
 						[
 							'/api/workspaces',
@@ -632,7 +643,7 @@ const docsPages: DocsPage[] = [
 							'POST',
 							'Member session + ownership',
 							'Internal product route',
-							'Compacts recent conversation history into context_summary using the model backend.'
+							'Compacts recent conversation history into context_summary using the model backend. Returns skipped: true when there are fewer than four saved messages.'
 						]
 					]
 				},
@@ -1020,7 +1031,7 @@ const docsPages: DocsPage[] = [
 							'/api/stripe/create-customer',
 							'POST',
 							'Session',
-							"Create or reuse the caller's Stripe customer record"
+							"Create or reuse the caller's Stripe customer record and customer mapping"
 						],
 						[
 							'/api/stripe/cancel-subscription',
@@ -1038,7 +1049,7 @@ const docsPages: DocsPage[] = [
 							'/api/stripe/verify-and-update-role',
 							'POST',
 							'Session',
-							'Verify checkout results and sync product roles after purchase'
+							'Verify checkout by sessionId, dedupe repeat processing, and sync product roles after purchase'
 						],
 						[
 							'/api/stripe/webhook',
@@ -1058,7 +1069,7 @@ const docsPages: DocsPage[] = [
 							'/api/admin/stripe-role-discrepancies',
 							'GET POST',
 							'Admin session',
-							'Audit Stripe versus role mismatches and manually repair roles'
+							'Audit Stripe versus role mismatches and manually repair roles through GET and POST flows'
 						],
 						[
 							'/api/admin/backfill-milestones',
@@ -1235,72 +1246,177 @@ const docsPages: DocsPage[] = [
 		slug: 'overview',
 		title: 'CLI overview',
 		summary:
-			'The Parchment CLI is a terminal interface for catalog queries, inventory management, roasting workflows, and agent automation.',
+			'The Parchment CLI is a terminal interface for catalog queries, inventory management, roasting workflows, scripting, and agent automation.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'The Parchment CLI (purvey) provides terminal access to the same data and workflows available in the web app. Catalog commands require an authenticated viewer session. Inventory, roast, sales, and tasting commands additionally require the member role.',
-			'The CLI is also the integration layer for AI agents and automation tools. The purvey context command prints a dense agent reference as text by default; --json and --pretty emit the machine-readable manifest contract. It is documentation-oriented output, not an authenticated data API.'
+			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session. Inventory, roast, sales, and tasting commands additionally require the member role.',
+			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. context prints dense human-readable reference text by default, while manifest emits the machine-readable contract directly.'
 		],
 		sections: [
 			{
-				title: 'Install and authenticate',
+				title: 'Install and first-run flow',
 				codeBlocks: [
 					{
-						label: 'Install',
+						label: 'Install and authenticate',
 						language: 'bash',
-						code: 'npm install -g @purveyors/cli'
+						code: 'npm install -g @purveyors/cli\npurvey auth login\npurvey auth status --pretty'
 					},
 					{
-						label: 'Authenticate',
+						label: 'Agent-friendly bootstrap',
 						language: 'bash',
-						code: 'purvey auth login --headless'
+						code: 'purvey auth login --headless\npurvey context\npurvey manifest --pretty'
 					}
 				],
 				bullets: [
-					'Catalog commands require an authenticated viewer session. Run purvey auth login before first use.',
-					'purvey inventory, roast, sales, and tasting commands additionally require the member role.',
-					'purvey config manages local CLI settings and does not require authentication.',
-					'purvey context prints onboarding text by default; --json and --pretty emit the manifest contract, and --csv is invalid.',
-					'Code-side integrations can also import the manifest contract from @purveyors/cli/manifest.'
+					'Use purvey auth login for browser OAuth or purvey auth login --headless on servers, CI, and agent hosts.',
+					'Run purvey auth status to confirm both session health and current role before scripting against viewer-only or member-only commands.',
+					'Use purvey manifest when a wrapper needs the machine-readable contract directly. Use purvey context when a human or model should read the dense reference text first.'
 				]
 			},
 			{
-				title: 'Command groups',
+				title: 'Command groups and auth model',
+				table: {
+					headers: ['Group', 'Examples', 'Auth'],
+					rows: [
+						['auth', 'login, status, logout', 'None'],
+						['catalog', 'search, get, stats, similar', 'Authenticated viewer session'],
+						[
+							'inventory / roast / sales / tasting',
+							'Personal data and write workflows',
+							'Authenticated member session'
+						],
+						['config', 'list, get, set, reset', 'None, local-only'],
+						['context / manifest', 'Dense reference text and machine-readable contract', 'None']
+					]
+				},
+				callout: {
+					tone: 'note',
+					title:
+						'Catalog commands are authenticated, even though the HTTP API supports anonymous reads',
+					body: 'The CLI intentionally requires a signed-in viewer session for catalog commands. For anonymous or API-key-based integrations, use GET /v1/catalog instead of shelling out to the CLI.'
+				}
+			},
+			{
+				title: 'Output contract',
 				bullets: [
-					'purvey auth: manage login state.',
-					'purvey catalog: search and browse the coffee catalog (viewer session required).',
-					'purvey inventory: list, add, update, and delete green coffee inventory (member role).',
-					'purvey roast: create roast profiles, import Artisan files, watch folders (member role).',
-					'purvey sales: record roasted-coffee sales (member role).',
-					'purvey tasting: read supplier notes and record cupping scores (member role).',
-					'purvey config: manage local CLI settings and defaults without auth.',
-					'purvey context: print onboarding text by default; use --json or --pretty for the manifest contract.'
+					'Most commands write compact JSON to stdout by default. --json is an explicit alias for that mode, while --pretty prints indented JSON and --csv exports array-shaped results where supported.',
+					'Operational messages and fatal errors stay on stderr so stdout remains safe for pipes, jq, and redirect-based automation.',
+					'Interactive terminals without an explicit output flag can still show human-readable success or error text. When piped or redirected, the CLI falls back to structured JSON output and JSON error envelopes.',
+					'purvey auth status is the main exception worth remembering: in an interactive TTY it prints human-readable status unless you force --json, --pretty, or --csv.'
 				]
 			},
 			{
 				title: 'When to use the CLI vs. the API vs. the web app',
 				bullets: [
-					'Use the CLI for scripting, terminal workflows, and agent automation.',
-					'Use the API (GET /v1/catalog) for external integrations that run without a human session.',
+					'Use the CLI for scripts, terminal-first operations, and agent workflows that benefit from a stable documented command surface.',
+					'Use GET /v1/catalog for external integrations that need a stable HTTP contract, anonymous access, or API-key auth without a stored user session.',
 					'Use the web app for charts, dashboards, and interactive exploration.'
 				]
 			}
 		],
 		related: [
 			{
-				href: '/docs/cli/agent-integration',
-				label: 'Agent integration',
-				description: 'How purvey context and CLI modules support AI tools.'
+				href: '/docs/cli/auth-output',
+				label: 'Auth, config, and output',
+				description: 'Roles, local config, stderr/stdout guarantees, and exit-code expectations.'
+			},
+			{
+				href: '/docs/cli/context-manifest',
+				label: 'Context and manifest',
+				description: 'Understand text-first onboarding versus machine-readable contract output.'
 			},
 			{
 				href: '/docs/api/catalog',
 				label: 'Catalog API docs',
 				description: 'The HTTP endpoint that complements the CLI.'
+			}
+		]
+	},
+	{
+		section: 'cli',
+		slug: 'auth-output',
+		title: 'CLI auth, config, and output',
+		summary:
+			'Authentication roles, local config, output modes, stderr/stdout rules, and scripting expectations for the Parchment CLI.',
+		eyebrow: 'Operational contract',
+		intro: [
+			'This page is the practical contract for running purvey in scripts, CI, agent harnesses, and local terminals. It covers which commands require auth, what config exists today, and how output behaves across interactive and non-interactive modes.',
+			'If you automate against purvey, treat stdout and stderr semantics as part of the interface, not just the command names.'
+		],
+		sections: [
+			{
+				title: 'Authentication commands',
+				codeBlocks: [
+					{
+						label: 'Login and status',
+						language: 'bash',
+						code: 'purvey auth login\npurvey auth login --headless\npurvey auth status --json\npurvey auth logout'
+					}
+				],
+				bullets: [
+					'purvey auth login launches the browser OAuth flow. purvey auth login --headless prints a URL and expects a pasted callback URL, which is better for agents and remote hosts.',
+					'purvey auth status does not require an existing valid session. It reports authenticated state, role, and token timing when available.',
+					'Catalog commands require the viewer role. Inventory, roast, sales, and tasting commands require the member role.'
+				]
 			},
 			{
-				href: '/docs/cli/catalog',
-				label: 'Catalog commands',
-				description: 'Start searching the catalog from your terminal.'
+				title: 'Local config',
+				table: {
+					headers: ['Command', 'Notes'],
+					rows: [
+						['purvey config list', 'Show all stored config values.'],
+						['purvey config get <key>', 'Print the raw value to stdout for scripting.'],
+						['purvey config set <key> <value>', 'Persist a config value locally.'],
+						['purvey config reset', 'Clear config back to defaults.']
+					]
+				},
+				bullets: [
+					'Today the primary supported key is form-mode, stored in ~/.config/purvey/config.json.',
+					'When form-mode is true, several write commands can enter guided form mode automatically when required flags are missing.',
+					'Config commands are local-only and do not require authentication.'
+				]
+			},
+			{
+				title: 'Stdout and stderr behavior',
+				bullets: [
+					'Compact JSON on stdout is the default success shape for most commands.',
+					'--pretty keeps JSON but formats it for human reading. --csv changes successful stdout only and only on commands that support CSV-shaped output.',
+					'Info messages, confirmations, spinner text, and fatal errors go to stderr so stdout can stay script-friendly.',
+					'With --json, --pretty, --csv, or non-interactive piping, fatal errors become JSON envelopes on stderr. Interactive no-flag sessions may show human-readable fatal errors instead.'
+				],
+				codeBlocks: [
+					{
+						label: 'Script-friendly usage',
+						language: 'bash',
+						code: "purvey inventory list | jq '.[].id'\npurvey sales list --csv > sales.csv\npurvey auth status 2>/dev/null | jq -r '.email'"
+					}
+				]
+			},
+			{
+				title: 'Exit-code expectations',
+				bullets: [
+					'0 means success.',
+					'3 is the important automation code for auth failures, including missing login, expired session, or insufficient role.',
+					'5 represents dependency conflicts such as inventory deletion without --force when dependent roasts or sales exist.',
+					'6 represents local config problems.'
+				]
+			}
+		],
+		related: [
+			{
+				href: '/docs/cli/context-manifest',
+				label: 'Context and manifest',
+				description: 'Dense onboarding text versus machine-readable contract output.'
+			},
+			{
+				href: '/docs/cli/overview',
+				label: 'CLI overview',
+				description: 'Return to the high-level command and positioning map.'
+			},
+			{
+				href: '/docs/cli/agent-integration',
+				label: 'Agent integration',
+				description: 'See how the web app and external agents consume the CLI.'
 			}
 		]
 	},
@@ -1611,54 +1727,144 @@ const docsPages: DocsPage[] = [
 	},
 	{
 		section: 'cli',
+		slug: 'context-manifest',
+		title: 'CLI context and manifest',
+		summary:
+			'Understand purvey context, purvey manifest, JSON versus text output, and how agents should onboard to the CLI contract.',
+		eyebrow: 'Agent onboarding',
+		intro: [
+			'purvey context and purvey manifest are related but not interchangeable. context is optimized for dense human or model-readable onboarding text. manifest is optimized for wrappers and code that want the machine-readable contract directly.',
+			'Both commands are unauthenticated and intentionally describe the CLI itself rather than fetching live user data.'
+		],
+		sections: [
+			{
+				title: 'Which command to use',
+				table: {
+					headers: ['Command', 'Default output', 'Best for'],
+					rows: [
+						[
+							'purvey context',
+							'Dense human-readable text',
+							'Bootstrapping an agent or giving a human operator a compact reference'
+						],
+						[
+							'purvey context --json / --pretty',
+							'Machine-readable manifest JSON',
+							'Wrappers that want the manifest but still call context'
+						],
+						[
+							'purvey manifest',
+							'Compact JSON manifest',
+							'Scripts, SDK wrappers, and direct contract ingestion'
+						],
+						[
+							'purvey manifest --pretty',
+							'Indented JSON manifest',
+							'Debugging or inspecting the manifest manually'
+						]
+					]
+				}
+			},
+			{
+				title: 'Examples',
+				codeBlocks: [
+					{
+						label: 'Text-first onboarding',
+						language: 'bash',
+						code: 'purvey context\npurvey context | head -50'
+					},
+					{
+						label: 'Machine-readable contract',
+						language: 'bash',
+						code: 'purvey manifest\npurvey manifest --pretty\npurvey context --json > cli-manifest.json'
+					}
+				],
+				bullets: [
+					'Neither context nor manifest supports --csv.',
+					'context defaults to text, not JSON. That distinction matters for wrappers that assume every CLI command emits JSON by default.',
+					'manifest always emits the machine-readable contract on stdout.'
+				]
+			},
+			{
+				title: 'What the manifest contains',
+				bullets: [
+					'Command groups, subcommands, summaries, examples, and auth requirements.',
+					'Output-mode expectations, stderr/stdout notes, structured error-envelope guidance, and exit codes.',
+					'ID-type reference for catalog_id, inventory_id, roast_id, and sale_id so agents do not confuse resource identifiers.',
+					'Workflow examples and common error patterns that help agents recover without reverse-engineering implementation details.'
+				],
+				callout: {
+					tone: 'success',
+					title: 'Prefer the documented contract over internal route coupling',
+					body: 'If an agent can solve the task with purvey or a direct @purveyors/cli import, prefer that path over binding to internal /api/tools/* or chat workspace payloads.'
+				}
+			}
+		],
+		related: [
+			{
+				href: '/docs/cli/auth-output',
+				label: 'Auth, config, and output',
+				description: 'See the surrounding scripting contract, not just the onboarding commands.'
+			},
+			{
+				href: '/docs/cli/agent-integration',
+				label: 'Agent integration',
+				description: 'How the web app and external agents consume CLI modules and contracts.'
+			},
+			{
+				href: '/docs/api/overview',
+				label: 'API overview',
+				description: 'Compare the CLI contract with the public HTTP contract.'
+			}
+		]
+	},
+	{
+		section: 'cli',
 		slug: 'agent-integration',
 		title: 'Agent integration',
 		summary:
 			'Use the Parchment CLI as a stable interface for AI agents, coding assistants, and external automation.',
 		eyebrow: 'Agent workflows',
 		intro: [
-			'The Parchment CLI is designed to work with AI tools. The purvey context command prints a dense agent reference as text by default, while --json and --pretty emit the machine-readable manifest contract with command, auth, and output metadata.',
-			'The web app imports CLI modules directly for chat tool execution, so improvements to the CLI automatically improve the AI chat experience.'
+			'The CLI is the preferred documented automation surface for most non-visual workflows. It gives agents stable command names, explicit auth requirements, predictable output modes, and a machine-readable manifest when needed.',
+			'The Purveyors web app also imports CLI modules directly for chat tools, which keeps browser, terminal, and agent behavior aligned on shared domain logic.'
 		],
 		sections: [
 			{
-				title: 'Agent onboarding',
+				title: 'Recommended agent patterns',
 				bullets: [
-					'Run purvey context to generate the dense CLI reference for any AI agent or coding assistant.',
-					'Text is the default output mode; use --json or --pretty when a wrapper needs the manifest contract.',
-					'The context command does not support --csv.',
-					'The reference is onboarding documentation, not a substitute for auth or a live schema endpoint.',
-					'CLI commands provide stable, documented interfaces. Prefer them over reverse-engineering browser routes.',
-					'Code-side integrations can import @purveyors/cli/manifest when shelling out is unnecessary.',
-					'Cross-reference with the web app when charts, visual exploration, or guided workflows are needed.'
-				],
-				codeBlocks: [
-					{
-						label: 'Generate agent reference',
-						language: 'bash',
-						code: 'purvey context > purvey-cli-reference.txt\npurvey context --json > purvey-cli-reference.json\npurvey context --pretty | less'
-					}
+					'For shell-based automation, authenticate once, then call purvey commands with JSON or CSV output that suits the surrounding workflow.',
+					'For code-side integrations, import stable subpaths such as @purveyors/cli/catalog, @purveyors/cli/inventory, or @purveyors/cli/manifest instead of screen-scraping CLI help text.',
+					'Use purvey context first when a model needs dense onboarding text. Use purvey manifest when the wrapper wants structured metadata directly.',
+					'Prefer the CLI or its shared modules over coupling to deprecated /api/tools/* endpoints or private workspace route payloads.'
 				]
 			},
 			{
 				title: 'How the web app uses the CLI',
 				bullets: [
-					'The app imports CLI modules for catalog, inventory, roast, sales, and tasting operations in chat tool execution.',
-					'Read tools execute CLI functions directly. Write tools use proposal cards with user confirmation.',
-					'This shared architecture keeps terminal, browser, and agent workflows aligned on the same domain logic.'
+					'The app imports CLI modules for catalog, inventory, roast, sales, and tasting operations inside chat tool execution.',
+					'Read tools execute shared CLI functions directly. Write tools stay user-confirmed through proposal cards and constrained execution routes.',
+					'This architecture keeps terminal, browser, and agent workflows aligned on the same domain rules and reduces drift between docs and implementation.'
+				],
+				codeBlocks: [
+					{
+						label: 'Agent bootstrap sequence',
+						language: 'bash',
+						code: 'purvey auth login --headless\npurvey context\npurvey catalog search --origin "Ethiopia" --json'
+					}
 				]
 			}
 		],
 		related: [
 			{
-				href: '/docs/api/overview',
-				label: 'API overview',
-				description: 'How the CLI complements the HTTP API.'
+				href: '/docs/cli/context-manifest',
+				label: 'Context and manifest',
+				description: 'Choose the right onboarding output for your agent or wrapper.'
 			},
 			{
-				href: '/docs/cli/overview',
-				label: 'CLI overview',
-				description: 'Command structure and authentication.'
+				href: '/docs/cli/auth-output',
+				label: 'Auth, config, and output',
+				description: 'See the scripting guarantees that make CLI automation reliable.'
 			},
 			{
 				href: '/chat',
