@@ -3,7 +3,6 @@ import { createServerClient } from '@supabase/ssr';
 import type { Database } from '$lib/types/database.types';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
-import { handleCookieCheck } from '$lib/middleware/cookieCheck';
 import { requireRole } from '$lib/server/auth';
 import {
 	getLegacyAuthState,
@@ -161,4 +160,4 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-export const handle = sequence(handleStripeRedirects, handleCookieCheck, handleSupabase, authGuard);
+export const handle = sequence(handleStripeRedirects, handleSupabase, authGuard);

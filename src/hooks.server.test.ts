@@ -47,16 +47,6 @@ vi.mock('@sveltejs/kit/hooks', () => ({
 		}
 }));
 
-vi.mock('$lib/middleware/cookieCheck', () => ({
-	handleCookieCheck: async ({
-		event,
-		resolve
-	}: {
-		event: unknown;
-		resolve: (event: unknown) => Promise<Response> | Response;
-	}) => resolve(event)
-}));
-
 vi.mock('$lib/server/principal', () => ({
 	resolvePrincipal: mockResolvePrincipal,
 	getLegacyAuthState: mockGetLegacyAuthState,
@@ -139,6 +129,50 @@ describe('hooks auth guard integration', () => {
 			})
 		).rejects.toMatchObject({ status: 303, location: '/catalog' });
 
+		expect(mockGetSession).not.toHaveBeenCalled();
+	});
+
+	it('preserves upstream status and headers for no-cookie public API responses', async () => {
+		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: false });
+		mockGetLegacyAuthState.mockReturnValue({
+			session: null,
+			user: null,
+			role: 'viewer',
+			roles: ['viewer']
+		});
+
+		const response = await handle({
+			event: makeEvent('/v1/catalog', {
+				Authorization: 'Bearer definitely-invalid'
+			}),
+			resolve: vi.fn(
+				() =>
+					new Response(
+						JSON.stringify({
+							error: 'Authentication required',
+							message: 'Authentication required'
+						}),
+						{
+							status: 401,
+							headers: {
+								'Content-Type': 'application/json; charset=utf-8',
+								'X-RateLimit-Limit': '200',
+								Deprecation: 'true'
+							}
+						}
+					)
+			)
+		});
+
+		expect(response.status).toBe(401);
+		expect(response.headers.get('Content-Type')).toBe('application/json; charset=utf-8');
+		expect(response.headers.get('X-RateLimit-Limit')).toBe('200');
+		expect(response.headers.get('Deprecation')).toBe('true');
+		expect(response.headers.get('X-Cookies-Disabled')).toBeNull();
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'Authentication required'
+		});
 		expect(mockGetSession).not.toHaveBeenCalled();
 	});
 
