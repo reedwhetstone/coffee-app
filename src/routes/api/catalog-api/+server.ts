@@ -1,7 +1,7 @@
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { AuthError, requireApiKeyAccess } from '$lib/server/auth';
 import { buildCanonicalCatalogResponse } from '$lib/server/catalogResource';
-import { jsonResponse } from '$lib/server/http';
 
 const LEGACY_CATALOG_API_HEADERS = {
 	Deprecation: 'true',
@@ -25,10 +25,8 @@ function withLegacyCatalogHeaders(headers: HeadersInit = {}): Headers {
 // silently breaking callers who followed the redirect. Delegating to the
 // canonical handler directly is the only reliable option under this adapter.
 //
-// The Deprecation header signals to callers that they should migrate to
-// /v1/catalog. The endpoint continues to serve real data so existing
-// integrations that relied on the old /api/catalog-api URL keep working.
-// Unlike /v1/catalog, this legacy alias is intentionally API-key-only.
+// ADR-004 narrows this alias to API-key callers only. Anonymous discovery,
+// browser sessions, and public docs should all point at /v1/catalog instead.
 export const GET: RequestHandler = async (event) => {
 	try {
 		await requireApiKeyAccess(event, {
@@ -37,7 +35,7 @@ export const GET: RequestHandler = async (event) => {
 		});
 	} catch (error) {
 		if (error instanceof AuthError) {
-			return jsonResponse(
+			return json(
 				{
 					error: error.status === 403 ? 'Insufficient permissions' : 'Authentication required',
 					message: error.message
@@ -56,11 +54,8 @@ export const GET: RequestHandler = async (event) => {
 		requestPath: '/api/catalog-api'
 	});
 
-	// Clone response to add deprecation headers without mutating the original
-	const headers = withLegacyCatalogHeaders(response.headers);
-
 	return new Response(response.body, {
 		status: response.status,
-		headers
+		headers: withLegacyCatalogHeaders(response.headers)
 	});
 };
