@@ -1,8 +1,32 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 
-// Mock the catalogResource module to isolate the handler
+const { mockBuildCanonicalCatalogResponse, mockRequireApiKeyAccess, MockAuthError } = vi.hoisted(
+	() => {
+		class MockAuthError extends Error {
+			status: number;
+
+			constructor(message: string, status = 401) {
+				super(message);
+				this.name = 'AuthError';
+				this.status = status;
+			}
+		}
+
+		return {
+			mockBuildCanonicalCatalogResponse: vi.fn(),
+			mockRequireApiKeyAccess: vi.fn(),
+			MockAuthError
+		};
+	}
+);
+
 vi.mock('$lib/server/catalogResource', () => ({
-	buildCanonicalCatalogResponse: vi.fn()
+	buildCanonicalCatalogResponse: mockBuildCanonicalCatalogResponse
+}));
+
+vi.mock('$lib/server/auth', () => ({
+	requireApiKeyAccess: mockRequireApiKeyAccess,
+	AuthError: MockAuthError
 }));
 
 import { buildCanonicalCatalogResponse } from '$lib/server/catalogResource';
@@ -22,6 +46,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});
+		mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		const response = await GET({
@@ -34,6 +59,10 @@ describe('/api/catalog-api legacy delegate', () => {
 			expect.objectContaining({ url: expect.any(URL) }),
 			{ requestPath: '/api/catalog-api' }
 		);
+		expect(mockRequireApiKeyAccess).toHaveBeenCalledWith(expect.anything(), {
+			requiredPlan: 'viewer',
+			requiredScope: 'catalog:read'
+		});
 		expect(response.status).toBe(200);
 	});
 
@@ -42,6 +71,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});
+		mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		const response = await GET({
@@ -59,6 +89,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});
+		mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		const response = await GET({
@@ -79,6 +110,7 @@ describe('/api/catalog-api legacy delegate', () => {
 				headers: { 'Content-Type': 'application/json; charset=utf-8' }
 			}
 		);
+		mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		const response = await GET({
@@ -107,6 +139,7 @@ describe('/api/catalog-api legacy delegate', () => {
 				}
 			}
 		);
+		mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		const response = await GET({
@@ -129,6 +162,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});
+		mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		await GET({
@@ -140,5 +174,43 @@ describe('/api/catalog-api legacy delegate', () => {
 		// The event is passed through to buildCanonicalCatalogResponse which reads
 		// query params from event.url — so the mock just needs to have been called.
 		expect(buildCanonicalCatalogResponse).toHaveBeenCalled();
+	});
+
+	it('rejects anonymous callers because the legacy alias is intentionally API-key-only', async () => {
+		mockRequireApiKeyAccess.mockRejectedValue(new MockAuthError('API key authentication required'));
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api'),
+			request: new Request('https://app.test/api/catalog-api'),
+			locals: {}
+		} as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(response.status).toBe(401);
+		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
+		expect(response.headers.get('Deprecation')).toBe('true');
+		expect(response.headers.get('Link')).toContain('/v1/catalog');
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'API key authentication required'
+		});
+	});
+
+	it('preserves 403 authorization failures without delegating to the canonical multi-context route', async () => {
+		mockRequireApiKeyAccess.mockRejectedValue(new MockAuthError('Insufficient API scope', 403));
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api'),
+			request: new Request('https://app.test/api/catalog-api', {
+				headers: { Authorization: 'Bearer pk_live_limited' }
+			}),
+			locals: {}
+		} as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(response.status).toBe(403);
+		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
+		expect(await response.json()).toEqual({
+			error: 'Insufficient permissions',
+			message: 'Insufficient API scope'
+		});
 	});
 });

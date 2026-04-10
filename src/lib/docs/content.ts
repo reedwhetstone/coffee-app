@@ -203,9 +203,9 @@ const docsPages: DocsPage[] = [
 						],
 						[
 							'GET /api/catalog-api',
-							'Anonymous, session, or API key',
+							'API key only',
 							'Legacy callers only',
-							'Deprecated alias. Delegates to /v1/catalog with Deprecation and Sunset headers. Sunset: Dec 31 2026.'
+							'Deprecated API-key-only alias. Delegates to /v1/catalog with Deprecation and Sunset headers while remaining public-only. Sunset: Dec 31 2026.'
 						],
 						[
 							'GET /api/catalog and /api/catalog/filters',
@@ -237,9 +237,11 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Authentication model',
 				bullets: [
-					'API keys use Authorization: Bearer <api_key> and apply only to the public catalog contract. API-key requests receive X-RateLimit-* headers and tier-based row caps.',
-					'Session-authenticated requests use Supabase cookies or trusted bearer-session flows. Many member routes also enforce role and ownership checks.',
-					'Anonymous requests are allowed for the public catalog and some catalog UI helpers. Anonymous catalog access is public-only and never receives rate-limit headers.',
+					'GET /v1/catalog supports anonymous requests for public-only catalog discovery.',
+					'GET /v1/catalog also supports first-party session requests. Viewer sessions stay public-only; member and admin sessions may unlock richer in-app visibility.',
+					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API-key requests stay public-only, use plan-based limits, and are the only catalog requests that receive X-RateLimit-* headers.',
+					'GET /api/catalog-api is a deprecated legacy alias to /v1/catalog, but it remains API-key-only for backward-compatible machine access.',
+					'Cookies only matter when they resolve to a valid first-party session. A raw Cookie header is not part of the public API contract.',
 					'Inventory share links are the one notable anonymous data exception on the product side: GET /api/beans?share=... can return a scoped inventory view without a user session.'
 				],
 				codeBlocks: [
@@ -293,7 +295,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Public endpoint',
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, processing method, pricing, price tiers, and availability metadata.',
-			'The endpoint supports three auth modes: API key, authenticated web session, and anonymous. When page and limit are both omitted, the canonical listing response defaults to page 1 and up to 100 rows before any plan-based cap is applied.'
+			'The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous and viewer-session requests are public-only. Member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the only ones that receive X-RateLimit-* headers. When page and limit are both omitted, the canonical listing response defaults to page 1 and up to 100 rows before any plan-based cap is applied.'
 		],
 		sections: [
 			{
@@ -301,7 +303,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog.',
 					'GET /v1/catalog is the source-of-truth public contract for integrations.',
-					'GET /api/catalog-api delegates directly to the canonical handler but is deprecated. Responses include Deprecation: true, Link: </v1/catalog>; rel="successor-version", and Sunset: Thu, 31 Dec 2026 23:59:59 GMT.',
+					'GET /api/catalog-api is a deprecated API-key-only alias to the canonical handler. Responses include Deprecation: true, Link: </v1/catalog>; rel="successor-version", and Sunset: Thu, 31 Dec 2026 23:59:59 GMT.',
 					'GET /api/catalog also delegates to the same catalog resource, but it is an internal adapter with legacy response-shape behavior and should not be treated as a long-term external contract.'
 				],
 				callout: {
@@ -314,7 +316,8 @@ const docsPages: DocsPage[] = [
 				title: 'Request and response',
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
-					'Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans are uncapped at the row level. Anonymous and session requests are public-only unless a privileged member session explicitly enables wholesale visibility.'
+					'Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans are uncapped at the row level. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.',
+					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
 				],
 				codeBlocks: [
 					{
@@ -498,9 +501,9 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/catalog-api',
 							'GET',
-							'Anonymous, session, or API key',
+							'API key only',
 							'Deprecated',
-							'Legacy alias to /v1/catalog. Sunset: Dec 31 2026.'
+							'Legacy API-key-only alias to /v1/catalog. Always public-only. Sunset: Dec 31 2026.'
 						]
 					]
 				}
@@ -1199,10 +1202,12 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Edge cases worth knowing',
 				bullets: [
-					'For external catalog access, use an API key with /v1/catalog or authenticate the CLI with purvey auth login.',
+					'For external catalog access, prefer /v1/catalog. Use an API key for machine-to-machine access or authenticate the CLI with purvey auth login.',
 					'GET /api/beans with no session and no valid share token returns an empty data array, not a 401. Do not mistake that behavior for public inventory access.',
 					'Catalog rate-limit headers only exist on API-key requests. Anonymous and session requests to /v1/catalog do not emit X-RateLimit-* headers.',
 					'An invalid Authorization header on the public catalog can turn what looks like an anonymous request into a 401 because the route detects an auth attempt that failed.',
+					'Cookies only matter when they resolve to a valid first-party session. A stray Cookie header is not part of the public API contract.',
+					'/api/catalog-api is a deprecated API-key-only alias. It should not be treated as an anonymous or session-friendly discovery route.',
 					'Workspace and chat routes mostly use member-role enforcement, so 403 is often the expected failure for logged-in non-members.',
 					'AI-backed helpers can return upstream rate-limit or provider errors that are operational rather than domain-model failures.'
 				]
