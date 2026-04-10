@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		serviceType: 'Data API',
 		url: pageUrl,
 		features: [
-			'Public catalog feed via API key',
+			'Public catalog feed via /v1/catalog with anonymous preview and API-key access',
 			'Unified public docs under /docs',
 			'Account-aware key and usage tooling in Parchment Console',
 			'Live market analytics in the web app',
@@ -65,7 +65,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		{
 			question: 'Which API route is public today?',
 			answer:
-				'The canonical external route is GET /v1/catalog. It supports both API-key and session auth, and returns publicly visible catalog rows with tier-based row limits.'
+				'The canonical external route is GET /v1/catalog. It supports anonymous, session, and API-key access. For legacy callers, GET /api/catalog-api remains available as a deprecated API-key-only alias.'
 		},
 		{
 			question: 'Are analytics exposed as a public REST API?',
