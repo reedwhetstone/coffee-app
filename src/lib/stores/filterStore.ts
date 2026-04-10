@@ -646,17 +646,28 @@ function createFilterStore() {
 				// Get item value using helper function
 				const itemValue = getFieldValue(item, key);
 
-				// Handle stocked_date "last n days" filter
+				// Handle stocked_date as a truthful absolute lower-bound date filter
 				if (key === 'stocked_date' && typeof value === 'string' && value !== '') {
-					// Skip items with null/undefined stocked_date
 					if (!itemValue) return false;
+					return String(itemValue) >= value;
+				}
 
-					const daysBack = parseInt(value);
+				// Handle stocked_days as an explicit relative "last N days" filter
+				if (
+					key === 'stocked_days' &&
+					(typeof value === 'string' || typeof value === 'number') &&
+					value !== ''
+				) {
+					const stockedDateValue = getFieldValue(item, 'stocked_date');
+					if (!stockedDateValue) return false;
+
+					const daysBack = Number.parseInt(String(value), 10);
+					if (!Number.isFinite(daysBack) || daysBack <= 0) return true;
+
 					const cutoffDate = new Date();
 					cutoffDate.setDate(cutoffDate.getDate() - daysBack);
 
-					// Parse the stocked_date (format: YYYY-MM-DD)
-					const stockedDate = new Date(String(itemValue));
+					const stockedDate = new Date(String(stockedDateValue));
 					return stockedDate >= cutoffDate;
 				}
 

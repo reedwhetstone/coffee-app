@@ -136,6 +136,28 @@
 								/>
 							</label>
 						</div>
+
+						<div class="space-y-1">
+							<label for="stocked_days" class="block text-xs font-medium text-text-primary-light">
+								Stocked Window
+							</label>
+							<select
+								id="stocked_days"
+								value={$filterStore.filters.stocked_days || ''}
+								onchange={(e) => filterStore.setFilter('stocked_days', e.currentTarget.value)}
+								class="mt-1 w-full rounded-md border border-border-light bg-background-primary-light p-2 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+							>
+								<option value="">Any time</option>
+								<option value="7">Last 7 days</option>
+								<option value="14">Last 14 days</option>
+								<option value="30">Last 30 days</option>
+								<option value="60">Last 60 days</option>
+								<option value="90">Last 90 days</option>
+							</select>
+							<p class="text-[11px] text-text-secondary-light">
+								Relative filter for coffees stocked within the last N days.
+							</p>
+						</div>
 					{/if}
 
 					{#each filterStore.getFilterableColumns(routeId) as column}
@@ -396,18 +418,18 @@
 									{/each}
 								</select>
 							{:else if column === 'stocked_date'}
-								<select
-									value={$filterStore.filters.stocked_date || ''}
-									onchange={(e) => filterStore.setFilter('stocked_date', e.currentTarget.value)}
-									class="mt-1 w-full rounded-md border border-border-light bg-background-primary-light p-2 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
-								>
-									<option value="">All Dates</option>
-									<option value="7">Last 7 days</option>
-									<option value="14">Last 14 days</option>
-									<option value="30">Last 30 days</option>
-									<option value="60">Last 60 days</option>
-									<option value="90">Last 90 days</option>
-								</select>
+								<div class="space-y-2">
+									<input
+										id="stocked_date"
+										type="date"
+										value={$filterStore.filters.stocked_date || ''}
+										onchange={(e) => filterStore.setFilter('stocked_date', e.currentTarget.value)}
+										class="mt-1 w-full rounded-md border border-border-light bg-background-primary-light p-2 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
+									/>
+									<p class="text-[11px] text-text-secondary-light">
+										Show coffees stocked on or after this date.
+									</p>
+								</div>
 							{:else if column === 'batch_name' && $filterStore.uniqueValues?.batchNames?.length}
 								<select
 									value={$filterStore.filters.batch_name || ''}
