@@ -1,6 +1,9 @@
 <svelte:head>
 	<title>Parchment API docs</title>
-	<meta name="description" content="Parchment API docs now live under the unified /docs tree." />
+	<meta
+		name="description"
+		content="Parchment API docs now live under the unified /docs tree, with /v1/catalog as the stable public contract and /api/* documented as platform routes."
+	/>
 </svelte:head>
 
 <div
@@ -12,6 +15,7 @@
 		<a
 			href="/docs/api/overview"
 			class="font-semibold text-background-tertiary-light hover:underline">open the API overview</a
-		>.
+		>
+		for the public /v1/catalog contract and the internal platform route map.
 	</p>
 </div>
