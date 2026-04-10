@@ -1,6 +1,4 @@
 <script lang="ts">
-	import type { Component } from 'svelte';
-	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import type {
 		PriceSnapshot,
@@ -14,11 +12,14 @@
 	import { goto } from '$app/navigation';
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
 	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
+	import type { DeferredAnalyticsComponent } from './deferredModules';
+	import {
+		loadMemberAnalyticsModules,
+		loadPublicAnalyticsModules,
+		loadSupplierAnalyticsModules
+	} from './deferredModules';
 
 	let { data } = $props<{ data: PageData }>();
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	type DeferredAnalyticsComponent = Component<any>;
 
 	let lineChartExpanded = $state(false);
 	let originChartExpanded = $state(false);
@@ -31,6 +32,12 @@
 	let publicChartsLoading = $state(true);
 	let supplierTablesLoading = $state(false);
 	let memberVisualsLoading = $state(false);
+	let publicChartsError = $state<string | null>(null);
+	let supplierTablesError = $state<string | null>(null);
+	let memberVisualsError = $state<string | null>(null);
+	let publicChartsRetryKey = $state(0);
+	let supplierTablesRetryKey = $state(0);
+	let memberVisualsRetryKey = $state(0);
 
 	// Extended trend time range selector (PPI member feature)
 	type TrendRange = '90d' | '6m' | '1y';
@@ -352,57 +359,159 @@
 		return name.length > 30 ? name.slice(0, 28) + '…' : name;
 	}
 
-	onMount(() => {
-		void (async () => {
-			try {
-				const [originLine, originBar, processDonut] = await Promise.all([
-					import('$lib/components/analytics/OriginLineChart.svelte'),
-					import('$lib/components/analytics/OriginBarChart.svelte'),
-					import('$lib/components/analytics/ProcessDonutChart.svelte')
-				]);
+	function buildDeferredLoadError(section: string) {
+		return `We couldn't load ${section} right now. Please retry.`;
+	}
 
-				OriginLineChartComponent = originLine.default;
-				OriginBarChartComponent = originBar.default;
-				ProcessDonutChartComponent = processDonut.default;
-			} catch (error) {
+	function retryPublicCharts() {
+		publicChartsError = null;
+		publicChartsLoading = true;
+		publicChartsRetryKey += 1;
+	}
+
+	function retrySupplierTables() {
+		supplierTablesError = null;
+		supplierTablesLoading = true;
+		supplierTablesRetryKey += 1;
+	}
+
+	function retryMemberVisuals() {
+		memberVisualsError = null;
+		memberVisualsLoading = true;
+		memberVisualsRetryKey += 1;
+	}
+
+	$effect(() => {
+		const retryKey = publicChartsRetryKey;
+		void retryKey;
+
+		if (OriginLineChartComponent && OriginBarChartComponent && ProcessDonutChartComponent) {
+			publicChartsLoading = false;
+			publicChartsError = null;
+			return;
+		}
+
+		let cancelled = false;
+		publicChartsLoading = true;
+		publicChartsError = null;
+
+		void loadPublicAnalyticsModules()
+			.then(
+				({
+					OriginLineChartComponent: originLine,
+					OriginBarChartComponent: originBar,
+					ProcessDonutChartComponent: processDonut
+				}) => {
+					if (cancelled) return;
+					OriginLineChartComponent = originLine;
+					OriginBarChartComponent = originBar;
+					ProcessDonutChartComponent = processDonut;
+				}
+			)
+			.catch((error) => {
+				if (cancelled) return;
 				console.error('Failed to load analytics chart modules:', error);
-			} finally {
-				publicChartsLoading = false;
-			}
-		})();
+				publicChartsError = buildDeferredLoadError('the overview charts');
+			})
+			.finally(() => {
+				if (!cancelled) {
+					publicChartsLoading = false;
+				}
+			});
 
-		if (session) {
-			supplierTablesLoading = true;
-			void (async () => {
-				try {
-					const [comparisonTable, healthTable] = await Promise.all([
-						import('$lib/components/analytics/SupplierComparisonTable.svelte'),
-						import('$lib/components/analytics/SupplierHealthTable.svelte')
-					]);
+		return () => {
+			cancelled = true;
+		};
+	});
 
-					SupplierComparisonTableComponent = comparisonTable.default;
-					SupplierHealthTableComponent = healthTable.default;
-				} catch (error) {
-					console.error('Failed to load analytics table modules:', error);
-				} finally {
+	$effect(() => {
+		const currentSession = session;
+		const retryKey = supplierTablesRetryKey;
+		void retryKey;
+
+		if (!currentSession) {
+			supplierTablesLoading = false;
+			supplierTablesError = null;
+			return;
+		}
+
+		if (SupplierComparisonTableComponent && SupplierHealthTableComponent) {
+			supplierTablesLoading = false;
+			supplierTablesError = null;
+			return;
+		}
+
+		let cancelled = false;
+		supplierTablesLoading = true;
+		supplierTablesError = null;
+
+		void loadSupplierAnalyticsModules()
+			.then(
+				({
+					SupplierComparisonTableComponent: comparisonTable,
+					SupplierHealthTableComponent: healthTable
+				}) => {
+					if (cancelled) return;
+					SupplierComparisonTableComponent = comparisonTable;
+					SupplierHealthTableComponent = healthTable;
+				}
+			)
+			.catch((error) => {
+				if (cancelled) return;
+				console.error('Failed to load analytics table modules:', error);
+				supplierTablesError = buildDeferredLoadError('the supplier tables');
+			})
+			.finally(() => {
+				if (!cancelled) {
 					supplierTablesLoading = false;
 				}
-			})();
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	$effect(() => {
+		const memberEnabled = isPpiMember;
+		const retryKey = memberVisualsRetryKey;
+		void retryKey;
+
+		if (!memberEnabled) {
+			memberVisualsLoading = false;
+			memberVisualsError = null;
+			return;
 		}
 
-		if (isPpiMember) {
-			memberVisualsLoading = true;
-			void (async () => {
-				try {
-					const priceTierChart = await import('$lib/components/analytics/PriceTierChart.svelte');
-					PriceTierChartComponent = priceTierChart.default;
-				} catch (error) {
-					console.error('Failed to load member analytics modules:', error);
-				} finally {
+		if (PriceTierChartComponent) {
+			memberVisualsLoading = false;
+			memberVisualsError = null;
+			return;
+		}
+
+		let cancelled = false;
+		memberVisualsLoading = true;
+		memberVisualsError = null;
+
+		void loadMemberAnalyticsModules()
+			.then(({ PriceTierChartComponent: priceTierChart }) => {
+				if (cancelled) return;
+				PriceTierChartComponent = priceTierChart;
+			})
+			.catch((error) => {
+				if (cancelled) return;
+				console.error('Failed to load member analytics modules:', error);
+				memberVisualsError = buildDeferredLoadError('the member insights');
+			})
+			.finally(() => {
+				if (!cancelled) {
 					memberVisualsLoading = false;
 				}
-			})();
-		}
+			});
+
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	let analyticsShellMessage = $derived.by(() => {
@@ -543,6 +652,8 @@
 			title="Price Trends by Origin"
 			description="Loading 30-day origin pricing history and spread overlays."
 			height={lineChartExpanded ? 'h-[60vh]' : 'h-64'}
+			errorMessage={publicChartsError}
+			onRetry={retryPublicCharts}
 		>
 			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
@@ -580,6 +691,8 @@
 				title="Processing Methods"
 				description="Loading stocked catalog processing distribution."
 				height="h-56"
+				errorMessage={publicChartsError}
+				onRetry={retryPublicCharts}
 			>
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
@@ -619,6 +732,8 @@
 				title="Origin Price Ranges"
 				description="Loading live origin range comparisons from the current catalog."
 				height="h-[28rem]"
+				errorMessage={publicChartsError}
+				onRetry={retryPublicCharts}
 			>
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
@@ -667,6 +782,8 @@
 				title="Supplier Price Comparison"
 				description="Loading supplier comparisons for the current catalog snapshot."
 				height="h-72"
+				errorMessage={supplierTablesError}
+				onRetry={retrySupplierTables}
 			>
 				{#if SupplierComparisonTableComponent}
 					<SupplierComparisonTableComponent beans={comparisonBeans} />
@@ -695,6 +812,8 @@
 					title="Supplier Catalog Health"
 					description="Loading supplier breadth, origin coverage, and pricing health."
 					height="h-72"
+					errorMessage={supplierTablesError}
+					onRetry={retrySupplierTables}
 				>
 					{#if SupplierHealthTableComponent}
 						<SupplierHealthTableComponent rows={supplierHealth} />
@@ -877,6 +996,8 @@
 						description="Loading retail-versus-wholesale spread analysis from the latest snapshot."
 						height="h-64"
 						panelClass="border-background-tertiary-light/20"
+						errorMessage={memberVisualsError}
+						onRetry={retryMemberVisuals}
 					>
 						<div
 							class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
