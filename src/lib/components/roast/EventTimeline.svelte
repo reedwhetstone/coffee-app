@@ -30,7 +30,7 @@
 				{#each ROAST_EVENTS as event, i}
 					<button
 						type="button"
-						class="cursor-pointer whitespace-nowrap p-2 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
+						class="flex min-h-14 items-center justify-center px-3 py-3 text-center transition-colors hover:bg-background-tertiary-light/10 {selectedEvent ===
 						event
 							? 'bg-background-tertiary-light text-text-primary-light'
 							: 'text-text-primary-light'} {!isRoasting ? 'cursor-not-allowed opacity-50' : ''} {i %
@@ -38,10 +38,11 @@
 						0
 							? 'border-l border-border-light'
 							: ''} {i > 1 ? 'border-t border-border-light' : ''}"
+						aria-pressed={selectedEvent === event}
 						onclick={() => isRoasting && onEventLog(event)}
 						disabled={!isRoasting}
 					>
-						<span class="block text-xs font-medium">{event}</span>
+						<span class="block whitespace-normal text-sm font-medium leading-tight">{event}</span>
 					</button>
 				{/each}
 			</div>
