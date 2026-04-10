@@ -367,11 +367,28 @@ const docsPages: DocsPage[] = [
 							'cost_lb_min / cost_lb_max',
 							'number',
 							'—',
-							'Deprecated compatibility aliases for the canonical price filters.'
+							'Deprecated compatibility aliases for the canonical price filters. Prefer price_per_lb_min / price_per_lb_max in new integrations.'
 						],
-						['score_value_min / score_value_max', 'number', '—', 'Score range filters.'],
-						['arrival_date', 'YYYY-MM-DD', '—', 'Filter to a specific arrival date.'],
-						['stocked_date', 'YYYY-MM-DD', '—', 'Filter to coffees stocked on or after a date.'],
+						['score_value_min', 'number', '—', 'Minimum cupping or quality score (inclusive).'],
+						['score_value_max', 'number', '—', 'Maximum cupping or quality score (inclusive).'],
+						[
+							'arrival_date',
+							'string (YYYY-MM-DD)',
+							'—',
+							'Filter to coffees with a specific arrival date.'
+						],
+						[
+							'stocked_date',
+							'string (YYYY-MM-DD)',
+							'—',
+							'Filter to coffees stocked on or after a given absolute date. Invalid formats return 400.'
+						],
+						[
+							'stocked_days',
+							'integer',
+							'—',
+							'Filter to coffees stocked within the last N days. Use stocked_date for absolute dates.'
+						],
 						[
 							'showWholesale',
 							'boolean',
@@ -1097,8 +1114,8 @@ const docsPages: DocsPage[] = [
 			'Status codes, auth edge cases, rate-limit behavior, and practical troubleshooting for both public and internal routes.',
 		eyebrow: 'Reference',
 		intro: [
-			'Parchment uses standard HTTP status codes and JSON error bodies, but route families have different auth expectations. The public catalog behaves differently from workspace, billing, and inventory routes.',
-			'The most common mistakes are pointing integrations at internal /api/* routes, assuming anonymous access where a session is required, and misreading role failures as auth failures.'
+			'Parchment uses standard HTTP status codes and structured JSON error bodies, but route families have different auth expectations. The public catalog behaves differently from workspace, billing, and inventory routes.',
+			'The most common issues are invalid query parameters (400), missing or bad auth (401), insufficient permissions (403), and rate-limit exhaustion (429).'
 		],
 		sections: [
 			{
@@ -1115,7 +1132,7 @@ const docsPages: DocsPage[] = [
 						],
 						[
 							'400',
-							'Missing query params, bad form payloads, unsupported import files',
+							'Missing query params, bad form payloads, unsupported import files, invalid catalog dates',
 							'The caller provided an invalid request.'
 						],
 						['401', 'Missing or invalid session or API key', 'Authentication required.'],
@@ -1147,6 +1164,11 @@ const docsPages: DocsPage[] = [
 				title: 'Representative error bodies',
 				codeBlocks: [
 					{
+						label: '400 Invalid query parameter',
+						language: 'json',
+						code: '{\n  "error": "Invalid query parameter",\n  "message": "Query parameter \\"stocked_date\\" must use YYYY-MM-DD format",\n  "details": {\n    "parameter": "stocked_date",\n    "value": "30",\n    "expected": "YYYY-MM-DD"\n  }\n}'
+					},
+					{
 						label: '401 Authentication required',
 						language: 'json',
 						code: '{\n  "error": "Authentication required"\n}'
@@ -1166,6 +1188,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Edge cases worth knowing',
 				bullets: [
+					'For external catalog access, use an API key with /v1/catalog or authenticate the CLI with purvey auth login.',
 					'GET /api/beans with no session and no valid share token returns an empty data array, not a 401. Do not mistake that behavior for public inventory access.',
 					'Catalog rate-limit headers only exist on API-key requests. Anonymous and session requests to /v1/catalog do not emit X-RateLimit-* headers.',
 					'An invalid Authorization header on the public catalog can turn what looks like an anonymous request into a 401 because the route detects an auth attempt that failed.',
@@ -1177,6 +1200,7 @@ const docsPages: DocsPage[] = [
 				title: 'Troubleshooting path',
 				bullets: [
 					'External integration failing? Confirm it is calling /v1/catalog, not an internal /api/* route.',
+					'Getting a 400 on catalog? Double-check date inputs like stocked_date=YYYY-MM-DD and any other validated query params.',
 					'Unexpected 403 on product routes? Check role and ownership assumptions before debugging auth cookies.',
 					'Hit a 429 on catalog? Inspect X-RateLimit-* and Retry-After or upgrade the plan in the Parchment Console.',
 					'Need to validate workflows outside the browser? The CLI is usually the cleanest supported interface.'

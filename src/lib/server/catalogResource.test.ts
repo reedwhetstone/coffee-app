@@ -298,6 +298,55 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
+	it('passes stocked_date and stocked_days through as distinct filters', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?stocked_date=2026-03-01&stocked_days=30')
+		);
+
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				stockedDate: '2026-03-01',
+				stockedDays: 30
+			})
+		);
+	});
+
+	it('rejects invalid stocked_date values with a structured 400 response', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?stocked_date=30')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body).toEqual({
+			error: 'Invalid query parameter',
+			message: 'Query parameter "stocked_date" must use YYYY-MM-DD format',
+			details: {
+				parameter: 'stocked_date',
+				value: '30',
+				expected: 'YYYY-MM-DD'
+			}
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
 	it('lets member sessions request wholesale-visible catalog data with the same contract', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,
@@ -750,6 +799,34 @@ describe('buildLegacyAppCatalogResponse', () => {
 			error: 'Authentication required',
 			message: 'Authentication required'
 		});
+	});
+
+	it('preserves upstream query validation failures for legacy callers', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			primaryAppRole: 'member',
+			apiPlan: 'viewer',
+			session: { access_token: 'cookie-token' }
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
+
+		const response = await buildLegacyAppCatalogResponse(
+			makeEvent('https://app.test/api/catalog?stocked_date=30')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body).toEqual({
+			error: 'Invalid query parameter',
+			message: 'Query parameter "stocked_date" must use YYYY-MM-DD format',
+			details: {
+				parameter: 'stocked_date',
+				value: '30',
+				expected: 'YYYY-MM-DD'
+			}
+		});
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBeNull();
 	});
 
 	it('preserves upstream rate-limit failures for legacy callers', async () => {
