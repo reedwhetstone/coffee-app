@@ -18,7 +18,8 @@ export class SchemaService {
 	constructor(config: SchemaConfig) {
 		this.config = {
 			organizationName: 'Purveyors',
-			organizationDescription: 'Professional coffee roasting platform and green coffee API',
+			organizationDescription:
+				'Coffee intelligence platform with a live green coffee catalog, normalized sourcing data, and an API-first workflow layer',
 			organizationLogo: '/purveyors_orange.svg',
 			contactEmail: 'support@purveyors.io',
 			...config
@@ -112,7 +113,7 @@ export class SchemaService {
 			'@type': 'SoftwareApplication',
 			name: 'Purveyors Coffee Platform',
 			description:
-				'Professional coffee roasting platform with inventory management, roast tracking, and profit analytics',
+				'Coffee intelligence platform with a live green coffee catalog, sourcing data, roast tracking, and operational workflows for roasters',
 			url: this.config.baseUrl,
 			applicationCategory: 'BusinessApplication',
 			operatingSystem: 'Web Browser',

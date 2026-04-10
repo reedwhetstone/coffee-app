@@ -29,12 +29,12 @@
 		<div class="mx-auto max-w-4xl text-center">
 			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Pricing</h2>
 			<p class="mt-2 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-				Grow from curious to commercial
+				Grow from market discovery to production workflows
 			</p>
 		</div>
 		<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-text-secondary-light">
-			Whether you're just starting or roasting for profit, we have the right plan for your journey.
-			Start free, upgrade anytime.
+			Start with live catalog access and sourcing intelligence, then unlock the roast, inventory,
+			and QA workflows that fit your operation.
 		</p>
 
 		<div
@@ -54,8 +54,8 @@
 						<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Curious</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						Perfect for coffee enthusiasts discovering the world of home roasting and exploring
-						green coffee options.
+						Perfect for exploring live green coffee data, recent arrivals, and the public catalog
+						before you need deeper workflow tooling.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-1">
 						<span class="text-4xl font-bold tracking-tight text-text-primary-light">Free</span>
@@ -149,8 +149,8 @@
 						</p>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						For active home roasters ready to track their journey and improve their craft with
-						AI-powered insights.
+						For roasters ready to move from sourcing research into saved workflows, AI guidance,
+						inventory tracking, and roast analysis.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-1">
 						<span class="text-4xl font-bold tracking-tight text-text-primary-light">$9</span>
@@ -282,8 +282,8 @@
 						<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Enterprise</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						Business & operations consulting for coffee companies looking to scale their analytics,
-						QA systems, and digital operations infrastructure.
+						For teams that want sourcing intelligence, QA systems, analytics, and custom workflow
+						infrastructure to become part of how the business operates.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-1">
 						<span class="text-2xl font-bold tracking-tight text-text-primary-light"
