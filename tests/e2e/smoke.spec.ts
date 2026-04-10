@@ -21,11 +21,21 @@ import { test, expect } from '@playwright/test';
 // ---------------------------------------------------------------------------
 
 test.describe('Public pages load without auth', () => {
+	test.use({ storageState: { cookies: [], origins: [] } });
 	test('homepage /', async ({ playwright }) => {
 		const ctx = await playwright.request.newContext();
 		const resp = await ctx.get('/');
 		expect(resp.status()).toBeLessThan(400);
 		await ctx.dispose();
+	});
+
+	test('homepage / exposes the live catalog path for signed-out users', async ({ page }) => {
+		await page.goto('/', { waitUntil: 'domcontentloaded' });
+		await expect(
+			page.getByRole('heading', { name: 'Green Coffee Intelligence, Built for Roasters.' })
+		).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Browse live catalog' }).first()).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Create free account' }).first()).toBeVisible();
 	});
 
 	test('/catalog', async ({ playwright }) => {
@@ -94,7 +104,7 @@ test.describe('Protected pages load with auth', () => {
 		await page.goto('/', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL('/');
 		await expect(
-			page.getByRole('heading', { name: 'Smarter Sourcing. Better Roasting.' })
+			page.getByRole('heading', { name: 'Green Coffee Intelligence, Built for Roasters.' })
 		).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Dashboard' }).first()).toBeVisible();
 		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(0);

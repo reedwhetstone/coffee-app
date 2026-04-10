@@ -1,15 +1,20 @@
 import type { PageServerLoad } from './$types';
 import { searchCatalog } from '$lib/data/catalog';
+import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	const { session } = await locals.safeGetSession();
+	const { session, role } = await locals.safeGetSession();
+	const visibility = resolveCatalogVisibility({ session, role });
 
 	let stockedData: Record<string, unknown>[] = [];
 	try {
 		const result = await searchCatalog(locals.supabase, {
 			stockedOnly: true,
+			publicOnly: visibility.publicOnly,
+			showWholesale: visibility.showWholesale,
+			wholesaleOnly: visibility.wholesaleOnly,
 			orderBy: 'arrival_date',
 			orderDirection: 'desc',
 			limit: 6
@@ -36,24 +41,24 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/',
-			title: 'Purveyors - Professional Coffee Roasting Platform & Green Coffee API',
+			title: 'Purveyors - Live Green Coffee Catalog & Coffee Intelligence',
 			description:
-				'Professional coffee roasting platform with inventory management, roast tracking, profit analytics, and the first normalized green coffee API for developers.',
+				'Browse normalized green coffee listings, recent arrivals, and the API-first coffee intelligence platform built for roasters, buyers, and developers.',
 			keywords: [
-				'coffee roasting',
-				'green coffee',
-				'coffee API',
-				'roast tracking',
-				'coffee inventory',
-				'specialty coffee',
-				'coffee platform'
+				'green coffee catalog',
+				'coffee intelligence',
+				'coffee sourcing',
+				'green coffee API',
+				'coffee data platform',
+				'coffee roaster software',
+				'specialty coffee'
 			],
-			ogTitle: 'Purveyors - Professional Coffee Roasting Platform',
+			ogTitle: 'Purveyors - Live Green Coffee Catalog & Coffee Intelligence',
 			ogDescription:
-				'The complete platform for coffee roasters with inventory management, roast tracking, and the first normalized green coffee API.',
-			twitterTitle: 'Purveyors - Professional Coffee Roasting Platform',
+				'Explore recent arrivals, normalized sourcing data, and the API-first coffee platform built for roasters and developers.',
+			twitterTitle: 'Purveyors - Live Green Coffee Catalog & Coffee Intelligence',
 			twitterDescription:
-				'Professional coffee roasting platform with inventory management, roast tracking, and green coffee API.',
+				'Browse live green coffee data, compare recent arrivals, and explore the API-first coffee intelligence platform for roasters.',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/home.jpg',
