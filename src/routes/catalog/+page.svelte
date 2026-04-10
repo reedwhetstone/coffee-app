@@ -325,8 +325,8 @@
 					</div>
 				{:else if !displayData() || displayData().length === 0}
 					<p class="p-4 text-text-primary-light">
-						No coffee data available {activePagination()?.total > 0
-							? `(${activePagination()?.total} total items)`
+						No coffee data available {activePagination.total > 0
+							? `(${activePagination.total} total items)`
 							: ''}
 					</p>
 				{:else}
@@ -344,14 +344,13 @@
 						{/if}
 
 						<!-- Public preview CTA banner (unauthenticated only) -->
-						{#if !session && ((activePagination()?.total ?? 0) > 15 || displayData().length >= 15)}
+						{#if !session && (activePagination.total > 15 || displayData().length >= 15)}
 							<div class="col-span-full mt-2">
 								<div
 									class="rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 px-8 py-10 text-center shadow-sm ring-1 ring-amber-200"
 								>
 									<p class="mb-1 text-sm font-medium text-amber-700">
-										You're viewing 15 of {activePagination()?.total || displayData().length} specialty
-										coffees
+										You're viewing 15 of {activePagination.total || displayData().length} specialty coffees
 									</p>
 									<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
 										Unlock the full catalog
@@ -379,24 +378,24 @@
 						{/if}
 
 						<!-- Server-side pagination controls (authenticated users only) -->
-						{#if session && (activePagination()?.totalPages ?? 0) > 1}
+						{#if session && activePagination.totalPages > 1}
 							<div class="col-span-full flex items-center justify-center gap-4 p-4">
 								<button
 									onclick={() => filterStore.loadPrevPage()}
-									disabled={!(activePagination()?.hasPrev ?? false) || $filterStore.isLoading}
+									disabled={!activePagination.hasPrev || $filterStore.isLoading}
 									class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 								>
 									Previous
 								</button>
 
 								<span class="text-sm text-text-secondary-light">
-									Page {activePagination()?.page} of {activePagination()?.totalPages}
-									({activePagination()?.total} total items)
+									Page {activePagination.page} of {activePagination.totalPages}
+									({activePagination.total} total items)
 								</span>
 
 								<button
 									onclick={() => filterStore.loadNextPage()}
-									disabled={!(activePagination()?.hasNext ?? false) || $filterStore.isLoading}
+									disabled={!activePagination.hasNext || $filterStore.isLoading}
 									class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 								>
 									Next

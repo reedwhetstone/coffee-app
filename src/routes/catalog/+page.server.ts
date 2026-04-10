@@ -55,7 +55,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		data: catalogData || [],
 		trainingData: catalogData || [],
 		initialCatalogState,
-		pagination: buildPagination(initialCatalogState, count || catalogData.length),
+		pagination: buildPagination(initialCatalogState, count ?? catalogData.length),
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/catalog',
