@@ -30,6 +30,14 @@ import { AuthError, requireApiKeyAccess } from '$lib/server/auth';
 import { buildCanonicalCatalogResponse } from '$lib/server/catalogResource';
 
 let GET: typeof import('./+server').GET;
+const LEGACY_SUCCESSOR_LINK = '</v1/catalog>; rel="successor-version"';
+const LEGACY_SUNSET = 'Thu, 31 Dec 2026 23:59:59 GMT';
+
+function expectLegacyHeaders(response: Response) {
+	expect(response.headers.get('Deprecation')).toBe('true');
+	expect(response.headers.get('Link')).toBe(LEGACY_SUCCESSOR_LINK);
+	expect(response.headers.get('Sunset')).toBe(LEGACY_SUNSET);
+}
 
 beforeEach(async () => {
 	vi.resetModules();
@@ -86,9 +94,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			locals: {}
 		} as Parameters<NonNullable<typeof GET>>[0]);
 
-		expect(response.headers.get('Deprecation')).toBe('true');
-		expect(response.headers.get('Link')).toContain('/v1/catalog');
-		expect(response.headers.get('Sunset')).toBe('Thu, 31 Dec 2026 23:59:59 GMT');
+		expectLegacyHeaders(response);
 	});
 
 	it('returns a legacy 401 response with deprecation headers when no API key is present', async () => {
@@ -102,8 +108,34 @@ describe('/api/catalog-api legacy delegate', () => {
 
 		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
 		expect(response.status).toBe(401);
-		expect(response.headers.get('Deprecation')).toBe('true');
-		expect(response.headers.get('Sunset')).toBe('Thu, 31 Dec 2026 23:59:59 GMT');
+		expectLegacyHeaders(response);
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'API key authentication required'
+		});
+	});
+
+	it('returns 401 for session-only callers without delegating and preserves legacy headers', async () => {
+		mockRequireApiKeyAccess.mockRejectedValue(new AuthError('API key authentication required'));
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api'),
+			request: new Request('https://app.test/api/catalog-api', {
+				headers: { Cookie: 'sb-access-token=session-cookie' }
+			}),
+			locals: {
+				principal: {
+					isAuthenticated: true,
+					primaryAppRole: 'member',
+					apiPlan: null,
+					session: { access_token: 'session-cookie' }
+				}
+			}
+		} as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
+		expect(response.status).toBe(401);
+		expectLegacyHeaders(response);
 		expect(await response.json()).toEqual({
 			error: 'Authentication required',
 			message: 'API key authentication required'
@@ -121,10 +153,39 @@ describe('/api/catalog-api legacy delegate', () => {
 
 		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
 		expect(response.status).toBe(403);
-		expect(response.headers.get('Deprecation')).toBe('true');
+		expectLegacyHeaders(response);
 		expect(await response.json()).toEqual({
 			error: 'Insufficient permissions',
 			message: 'Insufficient API scope'
+		});
+	});
+
+	it('preserves upstream 400 responses while still adding deprecation headers', async () => {
+		const mockResponse = new Response(
+			JSON.stringify({
+				error: 'Invalid query parameter',
+				message: 'Query parameter "stocked_date" must use YYYY-MM-DD format'
+			}),
+			{
+				status: 400,
+				headers: {
+					'Content-Type': 'application/json; charset=utf-8'
+				}
+			}
+		);
+		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api?stocked_date=30'),
+			request: new Request('https://app.test/api/catalog-api?stocked_date=30'),
+			locals: {}
+		} as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(response.status).toBe(400);
+		expectLegacyHeaders(response);
+		expect(await response.json()).toEqual({
+			error: 'Invalid query parameter',
+			message: 'Query parameter "stocked_date" must use YYYY-MM-DD format'
 		});
 	});
 
@@ -149,7 +210,7 @@ describe('/api/catalog-api legacy delegate', () => {
 		} as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(response.status).toBe(429);
-		expect(response.headers.get('Deprecation')).toBe('true');
+		expectLegacyHeaders(response);
 		expect(response.headers.get('X-RateLimit-Limit')).toBe('200');
 		expect(await response.json()).toEqual({
 			error: 'Rate limit exceeded',

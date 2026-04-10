@@ -55,7 +55,7 @@ Purveyors ships two API layers:
 2. **Platform app API** (`/api/*`)
    - Powers the first-party web app, Console, billing, chat, and admin workflows
    - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require the member role
-   - `/api/catalog-api` is a deprecated alias to `/v1/catalog` with Sunset: Dec 31 2026
+   - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation`, `Link`, and `Sunset: Dec 31 2026` headers
    - `/api/tools/*` routes are deprecated compatibility shims; prefer shared CLI-library integration for new work
 
 Do not document the whole `/api/*` tree as a stable public contract. The public contract is the catalog feed at `/v1/catalog`; the broader `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.
