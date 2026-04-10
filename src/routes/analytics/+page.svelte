@@ -10,18 +10,34 @@
 		SupplierHealthRow
 	} from './+page.server';
 	import { goto } from '$app/navigation';
-	import OriginLineChart from '$lib/components/analytics/OriginLineChart.svelte';
-	import OriginBarChart from '$lib/components/analytics/OriginBarChart.svelte';
-	import ProcessDonutChart from '$lib/components/analytics/ProcessDonutChart.svelte';
-	import SupplierComparisonTable from '$lib/components/analytics/SupplierComparisonTable.svelte';
-	import SupplierHealthTable from '$lib/components/analytics/SupplierHealthTable.svelte';
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
-	import PriceTierChart from '$lib/components/analytics/PriceTierChart.svelte';
+	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
+	import type { DeferredAnalyticsComponent } from './deferredModules';
+	import {
+		loadMemberAnalyticsModules,
+		loadPublicAnalyticsModules,
+		loadSupplierAnalyticsModules
+	} from './deferredModules';
 
 	let { data } = $props<{ data: PageData }>();
 
 	let lineChartExpanded = $state(false);
 	let originChartExpanded = $state(false);
+	let OriginLineChartComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let OriginBarChartComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let ProcessDonutChartComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let SupplierComparisonTableComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let SupplierHealthTableComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let PriceTierChartComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let publicChartsLoading = $state(true);
+	let supplierTablesLoading = $state(false);
+	let memberVisualsLoading = $state(false);
+	let publicChartsError = $state<string | null>(null);
+	let supplierTablesError = $state<string | null>(null);
+	let memberVisualsError = $state<string | null>(null);
+	let publicChartsRetryKey = $state(0);
+	let supplierTablesRetryKey = $state(0);
+	let memberVisualsRetryKey = $state(0);
 
 	// Extended trend time range selector (PPI member feature)
 	type TrendRange = '90d' | '6m' | '1y';
@@ -342,6 +358,171 @@
 		if (!name) return '—';
 		return name.length > 30 ? name.slice(0, 28) + '…' : name;
 	}
+
+	function buildDeferredLoadError(section: string) {
+		return `We couldn't load ${section} right now. Please retry.`;
+	}
+
+	function retryPublicCharts() {
+		publicChartsError = null;
+		publicChartsLoading = true;
+		publicChartsRetryKey += 1;
+	}
+
+	function retrySupplierTables() {
+		supplierTablesError = null;
+		supplierTablesLoading = true;
+		supplierTablesRetryKey += 1;
+	}
+
+	function retryMemberVisuals() {
+		memberVisualsError = null;
+		memberVisualsLoading = true;
+		memberVisualsRetryKey += 1;
+	}
+
+	$effect(() => {
+		const retryKey = publicChartsRetryKey;
+		void retryKey;
+
+		if (OriginLineChartComponent && OriginBarChartComponent && ProcessDonutChartComponent) {
+			publicChartsLoading = false;
+			publicChartsError = null;
+			return;
+		}
+
+		let cancelled = false;
+		publicChartsLoading = true;
+		publicChartsError = null;
+
+		void loadPublicAnalyticsModules()
+			.then(
+				({
+					OriginLineChartComponent: originLine,
+					OriginBarChartComponent: originBar,
+					ProcessDonutChartComponent: processDonut
+				}) => {
+					if (cancelled) return;
+					OriginLineChartComponent = originLine;
+					OriginBarChartComponent = originBar;
+					ProcessDonutChartComponent = processDonut;
+				}
+			)
+			.catch((error) => {
+				if (cancelled) return;
+				console.error('Failed to load analytics chart modules:', error);
+				publicChartsError = buildDeferredLoadError('the overview charts');
+			})
+			.finally(() => {
+				if (!cancelled) {
+					publicChartsLoading = false;
+				}
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	$effect(() => {
+		const currentSession = session;
+		const retryKey = supplierTablesRetryKey;
+		void retryKey;
+
+		if (!currentSession) {
+			supplierTablesLoading = false;
+			supplierTablesError = null;
+			return;
+		}
+
+		if (SupplierComparisonTableComponent && SupplierHealthTableComponent) {
+			supplierTablesLoading = false;
+			supplierTablesError = null;
+			return;
+		}
+
+		let cancelled = false;
+		supplierTablesLoading = true;
+		supplierTablesError = null;
+
+		void loadSupplierAnalyticsModules()
+			.then(
+				({
+					SupplierComparisonTableComponent: comparisonTable,
+					SupplierHealthTableComponent: healthTable
+				}) => {
+					if (cancelled) return;
+					SupplierComparisonTableComponent = comparisonTable;
+					SupplierHealthTableComponent = healthTable;
+				}
+			)
+			.catch((error) => {
+				if (cancelled) return;
+				console.error('Failed to load analytics table modules:', error);
+				supplierTablesError = buildDeferredLoadError('the supplier tables');
+			})
+			.finally(() => {
+				if (!cancelled) {
+					supplierTablesLoading = false;
+				}
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	$effect(() => {
+		const memberEnabled = isPpiMember;
+		const retryKey = memberVisualsRetryKey;
+		void retryKey;
+
+		if (!memberEnabled) {
+			memberVisualsLoading = false;
+			memberVisualsError = null;
+			return;
+		}
+
+		if (PriceTierChartComponent) {
+			memberVisualsLoading = false;
+			memberVisualsError = null;
+			return;
+		}
+
+		let cancelled = false;
+		memberVisualsLoading = true;
+		memberVisualsError = null;
+
+		void loadMemberAnalyticsModules()
+			.then(({ PriceTierChartComponent: priceTierChart }) => {
+				if (cancelled) return;
+				PriceTierChartComponent = priceTierChart;
+			})
+			.catch((error) => {
+				if (cancelled) return;
+				console.error('Failed to load member analytics modules:', error);
+				memberVisualsError = buildDeferredLoadError('the member insights');
+			})
+			.finally(() => {
+				if (!cancelled) {
+					memberVisualsLoading = false;
+				}
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	let analyticsShellMessage = $derived.by(() => {
+		const pending: string[] = [];
+		if (publicChartsLoading) pending.push('charts');
+		if (session && supplierTablesLoading) pending.push('supplier tables');
+		if (session && isPpiMember && memberVisualsLoading) pending.push('member insights');
+		if (pending.length === 0) return '';
+		if (pending.length === 1) return pending[0];
+		return `${pending.slice(0, -1).join(', ')} and ${pending.at(-1)}`;
+	});
 </script>
 
 <!-- Hero -->
@@ -438,6 +619,24 @@
 	</p>
 </div>
 
+{#if analyticsShellMessage}
+	<div
+		class="mb-6 rounded-lg border border-background-tertiary-light/20 bg-background-primary-light px-5 py-3 shadow-sm"
+		aria-live="polite"
+	>
+		<div class="flex items-start gap-3">
+			<span class="mt-1 h-2.5 w-2.5 animate-pulse rounded-full bg-background-tertiary-light"></span>
+			<div>
+				<p class="text-sm font-semibold text-text-primary-light">Loading live market visuals</p>
+				<p class="mt-1 text-xs text-text-secondary-light">
+					We painted the overview first. {analyticsShellMessage} are loading next so you get feedback
+					immediately.
+				</p>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <!-- Public Charts Section -->
 <div class="mb-8 space-y-6">
 	<!-- Price Over Time — Origin Line Chart -->
@@ -448,22 +647,34 @@
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
 	>
-		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
-			<p class="mb-4 text-sm text-text-secondary-light">
-				{#if viewMode === 'spread'}Retail premium % over wholesale by origin — ranked by data
-					coverage{:else}Average $/lb by top origins over the last 30 days — ranked by market volume
-					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}{/if}
-			</p>
-			<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
-				<OriginLineChart
-					snapshots={lineSnapshots}
-					expanded={lineChartExpanded}
-					mode={viewMode === 'spread' ? 'spread' : 'price'}
-					spreadData={viewMode === 'spread' ? spreadData : []}
-				/>
+		<AnalyticsLoadingPanel
+			ready={Boolean(OriginLineChartComponent)}
+			title="Price Trends by Origin"
+			description="Loading 30-day origin pricing history and spread overlays."
+			height={lineChartExpanded ? 'h-[60vh]' : 'h-64'}
+			errorMessage={publicChartsError}
+			onRetry={retryPublicCharts}
+		>
+			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
+				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
+				<p class="mb-4 text-sm text-text-secondary-light">
+					{#if viewMode === 'spread'}Retail premium % over wholesale by origin — ranked by data
+						coverage{:else}Average $/lb by top origins over the last 30 days — ranked by market
+						volume
+						{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}{/if}
+				</p>
+				<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
+					{#if OriginLineChartComponent}
+						<OriginLineChartComponent
+							snapshots={lineSnapshots}
+							expanded={lineChartExpanded}
+							mode={viewMode === 'spread' ? 'spread' : 'price'}
+							spreadData={viewMode === 'spread' ? spreadData : []}
+						/>
+					{/if}
+				</div>
 			</div>
-		</div>
+		</AnalyticsLoadingPanel>
 	</ExpandablePanel>
 
 	<!-- Two-column: Donut + Bar -->
@@ -475,24 +686,37 @@
 			collapsedMaxHeight="360px"
 			showGradient={false}
 		>
-			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing Methods</h2>
-				<p class="mb-4 text-sm text-text-secondary-light">
-					Distribution across {displayStockedCount.toLocaleString()} stocked beans
-					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
-				</p>
-				{#if filteredProcessDist.length > 0}
-					<div class="h-56 w-full">
-						<ProcessDonutChart data={filteredProcessDist} />
-					</div>
-				{:else}
-					<div
-						class="flex h-40 items-center justify-center rounded-lg bg-background-secondary-light"
-					>
-						<p class="text-sm text-text-secondary-light">No catalog data yet.</p>
-					</div>
-				{/if}
-			</div>
+			<AnalyticsLoadingPanel
+				ready={Boolean(ProcessDonutChartComponent)}
+				title="Processing Methods"
+				description="Loading stocked catalog processing distribution."
+				height="h-56"
+				errorMessage={publicChartsError}
+				onRetry={retryPublicCharts}
+			>
+				<div
+					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
+				>
+					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing Methods</h2>
+					<p class="mb-4 text-sm text-text-secondary-light">
+						Distribution across {displayStockedCount.toLocaleString()} stocked beans
+						{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
+					</p>
+					{#if filteredProcessDist.length > 0}
+						<div class="h-56 w-full">
+							{#if ProcessDonutChartComponent}
+								<ProcessDonutChartComponent data={filteredProcessDist} />
+							{/if}
+						</div>
+					{:else}
+						<div
+							class="flex h-40 items-center justify-center rounded-lg bg-background-secondary-light"
+						>
+							<p class="text-sm text-text-secondary-light">No catalog data yet.</p>
+						</div>
+					{/if}
+				</div>
+			</AnalyticsLoadingPanel>
 		</ExpandablePanel>
 
 		<!-- Origin Price Range Chart -->
@@ -503,29 +727,44 @@
 			showGradient={false}
 			onExpandChange={(v) => (originChartExpanded = v)}
 		>
-			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Ranges</h2>
-				<p class="mb-4 text-sm text-text-secondary-light">
-					Live catalog price distributions by origin. Collapsed view shows the top 8 origins by bean
-					count; expand to choose the comparison set. Rows stay sorted by median $/lb, while the
-					chart scale prioritizes the core distribution and keeps true min/max values in the
-					tooltip.
-				</p>
-				{#if originRangeData.length > 0}
-					<div class="w-full">
-						<OriginBarChart data={originRangeData} expanded={originChartExpanded} />
-					</div>
-				{:else}
-					<div
-						class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
-					>
-						<p class="text-sm font-medium text-text-secondary-light">📊 No origin data available</p>
-						<p class="mt-1 text-xs text-text-secondary-light">
-							Requires stocked beans with price_per_lb values in the catalog.
-						</p>
-					</div>
-				{/if}
-			</div>
+			<AnalyticsLoadingPanel
+				ready={Boolean(OriginBarChartComponent)}
+				title="Origin Price Ranges"
+				description="Loading live origin range comparisons from the current catalog."
+				height="h-[28rem]"
+				errorMessage={publicChartsError}
+				onRetry={retryPublicCharts}
+			>
+				<div
+					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
+				>
+					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Ranges</h2>
+					<p class="mb-4 text-sm text-text-secondary-light">
+						Live catalog price distributions by origin. Collapsed view shows the top 8 origins by
+						bean count; expand to choose the comparison set. Rows stay sorted by median $/lb, while
+						the chart scale prioritizes the core distribution and keeps true min/max values in the
+						tooltip.
+					</p>
+					{#if originRangeData.length > 0}
+						<div class="w-full">
+							{#if OriginBarChartComponent}
+								<OriginBarChartComponent data={originRangeData} expanded={originChartExpanded} />
+							{/if}
+						</div>
+					{:else}
+						<div
+							class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
+						>
+							<p class="text-sm font-medium text-text-secondary-light">
+								📊 No origin data available
+							</p>
+							<p class="mt-1 text-xs text-text-secondary-light">
+								Requires stocked beans with price_per_lb values in the catalog.
+							</p>
+						</div>
+					{/if}
+				</div>
+			</AnalyticsLoadingPanel>
 		</ExpandablePanel>
 	</div>
 </div>
@@ -538,7 +777,18 @@
 			subtitle="All stocked beans for a selected origin, sorted by price — cheapest first."
 			totalItems={comparisonBeans.length}
 		>
-			<SupplierComparisonTable beans={comparisonBeans} />
+			<AnalyticsLoadingPanel
+				ready={Boolean(SupplierComparisonTableComponent)}
+				title="Supplier Price Comparison"
+				description="Loading supplier comparisons for the current catalog snapshot."
+				height="h-72"
+				errorMessage={supplierTablesError}
+				onRetry={retrySupplierTables}
+			>
+				{#if SupplierComparisonTableComponent}
+					<SupplierComparisonTableComponent beans={comparisonBeans} />
+				{/if}
+			</AnalyticsLoadingPanel>
 		</ExpandablePanel>
 	</div>
 
@@ -557,7 +807,18 @@
 				subtitle="Catalog breadth and pricing by supplier — click any column header to sort."
 				totalItems={supplierHealth.length}
 			>
-				<SupplierHealthTable rows={supplierHealth} />
+				<AnalyticsLoadingPanel
+					ready={Boolean(SupplierHealthTableComponent)}
+					title="Supplier Catalog Health"
+					description="Loading supplier breadth, origin coverage, and pricing health."
+					height="h-72"
+					errorMessage={supplierTablesError}
+					onRetry={retrySupplierTables}
+				>
+					{#if SupplierHealthTableComponent}
+						<SupplierHealthTableComponent rows={supplierHealth} />
+					{/if}
+				</AnalyticsLoadingPanel>
 			</ExpandablePanel>
 		{:else}
 			<div
@@ -729,21 +990,35 @@
 
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 					<!-- Price Tier Analysis -->
-					<div
-						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
+					<AnalyticsLoadingPanel
+						ready={Boolean(PriceTierChartComponent)}
+						title="Price Tier Analysis"
+						description="Loading retail-versus-wholesale spread analysis from the latest snapshot."
+						height="h-64"
+						panelClass="border-background-tertiary-light/20"
+						errorMessage={memberVisualsError}
+						onRetry={retryMemberVisuals}
 					>
-						<div class="mb-2 flex items-center gap-2">
-							<span
-								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
-								>PPI Member</span
-							>
+						<div
+							class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
+						>
+							<div class="mb-2 flex items-center gap-2">
+								<span
+									class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+									>PPI Member</span
+								>
+							</div>
+							<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
+								Price Tier Analysis
+							</h2>
+							<p class="mb-4 text-sm text-text-secondary-light">
+								Retail vs wholesale median price by origin — latest snapshot
+							</p>
+							{#if PriceTierChartComponent}
+								<PriceTierChartComponent {snapshots} />
+							{/if}
 						</div>
-						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Tier Analysis</h2>
-						<p class="mb-4 text-sm text-text-secondary-light">
-							Retail vs wholesale median price by origin — latest snapshot
-						</p>
-						<PriceTierChart {snapshots} />
-					</div>
+					</AnalyticsLoadingPanel>
 
 					<!-- Extended Trend Detail -->
 					<div
@@ -782,16 +1057,20 @@
 							</div>
 						</div>
 
-						<!-- Line chart using existing OriginLineChart component -->
+						<!-- Line chart using deferred OriginLineChart component -->
 						<div class="h-64">
-							{#if viewMode === 'spread'}
-								<OriginLineChart
-									snapshots={trendSnapshots}
-									mode="spread"
-									spreadData={trendSpreadData}
-								/>
+							{#if OriginLineChartComponent}
+								{#if viewMode === 'spread'}
+									<OriginLineChartComponent
+										snapshots={trendSnapshots}
+										mode="spread"
+										spreadData={trendSpreadData}
+									/>
+								{:else}
+									<OriginLineChartComponent snapshots={trendSnapshots} mode="price" />
+								{/if}
 							{:else}
-								<OriginLineChart snapshots={trendSnapshots} mode="price" />
+								<div class="h-full animate-pulse rounded-xl bg-background-secondary-light/80"></div>
 							{/if}
 						</div>
 					</div>
