@@ -21,6 +21,7 @@ import { test, expect } from '@playwright/test';
 // ---------------------------------------------------------------------------
 
 test.describe('Public pages load without auth', () => {
+	test.use({ storageState: { cookies: [], origins: [] } });
 	test('homepage /', async ({ playwright }) => {
 		const ctx = await playwright.request.newContext();
 		const resp = await ctx.get('/');
