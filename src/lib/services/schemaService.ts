@@ -64,7 +64,7 @@ export class SchemaService {
 				'@type': 'SearchAction',
 				target: {
 					'@type': 'EntryPoint',
-					urlTemplate: `${this.config.baseUrl}/?search={search_term_string}`
+					urlTemplate: `${this.config.baseUrl}/catalog?name={search_term_string}`
 				},
 				'query-input': 'required name=search_term_string'
 			}
