@@ -1,15 +1,20 @@
 import type { PageServerLoad } from './$types';
 import { searchCatalog } from '$lib/data/catalog';
+import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	const { session } = await locals.safeGetSession();
+	const { session, role } = await locals.safeGetSession();
+	const visibility = resolveCatalogVisibility({ session, role });
 
 	let stockedData: Record<string, unknown>[] = [];
 	try {
 		const result = await searchCatalog(locals.supabase, {
 			stockedOnly: true,
+			publicOnly: visibility.publicOnly,
+			showWholesale: visibility.showWholesale,
+			wholesaleOnly: visibility.wholesaleOnly,
 			orderBy: 'arrival_date',
 			orderDirection: 'desc',
 			limit: 6

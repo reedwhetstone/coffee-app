@@ -42,11 +42,12 @@ beforeEach(async () => {
 	({ load } = await import('./+page.server'));
 });
 
-function makeLoadInput(session: App.Locals['session']) {
+function makeLoadInput(session: App.Locals['session'], role: App.Locals['role'] = 'viewer') {
 	return {
 		locals: {
-			safeGetSession: vi.fn().mockResolvedValue({ session }),
+			safeGetSession: vi.fn().mockResolvedValue({ session, role }),
 			session,
+			role,
 			supabase: { kind: 'public-client' }
 		},
 		url: new URL('https://purveyors.test/')
@@ -65,6 +66,9 @@ describe('homepage marketing load', () => {
 			{ kind: 'public-client' },
 			expect.objectContaining({
 				stockedOnly: true,
+				publicOnly: true,
+				showWholesale: false,
+				wholesaleOnly: false,
 				orderBy: 'arrival_date',
 				orderDirection: 'desc',
 				limit: 6
@@ -101,5 +105,24 @@ describe('homepage marketing load', () => {
 		expect(result.meta).toMatchObject({
 			title: 'Purveyors - Live Green Coffee Catalog & Coffee Intelligence'
 		});
+	});
+
+	it('does not apply public-only restrictions for signed-in members', async () => {
+		const memberSession = {
+			user: {
+				email: 'member@purveyors.test'
+			}
+		} as App.Locals['session'];
+
+		await load(makeLoadInput(memberSession, 'member'));
+
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'public-client' },
+			expect.objectContaining({
+				publicOnly: false,
+				showWholesale: false,
+				wholesaleOnly: false
+			})
+		);
 	});
 });
