@@ -2,7 +2,7 @@
 
 This is the canonical contributor and coding-agent guide for the Purveyors web platform repo.
 
-`CLAUDE.md` and `GEMINI.md` should remain symlinks to this file.
+`CLAUDE.md` and `GEMINI.md` should remain lightweight pointers or symlinks to this file.
 
 ## Repo purpose
 
@@ -120,6 +120,14 @@ When changing docs, keep these sources aligned:
 ## CLI relationship
 
 The web app imports `@purveyors/cli` modules directly in `src/lib/services/tools.ts`.
+
+CLI auth and output rules matter here too:
+
+- `purvey catalog *` requires an authenticated viewer session
+- `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
+- `purvey config` is local-only and does not require auth
+- `purvey context` prints dense text by default, while `purvey manifest` emits the machine-readable contract directly
+- structured stdout and stderr semantics are part of the CLI contract for scripts and agents
 
 That means:
 

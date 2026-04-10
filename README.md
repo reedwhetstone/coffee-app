@@ -64,6 +64,14 @@ Do not document the whole `/api/*` tree as a stable public contract. The public 
 
 This repo depends on `@purveyors/cli` and imports its domain logic in the app.
 
+CLI auth and output rules are part of the platform contract:
+
+- `purvey catalog *` requires an authenticated viewer session
+- `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
+- `purvey config`, `purvey context`, and `purvey manifest` do not require auth
+- `purvey context` prints dense reference text by default; `purvey manifest` emits the machine-readable contract directly
+- stdout stays structured for automation, while operational and fatal messaging is designed to stay on stderr
+
 `src/lib/services/tools.ts` imports CLI modules directly for chat tool execution:
 
 - `@purveyors/cli/catalog`
