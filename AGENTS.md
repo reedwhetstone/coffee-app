@@ -83,7 +83,7 @@ Treat the API as two layers:
    - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/stripe/*`, `/api/admin/*`, and related helpers
    - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require the member role
    - Important for contributors, but not a broad public compatibility promise
-   - `/api/catalog-api` is a deprecated legacy URL with `Deprecation: true` and `Sunset: Dec 31 2026` headers; migrate to `/v1/catalog`
+   - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation: true`, `Link: </v1/catalog>; rel="successor-version"`, and `Sunset: Dec 31 2026` headers; migrate callers to `/v1/catalog`
    - `/api/tools/*` routes are deprecated; prefer direct CLI-library integration
 
 Do not blur those layers in code comments, docs, or PR descriptions.
