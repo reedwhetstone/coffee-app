@@ -55,7 +55,9 @@ beforeEach(async () => {
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date('2026-04-08T12:00:00.000Z'));
 
-	({ load, _loadPriceSnapshotsPaginated: loadPriceSnapshotsPaginated } = await import('./+page.server'));
+	({ load, _loadPriceSnapshotsPaginated: loadPriceSnapshotsPaginated } = await import(
+		'./+page.server'
+	));
 
 	const principalModule = await import('$lib/server/principal');
 	resolvePrincipalMock = vi.mocked(principalModule.resolvePrincipal);
