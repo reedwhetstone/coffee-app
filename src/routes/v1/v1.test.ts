@@ -4,7 +4,11 @@ import { GET } from './+server';
 
 describe('/v1 discovery route', () => {
 	it('publishes the catalog auth matrix and legacy alias metadata', async () => {
-		const response = await GET();
+		const response = await GET({
+			url: new URL('https://app.test/v1'),
+			request: new Request('https://app.test/v1'),
+			locals: {}
+		} as Parameters<NonNullable<typeof GET>>[0]);
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
