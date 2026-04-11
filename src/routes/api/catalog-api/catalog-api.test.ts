@@ -60,7 +60,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			url: new URL('https://app.test/api/catalog-api'),
 			request: new Request('https://app.test/api/catalog-api'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(requireApiKeyAccess).toHaveBeenCalledWith(
 			expect.objectContaining({ url: expect.any(URL) }),
@@ -92,7 +92,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			url: new URL('https://app.test/api/catalog-api'),
 			request: new Request('https://app.test/api/catalog-api'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expectLegacyHeaders(response);
 	});
@@ -104,7 +104,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			url: new URL('https://app.test/api/catalog-api'),
 			request: new Request('https://app.test/api/catalog-api'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
 		expect(response.status).toBe(401);
@@ -131,7 +131,7 @@ describe('/api/catalog-api legacy delegate', () => {
 					session: { access_token: 'session-cookie' }
 				}
 			}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
 		expect(response.status).toBe(401);
@@ -149,7 +149,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			url: new URL('https://app.test/api/catalog-api'),
 			request: new Request('https://app.test/api/catalog-api'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
 		expect(response.status).toBe(403);
@@ -179,7 +179,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			url: new URL('https://app.test/api/catalog-api?stocked_date=30'),
 			request: new Request('https://app.test/api/catalog-api?stocked_date=30'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(response.status).toBe(400);
 		expectLegacyHeaders(response);
@@ -207,7 +207,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			url: new URL('https://app.test/api/catalog-api'),
 			request: new Request('https://app.test/api/catalog-api'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(response.status).toBe(429);
 		expectLegacyHeaders(response);
@@ -230,7 +230,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			url: new URL('https://app.test/api/catalog-api?page=2&limit=10&source=sweet_marias'),
 			request: new Request('https://app.test/api/catalog-api?page=2&limit=10&source=sweet_marias'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(buildCanonicalCatalogResponse).toHaveBeenCalled();
 	});
@@ -242,7 +242,7 @@ describe('/api/catalog-api legacy delegate', () => {
 			url: new URL('https://app.test/api/catalog-api'),
 			request: new Request('https://app.test/api/catalog-api'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(response.status).toBe(401);
 		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
@@ -263,7 +263,7 @@ describe('/api/catalog-api legacy delegate', () => {
 				headers: { Authorization: 'Bearer pk_live_limited' }
 			}),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(response.status).toBe(403);
 		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
