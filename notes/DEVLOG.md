@@ -9,7 +9,7 @@
 - [ ] **Purveyors Price Index (PPI)** — First revenue-generating data product. Daily specialty green coffee price index by origin, process, and grade, derived from 35 scraped suppliers. `/api/v1/price-index` endpoint with tier-based access (free/member $29/enterprise $199). Blog teaser page as top-of-funnel. Revenue target: $35K+/year at modest adoption. Existing auth + Stripe infrastructure reused. Full plan: `notes/implementation-plans/2026-03-16-purveyors-price-index.md`.
 - [ ] **Mobile Navigation** - Redesign sidebar behavior on mobile. Current desktop-style sidebar consumes too much horizontal space. Evaluate one of: top nav, bottom nav, or minimal single-button trigger that opens a full-screen menu.
 - [x] **Homepage Routing** - Make `/` the true landing page and move catalog to its own dedicated route. Remove login-driven reroute behavior that hurts first contentful paint and perceived responsiveness. (Fixed PR #179)
-- [ ] **Public Catalog Access + Conversion Funnel** - Allow non-auth users to browse catalog with limited access (example: page 1 only) while keeping filters available. Add clear incentives to sign up/log in and promote AI search as a premium conversion lever.
+- [ ] **Public Catalog Access + Conversion Funnel** - Allow non-auth users to browse catalog with limited access (example: page 1 only) while keeping filters available. Add clear incentives to sign up/log in and promote AI search as a premium conversion lever. Foundation shipped: catalog auth now cleanly distinguishes anonymous, session, and API-key access by route, and legacy `/api/catalog-api` is constrained to API-key compatibility traffic.
 
 ---
 
@@ -143,7 +143,7 @@ Improvements to app navigation and user flows.
 
 - [ ] **Navigation** - Improve sales funnel & clickthrough flow. Reduce friction from discovery to purchase/subscription.
 - [ ] **Navigation** - Simplify main page. Currently requires long scrolling; consider above-fold optimization or tab navigation.
-- [ ] **Navigation** - Emphasize "green coffee" marketplace focus on main page. Make sourcing discovery more prominent.
+- [x] **Navigation** - Emphasize "green coffee" marketplace focus on main page. Make sourcing discovery more prominent. (Fixed PR #241)
 
 ---
 
@@ -235,6 +235,12 @@ Items that need more context before they can be actionable.
 
 ## Completed Items
 
+- [x] **ADR-004 / Catalog Auth** - Define explicit anonymous, session, and API-key catalog contexts, codify cookie-agnostic HTTP contract boundaries, and publish the auth matrix in `/v1` discovery (ADR-004, PR #240)
+- [x] **API** - Require API keys on legacy `/api/catalog-api` while keeping `/v1/catalog` as the canonical external catalog contract (PR #240)
+- [x] **API** - Remove dead cookie-sensitive middleware so public catalog routes preserve correct status codes and headers for anonymous callers (PR #239)
+- [x] **Docs** - Refresh platform and API documentation to match the public catalog and marketplace direction (PR #238)
+- [x] **API** - Restore `/v1/catalog` `stocked_date` semantics for compatibility with legacy consumers and filter logic (PR #235)
+- [x] **Analytics UX** - Defer analytics modules behind better loading states and smoother transitions (PR #232)
 - [x] **fix: use Chat Completions API for OpenRouter instead of Responses API** (PR #83)
 - [x] **fix: reliable bean pre-selection in roast form from bean profile** (PR #82)
 - [x] **refactor(profit): URL-driven form architecture (Phase C)** (PR #76)
