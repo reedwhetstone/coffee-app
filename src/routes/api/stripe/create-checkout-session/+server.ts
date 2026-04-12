@@ -3,10 +3,25 @@ import type { RequestHandler } from './$types';
 import { createCheckoutSession } from '$lib/services/stripe';
 import { getBillingCatalogEntry } from '$lib/server/billing/catalog';
 
+function isPurchaseAuthorized(
+	billingCatalogEntry: ReturnType<typeof getBillingCatalogEntry>,
+	role: App.Locals['role']
+): boolean {
+	if (!billingCatalogEntry) {
+		return false;
+	}
+
+	if (billingCatalogEntry.productFamily === 'membership') {
+		return role !== 'member' && role !== 'admin';
+	}
+
+	return true;
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		// Verify that the user is authenticated
-		const { user } = await locals.safeGetSession();
+		const { user, role } = await locals.safeGetSession();
 		if (!user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
@@ -23,6 +38,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (!billingCatalogEntry) {
 			return json({ error: 'Unknown purchase key' }, { status: 400 });
+		}
+
+		if (!isPurchaseAuthorized(billingCatalogEntry, role)) {
+			return json(
+				{
+					error:
+						'You already have membership access. Use subscription management for existing memberships.'
+				},
+				{ status: 403 }
+			);
 		}
 
 		// Get the origin for the return URL

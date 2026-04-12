@@ -244,11 +244,8 @@ export interface StripeSessionRequest {
 	purchaseKey: BillingPurchaseKey;
 }
 
-export interface StripeSessionResponse extends ApiResponse {
-	data: {
-		sessionId: string;
-		url: string;
-	};
+export interface StripeSessionResponse {
+	clientSecret: string;
 }
 
 export interface StripeCustomer {
