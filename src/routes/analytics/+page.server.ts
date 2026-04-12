@@ -469,7 +469,7 @@ export const load: PageServerLoad = async (event) => {
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/analytics.jpg',
-				alt: 'Purveyors analytics social preview card'
+				alt: 'Parchment Intelligence social preview card'
 			}),
 			schemaData
 		})
