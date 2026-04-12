@@ -17,14 +17,35 @@ beforeEach(async () => {
 	mockCreateCheckoutSession.mockResolvedValue('cs_test_secret');
 });
 
+function createSupabaseMock(
+	existingSubscriptions: Array<{ product_family: string; product_key: string; status: string }> = []
+) {
+	const eq = vi.fn(async () => ({ data: existingSubscriptions, error: null }));
+	const select = vi.fn(() => ({ eq }));
+	const from = vi.fn((table: string) => {
+		if (table !== 'billing_subscriptions') {
+			throw new Error(`Unexpected table lookup: ${table}`);
+		}
+
+		return { select };
+	});
+
+	return { from };
+}
+
 function makeEvent(
 	body: unknown,
 	options: {
 		user?: { id: string; email?: string } | null;
 		role?: App.Locals['role'];
+		existingSubscriptions?: Array<{ product_family: string; product_key: string; status: string }>;
 	} = {}
 ) {
-	const { user = { id: 'user-123', email: 'viewer@example.com' }, role = 'viewer' } = options;
+	const {
+		user = { id: 'user-123', email: 'viewer@example.com' },
+		role = 'viewer',
+		existingSubscriptions = []
+	} = options;
 
 	return {
 		request: new Request('https://app.test/api/stripe/create-checkout-session', {
@@ -36,7 +57,8 @@ function makeEvent(
 			body: JSON.stringify(body)
 		}),
 		locals: {
-			safeGetSession: vi.fn().mockResolvedValue({ user, role, roles: [role] })
+			safeGetSession: vi.fn().mockResolvedValue({ user, role, roles: [role] }),
+			supabase: createSupabaseMock(existingSubscriptions)
 		}
 	} as unknown as Parameters<NonNullable<typeof POST>>[0];
 }
@@ -44,7 +66,7 @@ function makeEvent(
 describe('/api/stripe/create-checkout-session', () => {
 	it('requires an authenticated user', async () => {
 		const response = await POST(
-			makeEvent({ purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly }, { user: null })
+			makeEvent({ purchaseKeys: [BILLING_PURCHASE_KEYS.membershipMonthly] }, { user: null })
 		);
 
 		expect(response.status).toBe(401);
@@ -61,44 +83,114 @@ describe('/api/stripe/create-checkout-session', () => {
 	});
 
 	it('rejects unknown purchase keys', async () => {
-		const response = await POST(makeEvent({ purchaseKey: 'membership.lifetime' }));
+		const response = await POST(makeEvent({ purchaseKeys: ['membership.lifetime'] }));
 
 		expect(response.status).toBe(400);
-		expect(await response.json()).toEqual({ error: 'Unknown purchase key' });
+		expect(await response.json()).toEqual({ error: 'Unknown purchase key: membership.lifetime' });
 		expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
 	});
 
-	it.each(['member', 'admin'] as const)(
-		'rejects valid membership purchase keys for ineligible %s users',
-		async (role) => {
-			const response = await POST(
-				makeEvent(
-					{ purchaseKey: BILLING_PURCHASE_KEYS.membershipAnnual },
-					{
-						role,
-						user: { id: 'user-123', email: `${role}@example.com` }
-					}
-				)
-			);
-
-			expect(response.status).toBe(403);
-			expect(await response.json()).toEqual({
-				error:
-					'You already have membership access. Use subscription management for existing memberships.'
-			});
-			expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
-		}
-	);
-
-	it('maps purchase keys to the server-side billing catalog before creating checkout', async () => {
+	it('rejects enterprise from self-serve checkout', async () => {
 		const response = await POST(
-			makeEvent({ purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly })
+			makeEvent({ purchaseKeys: [BILLING_PURCHASE_KEYS.apiPlanEnterprise] })
+		);
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toEqual({
+			error:
+				'Enterprise for Parchment API is not available through self-serve checkout. Contact sales.'
+		});
+		expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
+	});
+
+	it('rejects conflicting same-family purchase keys in the same request', async () => {
+		const response = await POST(
+			makeEvent({
+				purchaseKeys: [
+					BILLING_PURCHASE_KEYS.membershipMonthly,
+					BILLING_PURCHASE_KEYS.membershipAnnual
+				]
+			})
+		);
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toEqual({
+			error:
+				'Choose only one Mallard Studio plan per checkout. Same-family interval changes must be managed outside checkout.'
+		});
+		expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
+	});
+
+	it('rejects conflicting same-family purchases when an active subscription already exists', async () => {
+		const response = await POST(
+			makeEvent(
+				{ purchaseKeys: [BILLING_PURCHASE_KEYS.ppiAddonAnnual] },
+				{
+					existingSubscriptions: [
+						{
+							product_family: 'ppi_addon',
+							product_key: BILLING_PURCHASE_KEYS.ppiAddonMonthly,
+							status: 'active'
+						}
+					]
+				}
+			)
+		);
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toEqual({
+			error:
+				'You already have an active Parchment Intelligence subscription. Use subscription management to change intervals.'
+		});
+		expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
+	});
+
+	it('allows cross-family purchases and maps purchase keys to Stripe price IDs', async () => {
+		const response = await POST(
+			makeEvent({
+				purchaseKeys: [
+					BILLING_PURCHASE_KEYS.membershipMonthly,
+					BILLING_PURCHASE_KEYS.apiPlanMonthly,
+					BILLING_PURCHASE_KEYS.ppiAddonAnnual
+				]
+			})
 		);
 
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ clientSecret: 'cs_test_secret' });
 		expect(mockCreateCheckoutSession).toHaveBeenCalledWith(
-			'price_1RgGYuKwI9NkGqAnm4oiHpbx',
+			[
+				'price_1RgGYuKwI9NkGqAnm4oiHpbx',
+				'price_1TLTecKwI9NkGqAn07hkozWj',
+				'price_1TLTihKwI9NkGqAnxqhgpLN1'
+			],
+			null,
+			'user-123',
+			'viewer@example.com',
+			'https://app.test'
+		);
+	});
+
+	it('allows adding a cross-family purchase when another family is already active', async () => {
+		const response = await POST(
+			makeEvent(
+				{ purchaseKeys: [BILLING_PURCHASE_KEYS.apiPlanMonthly] },
+				{
+					existingSubscriptions: [
+						{
+							product_family: 'membership',
+							product_key: BILLING_PURCHASE_KEYS.membershipAnnual,
+							status: 'active'
+						}
+					]
+				}
+			)
+		);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ clientSecret: 'cs_test_secret' });
+		expect(mockCreateCheckoutSession).toHaveBeenCalledWith(
+			['price_1TLTecKwI9NkGqAn07hkozWj'],
 			null,
 			'user-123',
 			'viewer@example.com',

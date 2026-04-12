@@ -203,7 +203,7 @@ export async function resumeSubscription(subscriptionId: string): Promise<boolea
  * Create a checkout session for subscription
  */
 export async function createCheckoutSession(
-	priceId: string,
+	priceIds: string[],
 	customerId: string | null,
 	clientReferenceId: string,
 	customerEmail: string,
@@ -214,12 +214,10 @@ export async function createCheckoutSession(
 
 		const sessionParams: Stripe.Checkout.SessionCreateParams = {
 			payment_method_types: ['card'],
-			line_items: [
-				{
-					price: priceId,
-					quantity: 1
-				}
-			],
+			line_items: priceIds.map((priceId) => ({
+				price: priceId,
+				quantity: 1
+			})),
 			mode: 'subscription',
 			ui_mode: 'embedded',
 			return_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,

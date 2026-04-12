@@ -241,7 +241,7 @@ export interface PerformanceResponse extends ApiResponse<PerformanceMetrics[]> {
 
 // Stripe integration types
 export interface StripeSessionRequest {
-	purchaseKey: BillingPurchaseKey;
+	purchaseKeys: BillingPurchaseKey[];
 }
 
 export interface StripeSessionResponse {
