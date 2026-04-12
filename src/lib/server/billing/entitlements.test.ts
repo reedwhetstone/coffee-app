@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type Stripe from 'stripe';
 
 import { BILLING_PURCHASE_KEYS } from '$lib/billing/purchaseKeys';
 
 import {
 	mapStripeSubscriptionToBillingSnapshotRows,
-	resolveBillingEntitlements
+	resolveBillingEntitlements,
+	syncBillingSubscriptionSnapshotFromStripeSubscription
 } from './entitlements';
 
 function makeSubscription(
@@ -35,9 +36,11 @@ function makeSubscription(
 }
 
 describe('billing entitlement reconciliation', () => {
-	it('grants member app access from an active membership subscription without changing other entitlements', () => {
+	it('grants member app access from an active membership subscription without changing explicit entitlements', () => {
 		const resolved = resolveBillingEntitlements({
 			currentRole: 'viewer',
+			currentApiPlan: 'viewer',
+			currentPpiAccess: false,
 			subscriptions: [
 				{
 					product_key: BILLING_PURCHASE_KEYS.membershipMonthly,
@@ -54,9 +57,11 @@ describe('billing entitlement reconciliation', () => {
 		});
 	});
 
-	it('falls back to safe viewer defaults when no active grants remain', () => {
+	it('drops membership back to viewer when no active membership grants remain while preserving explicit entitlements', () => {
 		const resolved = resolveBillingEntitlements({
 			currentRole: 'member',
+			currentApiPlan: 'enterprise',
+			currentPpiAccess: true,
 			subscriptions: [
 				{
 					product_key: BILLING_PURCHASE_KEYS.membershipAnnual,
@@ -68,22 +73,71 @@ describe('billing entitlement reconciliation', () => {
 		expect(resolved).toEqual({
 			role: 'viewer',
 			userRole: ['viewer'],
-			apiPlan: 'viewer',
-			ppiAccess: false
+			apiPlan: 'enterprise',
+			ppiAccess: true
 		});
 	});
 
-	it('preserves admin while still resetting explicit add-on entitlements to safe defaults', () => {
+	it('preserves admin during membership reconciliation', () => {
 		const resolved = resolveBillingEntitlements({
 			currentRole: 'admin',
-			subscriptions: []
+			currentApiPlan: 'enterprise',
+			currentPpiAccess: true,
+			subscriptions: [
+				{
+					product_key: BILLING_PURCHASE_KEYS.membershipMonthly,
+					status: 'active'
+				}
+			]
 		});
 
 		expect(resolved).toEqual({
 			role: 'admin',
 			userRole: ['admin'],
-			apiPlan: 'viewer',
+			apiPlan: 'enterprise',
+			ppiAccess: true
+		});
+	});
+
+	it('preserves an existing explicit api_plan during membership-only reconciliation', () => {
+		const resolved = resolveBillingEntitlements({
+			currentRole: 'viewer',
+			currentApiPlan: 'enterprise',
+			currentPpiAccess: false,
+			subscriptions: [
+				{
+					product_key: BILLING_PURCHASE_KEYS.membershipMonthly,
+					status: 'active'
+				}
+			]
+		});
+
+		expect(resolved).toEqual({
+			role: 'member',
+			userRole: ['member'],
+			apiPlan: 'enterprise',
 			ppiAccess: false
+		});
+	});
+
+	it('preserves an existing explicit ppi_access during membership-only reconciliation', () => {
+		const resolved = resolveBillingEntitlements({
+			currentRole: 'viewer',
+			currentApiPlan: 'viewer',
+			currentPpiAccess: true,
+			subscriptions: [
+				{
+					product_key: BILLING_PURCHASE_KEYS.membershipMonthly,
+					status: 'active'
+				}
+			]
+		});
+
+		expect(resolved).toEqual({
+			role: 'member',
+			userRole: ['member'],
+			apiPlan: 'viewer',
+			ppiAccess: true
 		});
 	});
 
@@ -111,7 +165,7 @@ describe('billing entitlement reconciliation', () => {
 		]);
 	});
 
-	it('ignores unknown Stripe prices when building the local billing snapshot', () => {
+	it('surfaces unknown Stripe prices during snapshot mapping', () => {
 		const result = mapStripeSubscriptionToBillingSnapshotRows({
 			userId: 'user_123',
 			stripeCustomerId: 'cus_123',
@@ -120,5 +174,25 @@ describe('billing entitlement reconciliation', () => {
 
 		expect(result.rows).toEqual([]);
 		expect(result.unknownPriceIds).toEqual(['price_unknown']);
+	});
+
+	it('fails safe before touching the billing snapshot when Stripe returns an unknown price', async () => {
+		const from = vi.fn(() => {
+			throw new Error('billing snapshot should not be queried or mutated on catalog drift');
+		});
+		const supabase = { from };
+
+		await expect(
+			syncBillingSubscriptionSnapshotFromStripeSubscription(supabase as never, {
+				userId: 'user_123',
+				stripeCustomerId: 'cus_123',
+				subscription: makeSubscription({}, 'price_unknown')
+			})
+		).rejects.toMatchObject({
+			name: 'BillingCatalogDriftError',
+			unknownPriceIds: ['price_unknown']
+		});
+
+		expect(from).not.toHaveBeenCalled();
 	});
 });

@@ -42,6 +42,18 @@ export interface StripeSubscriptionReconciliationResult
 	extends BillingSnapshotSyncResult,
 		BillingRecomputeResult {}
 
+export class BillingCatalogDriftError extends Error {
+	readonly unknownPriceIds: string[];
+
+	constructor(unknownPriceIds: string[]) {
+		super(
+			`Billing reconciliation aborted because Stripe returned unknown price IDs: ${unknownPriceIds.join(', ')}`
+		);
+		this.name = 'BillingCatalogDriftError';
+		this.unknownPriceIds = unknownPriceIds;
+	}
+}
+
 function normalizeStoredRole(role: UserRoleRow['role'] | null | undefined): UserRole {
 	if (role === 'admin' || role === 'member' || role === 'viewer') {
 		return role;
@@ -88,6 +100,8 @@ export function isBillingSubscriptionActive(status: string): boolean {
 
 export function resolveBillingEntitlements(input: {
 	currentRole: UserRoleRow['role'] | null | undefined;
+	currentApiPlan?: UserRoleRow['api_plan'] | null | undefined;
+	currentPpiAccess?: boolean | null | undefined;
 	subscriptions: Array<Pick<BillingSubscriptionRow, 'product_key' | 'status'>>;
 }): ResolvedBillingEntitlements {
 	const currentRole = normalizeStoredRole(input.currentRole);
@@ -96,8 +110,8 @@ export function resolveBillingEntitlements(input: {
 	const resolved: ResolvedBillingEntitlements = {
 		role: preserveAdmin ? 'admin' : 'viewer',
 		userRole: buildUserRoleMirror(preserveAdmin ? 'admin' : 'viewer'),
-		apiPlan: 'viewer',
-		ppiAccess: false
+		apiPlan: normalizeApiPlan(input.currentApiPlan),
+		ppiAccess: input.currentPpiAccess === true
 	};
 
 	for (const subscription of input.subscriptions) {
@@ -185,6 +199,10 @@ export async function syncBillingSubscriptionSnapshotFromStripeSubscription(
 ): Promise<BillingSnapshotSyncResult> {
 	const mapped = mapStripeSubscriptionToBillingSnapshotRows(input);
 
+	if (mapped.unknownPriceIds.length > 0) {
+		throw new BillingCatalogDriftError(mapped.unknownPriceIds);
+	}
+
 	const { data: existingRows, error: existingRowsError } = await supabase
 		.from('billing_subscriptions')
 		.select('stripe_subscription_item_id')
@@ -270,6 +288,8 @@ export async function recomputeUserBillingEntitlements(
 
 	const resolvedEntitlements = resolveBillingEntitlements({
 		currentRole: currentUserRoleRow?.role,
+		currentApiPlan: currentUserRoleRow?.api_plan,
+		currentPpiAccess: currentUserRoleRow?.ppi_access,
 		subscriptions: subscriptions ?? []
 	});
 
