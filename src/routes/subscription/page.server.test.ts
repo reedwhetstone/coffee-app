@@ -68,7 +68,7 @@ function makeLoadInput(
 }
 
 describe('/subscription page server load', () => {
-	it('requests only membership-family Stripe subscription details for management', async () => {
+	it('loads Stripe subscription details for each product family', async () => {
 		const result = (await load(
 			makeLoadInput([
 				{
@@ -81,35 +81,53 @@ describe('/subscription page server load', () => {
 				}
 			])
 		)) as {
-			subscription: null;
 			controlPlane: {
-				membership: {
-					canManageSubscription: boolean;
+				api: {
+					resolvedPlanName: string;
 				};
 			} | null;
 		};
 
 		expect(mockGetStripeCustomerId).toHaveBeenCalledWith('user-123');
-		expect(mockGetSubscriptionDetails).toHaveBeenCalledWith('cus_123', {
+		expect(mockGetSubscriptionDetails).toHaveBeenNthCalledWith(1, 'cus_123', {
 			productFamily: 'membership'
 		});
-		expect(result.subscription).toBeNull();
-		expect(result.controlPlane?.membership.canManageSubscription).toBe(false);
+		expect(mockGetSubscriptionDetails).toHaveBeenNthCalledWith(2, 'cus_123', {
+			productFamily: 'api_plan'
+		});
+		expect(mockGetSubscriptionDetails).toHaveBeenNthCalledWith(3, 'cus_123', {
+			productFamily: 'ppi_addon'
+		});
+		expect(result.controlPlane?.api.resolvedPlanName).toBe('Explorer');
 	});
 
-	it('marks bundled multi-family membership subscriptions as not manageable', async () => {
-		mockGetSubscriptionDetails.mockResolvedValue({
-			id: 'sub_bundle_123',
-			status: 'active',
-			current_period_end: 1_777_600_000,
-			cancel_at_period_end: false,
-			plan: {
-				name: 'Mallard Studio Member',
-				amount: 900,
-				interval: 'month',
-				interval_count: 1
-			}
-		});
+	it('marks bundled multi-family Mallard Studio subscriptions as not manageable', async () => {
+		mockGetSubscriptionDetails
+			.mockResolvedValueOnce({
+				id: 'sub_bundle_123',
+				status: 'active',
+				current_period_end: 1_777_600_000,
+				cancel_at_period_end: false,
+				plan: {
+					name: 'Mallard Studio Member',
+					amount: 900,
+					interval: 'month',
+					interval_count: 1
+				}
+			})
+			.mockResolvedValueOnce({
+				id: 'sub_bundle_123',
+				status: 'active',
+				current_period_end: 1_777_600_000,
+				cancel_at_period_end: false,
+				plan: {
+					name: 'Parchment API',
+					amount: 9900,
+					interval: 'month',
+					interval_count: 1
+				}
+			})
+			.mockResolvedValueOnce(null);
 
 		const result = (await load(
 			makeLoadInput([
@@ -136,10 +154,31 @@ describe('/subscription page server load', () => {
 					canManageSubscription: boolean;
 					managementBlockedReason: string | null;
 				};
+				api: {
+					resolvedPlanName: string;
+				};
 			} | null;
 		};
 
 		expect(result.controlPlane?.membership.canManageSubscription).toBe(false);
-		expect(result.controlPlane?.membership.managementBlockedReason).toContain('also contains API');
+		expect(result.controlPlane?.membership.managementBlockedReason).toContain('Parchment API');
+		expect(result.controlPlane?.api.resolvedPlanName).toBe('Explorer');
+	});
+
+	it('skips Stripe lookups when the user has no Stripe customer id', async () => {
+		mockGetStripeCustomerId.mockResolvedValueOnce(null);
+
+		const result = (await load(makeLoadInput())) as {
+			stripeCustomerId: string | null;
+			controlPlane: {
+				membership: {
+					currentPlan: null;
+				};
+			};
+		};
+
+		expect(result.stripeCustomerId).toBeNull();
+		expect(mockGetSubscriptionDetails).not.toHaveBeenCalled();
+		expect(result.controlPlane.membership.currentPlan).toBeNull();
 	});
 });

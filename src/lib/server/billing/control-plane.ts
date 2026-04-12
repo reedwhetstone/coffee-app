@@ -1,5 +1,10 @@
 import type { SubscriptionDetails } from '$lib/services/stripe';
 import { isBillingSubscriptionActive } from '$lib/server/billing/entitlements';
+import {
+	getBillingCatalogEntry,
+	listBillingCatalogEntries,
+	type BillingCatalogEntry
+} from '$lib/server/billing/catalog';
 import { resolveMembershipSubscriptionManagementState } from '$lib/server/billing/subscription-management';
 import type { UserRole } from '$lib/types/auth.types';
 import type { Database } from '$lib/types/database.types';
@@ -20,47 +25,200 @@ type BillingSubscriptionSnapshot = Pick<
 
 type ControlPlaneTone = 'success' | 'info' | 'warning' | 'muted';
 
+type ControlPlanePeriodEnd = number | string | null;
+
+export interface ControlPlanePlanOption {
+	purchaseKey: BillingCatalogEntry['purchaseKey'];
+	planName: string;
+	priceLabel: string;
+	intervalLabel: string;
+	badge: string | null;
+	ctaLabel: string;
+}
+
+interface ControlPlaneCurrentPlan {
+	name: string;
+	priceLabel: string | null;
+	intervalLabel: string | null;
+	currentPeriodEnd: ControlPlanePeriodEnd;
+	cancelAtPeriodEnd: boolean;
+	stripeStatus: SubscriptionDetails['status'] | null;
+	subscriptionId: string | null;
+}
+
+interface ProductFamilySectionBase {
+	statusLabel: string;
+	tone: ControlPlaneTone;
+	description: string;
+	sourceLabel: string;
+	currentPlan: ControlPlaneCurrentPlan | null;
+}
+
 export interface SubscriptionControlPlaneState {
-	membership: {
+	membership: ProductFamilySectionBase & {
 		hasAccess: boolean;
-		statusLabel: string;
-		tone: ControlPlaneTone;
-		sourceLabel: string;
-		description: string;
 		canManageSubscription: boolean;
 		managementBlockedReason: string | null;
-		stripeStatus: SubscriptionDetails['status'] | null;
-		cancelAtPeriodEnd: boolean;
-		currentPeriodEnd: number | null;
-		planName: string | null;
+		availablePlans: ControlPlanePlanOption[];
 	};
-	api: {
+	api: ProductFamilySectionBase & {
 		plan: ApiPlan;
-		statusLabel: string;
-		tone: ControlPlaneTone;
-		description: string;
-		note: string;
+		resolvedPlanName: string;
+		hasPaidPlan: boolean;
+		upgradePlans: ControlPlanePlanOption[];
+		consoleHref: string;
 	};
-	ppi: {
+	intelligence: ProductFamilySectionBase & {
 		enabled: boolean;
+		availablePlans: ControlPlanePlanOption[];
+	};
+	enterprise: {
 		statusLabel: string;
 		tone: ControlPlaneTone;
 		description: string;
 		note: string;
+		contactHref: string;
 	};
 }
 
-function hasActiveFamilySubscription(
-	subscriptions: BillingSubscriptionSnapshot[],
-	family: BillingSubscriptionSnapshot['product_family']
-): boolean {
-	return subscriptions.some(
-		(subscription) =>
-			subscription.product_family === family && isBillingSubscriptionActive(subscription.status)
-	);
+function getCatalogPriceLabel(entry: BillingCatalogEntry): string {
+	switch (entry.purchaseKey) {
+		case 'membership.monthly':
+			return '$9/month';
+		case 'membership.annual':
+			return '$80/year';
+		case 'api_plan.explorer':
+			return 'Free';
+		case 'api_plan.monthly':
+			return '$99/month';
+		case 'ppi_addon.monthly':
+			return '$39/month';
+		case 'ppi_addon.annual':
+			return '$350/year';
+		default:
+			return entry.publicPlanName;
+	}
 }
 
-function membershipSourceLabel(input: {
+function getIntervalLabel(entry: BillingCatalogEntry): string {
+	switch (entry.interval) {
+		case 'month':
+			return 'Monthly';
+		case 'year':
+			return 'Annual';
+		case 'default':
+			return 'Included';
+		default:
+			return 'Custom';
+	}
+}
+
+function formatStripePriceLabel(plan: SubscriptionDetails['plan'] | undefined): string | null {
+	if (!plan?.amount || !plan.interval) {
+		return null;
+	}
+
+	return `$${plan.amount / 100}/${plan.interval}`;
+}
+
+function buildPlanOption(entry: BillingCatalogEntry): ControlPlanePlanOption {
+	return {
+		purchaseKey: entry.purchaseKey,
+		planName: entry.publicPlanName,
+		priceLabel: getCatalogPriceLabel(entry),
+		intervalLabel: getIntervalLabel(entry),
+		badge:
+			entry.purchaseKey === 'membership.annual'
+				? 'Save $28/year'
+				: entry.purchaseKey === 'ppi_addon.annual'
+					? 'Best value'
+					: null,
+		ctaLabel: entry.ctaLabel ?? `Choose ${entry.publicPlanName}`
+	};
+}
+
+function buildAvailablePlans(
+	family: BillingCatalogEntry['productFamily']
+): ControlPlanePlanOption[] {
+	const intervalOrder: Record<BillingCatalogEntry['interval'], number> = {
+		default: 0,
+		month: 1,
+		year: 2,
+		custom: 3
+	};
+
+	return listBillingCatalogEntries()
+		.filter(
+			(entry) =>
+				entry.productFamily === family &&
+				entry.showOnSubscription &&
+				entry.selfServe &&
+				entry.billingKind === 'stripe'
+		)
+		.sort((a, b) => intervalOrder[a.interval] - intervalOrder[b.interval])
+		.map((entry) => buildPlanOption(entry));
+}
+
+function getRelevantFamilySnapshot(
+	subscriptions: BillingSubscriptionSnapshot[],
+	family: BillingCatalogEntry['productFamily']
+): BillingSubscriptionSnapshot | null {
+	const matching = subscriptions.filter((subscription) => subscription.product_family === family);
+	if (matching.length === 0) {
+		return null;
+	}
+
+	const ranked = [...matching].sort((a, b) => {
+		const aActive = isBillingSubscriptionActive(a.status) ? 1 : 0;
+		const bActive = isBillingSubscriptionActive(b.status) ? 1 : 0;
+		if (aActive !== bActive) {
+			return bActive - aActive;
+		}
+
+		const aTime = a.current_period_end ? new Date(a.current_period_end).getTime() : 0;
+		const bTime = b.current_period_end ? new Date(b.current_period_end).getTime() : 0;
+		return bTime - aTime;
+	});
+
+	return ranked[0] ?? null;
+}
+
+function buildCurrentPlan(input: {
+	stripeSubscription: SubscriptionDetails | null;
+	snapshot: BillingSubscriptionSnapshot | null;
+	fallbackEntry: BillingCatalogEntry | null;
+}): ControlPlaneCurrentPlan | null {
+	const { stripeSubscription, snapshot, fallbackEntry } = input;
+	if (!stripeSubscription && !snapshot && !fallbackEntry) {
+		return null;
+	}
+
+	return {
+		name:
+			stripeSubscription?.plan?.name ||
+			fallbackEntry?.publicPlanName ||
+			fallbackEntry?.planName ||
+			'Plan',
+		priceLabel:
+			formatStripePriceLabel(stripeSubscription?.plan) ||
+			(fallbackEntry ? getCatalogPriceLabel(fallbackEntry) : null),
+		intervalLabel: stripeSubscription?.plan?.interval
+			? stripeSubscription.plan.interval === 'year'
+				? 'Annual'
+				: 'Monthly'
+			: fallbackEntry
+				? getIntervalLabel(fallbackEntry)
+				: null,
+		currentPeriodEnd:
+			stripeSubscription?.current_period_end ?? snapshot?.current_period_end ?? null,
+		cancelAtPeriodEnd:
+			stripeSubscription?.cancel_at_period_end ?? snapshot?.cancel_at_period_end ?? false,
+		stripeStatus: stripeSubscription?.status ?? null,
+		subscriptionId: stripeSubscription?.id ?? snapshot?.stripe_subscription_id ?? null
+	};
+}
+
+function buildMembershipSourceLabel(input: {
 	role: UserRole;
 	hasActiveMembershipSnapshot: boolean;
 	stripeSubscription: SubscriptionDetails | null;
@@ -70,22 +228,62 @@ function membershipSourceLabel(input: {
 	}
 
 	if (input.hasActiveMembershipSnapshot && input.stripeSubscription?.cancel_at_period_end) {
-		return 'Backed by an active Stripe membership that is set to cancel at period end.';
+		return 'Backed by a Mallard Studio Stripe subscription that is set to cancel at period end.';
 	}
 
 	if (input.hasActiveMembershipSnapshot) {
-		return 'Backed by your reconciled Stripe membership snapshot.';
+		return 'Backed by your reconciled Mallard Studio billing state.';
 	}
 
 	if (input.role === 'member') {
-		return 'Your resolved entitlements still grant membership access.';
+		return 'Resolved from stored entitlements even though no active Mallard Studio Stripe subscription is currently attached.';
 	}
 
-	if (input.stripeSubscription) {
-		return `Latest Stripe subscription status: ${input.stripeSubscription.status}.`;
+	return 'You are currently on the free viewer baseline for Mallard Studio.';
+}
+
+function buildApiSourceLabel(input: {
+	apiPlan: ApiPlan;
+	hasActiveApiSnapshot: boolean;
+	stripeSubscription: SubscriptionDetails | null;
+}): string {
+	if (input.apiPlan === 'enterprise') {
+		return 'Enterprise API access is sales-led and managed outside normal self-serve checkout.';
 	}
 
-	return 'No active membership entitlement is currently on file.';
+	if (input.apiPlan === 'member' && input.stripeSubscription?.cancel_at_period_end) {
+		return 'Backed by a paid Parchment API subscription that is set to cancel at period end.';
+	}
+
+	if (input.apiPlan === 'member' && input.hasActiveApiSnapshot) {
+		return 'Backed by your paid Parchment API subscription.';
+	}
+
+	if (input.apiPlan === 'member') {
+		return 'Resolved from stored API entitlements.';
+	}
+
+	return 'Explorer is your free API baseline and does not require a Stripe subscription.';
+}
+
+function buildIntelligenceSourceLabel(input: {
+	ppiAccess: boolean;
+	hasActiveSnapshot: boolean;
+	stripeSubscription: SubscriptionDetails | null;
+}): string {
+	if (input.ppiAccess && input.stripeSubscription?.cancel_at_period_end) {
+		return 'Backed by a Parchment Intelligence subscription that is set to cancel at period end.';
+	}
+
+	if (input.ppiAccess && input.hasActiveSnapshot) {
+		return 'Backed by your Parchment Intelligence billing state.';
+	}
+
+	if (input.ppiAccess) {
+		return 'Resolved from stored intelligence entitlements.';
+	}
+
+	return 'You still keep the limited free analytics floor until you unlock Parchment Intelligence.';
 }
 
 export function buildSubscriptionControlPlaneState(input: {
@@ -93,90 +291,160 @@ export function buildSubscriptionControlPlaneState(input: {
 	apiPlan: ApiPlan;
 	ppiAccess: boolean;
 	billingSubscriptions?: BillingSubscriptionSnapshot[] | null;
-	stripeSubscription?: SubscriptionDetails | null;
+	stripeSubscriptions?: {
+		membership?: SubscriptionDetails | null;
+		api?: SubscriptionDetails | null;
+		intelligence?: SubscriptionDetails | null;
+	} | null;
 }): SubscriptionControlPlaneState {
 	const billingSubscriptions = input.billingSubscriptions ?? [];
-	const stripeSubscription = input.stripeSubscription ?? null;
-	const hasActiveMembershipSnapshot = hasActiveFamilySubscription(
-		billingSubscriptions,
-		'membership'
-	);
+	const membershipStripeSubscription = input.stripeSubscriptions?.membership ?? null;
+	const apiStripeSubscription = input.stripeSubscriptions?.api ?? null;
+	const intelligenceStripeSubscription = input.stripeSubscriptions?.intelligence ?? null;
+
+	const membershipSnapshot = getRelevantFamilySnapshot(billingSubscriptions, 'membership');
+	const apiSnapshot = getRelevantFamilySnapshot(billingSubscriptions, 'api_plan');
+	const intelligenceSnapshot = getRelevantFamilySnapshot(billingSubscriptions, 'ppi_addon');
+
+	const membershipCatalogEntry = membershipSnapshot
+		? getBillingCatalogEntry(membershipSnapshot.product_key)
+		: null;
+	const apiCatalogEntry = apiSnapshot ? getBillingCatalogEntry(apiSnapshot.product_key) : null;
+	const intelligenceCatalogEntry = intelligenceSnapshot
+		? getBillingCatalogEntry(intelligenceSnapshot.product_key)
+		: null;
+
 	const membershipManagementState = resolveMembershipSubscriptionManagementState({
-		subscriptionId: stripeSubscription?.id,
+		subscriptionId: membershipStripeSubscription?.id,
 		billingSubscriptions
 	});
 	const membershipHasAccess = input.role === 'member' || input.role === 'admin';
-
 	const membershipTone: ControlPlaneTone =
 		input.role === 'admin'
 			? 'info'
 			: membershipHasAccess
-				? stripeSubscription?.cancel_at_period_end
+				? membershipStripeSubscription?.cancel_at_period_end
 					? 'warning'
 					: 'success'
 				: 'muted';
 
-	const membershipStatusLabel =
-		input.role === 'admin'
-			? 'Admin access'
-			: membershipHasAccess
-				? stripeSubscription?.cancel_at_period_end
-					? 'Membership active, canceling at period end'
-					: 'Membership active'
-				: 'Free viewer access';
+	const apiHasPaidPlan = input.apiPlan === 'member' || input.apiPlan === 'enterprise';
+	const apiTone: ControlPlaneTone =
+		input.apiPlan === 'enterprise' ? 'info' : input.apiPlan === 'member' ? 'success' : 'muted';
 
-	const apiTone: ControlPlaneTone = input.apiPlan === 'viewer' ? 'muted' : 'success';
-	const apiStatusLabel =
-		input.apiPlan === 'enterprise'
-			? 'Enterprise API access'
-			: input.apiPlan === 'member'
-				? 'Member API access'
-				: 'Viewer API access';
-
-	const ppiTone: ControlPlaneTone = input.ppiAccess ? 'success' : 'muted';
+	const intelligenceTone: ControlPlaneTone = input.ppiAccess
+		? intelligenceStripeSubscription?.cancel_at_period_end
+			? 'warning'
+			: 'success'
+		: 'muted';
 
 	return {
 		membership: {
 			hasAccess: membershipHasAccess,
-			statusLabel: membershipStatusLabel,
+			statusLabel:
+				input.role === 'admin'
+					? 'Admin access'
+					: membershipHasAccess
+						? membershipStripeSubscription?.cancel_at_period_end
+							? 'Mallard Studio active, canceling at period end'
+							: 'Mallard Studio active'
+						: 'Viewer baseline',
 			tone: membershipTone,
-			sourceLabel: membershipSourceLabel({
-				role: input.role,
-				hasActiveMembershipSnapshot,
-				stripeSubscription
-			}),
 			description: membershipHasAccess
-				? 'Membership unlocks roast management and the paid core app surfaces.'
-				: 'Upgrade to membership to unlock roast management, full concierge access, inventory tracking, and premium journaling tools.',
-			canManageSubscription: Boolean(stripeSubscription?.id) && membershipManagementState.canManage,
+				? 'Mallard Studio gives you the paid workflow layer for roasting, inventory, tasting, profit visibility, chat, and CLI-backed operator workflows.'
+				: 'Upgrade to Mallard Studio Member to unlock the full operator workflow surface for roasting, inventory, tasting, profit, chat, and CLI workflows.',
+			sourceLabel: buildMembershipSourceLabel({
+				role: input.role,
+				hasActiveMembershipSnapshot: Boolean(
+					membershipSnapshot && isBillingSubscriptionActive(membershipSnapshot.status)
+				),
+				stripeSubscription: membershipStripeSubscription
+			}),
+			currentPlan: buildCurrentPlan({
+				stripeSubscription: membershipStripeSubscription,
+				snapshot: membershipSnapshot,
+				fallbackEntry: membershipCatalogEntry
+			}),
+			canManageSubscription:
+				Boolean(membershipStripeSubscription?.id) && membershipManagementState.canManage,
 			managementBlockedReason: membershipManagementState.hasBlockingOtherFamilies
-				? 'Membership cancel and resume are unavailable here when that Stripe subscription also contains API or Parchment Intelligence products.'
+				? 'Mallard Studio cancel and resume are unavailable here when that Stripe subscription also contains Parchment API or Parchment Intelligence products.'
 				: null,
-			stripeStatus: stripeSubscription?.status ?? null,
-			cancelAtPeriodEnd: stripeSubscription?.cancel_at_period_end ?? false,
-			currentPeriodEnd: stripeSubscription?.current_period_end ?? null,
-			planName: stripeSubscription?.plan?.name ?? null
+			availablePlans: buildAvailablePlans('membership')
 		},
 		api: {
 			plan: input.apiPlan,
-			statusLabel: apiStatusLabel,
+			resolvedPlanName:
+				input.apiPlan === 'enterprise'
+					? 'Enterprise'
+					: input.apiPlan === 'member'
+						? 'Parchment API'
+						: 'Explorer',
+			hasPaidPlan: apiHasPaidPlan,
+			statusLabel:
+				input.apiPlan === 'enterprise'
+					? 'Enterprise access'
+					: input.apiPlan === 'member'
+						? apiStripeSubscription?.cancel_at_period_end
+							? 'Paid API active, canceling at period end'
+							: 'Paid API active'
+						: 'Explorer baseline active',
 			tone: apiTone,
 			description:
 				input.apiPlan === 'enterprise'
-					? 'Your account currently resolves to the highest API entitlement tier.'
+					? 'Your account resolves to enterprise-grade Parchment API access for custom integrations and commercial support.'
 					: input.apiPlan === 'member'
-						? 'Your account currently resolves to member-level API access.'
-						: 'Your account currently resolves to the baseline viewer API plan.',
-			note: 'Separate API checkout is not live yet. This section reflects your resolved entitlement state only.'
+						? 'Your account currently has the paid Parchment API plan for production-ready coffee data access.'
+						: 'Explorer is the free baseline for Parchment API. Upgrade when you need the paid production tier.',
+			sourceLabel: buildApiSourceLabel({
+				apiPlan: input.apiPlan,
+				hasActiveApiSnapshot: Boolean(
+					apiSnapshot && isBillingSubscriptionActive(apiSnapshot.status)
+				),
+				stripeSubscription: apiStripeSubscription
+			}),
+			currentPlan: buildCurrentPlan({
+				stripeSubscription: apiStripeSubscription,
+				snapshot: apiSnapshot,
+				fallbackEntry:
+					apiCatalogEntry ??
+					(input.apiPlan === 'viewer' ? getBillingCatalogEntry('api_plan.explorer') : null)
+			}),
+			upgradePlans: buildAvailablePlans('api_plan'),
+			consoleHref: '/api-dashboard'
 		},
-		ppi: {
+		intelligence: {
 			enabled: input.ppiAccess,
-			statusLabel: input.ppiAccess ? 'PPI access enabled' : 'PPI access not enabled',
-			tone: ppiTone,
+			statusLabel: input.ppiAccess
+				? intelligenceStripeSubscription?.cancel_at_period_end
+					? 'Intelligence active, canceling at period end'
+					: 'Intelligence active'
+				: 'Locked',
+			tone: intelligenceTone,
 			description: input.ppiAccess
-				? 'Your account currently includes the richer analytics and product intelligence surfaces.'
-				: 'You still keep the limited free viewer chart experience, but richer PPI analytics are not enabled on this account.',
-			note: 'PPI is not yet sold as a separate checkout flow here. This section is status and guidance for the current entitlement model.'
+				? 'Parchment Intelligence unlocks the full analytics and market-intelligence layer across supplier, origin, processing, and pricing views.'
+				: 'Unlock Parchment Intelligence for the full analytics and market-intelligence layer beyond the limited free floor.',
+			sourceLabel: buildIntelligenceSourceLabel({
+				ppiAccess: input.ppiAccess,
+				hasActiveSnapshot: Boolean(
+					intelligenceSnapshot && isBillingSubscriptionActive(intelligenceSnapshot.status)
+				),
+				stripeSubscription: intelligenceStripeSubscription
+			}),
+			currentPlan: buildCurrentPlan({
+				stripeSubscription: intelligenceStripeSubscription,
+				snapshot: intelligenceSnapshot,
+				fallbackEntry: intelligenceCatalogEntry
+			}),
+			availablePlans: buildAvailablePlans('ppi_addon')
+		},
+		enterprise: {
+			statusLabel: 'Contact sales',
+			tone: 'info',
+			description:
+				'Enterprise and custom integrations stay contact-only here. Use this path for embedded analytics, custom delivery, procurement, SLAs, or broader commercial support.',
+			note: 'Enterprise is visible on the control plane, but it is not a self-serve checkout product.',
+			contactHref: '/contact'
 		}
 	};
 }
