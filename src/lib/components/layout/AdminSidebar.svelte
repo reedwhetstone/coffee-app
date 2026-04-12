@@ -124,7 +124,7 @@
 							d="M13 10V3L4 14h7v7l9-11h-7z"
 						></path>
 					</svg>
-					Fix Role Issues
+					Fix Entitlement Issues
 				</button>
 				<button
 					onclick={() => handleNavigation('/admin#system-logs')}

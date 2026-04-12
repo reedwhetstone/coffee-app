@@ -293,11 +293,17 @@ export async function recomputeUserBillingEntitlements(
 		subscriptions: subscriptions ?? []
 	});
 
+	const storedUserRole =
+		Array.isArray(currentUserRoleRow?.user_role) && currentUserRoleRow.user_role.length > 0
+			? currentUserRoleRow.user_role
+			: [];
+
 	const changed =
-		previousEntitlements.role !== resolvedEntitlements.role ||
-		previousEntitlements.apiPlan !== resolvedEntitlements.apiPlan ||
-		previousEntitlements.ppiAccess !== resolvedEntitlements.ppiAccess ||
-		!arraysEqual(previousEntitlements.userRole, resolvedEntitlements.userRole);
+		!currentUserRoleRow ||
+		currentUserRoleRow.role !== resolvedEntitlements.role ||
+		currentUserRoleRow.api_plan !== resolvedEntitlements.apiPlan ||
+		currentUserRoleRow.ppi_access !== resolvedEntitlements.ppiAccess ||
+		!arraysEqual(storedUserRole, resolvedEntitlements.userRole);
 
 	if (!currentUserRoleRow || changed) {
 		const { error: upsertError } = await supabase.from('user_roles').upsert(

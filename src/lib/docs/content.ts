@@ -1069,10 +1069,10 @@ const docsPages: DocsPage[] = [
 					headers: ['Route', 'Methods', 'Auth', 'Purpose'],
 					rows: [
 						[
-							'/api/admin/stripe-role-discrepancies',
+							'/api/admin/billing-entitlement-discrepancies',
 							'GET POST',
 							'Admin session',
-							'Audit Stripe versus role mismatches and manually repair roles through GET and POST flows'
+							'Audit billing entitlement drift versus local billing snapshots and trigger safe recompute-based repairs'
 						],
 						[
 							'/api/admin/backfill-milestones',
@@ -1085,7 +1085,7 @@ const docsPages: DocsPage[] = [
 				callout: {
 					tone: 'warning',
 					title: 'Admin namespace does not mean uniform admin enforcement',
-					body: 'Today, /api/admin/stripe-role-discrepancies uses centralized admin validation, but /api/admin/backfill-milestones currently checks for a member role rather than admin. Keep docs truthful about the current behavior and treat that mismatch as implementation debt, not documentation ambiguity.'
+					body: 'Today, /api/admin/billing-entitlement-discrepancies uses centralized admin validation, but /api/admin/backfill-milestones currently checks for a member role rather than admin. Keep docs truthful about the current behavior and treat that mismatch as implementation debt, not documentation ambiguity.'
 				}
 			},
 			{
