@@ -1,4 +1,3 @@
-import { isBillingSubscriptionActive } from '$lib/server/billing/entitlements';
 import type { Database } from '$lib/types/database.types';
 
 type BillingSubscriptionRow = Database['public']['Tables']['billing_subscriptions']['Row'];
@@ -7,6 +6,18 @@ export type MembershipManagementSnapshot = Pick<
 	BillingSubscriptionRow,
 	'stripe_subscription_id' | 'product_family' | 'status'
 >;
+
+const BUNDLED_MEMBERSHIP_MANAGEMENT_BLOCKING_STATUSES = new Set([
+	'active',
+	'trialing',
+	'past_due',
+	'incomplete',
+	'unpaid'
+]);
+
+function blocksBundledMembershipManagement(status: string): boolean {
+	return BUNDLED_MEMBERSHIP_MANAGEMENT_BLOCKING_STATUSES.has(status);
+}
 
 export function resolveMembershipSubscriptionManagementState(input: {
 	subscriptionId: string | null | undefined;
@@ -20,16 +31,16 @@ export function resolveMembershipSubscriptionManagementState(input: {
 	const hasMembership = matchingRows.some(
 		(subscription) => subscription.product_family === 'membership'
 	);
-	const hasActiveOtherFamilies = matchingRows.some(
+	const hasBlockingOtherFamilies = matchingRows.some(
 		(subscription) =>
 			subscription.product_family !== 'membership' &&
-			isBillingSubscriptionActive(subscription.status)
+			blocksBundledMembershipManagement(subscription.status)
 	);
 
 	return {
 		hasMatchingRows: matchingRows.length > 0,
 		hasMembership,
-		hasActiveOtherFamilies,
-		canManage: hasMembership && !hasActiveOtherFamilies
+		hasBlockingOtherFamilies,
+		canManage: hasMembership && !hasBlockingOtherFamilies
 	};
 }

@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		if (managementState.hasActiveOtherFamilies) {
+		if (managementState.hasBlockingOtherFamilies) {
 			return json(
 				{
 					error:

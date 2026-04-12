@@ -65,32 +65,35 @@ function makeEvent(
 }
 
 describe('/api/stripe/resume-subscription', () => {
-	it('blocks bundled multi-family membership resume so other products are not resumed/canceled as a side effect', async () => {
-		const response = await POST(
-			makeEvent(
-				{ subscriptionId: 'sub_bundle_123' },
-				{
-					billingSubscriptions: [
-						{
-							stripe_subscription_id: 'sub_bundle_123',
-							product_family: 'membership',
-							status: 'active'
-						},
-						{
-							stripe_subscription_id: 'sub_bundle_123',
-							product_family: 'ppi_addon',
-							status: 'active'
-						}
-					]
-				}
-			)
-		);
+	it.each(['active', 'past_due', 'incomplete', 'unpaid'])(
+		'blocks bundled multi-family membership resume when another bundled product is %s',
+		async (status) => {
+			const response = await POST(
+				makeEvent(
+					{ subscriptionId: 'sub_bundle_123' },
+					{
+						billingSubscriptions: [
+							{
+								stripe_subscription_id: 'sub_bundle_123',
+								product_family: 'membership',
+								status
+							},
+							{
+								stripe_subscription_id: 'sub_bundle_123',
+								product_family: 'ppi_addon',
+								status
+							}
+						]
+					}
+				)
+			);
 
-		expect(response.status).toBe(409);
-		expect(await response.json()).toEqual({
-			error:
-				'Membership resume is unavailable for bundled subscriptions that also include API or Parchment Intelligence products.'
-		});
-		expect(mockResumeSubscription).not.toHaveBeenCalled();
-	});
+			expect(response.status).toBe(409);
+			expect(await response.json()).toEqual({
+				error:
+					'Membership resume is unavailable for bundled subscriptions that also include API or Parchment Intelligence products.'
+			});
+			expect(mockResumeSubscription).not.toHaveBeenCalled();
+		}
+	);
 });

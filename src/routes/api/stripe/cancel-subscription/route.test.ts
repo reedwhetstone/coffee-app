@@ -65,32 +65,35 @@ function makeEvent(
 }
 
 describe('/api/stripe/cancel-subscription', () => {
-	it('blocks bundled multi-family membership cancellation so other products are not canceled', async () => {
-		const response = await POST(
-			makeEvent(
-				{ subscriptionId: 'sub_bundle_123' },
-				{
-					billingSubscriptions: [
-						{
-							stripe_subscription_id: 'sub_bundle_123',
-							product_family: 'membership',
-							status: 'active'
-						},
-						{
-							stripe_subscription_id: 'sub_bundle_123',
-							product_family: 'api_plan',
-							status: 'active'
-						}
-					]
-				}
-			)
-		);
+	it.each(['active', 'past_due', 'incomplete', 'unpaid'])(
+		'blocks bundled multi-family membership cancellation when another bundled product is %s',
+		async (status) => {
+			const response = await POST(
+				makeEvent(
+					{ subscriptionId: 'sub_bundle_123' },
+					{
+						billingSubscriptions: [
+							{
+								stripe_subscription_id: 'sub_bundle_123',
+								product_family: 'membership',
+								status
+							},
+							{
+								stripe_subscription_id: 'sub_bundle_123',
+								product_family: 'api_plan',
+								status
+							}
+						]
+					}
+				)
+			);
 
-		expect(response.status).toBe(409);
-		expect(await response.json()).toEqual({
-			error:
-				'Membership cancelation is unavailable for bundled subscriptions that also include API or Parchment Intelligence products.'
-		});
-		expect(mockCancelSubscription).not.toHaveBeenCalled();
-	});
+			expect(response.status).toBe(409);
+			expect(await response.json()).toEqual({
+				error:
+					'Membership cancelation is unavailable for bundled subscriptions that also include API or Parchment Intelligence products.'
+			});
+			expect(mockCancelSubscription).not.toHaveBeenCalled();
+		}
+	);
 });

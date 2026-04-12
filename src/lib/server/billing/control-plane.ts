@@ -149,7 +149,7 @@ export function buildSubscriptionControlPlaneState(input: {
 				? 'Membership unlocks roast management and the paid core app surfaces.'
 				: 'Upgrade to membership to unlock roast management, full concierge access, inventory tracking, and premium journaling tools.',
 			canManageSubscription: Boolean(stripeSubscription?.id) && membershipManagementState.canManage,
-			managementBlockedReason: membershipManagementState.hasActiveOtherFamilies
+			managementBlockedReason: membershipManagementState.hasBlockingOtherFamilies
 				? 'Membership cancel and resume are unavailable here when that Stripe subscription also contains API or Parchment Intelligence products.'
 				: null,
 			stripeStatus: stripeSubscription?.status ?? null,
