@@ -1,14 +1,25 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createCheckoutSession } from '$lib/services/stripe';
+import { createCheckoutSession, getStripeCustomerId } from '$lib/services/stripe';
 import { getBillingCatalogEntry, type BillingCatalogEntry } from '$lib/server/billing/catalog';
-import { isBillingSubscriptionActive } from '$lib/server/billing/entitlements';
 
 type ExistingBillingSubscription = {
 	product_family: string;
 	product_key: string;
 	status: string;
 };
+
+const CHECKOUT_BLOCKING_SUBSCRIPTION_STATUSES = new Set([
+	'active',
+	'trialing',
+	'past_due',
+	'incomplete',
+	'unpaid'
+]);
+
+function blocksSameFamilyCheckout(status: string): boolean {
+	return CHECKOUT_BLOCKING_SUBSCRIPTION_STATUSES.has(status);
+}
 
 function normalizeRequestedPurchaseKeys(requestBody: unknown): string[] {
 	if (!requestBody || typeof requestBody !== 'object') {
@@ -86,7 +97,7 @@ function getExistingFamilyConflict(input: {
 		const hasActiveSameFamilySubscription = input.existingSubscriptions.some(
 			(subscription) =>
 				subscription.product_family === entry.productFamily &&
-				isBillingSubscriptionActive(subscription.status)
+				blocksSameFamilyCheckout(subscription.status)
 		);
 
 		if (hasActiveSameFamilySubscription) {
@@ -162,13 +173,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const origin = request.headers.get('origin') || new URL(request.url).origin;
+		const stripeCustomerId = await getStripeCustomerId(user.id);
 		const stripePriceIds = requestedCatalogEntries
 			.map((entry) => entry.stripePriceId)
 			.filter((stripePriceId): stripePriceId is string => Boolean(stripePriceId));
 
 		const clientSecret = await createCheckoutSession(
 			stripePriceIds,
-			null,
+			stripeCustomerId,
 			user.id,
 			user.email || '',
 			origin

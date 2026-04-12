@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BILLING_PURCHASE_KEYS } from '$lib/billing/purchaseKeys';
 
 const mockCreateCheckoutSession = vi.fn();
+const mockGetStripeCustomerId = vi.fn();
 
 vi.mock('$lib/services/stripe', () => ({
-	createCheckoutSession: mockCreateCheckoutSession
+	createCheckoutSession: mockCreateCheckoutSession,
+	getStripeCustomerId: mockGetStripeCustomerId
 }));
 
 let POST: typeof import('./+server').POST;
@@ -15,6 +17,7 @@ beforeEach(async () => {
 	vi.clearAllMocks();
 	({ POST } = await import('./+server'));
 	mockCreateCheckoutSession.mockResolvedValue('cs_test_secret');
+	mockGetStripeCustomerId.mockResolvedValue(null);
 });
 
 function createSupabaseMock(
@@ -145,6 +148,60 @@ describe('/api/stripe/create-checkout-session', () => {
 		expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
 	});
 
+	it.each(['past_due', 'incomplete', 'unpaid'])(
+		'rejects conflicting same-family purchases when the existing subscription is %s',
+		async (status) => {
+			const response = await POST(
+				makeEvent(
+					{ purchaseKeys: [BILLING_PURCHASE_KEYS.ppiAddonAnnual] },
+					{
+						existingSubscriptions: [
+							{
+								product_family: 'ppi_addon',
+								product_key: BILLING_PURCHASE_KEYS.ppiAddonMonthly,
+								status
+							}
+						]
+					}
+				)
+			);
+
+			expect(response.status).toBe(409);
+			expect(await response.json()).toEqual({
+				error:
+					'You already have an active Parchment Intelligence subscription. Use subscription management to change intervals.'
+			});
+			expect(mockCreateCheckoutSession).not.toHaveBeenCalled();
+		}
+	);
+
+	it('allows a same-family purchase when the existing subscription is terminal', async () => {
+		const response = await POST(
+			makeEvent(
+				{ purchaseKeys: [BILLING_PURCHASE_KEYS.membershipMonthly] },
+				{
+					existingSubscriptions: [
+						{
+							product_family: 'membership',
+							product_key: BILLING_PURCHASE_KEYS.membershipAnnual,
+							status: 'canceled'
+						}
+					]
+				}
+			)
+		);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ clientSecret: 'cs_test_secret' });
+		expect(mockCreateCheckoutSession).toHaveBeenCalledWith(
+			['price_1RgGYuKwI9NkGqAnm4oiHpbx'],
+			null,
+			'user-123',
+			'viewer@example.com',
+			'https://app.test'
+		);
+	});
+
 	it('allows cross-family purchases and maps purchase keys to Stripe price IDs', async () => {
 		const response = await POST(
 			makeEvent({
@@ -192,6 +249,24 @@ describe('/api/stripe/create-checkout-session', () => {
 		expect(mockCreateCheckoutSession).toHaveBeenCalledWith(
 			['price_1TLTecKwI9NkGqAn07hkozWj'],
 			null,
+			'user-123',
+			'viewer@example.com',
+			'https://app.test'
+		);
+	});
+
+	it('reuses an existing Stripe customer mapping during checkout', async () => {
+		mockGetStripeCustomerId.mockResolvedValue('cus_existing_123');
+
+		const response = await POST(
+			makeEvent({ purchaseKeys: [BILLING_PURCHASE_KEYS.apiPlanMonthly] })
+		);
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ clientSecret: 'cs_test_secret' });
+		expect(mockCreateCheckoutSession).toHaveBeenCalledWith(
+			['price_1TLTecKwI9NkGqAn07hkozWj'],
+			'cus_existing_123',
 			'user-123',
 			'viewer@example.com',
 			'https://app.test'

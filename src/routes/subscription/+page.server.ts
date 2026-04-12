@@ -24,7 +24,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	let subscription = null;
 	if (stripeCustomerId) {
-		subscription = await getSubscriptionDetails(stripeCustomerId);
+		subscription = await getSubscriptionDetails(stripeCustomerId, {
+			productFamily: 'membership'
+		});
 	}
 
 	const { data: billingSubscriptions, error: billingSubscriptionsError } = await locals.supabase
