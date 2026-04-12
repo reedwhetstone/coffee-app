@@ -145,6 +145,104 @@ describe('subscription control plane state', () => {
 		}
 	);
 
+	it('elevates API and intelligence ownership from active family billing state when stored entitlements are stale', () => {
+		const state = buildSubscriptionControlPlaneState({
+			role: 'viewer',
+			apiPlan: 'viewer',
+			ppiAccess: false,
+			billingSubscriptions: [
+				{
+					stripe_subscription_id: 'sub_api_456',
+					product_family: 'api_plan',
+					product_key: 'api_plan.monthly',
+					status: 'active',
+					cancel_at_period_end: false,
+					current_period_end: '2026-05-01T00:00:00.000Z'
+				}
+			],
+			stripeSubscriptions: {
+				membership: null,
+				api: null,
+				intelligence: {
+					id: 'sub_ppi_456',
+					status: 'active',
+					current_period_end: 1_777_600_000,
+					cancel_at_period_end: false,
+					plan: {
+						name: 'Parchment Intelligence',
+						amount: 3900,
+						interval: 'month',
+						interval_count: 1
+					}
+				}
+			}
+		});
+
+		expect(state.api).toMatchObject({
+			plan: 'member',
+			resolvedPlanName: 'Parchment API',
+			statusLabel: 'Paid API active'
+		});
+		expect(state.api.currentPlan).toMatchObject({
+			name: 'Parchment API',
+			priceLabel: '$99/month'
+		});
+		expect(state.intelligence).toMatchObject({
+			enabled: true,
+			statusLabel: 'Intelligence active'
+		});
+		expect(state.intelligence.currentPlan).toMatchObject({
+			name: 'Parchment Intelligence',
+			priceLabel: '$39/month'
+		});
+	});
+
+	it('does not surface terminal family snapshots as current paid plans', () => {
+		const state = buildSubscriptionControlPlaneState({
+			role: 'viewer',
+			apiPlan: 'viewer',
+			ppiAccess: false,
+			billingSubscriptions: [
+				{
+					stripe_subscription_id: 'sub_membership_old',
+					product_family: 'membership',
+					product_key: 'membership.monthly',
+					status: 'canceled',
+					cancel_at_period_end: false,
+					current_period_end: '2026-05-01T00:00:00.000Z'
+				},
+				{
+					stripe_subscription_id: 'sub_api_old',
+					product_family: 'api_plan',
+					product_key: 'api_plan.monthly',
+					status: 'canceled',
+					cancel_at_period_end: false,
+					current_period_end: '2026-05-01T00:00:00.000Z'
+				},
+				{
+					stripe_subscription_id: 'sub_ppi_old',
+					product_family: 'ppi_addon',
+					product_key: 'ppi_addon.annual',
+					status: 'canceled',
+					cancel_at_period_end: false,
+					current_period_end: '2027-04-01T00:00:00.000Z'
+				}
+			],
+			stripeSubscriptions: {
+				membership: null,
+				api: null,
+				intelligence: null
+			}
+		});
+
+		expect(state.membership.currentPlan).toBeNull();
+		expect(state.api.currentPlan).toMatchObject({
+			name: 'Explorer',
+			priceLabel: 'Free'
+		});
+		expect(state.intelligence.currentPlan).toBeNull();
+	});
+
 	it('shows a paid API user and active intelligence user as separate product families', () => {
 		const state = buildSubscriptionControlPlaneState({
 			role: 'viewer',

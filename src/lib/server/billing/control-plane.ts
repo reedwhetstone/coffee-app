@@ -27,6 +27,14 @@ type ControlPlaneTone = 'success' | 'info' | 'warning' | 'muted';
 
 type ControlPlanePeriodEnd = number | string | null;
 
+const CURRENT_OWNERSHIP_STATUSES = new Set([
+	'active',
+	'trialing',
+	'past_due',
+	'incomplete',
+	'unpaid'
+]);
+
 export interface ControlPlanePlanOption {
 	purchaseKey: BillingCatalogEntry['purchaseKey'];
 	planName: string;
@@ -159,11 +167,22 @@ function buildAvailablePlans(
 		.map((entry) => buildPlanOption(entry));
 }
 
+function hasCurrentOwnershipStatus(status: string | null | undefined): boolean {
+	return Boolean(status && CURRENT_OWNERSHIP_STATUSES.has(status));
+}
+
+function hasCurrentStripeOwnership(subscription: SubscriptionDetails | null): boolean {
+	return Boolean(subscription && hasCurrentOwnershipStatus(subscription.status));
+}
+
 function getRelevantFamilySnapshot(
 	subscriptions: BillingSubscriptionSnapshot[],
 	family: BillingCatalogEntry['productFamily']
 ): BillingSubscriptionSnapshot | null {
-	const matching = subscriptions.filter((subscription) => subscription.product_family === family);
+	const matching = subscriptions.filter(
+		(subscription) =>
+			subscription.product_family === family && hasCurrentOwnershipStatus(subscription.status)
+	);
 	if (matching.length === 0) {
 		return null;
 	}
@@ -188,7 +207,10 @@ function buildCurrentPlan(input: {
 	snapshot: BillingSubscriptionSnapshot | null;
 	fallbackEntry: BillingCatalogEntry | null;
 }): ControlPlaneCurrentPlan | null {
-	const { stripeSubscription, snapshot, fallbackEntry } = input;
+	const stripeSubscription = hasCurrentOwnershipStatus(input.stripeSubscription?.status)
+		? input.stripeSubscription
+		: null;
+	const { snapshot, fallbackEntry } = input;
 	if (!stripeSubscription && !snapshot && !fallbackEntry) {
 		return null;
 	}
@@ -221,17 +243,21 @@ function buildCurrentPlan(input: {
 function buildMembershipSourceLabel(input: {
 	role: UserRole;
 	hasActiveMembershipSnapshot: boolean;
+	hasActiveStripeSubscription: boolean;
 	stripeSubscription: SubscriptionDetails | null;
 }): string {
 	if (input.role === 'admin') {
 		return 'Admin access is preserved independently of Stripe billing.';
 	}
 
-	if (input.hasActiveMembershipSnapshot && input.stripeSubscription?.cancel_at_period_end) {
+	if (
+		(input.hasActiveMembershipSnapshot || input.hasActiveStripeSubscription) &&
+		input.stripeSubscription?.cancel_at_period_end
+	) {
 		return 'Backed by a Mallard Studio Stripe subscription that is set to cancel at period end.';
 	}
 
-	if (input.hasActiveMembershipSnapshot) {
+	if (input.hasActiveMembershipSnapshot || input.hasActiveStripeSubscription) {
 		return 'Backed by your reconciled Mallard Studio billing state.';
 	}
 
@@ -245,17 +271,25 @@ function buildMembershipSourceLabel(input: {
 function buildApiSourceLabel(input: {
 	apiPlan: ApiPlan;
 	hasActiveApiSnapshot: boolean;
+	hasActiveStripeSubscription: boolean;
 	stripeSubscription: SubscriptionDetails | null;
 }): string {
 	if (input.apiPlan === 'enterprise') {
 		return 'Enterprise API access is sales-led and managed outside normal self-serve checkout.';
 	}
 
-	if (input.apiPlan === 'member' && input.stripeSubscription?.cancel_at_period_end) {
+	if (
+		input.apiPlan === 'member' &&
+		(input.hasActiveApiSnapshot || input.hasActiveStripeSubscription) &&
+		input.stripeSubscription?.cancel_at_period_end
+	) {
 		return 'Backed by a paid Parchment API subscription that is set to cancel at period end.';
 	}
 
-	if (input.apiPlan === 'member' && input.hasActiveApiSnapshot) {
+	if (
+		input.apiPlan === 'member' &&
+		(input.hasActiveApiSnapshot || input.hasActiveStripeSubscription)
+	) {
 		return 'Backed by your paid Parchment API subscription.';
 	}
 
@@ -269,13 +303,18 @@ function buildApiSourceLabel(input: {
 function buildIntelligenceSourceLabel(input: {
 	ppiAccess: boolean;
 	hasActiveSnapshot: boolean;
+	hasActiveStripeSubscription: boolean;
 	stripeSubscription: SubscriptionDetails | null;
 }): string {
-	if (input.ppiAccess && input.stripeSubscription?.cancel_at_period_end) {
+	if (
+		input.ppiAccess &&
+		(input.hasActiveSnapshot || input.hasActiveStripeSubscription) &&
+		input.stripeSubscription?.cancel_at_period_end
+	) {
 		return 'Backed by a Parchment Intelligence subscription that is set to cancel at period end.';
 	}
 
-	if (input.ppiAccess && input.hasActiveSnapshot) {
+	if (input.ppiAccess && (input.hasActiveSnapshot || input.hasActiveStripeSubscription)) {
 		return 'Backed by your Parchment Intelligence billing state.';
 	}
 
@@ -306,6 +345,24 @@ export function buildSubscriptionControlPlaneState(input: {
 	const apiSnapshot = getRelevantFamilySnapshot(billingSubscriptions, 'api_plan');
 	const intelligenceSnapshot = getRelevantFamilySnapshot(billingSubscriptions, 'ppi_addon');
 
+	const hasCurrentMembershipBillingState = Boolean(
+		membershipSnapshot || hasCurrentStripeOwnership(membershipStripeSubscription)
+	);
+	const hasCurrentApiBillingState = Boolean(
+		apiSnapshot || hasCurrentStripeOwnership(apiStripeSubscription)
+	);
+	const hasCurrentIntelligenceBillingState = Boolean(
+		intelligenceSnapshot || hasCurrentStripeOwnership(intelligenceStripeSubscription)
+	);
+
+	const resolvedApiPlan: ApiPlan =
+		input.apiPlan === 'enterprise'
+			? 'enterprise'
+			: input.apiPlan === 'member' || hasCurrentApiBillingState
+				? 'member'
+				: 'viewer';
+	const resolvedPpiAccess = input.ppiAccess || hasCurrentIntelligenceBillingState;
+
 	const membershipCatalogEntry = membershipSnapshot
 		? getBillingCatalogEntry(membershipSnapshot.product_key)
 		: null;
@@ -328,11 +385,11 @@ export function buildSubscriptionControlPlaneState(input: {
 					: 'success'
 				: 'muted';
 
-	const apiHasPaidPlan = input.apiPlan === 'member' || input.apiPlan === 'enterprise';
+	const apiHasPaidPlan = resolvedApiPlan === 'member' || resolvedApiPlan === 'enterprise';
 	const apiTone: ControlPlaneTone =
-		input.apiPlan === 'enterprise' ? 'info' : input.apiPlan === 'member' ? 'success' : 'muted';
+		resolvedApiPlan === 'enterprise' ? 'info' : resolvedApiPlan === 'member' ? 'success' : 'muted';
 
-	const intelligenceTone: ControlPlaneTone = input.ppiAccess
+	const intelligenceTone: ControlPlaneTone = resolvedPpiAccess
 		? intelligenceStripeSubscription?.cancel_at_period_end
 			? 'warning'
 			: 'success'
@@ -355,9 +412,8 @@ export function buildSubscriptionControlPlaneState(input: {
 				: 'Upgrade to Mallard Studio Member to unlock the full operator workflow surface for roasting, inventory, tasting, profit, chat, and CLI workflows.',
 			sourceLabel: buildMembershipSourceLabel({
 				role: input.role,
-				hasActiveMembershipSnapshot: Boolean(
-					membershipSnapshot && isBillingSubscriptionActive(membershipSnapshot.status)
-				),
+				hasActiveMembershipSnapshot: hasCurrentMembershipBillingState,
+				hasActiveStripeSubscription: hasCurrentStripeOwnership(membershipStripeSubscription),
 				stripeSubscription: membershipStripeSubscription
 			}),
 			currentPlan: buildCurrentPlan({
@@ -373,34 +429,33 @@ export function buildSubscriptionControlPlaneState(input: {
 			availablePlans: buildAvailablePlans('membership')
 		},
 		api: {
-			plan: input.apiPlan,
+			plan: resolvedApiPlan,
 			resolvedPlanName:
-				input.apiPlan === 'enterprise'
+				resolvedApiPlan === 'enterprise'
 					? 'Enterprise'
-					: input.apiPlan === 'member'
+					: resolvedApiPlan === 'member'
 						? 'Parchment API'
 						: 'Explorer',
 			hasPaidPlan: apiHasPaidPlan,
 			statusLabel:
-				input.apiPlan === 'enterprise'
+				resolvedApiPlan === 'enterprise'
 					? 'Enterprise access'
-					: input.apiPlan === 'member'
+					: resolvedApiPlan === 'member'
 						? apiStripeSubscription?.cancel_at_period_end
 							? 'Paid API active, canceling at period end'
 							: 'Paid API active'
 						: 'Explorer baseline active',
 			tone: apiTone,
 			description:
-				input.apiPlan === 'enterprise'
+				resolvedApiPlan === 'enterprise'
 					? 'Your account resolves to enterprise-grade Parchment API access for custom integrations and commercial support.'
-					: input.apiPlan === 'member'
+					: resolvedApiPlan === 'member'
 						? 'Your account currently has the paid Parchment API plan for production-ready coffee data access.'
 						: 'Explorer is the free baseline for Parchment API. Upgrade when you need the paid production tier.',
 			sourceLabel: buildApiSourceLabel({
-				apiPlan: input.apiPlan,
-				hasActiveApiSnapshot: Boolean(
-					apiSnapshot && isBillingSubscriptionActive(apiSnapshot.status)
-				),
+				apiPlan: resolvedApiPlan,
+				hasActiveApiSnapshot: hasCurrentApiBillingState,
+				hasActiveStripeSubscription: hasCurrentStripeOwnership(apiStripeSubscription),
 				stripeSubscription: apiStripeSubscription
 			}),
 			currentPlan: buildCurrentPlan({
@@ -408,27 +463,26 @@ export function buildSubscriptionControlPlaneState(input: {
 				snapshot: apiSnapshot,
 				fallbackEntry:
 					apiCatalogEntry ??
-					(input.apiPlan === 'viewer' ? getBillingCatalogEntry('api_plan.explorer') : null)
+					(resolvedApiPlan === 'viewer' ? getBillingCatalogEntry('api_plan.explorer') : null)
 			}),
 			upgradePlans: buildAvailablePlans('api_plan'),
 			consoleHref: '/api-dashboard'
 		},
 		intelligence: {
-			enabled: input.ppiAccess,
-			statusLabel: input.ppiAccess
+			enabled: resolvedPpiAccess,
+			statusLabel: resolvedPpiAccess
 				? intelligenceStripeSubscription?.cancel_at_period_end
 					? 'Intelligence active, canceling at period end'
 					: 'Intelligence active'
 				: 'Locked',
 			tone: intelligenceTone,
-			description: input.ppiAccess
+			description: resolvedPpiAccess
 				? 'Parchment Intelligence unlocks the full analytics and market-intelligence layer across supplier, origin, processing, and pricing views.'
 				: 'Unlock Parchment Intelligence for the full analytics and market-intelligence layer beyond the limited free floor.',
 			sourceLabel: buildIntelligenceSourceLabel({
-				ppiAccess: input.ppiAccess,
-				hasActiveSnapshot: Boolean(
-					intelligenceSnapshot && isBillingSubscriptionActive(intelligenceSnapshot.status)
-				),
+				ppiAccess: resolvedPpiAccess,
+				hasActiveSnapshot: hasCurrentIntelligenceBillingState,
+				hasActiveStripeSubscription: hasCurrentStripeOwnership(intelligenceStripeSubscription),
 				stripeSubscription: intelligenceStripeSubscription
 			}),
 			currentPlan: buildCurrentPlan({

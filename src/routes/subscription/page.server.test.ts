@@ -98,7 +98,7 @@ describe('/subscription page server load', () => {
 		expect(mockGetSubscriptionDetails).toHaveBeenNthCalledWith(3, 'cus_123', {
 			productFamily: 'ppi_addon'
 		});
-		expect(result.controlPlane?.api.resolvedPlanName).toBe('Explorer');
+		expect(result.controlPlane?.api.resolvedPlanName).toBe('Parchment API');
 	});
 
 	it('marks bundled multi-family Mallard Studio subscriptions as not manageable', async () => {
@@ -162,7 +162,43 @@ describe('/subscription page server load', () => {
 
 		expect(result.controlPlane?.membership.canManageSubscription).toBe(false);
 		expect(result.controlPlane?.membership.managementBlockedReason).toContain('Parchment API');
-		expect(result.controlPlane?.api.resolvedPlanName).toBe('Explorer');
+		expect(result.controlPlane?.api.resolvedPlanName).toBe('Parchment API');
+	});
+
+	it('surfaces active intelligence Stripe access even when stored principal access is stale', async () => {
+		mockGetSubscriptionDetails
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce({
+				id: 'sub_ppi_123',
+				status: 'active',
+				current_period_end: 1_777_600_000,
+				cancel_at_period_end: false,
+				plan: {
+					name: 'Parchment Intelligence',
+					amount: 3900,
+					interval: 'month',
+					interval_count: 1
+				}
+			});
+
+		const result = (await load(makeLoadInput())) as {
+			controlPlane: {
+				intelligence: {
+					enabled: boolean;
+					statusLabel: string;
+					currentPlan: {
+						name: string;
+					} | null;
+				};
+			} | null;
+		};
+
+		expect(result.controlPlane?.intelligence).toMatchObject({
+			enabled: true,
+			statusLabel: 'Intelligence active'
+		});
+		expect(result.controlPlane?.intelligence.currentPlan?.name).toBe('Parchment Intelligence');
 	});
 
 	it('skips Stripe lookups when the user has no Stripe customer id', async () => {
