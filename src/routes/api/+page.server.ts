@@ -34,9 +34,10 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	const pricingTiers = API_PUBLIC_PLANS.map((plan) => ({
 		name: plan.name,
-		price: plan.price,
+		price: plan.key === 'enterprise' ? undefined : plan.price,
+		priceLabel: plan.priceLabel,
 		currency: 'USD',
-		billingDuration: 'P1M',
+		billingDuration: plan.key === 'enterprise' ? undefined : 'P1M',
 		description: plan.description,
 		features: [
 			`${plan.monthlyRequests} requests per month`,

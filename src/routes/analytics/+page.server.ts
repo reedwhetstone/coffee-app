@@ -463,9 +463,9 @@ export const load: PageServerLoad = async (event) => {
 			ogTitle: 'Green Coffee Market Intelligence — Parchment Intelligence',
 			ogDescription:
 				'Real-time green coffee price trends by origin, processing methods, and supplier comparison. Explore the free market snapshot, then unlock Parchment Intelligence for full access.',
-			twitterTitle: 'Green Coffee Market Analytics — Purveyors',
+			twitterTitle: 'Green Coffee Market Intelligence — Parchment Intelligence',
 			twitterDescription:
-				'Live green coffee price trends from 39+ US importers. Free market snapshot plus a deeper intelligence tier.',
+				'Live green coffee price trends from 39+ US importers. Explore the free market snapshot, then unlock Parchment Intelligence for the full analytics layer.',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/analytics.jpg',
