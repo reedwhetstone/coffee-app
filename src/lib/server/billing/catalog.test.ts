@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { BILLING_PURCHASE_KEYS } from '$lib/billing/purchaseKeys';
 
-import { getBillingCatalogEntry, listBillingCatalogEntries } from './catalog';
+import {
+	getBillingCatalogEntry,
+	getBillingCatalogEntryByStripePriceId,
+	listBillingCatalogEntries
+} from './catalog';
 
 describe('billing catalog', () => {
 	it('maps membership purchase keys to allowlisted Stripe prices', () => {
@@ -23,6 +27,16 @@ describe('billing catalog', () => {
 
 	it('returns null for unknown purchase keys', () => {
 		expect(getBillingCatalogEntry('membership.lifetime')).toBeNull();
+	});
+
+	it('maps allowlisted Stripe price IDs back to catalog entries for reconciliation', () => {
+		expect(getBillingCatalogEntryByStripePriceId('price_1RgGYuKwI9NkGqAnm4oiHpbx')).toMatchObject({
+			purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly,
+			grants: {
+				role: 'member'
+			}
+		});
+		expect(getBillingCatalogEntryByStripePriceId('price_missing')).toBeNull();
 	});
 
 	it('exposes the current catalog entries for server-side allowlisting', () => {

@@ -1,8 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { reconcileStripeSubscriptionEntitlements } from '$lib/server/billing/entitlements';
 import { getStripe } from '$lib/services/stripe';
 import { createAdminClient } from '$lib/supabase-admin';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '$lib/types/database.types';
 
 interface RoleAuditLog {
@@ -14,6 +16,20 @@ interface RoleAuditLog {
 	stripe_subscription_id?: string;
 	session_id?: string;
 	metadata?: Json;
+}
+
+function serializeEntitlements(entitlements: {
+	role: string;
+	userRole: string[];
+	apiPlan: string;
+	ppiAccess: boolean;
+}): Json {
+	return {
+		role: entitlements.role,
+		userRole: entitlements.userRole,
+		apiPlan: entitlements.apiPlan,
+		ppiAccess: entitlements.ppiAccess
+	};
 }
 
 async function logRoleChange(supabase: SupabaseClient<Database>, auditData: RoleAuditLog) {
@@ -44,7 +60,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	let sessionId: string | null = null;
 
 	try {
-		// Verify that the user is authenticated
 		const { session, user } = await locals.safeGetSession();
 		if (!session?.user || !user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
@@ -57,31 +72,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Missing session_id parameter' }, { status: 400 });
 		}
 
-		console.log('🔍 Starting role verification for session:', sessionId, 'user:', user.id);
+		console.log('🔍 Starting billing reconciliation for session:', sessionId, 'user:', user.id);
 
-		// Check for existing processing to ensure idempotency
 		const { data: existingProcessing } = await supabase
 			.from('stripe_session_processing')
 			.select('*')
 			.eq('session_id', sessionId)
 			.eq('user_id', user.id)
 			.eq('status', 'completed')
-			.eq('status', 'completed')
 			.maybeSingle();
 
-		const processingData = existingProcessing;
-
-		if (processingData) {
+		if (existingProcessing) {
 			console.log('✅ Session already processed:', sessionId);
 			return json({
 				success: true,
-				roleUpdated: processingData.role_updated || false,
+				roleUpdated: existingProcessing.role_updated || false,
 				message: 'Session already processed',
 				alreadyProcessed: true
 			});
 		}
 
-		// Mark as processing to prevent duplicate processing
 		const { error: processingError } = await supabase.from('stripe_session_processing').upsert(
 			{
 				session_id: sessionId,
@@ -97,7 +107,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Database error' }, { status: 500 });
 		}
 
-		// Get Stripe instance and retrieve the Checkout Session
 		const stripe = getStripe();
 		const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
 			expand: ['subscription']
@@ -110,7 +119,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			checkoutSession.payment_status
 		);
 
-		// Only proceed if the session is complete and paid
 		if (checkoutSession.status !== 'complete' || checkoutSession.payment_status !== 'paid') {
 			await supabase
 				.from('stripe_session_processing')
@@ -132,7 +140,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		// Verify this session belongs to the current user
 		if (checkoutSession.client_reference_id !== user.id) {
 			console.error('❌ Session user mismatch:', {
 				sessionUserId: checkoutSession.client_reference_id,
@@ -171,32 +178,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'No customer ID found in session' }, { status: 400 });
 		}
 
-		console.log('👤 Processing role update for user:', user.id, 'Customer:', customerId);
-
-		// Get current roles for audit logging
-		const { data: currentRoleData } = await supabase
-			.from('user_roles')
-			.select('user_role')
-			.eq('id', user.id)
-			.maybeSingle();
-
-		const currentRoles = currentRoleData?.user_role || ['viewer'];
-
-		// Ensure customer mapping exists
 		await supabase.from('stripe_customers').upsert(
 			{
 				user_id: user.id,
 				customer_id: customerId,
 				email: user.email || checkoutSession.customer_details?.email || null,
-				created_at: new Date().toISOString()
+				updated_at: new Date().toISOString()
 			},
 			{ onConflict: 'user_id' }
 		);
 
-		// Check if there's a subscription and if it's active or trialing
-		let shouldHaveMemberRole = false;
-		let subscriptionId = null;
+		let roleUpdated = false;
+		let subscriptionId: string | null = null;
 		let subscriptionStatus = 'none';
+		let resolvedEntitlements: Json | null = null;
 
 		if (checkoutSession.mode === 'subscription' && checkoutSession.subscription) {
 			subscriptionId =
@@ -208,68 +203,44 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			subscriptionStatus = subscription.status;
 			console.log('📋 Subscription status:', subscription.status);
 
-			if (subscription.status === 'active' || subscription.status === 'trialing') {
-				shouldHaveMemberRole = true;
-			}
-		}
-
-		let roleUpdated = false;
-
-		// Update user role to member if they should have it and don't already have it
-		if (shouldHaveMemberRole && !currentRoles.includes('member')) {
-			// Add member role, remove viewer if present
-			const updatedRoles = currentRoles.filter((role: string) => role !== 'viewer');
-			if (!updatedRoles.includes('member')) {
-				updatedRoles.push('member');
-			}
-
-			const { error: roleError } = await supabase.from('user_roles').upsert(
-				{
-					id: user.id,
-					user_role: updatedRoles,
-					updated_at: new Date().toISOString()
-				},
-				{ onConflict: 'id' }
-			);
-
-			if (roleError) {
-				console.error('❌ Error updating user role:', roleError);
-
-				await supabase
-					.from('stripe_session_processing')
-					.update({
-						status: 'failed',
-						error_message: `Role update failed: ${roleError.message}`,
-						completed_at: new Date().toISOString()
-					})
-					.eq('session_id', sessionId)
-					.eq('user_id', user.id);
-
-				return json({ error: 'Failed to update user role' }, { status: 500 });
-			}
-
-			// Log the role change
-			await logRoleChange(supabase, {
-				user_id: user.id,
-				old_role: currentRoles.join(','),
-				new_role: updatedRoles.join(','),
-				trigger_type: 'checkout_success',
-				stripe_customer_id: customerId || undefined,
-				stripe_subscription_id: subscriptionId || undefined,
-				session_id: sessionId || undefined,
-				metadata: {
-					subscription_status: subscriptionStatus,
-					payment_amount: checkoutSession.amount_total,
-					currency: checkoutSession.currency,
-					checkout_mode: checkoutSession.mode
-				}
+			const reconciliation = await reconcileStripeSubscriptionEntitlements(supabase, {
+				userId: user.id,
+				stripeCustomerId: customerId,
+				subscription
 			});
 
-			console.log(`✅ Updated user ${user.id} to member role`);
-			roleUpdated = true;
+			roleUpdated = reconciliation.changed;
+			resolvedEntitlements = serializeEntitlements(reconciliation.resolvedEntitlements);
+
+			if (reconciliation.changed) {
+				await logRoleChange(supabase, {
+					user_id: user.id,
+					old_role: reconciliation.previousEntitlements.userRole.join(','),
+					new_role: reconciliation.resolvedEntitlements.userRole.join(','),
+					trigger_type: 'checkout_success',
+					stripe_customer_id: customerId,
+					stripe_subscription_id: subscriptionId,
+					session_id: sessionId,
+					metadata: {
+						subscription_status: subscriptionStatus,
+						payment_amount: checkoutSession.amount_total,
+						currency: checkoutSession.currency,
+						checkout_mode: checkoutSession.mode,
+						unknown_price_ids: reconciliation.unknownPriceIds,
+						billing_subscriptions: reconciliation.subscriptions.map((row) => ({
+							stripe_subscription_id: row.stripe_subscription_id,
+							stripe_price_id: row.stripe_price_id,
+							product_family: row.product_family,
+							product_key: row.product_key,
+							status: row.status
+						})),
+						previous_entitlements: serializeEntitlements(reconciliation.previousEntitlements),
+						resolved_entitlements: serializeEntitlements(reconciliation.resolvedEntitlements)
+					}
+				});
+			}
 		}
 
-		// Mark processing as completed
 		await supabase
 			.from('stripe_session_processing')
 			.update({
@@ -284,26 +255,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({
 				success: true,
 				roleUpdated: true,
-				message: 'Role successfully updated to member'
-			});
-		} else if (shouldHaveMemberRole && currentRoles.includes('member')) {
-			return json({
-				success: true,
-				roleUpdated: false,
-				message: 'User already has member role'
-			});
-		} else {
-			console.log('ℹ️ No role update needed - no active subscription found');
-			return json({
-				success: true,
-				roleUpdated: false,
-				message: 'Payment verified but no active subscription found'
+				message: 'Billing entitlements successfully reconciled',
+				entitlements: resolvedEntitlements
 			});
 		}
+
+		return json({
+			success: true,
+			roleUpdated: false,
+			message:
+				checkoutSession.mode === 'subscription'
+					? 'Payment verified and billing entitlements were already up to date'
+					: 'Payment verified but no subscription entitlements were updated',
+			entitlements: resolvedEntitlements
+		});
 	} catch (error) {
 		console.error('❌ Error verifying session and updating role:', error);
 
-		// Mark processing as failed if we have sessionId and it's not a parsing error
 		if (sessionId) {
 			try {
 				await supabase
