@@ -802,6 +802,57 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			billing_subscriptions: {
+				Row: {
+					cancel_at_period_end: boolean;
+					created_at: string | null;
+					current_period_end: string | null;
+					id: string;
+					metadata: Json;
+					product_family: string;
+					product_key: string;
+					status: string;
+					stripe_customer_id: string;
+					stripe_price_id: string;
+					stripe_subscription_id: string;
+					stripe_subscription_item_id: string;
+					updated_at: string | null;
+					user_id: string;
+				};
+				Insert: {
+					cancel_at_period_end?: boolean;
+					created_at?: string | null;
+					current_period_end?: string | null;
+					id?: string;
+					metadata?: Json;
+					product_family: string;
+					product_key: string;
+					status: string;
+					stripe_customer_id: string;
+					stripe_price_id: string;
+					stripe_subscription_id: string;
+					stripe_subscription_item_id: string;
+					updated_at?: string | null;
+					user_id: string;
+				};
+				Update: {
+					cancel_at_period_end?: boolean;
+					created_at?: string | null;
+					current_period_end?: string | null;
+					id?: string;
+					metadata?: Json;
+					product_family?: string;
+					product_key?: string;
+					status?: string;
+					stripe_customer_id?: string;
+					stripe_price_id?: string;
+					stripe_subscription_id?: string;
+					stripe_subscription_item_id?: string;
+					updated_at?: string | null;
+					user_id?: string;
+				};
+				Relationships: [];
+			};
 			user_ai_context: {
 				Row: {
 					global_summary: string | null;
