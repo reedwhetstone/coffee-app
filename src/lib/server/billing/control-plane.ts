@@ -262,7 +262,7 @@ function buildMembershipSourceLabel(input: {
 	}
 
 	if (input.role === 'member') {
-		return 'Resolved from stored entitlements even though no active Mallard Studio Stripe subscription is currently attached.';
+		return 'No current Mallard Studio billing state is attached, so this page falls back to the free viewer baseline until billing sync shows an active membership.';
 	}
 
 	return 'You are currently on the free viewer baseline for Mallard Studio.';
@@ -375,7 +375,7 @@ export function buildSubscriptionControlPlaneState(input: {
 		subscriptionId: membershipStripeSubscription?.id,
 		billingSubscriptions
 	});
-	const membershipHasAccess = input.role === 'member' || input.role === 'admin';
+	const membershipHasAccess = input.role === 'admin' || hasCurrentMembershipBillingState;
 	const membershipTone: ControlPlaneTone =
 		input.role === 'admin'
 			? 'info'

@@ -49,7 +49,14 @@ function makeLoadInput(
 		status: string;
 		cancel_at_period_end: boolean;
 		current_period_end: string | null;
-	}> = []
+	}> = [],
+	overrides: {
+		role?: 'viewer' | 'member' | 'admin';
+		principal?: {
+			apiPlan?: 'viewer' | 'member' | 'enterprise';
+			ppiAccess?: boolean;
+		};
+	} = {}
 ) {
 	const user = { id: 'user-123', email: 'member@example.com' };
 	const session = { user } as App.Locals['session'];
@@ -57,10 +64,10 @@ function makeLoadInput(
 	return {
 		locals: {
 			safeGetSession: vi.fn().mockResolvedValue({ session, user }),
-			role: 'viewer',
+			role: overrides.role ?? 'viewer',
 			principal: {
-				apiPlan: 'viewer',
-				ppiAccess: false
+				apiPlan: overrides.principal?.apiPlan ?? 'viewer',
+				ppiAccess: overrides.principal?.ppiAccess ?? false
 			},
 			supabase: createSupabaseMock(billingSubscriptions)
 		}
@@ -99,6 +106,73 @@ describe('/subscription page server load', () => {
 			productFamily: 'ppi_addon'
 		});
 		expect(result.controlPlane?.api.resolvedPlanName).toBe('Parchment API');
+	});
+
+	it('promotes Mallard Studio status from current membership billing even when locals.role is still viewer', async () => {
+		mockGetSubscriptionDetails
+			.mockResolvedValueOnce({
+				id: 'sub_membership_456',
+				status: 'active',
+				current_period_end: 1_777_600_000,
+				cancel_at_period_end: false,
+				plan: {
+					name: 'Mallard Studio Member',
+					amount: 900,
+					interval: 'month',
+					interval_count: 1
+				}
+			})
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce(null);
+
+		const result = (await load(
+			makeLoadInput([
+				{
+					stripe_subscription_id: 'sub_membership_456',
+					product_family: 'membership',
+					product_key: 'membership.monthly',
+					status: 'active',
+					cancel_at_period_end: false,
+					current_period_end: '2026-05-01T00:00:00.000Z'
+				}
+			])
+		)) as {
+			controlPlane: {
+				membership: {
+					hasAccess: boolean;
+					statusLabel: string;
+					currentPlan: {
+						name: string;
+					} | null;
+				};
+			} | null;
+		};
+
+		expect(result.controlPlane?.membership).toMatchObject({
+			hasAccess: true,
+			statusLabel: 'Mallard Studio active'
+		});
+		expect(result.controlPlane?.membership.currentPlan?.name).toBe('Mallard Studio Member');
+	});
+
+	it('falls back to Viewer baseline when locals.role is member but there is no current membership billing state', async () => {
+		const result = (await load(makeLoadInput([], { role: 'member' }))) as {
+			controlPlane: {
+				membership: {
+					hasAccess: boolean;
+					statusLabel: string;
+					currentPlan: null;
+					sourceLabel: string;
+				};
+			} | null;
+		};
+
+		expect(result.controlPlane?.membership).toMatchObject({
+			hasAccess: false,
+			statusLabel: 'Viewer baseline',
+			currentPlan: null
+		});
+		expect(result.controlPlane?.membership.sourceLabel).toContain('falls back to the free viewer baseline');
 	});
 
 	it('marks bundled multi-family Mallard Studio subscriptions as not manageable', async () => {

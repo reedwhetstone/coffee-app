@@ -39,6 +39,73 @@ describe('subscription control plane state', () => {
 		expect(state.intelligence.availablePlans).toHaveLength(2);
 	});
 
+	it('promotes Mallard Studio ownership from current membership billing even when role is still viewer', () => {
+		const state = buildSubscriptionControlPlaneState({
+			role: 'viewer',
+			apiPlan: 'viewer',
+			ppiAccess: false,
+			billingSubscriptions: [
+				{
+					stripe_subscription_id: 'sub_membership_456',
+					product_family: 'membership',
+					product_key: 'membership.monthly',
+					status: 'active',
+					cancel_at_period_end: false,
+					current_period_end: '2026-05-01T00:00:00.000Z'
+				}
+			],
+			stripeSubscriptions: {
+				membership: {
+					id: 'sub_membership_456',
+					status: 'active',
+					current_period_end: 1_777_600_000,
+					cancel_at_period_end: false,
+					plan: {
+						name: 'Mallard Studio Member',
+						amount: 900,
+						interval: 'month',
+						interval_count: 1
+					}
+				},
+				api: null,
+				intelligence: null
+			}
+		});
+
+		expect(state.membership).toMatchObject({
+			hasAccess: true,
+			statusLabel: 'Mallard Studio active'
+		});
+		expect(state.membership.currentPlan).toMatchObject({
+			name: 'Mallard Studio Member',
+			priceLabel: '$9/month',
+			subscriptionId: 'sub_membership_456'
+		});
+		expect(state.membership.sourceLabel).toContain('reconciled Mallard Studio billing state');
+	});
+
+	it('does not keep Mallard Studio active from a stale member role without current membership billing', () => {
+		const state = buildSubscriptionControlPlaneState({
+			role: 'member',
+			apiPlan: 'viewer',
+			ppiAccess: false,
+			billingSubscriptions: [],
+			stripeSubscriptions: {
+				membership: null,
+				api: null,
+				intelligence: null
+			}
+		});
+
+		expect(state.membership).toMatchObject({
+			hasAccess: false,
+			statusLabel: 'Viewer baseline',
+			canManageSubscription: false,
+			currentPlan: null
+		});
+		expect(state.membership.sourceLabel).toContain('falls back to the free viewer baseline');
+	});
+
 	it('shows a canceling Mallard Studio subscription with safe management controls', () => {
 		const state = buildSubscriptionControlPlaneState({
 			role: 'member',
