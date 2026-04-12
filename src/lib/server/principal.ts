@@ -190,9 +190,9 @@ async function getUserEntitlements(
 	supabase: SupabaseClient<Database>,
 	userId: string
 ): Promise<UserEntitlements | null> {
-	// Primary query: select the base role array plus the new entitlement columns.
-	// The new columns (api_plan, ppi_access) are nullable; we fall back to role-derived
-	// values when they are null (pre-migration) or when the query itself fails (pre-schema).
+	// Primary query: select the base role array plus the explicit entitlement columns.
+	// We still fall back to role-derived values when older environments have not run the
+	// migration yet, or if unexpected nulls remain during the backfill window.
 	const { data, error } = await supabase
 		.from('user_roles')
 		.select('user_role, api_plan, ppi_access')

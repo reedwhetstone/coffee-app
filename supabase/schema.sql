@@ -258,6 +258,9 @@ CREATE TABLE public.user_roles (
   email text,
   name text,
   user_role ARRAY NOT NULL DEFAULT '{viewer}'::text[],
+  api_plan text NOT NULL DEFAULT 'viewer'::text,
+  ppi_access boolean NOT NULL DEFAULT false,
   CONSTRAINT user_roles_pkey PRIMARY KEY (id),
+  CONSTRAINT user_roles_api_plan_check CHECK (api_plan = ANY (ARRAY['viewer'::text, 'member'::text, 'enterprise'::text])),
   CONSTRAINT user_roles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );

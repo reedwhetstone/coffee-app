@@ -31,7 +31,10 @@ CREATE TABLE IF NOT EXISTS public.user_roles (
   email text,
   name text,
   user_role text[] NOT NULL DEFAULT '{viewer}'::text[],
+  api_plan text NOT NULL DEFAULT 'viewer'::text,
+  ppi_access boolean NOT NULL DEFAULT false,
   CONSTRAINT user_roles_pkey PRIMARY KEY (id),
+  CONSTRAINT user_roles_api_plan_check CHECK (api_plan = ANY (ARRAY['viewer'::text, 'member'::text, 'enterprise'::text])),
   CONSTRAINT user_roles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
@@ -739,13 +742,15 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.user_roles (id, email, name, role, user_role)
+  INSERT INTO public.user_roles (id, email, name, role, user_role, api_plan, ppi_access)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
     'viewer',
-    ARRAY['viewer']
+    ARRAY['viewer'],
+    'viewer',
+    false
   );
   RETURN NEW;
 END;
