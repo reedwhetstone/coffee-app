@@ -5,6 +5,7 @@ import { BILLING_PURCHASE_KEYS } from '$lib/billing/purchaseKeys';
 
 import {
 	mapStripeSubscriptionToBillingSnapshotRows,
+	recomputeUserBillingEntitlements,
 	resolveBillingEntitlements,
 	syncBillingSubscriptionSnapshotFromStripeSubscription
 } from './entitlements';
@@ -99,6 +100,22 @@ describe('billing entitlement reconciliation', () => {
 		});
 	});
 
+	it('treats admin users with a null api_plan as enterprise during reconciliation', () => {
+		const resolved = resolveBillingEntitlements({
+			currentRole: 'admin',
+			currentApiPlan: null,
+			currentPpiAccess: false,
+			subscriptions: []
+		});
+
+		expect(resolved).toEqual({
+			role: 'admin',
+			userRole: ['admin'],
+			apiPlan: 'enterprise',
+			ppiAccess: false
+		});
+	});
+
 	it('preserves an existing explicit api_plan during membership-only reconciliation', () => {
 		const resolved = resolveBillingEntitlements({
 			currentRole: 'viewer',
@@ -139,6 +156,61 @@ describe('billing entitlement reconciliation', () => {
 			apiPlan: 'viewer',
 			ppiAccess: true
 		});
+	});
+
+	it('repairs null explicit entitlements by persisting canonical defaults from shared recompute logic', async () => {
+		const upsert = vi.fn(async () => ({ error: null }));
+		const maybeSingle = vi.fn(async () => ({
+			data: {
+				role: 'viewer',
+				user_role: ['viewer'],
+				api_plan: null as never,
+				ppi_access: null as never
+			},
+			error: null
+		}));
+		const eqUserRoles = vi.fn(() => ({ maybeSingle }));
+		const selectUserRoles = vi.fn(() => ({ eq: eqUserRoles }));
+		const selectBillingSubscriptions = vi.fn(() => ({
+			eq: vi.fn(async () => ({ data: [], error: null }))
+		}));
+		const from = vi.fn((table: string) => {
+			if (table === 'user_roles') {
+				return {
+					select: selectUserRoles,
+					upsert
+				};
+			}
+
+			if (table === 'billing_subscriptions') {
+				return {
+					select: selectBillingSubscriptions
+				};
+			}
+
+			throw new Error(`Unexpected table lookup: ${table}`);
+		});
+
+		const result = await recomputeUserBillingEntitlements({ from } as never, 'user_123');
+
+		expect(result.changed).toBe(true);
+		expect(result.resolvedEntitlements).toEqual({
+			role: 'viewer',
+			userRole: ['viewer'],
+			apiPlan: 'viewer',
+			ppiAccess: false
+		});
+		expect(upsert).toHaveBeenCalledWith(
+			{
+				id: 'user_123',
+				role: 'viewer',
+				user_role: ['viewer'],
+				api_plan: 'viewer',
+				ppi_access: false,
+				updated_at: expect.any(String)
+			},
+			{ onConflict: 'id' }
+		);
 	});
 
 	it('maps Stripe subscription items into local billing snapshot rows', () => {
