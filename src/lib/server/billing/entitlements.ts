@@ -62,12 +62,15 @@ function normalizeStoredRole(role: UserRoleRow['role'] | null | undefined): User
 	return 'viewer';
 }
 
-function normalizeApiPlan(plan: UserRoleRow['api_plan'] | null | undefined): ApiPlan {
+function resolveStoredApiPlan(
+	role: UserRoleRow['role'] | null | undefined,
+	plan: UserRoleRow['api_plan'] | null | undefined
+): ApiPlan {
 	if (plan === 'viewer' || plan === 'member' || plan === 'enterprise') {
 		return plan;
 	}
 
-	return 'viewer';
+	return normalizeStoredRole(role) === 'admin' ? 'enterprise' : 'viewer';
 }
 
 function buildUserRoleMirror(role: UserRole): string[] {
@@ -110,7 +113,7 @@ export function resolveBillingEntitlements(input: {
 	const resolved: ResolvedBillingEntitlements = {
 		role: preserveAdmin ? 'admin' : 'viewer',
 		userRole: buildUserRoleMirror(preserveAdmin ? 'admin' : 'viewer'),
-		apiPlan: normalizeApiPlan(input.currentApiPlan),
+		apiPlan: resolveStoredApiPlan(input.currentRole, input.currentApiPlan),
 		ppiAccess: input.currentPpiAccess === true
 	};
 
@@ -282,7 +285,7 @@ export async function recomputeUserBillingEntitlements(
 			Array.isArray(currentUserRoleRow?.user_role) && currentUserRoleRow.user_role.length > 0
 				? currentUserRoleRow.user_role
 				: buildUserRoleMirror(previousRole),
-		apiPlan: normalizeApiPlan(currentUserRoleRow?.api_plan),
+		apiPlan: resolveStoredApiPlan(currentUserRoleRow?.role, currentUserRoleRow?.api_plan),
 		ppiAccess: currentUserRoleRow?.ppi_access === true
 	};
 

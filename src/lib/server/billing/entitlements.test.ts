@@ -100,6 +100,22 @@ describe('billing entitlement reconciliation', () => {
 		});
 	});
 
+	it('treats admin users with a null api_plan as enterprise during reconciliation', () => {
+		const resolved = resolveBillingEntitlements({
+			currentRole: 'admin',
+			currentApiPlan: null,
+			currentPpiAccess: false,
+			subscriptions: []
+		});
+
+		expect(resolved).toEqual({
+			role: 'admin',
+			userRole: ['admin'],
+			apiPlan: 'enterprise',
+			ppiAccess: false
+		});
+	});
+
 	it('preserves an existing explicit api_plan during membership-only reconciliation', () => {
 		const resolved = resolveBillingEntitlements({
 			currentRole: 'viewer',

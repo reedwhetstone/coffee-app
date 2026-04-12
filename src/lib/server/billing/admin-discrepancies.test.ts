@@ -73,6 +73,45 @@ describe('billing entitlement admin discrepancies', () => {
 		expect(report.discrepancies[0].billingSubscriptions).toHaveLength(1);
 	});
 
+	it('flags admin users with a null api_plan as enterprise discrepancies in reports', () => {
+		const report = buildBillingEntitlementDiscrepancyReport({
+			userRoles: [
+				{
+					id: 'admin_123',
+					email: 'admin@example.com',
+					name: 'Admin Drift',
+					role: 'admin',
+					user_role: ['admin'],
+					api_plan: null as never,
+					ppi_access: false,
+					updated_at: '2026-04-12T00:00:00.000Z'
+				}
+			],
+			stripeCustomers: [],
+			billingSubscriptions: [],
+			recentAuditLogs: [],
+			lastChecked: '2026-04-12T13:00:00.000Z'
+		});
+
+		expect(report.summary.totalDiscrepancies).toBe(1);
+		expect(report.discrepancies[0]).toMatchObject({
+			userId: 'admin_123',
+			actual: {
+				role: 'admin',
+				userRole: ['admin'],
+				apiPlan: null,
+				ppiAccess: false
+			},
+			expected: {
+				role: 'admin',
+				userRole: ['admin'],
+				apiPlan: 'enterprise',
+				ppiAccess: false
+			},
+			issueFields: ['api_plan']
+		});
+	});
+
 	it('repairs a discrepancy by delegating to shared recompute logic and logging the audit event', async () => {
 		const insert = vi.fn(async () => ({ error: null }));
 		const upsert = vi.fn(async () => ({ error: null }));
@@ -167,6 +206,87 @@ describe('billing entitlement admin discrepancies', () => {
 					reason: 'Test repair',
 					admin_user: 'admin_123',
 					changed: true
+				}),
+				created_at: expect.any(String)
+			})
+		);
+	});
+
+	it('repairs admin discrepancies using the enterprise fallback when api_plan is null', async () => {
+		const insert = vi.fn(async () => ({ error: null }));
+		const upsert = vi.fn(async () => ({ error: null }));
+		const maybeSingle = vi.fn(async () => ({
+			data: {
+				role: 'admin',
+				user_role: ['admin'],
+				api_plan: null as never,
+				ppi_access: false
+			},
+			error: null
+		}));
+		const eqUserRoles = vi.fn(() => ({ maybeSingle }));
+		const selectUserRoles = vi.fn(() => ({ eq: eqUserRoles }));
+		const selectBillingSubscriptions = vi.fn(() => ({
+			eq: vi.fn(async () => ({ data: [], error: null }))
+		}));
+		const from = vi.fn((table: string) => {
+			if (table === 'user_roles') {
+				return {
+					select: selectUserRoles,
+					upsert
+				};
+			}
+
+			if (table === 'billing_subscriptions') {
+				return {
+					select: selectBillingSubscriptions
+				};
+			}
+
+			if (table === 'role_audit_logs') {
+				return {
+					insert
+				};
+			}
+
+			throw new Error(`Unexpected table lookup: ${table}`);
+		});
+
+		const result = await repairBillingEntitlementDiscrepancy({ from } as never, {
+			userId: 'admin_123',
+			adminUserId: 'admin_repair',
+			reason: 'Repair admin fallback'
+		});
+
+		expect(result.changed).toBe(true);
+		expect(result.resolvedEntitlements).toEqual({
+			role: 'admin',
+			userRole: ['admin'],
+			apiPlan: 'enterprise',
+			ppiAccess: false
+		});
+		expect(upsert).toHaveBeenCalledWith(
+			{
+				id: 'admin_123',
+				role: 'admin',
+				user_role: ['admin'],
+				api_plan: 'enterprise',
+				ppi_access: false,
+				updated_at: expect.any(String)
+			},
+			{ onConflict: 'id' }
+		);
+		expect(insert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user_id: 'admin_123',
+				old_role: 'admin',
+				new_role: 'admin',
+				trigger_type: 'admin_change',
+				metadata: expect.objectContaining({
+					reason: 'Repair admin fallback',
+					admin_user: 'admin_repair',
+					changed: true,
+					resolved_entitlements: expect.objectContaining({ apiPlan: 'enterprise' })
 				}),
 				created_at: expect.any(String)
 			})
