@@ -202,6 +202,41 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 			return json({ error: 'Missing session_id parameter' }, { status: 400 });
 		}
 
+		const { data: existingProcessing, error: existingProcessingError } = await supabase
+			.from('stripe_session_processing')
+			.select('role_updated')
+			.eq('session_id', sessionId)
+			.eq('user_id', user.id)
+			.eq('status', 'completed')
+			.maybeSingle();
+
+		if (existingProcessingError) {
+			throw new Error(
+				`Failed to load session processing state: ${existingProcessingError.message}`
+			);
+		}
+
+		if (existingProcessing) {
+			const stripe = getStripe();
+			const purchasedCatalogEntries = await loadCheckoutSessionCatalogEntries(stripe, sessionId);
+			const currentEntitlements = await loadCurrentEntitlements(supabase, user.id);
+
+			return json({
+				success: true,
+				entitlementsChanged: existingProcessing.role_updated || false,
+				roleUpdated: existingProcessing.role_updated || false,
+				message: 'Checkout session already reconciled',
+				alreadyProcessed: true,
+				entitlements: currentEntitlements ? serializeEntitlements(currentEntitlements) : null,
+				receipt: buildBillingSuccessReceipt({
+					catalogEntries: purchasedCatalogEntries,
+					entitlements: currentEntitlements
+				})
+			});
+		}
+
+		await upsertSessionProcessingRow(supabase, sessionId, user.id);
+
 		const stripe = getStripe();
 		const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
 			expand: ['subscription']
@@ -252,39 +287,6 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 
 			return json({ error: 'No customer ID found in session' }, { status: 400 });
 		}
-
-		const { data: existingProcessing, error: existingProcessingError } = await supabase
-			.from('stripe_session_processing')
-			.select('role_updated')
-			.eq('session_id', sessionId)
-			.eq('user_id', user.id)
-			.eq('status', 'completed')
-			.maybeSingle();
-
-		if (existingProcessingError) {
-			throw new Error(
-				`Failed to load session processing state: ${existingProcessingError.message}`
-			);
-		}
-
-		if (existingProcessing) {
-			const currentEntitlements = await loadCurrentEntitlements(supabase, user.id);
-
-			return json({
-				success: true,
-				entitlementsChanged: existingProcessing.role_updated || false,
-				roleUpdated: existingProcessing.role_updated || false,
-				message: 'Checkout session already reconciled',
-				alreadyProcessed: true,
-				entitlements: currentEntitlements ? serializeEntitlements(currentEntitlements) : null,
-				receipt: buildBillingSuccessReceipt({
-					catalogEntries: purchasedCatalogEntries,
-					entitlements: currentEntitlements
-				})
-			});
-		}
-
-		await upsertSessionProcessingRow(supabase, sessionId, user.id);
 
 		await persistStripeCustomer(supabase, {
 			user,
@@ -371,6 +373,8 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 
 		if (sessionId && userId) {
 			try {
+				await upsertSessionProcessingRow(supabase, sessionId, userId);
+
 				await markSessionProcessingStatus(supabase, {
 					sessionId,
 					userId,

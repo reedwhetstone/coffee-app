@@ -39,6 +39,19 @@ const SUBSCRIPTION_CONTROL_PLANE_ACTION: BillingSuccessReceiptAction = {
 	description: 'See every product family and the latest reconciled billing state in one place.'
 };
 
+function resolveReceiptEntitlements(
+	entitlements: ResolvedBillingEntitlements | null
+): ResolvedBillingEntitlements {
+	return (
+		entitlements ?? {
+			role: 'viewer',
+			userRole: ['viewer'],
+			apiPlan: 'viewer',
+			ppiAccess: false
+		}
+	);
+}
+
 function toIntervalLabel(entry: BillingCatalogEntry): string {
 	switch (entry.interval) {
 		case 'month':
@@ -54,7 +67,45 @@ function toIntervalLabel(entry: BillingCatalogEntry): string {
 	}
 }
 
-function buildProductSummary(entry: BillingCatalogEntry): string {
+function isProductCurrentlyActive(
+	entry: BillingCatalogEntry,
+	entitlements: ResolvedBillingEntitlements | null
+): boolean {
+	const resolved = resolveReceiptEntitlements(entitlements);
+
+	switch (entry.productFamily) {
+		case 'membership':
+			return resolved.role === 'member' || resolved.role === 'admin';
+		case 'api_plan':
+			return resolved.apiPlan === 'member' || resolved.apiPlan === 'enterprise';
+		case 'ppi_addon':
+			return resolved.ppiAccess;
+	}
+}
+
+function buildInactiveCurrentStateDetail(entry: BillingCatalogEntry): string {
+	switch (entry.productFamily) {
+		case 'membership':
+			return 'this account currently resolves to the free Mallard Studio baseline';
+		case 'api_plan':
+			return 'this account currently resolves to the free Explorer API tier';
+		case 'ppi_addon':
+			return 'the full analytics and market-intelligence layer is currently locked on this account';
+	}
+}
+
+function buildProductSummary(entry: BillingCatalogEntry, isCurrentlyActive: boolean): string {
+	if (!isCurrentlyActive) {
+		switch (entry.productFamily) {
+			case 'membership':
+				return 'This checkout included Mallard Studio, but this account currently resolves to the free Mallard Studio baseline.';
+			case 'api_plan':
+				return 'This checkout included Parchment API, but this account currently resolves to the free Explorer API tier.';
+			case 'ppi_addon':
+				return 'This checkout included Parchment Intelligence, but the full analytics and market-intelligence layer is currently locked on this account.';
+		}
+	}
+
 	switch (entry.productFamily) {
 		case 'membership':
 			return 'Paid Mallard Studio workflows are now attached to this account for roasting, inventory, tasting, profit, chat, and CLI-backed operator work.';
@@ -134,12 +185,7 @@ function joinProductNames(names: string[]): string {
 function buildEntitlementSummary(
 	entitlements: ResolvedBillingEntitlements | null
 ): BillingSuccessReceiptEntitlement[] {
-	const resolved = entitlements ?? {
-		role: 'viewer',
-		userRole: ['viewer'],
-		apiPlan: 'viewer',
-		ppiAccess: false
-	};
+	const resolved = resolveReceiptEntitlements(entitlements);
 
 	return [
 		resolved.role === 'admin'
@@ -209,20 +255,28 @@ export function buildBillingSuccessReceipt(input: {
 		productName: entry.publicProductName,
 		planName: entry.publicPlanName,
 		intervalLabel: toIntervalLabel(entry),
-		summary: buildProductSummary(entry),
+		summary: buildProductSummary(entry, isProductCurrentlyActive(entry, input.entitlements)),
 		nextAction: buildNextAction(entry)
 	}));
 
+	const singleProduct = catalogEntries[0] ?? null;
+	const singleProductIsActive = singleProduct
+		? isProductCurrentlyActive(singleProduct, input.entitlements)
+		: false;
 	const title =
 		products.length === 1
-			? `${products[0].productName} is now active`
+			? singleProductIsActive
+				? `${products[0].productName} is now active`
+				: `${products[0].productName} access is not currently active`
 			: products.length > 1
 				? 'Your product access has been reconciled'
 				: 'Purchase confirmed';
 
 	const summary =
-		products.length === 1
-			? `${products[0].productName} has been reconciled from your Stripe checkout. The final entitlement state below reflects the live product access now attached to this account.`
+		products.length === 1 && singleProduct
+			? singleProductIsActive
+				? `${products[0].productName} has been reconciled from your Stripe checkout. The final entitlement state below reflects the live product access now attached to this account.`
+				: `${products[0].productName} was included in this Stripe checkout. The final entitlement state below shows that ${buildInactiveCurrentStateDetail(singleProduct)}.`
 			: products.length > 1
 				? `This checkout included ${joinProductNames(products.map((product) => product.productName))}. The final entitlement state below reflects the reconciled product access now attached to this account.`
 				: 'Your checkout completed successfully. The final entitlement state below reflects the latest reconciled billing result for this account.';

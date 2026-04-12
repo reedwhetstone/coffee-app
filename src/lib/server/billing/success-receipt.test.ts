@@ -85,4 +85,51 @@ describe('buildBillingSuccessReceipt', () => {
 			])
 		);
 	});
+
+	it('softens single-product copy when current entitlements no longer keep that product active', () => {
+		const receipt = buildBillingSuccessReceipt({
+			catalogEntries: [getBillingCatalogEntry(BILLING_PURCHASE_KEYS.membershipMonthly)!],
+			entitlements: {
+				role: 'viewer',
+				userRole: ['viewer'],
+				apiPlan: 'viewer',
+				ppiAccess: false
+			}
+		});
+
+		expect(receipt.title).toBe('Mallard Studio access is not currently active');
+		expect(receipt.summary).toContain('currently resolves to the free Mallard Studio baseline');
+		expect(receipt.products).toEqual([
+			expect.objectContaining({
+				productName: 'Mallard Studio',
+				summary:
+					'This checkout included Mallard Studio, but this account currently resolves to the free Mallard Studio baseline.'
+			})
+		]);
+		expect(receipt.entitlementSummary[0]).toEqual(
+			expect.objectContaining({ value: 'Viewer baseline', tone: 'muted' })
+		);
+	});
+
+	it('builds a Parchment Intelligence receipt with an analytics next action', () => {
+		const receipt = buildBillingSuccessReceipt({
+			catalogEntries: [getBillingCatalogEntry(BILLING_PURCHASE_KEYS.ppiAddonMonthly)!],
+			entitlements: {
+				role: 'viewer',
+				userRole: ['viewer'],
+				apiPlan: 'viewer',
+				ppiAccess: true
+			}
+		});
+
+		expect(receipt.title).toBe('Parchment Intelligence is now active');
+		expect(receipt.primaryAction).toEqual({
+			href: '/analytics',
+			label: 'View analytics',
+			description: 'Go straight to the full analytics and market-intelligence surface.'
+		});
+		expect(receipt.entitlementSummary[2]).toEqual(
+			expect.objectContaining({ value: 'Unlocked', tone: 'success' })
+		);
+	});
 });

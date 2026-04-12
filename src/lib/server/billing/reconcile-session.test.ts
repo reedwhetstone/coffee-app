@@ -131,16 +131,21 @@ function makeEvent(options: {
 	} as unknown as Parameters<typeof handleReconcileStripeSession>[0];
 }
 
-function makeStripe(options?: { clientReferenceId?: string }) {
+function makeStripe(options?: {
+	clientReferenceId?: string;
+	sessionStatus?: string;
+	paymentStatus?: string;
+	customer?: string | null;
+}) {
 	return {
 		checkout: {
 			sessions: {
 				retrieve: vi.fn(async () => ({
 					id: 'cs_test_123',
-					status: 'complete',
-					payment_status: 'paid',
+					status: options?.sessionStatus ?? 'complete',
+					payment_status: options?.paymentStatus ?? 'paid',
 					client_reference_id: options?.clientReferenceId ?? 'user-123',
-					customer: 'cus_123',
+					customer: options?.customer === undefined ? 'cus_123' : options.customer,
 					customer_details: { email: 'user@example.com' },
 					mode: 'subscription',
 					subscription: 'sub_123',
@@ -294,6 +299,31 @@ describe('handleReconcileStripeSession', () => {
 		expect(mocks.roleAuditInsert).toHaveBeenCalled();
 		expect(mocks.stripeSessionProcessing.upsert).toHaveBeenCalled();
 		expect(mocks.stripeSessionProcessing.update).toHaveBeenCalled();
+	});
+
+	it('persists failure bookkeeping when validation fails before reconciliation can continue', async () => {
+		const { supabase, mocks } = makeSupabase({});
+		mockCreateAdminClient.mockReturnValue(supabase);
+		mockGetStripe.mockReturnValue(
+			makeStripe({
+				sessionStatus: 'open',
+				paymentStatus: 'unpaid'
+			})
+		);
+
+		const response = await handleReconcileStripeSession(makeEvent({}));
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({
+			error: 'Payment not complete',
+			status: 'open',
+			paymentStatus: 'unpaid'
+		});
+		expect(mocks.stripeSessionProcessing.upsert).toHaveBeenCalledTimes(1);
+		expect(mocks.stripeSessionProcessing.update).toHaveBeenCalledTimes(1);
+		expect(mocks.stripeSessionProcessing.upsert.mock.invocationCallOrder[0]).toBeLessThan(
+			mocks.stripeSessionProcessing.update.mock.invocationCallOrder[0]
+		);
 	});
 
 	it('rejects checkout sessions that belong to another user', async () => {
