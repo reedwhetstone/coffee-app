@@ -19,6 +19,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 		return {
 			session,
+			user,
 			role,
 			stripeCustomerId: customerData?.customer_id || null
 		};
@@ -26,6 +27,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		session,
+		user,
 		role
 	};
 };

@@ -1,37 +1,54 @@
-import type { PageServerLoad } from './$types';
+import { buildSubscriptionControlPlaneState } from '$lib/server/billing/control-plane';
 import { getStripeCustomerId, getSubscriptionDetails } from '$lib/services/stripe';
+import type { PageServerLoad } from './$types';
 
-// This runs on the server when the page is loaded
 export const load: PageServerLoad = async ({ locals }) => {
-	// Get session from locals
 	const { session, user } = await locals.safeGetSession();
 
-	// If user is logged in, check if they already have a Stripe customer ID
-	if (user) {
-		// Use role already available in locals instead of fetching it again
-		const role = locals.role || 'viewer';
-
-		// Get Stripe customer ID from our database
-		const stripeCustomerId = await getStripeCustomerId(user.id);
-		console.log('stripeCustomerId', stripeCustomerId);
-		console.log('user', user.id);
-
-		// Fetch subscription details if customer ID exists
-		let subscription = null;
-		if (stripeCustomerId) {
-			subscription = await getSubscriptionDetails(stripeCustomerId);
-			console.log('subscription', subscription);
-		}
-
+	if (!user) {
 		return {
 			session,
-			role,
-			stripeCustomerId,
-			subscription
+			user: null,
+			role: 'viewer' as const,
+			stripeCustomerId: null,
+			subscription: null,
+			billingSubscriptions: [],
+			controlPlane: null
 		};
 	}
 
+	const role = locals.role || 'viewer';
+	const apiPlan = locals.principal?.apiPlan ?? 'viewer';
+	const ppiAccess = locals.principal?.ppiAccess ?? false;
+	const stripeCustomerId = await getStripeCustomerId(user.id);
+
+	let subscription = null;
+	if (stripeCustomerId) {
+		subscription = await getSubscriptionDetails(stripeCustomerId);
+	}
+
+	const { data: billingSubscriptions, error: billingSubscriptionsError } = await locals.supabase
+		.from('billing_subscriptions')
+		.select('product_family, product_key, status, cancel_at_period_end, current_period_end')
+		.eq('user_id', user.id);
+
+	if (billingSubscriptionsError) {
+		console.error('Error loading billing subscription snapshots:', billingSubscriptionsError);
+	}
+
 	return {
-		session
+		session,
+		user,
+		role,
+		stripeCustomerId,
+		subscription,
+		billingSubscriptions: billingSubscriptions ?? [],
+		controlPlane: buildSubscriptionControlPlaneState({
+			role,
+			apiPlan,
+			ppiAccess,
+			billingSubscriptions: billingSubscriptions ?? [],
+			stripeSubscription: subscription
+		})
 	};
 };
