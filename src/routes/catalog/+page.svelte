@@ -209,10 +209,10 @@
 				<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
 					<div class="text-center sm:text-left">
 						<h3 class="text-lg font-semibold text-text-primary-light">
-							🚀 Unlock Premium Features
+							🚀 Unlock Mallard Studio Member
 						</h3>
 						<p class="text-sm text-text-secondary-light">
-							Get AI recommendations, roast tracking, profit analytics, and more for just $5/month
+							Get AI guidance, roast tracking, profit workflows, and more for $9/mo or $80/yr
 						</p>
 					</div>
 					<div class="flex flex-col gap-3 sm:flex-row">
@@ -220,7 +220,7 @@
 							onclick={() => goto('/subscription')}
 							class="rounded-md bg-background-tertiary-light px-6 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 						>
-							Start Free Trial
+							Unlock Mallard Studio
 						</button>
 						<button
 							onclick={() =>

@@ -876,11 +876,11 @@
 				>
 					<div class="mb-3 text-3xl">📈</div>
 					<h3 class="mb-2 text-2xl font-bold text-text-primary-light">
-						Unlock Full Market Intelligence
+						Unlock Parchment Intelligence
 					</h3>
 					<p class="mb-6 text-text-secondary-light">
-						PPI membership gives you supplier price comparison, retail/wholesale spread analysis,
-						and extended 90-day + 1-year trend views — updated daily.
+						Parchment Intelligence unlocks supplier price comparison, spread analysis, extended
+						trend views, and the full analytics layer that exists today.
 					</p>
 					<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 						{#if session}
@@ -888,7 +888,7 @@
 								onclick={() => goto('/subscription')}
 								class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
 							>
-								Upgrade to PPI Member
+								Unlock Parchment Intelligence
 							</button>
 						{:else}
 							<button
@@ -905,7 +905,7 @@
 							</button>
 						{/if}
 					</div>
-					<p class="mt-4 text-xs text-text-secondary-light">Starting at $29/mo. Cancel anytime.</p>
+					<p class="mt-4 text-xs text-text-secondary-light">$39/mo or $350/yr. Cancel anytime.</p>
 				</div>
 			</div>
 		{:else}
@@ -913,7 +913,7 @@
 			<div class="space-y-6">
 				<ExpandablePanel
 					title="Origin Price Index"
-					subtitle="PPI Member — Origin-level price aggregates: averages, ranges, and supplier coverage from the daily index."
+					subtitle="Parchment Intelligence — Origin-level price aggregates, ranges, and supplier coverage from the daily market index."
 					totalItems={originBarData.length}
 				>
 					<div
@@ -1005,7 +1005,7 @@
 							<div class="mb-2 flex items-center gap-2">
 								<span
 									class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
-									>PPI Member</span
+									>Parchment Intelligence</span
 								>
 							</div>
 							<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
@@ -1027,7 +1027,7 @@
 						<div class="mb-2 flex items-center gap-2">
 							<span
 								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
-								>PPI Member</span
+								>Parchment Intelligence</span
 							>
 						</div>
 						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
@@ -1517,7 +1517,7 @@
 <!-- Data source note -->
 <div class="mt-4 rounded-lg bg-background-secondary-light p-4 text-xs text-text-secondary-light">
 	<strong class="text-text-primary-light">Data source:</strong> Prices aggregated daily from
-	{stats.totalSuppliers} US green coffee importers and roasters. The Purveyors Price Index (PPI) is updated
-	each morning after scraper completion. Origin and processing method data is sourced directly from supplier
+	{stats.totalSuppliers} US green coffee importers and roasters. These market snapshots are updated each
+	morning after scraper completion. Origin and processing method data is sourced directly from supplier
 	listings.
 </div>

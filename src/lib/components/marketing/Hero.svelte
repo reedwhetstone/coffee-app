@@ -55,8 +55,8 @@
 					into your dashboard, or keep browsing the live catalog, recent arrivals, and API surface
 					from here.
 				{:else}
-					Browse normalized green coffee listings, compare recent arrivals, and explore an API-first
-					coffee intelligence platform before you ever create an account.
+					Browse normalized green coffee listings, compare recent arrivals, and explore Mallard
+					Studio, Parchment API, and Parchment Intelligence before you ever create an account.
 				{/if}
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
@@ -81,8 +81,8 @@
 			</div>
 			{#if !isSignedIn}
 				<p class="mt-4 text-sm text-text-secondary-light">
-					Public catalog access is live now. Free accounts unlock saved workflows, AI help, and
-					roast tools.
+					Public catalog access is live now. Add Mallard Studio Member for workflow tools, or unlock
+					Parchment Intelligence for the full analytics layer.
 				</p>
 			{/if}
 			{#if isSignedIn && canAccessMemberRoutes}

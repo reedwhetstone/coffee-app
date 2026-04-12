@@ -26,15 +26,15 @@
 	<div class="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-				Explore the market, then build the workflow you need
+				Explore the market, then add the products you need
 			</h2>
 			<p class="mx-auto mt-6 max-w-xl text-lg leading-8 text-orange-100">
 				{#if isSignedIn}
 					Keep sourcing from the live catalog, or jump back into your dashboard to manage inventory,
 					roasts, analytics, and the operating side of your coffee program.
 				{:else}
-					Start with live green coffee discovery, recent arrivals, and API-first data. Create a free
-					account when you want saved sourcing research, AI help, and deeper roast workflows.
+					Start with live green coffee discovery, recent arrivals, and Explorer access. Add Mallard
+					Studio Member or Parchment Intelligence when you want deeper workflows and analysis.
 				{/if}
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
