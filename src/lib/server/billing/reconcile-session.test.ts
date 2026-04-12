@@ -131,6 +131,45 @@ function makeEvent(options: {
 	} as unknown as Parameters<typeof handleReconcileStripeSession>[0];
 }
 
+function makeStripe(options?: { clientReferenceId?: string }) {
+	return {
+		checkout: {
+			sessions: {
+				retrieve: vi.fn(async () => ({
+					id: 'cs_test_123',
+					status: 'complete',
+					payment_status: 'paid',
+					client_reference_id: options?.clientReferenceId ?? 'user-123',
+					customer: 'cus_123',
+					customer_details: { email: 'user@example.com' },
+					mode: 'subscription',
+					subscription: 'sub_123',
+					amount_total: 900,
+					currency: 'usd'
+				})),
+				listLineItems: vi.fn(async () => ({
+					data: [
+						{
+							price: {
+								id: 'price_1RgGYuKwI9NkGqAnm4oiHpbx'
+							}
+						}
+					]
+				}))
+			}
+		},
+		subscriptions: {
+			retrieve: vi.fn(async () => ({
+				id: 'sub_123',
+				status: 'active',
+				cancel_at_period_end: false,
+				current_period_end: 1_777_600_000,
+				items: { data: [] }
+			}))
+		}
+	};
+}
+
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
@@ -148,7 +187,7 @@ describe('handleReconcileStripeSession', () => {
 		expect(await response.json()).toEqual({ error: 'Unauthorized' });
 	});
 
-	it('returns current entitlements when a checkout session was already reconciled', async () => {
+	it('returns current entitlements and a product-aware receipt when a checkout session was already reconciled', async () => {
 		const { supabase } = makeSupabase({
 			existingCompletedRow: { role_updated: false },
 			userRoleRow: {
@@ -159,6 +198,7 @@ describe('handleReconcileStripeSession', () => {
 			}
 		});
 		mockCreateAdminClient.mockReturnValue(supabase);
+		mockGetStripe.mockReturnValue(makeStripe());
 
 		const response = await handleReconcileStripeSession(makeEvent({}));
 		const payload = await response.json();
@@ -175,11 +215,16 @@ describe('handleReconcileStripeSession', () => {
 				userRole: ['member'],
 				apiPlan: 'viewer',
 				ppiAccess: false
-			}
+			},
+			receipt: expect.objectContaining({
+				title: 'Mallard Studio is now active',
+				primaryAction: expect.objectContaining({ href: '/dashboard' }),
+				products: [expect.objectContaining({ productName: 'Mallard Studio' })]
+			})
 		});
 	});
 
-	it('reconciles a paid subscription checkout into final entitlements', async () => {
+	it('reconciles a paid subscription checkout into final entitlements and receipt metadata', async () => {
 		const { supabase, mocks } = makeSupabase({
 			userRoleRow: {
 				role: 'viewer',
@@ -189,33 +234,7 @@ describe('handleReconcileStripeSession', () => {
 			}
 		});
 		mockCreateAdminClient.mockReturnValue(supabase);
-		mockGetStripe.mockReturnValue({
-			checkout: {
-				sessions: {
-					retrieve: vi.fn(async () => ({
-						id: 'cs_test_123',
-						status: 'complete',
-						payment_status: 'paid',
-						client_reference_id: 'user-123',
-						customer: 'cus_123',
-						customer_details: { email: 'user@example.com' },
-						mode: 'subscription',
-						subscription: 'sub_123',
-						amount_total: 900,
-						currency: 'usd'
-					}))
-				}
-			},
-			subscriptions: {
-				retrieve: vi.fn(async () => ({
-					id: 'sub_123',
-					status: 'active',
-					cancel_at_period_end: false,
-					current_period_end: 1_777_600_000,
-					items: { data: [] }
-				}))
-			}
-		});
+		mockGetStripe.mockReturnValue(makeStripe());
 		mockReconcileStripeSubscriptionEntitlements.mockResolvedValue({
 			rows: [],
 			deletedItemIds: [],
@@ -259,6 +278,10 @@ describe('handleReconcileStripeSession', () => {
 				apiPlan: 'viewer',
 				ppiAccess: false
 			},
+			receipt: {
+				title: 'Mallard Studio is now active',
+				primaryAction: expect.objectContaining({ href: '/dashboard' })
+			},
 			subscriptionId: 'sub_123',
 			sessionId: 'cs_test_123'
 		});
@@ -276,21 +299,7 @@ describe('handleReconcileStripeSession', () => {
 	it('rejects checkout sessions that belong to another user', async () => {
 		const { supabase } = makeSupabase({});
 		mockCreateAdminClient.mockReturnValue(supabase);
-		mockGetStripe.mockReturnValue({
-			checkout: {
-				sessions: {
-					retrieve: vi.fn(async () => ({
-						id: 'cs_test_123',
-						status: 'complete',
-						payment_status: 'paid',
-						client_reference_id: 'someone-else',
-						customer: 'cus_123',
-						mode: 'subscription',
-						subscription: 'sub_123'
-					}))
-				}
-			}
-		});
+		mockGetStripe.mockReturnValue(makeStripe({ clientReferenceId: 'someone-else' }));
 
 		const response = await handleReconcileStripeSession(makeEvent({}));
 
