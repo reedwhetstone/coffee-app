@@ -837,10 +837,10 @@ export type Database = {
 					role: Database['public']['Enums']['user_role'];
 					updated_at: string;
 					user_role: string[];
-					/** Explicit API access plan. Null = derive from user_role array (legacy). */
-					api_plan: 'viewer' | 'member' | 'enterprise' | null;
-					/** Explicit PPI (Price Index) access entitlement. Null = derive from ppi-member pseudo-role (legacy). */
-					ppi_access: boolean | null;
+					/** Explicit API access plan. */
+					api_plan: 'viewer' | 'member' | 'enterprise';
+					/** Explicit PPI (Price Index) access entitlement. */
+					ppi_access: boolean;
 				};
 				Insert: {
 					created_at?: string;
@@ -850,8 +850,8 @@ export type Database = {
 					role?: Database['public']['Enums']['user_role'];
 					updated_at?: string;
 					user_role?: string[];
-					api_plan?: 'viewer' | 'member' | 'enterprise' | null;
-					ppi_access?: boolean | null;
+					api_plan?: 'viewer' | 'member' | 'enterprise';
+					ppi_access?: boolean;
 				};
 				Update: {
 					created_at?: string;
@@ -861,8 +861,8 @@ export type Database = {
 					role?: Database['public']['Enums']['user_role'];
 					updated_at?: string;
 					user_role?: string[];
-					api_plan?: 'viewer' | 'member' | 'enterprise' | null;
-					ppi_access?: boolean | null;
+					api_plan?: 'viewer' | 'member' | 'enterprise';
+					ppi_access?: boolean;
 				};
 				Relationships: [];
 			};

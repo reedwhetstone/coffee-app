@@ -1,12 +1,18 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiKeyPrincipal, SessionPrincipal } from './principal';
+
+const mockAdminGetUser = vi.fn();
+const mockAdminSingle = vi.fn();
+const mockAdminEq = vi.fn(() => ({ single: mockAdminSingle }));
+const mockAdminSelect = vi.fn(() => ({ eq: mockAdminEq }));
+const mockAdminFrom = vi.fn(() => ({ select: mockAdminSelect }));
 
 vi.mock('$lib/supabase-admin', () => ({
 	createAdminClient: () => ({
 		auth: {
-			getUser: vi.fn()
+			getUser: mockAdminGetUser
 		},
-		from: vi.fn()
+		from: mockAdminFrom
 	})
 }));
 
@@ -19,8 +25,40 @@ const {
 	principalHasApiPlan,
 	principalHasRole,
 	principalHasScope,
-	requiresSessionOriginCheck
+	requiresSessionOriginCheck,
+	resolvePrincipal
 } = await import('./principal');
+
+function makeCookieSessionEvent(sessionRoles: string[] = ['viewer']) {
+	return {
+		request: {
+			method: 'GET',
+			headers: new Headers()
+		},
+		url: new URL('https://app.test/catalog'),
+		locals: {
+			principal: undefined,
+			safeGetSession: vi.fn().mockResolvedValue({
+				session: { access_token: 'cookie-token' },
+				user: { id: 'user-1' },
+				role: 'viewer',
+				roles: sessionRoles
+			})
+		}
+	} as unknown as Parameters<typeof resolvePrincipal>[0];
+}
+
+beforeEach(() => {
+	vi.clearAllMocks();
+	mockAdminGetUser.mockResolvedValue({
+		data: { user: null },
+		error: { message: 'Invalid token' }
+	});
+	mockAdminSingle.mockResolvedValue({
+		data: null,
+		error: { message: 'not found' }
+	});
+});
 
 describe('principal helpers', () => {
 	it('normalizes user roles — pseudo-roles are dropped, clean app roles are preserved', () => {
@@ -99,6 +137,54 @@ describe('principal helpers', () => {
 		expect(principalHasApiPlan(memberPrincipal, 'viewer')).toBe(true);
 		expect(principalHasApiPlan(memberPrincipal, 'member')).toBe(true);
 		expect(principalHasApiPlan(memberPrincipal, 'enterprise')).toBe(false);
+	});
+
+	it('falls back to legacy role-derived entitlements when explicit columns are null', async () => {
+		mockAdminSingle.mockResolvedValue({
+			data: {
+				user_role: ['viewer', 'api-member', 'ppi-member'],
+				api_plan: null,
+				ppi_access: null
+			},
+			error: null
+		});
+
+		const principal = await resolvePrincipal(
+			makeCookieSessionEvent(['viewer', 'api-member', 'ppi-member'])
+		);
+
+		expect(principal).toMatchObject({
+			subjectType: 'user',
+			source: 'cookie-session',
+			primaryAppRole: 'viewer',
+			appRoles: ['viewer'],
+			apiPlan: 'member',
+			ppiAccess: true
+		});
+	});
+
+	it('prefers explicit viewer defaults over legacy pseudo-role derivation', async () => {
+		mockAdminSingle.mockResolvedValue({
+			data: {
+				user_role: ['viewer'],
+				api_plan: 'viewer',
+				ppi_access: false
+			},
+			error: null
+		});
+
+		const principal = await resolvePrincipal(
+			makeCookieSessionEvent(['viewer', 'api-member', 'ppi-member'])
+		);
+
+		expect(principal).toMatchObject({
+			subjectType: 'user',
+			source: 'cookie-session',
+			primaryAppRole: 'viewer',
+			appRoles: ['viewer'],
+			apiPlan: 'viewer',
+			ppiAccess: false
+		});
 	});
 
 	it('derives legacy locals from the authoritative principal state', () => {
