@@ -1,3 +1,4 @@
+import type { BillingPurchaseKey } from '$lib/billing/purchaseKeys';
 import type { CoffeeWithInventory, InventoryWithCatalog, RoastWithLogs } from './component.types';
 
 // Re-export for convenience
@@ -240,16 +241,11 @@ export interface PerformanceResponse extends ApiResponse<PerformanceMetrics[]> {
 
 // Stripe integration types
 export interface StripeSessionRequest {
-	priceId: string;
-	successUrl: string;
-	cancelUrl: string;
+	purchaseKey: BillingPurchaseKey;
 }
 
-export interface StripeSessionResponse extends ApiResponse {
-	data: {
-		sessionId: string;
-		url: string;
-	};
+export interface StripeSessionResponse {
+	clientSecret: string;
 }
 
 export interface StripeCustomer {
