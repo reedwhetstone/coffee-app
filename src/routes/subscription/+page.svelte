@@ -4,11 +4,12 @@
 	import { onMount } from 'svelte';
 	import StripeCheckout from './StripeCheckout.svelte';
 	import { signInWithGoogle } from '$lib/supabase';
+	import { BILLING_PURCHASE_KEYS, type BillingPurchaseKey } from '$lib/billing/purchaseKeys';
 
 	let { data } = $props<{ data: PageData }>();
 
 	let showCheckout = $state(false);
-	let selectedPriceId = $state('');
+	let selectedPurchaseKey = $state<BillingPurchaseKey | null>(null);
 	let selectedPlanName = $state('');
 	let selectedInterval = $state('');
 	let isAnnual = $state(false);
@@ -22,7 +23,7 @@
 	// Available subscription plans
 	const plans: {
 		monthly: {
-			id: string;
+			purchaseKey: BillingPurchaseKey;
 			name: string;
 			price: string;
 			interval: string;
@@ -30,7 +31,7 @@
 			features: string[];
 		};
 		annual: {
-			id: string;
+			purchaseKey: BillingPurchaseKey;
 			name: string;
 			price: string;
 			interval: string;
@@ -40,7 +41,7 @@
 		};
 	} = {
 		monthly: {
-			id: 'price_1RgGYuKwI9NkGqAnm4oiHpbx',
+			purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly,
 			name: 'Roaster Plan',
 			price: '$9',
 			interval: 'month',
@@ -57,7 +58,7 @@
 			]
 		},
 		annual: {
-			id: 'price_1RgGZvKwI9NkGqAnzYJbJkXU',
+			purchaseKey: BILLING_PURCHASE_KEYS.membershipAnnual,
 			name: 'Roaster Plan',
 			price: '$80',
 			interval: 'year',
@@ -78,7 +79,7 @@
 
 	const handlePlanSelect = (interval: 'monthly' | 'annual') => {
 		const plan = plans[interval];
-		selectedPriceId = plan.id;
+		selectedPurchaseKey = plan.purchaseKey;
 		selectedPlanName = plan.name;
 		selectedInterval = interval;
 		showCheckout = true;
@@ -328,7 +329,7 @@
 				</div>
 			</div>
 		</div>
-	{:else if data?.user && showCheckout && selectedPriceId}
+	{:else if data?.user && showCheckout && selectedPurchaseKey}
 		<!-- Checkout Form (for authenticated users who selected a plan) -->
 		<div class="px-4 py-10 md:px-6">
 			<div class="mx-auto max-w-3xl">
@@ -361,9 +362,7 @@
 						</button>
 					</div>
 					<StripeCheckout
-						priceId={selectedPriceId}
-						clientReferenceId={data.user.id}
-						customerEmail={data.user.email}
+						purchaseKey={selectedPurchaseKey}
 						onSuccess={handleCheckoutSuccess}
 						onCancel={handleCheckoutCancel}
 					/>

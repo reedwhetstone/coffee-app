@@ -1028,7 +1028,7 @@ const docsPages: DocsPage[] = [
 							'/api/stripe/create-checkout-session',
 							'POST',
 							'Session',
-							'Create a checkout flow and return a client secret'
+							'Create a checkout flow from a server-side purchase key and return a client secret'
 						],
 						[
 							'/api/stripe/create-customer',
