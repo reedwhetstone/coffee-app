@@ -1049,10 +1049,10 @@ const docsPages: DocsPage[] = [
 							'Resume a paused or canceled subscription by subscriptionId'
 						],
 						[
-							'/api/stripe/verify-and-update-role',
+							'/api/stripe/reconcile-session',
 							'POST',
 							'Session',
-							'Verify checkout by sessionId, dedupe repeat processing, and sync product roles after purchase'
+							'Verify checkout by sessionId, dedupe repeat processing, reconcile billing snapshots, and return the final entitlement state after purchase'
 						],
 						[
 							'/api/stripe/webhook',

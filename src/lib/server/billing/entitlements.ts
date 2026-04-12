@@ -77,6 +77,22 @@ function buildUserRoleMirror(role: UserRole): string[] {
 	return [role];
 }
 
+export function resolveStoredBillingEntitlements(
+	row: Pick<UserRoleRow, 'role' | 'user_role' | 'api_plan' | 'ppi_access'> | null | undefined
+): ResolvedBillingEntitlements {
+	const role = normalizeStoredRole(row?.role);
+
+	return {
+		role,
+		userRole:
+			Array.isArray(row?.user_role) && row.user_role.length > 0
+				? row.user_role
+				: buildUserRoleMirror(role),
+		apiPlan: resolveStoredApiPlan(row?.role, row?.api_plan),
+		ppiAccess: row?.ppi_access === true
+	};
+}
+
 function arraysEqual(left: string[], right: string[]): boolean {
 	if (left.length !== right.length) {
 		return false;
@@ -278,16 +294,7 @@ export async function recomputeUserBillingEntitlements(
 		throw new Error(`Failed to load billing subscriptions: ${subscriptionsError.message}`);
 	}
 
-	const previousRole = normalizeStoredRole(currentUserRoleRow?.role);
-	const previousEntitlements: ResolvedBillingEntitlements = {
-		role: previousRole,
-		userRole:
-			Array.isArray(currentUserRoleRow?.user_role) && currentUserRoleRow.user_role.length > 0
-				? currentUserRoleRow.user_role
-				: buildUserRoleMirror(previousRole),
-		apiPlan: resolveStoredApiPlan(currentUserRoleRow?.role, currentUserRoleRow?.api_plan),
-		ppiAccess: currentUserRoleRow?.ppi_access === true
-	};
+	const previousEntitlements = resolveStoredBillingEntitlements(currentUserRoleRow);
 
 	const resolvedEntitlements = resolveBillingEntitlements({
 		currentRole: currentUserRoleRow?.role,

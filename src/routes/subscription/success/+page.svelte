@@ -1,15 +1,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
-	import { invalidateAll } from '$app/navigation';
+
+	interface ReconciledEntitlements {
+		role: string;
+		userRole: string[];
+		apiPlan: string;
+		ppiAccess: boolean;
+	}
 
 	let { data } = $props<{ data: PageData }>();
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let sessionStatus = $state<'complete' | 'open' | 'expired' | null>(null);
-	let roleVerificationComplete = $state(false);
-	let roleVerificationMessage = $state<string>('');
+	let reconciliationComplete = $state(false);
+	let reconciliationMessage = $state('');
+	let resolvedEntitlements = $state<ReconciledEntitlements | null>(null);
 
 	onMount(async () => {
 		try {
@@ -18,7 +25,6 @@
 				return;
 			}
 
-			// Get session ID from URL
 			const url = new URL(window.location.href);
 			const sessionId = url.searchParams.get('session_id');
 
@@ -28,7 +34,6 @@
 				return;
 			}
 
-			// Check session status
 			const response = await fetch(`/api/stripe/check-session?session_id=${sessionId}`, {
 				method: 'GET',
 				headers: {
@@ -44,11 +49,9 @@
 			const { status } = await response.json();
 			sessionStatus = status;
 
-			// If payment is successful, verify and update role as backup to webhooks
 			if (status === 'complete') {
 				try {
-					// Call backup role verification API
-					const roleResponse = await fetch('/api/stripe/verify-and-update-role', {
+					const reconciliationResponse = await fetch('/api/stripe/reconcile-session', {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json'
@@ -56,33 +59,39 @@
 						body: JSON.stringify({ sessionId })
 					});
 
-					if (roleResponse.ok) {
-						const roleResult = await roleResponse.json();
-						roleVerificationComplete = true;
+					if (reconciliationResponse.ok) {
+						const reconciliationResult = await reconciliationResponse.json();
+						reconciliationComplete = true;
+						resolvedEntitlements = reconciliationResult.entitlements ?? null;
 
-						if (roleResult.roleUpdated) {
-							roleVerificationMessage = 'Your account has been upgraded to premium!';
-						} else if (roleResult.alreadyProcessed) {
-							roleVerificationMessage = 'Your account is already up to date.';
+						if (reconciliationResult.entitlementsChanged) {
+							reconciliationMessage =
+								'Your checkout was reconciled and your latest entitlements are now active.';
+						} else if (reconciliationResult.alreadyProcessed) {
+							reconciliationMessage =
+								'This checkout session was already reconciled. Your entitlements are current.';
 						} else {
-							roleVerificationMessage = roleResult.message || 'Payment verified successfully.';
+							reconciliationMessage =
+								reconciliationResult.message ||
+								'Payment verified and entitlements are already up to date.';
 						}
-
-						console.log('✅ Role verification completed:', roleResult);
 					} else {
-						// Role verification failed, but don't block the user - webhooks may still work
 						console.warn(
-							'⚠️ Role verification failed, relying on webhooks:',
-							await roleResponse.text()
+							'⚠️ Session reconciliation failed, relying on webhook completion:',
+							await reconciliationResponse.text()
 						);
-						roleVerificationMessage = 'Payment confirmed. Your account upgrade is being processed.';
+						reconciliationMessage =
+							'Payment confirmed. Billing reconciliation is still finishing in the background.';
 					}
-				} catch (roleError) {
-					console.warn('⚠️ Role verification error, relying on webhooks:', roleError);
-					roleVerificationMessage = 'Payment confirmed. Your account upgrade is being processed.';
+				} catch (reconciliationError) {
+					console.warn(
+						'⚠️ Session reconciliation error, relying on webhook completion:',
+						reconciliationError
+					);
+					reconciliationMessage =
+						'Payment confirmed. Billing reconciliation is still finishing in the background.';
 				}
 
-				// Invalidate all data to refresh auth state regardless of role verification outcome
 				await invalidateAll();
 			}
 		} catch (err: unknown) {
@@ -93,11 +102,9 @@
 		}
 	});
 
-	// Function to handle return to homepage with data refresh
-	const returnToHomepage = async () => {
-		// Invalidate all data to ensure fresh data on the next page
+	const returnToSubscription = async () => {
 		await invalidateAll();
-		goto('/');
+		goto('/subscription');
 	};
 </script>
 
@@ -110,7 +117,7 @@
 				<div
 					class="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"
 				></div>
-				<p class="text-primary-light mt-4">Verifying your payment...</p>
+				<p class="text-primary-light mt-4">Reconciling your checkout session...</p>
 			</div>
 		{:else if error}
 			<div class="flex flex-col items-center justify-center text-center">
@@ -153,21 +160,43 @@
 						d="M5 13l4 4L19 7"
 					/>
 				</svg>
-				<h2 class="text-primary-light mt-4 text-xl font-bold">Payment Successful!</h2>
+				<h2 class="text-primary-light mt-4 text-xl font-bold">Payment Successful</h2>
 				<p class="text-primary-light mt-2">
-					Thank you for your subscription! {roleVerificationMessage ||
-						'Your account upgrade is being processed.'}
+					Thank you. {reconciliationMessage || 'Your payment has been confirmed.'}
 				</p>
-				{#if roleVerificationComplete}
-					<p class="mt-1 text-sm text-green-600">✅ Account verification completed</p>
+				{#if reconciliationComplete}
+					<p class="mt-1 text-sm text-green-600">✅ Entitlement reconciliation completed</p>
 				{:else}
-					<p class="mt-1 text-sm text-blue-600">⏳ Account upgrade in progress...</p>
+					<p class="mt-1 text-sm text-blue-600">⏳ Billing reconciliation in progress...</p>
 				{/if}
+
+				{#if resolvedEntitlements}
+					<div
+						class="mt-5 w-full rounded-xl border border-border-light bg-background-primary-light p-4 text-left text-sm text-text-secondary-light"
+					>
+						<p class="font-semibold text-text-primary-light">Resolved entitlements</p>
+						<ul class="mt-3 space-y-2">
+							<li>
+								<span class="font-medium text-text-primary-light">App role:</span>
+								{resolvedEntitlements.role}
+							</li>
+							<li>
+								<span class="font-medium text-text-primary-light">API plan:</span>
+								{resolvedEntitlements.apiPlan}
+							</li>
+							<li>
+								<span class="font-medium text-text-primary-light">PPI access:</span>
+								{resolvedEntitlements.ppiAccess ? 'enabled' : 'not enabled'}
+							</li>
+						</ul>
+					</div>
+				{/if}
+
 				<button
-					onclick={returnToHomepage}
+					onclick={returnToSubscription}
 					class="mt-6 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
 				>
-					Return to Homepage
+					Return to Subscription Control Plane
 				</button>
 			</div>
 		{:else}
@@ -188,13 +217,14 @@
 				</svg>
 				<h2 class="text-primary-light mt-4 text-xl font-bold">Payment Pending</h2>
 				<p class="text-primary-light mt-2">
-					Your payment is being processed. We'll update your account status shortly.
+					Your payment is still being processed. We'll reconcile entitlements as soon as Stripe
+					marks the checkout complete.
 				</p>
 				<button
-					onclick={returnToHomepage}
+					onclick={returnToSubscription}
 					class="mt-6 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
 				>
-					Return to Homepage
+					Return to Subscription Control Plane
 				</button>
 			</div>
 		{/if}
