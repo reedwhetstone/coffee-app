@@ -1,5 +1,6 @@
 import type { SubscriptionDetails } from '$lib/services/stripe';
 import { isBillingSubscriptionActive } from '$lib/server/billing/entitlements';
+import { resolveMembershipSubscriptionManagementState } from '$lib/server/billing/subscription-management';
 import type { UserRole } from '$lib/types/auth.types';
 import type { Database } from '$lib/types/database.types';
 
@@ -9,7 +10,12 @@ type BillingSubscriptionRow = Database['public']['Tables']['billing_subscription
 
 type BillingSubscriptionSnapshot = Pick<
 	BillingSubscriptionRow,
-	'product_family' | 'product_key' | 'status' | 'cancel_at_period_end' | 'current_period_end'
+	| 'stripe_subscription_id'
+	| 'product_family'
+	| 'product_key'
+	| 'status'
+	| 'cancel_at_period_end'
+	| 'current_period_end'
 >;
 
 type ControlPlaneTone = 'success' | 'info' | 'warning' | 'muted';
@@ -22,6 +28,7 @@ export interface SubscriptionControlPlaneState {
 		sourceLabel: string;
 		description: string;
 		canManageSubscription: boolean;
+		managementBlockedReason: string | null;
 		stripeStatus: SubscriptionDetails['status'] | null;
 		cancelAtPeriodEnd: boolean;
 		currentPeriodEnd: number | null;
@@ -94,6 +101,10 @@ export function buildSubscriptionControlPlaneState(input: {
 		billingSubscriptions,
 		'membership'
 	);
+	const membershipManagementState = resolveMembershipSubscriptionManagementState({
+		subscriptionId: stripeSubscription?.id,
+		billingSubscriptions
+	});
 	const membershipHasAccess = input.role === 'member' || input.role === 'admin';
 
 	const membershipTone: ControlPlaneTone =
@@ -137,7 +148,10 @@ export function buildSubscriptionControlPlaneState(input: {
 			description: membershipHasAccess
 				? 'Membership unlocks roast management and the paid core app surfaces.'
 				: 'Upgrade to membership to unlock roast management, full concierge access, inventory tracking, and premium journaling tools.',
-			canManageSubscription: Boolean(stripeSubscription?.id),
+			canManageSubscription: Boolean(stripeSubscription?.id) && membershipManagementState.canManage,
+			managementBlockedReason: membershipManagementState.hasActiveOtherFamilies
+				? 'Membership cancel and resume are unavailable here when that Stripe subscription also contains API or Parchment Intelligence products.'
+				: null,
 			stripeStatus: stripeSubscription?.status ?? null,
 			cancelAtPeriodEnd: stripeSubscription?.cancel_at_period_end ?? false,
 			currentPeriodEnd: stripeSubscription?.current_period_end ?? null,

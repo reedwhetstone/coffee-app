@@ -34,6 +34,7 @@ describe('subscription control plane state', () => {
 			ppiAccess: false,
 			billingSubscriptions: [
 				{
+					stripe_subscription_id: 'sub_123',
 					product_family: 'membership',
 					product_key: 'membership.monthly',
 					status: 'active',
@@ -63,6 +64,47 @@ describe('subscription control plane state', () => {
 			stripeStatus: 'active'
 		});
 		expect(state.membership.sourceLabel).toContain('set to cancel at period end');
+	});
+
+	it('blocks membership management when the Stripe subscription also carries another active product family', () => {
+		const state = buildSubscriptionControlPlaneState({
+			role: 'member',
+			apiPlan: 'member',
+			ppiAccess: false,
+			billingSubscriptions: [
+				{
+					stripe_subscription_id: 'sub_bundle_123',
+					product_family: 'membership',
+					product_key: 'membership.monthly',
+					status: 'active',
+					cancel_at_period_end: false,
+					current_period_end: '2026-05-01T00:00:00.000Z'
+				},
+				{
+					stripe_subscription_id: 'sub_bundle_123',
+					product_family: 'api_plan',
+					product_key: 'api_plan.monthly',
+					status: 'active',
+					cancel_at_period_end: false,
+					current_period_end: '2026-05-01T00:00:00.000Z'
+				}
+			],
+			stripeSubscription: {
+				id: 'sub_bundle_123',
+				status: 'active',
+				current_period_end: 1_777_600_000,
+				cancel_at_period_end: false,
+				plan: {
+					name: 'Mallard Studio Member',
+					amount: 900,
+					interval: 'month',
+					interval_count: 1
+				}
+			}
+		});
+
+		expect(state.membership.canManageSubscription).toBe(false);
+		expect(state.membership.managementBlockedReason).toContain('also contains API');
 	});
 
 	it('preserves admin messaging while surfacing enterprise API access', () => {

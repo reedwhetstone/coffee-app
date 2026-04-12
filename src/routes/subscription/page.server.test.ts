@@ -20,6 +20,7 @@ beforeEach(async () => {
 
 function createSupabaseMock(
 	billingSubscriptions: Array<{
+		stripe_subscription_id: string;
 		product_family: string;
 		product_key: string;
 		status: string;
@@ -42,6 +43,7 @@ function createSupabaseMock(
 
 function makeLoadInput(
 	billingSubscriptions: Array<{
+		stripe_subscription_id: string;
 		product_family: string;
 		product_key: string;
 		status: string;
@@ -70,6 +72,7 @@ describe('/subscription page server load', () => {
 		const result = (await load(
 			makeLoadInput([
 				{
+					stripe_subscription_id: 'sub_bundle_123',
 					product_family: 'api_plan',
 					product_key: 'api_plan.monthly',
 					status: 'active',
@@ -92,5 +95,51 @@ describe('/subscription page server load', () => {
 		});
 		expect(result.subscription).toBeNull();
 		expect(result.controlPlane?.membership.canManageSubscription).toBe(false);
+	});
+
+	it('marks bundled multi-family membership subscriptions as not manageable', async () => {
+		mockGetSubscriptionDetails.mockResolvedValue({
+			id: 'sub_bundle_123',
+			status: 'active',
+			current_period_end: 1_777_600_000,
+			cancel_at_period_end: false,
+			plan: {
+				name: 'Mallard Studio Member',
+				amount: 900,
+				interval: 'month',
+				interval_count: 1
+			}
+		});
+
+		const result = (await load(
+			makeLoadInput([
+				{
+					stripe_subscription_id: 'sub_bundle_123',
+					product_family: 'membership',
+					product_key: 'membership.monthly',
+					status: 'active',
+					cancel_at_period_end: false,
+					current_period_end: '2026-05-01T00:00:00.000Z'
+				},
+				{
+					stripe_subscription_id: 'sub_bundle_123',
+					product_family: 'api_plan',
+					product_key: 'api_plan.monthly',
+					status: 'active',
+					cancel_at_period_end: false,
+					current_period_end: '2026-05-01T00:00:00.000Z'
+				}
+			])
+		)) as {
+			controlPlane: {
+				membership: {
+					canManageSubscription: boolean;
+					managementBlockedReason: string | null;
+				};
+			} | null;
+		};
+
+		expect(result.controlPlane?.membership.canManageSubscription).toBe(false);
+		expect(result.controlPlane?.membership.managementBlockedReason).toContain('also contains API');
 	});
 });

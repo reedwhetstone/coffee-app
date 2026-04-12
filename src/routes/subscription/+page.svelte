@@ -357,7 +357,13 @@
 							</div>
 
 							<div class="mt-5 space-y-3">
-								{#if data.subscription.cancel_at_period_end}
+								{#if !data.controlPlane.membership.canManageSubscription && data.controlPlane.membership.managementBlockedReason}
+									<div
+										class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
+									>
+										{data.controlPlane.membership.managementBlockedReason}
+									</div>
+								{:else if data.subscription.cancel_at_period_end}
 									<button
 										onclick={() => resumeSubscription()}
 										disabled={resumeLoading}
