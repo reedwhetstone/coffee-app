@@ -3,6 +3,12 @@
  * Supports Google Rich Results and enhanced search visibility
  */
 
+import {
+	HOMEPAGE_MARKETING_APPLICATION_DESCRIPTION,
+	HOMEPAGE_MARKETING_ORGANIZATION_DESCRIPTION,
+	buildHomepageMarketingSearchUrlTemplate
+} from '$lib/public-contracts/homepage';
+
 export interface SchemaConfig {
 	baseUrl: string;
 	organizationName?: string;
@@ -18,8 +24,7 @@ export class SchemaService {
 	constructor(config: SchemaConfig) {
 		this.config = {
 			organizationName: 'Purveyors',
-			organizationDescription:
-				'Coffee intelligence platform with a live green coffee catalog, normalized sourcing data, and an API-first workflow layer',
+			organizationDescription: HOMEPAGE_MARKETING_ORGANIZATION_DESCRIPTION,
 			organizationLogo: '/purveyors_orange.svg',
 			contactEmail: 'support@purveyors.io',
 			...config
@@ -64,7 +69,7 @@ export class SchemaService {
 				'@type': 'SearchAction',
 				target: {
 					'@type': 'EntryPoint',
-					urlTemplate: `${this.config.baseUrl}/catalog?name={search_term_string}`
+					urlTemplate: buildHomepageMarketingSearchUrlTemplate(this.config.baseUrl)
 				},
 				'query-input': 'required name=search_term_string'
 			}
@@ -112,8 +117,7 @@ export class SchemaService {
 			'@context': 'https://schema.org',
 			'@type': 'SoftwareApplication',
 			name: 'Purveyors Coffee Platform',
-			description:
-				'Coffee intelligence platform with a live green coffee catalog, sourcing data, roast tracking, and operational workflows for roasters',
+			description: HOMEPAGE_MARKETING_APPLICATION_DESCRIPTION,
 			url: this.config.baseUrl,
 			applicationCategory: 'BusinessApplication',
 			operatingSystem: 'Web Browser',

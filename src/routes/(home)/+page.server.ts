@@ -1,5 +1,14 @@
 import type { PageServerLoad } from './$types';
 import { searchCatalog } from '$lib/data/catalog';
+import {
+	HOMEPAGE_MARKETING_DESCRIPTION,
+	HOMEPAGE_MARKETING_KEYWORDS,
+	HOMEPAGE_MARKETING_OG_DESCRIPTION,
+	HOMEPAGE_MARKETING_PREVIEW_QUERY,
+	HOMEPAGE_MARKETING_SOCIAL_IMAGE,
+	HOMEPAGE_MARKETING_TITLE,
+	HOMEPAGE_MARKETING_TWITTER_DESCRIPTION
+} from '$lib/public-contracts/homepage';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
@@ -11,13 +20,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	let stockedData: Record<string, unknown>[] = [];
 	try {
 		const result = await searchCatalog(locals.supabase, {
-			stockedOnly: true,
+			...HOMEPAGE_MARKETING_PREVIEW_QUERY,
 			publicOnly: visibility.publicOnly,
 			showWholesale: visibility.showWholesale,
-			wholesaleOnly: visibility.wholesaleOnly,
-			orderBy: 'arrival_date',
-			orderDirection: 'desc',
-			limit: 6
+			wholesaleOnly: visibility.wholesaleOnly
 		});
 		stockedData = result.data as unknown as Record<string, unknown>[];
 	} catch (error) {
@@ -41,28 +47,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/',
-			title: 'Purveyors - Live Green Coffee Catalog & Coffee Intelligence',
-			description:
-				'Browse normalized green coffee listings, recent arrivals, and the API-first coffee intelligence platform built for roasters, buyers, and developers.',
-			keywords: [
-				'green coffee catalog',
-				'coffee intelligence',
-				'coffee sourcing',
-				'green coffee API',
-				'coffee data platform',
-				'coffee roaster software',
-				'specialty coffee'
-			],
-			ogTitle: 'Purveyors - Live Green Coffee Catalog & Coffee Intelligence',
-			ogDescription:
-				'Explore recent arrivals, normalized sourcing data, and the API-first coffee platform built for roasters and developers.',
-			twitterTitle: 'Purveyors - Live Green Coffee Catalog & Coffee Intelligence',
-			twitterDescription:
-				'Browse live green coffee data, compare recent arrivals, and explore the API-first coffee intelligence platform for roasters.',
+			title: HOMEPAGE_MARKETING_TITLE,
+			description: HOMEPAGE_MARKETING_DESCRIPTION,
+			keywords: [...HOMEPAGE_MARKETING_KEYWORDS],
+			ogTitle: HOMEPAGE_MARKETING_TITLE,
+			ogDescription: HOMEPAGE_MARKETING_OG_DESCRIPTION,
+			twitterTitle: HOMEPAGE_MARKETING_TITLE,
+			twitterDescription: HOMEPAGE_MARKETING_TWITTER_DESCRIPTION,
 			image: resolvePublicPageSocialImage({
 				baseUrl,
-				preferredPath: '/og/home.jpg',
-				alt: 'Purveyors homepage social preview card'
+				preferredPath: HOMEPAGE_MARKETING_SOCIAL_IMAGE.preferredPath,
+				alt: HOMEPAGE_MARKETING_SOCIAL_IMAGE.alt
 			}),
 			schemaData
 		})
