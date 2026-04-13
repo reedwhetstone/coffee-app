@@ -153,7 +153,7 @@ describe('subscription control plane state', () => {
 		expect(state.membership.sourceLabel).toContain('set to cancel at period end');
 	});
 
-	it.each(['active', 'past_due'])(
+	it.each(['active', 'past_due', 'incomplete', 'unpaid'])(
 		'blocks Mallard Studio management when the Stripe subscription also carries another %s product family',
 		(otherFamilyStatus) => {
 			const state = buildSubscriptionControlPlaneState({
@@ -263,6 +263,99 @@ describe('subscription control plane state', () => {
 			priceLabel: '$39/month'
 		});
 	});
+
+	it.each(['past_due', 'incomplete', 'unpaid'])(
+		'does not elevate %s billing snapshots into current paid ownership',
+		(status) => {
+			const state = buildSubscriptionControlPlaneState({
+				role: 'viewer',
+				apiPlan: 'viewer',
+				ppiAccess: false,
+				billingSubscriptions: [
+					{
+						stripe_subscription_id: 'sub_membership_noncurrent',
+						product_family: 'membership',
+						product_key: 'membership.monthly',
+						status,
+						cancel_at_period_end: false,
+						current_period_end: '2026-05-01T00:00:00.000Z'
+					},
+					{
+						stripe_subscription_id: 'sub_api_noncurrent',
+						product_family: 'api_plan',
+						product_key: 'api_plan.monthly',
+						status,
+						cancel_at_period_end: false,
+						current_period_end: '2026-05-01T00:00:00.000Z'
+					},
+					{
+						stripe_subscription_id: 'sub_ppi_noncurrent',
+						product_family: 'ppi_addon',
+						product_key: 'ppi_addon.monthly',
+						status,
+						cancel_at_period_end: false,
+						current_period_end: '2026-05-01T00:00:00.000Z'
+					}
+				],
+				stripeSubscriptions: {
+					membership: {
+						id: 'sub_membership_noncurrent',
+						status,
+						current_period_end: 1_777_600_000,
+						cancel_at_period_end: false,
+						plan: {
+							name: 'Mallard Studio Member',
+							amount: 900,
+							interval: 'month',
+							interval_count: 1
+						}
+					},
+					api: {
+						id: 'sub_api_noncurrent',
+						status,
+						current_period_end: 1_777_600_000,
+						cancel_at_period_end: false,
+						plan: {
+							name: 'Parchment API',
+							amount: 9900,
+							interval: 'month',
+							interval_count: 1
+						}
+					},
+					intelligence: {
+						id: 'sub_ppi_noncurrent',
+						status,
+						current_period_end: 1_777_600_000,
+						cancel_at_period_end: false,
+						plan: {
+							name: 'Parchment Intelligence',
+							amount: 3900,
+							interval: 'month',
+							interval_count: 1
+						}
+					}
+				}
+			});
+
+			expect(state.membership).toMatchObject({
+				hasAccess: false,
+				statusLabel: 'Viewer baseline',
+				currentPlan: null
+			});
+			expect(state.api).toMatchObject({
+				plan: 'viewer',
+				statusLabel: 'Explorer baseline active'
+			});
+			expect(state.api.currentPlan).toMatchObject({
+				name: 'Explorer',
+				priceLabel: 'Free'
+			});
+			expect(state.intelligence).toMatchObject({
+				enabled: false,
+				statusLabel: 'Locked',
+				currentPlan: null
+			});
+		});
 
 	it('does not surface terminal family snapshots as current paid plans', () => {
 		const state = buildSubscriptionControlPlaneState({

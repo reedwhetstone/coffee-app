@@ -27,7 +27,9 @@ type ControlPlaneTone = 'success' | 'info' | 'warning' | 'muted';
 
 type ControlPlanePeriodEnd = number | string | null;
 
-const CURRENT_OWNERSHIP_STATUSES = new Set([
+const CURRENT_OWNERSHIP_STATUSES = new Set(['active', 'trialing']);
+
+const OPERATIONAL_BILLING_STATUSES = new Set([
 	'active',
 	'trialing',
 	'past_due',
@@ -173,6 +175,10 @@ function hasCurrentOwnershipStatus(status: string | null | undefined): boolean {
 
 function hasCurrentStripeOwnership(subscription: SubscriptionDetails | null): boolean {
 	return Boolean(subscription && hasCurrentOwnershipStatus(subscription.status));
+}
+
+function hasOperationalBillingStatus(status: string | null | undefined): boolean {
+	return Boolean(status && OPERATIONAL_BILLING_STATUSES.has(status));
 }
 
 function getRelevantFamilySnapshot(
@@ -373,7 +379,9 @@ export function buildSubscriptionControlPlaneState(input: {
 
 	const membershipManagementState = resolveMembershipSubscriptionManagementState({
 		subscriptionId: membershipStripeSubscription?.id,
-		billingSubscriptions
+		billingSubscriptions: billingSubscriptions.filter((subscription) =>
+			hasOperationalBillingStatus(subscription.status)
+		)
 	});
 	const membershipHasAccess = input.role === 'admin' || hasCurrentMembershipBillingState;
 	const membershipTone: ControlPlaneTone =
