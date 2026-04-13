@@ -38,6 +38,7 @@ export interface SubscriptionDetails {
 
 interface GetSubscriptionDetailsOptions {
 	productFamily?: BillingProductFamily;
+	preferredSubscriptionId?: string | null;
 }
 
 function matchesProductFamily(
@@ -165,26 +166,31 @@ export async function getSubscriptionDetails(
 			return null;
 		}
 
-		// Get the most recent subscription (regardless of status)
-		// Sort by created date descending to get most recent first
-		const sortedSubscriptions = [...matchingSubscriptions].sort((a, b) => b.created - a.created);
-		const latestSubscription = sortedSubscriptions[0];
+		const preferredSubscription = options.preferredSubscriptionId
+			? matchingSubscriptions.find(
+					(subscription) => subscription.id === options.preferredSubscriptionId
+				)
+			: null;
+
+		const selectedSubscription = preferredSubscription
+			? preferredSubscription
+			: [...matchingSubscriptions].sort((a, b) => b.created - a.created)[0];
 
 		const matchedItem = options.productFamily
-			? latestSubscription.items.data.find((item) =>
+			? selectedSubscription.items.data.find((item) =>
 					matchesProductFamily(item, options.productFamily!)
 				)
-			: latestSubscription.items.data[0];
+			: selectedSubscription.items.data[0];
 		const priceItem = matchedItem?.price;
 		const catalogEntry = priceItem
 			? getBillingCatalogEntryByStripePriceId(priceItem.id)
 			: null;
 
 		return {
-			id: latestSubscription.id,
-			status: latestSubscription.status as SubscriptionStatus,
-			current_period_end: latestSubscription.current_period_end,
-			cancel_at_period_end: latestSubscription.cancel_at_period_end,
+			id: selectedSubscription.id,
+			status: selectedSubscription.status as SubscriptionStatus,
+			current_period_end: selectedSubscription.current_period_end,
+			cancel_at_period_end: selectedSubscription.cancel_at_period_end,
 			plan: {
 				name:
 					catalogEntry?.planName ||
@@ -193,7 +199,7 @@ export async function getSubscriptionDetails(
 				interval: priceItem?.recurring?.interval || null,
 				interval_count: priceItem?.recurring?.interval_count || null
 			},
-			payment_method: latestSubscription.default_payment_method as Stripe.PaymentMethod | null
+			payment_method: selectedSubscription.default_payment_method as Stripe.PaymentMethod | null
 		};
 	} catch (error) {
 		console.error('Error fetching subscription data:', error);

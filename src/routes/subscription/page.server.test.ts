@@ -97,13 +97,16 @@ describe('/subscription page server load', () => {
 
 		expect(mockGetStripeCustomerId).toHaveBeenCalledWith('user-123');
 		expect(mockGetSubscriptionDetails).toHaveBeenNthCalledWith(1, 'cus_123', {
-			productFamily: 'membership'
+			productFamily: 'membership',
+			preferredSubscriptionId: null
 		});
 		expect(mockGetSubscriptionDetails).toHaveBeenNthCalledWith(2, 'cus_123', {
-			productFamily: 'api_plan'
+			productFamily: 'api_plan',
+			preferredSubscriptionId: 'sub_bundle_123'
 		});
 		expect(mockGetSubscriptionDetails).toHaveBeenNthCalledWith(3, 'cus_123', {
-			productFamily: 'ppi_addon'
+			productFamily: 'ppi_addon',
+			preferredSubscriptionId: null
 		});
 		expect(result.controlPlane?.api.resolvedPlanName).toBe('Parchment API');
 	});
@@ -273,6 +276,34 @@ describe('/subscription page server load', () => {
 			statusLabel: 'Intelligence active'
 		});
 		expect(result.controlPlane?.intelligence.currentPlan?.name).toBe('Parchment Intelligence');
+	});
+
+	it('prefers the current billing snapshot subscription id for same-family churn lookups', async () => {
+		await load(
+			makeLoadInput([
+				{
+					stripe_subscription_id: 'sub_membership_current',
+					product_family: 'membership',
+					product_key: 'membership.monthly',
+					status: 'active',
+					cancel_at_period_end: false,
+					current_period_end: '2026-05-01T00:00:00.000Z'
+				},
+				{
+					stripe_subscription_id: 'sub_membership_old',
+					product_family: 'membership',
+					product_key: 'membership.monthly',
+					status: 'canceled',
+					cancel_at_period_end: false,
+					current_period_end: '2026-03-01T00:00:00.000Z'
+				}
+			])
+		);
+
+		expect(mockGetSubscriptionDetails).toHaveBeenNthCalledWith(1, 'cus_123', {
+			productFamily: 'membership',
+			preferredSubscriptionId: 'sub_membership_current'
+		});
 	});
 
 	it('skips Stripe lookups when the user has no Stripe customer id', async () => {

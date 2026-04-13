@@ -32,16 +32,37 @@ export const load: PageServerLoad = async ({ locals }) => {
 		console.error('Error loading billing subscription snapshots:', billingSubscriptionsError);
 	}
 
+	const currentSnapshotSubscriptionIdByFamily = (billingSubscriptions ?? []).reduce(
+		(acc, subscription) => {
+			if (
+				!acc[subscription.product_family as 'membership' | 'api_plan' | 'ppi_addon'] &&
+				(subscription.status === 'active' || subscription.status === 'trialing')
+			) {
+				acc[subscription.product_family as 'membership' | 'api_plan' | 'ppi_addon'] =
+					subscription.stripe_subscription_id;
+			}
+
+			return acc;
+		},
+		{} as Partial<Record<'membership' | 'api_plan' | 'ppi_addon', string>>
+	);
+
 	const stripeSubscriptions = stripeCustomerId
 		? await Promise.all([
 				getSubscriptionDetails(stripeCustomerId, {
-					productFamily: 'membership'
+					productFamily: 'membership',
+					preferredSubscriptionId:
+						currentSnapshotSubscriptionIdByFamily.membership ?? null
 				}),
 				getSubscriptionDetails(stripeCustomerId, {
-					productFamily: 'api_plan'
+					productFamily: 'api_plan',
+					preferredSubscriptionId:
+						currentSnapshotSubscriptionIdByFamily.api_plan ?? null
 				}),
 				getSubscriptionDetails(stripeCustomerId, {
-					productFamily: 'ppi_addon'
+					productFamily: 'ppi_addon',
+					preferredSubscriptionId:
+						currentSnapshotSubscriptionIdByFamily.ppi_addon ?? null
 				})
 			]).then(([membership, api, intelligence]) => ({
 				membership,
