@@ -10,6 +10,8 @@ import {
 	resolveStoredBillingEntitlements,
 	type ResolvedBillingEntitlements
 } from './entitlements';
+import { getBillingCatalogEntryByStripePriceId, type BillingCatalogEntry } from './catalog';
+import { buildBillingSuccessReceipt } from './success-receipt';
 
 interface RoleAuditLog {
 	user_id: string;
@@ -49,7 +51,7 @@ async function logRoleChange(supabase: SupabaseClient<Database>, auditData: Role
 async function loadCurrentEntitlements(
 	supabase: SupabaseClient<Database>,
 	userId: string
-): Promise<Json | null> {
+): Promise<ResolvedBillingEntitlements | null> {
 	const { data, error } = await supabase
 		.from('user_roles')
 		.select('role, user_role, api_plan, ppi_access')
@@ -61,7 +63,42 @@ async function loadCurrentEntitlements(
 		return null;
 	}
 
-	return serializeEntitlements(resolveStoredBillingEntitlements(data));
+	return resolveStoredBillingEntitlements(data);
+}
+
+async function loadCheckoutSessionCatalogEntries(
+	stripe: ReturnType<typeof getStripe>,
+	sessionId: string
+): Promise<BillingCatalogEntry[]> {
+	try {
+		const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, {
+			limit: 20,
+			expand: ['data.price.product']
+		});
+
+		const catalogEntries: BillingCatalogEntry[] = [];
+		const seen = new Set<string>();
+
+		for (const item of lineItems.data) {
+			const priceId = item.price?.id;
+			if (!priceId) {
+				continue;
+			}
+
+			const catalogEntry = getBillingCatalogEntryByStripePriceId(priceId);
+			if (!catalogEntry || seen.has(catalogEntry.purchaseKey)) {
+				continue;
+			}
+
+			seen.add(catalogEntry.purchaseKey);
+			catalogEntries.push(catalogEntry);
+		}
+
+		return catalogEntries;
+	} catch (error) {
+		console.warn('⚠️ Failed to load checkout session line items for receipt:', error);
+		return [];
+	}
 }
 
 async function markSessionProcessingStatus(
@@ -180,13 +217,21 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 		}
 
 		if (existingProcessing) {
+			const stripe = getStripe();
+			const purchasedCatalogEntries = await loadCheckoutSessionCatalogEntries(stripe, sessionId);
+			const currentEntitlements = await loadCurrentEntitlements(supabase, user.id);
+
 			return json({
 				success: true,
 				entitlementsChanged: existingProcessing.role_updated || false,
 				roleUpdated: existingProcessing.role_updated || false,
 				message: 'Checkout session already reconciled',
 				alreadyProcessed: true,
-				entitlements: await loadCurrentEntitlements(supabase, user.id)
+				entitlements: currentEntitlements ? serializeEntitlements(currentEntitlements) : null,
+				receipt: buildBillingSuccessReceipt({
+					catalogEntries: purchasedCatalogEntries,
+					entitlements: currentEntitlements
+				})
 			});
 		}
 
@@ -196,6 +241,7 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 		const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
 			expand: ['subscription']
 		});
+		const purchasedCatalogEntries = await loadCheckoutSessionCatalogEntries(stripe, sessionId);
 
 		if (checkoutSession.status !== 'complete' || checkoutSession.payment_status !== 'paid') {
 			await markSessionProcessingStatus(supabase, {
@@ -249,7 +295,7 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 		});
 
 		let entitlementsChanged = false;
-		let resolvedEntitlements: Json | null = await loadCurrentEntitlements(supabase, user.id);
+		let resolvedEntitlements = await loadCurrentEntitlements(supabase, user.id);
 		let subscriptionId: string | null = null;
 
 		if (checkoutSession.mode === 'subscription' && checkoutSession.subscription) {
@@ -266,7 +312,7 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 			});
 
 			entitlementsChanged = reconciliation.changed;
-			resolvedEntitlements = serializeEntitlements(reconciliation.resolvedEntitlements);
+			resolvedEntitlements = reconciliation.resolvedEntitlements;
 
 			if (reconciliation.changed) {
 				await logRoleChange(supabase, {
@@ -314,7 +360,11 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 						? 'Checkout session reconciled and entitlements updated'
 						: 'Checkout session reconciled and entitlements were already up to date'
 					: 'Checkout session verified, no subscription entitlements were updated',
-			entitlements: resolvedEntitlements,
+			entitlements: resolvedEntitlements ? serializeEntitlements(resolvedEntitlements) : null,
+			receipt: buildBillingSuccessReceipt({
+				catalogEntries: purchasedCatalogEntries,
+				entitlements: resolvedEntitlements
+			}),
 			subscriptionId,
 			sessionId
 		});
@@ -323,6 +373,8 @@ export async function handleReconcileStripeSession(event: RequestEvent) {
 
 		if (sessionId && userId) {
 			try {
+				await upsertSessionProcessingRow(supabase, sessionId, userId);
+
 				await markSessionProcessingStatus(supabase, {
 					sessionId,
 					userId,
