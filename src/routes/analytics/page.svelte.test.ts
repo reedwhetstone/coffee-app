@@ -75,6 +75,22 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				sample_size: 9,
 				wholesale_only: false,
 				aggregation_tier: 1
+			},
+			{
+				snapshot_date: '2026-04-08',
+				origin: 'Colombia',
+				process: 'Washed',
+				price_avg: 3.6,
+				price_median: 3.5,
+				price_min: 3.3,
+				price_max: 3.9,
+				price_p25: 3.4,
+				price_p75: 3.7,
+				price_stdev: 0.15,
+				supplier_count: 3,
+				sample_size: 7,
+				wholesale_only: true,
+				aggregation_tier: 1
 			}
 		],
 		processDistribution: [{ name: 'Washed', count: 9, wholesale: false }],
@@ -203,5 +219,19 @@ describe('analytics page loading experience', () => {
 		expect(screen.getAllByRole('button', { name: 'Retry loading' }).length).toBeGreaterThanOrEqual(
 			3
 		);
+	});
+});
+
+describe('analytics premium boundary copy', () => {
+	it('does not expose spread controls or spread-upgrade promises on the baseline surface', async () => {
+		render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(screen.queryByRole('button', { name: 'Spread' })).not.toBeInTheDocument();
+		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
+		expect(screen.queryByText(/spread analysis/i)).not.toBeInTheDocument();
 	});
 });

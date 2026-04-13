@@ -67,16 +67,8 @@
 		}
 	);
 
-	type ViewMode = 'retail' | 'wholesale' | 'all' | 'spread';
+	type ViewMode = 'retail' | 'wholesale' | 'all';
 	let viewMode = $state<ViewMode>('retail');
-
-	interface SpreadDataPoint {
-		origin: string;
-		snapshot_date: string;
-		spread_pct: number;
-		retail_price: number;
-		wholesale_price: number;
-	}
 
 	let filteredSnapshots = $derived.by(() => {
 		if (viewMode === 'retail') return snapshots.filter((s) => !s.wholesale_only);
@@ -122,42 +114,6 @@
 		);
 	});
 
-	let spreadData = $derived.by((): SpreadDataPoint[] => {
-		const MIN_SAMPLES = 3;
-		const pairs = new Map<string, { retail?: PriceSnapshot; wholesale?: PriceSnapshot }>();
-
-		for (const s of snapshots) {
-			const key = `${s.origin}|${s.snapshot_date}`;
-			const pair = pairs.get(key) ?? {};
-			if (s.wholesale_only) pair.wholesale = s;
-			else pair.retail = s;
-			pairs.set(key, pair);
-		}
-
-		const result: SpreadDataPoint[] = [];
-		for (const [, pair] of pairs) {
-			if (!pair.retail || !pair.wholesale) continue;
-			if (pair.retail.sample_size < MIN_SAMPLES || pair.wholesale.sample_size < MIN_SAMPLES)
-				continue;
-			const retailPrice = pair.retail.price_median ?? pair.retail.price_avg;
-			const wholesalePrice = pair.wholesale.price_median ?? pair.wholesale.price_avg;
-			if (retailPrice == null || wholesalePrice == null || wholesalePrice === 0) continue;
-
-			const spreadPct = ((retailPrice - wholesalePrice) / wholesalePrice) * 100;
-			result.push({
-				origin: pair.retail.origin,
-				snapshot_date: pair.retail.snapshot_date,
-				spread_pct: Math.round(spreadPct * 10) / 10,
-				retail_price: Math.round(retailPrice * 100) / 100,
-				wholesale_price: Math.round(wholesalePrice * 100) / 100
-			});
-		}
-
-		return result.sort(
-			(a, b) => a.snapshot_date.localeCompare(b.snapshot_date) || a.origin.localeCompare(b.origin)
-		);
-	});
-
 	let trendSnapshots = $derived.by((): PriceSnapshot[] => {
 		const now = new Date();
 		let daysBack: number;
@@ -168,18 +124,6 @@
 		cutoff.setDate(cutoff.getDate() - daysBack);
 		const cutoffStr = cutoff.toISOString().split('T')[0];
 		return snapshots.filter((s) => s.snapshot_date >= cutoffStr && !s.wholesale_only);
-	});
-
-	let trendSpreadData = $derived.by(() => {
-		const now = new Date();
-		let daysBack: number;
-		if (trendRange === '6m') daysBack = 183;
-		else if (trendRange === '1y') daysBack = 365;
-		else daysBack = 90;
-		const cutoff = new Date(now);
-		cutoff.setDate(cutoff.getDate() - daysBack);
-		const cutoffStr = cutoff.toISOString().split('T')[0];
-		return spreadData.filter((s) => s.snapshot_date >= cutoffStr);
 	});
 
 	let filteredProcessDist = $derived.by((): ProcessBucket[] => {
@@ -259,17 +203,11 @@
 		return formatDate(dateStr);
 	}
 
-	let VIEW_OPTIONS = $derived.by((): { value: ViewMode; label: string }[] => {
-		const base: { value: ViewMode; label: string }[] = [
-			{ value: 'retail', label: 'Retail' },
-			{ value: 'wholesale', label: 'Wholesale' },
-			{ value: 'all', label: 'All' }
-		];
-		if (isParchmentIntelligence) {
-			base.push({ value: 'spread', label: 'Spread' });
-		}
-		return base;
-	});
+	const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
+		{ value: 'retail', label: 'Retail' },
+		{ value: 'wholesale', label: 'Wholesale' },
+		{ value: 'all', label: 'All' }
+	];
 
 	function buildDeferredLoadError(section: string) {
 		return `We couldn't load ${section} right now. Please retry.`;
@@ -502,7 +440,7 @@
 		<AnalyticsLoadingPanel
 			ready={Boolean(OriginLineChartComponent)}
 			title="Price Trends by Origin"
-			description="Loading 30-day origin pricing history and spread overlays."
+			description="Loading 30-day origin pricing history."
 			height={lineChartExpanded ? 'h-[60vh]' : 'h-64'}
 			errorMessage={publicChartsError}
 			onRetry={retryPublicCharts}
@@ -510,18 +448,15 @@
 			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
 				<p class="mb-4 text-sm text-text-secondary-light">
-					{#if viewMode === 'spread'}Retail premium % over wholesale by origin — ranked by data
-						coverage{:else}Average $/lb by top origins over the last 30 days — ranked by market
-						volume
-						{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}{/if}
+					Average $/lb by top origins over the last 30 days — ranked by market volume
+					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 				</p>
 				<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
 					{#if OriginLineChartComponent}
 						<OriginLineChartComponent
 							snapshots={lineSnapshots}
 							expanded={lineChartExpanded}
-							mode={viewMode === 'spread' ? 'spread' : 'price'}
-							spreadData={viewMode === 'spread' ? spreadData : []}
+							mode="price"
 						/>
 					{/if}
 				</div>
@@ -748,12 +683,12 @@
 				</h3>
 				<p class="mb-4 text-text-secondary-light">
 					Public visitors and logged-in viewers now share the same baseline analytics surface.
-					Parchment Intelligence adds the deeper supplier comparisons, origin index views, spread
-					analysis, and extended trend detail.
+					Parchment Intelligence adds deeper supplier comparisons, supplier health, origin index
+					views, and extended trend detail.
 				</p>
 				<ul class="mb-6 space-y-2 text-sm text-text-secondary-light">
 					<li>Supplier-level comparison and catalog health tables</li>
-					<li>Origin price index tables and spread analysis</li>
+					<li>Origin price index tables and supplier health views</li>
 					<li>Extended 6-month and 1-year trend views</li>
 				</ul>
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -969,7 +904,7 @@
 
 			<ExpandablePanel
 				title="Origin Price Index"
-				subtitle="Parchment Intelligence — Origin-level price aggregates, spread analysis, and extended trend detail from the daily index."
+				subtitle="Parchment Intelligence — Origin-level price aggregates and extended trend detail from the daily index."
 				totalItems={originBarData.length}
 			>
 				<div
@@ -1035,7 +970,7 @@
 				<AnalyticsLoadingPanel
 					ready={Boolean(PriceTierChartComponent)}
 					title="Price Tier Analysis"
-					description="Loading retail-versus-wholesale spread analysis from the latest snapshot."
+					description="Loading latest origin price tier analysis from the current snapshot."
 					height="h-64"
 					panelClass="border-background-tertiary-light/20"
 					errorMessage={memberVisualsError}
@@ -1093,15 +1028,7 @@
 					</div>
 					<div class="h-64">
 						{#if OriginLineChartComponent}
-							{#if viewMode === 'spread'}
-								<OriginLineChartComponent
-									snapshots={trendSnapshots}
-									mode="spread"
-									spreadData={trendSpreadData}
-								/>
-							{:else}
-								<OriginLineChartComponent snapshots={trendSnapshots} mode="price" />
-							{/if}
+							<OriginLineChartComponent snapshots={trendSnapshots} mode="price" />
 						{:else}
 							<div class="h-full animate-pulse rounded-xl bg-background-secondary-light/80"></div>
 						{/if}

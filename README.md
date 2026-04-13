@@ -112,6 +112,17 @@ pnpm check      # TypeScript check (--fail-on-warnings in CI)
 pnpm test       # run tests
 ```
 
+### Worktree-friendly local validation
+
+`pnpm check` and `pnpm test` expect repo-local environment files when you run the app from a fresh worktree. Before validating in a new checkout:
+
+```bash
+cp .env.example .env
+cp .env.test.example .env.test
+```
+
+Then fill in the required Supabase and test-account values. The Playwright and Vitest setup load `.env` and `.env.test` from the current repo root, so copying these files into each worktree avoids missing-export and wrong-path failures.
+
 ## Repo map
 
 ```text

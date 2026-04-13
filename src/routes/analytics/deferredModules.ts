@@ -21,21 +21,6 @@ export async function loadPublicAnalyticsModules(): Promise<{
 	};
 }
 
-export async function loadSupplierAnalyticsModules(): Promise<{
-	SupplierComparisonTableComponent: DeferredAnalyticsComponent;
-	SupplierHealthTableComponent: DeferredAnalyticsComponent;
-}> {
-	const [comparisonTable, healthTable] = await Promise.all([
-		import('$lib/components/analytics/SupplierComparisonTable.svelte'),
-		import('$lib/components/analytics/SupplierHealthTable.svelte')
-	]);
-
-	return {
-		SupplierComparisonTableComponent: comparisonTable.default,
-		SupplierHealthTableComponent: healthTable.default
-	};
-}
-
 export async function loadMemberAnalyticsModules(): Promise<{
 	PriceTierChartComponent: DeferredAnalyticsComponent;
 }> {
