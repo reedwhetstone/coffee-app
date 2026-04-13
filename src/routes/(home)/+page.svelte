@@ -22,24 +22,25 @@
 			<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 				<div class="mb-12 text-center">
 					<h2 class="text-3xl font-bold text-text-primary-light sm:text-4xl">
-						Live Green Coffee Market Preview
+						Start with the live buyer catalog
 					</h2>
 					<p class="mx-auto mt-4 max-w-3xl text-lg text-text-secondary-light">
-						Recent stocked coffees from the normalized Purveyors catalog. See the market first, then
-						sign in when you want saved workflows, AI help, inventory tracking, and roast tools.
+						Recent stocked coffees from the normalized Purveyors catalog. Compare live availability,
+						then choose whether you need workflow software, machine-readable data, or premium
+						intelligence.
 					</p>
 				</div>
 
 				<div class="mb-8 text-center">
 					{#if isSignedIn}
 						<p class="text-text-secondary-light">
-							The homepage stays public-first, but your faster path is still here. Browse live
-							arrivals or jump back into your dashboard whenever you are ready.
+							Keep using the public market view to source, then return to your dashboard when you
+							need operations tools.
 						</p>
 					{:else}
 						<p class="text-text-secondary-light">
-							The public catalog is open now. Free accounts add AI recommendations, saved work, and
-							the deeper operating system.
+							The catalog is open now. Sign up only when you want saved workflows or one of the paid
+							product lines.
 						</p>
 					{/if}
 				</div>
@@ -56,24 +57,24 @@
 					>
 						{#if isSignedIn}
 							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
-								Keep sourcing, or jump back into operations
+								Keep comparing coffees, or return to your workspace
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Open your dashboard to manage inventory, roasts, and analytics, or keep exploring
-								the live catalog.
+								Open your dashboard for Mallard Studio workflows, or stay in the catalog to keep
+								sourcing.
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 								<button
-									onclick={() => goto('/dashboard')}
+									onclick={() => goto('/catalog')}
 									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 								>
-									Dashboard
+									Browse full catalog
 								</button>
 								<button
-									onclick={() => goto('/catalog')}
+									onclick={() => goto('/dashboard')}
 									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 								>
-									Browse Full Catalog
+									Open dashboard
 								</button>
 							</div>
 							{#if canAccessMemberRoutes}
@@ -94,31 +95,32 @@
 							{/if}
 						{:else}
 							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
-								Browse the live catalog, then go deeper when you need to
+								A clearer path for buyers and operators
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Start with the public catalog today. Create a free account when you want AI
-								guidance, saved sourcing research, and roast workflows.
+								Start by comparing coffees in the public catalog. Then choose Mallard Studio,
+								Parchment API, or Parchment Intelligence when you need deeper workflow, data, or
+								market visibility.
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 								<button
 									onclick={() => goto('/catalog')}
 									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 								>
-									Browse Full Catalog
+									Browse full catalog
 								</button>
 								<button
-									onclick={() => goto('/api')}
+									onclick={() => goto('/subscription')}
 									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 								>
-									View API Documentation
+									See product options
 								</button>
 							</div>
 							<p class="mt-4 text-sm text-text-secondary-light">
-								Prefer to start saving work right away? <a
-									href="/auth"
+								Need structured data instead? <a
+									href="/api"
 									class="font-medium text-background-tertiary-light hover:underline"
-									>Create a free account</a
+									>Explore the API</a
 								>.
 							</p>
 						{/if}
