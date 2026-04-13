@@ -149,6 +149,7 @@ function parsePositiveInteger(value: string | null, fallback: number): number {
 
 function parseOptionalPositiveInteger(value: string | null): number | undefined {
 	if (!value) return undefined;
+	if (!/^\d+$/.test(value)) return undefined;
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
@@ -176,6 +177,11 @@ function validateCatalogQuery(url: URL): void {
 	const stockedDate = url.searchParams.get('stocked_date');
 	if (stockedDate !== null && !isIsoDateParam(stockedDate)) {
 		throw new CatalogQueryValidationError('stocked_date', stockedDate, 'YYYY-MM-DD');
+	}
+
+	const stockedDays = url.searchParams.get('stocked_days');
+	if (stockedDays !== null && parseOptionalPositiveInteger(stockedDays) === undefined) {
+		throw new CatalogQueryValidationError('stocked_days', stockedDays, 'positive integer');
 	}
 }
 
