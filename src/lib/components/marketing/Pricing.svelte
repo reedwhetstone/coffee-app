@@ -108,22 +108,22 @@
 						</p>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						Explore the developer surface and documentation today, then talk to us when you need a
-						production data plan.
+						Explore the developer surface and documentation today, then choose the tier that fits your
+						data depth and rollout stage.
 					</p>
-					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-4xl font-bold tracking-tight text-text-primary-light">$99</span>
-						<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
+					<p class="mt-6 flex items-baseline gap-x-2">
+						<span class="rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">Green</span>
+						<span class="rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">Origin</span>
+						<span class="rounded-full bg-border-light px-3 py-1 text-xs font-semibold uppercase tracking-wide text-text-secondary-light">Enterprise</span>
 					</p>
-					<p class="mt-2 text-sm text-text-secondary-light">
-						Start with the API overview and docs.
+					<p class="mt-3 text-sm text-text-secondary-light">
+						Green and Origin are the current self-serve evaluation path. Enterprise is contact-sales
+						only.
 					</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
 						<li class="flex gap-x-3">Machine-readable coffee data for developers</li>
-						<li class="flex gap-x-3">Useful for internal tools, apps, and agents</li>
-						<li class="flex gap-x-3">
-							Sales-assisted path for production access and higher-volume use
-						</li>
+						<li class="flex gap-x-3">Green for core access, Origin for richer coverage and analytics</li>
+						<li class="flex gap-x-3">Enterprise for sales-assisted production and custom rollout</li>
 					</ul>
 				</div>
 				<button
@@ -153,21 +153,20 @@
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
 						See the analytics and market-intelligence surface that is already live today, with
-						deeper commercial packaging evolving over time.
+						premium intelligence layers built around deeper analysis.
 					</p>
-					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-4xl font-bold tracking-tight text-text-primary-light">$39</span>
-						<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
+					<p class="mt-6 text-sm font-semibold uppercase tracking-wide text-text-secondary-light">
+						Premium analytics
 					</p>
 					<p class="mt-2 text-sm text-text-secondary-light">
-						Explore the live market data experience before committing to a larger rollout.
+						Use the live market data surface now, then layer in premium intelligence as packaging
+						matures. Arrivals and delistings belong to that premium analytics path, not the public free
+						baseline.
 					</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
-						<li class="flex gap-x-3">Full analytics and price-index access</li>
-						<li class="flex gap-x-3">Better sourcing visibility and market context</li>
-						<li class="flex gap-x-3">
-							Live product surface today, with deeper packaging still to come
-						</li>
+						<li class="flex gap-x-3">Live market data and sourcing visibility today</li>
+						<li class="flex gap-x-3">Premium analytics for deeper market context</li>
+						<li class="flex gap-x-3">Arrivals and delistings as premium intelligence features</li>
 					</ul>
 				</div>
 				<button
