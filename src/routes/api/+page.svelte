@@ -1,12 +1,20 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
+	import { API_PUBLIC_PLANS, PUBLIC_PRODUCT_CATALOG } from '$lib/billing/publicCatalog';
+
+	let { data } = $props<{ data: PageData }>();
 
 	function openDocs() {
 		goto('/docs/api/overview');
 	}
 
-	function openDashboard() {
-		goto('/api-dashboard');
+	function openExplorer() {
+		goto(data.session?.user ? '/api-dashboard' : '/auth');
+	}
+
+	function openSubscription() {
+		goto('/subscription');
 	}
 </script>
 
@@ -14,7 +22,7 @@
 	<title>Parchment API</title>
 	<meta
 		name="description"
-		content="Access normalized green coffee data from 39+ suppliers through a simple REST API. Daily updates, tiered pricing, built for roasters and coffee tech platforms."
+		content="Start with Explorer, then upgrade to Parchment API for production access. Normalized green coffee data, daily updates, and a sales-led enterprise path."
 	/>
 </svelte:head>
 
@@ -30,33 +38,40 @@
 				Green coffee data, normalized and ready to build on
 			</h1>
 			<p class="mt-5 text-lg leading-relaxed text-text-secondary-light">
-				One stable public API for green coffee catalog data from 39+ suppliers, plus a documented
-				platform route layer behind the Purveyors web app. The canonical external contract is
+				Start with Explorer for free, then upgrade to Parchment API when you need production-ready
+				access to normalized green coffee data from 39+ suppliers. The canonical external contract
+				is
 				<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/v1/catalog</code
-				>; the broader
-				<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/api/*</code> family
-				powers inventory, roast, chat, billing, and admin workflows.
+				>, while the broader
+				<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/api/*</code>
+				family powers inventory, roast, chat, billing, and admin workflows.
 			</p>
 		</div>
 
-		<div class="mt-8 flex flex-col gap-3 sm:flex-row">
+		<div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
 			<button
-				onclick={openDashboard}
+				onclick={openExplorer}
 				class="rounded-xl bg-background-tertiary-light px-5 py-3 text-sm font-semibold text-white transition-opacity hover:bg-opacity-90"
 			>
-				Get your API key
+				Start with Explorer
+			</button>
+			<button
+				onclick={openSubscription}
+				class="rounded-xl border border-background-tertiary-light px-5 py-3 text-sm font-semibold text-background-tertiary-light transition-colors hover:bg-background-tertiary-light hover:text-white"
+			>
+				Upgrade to Parchment API
 			</button>
 			<button
 				onclick={openDocs}
-				class="rounded-xl border border-background-tertiary-light px-5 py-3 text-sm font-semibold text-background-tertiary-light transition-colors hover:bg-background-tertiary-light hover:text-white"
+				class="rounded-xl border border-border-light px-5 py-3 text-sm font-semibold text-text-primary-light transition-colors hover:bg-background-secondary-light"
 			>
 				Read the docs
 			</button>
 			<a
-				href="/catalog"
+				href="/contact"
 				class="rounded-xl border border-border-light px-5 py-3 text-center text-sm font-semibold text-text-primary-light transition-colors hover:bg-background-secondary-light"
 			>
-				See it in action
+				Talk to sales
 			</a>
 		</div>
 	</section>
@@ -86,10 +101,11 @@
 			</p>
 		</div>
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
-			<div class="text-3xl font-bold text-background-tertiary-light">3</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Flexible tiers</div>
+			<div class="text-3xl font-bold text-background-tertiary-light">Explorer</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Free to start</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				From free evaluation access to unlimited enterprise volume. Scale when you are ready.
+				Free baseline for evaluation, self-serve production access at $99/mo, and a contact-sales
+				path for larger deployments.
 			</p>
 		</div>
 	</section>
@@ -120,7 +136,7 @@
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Free Explorer tier for evaluation with no credit card required</span>
+					<span>Explorer free baseline for evaluation with no credit card required</span>
 				</li>
 			</ul>
 		</div>
@@ -146,7 +162,7 @@
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Analysts tracking sourcing trends, supplier coverage, and pricing dynamics</span>
+					<span>Teams evaluating embedded analytics, data products, or custom integrations</span>
 				</li>
 			</ul>
 		</div>
@@ -156,11 +172,17 @@
 		class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 	>
 		<h2 class="text-2xl font-semibold text-text-primary-light">Plans</h2>
+		<p class="mt-3 max-w-3xl text-sm leading-relaxed text-text-secondary-light">
+			{PUBLIC_PRODUCT_CATALOG.parchmentApi.freeTierName} is the free baseline. The paid self-serve tier
+			is {PUBLIC_PRODUCT_CATALOG.parchmentApi.productName} at {PUBLIC_PRODUCT_CATALOG.parchmentApi
+				.monthlyPriceLabel}, and enterprise is a contact-sales path only.
+		</p>
 		<div class="mt-5 overflow-x-auto rounded-2xl border border-border-light">
 			<table class="min-w-full divide-y divide-border-light text-sm">
 				<thead class="bg-background-secondary-light text-left text-text-primary-light">
 					<tr>
-						<th class="px-4 py-3 font-semibold">Tier</th>
+						<th class="px-4 py-3 font-semibold">Plan</th>
+						<th class="px-4 py-3 font-semibold">Price</th>
 						<th class="px-4 py-3 font-semibold">Monthly requests</th>
 						<th class="px-4 py-3 font-semibold">Rows per call</th>
 						<th class="px-4 py-3 font-semibold">Best for</th>
@@ -169,38 +191,32 @@
 				<tbody
 					class="divide-y divide-border-light bg-background-primary-light text-text-secondary-light"
 				>
-					<tr>
-						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Explorer</td>
-						<td class="px-4 py-3 align-top">200</td>
-						<td class="px-4 py-3 align-top">25</td>
-						<td class="px-4 py-3 align-top">Evaluation, prototypes, lightweight catalog pulls</td>
-					</tr>
-					<tr>
-						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Roaster+</td>
-						<td class="px-4 py-3 align-top">10,000</td>
-						<td class="px-4 py-3 align-top">Unlimited</td>
-						<td class="px-4 py-3 align-top">Production integrations and regular sync jobs</td>
-					</tr>
-					<tr>
-						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Enterprise</td>
-						<td class="px-4 py-3 align-top">Unlimited</td>
-						<td class="px-4 py-3 align-top">Unlimited</td>
-						<td class="px-4 py-3 align-top"
-							>High-volume sync, internal platforms, premium support</td
-						>
-					</tr>
+					{#each API_PUBLIC_PLANS as plan}
+						<tr>
+							<td class="px-4 py-3 align-top">
+								<div class="font-medium text-text-primary-light">{plan.name}</div>
+								<div class="mt-1 text-xs text-text-secondary-light">{plan.accessLabel}</div>
+							</td>
+							<td class="px-4 py-3 align-top font-medium text-text-primary-light"
+								>{plan.priceLabel}</td
+							>
+							<td class="px-4 py-3 align-top">{plan.monthlyRequests}</td>
+							<td class="px-4 py-3 align-top">{plan.rowsPerCall}</td>
+							<td class="px-4 py-3 align-top">{plan.bestFor}</td>
+						</tr>
+					{/each}
 				</tbody>
 			</table>
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-text-secondary-light">
-			All plans include JSON responses and access to the full normalized catalog. API-key requests
+			All plans include JSON responses and access to the normalized catalog. API-key requests
 			receive rate-limit headers; session and anonymous catalog requests do not. In code and API
-			responses, these marketed plans map to <code
+			responses, these public plans map to <code
 				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">viewer</code
 			>,
 			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">member</code>, and
 			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">enterprise</code>.
-			Manage your keys and monitor usage in the
+			Manage your keys, usage, and Explorer baseline in the
 			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
 				>Parchment Console</a
 			>.
@@ -241,7 +257,8 @@
 		>
 			<h2 class="text-xl font-semibold text-text-primary-light">Market analytics</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Live market intelligence: pricing trends, supplier coverage, origin analysis, and more.
+				See the free market snapshot, then unlock Parchment Intelligence for deeper supplier and
+				pricing analysis.
 			</p>
 		</a>
 	</section>

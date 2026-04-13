@@ -135,18 +135,18 @@
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 				<div>
 					<h2 class="text-xl font-semibold text-text-primary-light">
-						Unlock the full roastery workspace
+						Unlock Mallard Studio Member
 					</h2>
 					<p class="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary-light">
 						Catalog, market data, and API access are ready now. Upgrade when you want inventory,
-						roast tracking, profit analytics, and chat in the same workspace.
+						roast tracking, profit workflows, chat, and the full Mallard Studio operating surface.
 					</p>
 				</div>
 				<button
 					onclick={() => goto('/subscription')}
 					class="rounded-md bg-background-tertiary-light px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 				>
-					Start Free Trial
+					Unlock Mallard Studio
 				</button>
 			</div>
 		</section>

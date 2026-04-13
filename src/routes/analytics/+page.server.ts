@@ -395,9 +395,9 @@ export const load: PageServerLoad = async (event) => {
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),
 		schemaService.generateDatasetSchema({
-			name: 'Purveyors Price Index — Green Coffee Market Data',
+			name: 'Parchment Intelligence — Green Coffee Market Data',
 			description:
-				'Daily green coffee price snapshots from 39+ US importers and roasters. Includes origin pricing, processing method distribution, and supplier comparison data.',
+				'Daily green coffee market snapshots from 39+ US importers and roasters. Includes origin pricing, processing method distribution, and supplier comparison data.',
 			url: `${baseUrl}/analytics`,
 			keywords: [
 				'green coffee prices',
@@ -449,9 +449,9 @@ export const load: PageServerLoad = async (event) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/analytics',
-			title: 'Green Coffee Market Analytics | Purveyors Price Index',
+			title: 'Green Coffee Market Intelligence | Parchment Intelligence',
 			description:
-				'Live green coffee price trends, origin analysis, and supplier data from 39+ US importers. Updated daily. Free market intelligence for coffee professionals.',
+				'Live green coffee price trends, origin analysis, and supplier data from 39+ US importers. Explore the free market snapshot, then unlock Parchment Intelligence for the full analytics layer.',
 			keywords: [
 				'green coffee prices',
 				'coffee market data',
@@ -460,12 +460,12 @@ export const load: PageServerLoad = async (event) => {
 				'coffee origin prices',
 				'coffee supplier comparison'
 			],
-			ogTitle: 'Green Coffee Market Analytics — Purveyors Price Index',
+			ogTitle: 'Green Coffee Market Intelligence — Parchment Intelligence',
 			ogDescription:
-				'Real-time green coffee price trends by origin, processing methods, and supplier comparison. Data from 39+ US green coffee importers, updated daily.',
-			twitterTitle: 'Green Coffee Market Analytics — Purveyors',
+				'Real-time green coffee price trends by origin, processing methods, and supplier comparison. Explore the free market snapshot, then unlock Parchment Intelligence for full access.',
+			twitterTitle: 'Green Coffee Market Intelligence — Parchment Intelligence',
 			twitterDescription:
-				'Live green coffee price trends from 39+ US importers. Free market intelligence.',
+				'Live green coffee price trends from 39+ US importers. Explore the free market snapshot, then unlock Parchment Intelligence for the full analytics layer.',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/analytics.jpg',

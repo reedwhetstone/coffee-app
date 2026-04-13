@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { API_PUBLIC_PLANS, PUBLIC_PRODUCT_CATALOG } from '$lib/billing/publicCatalog';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 import { generateBreadcrumbs } from '$lib/utils/breadcrumbs';
@@ -31,37 +32,27 @@ export const load: PageServerLoad = async ({ url }) => {
 		]
 	};
 
-	const pricingTiers = [
-		{
-			name: 'Explorer',
-			price: 0,
-			currency: 'USD',
-			billingDuration: 'P1M',
-			description: 'Free tier for evaluation and lightweight catalog pulls',
-			features: ['200 requests per month', '25 rows per call', 'Parchment Console access'],
-			popular: false
-		},
-		{
-			name: 'Roaster+',
-			price: 99,
-			currency: 'USD',
-			billingDuration: 'P1M',
-			description: 'Production catalog integrations and higher-volume syncing',
-			features: ['10,000 requests per month', 'Unlimited rows per call', 'Usage analytics'],
-			popular: true
-		},
-		{
-			name: 'Enterprise',
-			price: 0,
-			currency: 'USD',
-			billingDuration: 'P1M',
-			description: 'Custom volume, unlimited request ceilings, and premium support',
-			features: ['Unlimited requests', 'Unlimited rows per call', 'Custom commercial terms'],
-			popular: false
-		}
-	];
+	const pricingTiers = API_PUBLIC_PLANS.map((plan) => ({
+		name: plan.name,
+		price: plan.key === 'enterprise' ? undefined : plan.price,
+		priceLabel: plan.priceLabel,
+		currency: 'USD',
+		billingDuration: plan.key === 'enterprise' ? undefined : 'P1M',
+		description: plan.description,
+		features: [
+			`${plan.monthlyRequests} requests per month`,
+			`${plan.rowsPerCall} rows per call`,
+			plan.key === 'enterprise' ? 'Contact sales for custom terms' : 'Parchment Console access'
+		],
+		popular: plan.key === 'member'
+	}));
 
 	const faqs = [
+		{
+			question: 'What is the difference between Explorer and paid Parchment API?',
+			answer:
+				'Explorer is the free baseline for evaluation and lightweight catalog pulls. Paid Parchment API is the $99/month self-serve tier for production integrations, sync jobs, and stronger usage allowances.'
+		},
 		{
 			question: 'Which API route is public today?',
 			answer:
@@ -70,7 +61,12 @@ export const load: PageServerLoad = async ({ url }) => {
 		{
 			question: 'Are analytics exposed as a public REST API?',
 			answer:
-				'Not yet. Analytics are a major product surface in the web app at /analytics, with deeper authenticated and premium analytics views, but they are not currently sold as a separate public API-key endpoint family.'
+				'Not yet. Analytics live in the web app at /analytics, where Parchment Intelligence unlocks the full market-intelligence surface, but they are not currently sold as a separate public API-key endpoint family.'
+		},
+		{
+			question: 'How does enterprise work?',
+			answer:
+				'Enterprise is a contact-sales path, not a self-serve checkout tier. Reach out if you need custom integrations, embedded analytics, or higher-volume commercial support.'
 		},
 		{
 			question: 'Where do I generate keys and inspect usage?',
@@ -95,9 +91,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/api',
-			title: 'Parchment API | Green Coffee Catalog and Market Intelligence',
-			description:
-				'Access the Parchment API catalog feed, Parchment Console, and unified Parchment API plus CLI docs.',
+			title: 'Parchment API | Explorer, Production Access, and Enterprise',
+			description: `Start with ${PUBLIC_PRODUCT_CATALOG.parchmentApi.freeTierName}, upgrade to ${PUBLIC_PRODUCT_CATALOG.parchmentApi.productName} at ${PUBLIC_PRODUCT_CATALOG.parchmentApi.monthlyPriceLabel}, or contact sales for enterprise access.`,
 			keywords: [
 				'green coffee API',
 				'coffee catalog API',
@@ -107,10 +102,10 @@ export const load: PageServerLoad = async ({ url }) => {
 			],
 			ogTitle: 'Parchment API',
 			ogDescription:
-				'Normalized green coffee catalog access, market analytics, and unified documentation for Parchment Platform on Purveyors.',
+				'Normalized green coffee catalog access with a free Explorer baseline, paid self-serve production tier, and a sales-led enterprise path.',
 			twitterTitle: 'Parchment API',
 			twitterDescription:
-				'Catalog data, analytics, Parchment Console tooling, and CLI workflows on Purveyors.',
+				'Explorer, paid Parchment API access, Parchment Console tooling, and CLI workflows on Purveyors.',
 			type: 'product',
 			image: resolvePublicPageSocialImage({
 				baseUrl,

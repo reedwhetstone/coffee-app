@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { getApiPlanDisplay } from '$lib/billing/publicCatalog';
 	import { onMount } from 'svelte';
 
 	let { data } = $props<{ data: PageData }>();
@@ -12,17 +13,10 @@
 
 	let tierDisplayName = $derived(() => {
 		if (!data.currentStats) return 'Explorer';
-		switch (data.currentStats.userTier) {
-			case 'enterprise':
-				return 'Enterprise';
-			case 'member':
-				return 'Roaster+';
-			case 'viewer':
-				return 'Explorer';
-			default:
-				return 'Explorer';
-		}
+		return getApiPlanDisplay(data.currentStats.userTier).name;
 	});
+
+	let tierPriceLabel = $derived(() => getApiPlanDisplay(data.currentStats?.userTier).priceLabel);
 
 	// Format numbers with commas
 	function formatNumber(num: number): string {
@@ -75,7 +69,7 @@
 			</nav>
 			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">Usage Analytics</h1>
 			<p class="mt-2 text-lg text-text-secondary-light">
-				Monitor your API usage, performance metrics, and rate limits
+				Monitor your API usage, performance metrics, and Explorer or paid Parchment API limits
 			</p>
 		</div>
 
@@ -126,11 +120,9 @@
 					<div class="mt-2">
 						<div class="text-xs text-text-secondary-light">
 							{#if data.currentStats?.userTier === 'enterprise'}
-								Unlimited API calls
-							{:else if data.currentStats?.userTier === 'member'}
-								$99/month
+								Contact-sales access
 							{:else}
-								Free tier
+								{tierPriceLabel()}
 							{/if}
 						</div>
 					</div>
@@ -286,17 +278,17 @@
 										data.currentStats?.monthlyLimit || 200
 									)} monthly API calls.
 									{#if data.currentStats?.userTier === 'viewer'}
-										Upgrade to Roaster+ for 10,000 calls/month and advanced features.
+										Upgrade to Parchment API for 10,000 calls/month and production access.
 									{:else}
-										Upgrade to Enterprise for unlimited calls and premium support.
+										Talk to us about enterprise access for higher-volume needs.
 									{/if}
 								</p>
 								<div class="mt-3 flex space-x-4">
 									<a
-										href="/subscription"
+										href={data.currentStats?.userTier === 'viewer' ? '/subscription' : '/contact'}
 										class="font-medium text-yellow-800 underline hover:text-yellow-600"
 									>
-										Upgrade Plan
+										{data.currentStats?.userTier === 'viewer' ? 'Upgrade Plan' : 'Talk to us'}
 									</a>
 									<a
 										href="/api-dashboard"

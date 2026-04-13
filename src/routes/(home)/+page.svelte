@@ -26,7 +26,8 @@
 					</h2>
 					<p class="mx-auto mt-4 max-w-3xl text-lg text-text-secondary-light">
 						Recent stocked coffees from the normalized Purveyors catalog. See the market first, then
-						sign in when you want saved workflows, AI help, inventory tracking, and roast tools.
+						sign in when you want Mallard Studio workflows, Parchment Intelligence, and deeper
+						operating tools.
 					</p>
 				</div>
 
@@ -38,8 +39,8 @@
 						</p>
 					{:else}
 						<p class="text-text-secondary-light">
-							The public catalog is open now. Free accounts add AI recommendations, saved work, and
-							the deeper operating system.
+							The public catalog is open now. Free accounts get you started, then Mallard Studio and
+							Parchment Intelligence unlock deeper operating leverage.
 						</p>
 					{/if}
 				</div>
@@ -97,8 +98,8 @@
 								Browse the live catalog, then go deeper when you need to
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Start with the public catalog today. Create a free account when you want AI
-								guidance, saved sourcing research, and roast workflows.
+								Start with the public catalog today. Create a free account when you want Explorer,
+								then add Mallard Studio Member or Parchment Intelligence as your use case deepens.
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 								<button

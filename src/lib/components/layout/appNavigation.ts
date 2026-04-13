@@ -27,7 +27,7 @@ export const publicNavItems: NavItem[] = [
 		matches: ['/analytics']
 	},
 	{
-		label: 'Maillard Studio',
+		label: 'Mallard Studio',
 		href: '/',
 		description: 'See the platform story'
 	},

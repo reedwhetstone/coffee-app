@@ -426,7 +426,13 @@ const docsPages: DocsPage[] = [
 					headers: ['Marketed plan', 'Code key', 'Monthly requests', 'Rows per call', 'Notes'],
 					rows: [
 						['Explorer', 'viewer', '200', '25', 'Best for evaluation and prototypes.'],
-						['Roaster+', 'member', '10,000', 'Unlimited', 'Production integrations and sync jobs.'],
+						[
+							'Parchment API',
+							'member',
+							'10,000',
+							'Unlimited',
+							'Production integrations and sync jobs.'
+						],
 						[
 							'Enterprise',
 							'enterprise',
@@ -939,7 +945,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'/analytics is a web product surface, not an API-key endpoint family.',
 					'The public catalog and public analytics should be cross-linked because they describe the same coffee market from different angles: raw records versus curated analysis.',
-					'Authenticated and premium analytics views may expose deeper app features, but they still ride through the first-party product rather than a stable public REST schema.'
+					'Authenticated and Parchment Intelligence views may expose deeper app features, but they still ride through the first-party product rather than a stable public REST schema.'
 				]
 			},
 			{

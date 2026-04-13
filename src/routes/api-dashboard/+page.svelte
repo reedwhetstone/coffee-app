@@ -1,9 +1,11 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { getApiPlanDisplay } from '$lib/billing/publicCatalog';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
 	let { data } = $props<{ data: PageData }>();
+	let currentPlan = $derived(getApiPlanDisplay(data.usageStats?.userTier));
 
 	// Set page title
 	onMount(() => {
@@ -22,7 +24,7 @@
 		<div class="mb-8">
 			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">Parchment Console</h1>
 			<p class="mt-2 text-lg text-text-secondary-light">
-				Manage your API keys, monitor usage, and access documentation
+				Manage your API keys, monitor usage, and review Explorer or paid Parchment API access
 			</p>
 		</div>
 
@@ -77,22 +79,12 @@
 
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 				<h3 class="text-sm font-medium text-text-secondary-light">Current Plan</h3>
-				<p class="mt-1 text-2xl font-bold text-blue-500">
-					{#if data.usageStats?.userTier === 'enterprise'}
-						Enterprise
-					{:else if data.usageStats?.userTier === 'member'}
-						Roaster+
-					{:else}
-						Explorer
-					{/if}
-				</p>
+				<p class="mt-1 text-2xl font-bold text-blue-500">{currentPlan.name}</p>
 				<p class="mt-1 text-xs text-text-secondary-light">
 					{#if data.usageStats?.userTier === 'enterprise'}
-						Unlimited API calls
-					{:else if data.usageStats?.userTier === 'member'}
-						$99/month
+						Contact-sales access
 					{:else}
-						Free tier
+						{currentPlan.priceLabel}
 					{/if}
 				</p>
 			</div>
@@ -291,18 +283,27 @@
 									You have reached your {data.usageStats.monthlyLimit.toLocaleString()} monthly API call
 									limit.
 									{#if data.usageStats.userTier === 'viewer'}
-										Upgrade to Roaster+ for 10,000 calls/month.
+										Upgrade to Parchment API for 10,000 calls/month.
 									{:else}
-										Upgrade to Enterprise for unlimited calls.
+										Talk to us about enterprise access for higher-volume usage.
 									{/if}
 								</p>
 								<div class="mt-3 flex space-x-4">
-									<a
-										href="/subscription"
-										class="font-medium text-red-800 underline hover:text-red-600"
-									>
-										Upgrade Plan →
-									</a>
+									{#if data.usageStats.userTier === 'viewer'}
+										<a
+											href="/subscription"
+											class="font-medium text-red-800 underline hover:text-red-600"
+										>
+											Upgrade Plan →
+										</a>
+									{:else}
+										<a
+											href="/contact"
+											class="font-medium text-red-800 underline hover:text-red-600"
+										>
+											Talk to us →
+										</a>
+									{/if}
 									<a
 										href="/api-dashboard/usage"
 										class="font-medium text-red-800 underline hover:text-red-600"
@@ -333,18 +334,18 @@
 									You're using {Math.round(data.usageStats.monthlyPercent)}% of your {data.usageStats.monthlyLimit.toLocaleString()}
 									monthly API calls.
 									{#if data.usageStats.userTier === 'viewer'}
-										Consider upgrading to Roaster+ for 10,000 calls/month.
+										Consider upgrading to Parchment API for 10,000 calls/month.
 									{:else}
-										Consider upgrading to Enterprise for unlimited calls.
+										Consider talking to us about enterprise access.
 									{/if}
 								</p>
 								<div class="mt-3 flex space-x-4">
 									{#if data.usageStats.monthlyPercent >= 75}
 										<a
-											href="/subscription"
+											href={data.usageStats.userTier === 'viewer' ? '/subscription' : '/contact'}
 											class="font-medium text-yellow-800 underline hover:text-yellow-600"
 										>
-											Upgrade Plan
+											{data.usageStats.userTier === 'viewer' ? 'Upgrade Plan' : 'Talk to us'}
 										</a>
 									{/if}
 									<a
@@ -384,17 +385,19 @@
 									You've used {Math.round(data.usageStats.monthlyPercent)}% of your monthly API
 									calls.
 									{#if data.usageStats.userTier === 'viewer'}
-										Upgrade to Roaster+ for 50x more calls and advanced features.
+										Upgrade to Parchment API for 50x more calls and production access.
 									{:else}
-										Upgrade to Enterprise for unlimited calls and premium support.
+										Talk to us about enterprise access for higher-volume needs.
 									{/if}
 								</p>
 								<div class="mt-3">
 									<a
-										href="/subscription"
+										href={data.usageStats.userTier === 'viewer' ? '/subscription' : '/contact'}
 										class="font-medium text-blue-800 underline hover:text-blue-600"
 									>
-										View upgrade options →
+										{data.usageStats.userTier === 'viewer'
+											? 'View upgrade options →'
+											: 'Talk to us →'}
 									</a>
 								</div>
 							</div>

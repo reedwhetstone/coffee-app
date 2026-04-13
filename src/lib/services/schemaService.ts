@@ -219,9 +219,10 @@ export class SchemaService {
 	generatePricingSchema(
 		pricingTiers: Array<{
 			name: string;
-			price: number;
-			currency: string;
-			billingDuration: string;
+			price?: number;
+			priceLabel?: string;
+			currency?: string;
+			billingDuration?: string;
 			description: string;
 			features: string[];
 			popular?: boolean;
@@ -231,32 +232,54 @@ export class SchemaService {
 			'@context': 'https://schema.org',
 			'@type': 'OfferCatalog',
 			name: 'API Pricing Plans',
-			itemListElement: pricingTiers.map((tier, index) => ({
-				'@type': 'Offer',
-				position: index + 1,
-				name: tier.name,
-				description: tier.description,
-				price: tier.price,
-				priceCurrency: tier.currency,
-				billingDuration: tier.billingDuration,
-				itemOffered: {
-					'@type': 'Service',
-					name: `${tier.name} Plan`,
-					description: tier.description
-				},
-				eligibleQuantity: {
-					'@type': 'QuantitativeValue',
-					value: tier.features.length,
-					unitText: 'features'
-				},
-				...(tier.popular && {
-					additionalProperty: {
-						'@type': 'PropertyValue',
-						name: 'popular',
-						value: true
-					}
-				})
-			}))
+			itemListElement: pricingTiers.map((tier, index) => {
+				const additionalProperties = [
+					...(tier.price === undefined && tier.priceLabel
+						? [
+								{
+									'@type': 'PropertyValue',
+									name: 'pricingModel',
+									value: 'Custom contact-sales pricing'
+								},
+								{
+									'@type': 'PropertyValue',
+									name: 'priceLabel',
+									value: tier.priceLabel
+								}
+							]
+						: []),
+					...(tier.popular
+						? [
+								{
+									'@type': 'PropertyValue',
+									name: 'popular',
+									value: true
+								}
+							]
+						: [])
+				];
+
+				return {
+					'@type': 'Offer',
+					position: index + 1,
+					name: tier.name,
+					description: tier.description,
+					...(tier.price !== undefined ? { price: tier.price } : {}),
+					...(tier.price !== undefined && tier.currency ? { priceCurrency: tier.currency } : {}),
+					...(tier.billingDuration ? { billingDuration: tier.billingDuration } : {}),
+					itemOffered: {
+						'@type': 'Service',
+						name: `${tier.name} Plan`,
+						description: tier.description
+					},
+					eligibleQuantity: {
+						'@type': 'QuantitativeValue',
+						value: tier.features.length,
+						unitText: 'features'
+					},
+					...(additionalProperties.length > 0 ? { additionalProperty: additionalProperties } : {})
+				};
+			})
 		};
 	}
 
@@ -581,9 +604,10 @@ export class SchemaService {
 						this.generatePricingSchema(
 							additionalData.pricing as Array<{
 								name: string;
-								price: number;
-								currency: string;
-								billingDuration: string;
+								price?: number;
+								priceLabel?: string;
+								currency?: string;
+								billingDuration?: string;
 								description: string;
 								features: string[];
 								popular?: boolean;

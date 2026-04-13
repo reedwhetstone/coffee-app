@@ -796,17 +796,17 @@
 		<div
 			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
 		>
-			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Premium Feature</h1>
+			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Mallard Studio Member feature</h1>
 			<p class="mb-6 text-text-secondary-light">
-				The Coffee Chat AI assistant is available for premium members. Upgrade to access
-				personalized recommendations and expert roasting advice.
+				The Coffee Chat AI assistant is included with Mallard Studio Member. Upgrade to access
+				workspace chat, personalized recommendations, and expert roasting help.
 			</p>
 			<div class="space-y-3">
 				<a
 					href="/subscription"
 					class="block rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 				>
-					Upgrade to Premium
+					Unlock Mallard Studio
 				</a>
 				<a
 					href="/"
