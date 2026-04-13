@@ -455,8 +455,7 @@
 			<div>
 				<p class="text-sm font-semibold text-text-primary-light">Loading live market visuals</p>
 				<p class="mt-1 text-xs text-text-secondary-light">
-					We painted the overview first. {analyticsShellMessage} are loading next so you get feedback
-					immediately.
+					We painted the overview first. {analyticsShellMessage} loading next so you get feedback immediately.
 				</p>
 			</div>
 		</div>
