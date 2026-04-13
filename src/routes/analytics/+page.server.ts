@@ -155,10 +155,10 @@ export async function _loadPriceSnapshotsPaginated({
 }
 
 export const load: PageServerLoad = async (event) => {
-	// Resolve principal to get explicit ppiAccess entitlement.
-	// Falls back to ppi-member pseudo-role detection during the migration period.
+	// Resolve principal to get explicit Parchment Intelligence entitlement.
+	// Logged-out visitors and logged-in viewers intentionally share the same baseline analytics surface.
 	const principal = await resolvePrincipal(event);
-	const isPpiMember = principal.isAuthenticated ? principal.ppiAccess : false;
+	const isParchmentIntelligence = principal.isAuthenticated ? principal.ppiAccess : false;
 
 	const today = new Date().toISOString().split('T')[0];
 	const supabase = event.locals.supabase;
@@ -175,7 +175,7 @@ export const load: PageServerLoad = async (event) => {
 	const fromDate = ninetyDaysAgo.toISOString().split('T')[0];
 
 	// PPI members get up to 365 days of snapshot data for extended trend views.
-	const snapshotFromDate = isPpiMember
+	const snapshotFromDate = isParchmentIntelligence
 		? (() => {
 				const d = new Date();
 				d.setDate(d.getDate() - 365);
@@ -337,7 +337,7 @@ export const load: PageServerLoad = async (event) => {
 	let comparisonBeans: ComparisonBean[] = [];
 	let supplierHealth: SupplierHealthRow[] = [];
 
-	if (isPpiMember) {
+	if (isParchmentIntelligence) {
 		const [{ data: comparisonBeansRaw }, { data: supplierStatsRaw }] = await Promise.all([
 			// Supplier comparison beans
 			supabase
@@ -424,7 +424,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		session,
 		role,
-		isPpiMember,
+		isParchmentIntelligence,
 		stats: {
 			totalBeansTracked: totalBeansTracked ?? 0,
 			stockedRetailBeans: stockedRetailBeans ?? 0,

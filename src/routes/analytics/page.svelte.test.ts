@@ -3,27 +3,14 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import AnalyticsPage from './+page.svelte';
 import type { PageData } from './$types';
 
-const {
-	goto,
-	loadPublicAnalyticsModules,
-	loadSupplierAnalyticsModules,
-	loadMemberAnalyticsModules
-} = vi.hoisted(() => ({
+const { goto, loadPublicAnalyticsModules, loadMemberAnalyticsModules } = vi.hoisted(() => ({
 	goto: vi.fn(),
 	loadPublicAnalyticsModules: vi.fn(),
-	loadSupplierAnalyticsModules: vi.fn(),
 	loadMemberAnalyticsModules: vi.fn()
 }));
 
-vi.mock('$app/navigation', () => ({
-	goto
-}));
-
-vi.mock('./deferredModules', () => ({
-	loadPublicAnalyticsModules,
-	loadSupplierAnalyticsModules,
-	loadMemberAnalyticsModules
-}));
+vi.mock('$app/navigation', () => ({ goto }));
+vi.mock('./deferredModules', () => ({ loadPublicAnalyticsModules, loadMemberAnalyticsModules }));
 
 type DeferredPromise<T> = {
 	promise: Promise<T>;
@@ -38,7 +25,6 @@ function deferred<T>(): DeferredPromise<T> {
 		resolve = res;
 		reject = rej;
 	});
-
 	return { promise, resolve, reject };
 }
 
@@ -56,25 +42,15 @@ async function buildPublicModules() {
 	};
 }
 
-async function buildSupplierModules() {
-	const component = await loadStubComponent();
-	return {
-		SupplierComparisonTableComponent: component,
-		SupplierHealthTableComponent: component
-	};
-}
-
 async function buildMemberModules() {
 	const component = await loadStubComponent();
-	return {
-		PriceTierChartComponent: component
-	};
+	return { PriceTierChartComponent: component };
 }
 
 function createData(overrides: Partial<PageData> = {}): PageData {
 	return {
 		session: null,
-		isPpiMember: false,
+		isParchmentIntelligence: false,
 		stats: {
 			totalBeansTracked: 120,
 			stockedRetailBeans: 84,
@@ -116,8 +92,29 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 		],
 		recentArrivals: [],
 		recentDelistings: [],
-		comparisonBeans: [],
-		supplierHealth: [{ supplier: 'Atlas Coffee' }],
+		comparisonBeans: [
+			{
+				name: 'Colombia Huila',
+				country: 'Colombia',
+				processing: 'Washed',
+				price_per_lb: 4.25,
+				source: 'Atlas',
+				wholesale: false,
+				bag_size: null
+			}
+		],
+		supplierHealth: [
+			{
+				source: 'Atlas Coffee',
+				stockedCount: 15,
+				origins: 6,
+				avgCostLb: 4.15,
+				minCostLb: 3.75,
+				maxCostLb: 4.8,
+				wholesaleCount: 4,
+				retailCount: 11
+			}
+		],
 		...overrides
 	} as unknown as PageData;
 }
@@ -126,10 +123,9 @@ function createSession() {
 	return { user: { id: 'user-1' } } as NonNullable<PageData['session']>;
 }
 
-beforeEach(async () => {
+beforeEach(() => {
 	vi.clearAllMocks();
 	loadPublicAnalyticsModules.mockImplementation(buildPublicModules);
-	loadSupplierAnalyticsModules.mockImplementation(buildSupplierModules);
 	loadMemberAnalyticsModules.mockImplementation(buildMemberModules);
 });
 
@@ -152,37 +148,42 @@ describe('analytics page loading experience', () => {
 		expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 	});
 
-	it('loads supplier tables when an anonymous viewer becomes a signed-in member on the same route', async () => {
+	it('keeps logged-out and signed-in viewers on the same baseline analytics surface', async () => {
 		const view = render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
-		expect(loadSupplierAnalyticsModules).not.toHaveBeenCalled();
+
+		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
 
 		await view.rerender({ data: createData({ session: createSession() }) });
 
 		await waitFor(() => {
-			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(5);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
+
+		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
+		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
 	});
 
-	it('loads the PPI chart when a signed-in member upgrades on the same route', async () => {
+	it('loads the Parchment Intelligence chart when a viewer upgrades on the same route', async () => {
 		const view = render(AnalyticsPage, {
-			data: createData({ session: createSession(), isPpiMember: false })
+			data: createData({ session: createSession(), isParchmentIntelligence: false })
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(5);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
 
-		await view.rerender({ data: createData({ session: createSession(), isPpiMember: true }) });
+		await view.rerender({
+			data: createData({ session: createSession(), isParchmentIntelligence: true })
+		});
 
 		await waitFor(() => {
 			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(4);
 		});
 	});
 
