@@ -11,7 +11,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 			user: null,
 			role: 'viewer' as const,
 			stripeCustomerId: null,
-			subscription: null,
 			billingSubscriptions: [],
 			controlPlane: null
 		};
@@ -21,13 +20,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const apiPlan = locals.principal?.apiPlan ?? 'viewer';
 	const ppiAccess = locals.principal?.ppiAccess ?? false;
 	const stripeCustomerId = await getStripeCustomerId(user.id);
-
-	let subscription = null;
-	if (stripeCustomerId) {
-		subscription = await getSubscriptionDetails(stripeCustomerId, {
-			productFamily: 'membership'
-		});
-	}
 
 	const { data: billingSubscriptions, error: billingSubscriptionsError } = await locals.supabase
 		.from('billing_subscriptions')
@@ -40,19 +32,61 @@ export const load: PageServerLoad = async ({ locals }) => {
 		console.error('Error loading billing subscription snapshots:', billingSubscriptionsError);
 	}
 
+	const currentSnapshotSubscriptionIdByFamily = (billingSubscriptions ?? []).reduce(
+		(acc, subscription) => {
+			if (
+				!acc[subscription.product_family as 'membership' | 'api_plan' | 'ppi_addon'] &&
+				(subscription.status === 'active' || subscription.status === 'trialing')
+			) {
+				acc[subscription.product_family as 'membership' | 'api_plan' | 'ppi_addon'] =
+					subscription.stripe_subscription_id;
+			}
+
+			return acc;
+		},
+		{} as Partial<Record<'membership' | 'api_plan' | 'ppi_addon', string>>
+	);
+
+	const stripeSubscriptions = stripeCustomerId
+		? await Promise.all([
+				getSubscriptionDetails(stripeCustomerId, {
+					productFamily: 'membership',
+					preferredSubscriptionId:
+						currentSnapshotSubscriptionIdByFamily.membership ?? null
+				}),
+				getSubscriptionDetails(stripeCustomerId, {
+					productFamily: 'api_plan',
+					preferredSubscriptionId:
+						currentSnapshotSubscriptionIdByFamily.api_plan ?? null
+				}),
+				getSubscriptionDetails(stripeCustomerId, {
+					productFamily: 'ppi_addon',
+					preferredSubscriptionId:
+						currentSnapshotSubscriptionIdByFamily.ppi_addon ?? null
+				})
+			]).then(([membership, api, intelligence]) => ({
+				membership,
+				api,
+				intelligence
+			}))
+		: {
+				membership: null,
+				api: null,
+				intelligence: null
+			};
+
 	return {
 		session,
 		user,
 		role,
 		stripeCustomerId,
-		subscription,
 		billingSubscriptions: billingSubscriptions ?? [],
 		controlPlane: buildSubscriptionControlPlaneState({
 			role,
 			apiPlan,
 			ppiAccess,
 			billingSubscriptions: billingSubscriptions ?? [],
-			stripeSubscription: subscription
+			stripeSubscriptions
 		})
 	};
 };
