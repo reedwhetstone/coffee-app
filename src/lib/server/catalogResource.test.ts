@@ -347,6 +347,36 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
+	it.each(['abc', '-1', '3.5', '0'])(
+		'rejects invalid stocked_days value %s with a structured 400 response',
+		async (stockedDays) => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: false,
+				primaryAppRole: null,
+				apiPlan: null
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(false);
+
+			const response = await buildCanonicalCatalogResponse(
+				makeEvent(`https://app.test/v1/catalog?stocked_days=${stockedDays}`)
+			);
+			const body = await response.json();
+
+			expect(response.status).toBe(400);
+			expect(body).toEqual({
+				error: 'Invalid query parameter',
+				message: 'Query parameter "stocked_days" must use positive integer format',
+				details: {
+					parameter: 'stocked_days',
+					value: stockedDays,
+					expected: 'positive integer'
+				}
+			});
+			expect(mockSearchCatalog).not.toHaveBeenCalled();
+		}
+	);
+
 	it('lets member sessions request wholesale-visible catalog data with the same contract', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,

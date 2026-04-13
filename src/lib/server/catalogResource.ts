@@ -177,6 +177,11 @@ function validateCatalogQuery(url: URL): void {
 	if (stockedDate !== null && !isIsoDateParam(stockedDate)) {
 		throw new CatalogQueryValidationError('stocked_date', stockedDate, 'YYYY-MM-DD');
 	}
+
+	const stockedDays = url.searchParams.get('stocked_days');
+	if (stockedDays !== null && parseOptionalPositiveInteger(stockedDays) === undefined) {
+		throw new CatalogQueryValidationError('stocked_days', stockedDays, 'positive integer');
+	}
 }
 
 function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
