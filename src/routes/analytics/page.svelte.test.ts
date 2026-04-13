@@ -6,23 +6,20 @@ import type { PageData } from './$types';
 const {
 	goto,
 	loadPublicAnalyticsModules,
-	loadSupplierAnalyticsModules,
-	loadMemberAnalyticsModules
+	loadMemberAnalyticsModules,
+	loadSupplierAnalyticsModules
 } = vi.hoisted(() => ({
 	goto: vi.fn(),
 	loadPublicAnalyticsModules: vi.fn(),
-	loadSupplierAnalyticsModules: vi.fn(),
-	loadMemberAnalyticsModules: vi.fn()
+	loadMemberAnalyticsModules: vi.fn(),
+	loadSupplierAnalyticsModules: vi.fn()
 }));
 
-vi.mock('$app/navigation', () => ({
-	goto
-}));
-
+vi.mock('$app/navigation', () => ({ goto }));
 vi.mock('./deferredModules', () => ({
 	loadPublicAnalyticsModules,
-	loadSupplierAnalyticsModules,
-	loadMemberAnalyticsModules
+	loadMemberAnalyticsModules,
+	loadSupplierAnalyticsModules
 }));
 
 type DeferredPromise<T> = {
@@ -38,7 +35,6 @@ function deferred<T>(): DeferredPromise<T> {
 		resolve = res;
 		reject = rej;
 	});
-
 	return { promise, resolve, reject };
 }
 
@@ -56,6 +52,11 @@ async function buildPublicModules() {
 	};
 }
 
+async function buildMemberModules() {
+	const component = await loadStubComponent();
+	return { PriceTierChartComponent: component };
+}
+
 async function buildSupplierModules() {
 	const component = await loadStubComponent();
 	return {
@@ -64,17 +65,10 @@ async function buildSupplierModules() {
 	};
 }
 
-async function buildMemberModules() {
-	const component = await loadStubComponent();
-	return {
-		PriceTierChartComponent: component
-	};
-}
-
 function createData(overrides: Partial<PageData> = {}): PageData {
 	return {
 		session: null,
-		isPpiMember: false,
+		isParchmentIntelligence: false,
 		stats: {
 			totalBeansTracked: 120,
 			stockedRetailBeans: 84,
@@ -99,6 +93,22 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				sample_size: 9,
 				wholesale_only: false,
 				aggregation_tier: 1
+			},
+			{
+				snapshot_date: '2026-04-08',
+				origin: 'Colombia',
+				process: 'Washed',
+				price_avg: 3.6,
+				price_median: 3.5,
+				price_min: 3.3,
+				price_max: 3.9,
+				price_p25: 3.4,
+				price_p75: 3.7,
+				price_stdev: 0.15,
+				supplier_count: 3,
+				sample_size: 7,
+				wholesale_only: true,
+				aggregation_tier: 1
 			}
 		],
 		processDistribution: [{ name: 'Washed', count: 9, wholesale: false }],
@@ -114,10 +124,65 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				sample_size: 9
 			}
 		],
-		recentArrivals: [],
-		recentDelistings: [],
-		comparisonBeans: [],
-		supplierHealth: [{ supplier: 'Atlas Coffee' }],
+		recentArrivals: [
+			{
+				name: 'Fresh Ethiopia',
+				country: 'Ethiopia',
+				processing: 'Natural',
+				price_per_lb: 4.8,
+				source: 'Cafe Imports',
+				stocked_date: '2026-04-07'
+			},
+			{
+				name: 'Older Arrival',
+				country: 'Kenya',
+				processing: 'Washed',
+				price_per_lb: 5.1,
+				source: 'Royal Coffee',
+				stocked_date: '2026-03-15'
+			}
+		],
+		recentDelistings: [
+			{
+				name: 'Recently Gone',
+				country: 'Guatemala',
+				processing: 'Washed',
+				price_per_lb: 4.2,
+				source: 'Atlas',
+				unstocked_date: '2026-04-06'
+			},
+			{
+				name: 'Older Gone',
+				country: 'Brazil',
+				processing: 'Natural',
+				price_per_lb: 3.9,
+				source: 'Red Fox',
+				unstocked_date: '2026-03-12'
+			}
+		],
+		comparisonBeans: [
+			{
+				name: 'Colombia Huila',
+				country: 'Colombia',
+				processing: 'Washed',
+				price_per_lb: 4.25,
+				source: 'Atlas',
+				wholesale: false,
+				bag_size: null
+			}
+		],
+		supplierHealth: [
+			{
+				source: 'Atlas Coffee',
+				stockedCount: 15,
+				origins: 6,
+				avgCostLb: 4.15,
+				minCostLb: 3.75,
+				maxCostLb: 4.8,
+				wholesaleCount: 4,
+				retailCount: 11
+			}
+		],
 		...overrides
 	} as unknown as PageData;
 }
@@ -126,11 +191,11 @@ function createSession() {
 	return { user: { id: 'user-1' } } as NonNullable<PageData['session']>;
 }
 
-beforeEach(async () => {
+beforeEach(() => {
 	vi.clearAllMocks();
 	loadPublicAnalyticsModules.mockImplementation(buildPublicModules);
-	loadSupplierAnalyticsModules.mockImplementation(buildSupplierModules);
 	loadMemberAnalyticsModules.mockImplementation(buildMemberModules);
+	loadSupplierAnalyticsModules.mockImplementation(buildSupplierModules);
 });
 
 describe('analytics page loading experience', () => {
@@ -152,37 +217,43 @@ describe('analytics page loading experience', () => {
 		expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 	});
 
-	it('loads supplier tables when an anonymous viewer becomes a signed-in member on the same route', async () => {
+	it('keeps logged-out and signed-in viewers on the same baseline analytics surface', async () => {
 		const view = render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
-		expect(loadSupplierAnalyticsModules).not.toHaveBeenCalled();
+
+		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
 
 		await view.rerender({ data: createData({ session: createSession() }) });
 
 		await waitFor(() => {
-			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(5);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
+
+		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
+		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
 	});
 
-	it('loads the PPI chart when a signed-in member upgrades on the same route', async () => {
+	it('loads the Parchment Intelligence chart when a viewer upgrades on the same route', async () => {
 		const view = render(AnalyticsPage, {
-			data: createData({ session: createSession(), isPpiMember: false })
+			data: createData({ session: createSession(), isParchmentIntelligence: false })
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(5);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
 
-		await view.rerender({ data: createData({ session: createSession(), isPpiMember: true }) });
+		await view.rerender({
+			data: createData({ session: createSession(), isParchmentIntelligence: true })
+		});
 
 		await waitFor(() => {
 			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
 		});
 	});
 
@@ -202,5 +273,61 @@ describe('analytics page loading experience', () => {
 		expect(screen.getAllByRole('button', { name: 'Retry loading' }).length).toBeGreaterThanOrEqual(
 			3
 		);
+	});
+});
+
+describe('analytics premium boundary copy', () => {
+	it('keeps arrivals and delistings behind the Parchment Intelligence boundary on the baseline surface', async () => {
+		render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(screen.queryByRole('button', { name: 'Spread' })).not.toBeInTheDocument();
+		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
+		expect(screen.queryByText(/spread analysis/i)).not.toBeInTheDocument();
+		expect(screen.getByText(/premium arrivals and delistings tracking/i)).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				/parchment intelligence unlocks supplier comparisons, supplier health, arrivals, delistings, origin index views, and extended trend detail/i
+			)
+		).toBeInTheDocument();
+		expect(screen.queryByText('Fresh Ethiopia')).not.toBeInTheDocument();
+		expect(screen.queryByText('Recently Gone')).not.toBeInTheDocument();
+		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThan(1);
+	});
+
+	it('restores premium supplier analytics modules instead of static fallback tables', async () => {
+		render(AnalyticsPage, {
+			data: createData({ session: createSession(), isParchmentIntelligence: true })
+		});
+
+		await waitFor(() => {
+			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
+			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+		});
+	});
+
+	it('defaults arrivals and delistings to a 7-day window and allows switching back to 30 days', async () => {
+		render(AnalyticsPage, {
+			data: createData({ session: createSession(), isParchmentIntelligence: true })
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+		});
+
+		expect(screen.getByText('Fresh Ethiopia')).toBeInTheDocument();
+		expect(screen.queryByText('Older Arrival')).not.toBeInTheDocument();
+		expect(screen.queryByText('Older Gone')).not.toBeInTheDocument();
+
+		const thirtyDayButtons = screen.getAllByRole('button', { name: '30d' });
+		await thirtyDayButtons[0].click();
+
+		await waitFor(() => {
+			expect(screen.getByText('Older Arrival')).toBeInTheDocument();
+		});
 	});
 });

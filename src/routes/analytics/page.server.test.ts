@@ -63,7 +63,8 @@ beforeEach(async () => {
 	resolvePrincipalMock = vi.mocked(principalModule.resolvePrincipal);
 	resolvePrincipalMock.mockResolvedValue({
 		isAuthenticated: false,
-		ppiAccess: false
+		ppiAccess: false,
+		role: 'viewer'
 	});
 });
 
@@ -340,11 +341,12 @@ describe('loadPriceSnapshotsPaginated', () => {
 });
 
 describe('analytics load', () => {
-	it('preserves the 90-day public window and 365-day PPI member window', async () => {
+	it('preserves the 90-day baseline window and 365-day Parchment Intelligence window', async () => {
 		const anonymousClient = createAnalyticsClient([{ data: [], error: null }]);
 		resolvePrincipalMock.mockResolvedValueOnce({
 			isAuthenticated: false,
-			ppiAccess: false
+			ppiAccess: false,
+			role: 'viewer'
 		});
 
 		await load(createLoadEvent(anonymousClient));
@@ -353,7 +355,8 @@ describe('analytics load', () => {
 		const memberClient = createAnalyticsClient([{ data: [], error: null }]);
 		resolvePrincipalMock.mockResolvedValueOnce({
 			isAuthenticated: true,
-			ppiAccess: true
+			ppiAccess: true,
+			role: 'viewer'
 		});
 
 		await load(createLoadEvent(memberClient));
