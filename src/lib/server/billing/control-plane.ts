@@ -128,10 +128,10 @@ export function buildSubscriptionControlPlaneState(input: {
 	const apiTone: ControlPlaneTone = input.apiPlan === 'viewer' ? 'muted' : 'success';
 	const apiStatusLabel =
 		input.apiPlan === 'enterprise'
-			? 'Enterprise API access'
+			? 'Parchment API enterprise'
 			: input.apiPlan === 'member'
-				? 'Member API access'
-				: 'Viewer API access';
+				? 'Parchment API active'
+				: 'Explorer';
 
 	const ppiTone: ControlPlaneTone = input.ppiAccess ? 'success' : 'muted';
 
