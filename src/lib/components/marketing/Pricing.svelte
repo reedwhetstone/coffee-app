@@ -19,6 +19,16 @@
 			return;
 		}
 
+		if (plan === 'api') {
+			goto('/api');
+			return;
+		}
+
+		if (plan === 'intelligence') {
+			goto('/analytics');
+			return;
+		}
+
 		goto('/subscription');
 	}
 </script>
@@ -32,9 +42,9 @@
 			</p>
 		</div>
 		<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-text-secondary-light">
-			Start with the public catalog, then buy the product that matches your job to be done: Mallard
-			Studio for workflow, Parchment API for machine-readable data, or Parchment Intelligence for
-			deeper market visibility.
+			Start with the public catalog, then follow the path that matches your job to be done: Mallard
+			Studio for workflow and membership, Parchment API for developer access, or Parchment
+			Intelligence for analytics and market context.
 		</p>
 
 		<div
@@ -98,18 +108,22 @@
 						</p>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						Build on normalized coffee data with a free Explorer baseline and a paid production tier
-						when you need more.
+						Explore the developer surface and documentation today, then talk to us when you need a
+						production data plan.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-1">
 						<span class="text-4xl font-bold tracking-tight text-text-primary-light">$99</span>
 						<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
 					</p>
-					<p class="mt-2 text-sm text-text-secondary-light">Start with Explorer for free.</p>
+					<p class="mt-2 text-sm text-text-secondary-light">
+						Start with the API overview and docs.
+					</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
 						<li class="flex gap-x-3">Machine-readable coffee data for developers</li>
 						<li class="flex gap-x-3">Useful for internal tools, apps, and agents</li>
-						<li class="flex gap-x-3">Clear upgrade path from Explorer to production use</li>
+						<li class="flex gap-x-3">
+							Sales-assisted path for production access and higher-volume use
+						</li>
 					</ul>
 				</div>
 				<button
@@ -119,7 +133,7 @@
 					}}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
-					See Parchment API
+					View API overview
 				</button>
 			</div>
 
@@ -138,20 +152,22 @@
 						</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						Unlock the premium analytics and market-intelligence layer for richer supplier, origin,
-						and pricing visibility.
+						See the analytics and market-intelligence surface that is already live today, with
+						deeper commercial packaging evolving over time.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-1">
 						<span class="text-4xl font-bold tracking-tight text-text-primary-light">$39</span>
 						<span class="text-sm font-semibold leading-6 text-text-secondary-light">/month</span>
 					</p>
 					<p class="mt-2 text-sm text-text-secondary-light">
-						Or $350/year for deeper market visibility.
+						Explore the live market data experience before committing to a larger rollout.
 					</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
 						<li class="flex gap-x-3">Full analytics and price-index access</li>
 						<li class="flex gap-x-3">Better sourcing visibility and market context</li>
-						<li class="flex gap-x-3">Honest current value, with more intelligence layers coming</li>
+						<li class="flex gap-x-3">
+							Live product surface today, with deeper packaging still to come
+						</li>
 					</ul>
 				</div>
 				<button
@@ -161,7 +177,7 @@
 					}}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
-					See Intelligence options
+					View market data
 				</button>
 			</div>
 

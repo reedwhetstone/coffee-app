@@ -22,9 +22,9 @@ export const publicNavItems: NavItem[] = [
 		matches: ['/catalog']
 	},
 	{
-		label: 'Products',
+		label: 'Pricing',
 		href: '/subscription',
-		description: 'Compare Mallard Studio, API, and market intelligence paths',
+		description: 'See current plans and contact paths',
 		matches: ['/subscription']
 	},
 	{
@@ -32,12 +32,6 @@ export const publicNavItems: NavItem[] = [
 		href: '/analytics',
 		description: 'Explore current market intelligence',
 		matches: ['/analytics']
-	},
-	{
-		label: 'Mallard Studio',
-		href: '/subscription',
-		description: 'See the workflow product story',
-		matches: ['/subscription']
 	},
 	{
 		label: 'API',
