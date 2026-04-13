@@ -11,16 +11,16 @@
 	});
 
 	let tierDisplayName = $derived(() => {
-		if (!data.currentStats) return 'Explorer';
+		if (!data.currentStats) return 'Green';
 		switch (data.currentStats.userTier) {
 			case 'enterprise':
 				return 'Enterprise';
 			case 'member':
-				return 'Roaster+';
+				return 'Origin';
 			case 'viewer':
-				return 'Explorer';
+				return 'Green';
 			default:
-				return 'Explorer';
+				return 'Green';
 		}
 	});
 
@@ -58,7 +58,10 @@
 
 <svelte:head>
 	<title>Usage Analytics - Parchment Console</title>
-	<meta name="description" content="Monitor your API usage and performance metrics" />
+	<meta
+		name="description"
+		content="Monitor your Parchment API usage, performance metrics, and plan limits"
+	/>
 </svelte:head>
 
 <div class="min-h-screen bg-background-primary-light">
@@ -75,7 +78,7 @@
 			</nav>
 			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">Usage Analytics</h1>
 			<p class="mt-2 text-lg text-text-secondary-light">
-				Monitor your API usage, performance metrics, and rate limits
+				Monitor your Parchment API usage, performance metrics, and plan limits
 			</p>
 		</div>
 
@@ -128,9 +131,9 @@
 							{#if data.currentStats?.userTier === 'enterprise'}
 								Unlimited API calls
 							{:else if data.currentStats?.userTier === 'member'}
-								$99/month
+								Self-serve Origin plan
 							{:else}
-								Free tier
+								Green entry tier
 							{/if}
 						</div>
 					</div>
@@ -286,17 +289,19 @@
 										data.currentStats?.monthlyLimit || 200
 									)} monthly API calls.
 									{#if data.currentStats?.userTier === 'viewer'}
-										Upgrade to Roaster+ for 10,000 calls/month and advanced features.
+										Upgrade to Origin for 10,000 calls/month and advanced features.
 									{:else}
-										Upgrade to Enterprise for unlimited calls and premium support.
+										Contact sales about Enterprise for unlimited calls and premium support.
 									{/if}
 								</p>
 								<div class="mt-3 flex space-x-4">
 									<a
-										href="/subscription"
+										href={data.currentStats?.userTier === 'viewer' ? '/subscription' : '/contact'}
 										class="font-medium text-yellow-800 underline hover:text-yellow-600"
 									>
-										Upgrade Plan
+										{data.currentStats?.userTier === 'viewer'
+											? 'Upgrade to Origin'
+											: 'Contact sales'}
 									</a>
 									<a
 										href="/api-dashboard"

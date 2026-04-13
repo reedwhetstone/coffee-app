@@ -426,13 +426,13 @@ const docsPages: DocsPage[] = [
 					headers: ['Marketed plan', 'Code key', 'Monthly requests', 'Rows per call', 'Notes'],
 					rows: [
 						['Explorer', 'viewer', '200', '25', 'Best for evaluation and prototypes.'],
-						['Roaster+', 'member', '10,000', 'Unlimited', 'Production integrations and sync jobs.'],
+						['Parchment API', 'member', '10,000', 'Unlimited', 'Self-serve paid plan for production integrations and sync jobs.'],
 						[
 							'Enterprise',
 							'enterprise',
 							'Unlimited',
 							'Unlimited',
-							'Custom commercial volume and support.'
+							'Contact-sales plan for custom commercial volume and support.'
 						]
 					]
 				},
