@@ -149,6 +149,7 @@ function parsePositiveInteger(value: string | null, fallback: number): number {
 
 function parseOptionalPositiveInteger(value: string | null): number | undefined {
 	if (!value) return undefined;
+	if (!/^\d+$/.test(value)) return undefined;
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }

@@ -347,7 +347,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
-	it.each(['abc', '-1', '3.5', '0'])(
+	it.each(['abc', '-1', '3.5', '0', '7abc'])(
 		'rejects invalid stocked_days value %s with a structured 400 response',
 		async (stockedDays) => {
 			mockResolvePrincipal.mockResolvedValue({
