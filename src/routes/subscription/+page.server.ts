@@ -24,12 +24,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	let subscription = null;
 	if (stripeCustomerId) {
-		subscription = await getSubscriptionDetails(stripeCustomerId);
+		subscription = await getSubscriptionDetails(stripeCustomerId, {
+			productFamily: 'membership'
+		});
 	}
 
 	const { data: billingSubscriptions, error: billingSubscriptionsError } = await locals.supabase
 		.from('billing_subscriptions')
-		.select('product_family, product_key, status, cancel_at_period_end, current_period_end')
+		.select(
+			'stripe_subscription_id, product_family, product_key, status, cancel_at_period_end, current_period_end'
+		)
 		.eq('user_id', user.id);
 
 	if (billingSubscriptionsError) {

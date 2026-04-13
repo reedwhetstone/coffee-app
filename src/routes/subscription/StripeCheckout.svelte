@@ -44,7 +44,7 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					purchaseKey
+					purchaseKeys: [purchaseKey]
 				})
 			});
 

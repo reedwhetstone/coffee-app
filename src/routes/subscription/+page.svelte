@@ -41,7 +41,7 @@
 	} = {
 		monthly: {
 			purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly,
-			name: 'Roaster Plan',
+			name: 'Mallard Studio Member',
 			price: '$9',
 			interval: 'month',
 			description:
@@ -57,7 +57,7 @@
 		},
 		annual: {
 			purchaseKey: BILLING_PURCHASE_KEYS.membershipAnnual,
-			name: 'Roaster Plan',
+			name: 'Mallard Studio Member',
 			price: '$80',
 			interval: 'year',
 			description:
@@ -113,7 +113,7 @@
 
 	const normalizePlanName = (planName: string | null | undefined) => {
 		if (!planName || planName.startsWith('prod_')) {
-			return 'Roaster Plan';
+			return 'Mallard Studio Member';
 		}
 
 		return planName;
@@ -357,7 +357,13 @@
 							</div>
 
 							<div class="mt-5 space-y-3">
-								{#if data.subscription.cancel_at_period_end}
+								{#if !data.controlPlane.membership.canManageSubscription && data.controlPlane.membership.managementBlockedReason}
+									<div
+										class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
+									>
+										{data.controlPlane.membership.managementBlockedReason}
+									</div>
+								{:else if data.subscription.cancel_at_period_end}
 									<button
 										onclick={() => resumeSubscription()}
 										disabled={resumeLoading}

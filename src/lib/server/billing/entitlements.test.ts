@@ -79,6 +79,56 @@ describe('billing entitlement reconciliation', () => {
 		});
 	});
 
+	it('grants paid API access from an active API subscription', () => {
+		const resolved = resolveBillingEntitlements({
+			currentRole: 'viewer',
+			currentApiPlan: 'viewer',
+			currentPpiAccess: false,
+			subscriptions: [
+				{
+					product_key: BILLING_PURCHASE_KEYS.apiPlanMonthly,
+					status: 'active'
+				}
+			]
+		});
+
+		expect(resolved).toEqual({
+			role: 'viewer',
+			userRole: ['viewer'],
+			apiPlan: 'member',
+			ppiAccess: false
+		});
+	});
+
+	it('merges cross-family active subscriptions into a combined entitlement bundle', () => {
+		const resolved = resolveBillingEntitlements({
+			currentRole: 'viewer',
+			currentApiPlan: 'viewer',
+			currentPpiAccess: false,
+			subscriptions: [
+				{
+					product_key: BILLING_PURCHASE_KEYS.membershipMonthly,
+					status: 'active'
+				},
+				{
+					product_key: BILLING_PURCHASE_KEYS.apiPlanMonthly,
+					status: 'active'
+				},
+				{
+					product_key: BILLING_PURCHASE_KEYS.ppiAddonAnnual,
+					status: 'active'
+				}
+			]
+		});
+
+		expect(resolved).toEqual({
+			role: 'member',
+			userRole: ['member'],
+			apiPlan: 'member',
+			ppiAccess: true
+		});
+	});
+
 	it('preserves admin during membership reconciliation', () => {
 		const resolved = resolveBillingEntitlements({
 			currentRole: 'admin',
