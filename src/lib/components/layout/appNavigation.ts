@@ -16,15 +16,16 @@ export interface NavSection {
 
 export const publicNavItems: NavItem[] = [
 	{
-		label: 'Catalog',
-		href: '/catalog',
-		description: 'Browse live coffee inventory'
-	},
-	{
 		label: 'For Buyers',
 		href: '/catalog',
-		description: 'Compare coffees and sourcing options',
+		description: 'Browse live coffee inventory and compare sourcing options',
 		matches: ['/catalog']
+	},
+	{
+		label: 'Products',
+		href: '/',
+		description: 'See Mallard Studio, API, and market intelligence paths',
+		matches: ['/']
 	},
 	{
 		label: 'Market Data',

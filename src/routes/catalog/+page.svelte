@@ -168,11 +168,11 @@
 				<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
 					<div class="text-center sm:text-left">
 						<h3 class="text-lg font-semibold text-text-primary-light">
-							Make the jump from sourcing to workflow
+							Need more than sourcing snapshots?
 						</h3>
 						<p class="text-sm text-text-secondary-light">
-							Mallard Studio adds saved research, inventory, roasting, tasting, and operating tools
-							after you find coffees here.
+							Stay in the buyer path here, or step into Mallard Studio when you want saved research,
+							inventory, roasting, tasting, and team workflows around the coffees you shortlist.
 						</p>
 					</div>
 					<div class="flex flex-col gap-3 sm:flex-row">
@@ -180,13 +180,13 @@
 							onclick={() => goto('/subscription')}
 							class="rounded-md bg-background-tertiary-light px-6 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 						>
-							See Mallard Studio
+							Compare paid products
 						</button>
 						<button
-							onclick={() => goto('/dashboard')}
+							onclick={() => goto('/')}
 							class="rounded-md border border-background-tertiary-light px-6 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						>
-							Open dashboard
+							See the product overview
 						</button>
 					</div>
 				</div>
