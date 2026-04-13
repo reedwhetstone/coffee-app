@@ -21,15 +21,21 @@ export const publicNavItems: NavItem[] = [
 		description: 'Browse live coffee inventory'
 	},
 	{
+		label: 'For Buyers',
+		href: '/catalog',
+		description: 'Compare coffees and sourcing options',
+		matches: ['/catalog']
+	},
+	{
 		label: 'Market Data',
 		href: '/analytics',
 		description: 'Explore current market intelligence',
 		matches: ['/analytics']
 	},
 	{
-		label: 'Maillard Studio',
+		label: 'Mallard Studio',
 		href: '/',
-		description: 'See the platform story'
+		description: 'See the workflow product story'
 	},
 	{
 		label: 'API',

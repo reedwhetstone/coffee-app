@@ -6,7 +6,6 @@
 	import { goto } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';
 
-	// Import components
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
 
@@ -15,30 +14,22 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	// Destructure with default values to prevent undefined errors
 	let { session, role = 'viewer' } = $derived(data);
 
-	// Import global UserRole type
 	import type { UserRole } from '$lib/types/auth.types';
 	let userRole: UserRole = $derived(role as UserRole);
 
-	// Use the imported checkRole function
 	function hasRequiredRole(requiredRole: UserRole): boolean {
 		const hasRole = checkRole(userRole, requiredRole);
 		return hasRole;
 	}
 
-	// Pagination state management
 	let displayLimit = $state(15);
 	let isLoadingMore = $state(false);
 
-	/**
-	 * Initialize filter store when page loads
-	 */
 	$effect(() => {
 		const currentRoute = page.url.pathname;
 
-		// Simple initialization: only run if we have data and store isn't initialized for this route
 		if (
 			data?.data?.length > 0 &&
 			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
@@ -47,33 +38,22 @@
 		}
 	});
 
-	/**
-	 * Data source - use server data for catalog route, fallback to filtered data
-	 */
 	let displayData = $derived((): CoffeeCatalog[] => {
-		// Use server data if available (for paginated catalog)
 		if ($filterStore.serverData?.length > 0) {
 			return $filterStore.serverData as unknown as CoffeeCatalog[];
 		}
-		// Fallback to filtered data with pagination for non-server routes
 		return ($filteredData as unknown as CoffeeCatalog[]).slice(0, displayLimit);
 	});
 
-	/**
-	 * Handles pagination for server-side or infinite scroll for client-side
-	 */
 	async function handleScroll() {
-		// No infinite scroll for unauthenticated users
 		if (!session) {
 			return;
 		}
 
-		// For server-side routes, don't use infinite scroll - use proper pagination
 		if ($filterStore.routeId.includes('/catalog') || $filterStore.routeId === '/') {
 			return;
 		}
 
-		// Infinite scroll for client-side routes
 		const scrollPosition = window.innerHeight + window.scrollY;
 		const bottomOfPage = document.documentElement.offsetHeight - 200;
 
@@ -85,28 +65,16 @@
 		}
 	}
 
-	/**
-	 * Component initialization
-	 * Sets up scroll event listeners
-	 */
 	onMount(() => {
-		// Setup scroll handler
 		window.addEventListener('scroll', handleScroll);
 		return () => window.removeEventListener('scroll', handleScroll);
 	});
 
-	/**
-	 * Parses AI tasting notes JSON data safely
-	 * @param tastingNotesJson - JSON string from database
-	 * @returns Parsed tasting notes or null if invalid
-	 */
 	function parseTastingNotes(tastingNotesJson: string | null | object): TastingNotes | null {
 		if (!tastingNotesJson) return null;
 
 		try {
-			// Handle both string and object formats (Supabase jsonb can return either)
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			let parsed: any;
+			let parsed: Partial<TastingNotes> & Record<string, unknown>;
 			if (typeof tastingNotesJson === 'string') {
 				parsed = JSON.parse(tastingNotesJson);
 			} else if (typeof tastingNotesJson === 'object') {
@@ -115,7 +83,6 @@
 				return null;
 			}
 
-			// Validate that required properties exist
 			if (
 				parsed.body &&
 				parsed.flavor &&
@@ -132,26 +99,22 @@
 	}
 </script>
 
-<!-- Show skeleton during FilterStore loading -->
 {#if $filterStore.isLoading}
 	<CatalogPageSkeleton />
 {:else}
-	<!-- Coffee Catalog -->
 	<div class="space-y-4">
 		<div class="rounded-lg border border-border-light bg-background-secondary-light px-5 py-4">
 			<h1 class="text-2xl font-bold text-text-primary-light sm:text-3xl">Green Coffee Catalog</h1>
 			<p class="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary-light sm:text-base">
 				Browse stocked green coffees from Purveyors supplier integrations with origin, processing,
-				tasting context, and live pricing. Filter by origin, process, and name to explore what is
-				currently available.
+				tasting context, and live pricing. This is the public buyer path: compare what is available
+				now, then decide whether you need workflow software, market intelligence, or API access.
 			</p>
 		</div>
-		<!-- Inline filter bar for unauthenticated users (sidebar filters handle this for auth'd users) -->
 		{#if !session}
 			<div
 				class="flex flex-wrap items-center gap-2 rounded-lg border border-border-light bg-background-secondary-light px-4 py-3"
 			>
-				<!-- Country/Origin dropdown -->
 				<select
 					value={Array.isArray($filterStore.filters.country)
 						? ($filterStore.filters.country[0] ?? '')
@@ -168,7 +131,6 @@
 					{/each}
 				</select>
 
-				<!-- Processing method dropdown -->
 				<select
 					value={$filterStore.filters.processing ?? ''}
 					onchange={(e) => filterStore.setFilter('processing', e.currentTarget.value)}
@@ -180,7 +142,6 @@
 					{/each}
 				</select>
 
-				<!-- Text search -->
 				<input
 					type="search"
 					value={$filterStore.filters.name ?? ''}
@@ -189,7 +150,6 @@
 					class="min-w-[160px] flex-1 rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
 				/>
 
-				<!-- Clear button (only show when filters are active) -->
 				{#if $filterStore.filters.country || $filterStore.filters.processing || $filterStore.filters.name}
 					<button
 						onclick={filterStore.clearFilters}
@@ -201,7 +161,6 @@
 			</div>
 		{/if}
 
-		<!-- Upgrade Banner for logged-in Viewers only -->
 		{#if session && !hasRequiredRole('member')}
 			<div
 				class="rounded-lg border border-background-tertiary-light/20 bg-gradient-to-r from-background-tertiary-light/10 to-harvest-gold/10 p-6"
@@ -209,10 +168,11 @@
 				<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
 					<div class="text-center sm:text-left">
 						<h3 class="text-lg font-semibold text-text-primary-light">
-							🚀 Unlock Premium Features
+							Make the jump from sourcing to workflow
 						</h3>
 						<p class="text-sm text-text-secondary-light">
-							Get AI recommendations, roast tracking, profit analytics, and more for just $5/month
+							Mallard Studio adds saved research, inventory, roasting, tasting, and operating tools
+							after you find coffees here.
 						</p>
 					</div>
 					<div class="flex flex-col gap-3 sm:flex-row">
@@ -220,14 +180,13 @@
 							onclick={() => goto('/subscription')}
 							class="rounded-md bg-background-tertiary-light px-6 py-2 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 						>
-							Start Free Trial
+							See Mallard Studio
 						</button>
 						<button
-							onclick={() =>
-								document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+							onclick={() => goto('/dashboard')}
 							class="rounded-md border border-background-tertiary-light px-6 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						>
-							Learn More
+							Open dashboard
 						</button>
 					</div>
 				</div>
@@ -235,7 +194,6 @@
 		{/if}
 
 		<div class="space-y-4">
-			<!-- Coffee Cards -->
 			<div class="flex-1">
 				{#if $filterStore.isLoading}
 					<div class="flex justify-center p-8">
@@ -263,7 +221,6 @@
 							</div>
 						{/if}
 
-						<!-- Public preview CTA banner (unauthenticated only) -->
 						{#if !session && ($filterStore.pagination.total > 15 || displayData().length >= 15)}
 							<div class="col-span-full mt-2">
 								<div
@@ -274,31 +231,30 @@
 										coffees
 									</p>
 									<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
-										Unlock the full catalog
+										Keep going with a free account
 									</h3>
 									<p class="mb-6 text-sm text-text-secondary-light">
-										Create a free account to browse all coffees, use AI-powered search, and set
-										price alerts.
+										Create a free account to browse the full catalog, save sourcing research, and
+										unlock the next step after public market discovery.
 									</p>
 									<div class="flex flex-col items-center justify-center gap-3 sm:flex-row">
 										<button
 											onclick={() => goto('/auth')}
 											class="rounded-md bg-background-tertiary-light px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
 										>
-											Sign Up Free
+											Create free account
 										</button>
 										<button
-											onclick={() => goto('/auth')}
+											onclick={() => goto('/subscription')}
 											class="rounded-md border border-background-tertiary-light px-6 py-2.5 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 										>
-											Sign In
+											See products
 										</button>
 									</div>
 								</div>
 							</div>
 						{/if}
 
-						<!-- Server-side pagination controls (authenticated users only) -->
 						{#if session && $filterStore.pagination.totalPages > 1}
 							<div class="col-span-full flex items-center justify-center gap-4 p-4">
 								<button
@@ -324,7 +280,6 @@
 							</div>
 						{/if}
 
-						<!-- Client-side infinite scroll indicators (authenticated users only) -->
 						{#if session && !$filterStore.pagination.totalPages && !isLoadingMore && displayLimit < $filteredData.length}
 							<div class="flex justify-center p-4">
 								<p class="text-primary-light text-sm">Scroll for more coffees...</p>
