@@ -13,7 +13,11 @@
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
 	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
 	import type { DeferredAnalyticsComponent } from './deferredModules';
-	import { loadMemberAnalyticsModules, loadPublicAnalyticsModules } from './deferredModules';
+	import {
+	loadMemberAnalyticsModules,
+	loadPublicAnalyticsModules,
+	loadSupplierAnalyticsModules
+} from './deferredModules';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -23,6 +27,8 @@
 	let OriginBarChartComponent = $state<DeferredAnalyticsComponent | null>(null);
 	let ProcessDonutChartComponent = $state<DeferredAnalyticsComponent | null>(null);
 	let PriceTierChartComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let SupplierComparisonTableComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let SupplierHealthTableComponent = $state<DeferredAnalyticsComponent | null>(null);
 	let publicChartsLoading = $state(true);
 	let memberVisualsLoading = $state(false);
 	let publicChartsError = $state<string | null>(null);
@@ -32,7 +38,9 @@
 
 	// Extended trend time range selector (Parchment Intelligence feature)
 	type TrendRange = '90d' | '6m' | '1y';
+	type WindowMode = '7d' | '30d';
 	let trendRange = $state<TrendRange>('90d');
+	let windowMode = $state<WindowMode>('7d');
 
 	let {
 		session,
@@ -175,6 +183,26 @@
 	let hasSnapshots = $derived(filteredSnapshots.length > 0);
 	let stockedBeans = $derived(stats.stockedRetailBeans + stats.stockedWholesaleBeans);
 
+	let filteredArrivals = $derived.by(() => {
+		const cutoffDays = windowMode === '7d' ? 7 : 30;
+		const cutoff = new Date();
+		cutoff.setDate(cutoff.getDate() - cutoffDays);
+		return recentArrivals.filter((bean) => {
+			if (!bean.stocked_date) return false;
+			return new Date(bean.stocked_date + 'T00:00:00') >= cutoff;
+		});
+	});
+
+	let filteredDelistings = $derived.by(() => {
+		const cutoffDays = windowMode === '7d' ? 7 : 30;
+		const cutoff = new Date();
+		cutoff.setDate(cutoff.getDate() - cutoffDays);
+		return recentDelistings.filter((bean) => {
+			if (!bean.unstocked_date) return false;
+			return new Date(bean.unstocked_date + 'T00:00:00') >= cutoff;
+		});
+	});
+
 	function formatDate(dateStr: string | null) {
 		if (!dateStr) return 'N/A';
 		return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
@@ -279,7 +307,11 @@
 			return;
 		}
 
-		if (PriceTierChartComponent) {
+		if (
+			PriceTierChartComponent &&
+			SupplierComparisonTableComponent &&
+			SupplierHealthTableComponent
+		) {
 			memberVisualsLoading = false;
 			memberVisualsError = null;
 			return;
@@ -289,10 +321,12 @@
 		memberVisualsLoading = true;
 		memberVisualsError = null;
 
-		void loadMemberAnalyticsModules()
-			.then(({ PriceTierChartComponent: priceTierChart }) => {
+		void Promise.all([loadMemberAnalyticsModules(), loadSupplierAnalyticsModules()])
+			.then(([memberModules, supplierModules]) => {
 				if (cancelled) return;
-				PriceTierChartComponent = priceTierChart;
+				PriceTierChartComponent = memberModules.PriceTierChartComponent;
+				SupplierComparisonTableComponent = supplierModules.SupplierComparisonTableComponent;
+				SupplierHealthTableComponent = supplierModules.SupplierHealthTableComponent;
 			})
 			.catch((error) => {
 				if (cancelled) return;
@@ -606,6 +640,19 @@
 			<div class="mb-8 blur-sm filter">
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-4 flex items-center justify-between gap-3">
+							<p class="text-sm text-text-secondary-light">Recently stocked coffees in the last {windowMode === '7d' ? '7' : '30'} days.</p>
+							<div class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium">
+								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+									<button
+										onclick={() => (windowMode = opt.value as WindowMode)}
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode === opt.value ? 'bg-amber-200 text-amber-900 shadow-sm' : 'text-amber-900/70 hover:text-amber-900'}"
+									>
+										{opt.label}
+									</button>
+								{/each}
+							</div>
+						</div>
 						<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">
 							Recently stocked coffees across {stats.totalSuppliers} suppliers.
@@ -621,6 +668,19 @@
 						</div>
 					</div>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-4 flex items-center justify-between gap-3">
+							<p class="text-sm text-text-secondary-light">Recently removed coffees in the last {windowMode === '7d' ? '7' : '30'} days.</p>
+							<div class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium">
+								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+									<button
+										onclick={() => (windowMode = opt.value as WindowMode)}
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode === opt.value ? 'bg-red-200 text-red-900 shadow-sm' : 'text-red-900/70 hover:text-red-900'}"
+									>
+										{opt.label}
+									</button>
+								{/each}
+							</div>
+						</div>
 						<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">
 							Recently removed coffees that help explain current market turnover.
@@ -723,42 +783,19 @@
 				subtitle="All stocked beans for a selected origin, sorted by price — cheapest first."
 				totalItems={comparisonBeans.length}
 			>
-				<div
-					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
+				<AnalyticsLoadingPanel
+					ready={Boolean(SupplierComparisonTableComponent)}
+					title="Supplier Price Comparison"
+					description="Loading premium supplier comparison tools."
+					height="h-64"
+					panelClass="border-border-light"
+					errorMessage={memberVisualsError}
+					onRetry={retryMemberVisuals}
 				>
-					<p class="mb-4 text-sm text-text-secondary-light">
-						Compare supplier pricing inside the premium intelligence workflow.
-					</p>
-					<div class="overflow-x-auto">
-						<table class="min-w-full text-sm">
-							<thead>
-								<tr class="border-b border-border-light">
-									<th class="py-2 pr-4 text-left font-semibold text-text-secondary-light">Bean</th>
-									<th class="py-2 pr-4 text-left font-semibold text-text-secondary-light">Origin</th
-									>
-									<th class="py-2 pr-4 text-left font-semibold text-text-secondary-light"
-										>Process</th
-									>
-									<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">$/lb</th>
-									<th class="py-2 text-left font-semibold text-text-secondary-light">Supplier</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each comparisonBeans as bean}
-									<tr class="border-b border-border-light/40 hover:bg-background-secondary-light">
-										<td class="py-2 pr-4 font-medium text-text-primary-light">{bean.name}</td>
-										<td class="py-2 pr-4 text-text-secondary-light">{bean.country}</td>
-										<td class="py-2 pr-4 text-text-secondary-light">{bean.processing ?? '—'}</td>
-										<td class="py-2 pr-4 text-right text-text-primary-light"
-											>${bean.price_per_lb.toFixed(2)}</td
-										>
-										<td class="py-2 text-text-secondary-light">{bean.source}</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				</div>
+					{#if SupplierComparisonTableComponent}
+						<SupplierComparisonTableComponent beans={comparisonBeans} />
+					{/if}
+				</AnalyticsLoadingPanel>
 			</ExpandablePanel>
 
 			<ExpandablePanel
@@ -766,56 +803,44 @@
 				subtitle="Catalog breadth and pricing by supplier — click any column header to sort."
 				totalItems={supplierHealth.length}
 			>
-				<div
-					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
+				<AnalyticsLoadingPanel
+					ready={Boolean(SupplierHealthTableComponent)}
+					title="Supplier Catalog Health"
+					description="Loading supplier catalog health analytics."
+					height="h-64"
+					panelClass="border-border-light"
+					errorMessage={memberVisualsError}
+					onRetry={retryMemberVisuals}
 				>
-					<div class="overflow-x-auto">
-						<table class="min-w-full text-sm">
-							<thead>
-								<tr class="border-b border-border-light">
-									<th class="py-2 pr-4 text-left font-semibold text-text-secondary-light"
-										>Supplier</th
-									>
-									<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
-										>Stocked</th
-									>
-									<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
-										>Origins</th
-									>
-									<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
-										>Avg $/lb</th
-									>
-									<th class="py-2 text-right font-semibold text-text-secondary-light">Wholesale</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each supplierHealth as row}
-									<tr class="border-b border-border-light/40 hover:bg-background-secondary-light">
-										<td class="py-2 pr-4 font-medium text-text-primary-light">{row.source}</td>
-										<td class="py-2 pr-4 text-right text-text-secondary-light"
-											>{row.stockedCount}</td
-										>
-										<td class="py-2 pr-4 text-right text-text-secondary-light">{row.origins}</td>
-										<td class="py-2 pr-4 text-right text-text-primary-light"
-											>${row.avgCostLb.toFixed(2)}</td
-										>
-										<td class="py-2 text-right text-text-secondary-light">{row.wholesaleCount}</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				</div>
+					{#if SupplierHealthTableComponent}
+						<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
+							<SupplierHealthTableComponent rows={supplierHealth} />
+						</div>
+					{/if}
+				</AnalyticsLoadingPanel>
 			</ExpandablePanel>
 
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 				<ExpandablePanel
 					title="New Arrivals"
-					badge={`+${recentArrivals.length}`}
+					badge={`+${filteredArrivals.length}`}
 					badgeColor="amber"
-					totalItems={recentArrivals.length}
+					totalItems={filteredArrivals.length}
 				>
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-4 flex items-center justify-between gap-3">
+							<p class="text-sm text-text-secondary-light">Recently stocked coffees in the last {windowMode === '7d' ? '7' : '30'} days.</p>
+							<div class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium">
+								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+									<button
+										onclick={() => (windowMode = opt.value as WindowMode)}
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode === opt.value ? 'bg-amber-200 text-amber-900 shadow-sm' : 'text-amber-900/70 hover:text-amber-900'}"
+									>
+										{opt.label}
+									</button>
+								{/each}
+							</div>
+						</div>
 						<div class="overflow-x-auto">
 							<table class="min-w-full text-sm">
 								<thead>
@@ -839,7 +864,7 @@
 									</tr>
 								</thead>
 								<tbody>
-									{#each recentArrivals as bean}
+									{#each filteredArrivals as bean}
 										<tr class="border-b border-border-light/40 hover:bg-amber-50">
 											<td class="py-2 pr-3 font-medium text-text-primary-light">{bean.name}</td>
 											<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
@@ -857,11 +882,24 @@
 
 				<ExpandablePanel
 					title="Recent Delistings"
-					badge={`-${recentDelistings.length}`}
+					badge={`-${filteredDelistings.length}`}
 					badgeColor="red"
-					totalItems={recentDelistings.length}
+					totalItems={filteredDelistings.length}
 				>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-4 flex items-center justify-between gap-3">
+							<p class="text-sm text-text-secondary-light">Recently removed coffees in the last {windowMode === '7d' ? '7' : '30'} days.</p>
+							<div class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium">
+								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+									<button
+										onclick={() => (windowMode = opt.value as WindowMode)}
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode === opt.value ? 'bg-red-200 text-red-900 shadow-sm' : 'text-red-900/70 hover:text-red-900'}"
+									>
+										{opt.label}
+									</button>
+								{/each}
+							</div>
+						</div>
 						<div class="overflow-x-auto">
 							<table class="min-w-full text-sm">
 								<thead>
@@ -885,7 +923,7 @@
 									</tr>
 								</thead>
 								<tbody>
-									{#each recentDelistings as bean}
+									{#each filteredDelistings as bean}
 										<tr class="border-b border-border-light/40 hover:bg-red-50">
 											<td class="py-2 pr-3 font-medium text-text-primary-light">{bean.name}</td>
 											<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>

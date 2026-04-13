@@ -30,3 +30,18 @@ export async function loadMemberAnalyticsModules(): Promise<{
 		PriceTierChartComponent: priceTierChart.default
 	};
 }
+
+export async function loadSupplierAnalyticsModules(): Promise<{
+	SupplierComparisonTableComponent: DeferredAnalyticsComponent;
+	SupplierHealthTableComponent: DeferredAnalyticsComponent;
+}> {
+	const [supplierComparison, supplierHealth] = await Promise.all([
+		import('$lib/components/analytics/SupplierComparisonTable.svelte'),
+		import('$lib/components/analytics/SupplierHealthTable.svelte')
+	]);
+
+	return {
+		SupplierComparisonTableComponent: supplierComparison.default,
+		SupplierHealthTableComponent: supplierHealth.default
+	};
+}

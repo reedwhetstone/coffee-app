@@ -3,14 +3,24 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import AnalyticsPage from './+page.svelte';
 import type { PageData } from './$types';
 
-const { goto, loadPublicAnalyticsModules, loadMemberAnalyticsModules } = vi.hoisted(() => ({
+const {
+	goto,
+	loadPublicAnalyticsModules,
+	loadMemberAnalyticsModules,
+	loadSupplierAnalyticsModules
+} = vi.hoisted(() => ({
 	goto: vi.fn(),
 	loadPublicAnalyticsModules: vi.fn(),
-	loadMemberAnalyticsModules: vi.fn()
+	loadMemberAnalyticsModules: vi.fn(),
+	loadSupplierAnalyticsModules: vi.fn()
 }));
 
 vi.mock('$app/navigation', () => ({ goto }));
-vi.mock('./deferredModules', () => ({ loadPublicAnalyticsModules, loadMemberAnalyticsModules }));
+vi.mock('./deferredModules', () => ({
+	loadPublicAnalyticsModules,
+	loadMemberAnalyticsModules,
+	loadSupplierAnalyticsModules
+}));
 
 type DeferredPromise<T> = {
 	promise: Promise<T>;
@@ -45,6 +55,14 @@ async function buildPublicModules() {
 async function buildMemberModules() {
 	const component = await loadStubComponent();
 	return { PriceTierChartComponent: component };
+}
+
+async function buildSupplierModules() {
+	const component = await loadStubComponent();
+	return {
+		SupplierComparisonTableComponent: component,
+		SupplierHealthTableComponent: component
+	};
 }
 
 function createData(overrides: Partial<PageData> = {}): PageData {
@@ -106,8 +124,42 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				sample_size: 9
 			}
 		],
-		recentArrivals: [],
-		recentDelistings: [],
+		recentArrivals: [
+			{
+				name: 'Fresh Ethiopia',
+				country: 'Ethiopia',
+				processing: 'Natural',
+				price_per_lb: 4.8,
+				source: 'Cafe Imports',
+				stocked_date: '2026-04-07'
+			},
+			{
+				name: 'Older Arrival',
+				country: 'Kenya',
+				processing: 'Washed',
+				price_per_lb: 5.1,
+				source: 'Royal Coffee',
+				stocked_date: '2026-03-15'
+			}
+		],
+		recentDelistings: [
+			{
+				name: 'Recently Gone',
+				country: 'Guatemala',
+				processing: 'Washed',
+				price_per_lb: 4.2,
+				source: 'Atlas',
+				unstocked_date: '2026-04-06'
+			},
+			{
+				name: 'Older Gone',
+				country: 'Brazil',
+				processing: 'Natural',
+				price_per_lb: 3.9,
+				source: 'Red Fox',
+				unstocked_date: '2026-03-12'
+			}
+		],
 		comparisonBeans: [
 			{
 				name: 'Colombia Huila',
@@ -143,6 +195,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	loadPublicAnalyticsModules.mockImplementation(buildPublicModules);
 	loadMemberAnalyticsModules.mockImplementation(buildMemberModules);
+	loadSupplierAnalyticsModules.mockImplementation(buildSupplierModules);
 });
 
 describe('analytics page loading experience', () => {
@@ -199,7 +252,8 @@ describe('analytics page loading experience', () => {
 
 		await waitFor(() => {
 			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(4);
+			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 	});
 
@@ -233,5 +287,40 @@ describe('analytics premium boundary copy', () => {
 		expect(screen.queryByRole('button', { name: 'Spread' })).not.toBeInTheDocument();
 		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
 		expect(screen.queryByText(/spread analysis/i)).not.toBeInTheDocument();
+	});
+
+	it('restores premium supplier analytics modules instead of static fallback tables', async () => {
+		render(AnalyticsPage, {
+			data: createData({ session: createSession(), isParchmentIntelligence: true })
+		});
+
+		await waitFor(() => {
+			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
+			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+	});
+
+	it('defaults arrivals and delistings to a 7-day window and allows switching back to 30 days', async () => {
+		render(AnalyticsPage, {
+			data: createData({ session: createSession(), isParchmentIntelligence: true })
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+		});
+
+		expect(screen.getByText('Fresh Ethiopia')).toBeInTheDocument();
+		expect(screen.getByText('Recently Gone')).toBeInTheDocument();
+		expect(screen.queryByText('Older Arrival')).not.toBeInTheDocument();
+		expect(screen.queryByText('Older Gone')).not.toBeInTheDocument();
+
+		const thirtyDayButtons = screen.getAllByRole('button', { name: '30d' });
+		await thirtyDayButtons[0].click();
+
+		await waitFor(() => {
+			expect(screen.getByText('Older Arrival')).toBeInTheDocument();
+			expect(screen.getByText('Older Gone')).toBeInTheDocument();
+		});
 	});
 });
