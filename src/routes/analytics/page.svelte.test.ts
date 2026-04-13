@@ -253,7 +253,7 @@ describe('analytics page loading experience', () => {
 		await waitFor(() => {
 			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
 			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
 		});
 	});
 
@@ -277,7 +277,7 @@ describe('analytics page loading experience', () => {
 });
 
 describe('analytics premium boundary copy', () => {
-	it('does not expose spread controls or spread-upgrade promises on the baseline surface', async () => {
+	it('keeps arrivals and delistings behind the Parchment Intelligence boundary on the baseline surface', async () => {
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
@@ -287,6 +287,15 @@ describe('analytics premium boundary copy', () => {
 		expect(screen.queryByRole('button', { name: 'Spread' })).not.toBeInTheDocument();
 		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
 		expect(screen.queryByText(/spread analysis/i)).not.toBeInTheDocument();
+		expect(screen.getByText(/premium arrivals and delistings tracking/i)).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				/parchment intelligence unlocks supplier comparisons, supplier health, arrivals, delistings, origin index views, and extended trend detail/i
+			)
+		).toBeInTheDocument();
+		expect(screen.queryByText('Fresh Ethiopia')).not.toBeInTheDocument();
+		expect(screen.queryByText('Recently Gone')).not.toBeInTheDocument();
+		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThan(1);
 	});
 
 	it('restores premium supplier analytics modules instead of static fallback tables', async () => {
@@ -297,7 +306,7 @@ describe('analytics premium boundary copy', () => {
 		await waitFor(() => {
 			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
 			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
 		});
 	});
 
@@ -307,11 +316,10 @@ describe('analytics premium boundary copy', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
 		});
 
 		expect(screen.getByText('Fresh Ethiopia')).toBeInTheDocument();
-		expect(screen.getByText('Recently Gone')).toBeInTheDocument();
 		expect(screen.queryByText('Older Arrival')).not.toBeInTheDocument();
 		expect(screen.queryByText('Older Gone')).not.toBeInTheDocument();
 
@@ -320,7 +328,6 @@ describe('analytics premium boundary copy', () => {
 
 		await waitFor(() => {
 			expect(screen.getByText('Older Arrival')).toBeInTheDocument();
-			expect(screen.getByText('Older Gone')).toBeInTheDocument();
 		});
 	});
 });

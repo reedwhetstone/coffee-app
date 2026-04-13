@@ -14,10 +14,10 @@
 	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
 	import type { DeferredAnalyticsComponent } from './deferredModules';
 	import {
-	loadMemberAnalyticsModules,
-	loadPublicAnalyticsModules,
-	loadSupplierAnalyticsModules
-} from './deferredModules';
+		loadMemberAnalyticsModules,
+		loadPublicAnalyticsModules,
+		loadSupplierAnalyticsModules
+	} from './deferredModules';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -640,13 +640,26 @@
 			<div class="mb-8 blur-sm filter">
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-3 flex items-center gap-2">
+							<span
+								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+								>Parchment Intelligence</span
+							>
+						</div>
 						<div class="mb-4 flex items-center justify-between gap-3">
-							<p class="text-sm text-text-secondary-light">Recently stocked coffees in the last {windowMode === '7d' ? '7' : '30'} days.</p>
-							<div class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium">
+							<p class="text-sm text-text-secondary-light">
+								Recently stocked coffees in the last {windowMode === '7d' ? '7' : '30'} days.
+							</p>
+							<div
+								class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium"
+							>
 								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
 									<button
 										onclick={() => (windowMode = opt.value as WindowMode)}
-										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode === opt.value ? 'bg-amber-200 text-amber-900 shadow-sm' : 'text-amber-900/70 hover:text-amber-900'}"
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
+										opt.value
+											? 'bg-amber-200 text-amber-900 shadow-sm'
+											: 'text-amber-900/70 hover:text-amber-900'}"
 									>
 										{opt.label}
 									</button>
@@ -655,7 +668,7 @@
 						</div>
 						<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">
-							Recently stocked coffees across {stats.totalSuppliers} suppliers.
+							Premium-only feed of newly stocked coffees across {stats.totalSuppliers} suppliers.
 						</p>
 						<div class="mt-3 space-y-2">
 							{#each Array(4) as _}
@@ -668,13 +681,26 @@
 						</div>
 					</div>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-3 flex items-center gap-2">
+							<span
+								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+								>Parchment Intelligence</span
+							>
+						</div>
 						<div class="mb-4 flex items-center justify-between gap-3">
-							<p class="text-sm text-text-secondary-light">Recently removed coffees in the last {windowMode === '7d' ? '7' : '30'} days.</p>
-							<div class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium">
+							<p class="text-sm text-text-secondary-light">
+								Recently removed coffees in the last {windowMode === '7d' ? '7' : '30'} days.
+							</p>
+							<div
+								class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium"
+							>
 								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
 									<button
 										onclick={() => (windowMode = opt.value as WindowMode)}
-										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode === opt.value ? 'bg-red-200 text-red-900 shadow-sm' : 'text-red-900/70 hover:text-red-900'}"
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
+										opt.value
+											? 'bg-red-200 text-red-900 shadow-sm'
+											: 'text-red-900/70 hover:text-red-900'}"
 									>
 										{opt.label}
 									</button>
@@ -683,7 +709,7 @@
 						</div>
 						<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">
-							Recently removed coffees that help explain current market turnover.
+							Premium-only turnover view that highlights recently removed coffees.
 						</p>
 						<div class="mt-3 space-y-2">
 							{#each Array(4) as _}
@@ -742,14 +768,14 @@
 					Upgrade to Parchment Intelligence
 				</h3>
 				<p class="mb-4 text-text-secondary-light">
-					Public visitors and logged-in viewers now share the same baseline analytics surface.
-					Parchment Intelligence adds deeper supplier comparisons, supplier health, origin index
-					views, and extended trend detail.
+					Public visitors and logged-in viewers share the same baseline analytics surface. Parchment
+					Intelligence unlocks supplier comparisons, supplier health, arrivals, delistings, origin
+					index views, and extended trend detail.
 				</p>
 				<ul class="mb-6 space-y-2 text-sm text-text-secondary-light">
 					<li>Supplier-level comparison and catalog health tables</li>
-					<li>Origin price index tables and supplier health views</li>
-					<li>Extended 6-month and 1-year trend views</li>
+					<li>Premium arrivals and delistings tracking</li>
+					<li>Origin price index tables and extended 6-month and 1-year trend views</li>
 				</ul>
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					{#if session}
@@ -813,7 +839,9 @@
 					onRetry={retryMemberVisuals}
 				>
 					{#if SupplierHealthTableComponent}
-						<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
+						<div
+							class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
+						>
 							<SupplierHealthTableComponent rows={supplierHealth} />
 						</div>
 					{/if}
@@ -829,12 +857,19 @@
 				>
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-4 flex items-center justify-between gap-3">
-							<p class="text-sm text-text-secondary-light">Recently stocked coffees in the last {windowMode === '7d' ? '7' : '30'} days.</p>
-							<div class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium">
+							<p class="text-sm text-text-secondary-light">
+								Recently stocked coffees in the last {windowMode === '7d' ? '7' : '30'} days.
+							</p>
+							<div
+								class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium"
+							>
 								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
 									<button
 										onclick={() => (windowMode = opt.value as WindowMode)}
-										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode === opt.value ? 'bg-amber-200 text-amber-900 shadow-sm' : 'text-amber-900/70 hover:text-amber-900'}"
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
+										opt.value
+											? 'bg-amber-200 text-amber-900 shadow-sm'
+											: 'text-amber-900/70 hover:text-amber-900'}"
 									>
 										{opt.label}
 									</button>
@@ -888,12 +923,19 @@
 				>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-4 flex items-center justify-between gap-3">
-							<p class="text-sm text-text-secondary-light">Recently removed coffees in the last {windowMode === '7d' ? '7' : '30'} days.</p>
-							<div class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium">
+							<p class="text-sm text-text-secondary-light">
+								Recently removed coffees in the last {windowMode === '7d' ? '7' : '30'} days.
+							</p>
+							<div
+								class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium"
+							>
 								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
 									<button
 										onclick={() => (windowMode = opt.value as WindowMode)}
-										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode === opt.value ? 'bg-red-200 text-red-900 shadow-sm' : 'text-red-900/70 hover:text-red-900'}"
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
+										opt.value
+											? 'bg-red-200 text-red-900 shadow-sm'
+											: 'text-red-900/70 hover:text-red-900'}"
 									>
 										{opt.label}
 									</button>
