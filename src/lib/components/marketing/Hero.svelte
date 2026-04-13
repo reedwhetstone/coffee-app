@@ -45,7 +45,7 @@
 				</div>
 			{/if}
 			<h1 class="text-center text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
-				Find coffees faster, then run the rest of your workflow in Mallard Studio.
+				Green Coffee Intelligence, Built for Roasters.
 			</h1>
 		</div>
 		<div class="mx-auto max-w-3xl text-center">
@@ -64,13 +64,13 @@
 					onclick={handlePrimaryAction}
 					class="w-full rounded-md bg-background-tertiary-light px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light sm:w-auto"
 				>
-					Browse coffee catalog
+					Browse live catalog
 				</button>
 				<button
 					onclick={handleSecondaryAction}
 					class="w-full rounded-md border border-background-tertiary-light px-6 py-3 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:w-auto"
 				>
-					{isSignedIn ? 'Open dashboard' : 'See products'}
+					{isSignedIn ? 'Dashboard' : 'Create free account'}
 				</button>
 				<button
 					onclick={handleLearnMore}

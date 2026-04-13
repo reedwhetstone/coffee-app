@@ -78,7 +78,7 @@
 			if (typeof tastingNotesJson === 'string') {
 				parsed = JSON.parse(tastingNotesJson);
 			} else if (typeof tastingNotesJson === 'object') {
-				parsed = tastingNotesJson;
+				parsed = tastingNotesJson as Record<string, unknown>;
 			} else {
 				return null;
 			}
