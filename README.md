@@ -154,6 +154,53 @@ pnpm lint
 pnpm check --fail-on-warnings
 ```
 
+### Local validation env contract
+
+Fresh worktrees can fail local validation before any code issue is proven. In this repo, treat missing required env values as `VALIDATION_BLOCKED_ENV`, not `VALIDATION_FAIL`.
+
+Validation command classes:
+
+- `pnpm lint`
+- `pnpm check --fail-on-warnings`
+- `pnpm test`
+- `pnpm test:e2e`
+
+For static validation (`pnpm check --fail-on-warnings`), provide these repo-local env vars because the app imports SvelteKit static env modules:
+
+- `PUBLIC_SUPABASE_URL`
+- `PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+
+For E2E (`pnpm test:e2e`), also provide:
+
+- `E2E_TEST_EMAIL`
+- `E2E_TEST_USER_ID`
+- `PLAYWRIGHT_BASE_URL` (optional, defaults to localhost)
+
+Helpful commands:
+
+```bash
+pnpm worktree:bootstrap
+pnpm env:check
+pnpm env:check:e2e
+```
+
+Notes:
+
+- Placeholder values may be enough to unblock static validation, but they do not guarantee runtime behavior or E2E fidelity.
+- The bootstrap helper only explains and copies repo example files. It does not pull secrets from outside the repo.
+- This improves env-contract clarity only. Detached-worktree module-resolution or stale temp-path install failures are a separate issue.
+
+When reporting validation status, use one of:
+
+- `VALIDATION_PASS`
+- `VALIDATION_FAIL`
+- `VALIDATION_BLOCKED_ENV`
+- `VALIDATION_BLOCKED_SERVICE`
+- `VALIDATION_CI_PENDING`
+
 ## Contributing
 
 For contributor and agent guidance, start with [`AGENTS.md`](./AGENTS.md). `CLAUDE.md` and `GEMINI.md` point to the same canonical guide.
