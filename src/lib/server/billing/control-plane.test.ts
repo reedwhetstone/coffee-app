@@ -19,11 +19,11 @@ describe('subscription control plane state', () => {
 		});
 		expect(state.api).toMatchObject({
 			plan: 'viewer',
-			statusLabel: 'Viewer API access'
+			statusLabel: 'Explorer'
 		});
 		expect(state.ppi).toMatchObject({
 			enabled: false,
-			statusLabel: 'PPI access not enabled'
+			statusLabel: 'Parchment Intelligence not active'
 		});
 	});
 
@@ -126,11 +126,11 @@ describe('subscription control plane state', () => {
 		expect(state.membership.sourceLabel).toContain('Admin access');
 		expect(state.api).toMatchObject({
 			plan: 'enterprise',
-			statusLabel: 'Enterprise API access'
+			statusLabel: 'Parchment API enterprise'
 		});
 		expect(state.ppi).toMatchObject({
 			enabled: true,
-			statusLabel: 'PPI access enabled'
+			statusLabel: 'Parchment Intelligence active'
 		});
 	});
 });

@@ -128,10 +128,10 @@ export function buildSubscriptionControlPlaneState(input: {
 	const apiTone: ControlPlaneTone = input.apiPlan === 'viewer' ? 'muted' : 'success';
 	const apiStatusLabel =
 		input.apiPlan === 'enterprise'
-			? 'Enterprise API access'
+			? 'Parchment API enterprise'
 			: input.apiPlan === 'member'
-				? 'Member API access'
-				: 'Viewer API access';
+				? 'Parchment API active'
+				: 'Explorer';
 
 	const ppiTone: ControlPlaneTone = input.ppiAccess ? 'success' : 'muted';
 
@@ -163,20 +163,22 @@ export function buildSubscriptionControlPlaneState(input: {
 			tone: apiTone,
 			description:
 				input.apiPlan === 'enterprise'
-					? 'Your account currently resolves to the highest API entitlement tier.'
+					? 'Your account currently resolves to Enterprise-level API access.'
 					: input.apiPlan === 'member'
-						? 'Your account currently resolves to member-level API access.'
-						: 'Your account currently resolves to the baseline viewer API plan.',
-			note: 'Separate API checkout is not live yet. This section reflects your resolved entitlement state only.'
+						? 'Your account currently resolves to the paid Parchment API plan.'
+						: 'Your account currently resolves to Explorer, the free Parchment API baseline.',
+			note: 'Parchment API is managed independently from Mallard Studio membership so product selection and account state stay separate.'
 		},
 		ppi: {
 			enabled: input.ppiAccess,
-			statusLabel: input.ppiAccess ? 'PPI access enabled' : 'PPI access not enabled',
+			statusLabel: input.ppiAccess
+				? 'Parchment Intelligence active'
+				: 'Parchment Intelligence not active',
 			tone: ppiTone,
 			description: input.ppiAccess
-				? 'Your account currently includes the richer analytics and product intelligence surfaces.'
-				: 'You still keep the limited free viewer chart experience, but richer PPI analytics are not enabled on this account.',
-			note: 'PPI is not yet sold as a separate checkout flow here. This section is status and guidance for the current entitlement model.'
+				? 'Your account currently includes the full analytics and market-intelligence layer.'
+				: 'Your account keeps the baseline public analytics surface, but the full intelligence layer is not enabled.',
+			note: 'Parchment Intelligence is a separate product family so analytics access can stay honest without being bundled into unrelated plans.'
 		}
 	};
 }

@@ -8,11 +8,132 @@
 
 	let { data } = $props<{ data: PageData }>();
 
+	type ProductTone = 'success' | 'info' | 'warning' | 'muted';
+	type ProductFamily = 'membership' | 'api_plan' | 'ppi_addon' | 'enterprise';
+
+	interface ProductCardInterval {
+		purchaseKey: BillingPurchaseKey;
+		label: string;
+		price: string;
+		interval: string;
+		badge?: string;
+	}
+
+	interface ProductCard {
+		family: ProductFamily;
+		name: string;
+		headline: string;
+		description: string;
+		features: string[];
+		managementCopy: string;
+		ctaLabel: string;
+		contactHref?: string;
+		intervals?: ProductCardInterval[];
+	}
+
+	const productCards: ProductCard[] = [
+		{
+			family: 'membership',
+			name: 'Mallard Studio',
+			headline: 'Workflow software for roasters and coffee operators.',
+			description:
+				'Use Mallard Studio for inventory, roast logging, tasting notes, profitability workflows, and the CLI that supports those operating jobs.',
+			features: [
+				'Inventory, roast, tasting, and profit workflows',
+				'Concierge and workspace tools inside the app',
+				'CLI access for the same operating environment'
+			],
+			managementCopy: 'Manage your Studio membership and renewal state here when you own it.',
+			ctaLabel: 'Unlock Mallard Studio',
+			intervals: [
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly,
+					label: 'Monthly',
+					price: '$9',
+					interval: '/month'
+				},
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.membershipAnnual,
+					label: 'Annual',
+					price: '$80',
+					interval: '/year',
+					badge: 'Save $28/year'
+				}
+			]
+		},
+		{
+			family: 'api_plan',
+			name: 'Parchment API',
+			headline: 'Normalized coffee data for apps, agents, and internal tools.',
+			description:
+				'Start with Explorer for evaluation, then move to the paid API plan when you need production access and a stronger usage envelope.',
+			features: [
+				'Explorer is the free baseline tier',
+				'Paid plan for production usage and integrations',
+				'Parchment Console for keys, docs, and usage visibility'
+			],
+			managementCopy: 'Your current API tier is shown below so you can separate data access from Studio membership.',
+			ctaLabel: 'Upgrade to Parchment API',
+			intervals: [
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.apiPlanMonthly,
+					label: 'Paid plan',
+					price: '$99',
+					interval: '/month'
+				}
+			]
+		},
+		{
+			family: 'ppi_addon',
+			name: 'Parchment Intelligence',
+			headline: 'Premium analytics and market intelligence for sourcing decisions.',
+			description:
+				'Unlock the full analytics layer, full price index access, and deeper supplier, origin, and pricing visibility without changing your Studio or API plan.',
+			features: [
+				'Full analytics and price index access',
+				'Deeper supplier, origin, and processing visibility',
+				'Sold honestly on current analytics value, not future reports'
+			],
+			managementCopy: 'Manage Intelligence separately from your other products when you own it.',
+			ctaLabel: 'Unlock Parchment Intelligence',
+			intervals: [
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonMonthly,
+					label: 'Monthly',
+					price: '$39',
+					interval: '/month'
+				},
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonAnnual,
+					label: 'Annual',
+					price: '$350',
+					interval: '/year',
+					badge: 'Save $118/year'
+				}
+			]
+		},
+		{
+			family: 'enterprise',
+			name: 'Enterprise',
+			headline: 'Sales-led support for custom integrations and commercial needs.',
+			description:
+				'Use Enterprise when you need embedded analytics, custom delivery patterns, support commitments, or procurement-friendly commercial terms.',
+			features: [
+				'Custom integrations and reporting',
+				'Embedded analytics or internal dashboards',
+				'Commercial support and custom delivery patterns'
+			],
+			managementCopy: 'Enterprise is not a self-serve SKU. Contact us to scope the right commercial path.',
+			ctaLabel: 'Talk to us',
+			contactHref: '/contact'
+		}
+	];
+
 	let showCheckout = $state(false);
 	let selectedPurchaseKey = $state<BillingPurchaseKey | null>(null);
 	let selectedPlanName = $state('');
-	let selectedInterval = $state('');
-	let isAnnual = $state(false);
+	let selectedIntervalLabel = $state('');
+	let selectedPriceLabel = $state('');
 	let cancelLoading = $state(false);
 	let cancelError = $state('');
 	let cancelSuccess = $state(false);
@@ -20,65 +141,45 @@
 	let resumeError = $state('');
 	let resumeSuccess = $state(false);
 
-	const plans: {
-		monthly: {
-			purchaseKey: BillingPurchaseKey;
-			name: string;
-			price: string;
-			interval: string;
-			description: string;
-			features: string[];
-		};
-		annual: {
-			purchaseKey: BillingPurchaseKey;
-			name: string;
-			price: string;
-			interval: string;
-			description: string;
-			features: string[];
-			savings: string;
-		};
-	} = {
-		monthly: {
-			purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly,
-			name: 'Mallard Studio Member',
-			price: '$9',
-			interval: 'month',
-			description:
-				'For active home roasters ready to track their journey and improve their craft with AI-powered insights.',
-			features: [
-				'Full Coffee AI Concierge',
-				'Personal inventory and purchase tracking',
-				'Artisan integration and roast logging',
-				'Tasting journal and cupping notes',
-				'Roast analytics and improvement tips',
-				'Priority email support'
-			]
-		},
-		annual: {
-			purchaseKey: BILLING_PURCHASE_KEYS.membershipAnnual,
-			name: 'Mallard Studio Member',
-			price: '$80',
-			interval: 'year',
-			description:
-				'For active home roasters ready to track their journey and improve their craft with AI-powered insights.',
-			features: [
-				'Full Coffee AI Concierge',
-				'Personal inventory and purchase tracking',
-				'Artisan integration and roast logging',
-				'Tasting journal and cupping notes',
-				'Roast analytics and improvement tips',
-				'Priority email support'
-			],
-			savings: 'Save $28/year'
+	const membershipState = $derived(data.controlPlane?.membership ?? null);
+	const apiState = $derived(data.controlPlane?.api ?? null);
+	const intelligenceState = $derived(data.controlPlane?.ppi ?? null);
+
+	const toneClasses = (tone: ProductTone) => {
+		switch (tone) {
+			case 'success':
+				return 'border-green-500/30 bg-green-500/10 text-green-300';
+			case 'info':
+				return 'border-blue-500/30 bg-blue-500/10 text-blue-300';
+			case 'warning':
+				return 'border-orange-500/30 bg-orange-500/10 text-orange-300';
+			default:
+				return 'border-border-light bg-background-primary-light text-text-secondary-light';
 		}
 	};
 
-	const handlePlanSelect = (interval: 'monthly' | 'annual') => {
-		const plan = plans[interval];
-		selectedPurchaseKey = plan.purchaseKey;
-		selectedPlanName = plan.name;
-		selectedInterval = interval;
+	const formatDate = (unixTimestamp: number) => {
+		const date = new Date(unixTimestamp * 1000);
+		return date.toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric'
+		});
+	};
+
+	const normalizePlanName = (planName: string | null | undefined) => {
+		if (!planName || planName.startsWith('prod_')) {
+			return 'Mallard Studio Member';
+		}
+
+		return planName;
+	};
+
+	const openCheckout = (productName: string, option: ProductCardInterval) => {
+		selectedPurchaseKey = option.purchaseKey;
+		selectedPlanName = productName;
+		selectedIntervalLabel = option.label;
+		selectedPriceLabel = `${option.price}${option.interval}`;
 		showCheckout = true;
 	};
 
@@ -91,45 +192,11 @@
 	}
 
 	const handleCheckoutSuccess = async () => {
-		// Stripe's return_url carries the canonical session_id for post-checkout reconciliation.
-		// Avoid navigating early to /subscription/success without that identifier.
 		await invalidateAll();
 	};
 
 	const handleCheckoutCancel = () => {
 		showCheckout = false;
-	};
-
-	const formatDate = (unixTimestamp: number) => {
-		const date = new Date(unixTimestamp * 1000);
-		return date.toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		});
-	};
-
-	const formatBooleanStatus = (value: boolean) => (value ? 'Enabled' : 'Not enabled');
-
-	const normalizePlanName = (planName: string | null | undefined) => {
-		if (!planName || planName.startsWith('prod_')) {
-			return 'Mallard Studio Member';
-		}
-
-		return planName;
-	};
-
-	const toneClasses = (tone: 'success' | 'info' | 'warning' | 'muted') => {
-		switch (tone) {
-			case 'success':
-				return 'border-green-500/30 bg-green-500/10 text-green-300';
-			case 'info':
-				return 'border-blue-500/30 bg-blue-500/10 text-blue-300';
-			case 'warning':
-				return 'border-orange-500/30 bg-orange-500/10 text-orange-300';
-			default:
-				return 'border-border-light bg-background-primary-light text-text-secondary-light';
-		}
 	};
 
 	const cancelSubscription = async () => {
@@ -209,20 +276,24 @@
 	});
 </script>
 
-<div class="min-h-[calc(100vh-80px)]">
+<div class="min-h-[calc(100vh-80px)] bg-background-secondary-light">
 	{#if data?.user && showCheckout && selectedPurchaseKey}
 		<div class="px-4 py-10 md:px-6">
 			<div class="mx-auto max-w-3xl">
-				<div class="mb-4 flex items-center justify-between">
-					<h2 class="text-primary-light text-xl font-semibold">
-						Subscribe to {selectedPlanName} ({selectedInterval === 'annual'
-							? '$80/year'
-							: '$9/month'})
-					</h2>
+				<div class="mb-4 flex items-center justify-between gap-4">
+					<div>
+						<p class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light">
+							Checkout
+						</p>
+						<h2 class="text-primary-light text-2xl font-semibold">
+							{selectedPlanName} {selectedIntervalLabel}
+						</h2>
+						<p class="mt-1 text-sm text-text-secondary-light">{selectedPriceLabel}</p>
+					</div>
 					<button
 						onclick={handleCheckoutCancel}
 						class="text-primary-light/70 hover:text-primary-light rounded-full p-1"
-						aria-label="Back to subscription control plane"
+						aria-label="Back to subscription page"
 					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -247,380 +318,253 @@
 				/>
 			</div>
 		</div>
-	{:else if data?.user && data.controlPlane}
-		<section class="bg-background-secondary-light px-4 py-10 md:px-6">
+	{:else}
+		<section class="px-4 py-10 md:px-6">
 			<div class="mx-auto max-w-6xl space-y-8">
 				<div class="space-y-3">
 					<p class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light">
-						Subscription Control Plane
+						Pricing and account state
 					</p>
 					<h1 class="text-3xl font-bold text-text-primary-light sm:text-4xl">
-						Resolved billing and entitlement state
+						Choose the right product for how you use Purveyors
 					</h1>
-					<p class="max-w-3xl text-base text-text-secondary-light">
-						This page reflects your current membership, API, and PPI entitlements after Stripe
-						reconciliation. Membership checkout is live today. API and PPI are status sections for
-						the current model, not separate purchase flows yet.
+					<p class="max-w-4xl text-base text-text-secondary-light">
+						/subscription is a pricing and account-state surface, not a generic membership blob. Use
+						it to compare Mallard Studio, Parchment API, Parchment Intelligence, and Enterprise, then
+						manage the products already attached to your account.
 					</p>
 				</div>
 
-				<div class="grid gap-4 md:grid-cols-3">
-					<div class="rounded-2xl border border-border-light bg-background-primary-light p-5">
-						<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
-							App role
-						</p>
-						<p class="mt-2 text-2xl font-semibold capitalize text-text-primary-light">
-							{data.role}
-						</p>
-						<p class="mt-2 text-sm text-text-secondary-light">
-							Core app membership state resolves from your stored entitlements.
-						</p>
-					</div>
-					<div class="rounded-2xl border border-border-light bg-background-primary-light p-5">
-						<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
-							API plan
-						</p>
-						<p class="mt-2 text-2xl font-semibold capitalize text-text-primary-light">
-							{data.controlPlane.api.plan}
-						</p>
-						<p class="mt-2 text-sm text-text-secondary-light">
-							Resolved independently from the base app role.
-						</p>
-					</div>
-					<div class="rounded-2xl border border-border-light bg-background-primary-light p-5">
-						<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
-							PPI access
-						</p>
-						<p class="mt-2 text-2xl font-semibold text-text-primary-light">
-							{formatBooleanStatus(data.controlPlane.ppi.enabled)}
-						</p>
-						<p class="mt-2 text-sm text-text-secondary-light">
-							Shown from resolved entitlement state, not inferred from legacy pseudo-roles.
-						</p>
-					</div>
-				</div>
-
-				<div class="grid gap-6 xl:grid-cols-3">
-					<div
-						class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
-					>
-						<div class="flex items-start justify-between gap-4">
-							<div>
-								<h2 class="text-xl font-semibold text-text-primary-light">Base membership</h2>
-								<p class="mt-1 text-sm text-text-secondary-light">
-									Core app access and subscription management.
-								</p>
-							</div>
-							<span
-								class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(data.controlPlane.membership.tone)}`}
-							>
-								{data.controlPlane.membership.statusLabel}
-							</span>
+				{#if data?.user && data.controlPlane}
+					<div class="grid gap-4 md:grid-cols-3">
+						<div class="rounded-2xl border border-border-light bg-background-primary-light p-5">
+							<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
+								Mallard Studio status
+							</p>
+							<p class="mt-2 text-2xl font-semibold text-text-primary-light">
+								{membershipState?.statusLabel}
+							</p>
+							<p class="mt-2 text-sm text-text-secondary-light">{membershipState?.sourceLabel}</p>
 						</div>
-
-						<div class="mt-5 space-y-3 text-sm text-text-secondary-light">
-							<p>{data.controlPlane.membership.description}</p>
-							<p>{data.controlPlane.membership.sourceLabel}</p>
+						<div class="rounded-2xl border border-border-light bg-background-primary-light p-5">
+							<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
+								Parchment API tier
+							</p>
+							<p class="mt-2 text-2xl font-semibold text-text-primary-light">
+								{apiState?.statusLabel}
+							</p>
+							<p class="mt-2 text-sm text-text-secondary-light">{apiState?.note}</p>
 						</div>
+						<div class="rounded-2xl border border-border-light bg-background-primary-light p-5">
+							<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
+								Parchment Intelligence
+							</p>
+							<p class="mt-2 text-2xl font-semibold text-text-primary-light">
+								{intelligenceState?.statusLabel}
+							</p>
+							<p class="mt-2 text-sm text-text-secondary-light">{intelligenceState?.note}</p>
+						</div>
+					</div>
+				{/if}
 
-						{#if data.subscription}
-							<div
-								class="mt-5 rounded-2xl border border-border-light bg-background-secondary-light p-4 text-sm text-text-secondary-light"
-							>
-								<div class="grid grid-cols-2 gap-3">
-									<span>Status</span>
-									<span class="text-right font-medium capitalize text-text-primary-light">
-										{data.subscription.status}
-										{#if data.subscription.cancel_at_period_end}
-											<span class="text-orange-400"> (canceling)</span>
-										{/if}
-									</span>
-
-									<span>Plan</span>
-									<span class="text-right font-medium text-text-primary-light">
-										{normalizePlanName(data.subscription.plan?.name)}
-									</span>
-
-									<span>Price</span>
-									<span class="text-right font-medium text-text-primary-light">
-										${(data.subscription.plan?.amount || 0) / 100}/{data.subscription.plan
-											?.interval || 'month'}
-									</span>
-
-									<span>Current period ends</span>
-									<span class="text-right font-medium text-text-primary-light">
-										{data.subscription.current_period_end
-											? formatDate(data.subscription.current_period_end)
-											: 'N/A'}
-									</span>
-								</div>
-							</div>
-
-							<div class="mt-5 space-y-3">
-								{#if !data.controlPlane.membership.canManageSubscription && data.controlPlane.membership.managementBlockedReason}
-									<div
-										class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
-									>
-										{data.controlPlane.membership.managementBlockedReason}
-									</div>
-								{:else if data.subscription.cancel_at_period_end}
-									<button
-										onclick={() => resumeSubscription()}
-										disabled={resumeLoading}
-										class="w-full rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/20 disabled:opacity-50"
-									>
-										{resumeLoading ? 'Processing...' : 'Resume membership'}
-									</button>
-									{#if resumeSuccess}
-										<p class="text-sm text-green-400">
-											Membership will continue renewing automatically.
-										</p>
-									{/if}
-									{#if resumeError}
-										<p class="text-sm text-red-400">Error: {resumeError}</p>
-									{/if}
-								{:else}
-									<button
-										onclick={() => cancelSubscription()}
-										disabled={cancelLoading}
-										class="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
-									>
-										{cancelLoading ? 'Processing...' : 'Cancel membership at period end'}
-									</button>
-									<p class="text-xs text-text-secondary-light">
-										Your access will continue until the end of the current billing period.
+				<div class="grid gap-6 xl:grid-cols-2">
+					{#each productCards as product}
+						<div class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm">
+							<div class="flex items-start justify-between gap-4">
+								<div>
+									<h2 class="text-2xl font-semibold text-text-primary-light">{product.name}</h2>
+									<p class="mt-1 text-sm font-medium text-background-tertiary-light">
+										{product.headline}
 									</p>
-									{#if cancelSuccess}
-										<p class="text-sm text-green-400">
-											Membership cancellation has been scheduled.
-										</p>
-									{/if}
-									{#if cancelError}
-										<p class="text-sm text-red-400">Error: {cancelError}</p>
-									{/if}
+								</div>
+								{#if data?.user && product.family === 'membership' && membershipState}
+									<span
+										class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(membershipState.tone)}`}
+									>
+										{membershipState.statusLabel}
+									</span>
+								{:else if data?.user && product.family === 'api_plan' && apiState}
+									<span
+										class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(apiState.tone)}`}
+									>
+										{apiState.statusLabel}
+									</span>
+								{:else if data?.user && product.family === 'ppi_addon' && intelligenceState}
+									<span
+										class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(intelligenceState.tone)}`}
+									>
+										{intelligenceState.statusLabel}
+									</span>
+								{:else if product.family === 'enterprise'}
+									<span
+										class="rounded-full border border-border-light bg-background-secondary-light px-3 py-1 text-xs font-semibold text-text-secondary-light"
+									>
+										Contact sales
+									</span>
 								{/if}
 							</div>
-						{:else}
-							<div
-								class="mt-5 rounded-2xl border border-dashed border-border-light p-4 text-sm text-text-secondary-light"
-							>
-								No live Stripe membership subscription is attached to this account yet.
-							</div>
-						{/if}
-					</div>
 
-					<div
-						class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
-					>
-						<div class="flex items-start justify-between gap-4">
-							<div>
-								<h2 class="text-xl font-semibold text-text-primary-light">API access</h2>
-								<p class="mt-1 text-sm text-text-secondary-light">
-									Resolved from explicit API plan entitlements.
+							<p class="mt-4 text-sm text-text-secondary-light">{product.description}</p>
+
+							<ul class="mt-5 space-y-3 text-sm text-text-secondary-light">
+								{#each product.features as feature}
+									<li class="flex gap-3">
+										<span class="mt-1 h-2 w-2 rounded-full bg-background-tertiary-light"></span>
+										<span>{feature}</span>
+									</li>
+								{/each}
+							</ul>
+
+							<div class="mt-5 rounded-2xl border border-border-light bg-background-secondary-light p-4">
+								<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
+									Account state
 								</p>
-							</div>
-							<span
-								class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(data.controlPlane.api.tone)}`}
-							>
-								{data.controlPlane.api.statusLabel}
-							</span>
-						</div>
-						<div class="mt-5 space-y-3 text-sm text-text-secondary-light">
-							<p>{data.controlPlane.api.description}</p>
-							<p>{data.controlPlane.api.note}</p>
-						</div>
-					</div>
-
-					<div
-						class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
-					>
-						<div class="flex items-start justify-between gap-4">
-							<div>
-								<h2 class="text-xl font-semibold text-text-primary-light">PPI analytics</h2>
-								<p class="mt-1 text-sm text-text-secondary-light">
-									Resolved independently from core membership.
-								</p>
-							</div>
-							<span
-								class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(data.controlPlane.ppi.tone)}`}
-							>
-								{data.controlPlane.ppi.statusLabel}
-							</span>
-						</div>
-						<div class="mt-5 space-y-3 text-sm text-text-secondary-light">
-							<p>{data.controlPlane.ppi.description}</p>
-							<p>{data.controlPlane.ppi.note}</p>
-						</div>
-					</div>
-				</div>
-
-				{#if !data.controlPlane.membership.hasAccess}
-					<section
-						class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
-					>
-						<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-							<div>
-								<h2 class="text-2xl font-semibold text-text-primary-light">
-									Upgrade to membership
-								</h2>
-								<p class="mt-1 text-sm text-text-secondary-light">
-									Checkout currently sells the core membership plans. API and PPI remain status-only
-									sections for now.
-								</p>
-							</div>
-							<div
-								class="flex items-center rounded-full bg-background-secondary-light p-1 ring-1 ring-border-light"
-							>
-								<button
-									onclick={() => (isAnnual = false)}
-									class={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${!isAnnual ? 'bg-background-tertiary-light text-white' : 'text-text-secondary-light hover:text-text-primary-light'}`}
-								>
-									Monthly
-								</button>
-								<button
-									onclick={() => (isAnnual = true)}
-									class={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${isAnnual ? 'bg-background-tertiary-light text-white' : 'text-text-secondary-light hover:text-text-primary-light'}`}
-								>
-									Annual
-								</button>
-							</div>
-						</div>
-
-						<div class="mt-6 grid gap-6 lg:grid-cols-2">
-							{#each [plans.monthly, plans.annual] as plan, index}
-								<div
-									class="rounded-3xl border border-border-light bg-background-secondary-light p-6"
-								>
-									<div class="flex items-start justify-between gap-4">
-										<div>
-											<h3 class="text-xl font-semibold text-text-primary-light">{plan.name}</h3>
-											<p class="mt-1 text-sm text-text-secondary-light">{plan.description}</p>
-										</div>
-										{#if index === 1}
-											<span
-												class="rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-300"
-											>
-												{plans.annual.savings}
-											</span>
-										{/if}
-									</div>
-									<p class="mt-5 flex items-baseline gap-1">
-										<span class="text-4xl font-bold text-text-primary-light">{plan.price}</span>
-										<span class="text-sm text-text-secondary-light">/{plan.interval}</span>
+								{#if !data?.user}
+									<p class="mt-2 text-sm text-text-secondary-light">
+										Sign in to see what your account already owns. Until then, this page shows the live
+										pricing story and available purchase paths.
 									</p>
-									<ul class="mt-5 space-y-3 text-sm text-text-secondary-light">
-										{#each plan.features as feature}
-											<li class="flex gap-3">
-												<span class="mt-1 h-2 w-2 rounded-full bg-background-tertiary-light"></span>
-												<span>{feature}</span>
-											</li>
-										{/each}
-									</ul>
-									<button
-										onclick={() => handlePlanSelect(index === 0 ? 'monthly' : 'annual')}
-										class="mt-6 w-full rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-									>
-										Choose {index === 0 ? 'monthly' : 'annual'} membership
-									</button>
+								{:else if product.family === 'membership'}
+									<p class="mt-2 text-sm text-text-secondary-light">{product.managementCopy}</p>
+									{#if data.subscription}
+										<div class="mt-4 grid grid-cols-2 gap-3 text-sm text-text-secondary-light">
+											<span>Status</span>
+											<span class="text-right font-medium text-text-primary-light">
+												{data.subscription.status}
+												{#if data.subscription.cancel_at_period_end}
+													<span class="text-orange-400"> (canceling)</span>
+												{/if}
+											</span>
+
+											<span>Plan</span>
+											<span class="text-right font-medium text-text-primary-light">
+												{normalizePlanName(data.subscription.plan?.name)}
+											</span>
+
+											<span>Renews or ends</span>
+											<span class="text-right font-medium text-text-primary-light">
+												{data.subscription.current_period_end
+													? formatDate(data.subscription.current_period_end)
+													: 'N/A'}
+											</span>
+										</div>
+
+										<div class="mt-4 space-y-3">
+											{#if !membershipState?.canManageSubscription && membershipState?.managementBlockedReason}
+												<div class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300">
+													{membershipState.managementBlockedReason}
+												</div>
+											{:else if data.subscription.cancel_at_period_end}
+												<button
+													onclick={() => resumeSubscription()}
+													disabled={resumeLoading}
+													class="w-full rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/20 disabled:opacity-50"
+												>
+													{resumeLoading ? 'Processing...' : 'Resume Studio membership'}
+												</button>
+												{#if resumeSuccess}
+													<p class="text-sm text-green-400">
+														Mallard Studio will continue renewing automatically.
+													</p>
+												{/if}
+												{#if resumeError}
+													<p class="text-sm text-red-400">Error: {resumeError}</p>
+												{/if}
+											{:else}
+												<button
+													onclick={() => cancelSubscription()}
+													disabled={cancelLoading}
+													class="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+												>
+													{cancelLoading ? 'Processing...' : 'Cancel at period end'}
+												</button>
+												<p class="text-xs text-text-secondary-light">
+													Studio access continues through the current billing period.
+												</p>
+												{#if cancelSuccess}
+													<p class="text-sm text-green-400">
+														Mallard Studio cancellation has been scheduled.
+													</p>
+												{/if}
+												{#if cancelError}
+													<p class="text-sm text-red-400">Error: {cancelError}</p>
+												{/if}
+											{/if}
+										</div>
+									{:else}
+										<p class="mt-2 text-sm text-text-secondary-light">
+											No live Mallard Studio subscription is attached to this account yet.
+										</p>
+									{/if}
+								{:else if product.family === 'api_plan'}
+									<p class="mt-2 text-sm text-text-secondary-light">{apiState?.description}</p>
+								{:else if product.family === 'ppi_addon'}
+									<p class="mt-2 text-sm text-text-secondary-light">{intelligenceState?.description}</p>
+								{:else}
+									<p class="mt-2 text-sm text-text-secondary-light">{product.managementCopy}</p>
+								{/if}
+							</div>
+
+							{#if product.intervals?.length}
+								<div class="mt-5 grid gap-3 sm:grid-cols-2">
+									{#each product.intervals as option}
+										<div class="rounded-2xl border border-border-light bg-background-secondary-light p-4">
+											<div class="flex items-start justify-between gap-3">
+												<div>
+													<p class="text-sm font-semibold text-text-primary-light">{option.label}</p>
+													<p class="mt-1 text-2xl font-bold text-text-primary-light">
+														{option.price}<span class="ml-1 text-sm font-normal text-text-secondary-light"
+															>{option.interval}</span
+														>
+													</p>
+												</div>
+												{#if option.badge}
+													<span class="rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-300">
+														{option.badge}
+													</span>
+												{/if}
+											</div>
+
+											{#if !data?.user}
+												<button
+													onclick={handleSignIn}
+													class="mt-4 w-full rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+												>
+													Sign in to continue
+												</button>
+											{:else if product.family === 'membership' && membershipState?.hasAccess}
+												<div class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light">
+													Already active on your account
+												</div>
+											{:else if product.family === 'api_plan' && apiState?.plan !== 'viewer'}
+												<div class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light">
+													Already active on your account
+												</div>
+											{:else if product.family === 'ppi_addon' && intelligenceState?.enabled}
+												<div class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light">
+													Already active on your account
+												</div>
+											{:else}
+												<button
+													onclick={() => openCheckout(product.name, option)}
+													class="mt-4 w-full rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+												>
+													{product.ctaLabel}
+												</button>
+											{/if}
+										</div>
+									{/each}
 								</div>
-							{/each}
-						</div>
-					</section>
-				{/if}
-			</div>
-		</section>
-	{:else}
-		<section class="bg-background-secondary-light px-6 py-16">
-			<div class="mx-auto max-w-6xl">
-				<div class="mx-auto max-w-3xl text-center">
-					<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Pricing</h2>
-					<p class="mt-2 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-						Grow from curious to confident
-					</p>
-					<p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-text-secondary-light">
-						Start free, upgrade to the Roaster Plan when you want the full membership experience, or
-						talk to us about enterprise consulting.
-					</p>
-				</div>
-
-				<div class="mx-auto mt-12 grid max-w-5xl gap-6 lg:grid-cols-3">
-					<div class="rounded-3xl border border-border-light bg-background-primary-light p-8">
-						<h3 class="text-xl font-semibold text-text-primary-light">Curious</h3>
-						<p class="mt-3 text-sm text-text-secondary-light">
-							Browse the marketplace, compare coffees, and explore the free experience.
-						</p>
-						<p class="mt-6 text-4xl font-bold text-text-primary-light">Free</p>
-						<ul class="mt-6 space-y-3 text-sm text-text-secondary-light">
-							<li>Marketplace browsing and filtering</li>
-							<li>Basic coffee recommendations</li>
-							<li>Limited chart visibility</li>
-						</ul>
-						<button
-							onclick={() => goto('/auth')}
-							class="mt-8 w-full rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-						>
-							Browse green coffees
-						</button>
-					</div>
-
-					<div
-						class="rounded-3xl border-2 border-background-tertiary-light bg-background-primary-light p-8 shadow-sm"
-					>
-						<div class="flex items-center justify-between gap-3">
-							<h3 class="text-xl font-semibold text-text-primary-light">Roaster Plan</h3>
-							<span
-								class="rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-semibold text-background-tertiary-light"
-							>
-								Most popular
-							</span>
-						</div>
-						<p class="mt-3 text-sm text-text-secondary-light">
-							Membership unlocks the full roast management and premium app experience.
-						</p>
-						<div class="mt-6 space-y-2 text-text-primary-light">
-							<p>
-								<span class="text-4xl font-bold">$9</span><span
-									class="text-sm text-text-secondary-light">/month</span
+							{:else}
+								<a
+									href={product.contactHref}
+									class="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-text-primary-light px-4 py-2 text-sm font-semibold text-background-primary-light transition-opacity hover:opacity-90"
 								>
-							</p>
-							<p>
-								<span class="text-4xl font-bold">$80</span><span
-									class="text-sm text-text-secondary-light">/year</span
-								>
-							</p>
+									{product.ctaLabel}
+								</a>
+							{/if}
 						</div>
-						<ul class="mt-6 space-y-3 text-sm text-text-secondary-light">
-							<li>AI concierge and premium roast workflows</li>
-							<li>Inventory, roast logging, and tasting journal</li>
-							<li>Roast analytics and improvement guidance</li>
-						</ul>
-						<button
-							onclick={handleSignIn}
-							class="mt-8 w-full rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-						>
-							Create an account
-						</button>
-					</div>
-
-					<div class="rounded-3xl border border-border-light bg-background-primary-light p-8">
-						<h3 class="text-xl font-semibold text-text-primary-light">Enterprise</h3>
-						<p class="mt-3 text-sm text-text-secondary-light">
-							Business consulting, QA systems, analytics, and digital operations support for coffee
-							companies.
-						</p>
-						<p class="mt-6 text-2xl font-bold text-text-primary-light">Custom solutions</p>
-						<ul class="mt-6 space-y-3 text-sm text-text-secondary-light">
-							<li>Operations and analytics strategy</li>
-							<li>Workflow and technology integration consulting</li>
-							<li>Dedicated strategic partnership</li>
-						</ul>
-						<button
-							onclick={() => goto('/contact')}
-							class="mt-8 w-full rounded-lg bg-text-primary-light px-4 py-2 text-sm font-semibold text-background-primary-light transition-opacity hover:opacity-90"
-						>
-							Schedule consultation
-						</button>
-					</div>
+					{/each}
 				</div>
 			</div>
 		</section>
