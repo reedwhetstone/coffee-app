@@ -20,11 +20,11 @@
 	let userLabel = $derived(session?.user?.email?.split('@')[0] ?? 'there');
 
 	function handlePrimaryAction() {
-		goto(isSignedIn ? '/dashboard' : '/catalog');
+		goto('/catalog');
 	}
 
 	function handleSecondaryAction() {
-		goto(isSignedIn ? '/catalog' : '/auth');
+		goto(isSignedIn ? '/dashboard' : '/subscription');
 	}
 
 	function handleLearnMore() {
@@ -41,7 +41,7 @@
 				<div
 					class="mb-6 inline-flex items-center rounded-full border border-background-tertiary-light/20 bg-background-tertiary-light/10 px-4 py-1.5 text-sm font-medium text-background-tertiary-light"
 				>
-					Signed in as {userLabel}. Your app home lives at /dashboard.
+					Signed in as {userLabel}. Explore the market, then jump back into your workspace.
 				</div>
 			{/if}
 			<h1 class="text-center text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
@@ -51,12 +51,12 @@
 		<div class="mx-auto max-w-3xl text-center">
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 				{#if isSignedIn}
-					Purveyors keeps the homepage public-first so the product story stays honest. Jump back
-					into your dashboard, or keep browsing the live catalog, recent arrivals, and API surface
-					from here.
+					Use the public catalog to compare live green coffees, then return to Mallard Studio for
+					inventory, roasting, tasting, and the operating side of your coffee program.
 				{:else}
-					Browse normalized green coffee listings, compare recent arrivals, and explore an API-first
-					coffee intelligence platform before you ever create an account.
+					Browse normalized green coffee listings, compare recent arrivals, and make the buyer path
+					explicit before you ever create an account. Upgrade later for Mallard Studio, Parchment
+					API, or Parchment Intelligence when you need deeper tools.
 				{/if}
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
@@ -64,13 +64,13 @@
 					onclick={handlePrimaryAction}
 					class="w-full rounded-md bg-background-tertiary-light px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light sm:w-auto"
 				>
-					{isSignedIn ? 'Dashboard' : 'Browse live catalog'}
+					Browse live catalog
 				</button>
 				<button
 					onclick={handleSecondaryAction}
 					class="w-full rounded-md border border-background-tertiary-light px-6 py-3 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:w-auto"
 				>
-					{isSignedIn ? 'Catalog' : 'Create free account'}
+					{isSignedIn ? 'Dashboard' : 'See products'}
 				</button>
 				<button
 					onclick={handleLearnMore}
@@ -81,8 +81,8 @@
 			</div>
 			{#if !isSignedIn}
 				<p class="mt-4 text-sm text-text-secondary-light">
-					Public catalog access is live now. Free accounts unlock saved workflows, AI help, and
-					roast tools.
+					Start with the catalog today. Create an account only when you want saved workflows or paid
+					products.
 				</p>
 			{/if}
 			{#if isSignedIn && canAccessMemberRoutes}
@@ -131,7 +131,7 @@
 							<div class="mb-2 flex items-center gap-2">
 								<div class="h-2 w-2 rounded-full bg-growth-green"></div>
 								<span class="text-xs text-text-secondary-light"
-									>Live sourcing signal from the catalog + assistant layer</span
+									>Buyer signal from the live catalog plus assistant layer</span
 								>
 							</div>
 							<p class="text-sm text-text-primary-light">

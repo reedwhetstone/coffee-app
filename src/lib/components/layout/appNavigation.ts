@@ -16,20 +16,22 @@ export interface NavSection {
 
 export const publicNavItems: NavItem[] = [
 	{
-		label: 'Catalog',
+		label: 'For Buyers',
 		href: '/catalog',
-		description: 'Browse live coffee inventory'
+		description: 'Browse live coffee inventory and compare sourcing options',
+		matches: ['/catalog']
+	},
+	{
+		label: 'Pricing',
+		href: '/subscription',
+		description: 'See current plans and contact paths',
+		matches: ['/subscription']
 	},
 	{
 		label: 'Market Data',
 		href: '/analytics',
 		description: 'Explore current market intelligence',
 		matches: ['/analytics']
-	},
-	{
-		label: 'Maillard Studio',
-		href: '/',
-		description: 'See the platform story'
 	},
 	{
 		label: 'API',
