@@ -1,18 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-	HOMEPAGE_MARKETING_APPLICATION_DESCRIPTION,
-	HOMEPAGE_MARKETING_DESCRIPTION,
-	HOMEPAGE_MARKETING_OG_DESCRIPTION,
-	HOMEPAGE_MARKETING_ORGANIZATION_DESCRIPTION,
-	HOMEPAGE_MARKETING_PREVIEW_QUERY,
-	HOMEPAGE_MARKETING_SOCIAL_IMAGE,
-	HOMEPAGE_MARKETING_TITLE,
-	HOMEPAGE_MARKETING_TWITTER_DESCRIPTION,
-	buildHomepageMarketingSearchUrlTemplate
-} from '$lib/public-contracts/homepage';
 import { resolvePublicPageSocialImage } from '$lib/seo/meta';
-import { SchemaService } from '$lib/services/schemaService';
 
 const mockSearchCatalog = vi.fn();
 
@@ -23,16 +11,84 @@ vi.mock('$lib/data/catalog', () => ({
 let load: typeof import('./+page.server').load;
 
 const catalogRows = [{ id: 1, name: 'Pink Bourbon' }];
+const expectedPreviewQuery = {
+	stockedOnly: true,
+	orderBy: 'arrival_date',
+	orderDirection: 'desc',
+	limit: 6
+} as const;
+const expectedHomepageMeta = {
+	title: 'Purveyors - Live Green Coffee Catalog & Coffee Intelligence',
+	description:
+		'Browse normalized green coffee listings, recent arrivals, and the API-first coffee intelligence platform built for roasters, buyers, and developers.',
+	ogDescription:
+		'Explore recent arrivals, normalized sourcing data, and the API-first coffee platform built for roasters and developers.',
+	twitterDescription:
+		'Browse live green coffee data, compare recent arrivals, and explore the API-first coffee intelligence platform for roasters.',
+	socialImage: {
+		preferredPath: '/og/home.jpg',
+		alt: 'Purveyors homepage social preview card'
+	}
+} as const;
+const expectedHomepageSchema = {
+	'@context': 'https://schema.org',
+	'@graph': [
+		{
+			'@context': 'https://schema.org',
+			'@type': 'Organization',
+			name: 'Purveyors',
+			description:
+				'Coffee intelligence platform with a live green coffee catalog, normalized sourcing data, and an API-first workflow layer',
+			url: 'https://purveyors.test',
+			logo: {
+				'@type': 'ImageObject',
+				url: 'https://purveyors.test/purveyors_orange.svg'
+			},
+			contactPoint: {
+				'@type': 'ContactPoint',
+				email: 'support@purveyors.io',
+				contactType: 'customer service'
+			},
+			sameAs: []
+		},
+		{
+			'@context': 'https://schema.org',
+			'@type': 'WebSite',
+			name: 'Purveyors',
+			url: 'https://purveyors.test',
+			potentialAction: {
+				'@type': 'SearchAction',
+				target: {
+					'@type': 'EntryPoint',
+					urlTemplate: 'https://purveyors.test/catalog?name={search_term_string}'
+				},
+				'query-input': 'required name=search_term_string'
+			}
+		},
+		{
+			'@context': 'https://schema.org',
+			'@type': 'SoftwareApplication',
+			name: 'Purveyors Coffee Platform',
+			description:
+				'Coffee intelligence platform with a live green coffee catalog, sourcing data, roast tracking, and operational workflows for roasters',
+			url: 'https://purveyors.test',
+			applicationCategory: 'BusinessApplication',
+			operatingSystem: 'Web Browser',
+			offers: {
+				'@type': 'Offer',
+				price: '0.00',
+				priceCurrency: 'USD',
+				description: 'Free tier available with premium features'
+			},
+			creator: {
+				'@type': 'Organization',
+				name: 'Purveyors'
+			}
+		}
+	]
+} as const;
 
-type SchemaNode = {
-	'@type'?: string;
-	description?: string;
-	potentialAction?: {
-		target?: {
-			urlTemplate?: string;
-		};
-	};
-};
+type HomepageSchemaNode = (typeof expectedHomepageSchema)['@graph'][number];
 
 beforeEach(async () => {
 	vi.resetModules();
@@ -74,7 +130,7 @@ describe('homepage public contract', () => {
 			1,
 			{ kind: 'public-client' },
 			expect.objectContaining({
-				...HOMEPAGE_MARKETING_PREVIEW_QUERY,
+				...expectedPreviewQuery,
 				publicOnly: true,
 				showWholesale: false,
 				wholesaleOnly: false
@@ -84,7 +140,7 @@ describe('homepage public contract', () => {
 			2,
 			{ kind: 'public-client' },
 			expect.objectContaining({
-				...HOMEPAGE_MARKETING_PREVIEW_QUERY,
+				...expectedPreviewQuery,
 				publicOnly: true,
 				showWholesale: false,
 				wholesaleOnly: false
@@ -104,7 +160,7 @@ describe('homepage public contract', () => {
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'public-client' },
 			expect.objectContaining({
-				...HOMEPAGE_MARKETING_PREVIEW_QUERY,
+				...expectedPreviewQuery,
 				publicOnly: false,
 				showWholesale: false,
 				wholesaleOnly: false
@@ -120,27 +176,27 @@ describe('homepage public contract', () => {
 			data: unknown[];
 			trainingData: unknown[];
 			meta: Record<string, unknown> & {
-				schemaData?: { '@graph': SchemaNode[] };
+				schemaData?: typeof expectedHomepageSchema;
 			};
 		};
 
 		const expectedSocialImage = resolvePublicPageSocialImage({
 			baseUrl: 'https://purveyors.test',
-			preferredPath: HOMEPAGE_MARKETING_SOCIAL_IMAGE.preferredPath,
-			alt: HOMEPAGE_MARKETING_SOCIAL_IMAGE.alt
+			preferredPath: expectedHomepageMeta.socialImage.preferredPath,
+			alt: expectedHomepageMeta.socialImage.alt
 		});
-		const expectedSchema = new SchemaService({
-			baseUrl: 'https://purveyors.test'
-		}).generatePageSchema('homepage-marketing', 'https://purveyors.test') as {
-			'@graph': SchemaNode[];
-		};
-		const homepageSchema = result.meta.schemaData as { '@graph': SchemaNode[] };
-		const websiteSchema = homepageSchema['@graph'].find((node) => node['@type'] === 'WebSite');
+		const homepageSchema = result.meta.schemaData as typeof expectedHomepageSchema;
+		const websiteSchema = homepageSchema['@graph'].find(
+			(node): node is Extract<HomepageSchemaNode, { '@type': 'WebSite' }> =>
+				node['@type'] === 'WebSite'
+		);
 		const organizationSchema = homepageSchema['@graph'].find(
-			(node) => node['@type'] === 'Organization'
+			(node): node is Extract<HomepageSchemaNode, { '@type': 'Organization' }> =>
+				node['@type'] === 'Organization'
 		);
 		const appSchema = homepageSchema['@graph'].find(
-			(node) => node['@type'] === 'SoftwareApplication'
+			(node): node is Extract<HomepageSchemaNode, { '@type': 'SoftwareApplication' }> =>
+				node['@type'] === 'SoftwareApplication'
 		);
 
 		expect(result.data).toEqual([]);
@@ -150,24 +206,28 @@ describe('homepage public contract', () => {
 			expect.any(Error)
 		);
 		expect(result.meta).toMatchObject({
-			title: HOMEPAGE_MARKETING_TITLE,
-			description: HOMEPAGE_MARKETING_DESCRIPTION,
+			title: expectedHomepageMeta.title,
+			description: expectedHomepageMeta.description,
 			canonical: 'https://purveyors.test/',
-			ogTitle: HOMEPAGE_MARKETING_TITLE,
-			ogDescription: HOMEPAGE_MARKETING_OG_DESCRIPTION,
+			ogTitle: expectedHomepageMeta.title,
+			ogDescription: expectedHomepageMeta.ogDescription,
 			ogImage: expectedSocialImage.url,
-			ogImageAlt: HOMEPAGE_MARKETING_SOCIAL_IMAGE.alt,
-			twitterTitle: HOMEPAGE_MARKETING_TITLE,
-			twitterDescription: HOMEPAGE_MARKETING_TWITTER_DESCRIPTION,
+			ogImageAlt: expectedHomepageMeta.socialImage.alt,
+			twitterTitle: expectedHomepageMeta.title,
+			twitterDescription: expectedHomepageMeta.twitterDescription,
 			twitterImage: expectedSocialImage.url,
-			twitterImageAlt: HOMEPAGE_MARKETING_SOCIAL_IMAGE.alt
+			twitterImageAlt: expectedHomepageMeta.socialImage.alt
 		});
-		expect(homepageSchema).toEqual(expectedSchema);
+		expect(homepageSchema).toEqual(expectedHomepageSchema);
 		expect(websiteSchema?.potentialAction?.target?.urlTemplate).toBe(
-			buildHomepageMarketingSearchUrlTemplate('https://purveyors.test')
+			'https://purveyors.test/catalog?name={search_term_string}'
 		);
-		expect(organizationSchema?.description).toBe(HOMEPAGE_MARKETING_ORGANIZATION_DESCRIPTION);
-		expect(appSchema?.description).toBe(HOMEPAGE_MARKETING_APPLICATION_DESCRIPTION);
+		expect(organizationSchema?.description).toBe(
+			'Coffee intelligence platform with a live green coffee catalog, normalized sourcing data, and an API-first workflow layer'
+		);
+		expect(appSchema?.description).toBe(
+			'Coffee intelligence platform with a live green coffee catalog, sourcing data, roast tracking, and operational workflows for roasters'
+		);
 
 		consoleErrorSpy.mockRestore();
 	});
