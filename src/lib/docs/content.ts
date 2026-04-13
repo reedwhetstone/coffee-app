@@ -1061,6 +1061,12 @@ const docsPages: DocsPage[] = [
 							'Verify checkout by sessionId, dedupe repeat processing, reconcile billing snapshots, and return the final entitlement state after purchase'
 						],
 						[
+							'/api/stripe/verify-and-update-role',
+							'POST',
+							'Session',
+							'Deprecated compatibility alias to /api/stripe/reconcile-session. Still accepts completed checkout session IDs and returns the same reconciliation result with deprecation headers.'
+						],
+						[
 							'/api/stripe/webhook',
 							'POST',
 							'Stripe signature',
@@ -1099,7 +1105,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'Billing docs should always cross-link to /api-dashboard because that is the user-facing surface for keys, usage, and subscription state.',
 					'Webhook routes are machine-to-machine infrastructure and should never be presented as browser-consumable product APIs.',
-					'When role-sync behavior changes, review subscription success flows, webhook docs, and admin discrepancy tooling together.'
+					'When checkout reconciliation behavior changes, review subscription success flows, legacy billing shims, webhook docs, and admin discrepancy tooling together.'
 				]
 			}
 		],
