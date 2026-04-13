@@ -13,7 +13,7 @@
 
 <svelte:head>
 	<title>Parchment Console - Purveyors</title>
-	<meta name="description" content="Manage your Parchment API keys, usage, and docs access" />
+	<meta name="description" content="Manage your Parchment API keys, usage, and plan details in Parchment Console" />
 </svelte:head>
 
 <div class="min-h-screen bg-background-primary-light">
@@ -22,7 +22,7 @@
 		<div class="mb-8">
 			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">Parchment Console</h1>
 			<p class="mt-2 text-lg text-text-secondary-light">
-				Manage your API keys, monitor usage, and access documentation
+				Manage your API keys, monitor usage, and stay aligned with your Parchment API plan
 			</p>
 		</div>
 
@@ -81,7 +81,7 @@
 					{#if data.usageStats?.userTier === 'enterprise'}
 						Enterprise
 					{:else if data.usageStats?.userTier === 'member'}
-						Roaster+
+						Parchment API
 					{:else}
 						Explorer
 					{/if}
@@ -90,7 +90,7 @@
 					{#if data.usageStats?.userTier === 'enterprise'}
 						Unlimited API calls
 					{:else if data.usageStats?.userTier === 'member'}
-						$99/month
+						Self-serve paid plan
 					{:else}
 						Free tier
 					{/if}
@@ -221,7 +221,7 @@
 						<div class="ml-3">
 							<p class="text-sm font-medium text-text-primary-light">Create an API Key</p>
 							<p class="text-sm text-text-secondary-light">
-								Generate your first API key to start making requests
+								Generate your first API key to start using the Parchment API
 							</p>
 						</div>
 					</div>
@@ -235,7 +235,7 @@
 						<div class="ml-3">
 							<p class="text-sm font-medium text-text-primary-light">Make Your First Request</p>
 							<p class="text-sm text-text-secondary-light">
-								Use the catalog API to fetch coffee data
+								Use the Parchment API catalog to fetch coffee data
 							</p>
 						</div>
 					</div>
@@ -248,7 +248,7 @@
 						</div>
 						<div class="ml-3">
 							<p class="text-sm font-medium text-text-primary-light">Monitor Usage</p>
-							<p class="text-sm text-text-secondary-light">Track your API usage and performance</p>
+							<p class="text-sm text-text-secondary-light">Track your Parchment API usage and performance</p>
 						</div>
 					</div>
 				</div>
@@ -291,9 +291,9 @@
 									You have reached your {data.usageStats.monthlyLimit.toLocaleString()} monthly API call
 									limit.
 									{#if data.usageStats.userTier === 'viewer'}
-										Upgrade to Roaster+ for 10,000 calls/month.
+										Upgrade to Parchment API for 10,000 calls/month.
 									{:else}
-										Upgrade to Enterprise for unlimited calls.
+										Contact sales for Enterprise if you need unlimited calls.
 									{/if}
 								</p>
 								<div class="mt-3 flex space-x-4">
@@ -333,9 +333,9 @@
 									You're using {Math.round(data.usageStats.monthlyPercent)}% of your {data.usageStats.monthlyLimit.toLocaleString()}
 									monthly API calls.
 									{#if data.usageStats.userTier === 'viewer'}
-										Consider upgrading to Roaster+ for 10,000 calls/month.
+										Consider upgrading to Parchment API for 10,000 calls/month.
 									{:else}
-										Consider upgrading to Enterprise for unlimited calls.
+										Consider Enterprise via contact sales if you need unlimited calls.
 									{/if}
 								</p>
 								<div class="mt-3 flex space-x-4">
@@ -384,9 +384,9 @@
 									You've used {Math.round(data.usageStats.monthlyPercent)}% of your monthly API
 									calls.
 									{#if data.usageStats.userTier === 'viewer'}
-										Upgrade to Roaster+ for 50x more calls and advanced features.
+										Upgrade to Parchment API for 50x more calls and advanced features.
 									{:else}
-										Upgrade to Enterprise for unlimited calls and premium support.
+										Contact sales about Enterprise for unlimited calls and premium support.
 									{/if}
 								</p>
 								<div class="mt-3">
@@ -394,7 +394,7 @@
 										href="/subscription"
 										class="font-medium text-blue-800 underline hover:text-blue-600"
 									>
-										View upgrade options →
+										View API plan options →
 									</a>
 								</div>
 							</div>

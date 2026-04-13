@@ -44,7 +44,7 @@
 				onclick={openDashboard}
 				class="rounded-xl bg-background-tertiary-light px-5 py-3 text-sm font-semibold text-white transition-opacity hover:bg-opacity-90"
 			>
-				Get your API key
+				Open Parchment Console
 			</button>
 			<button
 				onclick={openDocs}
@@ -89,7 +89,7 @@
 			<div class="text-3xl font-bold text-background-tertiary-light">3</div>
 			<div class="mt-2 text-sm font-semibold text-text-primary-light">Flexible tiers</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				From free evaluation access to unlimited enterprise volume. Scale when you are ready.
+				From free exploration to production API access, with enterprise contact-sales support when you need it.
 			</p>
 		</div>
 	</section>
@@ -176,34 +176,24 @@
 						<td class="px-4 py-3 align-top">Evaluation, prototypes, lightweight catalog pulls</td>
 					</tr>
 					<tr>
-						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Roaster+</td>
+						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Parchment API</td>
 						<td class="px-4 py-3 align-top">10,000</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
-						<td class="px-4 py-3 align-top">Production integrations and regular sync jobs</td>
+						<td class="px-4 py-3 align-top">Production integrations and regular sync jobs with self-serve API access</td>
 					</tr>
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Enterprise</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top"
-							>High-volume sync, internal platforms, premium support</td
+							>High-volume sync, internal platforms, and custom support via contact sales</td
 						>
 					</tr>
 				</tbody>
 			</table>
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-text-secondary-light">
-			All plans include JSON responses and access to the full normalized catalog. API-key requests
-			receive rate-limit headers; session and anonymous catalog requests do not. In code and API
-			responses, these marketed plans map to <code
-				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">viewer</code
-			>,
-			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">member</code>, and
-			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">enterprise</code>.
-			Manage your keys and monitor usage in the
-			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
-				>Parchment Console</a
-			>.
+			Explorer is the free evaluation tier. Parchment API is the self-serve paid API plan for production integrations. Enterprise is a contact-sales path for custom volume, support, and commercial terms. API-key requests receive rate-limit headers; session and anonymous catalog requests do not. In code and API responses, these marketed plans map to <code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">viewer</code>, <code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">member</code>, and <code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">enterprise</code>. Manage your keys and monitor usage in the <a href="/api-dashboard" class="text-background-tertiary-light hover:underline">Parchment Console</a>.
 		</p>
 	</section>
 
