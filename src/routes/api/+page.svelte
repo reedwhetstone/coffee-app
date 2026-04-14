@@ -198,8 +198,10 @@
 		<p class="mt-4 text-sm leading-relaxed text-text-secondary-light">
 			Green is the free evaluation tier. Origin is the self-serve paid Parchment API tier for
 			production integrations. Enterprise is a contact-sales path for custom volume, support, and
-			commercial terms. API-key requests receive rate-limit headers; session and anonymous catalog
-			requests do not. In code and API responses, these marketed plans map to <code
+			commercial terms. Catalog responses for each plan expose monthly request ceilings in the
+			Parchment Console today, while HTTP rate-limit headers are rolling out on live API-key
+			responses. Session and anonymous catalog requests still do not emit those headers. In code and
+			API responses, these marketed plans map to <code
 				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">viewer</code
 			>, <code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">member</code>,
 			and
