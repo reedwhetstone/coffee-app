@@ -19,7 +19,7 @@ describe('subscription control plane state', () => {
 		});
 		expect(state.api).toMatchObject({
 			plan: 'viewer',
-			statusLabel: 'Explorer'
+			statusLabel: 'Green'
 		});
 		expect(state.ppi).toMatchObject({
 			enabled: false,
@@ -126,7 +126,7 @@ describe('subscription control plane state', () => {
 		expect(state.membership.sourceLabel).toContain('Admin access');
 		expect(state.api).toMatchObject({
 			plan: 'enterprise',
-			statusLabel: 'Parchment API enterprise'
+			statusLabel: 'Enterprise'
 		});
 		expect(state.ppi).toMatchObject({
 			enabled: true,

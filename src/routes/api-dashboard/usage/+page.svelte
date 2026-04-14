@@ -122,7 +122,7 @@
 
 				<!-- Current Plan -->
 				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-					<h3 class="text-sm font-medium text-text-secondary-light">Current Plan</h3>
+					<h3 class="text-sm font-medium text-text-secondary-light">Current Tier</h3>
 					<p class="mt-1 text-2xl font-bold text-blue-500">
 						{tierDisplayName()}
 					</p>
@@ -131,9 +131,9 @@
 							{#if data.currentStats?.userTier === 'enterprise'}
 								Unlimited API calls
 							{:else if data.currentStats?.userTier === 'member'}
-								Self-serve Origin plan
+								Paid Origin tier
 							{:else}
-								Green entry tier
+								Free Green tier
 							{/if}
 						</div>
 					</div>
@@ -201,7 +201,7 @@
 						<div class="py-8 text-center">
 							<p class="text-text-secondary-light">No usage data available yet</p>
 							<p class="text-sm text-text-secondary-light">
-								Start making API calls to see analytics
+								Start making Parchment API calls to see analytics
 							</p>
 						</div>
 					{/if}

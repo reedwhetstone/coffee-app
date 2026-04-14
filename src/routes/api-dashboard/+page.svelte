@@ -25,7 +25,8 @@
 		<div class="mb-8">
 			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">Parchment Console</h1>
 			<p class="mt-2 text-lg text-text-secondary-light">
-				Manage your API keys, monitor usage, and stay aligned with your Parchment API plan
+				Manage your API keys, monitor usage, and stay aligned with your Green, Origin, or Enterprise
+				tier
 			</p>
 		</div>
 
@@ -79,7 +80,7 @@
 			</div>
 
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h3 class="text-sm font-medium text-text-secondary-light">Current Plan</h3>
+				<h3 class="text-sm font-medium text-text-secondary-light">Current Tier</h3>
 				<p class="mt-1 text-2xl font-bold text-blue-500">
 					{#if data.usageStats?.userTier === 'enterprise'}
 						Enterprise
@@ -93,9 +94,9 @@
 					{#if data.usageStats?.userTier === 'enterprise'}
 						Unlimited API calls
 					{:else if data.usageStats?.userTier === 'member'}
-						Self-serve Origin plan
+						Paid Origin tier
 					{:else}
-						Green entry tier
+						Free Green tier
 					{/if}
 				</p>
 			</div>
@@ -119,7 +120,7 @@
 						Active
 					{/if}
 				</p>
-				<p class="mt-1 text-xs text-text-secondary-light">Parchment API plan</p>
+				<p class="mt-1 text-xs text-text-secondary-light">Parchment API tier</p>
 			</div>
 		</div>
 

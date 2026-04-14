@@ -33,7 +33,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	const pricingTiers = [
 		{
-			name: 'Explorer',
+			name: 'Green',
 			price: 0,
 			currency: 'USD',
 			billingDuration: 'P1M',
@@ -46,7 +46,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			price: 99,
 			currency: 'USD',
 			billingDuration: 'P1M',
-			description: 'Self-serve paid plan for production catalog integrations and higher-volume syncing',
+			description:
+				'Self-serve paid plan for production catalog integrations and higher-volume syncing',
 			features: ['10,000 requests per month', 'Unlimited rows per call', 'Usage analytics'],
 			popular: true
 		},
@@ -55,8 +56,13 @@ export const load: PageServerLoad = async ({ url }) => {
 			price: 0,
 			currency: 'USD',
 			billingDuration: 'P1M',
-			description: 'Contact-sales plan for custom volume, unlimited request ceilings, and premium support',
-			features: ['Unlimited requests', 'Unlimited rows per call', 'Contact sales for custom commercial terms'],
+			description:
+				'Contact-sales plan for custom volume, unlimited request ceilings, and premium support',
+			features: [
+				'Unlimited requests',
+				'Unlimited rows per call',
+				'Contact sales for custom commercial terms'
+			],
 			popular: false
 		}
 	];

@@ -89,7 +89,8 @@
 			<div class="text-3xl font-bold text-background-tertiary-light">3</div>
 			<div class="mt-2 text-sm font-semibold text-text-primary-light">Flexible tiers</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				From free exploration to production API access, with enterprise contact-sales support when you need it.
+				From free exploration to production API access, with enterprise contact-sales support when
+				you need it.
 			</p>
 		</div>
 	</section>
@@ -120,7 +121,7 @@
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Free Explorer tier for evaluation with no credit card required</span>
+					<span>Free Green tier for evaluation with no credit card required</span>
 				</li>
 			</ul>
 		</div>
@@ -170,7 +171,7 @@
 					class="divide-y divide-border-light bg-background-primary-light text-text-secondary-light"
 				>
 					<tr>
-						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Explorer</td>
+						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Green</td>
 						<td class="px-4 py-3 align-top">200</td>
 						<td class="px-4 py-3 align-top">25</td>
 						<td class="px-4 py-3 align-top">Evaluation, prototypes, lightweight catalog pulls</td>
@@ -179,7 +180,9 @@
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Parchment API</td>
 						<td class="px-4 py-3 align-top">10,000</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
-						<td class="px-4 py-3 align-top">Production integrations and regular sync jobs with self-serve API access</td>
+						<td class="px-4 py-3 align-top"
+							>Production integrations and regular sync jobs with self-serve API access</td
+						>
 					</tr>
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Enterprise</td>
@@ -193,7 +196,18 @@
 			</table>
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-text-secondary-light">
-			Explorer is the free evaluation tier. Parchment API is the self-serve paid API plan for production integrations. Enterprise is a contact-sales path for custom volume, support, and commercial terms. API-key requests receive rate-limit headers; session and anonymous catalog requests do not. In code and API responses, these marketed plans map to <code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">viewer</code>, <code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">member</code>, and <code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">enterprise</code>. Manage your keys and monitor usage in the <a href="/api-dashboard" class="text-background-tertiary-light hover:underline">Parchment Console</a>.
+			Green is the free evaluation tier. Origin is the self-serve paid Parchment API tier for
+			production integrations. Enterprise is a contact-sales path for custom volume, support, and
+			commercial terms. API-key requests receive rate-limit headers; session and anonymous catalog
+			requests do not. In code and API responses, these marketed plans map to <code
+				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">viewer</code
+			>, <code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">member</code>,
+			and
+			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">enterprise</code>.
+			Manage your keys and monitor usage in the
+			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
+				>Parchment Console</a
+			>.
 		</p>
 	</section>
 

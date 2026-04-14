@@ -163,7 +163,7 @@ print('PASS: legacy envelope fields preserved')
 1. Run existing catalog API tests: `pnpm test -- catalogResource`
 2. Smoke test each filter param manually with the live API key (commands above)
 3. Verify that no-param requests still return the same result set as before (backward compat)
-4. Verify tier row limits still apply when filtering (Explorer tier still capped at 25 even with `stocked=true`)
+4. Verify tier row limits still apply when filtering (Green tier still capped at 25 even with `stocked=true`)
 5. Check that `total` and `total_available` reflect filtered counts accurately
 
 ---

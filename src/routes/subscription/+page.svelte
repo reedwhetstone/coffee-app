@@ -66,14 +66,15 @@
 			name: 'Parchment API',
 			headline: 'Normalized coffee data for apps, agents, and internal tools.',
 			description:
-				'Start with Explorer for evaluation, then move to the paid API plan when you need production access and a stronger usage envelope.',
+				'Start with Green for evaluation, then move to the paid API plan when you need production access and a stronger usage envelope.',
 			features: [
-				'Explorer is the free baseline tier',
+				'Green is the free baseline tier',
 				'Paid plan for production usage and integrations',
 				'Parchment Console for keys, docs, and usage visibility'
 			],
-			managementCopy: 'Your current API tier is shown below so you can separate data access from Studio membership.',
-			ctaLabel: 'Upgrade to Parchment API',
+			managementCopy:
+				'Your current API tier is shown below so you can separate data access from Studio membership.',
+			ctaLabel: 'Upgrade to Origin',
 			intervals: [
 				{
 					purchaseKey: BILLING_PURCHASE_KEYS.apiPlanMonthly,
@@ -123,7 +124,8 @@
 				'Embedded analytics or internal dashboards',
 				'Commercial support and custom delivery patterns'
 			],
-			managementCopy: 'Enterprise is not a self-serve SKU. Contact us to scope the right commercial path.',
+			managementCopy:
+				'Enterprise is not a self-serve SKU. Contact us to scope the right commercial path.',
 			ctaLabel: 'Talk to us',
 			contactHref: '/contact'
 		}
@@ -286,7 +288,8 @@
 							Checkout
 						</p>
 						<h2 class="text-primary-light text-2xl font-semibold">
-							{selectedPlanName} {selectedIntervalLabel}
+							{selectedPlanName}
+							{selectedIntervalLabel}
 						</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">{selectedPriceLabel}</p>
 					</div>
@@ -329,9 +332,8 @@
 						Choose the right product for how you use Purveyors
 					</h1>
 					<p class="max-w-4xl text-base text-text-secondary-light">
-						/subscription is a pricing and account-state surface, not a generic membership blob. Use
-						it to compare Mallard Studio, Parchment API, Parchment Intelligence, and Enterprise, then
-						manage the products already attached to your account.
+						Use this page to compare Mallard Studio, Parchment API, Parchment Intelligence, and
+						Enterprise, then manage the products already attached to your account.
 					</p>
 				</div>
 
@@ -348,7 +350,7 @@
 						</div>
 						<div class="rounded-2xl border border-border-light bg-background-primary-light p-5">
 							<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
-								Parchment API tier
+								Current API tier
 							</p>
 							<p class="mt-2 text-2xl font-semibold text-text-primary-light">
 								{apiState?.statusLabel}
@@ -369,7 +371,9 @@
 
 				<div class="grid gap-6 xl:grid-cols-2">
 					{#each productCards as product}
-						<div class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm">
+						<div
+							class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
+						>
 							<div class="flex items-start justify-between gap-4">
 								<div>
 									<h2 class="text-2xl font-semibold text-text-primary-light">{product.name}</h2>
@@ -415,14 +419,16 @@
 								{/each}
 							</ul>
 
-							<div class="mt-5 rounded-2xl border border-border-light bg-background-secondary-light p-4">
+							<div
+								class="mt-5 rounded-2xl border border-border-light bg-background-secondary-light p-4"
+							>
 								<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
 									Account state
 								</p>
 								{#if !data?.user}
 									<p class="mt-2 text-sm text-text-secondary-light">
-										Sign in to see what your account already owns. Until then, this page shows the live
-										pricing story and available purchase paths.
+										Sign in to see what your account already owns. Until then, this page shows the
+										live pricing story and available purchase paths.
 									</p>
 								{:else if product.family === 'membership'}
 									<p class="mt-2 text-sm text-text-secondary-light">{product.managementCopy}</p>
@@ -451,7 +457,9 @@
 
 										<div class="mt-4 space-y-3">
 											{#if !membershipState?.canManageSubscription && membershipState?.managementBlockedReason}
-												<div class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300">
+												<div
+													class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
+												>
 													{membershipState.managementBlockedReason}
 												</div>
 											{:else if data.subscription.cancel_at_period_end}
@@ -499,7 +507,9 @@
 								{:else if product.family === 'api_plan'}
 									<p class="mt-2 text-sm text-text-secondary-light">{apiState?.description}</p>
 								{:else if product.family === 'ppi_addon'}
-									<p class="mt-2 text-sm text-text-secondary-light">{intelligenceState?.description}</p>
+									<p class="mt-2 text-sm text-text-secondary-light">
+										{intelligenceState?.description}
+									</p>
 								{:else}
 									<p class="mt-2 text-sm text-text-secondary-light">{product.managementCopy}</p>
 								{/if}
@@ -508,18 +518,25 @@
 							{#if product.intervals?.length}
 								<div class="mt-5 grid gap-3 sm:grid-cols-2">
 									{#each product.intervals as option}
-										<div class="rounded-2xl border border-border-light bg-background-secondary-light p-4">
+										<div
+											class="rounded-2xl border border-border-light bg-background-secondary-light p-4"
+										>
 											<div class="flex items-start justify-between gap-3">
 												<div>
-													<p class="text-sm font-semibold text-text-primary-light">{option.label}</p>
+													<p class="text-sm font-semibold text-text-primary-light">
+														{option.label}
+													</p>
 													<p class="mt-1 text-2xl font-bold text-text-primary-light">
-														{option.price}<span class="ml-1 text-sm font-normal text-text-secondary-light"
+														{option.price}<span
+															class="ml-1 text-sm font-normal text-text-secondary-light"
 															>{option.interval}</span
 														>
 													</p>
 												</div>
 												{#if option.badge}
-													<span class="rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-300">
+													<span
+														class="rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-300"
+													>
 														{option.badge}
 													</span>
 												{/if}
@@ -533,15 +550,21 @@
 													Sign in to continue
 												</button>
 											{:else if product.family === 'membership' && membershipState?.hasAccess}
-												<div class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light">
+												<div
+													class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light"
+												>
 													Already active on your account
 												</div>
 											{:else if product.family === 'api_plan' && apiState?.plan !== 'viewer'}
-												<div class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light">
+												<div
+													class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light"
+												>
 													Already active on your account
 												</div>
 											{:else if product.family === 'ppi_addon' && intelligenceState?.enabled}
-												<div class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light">
+												<div
+													class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light"
+												>
 													Already active on your account
 												</div>
 											{:else}

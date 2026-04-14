@@ -1,5 +1,7 @@
 # Implementation Plan: API-First Auth Unification and Parchment Platform IA
 
+> **Superseded context note (2026-04-13):** This plan is kept for architecture history, but parts of its naming and IA framing are no longer canonical. Treat `notes/PRODUCT_VISION.md`, `notes/README.md`, `notes/decisions/`, `notes/API_notes/APITIER.md`, and newer implementation plans as the current source of truth. In particular, do not reuse `Maillard Studio`, public `Parchment Platform` umbrella framing, or outdated `/api-dashboard/docs` assumptions from this document without re-validating them against the shipped product.
+
 **Date:** 2026-03-26
 **Slug:** api-first-auth-unification
 **Status:** Planning only, awaiting Reed review

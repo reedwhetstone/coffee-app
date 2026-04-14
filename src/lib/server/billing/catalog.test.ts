@@ -65,7 +65,7 @@ describe('billing catalog', () => {
 		});
 	});
 
-	it('keeps explorer as the non-Stripe default API tier', () => {
+	it('keeps Green as the non-Stripe default API tier', () => {
 		expect(getBillingCatalogEntry(BILLING_PURCHASE_KEYS.apiPlanExplorer)).toMatchObject({
 			purchaseKey: BILLING_PURCHASE_KEYS.apiPlanExplorer,
 			productFamily: 'api_plan',
@@ -73,7 +73,7 @@ describe('billing catalog', () => {
 			billingKind: 'default',
 			selfServe: false,
 			isDefaultFreeTier: true,
-			publicPlanName: 'Explorer',
+			publicPlanName: 'Green',
 			grants: {
 				apiPlan: 'viewer'
 			}

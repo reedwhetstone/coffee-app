@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-	<title>Parchment Platform docs | Purveyors</title>
+	<title>Parchment API docs | Purveyors</title>
 	<meta
 		name="description"
 		content="Developer documentation for the Parchment API and Parchment CLI. Get started with green coffee catalog data in minutes."
@@ -15,19 +15,19 @@
 		class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 	>
 		<p class="text-xs font-semibold uppercase tracking-[0.18em] text-background-tertiary-light">
-			Parchment Platform docs
+			Parchment API docs
 		</p>
 		<h1 class="mt-3 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
 			Documentation
 		</h1>
 		<p class="mt-4 max-w-3xl text-base leading-relaxed text-text-secondary-light sm:text-lg">
-			Parchment Platform gives you normalized green coffee data from 39+ suppliers through a stable
-			public catalog API at <code
+			Parchment API gives you normalized green coffee data from 39+ suppliers through the stable
+			public catalog endpoint at <code
 				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/v1/catalog</code
-			>, a broader internal platform route layer under
-			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/api/*</code>, and a
-			command-line interface. Start with API docs for HTTP integrations, then use the platform and
-			CLI docs for product internals and automation workflows.
+			>, plus supporting docs for the broader internal route layer under
+			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/api/*</code> and the
+			CLI. Start with API docs for HTTP integrations, then use the platform and CLI docs for product
+			internals and automation workflows.
 		</p>
 	</section>
 
