@@ -66,10 +66,10 @@
 			name: 'Parchment API',
 			headline: 'Normalized coffee data for apps, agents, and internal tools.',
 			description:
-				'Start with Green for evaluation, then move to the paid API plan when you need production access and a stronger usage envelope.',
+				'Start with Green for evaluation, then move to Origin when you need production access and a stronger usage envelope.',
 			features: [
 				'Green is the free baseline tier',
-				'Paid plan for production usage and integrations',
+				'Origin for production usage and integrations',
 				'Parchment Console for keys, docs, and usage visibility'
 			],
 			managementCopy:
@@ -78,7 +78,7 @@
 			intervals: [
 				{
 					purchaseKey: BILLING_PURCHASE_KEYS.apiPlanMonthly,
-					label: 'Paid plan',
+					label: 'Origin',
 					price: '$99',
 					interval: '/month'
 				}

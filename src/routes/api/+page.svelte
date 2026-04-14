@@ -177,7 +177,7 @@
 						<td class="px-4 py-3 align-top">Evaluation, prototypes, lightweight catalog pulls</td>
 					</tr>
 					<tr>
-						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Parchment API</td>
+						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Origin</td>
 						<td class="px-4 py-3 align-top">10,000</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top"

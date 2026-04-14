@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	const serviceData = {
 		name: 'Parchment API',
 		description:
-			'Normalized green coffee catalog access, market analytics, and a unified docs path for Parchment Platform on Purveyors.',
+			'Normalized green coffee catalog access, market analytics, and a unified docs path for Parchment API on Purveyors.',
 		provider: 'Purveyors',
 		serviceType: 'Data API',
 		url: pageUrl,
@@ -42,7 +42,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			popular: false
 		},
 		{
-			name: 'Parchment API',
+			name: 'Origin',
 			price: 99,
 			currency: 'USD',
 			billingDuration: 'P1M',
@@ -113,7 +113,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			],
 			ogTitle: 'Parchment API',
 			ogDescription:
-				'Normalized green coffee catalog access, market analytics, and unified documentation for Parchment Platform on Purveyors.',
+				'Normalized green coffee catalog access, market analytics, and unified documentation for Parchment API on Purveyors.',
 			twitterTitle: 'Parchment API',
 			twitterDescription:
 				'Catalog data, analytics, Parchment Console tooling, and CLI workflows on Purveyors.',
