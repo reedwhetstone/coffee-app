@@ -62,7 +62,7 @@ export const DOCS_NAV: DocsNavSection[] = [
 		key: 'api',
 		title: 'API docs',
 		description:
-			'Public catalog contract, platform route matrix, billing flows, auth, and operational guidance.',
+			'Public catalog contract, platform route matrix, analytics, billing flows, auth, and operational guidance.',
 		basePath: '/docs/api',
 		items: [
 			{
@@ -74,7 +74,7 @@ export const DOCS_NAV: DocsNavSection[] = [
 				slug: 'catalog',
 				title: 'Catalog',
 				summary:
-					'The stable public /v1/catalog contract: fields, limits, compatibility aliases, and headers.'
+					'The stable public /v1/catalog contract: fields, limits, compatibility aliases, headers, and query parameters.'
 			},
 			{
 				slug: 'platform',
@@ -978,7 +978,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Cross-links that should stay coherent',
 				bullets: [
-					'/analytics, /catalog, /api, and /docs/api/catalog should tell one consistent product story.',
+					'/analytics, /catalog, /api, /docs, and /docs/api/catalog should tell one consistent product story.',
 					'When analytics positioning changes, check /api copy and docs copy together so the public contract does not accidentally expand on paper.',
 					'If analytics later becomes a first-class API family, introduce a new public namespace instead of silently overloading internal /api/* helpers.'
 				]

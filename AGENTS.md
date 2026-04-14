@@ -120,7 +120,7 @@ Treat the API as two layers:
 
 1. **Public external API**
 
-   - `GET /v1` advertises the public namespace
+   - `GET /v1` advertises the public namespace, active resources, and legacy migration hints
    - `GET /v1/catalog`
    - Auth: API key, web session, or anonymous (public-only subset unless a privileged session enables wholesale visibility)
    - Rate-limit headers (`X-RateLimit-*`) are only included in API-key responses
@@ -144,6 +144,7 @@ When changing docs, keep these sources aligned:
 - `src/routes/api/+page.svelte`
 - the `/docs` tree under `src/routes/docs`
 - the `/api-dashboard` console surface and any legacy docs redirects
+- `src/routes/api/+page.server.ts` and `/api` copy when plan naming, limits, or route framing changes
 
 ### Docs architecture
 
@@ -213,4 +214,4 @@ A strong PR in this repo should include:
 - updated docs when behavior, routes, or positioning changed
 - screenshots for UI changes when useful
 
-If the change touches public positioning, docs, or API expectations, review the whole information architecture, not just the line you edited.
+If the change touches public positioning, docs, or API expectations, review the whole information architecture, not just the line you edited. That usually means checking `/api`, `/docs`, `/api-dashboard`, README, and AGENTS together.
