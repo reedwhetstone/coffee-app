@@ -358,7 +358,8 @@
 <div class="mb-8 border-l-4 border-background-tertiary-light pl-6">
 	<h1 class="mb-2 text-4xl font-bold text-text-primary-light">Green coffee market visibility</h1>
 	<p class="text-lg text-text-secondary-light">
-		Track live pricing, supplier movement, and origin coverage across {stats.totalSuppliers} US suppliers and {stats.originsCount} origins.
+		Track live pricing, supplier movement, and origin coverage across {stats.totalSuppliers} US suppliers
+		and {stats.originsCount} origins.
 		{#if stats.lastUpdated}
 			Last updated {formatDate(stats.lastUpdated)}.
 		{:else}
@@ -557,7 +558,9 @@
 				>
 					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin price ranges</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
-						See how current prices spread across origins in the live catalog. The default view highlights the busiest origins, and the expanded view lets you choose your comparison set.
+						See how current prices spread across origins in the live catalog. The default view
+						highlights the busiest origins, and the expanded view lets you choose your comparison
+						set.
 					</p>
 					{#if originRangeData.length > 0}
 						<div class="w-full">
@@ -590,8 +593,8 @@
 				<div class="mb-3">
 					<h2 class="text-xl font-semibold text-text-primary-light">Supplier Price Comparison</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
-						Everyone can explore the core market view. Parchment Intelligence adds deeper
-						supplier comparisons.
+						Everyone can explore the core market view. Parchment Intelligence adds deeper supplier
+						comparisons.
 					</p>
 				</div>
 				<div
@@ -722,9 +725,12 @@
 
 			<div class="blur-sm filter">
 				<div class="mb-3">
-					<h2 class="text-xl font-semibold text-text-primary-light">Parchment Intelligence overview</h2>
+					<h2 class="text-xl font-semibold text-text-primary-light">
+						Parchment Intelligence overview
+					</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
-						Deeper market visibility for sourcing, purchasing, and supplier benchmarking in one place.
+						Deeper market visibility for sourcing, purchasing, and supplier benchmarking in one
+						place.
 					</p>
 				</div>
 				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -744,7 +750,9 @@
 					<div
 						class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 					>
-						<h3 class="mb-2 text-lg font-semibold text-text-primary-light">Longer-term trend detail</h3>
+						<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
+							Longer-term trend detail
+						</h3>
 						<div class="mt-4 h-40 rounded bg-background-secondary-light"></div>
 					</div>
 				</div>
@@ -762,7 +770,9 @@
 					See more with Parchment Intelligence
 				</h3>
 				<p class="mb-4 text-text-secondary-light">
-					The public view gives you the core market picture. Parchment Intelligence adds supplier comparisons, supplier health, arrivals, delistings, origin benchmarks, and longer-term trends.
+					The public view gives you the core market picture. Parchment Intelligence adds supplier
+					comparisons, supplier health, arrivals, delistings, origin benchmarks, and longer-term
+					trends.
 				</p>
 				<ul class="mb-6 space-y-2 text-sm text-text-secondary-light">
 					<li>Supplier comparison and catalog health views</li>
@@ -1057,7 +1067,9 @@
 								>Parchment Intelligence</span
 							>
 						</div>
-						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price spread analysis</h2>
+						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
+							Price spread analysis
+						</h2>
 						<p class="mb-4 text-sm text-text-secondary-light">
 							Retail versus wholesale median price by origin in the latest snapshot
 						</p>
@@ -1076,7 +1088,9 @@
 							>Parchment Intelligence</span
 						>
 					</div>
-					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Longer-term trend detail</h2>
+					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
+						Longer-term trend detail
+					</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
 						Price trends across longer time horizons for retail origins
 					</p>
@@ -1113,5 +1127,6 @@
 
 <div class="mt-4 rounded-lg bg-background-secondary-light p-4 text-xs text-text-secondary-light">
 	<strong class="text-text-primary-light">Data source:</strong> Daily prices aggregated from
-	{stats.totalSuppliers} US green coffee importers and roasters. The Purveyors Price Index updates each morning, and origin plus processing details come directly from supplier listings.
+	{stats.totalSuppliers} US green coffee importers and roasters. The Purveyors Price Index updates each
+	morning, and origin plus processing details come directly from supplier listings.
 </div>

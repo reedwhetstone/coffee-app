@@ -51,11 +51,11 @@
 		<div class="mx-auto max-w-3xl text-center">
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 				{#if isSignedIn}
-					Compare live offerings, shortlist coffees faster, and return to Mallard Studio when you need
-					inventory, roast, tasting, and production workflows.
+					Compare live offerings, shortlist coffees faster, and return to Mallard Studio when you
+					need inventory, roast, tasting, and production workflows.
 				{:else}
-					See current offerings from specialty suppliers in one clean catalog, compare price and profile
-					faster, and move into workflow, data, or market tools only when you need them.
+					See current offerings from specialty suppliers in one clean catalog, compare price and
+					profile faster, and move into workflow, data, or market tools only when you need them.
 				{/if}
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
@@ -80,7 +80,8 @@
 			</div>
 			{#if !isSignedIn}
 				<p class="mt-4 text-sm text-text-secondary-light">
-					Start with the public catalog. Add an account later if you want saved workflows or paid access.
+					Start with the public catalog. Add an account later if you want saved workflows or paid
+					access.
 				</p>
 			{/if}
 			{#if isSignedIn && canAccessMemberRoutes}
@@ -128,11 +129,14 @@
 						>
 							<div class="mb-2 flex items-center gap-2">
 								<div class="h-2 w-2 rounded-full bg-growth-green"></div>
-								<span class="text-xs text-text-secondary-light">Quick buyer read from live market data</span>
+								<span class="text-xs text-text-secondary-light"
+									>Quick buyer read from live market data</span
+								>
 							</div>
 							<p class="text-sm text-text-primary-light">
-								"Three washed coffees landed this week under $8.50/lb with floral, citrus, and tea-like
-								profiles. This lot fits a clean spring offering and stays inside your usual buy range."
+								"Three washed coffees landed this week under $8.50/lb with floral, citrus, and
+								tea-like profiles. This lot fits a clean spring offering and stays inside your usual
+								buy range."
 							</p>
 						</div>
 					</div>

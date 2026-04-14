@@ -97,11 +97,15 @@
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Supplier comparison experiences with pricing, origin, and availability in one place</span>
+					<span
+						>Supplier comparison experiences with pricing, origin, and availability in one place</span
+					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Daily syncs for sourcing systems, planning tools, and customer-facing product features</span>
+					<span
+						>Daily syncs for sourcing systems, planning tools, and customer-facing product features</span
+					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
@@ -129,11 +133,15 @@
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Operators and analysts who need cleaner visibility into supplier coverage and pricing</span>
+					<span
+						>Operators and analysts who need cleaner visibility into supplier coverage and pricing</span
+					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Teams that want a faster path from raw supplier listings to usable product data</span>
+					<span
+						>Teams that want a faster path from raw supplier listings to usable product data</span
+					>
 				</li>
 			</ul>
 		</div>
@@ -166,13 +174,17 @@
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Origin</td>
 						<td class="px-4 py-3 align-top">10,000</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
-						<td class="px-4 py-3 align-top">Production products, sync jobs, and recurring customer use</td>
+						<td class="px-4 py-3 align-top"
+							>Production products, sync jobs, and recurring customer use</td
+						>
 					</tr>
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Enterprise</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
-						<td class="px-4 py-3 align-top">High-volume deployments with custom support and commercial terms</td>
+						<td class="px-4 py-3 align-top"
+							>High-volume deployments with custom support and commercial terms</td
+						>
 					</tr>
 				</tbody>
 			</table>

@@ -36,14 +36,16 @@
 <section id="pricing" class="bg-background-secondary-light py-24 sm:py-32">
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-4xl text-center">
-			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Choose your path</h2>
+			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
+				Choose your path
+			</h2>
 			<p class="mt-2 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
 				Start with the catalog, then pick the layer that fits your work
 			</p>
 		</div>
 		<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-text-secondary-light">
-			Purveyors is organized around three clear jobs: buy better coffee, run better workflows, and use
-			better coffee data. Pick the product that matches what you need right now.
+			Purveyors is organized around three clear jobs: buy better coffee, run better workflows, and
+			use better coffee data. Pick the product that matches what you need right now.
 		</p>
 
 		<div
@@ -62,8 +64,8 @@
 						<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Mallard Studio</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						For roasting teams that want sourcing notes, inventory, roast records, tasting, and daily
-						workflow in one place.
+						For roasting teams that want sourcing notes, inventory, roast records, tasting, and
+						daily workflow in one place.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-1">
 						<span class="text-4xl font-bold tracking-tight text-text-primary-light">$9</span>
@@ -107,17 +109,26 @@
 						</p>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						For teams that want structured green coffee data inside internal tools, customer products, or
-						automations.
+						For teams that want structured green coffee data inside internal tools, customer
+						products, or automations.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-2">
-						<span class="rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">Green</span>
-						<span class="rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">Origin</span>
-						<span class="rounded-full bg-border-light px-3 py-1 text-xs font-semibold uppercase tracking-wide text-text-secondary-light">Enterprise</span>
+						<span
+							class="rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-background-tertiary-light"
+							>Green</span
+						>
+						<span
+							class="rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-background-tertiary-light"
+							>Origin</span
+						>
+						<span
+							class="rounded-full bg-border-light px-3 py-1 text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+							>Enterprise</span
+						>
 					</p>
 					<p class="mt-3 text-sm text-text-secondary-light">
-						Start with self-serve evaluation, then move into higher-coverage or enterprise access as your
-						use case grows.
+						Start with self-serve evaluation, then move into higher-coverage or enterprise access as
+						your use case grows.
 					</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
 						<li class="flex gap-x-3">Structured coffee data for product and ops teams</li>
@@ -151,14 +162,15 @@
 						</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						For buyers and operators who want clearer visibility into pricing movement, supplier behavior,
-						and market changes.
+						For buyers and operators who want clearer visibility into pricing movement, supplier
+						behavior, and market changes.
 					</p>
 					<p class="mt-6 text-sm font-semibold uppercase tracking-wide text-text-secondary-light">
 						Market visibility
 					</p>
 					<p class="mt-2 text-sm text-text-secondary-light">
-						Use the live analytics surface today, then go deeper as premium intelligence packaging expands.
+						Use the live analytics surface today, then go deeper as premium intelligence packaging
+						expands.
 					</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
 						<li class="flex gap-x-3">Clearer pricing and availability visibility</li>
@@ -190,11 +202,12 @@
 						<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Enterprise</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						For custom delivery, embedded data experiences, support commitments, and larger commercial
-						buying needs.
+						For custom delivery, embedded data experiences, support commitments, and larger
+						commercial buying needs.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-2xl font-bold tracking-tight text-text-primary-light">Talk to us</span>
+						<span class="text-2xl font-bold tracking-tight text-text-primary-light">Talk to us</span
+						>
 					</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
 						<li class="flex gap-x-3">Custom integrations and delivery patterns</li>

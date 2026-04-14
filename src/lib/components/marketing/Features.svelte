@@ -40,8 +40,9 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Browse current coffees across suppliers with normalized origin, process, score, and pricing
-							data, so your shortlist starts with clean information instead of manual cleanup.
+							Browse current coffees across suppliers with normalized origin, process, score, and
+							pricing data, so your shortlist starts with clean information instead of manual
+							cleanup.
 						</p>
 					</dd>
 				</div>
@@ -102,8 +103,8 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Use the API when you need structured coffee data inside apps, automations, and internal
-							dashboards without rebuilding the catalog yourself.
+							Use the API when you need structured coffee data inside apps, automations, and
+							internal dashboards without rebuilding the catalog yourself.
 						</p>
 					</dd>
 				</div>
@@ -138,8 +139,8 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Move from shortlist to roast and tasting workflows without losing the context behind why you
-							bought a coffee in the first place.
+							Move from shortlist to roast and tasting workflows without losing the context behind
+							why you bought a coffee in the first place.
 						</p>
 					</dd>
 				</div>
@@ -169,8 +170,8 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Track pricing movement, supplier activity, and availability changes with clearer visibility,
-							so you can make sourcing calls earlier and with more confidence.
+							Track pricing movement, supplier activity, and availability changes with clearer
+							visibility, so you can make sourcing calls earlier and with more confidence.
 						</p>
 					</dd>
 				</div>
@@ -200,8 +201,8 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Bring in roast logs, keep your existing process where it still works, and add structure only
-							where it helps your team move faster.
+							Bring in roast logs, keep your existing process where it still works, and add
+							structure only where it helps your team move faster.
 						</p>
 					</dd>
 				</div>

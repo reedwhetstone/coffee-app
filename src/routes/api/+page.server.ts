@@ -56,8 +56,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			price: 0,
 			currency: 'USD',
 			billingDuration: 'P1M',
-			description:
-				'Contact-sales plan for larger deployments, custom volume, and premium support',
+			description: 'Contact-sales plan for larger deployments, custom volume, and premium support',
 			features: [
 				'Unlimited requests',
 				'Unlimited rows per call',

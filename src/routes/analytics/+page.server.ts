@@ -464,8 +464,7 @@ export const load: PageServerLoad = async (event) => {
 			ogDescription:
 				'Daily green coffee price trends, processing mix, and supplier movement from 39+ US importers.',
 			twitterTitle: 'Green Coffee Market Visibility — Purveyors',
-			twitterDescription:
-				'Daily green coffee pricing and supplier movement from 39+ US importers.'}]}【อ่านข้อความเต็มanalysis to=functions.edit  大发分分彩functions.edit კომენტary to=functions.edit  彩神争霸提现json  红鼎{
+			twitterDescription: 'Daily green coffee pricing and supplier movement from 39+ US importers.',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/analytics.jpg',

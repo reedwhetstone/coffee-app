@@ -38,7 +38,8 @@
 						</p>
 					{:else}
 						<p class="text-text-secondary-light">
-							The catalog is open now. Create an account later if you want saved work or paid access.
+							The catalog is open now. Create an account later if you want saved work or paid
+							access.
 						</p>
 					{/if}
 				</div>
@@ -96,8 +97,8 @@
 								Start with the catalog, then choose the right next step
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Use the public catalog to compare coffees first. Move into Mallard Studio,
-								Parchment API, or Parchment Intelligence only when your work calls for it.
+								Use the public catalog to compare coffees first. Move into Mallard Studio, Parchment
+								API, or Parchment Intelligence only when your work calls for it.
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 								<button

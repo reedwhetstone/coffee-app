@@ -30,8 +30,8 @@
 			</h2>
 			<p class="mx-auto mt-6 max-w-xl text-lg leading-8 text-orange-100">
 				{#if isSignedIn}
-					Keep sourcing in the public catalog, or head back to your dashboard to continue the rest of
-					your workflow.
+					Keep sourcing in the public catalog, or head back to your dashboard to continue the rest
+					of your workflow.
 				{:else}
 					Browse the catalog first. When you are ready, move into Mallard Studio for workflow,
 					Parchment API for structured data, or Parchment Intelligence for deeper market visibility.
