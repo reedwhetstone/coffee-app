@@ -1,5 +1,7 @@
 # Implementation Plan: Parchment Console and Docs Consolidation (PR D)
 
+> **Historical execution note (2026-04-13):** This plan describes an already-past transition stage and includes stale references to the old `Parchment Platform` sequence and `/api-dashboard/docs` migration context. Keep it as execution history, not as the current product/source-of-truth doc.
+
 **Date:** 2026-03-27
 **Slug:** parchment-console-docs-consolidation
 **Status:** Planning only, awaiting Reed review

@@ -174,7 +174,7 @@
 					<div
 						class="mt-5 w-full rounded-xl border border-border-light bg-background-primary-light p-4 text-left text-sm text-text-secondary-light"
 					>
-						<p class="font-semibold text-text-primary-light">Resolved entitlements</p>
+						<p class="font-semibold text-text-primary-light">Current product access</p>
 						<ul class="mt-3 space-y-2">
 							<li>
 								<span class="font-medium text-text-primary-light">App role:</span>
@@ -185,7 +185,7 @@
 								{resolvedEntitlements.apiPlan}
 							</li>
 							<li>
-								<span class="font-medium text-text-primary-light">PPI access:</span>
+								<span class="font-medium text-text-primary-light">Parchment Intelligence:</span>
 								{resolvedEntitlements.ppiAccess ? 'enabled' : 'not enabled'}
 							</li>
 						</ul>

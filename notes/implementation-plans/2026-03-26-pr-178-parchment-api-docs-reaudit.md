@@ -1,5 +1,7 @@
 # Implementation Plan: PR 178 Re-audit After Routing Changes
 
+> **Superseded context note (2026-04-13):** This document is useful as March transition history, but parts of its routing and naming model are no longer current. Treat `/docs` as canonical, treat `/api-dashboard/docs` as historical route context, and use current naming: Mallard Studio, Parchment API, Parchment Intelligence, Parchment Console, and Green / Origin / Enterprise.
+
 **Date:** 2026-03-26
 **Slug:** pr-178-parchment-api-docs-reaudit
 **Status:** Planning only, awaiting Reed review

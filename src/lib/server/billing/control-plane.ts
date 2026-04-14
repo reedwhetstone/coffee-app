@@ -127,11 +127,7 @@ export function buildSubscriptionControlPlaneState(input: {
 
 	const apiTone: ControlPlaneTone = input.apiPlan === 'viewer' ? 'muted' : 'success';
 	const apiStatusLabel =
-		input.apiPlan === 'enterprise'
-			? 'Parchment API enterprise'
-			: input.apiPlan === 'member'
-				? 'Parchment API active'
-				: 'Explorer';
+		input.apiPlan === 'enterprise' ? 'Enterprise' : input.apiPlan === 'member' ? 'Origin' : 'Green';
 
 	const ppiTone: ControlPlaneTone = input.ppiAccess ? 'success' : 'muted';
 
@@ -163,10 +159,10 @@ export function buildSubscriptionControlPlaneState(input: {
 			tone: apiTone,
 			description:
 				input.apiPlan === 'enterprise'
-					? 'Your account currently resolves to Enterprise-level API access.'
+					? 'Your account currently resolves to Enterprise API access.'
 					: input.apiPlan === 'member'
-						? 'Your account currently resolves to the paid Parchment API plan.'
-						: 'Your account currently resolves to Explorer, the free Parchment API baseline.',
+						? 'Your account currently resolves to Origin, the paid Parchment API tier.'
+						: 'Your account currently resolves to Green, the entry tier for Parchment API.',
 			note: 'Parchment API is managed independently from Mallard Studio membership so product selection and account state stay separate.'
 		},
 		ppi: {

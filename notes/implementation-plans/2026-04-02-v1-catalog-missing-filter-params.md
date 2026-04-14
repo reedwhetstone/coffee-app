@@ -211,7 +211,7 @@ NO_PARAM=$(curl -s "https://www.purveyors.io/v1/catalog?limit=1" \
 2. Add unit tests for `parseCatalogQuery` covering `stocked=true`, `stocked=false`, `stocked=all`, `origin=Ethiopia`
 3. Smoke test each filter manually with live API key (commands above)
 4. Verify no-param requests still return the same feed as today (backward compat)
-5. Verify Explorer tier row limit still applies after filtering (stocked=false + limit check)
+5. Verify Green tier row limit still applies after filtering (stocked=false + limit check)
 
 ---
 

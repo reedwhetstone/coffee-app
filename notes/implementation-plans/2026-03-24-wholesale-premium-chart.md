@@ -8,7 +8,7 @@
 
 ## Feature
 
-Add a "Spread" view to the existing origin line chart that shows the retail-wholesale price spread per origin over time. This is a new tab alongside the existing Retail / Wholesale / All toggles on the PPI member section.
+Add a "Spread" view to the existing origin line chart that shows the retail-wholesale price spread per origin over time. This is a new tab alongside the existing Retail / Wholesale / All toggles on the Parchment Intelligence section.
 
 Instead of plotting absolute prices, the Spread view plots the percentage premium that retail commands over wholesale for each origin: `(retail_median - wholesale_median) / wholesale_median * 100`.
 
@@ -27,7 +27,7 @@ This is genuinely differentiated market intelligence. No other green coffee data
 
 ## Data Source
 
-Already available: `price_index_snapshots` table has both `wholesale_only = true` and `wholesale_only = false` rows for each origin+date. The data is already loading for PPI members.
+Already available: `price_index_snapshots` table has both `wholesale_only = true` and `wholesale_only = false` rows for each origin+date. The data is already loading for Parchment Intelligence users.
 
 No new queries needed. The computation is purely client-side: pair up retail and wholesale rows by origin+date, compute the spread.
 
@@ -94,7 +94,7 @@ When "Spread" is selected:
      - Tooltip format changes to show spread + both prices
 
 3. **`src/routes/analytics/+page.server.ts`**
-   - No changes needed. Data already loads for PPI members.
+   - No changes needed. Data already loads for Parchment Intelligence users.
 
 ### Spread Computation (in `+page.svelte`)
 
@@ -163,7 +163,7 @@ The chart component needs to handle two modes. Rather than forking the entire co
 
 ### In scope
 
-- "Spread" tab on the origin line chart (PPI member section)
+- "Spread" tab on the origin line chart (Parchment Intelligence section)
 - Client-side spread computation from existing snapshot data
 - Modified Y-axis, tooltip, and zero-line in spread mode
 - Same origin selector behavior as other tabs

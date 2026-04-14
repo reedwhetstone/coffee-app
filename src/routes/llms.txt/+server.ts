@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 ## Public Pages
 
-- [Market Analytics](${baseUrl}/analytics): Live green coffee price trends by origin, processing method distribution, origin price ranges. Updated daily from the Purveyors Price Index (PPI).
+- [Market Analytics](${baseUrl}/analytics): Live green coffee price trends by origin, processing method distribution, origin price ranges. Updated daily from the live Purveyors market data pipeline.
 - [Coffee Catalog](${baseUrl}/catalog): Browse 1,200+ specialty and commercial green coffees from 39 suppliers with origin, processing, altitude, tasting notes, and pricing.
 - [Blog](${baseUrl}/blog): Coffee intelligence, AI-first product development, supply chain analysis. 10+ articles on coffee data, market structure, and technology.
 

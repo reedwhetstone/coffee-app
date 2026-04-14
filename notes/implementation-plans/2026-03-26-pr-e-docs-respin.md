@@ -1,10 +1,12 @@
 # PR E Execution Plan: Docs Respin After Architecture Correction
 
+> **Superseded context note (2026-04-13):** This plan captures a transitional docs rewrite target from the March platform sequence. Keep it for history, but do not reuse its umbrella naming blindly. Current docs and product copy should follow the naming in `notes/README.md` and `notes/PRODUCT_VISION.md`.
+
 **Goal:** Replace the conflicted PR #178 work with docs that describe the now-true product architecture.
 
 ## Scope
 - Re-author the docs refresh against post-PR A/B/C/D reality
-- Use Parchment Platform / Parchment API / Parchment CLI / Parchment Console naming consistently
+- Use the then-current developer/docs naming consistently; for any new work today, prefer current canonical naming from `notes/README.md`
 - Public docs only under `/docs`
 - Clarify canonical API contracts vs internal orchestration surfaces
 - Align coffee-app docs with purveyors-cli PR #58 where overlapping concepts exist

@@ -70,16 +70,16 @@ const BILLING_CATALOG: Record<BillingPurchaseKey, BillingCatalogEntry> = {
 		purchaseKey: BILLING_PURCHASE_KEYS.apiPlanExplorer,
 		productFamily: 'api_plan',
 		stripePriceId: null,
-		planName: 'Explorer',
-		displayName: 'Explorer',
+		planName: 'Green',
+		displayName: 'Green',
 		publicProductName: 'Parchment API',
-		publicPlanName: 'Explorer',
+		publicPlanName: 'Green',
 		interval: 'default',
 		billingKind: 'default',
 		selfServe: false,
 		isDefaultFreeTier: true,
 		showOnSubscription: true,
-		ctaLabel: 'Start with Explorer',
+		ctaLabel: 'Start with Green',
 		grants: {
 			apiPlan: 'viewer'
 		}
@@ -88,16 +88,16 @@ const BILLING_CATALOG: Record<BillingPurchaseKey, BillingCatalogEntry> = {
 		purchaseKey: BILLING_PURCHASE_KEYS.apiPlanMonthly,
 		productFamily: 'api_plan',
 		stripePriceId: 'price_1TLTecKwI9NkGqAn07hkozWj',
-		planName: 'Parchment API',
-		displayName: 'Parchment API monthly',
+		planName: 'Origin',
+		displayName: 'Origin monthly',
 		publicProductName: 'Parchment API',
-		publicPlanName: 'Parchment API',
+		publicPlanName: 'Origin',
 		interval: 'month',
 		billingKind: 'stripe',
 		selfServe: true,
 		isDefaultFreeTier: false,
 		showOnSubscription: true,
-		ctaLabel: 'Upgrade to Parchment API',
+		ctaLabel: 'Upgrade to Origin',
 		grants: {
 			apiPlan: 'member'
 		}

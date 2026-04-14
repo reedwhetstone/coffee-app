@@ -425,8 +425,14 @@ const docsPages: DocsPage[] = [
 				table: {
 					headers: ['Marketed plan', 'Code key', 'Monthly requests', 'Rows per call', 'Notes'],
 					rows: [
-						['Explorer', 'viewer', '200', '25', 'Best for evaluation and prototypes.'],
-						['Parchment API', 'member', '10,000', 'Unlimited', 'Self-serve paid plan for production integrations and sync jobs.'],
+						['Green', 'viewer', '200', '25', 'Best for evaluation and prototypes.'],
+						[
+							'Origin',
+							'member',
+							'10,000',
+							'Unlimited',
+							'Self-serve paid tier for production integrations and sync jobs.'
+						],
 						[
 							'Enterprise',
 							'enterprise',
@@ -437,7 +443,7 @@ const docsPages: DocsPage[] = [
 					]
 				},
 				bullets: [
-					'The public docs use marketed plan names, while API responses and server code use apiPlan keys viewer, member, and enterprise.',
+					'The public docs use marketed tier names Green, Origin, and Enterprise, while API responses and server code use apiPlan keys viewer, member, and enterprise.',
 					'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset are only emitted for API-key responses.',
 					'429 responses also include Retry-After.',
 					'Anonymous and session-based catalog requests are not counted against an API-key quota and therefore do not receive those headers.'
