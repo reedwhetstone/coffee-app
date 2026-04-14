@@ -1210,7 +1210,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'For external catalog access, prefer /v1/catalog. Use an API key for machine-to-machine access or authenticate the CLI with purvey auth login.',
 					'GET /api/beans with no session and no valid share token returns an empty data array, not a 401. Do not mistake that behavior for public inventory access.',
-					'Catalog rate-limit headers only exist on API-key requests. Anonymous and session requests to /v1/catalog do not emit X-RateLimit-* headers.',
+					'Anonymous and session requests to /v1/catalog do not emit X-RateLimit-* headers. API-key header support is rolling out, so rely on Parchment Console usage visibility as the source of truth until the live contract is fully consistent.',
 					'An invalid Authorization header on the public catalog can turn what looks like an anonymous request into a 401 because the route detects an auth attempt that failed.',
 					'Cookies only matter when they resolve to a valid first-party session. A stray Cookie header is not part of the public API contract.',
 					'/api/catalog-api is a deprecated API-key-only alias. It should not be treated as an anonymous or session-friendly discovery route.',
@@ -1224,7 +1224,7 @@ const docsPages: DocsPage[] = [
 					'External integration failing? Confirm it is calling /v1/catalog, not an internal /api/* route.',
 					'Getting a 400 on catalog? Double-check date inputs like stocked_date=YYYY-MM-DD and any other validated query params.',
 					'Unexpected 403 on product routes? Check role and ownership assumptions before debugging auth cookies.',
-					'Hit a 429 on catalog? Inspect X-RateLimit-* and Retry-After or upgrade the plan in the Parchment Console.',
+					'Hit a 429 on catalog? Check the Parchment Console for current usage and tier limits; once the live header rollout is fully consistent, X-RateLimit-* and Retry-After should become the request-level signal.',
 					'Need to validate workflows outside the browser? The CLI is usually the cleanest supported interface.'
 				]
 			}
