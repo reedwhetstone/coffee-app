@@ -36,15 +36,14 @@
 <section id="pricing" class="bg-background-secondary-light py-24 sm:py-32">
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-4xl text-center">
-			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Products</h2>
+			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Choose your path</h2>
 			<p class="mt-2 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-				Choose the coffee workflow, data, or intelligence layer you need
+				Start with the catalog, then pick the layer that fits your work
 			</p>
 		</div>
 		<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-text-secondary-light">
-			Start with the public catalog, then follow the path that matches your job to be done: Mallard
-			Studio for workflow and membership, Parchment API for developer access, or Parchment
-			Intelligence for analytics and market context.
+			Purveyors is organized around three clear jobs: buy better coffee, run better workflows, and use
+			better coffee data. Pick the product that matches what you need right now.
 		</p>
 
 		<div
@@ -63,8 +62,8 @@
 						<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Mallard Studio</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						For roasters and operators who want sourcing, inventory, roast, tasting, and workflow
-						tools in one operating environment.
+						For roasting teams that want sourcing notes, inventory, roast records, tasting, and daily
+						workflow in one place.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-1">
 						<span class="text-4xl font-bold tracking-tight text-text-primary-light">$9</span>
@@ -72,9 +71,9 @@
 					</p>
 					<p class="mt-2 text-sm text-text-secondary-light">Or $80/year for Studio Member.</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
-						<li class="flex gap-x-3">Workflow tools for inventory, roasting, and tasting</li>
-						<li class="flex gap-x-3">Saved sourcing research and operating context</li>
-						<li class="flex gap-x-3">AI help and production workflow support</li>
+						<li class="flex gap-x-3">Inventory, roast, and tasting workflows</li>
+						<li class="flex gap-x-3">Saved sourcing context for your team</li>
+						<li class="flex gap-x-3">AI help inside day-to-day operations</li>
 					</ul>
 				</div>
 				<button
@@ -84,7 +83,7 @@
 					}}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
-					{isSignedIn ? 'Manage Studio options' : 'See Mallard Studio'}
+					{isSignedIn ? 'Manage Studio' : 'See plans'}
 				</button>
 			</div>
 
@@ -104,12 +103,12 @@
 						<p
 							class="rounded-full bg-background-tertiary-light/10 px-2.5 py-1 text-xs font-semibold leading-5 text-background-tertiary-light"
 						>
-							For apps and agents
+							For apps and integrations
 						</p>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						Explore the developer surface and documentation today, then choose the tier that fits your
-						data depth and rollout stage.
+						For teams that want structured green coffee data inside internal tools, customer products, or
+						automations.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-2">
 						<span class="rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">Green</span>
@@ -117,13 +116,13 @@
 						<span class="rounded-full bg-border-light px-3 py-1 text-xs font-semibold uppercase tracking-wide text-text-secondary-light">Enterprise</span>
 					</p>
 					<p class="mt-3 text-sm text-text-secondary-light">
-						Green and Origin are the current self-serve evaluation path. Enterprise is contact-sales
-						only.
+						Start with self-serve evaluation, then move into higher-coverage or enterprise access as your
+						use case grows.
 					</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
-						<li class="flex gap-x-3">Machine-readable coffee data for developers</li>
-						<li class="flex gap-x-3">Green for core access, Origin for richer coverage and analytics</li>
-						<li class="flex gap-x-3">Enterprise for sales-assisted production and custom rollout</li>
+						<li class="flex gap-x-3">Structured coffee data for product and ops teams</li>
+						<li class="flex gap-x-3">Clear path from evaluation to production use</li>
+						<li class="flex gap-x-3">Enterprise support for larger deployments</li>
 					</ul>
 				</div>
 				<button
@@ -133,7 +132,7 @@
 					}}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
-					View API overview
+					Get API access
 				</button>
 			</div>
 
@@ -152,21 +151,19 @@
 						</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						See the analytics and market-intelligence surface that is already live today, with
-						premium intelligence layers built around deeper analysis.
+						For buyers and operators who want clearer visibility into pricing movement, supplier behavior,
+						and market changes.
 					</p>
 					<p class="mt-6 text-sm font-semibold uppercase tracking-wide text-text-secondary-light">
-						Premium analytics
+						Market visibility
 					</p>
 					<p class="mt-2 text-sm text-text-secondary-light">
-						Use the live market data surface now, then layer in premium intelligence as packaging
-						matures. Arrivals and delistings belong to that premium analytics path, not the public free
-						baseline.
+						Use the live analytics surface today, then go deeper as premium intelligence packaging expands.
 					</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
-						<li class="flex gap-x-3">Live market data and sourcing visibility today</li>
-						<li class="flex gap-x-3">Premium analytics for deeper market context</li>
-						<li class="flex gap-x-3">Arrivals and delistings as premium intelligence features</li>
+						<li class="flex gap-x-3">Clearer pricing and availability visibility</li>
+						<li class="flex gap-x-3">Faster detection of market changes</li>
+						<li class="flex gap-x-3">Confidence built on normalized underlying data</li>
 					</ul>
 				</div>
 				<button
@@ -176,7 +173,7 @@
 					}}
 					class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 				>
-					View market data
+					View analytics
 				</button>
 			</div>
 
@@ -193,17 +190,16 @@
 						<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Enterprise</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						For custom integrations, embedded analytics, commercial support, and sales-led
-						partnerships.
+						For custom delivery, embedded data experiences, support commitments, and larger commercial
+						buying needs.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-1">
-						<span class="text-2xl font-bold tracking-tight text-text-primary-light">Talk to us</span
-						>
+						<span class="text-2xl font-bold tracking-tight text-text-primary-light">Talk to us</span>
 					</p>
 					<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
-						<li class="flex gap-x-3">Custom delivery patterns and integrations</li>
-						<li class="flex gap-x-3">Embedded analytics and internal dashboards</li>
-						<li class="flex gap-x-3">Support for larger commercial workflows</li>
+						<li class="flex gap-x-3">Custom integrations and delivery patterns</li>
+						<li class="flex gap-x-3">Embedded data and internal reporting use cases</li>
+						<li class="flex gap-x-3">Commercial support for larger teams</li>
 					</ul>
 				</div>
 				<button

@@ -2,15 +2,15 @@
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-2xl lg:text-center">
 			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
-				Coffee intelligence platform
+				Built for coffee buyers and roasting teams
 			</h2>
 			<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-				Start with live sourcing data, then go deeper
+				Know what is available, what fits, and what to do next
 			</p>
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				Purveyors turns fragmented supplier listings, roast history, and machine-friendly catalog
-				data into practical decisions for roasters, buyers, and developers. Public discovery is
-				built in, and the deeper workflows are ready when you need them.
+				Purveyors brings live supplier availability, sourcing context, and team workflows into one
+				clear path, so you can move from research to decision without juggling tabs, spreadsheets,
+				and disconnected tools.
 			</p>
 		</div>
 		<div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
@@ -36,13 +36,12 @@
 								/>
 							</svg>
 						</div>
-						Live Green Coffee Catalog
+						Compare live offerings faster
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Browse normalized coffee listings from trusted suppliers with recent arrivals, origin,
-							processing, score, and pricing data in one place. Public catalog access lets the
-							product prove its value before you sign up.
+							Browse current coffees across suppliers with normalized origin, process, score, and pricing
+							data, so your shortlist starts with clean information instead of manual cleanup.
 						</p>
 					</dd>
 				</div>
@@ -68,13 +67,12 @@
 								/>
 							</svg>
 						</div>
-						AI Sourcing and QA Assistant
+						Get buying help with context
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Ask for coffees that fit a profile, compare recent arrivals, or diagnose roast issues
-							with context from the catalog and your operating data. The assistant is built to help
-							you decide, not just search.
+							Ask better sourcing questions, compare similar coffees, and sanity-check roast or menu
+							choices with an assistant grounded in the catalog and your operating context.
 						</p>
 					</dd>
 				</div>
@@ -100,13 +98,12 @@
 								/>
 							</svg>
 						</div>
-						Developer API Access
+						Connect the data to your tools
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Use the canonical catalog API to power automations, integrations, and agent workflows.
-							The same data layer serves the web app, CLI, and external consumers, which keeps the
-							platform honest.
+							Use the API when you need structured coffee data inside apps, automations, and internal
+							dashboards without rebuilding the catalog yourself.
 						</p>
 					</dd>
 				</div>
@@ -137,12 +134,12 @@
 								/>
 							</svg>
 						</div>
-						Roast Tracking and QA Workflows
+						Keep sourcing tied to production
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Move from sourcing research into production workflows without switching systems. Track
-							roasts, compare outcomes, and keep quality context tied back to the coffees you buy.
+							Move from shortlist to roast and tasting workflows without losing the context behind why you
+							bought a coffee in the first place.
 						</p>
 					</dd>
 				</div>
@@ -168,12 +165,12 @@
 								/>
 							</svg>
 						</div>
-						Advanced Coffee Analytics
+						See the market more clearly
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Spot pricing shifts, supplier patterns, and roast consistency trends earlier.
-							Purveyors is built to help operators make better calls with less guesswork.
+							Track pricing movement, supplier activity, and availability changes with clearer visibility,
+							so you can make sourcing calls earlier and with more confidence.
 						</p>
 					</dd>
 				</div>
@@ -199,13 +196,12 @@
 								/>
 							</svg>
 						</div>
-						Artisan Integration
+						Fit into the way you already work
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Bring roast logs in quickly, keep your existing workflow, and connect sourcing
-							decisions to roast outcomes over time. The point is leverage, not forcing a tool
-							migration.
+							Bring in roast logs, keep your existing process where it still works, and add structure only
+							where it helps your team move faster.
 						</p>
 					</dd>
 				</div>
