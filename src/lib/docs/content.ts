@@ -131,7 +131,7 @@ export const DOCS_NAV: DocsNavSection[] = [
 			{
 				slug: 'catalog',
 				title: 'Catalog',
-				summary: 'Search the public catalog from your terminal.'
+				summary: 'Search the catalog from your terminal with an authenticated viewer session.'
 			},
 			{
 				slug: 'inventory',
@@ -273,7 +273,7 @@ const docsPages: DocsPage[] = [
 							'Session GET /v1/catalog',
 							'First-party product reads that share the canonical resource',
 							'Valid Purveyors session cookie',
-							'Viewer sessions stay public-only. Member and admin sessions may unlock richer in-app visibility.'
+							'Viewer sessions stay public-only. Member and admin sessions may unlock richer in-app visibility. First-party product path only; not the recommended external integration mode.'
 						],
 						[
 							'purvey catalog',
@@ -473,7 +473,7 @@ const docsPages: DocsPage[] = [
 							'Session /v1/catalog',
 							'First-party product reads',
 							'Session-dependent app headers only',
-							'Viewer stays public-only; member/admin may see richer in-app visibility'
+							'Viewer stays public-only; member/admin may see richer in-app visibility. First-party product path only.'
 						],
 						[
 							'GET /api/catalog-api',
