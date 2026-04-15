@@ -178,7 +178,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Parchment Platform',
 		intro: [
 			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data through a small public HTTP contract and a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
-			'The stable public contract is GET /v1/catalog. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
+			'The stable public contract is GET /v1/catalog. Anonymous requests are supported for public discovery, while API-key requests are the intended production integration path because they carry plan enforcement and X-RateLimit-* usage headers. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
@@ -237,9 +237,9 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Authentication model',
 				bullets: [
-					'GET /v1/catalog supports anonymous requests for public-only catalog discovery.',
+					'GET /v1/catalog supports anonymous requests for public-only catalog discovery. Anonymous callers get the same public payload shape, but no API-key billing, quota, or X-RateLimit-* usage headers.',
 					'GET /v1/catalog also supports first-party session requests. Viewer sessions stay public-only; member and admin sessions may unlock richer in-app visibility.',
-					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API-key requests stay public-only, use plan-based limits, and are the only catalog requests that receive X-RateLimit-* headers.',
+					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API-key requests stay public-only, use plan-based limits, and are the intended production path for server-to-server integrations.',
 					'GET /api/catalog-api is a deprecated legacy alias to /v1/catalog, but it remains API-key-only for backward-compatible machine access.',
 					'Cookies only matter when they resolve to a valid first-party session. A raw Cookie header is not part of the public API contract.',
 					'Inventory share links are the one notable anonymous data exception on the product side: GET /api/beans?share=... can return a scoped inventory view without a user session.'
@@ -251,6 +251,38 @@ const docsPages: DocsPage[] = [
 						code: 'curl https://purveyors.io/v1/catalog \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
 					}
 				]
+			},
+			{
+				title: 'Choose the right access mode',
+				table: {
+					headers: ['Surface', 'Best for', 'Auth', 'Operational contract'],
+					rows: [
+						[
+							'Anonymous GET /v1/catalog',
+							'Public discovery, quick evaluation, and proof-of-value embeds',
+							'None',
+							'Public-only data. No X-RateLimit-* headers or API-key usage accounting.'
+						],
+						[
+							'API-key GET /v1/catalog',
+							'Production integrations, sync jobs, and server-to-server tooling',
+							'Authorization: Bearer <api_key>',
+							'Public-only data with plan enforcement, X-RateLimit-* headers, and stable HTTP compatibility guarantees.'
+						],
+						[
+							'Session GET /v1/catalog',
+							'First-party product reads that share the canonical resource',
+							'Valid Purveyors session cookie',
+							'Viewer sessions stay public-only. Member and admin sessions may unlock richer in-app visibility.'
+						],
+						[
+							'purvey catalog',
+							'Terminal workflows, account-linked agents, and stable command automation',
+							'Authenticated viewer session',
+							'CLI contract with explicit auth prompts and predictable stdout/stderr behavior. Use HTTP instead when anonymous or API-key access is the goal.'
+						]
+					]
+				}
 			},
 			{
 				title: 'How the product surfaces connect',
@@ -295,7 +327,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Public endpoint',
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, processing method, pricing, price tiers, and availability metadata.',
-			'The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous and viewer-session requests are public-only. Member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the only ones that receive X-RateLimit-* headers. When page and limit are both omitted, the canonical listing response defaults to page 1 and up to 100 rows before any plan-based cap is applied.'
+			'The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous and viewer-session requests are public-only. Member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the only ones that receive X-RateLimit-* headers. Use anonymous access for discovery and proof-of-value. Use API keys for production integrations that need quota visibility and a durable machine contract. When page and limit are both omitted, the canonical listing response defaults to page 1 and up to 100 rows before any plan-based cap is applied.'
 		],
 		sections: [
 			{
@@ -417,6 +449,38 @@ const docsPages: DocsPage[] = [
 						],
 						['sortField', 'string', 'arrival_date', 'Sort field for non-ID queries.'],
 						['sortDirection', 'asc | desc', 'desc', 'Sort direction for non-ID queries.']
+					]
+				}
+			},
+			{
+				title: 'Access mode comparison',
+				table: {
+					headers: ['Mode', 'Best for', 'Headers', 'Data scope'],
+					rows: [
+						[
+							'Anonymous /v1/catalog',
+							'Discovery, evaluation, and public embeds',
+							'Cache-Control only',
+							'Public-only catalog data'
+						],
+						[
+							'API-key /v1/catalog',
+							'Production integrations and accounted usage',
+							'Cache-Control plus X-RateLimit-*',
+							'Public-only catalog data'
+						],
+						[
+							'Session /v1/catalog',
+							'First-party product reads',
+							'Session-dependent app headers only',
+							'Viewer stays public-only; member/admin may see richer in-app visibility'
+						],
+						[
+							'GET /api/catalog-api',
+							'Legacy API-key callers during migration',
+							'Deprecation, Sunset, Link, plus X-RateLimit-*',
+							'Public-only catalog data via deprecated alias'
+						]
 					]
 				}
 			},
@@ -1260,7 +1324,7 @@ const docsPages: DocsPage[] = [
 			'The Parchment CLI is a terminal interface for catalog queries, inventory management, roasting workflows, scripting, and agent automation.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session. Inventory, roast, sales, and tasting commands additionally require the member role.',
+			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session even though GET /v1/catalog supports anonymous and API-key access. Inventory, roast, sales, and tasting commands additionally require the member role.',
 			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. context prints dense human-readable reference text by default, while manifest emits the machine-readable contract directly.'
 		],
 		sections: [
@@ -1304,7 +1368,7 @@ const docsPages: DocsPage[] = [
 					tone: 'note',
 					title:
 						'Catalog commands are authenticated, even though the HTTP API supports anonymous reads',
-					body: 'The CLI intentionally requires a signed-in viewer session for catalog commands. For anonymous or API-key-based integrations, use GET /v1/catalog instead of shelling out to the CLI.'
+					body: 'The CLI intentionally requires a signed-in viewer session for catalog commands so terminal workflows stay account-linked and predictable. For anonymous discovery or API-key production integrations, use GET /v1/catalog instead of shelling out to the CLI.'
 				}
 			},
 			{
@@ -1318,10 +1382,33 @@ const docsPages: DocsPage[] = [
 			},
 			{
 				title: 'When to use the CLI vs. the API vs. the web app',
+				table: {
+					headers: ['Surface', 'Choose it when', 'Auth expectation'],
+					rows: [
+						[
+							'purvey catalog',
+							'A terminal, script, or agent is acting on behalf of a signed-in account',
+							'Viewer session required'
+						],
+						[
+							'Anonymous GET /v1/catalog',
+							'The goal is public discovery, evaluation, or a zero-setup demo',
+							'None'
+						],
+						[
+							'API-key GET /v1/catalog',
+							'The integration needs production usage visibility, quotas, or server-to-server auth',
+							'Bearer API key required'
+						],
+						[
+							'Web app',
+							'A human wants visual exploration, dashboards, or account workflows',
+							'Browser session as needed'
+						]
+					]
+				},
 				bullets: [
-					'Use the CLI for scripts, terminal-first operations, and agent workflows that benefit from a stable documented command surface.',
-					'Use GET /v1/catalog for external integrations that need a stable HTTP contract, anonymous access, or API-key auth without a stored user session.',
-					'Use the web app for charts, dashboards, and interactive exploration.'
+					'CLI login is intentional product behavior, not a contradiction of the HTTP API. The CLI is an account-linked tool surface; /v1/catalog is the public network surface.'
 				]
 			}
 		],
@@ -1436,11 +1523,11 @@ const docsPages: DocsPage[] = [
 		slug: 'catalog',
 		title: 'CLI catalog commands',
 		summary:
-			'Search and browse the green coffee catalog from your terminal. Authentication required.',
+			'Search and browse the green coffee catalog from your terminal with an authenticated viewer session.',
 		eyebrow: 'Catalog data',
 		intro: [
-			'Catalog commands are the fastest way to explore the green coffee feed from the terminal. They require an authenticated viewer session; run purvey auth login before using them.',
-			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. See the CLI overview for install and login instructions.'
+			'Catalog commands are the fastest way to explore the green coffee feed from the terminal when the workflow is tied to a signed-in account. They require an authenticated viewer session; run purvey auth login before using them.',
+			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. If the goal is anonymous discovery or API-key integration, use GET /v1/catalog instead. See the CLI overview for install and login instructions.'
 		],
 		sections: [
 			{
