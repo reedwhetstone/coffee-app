@@ -58,8 +58,7 @@
 
 			if (response.ok) {
 				const newSale = await response.json();
-				onSubmit(newSale);
-				onClose();
+				await onSubmit(newSale);
 			} else {
 				const data = await response.json();
 				alert(`Failed to ${isUpdate ? 'update' : 'create'} sale: ${data.error}`);
