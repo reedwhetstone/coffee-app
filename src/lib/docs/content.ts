@@ -327,7 +327,8 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Public endpoint',
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, processing method, pricing, price tiers, and availability metadata.',
-			'The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous and viewer-session requests are public-only. Member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the only ones that receive X-RateLimit-* headers. Use anonymous access for discovery and proof-of-value. Use API keys for production integrations that need quota visibility and a durable machine contract. When page and limit are both omitted, the canonical listing response defaults to page 1 and up to 100 rows before any plan-based cap is applied.'
+			'The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous and viewer-session requests are public-only. Member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the only ones that receive X-RateLimit-* headers. Use anonymous access for discovery and proof-of-value. Use API keys for production integrations that need quota visibility and a durable machine contract.',
+			'Anonymous /v1/catalog requests are intentionally narrower than authenticated ones: they always stay on page 1, default to stocked=true, default to sortField=stocked_date with sortDirection=desc, allow only the name, country, and processing filters, reject ids and fields=dropdown, and cap the default listing response at 100 rows only when page and limit are both omitted. If page is supplied without limit, the route falls back to 15 rows. Anonymous callers cannot opt into any non-default sort.'
 		],
 		sections: [
 			{
@@ -348,7 +349,7 @@ const docsPages: DocsPage[] = [
 				title: 'Request and response',
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
-					'Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans are uncapped at the row level. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.',
+					'Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans are uncapped at the row level. Anonymous requests use the public-only anonymous contract. Viewer sessions keep the same public-only visibility but can still use the broader parameter surface. Privileged member sessions may explicitly enable wholesale visibility.',
 					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
 				],
 				codeBlocks: [
@@ -362,7 +363,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Query parameters',
 				body: [
-					'If page is supplied without limit, the route uses a 15-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the 100-row default listing contract.',
+					'If page is supplied without limit, the route uses a 15-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the 100-row default listing contract. Anonymous callers still remain constrained to the first page and the default stocked_date desc sort.',
 					'Malformed numeric params now fail closed with 400 responses instead of silently falling back. That applies to page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases.'
 				],
 				table: {
@@ -393,8 +394,8 @@ const docsPages: DocsPage[] = [
 							'true',
 							'Filter to stocked-only, unstocked-only, or the full catalog.'
 						],
-						['origin', 'string', '—', 'Partial match across continent, country, and region.'],
-						['country', 'string', '—', 'Exact match on country.'],
+						['origin', 'string', '—', 'Partial match across continent, country, and region. Authenticated callers can use it freely; anonymous callers should prefer country, name, and processing because those are the only supported anonymous filters.'],
+						['country', 'string', '—', 'Exact match on country. Supported for anonymous and authenticated callers.'],
 						['continent', 'string', '—', 'Exact match on continent.'],
 						[
 							'source',
@@ -402,9 +403,9 @@ const docsPages: DocsPage[] = [
 							'—',
 							'Repeat to filter across multiple supplier slugs.'
 						],
-						['processing', 'string', '—', 'Partial match on processing method.'],
-						['name', 'string', '—', 'Partial match on coffee name.'],
-						['region', 'string', '—', 'Partial match on region.'],
+						['processing', 'string', '—', 'Partial match on processing method. Supported for anonymous and authenticated callers.'],
+						['name', 'string', '—', 'Partial match on coffee name. Supported for anonymous and authenticated callers.'],
+						['region', 'string', '—', 'Partial match on region. Authenticated-only for guaranteed contract support.'],
 						['cultivar_detail', 'string', '—', 'Partial match on cultivar or variety detail.'],
 						['type', 'string', '—', 'Partial match on type.'],
 						['grade', 'string', '—', 'Partial match on grade.'],
@@ -448,8 +449,8 @@ const docsPages: DocsPage[] = [
 							'false',
 							'Requires showWholesale=true and a privileged member session.'
 						],
-						['sortField', 'string', 'arrival_date', 'Sort field for non-ID queries.'],
-						['sortDirection', 'asc | desc', 'desc', 'Sort direction for non-ID queries.']
+						['sortField', 'string', 'arrival_date for authenticated callers; stocked_date for anonymous callers', 'Sort field for non-ID queries. Anonymous requests only accept the default stocked_date sort.'],
+						['sortDirection', 'asc | desc', 'desc', 'Sort direction for non-ID queries. Anonymous requests only accept desc.']
 					]
 				}
 			},
