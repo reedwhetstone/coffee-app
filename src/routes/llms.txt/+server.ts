@@ -20,10 +20,12 @@ export const GET: RequestHandler = async ({ url }) => {
 - [Coffee Catalog](${baseUrl}/catalog): Browse 1,200+ specialty and commercial green coffees from 39 suppliers with origin, processing, altitude, tasting notes, and pricing.
 - [Blog](${baseUrl}/blog): Coffee intelligence, AI-first product development, supply chain analysis. 10+ articles on coffee data, market structure, and technology.
 
-## API
+## API and Docs
 
-- [Parchment API](${baseUrl}/api): Public catalog API, Parchment Console, and unified docs.
-- [Parchment Console](${baseUrl}/api-dashboard): API keys, usage analytics, and docs access for Parchment API.
+- [Parchment API](${baseUrl}/api): Public API overview, product positioning, and entry point for Parchment API.
+- [Developer Docs](${baseUrl}/docs): Canonical public docs for the HTTP API, CLI, auth contexts, and integration guides.
+- [Catalog API Docs](${baseUrl}/docs/api/catalog): Canonical contract for GET /v1/catalog, including anonymous and API-key usage.
+- [Parchment Console](${baseUrl}/api-dashboard): Authenticated console for API keys, usage analytics, and billing state.
 
 ## Blog Posts
 
