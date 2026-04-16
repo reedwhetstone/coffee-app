@@ -124,6 +124,8 @@ const ANONYMOUS_ALLOWED_FILTER_PARAMS = ['country', 'processing', 'name'] as con
 const ANONYMOUS_ALLOWED_QUERY_PARAMS = new Set<string>([
 	'page',
 	'limit',
+	'sortField',
+	'sortDirection',
 	...ANONYMOUS_ALLOWED_FILTER_PARAMS
 ]);
 
