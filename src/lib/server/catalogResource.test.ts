@@ -177,7 +177,14 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(response.status).toBe(200);
 		expect(body.meta.auth.kind).toBe('anonymous');
 		expect(body.meta.access.publicOnly).toBe(true);
-		expect(body.pagination).toMatchObject({ page: 1, limit: 15, total: 250, totalPages: 17 });
+		expect(body.pagination).toMatchObject({
+			page: 1,
+			limit: 15,
+			total: 250,
+			totalPages: 1,
+			hasNext: false,
+			hasPrev: false
+		});
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
@@ -220,7 +227,14 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(response.status).toBe(200);
 		expect(body.meta.access.rowLimit).toBeNull();
 		expect(body.meta.access.limited).toBe(false);
-		expect(body.pagination).toMatchObject({ page: 1, limit: 3, total: 1137, totalPages: 379 });
+		expect(body.pagination).toMatchObject({
+			page: 1,
+			limit: 3,
+			total: 1137,
+			totalPages: 1,
+			hasNext: false,
+			hasPrev: false
+		});
 	});
 
 	it('caps anonymous limits at 15 rows', async () => {
@@ -247,7 +261,14 @@ describe('buildCanonicalCatalogResponse', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(body.pagination).toMatchObject({ page: 1, limit: 15, total: 1137, totalPages: 76 });
+		expect(body.pagination).toMatchObject({
+			page: 1,
+			limit: 15,
+			total: 1137,
+			totalPages: 1,
+			hasNext: false,
+			hasPrev: false
+		});
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({

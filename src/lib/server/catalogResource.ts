@@ -572,6 +572,7 @@ async function queryCatalogData(
 	const totalAvailable = result.count || result.data.length;
 	const fullRows = result.data.map(toCatalogResourceItem);
 	const data = !isPaginated && context.rowLimit ? fullRows.slice(0, context.rowLimit) : fullRows;
+	const anonymousTeaserPagination = context.authKind === 'anonymous' && isPaginated;
 	const totalPages = isPaginated ? Math.ceil(totalAvailable / effectiveLimit) : 0;
 
 	return {
@@ -581,9 +582,9 @@ async function queryCatalogData(
 					page,
 					limit: effectiveLimit,
 					total: totalAvailable,
-					totalPages,
-					hasNext: page < totalPages,
-					hasPrev: page > 1
+					totalPages: anonymousTeaserPagination ? 1 : totalPages,
+					hasNext: anonymousTeaserPagination ? false : page < totalPages,
+					hasPrev: anonymousTeaserPagination ? false : page > 1
 				}
 			: null,
 		meta: {
