@@ -157,7 +157,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
-	it('applies default pagination to canonical anonymous requests with no explicit page or limit', async () => {
+	it('applies anonymous contract defaults when no explicit page or limit are provided', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
 			primaryAppRole: null,
@@ -177,14 +177,19 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(response.status).toBe(200);
 		expect(body.meta.auth.kind).toBe('anonymous');
 		expect(body.meta.access.publicOnly).toBe(true);
-		expect(body.pagination).toMatchObject({ page: 1, limit: 100, total: 250, totalPages: 3 });
+		expect(body.pagination).toMatchObject({ page: 1, limit: 15, total: 250, totalPages: 17 });
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
 				stockedFilter: true,
 				publicOnly: true,
-				limit: 100,
-				offset: 0
+				country: undefined,
+				processing: undefined,
+				name: undefined,
+				limit: 15,
+				offset: 0,
+				orderBy: 'stocked_date',
+				orderDirection: 'desc'
 			})
 		);
 	});
@@ -218,7 +223,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(body.pagination).toMatchObject({ page: 1, limit: 3, total: 1137, totalPages: 379 });
 	});
 
-	it('respects explicit high limits for canonical requests', async () => {
+	it('caps anonymous limits at 15 rows', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
 			primaryAppRole: null,
@@ -227,7 +232,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		mockIsApiKeyPrincipal.mockReturnValue(false);
 		mockIsSessionPrincipal.mockReturnValue(false);
 		mockSearchCatalog.mockResolvedValue({
-			data: Array.from({ length: 500 }, (_, index) => ({
+			data: Array.from({ length: 15 }, (_, index) => ({
 				...sampleCatalogItem,
 				id: index + 1,
 				name: `Coffee ${index + 1}`
@@ -242,12 +247,14 @@ describe('buildCanonicalCatalogResponse', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(body.pagination).toMatchObject({ page: 1, limit: 500, total: 1137, totalPages: 3 });
+		expect(body.pagination).toMatchObject({ page: 1, limit: 15, total: 1137, totalPages: 76 });
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
-				limit: 500,
-				offset: 0
+				limit: 15,
+				offset: 0,
+				orderBy: 'stocked_date',
+				orderDirection: 'desc'
 			})
 		);
 	});
@@ -298,7 +305,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
-	it('passes stocked_date and stocked_days through as distinct filters', async () => {
+	it('rejects anonymous filters outside the public contract', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
 			primaryAppRole: null,
@@ -307,17 +314,18 @@ describe('buildCanonicalCatalogResponse', () => {
 		mockIsApiKeyPrincipal.mockReturnValue(false);
 		mockIsSessionPrincipal.mockReturnValue(false);
 
-		await buildCanonicalCatalogResponse(
+		const response = await buildCanonicalCatalogResponse(
 			makeEvent('https://app.test/v1/catalog?stocked_date=2026-03-01&stocked_days=30')
 		);
+		const body = await response.json();
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
-			expect.objectContaining({
-				stockedDate: '2026-03-01',
-				stockedDays: 30
-			})
-		);
+		expect(response.status).toBe(400);
+		expect(body).toEqual({
+			error: 'Anonymous catalog contract violation',
+			message: 'Anonymous catalog requests only allow filters: country, processing, name',
+			details: { parameter: 'stocked_date' }
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
 	it('rejects invalid stocked_date values with a structured 400 response', async () => {
@@ -376,6 +384,26 @@ describe('buildCanonicalCatalogResponse', () => {
 			expect(mockSearchCatalog).not.toHaveBeenCalled();
 		}
 	);
+
+	it('rejects anonymous ids, dropdown fields, and deep paging', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		await expect(
+			buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog?ids=1'))
+		).resolves.toMatchObject({ status: 400 });
+		await expect(
+			buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog?fields=dropdown'))
+		).resolves.toMatchObject({ status: 400 });
+		await expect(
+			buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog?page=2'))
+		).resolves.toMatchObject({ status: 400 });
+	});
 
 	it('lets member sessions request wholesale-visible catalog data with the same contract', async () => {
 		mockResolvePrincipal.mockResolvedValue({
