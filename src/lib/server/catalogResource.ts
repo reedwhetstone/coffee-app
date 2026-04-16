@@ -166,17 +166,32 @@ function parsePositiveInteger(value: string | null, fallback: number): number {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function parseOptionalPositiveInteger(value: string | null): number | undefined {
-	if (!value) return undefined;
-	if (!/^\d+$/.test(value)) return undefined;
+function parseStrictPositiveInteger(paramName: string, value: string | null): number | undefined {
+	if (value === null) return undefined;
+	if (!/^\d+$/.test(value)) {
+		throw new CatalogQueryValidationError(paramName, value, 'positive integer');
+	}
 	const parsed = Number.parseInt(value, 10);
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+	if (!Number.isFinite(parsed) || parsed <= 0) {
+		throw new CatalogQueryValidationError(paramName, value, 'positive integer');
+	}
+	return parsed;
 }
 
-function parseOptionalNumber(value: string | null): number | undefined {
-	if (!value) return undefined;
-	const parsed = Number.parseFloat(value);
-	return Number.isFinite(parsed) ? parsed : undefined;
+function parseStrictNumber(paramName: string, value: string | null): number | undefined {
+	if (value === null) return undefined;
+	const trimmed = value.trim();
+	if (trimmed.length === 0) {
+		throw new CatalogQueryValidationError(paramName, value, 'number');
+	}
+	if (!/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(trimmed)) {
+		throw new CatalogQueryValidationError(paramName, value, 'number');
+	}
+	const parsed = Number.parseFloat(trimmed);
+	if (!Number.isFinite(parsed)) {
+		throw new CatalogQueryValidationError(paramName, value, 'number');
+	}
+	return parsed;
 }
 
 function isIsoDateParam(value: string): boolean {
@@ -198,10 +213,15 @@ function validateCatalogQuery(url: URL): void {
 		throw new CatalogQueryValidationError('stocked_date', stockedDate, 'YYYY-MM-DD');
 	}
 
-	const stockedDays = url.searchParams.get('stocked_days');
-	if (stockedDays !== null && parseOptionalPositiveInteger(stockedDays) === undefined) {
-		throw new CatalogQueryValidationError('stocked_days', stockedDays, 'positive integer');
-	}
+	parseStrictPositiveInteger('page', url.searchParams.get('page'));
+	parseStrictPositiveInteger('limit', url.searchParams.get('limit'));
+	parseStrictPositiveInteger('stocked_days', url.searchParams.get('stocked_days'));
+	parseStrictNumber('score_value_min', url.searchParams.get('score_value_min'));
+	parseStrictNumber('score_value_max', url.searchParams.get('score_value_max'));
+	parseStrictNumber('price_per_lb_min', url.searchParams.get('price_per_lb_min'));
+	parseStrictNumber('price_per_lb_max', url.searchParams.get('price_per_lb_max'));
+	parseStrictNumber('cost_lb_min', url.searchParams.get('cost_lb_min'));
+	parseStrictNumber('cost_lb_max', url.searchParams.get('cost_lb_max'));
 }
 
 function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
@@ -211,7 +231,7 @@ function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
 
 function parseOptionalNumberFromAliases(url: URL, ...paramNames: string[]): number | undefined {
 	for (const paramName of paramNames) {
-		const value = parseOptionalNumber(url.searchParams.get(paramName));
+		const value = parseStrictNumber(paramName, url.searchParams.get(paramName));
 		if (value !== undefined) return value;
 	}
 
@@ -261,15 +281,15 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 			appearance: url.searchParams.get('appearance') ?? undefined,
 			name: url.searchParams.get('name') ?? undefined,
 			region: url.searchParams.get('region') ?? undefined,
-			scoreValueMin: parseOptionalNumber(url.searchParams.get('score_value_min')),
-			scoreValueMax: parseOptionalNumber(url.searchParams.get('score_value_max')),
+			scoreValueMin: parseStrictNumber('score_value_min', url.searchParams.get('score_value_min')),
+			scoreValueMax: parseStrictNumber('score_value_max', url.searchParams.get('score_value_max')),
 			// cost_lb_* remains as a deprecated compatibility alias. The actual filter
 			// source of truth is price_per_lb, so prefer the canonical params when present.
 			pricePerLbMin: parseOptionalNumberFromAliases(url, 'price_per_lb_min', 'cost_lb_min'),
 			pricePerLbMax: parseOptionalNumberFromAliases(url, 'price_per_lb_max', 'cost_lb_max'),
 			arrivalDate: url.searchParams.get('arrival_date') ?? undefined,
 			stockedDate: url.searchParams.get('stocked_date') ?? undefined,
-			stockedDays: parseOptionalPositiveInteger(url.searchParams.get('stocked_days'))
+			stockedDays: parseStrictPositiveInteger('stocked_days', url.searchParams.get('stocked_days'))
 		}
 	};
 }

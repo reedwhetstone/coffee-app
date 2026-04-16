@@ -259,6 +259,44 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
+	it.each([
+		['page', 'abc', 'positive integer'],
+		['page', '-1', 'positive integer'],
+		['limit', '3.5', 'positive integer'],
+		['score_value_min', 'seven', 'number'],
+		['score_value_max', '88points', 'number'],
+		['price_per_lb_min', 'cheap', 'number'],
+		['price_per_lb_max', '12usd', 'number'],
+		['cost_lb_min', 'legacy', 'number'],
+		['cost_lb_max', 'legacy-max', 'number'],
+		['stocked_days', 'thirty', 'positive integer']
+	])('rejects invalid numeric query param %s=%s', async (parameter, value, expected) => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent(`https://app.test/v1/catalog?${parameter}=${encodeURIComponent(value)}`)
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body).toEqual({
+			error: 'Invalid query parameter',
+			message: `Query parameter "${parameter}" must use ${expected} format`,
+			details: {
+				parameter,
+				value,
+				expected
+			}
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
 	it('prefers canonical price_per_lb query params for per-pound price filtering', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
@@ -453,6 +491,43 @@ describe('buildCanonicalCatalogResponse', () => {
 			details: { parameter: 'sortField' }
 		});
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
+	it('viewer sessions keep the broader catalog parameter surface while anonymous callers stay teaser-only', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: null,
+			session: { access_token: 'cookie-token' }
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent(
+				'https://app.test/v1/catalog?page=2&limit=10&score_value_min=84&price_per_lb_min=7.25&stocked_days=30&sortField=arrival_date&sortDirection=asc'
+			)
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.meta.auth.kind).toBe('session');
+		expect(body.meta.access.publicOnly).toBe(true);
+		expect(body.pagination).toMatchObject({ page: 2, limit: 10 });
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				publicOnly: true,
+				stockedFilter: true,
+				scoreValueMin: 84,
+				pricePerLbMin: 7.25,
+				stockedDays: 30,
+				orderBy: 'arrival_date',
+				orderDirection: 'asc',
+				limit: 10,
+				offset: 10
+			})
+		);
 	});
 
 	it('lets member sessions request wholesale-visible catalog data with the same contract', async () => {
