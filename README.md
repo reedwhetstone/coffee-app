@@ -47,9 +47,10 @@ Purveyors ships two API layers:
 
 1. **Public external API** (`/v1/*`)
 
-   - `GET /v1` advertises the public namespace
+   - `GET /v1` advertises the public namespace, resource map, and legacy migration hints
    - `GET /v1/catalog` is the stable public contract for external integrations
    - Auth: Bearer API key, web session, or anonymous
+   - Rate-limit headers are only emitted on API-key requests
    - [See API docs](https://purveyors.io/docs/api/overview)
 
 2. **Platform app API** (`/api/*`)
@@ -140,7 +141,7 @@ supabase/                   Supabase-related config and helpers
 
 ### Public catalog and analytics are core product surfaces
 
-The repo is no longer just a logged-in roast tracker. Public catalog discovery and live analytics are central parts of the platform story. Keep README, `/api`, `/docs`, and product copy aligned with that reality.
+The repo is no longer just a logged-in roast tracker. Public catalog discovery and live analytics are central parts of the platform story. Keep README, `/api`, `/docs`, `/api-dashboard`, and product copy aligned with that reality.
 
 ### Internal routes should stay honest about scope
 
