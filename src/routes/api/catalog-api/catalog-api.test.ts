@@ -189,34 +189,52 @@ describe('/api/catalog-api legacy delegate', () => {
 		});
 	});
 
-	it('preserves upstream stocked_days 400 responses while still adding deprecation headers', async () => {
-		const mockResponse = new Response(
-			JSON.stringify({
-				error: 'Invalid query parameter',
-				message: 'Query parameter "stocked_days" must use positive integer format'
-			}),
-			{
-				status: 400,
-				headers: {
-					'Content-Type': 'application/json; charset=utf-8'
+	it.each([
+		['stocked_days', 'abc', 'positive integer'],
+		['limit', 'abc', 'positive integer'],
+		['price_per_lb_min', 'cheap', 'number'],
+		['cost_lb_min', 'cheap', 'number']
+	])(
+		'preserves upstream %s 400 responses while still adding deprecation headers',
+		async (parameter, value, expected) => {
+			const mockResponse = new Response(
+				JSON.stringify({
+					error: 'Invalid query parameter',
+					message: `Query parameter "${parameter}" must use ${expected} format`,
+					details: {
+						parameter,
+						value,
+						expected
+					}
+				}),
+				{
+					status: 400,
+					headers: {
+						'Content-Type': 'application/json; charset=utf-8'
+					}
 				}
-			}
-		);
-		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
+			);
+			vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
-		const response = await GET({
-			url: new URL('https://app.test/api/catalog-api?stocked_days=abc'),
-			request: new Request('https://app.test/api/catalog-api?stocked_days=abc'),
-			locals: {}
-		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
+			const response = await GET({
+				url: new URL(`https://app.test/api/catalog-api?${parameter}=${value}`),
+				request: new Request(`https://app.test/api/catalog-api?${parameter}=${value}`),
+				locals: {}
+			} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
-		expect(response.status).toBe(400);
-		expectLegacyHeaders(response);
-		expect(await response.json()).toEqual({
-			error: 'Invalid query parameter',
-			message: 'Query parameter "stocked_days" must use positive integer format'
-		});
-	});
+			expect(response.status).toBe(400);
+			expectLegacyHeaders(response);
+			expect(await response.json()).toEqual({
+				error: 'Invalid query parameter',
+				message: `Query parameter "${parameter}" must use ${expected} format`,
+				details: {
+					parameter,
+					value,
+					expected
+				}
+			});
+		}
+	);
 
 	it('preserves upstream 429 responses while still adding deprecation headers', async () => {
 		const mockResponse = new Response(
