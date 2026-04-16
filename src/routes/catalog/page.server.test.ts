@@ -31,7 +31,7 @@ beforeEach(async () => {
 
 	mockSearchCatalog.mockResolvedValue({
 		data: catalogRows,
-		count: catalogRows.length,
+		count: 42,
 		filtersApplied: {}
 	});
 	mockBuildPublicMeta.mockImplementation((value) => value);
@@ -48,14 +48,18 @@ beforeEach(async () => {
 	({ load } = await import('./+page.server'));
 });
 
-function makeLoadInput(role: App.Locals['role'], session: App.Locals['session']) {
+function makeLoadInput(
+	role: App.Locals['role'],
+	session: App.Locals['session'],
+	url = 'https://app.test/catalog'
+) {
 	return {
 		locals: {
 			supabase: { kind: 'session-client' },
 			role,
 			session
 		},
-		url: new URL('https://app.test/catalog')
+		url: new URL(url)
 	} as unknown as Parameters<typeof load>[0];
 }
 
@@ -66,6 +70,19 @@ describe('/catalog page load', () => {
 		const result = (await load(makeLoadInput('viewer', viewerSession))) as {
 			data: typeof catalogRows;
 			trainingData: typeof catalogRows;
+			pagination: {
+				page: number;
+				limit: number;
+				total: number;
+				totalPages: number;
+				hasNext: boolean;
+				hasPrev: boolean;
+			};
+			initialCatalogState: {
+				showWholesale: boolean;
+				sortField: string | null;
+				sortDirection: 'asc' | 'desc' | null;
+			};
 		};
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
@@ -75,26 +92,65 @@ describe('/catalog page load', () => {
 				publicOnly: true,
 				showWholesale: false,
 				wholesaleOnly: false,
-				orderBy: 'arrival_date',
-				orderDirection: 'desc',
-				limit: 5
+				limit: 15,
+				offset: 0,
+				orderBy: undefined,
+				orderDirection: undefined
 			})
 		);
 		expect(result.data).toEqual(catalogRows);
 		expect(result.trainingData).toEqual(catalogRows);
+		expect(result.initialCatalogState).toMatchObject({
+			showWholesale: false,
+			sortField: null,
+			sortDirection: null
+		});
+		expect(result.pagination).toEqual({
+			page: 1,
+			limit: 15,
+			total: 42,
+			totalPages: 3,
+			hasNext: true,
+			hasPrev: false
+		});
+	});
+
+	it('hydrates filtered catalog URLs from query params on first load', async () => {
+		await load(
+			makeLoadInput(
+				'viewer',
+				null,
+				'https://app.test/catalog?country=Ethiopia&processing=Washed&name=guji&page=2&sortField=score_value&sortDirection=asc'
+			)
+		);
+
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				country: 'Ethiopia',
+				processing: 'Washed',
+				name: 'guji',
+				limit: 15,
+				offset: 15,
+				orderBy: 'score_value',
+				orderDirection: 'asc'
+			})
+		);
 	});
 
 	it('lets member SSR previews use the internal catalog visibility policy', async () => {
 		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
 
-		await load(makeLoadInput('member', memberSession));
+		await load(
+			makeLoadInput('member', memberSession, 'https://app.test/catalog?showWholesale=true')
+		);
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
 				stockedOnly: true,
 				publicOnly: false,
-				showWholesale: false,
+				showWholesale: true,
 				wholesaleOnly: false
 			})
 		);

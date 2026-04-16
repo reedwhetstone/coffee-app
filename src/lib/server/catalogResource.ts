@@ -79,7 +79,7 @@ interface ParsedCatalogQuery {
 		stocked?: boolean | null; // true = stocked only (default), false = unstocked only, null = all
 		origin?: string; // cross-field partial match: continent, country, region
 		continent?: string;
-		country?: string;
+		country?: string | string[];
 		source?: string[];
 		processing?: string;
 		cultivarDetail?: string;
@@ -214,6 +214,12 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 	const stockedFilter: boolean | null =
 		stockedParam === 'false' ? false : stockedParam === 'all' ? null : true;
 
+	const countryParams = url.searchParams.getAll('country').filter(Boolean);
+	const countryFilter =
+		countryParams.length > 1
+			? countryParams
+			: (countryParams[0] ?? url.searchParams.get('country') ?? undefined);
+
 	return {
 		ids,
 		fields: url.searchParams.get('fields') === 'dropdown' ? 'dropdown' : 'full',
@@ -233,7 +239,7 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 			stocked: stockedFilter,
 			origin: url.searchParams.get('origin') ?? undefined,
 			continent: url.searchParams.get('continent') ?? undefined,
-			country: url.searchParams.get('country') ?? undefined,
+			country: countryFilter,
 			source: url.searchParams.getAll('source'),
 			processing: url.searchParams.get('processing') ?? undefined,
 			cultivarDetail: url.searchParams.get('cultivar_detail') ?? undefined,
