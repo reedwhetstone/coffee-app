@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
 import AnalyticsPage from './+page.svelte';
 import type { PageData } from './$types';
 
@@ -205,13 +206,16 @@ describe('analytics page loading experience', () => {
 
 		render(AnalyticsPage, { data: createData() });
 
-		expect(screen.getByText('Loading live market visuals')).toBeInTheDocument();
+		expect(screen.getByText('Loading market visuals')).toBeTruthy();
+		expect(
+			screen.getByText(/the overview is ready first\. charts are loading next\./i)
+		).toBeTruthy();
 		expect(screen.getAllByTestId('analytics-loading-panel').length).toBeGreaterThanOrEqual(3);
 
 		publicModules.resolve(await buildPublicModules());
 
 		await waitFor(() => {
-			expect(screen.queryByText('Loading live market visuals')).not.toBeInTheDocument();
+			expect(screen.queryByText('Loading market visuals')).toBeNull();
 		});
 
 		expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
@@ -224,7 +228,7 @@ describe('analytics page loading experience', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
+		expect(screen.getByText('See more with Parchment Intelligence')).toBeTruthy();
 
 		await view.rerender({ data: createData({ session: createSession() }) });
 
@@ -233,7 +237,7 @@ describe('analytics page loading experience', () => {
 		});
 
 		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
-		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
+		expect(screen.getByText('See more with Parchment Intelligence')).toBeTruthy();
 	});
 
 	it('loads the Parchment Intelligence chart when a viewer upgrades on the same route', async () => {
@@ -268,7 +272,7 @@ describe('analytics page loading experience', () => {
 			).toHaveLength(3);
 		});
 
-		expect(screen.queryByTestId('analytics-loading-panel')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('analytics-loading-panel')).toBeNull();
 		expect(screen.getAllByTestId('analytics-error-panel').length).toBeGreaterThanOrEqual(3);
 		expect(screen.getAllByRole('button', { name: 'Retry loading' }).length).toBeGreaterThanOrEqual(
 			3
@@ -284,17 +288,18 @@ describe('analytics premium boundary copy', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		expect(screen.queryByRole('button', { name: 'Spread' })).not.toBeInTheDocument();
-		expect(screen.getByText('Upgrade to Parchment Intelligence')).toBeInTheDocument();
-		expect(screen.queryByText(/spread analysis/i)).not.toBeInTheDocument();
-		expect(screen.getByText(/premium arrivals and delistings tracking/i)).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Spread' })).toBeNull();
+		expect(screen.getByText('See more with Parchment Intelligence')).toBeTruthy();
+		expect(screen.getByText(/the public view gives you the core market picture\./i)).toBeTruthy();
 		expect(
 			screen.getByText(
-				/parchment intelligence unlocks supplier comparisons, supplier health, arrivals, delistings, origin index views, and extended trend detail/i
+				/parchment intelligence adds supplier comparisons, supplier health, arrivals, delistings, origin benchmarks, and longer-term trends/i
 			)
-		).toBeInTheDocument();
-		expect(screen.queryByText('Fresh Ethiopia')).not.toBeInTheDocument();
-		expect(screen.queryByText('Recently Gone')).not.toBeInTheDocument();
+		).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'See plans' })).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'Start free' })).toBeTruthy();
+		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
+		expect(screen.queryByText('Recently Gone')).toBeNull();
 		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThan(1);
 	});
 
@@ -319,15 +324,15 @@ describe('analytics premium boundary copy', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
 		});
 
-		expect(screen.getByText('Fresh Ethiopia')).toBeInTheDocument();
-		expect(screen.queryByText('Older Arrival')).not.toBeInTheDocument();
-		expect(screen.queryByText('Older Gone')).not.toBeInTheDocument();
+		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
+		expect(screen.queryByText('Older Arrival')).toBeNull();
+		expect(screen.queryByText('Older Gone')).toBeNull();
 
 		const thirtyDayButtons = screen.getAllByRole('button', { name: '30d' });
 		await thirtyDayButtons[0].click();
 
 		await waitFor(() => {
-			expect(screen.getByText('Older Arrival')).toBeInTheDocument();
+			expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
 		});
 	});
 });

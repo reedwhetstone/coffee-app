@@ -795,7 +795,7 @@
 							See plans
 						</button>
 						<button
-							onclick={() => goto('/auth/signup')}
+							onclick={() => goto('/subscription')}
 							class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						>
 							Start free
