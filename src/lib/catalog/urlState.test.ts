@@ -48,6 +48,16 @@ describe('catalog URL state helpers', () => {
 		expect(params.toString()).toBe('country=Ethiopia&processing=Washed&price_per_lb_min=7.5');
 	});
 
+	it('keeps active sort settings in share URLs when filters are cleared', () => {
+		const state = createDefaultCatalogUrlState('/catalog');
+		state.sortField = 'score_value';
+		state.sortDirection = 'asc';
+
+		const params = buildCatalogShareParams(state, '/catalog');
+
+		expect(params.toString()).toBe('sortField=score_value&sortDirection=asc');
+	});
+
 	it('keeps request params explicit for server fetches', () => {
 		const state = createDefaultCatalogUrlState('/catalog');
 		state.filters = { name: 'guji' };

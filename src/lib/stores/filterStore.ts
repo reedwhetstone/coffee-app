@@ -477,13 +477,11 @@ function createFilterStore() {
 		}
 	}
 
-	// Clear all filters
+	// Clear active filters while preserving the current sort contract.
 	function clearFilters() {
 		update((state) => {
 			state.filters = {};
 			state.showWholesale = false;
-			state.sortField = null;
-			state.sortDirection = null;
 			// Reset to first page for server-side routes
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
