@@ -228,7 +228,7 @@ describe('analytics page loading experience', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		expect(screen.getByText('See more with Parchment Intelligence')).toBeTruthy();
+		expect(screen.getByText('Go deeper with Parchment Intelligence')).toBeTruthy();
 
 		await view.rerender({ data: createData({ session: createSession() }) });
 
@@ -237,7 +237,7 @@ describe('analytics page loading experience', () => {
 		});
 
 		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
-		expect(screen.getByText('See more with Parchment Intelligence')).toBeTruthy();
+		expect(screen.getByText('Go deeper with Parchment Intelligence')).toBeTruthy();
 	});
 
 	it('loads the Parchment Intelligence chart when a viewer upgrades on the same route', async () => {
@@ -289,15 +289,15 @@ describe('analytics premium boundary copy', () => {
 		});
 
 		expect(screen.queryByRole('button', { name: 'Spread' })).toBeNull();
-		expect(screen.getByText('See more with Parchment Intelligence')).toBeTruthy();
-		expect(screen.getByText(/the public view gives you the core market picture\./i)).toBeTruthy();
+		expect(screen.getByText('Go deeper with Parchment Intelligence')).toBeTruthy();
+		expect(screen.getByText(/the public view gives you the core market picture first\./i)).toBeTruthy();
 		expect(
 			screen.getByText(
-				/parchment intelligence adds supplier comparisons, supplier health, arrivals, delistings, origin benchmarks, and longer-term trends/i
+				/upgrade when you need supplier comparisons, supplier health, arrivals, delistings, origin benchmarks, and longer-term trends/i
 			)
 		).toBeTruthy();
 		expect(screen.getByRole('button', { name: 'See plans' })).toBeTruthy();
-		expect(screen.getByRole('button', { name: 'Start free' })).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'Browse full catalog first' })).toBeTruthy();
 		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
 		expect(screen.queryByText('Recently Gone')).toBeNull();
 		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThan(1);

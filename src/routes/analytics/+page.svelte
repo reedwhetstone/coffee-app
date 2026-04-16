@@ -767,10 +767,10 @@
 			>
 				<div class="mb-3 text-3xl">📈</div>
 				<h3 class="mb-2 text-2xl font-bold text-text-primary-light">
-					See more with Parchment Intelligence
+					Go deeper with Parchment Intelligence
 				</h3>
 				<p class="mb-4 text-text-secondary-light">
-					The public view gives you the core market picture. Parchment Intelligence adds supplier
+					The public view gives you the core market picture first. Upgrade when you need supplier
 					comparisons, supplier health, arrivals, delistings, origin benchmarks, and longer-term
 					trends.
 				</p>
@@ -780,25 +780,18 @@
 					<li>Origin benchmarks plus 6-month and 1-year trend views</li>
 				</ul>
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-					{#if session}
-						<button
-							onclick={() => goto('/subscription')}
-							class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
-						>
-							See plans
-						</button>
-					{:else}
-						<button
-							onclick={() => goto('/subscription')}
-							class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
-						>
-							See plans
-						</button>
+					<button
+						onclick={() => goto('/subscription')}
+						class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
+					>
+						See plans
+					</button>
+					{#if !session}
 						<button
 							onclick={() => goto('/subscription')}
 							class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						>
-							Start free
+							Browse full catalog first
 						</button>
 					{/if}
 				</div>
