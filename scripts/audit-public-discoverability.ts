@@ -323,6 +323,13 @@ async function main() {
 		{ label: 'Catalog', path: '/catalog', expectInSitemap: true, expectInLlms: true },
 		{ label: 'Analytics', path: '/analytics', expectInSitemap: true, expectInLlms: true },
 		{ label: 'API', path: '/api', expectInSitemap: true, expectInLlms: true },
+		{ label: 'Docs', path: '/docs', expectInSitemap: true, expectInLlms: true },
+		{
+			label: 'Catalog API docs',
+			path: '/docs/api/catalog',
+			expectInSitemap: true,
+			expectInLlms: true
+		},
 		{ label: 'Contact', path: '/contact', expectInSitemap: true },
 		{ label: 'Blog index', path: '/blog', expectInSitemap: true, expectInLlms: true },
 		{
