@@ -79,7 +79,7 @@ interface ParsedCatalogQuery {
 		stocked?: boolean | null; // true = stocked only (default), false = unstocked only, null = all
 		origin?: string; // cross-field partial match: continent, country, region
 		continent?: string;
-		country?: string;
+		country?: string | string[];
 		source?: string[];
 		processing?: string;
 		cultivarDetail?: string;
@@ -166,31 +166,35 @@ function parsePositiveInteger(value: string | null, fallback: number): number {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function parseStrictPositiveInteger(paramName: string, value: string | null): number | undefined {
-	if (value === null) return undefined;
+function parseRequiredPositiveInteger(value: string, parameter: string): number {
 	if (!/^\d+$/.test(value)) {
-		throw new CatalogQueryValidationError(paramName, value, 'positive integer');
+		throw new CatalogQueryValidationError(parameter, value, 'positive integer');
 	}
+
 	const parsed = Number.parseInt(value, 10);
 	if (!Number.isFinite(parsed) || parsed <= 0) {
-		throw new CatalogQueryValidationError(paramName, value, 'positive integer');
+		throw new CatalogQueryValidationError(parameter, value, 'positive integer');
 	}
+
 	return parsed;
 }
 
-function parseStrictNumber(paramName: string, value: string | null): number | undefined {
-	if (value === null) return undefined;
+function parseRequiredNumber(value: string, parameter: string): number {
 	const trimmed = value.trim();
-	if (trimmed.length === 0) {
-		throw new CatalogQueryValidationError(paramName, value, 'number');
+	if (!trimmed) {
+		throw new CatalogQueryValidationError(parameter, value, 'number');
 	}
-	if (!/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(trimmed)) {
-		throw new CatalogQueryValidationError(paramName, value, 'number');
+
+	const numericPattern = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/;
+	if (!numericPattern.test(trimmed)) {
+		throw new CatalogQueryValidationError(parameter, value, 'number');
 	}
+
 	const parsed = Number.parseFloat(trimmed);
 	if (!Number.isFinite(parsed)) {
-		throw new CatalogQueryValidationError(paramName, value, 'number');
+		throw new CatalogQueryValidationError(parameter, value, 'number');
 	}
+
 	return parsed;
 }
 
@@ -213,17 +217,30 @@ function validateCatalogQuery(url: URL): void {
 		throw new CatalogQueryValidationError('stocked_date', stockedDate, 'YYYY-MM-DD');
 	}
 
-	parseStrictPositiveInteger('page', url.searchParams.get('page'));
-	parseStrictPositiveInteger('limit', url.searchParams.get('limit'));
-	parseStrictPositiveInteger('stocked_days', url.searchParams.get('stocked_days'));
-	parseStrictNumber('score_value_min', url.searchParams.get('score_value_min'));
-	parseStrictNumber('score_value_max', url.searchParams.get('score_value_max'));
-	parseStrictNumber('price_per_lb_min', url.searchParams.get('price_per_lb_min'));
-	parseStrictNumber('price_per_lb_max', url.searchParams.get('price_per_lb_max'));
-	parseStrictNumber('cost_lb_min', url.searchParams.get('cost_lb_min'));
-	parseStrictNumber('cost_lb_max', url.searchParams.get('cost_lb_max'));
-}
+	const positiveIntegerParams = ['page', 'limit', 'stocked_days'];
+	for (const parameter of positiveIntegerParams) {
+		const value = url.searchParams.get(parameter);
+		if (value !== null) {
+			parseRequiredPositiveInteger(value, parameter);
+		}
+	}
 
+	const numberParams = [
+		'price_per_lb_min',
+		'price_per_lb_max',
+		'cost_lb_min',
+		'cost_lb_max',
+		'score_value_min',
+		'score_value_max'
+	];
+
+	for (const parameter of numberParams) {
+		const value = url.searchParams.get(parameter);
+		if (value !== null) {
+			parseRequiredNumber(value, parameter);
+		}
+	}
+}
 function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
 	const { coffee_user: _coffeeUser, ...resourceItem } = item;
 	return resourceItem;
@@ -231,8 +248,9 @@ function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
 
 function parseOptionalNumberFromAliases(url: URL, ...paramNames: string[]): number | undefined {
 	for (const paramName of paramNames) {
-		const value = parseStrictNumber(paramName, url.searchParams.get(paramName));
-		if (value !== undefined) return value;
+		const rawValue = url.searchParams.get(paramName);
+		if (rawValue === null) continue;
+		return parseRequiredNumber(rawValue, paramName);
 	}
 
 	return undefined;
@@ -253,12 +271,20 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 	const stockedFilter: boolean | null =
 		stockedParam === 'false' ? false : stockedParam === 'all' ? null : true;
 
+<<<<<<< HEAD
 	const rawSortField = url.searchParams.get('sortField');
 	const rawSortDirection = url.searchParams.get('sortDirection');
 
 	if (rawSortDirection !== null && rawSortDirection !== 'asc' && rawSortDirection !== 'desc') {
 		throw new CatalogQueryValidationError('sortDirection', rawSortDirection, 'asc or desc');
 	}
+=======
+	const countryParams = url.searchParams.getAll('country').filter(Boolean);
+	const countryFilter =
+		countryParams.length > 1
+			? countryParams
+			: (countryParams[0] ?? url.searchParams.get('country') ?? undefined);
+>>>>>>> origin/main
 
 	return {
 		ids,
@@ -275,7 +301,7 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 			stocked: stockedFilter,
 			origin: url.searchParams.get('origin') ?? undefined,
 			continent: url.searchParams.get('continent') ?? undefined,
-			country: url.searchParams.get('country') ?? undefined,
+			country: countryFilter,
 			source: url.searchParams.getAll('source'),
 			processing: url.searchParams.get('processing') ?? undefined,
 			cultivarDetail: url.searchParams.get('cultivar_detail') ?? undefined,

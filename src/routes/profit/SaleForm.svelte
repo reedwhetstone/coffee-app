@@ -58,8 +58,13 @@
 
 			if (response.ok) {
 				const newSale = await response.json();
-				onSubmit(newSale);
-				onClose();
+				try {
+					await onSubmit(newSale);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : 'Unknown error occurred';
+					alert(`Sale was saved, but refreshing profit data failed: ${message}`);
+					onClose();
+				}
 			} else {
 				const data = await response.json();
 				alert(`Failed to ${isUpdate ? 'update' : 'create'} sale: ${data.error}`);
