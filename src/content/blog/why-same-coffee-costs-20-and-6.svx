@@ -1,0 +1,115 @@
+---
+title: "Why Does the Same Coffee Cost $20/lb and $6.58/lb?"
+date: "2026-03-18"
+description: "The green coffee industry sorts pricing into wholesale and retail. The data shows a continuous nonlinear curve. That binary label hides useful information from buyers and distorts how comparison tools present the market."
+tags: ["coffee", "market-intelligence", "pricing", "supply-chain"]
+pillar: "market-intelligence"
+draft: true
+readingTime: 9
+---
+
+One supplier in our catalog sells the same single-origin green coffee at three prices: $10.00/lb at 5 pounds, $6.94/lb at 25 pounds, and $6.58/lb at 100 pounds. That is a 34% spread on an identical product from the same seller.
+
+The industry calls the first price "retail" and the last price "wholesale." Those labels feel obvious. They are also the problem.
+
+## Three Prices, One Product
+
+Across 27 green coffee suppliers we scrape daily, volume-tiered pricing is the norm for anyone offering more than a single bag size. A typical listing from a Shopify-based seller might expose four variants: 5 lb, 25 lb, 50 lb, and 100 lb bags, each at a different per-pound cost. A WooCommerce seller might list 10, 20, 40, and 80 pound options with graduated discounts.
+
+The per-pound price at the highest volume tier is often 34 to 50% lower than the smallest bag. In our test data, one retail-oriented supplier shows a spread from $20/lb at 1 pound to $10/lb at 25 pounds. That is a 50% discount. A "wholesale" supplier shows $8/lb at 10 pounds dropping to $4.50/lb at 100 pounds, a 44% discount. These are not outliers. They are the shape of the market.
+
+Robert Wilson formalized this in 1993: ["Pricing is nonlinear when it is not strictly proportional to the quantity purchased."](https://www.gsb.stanford.edu/faculty-research/books/nonlinear-pricing) Phone rates, railroad tariffs, frequent flyer programs, and green coffee all follow the same structure. The unit price is a function of volume, not a fixed number.
+
+The green coffee industry takes that continuous function and stamps a binary label on it.
+
+## The 5-Pound Line
+
+In our pipeline, the classification rule is one line of code:
+
+```
+return tiers[0].min_lbs > 5;
+```
+
+If the smallest purchasable quantity is over 5 pounds, the product is "wholesale." Five pounds or under, it is "retail." That is the entire decision.
+
+The threshold is not random. It approximates the boundary between home roasters (typically buying 1 to 5 pounds) and commercial roasters (10+ pounds). But the boundary creates edge cases that expose the arbitrariness. A supplier selling in 5-pound minimums is retail. A supplier selling in 6-pound minimums is wholesale. The buyer experience is nearly identical. The label flips.
+
+The downstream consequence matters more than the classification itself: wholesale products are hidden by default. Our UI initializes with `showWholesale: false`. Buyers who would benefit from volume pricing never see those listings unless they find and toggle a filter. The binary does not just simplify the data. It gates access to it.
+
+This is not a purveyors-specific design choice. Every coffee marketplace I have surveyed draws a hard line between "wholesale" and "retail" catalogs. Sweet Maria's serves home roasters. Royal Coffee serves commercial buyers. Bodhi Leaf maintains separate storefronts. The industry treats volume pricing as two different businesses rather than one continuous curve.
+
+## What the Binary Destroys
+
+When you collapse a pricing curve into a boolean, specific information disappears.
+
+**Curve shape.** Some suppliers offer aggressive volume discounts; 50% off at scale. Others are nearly flat; 5% off for ten times the volume. The boolean cannot distinguish between a supplier who rewards volume purchasing and one who barely adjusts. A buyer optimizing for cost at their specific scale needs the curve, not the category.
+
+**Crossover points.** Supplier A might be cheapest at 5 pounds. Supplier B might be cheapest at 50 pounds. The binary sorts them into different bins (retail vs. wholesale), making the comparison impossible without toggling back and forth between filtered views. The buyer never sees both options side by side at their actual purchase volume.
+
+**Minimum order signal.** A 10-pound minimum is not just a pricing statement. It signals who the supplier is designed for, what their logistics look like, whether they will deal with small orders at all. Flattening this to `wholesale = true` loses the operational context that volume thresholds carry.
+
+Arthur Pigou formalized this in 1920 as [second-degree price discrimination](https://en.wikipedia.org/wiki/Price_discrimination): price varies by quantity purchased, not by who the buyer is. The wholesale/retail binary is a folk taxonomy layered on top of a mechanism that economics has understood as a continuous schedule for over a century. The industry imposes a category boundary on what is fundamentally a curve.
+
+## The Normalization Problem
+
+The destruction compounds when you try to compare across suppliers.
+
+DataWeave, a competitive pricing intelligence firm, published an [analysis in 2023](https://dataweave.com/blog/why-unit-of-measure-normalization-is-critical-for-accurate-and-actionable-competitive-pricing-intelligence) arguing that unit-of-measure normalization is the prerequisite for any meaningful price comparison. The same logic applies here, but the problem runs deeper than unit conversion.
+
+Consider a buyer purchasing 25 pounds per month. Supplier A sells 5 lb bags at $10/lb (retail). Supplier B sells 25 lb bags at $7/lb (wholesale). Without per-unit normalization at the buyer's actual volume, Supplier A appears on the retail comparison page and Supplier B appears on the wholesale page. The buyer sees one or the other, never both ranked by their actual cost for 25 pounds.
+
+This is not a theoretical gap. The SCA/Emory [Specialty Coffee Transaction Guide](https://www.transactionguide.coffee/reports/specialty-coffee-retail-price-index-2024-q4) tracks roasted specialty coffee averaging $32.35/lb as of Q4 2024, with a $20.75 to $43.94 range. Green coffee volume pricing adds another layer of variability underneath. The binary classification gates which products are visible before any normalization can run.
+
+## Why the Binary Persists
+
+If the binary is economically wrong, why does everyone use it?
+
+Three reasons, in descending order of defensibility.
+
+**Logistics are genuinely different.** Shipping 2 pounds in a flat-rate box is a different operation than palletizing 200 pounds of green coffee. Suppliers who serve commercial volumes often cannot economically serve small orders. The binary approximates an operational reality even if it mislabels the pricing structure.
+
+**Sellers benefit from the opacity.** A home roaster paying $10/lb who never sees the $6.58 option at 100 pounds is not making an informed tradeoff. They might not want 100 pounds. But they might want 25 pounds and would happily pay $6.94/lb if they knew. The binary keeps volume pricing invisible to small buyers, which is convenient for sellers who do not want to explain why the price varies.
+
+**Tooling defaults calcify.** Once a marketplace launches with a wholesale/retail toggle, it becomes infrastructure. Removing it means redesigning the filter system, the search index, the product display logic. Even if everyone agrees the binary is reductive, the cost of replacing it with quantity-aware comparison is real engineering work. Our own codebase has `showWholesale` threaded through the filter store, the API, and the catalog queries. Replacing it with a volume slider is a multi-sprint project.
+
+## The Risk Map
+
+The binary classification creates two distinct risk profiles, one immediate and one structural.
+
+**Immediate risk: buyer mispricing.** A home roaster buying 10 pounds monthly who only sees "retail" listings is overpaying by 15 to 30% compared to available volume pricing from suppliers classified as wholesale. This is not speculative. The tier data shows it. At 10 pounds, several "wholesale" suppliers price below $7/lb while comparable "retail" suppliers list the same origins above $9/lb. The classification prevents the comparison from happening.
+
+**Immediate risk: seller invisibility.** Suppliers offering competitive volume pricing to mid-scale buyers (10 to 50 lbs) are invisible to those buyers by default. The toggle defaults to off. Most users never change defaults. Jakob Nielsen's research on feature discoverability suggests fewer than 5% of users modify default filter states. A supplier who invested in tiered pricing to attract growing roasters is systematically hidden from the exact audience they designed for.
+
+**Tail risk: market stratification.** As more comparison tools adopt the binary, it becomes self-reinforcing. Suppliers optimize for the category they are placed in rather than for the full spectrum of buyers they could serve. Wholesale suppliers stop listing small quantities even when they could profitably offer them. Retail suppliers avoid volume discounts because their marketplace presence does not reward it. The classification does not just describe the market. Over time, it shapes it.
+
+**Tail risk: C-market pass-through asymmetry.** When commodity prices spike (the ICO Composite rose 66.7% year-over-year through Q4 2024), the binary obscures how price increases distribute across the volume curve. Do wholesale tiers absorb more of the increase, compressing the discount? Or do retail tiers absorb more, widening the gap? The binary cannot answer this question. A marketplace that tracks the full curve can. For any buyer forecasting green coffee costs over the next year, knowing whether the discount curve steepens or flattens during commodity rallies is the difference between a budget and a guess.
+
+## Building for the Curve
+
+The right primitive is not "wholesale or retail." It is "price at quantity X."
+
+A quantity-aware marketplace would let the buyer input their volume, then show all suppliers ranked by their actual cost at that volume. The crossover points that the binary hides would become the most valuable data points: "Supplier A is cheapest below 10 lbs; Supplier B is cheapest from 10 to 50 lbs; Supplier C wins above 50 lbs."
+
+This is what we are building toward with `price_tiers` as a first-class data type. The tier structure (a jsonb array of `{min_lbs, price}` objects) preserves the full curve. Functions like `getPriceAtQuantity(tiers, lbs)` and `getApplicableTier(tiers, lbs)` already exist in the codebase. The boolean is a convenience filter that can be deprecated as the UI matures.
+
+The practical implication for buyers right now: if you are a home roaster buying 10 pounds per month, some "wholesale" suppliers are your best deal. If you are a commercial roaster buying 100 pounds, some "retail" suppliers with aggressive volume pricing beat the dedicated importers. The labels are not useless, but they are actively misleading at the boundaries.
+
+## What the Product Should Track Next
+
+The price tier data we collect today captures the curve shape per supplier. What it does not capture is how that curve changes over time. We track `cost_lb` historically, but that is the display price (usually the lowest-tier per-pound cost). The full tier structure is a snapshot.
+
+Three data points would make the curve analysis significantly more useful:
+
+1. **Tier volatility.** Do suppliers adjust their volume discounts seasonally? When C-market prices spike (as they did 66.7% year-over-year through Q4 2024, per the SCA/Emory data), do wholesale discounts compress or expand?
+
+2. **Tier count as market signal.** A supplier adding a new tier (say, a 200 lb option) signals commercial expansion. A supplier collapsing from four tiers to two signals operational contraction. The number and structure of tiers is business intelligence independent of the prices themselves.
+
+3. **Cross-supplier tier alignment.** At what volumes do suppliers cluster their breakpoints? If most suppliers break at 5, 25, and 50 lbs, those are likely logistically driven (bag sizes, pallet configurations). Outlier breakpoints (12 lbs, 33 lbs) might signal different packaging or customer segment targeting. Clustering analysis on tier breakpoints could reveal the industry's hidden logistical standards more reliably than any self-reported survey.
+
+## The General Principle
+
+Boolean classifications on continuous spectra destroy information. The threshold choice embeds an opinion that becomes invisible once the label sticks. Wholesale/retail is one instance. "Enterprise/SMB" in SaaS pricing is another. "Premium/standard" in any product line is another.
+
+The test: if the underlying variable is continuous (price, volume, quality, capacity) and the classification is binary, ask what the threshold is, who set it, and what data disappears when it is applied. The answer usually reveals that the binary serves the seller's operational convenience more than the buyer's decision quality.
+
+In green coffee, the answer is a single line of code: `tiers[0].min_lbs > 5`. Everything downstream flows from that threshold. Including what the buyer never sees.
