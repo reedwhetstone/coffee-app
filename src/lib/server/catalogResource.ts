@@ -253,6 +253,13 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 	const stockedFilter: boolean | null =
 		stockedParam === 'false' ? false : stockedParam === 'all' ? null : true;
 
+	const rawSortField = url.searchParams.get('sortField');
+	const rawSortDirection = url.searchParams.get('sortDirection');
+
+	if (rawSortDirection !== null && rawSortDirection !== 'asc' && rawSortDirection !== 'desc') {
+		throw new CatalogQueryValidationError('sortDirection', rawSortDirection, 'asc or desc');
+	}
+
 	return {
 		ids,
 		fields: url.searchParams.get('fields') === 'dropdown' ? 'dropdown' : 'full',
@@ -260,12 +267,8 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 		limit,
 		offset: (page - 1) * limit,
 		isPaginated: url.searchParams.has('page') || url.searchParams.has('limit'),
-		sortField: url.searchParams.get('sortField') ?? undefined,
-		sortDirection:
-			url.searchParams.get('sortDirection') === 'asc' ||
-			url.searchParams.get('sortDirection') === 'desc'
-				? (url.searchParams.get('sortDirection') as 'asc' | 'desc')
-				: undefined,
+		sortField: rawSortField ?? undefined,
+		sortDirection: rawSortDirection ? (rawSortDirection as 'asc' | 'desc') : undefined,
 		showWholesale: url.searchParams.get('showWholesale') === 'true',
 		wholesaleOnly: url.searchParams.get('wholesaleOnly') === 'true',
 		filters: {

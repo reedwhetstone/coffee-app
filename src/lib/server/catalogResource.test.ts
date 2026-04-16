@@ -514,6 +514,33 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
+	it('rejects malformed anonymous sortDirection values explicitly', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?sortDirection=descending')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body).toEqual({
+			error: 'Invalid query parameter',
+			message: 'Query parameter "sortDirection" must use asc or desc format',
+			details: {
+				parameter: 'sortDirection',
+				value: 'descending',
+				expected: 'asc or desc'
+			}
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
 	it('viewer sessions keep the broader catalog parameter surface while anonymous callers stay teaser-only', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,
