@@ -22,12 +22,11 @@
 			<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 				<div class="mb-12 text-center">
 					<h2 class="text-3xl font-bold text-text-primary-light sm:text-4xl">
-						Start with the live buyer catalog
+						Browse current coffees before you commit to anything else
 					</h2>
 					<p class="mx-auto mt-4 max-w-3xl text-lg text-text-secondary-light">
-						Recent stocked coffees from the normalized Purveyors catalog. Compare live availability,
-						then choose whether you need workflow software, machine-readable data, or premium
-						intelligence.
+						See recent supplier availability in one place, compare likely fits faster, and move into
+						workflow, API, or analytics tools only if you need them.
 					</p>
 				</div>
 
@@ -39,8 +38,8 @@
 						</p>
 					{:else}
 						<p class="text-text-secondary-light">
-							The catalog is open now. Sign up only when you want saved workflows or one of the paid
-							product lines.
+							The catalog is open now. Create an account later if you want saved work or paid
+							access.
 						</p>
 					{/if}
 				</div>
@@ -95,12 +94,11 @@
 							{/if}
 						{:else}
 							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
-								A clearer path for buyers and operators
+								Start with the catalog, then choose the right next step
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Start by comparing coffees in the public catalog. Then choose Mallard Studio,
-								Parchment API, or Parchment Intelligence when you need deeper workflow, data, or
-								market visibility.
+								Use the public catalog to compare coffees first. Move into Mallard Studio, Parchment
+								API, or Parchment Intelligence only when your work calls for it.
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 								<button
@@ -113,7 +111,7 @@
 									onclick={() => goto('/subscription')}
 									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 								>
-									See product options
+									See plans
 								</button>
 							</div>
 							<p class="mt-4 text-sm text-text-secondary-light">

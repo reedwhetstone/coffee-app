@@ -24,7 +24,7 @@
 	}
 
 	function handleSecondaryAction() {
-		goto(isSignedIn ? '/dashboard' : '/subscription');
+		goto(isSignedIn ? '/dashboard' : '/auth');
 	}
 
 	function handleLearnMore() {
@@ -41,7 +41,7 @@
 				<div
 					class="mb-6 inline-flex items-center rounded-full border border-background-tertiary-light/20 bg-background-tertiary-light/10 px-4 py-1.5 text-sm font-medium text-background-tertiary-light"
 				>
-					Signed in as {userLabel}. Explore the market, then jump back into your workspace.
+					Signed in as {userLabel}. Use the catalog to source, then jump back into your workspace.
 				</div>
 			{/if}
 			<h1 class="text-center text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
@@ -51,12 +51,11 @@
 		<div class="mx-auto max-w-3xl text-center">
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 				{#if isSignedIn}
-					Use the public catalog to compare live green coffees, then return to Mallard Studio for
-					inventory, roasting, tasting, and the operating side of your coffee program.
+					Compare live offerings, shortlist coffees faster, and return to Mallard Studio when you
+					need inventory, roast, tasting, and production workflows.
 				{:else}
-					Browse normalized green coffee listings, compare recent arrivals, and make the buyer path
-					explicit before you ever create an account. Upgrade later for Mallard Studio, Parchment
-					API, or Parchment Intelligence when you need deeper tools.
+					See current offerings from specialty suppliers in one clean catalog, compare price and
+					profile faster, and move into workflow, data, or market tools only when you need them.
 				{/if}
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
@@ -70,19 +69,19 @@
 					onclick={handleSecondaryAction}
 					class="w-full rounded-md border border-background-tertiary-light px-6 py-3 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:w-auto"
 				>
-					{isSignedIn ? 'Dashboard' : 'Create free account'}
+					{isSignedIn ? 'Open dashboard' : 'Create free account'}
 				</button>
 				<button
 					onclick={handleLearnMore}
 					class="text-sm font-semibold leading-6 text-text-primary-light transition-colors duration-200 hover:text-background-tertiary-light"
 				>
-					Learn more <span aria-hidden="true">→</span>
+					How it works <span aria-hidden="true">→</span>
 				</button>
 			</div>
 			{#if !isSignedIn}
 				<p class="mt-4 text-sm text-text-secondary-light">
-					Start with the catalog today. Create an account only when you want saved workflows or paid
-					products.
+					Start with the public catalog. Add an account later if you want saved workflows or paid
+					access.
 				</p>
 			{/if}
 			{#if isSignedIn && canAccessMemberRoutes}
@@ -131,13 +130,13 @@
 							<div class="mb-2 flex items-center gap-2">
 								<div class="h-2 w-2 rounded-full bg-growth-green"></div>
 								<span class="text-xs text-text-secondary-light"
-									>Buyer signal from the live catalog plus assistant layer</span
+									>Quick buyer read from live market data</span
 								>
 							</div>
 							<p class="text-sm text-text-primary-light">
-								"Recent arrivals show three washed coffees under $8.50/lb with floral and citrus
-								notes. This lot matches the clean, high-acidity profile you usually shortlist for
-								spring menu planning."
+								"Three washed coffees landed this week under $8.50/lb with floral, citrus, and
+								tea-like profiles. This lot fits a clean spring offering and stays inside your usual
+								buy range."
 							</p>
 						</div>
 					</div>

@@ -356,9 +356,10 @@
 </script>
 
 <div class="mb-8 border-l-4 border-background-tertiary-light pl-6">
-	<h1 class="mb-2 text-4xl font-bold text-text-primary-light">Green Coffee Market Intelligence</h1>
+	<h1 class="mb-2 text-4xl font-bold text-text-primary-light">Green coffee market visibility</h1>
 	<p class="text-lg text-text-secondary-light">
-		Daily price data from {stats.totalSuppliers} US suppliers across {stats.originsCount} origins.
+		Track live pricing, supplier movement, and origin coverage across {stats.totalSuppliers} US suppliers
+		and {stats.originsCount} origins.
 		{#if stats.lastUpdated}
 			Last updated {formatDate(stats.lastUpdated)}.
 		{:else}
@@ -437,11 +438,11 @@
 
 <div class="mb-6 rounded-lg border border-border-light bg-background-secondary-light px-5 py-3">
 	<p class="text-sm font-medium text-text-primary-light">
-		Tracking live prices across <span class="text-background-tertiary-light"
+		See daily market movement across <span class="text-background-tertiary-light"
 			>{stats.totalSuppliers}</span
 		>
 		suppliers. <span class="text-background-tertiary-light">{stockedBeans.toLocaleString()}</span>
-		stocked beans from <span class="text-background-tertiary-light">{stats.originsCount}</span> origins.
+		active listings from <span class="text-background-tertiary-light">{stats.originsCount}</span> origins.
 	</p>
 </div>
 
@@ -453,9 +454,9 @@
 		<div class="flex items-start gap-3">
 			<span class="mt-1 h-2.5 w-2.5 animate-pulse rounded-full bg-background-tertiary-light"></span>
 			<div>
-				<p class="text-sm font-semibold text-text-primary-light">Loading live market visuals</p>
+				<p class="text-sm font-semibold text-text-primary-light">Loading market visuals</p>
 				<p class="mt-1 text-xs text-text-secondary-light">
-					We painted the overview first. {analyticsShellMessage} loading next so you get feedback immediately.
+					The overview is ready first. {analyticsShellMessage} are loading next.
 				</p>
 			</div>
 		</div>
@@ -464,24 +465,24 @@
 
 <div class="mb-8 space-y-6">
 	<ExpandablePanel
-		title="Price Trends by Origin"
-		subtitle="Average $/lb by top origins over the last 30 days — ranked by market volume"
+		title="Origin price trends"
+		subtitle="Average $/lb by top origins over the last 30 days, ranked by market activity"
 		collapsedMaxHeight="420px"
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
 	>
 		<AnalyticsLoadingPanel
 			ready={Boolean(OriginLineChartComponent)}
-			title="Price Trends by Origin"
-			description="Loading 30-day origin pricing history."
+			title="Origin price trends"
+			description="Loading 30-day origin price history."
 			height={lineChartExpanded ? 'h-[60vh]' : 'h-64'}
 			errorMessage={publicChartsError}
 			onRetry={retryPublicCharts}
 		>
 			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
+				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin price trends</h2>
 				<p class="mb-4 text-sm text-text-secondary-light">
-					Average $/lb by top origins over the last 30 days — ranked by market volume
+					Average $/lb by top origins over the last 30 days, ranked by market activity
 					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 				</p>
 				<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
@@ -499,14 +500,14 @@
 
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 		<ExpandablePanel
-			title="Processing Methods"
-			subtitle="Distribution across stocked beans"
+			title="Processing mix"
+			subtitle="How current listings break down by processing style"
 			collapsedMaxHeight="360px"
 			showGradient={false}
 		>
 			<AnalyticsLoadingPanel
 				ready={Boolean(ProcessDonutChartComponent)}
-				title="Processing Methods"
+				title="Processing mix"
 				description="Loading stocked catalog processing distribution."
 				height="h-56"
 				errorMessage={publicChartsError}
@@ -515,7 +516,7 @@
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
-					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing Methods</h2>
+					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing mix</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
 						Distribution across {displayStockedCount.toLocaleString()} stocked beans
 						{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
@@ -538,16 +539,16 @@
 		</ExpandablePanel>
 
 		<ExpandablePanel
-			title="Origin Price Ranges"
-			subtitle="Top 8 origins by bean count by default; expand to choose origins. Median and IQR are emphasized, with clipped max outliers still available in tooltips."
+			title="Origin price ranges"
+			subtitle="Compare the pricing spread across top origins. Expand to choose the set you want to review."
 			collapsedMaxHeight="460px"
 			showGradient={false}
 			onExpandChange={(v) => (originChartExpanded = v)}
 		>
 			<AnalyticsLoadingPanel
 				ready={Boolean(OriginBarChartComponent)}
-				title="Origin Price Ranges"
-				description="Loading live origin range comparisons from the current catalog."
+				title="Origin price ranges"
+				description="Loading live origin price comparisons from the current catalog."
 				height="h-[28rem]"
 				errorMessage={publicChartsError}
 				onRetry={retryPublicCharts}
@@ -555,12 +556,11 @@
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
-					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Ranges</h2>
+					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin price ranges</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
-						Live catalog price distributions by origin. Collapsed view shows the top 8 origins by
-						bean count; expand to choose the comparison set. Rows stay sorted by median $/lb, while
-						the chart scale prioritizes the core distribution and keeps true min/max values in the
-						tooltip.
+						See how current prices spread across origins in the live catalog. The default view
+						highlights the busiest origins, and the expanded view lets you choose your comparison
+						set.
 					</p>
 					{#if originRangeData.length > 0}
 						<div class="w-full">
@@ -593,8 +593,8 @@
 				<div class="mb-3">
 					<h2 class="text-xl font-semibold text-text-primary-light">Supplier Price Comparison</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
-						Baseline analytics stay public for everyone. Parchment Intelligence adds supplier-level
-						comparison workflows.
+						Everyone can explore the core market view. Parchment Intelligence adds deeper supplier
+						comparisons.
 					</p>
 				</div>
 				<div
@@ -617,7 +617,7 @@
 				<div class="mb-3">
 					<h2 class="text-xl font-semibold text-text-primary-light">Supplier Catalog Health</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
-						Catalog breadth, origin coverage, and supplier quality signals for sourcing teams.
+						Catalog breadth, origin coverage, and supplier signals for deeper sourcing review.
 					</p>
 				</div>
 				<div
@@ -647,7 +647,7 @@
 						</div>
 						<div class="mb-4 flex items-center justify-between gap-3">
 							<p class="text-sm text-text-secondary-light">
-								Recently stocked coffees in the last {windowMode === '7d' ? '7' : '30'} days.
+								New coffees added in the last {windowMode === '7d' ? '7' : '30'} days.
 							</p>
 							<div
 								class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium"
@@ -667,7 +667,7 @@
 						</div>
 						<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">
-							Premium-only feed of newly stocked coffees across {stats.totalSuppliers} suppliers.
+							Expanded monitoring for newly added coffees across {stats.totalSuppliers} suppliers.
 						</p>
 						<div class="mt-3 space-y-2">
 							{#each Array(4) as _}
@@ -688,7 +688,7 @@
 						</div>
 						<div class="mb-4 flex items-center justify-between gap-3">
 							<p class="text-sm text-text-secondary-light">
-								Recently removed coffees in the last {windowMode === '7d' ? '7' : '30'} days.
+								Coffees removed in the last {windowMode === '7d' ? '7' : '30'} days.
 							</p>
 							<div
 								class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium"
@@ -708,7 +708,7 @@
 						</div>
 						<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
 						<p class="mt-1 text-sm text-text-secondary-light">
-							Premium-only turnover view that highlights recently removed coffees.
+							Expanded monitoring for catalog removals and turnover.
 						</p>
 						<div class="mt-3 space-y-2">
 							{#each Array(4) as _}
@@ -725,16 +725,19 @@
 
 			<div class="blur-sm filter">
 				<div class="mb-3">
-					<h2 class="text-xl font-semibold text-text-primary-light">Parchment Intelligence</h2>
+					<h2 class="text-xl font-semibold text-text-primary-light">
+						Parchment Intelligence overview
+					</h2>
 					<p class="mt-1 text-sm text-text-secondary-light">
-						Deeper market visibility for sourcing, purchasing, and supplier benchmarking.
+						Deeper market visibility for sourcing, purchasing, and supplier benchmarking in one
+						place.
 					</p>
 				</div>
 				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 					<div
 						class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 					>
-						<h3 class="mb-2 text-lg font-semibold text-text-primary-light">Origin Price Index</h3>
+						<h3 class="mb-2 text-lg font-semibold text-text-primary-light">Origin benchmarks</h3>
 						<div class="grid grid-cols-3 gap-3">
 							{#each Array(9) as _}
 								<div class="rounded bg-background-secondary-light p-3">
@@ -748,7 +751,7 @@
 						class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 					>
 						<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
-							Extended Trend Detail
+							Longer-term trend detail
 						</h3>
 						<div class="mt-4 h-40 rounded bg-background-secondary-light"></div>
 					</div>
@@ -764,38 +767,31 @@
 			>
 				<div class="mb-3 text-3xl">📈</div>
 				<h3 class="mb-2 text-2xl font-bold text-text-primary-light">
-					Upgrade to Parchment Intelligence
+					Go deeper with Parchment Intelligence
 				</h3>
 				<p class="mb-4 text-text-secondary-light">
-					Public visitors and logged-in viewers share the same baseline analytics surface. Parchment
-					Intelligence unlocks supplier comparisons, supplier health, arrivals, delistings, origin
-					index views, and extended trend detail.
+					The public view gives you the core market picture first. Upgrade when you need supplier
+					comparisons, supplier health, arrivals, delistings, origin benchmarks, and longer-term
+					trends.
 				</p>
 				<ul class="mb-6 space-y-2 text-sm text-text-secondary-light">
-					<li>Supplier-level comparison and catalog health tables</li>
-					<li>Premium arrivals and delistings tracking</li>
-					<li>Origin price index tables and extended 6-month and 1-year trend views</li>
+					<li>Supplier comparison and catalog health views</li>
+					<li>Arrival and delisting tracking</li>
+					<li>Origin benchmarks plus 6-month and 1-year trend views</li>
 				</ul>
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-					{#if session}
+					<button
+						onclick={() => goto('/subscription')}
+						class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
+					>
+						See plans
+					</button>
+					{#if !session}
 						<button
 							onclick={() => goto('/subscription')}
-							class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
-						>
-							View Parchment Intelligence pricing
-						</button>
-					{:else}
-						<button
-							onclick={() => goto('/subscription')}
-							class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
-						>
-							See Parchment Intelligence
-						</button>
-						<button
-							onclick={() => goto('/auth/signup')}
 							class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						>
-							Create free account
+							Browse full catalog first
 						</button>
 					{/if}
 				</div>
@@ -804,14 +800,14 @@
 	{:else}
 		<div class="space-y-6">
 			<ExpandablePanel
-				title="Supplier Price Comparison"
-				subtitle="All stocked beans for a selected origin, sorted by price — cheapest first."
+				title="Supplier price comparison"
+				subtitle="Compare current supplier pricing for a selected origin."
 				totalItems={comparisonBeans.length}
 			>
 				<AnalyticsLoadingPanel
 					ready={Boolean(SupplierComparisonTableComponent)}
-					title="Supplier Price Comparison"
-					description="Loading premium supplier comparison tools."
+					title="Supplier price comparison"
+					description="Loading supplier comparison tools."
 					height="h-64"
 					panelClass="border-border-light"
 					errorMessage={memberVisualsError}
@@ -824,14 +820,14 @@
 			</ExpandablePanel>
 
 			<ExpandablePanel
-				title="Supplier Catalog Health"
-				subtitle="Catalog breadth and pricing by supplier — click any column header to sort."
+				title="Supplier catalog health"
+				subtitle="Review catalog breadth, coverage, and pricing by supplier."
 				totalItems={supplierHealth.length}
 			>
 				<AnalyticsLoadingPanel
 					ready={Boolean(SupplierHealthTableComponent)}
-					title="Supplier Catalog Health"
-					description="Loading supplier catalog health analytics."
+					title="Supplier catalog health"
+					description="Loading supplier catalog health views."
 					height="h-64"
 					panelClass="border-border-light"
 					errorMessage={memberVisualsError}
@@ -849,7 +845,7 @@
 
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 				<ExpandablePanel
-					title="New Arrivals"
+					title="New arrivals"
 					badge={`+${filteredArrivals.length}`}
 					badgeColor="amber"
 					totalItems={filteredArrivals.length}
@@ -857,7 +853,7 @@
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-4 flex items-center justify-between gap-3">
 							<p class="text-sm text-text-secondary-light">
-								Recently stocked coffees in the last {windowMode === '7d' ? '7' : '30'} days.
+								New coffees added in the last {windowMode === '7d' ? '7' : '30'} days.
 							</p>
 							<div
 								class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium"
@@ -923,7 +919,7 @@
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-4 flex items-center justify-between gap-3">
 							<p class="text-sm text-text-secondary-light">
-								Recently removed coffees in the last {windowMode === '7d' ? '7' : '30'} days.
+								Coffees removed in the last {windowMode === '7d' ? '7' : '30'} days.
 							</p>
 							<div
 								class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium"
@@ -982,8 +978,8 @@
 			</div>
 
 			<ExpandablePanel
-				title="Origin Price Index"
-				subtitle="Parchment Intelligence — Origin-level price aggregates and extended trend detail from the daily index."
+				title="Origin benchmarks"
+				subtitle="Origin-level pricing benchmarks and longer-term trend context."
 				totalItems={originBarData.length}
 			>
 				<div
@@ -1048,8 +1044,8 @@
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 				<AnalyticsLoadingPanel
 					ready={Boolean(PriceTierChartComponent)}
-					title="Price Tier Analysis"
-					description="Loading latest origin price tier analysis from the current snapshot."
+					title="Price spread analysis"
+					description="Loading the latest origin price spread analysis."
 					height="h-64"
 					panelClass="border-background-tertiary-light/20"
 					errorMessage={memberVisualsError}
@@ -1064,9 +1060,11 @@
 								>Parchment Intelligence</span
 							>
 						</div>
-						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Tier Analysis</h2>
+						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
+							Price spread analysis
+						</h2>
 						<p class="mb-4 text-sm text-text-secondary-light">
-							Retail vs wholesale median price by origin — latest snapshot
+							Retail versus wholesale median price by origin in the latest snapshot
 						</p>
 						{#if PriceTierChartComponent}
 							<PriceTierChartComponent {snapshots} />
@@ -1083,9 +1081,11 @@
 							>Parchment Intelligence</span
 						>
 					</div>
-					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Extended Trend Detail</h2>
+					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
+						Longer-term trend detail
+					</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
-						Price trends across longer time horizons — retail origins
+						Price trends across longer time horizons for retail origins
 					</p>
 					<div class="mb-3 flex items-center gap-2">
 						<span class="text-xs font-medium text-text-secondary-light">Range:</span>
@@ -1119,8 +1119,7 @@
 </div>
 
 <div class="mt-4 rounded-lg bg-background-secondary-light p-4 text-xs text-text-secondary-light">
-	<strong class="text-text-primary-light">Data source:</strong> Prices aggregated daily from
-	{stats.totalSuppliers} US green coffee importers and roasters. The Purveyors Price Index (PPI) is updated
-	each morning after scraper completion. Origin and processing method data is sourced directly from supplier
-	listings.
+	<strong class="text-text-primary-light">Data source:</strong> Daily prices aggregated from
+	{stats.totalSuppliers} US green coffee importers and roasters. The Purveyors Price Index updates each
+	morning, and origin plus processing details come directly from supplier listings.
 </div>

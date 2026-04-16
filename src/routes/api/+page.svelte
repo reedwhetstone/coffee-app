@@ -14,7 +14,7 @@
 	<title>Parchment API</title>
 	<meta
 		name="description"
-		content="Access normalized green coffee data from 39+ suppliers through a simple REST API. Daily updates, tiered pricing, built for roasters and coffee tech platforms."
+		content="Add live green coffee catalog data to your product with one API. Daily updates, clear pricing, and fast onboarding for roasters and coffee software teams."
 	/>
 </svelte:head>
 
@@ -27,15 +27,12 @@
 				Parchment API
 			</p>
 			<h1 class="mt-3 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-				Green coffee data, normalized and ready to build on
+				Bring live green coffee data into your product
 			</h1>
 			<p class="mt-5 text-lg leading-relaxed text-text-secondary-light">
-				One stable public API for green coffee catalog data from 39+ suppliers, plus a documented
-				platform route layer behind the Purveyors web app. The canonical external contract is
-				<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/v1/catalog</code
-				>; the broader
-				<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/api/*</code> family
-				powers inventory, roast, chat, billing, and admin workflows.
+				Give your team or customers a clean, reliable view of green coffee availability, pricing,
+				and supplier coverage. Parchment API delivers daily-updated catalog data from 39+ suppliers
+				through one consistent integration.
 			</p>
 		</div>
 
@@ -44,19 +41,19 @@
 				onclick={openDashboard}
 				class="rounded-xl bg-background-tertiary-light px-5 py-3 text-sm font-semibold text-white transition-opacity hover:bg-opacity-90"
 			>
-				Open Parchment Console
+				Get API access
 			</button>
 			<button
 				onclick={openDocs}
 				class="rounded-xl border border-background-tertiary-light px-5 py-3 text-sm font-semibold text-background-tertiary-light transition-colors hover:bg-background-tertiary-light hover:text-white"
 			>
-				Read the docs
+				View docs
 			</button>
 			<a
 				href="/catalog"
 				class="rounded-xl border border-border-light px-5 py-3 text-center text-sm font-semibold text-text-primary-light transition-colors hover:bg-background-secondary-light"
 			>
-				See it in action
+				Explore the catalog
 			</a>
 		</div>
 	</section>
@@ -66,31 +63,28 @@
 			<div class="text-3xl font-bold text-background-tertiary-light">39+</div>
 			<div class="mt-2 text-sm font-semibold text-text-primary-light">Suppliers</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Green coffee offerings from importers across the U.S., normalized into a single schema.
+				Importers and green coffee sources in one normalized catalog.
 			</p>
 		</div>
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
 			<div class="text-3xl font-bold text-background-tertiary-light">Daily</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Updates</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Fresh data</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Catalog data refreshed every day. New arrivals, delistings, and price changes reflected
-				automatically.
+				New listings, removals, and price changes update automatically.
 			</p>
 		</div>
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
-			<div class="text-3xl font-bold text-background-tertiary-light">REST</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Simple integration</div>
+			<div class="text-3xl font-bold text-background-tertiary-light">One</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Consistent feed</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Stable public contract at /v1/catalog, JSON responses, and documented platform routes when
-				you need to understand the first-party app.
+				Clean JSON responses that are easier to plug into apps, reports, and internal tools.
 			</p>
 		</div>
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
 			<div class="text-3xl font-bold text-background-tertiary-light">3</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Flexible tiers</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Plans</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				From free exploration to production API access, with enterprise contact-sales support when
-				you need it.
+				Start free, move to production, or talk with us about higher-volume needs.
 			</p>
 		</div>
 	</section>
@@ -99,29 +93,27 @@
 		<div
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 		>
-			<h2 class="text-2xl font-semibold text-text-primary-light">What you get</h2>
+			<h2 class="text-2xl font-semibold text-text-primary-light">What you can build</h2>
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
 					<span
-						>Normalized catalog with origin, processing method, price, and availability for every
-						listing</span
+						>Supplier comparison experiences with pricing, origin, and availability in one place</span
 					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
 					<span
-						>Rate-limit headers on API-key responses so you can track usage and manage your
-						integration confidently</span
+						>Daily syncs for sourcing systems, planning tools, and customer-facing product features</span
 					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Consistent JSON schema across all suppliers, regardless of source format</span>
+					<span>Reliable catalog views with a consistent schema across every supplier source</span>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Free Green tier for evaluation with no credit card required</span>
+					<span>Usage visibility and API key management through Parchment Console</span>
 				</li>
 			</ul>
 		</div>
@@ -133,21 +125,23 @@
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
+					<span>Roasters building better sourcing, planning, or purchasing workflows</span>
+				</li>
+				<li class="flex gap-3">
+					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
+					<span>Coffee software teams adding market data to customer products</span>
+				</li>
+				<li class="flex gap-3">
+					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
 					<span
-						>Roasters building sourcing tools, price comparison dashboards, or inventory systems</span
+						>Operators and analysts who need cleaner visibility into supplier coverage and pricing</span
 					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Coffee tech platforms adding green coffee market data to their products</span>
-				</li>
-				<li class="flex gap-3">
-					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Developers and AI agents that need structured coffee supply chain data</span>
-				</li>
-				<li class="flex gap-3">
-					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Analysts tracking sourcing trends, supplier coverage, and pricing dynamics</span>
+					<span
+						>Teams that want a faster path from raw supplier listings to usable product data</span
+					>
 				</li>
 			</ul>
 		</div>
@@ -161,7 +155,7 @@
 			<table class="min-w-full divide-y divide-border-light text-sm">
 				<thead class="bg-background-secondary-light text-left text-text-primary-light">
 					<tr>
-						<th class="px-4 py-3 font-semibold">Tier</th>
+						<th class="px-4 py-3 font-semibold">Plan</th>
 						<th class="px-4 py-3 font-semibold">Monthly requests</th>
 						<th class="px-4 py-3 font-semibold">Rows per call</th>
 						<th class="px-4 py-3 font-semibold">Best for</th>
@@ -174,14 +168,14 @@
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Green</td>
 						<td class="px-4 py-3 align-top">200</td>
 						<td class="px-4 py-3 align-top">25</td>
-						<td class="px-4 py-3 align-top">Evaluation, prototypes, lightweight catalog pulls</td>
+						<td class="px-4 py-3 align-top">Evaluation, prototypes, and lightweight data pulls</td>
 					</tr>
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Origin</td>
 						<td class="px-4 py-3 align-top">10,000</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top"
-							>Production integrations and regular sync jobs with self-serve API access</td
+							>Production products, sync jobs, and recurring customer use</td
 						>
 					</tr>
 					<tr>
@@ -189,21 +183,15 @@
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top"
-							>High-volume sync, internal platforms, and custom support via contact sales</td
+							>High-volume deployments with custom support and commercial terms</td
 						>
 					</tr>
 				</tbody>
 			</table>
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-text-secondary-light">
-			Green is the free evaluation tier. Origin is the self-serve paid Parchment API tier for
-			production integrations. Enterprise is a contact-sales path for custom volume, support, and
-			commercial terms. API-key requests receive rate-limit headers; session and anonymous catalog
-			requests do not. In code and API responses, these marketed plans map to <code
-				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">viewer</code
-			>, <code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">member</code>,
-			and
-			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs">enterprise</code>.
+			Green is the free way to evaluate the product. Origin is the self-serve plan for live
+			integrations. Enterprise is for larger teams that need custom volume, support, or terms.
 			Manage your keys and monitor usage in the
 			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
 				>Parchment Console</a
@@ -216,36 +204,36 @@
 			href="/docs/api/overview"
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<h2 class="text-xl font-semibold text-text-primary-light">API reference</h2>
+			<h2 class="text-xl font-semibold text-text-primary-light">API docs</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Stable public contract, auth modes, response format, rate limits, and code examples.
+				Authentication, response format, limits, and code examples for getting started fast.
 			</p>
 		</a>
 		<a
-			href="/docs/api/platform"
+			href="/api-dashboard"
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<h2 class="text-xl font-semibold text-text-primary-light">Platform routes</h2>
+			<h2 class="text-xl font-semibold text-text-primary-light">Parchment Console</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Internal route matrix for inventory, roast, chat, workspaces, billing, and admin flows.
+				Create keys, review usage, and manage access in one place.
 			</p>
 		</a>
 		<a
-			href="/docs/cli/overview"
+			href="/catalog"
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<h2 class="text-xl font-semibold text-text-primary-light">CLI reference</h2>
+			<h2 class="text-xl font-semibold text-text-primary-light">Live catalog</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Search the catalog, manage inventory, and automate roasting workflows from your terminal.
+				See the buyer-facing catalog experience powered by the same core dataset.
 			</p>
 		</a>
 		<a
 			href="/analytics"
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<h2 class="text-xl font-semibold text-text-primary-light">Market analytics</h2>
+			<h2 class="text-xl font-semibold text-text-primary-light">Market visibility</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Live market intelligence: pricing trends, supplier coverage, origin analysis, and more.
+				Track pricing trends, supplier movement, and market changes with daily analytics.
 			</p>
 		</a>
 	</section>

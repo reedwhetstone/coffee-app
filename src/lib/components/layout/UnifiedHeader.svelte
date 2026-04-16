@@ -118,10 +118,10 @@
 						Sign In
 					</button>
 					<button
-						onclick={() => navigateTo('/auth')}
+						onclick={() => navigateTo('/subscription')}
 						class="inline-flex items-center rounded-md bg-background-tertiary-light px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light"
 					>
-						Get Started
+						See plans
 					</button>
 				{/if}
 
@@ -196,10 +196,10 @@
 							Sign In
 						</button>
 						<button
-							onclick={() => navigateTo('/auth')}
+							onclick={() => navigateTo('/subscription')}
 							class="mt-2 block w-full rounded-xl bg-background-tertiary-light px-3 py-3 text-left text-sm font-medium text-white"
 						>
-							Get Started
+							See plans
 						</button>
 					{/if}
 				</div>

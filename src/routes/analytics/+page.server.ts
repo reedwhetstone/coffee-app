@@ -155,8 +155,8 @@ export async function _loadPriceSnapshotsPaginated({
 }
 
 export const load: PageServerLoad = async (event) => {
-	// Resolve principal to get explicit Parchment Intelligence entitlement.
-	// Logged-out visitors and logged-in viewers intentionally share the same baseline analytics surface.
+	// Resolve principal to get explicit Parchment Intelligence access.
+	// Logged-out visitors and logged-in viewers intentionally share the same core analytics view.
 	const principal = await resolvePrincipal(event);
 	const isParchmentIntelligence = principal.isAuthenticated ? principal.ppiAccess : false;
 
@@ -397,7 +397,7 @@ export const load: PageServerLoad = async (event) => {
 		schemaService.generateDatasetSchema({
 			name: 'Purveyors Price Index — Green Coffee Market Data',
 			description:
-				'Daily green coffee price snapshots from 39+ US importers and roasters. Includes origin pricing, processing method distribution, and supplier comparison data.',
+				'Daily green coffee pricing from 39+ US importers and roasters, including origin trends, processing mix, and supplier coverage.',
 			url: `${baseUrl}/analytics`,
 			keywords: [
 				'green coffee prices',
@@ -449,9 +449,9 @@ export const load: PageServerLoad = async (event) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/analytics',
-			title: 'Green Coffee Market Analytics | Purveyors Price Index',
+			title: 'Green Coffee Market Visibility | Purveyors Price Index',
 			description:
-				'Live green coffee price trends, origin analysis, and supplier data from 39+ US importers. Updated daily. Free market intelligence for coffee professionals.',
+				'Daily green coffee pricing, supplier movement, and origin trends from 39+ US importers. Free market visibility for coffee teams.',
 			keywords: [
 				'green coffee prices',
 				'coffee market data',
@@ -460,12 +460,11 @@ export const load: PageServerLoad = async (event) => {
 				'coffee origin prices',
 				'coffee supplier comparison'
 			],
-			ogTitle: 'Green Coffee Market Analytics — Purveyors Price Index',
+			ogTitle: 'Green Coffee Market Visibility — Purveyors Price Index',
 			ogDescription:
-				'Real-time green coffee price trends by origin, processing methods, and supplier comparison. Data from 39+ US green coffee importers, updated daily.',
-			twitterTitle: 'Green Coffee Market Analytics — Purveyors',
-			twitterDescription:
-				'Live green coffee price trends from 39+ US importers. Free market intelligence.',
+				'Daily green coffee price trends, processing mix, and supplier movement from 39+ US importers.',
+			twitterTitle: 'Green Coffee Market Visibility — Purveyors',
+			twitterDescription: 'Daily green coffee pricing and supplier movement from 39+ US importers.',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/analytics.jpg',
