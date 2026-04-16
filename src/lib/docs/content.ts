@@ -295,12 +295,8 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Public endpoint',
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, processing method, pricing, price tiers, and availability metadata.',
-<<<<<<< HEAD
-			'The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous and viewer-session requests are public-only. Member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the only ones that receive X-RateLimit-* headers. When page and limit are both omitted, the canonical listing response defaults to page 1 and up to 100 rows before any plan-based cap is applied.'
-=======
 			'The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous and viewer-session requests are public-only. Member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the only ones that receive X-RateLimit-* headers. Use anonymous access for discovery and proof-of-value. Use API keys for production integrations that need quota visibility and a durable machine contract.',
 			'Anonymous /v1/catalog requests are intentionally narrower than authenticated ones: they always stay on page 1, default to stocked=true, default to sortField=stocked_date with sortDirection=desc, allow only the name, country, and processing filters, reject ids and fields=dropdown, and cap the default listing response at 100 rows only when page and limit are both omitted. If page is supplied without limit, the route falls back to 15 rows. Anonymous callers cannot opt into any non-default sort.'
->>>>>>> 546c55a (Clarify anonymous catalog contract)
 		],
 		sections: [
 			{
@@ -335,12 +331,8 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Query parameters',
 				body: [
-<<<<<<< HEAD
-					'If page is supplied without limit, the route uses a 15-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the 100-row default listing contract.'
-=======
 					'If page is supplied without limit, the route uses a 15-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the 100-row default listing contract. Anonymous callers still remain constrained to the first page and the default stocked_date desc sort.',
 					'Malformed numeric params now fail closed with 400 responses instead of silently falling back. That applies to page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases.'
->>>>>>> 546c55a (Clarify anonymous catalog contract)
 				],
 				table: {
 					headers: ['Parameter', 'Type', 'Default', 'Description'],

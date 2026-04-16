@@ -385,11 +385,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		}
 	);
 
-<<<<<<< HEAD
 	it('rejects anonymous ids, dropdown fields, and deep paging', async () => {
-=======
-	it('allows anonymous callers to explicitly request the default stocked_date desc sort', async () => {
->>>>>>> 546c55a (Clarify anonymous catalog contract)
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
 			primaryAppRole: null,
@@ -398,7 +394,6 @@ describe('buildCanonicalCatalogResponse', () => {
 		mockIsApiKeyPrincipal.mockReturnValue(false);
 		mockIsSessionPrincipal.mockReturnValue(false);
 
-<<<<<<< HEAD
 		await expect(
 			buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog?ids=1'))
 		).resolves.toMatchObject({ status: 400 });
@@ -408,7 +403,17 @@ describe('buildCanonicalCatalogResponse', () => {
 		await expect(
 			buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog?page=2'))
 		).resolves.toMatchObject({ status: 400 });
-=======
+	});
+
+	it('allows anonymous callers to explicitly request the default stocked_date desc sort', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
 		const response = await buildCanonicalCatalogResponse(
 			makeEvent('https://app.test/v1/catalog?sortField=stocked_date&sortDirection=desc')
 		);
@@ -448,7 +453,6 @@ describe('buildCanonicalCatalogResponse', () => {
 			details: { parameter: 'sortField' }
 		});
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
->>>>>>> 546c55a (Clarify anonymous catalog contract)
 	});
 
 	it('lets member sessions request wholesale-visible catalog data with the same contract', async () => {
