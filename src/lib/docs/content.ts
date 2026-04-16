@@ -62,39 +62,52 @@ export const DOCS_NAV: DocsNavSection[] = [
 		key: 'api',
 		title: 'API docs',
 		description:
-			'Catalog API reference, authentication, tier limits, response format, and supporting endpoints.',
+			'Public catalog contract, platform route matrix, analytics, billing flows, auth, and operational guidance.',
 		basePath: '/docs/api',
 		items: [
 			{
 				slug: 'overview',
 				title: 'Overview',
-				summary: 'Architecture, authentication, and how the API, Console, and CLI fit together.'
+				summary: 'Public versus internal surfaces, auth modes, and how the product fits together.'
 			},
 			{
 				slug: 'catalog',
 				title: 'Catalog',
 				summary:
-					'The public catalog endpoint: fields, response format, tier-based limits, and caching.'
+					'The stable public /v1/catalog contract: fields, limits, compatibility aliases, headers, and query parameters.'
 			},
 			{
-				slug: 'analytics',
-				title: 'Analytics',
-				summary: 'Market intelligence surfaces, access tiers, and analytics capabilities.'
-			},
-			{
-				slug: 'roast-profiles',
-				title: 'Roast profiles',
-				summary: 'Roast CRUD, Artisan imports, chart data, and AI classification.'
+				slug: 'platform',
+				title: 'Platform routes',
+				summary:
+					'Authenticated and internal /api/* route matrix for catalog app flows, chat, workspaces, and tools.'
 			},
 			{
 				slug: 'inventory',
 				title: 'Inventory',
-				summary: 'Green coffee inventory CRUD, share links, and stocked-state management.'
+				summary: 'Inventory CRUD, share links, stocked-state recalculation, and ownership behavior.'
+			},
+			{
+				slug: 'roast-profiles',
+				title: 'Roast profiles',
+				summary: 'Roast CRUD, Artisan import, chart data, clear flows, and AI classification.'
+			},
+			{
+				slug: 'analytics',
+				title: 'Analytics',
+				summary:
+					'The /analytics product surface and the session-auth roast analysis helpers behind it.'
+			},
+			{
+				slug: 'billing-admin',
+				title: 'Billing and admin',
+				summary:
+					'Stripe lifecycle routes, Console-adjacent flows, webhooks, and admin-only maintenance endpoints.'
 			},
 			{
 				slug: 'errors',
 				title: 'Errors and auth',
-				summary: 'Status codes, error shapes, rate limits, and authentication reference.'
+				summary: 'Status codes, auth edge cases, rate limits, and practical troubleshooting notes.'
 			}
 		]
 	},
@@ -102,13 +115,18 @@ export const DOCS_NAV: DocsNavSection[] = [
 		key: 'cli',
 		title: 'CLI docs',
 		description:
-			'Install, authenticate, and use the Parchment CLI for catalog queries, inventory, roasting, and automation.',
+			'Install, authenticate, and use the Parchment CLI for catalog queries, inventory, roasting, scripting, and agent automation.',
 		basePath: '/docs/cli',
 		items: [
 			{
 				slug: 'overview',
 				title: 'Overview',
 				summary: 'Install, authenticate, and explore the CLI command structure.'
+			},
+			{
+				slug: 'auth-output',
+				title: 'Auth, config, and output',
+				summary: 'Viewer versus member auth, local config, output modes, and scripting guarantees.'
 			},
 			{
 				slug: 'catalog',
@@ -136,6 +154,12 @@ export const DOCS_NAV: DocsNavSection[] = [
 				summary: 'Read supplier notes and record personal cupping data.'
 			},
 			{
+				slug: 'context-manifest',
+				title: 'Context and manifest',
+				summary:
+					'Dense reference text, machine-readable manifest output, and onboarding patterns for agents.'
+			},
+			{
 				slug: 'agent-integration',
 				title: 'Agent integration',
 				summary: 'Use the CLI as a stable interface for AI tools and external agents.'
@@ -150,123 +174,115 @@ const docsPages: DocsPage[] = [
 		slug: 'overview',
 		title: 'API overview',
 		summary:
-			'Parchment Platform exposes a public catalog API for external consumers and a session-authenticated API for the web app.',
+			'Parchment Platform ships one stable public catalog API and a larger internal platform route layer for the web app.',
 		eyebrow: 'Parchment Platform',
 		intro: [
-			'The Parchment API provides programmatic access to normalized green coffee data from 39+ suppliers. Authenticate with an API key and start pulling catalog data in minutes.',
-			'The platform also includes a session-authenticated API that powers the web app (inventory, roasting, sales, and chat). These docs cover both surfaces so you always know which endpoints are available to you.'
+			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data through a small public HTTP contract and a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
+			'The stable public contract is GET /v1/catalog. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
-				title: 'API surfaces',
+				title: 'Surface map',
 				body: [
-					'The platform ships two distinct API layers. /v1/catalog is the stable public contract for external integrations. All other /api/* routes are internal app routes that power the web app and are not public compatibility promises.'
+					'Treat the platform as two layers. /v1/* is the public namespace for external integrations. /api/* is the first-party application layer. Some /api/* routes are still externally reachable, but that does not make them stable public contracts.'
 				],
 				table: {
-					headers: ['Surface', 'Auth', 'Description', 'Stability'],
+					headers: ['Surface', 'Auth', 'Audience', 'Contract'],
 					rows: [
 						[
-							'/v1/catalog',
-							'API key, web session, or anonymous',
-							'Canonical catalog endpoint. Stable public contract.',
-							'Public / stable'
+							'GET /v1',
+							'Anonymous, session, or API key',
+							'External integrators and discovery',
+							'Public namespace root. Advertises the v1 family.'
 						],
 						[
-							'/api/catalog-api',
-							'API key',
-							'Deprecated legacy catalog URL. Delegates to /v1/catalog with Deprecation and Sunset headers. Sunset: Dec 31 2026.',
-							'Deprecated'
+							'GET /v1/catalog',
+							'Anonymous, session, or API key',
+							'External integrations, CLI complements, first-party app',
+							'Stable public contract.'
 						],
 						[
-							'/api-dashboard',
-							'Web session',
-							'Parchment Console for API keys, usage, and billing',
-							'Authenticated users'
+							'GET /api/catalog-api',
+							'API key only',
+							'Legacy callers only',
+							'Deprecated API-key-only alias. Delegates to /v1/catalog with Deprecation and Sunset headers while remaining public-only. Sunset: Dec 31 2026.'
 						],
 						[
-							'/api/catalog',
-							'Web session',
-							'Internal paginated catalog for the web app UI. Not a public contract.',
-							'Internal'
+							'GET /api/catalog and /api/catalog/filters',
+							'Anonymous or session; API key for /api/catalog only',
+							'First-party catalog UI',
+							'Internal compatibility layer. Do not treat as broad external promise.'
 						],
-						['/api/beans', 'Member session', 'Inventory CRUD and share-token reads', 'Internal'],
 						[
-							'/api/roast-profiles, /api/artisan-import, /api/roast-chart-*',
+							'/api/beans, /api/roast-profiles, /api/profit',
+							'Session-authenticated; ownership enforced on writes',
+							'Authenticated product users',
+							'Internal application routes.'
+						],
+						[
+							'/api/chat, /api/workspaces, /api/tools/*',
 							'Member session',
-							'Roast CRUD, Artisan .alog imports, and chart data',
-							'Internal'
-						],
-						['/api/profit', 'Member session', 'Sales recording and profit data', 'Internal'],
-						[
-							'/api/chat, /api/workspaces',
-							'Member session',
-							'AI chat and workspace memory',
-							'Internal'
+							'Paid workspace and AI workflows',
+							'Internal product routes. /api/tools/* are deprecated compatibility shims.'
 						],
 						[
-							'/api/tools/*',
-							'Member session',
-							'Deprecated tool execution routes kept for compatibility. Prefer CLI library integration for new work.',
-							'Deprecated'
-						],
-						[
-							'/api/stripe/*',
-							'Session or Stripe webhook',
-							'Billing, subscription, and checkout flows',
-							'Internal'
-						],
-						[
-							'/api/admin/*',
-							'Admin session only',
-							'Admin maintenance and backfill operations. Not a public surface.',
-							'Admin only'
+							'/api/stripe/* and /api/admin/*',
+							'Session, webhook signature, or admin session depending on route',
+							'Billing, operations, and support workflows',
+							'Internal operational routes.'
 						]
 					]
 				}
 			},
 			{
-				title: 'Authentication',
-				body: [
-					'/v1/catalog accepts three authentication modes. API-key requests use Authorization: Bearer <api_key> and are subject to tier-based rate limits and row caps. Session requests come from the web app via Supabase cookies. Anonymous requests (no credentials) receive public-only listings with a server-side row cap and do not receive rate-limit headers.'
-				],
+				title: 'Authentication model',
 				bullets: [
-					'External integrations: send Authorization: Bearer <api_key> to /v1/catalog.',
-					'API keys are created and managed in the Parchment Console at /api-dashboard/keys.',
-					'Access tiers (Explorer, Roaster+, Enterprise) determine rate limits and row caps. Rate-limit headers are only included in API-key responses.',
-					'Internal web app routes use Supabase session cookies. Member-only routes require an active paid membership.'
+					'GET /v1/catalog supports anonymous requests for public-only catalog discovery.',
+					'GET /v1/catalog also supports first-party session requests. Viewer sessions stay public-only; member and admin sessions may unlock richer in-app visibility.',
+					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API-key requests stay public-only, use plan-based limits, and are the only catalog requests that receive X-RateLimit-* headers.',
+					'GET /api/catalog-api is a deprecated legacy alias to /v1/catalog, but it remains API-key-only for backward-compatible machine access.',
+					'Cookies only matter when they resolve to a valid first-party session. A raw Cookie header is not part of the public API contract.',
+					'Inventory share links are the one notable anonymous data exception on the product side: GET /api/beans?share=... can return a scoped inventory view without a user session.'
 				],
 				codeBlocks: [
 					{
-						label: 'Catalog API request',
+						label: 'Public catalog request',
 						language: 'bash',
 						code: 'curl https://purveyors.io/v1/catalog \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
 					}
 				]
 			},
 			{
-				title: 'Getting started',
+				title: 'How the product surfaces connect',
 				bullets: [
-					'Sign up at purveyors.io and generate an API key in the Parchment Console.',
-					'Read the Catalog docs for endpoint details, response format, and code examples.',
-					'Use the CLI (purvey catalog search) for quick terminal-based exploration.'
+					'/api is the public-facing product page for plans, positioning, and quick start.',
+					'/api-dashboard is the Parchment Console for API keys, usage, subscriptions, and account-aware billing flows.',
+					'/catalog and /analytics are end-user product surfaces that reflect the same coffee domain model as the API.',
+					'/docs is the shared public documentation tree for both the HTTP API and @purveyors/cli.',
+					'The web app imports @purveyors/cli modules directly for chat tooling, so CLI and product behavior should stay aligned.'
 				]
 			}
 		],
 		related: [
 			{
 				href: '/docs/api/catalog',
-				label: 'Catalog reference',
-				description: 'Fields, limits, headers, and response examples for the public feed.'
+				label: 'Catalog contract',
+				description: 'Canonical /v1/catalog request and response reference.'
+			},
+			{
+				href: '/docs/api/platform',
+				label: 'Platform route matrix',
+				description: 'Internal and authenticated /api/* route inventory.'
 			},
 			{
 				href: '/api-dashboard',
 				label: 'Parchment Console',
-				description: 'Generate keys, inspect usage, and manage your API access.'
+				description: 'Generate keys, inspect usage, and manage billing.'
 			},
 			{
 				href: '/docs/cli/overview',
 				label: 'CLI overview',
-				description: 'Terminal access to the same catalog and member workflows.'
+				description: 'Terminal workflows that complement the HTTP API.'
 			}
 		]
 	},
@@ -275,31 +291,46 @@ const docsPages: DocsPage[] = [
 		slug: 'catalog',
 		title: 'Catalog API',
 		summary:
-			'The canonical catalog endpoint returns normalized green coffee data from suppliers across the U.S., supporting API-key, session, and anonymous access.',
+			'GET /v1/catalog is the stable public contract for normalized green coffee listings and tier-aware API access.',
 		eyebrow: 'Public endpoint',
 		intro: [
-			'GET /v1/catalog is the canonical catalog endpoint. It returns normalized coffee listings with origin, processing method, pricing (including price tiers), and availability data.',
-			'The endpoint supports three auth modes: API key (external integrations, rate-limited by tier), web session (first-party web app), and anonymous (no credentials, public-only listings). Requests without explicit page or limit parameters default to page 1 with up to 100 rows for the standard listing response. Only API-key requests receive X-RateLimit-* response headers.'
+			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, processing method, pricing, price tiers, and availability metadata.',
+			'The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous and viewer-session requests are public-only. Member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the only ones that receive X-RateLimit-* headers. When page and limit are both omitted, the canonical listing response defaults to page 1 and up to 100 rows before any plan-based cap is applied.'
 		],
 		sections: [
 			{
+				title: 'Namespace and compatibility',
+				bullets: [
+					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog.',
+					'GET /v1/catalog is the source-of-truth public contract for integrations.',
+					'GET /api/catalog-api is a deprecated API-key-only alias to the canonical handler. Responses include Deprecation: true, Link: </v1/catalog>; rel="successor-version", and Sunset: Thu, 31 Dec 2026 23:59:59 GMT.',
+					'GET /api/catalog also delegates to the same catalog resource, but it is an internal adapter with legacy response-shape behavior and should not be treated as a long-term external contract.'
+				],
+				callout: {
+					tone: 'note',
+					title: 'External integrations should target /v1/catalog',
+					body: 'If a caller currently uses /api/catalog-api or /api/catalog, migrate it to /v1/catalog. The v1 route is the compatibility promise. The others are transitional or first-party adapters.'
+				}
+			},
+			{
 				title: 'Request and response',
 				body: [
-					'The catalog endpoint returns a paginated listing response by default. Use query parameters for filtering, pagination, and sorting.',
-					'If you omit both page and limit, /v1/catalog automatically serves the first page with up to 100 rows for the standard listing response. Each response includes data (the listings array), pagination metadata, and a meta block with auth, access, and cache details.'
+					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
+					'Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans are uncapped at the row level. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.',
+					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
 				],
 				codeBlocks: [
 					{
 						label: 'GET /v1/catalog',
 						language: 'json',
-						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "price_per_lb": 7.5,\n      "cost_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": { "page": 1, "limit": 25, "total": 814, "totalPages": 33, "hasNext": true, "hasPrev": false },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": { "publicOnly": true, "rowLimit": 25, "limited": true, "totalAvailable": 814 },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
+						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "price_per_lb": 7.5,\n      "cost_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
 					}
 				]
 			},
 			{
 				title: 'Query parameters',
 				body: [
-					'Explicit pagination still uses the limit you provide. If you send page without limit, the endpoint uses 15 rows per page. If you omit both page and limit, the standard listing response defaults to page 1 with 100 rows.'
+					'If page is supplied without limit, the route uses a 15-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the 100-row default listing contract.'
 				],
 				table: {
 					headers: ['Parameter', 'Type', 'Default', 'Description'],
@@ -308,65 +339,49 @@ const docsPages: DocsPage[] = [
 						[
 							'limit',
 							'integer',
-							'100 when page+limit are both omitted; otherwise 15 fallback',
-							'Rows per page (capped by tier row limit for API-key requests).'
+							'100 when page and limit are both omitted; otherwise 15 fallback',
+							'Rows per page before any plan cap is applied.'
 						],
 						[
 							'ids',
 							'integer (repeatable)',
 							'—',
-							'Fetch specific catalog IDs. Pass ids=N&ids=M to request multiple. When present, pagination params are ignored and results are sorted by name ascending.'
+							'Fetch specific catalog IDs. When present, pagination is ignored and results are sorted by name ascending.'
 						],
 						[
 							'fields',
 							'full | dropdown',
 							'full',
-							'Response projection. dropdown returns a minimal set of fields for filter UIs and select menus; full returns the complete listing object.'
+							'dropdown returns the reduced projection used by filter UIs and select menus.'
 						],
 						[
 							'stocked',
 							'true | false | all',
 							'true',
-							'Filter by stocked state. true returns only currently available beans. false returns only unstocked/historical items. all returns the full catalog regardless of stocked state.'
+							'Filter to stocked-only, unstocked-only, or the full catalog.'
 						],
-						[
-							'origin',
-							'string',
-							'—',
-							'Partial match across continent, country, and region fields. origin=Ethiopia matches Ethiopian coffees; origin=Africa matches all African origins.'
-						],
-						['country', 'string', '—', 'Exact match on the country field.'],
-						['continent', 'string', '—', 'Exact match on the continent field.'],
+						['origin', 'string', '—', 'Partial match across continent, country, and region.'],
+						['country', 'string', '—', 'Exact match on country.'],
+						['continent', 'string', '—', 'Exact match on continent.'],
 						[
 							'source',
 							'string (repeatable)',
 							'—',
-							'Filter by supplier slug. Repeat to match multiple sources: source=sweet_marias&source=burman_coffee.'
+							'Repeat to filter across multiple supplier slugs.'
 						],
-						[
-							'processing',
-							'string',
-							'—',
-							'Partial match on processing method (e.g. washed, natural, honey).'
-						],
-						['name', 'string', '—', 'Partial match on coffee name (case-insensitive).'],
-						['region', 'string', '—', 'Partial match on region field.'],
-						[
-							'cultivar_detail',
-							'string',
-							'—',
-							'Partial match on cultivar or variety detail (e.g. Heirloom, Bourbon).'
-						],
-						['type', 'string', '—', 'Partial match on the type field (e.g. single-origin, blend).'],
-						['grade', 'string', '—', 'Partial match on the grade field.'],
-						['appearance', 'string', '—', 'Partial match on the appearance or defect description.'],
-						['price_per_lb_min', 'number', '—', 'Minimum price per pound (inclusive).'],
-						['price_per_lb_max', 'number', '—', 'Maximum price per pound (inclusive).'],
+						['processing', 'string', '—', 'Partial match on processing method.'],
+						['name', 'string', '—', 'Partial match on coffee name.'],
+						['region', 'string', '—', 'Partial match on region.'],
+						['cultivar_detail', 'string', '—', 'Partial match on cultivar or variety detail.'],
+						['type', 'string', '—', 'Partial match on type.'],
+						['grade', 'string', '—', 'Partial match on grade.'],
+						['appearance', 'string', '—', 'Partial match on appearance.'],
+						['price_per_lb_min / price_per_lb_max', 'number', '—', 'Canonical price filters.'],
 						[
 							'cost_lb_min / cost_lb_max',
 							'number',
 							'—',
-							'Compatibility aliases for price_per_lb_min / price_per_lb_max. Prefer the canonical params in new integrations.'
+							'Deprecated compatibility aliases for the canonical price filters. Prefer price_per_lb_min / price_per_lb_max in new integrations.'
 						],
 						['score_value_min', 'number', '—', 'Minimum cupping or quality score (inclusive).'],
 						['score_value_max', 'number', '—', 'Maximum cupping or quality score (inclusive).'],
@@ -380,142 +395,437 @@ const docsPages: DocsPage[] = [
 							'stocked_date',
 							'string (YYYY-MM-DD)',
 							'—',
-							'Filter to coffees stocked on or after a given date.'
+							'Filter to coffees stocked on or after a given absolute date. Invalid formats return 400.'
+						],
+						[
+							'stocked_days',
+							'integer',
+							'—',
+							'Filter to coffees stocked within the last N days. Use stocked_date for absolute dates.'
 						],
 						[
 							'showWholesale',
 							'boolean',
 							'false',
-							'Include wholesale listings in the response. Only effective for session-authenticated requests with appropriate role. Ignored for API-key and anonymous requests.'
+							'Only effective for privileged member sessions. Ignored for anonymous and API-key requests.'
 						],
 						[
 							'wholesaleOnly',
 							'boolean',
 							'false',
-							'Return only wholesale listings. Requires showWholesale=true. Only effective for session-authenticated requests with appropriate role.'
+							'Requires showWholesale=true and a privileged member session.'
+						],
+						['sortField', 'string', 'arrival_date', 'Sort field for non-ID queries.'],
+						['sortDirection', 'asc | desc', 'desc', 'Sort direction for non-ID queries.']
+					]
+				}
+			},
+			{
+				title: 'Tier limits and headers',
+				table: {
+					headers: ['Marketed plan', 'Code key', 'Monthly requests', 'Rows per call', 'Notes'],
+					rows: [
+						['Green', 'viewer', '200', '25', 'Best for evaluation and prototypes.'],
+						[
+							'Origin',
+							'member',
+							'10,000',
+							'Unlimited',
+							'Self-serve paid tier for production integrations and sync jobs.'
 						],
 						[
-							'sortField',
-							'string',
-							'arrival_date',
-							'Field to sort by. Ignored when ids is provided.'
-						],
-						[
-							'sortDirection',
-							'asc | desc',
-							'desc',
-							'Sort direction. Ignored when ids is provided (always asc by name).'
+							'Enterprise',
+							'enterprise',
+							'Unlimited',
+							'Unlimited',
+							'Contact-sales plan for custom commercial volume and support.'
 						]
 					]
-				}
-			},
-			{
-				title: 'Tier limits',
-				table: {
-					headers: ['Tier', 'Monthly requests', 'Rows per call', 'Best for'],
-					rows: [
-						['Explorer', '200', '25', 'Evaluation and prototyping'],
-						['Roaster+', '10,000', 'Unlimited', 'Production integrations and regular syncs'],
-						['Enterprise', 'Unlimited', 'Unlimited', 'High-volume platforms and premium support']
-					]
-				}
-			},
-			{
-				title: 'Rate-limit headers',
-				body: [
-					'Rate-limit headers are only included in API-key authenticated responses. Session and anonymous requests are not tracked against a monthly quota and do not receive these headers.'
-				],
+				},
 				bullets: [
-					'X-RateLimit-Limit: your monthly request cap for the current API key.',
-					'X-RateLimit-Remaining: requests remaining in the current billing period.',
-					'X-RateLimit-Reset: Unix timestamp when the billing period resets.',
-					'429 responses include a Retry-After header indicating seconds to wait.'
+					'The public docs use marketed tier names Green, Origin, and Enterprise, while API responses and server code use apiPlan keys viewer, member, and enterprise.',
+					'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset are only emitted for API-key responses.',
+					'429 responses also include Retry-After.',
+					'Anonymous and session-based catalog requests are not counted against an API-key quota and therefore do not receive those headers.'
 				]
-			},
-			{
-				title: 'Related and deprecated endpoints',
-				bullets: [
-					'GET /api/catalog is an internal session-auth route used by the web app UI for paginated browsing and dropdown payloads. It delegates to the canonical /v1/catalog resource. Not a public contract.',
-					'GET /api/catalog-api is a deprecated legacy URL that also delegates to /v1/catalog. Responses include Deprecation: true and Sunset headers. Migrate to /v1/catalog before Dec 31 2026.',
-					'GET /api/catalog/filters returns filter metadata (sources, continents, countries, varieties) for the web app filter UI. Session-authenticated, internal.'
-				],
-				callout: {
-					tone: 'note',
-					title: 'Use /v1/catalog for all integrations',
-					body: '/v1/catalog is the only catalog endpoint with a stable public contract. The other catalog routes (/api/catalog, /api/catalog-api) are internal app routes. If your integration currently points at /api/catalog-api, migrate to /v1/catalog.'
-				}
 			}
 		],
 		related: [
 			{
 				href: '/api',
 				label: 'API product page',
-				description: 'Plans, pricing, and getting started.'
+				description: 'Plans, positioning, and quick start.'
 			},
 			{
 				href: '/catalog',
 				label: 'Public catalog',
-				description: 'Browse the catalog in the web app.'
+				description: 'See the product surface that consumes the same data model.'
+			},
+			{
+				href: '/docs/api/platform',
+				label: 'Platform route matrix',
+				description: 'Internal /api/* companions to the public contract.'
 			},
 			{
 				href: '/docs/cli/catalog',
 				label: 'CLI catalog docs',
-				description: 'Search the catalog from your terminal with purvey catalog search.'
+				description: 'Terminal access to the same catalog domain.'
 			}
 		]
 	},
 	{
 		section: 'api',
-		slug: 'analytics',
-		title: 'Market analytics',
+		slug: 'platform',
+		title: 'Platform route matrix',
 		summary:
-			'Parchment analytics provides daily market intelligence with public, authenticated, and premium access tiers.',
-		eyebrow: 'Market intelligence',
+			'Authenticated and internal /api/* routes that power the Purveyors product surface, grouped by capability and stability.',
+		eyebrow: 'Internal platform routes',
 		intro: [
-			'The /analytics page delivers daily green coffee market intelligence. Public visitors see supplier counts, origin coverage, price trends, and processing distribution. Authenticated users unlock deeper views, and premium access adds advanced analytics.',
-			'Analytics is a web product today, not a standalone API. The data is the same normalized catalog that powers the API, presented through interactive charts and tables.'
+			'This page is the route map for the first-party platform. These endpoints matter for contributors, support, internal tooling, and advanced product debugging.',
+			'Most of these routes are not public compatibility promises. Document them accurately, but keep external integrations pointed at /v1/catalog or @purveyors/cli whenever possible.'
 		],
 		sections: [
 			{
-				title: 'Access tiers',
+				title: 'Catalog and discovery routes',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/api/catalog',
+							'GET',
+							'Anonymous, session, or API key',
+							'Internal compatibility adapter',
+							'Delegates to the canonical catalog resource but can return legacy shapes and adds X-Purveyors-Canonical-Resource: /v1/catalog.'
+						],
+						[
+							'/api/catalog/filters',
+							'GET',
+							'Anonymous or session',
+							'Internal UI helper',
+							'Returns stocked-only filter metadata. Privileged sessions can opt into wholesale-aware values.'
+						],
+						[
+							'/api/catalog-api',
+							'GET',
+							'API key only',
+							'Deprecated',
+							'Legacy API-key-only alias to /v1/catalog. Always public-only. Sunset: Dec 31 2026.'
+						]
+					]
+				}
+			},
+			{
+				title: 'Inventory and sales routes',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/api/beans',
+							'GET POST PUT DELETE',
+							'GET: session or share token; writes: session',
+							'Internal product route',
+							"GET without a valid session returns an empty data array rather than a 401. share=<token> scopes reads to a shared bean or the owner's full inventory."
+						],
+						[
+							'/api/share',
+							'POST',
+							'Session',
+							'Internal product route',
+							'Creates /beans?share=... links for one inventory item or all items.'
+						],
+						[
+							'/api/update-stocked-status',
+							'POST PUT',
+							'Session',
+							'Internal helper',
+							"POST recalculates one inventory item by coffee_id. PUT bulk-recomputes the caller's entire inventory."
+						],
+						[
+							'/api/profit',
+							'GET POST PUT DELETE',
+							'Session',
+							'Internal product route',
+							'GET returns both sales and computed profit data. Writes enforce ownership on the underlying sales or inventory rows.'
+						]
+					]
+				}
+			},
+			{
+				title: 'Roast and analysis routes',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/api/roast-profiles',
+							'GET POST PUT DELETE',
+							'Session',
+							'Internal product route',
+							'CRUD for roast profiles. POST supports single and batch creation. DELETE accepts id or batch name.'
+						],
+						[
+							'/api/artisan-import',
+							'POST',
+							'Session',
+							'Internal product route',
+							'Accepts multipart form-data with file plus roastId. Supported formats: .alog, .alog.json, .json.'
+						],
+						[
+							'/api/roast-chart-data',
+							'GET',
+							'Session',
+							'Internal analysis helper',
+							'Requires roastId query param. Returns sampled telemetry and metadata, not raw unbounded sensor streams.'
+						],
+						[
+							'/api/roast-chart-settings',
+							'GET',
+							'Session',
+							'Internal UI helper',
+							'Requires roastId query param. Reads saved chart ranges for a roast profile.'
+						],
+						[
+							'/api/clear-roast',
+							'DELETE',
+							'Session + ownership',
+							'Internal maintenance helper',
+							'Requires roast_id query param. Clears imported Artisan data and resets related fields.'
+						],
+						[
+							'/api/ai/classify-roast',
+							'POST',
+							'Session + member role',
+							'Internal AI helper',
+							'Matches Artisan metadata to inventory candidates. Returns { match } and can emit 429 if the model provider rate-limits.'
+						]
+					]
+				}
+			},
+			{
+				title: 'Chat and workspace routes',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/api/chat',
+							'POST',
+							'Member session',
+							'Internal product route',
+							'Streams AI chat responses with workspace context and tool execution.'
+						],
+						[
+							'/api/chat/execute-action',
+							'POST',
+							'Member session',
+							'Internal product route',
+							'Executes a constrained set of proposal-card actions: add_bean_to_inventory, update_bean, create_roast_session, update_roast_notes, and record_sale.'
+						],
+						[
+							'/api/workspaces',
+							'GET POST',
+							'Member session',
+							'Internal product route',
+							'Lists or creates workspaces. New workspaces default to title "New Workspace" and type "general" when omitted.'
+						],
+						[
+							'/api/workspaces/[id]',
+							'GET PUT DELETE',
+							'Member session + ownership',
+							'Internal product route',
+							'GET returns workspace details plus up to 50 messages and updates last_accessed_at.'
+						],
+						[
+							'/api/workspaces/[id]/messages',
+							'POST DELETE',
+							'Member session + ownership',
+							'Internal product route',
+							'POST accepts one message or an array and persists parts plus canvas mutations.'
+						],
+						[
+							'/api/workspaces/[id]/canvas',
+							'POST PUT',
+							'Member session + ownership',
+							'Internal product route',
+							'Persists canvas_state; POST exists for sendBeacon compatibility.'
+						],
+						[
+							'/api/workspaces/[id]/summarize',
+							'POST',
+							'Member session + ownership',
+							'Internal product route',
+							'Compacts recent conversation history into context_summary using the model backend. Returns skipped: true when there are fewer than four saved messages.'
+						]
+					]
+				},
+				callout: {
+					tone: 'warning',
+					title: 'Workspace routes are product internals, not agent APIs',
+					body: 'These endpoints exist to support the Purveyors chat product. For external automation, prefer the public catalog API or the CLI instead of coupling to chat workspace payloads.'
+				}
+			},
+			{
+				title: 'Deprecated tool routes',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Status', 'Replacement direction'],
+					rows: [
+						[
+							'/api/tools/coffee-catalog',
+							'POST',
+							'Member session',
+							'Deprecated',
+							'Prefer direct CLI-library integration or /v1/catalog for external reads.'
+						],
+						[
+							'/api/tools/green-coffee-inv',
+							'POST',
+							'Member session',
+							'Deprecated',
+							'Prefer shared inventory modules and CLI flows.'
+						],
+						[
+							'/api/tools/roast-profiles',
+							'POST',
+							'Member session',
+							'Deprecated',
+							'Prefer shared roast modules and CLI flows.'
+						],
+						[
+							'/api/tools/bean-tasting',
+							'POST',
+							'Member session',
+							'Deprecated',
+							'Prefer shared tasting logic and CLI flows.'
+						],
+						[
+							'/api/tools/coffee-chunks',
+							'POST',
+							'Member session',
+							'Deprecated',
+							'Prefer current retrieval modules instead of tool-route coupling.'
+						]
+					]
+				}
+			}
+		],
+		related: [
+			{
+				href: '/docs/api/inventory',
+				label: 'Inventory routes',
+				description: 'Deeper notes on beans, sharing, and stocked-state behavior.'
+			},
+			{
+				href: '/docs/api/roast-profiles',
+				label: 'Roast routes',
+				description: 'Roast CRUD, imports, chart endpoints, and AI classification.'
+			},
+			{
+				href: '/docs/api/billing-admin',
+				label: 'Billing and admin',
+				description: 'Stripe lifecycle routes, Console flows, and admin maintenance endpoints.'
+			},
+			{
+				href: '/docs/cli/agent-integration',
+				label: 'CLI and agents',
+				description: 'Use the documented CLI instead of binding to internal tool routes.'
+			}
+		]
+	},
+	{
+		section: 'api',
+		slug: 'inventory',
+		title: 'Inventory routes',
+		summary:
+			'Manage green coffee inventory, generate share links, and keep stocked state accurate through session-authenticated product routes.',
+		eyebrow: 'Inventory',
+		intro: [
+			'Inventory is where public catalog data becomes account-owned operational data. The core route is /api/beans, backed by session auth for writes and optional share-token reads for scoped external viewing.',
+			'Inventory IDs are not catalog IDs. Roast and downstream workflows use green_coffee_inv.id values.'
+		],
+		sections: [
+			{
+				title: 'Endpoints',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Purpose'],
+					rows: [
+						[
+							'/api/beans',
+							'GET POST PUT DELETE',
+							'GET: session or share token; writes: session',
+							'Inventory CRUD plus shared-link reads'
+						],
+						[
+							'/api/share',
+							'POST',
+							'Session',
+							'Create share links for one bean or the whole inventory'
+						],
+						[
+							'/api/update-stocked-status',
+							'POST PUT',
+							'Session',
+							'Recalculate stocked status for one item or the entire account'
+						]
+					]
+				}
+			},
+			{
+				title: 'Read and share behavior',
 				bullets: [
-					'Public: supplier count, stocked bean counts, origin coverage, price trends by origin, processing-method distribution, and origin price ranges.',
-					'Authenticated: everything above, plus supplier price comparison, catalog health metrics, and arrival/delisting tracking.',
-					'Premium: spread analysis, origin-level price index tables, and extended trend windows.'
+					'GET /api/beans?share=<token> returns a scoped view if the token exists, is active, and has not expired.',
+					'Without a valid share token, GET /api/beans falls back to the current session. If no session is present, the route returns { data: [] } instead of a 401.',
+					'POST /api/share accepts resourceId plus an optional expiresIn value such as 7d. The response is a shareUrl under /beans?share=....',
+					'Share links reveal inventory data only; they do not grant broader session or account access.'
 				]
 			},
 			{
-				title: 'Roast analytics endpoints',
+				title: 'Mutation behavior',
 				bullets: [
-					'GET /api/roast-chart-data returns sampled roast telemetry and metadata for a given roast ID.',
-					'GET and POST /api/roast-chart-settings manage per-user chart display preferences.',
-					'POST /api/ai/classify-roast provides AI-assisted roast curve classification.',
-					'DELETE /api/clear-roast clears roast data for a specific flow.'
+					'POST /api/beans can create manual catalog entries when no catalog_id is supplied and manual_name is present.',
+					'PUT /api/beans requires an id query parameter and filters updates down to known inventory columns before writing.',
+					'DELETE /api/beans requires an id query parameter and enforces ownership before removing inventory and dependent data.',
+					"POST /api/update-stocked-status recalculates one item by coffee_id. PUT scans the caller's full inventory and batch-updates any mismatched stocked flags."
 				],
+				callout: {
+					tone: 'note',
+					title: 'Inventory IDs drive roast workflows',
+					body: 'Roast creation, Artisan imports, and several CLI commands expect green_coffee_inv.id values, not coffee_catalog IDs. Use the inventory surface or CLI inventory list to find the correct IDs.'
+				}
+			},
+			{
+				title: 'CLI access',
 				codeBlocks: [
 					{
-						label: 'Roast chart data',
+						label: 'List stocked inventory',
 						language: 'bash',
-						code: 'curl "https://purveyors.io/api/roast-chart-data?roastId=123" \\\n  -H "Cookie: <session-cookie>"'
+						code: 'purvey inventory list --stocked --pretty'
+					},
+					{
+						label: 'Inspect add flags',
+						language: 'bash',
+						code: 'purvey inventory add --help'
 					}
 				]
 			}
 		],
 		related: [
 			{
-				href: '/analytics',
-				label: 'Market analytics',
-				description: 'Explore the live analytics product.'
+				href: '/beans',
+				label: 'Inventory page',
+				description: 'Manage inventory in the web app.'
+			},
+			{
+				href: '/docs/api/platform',
+				label: 'Platform route matrix',
+				description: 'See inventory in context with sales, chat, and billing routes.'
+			},
+			{
+				href: '/docs/cli/inventory',
+				label: 'CLI inventory docs',
+				description: 'Terminal workflows for listing and managing inventory.'
 			},
 			{
 				href: '/docs/api/roast-profiles',
-				label: 'Roast APIs',
-				description: 'Roast CRUD, imports, and chart endpoints.'
-			},
-			{
-				href: '/docs/api/errors',
-				label: 'Errors and auth',
-				description: 'How analytics endpoints handle unauthenticated requests.'
+				label: 'Roast docs',
+				description: 'Roasts consume inventory IDs and update stocked state.'
 			}
 		]
 	},
@@ -523,44 +833,68 @@ const docsPages: DocsPage[] = [
 		section: 'api',
 		slug: 'roast-profiles',
 		title: 'Roast profile routes',
-		summary: 'Create, import, and manage roast profiles through session-authenticated endpoints.',
+		summary:
+			'Create, import, analyze, and clear roast profiles through session-authenticated platform endpoints.',
 		eyebrow: 'Roasting',
 		intro: [
-			'Roast endpoints support full CRUD for roast profiles, Artisan .alog file imports, chart data retrieval, and AI-assisted classification. All roast routes require an authenticated session.',
-			'The web app and CLI both reference green_coffee_inv IDs for the coffee input and roast_id values for stored profiles.'
+			'Roast routes cover CRUD for roast profiles, Artisan import, chart telemetry, chart display settings, data clearing, and AI-assisted classification.',
+			'All roast routes require an authenticated session. The AI classifier additionally requires the member role.'
 		],
 		sections: [
 			{
 				title: 'Endpoints',
 				table: {
-					headers: ['Route', 'Methods', 'Purpose'],
+					headers: ['Route', 'Methods', 'Auth', 'Purpose'],
 					rows: [
 						[
 							'/api/roast-profiles',
 							'GET POST PUT DELETE',
+							'Session',
 							'List, create, update, or delete roast profiles'
 						],
-						['/api/artisan-import', 'POST', 'Import an Artisan .alog file into a roast profile'],
-						['/api/roast-chart-data', 'GET', 'Sampled roast telemetry and metadata'],
-						['/api/roast-chart-settings', 'GET POST', 'Per-user chart display preferences'],
-						['/api/clear-roast', 'DELETE', 'Clear roast data for a specific flow'],
-						['/api/ai/classify-roast', 'POST', 'AI-assisted roast curve classification']
+						[
+							'/api/artisan-import',
+							'POST',
+							'Session',
+							'Import an Artisan roast file into an existing roast profile'
+						],
+						[
+							'/api/roast-chart-data',
+							'GET',
+							'Session',
+							'Return sampled roast telemetry and metadata for a roast'
+						],
+						['/api/roast-chart-settings', 'GET', 'Session', 'Read saved chart ranges for a roast'],
+						[
+							'/api/clear-roast',
+							'DELETE',
+							'Session + ownership',
+							'Clear imported roast telemetry and reset Artisan fields'
+						],
+						[
+							'/api/ai/classify-roast',
+							'POST',
+							'Session + member role',
+							'Classify a roast against inventory candidates using the model backend'
+						]
 					]
 				}
 			},
 			{
 				title: 'Key behaviors',
 				bullets: [
-					'All roast endpoints return 401 when no session is present.',
-					'POST /api/roast-profiles supports single and batch creation, and updates stocked status for affected inventory items.',
-					'DELETE supports single deletion by ID or batch deletion by name.',
-					'Chart data is sampled for performance. Expect summarized telemetry, not raw sensor readings.'
+					'POST /api/roast-profiles supports both single and batch creation and recalculates stocked status for each affected inventory record.',
+					'PUT /api/roast-profiles requires an id query parameter. DELETE accepts either id or batch name query parameters.',
+					'POST /api/artisan-import expects multipart form-data with file and roastId. Supported file extensions are .alog, .alog.json, and .json.',
+					'GET /api/roast-chart-data requires roastId and returns sampled telemetry tuned for charting, including performance metadata and derived ranges.',
+					'DELETE /api/clear-roast requires roast_id and verifies ownership before deleting imported telemetry, events, and log rows.',
+					'POST /api/ai/classify-roast expects alogMetadata plus an inventory array and returns { match } or { match: null }.'
 				]
 			},
 			{
 				title: 'CLI access',
 				body: [
-					'The CLI provides purvey roast list, purvey roast create, purvey roast import, and purvey roast watch commands. These are the simplest way to work with roast data outside the browser.'
+					'The CLI is the cleanest supported interface for roast workflows outside the browser, especially for imports and automated watch-folder flows.'
 				],
 				codeBlocks: [
 					{
@@ -575,7 +909,12 @@ const docsPages: DocsPage[] = [
 			{
 				href: '/roast',
 				label: 'Roast page',
-				description: 'Charts and profile management in the web app.'
+				description: 'Charts and roast profile management in the web app.'
+			},
+			{
+				href: '/docs/api/platform',
+				label: 'Platform route matrix',
+				description: 'See roast routes in context with inventory, chat, and billing.'
 			},
 			{
 				href: '/docs/cli/roast',
@@ -591,77 +930,199 @@ const docsPages: DocsPage[] = [
 	},
 	{
 		section: 'api',
-		slug: 'inventory',
-		title: 'Inventory routes',
+		slug: 'analytics',
+		title: 'Market analytics',
 		summary:
-			'Manage green coffee inventory, create share links, and track stocked state through session-authenticated endpoints.',
-		eyebrow: 'Inventory',
+			'Analytics is a product surface on Purveyors, not a standalone public API family, with session-auth roast analysis helpers behind the scenes.',
+		eyebrow: 'Market intelligence',
 		intro: [
-			'Inventory is where catalog data becomes your operational data. The core route is /api/beans, supporting list, create, update, and delete operations on your green coffee inventory.',
-			'Share-token reads allow limited public views of inventory items without exposing your full session.'
+			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse major market summaries, while deeper product experiences layer on top of authenticated access and platform state.',
+			'Analytics is important to the platform story, but it is not currently sold as a separate API-key namespace. When documenting analytics, keep the distinction between product UI and public REST contract explicit.'
 		],
 		sections: [
 			{
-				title: 'Endpoints',
+				title: 'What is public today',
+				bullets: [
+					'/analytics is a web product surface, not an API-key endpoint family.',
+					'The public catalog and public analytics should be cross-linked because they describe the same coffee market from different angles: raw records versus curated analysis.',
+					'Authenticated and premium analytics views may expose deeper app features, but they still ride through the first-party product rather than a stable public REST schema.'
+				]
+			},
+			{
+				title: 'Roast analysis helpers',
 				table: {
-					headers: ['Route', 'Methods', 'Purpose'],
+					headers: ['Route', 'Methods', 'Auth', 'Purpose'],
 					rows: [
-						['/api/beans', 'GET POST PUT DELETE', 'Inventory CRUD and shared-link reads'],
-						['/api/share', 'POST', 'Create share links for beans or collections'],
 						[
-							'/api/update-stocked-status',
-							'POST',
-							'Recalculate stocked state after roast or sales changes'
+							'/api/roast-chart-data',
+							'GET',
+							'Session',
+							'Sampled roast telemetry and metadata for chart rendering'
 						],
-						['/api/workspaces', 'GET POST PUT DELETE', 'Chat workspace metadata and memory']
+						['/api/roast-chart-settings', 'GET', 'Session', 'Saved chart axis ranges'],
+						[
+							'/api/ai/classify-roast',
+							'POST',
+							'Session + member role',
+							'AI-assisted roast-to-inventory matching'
+						],
+						[
+							'/api/clear-roast',
+							'DELETE',
+							'Session + ownership',
+							'Clear imported roast data for a flow reset'
+						]
 					]
 				}
 			},
 			{
-				title: 'Create and update behavior',
+				title: 'Cross-links that should stay coherent',
 				bullets: [
-					'POST /api/beans creates manual inventory entries when no catalog_id is provided and manual_name is present.',
-					'PUT /api/beans updates only known inventory fields.',
-					'DELETE /api/beans enforces ownership before removing inventory and related data.',
-					'Share-token GET requests return shared data without granting broader account access.'
+					'/analytics, /catalog, /api, /docs, and /docs/api/catalog should tell one consistent product story.',
+					'When analytics positioning changes, check /api copy and docs copy together so the public contract does not accidentally expand on paper.',
+					'If analytics later becomes a first-class API family, introduce a new public namespace instead of silently overloading internal /api/* helpers.'
 				]
-			},
-			{
-				title: 'CLI access',
-				codeBlocks: [
-					{
-						label: 'List stocked inventory',
-						language: 'bash',
-						code: 'purvey inventory list --stocked --pretty'
-					},
-					{
-						label: 'Add inventory',
-						language: 'bash',
-						code: 'purvey inventory add --help'
-					}
-				],
-				callout: {
-					tone: 'note',
-					title: 'Inventory IDs are not catalog IDs',
-					body: 'Roast commands and other endpoints expect green_coffee_inv.id values, not coffee_catalog IDs. Use purvey inventory list to find the correct IDs.'
-				}
 			}
 		],
 		related: [
 			{
-				href: '/beans',
-				label: 'Inventory page',
-				description: 'Manage your inventory in the web app.'
+				href: '/analytics',
+				label: 'Analytics product',
+				description: 'Explore the live analytics surface.'
 			},
 			{
-				href: '/docs/cli/inventory',
-				label: 'CLI inventory docs',
-				description: 'Terminal workflows for listing and managing inventory.'
+				href: '/catalog',
+				label: 'Public catalog',
+				description: 'Browse the underlying market records.'
+			},
+			{
+				href: '/docs/api/catalog',
+				label: 'Catalog API docs',
+				description: 'The stable public contract behind the market dataset.'
 			},
 			{
 				href: '/docs/api/roast-profiles',
-				label: 'Roast docs',
-				description: 'Roasts consume inventory IDs and update stocked status.'
+				label: 'Roast analysis routes',
+				description: 'Session-auth routes used for roast data exploration.'
+			}
+		]
+	},
+	{
+		section: 'api',
+		slug: 'billing-admin',
+		title: 'Billing and admin routes',
+		summary:
+			'Stripe lifecycle routes, Console-adjacent account flows, webhook processing, and admin-only maintenance endpoints.',
+		eyebrow: 'Operations',
+		intro: [
+			'The billing and admin layer sits behind the Parchment Console and subscription flows. These routes are operational, not public platform APIs.',
+			'Most billing routes require a user session. The Stripe webhook requires a valid Stripe signature. Admin routes should be treated as support and maintenance surfaces.'
+		],
+		sections: [
+			{
+				title: 'Stripe and Console-adjacent routes',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Purpose'],
+					rows: [
+						[
+							'/api/stripe/check-session',
+							'GET',
+							'Session',
+							'Inspect a Stripe Checkout session by session_id'
+						],
+						[
+							'/api/stripe/create-checkout-session',
+							'POST',
+							'Session',
+							'Create a checkout flow from a server-side purchase key and return a client secret'
+						],
+						[
+							'/api/stripe/create-customer',
+							'POST',
+							'Session',
+							"Create or reuse the caller's Stripe customer record and customer mapping"
+						],
+						[
+							'/api/stripe/cancel-subscription',
+							'POST',
+							'Session',
+							'Cancel a subscription by subscriptionId'
+						],
+						[
+							'/api/stripe/resume-subscription',
+							'POST',
+							'Session',
+							'Resume a paused or canceled subscription by subscriptionId'
+						],
+						[
+							'/api/stripe/reconcile-session',
+							'POST',
+							'Session',
+							'Verify checkout by sessionId, dedupe repeat processing, reconcile billing snapshots, and return the final entitlement state after purchase'
+						],
+						[
+							'/api/stripe/webhook',
+							'POST',
+							'Stripe signature',
+							'Process checkout and subscription lifecycle events'
+						]
+					]
+				}
+			},
+			{
+				title: 'Admin routes',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Purpose'],
+					rows: [
+						[
+							'/api/admin/billing-entitlement-discrepancies',
+							'GET POST',
+							'Admin session',
+							'Audit billing entitlement drift versus local billing snapshots and trigger safe recompute-based repairs'
+						],
+						[
+							'/api/admin/backfill-milestones',
+							'POST',
+							'Session plus member-role check',
+							'Run milestone backfill logic for roast-related calculations'
+						]
+					]
+				},
+				callout: {
+					tone: 'warning',
+					title: 'Admin namespace does not mean uniform admin enforcement',
+					body: 'Today, /api/admin/billing-entitlement-discrepancies uses centralized admin validation, but /api/admin/backfill-milestones currently checks for a member role rather than admin. Keep docs truthful about the current behavior and treat that mismatch as implementation debt, not documentation ambiguity.'
+				}
+			},
+			{
+				title: 'Operational notes',
+				bullets: [
+					'Billing docs should always cross-link to /api-dashboard because that is the user-facing surface for keys, usage, and subscription state.',
+					'Webhook routes are machine-to-machine infrastructure and should never be presented as browser-consumable product APIs.',
+					'When role-sync behavior changes, review subscription success flows, webhook docs, and admin discrepancy tooling together.'
+				]
+			}
+		],
+		related: [
+			{
+				href: '/api-dashboard',
+				label: 'Parchment Console',
+				description: 'Keys, usage, and account-aware billing.'
+			},
+			{
+				href: '/api',
+				label: 'API product page',
+				description: 'Plans and commercial positioning.'
+			},
+			{
+				href: '/docs/api/platform',
+				label: 'Platform route matrix',
+				description: 'See billing and admin in the broader /api/* inventory.'
+			},
+			{
+				href: '/docs/api/errors',
+				label: 'Errors and auth',
+				description: 'Common status codes and auth failure patterns.'
 			}
 		]
 	},
@@ -670,69 +1131,124 @@ const docsPages: DocsPage[] = [
 		slug: 'errors',
 		title: 'Errors, auth, and limits',
 		summary:
-			'Status codes, error response shapes, and practical guidance for handling authentication and rate limits.',
+			'Status codes, auth edge cases, rate-limit behavior, and practical troubleshooting for both public and internal routes.',
 		eyebrow: 'Reference',
 		intro: [
-			'The Parchment API uses standard HTTP status codes. Error responses include structured JSON with an error field and a human-readable message.',
-			'The most common issues are missing API keys (401), insufficient permissions (403), and rate-limit exhaustion (429).'
+			'Parchment uses standard HTTP status codes and structured JSON error bodies, but route families have different auth expectations. The public catalog behaves differently from workspace, billing, and inventory routes.',
+			'The most common issues are invalid query parameters (400), missing or bad auth (401), insufficient permissions (403), and rate-limit exhaustion (429).'
 		],
 		sections: [
 			{
 				title: 'Status codes',
 				table: {
-					headers: ['Status', 'Meaning'],
+					headers: ['Status', 'Where you see it', 'Meaning'],
 					rows: [
-						['200', 'Request succeeded'],
-						['201', 'Resource created (e.g., new workspace)'],
-						['303', 'Redirect to the correct docs entry point'],
-						['401', 'Missing or invalid authentication (API key or session)'],
-						['403', 'Authenticated but lacking the required role or resource ownership'],
-						['404', 'Resource not found or not visible to your account'],
-						['429', 'Monthly rate limit exhausted for your current tier'],
-						['500', 'Unexpected server error']
+						['200', 'Most successful GETs and writes', 'Request succeeded.'],
+						['201', 'Workspace create, workspace message save', 'Resource created.'],
+						[
+							'307',
+							'/docs section redirects and legacy docs handoff',
+							'Temporary redirect to the canonical docs path.'
+						],
+						[
+							'400',
+							'Missing query params, bad form payloads, unsupported import files, invalid catalog dates',
+							'The caller provided an invalid request.'
+						],
+						['401', 'Missing or invalid session or API key', 'Authentication required.'],
+						[
+							'403',
+							'Member role checks, admin checks, ownership failures',
+							'Authenticated but not allowed to perform the action.'
+						],
+						[
+							'404',
+							'Missing workspace, shared bean, or owned resource',
+							'The resource is absent or not visible to the caller.'
+						],
+						[
+							'429',
+							'Public catalog API-key requests or AI provider backpressure',
+							'Quota or provider rate limit reached.'
+						],
+						['500', 'Unhandled internal failures', 'Unexpected server-side error.'],
+						[
+							'502',
+							'Workspace summarize provider failures',
+							'Upstream model or service dependency failed.'
+						]
 					]
 				}
 			},
 			{
-				title: 'Error response examples',
+				title: 'Representative error bodies',
 				codeBlocks: [
 					{
-						label: '401 Unauthorized',
+						label: '400 Invalid query parameter',
 						language: 'json',
-						code: '{\n  "error": "Authentication required",\n  "message": "Valid API key required for access"\n}'
+						code: '{\n  "error": "Invalid query parameter",\n  "message": "Query parameter \\"stocked_date\\" must use YYYY-MM-DD format",\n  "details": {\n    "parameter": "stocked_date",\n    "value": "30",\n    "expected": "YYYY-MM-DD"\n  }\n}'
 					},
 					{
-						label: '429 Rate limit exceeded',
+						label: '401 Authentication required',
 						language: 'json',
-						code: '{\n  "error": "Rate limit exceeded",\n  "message": "API rate limit exceeded for your subscription plan",\n  "limit": 200,\n  "remaining": 0,\n  "resetTime": "2026-04-01T00:00:00.000Z"\n}'
+						code: '{\n  "error": "Authentication required"\n}'
+					},
+					{
+						label: '403 Member role required',
+						language: 'json',
+						code: '{\n  "error": "Member role required"\n}'
+					},
+					{
+						label: '429 Public catalog quota exceeded',
+						language: 'json',
+						code: '{\n  "error": "Rate limit exceeded",\n  "message": "API rate limit exceeded for your subscription plan",\n  "limit": 200,\n  "remaining": 0,\n  "resetTime": "2026-05-01T00:00:00.000Z"\n}'
 					}
 				]
 			},
 			{
-				title: 'Troubleshooting',
+				title: 'Edge cases worth knowing',
 				bullets: [
-					'For external catalog access, use an API key with /v1/catalog or authenticate the CLI with purvey auth login.',
-					'A 403 on inventory, roast, or sales routes usually means a role or ownership mismatch, not an authentication failure.',
-					'On 429, check the X-RateLimit-* headers for reset timing (API-key requests only), or upgrade your plan in the Parchment Console.',
-					'The Parchment Console at /api-dashboard shows your current usage, active keys, and tier limits.'
+					'For external catalog access, prefer /v1/catalog. Use an API key for machine-to-machine access or authenticate the CLI with purvey auth login.',
+					'GET /api/beans with no session and no valid share token returns an empty data array, not a 401. Do not mistake that behavior for public inventory access.',
+					'Catalog rate-limit headers only exist on API-key requests. Anonymous and session requests to /v1/catalog do not emit X-RateLimit-* headers.',
+					'An invalid Authorization header on the public catalog can turn what looks like an anonymous request into a 401 because the route detects an auth attempt that failed.',
+					'Cookies only matter when they resolve to a valid first-party session. A stray Cookie header is not part of the public API contract.',
+					'/api/catalog-api is a deprecated API-key-only alias. It should not be treated as an anonymous or session-friendly discovery route.',
+					'Workspace and chat routes mostly use member-role enforcement, so 403 is often the expected failure for logged-in non-members.',
+					'AI-backed helpers can return upstream rate-limit or provider errors that are operational rather than domain-model failures.'
+				]
+			},
+			{
+				title: 'Troubleshooting path',
+				bullets: [
+					'External integration failing? Confirm it is calling /v1/catalog, not an internal /api/* route.',
+					'Getting a 400 on catalog? Double-check date inputs like stocked_date=YYYY-MM-DD and any other validated query params.',
+					'Unexpected 403 on product routes? Check role and ownership assumptions before debugging auth cookies.',
+					'Hit a 429 on catalog? Inspect X-RateLimit-* and Retry-After or upgrade the plan in the Parchment Console.',
+					'Need to validate workflows outside the browser? The CLI is usually the cleanest supported interface.'
 				]
 			}
 		],
 		related: [
 			{
-				href: '/api-dashboard/usage',
-				label: 'Usage analytics',
-				description: 'Monitor key activity, usage, and rate-limit status.'
+				href: '/api-dashboard',
+				label: 'Parchment Console',
+				description: 'Inspect key usage and tier limits.'
 			},
 			{
 				href: '/docs/api/overview',
 				label: 'API overview',
-				description: 'Authentication model and API surface reference.'
+				description: 'Public versus internal surface model.'
+			},
+			{
+				href: '/docs/api/platform',
+				label: 'Platform route matrix',
+				description: 'Route-by-route auth and stability reference.'
 			},
 			{
 				href: '/docs/cli/overview',
 				label: 'CLI overview',
-				description: 'The CLI is often the fastest way to validate auth and access.'
+				description: 'Often the fastest path for validating access and workflows.'
 			}
 		]
 	},
@@ -741,69 +1257,177 @@ const docsPages: DocsPage[] = [
 		slug: 'overview',
 		title: 'CLI overview',
 		summary:
-			'The Parchment CLI is a terminal interface for catalog queries, inventory management, roasting workflows, and agent automation.',
+			'The Parchment CLI is a terminal interface for catalog queries, inventory management, roasting workflows, scripting, and agent automation.',
 		eyebrow: '@purveyors/cli',
 		intro: [
-			'The Parchment CLI (purvey) provides terminal access to the same data and workflows available in the web app. Authentication is required for all commands. Member commands (inventory, roast, sales, tasting) additionally require an active Purveyors membership.',
-			'The CLI is also the integration layer for AI agents and automation tools. The purvey context command outputs a machine-readable reference for onboarding external tools.'
+			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session. Inventory, roast, sales, and tasting commands additionally require the member role.',
+			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. context prints dense human-readable reference text by default, while manifest emits the machine-readable contract directly.'
 		],
 		sections: [
 			{
-				title: 'Install and authenticate',
+				title: 'Install and first-run flow',
 				codeBlocks: [
 					{
-						label: 'Install',
+						label: 'Install and authenticate',
 						language: 'bash',
-						code: 'npm install -g @purveyors/cli'
+						code: 'npm install -g @purveyors/cli\npurvey auth login\npurvey auth status --pretty'
 					},
 					{
-						label: 'Authenticate',
+						label: 'Agent-friendly bootstrap',
 						language: 'bash',
-						code: 'purvey auth login --headless'
+						code: 'purvey auth login --headless\npurvey context\npurvey manifest --pretty'
 					}
 				],
 				bullets: [
-					'Authentication is required for all commands, including catalog. Run purvey auth login before first use.',
-					'purvey inventory, roast, sales, and tasting commands additionally require a Purveyors membership.',
-					'purvey context outputs a compact reference for AI agents and coding assistants.'
+					'Use purvey auth login for browser OAuth or purvey auth login --headless on servers, CI, and agent hosts.',
+					'Run purvey auth status to confirm both session health and current role before scripting against viewer-only or member-only commands.',
+					'Use purvey manifest when a wrapper needs the machine-readable contract directly. Use purvey context when a human or model should read the dense reference text first.'
 				]
 			},
 			{
-				title: 'Command groups',
+				title: 'Command groups and auth model',
+				table: {
+					headers: ['Group', 'Examples', 'Auth'],
+					rows: [
+						['auth', 'login, status, logout', 'None'],
+						['catalog', 'search, get, stats, similar', 'Authenticated viewer session'],
+						[
+							'inventory / roast / sales / tasting',
+							'Personal data and write workflows',
+							'Authenticated member session'
+						],
+						['config', 'list, get, set, reset', 'None, local-only'],
+						['context / manifest', 'Dense reference text and machine-readable contract', 'None']
+					]
+				},
+				callout: {
+					tone: 'note',
+					title:
+						'Catalog commands are authenticated, even though the HTTP API supports anonymous reads',
+					body: 'The CLI intentionally requires a signed-in viewer session for catalog commands. For anonymous or API-key-based integrations, use GET /v1/catalog instead of shelling out to the CLI.'
+				}
+			},
+			{
+				title: 'Output contract',
 				bullets: [
-					'purvey auth: manage login state.',
-					'purvey catalog: search and browse the coffee catalog.',
-					'purvey inventory: list, add, update, and delete green coffee inventory.',
-					'purvey roast: create roast profiles, import Artisan files, watch folders.',
-					'purvey sales: record roasted-coffee sales.',
-					'purvey tasting: read supplier notes and record cupping scores.',
-					'purvey context: output the CLI reference for agent onboarding.'
+					'Most commands write compact JSON to stdout by default. --json is an explicit alias for that mode, while --pretty prints indented JSON and --csv exports array-shaped results where supported.',
+					'Operational messages and fatal errors stay on stderr so stdout remains safe for pipes, jq, and redirect-based automation.',
+					'Interactive terminals without an explicit output flag can still show human-readable success or error text. When piped or redirected, the CLI falls back to structured JSON output and JSON error envelopes.',
+					'purvey auth status is the main exception worth remembering: in an interactive TTY it prints human-readable status unless you force --json, --pretty, or --csv.'
 				]
 			},
 			{
 				title: 'When to use the CLI vs. the API vs. the web app',
 				bullets: [
-					'Use the CLI for scripting, terminal workflows, and agent automation.',
-					'Use the API (GET /v1/catalog) for external integrations that run without a human session.',
+					'Use the CLI for scripts, terminal-first operations, and agent workflows that benefit from a stable documented command surface.',
+					'Use GET /v1/catalog for external integrations that need a stable HTTP contract, anonymous access, or API-key auth without a stored user session.',
 					'Use the web app for charts, dashboards, and interactive exploration.'
 				]
 			}
 		],
 		related: [
 			{
-				href: '/docs/cli/agent-integration',
-				label: 'Agent integration',
-				description: 'How purvey context and CLI modules support AI tools.'
+				href: '/docs/cli/auth-output',
+				label: 'Auth, config, and output',
+				description: 'Roles, local config, stderr/stdout guarantees, and exit-code expectations.'
+			},
+			{
+				href: '/docs/cli/context-manifest',
+				label: 'Context and manifest',
+				description: 'Understand text-first onboarding versus machine-readable contract output.'
 			},
 			{
 				href: '/docs/api/catalog',
 				label: 'Catalog API docs',
 				description: 'The HTTP endpoint that complements the CLI.'
+			}
+		]
+	},
+	{
+		section: 'cli',
+		slug: 'auth-output',
+		title: 'CLI auth, config, and output',
+		summary:
+			'Authentication roles, local config, output modes, stderr/stdout rules, and scripting expectations for the Parchment CLI.',
+		eyebrow: 'Operational contract',
+		intro: [
+			'This page is the practical contract for running purvey in scripts, CI, agent harnesses, and local terminals. It covers which commands require auth, what config exists today, and how output behaves across interactive and non-interactive modes.',
+			'If you automate against purvey, treat stdout and stderr semantics as part of the interface, not just the command names.'
+		],
+		sections: [
+			{
+				title: 'Authentication commands',
+				codeBlocks: [
+					{
+						label: 'Login and status',
+						language: 'bash',
+						code: 'purvey auth login\npurvey auth login --headless\npurvey auth status --json\npurvey auth logout'
+					}
+				],
+				bullets: [
+					'purvey auth login launches the browser OAuth flow. purvey auth login --headless prints a URL and expects a pasted callback URL, which is better for agents and remote hosts.',
+					'purvey auth status does not require an existing valid session. It reports authenticated state, role, and token timing when available.',
+					'Catalog commands require the viewer role. Inventory, roast, sales, and tasting commands require the member role.'
+				]
 			},
 			{
-				href: '/docs/cli/catalog',
-				label: 'Catalog commands',
-				description: 'Start searching the catalog from your terminal.'
+				title: 'Local config',
+				table: {
+					headers: ['Command', 'Notes'],
+					rows: [
+						['purvey config list', 'Show all stored config values.'],
+						['purvey config get <key>', 'Print the raw value to stdout for scripting.'],
+						['purvey config set <key> <value>', 'Persist a config value locally.'],
+						['purvey config reset', 'Clear config back to defaults.']
+					]
+				},
+				bullets: [
+					'Today the primary supported key is form-mode, stored in ~/.config/purvey/config.json.',
+					'When form-mode is true, several write commands can enter guided form mode automatically when required flags are missing.',
+					'Config commands are local-only and do not require authentication.'
+				]
+			},
+			{
+				title: 'Stdout and stderr behavior',
+				bullets: [
+					'Compact JSON on stdout is the default success shape for most commands.',
+					'--pretty keeps JSON but formats it for human reading. --csv changes successful stdout only and only on commands that support CSV-shaped output.',
+					'Info messages, confirmations, spinner text, and fatal errors go to stderr so stdout can stay script-friendly.',
+					'With --json, --pretty, --csv, or non-interactive piping, fatal errors become JSON envelopes on stderr. Interactive no-flag sessions may show human-readable fatal errors instead.'
+				],
+				codeBlocks: [
+					{
+						label: 'Script-friendly usage',
+						language: 'bash',
+						code: "purvey inventory list | jq '.[].id'\npurvey sales list --csv > sales.csv\npurvey auth status 2>/dev/null | jq -r '.email'"
+					}
+				]
+			},
+			{
+				title: 'Exit-code expectations',
+				bullets: [
+					'0 means success.',
+					'3 is the important automation code for auth failures, including missing login, expired session, or insufficient role.',
+					'5 represents dependency conflicts such as inventory deletion without --force when dependent roasts or sales exist.',
+					'6 represents local config problems.'
+				]
+			}
+		],
+		related: [
+			{
+				href: '/docs/cli/context-manifest',
+				label: 'Context and manifest',
+				description: 'Dense onboarding text versus machine-readable contract output.'
+			},
+			{
+				href: '/docs/cli/overview',
+				label: 'CLI overview',
+				description: 'Return to the high-level command and positioning map.'
+			},
+			{
+				href: '/docs/cli/agent-integration',
+				label: 'Agent integration',
+				description: 'See how the web app and external agents consume the CLI.'
 			}
 		]
 	},
@@ -815,7 +1439,7 @@ const docsPages: DocsPage[] = [
 			'Search and browse the green coffee catalog from your terminal. Authentication required.',
 		eyebrow: 'Catalog data',
 		intro: [
-			'Catalog commands are the fastest way to explore the green coffee feed from the terminal. Authentication is required; run purvey auth login before using catalog commands.',
+			'Catalog commands are the fastest way to explore the green coffee feed from the terminal. They require an authenticated viewer session; run purvey auth login before using them.',
 			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. See the CLI overview for install and login instructions.'
 		],
 		sections: [
@@ -1114,50 +1738,144 @@ const docsPages: DocsPage[] = [
 	},
 	{
 		section: 'cli',
+		slug: 'context-manifest',
+		title: 'CLI context and manifest',
+		summary:
+			'Understand purvey context, purvey manifest, JSON versus text output, and how agents should onboard to the CLI contract.',
+		eyebrow: 'Agent onboarding',
+		intro: [
+			'purvey context and purvey manifest are related but not interchangeable. context is optimized for dense human or model-readable onboarding text. manifest is optimized for wrappers and code that want the machine-readable contract directly.',
+			'Both commands are unauthenticated and intentionally describe the CLI itself rather than fetching live user data.'
+		],
+		sections: [
+			{
+				title: 'Which command to use',
+				table: {
+					headers: ['Command', 'Default output', 'Best for'],
+					rows: [
+						[
+							'purvey context',
+							'Dense human-readable text',
+							'Bootstrapping an agent or giving a human operator a compact reference'
+						],
+						[
+							'purvey context --json / --pretty',
+							'Machine-readable manifest JSON',
+							'Wrappers that want the manifest but still call context'
+						],
+						[
+							'purvey manifest',
+							'Compact JSON manifest',
+							'Scripts, SDK wrappers, and direct contract ingestion'
+						],
+						[
+							'purvey manifest --pretty',
+							'Indented JSON manifest',
+							'Debugging or inspecting the manifest manually'
+						]
+					]
+				}
+			},
+			{
+				title: 'Examples',
+				codeBlocks: [
+					{
+						label: 'Text-first onboarding',
+						language: 'bash',
+						code: 'purvey context\npurvey context | head -50'
+					},
+					{
+						label: 'Machine-readable contract',
+						language: 'bash',
+						code: 'purvey manifest\npurvey manifest --pretty\npurvey context --json > cli-manifest.json'
+					}
+				],
+				bullets: [
+					'Neither context nor manifest supports --csv.',
+					'context defaults to text, not JSON. That distinction matters for wrappers that assume every CLI command emits JSON by default.',
+					'manifest always emits the machine-readable contract on stdout.'
+				]
+			},
+			{
+				title: 'What the manifest contains',
+				bullets: [
+					'Command groups, subcommands, summaries, examples, and auth requirements.',
+					'Output-mode expectations, stderr/stdout notes, structured error-envelope guidance, and exit codes.',
+					'ID-type reference for catalog_id, inventory_id, roast_id, and sale_id so agents do not confuse resource identifiers.',
+					'Workflow examples and common error patterns that help agents recover without reverse-engineering implementation details.'
+				],
+				callout: {
+					tone: 'success',
+					title: 'Prefer the documented contract over internal route coupling',
+					body: 'If an agent can solve the task with purvey or a direct @purveyors/cli import, prefer that path over binding to internal /api/tools/* or chat workspace payloads.'
+				}
+			}
+		],
+		related: [
+			{
+				href: '/docs/cli/auth-output',
+				label: 'Auth, config, and output',
+				description: 'See the surrounding scripting contract, not just the onboarding commands.'
+			},
+			{
+				href: '/docs/cli/agent-integration',
+				label: 'Agent integration',
+				description: 'How the web app and external agents consume CLI modules and contracts.'
+			},
+			{
+				href: '/docs/api/overview',
+				label: 'API overview',
+				description: 'Compare the CLI contract with the public HTTP contract.'
+			}
+		]
+	},
+	{
+		section: 'cli',
 		slug: 'agent-integration',
 		title: 'Agent integration',
 		summary:
 			'Use the Parchment CLI as a stable interface for AI agents, coding assistants, and external automation.',
 		eyebrow: 'Agent workflows',
 		intro: [
-			'The Parchment CLI is designed to work with AI tools. The purvey context command outputs a machine-readable reference that agents can use to understand available commands, expected inputs, and response formats.',
-			'The web app imports CLI modules directly for chat tool execution, so improvements to the CLI automatically improve the AI chat experience.'
+			'The CLI is the preferred documented automation surface for most non-visual workflows. It gives agents stable command names, explicit auth requirements, predictable output modes, and a machine-readable manifest when needed.',
+			'The Purveyors web app also imports CLI modules directly for chat tools, which keeps browser, terminal, and agent behavior aligned on shared domain logic.'
 		],
 		sections: [
 			{
-				title: 'Agent onboarding',
+				title: 'Recommended agent patterns',
 				bullets: [
-					'Run purvey context to generate a compact CLI reference for any AI agent or coding assistant.',
-					'CLI commands provide stable, documented interfaces. Prefer them over reverse-engineering browser routes.',
-					'Cross-reference with the web app when charts, visual exploration, or guided workflows are needed.'
-				],
-				codeBlocks: [
-					{
-						label: 'Generate agent reference',
-						language: 'bash',
-						code: 'purvey context > purvey-cli-reference.txt'
-					}
+					'For shell-based automation, authenticate once, then call purvey commands with JSON or CSV output that suits the surrounding workflow.',
+					'For code-side integrations, import stable subpaths such as @purveyors/cli/catalog, @purveyors/cli/inventory, or @purveyors/cli/manifest instead of screen-scraping CLI help text.',
+					'Use purvey context first when a model needs dense onboarding text. Use purvey manifest when the wrapper wants structured metadata directly.',
+					'Prefer the CLI or its shared modules over coupling to deprecated /api/tools/* endpoints or private workspace route payloads.'
 				]
 			},
 			{
 				title: 'How the web app uses the CLI',
 				bullets: [
-					'The app imports CLI modules for catalog, inventory, roast, sales, and tasting operations in chat tool execution.',
-					'Read tools execute CLI functions directly. Write tools use proposal cards with user confirmation.',
-					'This shared architecture keeps terminal, browser, and agent workflows aligned on the same domain logic.'
+					'The app imports CLI modules for catalog, inventory, roast, sales, and tasting operations inside chat tool execution.',
+					'Read tools execute shared CLI functions directly. Write tools stay user-confirmed through proposal cards and constrained execution routes.',
+					'This architecture keeps terminal, browser, and agent workflows aligned on the same domain rules and reduces drift between docs and implementation.'
+				],
+				codeBlocks: [
+					{
+						label: 'Agent bootstrap sequence',
+						language: 'bash',
+						code: 'purvey auth login --headless\npurvey context\npurvey catalog search --origin "Ethiopia" --json'
+					}
 				]
 			}
 		],
 		related: [
 			{
-				href: '/docs/api/overview',
-				label: 'API overview',
-				description: 'How the CLI complements the HTTP API.'
+				href: '/docs/cli/context-manifest',
+				label: 'Context and manifest',
+				description: 'Choose the right onboarding output for your agent or wrapper.'
 			},
 			{
-				href: '/docs/cli/overview',
-				label: 'CLI overview',
-				description: 'Command structure and authentication.'
+				href: '/docs/cli/auth-output',
+				label: 'Auth, config, and output',
+				description: 'See the scripting guarantees that make CLI automation reliable.'
 			},
 			{
 				href: '/chat',

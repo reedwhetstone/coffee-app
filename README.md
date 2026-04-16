@@ -45,22 +45,33 @@ It also depends on `@purveyors/cli`, which is a first-class interface to the sam
 
 Purveyors ships two API layers:
 
-1. **Public external API** (`/v1/catalog`)
+1. **Public external API** (`/v1/*`)
 
+   - `GET /v1` advertises the public namespace, resource map, and legacy migration hints
+   - `GET /v1/catalog` is the stable public contract for external integrations
    - Auth: Bearer API key, web session, or anonymous
-   - Stable public contract for external integrations
+   - Rate-limit headers are only emitted on API-key requests
    - [See API docs](https://purveyors.io/docs/api/overview)
 
-2. **Internal app API** (`/api/*`)
-   - Auth: Supabase web sessions, role checks, ownership checks
-   - Powers the web app; not a broad public compatibility promise
-   - `/api/catalog-api` is a deprecated legacy alias with Sunset: Dec 31 2026
+2. **Platform app API** (`/api/*`)
+   - Powers the first-party web app, Console, billing, chat, and admin workflows
+   - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require the member role
+   - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation`, `Link`, and `Sunset: Dec 31 2026` headers
+   - `/api/tools/*` routes are deprecated compatibility shims; prefer shared CLI-library integration for new work
 
-Do not document the whole `/api/*` tree as a stable public contract. The public contract is the catalog feed at `/v1/catalog`, plus the Parchment Console and docs that support it.
+Do not document the whole `/api/*` tree as a stable public contract. The public contract is the catalog feed at `/v1/catalog`; the broader `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.
 
 ## CLI relationship
 
 This repo depends on `@purveyors/cli` and imports its domain logic in the app.
+
+CLI auth and output rules are part of the platform contract:
+
+- `purvey catalog *` requires an authenticated viewer session
+- `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
+- `purvey config`, `purvey context`, and `purvey manifest` do not require auth
+- `purvey context` prints dense reference text by default; `purvey manifest` emits the machine-readable contract directly
+- stdout stays structured for automation, while operational and fatal messaging is designed to stay on stderr
 
 `src/lib/services/tools.ts` imports CLI modules directly for chat tool execution:
 
@@ -102,6 +113,17 @@ pnpm check      # TypeScript check (--fail-on-warnings in CI)
 pnpm test       # run tests
 ```
 
+### Worktree-friendly local validation
+
+`pnpm check` and `pnpm test` expect repo-local environment files when you run the app from a fresh worktree. Before validating in a new checkout:
+
+```bash
+cp .env.example .env
+cp .env.test.example .env.test
+```
+
+Then fill in the required Supabase and test-account values. The Playwright and Vitest setup load `.env` and `.env.test` from the current repo root, so copying these files into each worktree avoids missing-export and wrong-path failures.
+
 ## Repo map
 
 ```text
@@ -119,11 +141,17 @@ supabase/                   Supabase-related config and helpers
 
 ### Public catalog and analytics are core product surfaces
 
-The repo is no longer just a logged-in roast tracker. Public catalog discovery and live analytics are central parts of the platform story. Keep README, API copy, and docs aligned with that reality.
+The repo is no longer just a logged-in roast tracker. Public catalog discovery and live analytics are central parts of the platform story. Keep README, `/api`, `/docs`, `/api-dashboard`, and product copy aligned with that reality.
 
 ### Internal routes should stay honest about scope
 
-Many `/api/*` routes are important, but they are app routes, not public API promises. When documenting them, clearly label them as internal or session-auth.
+Many `/api/*` routes are important, but they are platform routes, not broad public API promises. When documenting them, call out the exact auth model and stability level. Examples:
+
+- `/api/catalog` is a legacy app adapter, not the canonical public contract
+- `/api/catalog/filters` is a public-facing UI helper, not an integration endpoint
+- `/api/beans` GET supports share-token reads, while writes require session auth
+- `/api/chat` and `/api/workspaces` require a member session
+- `/api/stripe/*` and `/api/admin/*` are operational routes, not external product APIs
 
 ### Prefer shared domain logic over duplicate behavior
 
@@ -137,6 +165,53 @@ Before opening a PR, run:
 pnpm lint
 pnpm check --fail-on-warnings
 ```
+
+### Local validation env contract
+
+Fresh worktrees can fail local validation before any code issue is proven. In this repo, treat missing required env values as `VALIDATION_BLOCKED_ENV`, not `VALIDATION_FAIL`.
+
+Validation command classes:
+
+- `pnpm lint`
+- `pnpm check --fail-on-warnings`
+- `pnpm test`
+- `pnpm test:e2e`
+
+For static validation (`pnpm check --fail-on-warnings`), provide these repo-local env vars because the app imports SvelteKit static env modules:
+
+- `PUBLIC_SUPABASE_URL`
+- `PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+
+For E2E (`pnpm test:e2e`), also provide:
+
+- `E2E_TEST_EMAIL`
+- `E2E_TEST_USER_ID`
+- `PLAYWRIGHT_BASE_URL` (optional, defaults to localhost)
+
+Helpful commands:
+
+```bash
+pnpm worktree:bootstrap
+pnpm env:check
+pnpm env:check:e2e
+```
+
+Notes:
+
+- Placeholder values may be enough to unblock static validation, but they do not guarantee runtime behavior or E2E fidelity.
+- The bootstrap helper only explains and copies repo example files. It does not pull secrets from outside the repo.
+- This improves env-contract clarity only. Detached-worktree module-resolution or stale temp-path install failures are a separate issue.
+
+When reporting validation status, use one of:
+
+- `VALIDATION_PASS`
+- `VALIDATION_FAIL`
+- `VALIDATION_BLOCKED_ENV`
+- `VALIDATION_BLOCKED_SERVICE`
+- `VALIDATION_CI_PENDING`
 
 ## Contributing
 

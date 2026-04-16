@@ -2,88 +2,19 @@
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-2xl lg:text-center">
 			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
-				Built for coffee professionals
+				Built for coffee buyers and roasting teams
 			</h2>
 			<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-				From Curious to Commercial
+				Know what is available, what fits, and what to do next
 			</p>
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				Whether you're a home roaster or running a commercial operation, Purveyors scales with your
-				needs. Professional-grade tools for roast tracking, quality assessment, and coffee
-				discovery.
+				Purveyors brings live supplier availability, sourcing context, and team workflows into one
+				clear path, so you can move from research to decision without juggling tabs, spreadsheets,
+				and disconnected tools.
 			</p>
 		</div>
 		<div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
 			<dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
-				<!-- Artisan Integration -->
-				<div class="flex flex-col">
-					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
-						>
-							<svg
-								class="h-6 w-6 text-white"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke-width="1.5"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"
-								/>
-							</svg>
-						</div>
-						Seamless Artisan Integration
-					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
-						<p class="flex-auto">
-							Import .alog files in seconds and generate professional roast curves instantly.
-							Perfect integration with your existing Artisan workflow for both home roasters and
-							commercial QA processes. Maintain comprehensive roast logs without disrupting your
-							current setup.
-						</p>
-					</dd>
-				</div>
-
-				<!-- AI Coffee Analytics Assistant -->
-				<div class="flex flex-col">
-					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
-						>
-							<svg
-								class="h-6 w-6 text-white"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke-width="1.5"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
-								/>
-							</svg>
-						</div>
-						AI Coffee Analytics Assistant
-					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
-						<p class="flex-auto">
-							Analyze roast trends, identify QA patterns, and get expert insights instantly. Ask
-							"Why was this roast underdeveloped?" or "Find me a washed Ethiopian under $8/lb with
-							bright acidity." Your AI assistant understands both coffee science and your specific
-							needs.
-						</p>
-					</dd>
-				</div>
-
-				<!-- Green Coffee Catalog -->
 				<div class="flex flex-col">
 					<dt
 						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
@@ -105,18 +36,79 @@
 								/>
 							</svg>
 						</div>
-						Curated Green Coffee Catalog
+						Compare live offerings faster
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Discover unique, small-lot coffees from trusted suppliers with detailed tasting notes
-							and processing information. Filter by origin, processing method, flavor profiles, and
-							price to find exactly what you need for your roasting program.
+							Browse current coffees across suppliers with normalized origin, process, score, and
+							pricing data, so your shortlist starts with clean information instead of manual
+							cleanup.
 						</p>
 					</dd>
 				</div>
 
-				<!-- Professional QA & Tracking -->
+				<div class="flex flex-col">
+					<dt
+						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
+					>
+						<div
+							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
+						>
+							<svg
+								class="h-6 w-6 text-white"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="1.5"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
+								/>
+							</svg>
+						</div>
+						Get buying help with context
+					</dt>
+					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+						<p class="flex-auto">
+							Ask better sourcing questions, compare similar coffees, and sanity-check roast or menu
+							choices with an assistant grounded in the catalog and your operating context.
+						</p>
+					</dd>
+				</div>
+
+				<div class="flex flex-col">
+					<dt
+						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
+					>
+						<div
+							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
+						>
+							<svg
+								class="h-6 w-6 text-white"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="1.5"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"
+								/>
+							</svg>
+						</div>
+						Connect the data to your tools
+					</dt>
+					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
+						<p class="flex-auto">
+							Use the API when you need structured coffee data inside apps, automations, and
+							internal dashboards without rebuilding the catalog yourself.
+						</p>
+					</dd>
+				</div>
+
 				<div class="flex flex-col">
 					<dt
 						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
@@ -143,18 +135,16 @@
 								/>
 							</svg>
 						</div>
-						Professional QA & Tracking
+						Keep sourcing tied to production
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Comprehensive roast session tracking with quality assessment workflows. Perfect for
-							small-medium roasting businesses managing multiple profiles and maintaining
-							consistency standards. Cross-device access keeps your team synchronized.
+							Move from shortlist to roast and tasting workflows without losing the context behind
+							why you bought a coffee in the first place.
 						</p>
 					</dd>
 				</div>
 
-				<!-- Advanced Analytics -->
 				<div class="flex flex-col">
 					<dt
 						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
@@ -176,18 +166,16 @@
 								/>
 							</svg>
 						</div>
-						Advanced Roast Analytics
+						See the market more clearly
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Deep dive into your roasting data with trend analysis, pattern recognition, and
-							performance metrics. Beautiful D3.js visualizations help identify consistency patterns
-							and optimization opportunities across your entire roasting program.
+							Track pricing movement, supplier activity, and availability changes with clearer
+							visibility, so you can make sourcing calls earlier and with more confidence.
 						</p>
 					</dd>
 				</div>
 
-				<!-- API Access -->
 				<div class="flex flex-col">
 					<dt
 						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
@@ -205,53 +193,19 @@
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
-									d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"
+									d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"
 								/>
 							</svg>
 						</div>
-						Developer API Access
+						Fit into the way you already work
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Programmatic access to our comprehensive coffee catalog and roasting data. Build
-							custom integrations, automate workflows, and create specialized tools with our robust
-							API. Perfect for developers and businesses requiring data integration.
+							Bring in roast logs, keep your existing process where it still works, and add
+							structure only where it helps your team move faster.
 						</p>
 					</dd>
 				</div>
-
-				<!-- API platform -->
-				<!-- <div class="flex flex-col">
-					<dt
-						class="flex items-center gap-x-3 text-base font-semibold leading-7 text-text-primary-light"
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary-light"
-						>
-							<svg
-								class="h-6 w-6 text-white"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke-width="1.5"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"
-								/>
-							</svg>
-						</div>
-						Parchment API Access
-					</dt>
-					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
-						<p class="flex-auto">
-							Programmatic access to our comprehensive coffee catalog. Integrate our curated green
-							coffee data into your applications, build custom tools, or create specialized
-							workflows with our Parchment API and detailed documentation.
-						</p>
-					</dd>
-				</div> -->
 			</dl>
 		</div>
 	</div>

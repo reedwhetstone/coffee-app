@@ -10,26 +10,41 @@
 		SupplierHealthRow
 	} from './+page.server';
 	import { goto } from '$app/navigation';
-	import OriginLineChart from '$lib/components/analytics/OriginLineChart.svelte';
-	import OriginBarChart from '$lib/components/analytics/OriginBarChart.svelte';
-	import ProcessDonutChart from '$lib/components/analytics/ProcessDonutChart.svelte';
-	import SupplierComparisonTable from '$lib/components/analytics/SupplierComparisonTable.svelte';
-	import SupplierHealthTable from '$lib/components/analytics/SupplierHealthTable.svelte';
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
-	import PriceTierChart from '$lib/components/analytics/PriceTierChart.svelte';
+	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
+	import type { DeferredAnalyticsComponent } from './deferredModules';
+	import {
+		loadMemberAnalyticsModules,
+		loadPublicAnalyticsModules,
+		loadSupplierAnalyticsModules
+	} from './deferredModules';
 
 	let { data } = $props<{ data: PageData }>();
 
 	let lineChartExpanded = $state(false);
 	let originChartExpanded = $state(false);
+	let OriginLineChartComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let OriginBarChartComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let ProcessDonutChartComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let PriceTierChartComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let SupplierComparisonTableComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let SupplierHealthTableComponent = $state<DeferredAnalyticsComponent | null>(null);
+	let publicChartsLoading = $state(true);
+	let memberVisualsLoading = $state(false);
+	let publicChartsError = $state<string | null>(null);
+	let memberVisualsError = $state<string | null>(null);
+	let publicChartsRetryKey = $state(0);
+	let memberVisualsRetryKey = $state(0);
 
-	// Extended trend time range selector (PPI member feature)
+	// Extended trend time range selector (Parchment Intelligence feature)
 	type TrendRange = '90d' | '6m' | '1y';
+	type WindowMode = '7d' | '30d';
 	let trendRange = $state<TrendRange>('90d');
+	let windowMode = $state<WindowMode>('7d');
 
 	let {
 		session,
-		isPpiMember,
+		isParchmentIntelligence,
 		stats,
 		snapshots,
 		processDistribution,
@@ -41,7 +56,7 @@
 	} = $derived(
 		data as {
 			session: PageData['session'];
-			isPpiMember: boolean;
+			isParchmentIntelligence: boolean;
 			stats: {
 				totalBeansTracked: number;
 				stockedRetailBeans: number;
@@ -60,25 +75,13 @@
 		}
 	);
 
-	// Wholesale/Retail/All/Spread toggle state
-	type ViewMode = 'retail' | 'wholesale' | 'all' | 'spread';
+	type ViewMode = 'retail' | 'wholesale' | 'all';
 	let viewMode = $state<ViewMode>('retail');
 
-	interface SpreadDataPoint {
-		origin: string;
-		snapshot_date: string;
-		spread_pct: number;
-		retail_price: number;
-		wholesale_price: number;
-	}
-
-	// Derive filtered snapshots based on viewMode
-	// "All" merges retail + wholesale rows for same origin+date via weighted average
 	let filteredSnapshots = $derived.by(() => {
 		if (viewMode === 'retail') return snapshots.filter((s) => !s.wholesale_only);
 		if (viewMode === 'wholesale') return snapshots.filter((s) => s.wholesale_only);
 
-		// Merge retail + wholesale rows by origin+date (weighted average by sample_size)
 		const merged = new Map<string, PriceSnapshot>();
 		for (const s of snapshots) {
 			const key = `${s.origin}|${s.snapshot_date}`;
@@ -86,7 +89,6 @@
 			if (!existing) {
 				merged.set(key, { ...s, wholesale_only: false });
 			} else {
-				// Weighted average merge
 				const w1 = existing.sample_size || 1;
 				const w2 = s.sample_size || 1;
 				const totalW = w1 + w2;
@@ -120,44 +122,6 @@
 		);
 	});
 
-	// Compute spread data: pair retail + wholesale rows by origin+date
-	let spreadData = $derived.by((): SpreadDataPoint[] => {
-		const MIN_SAMPLES = 3; // require >= 3 beans on each side
-		const pairs = new Map<string, { retail?: PriceSnapshot; wholesale?: PriceSnapshot }>();
-
-		for (const s of snapshots) {
-			const key = `${s.origin}|${s.snapshot_date}`;
-			const pair = pairs.get(key) ?? {};
-			if (s.wholesale_only) pair.wholesale = s;
-			else pair.retail = s;
-			pairs.set(key, pair);
-		}
-
-		const result: SpreadDataPoint[] = [];
-		for (const [, pair] of pairs) {
-			if (!pair.retail || !pair.wholesale) continue;
-			if (pair.retail.sample_size < MIN_SAMPLES || pair.wholesale.sample_size < MIN_SAMPLES)
-				continue;
-			const retailPrice = pair.retail.price_median ?? pair.retail.price_avg;
-			const wholesalePrice = pair.wholesale.price_median ?? pair.wholesale.price_avg;
-			if (retailPrice == null || wholesalePrice == null || wholesalePrice === 0) continue;
-
-			const spreadPct = ((retailPrice - wholesalePrice) / wholesalePrice) * 100;
-			result.push({
-				origin: pair.retail.origin,
-				snapshot_date: pair.retail.snapshot_date,
-				spread_pct: Math.round(spreadPct * 10) / 10,
-				retail_price: Math.round(retailPrice * 100) / 100,
-				wholesale_price: Math.round(wholesalePrice * 100) / 100
-			});
-		}
-
-		return result.sort(
-			(a, b) => a.snapshot_date.localeCompare(b.snapshot_date) || a.origin.localeCompare(b.origin)
-		);
-	});
-
-	// Derive snapshots filtered to the selected extended trend range (PPI member feature)
 	let trendSnapshots = $derived.by((): PriceSnapshot[] => {
 		const now = new Date();
 		let daysBack: number;
@@ -170,24 +134,9 @@
 		return snapshots.filter((s) => s.snapshot_date >= cutoffStr && !s.wholesale_only);
 	});
 
-	// Spread data filtered to the selected extended trend range
-	let trendSpreadData = $derived.by(() => {
-		const now = new Date();
-		let daysBack: number;
-		if (trendRange === '6m') daysBack = 183;
-		else if (trendRange === '1y') daysBack = 365;
-		else daysBack = 90;
-		const cutoff = new Date(now);
-		cutoff.setDate(cutoff.getDate() - daysBack);
-		const cutoffStr = cutoff.toISOString().split('T')[0];
-		return spreadData.filter((s) => s.snapshot_date >= cutoffStr);
-	});
-
-	// Derive filtered process distribution based on viewMode
 	let filteredProcessDist = $derived.by((): ProcessBucket[] => {
 		if (viewMode === 'retail') return processDistribution.filter((b) => !b.wholesale);
 		if (viewMode === 'wholesale') return processDistribution.filter((b) => b.wholesale);
-		// All: merge retail + wholesale counts by name
 		const merged = new Map<string, number>();
 		for (const b of processDistribution) {
 			merged.set(b.name, (merged.get(b.name) ?? 0) + b.count);
@@ -197,14 +146,12 @@
 			.map(([name, count]) => ({ name, count, wholesale: false }));
 	});
 
-	// Stocked count shown in the stats tile based on viewMode
 	let displayStockedCount = $derived.by(() => {
 		if (viewMode === 'retail') return stats.stockedRetailBeans;
 		if (viewMode === 'wholesale') return stats.stockedWholesaleBeans;
 		return stats.stockedRetailBeans + stats.stockedWholesaleBeans;
 	});
 
-	// Derive origin bar chart data from most-recent snapshot date (filtered)
 	let originBarData = $derived.by(() => {
 		if (!filteredSnapshots || filteredSnapshots.length === 0) return [];
 		const latestDate = filteredSnapshots.reduce(
@@ -232,15 +179,29 @@
 		}));
 	});
 
-	// Line chart: all filtered snapshots with price data.
-	// DB query already filters to aggregation_tier = 1 (origin-level rollups only),
-	// so no additional client-side process filter is needed.
 	let lineSnapshots = $derived(filteredSnapshots.filter((s) => s.price_avg != null));
-
 	let hasSnapshots = $derived(filteredSnapshots.length > 0);
-
-	// Stocked beans count for lead headline (retail + wholesale combined)
 	let stockedBeans = $derived(stats.stockedRetailBeans + stats.stockedWholesaleBeans);
+
+	let filteredArrivals = $derived.by(() => {
+		const cutoffDays = windowMode === '7d' ? 7 : 30;
+		const cutoff = new Date();
+		cutoff.setDate(cutoff.getDate() - cutoffDays);
+		return recentArrivals.filter((bean) => {
+			if (!bean.stocked_date) return false;
+			return new Date(bean.stocked_date + 'T00:00:00') >= cutoff;
+		});
+	});
+
+	let filteredDelistings = $derived.by(() => {
+		const cutoffDays = windowMode === '7d' ? 7 : 30;
+		const cutoff = new Date();
+		cutoff.setDate(cutoff.getDate() - cutoffDays);
+		return recentDelistings.filter((bean) => {
+			if (!bean.unstocked_date) return false;
+			return new Date(bean.unstocked_date + 'T00:00:00') >= cutoff;
+		});
+	});
 
 	function formatDate(dateStr: string | null) {
 		if (!dateStr) return 'N/A';
@@ -251,7 +212,6 @@
 		});
 	}
 
-	// Relative time for freshness indicator
 	function formatRelativeTime(dateStr: string | null): string {
 		if (!dateStr) return 'Daily';
 		const now = new Date();
@@ -271,84 +231,135 @@
 		return formatDate(dateStr);
 	}
 
-	let VIEW_OPTIONS = $derived.by((): { value: ViewMode; label: string }[] => {
-		const base: { value: ViewMode; label: string }[] = [
-			{ value: 'retail', label: 'Retail' },
-			{ value: 'wholesale', label: 'Wholesale' },
-			{ value: 'all', label: 'All' }
-		];
-		if (isPpiMember) {
-			base.push({ value: 'spread', label: 'Spread' });
-		}
-		return base;
-	});
-
-	// Arrivals/Delistings window toggle
-	type WindowMode = '7d' | '30d';
-	let windowMode = $state<WindowMode>('7d');
-
-	const WINDOW_OPTIONS: { value: WindowMode; label: string }[] = [
-		{ value: '7d', label: 'Last 7 days' },
-		{ value: '30d', label: 'Last 30 days' }
+	const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
+		{ value: 'retail', label: 'Retail' },
+		{ value: 'wholesale', label: 'Wholesale' },
+		{ value: 'all', label: 'All' }
 	];
 
-	let filteredArrivals = $derived.by(() => {
-		if (!recentArrivals) return [];
-		if (windowMode === '30d') return recentArrivals;
-		const cutoff = new Date();
-		cutoff.setDate(cutoff.getDate() - 7);
-		const cutoffStr = cutoff.toISOString().split('T')[0];
-		return recentArrivals.filter((b) => b.stocked_date != null && b.stocked_date >= cutoffStr);
-	});
+	function buildDeferredLoadError(section: string) {
+		return `We couldn't load ${section} right now. Please retry.`;
+	}
 
-	let filteredDelistings = $derived.by(() => {
-		if (!recentDelistings) return [];
-		if (windowMode === '30d') return recentDelistings;
-		const cutoff = new Date();
-		cutoff.setDate(cutoff.getDate() - 7);
-		const cutoffStr = cutoff.toISOString().split('T')[0];
-		return recentDelistings.filter(
-			(b) => b.unstocked_date != null && b.unstocked_date >= cutoffStr
-		);
-	});
+	function retryPublicCharts() {
+		publicChartsError = null;
+		publicChartsLoading = true;
+		publicChartsRetryKey += 1;
+	}
 
-	let delistingsByCountry = $derived.by(() => {
-		const counts = new Map<string, number>();
-		for (const b of filteredDelistings) {
-			const key = b.country ?? 'Unknown';
-			counts.set(key, (counts.get(key) ?? 0) + 1);
+	function retryMemberVisuals() {
+		memberVisualsError = null;
+		memberVisualsLoading = true;
+		memberVisualsRetryKey += 1;
+	}
+
+	$effect(() => {
+		const retryKey = publicChartsRetryKey;
+		void retryKey;
+
+		if (OriginLineChartComponent && OriginBarChartComponent && ProcessDonutChartComponent) {
+			publicChartsLoading = false;
+			publicChartsError = null;
+			return;
 		}
-		return Array.from(counts.entries())
-			.sort((a, b) => b[1] - a[1])
-			.map(([country, count]) => ({ country, count }));
+
+		let cancelled = false;
+		publicChartsLoading = true;
+		publicChartsError = null;
+
+		void loadPublicAnalyticsModules()
+			.then(
+				({
+					OriginLineChartComponent: originLine,
+					OriginBarChartComponent: originBar,
+					ProcessDonutChartComponent: processDonut
+				}) => {
+					if (cancelled) return;
+					OriginLineChartComponent = originLine;
+					OriginBarChartComponent = originBar;
+					ProcessDonutChartComponent = processDonut;
+				}
+			)
+			.catch((error) => {
+				if (cancelled) return;
+				console.error('Failed to load analytics chart modules:', error);
+				publicChartsError = buildDeferredLoadError('the overview charts');
+			})
+			.finally(() => {
+				if (!cancelled) {
+					publicChartsLoading = false;
+				}
+			});
+
+		return () => {
+			cancelled = true;
+		};
 	});
 
-	function daysSince(dateStr: string | null): number {
-		if (!dateStr) return 0;
-		const then = new Date(dateStr + 'T00:00:00');
-		const now = new Date();
-		return Math.floor((now.getTime() - then.getTime()) / 86400000);
-	}
+	$effect(() => {
+		const memberEnabled = isParchmentIntelligence;
+		const retryKey = memberVisualsRetryKey;
+		void retryKey;
 
-	function formatSource(source: string | null): string {
-		if (!source) return '—';
-		return source
-			.split(/[_-]+/)
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-			.join(' ');
-	}
+		if (!memberEnabled) {
+			memberVisualsLoading = false;
+			memberVisualsError = null;
+			return;
+		}
 
-	function truncateName(name: string | null): string {
-		if (!name) return '—';
-		return name.length > 30 ? name.slice(0, 28) + '…' : name;
-	}
+		if (
+			PriceTierChartComponent &&
+			SupplierComparisonTableComponent &&
+			SupplierHealthTableComponent
+		) {
+			memberVisualsLoading = false;
+			memberVisualsError = null;
+			return;
+		}
+
+		let cancelled = false;
+		memberVisualsLoading = true;
+		memberVisualsError = null;
+
+		void Promise.all([loadMemberAnalyticsModules(), loadSupplierAnalyticsModules()])
+			.then(([memberModules, supplierModules]) => {
+				if (cancelled) return;
+				PriceTierChartComponent = memberModules.PriceTierChartComponent;
+				SupplierComparisonTableComponent = supplierModules.SupplierComparisonTableComponent;
+				SupplierHealthTableComponent = supplierModules.SupplierHealthTableComponent;
+			})
+			.catch((error) => {
+				if (cancelled) return;
+				console.error('Failed to load member analytics modules:', error);
+				memberVisualsError = buildDeferredLoadError('the Parchment Intelligence modules');
+			})
+			.finally(() => {
+				if (!cancelled) {
+					memberVisualsLoading = false;
+				}
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	let analyticsShellMessage = $derived.by(() => {
+		const pending: string[] = [];
+		if (publicChartsLoading) pending.push('charts');
+		if (isParchmentIntelligence && memberVisualsLoading)
+			pending.push('Parchment Intelligence modules');
+		if (pending.length === 0) return '';
+		if (pending.length === 1) return pending[0];
+		return `${pending.slice(0, -1).join(', ')} and ${pending.at(-1)}`;
+	});
 </script>
 
-<!-- Hero -->
 <div class="mb-8 border-l-4 border-background-tertiary-light pl-6">
-	<h1 class="mb-2 text-4xl font-bold text-text-primary-light">Green Coffee Market Intelligence</h1>
+	<h1 class="mb-2 text-4xl font-bold text-text-primary-light">Green coffee market visibility</h1>
 	<p class="text-lg text-text-secondary-light">
-		Daily price data from {stats.totalSuppliers} US suppliers across {stats.originsCount} origins.
+		Track live pricing, supplier movement, and origin coverage across {stats.totalSuppliers} US suppliers
+		and {stats.originsCount} origins.
 		{#if stats.lastUpdated}
 			Last updated {formatDate(stats.lastUpdated)}.
 		{:else}
@@ -357,7 +368,6 @@
 	</p>
 </div>
 
-<!-- Key Metrics Row -->
 <div class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
 	<div
 		class="rounded-lg border border-border-light bg-background-primary-light p-4 text-center shadow-sm"
@@ -407,7 +417,6 @@
 	</div>
 </div>
 
-<!-- Wholesale/Retail Toggle -->
 <div class="mb-6 flex items-center gap-3">
 	<span class="text-sm font-medium text-text-secondary-light">View:</span>
 	<div
@@ -427,718 +436,170 @@
 	</div>
 </div>
 
-<!-- Lead Insight Headline -->
 <div class="mb-6 rounded-lg border border-border-light bg-background-secondary-light px-5 py-3">
 	<p class="text-sm font-medium text-text-primary-light">
-		Tracking live prices across <span class="text-background-tertiary-light"
+		See daily market movement across <span class="text-background-tertiary-light"
 			>{stats.totalSuppliers}</span
 		>
 		suppliers. <span class="text-background-tertiary-light">{stockedBeans.toLocaleString()}</span>
-		stocked beans from <span class="text-background-tertiary-light">{stats.originsCount}</span> origins.
+		active listings from <span class="text-background-tertiary-light">{stats.originsCount}</span> origins.
 	</p>
 </div>
 
-<!-- Public Charts Section -->
+{#if analyticsShellMessage}
+	<div
+		class="mb-6 rounded-lg border border-background-tertiary-light/20 bg-background-primary-light px-5 py-3 shadow-sm"
+		aria-live="polite"
+	>
+		<div class="flex items-start gap-3">
+			<span class="mt-1 h-2.5 w-2.5 animate-pulse rounded-full bg-background-tertiary-light"></span>
+			<div>
+				<p class="text-sm font-semibold text-text-primary-light">Loading market visuals</p>
+				<p class="mt-1 text-xs text-text-secondary-light">
+					The overview is ready first. {analyticsShellMessage} are loading next.
+				</p>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <div class="mb-8 space-y-6">
-	<!-- Price Over Time — Origin Line Chart -->
 	<ExpandablePanel
-		title="Price Trends by Origin"
-		subtitle="Average $/lb by top origins over the last 30 days — ranked by market volume"
+		title="Origin price trends"
+		subtitle="Average $/lb by top origins over the last 30 days, ranked by market activity"
 		collapsedMaxHeight="420px"
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
 	>
-		<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-			<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Trends by Origin</h2>
-			<p class="mb-4 text-sm text-text-secondary-light">
-				{#if viewMode === 'spread'}Retail premium % over wholesale by origin — ranked by data
-					coverage{:else}Average $/lb by top origins over the last 30 days — ranked by market volume
-					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}{/if}
-			</p>
-			<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
-				<OriginLineChart
-					snapshots={lineSnapshots}
-					expanded={lineChartExpanded}
-					mode={viewMode === 'spread' ? 'spread' : 'price'}
-					spreadData={viewMode === 'spread' ? spreadData : []}
-				/>
+		<AnalyticsLoadingPanel
+			ready={Boolean(OriginLineChartComponent)}
+			title="Origin price trends"
+			description="Loading 30-day origin price history."
+			height={lineChartExpanded ? 'h-[60vh]' : 'h-64'}
+			errorMessage={publicChartsError}
+			onRetry={retryPublicCharts}
+		>
+			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
+				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin price trends</h2>
+				<p class="mb-4 text-sm text-text-secondary-light">
+					Average $/lb by top origins over the last 30 days, ranked by market activity
+					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
+				</p>
+				<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
+					{#if OriginLineChartComponent}
+						<OriginLineChartComponent
+							snapshots={lineSnapshots}
+							expanded={lineChartExpanded}
+							mode="price"
+						/>
+					{/if}
+				</div>
 			</div>
-		</div>
+		</AnalyticsLoadingPanel>
 	</ExpandablePanel>
 
-	<!-- Two-column: Donut + Bar -->
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-		<!-- Processing Method Distribution -->
 		<ExpandablePanel
-			title="Processing Methods"
-			subtitle="Distribution across stocked beans"
+			title="Processing mix"
+			subtitle="How current listings break down by processing style"
 			collapsedMaxHeight="360px"
 			showGradient={false}
 		>
-			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing Methods</h2>
-				<p class="mb-4 text-sm text-text-secondary-light">
-					Distribution across {displayStockedCount.toLocaleString()} stocked beans
-					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
-				</p>
-				{#if filteredProcessDist.length > 0}
-					<div class="h-56 w-full">
-						<ProcessDonutChart data={filteredProcessDist} />
-					</div>
-				{:else}
-					<div
-						class="flex h-40 items-center justify-center rounded-lg bg-background-secondary-light"
-					>
-						<p class="text-sm text-text-secondary-light">No catalog data yet.</p>
-					</div>
-				{/if}
-			</div>
+			<AnalyticsLoadingPanel
+				ready={Boolean(ProcessDonutChartComponent)}
+				title="Processing mix"
+				description="Loading stocked catalog processing distribution."
+				height="h-56"
+				errorMessage={publicChartsError}
+				onRetry={retryPublicCharts}
+			>
+				<div
+					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
+				>
+					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Processing mix</h2>
+					<p class="mb-4 text-sm text-text-secondary-light">
+						Distribution across {displayStockedCount.toLocaleString()} stocked beans
+						{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
+					</p>
+					{#if filteredProcessDist.length > 0}
+						<div class="h-56 w-full">
+							{#if ProcessDonutChartComponent}
+								<ProcessDonutChartComponent data={filteredProcessDist} />
+							{/if}
+						</div>
+					{:else}
+						<div
+							class="flex h-40 items-center justify-center rounded-lg bg-background-secondary-light"
+						>
+							<p class="text-sm text-text-secondary-light">No catalog data yet.</p>
+						</div>
+					{/if}
+				</div>
+			</AnalyticsLoadingPanel>
 		</ExpandablePanel>
 
-		<!-- Origin Price Range Chart -->
 		<ExpandablePanel
-			title="Origin Price Ranges"
-			subtitle="Top 8 origins by bean count by default; expand to choose origins. Median and IQR are emphasized, with clipped max outliers still available in tooltips."
+			title="Origin price ranges"
+			subtitle="Compare the pricing spread across top origins. Expand to choose the set you want to review."
 			collapsedMaxHeight="460px"
 			showGradient={false}
 			onExpandChange={(v) => (originChartExpanded = v)}
 		>
-			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
-				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin Price Ranges</h2>
-				<p class="mb-4 text-sm text-text-secondary-light">
-					Live catalog price distributions by origin. Collapsed view shows the top 8 origins by bean
-					count; expand to choose the comparison set. Rows stay sorted by median $/lb, while the
-					chart scale prioritizes the core distribution and keeps true min/max values in the
-					tooltip.
-				</p>
-				{#if originRangeData.length > 0}
-					<div class="w-full">
-						<OriginBarChart data={originRangeData} expanded={originChartExpanded} />
-					</div>
-				{:else}
-					<div
-						class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
-					>
-						<p class="text-sm font-medium text-text-secondary-light">📊 No origin data available</p>
-						<p class="mt-1 text-xs text-text-secondary-light">
-							Requires stocked beans with price_per_lb values in the catalog.
-						</p>
-					</div>
-				{/if}
-			</div>
+			<AnalyticsLoadingPanel
+				ready={Boolean(OriginBarChartComponent)}
+				title="Origin price ranges"
+				description="Loading live origin price comparisons from the current catalog."
+				height="h-[28rem]"
+				errorMessage={publicChartsError}
+				onRetry={retryPublicCharts}
+			>
+				<div
+					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
+				>
+					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin price ranges</h2>
+					<p class="mb-4 text-sm text-text-secondary-light">
+						See how current prices spread across origins in the live catalog. The default view
+						highlights the busiest origins, and the expanded view lets you choose your comparison
+						set.
+					</p>
+					{#if originRangeData.length > 0}
+						<div class="w-full">
+							{#if OriginBarChartComponent}
+								<OriginBarChartComponent data={originRangeData} expanded={originChartExpanded} />
+							{/if}
+						</div>
+					{:else}
+						<div
+							class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
+						>
+							<p class="text-sm font-medium text-text-secondary-light">
+								📊 No origin data available
+							</p>
+							<p class="mt-1 text-xs text-text-secondary-light">
+								Requires stocked beans with price_per_lb values in the catalog.
+							</p>
+						</div>
+					{/if}
+				</div>
+			</AnalyticsLoadingPanel>
 		</ExpandablePanel>
 	</div>
 </div>
 
-{#if session}
-	<!-- Supplier Price Comparison -->
-	<div class="mb-8">
-		<ExpandablePanel
-			title="Supplier Price Comparison"
-			subtitle="All stocked beans for a selected origin, sorted by price — cheapest first."
-			totalItems={comparisonBeans.length}
-		>
-			<SupplierComparisonTable beans={comparisonBeans} />
-		</ExpandablePanel>
-	</div>
-
-	<!-- Supplier Overview -->
-	<div class="mb-8">
-		<div class="mb-3">
-			<h2 class="text-xl font-semibold text-text-primary-light">Supplier Catalog Health</h2>
-			<p class="mt-1 text-sm text-text-secondary-light">
-				Catalog breadth and pricing by supplier — click any column header to sort. A quick answer to
-				"which suppliers should I be looking at?"
-			</p>
-		</div>
-		{#if supplierHealth && supplierHealth.length > 0}
-			<ExpandablePanel
-				title="Supplier Catalog Health"
-				subtitle="Catalog breadth and pricing by supplier — click any column header to sort."
-				totalItems={supplierHealth.length}
-			>
-				<SupplierHealthTable rows={supplierHealth} />
-			</ExpandablePanel>
-		{:else}
-			<div
-				class="flex h-24 items-center justify-center rounded-lg border border-border-light bg-background-secondary-light"
-			>
-				<p class="text-sm text-text-secondary-light">No supplier data available yet.</p>
-			</div>
-		{/if}
-	</div>
-
-	<!-- Gated Section -->
-	<div class="relative mb-8">
-		<!-- Preview content (blurred for non-members) -->
-		{#if !isPpiMember}
-			<div class="pointer-events-none select-none">
-				<div class="mb-3 blur-sm filter">
-					<div
-						class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
-					>
-						<h2 class="mb-4 text-xl font-semibold text-text-primary-light">Origin Price Index</h2>
-						<div class="grid grid-cols-3 gap-3">
-							{#each Array(9) as _}
-								<div class="rounded bg-background-secondary-light p-3">
-									<div class="h-4 w-3/4 rounded bg-background-tertiary-light/30"></div>
-									<div class="mt-2 h-6 w-1/2 rounded bg-background-tertiary-light/20"></div>
-								</div>
-							{/each}
-						</div>
-					</div>
-				</div>
-				<div class="grid grid-cols-1 gap-4 blur-sm filter lg:grid-cols-2">
-					<div
-						class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
-					>
-						<h2 class="mb-2 text-xl font-semibold text-text-primary-light">Price Tier Analysis</h2>
-						<p class="text-sm text-text-secondary-light">Retail vs wholesale spread by origin</p>
-						<div class="mt-4 h-40 rounded bg-background-secondary-light"></div>
-					</div>
-					<div
-						class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
-					>
-						<h2 class="mb-2 text-xl font-semibold text-text-primary-light">90-Day Trend Detail</h2>
-						<p class="text-sm text-text-secondary-light">Extended history with seasonal patterns</p>
-						<div class="mt-4 h-40 rounded bg-background-secondary-light"></div>
-					</div>
-				</div>
-			</div>
-
-			<!-- CTA Overlay -->
-			<div
-				class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-gradient-to-b from-background-primary-light/60 to-background-primary-light"
-			>
-				<div
-					class="mx-4 max-w-md rounded-xl border border-background-tertiary-light/30 bg-background-primary-light p-8 text-center shadow-lg"
-				>
-					<div class="mb-3 text-3xl">📈</div>
-					<h3 class="mb-2 text-2xl font-bold text-text-primary-light">
-						Unlock Full Market Intelligence
-					</h3>
-					<p class="mb-6 text-text-secondary-light">
-						PPI membership gives you supplier price comparison, retail/wholesale spread analysis,
-						and extended 90-day + 1-year trend views — updated daily.
-					</p>
-					<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-						{#if session}
-							<button
-								onclick={() => goto('/subscription')}
-								class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
-							>
-								Upgrade to PPI Member
-							</button>
-						{:else}
-							<button
-								onclick={() => goto('/auth/signup')}
-								class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
-							>
-								Sign Up Free
-							</button>
-							<button
-								onclick={() => goto('/auth/login')}
-								class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-							>
-								Log In
-							</button>
-						{/if}
-					</div>
-					<p class="mt-4 text-xs text-text-secondary-light">Starting at $29/mo. Cancel anytime.</p>
-				</div>
-			</div>
-		{:else}
-			<!-- Full content for ppi-members -->
-			<div class="space-y-6">
-				<ExpandablePanel
-					title="Origin Price Index"
-					subtitle="PPI Member — Origin-level price aggregates: averages, ranges, and supplier coverage from the daily index."
-					totalItems={originBarData.length}
-				>
-					<div
-						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
-					>
-						{#if hasSnapshots}
-							<div class="overflow-x-auto">
-								<table class="min-w-full text-sm">
-									<thead>
-										<tr class="border-b border-border-light">
-											<th class="py-2 pr-4 text-left font-semibold text-text-secondary-light"
-												>Origin</th
-											>
-											<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
-												>Avg $/lb</th
-											>
-											<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
-												>Min</th
-											>
-											<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
-												>Max</th
-											>
-											<th class="py-2 text-right font-semibold text-text-secondary-light"
-												>Suppliers</th
-											>
-										</tr>
-									</thead>
-									<tbody>
-										{#each originBarData as row}
-											<tr
-												class="border-b border-border-light/50 hover:bg-background-secondary-light"
-											>
-												<td class="py-2 pr-4 font-medium text-text-primary-light">{row.origin}</td>
-												<td class="py-2 pr-4 text-right font-semibold text-text-primary-light"
-													>${row.price_avg.toFixed(2)}</td
-												>
-												<td class="py-2 pr-4 text-right text-text-secondary-light">
-													{#if filteredSnapshots.find((s) => s.origin === row.origin && s.price_min != null)}
-														${filteredSnapshots
-															.find((s) => s.origin === row.origin)
-															?.price_min?.toFixed(2) ?? '—'}
-													{:else}
-														—
-													{/if}
-												</td>
-												<td class="py-2 pr-4 text-right text-text-secondary-light">
-													{#if filteredSnapshots.find((s) => s.origin === row.origin && s.price_max != null)}
-														${filteredSnapshots
-															.find((s) => s.origin === row.origin)
-															?.price_max?.toFixed(2) ?? '—'}
-													{:else}
-														—
-													{/if}
-												</td>
-												<td class="py-2 text-right text-text-secondary-light"
-													>{row.supplier_count}</td
-												>
-											</tr>
-										{/each}
-									</tbody>
-								</table>
-							</div>
-						{:else}
-							<div
-								class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
-							>
-								<p class="text-sm text-text-secondary-light">
-									Awaiting first price snapshot (today's scraper run).
-								</p>
-							</div>
-						{/if}
-					</div>
-				</ExpandablePanel>
-
-				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-					<!-- Price Tier Analysis -->
-					<div
-						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
-					>
-						<div class="mb-2 flex items-center gap-2">
-							<span
-								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
-								>PPI Member</span
-							>
-						</div>
-						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price Tier Analysis</h2>
-						<p class="mb-4 text-sm text-text-secondary-light">
-							Retail vs wholesale median price by origin — latest snapshot
-						</p>
-						<PriceTierChart {snapshots} />
-					</div>
-
-					<!-- Extended Trend Detail -->
-					<div
-						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
-					>
-						<div class="mb-2 flex items-center gap-2">
-							<span
-								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
-								>PPI Member</span
-							>
-						</div>
-						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
-							Extended Trend Detail
-						</h2>
-						<p class="mb-4 text-sm text-text-secondary-light">
-							Price trends across longer time horizons — retail origins
-						</p>
-
-						<!-- Time range selector -->
-						<div class="mb-3 flex items-center gap-2">
-							<span class="text-xs font-medium text-text-secondary-light">Range:</span>
-							<div
-								class="flex rounded-full border border-border-light bg-background-secondary-light p-0.5 shadow-sm"
-							>
-								{#each [{ value: '90d', label: '90 days' }, { value: '6m', label: '6 months' }, { value: '1y', label: '1 year' }] as opt}
-									<button
-										onclick={() => (trendRange = opt.value as TrendRange)}
-										class="rounded-full px-3 py-1 text-xs font-medium transition-all duration-150
-											{trendRange === opt.value
-											? 'bg-background-tertiary-light text-white shadow-sm'
-											: 'text-text-secondary-light hover:text-text-primary-light'}"
-									>
-										{opt.label}
-									</button>
-								{/each}
-							</div>
-						</div>
-
-						<!-- Line chart using existing OriginLineChart component -->
-						<div class="h-64">
-							{#if viewMode === 'spread'}
-								<OriginLineChart
-									snapshots={trendSnapshots}
-									mode="spread"
-									spreadData={trendSpreadData}
-								/>
-							{:else}
-								<OriginLineChart snapshots={trendSnapshots} mode="price" />
-							{/if}
-						</div>
-					</div>
-				</div>
-			</div>
-		{/if}
-	</div>
-
-	<!-- New Arrivals + Recent Delistings -->
-	<div class="mb-8">
-		{#if session}
-			<!-- Window Toggle -->
-			<div class="mb-4 flex items-center gap-3">
-				<span class="text-sm font-medium text-text-secondary-light">Show:</span>
-				<div
-					class="flex rounded-full border border-border-light bg-background-secondary-light p-1 shadow-sm"
-				>
-					{#each WINDOW_OPTIONS as opt}
-						<button
-							onclick={() => (windowMode = opt.value)}
-							class="rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150
-						{windowMode === opt.value
-								? 'bg-background-tertiary-light text-white shadow-sm'
-								: 'text-text-secondary-light hover:text-text-primary-light'}"
-						>
-							{opt.label}
-						</button>
-					{/each}
-				</div>
-			</div>
-
-			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-				<!-- New Arrivals -->
-				<ExpandablePanel
-					title="New Arrivals"
-					badge="+{filteredArrivals.length}"
-					badgeColor="amber"
-					totalItems={filteredArrivals.length}
-				>
-					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
-						<div class="mb-3 flex items-center justify-between">
-							<div>
-								<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
-								<p class="mt-0.5 text-sm text-text-secondary-light">
-									{filteredArrivals.length} new arrival{filteredArrivals.length === 1 ? '' : 's'} this
-									{windowMode === '7d' ? 'week' : 'month'}
-								</p>
-							</div>
-							<span class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700"
-								>+{filteredArrivals.length}</span
-							>
-						</div>
-						{#if filteredArrivals.length > 0}
-							<div class="overflow-x-auto">
-								<table class="min-w-full text-sm">
-									<thead>
-										<tr class="border-b border-border-light">
-											<th
-												class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Bean</th
-											>
-											<th
-												class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Origin</th
-											>
-											<th
-												class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Process</th
-											>
-											<th
-												class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>$/lb</th
-											>
-											<th
-												class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Supplier</th
-											>
-											<th
-												class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Days</th
-											>
-										</tr>
-									</thead>
-									<tbody>
-										{#each filteredArrivals as bean}
-											{@const days = daysSince(bean.stocked_date)}
-											<tr class="border-b border-border-light/40 hover:bg-amber-50">
-												<td class="py-2 pr-3 font-medium text-text-primary-light" title={bean.name}
-													>{truncateName(bean.name)}</td
-												>
-												<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
-												<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td
-												>
-												<td class="py-2 pr-3 text-right font-semibold text-text-primary-light"
-													>{bean.price_per_lb != null
-														? '$' + bean.price_per_lb.toFixed(2)
-														: '—'}</td
-												>
-												<td class="py-2 pr-3 text-text-secondary-light"
-													>{formatSource(bean.source)}</td
-												>
-												<td class="py-2 text-right"
-													><span
-														class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
-														>{days === 0 ? 'Today' : days + 'd'}</span
-													></td
-												>
-											</tr>
-										{/each}
-									</tbody>
-								</table>
-							</div>
-						{:else}
-							<div
-								class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
-							>
-								<p class="text-sm text-text-secondary-light">
-									No new arrivals in the selected window.
-								</p>
-							</div>
-						{/if}
-					</div>
-				</ExpandablePanel>
-
-				<!-- Recent Delistings -->
-				<ExpandablePanel
-					title="Recent Delistings"
-					badge="-{filteredDelistings.length}"
-					badgeColor="red"
-					totalItems={filteredDelistings.length}
-				>
-					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
-						<div class="mb-3 flex items-center justify-between">
-							<div>
-								<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
-								<p class="mt-0.5 text-sm text-text-secondary-light">
-									{filteredDelistings.length} bean{filteredDelistings.length === 1 ? '' : 's'} delisted
-									this
-									{windowMode === '7d' ? 'week' : 'month'}
-								</p>
-							</div>
-							<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600"
-								>-{filteredDelistings.length}</span
-							>
-						</div>
-						{#if delistingsByCountry.length > 0}
-							<p class="mb-3 text-xs text-text-secondary-light">
-								{delistingsByCountry
-									.slice(0, 5)
-									.map((d) => d.country + ': ' + d.count)
-									.join(' · ')}
-							</p>
-						{/if}
-						{#if filteredDelistings.length > 0}
-							<div class="overflow-x-auto">
-								<table class="min-w-full text-sm">
-									<thead>
-										<tr class="border-b border-border-light">
-											<th
-												class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Bean</th
-											>
-											<th
-												class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Origin</th
-											>
-											<th
-												class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Process</th
-											>
-											<th
-												class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Last $/lb</th
-											>
-											<th
-												class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Supplier</th
-											>
-											<th
-												class="pb-2 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-												>Days</th
-											>
-										</tr>
-									</thead>
-									<tbody>
-										{#each filteredDelistings as bean}
-											{@const days = daysSince(bean.unstocked_date)}
-											<tr class="border-b border-border-light/40 hover:bg-red-50">
-												<td
-													class="py-2 pr-3 font-medium text-text-secondary-light"
-													title={bean.name}>{truncateName(bean.name)}</td
-												>
-												<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
-												<td class="py-2 pr-3 text-text-secondary-light">{bean.processing ?? '—'}</td
-												>
-												<td class="py-2 pr-3 text-right text-text-secondary-light"
-													>{bean.price_per_lb != null
-														? '$' + bean.price_per_lb.toFixed(2)
-														: '—'}</td
-												>
-												<td class="py-2 pr-3 text-text-secondary-light"
-													>{formatSource(bean.source)}</td
-												>
-												<td class="py-2 text-right"
-													><span
-														class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600"
-														>{days === 0 ? 'Today' : days + 'd'}</span
-													></td
-												>
-											</tr>
-										{/each}
-									</tbody>
-								</table>
-							</div>
-						{:else}
-							<div
-								class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
-							>
-								<p class="text-sm text-text-secondary-light">
-									No delistings in the selected window.
-								</p>
-							</div>
-						{/if}
-					</div>
-				</ExpandablePanel>
-			</div>
-		{:else}
-			<!-- Blurred preview for unauthenticated users -->
-			<div class="relative">
-				<div class="pointer-events-none select-none blur-sm filter">
-					<div class="mb-4 flex items-center gap-3">
-						<span class="text-sm font-medium text-text-secondary-light">Show:</span>
-						<div
-							class="flex rounded-full border border-border-light bg-background-secondary-light p-1 shadow-sm"
-						>
-							<button
-								class="rounded-full bg-background-tertiary-light px-4 py-1.5 text-sm font-medium text-white shadow-sm"
-							>
-								Last 7 days
-							</button>
-							<button
-								class="rounded-full px-4 py-1.5 text-sm font-medium text-text-secondary-light"
-							>
-								Last 30 days
-							</button>
-						</div>
-					</div>
-					<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-						<!-- Arrivals skeleton -->
-						<div
-							class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm"
-						>
-							<div class="mb-3 flex items-center justify-between">
-								<div>
-									<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
-									<p class="mt-0.5 text-sm text-text-secondary-light">12 new arrivals this week</p>
-								</div>
-								<span
-									class="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-700"
-									>+12</span
-								>
-							</div>
-							<div class="space-y-2">
-								{#each Array(5) as _}
-									<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
-										<div class="h-4 w-32 rounded bg-background-secondary-light"></div>
-										<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
-										<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
-										<div class="ml-auto h-4 w-12 rounded bg-amber-100"></div>
-									</div>
-								{/each}
-							</div>
-						</div>
-						<!-- Delistings skeleton -->
-						<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
-							<div class="mb-3 flex items-center justify-between">
-								<div>
-									<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
-									<p class="mt-0.5 text-sm text-text-secondary-light">8 beans delisted this week</p>
-								</div>
-								<span class="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-600"
-									>-8</span
-								>
-							</div>
-							<div class="space-y-2">
-								{#each Array(5) as _}
-									<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
-										<div class="h-4 w-32 rounded bg-background-secondary-light"></div>
-										<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
-										<div class="h-4 w-16 rounded bg-background-secondary-light"></div>
-										<div class="ml-auto h-4 w-12 rounded bg-red-100"></div>
-									</div>
-								{/each}
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- CTA overlay -->
-				<div
-					class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-gradient-to-b from-background-primary-light/60 to-background-primary-light"
-				>
-					<div
-						class="mx-4 max-w-md rounded-xl border border-background-tertiary-light/30 bg-background-primary-light p-8 text-center shadow-lg"
-					>
-						<div class="mb-3 text-3xl">📦</div>
-						<h3 class="mb-2 text-2xl font-bold text-text-primary-light">
-							Track New Arrivals & Delistings
-						</h3>
-						<p class="mb-6 text-text-secondary-light">
-							Sign up free to track new arrivals and delistings across {stats.totalSuppliers} suppliers
-							— updated daily.
-						</p>
-						<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-							<button
-								onclick={() => goto('/auth')}
-								class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
-							>
-								Sign Up Free
-							</button>
-							<button
-								onclick={() => goto('/auth')}
-								class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-							>
-								Sign In
-							</button>
-						</div>
-					</div>
-				</div>
-			</div>
-		{/if}
-	</div>
-{:else}
-	<!-- Blurred preview for unauthenticated users — everything below the 3 public charts -->
-	<div class="relative mb-8">
+<div class="relative mb-8">
+	{#if !isParchmentIntelligence}
 		<div class="pointer-events-none select-none">
-			<div class="space-y-6 blur-sm filter">
-				<!-- Supplier Comparison skeleton -->
+			<div class="mb-8 blur-sm filter">
+				<div class="mb-3">
+					<h2 class="text-xl font-semibold text-text-primary-light">Supplier Price Comparison</h2>
+					<p class="mt-1 text-sm text-text-secondary-light">
+						Everyone can explore the core market view. Parchment Intelligence adds deeper supplier
+						comparisons.
+					</p>
+				</div>
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
-					<h2 class="mb-2 text-xl font-semibold text-text-primary-light">
-						Supplier Price Comparison
-					</h2>
-					<p class="mb-4 text-sm text-text-secondary-light">
-						Compare prices across suppliers by origin
-					</p>
 					<div class="space-y-2">
 						{#each Array(6) as _}
 							<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
@@ -1150,16 +611,18 @@
 						{/each}
 					</div>
 				</div>
-				<!-- Supplier Health skeleton -->
+			</div>
+
+			<div class="mb-8 blur-sm filter">
+				<div class="mb-3">
+					<h2 class="text-xl font-semibold text-text-primary-light">Supplier Catalog Health</h2>
+					<p class="mt-1 text-sm text-text-secondary-light">
+						Catalog breadth, origin coverage, and supplier signals for deeper sourcing review.
+					</p>
+				</div>
 				<div
 					class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
-					<h2 class="mb-2 text-xl font-semibold text-text-primary-light">
-						Supplier Catalog Health
-					</h2>
-					<p class="mb-4 text-sm text-text-secondary-light">
-						Catalog breadth and pricing by supplier
-					</p>
 					<div class="space-y-2">
 						{#each Array(6) as _}
 							<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
@@ -1171,10 +634,41 @@
 						{/each}
 					</div>
 				</div>
-				<!-- Arrivals + Delistings skeleton -->
+			</div>
+
+			<div class="mb-8 blur-sm filter">
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-3 flex items-center gap-2">
+							<span
+								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+								>Parchment Intelligence</span
+							>
+						</div>
+						<div class="mb-4 flex items-center justify-between gap-3">
+							<p class="text-sm text-text-secondary-light">
+								New coffees added in the last {windowMode === '7d' ? '7' : '30'} days.
+							</p>
+							<div
+								class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium"
+							>
+								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+									<button
+										onclick={() => (windowMode = opt.value as WindowMode)}
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
+										opt.value
+											? 'bg-amber-200 text-amber-900 shadow-sm'
+											: 'text-amber-900/70 hover:text-amber-900'}"
+									>
+										{opt.label}
+									</button>
+								{/each}
+							</div>
+						</div>
 						<h2 class="text-xl font-semibold text-text-primary-light">New Arrivals</h2>
+						<p class="mt-1 text-sm text-text-secondary-light">
+							Expanded monitoring for newly added coffees across {stats.totalSuppliers} suppliers.
+						</p>
 						<div class="mt-3 space-y-2">
 							{#each Array(4) as _}
 								<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
@@ -1186,7 +680,36 @@
 						</div>
 					</div>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-3 flex items-center gap-2">
+							<span
+								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+								>Parchment Intelligence</span
+							>
+						</div>
+						<div class="mb-4 flex items-center justify-between gap-3">
+							<p class="text-sm text-text-secondary-light">
+								Coffees removed in the last {windowMode === '7d' ? '7' : '30'} days.
+							</p>
+							<div
+								class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium"
+							>
+								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+									<button
+										onclick={() => (windowMode = opt.value as WindowMode)}
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
+										opt.value
+											? 'bg-red-200 text-red-900 shadow-sm'
+											: 'text-red-900/70 hover:text-red-900'}"
+									>
+										{opt.label}
+									</button>
+								{/each}
+							</div>
+						</div>
 						<h2 class="text-xl font-semibold text-text-primary-light">Recent Delistings</h2>
+						<p class="mt-1 text-sm text-text-secondary-light">
+							Expanded monitoring for catalog removals and turnover.
+						</p>
 						<div class="mt-3 space-y-2">
 							{#each Array(4) as _}
 								<div class="flex items-center gap-3 border-b border-border-light/40 py-2">
@@ -1199,46 +722,404 @@
 					</div>
 				</div>
 			</div>
+
+			<div class="blur-sm filter">
+				<div class="mb-3">
+					<h2 class="text-xl font-semibold text-text-primary-light">
+						Parchment Intelligence overview
+					</h2>
+					<p class="mt-1 text-sm text-text-secondary-light">
+						Deeper market visibility for sourcing, purchasing, and supplier benchmarking in one
+						place.
+					</p>
+				</div>
+				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+					<div
+						class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
+					>
+						<h3 class="mb-2 text-lg font-semibold text-text-primary-light">Origin benchmarks</h3>
+						<div class="grid grid-cols-3 gap-3">
+							{#each Array(9) as _}
+								<div class="rounded bg-background-secondary-light p-3">
+									<div class="h-4 w-3/4 rounded bg-background-tertiary-light/30"></div>
+									<div class="mt-2 h-6 w-1/2 rounded bg-background-tertiary-light/20"></div>
+								</div>
+							{/each}
+						</div>
+					</div>
+					<div
+						class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
+					>
+						<h3 class="mb-2 text-lg font-semibold text-text-primary-light">
+							Longer-term trend detail
+						</h3>
+						<div class="mt-4 h-40 rounded bg-background-secondary-light"></div>
+					</div>
+				</div>
+			</div>
 		</div>
 
-		<!-- CTA overlay -->
 		<div
 			class="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-gradient-to-b from-background-primary-light/60 to-background-primary-light"
 		>
 			<div
-				class="mx-4 max-w-md rounded-xl border border-background-tertiary-light/30 bg-background-primary-light p-8 text-center shadow-lg"
+				class="mx-4 max-w-xl rounded-xl border border-background-tertiary-light/30 bg-background-primary-light p-8 text-center shadow-lg"
 			>
-				<div class="mb-3 text-3xl">📊</div>
+				<div class="mb-3 text-3xl">📈</div>
 				<h3 class="mb-2 text-2xl font-bold text-text-primary-light">
-					Unlock Full Market Intelligence
+					Go deeper with Parchment Intelligence
 				</h3>
-				<p class="mb-6 text-text-secondary-light">
-					Create a free account to access supplier comparisons, catalog health metrics, new arrivals
-					tracking, and more — across {stats.totalSuppliers} suppliers, updated daily.
+				<p class="mb-4 text-text-secondary-light">
+					The public view gives you the core market picture first. Upgrade when you need supplier
+					comparisons, supplier health, arrivals, delistings, origin benchmarks, and longer-term
+					trends.
 				</p>
+				<ul class="mb-6 space-y-2 text-sm text-text-secondary-light">
+					<li>Supplier comparison and catalog health views</li>
+					<li>Arrival and delisting tracking</li>
+					<li>Origin benchmarks plus 6-month and 1-year trend views</li>
+				</ul>
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					<button
-						onclick={() => goto('/auth')}
+						onclick={() => goto('/subscription')}
 						class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
 					>
-						Sign Up Free
+						See plans
 					</button>
-					<button
-						onclick={() => goto('/auth')}
-						class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-					>
-						Sign In
-					</button>
+					{#if !session}
+						<button
+							onclick={() => goto('/subscription')}
+							class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						>
+							Browse full catalog first
+						</button>
+					{/if}
 				</div>
 			</div>
 		</div>
-	</div>
-{/if}
+	{:else}
+		<div class="space-y-6">
+			<ExpandablePanel
+				title="Supplier price comparison"
+				subtitle="Compare current supplier pricing for a selected origin."
+				totalItems={comparisonBeans.length}
+			>
+				<AnalyticsLoadingPanel
+					ready={Boolean(SupplierComparisonTableComponent)}
+					title="Supplier price comparison"
+					description="Loading supplier comparison tools."
+					height="h-64"
+					panelClass="border-border-light"
+					errorMessage={memberVisualsError}
+					onRetry={retryMemberVisuals}
+				>
+					{#if SupplierComparisonTableComponent}
+						<SupplierComparisonTableComponent beans={comparisonBeans} />
+					{/if}
+				</AnalyticsLoadingPanel>
+			</ExpandablePanel>
 
-<!-- Data source note -->
+			<ExpandablePanel
+				title="Supplier catalog health"
+				subtitle="Review catalog breadth, coverage, and pricing by supplier."
+				totalItems={supplierHealth.length}
+			>
+				<AnalyticsLoadingPanel
+					ready={Boolean(SupplierHealthTableComponent)}
+					title="Supplier catalog health"
+					description="Loading supplier catalog health views."
+					height="h-64"
+					panelClass="border-border-light"
+					errorMessage={memberVisualsError}
+					onRetry={retryMemberVisuals}
+				>
+					{#if SupplierHealthTableComponent}
+						<div
+							class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
+						>
+							<SupplierHealthTableComponent rows={supplierHealth} />
+						</div>
+					{/if}
+				</AnalyticsLoadingPanel>
+			</ExpandablePanel>
+
+			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+				<ExpandablePanel
+					title="New arrivals"
+					badge={`+${filteredArrivals.length}`}
+					badgeColor="amber"
+					totalItems={filteredArrivals.length}
+				>
+					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-4 flex items-center justify-between gap-3">
+							<p class="text-sm text-text-secondary-light">
+								New coffees added in the last {windowMode === '7d' ? '7' : '30'} days.
+							</p>
+							<div
+								class="flex rounded-full border border-amber-200 bg-amber-50 p-0.5 text-xs font-medium"
+							>
+								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+									<button
+										onclick={() => (windowMode = opt.value as WindowMode)}
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
+										opt.value
+											? 'bg-amber-200 text-amber-900 shadow-sm'
+											: 'text-amber-900/70 hover:text-amber-900'}"
+									>
+										{opt.label}
+									</button>
+								{/each}
+							</div>
+						</div>
+						<div class="overflow-x-auto">
+							<table class="min-w-full text-sm">
+								<thead>
+									<tr class="border-b border-border-light">
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Bean</th
+										>
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Origin</th
+										>
+										<th
+											class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>$/lb</th
+										>
+										<th
+											class="pb-2 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Supplier</th
+										>
+									</tr>
+								</thead>
+								<tbody>
+									{#each filteredArrivals as bean}
+										<tr class="border-b border-border-light/40 hover:bg-amber-50">
+											<td class="py-2 pr-3 font-medium text-text-primary-light">{bean.name}</td>
+											<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
+											<td class="py-2 pr-3 text-right text-text-primary-light"
+												>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
+											>
+											<td class="py-2 text-text-secondary-light">{bean.source ?? '—'}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</ExpandablePanel>
+
+				<ExpandablePanel
+					title="Recent Delistings"
+					badge={`-${filteredDelistings.length}`}
+					badgeColor="red"
+					totalItems={filteredDelistings.length}
+				>
+					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
+						<div class="mb-4 flex items-center justify-between gap-3">
+							<p class="text-sm text-text-secondary-light">
+								Coffees removed in the last {windowMode === '7d' ? '7' : '30'} days.
+							</p>
+							<div
+								class="flex rounded-full border border-red-200 bg-red-50 p-0.5 text-xs font-medium"
+							>
+								{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+									<button
+										onclick={() => (windowMode = opt.value as WindowMode)}
+										class="rounded-full px-3 py-1 transition-all duration-150 {windowMode ===
+										opt.value
+											? 'bg-red-200 text-red-900 shadow-sm'
+											: 'text-red-900/70 hover:text-red-900'}"
+									>
+										{opt.label}
+									</button>
+								{/each}
+							</div>
+						</div>
+						<div class="overflow-x-auto">
+							<table class="min-w-full text-sm">
+								<thead>
+									<tr class="border-b border-border-light">
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Bean</th
+										>
+										<th
+											class="pb-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Origin</th
+										>
+										<th
+											class="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Last $/lb</th
+										>
+										<th
+											class="pb-2 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>Supplier</th
+										>
+									</tr>
+								</thead>
+								<tbody>
+									{#each filteredDelistings as bean}
+										<tr class="border-b border-border-light/40 hover:bg-red-50">
+											<td class="py-2 pr-3 font-medium text-text-primary-light">{bean.name}</td>
+											<td class="py-2 pr-3 text-text-secondary-light">{bean.country ?? '—'}</td>
+											<td class="py-2 pr-3 text-right text-text-primary-light"
+												>{bean.price_per_lb != null ? '$' + bean.price_per_lb.toFixed(2) : '—'}</td
+											>
+											<td class="py-2 text-text-secondary-light">{bean.source ?? '—'}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</ExpandablePanel>
+			</div>
+
+			<ExpandablePanel
+				title="Origin benchmarks"
+				subtitle="Origin-level pricing benchmarks and longer-term trend context."
+				totalItems={originBarData.length}
+			>
+				<div
+					class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
+				>
+					{#if hasSnapshots}
+						<div class="overflow-x-auto">
+							<table class="min-w-full text-sm">
+								<thead>
+									<tr class="border-b border-border-light">
+										<th class="py-2 pr-4 text-left font-semibold text-text-secondary-light"
+											>Origin</th
+										>
+										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light"
+											>Avg $/lb</th
+										>
+										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">Min</th
+										>
+										<th class="py-2 pr-4 text-right font-semibold text-text-secondary-light">Max</th
+										>
+										<th class="py-2 text-right font-semibold text-text-secondary-light"
+											>Suppliers</th
+										>
+									</tr>
+								</thead>
+								<tbody>
+									{#each originBarData as row}
+										<tr class="border-b border-border-light/50 hover:bg-background-secondary-light">
+											<td class="py-2 pr-4 font-medium text-text-primary-light">{row.origin}</td>
+											<td class="py-2 pr-4 text-right font-semibold text-text-primary-light"
+												>${row.price_avg.toFixed(2)}</td
+											>
+											<td class="py-2 pr-4 text-right text-text-secondary-light"
+												>{filteredSnapshots
+													.find((s) => s.origin === row.origin)
+													?.price_min?.toFixed(2) ?? '—'}</td
+											>
+											<td class="py-2 pr-4 text-right text-text-secondary-light"
+												>{filteredSnapshots
+													.find((s) => s.origin === row.origin)
+													?.price_max?.toFixed(2) ?? '—'}</td
+											>
+											<td class="py-2 text-right text-text-secondary-light">{row.supplier_count}</td
+											>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{:else}
+						<div
+							class="flex h-24 items-center justify-center rounded-lg bg-background-secondary-light"
+						>
+							<p class="text-sm text-text-secondary-light">
+								Awaiting first price snapshot (today's scraper run).
+							</p>
+						</div>
+					{/if}
+				</div>
+			</ExpandablePanel>
+
+			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+				<AnalyticsLoadingPanel
+					ready={Boolean(PriceTierChartComponent)}
+					title="Price spread analysis"
+					description="Loading the latest origin price spread analysis."
+					height="h-64"
+					panelClass="border-background-tertiary-light/20"
+					errorMessage={memberVisualsError}
+					onRetry={retryMemberVisuals}
+				>
+					<div
+						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
+					>
+						<div class="mb-2 flex items-center gap-2">
+							<span
+								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+								>Parchment Intelligence</span
+							>
+						</div>
+						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
+							Price spread analysis
+						</h2>
+						<p class="mb-4 text-sm text-text-secondary-light">
+							Retail versus wholesale median price by origin in the latest snapshot
+						</p>
+						{#if PriceTierChartComponent}
+							<PriceTierChartComponent {snapshots} />
+						{/if}
+					</div>
+				</AnalyticsLoadingPanel>
+
+				<div
+					class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
+				>
+					<div class="mb-2 flex items-center gap-2">
+						<span
+							class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
+							>Parchment Intelligence</span
+						>
+					</div>
+					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
+						Longer-term trend detail
+					</h2>
+					<p class="mb-4 text-sm text-text-secondary-light">
+						Price trends across longer time horizons for retail origins
+					</p>
+					<div class="mb-3 flex items-center gap-2">
+						<span class="text-xs font-medium text-text-secondary-light">Range:</span>
+						<div
+							class="flex rounded-full border border-border-light bg-background-secondary-light p-0.5 shadow-sm"
+						>
+							{#each [{ value: '90d', label: '90 days' }, { value: '6m', label: '6 months' }, { value: '1y', label: '1 year' }] as opt}
+								<button
+									onclick={() => (trendRange = opt.value as TrendRange)}
+									class="rounded-full px-3 py-1 text-xs font-medium transition-all duration-150
+										{trendRange === opt.value
+										? 'bg-background-tertiary-light text-white shadow-sm'
+										: 'text-text-secondary-light hover:text-text-primary-light'}"
+								>
+									{opt.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+					<div class="h-64">
+						{#if OriginLineChartComponent}
+							<OriginLineChartComponent snapshots={trendSnapshots} mode="price" />
+						{:else}
+							<div class="h-full animate-pulse rounded-xl bg-background-secondary-light/80"></div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
+</div>
+
 <div class="mt-4 rounded-lg bg-background-secondary-light p-4 text-xs text-text-secondary-light">
-	<strong class="text-text-primary-light">Data source:</strong> Prices aggregated daily from
-	{stats.totalSuppliers} US green coffee importers and roasters. The Purveyors Price Index (PPI) is updated
-	each morning after scraper completion. Origin and processing method data is sourced directly from supplier
-	listings.
+	<strong class="text-text-primary-light">Data source:</strong> Daily prices aggregated from
+	{stats.totalSuppliers} US green coffee importers and roasters. The Purveyors Price Index updates each
+	morning, and origin plus processing details come directly from supplier listings.
 </div>

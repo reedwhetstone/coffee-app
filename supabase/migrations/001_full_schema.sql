@@ -31,7 +31,10 @@ CREATE TABLE IF NOT EXISTS public.user_roles (
   email text,
   name text,
   user_role text[] NOT NULL DEFAULT '{viewer}'::text[],
+  api_plan text NOT NULL DEFAULT 'viewer'::text,
+  ppi_access boolean NOT NULL DEFAULT false,
   CONSTRAINT user_roles_pkey PRIMARY KEY (id),
+  CONSTRAINT user_roles_api_plan_check CHECK (api_plan = ANY (ARRAY['viewer'::text, 'member'::text, 'enterprise'::text])),
   CONSTRAINT user_roles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
@@ -280,6 +283,26 @@ CREATE TABLE IF NOT EXISTS public.stripe_session_processing (
   completed_at timestamp with time zone,
   CONSTRAINT stripe_session_processing_pkey PRIMARY KEY (id),
   CONSTRAINT stripe_session_processing_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+
+-- billing_subscriptions: Local Stripe-backed subscription snapshot for entitlement recomputation
+CREATE TABLE IF NOT EXISTS public.billing_subscriptions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  stripe_customer_id text NOT NULL,
+  stripe_subscription_id text NOT NULL,
+  stripe_subscription_item_id text NOT NULL UNIQUE,
+  stripe_price_id text NOT NULL,
+  product_family text NOT NULL,
+  product_key text NOT NULL,
+  status text NOT NULL,
+  current_period_end timestamp with time zone,
+  cancel_at_period_end boolean NOT NULL DEFAULT false,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT billing_subscriptions_pkey PRIMARY KEY (id),
+  CONSTRAINT billing_subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
 -- role_audit_logs: Role change audit trail
@@ -739,13 +762,15 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.user_roles (id, email, name, role, user_role)
+  INSERT INTO public.user_roles (id, email, name, role, user_role, api_plan, ppi_access)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', ''),
     'viewer',
-    ARRAY['viewer']
+    ARRAY['viewer'],
+    'viewer',
+    false
   );
   RETURN NEW;
 END;
@@ -773,6 +798,7 @@ ALTER TABLE public.api_usage ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.artisan_import_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stripe_customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stripe_session_processing ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.billing_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.role_audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shared_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
@@ -919,6 +945,10 @@ CREATE POLICY "Users can view own stripe customer" ON public.stripe_customers
 CREATE POLICY "Users can view own stripe sessions" ON public.stripe_session_processing
   FOR SELECT USING (auth.uid() = user_id);
 
+-- billing_subscriptions: user-owned
+CREATE POLICY "Users can view own billing subscriptions" ON public.billing_subscriptions
+  FOR SELECT USING (auth.uid() = user_id);
+
 -- role_audit_logs: user-owned read
 CREATE POLICY "Users can view own audit logs" ON public.role_audit_logs
   FOR SELECT USING (auth.uid() = user_id);
@@ -960,6 +990,7 @@ GRANT SELECT ON public.coffee_catalog TO authenticated;
 GRANT SELECT ON public.coffee_chunks TO authenticated;
 GRANT SELECT ON public.stripe_customers TO authenticated;
 GRANT SELECT ON public.stripe_session_processing TO authenticated;
+GRANT SELECT ON public.billing_subscriptions TO authenticated;
 GRANT SELECT ON public.role_audit_logs TO authenticated;
 
 -- Grant sequence usage

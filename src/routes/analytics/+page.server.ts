@@ -155,10 +155,10 @@ export async function _loadPriceSnapshotsPaginated({
 }
 
 export const load: PageServerLoad = async (event) => {
-	// Resolve principal to get explicit ppiAccess entitlement.
-	// Falls back to ppi-member pseudo-role detection during the migration period.
+	// Resolve principal to get explicit Parchment Intelligence access.
+	// Logged-out visitors and logged-in viewers intentionally share the same core analytics view.
 	const principal = await resolvePrincipal(event);
-	const isPpiMember = principal.isAuthenticated ? principal.ppiAccess : false;
+	const isParchmentIntelligence = principal.isAuthenticated ? principal.ppiAccess : false;
 
 	const today = new Date().toISOString().split('T')[0];
 	const supabase = event.locals.supabase;
@@ -174,8 +174,8 @@ export const load: PageServerLoad = async (event) => {
 	ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 	const fromDate = ninetyDaysAgo.toISOString().split('T')[0];
 
-	// PPI members get up to 365 days of snapshot data for extended trend views.
-	const snapshotFromDate = isPpiMember
+	// Parchment Intelligence users get up to 365 days of snapshot data for extended trend views.
+	const snapshotFromDate = isParchmentIntelligence
 		? (() => {
 				const d = new Date();
 				d.setDate(d.getDate() - 365);
@@ -248,7 +248,7 @@ export const load: PageServerLoad = async (event) => {
 			.gte('unstocked_date', thirtyDaysAgoStr)
 			.order('unstocked_date', { ascending: false })
 			.limit(50),
-		// Price index snapshots — 90 days public, 365 days for PPI members
+		// Price index snapshots — 90 days public, 365 days for Parchment Intelligence users
 		_loadPriceSnapshotsPaginated({
 			supabase: sb,
 			fromDate: snapshotFromDate
@@ -332,12 +332,12 @@ export const load: PageServerLoad = async (event) => {
 		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 50);
 	})();
 
-	// ─── PPI MEMBER QUERIES (only run for authenticated members) ────────────────
+	// ─── PARCHMENT INTELLIGENCE QUERIES (only run for entitled users) ───────────
 	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
 	let comparisonBeans: ComparisonBean[] = [];
 	let supplierHealth: SupplierHealthRow[] = [];
 
-	if (isPpiMember) {
+	if (isParchmentIntelligence) {
 		const [{ data: comparisonBeansRaw }, { data: supplierStatsRaw }] = await Promise.all([
 			// Supplier comparison beans
 			supabase
@@ -397,7 +397,7 @@ export const load: PageServerLoad = async (event) => {
 		schemaService.generateDatasetSchema({
 			name: 'Purveyors Price Index — Green Coffee Market Data',
 			description:
-				'Daily green coffee price snapshots from 39+ US importers and roasters. Includes origin pricing, processing method distribution, and supplier comparison data.',
+				'Daily green coffee pricing from 39+ US importers and roasters, including origin trends, processing mix, and supplier coverage.',
 			url: `${baseUrl}/analytics`,
 			keywords: [
 				'green coffee prices',
@@ -424,7 +424,7 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		session,
 		role,
-		isPpiMember,
+		isParchmentIntelligence,
 		stats: {
 			totalBeansTracked: totalBeansTracked ?? 0,
 			stockedRetailBeans: stockedRetailBeans ?? 0,
@@ -449,9 +449,9 @@ export const load: PageServerLoad = async (event) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/analytics',
-			title: 'Green Coffee Market Analytics | Purveyors Price Index',
+			title: 'Green Coffee Market Visibility | Purveyors Price Index',
 			description:
-				'Live green coffee price trends, origin analysis, and supplier data from 39+ US importers. Updated daily. Free market intelligence for coffee professionals.',
+				'Daily green coffee pricing, supplier movement, and origin trends from 39+ US importers. Free market visibility for coffee teams.',
 			keywords: [
 				'green coffee prices',
 				'coffee market data',
@@ -460,12 +460,11 @@ export const load: PageServerLoad = async (event) => {
 				'coffee origin prices',
 				'coffee supplier comparison'
 			],
-			ogTitle: 'Green Coffee Market Analytics — Purveyors Price Index',
+			ogTitle: 'Green Coffee Market Visibility — Purveyors Price Index',
 			ogDescription:
-				'Real-time green coffee price trends by origin, processing methods, and supplier comparison. Data from 39+ US green coffee importers, updated daily.',
-			twitterTitle: 'Green Coffee Market Analytics — Purveyors',
-			twitterDescription:
-				'Live green coffee price trends from 39+ US importers. Free market intelligence.',
+				'Daily green coffee price trends, processing mix, and supplier movement from 39+ US importers.',
+			twitterTitle: 'Green Coffee Market Visibility — Purveyors',
+			twitterDescription: 'Daily green coffee pricing and supplier movement from 39+ US importers.',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/analytics.jpg',

@@ -250,6 +250,24 @@ CREATE TABLE public.stripe_session_processing (
   CONSTRAINT stripe_session_processing_pkey PRIMARY KEY (id),
   CONSTRAINT stripe_session_processing_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
+CREATE TABLE public.billing_subscriptions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  stripe_customer_id text NOT NULL,
+  stripe_subscription_id text NOT NULL,
+  stripe_subscription_item_id text NOT NULL UNIQUE,
+  stripe_price_id text NOT NULL,
+  product_family text NOT NULL,
+  product_key text NOT NULL,
+  status text NOT NULL,
+  current_period_end timestamp with time zone,
+  cancel_at_period_end boolean NOT NULL DEFAULT false,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT billing_subscriptions_pkey PRIMARY KEY (id),
+  CONSTRAINT billing_subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
 CREATE TABLE public.user_roles (
   id uuid NOT NULL,
   role USER-DEFINED NOT NULL DEFAULT 'viewer'::user_role,
@@ -258,6 +276,9 @@ CREATE TABLE public.user_roles (
   email text,
   name text,
   user_role ARRAY NOT NULL DEFAULT '{viewer}'::text[],
+  api_plan text NOT NULL DEFAULT 'viewer'::text,
+  ppi_access boolean NOT NULL DEFAULT false,
   CONSTRAINT user_roles_pkey PRIMARY KEY (id),
+  CONSTRAINT user_roles_api_plan_check CHECK (api_plan = ANY (ARRAY['viewer'::text, 'member'::text, 'enterprise'::text])),
   CONSTRAINT user_roles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );

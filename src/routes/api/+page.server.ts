@@ -12,42 +12,43 @@ export const load: PageServerLoad = async ({ url }) => {
 	const serviceData = {
 		name: 'Parchment API',
 		description:
-			'Normalized green coffee catalog access, market analytics, and a unified docs path for Parchment Platform on Purveyors.',
+			'Live green coffee catalog data, supplier coverage, and market visibility for roasters and coffee software teams.',
 		provider: 'Purveyors',
 		serviceType: 'Data API',
 		url: pageUrl,
 		features: [
-			'Public catalog feed via API key',
-			'Unified public docs under /docs',
-			'Account-aware key and usage tooling in Parchment Console',
-			'Live market analytics in the web app',
-			'CLI and agent workflows through @purveyors/cli'
+			'Daily-updated catalog data from 39+ suppliers',
+			'One consistent feed for pricing, origin, process, and availability',
+			'Parchment Console for API keys and usage tracking',
+			'Market analytics for price and supplier monitoring',
+			'Implementation docs and onboarding guidance'
 		],
 		audience: [
 			'Coffee software teams',
-			'Roasters and sourcing operators',
-			'Data consumers',
-			'Agents and automation workflows'
+			'Roasters and sourcing teams',
+			'Operators and analysts',
+			'Internal product teams'
 		]
 	};
 
 	const pricingTiers = [
 		{
-			name: 'Explorer',
+			name: 'Green',
 			price: 0,
 			currency: 'USD',
 			billingDuration: 'P1M',
-			description: 'Free tier for evaluation and lightweight catalog pulls',
+			description: 'Free plan for evaluation and lightweight data pulls',
 			features: ['200 requests per month', '25 rows per call', 'Parchment Console access'],
 			popular: false
 		},
 		{
-			name: 'Roaster+',
+			name: 'Origin',
 			price: 99,
 			currency: 'USD',
 			billingDuration: 'P1M',
-			description: 'Production catalog integrations and higher-volume syncing',
-			features: ['10,000 requests per month', 'Unlimited rows per call', 'Usage analytics'],
+			description:
+				'Self-serve plan for production integrations, sync jobs, and recurring customer use',
+			features: ['10,000 requests per month', 'Unlimited rows per call', 'Usage visibility'],
 			popular: true
 		},
 		{
@@ -55,32 +56,36 @@ export const load: PageServerLoad = async ({ url }) => {
 			price: 0,
 			currency: 'USD',
 			billingDuration: 'P1M',
-			description: 'Custom volume, unlimited request ceilings, and premium support',
-			features: ['Unlimited requests', 'Unlimited rows per call', 'Custom commercial terms'],
+			description: 'Contact-sales plan for larger deployments, custom volume, and premium support',
+			features: [
+				'Unlimited requests',
+				'Unlimited rows per call',
+				'Custom support and commercial terms'
+			],
 			popular: false
 		}
 	];
 
 	const faqs = [
 		{
-			question: 'Which API route is public today?',
+			question: 'What can I access with Parchment API today?',
 			answer:
-				'The canonical external route is GET /v1/catalog. It supports both API-key and session auth, and returns publicly visible catalog rows with tier-based row limits.'
+				'You can access the green coffee catalog feed, including pricing, origin, processing, availability, and supplier coverage through one documented API.'
 		},
 		{
-			question: 'Are analytics exposed as a public REST API?',
+			question: 'Who is this best for?',
 			answer:
-				'Not yet. Analytics are a major product surface in the web app at /analytics, with deeper authenticated and premium analytics views, but they are not currently sold as a separate public API-key endpoint family.'
+				'Parchment API is built for roasters, coffee software teams, analysts, and internal product teams that want reliable green coffee data without stitching together supplier listings by hand.'
 		},
 		{
-			question: 'Where do I generate keys and inspect usage?',
+			question: 'How do I get keys and review usage?',
 			answer:
-				'Use /api-dashboard to open Parchment Console, create keys, review monthly usage, and confirm your current tier and limits.'
+				'Use Parchment Console at /api-dashboard to create keys, review monthly usage, and confirm your current plan and limits.'
 		},
 		{
-			question: 'How does the CLI fit in?',
+			question: 'Can I explore the product before committing to a paid plan?',
 			answer:
-				'The CLI is a first-class interface to the platform. The web app imports @purveyors/cli modules directly for several AI and workflow features, so CLI and app behavior stay aligned.'
+				'Yes. The Green plan is free and designed for evaluation, prototypes, and lightweight testing before you move to a production plan.'
 		}
 	];
 
@@ -95,22 +100,22 @@ export const load: PageServerLoad = async ({ url }) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/api',
-			title: 'Parchment API | Green Coffee Catalog and Market Intelligence',
+			title: 'Parchment API | Live Green Coffee Data for Products and Teams',
 			description:
-				'Access the Parchment API catalog feed, Parchment Console, and unified Parchment API plus CLI docs.',
+				'Add live green coffee catalog data to your product with one API. Daily updates, clear pricing, and fast onboarding for roasters and coffee software teams.',
 			keywords: [
 				'green coffee API',
 				'coffee catalog API',
-				'coffee market analytics',
-				'purveyors cli',
-				'coffee sourcing data'
+				'coffee supplier data',
+				'coffee market data',
+				'coffee sourcing API'
 			],
 			ogTitle: 'Parchment API',
 			ogDescription:
-				'Normalized green coffee catalog access, market analytics, and unified documentation for Parchment Platform on Purveyors.',
+				'Live green coffee catalog data, supplier coverage, and market visibility for roasters and coffee software teams.',
 			twitterTitle: 'Parchment API',
 			twitterDescription:
-				'Catalog data, analytics, Parchment Console tooling, and CLI workflows on Purveyors.',
+				'Add daily-updated green coffee catalog data to your product with clear pricing and fast onboarding.',
 			type: 'product',
 			image: resolvePublicPageSocialImage({
 				baseUrl,

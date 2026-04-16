@@ -18,7 +18,7 @@ The `/v1/catalog` endpoint returns the entire catalog (1,000+ rows, 3.7 MB) when
 
 **Why this matters for API consumers:**
 
-- Explorer tier users get 200 API calls/month. A single naive request burns one call on a 3.7 MB dump when they probably wanted 25 rows.
+- Green tier users get 200 API calls/month. A single naive request burns one call on a 3.7 MB dump when they probably wanted 25 rows.
 - Mobile or bandwidth-constrained consumers pay a steep transfer cost.
 - 74% of the payload is text-heavy fields (`description_long` alone is 35%). Consumers wanting structured data (origin, price, score) download massive text blobs they don't need.
 - First-time developers hitting the endpoint without reading docs get a multi-megabyte wall of JSON with no pagination metadata; the `pagination` field is literally `null`.
@@ -51,7 +51,7 @@ In `src/lib/server/catalogResource.ts`, the `queryCatalogData` function has two 
 
 The `isPaginated` flag is only `true` when `url.searchParams.has('page') || url.searchParams.has('limit')`. There is no server-enforced default cap for requests missing both params.
 
-For API-key consumers, the `rowLimit` from `getApiRowLimit()` is `-1` (unlimited) for member/enterprise tiers, so `useRowLimitedPagination` is also `false`. Explorer tier has `rowLimit=25` which does trigger `useRowLimitedPagination`, but only after the full query runs and rows are sliced client-side in the handler.
+For API-key consumers, the `rowLimit` from `getApiRowLimit()` is `-1` (unlimited) for Origin/Enterprise tiers, so `useRowLimitedPagination` is also `false`. Green tier has `rowLimit=25` which does trigger `useRowLimitedPagination`, but only after the full query runs and rows are sliced client-side in the handler.
 
 The internal web app (`/api/catalog` via `buildLegacyAppCatalogResponse`) intentionally uses the full dump for the beans page. This is separate from the external API problem.
 
@@ -111,7 +111,7 @@ Pass `forceDefaultPagination: true` from `buildCanonicalCatalogResponse` and `fa
 
 ### Why 100 as the default?
 
-- Explorer tier cap is 25 rows, so Explorer users already get paginated via `rowLimit`.
+- Green tier cap is 25 rows, so Green users already get paginated via `rowLimit`.
 - Member/Enterprise tier users need reasonable bulk access. 100 rows is ~375 KB (vs 3.7 MB for 1000), a 90% reduction.
 - 100 is the most common API default (GitHub, Stripe, Shopify all use 100 or lower).
 - Consumers who truly need all rows can paginate through with `page=1&limit=100`, `page=2&limit=100`, etc., or explicitly set `limit=1000`.

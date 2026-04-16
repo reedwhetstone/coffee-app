@@ -9,7 +9,7 @@ This document outlines the strategic approach for developing Purveyors into a tr
 ### Existing API Infrastructure
 
 - **Robust authentication system** with bcrypt-hashed keys and tier-based access
-- **Rate limiting** (200/month viewer, 10k/month api-member, unlimited enterprise)
+- **Rate limiting** (Green: 200/month viewer, Origin: 10k/month member, Enterprise: unlimited)
 - **Usage logging and analytics** with comprehensive monitoring
 - **Separate external API endpoint** (`/api/catalog-api/`) vs internal (`/api/catalog/`)
 - **Row limiting by tier** (25 rows viewer, unlimited for paid tiers)
@@ -194,12 +194,7 @@ _Profit tracking capabilities_
 - **Contract Management**: Terms, delivery tracking
 - **Quality Assurance**: Supplier rating and feedback systems
 
-#### 8. Community & Social API
-
-- **Roast Sharing**: Profile sharing between roasters
-- **Community Reviews**: Coffee ratings and reviews
-- **Collaborative Intelligence**: Crowd-sourced cupping data
-- **Professional Networking**: Connect with other coffee professionals
+Note: community and social features are not aligned with the current canonical product vision unless they directly strengthen the coffee intelligence data moat.
 
 ## Technical Architecture Details
 

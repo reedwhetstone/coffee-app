@@ -13,7 +13,10 @@
 
 <svelte:head>
 	<title>Parchment Console - Purveyors</title>
-	<meta name="description" content="Manage your Parchment API keys, usage, and docs access" />
+	<meta
+		name="description"
+		content="Manage your Parchment API keys, usage, and plan details in Parchment Console"
+	/>
 </svelte:head>
 
 <div class="min-h-screen bg-background-primary-light">
@@ -22,7 +25,8 @@
 		<div class="mb-8">
 			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light">Parchment Console</h1>
 			<p class="mt-2 text-lg text-text-secondary-light">
-				Manage your API keys, monitor usage, and access documentation
+				Manage your API keys, monitor usage, and stay aligned with your Green, Origin, or Enterprise
+				tier
 			</p>
 		</div>
 
@@ -76,23 +80,23 @@
 			</div>
 
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h3 class="text-sm font-medium text-text-secondary-light">Current Plan</h3>
+				<h3 class="text-sm font-medium text-text-secondary-light">Current Tier</h3>
 				<p class="mt-1 text-2xl font-bold text-blue-500">
 					{#if data.usageStats?.userTier === 'enterprise'}
 						Enterprise
 					{:else if data.usageStats?.userTier === 'member'}
-						Roaster+
+						Origin
 					{:else}
-						Explorer
+						Green
 					{/if}
 				</p>
 				<p class="mt-1 text-xs text-text-secondary-light">
 					{#if data.usageStats?.userTier === 'enterprise'}
 						Unlimited API calls
 					{:else if data.usageStats?.userTier === 'member'}
-						$99/month
+						Paid Origin tier
 					{:else}
-						Free tier
+						Free Green tier
 					{/if}
 				</p>
 			</div>
@@ -116,7 +120,7 @@
 						Active
 					{/if}
 				</p>
-				<p class="mt-1 text-xs text-text-secondary-light">API subscription</p>
+				<p class="mt-1 text-xs text-text-secondary-light">Parchment API tier</p>
 			</div>
 		</div>
 
@@ -221,7 +225,7 @@
 						<div class="ml-3">
 							<p class="text-sm font-medium text-text-primary-light">Create an API Key</p>
 							<p class="text-sm text-text-secondary-light">
-								Generate your first API key to start making requests
+								Generate your first API key to start using the Parchment API
 							</p>
 						</div>
 					</div>
@@ -235,7 +239,7 @@
 						<div class="ml-3">
 							<p class="text-sm font-medium text-text-primary-light">Make Your First Request</p>
 							<p class="text-sm text-text-secondary-light">
-								Use the catalog API to fetch coffee data
+								Use the Parchment API catalog to fetch coffee data
 							</p>
 						</div>
 					</div>
@@ -248,7 +252,9 @@
 						</div>
 						<div class="ml-3">
 							<p class="text-sm font-medium text-text-primary-light">Monitor Usage</p>
-							<p class="text-sm text-text-secondary-light">Track your API usage and performance</p>
+							<p class="text-sm text-text-secondary-light">
+								Track your Parchment API usage and performance
+							</p>
 						</div>
 					</div>
 				</div>
@@ -291,17 +297,19 @@
 									You have reached your {data.usageStats.monthlyLimit.toLocaleString()} monthly API call
 									limit.
 									{#if data.usageStats.userTier === 'viewer'}
-										Upgrade to Roaster+ for 10,000 calls/month.
+										Upgrade to Origin for 10,000 calls/month.
 									{:else}
-										Upgrade to Enterprise for unlimited calls.
+										Upgrade to Enterprise via sales if you need unlimited calls.
 									{/if}
 								</p>
 								<div class="mt-3 flex space-x-4">
 									<a
-										href="/subscription"
+										href={data.usageStats.userTier === 'viewer' ? '/subscription' : '/contact'}
 										class="font-medium text-red-800 underline hover:text-red-600"
 									>
-										Upgrade Plan →
+										{data.usageStats.userTier === 'viewer'
+											? 'Upgrade to Origin →'
+											: 'Contact sales →'}
 									</a>
 									<a
 										href="/api-dashboard/usage"
@@ -333,18 +341,20 @@
 									You're using {Math.round(data.usageStats.monthlyPercent)}% of your {data.usageStats.monthlyLimit.toLocaleString()}
 									monthly API calls.
 									{#if data.usageStats.userTier === 'viewer'}
-										Consider upgrading to Roaster+ for 10,000 calls/month.
+										Consider upgrading to Origin for 10,000 calls/month.
 									{:else}
-										Consider upgrading to Enterprise for unlimited calls.
+										Contact sales to move from Origin to Enterprise for unlimited calls.
 									{/if}
 								</p>
 								<div class="mt-3 flex space-x-4">
 									{#if data.usageStats.monthlyPercent >= 75}
 										<a
-											href="/subscription"
+											href={data.usageStats.userTier === 'viewer' ? '/subscription' : '/contact'}
 											class="font-medium text-yellow-800 underline hover:text-yellow-600"
 										>
-											Upgrade Plan
+											{data.usageStats.userTier === 'viewer'
+												? 'Upgrade to Origin'
+												: 'Contact sales'}
 										</a>
 									{/if}
 									<a
@@ -384,17 +394,19 @@
 									You've used {Math.round(data.usageStats.monthlyPercent)}% of your monthly API
 									calls.
 									{#if data.usageStats.userTier === 'viewer'}
-										Upgrade to Roaster+ for 50x more calls and advanced features.
+										Upgrade to Origin for 50x more calls and advanced features.
 									{:else}
-										Upgrade to Enterprise for unlimited calls and premium support.
+										Contact sales about Enterprise for unlimited calls and premium support.
 									{/if}
 								</p>
 								<div class="mt-3">
 									<a
-										href="/subscription"
+										href={data.usageStats.userTier === 'viewer' ? '/subscription' : '/contact'}
 										class="font-medium text-blue-800 underline hover:text-blue-600"
 									>
-										View upgrade options →
+										{data.usageStats.userTier === 'viewer'
+											? 'View Origin plan options →'
+											: 'Contact sales about Enterprise →'}
 									</a>
 								</div>
 							</div>

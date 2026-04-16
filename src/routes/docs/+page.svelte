@@ -3,10 +3,10 @@
 </script>
 
 <svelte:head>
-	<title>Parchment Platform docs | Purveyors</title>
+	<title>Purveyors docs | Parchment API and CLI</title>
 	<meta
 		name="description"
-		content="Developer documentation for the Parchment API and Parchment CLI. Get started with green coffee catalog data in minutes."
+		content="Unified public documentation for the Parchment API, Parchment Console, and @purveyors/cli. Start with /v1/catalog, then explore platform and automation workflows."
 	/>
 </svelte:head>
 
@@ -15,15 +15,18 @@
 		class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 	>
 		<p class="text-xs font-semibold uppercase tracking-[0.18em] text-background-tertiary-light">
-			Parchment Platform docs
+			Purveyors docs
 		</p>
 		<h1 class="mt-3 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
 			Documentation
 		</h1>
 		<p class="mt-4 max-w-3xl text-base leading-relaxed text-text-secondary-light sm:text-lg">
-			Parchment Platform gives you normalized green coffee data from 39+ suppliers through a REST
-			API and a command-line interface. Start with the API docs to integrate over HTTP, or the CLI
-			docs for terminal and automation workflows.
+			Unified documentation for the stable public catalog endpoint at <code
+				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/v1/catalog</code
+			>, the broader platform route layer under
+			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/api/*</code>, the
+			Parchment Console, and the CLI. Start with API docs for HTTP integrations, then use the
+			platform and CLI docs for product internals, automation workflows, and agent-friendly tooling.
 		</p>
 	</section>
 
@@ -71,9 +74,9 @@
 			href="/api"
 			class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<div class="text-sm font-semibold text-text-primary-light">API overview</div>
+			<div class="text-sm font-semibold text-text-primary-light">API product page</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Plans, pricing, and quick start for the Parchment API.
+				Plans, pricing, quick start, and the public-versus-platform contract split.
 			</p>
 		</a>
 		<a

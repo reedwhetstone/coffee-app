@@ -1,6 +1,10 @@
 import { STRIPE_SECRET_KEY } from '$env/static/private';
 import Stripe from 'stripe';
 import { createAdminClient } from '$lib/supabase-admin';
+import {
+	getBillingCatalogEntryByStripePriceId,
+	type BillingProductFamily
+} from '$lib/server/billing/catalog';
 
 // Initialize Stripe with the latest API version
 export const getStripe = () =>
@@ -30,6 +34,17 @@ export interface SubscriptionDetails {
 		interval_count: number | null;
 	};
 	payment_method?: Stripe.PaymentMethod | null;
+}
+
+interface GetSubscriptionDetailsOptions {
+	productFamily?: BillingProductFamily;
+}
+
+function matchesProductFamily(
+	item: Stripe.SubscriptionItem,
+	productFamily: BillingProductFamily
+): boolean {
+	return getBillingCatalogEntryByStripePriceId(item.price.id)?.productFamily === productFamily;
 }
 
 /**
@@ -122,7 +137,8 @@ export async function createStripeCustomer(
  * Get subscription details for a customer
  */
 export async function getSubscriptionDetails(
-	customerId: string
+	customerId: string,
+	options: GetSubscriptionDetailsOptions = {}
 ): Promise<SubscriptionDetails | null> {
 	try {
 		const stripe = getStripe();
@@ -134,19 +150,35 @@ export async function getSubscriptionDetails(
 			expand: ['data.default_payment_method']
 		});
 
-		console.log('subscriptions', subscriptions);
-
 		// If no subscriptions found
 		if (subscriptions.data.length === 0) {
 			return null;
 		}
 
+		const matchingSubscriptions = options.productFamily
+			? subscriptions.data.filter((subscription) =>
+					subscription.items.data.some((item) => matchesProductFamily(item, options.productFamily!))
+				)
+			: subscriptions.data;
+
+		if (matchingSubscriptions.length === 0) {
+			return null;
+		}
+
 		// Get the most recent subscription (regardless of status)
 		// Sort by created date descending to get most recent first
-		const sortedSubscriptions = [...subscriptions.data].sort((a, b) => b.created - a.created);
+		const sortedSubscriptions = [...matchingSubscriptions].sort((a, b) => b.created - a.created);
 		const latestSubscription = sortedSubscriptions[0];
 
-		const priceItem = latestSubscription.items.data[0]?.price;
+		const matchedItem = options.productFamily
+			? latestSubscription.items.data.find((item) =>
+					matchesProductFamily(item, options.productFamily!)
+				)
+			: latestSubscription.items.data[0];
+		const priceItem = matchedItem?.price;
+		const catalogEntry = priceItem
+			? getBillingCatalogEntryByStripePriceId(priceItem.id)
+			: null;
 
 		return {
 			id: latestSubscription.id,
@@ -154,8 +186,10 @@ export async function getSubscriptionDetails(
 			current_period_end: latestSubscription.current_period_end,
 			cancel_at_period_end: latestSubscription.cancel_at_period_end,
 			plan: {
-				name: typeof priceItem?.product === 'string' ? priceItem.product : 'Premium Plan',
-				amount: priceItem?.unit_amount,
+				name:
+					catalogEntry?.planName ||
+					(typeof priceItem?.product === 'string' ? priceItem.product : 'Premium Plan'),
+				amount: priceItem?.unit_amount ?? null,
 				interval: priceItem?.recurring?.interval || null,
 				interval_count: priceItem?.recurring?.interval_count || null
 			},
@@ -203,7 +237,7 @@ export async function resumeSubscription(subscriptionId: string): Promise<boolea
  * Create a checkout session for subscription
  */
 export async function createCheckoutSession(
-	priceId: string,
+	priceIds: string[],
 	customerId: string | null,
 	clientReferenceId: string,
 	customerEmail: string,
@@ -214,12 +248,10 @@ export async function createCheckoutSession(
 
 		const sessionParams: Stripe.Checkout.SessionCreateParams = {
 			payment_method_types: ['card'],
-			line_items: [
-				{
-					price: priceId,
-					quantity: 1
-				}
-			],
+			line_items: priceIds.map((priceId) => ({
+				price: priceId,
+				quantity: 1
+			})),
 			mode: 'subscription',
 			ui_mode: 'embedded',
 			return_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,

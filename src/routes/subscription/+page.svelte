@@ -1,17 +1,175 @@
 <script lang="ts">
+	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
-	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import StripeCheckout from './StripeCheckout.svelte';
 	import { signInWithGoogle } from '$lib/supabase';
+	import { BILLING_PURCHASE_KEYS, type BillingPurchaseKey } from '$lib/billing/purchaseKeys';
 
 	let { data } = $props<{ data: PageData }>();
 
+	type ProductTone = 'success' | 'info' | 'warning' | 'muted';
+	type ProductFamily = 'membership' | 'api_plan' | 'ppi_addon' | 'enterprise';
+
+	interface ProductCardInterval {
+		purchaseKey: BillingPurchaseKey;
+		label: string;
+		price: string;
+		interval: string;
+		badge?: string;
+	}
+
+	interface ProductCard {
+		family: ProductFamily;
+		name: string;
+		eyebrow: string;
+		headline: string;
+		description: string;
+		features: string[];
+		managementCopy: string;
+		anonymousStateCopy: string;
+		activeStateCopy: string;
+		inactiveStateCopy: string;
+		ctaLabel: string;
+		activeCtaLabel?: string;
+		contactHref?: string;
+		intervals?: ProductCardInterval[];
+		learnMoreHref?: string;
+	}
+
+	const productCards: ProductCard[] = [
+		{
+			family: 'membership',
+			name: 'Mallard Studio',
+			eyebrow: 'For roasters and operators',
+			headline: 'Run inventory, roasting, cupping, and margin tracking in one place.',
+			description:
+				'Mallard Studio is the operating workspace for coffee teams that need cleaner production workflows, better record-keeping, and fewer spreadsheets.',
+			features: [
+				'Inventory, roast logs, cupping notes, and profit workflows',
+				'Workspace tools for day-to-day production and team handoff',
+				'CLI access for the same operating environment'
+			],
+			managementCopy:
+				'Review your Studio membership, renewal timing, and any changes to billing here.',
+			anonymousStateCopy:
+				'Sign in to check whether this account already has Studio access, or keep comparing plans first.',
+			activeStateCopy: 'Studio is active on this account and ready for day-to-day work.',
+			inactiveStateCopy: 'No Studio membership is attached to this account yet.',
+			ctaLabel: 'Start Studio',
+			activeCtaLabel: 'Studio active',
+			intervals: [
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly,
+					label: 'Monthly',
+					price: '$9',
+					interval: '/month'
+				},
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.membershipAnnual,
+					label: 'Annual',
+					price: '$80',
+					interval: '/year',
+					badge: 'Save $28/year'
+				}
+			],
+			learnMoreHref: '/catalog'
+		},
+		{
+			family: 'api_plan',
+			name: 'Parchment API',
+			eyebrow: 'For apps, agents, and data workflows',
+			headline: 'Bring normalized green coffee data into your own product or internal stack.',
+			description:
+				'Start with Green to evaluate the dataset, then move to Origin when you need production access, stronger limits, and an account-aware console.',
+			features: [
+				'Free Green tier for evaluation and testing',
+				'Origin for production integrations and higher usage',
+				'Parchment Console for keys, docs, and usage visibility'
+			],
+			managementCopy:
+				'Your current API tier appears here so billing stays clear and separate from Studio.',
+			anonymousStateCopy:
+				'Sign in to view your current API tier, or keep browsing plans if you are still evaluating.',
+			activeStateCopy: 'This account already has paid API access.',
+			inactiveStateCopy: 'This account is currently on the free Green tier.',
+			ctaLabel: 'Choose Origin',
+			activeCtaLabel: 'API plan active',
+			intervals: [
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.apiPlanMonthly,
+					label: 'Origin',
+					price: '$99',
+					interval: '/month'
+				}
+			],
+			learnMoreHref: '/api'
+		},
+		{
+			family: 'ppi_addon',
+			name: 'Parchment Intelligence',
+			eyebrow: 'For deeper sourcing visibility',
+			headline: 'Unlock supplier comparisons, health, arrivals, delistings, and origin index detail.',
+			description:
+				'Parchment Intelligence extends the public analytics surface with the premium supplier and market views used for sourcing decisions.',
+			features: [
+				'Supplier comparisons and supplier health',
+				'Arrivals, delistings, and deeper origin index visibility',
+				'Extended trend detail for the premium analytics experience'
+			],
+			managementCopy:
+				'Manage Parchment Intelligence separately so analytics access stays clear and product-specific.',
+			anonymousStateCopy:
+				'Sign in to see whether Intelligence is already enabled for this account, or compare the analytics upgrade first.',
+			activeStateCopy: 'Parchment Intelligence is already active on this account.',
+			inactiveStateCopy: 'Parchment Intelligence is not active on this account yet.',
+			ctaLabel: 'Add Intelligence',
+			activeCtaLabel: 'Intelligence active',
+			intervals: [
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonMonthly,
+					label: 'Monthly',
+					price: '$39',
+					interval: '/month'
+				},
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonAnnual,
+					label: 'Annual',
+					price: '$350',
+					interval: '/year',
+					badge: 'Save $118/year'
+				}
+			],
+			learnMoreHref: '/analytics'
+		},
+		{
+			family: 'enterprise',
+			name: 'Enterprise',
+			eyebrow: 'For custom commercial needs',
+			headline: 'Plan a tailored engagement for teams that need more than self-serve.',
+			description:
+				'Choose Enterprise when you need custom integrations, embedded analytics, procurement support, or commercial terms shaped around your workflow.',
+			features: [
+				'Custom integrations and reporting',
+				'Embedded analytics or internal dashboards',
+				'Commercial support and tailored delivery patterns'
+			],
+			managementCopy:
+				'Enterprise is handled with the team directly rather than through self-serve checkout.',
+			anonymousStateCopy:
+				'If you need a tailored rollout, talk with us and we will map the right commercial path.',
+			activeStateCopy: 'Enterprise engagements are managed directly with the team.',
+			inactiveStateCopy: 'Enterprise is available through a scoped conversation.',
+			ctaLabel: 'Talk to sales',
+			contactHref: '/contact'
+		}
+	];
+
 	let showCheckout = $state(false);
-	let selectedPriceId = $state('');
+	let selectedPurchaseKey = $state<BillingPurchaseKey | null>(null);
 	let selectedPlanName = $state('');
-	let selectedInterval = $state('');
-	let isAnnual = $state(false);
+	let selectedIntervalLabel = $state('');
+	let selectedPriceLabel = $state('');
 	let cancelLoading = $state(false);
 	let cancelError = $state('');
 	let cancelSuccess = $state(false);
@@ -19,88 +177,24 @@
 	let resumeError = $state('');
 	let resumeSuccess = $state(false);
 
-	// Available subscription plans
-	const plans: {
-		monthly: {
-			id: string;
-			name: string;
-			price: string;
-			interval: string;
-			description: string;
-			features: string[];
-		};
-		annual: {
-			id: string;
-			name: string;
-			price: string;
-			interval: string;
-			description: string;
-			features: string[];
-			savings: string;
-		};
-	} = {
-		monthly: {
-			id: 'price_1RgGYuKwI9NkGqAnm4oiHpbx',
-			name: 'Roaster Plan',
-			price: '$9',
-			interval: 'month',
-			description:
-				'For active home roasters ready to track their journey and improve their craft with AI-powered insights.',
-			features: [
-				'All Curious features',
-				'Full Coffee AI Concierge',
-				'Personal inventory & purchase tracking',
-				'Artisan integration & roast logging',
-				'Tasting journal & cupping notes',
-				'Roast analytics & improvement tips',
-				'Priority email support'
-			]
-		},
-		annual: {
-			id: 'price_1RgGZvKwI9NkGqAnzYJbJkXU',
-			name: 'Roaster Plan',
-			price: '$80',
-			interval: 'year',
-			description:
-				'For active home roasters ready to track their journey and improve their craft with AI-powered insights.',
-			features: [
-				'All Curious features',
-				'Full Coffee AI Concierge',
-				'Personal inventory & purchase tracking',
-				'Artisan integration & roast logging',
-				'Tasting journal & cupping notes',
-				'Roast analytics & improvement tips',
-				'Priority email support'
-			],
-			savings: 'Save $28/year'
+	const membershipState = $derived(data.controlPlane?.membership ?? null);
+	const apiState = $derived(data.controlPlane?.api ?? null);
+	const intelligenceState = $derived(data.controlPlane?.ppi ?? null);
+	const isSignedIn = $derived(Boolean(data?.user));
+
+	const toneClasses = (tone: ProductTone) => {
+		switch (tone) {
+			case 'success':
+				return 'border-green-500/30 bg-green-500/10 text-green-300';
+			case 'info':
+				return 'border-blue-500/30 bg-blue-500/10 text-blue-300';
+			case 'warning':
+				return 'border-orange-500/30 bg-orange-500/10 text-orange-300';
+			default:
+				return 'border-border-light bg-background-primary-light text-text-secondary-light';
 		}
 	};
 
-	const handlePlanSelect = (interval: 'monthly' | 'annual') => {
-		const plan = plans[interval];
-		selectedPriceId = plan.id;
-		selectedPlanName = plan.name;
-		selectedInterval = interval;
-		showCheckout = true;
-	};
-
-	async function handleSignIn() {
-		try {
-			await signInWithGoogle(data.supabase);
-		} catch (error) {
-			console.error('Error signing in:', error);
-		}
-	}
-
-	const handleCheckoutSuccess = () => {
-		goto('/subscription/success');
-	};
-
-	const handleCheckoutCancel = () => {
-		showCheckout = false;
-	};
-
-	// Function to format date from unix timestamp
 	const formatDate = (unixTimestamp: number) => {
 		const date = new Date(unixTimestamp * 1000);
 		return date.toLocaleDateString('en-US', {
@@ -110,7 +204,125 @@
 		});
 	};
 
-	// Function to cancel subscription
+	const normalizePlanName = (planName: string | null | undefined) => {
+		if (!planName || planName.startsWith('prod_')) {
+			return 'Mallard Studio Member';
+		}
+
+		return planName;
+	};
+
+	const openCheckout = (productName: string, option: ProductCardInterval) => {
+		selectedPurchaseKey = option.purchaseKey;
+		selectedPlanName = productName;
+		selectedIntervalLabel = option.label;
+		selectedPriceLabel = `${option.price}${option.interval}`;
+		showCheckout = true;
+	};
+
+	function getProductState(product: ProductCard) {
+		if (!isSignedIn) {
+			return {
+				label: 'Sign in for account details',
+				description: product.anonymousStateCopy,
+				tone: 'muted' as ProductTone
+			};
+		}
+
+		if (product.family === 'membership' && membershipState) {
+			return {
+				label: membershipState.statusLabel,
+				description: membershipState.hasAccess
+					? product.activeStateCopy
+					: product.inactiveStateCopy,
+				tone: membershipState.tone
+			};
+		}
+
+		if (product.family === 'api_plan' && apiState) {
+			const isActive = apiState.plan !== 'viewer';
+			return {
+				label: apiState.statusLabel,
+				description: isActive ? product.activeStateCopy : product.inactiveStateCopy,
+				tone: apiState.tone
+			};
+		}
+
+		if (product.family === 'ppi_addon' && intelligenceState) {
+			return {
+				label: intelligenceState.statusLabel,
+				description: intelligenceState.enabled
+					? product.activeStateCopy
+					: product.inactiveStateCopy,
+				tone: intelligenceState.tone
+			};
+		}
+
+		return {
+			label: 'Talk with us',
+			description: product.inactiveStateCopy,
+			tone: 'info' as ProductTone
+		};
+	}
+
+	async function handleSignIn() {
+		try {
+			await signInWithGoogle(data.supabase);
+		} catch (error) {
+			console.error('Error signing in:', error);
+		}
+	}
+
+	const handleCheckoutSuccess = async () => {
+		await invalidateAll();
+	};
+
+	const handleCheckoutCancel = () => {
+		showCheckout = false;
+	};
+
+	const accountOverviewItems = $derived.by(() => {
+		if (!isSignedIn) {
+			return [
+				{
+					label: 'Best for operators',
+					value: 'Mallard Studio',
+					description: 'Inventory, roast logging, cupping, and day-to-day production workflows.'
+				},
+				{
+					label: 'Best for product teams',
+					value: 'Parchment API',
+					description: 'Normalized coffee data for apps, agents, and internal tooling.'
+				},
+				{
+					label: 'Best for sourcing visibility',
+					value: 'Parchment Intelligence',
+					description:
+						'Supplier comparisons, health, arrivals, delistings, and deeper market analytics.'
+				}
+			];
+		}
+
+		return [
+			{
+				label: 'Mallard Studio',
+				value: membershipState?.statusLabel ?? 'Unknown',
+				description: membershipState?.sourceLabel ?? 'Membership status is unavailable right now.'
+			},
+			{
+				label: 'Parchment API',
+				value: apiState?.statusLabel ?? 'Unknown',
+				description: apiState?.description ?? 'API plan details are unavailable right now.'
+			},
+			{
+				label: 'Parchment Intelligence',
+				value: intelligenceState?.statusLabel ?? 'Unknown',
+				description:
+					intelligenceState?.description ?? 'Intelligence details are unavailable right now.'
+			}
+		];
+	});
+
 	const cancelSubscription = async () => {
 		if (!data.subscription?.id) return;
 
@@ -136,8 +348,8 @@
 			}
 
 			cancelSuccess = true;
-			// Update local data to show cancellation status
 			data.subscription.cancel_at_period_end = true;
+			await invalidateAll();
 		} catch (error) {
 			cancelError = error instanceof Error ? error.message : 'An unknown error occurred';
 		} finally {
@@ -145,7 +357,6 @@
 		}
 	};
 
-	// Function to resume subscription
 	const resumeSubscription = async () => {
 		if (!data.subscription?.id) return;
 
@@ -171,8 +382,8 @@
 			}
 
 			resumeSuccess = true;
-			// Update local data to show resumed status
 			data.subscription.cancel_at_period_end = false;
+			await invalidateAll();
 		} catch (error) {
 			resumeError = error instanceof Error ? error.message : 'An unknown error occurred';
 		} finally {
@@ -180,581 +391,396 @@
 		}
 	};
 
-	// Check if user is authenticated when component mounts
 	onMount(() => {
-		// if (!data?.session?.user) {
-		// 	// Redirect to home page if not authenticated
-		// 	goto('/');
-		// }
-
-		// Alternative approach: check URL for Stripe session ID
 		const url = new URL(window.location.href);
-		if (url.searchParams.has('session_id')) {
-			// Redirect to success page with the session ID
-			goto('/subscription/success');
+		const sessionId = url.searchParams.get('session_id');
+		if (sessionId) {
+			goto(`/subscription/success?session_id=${encodeURIComponent(sessionId)}`);
 		}
 	});
 </script>
 
-<svelte:head>
-	<script async src="https://js.stripe.com/v3/pricing-table.js"></script>
-</svelte:head>
-
-<div class="min-h-[calc(100vh-80px)]">
-	{#if data?.user && (data.role === 'member' || data.role === 'admin')}
-		<!-- Show subscription management UI for existing members -->
+<div class="min-h-[calc(100vh-80px)] bg-background-primary-light">
+	{#if data?.user && showCheckout && selectedPurchaseKey}
 		<div class="px-4 py-10 md:px-6">
 			<div class="mx-auto max-w-3xl">
-				<div class="flex flex-col items-center rounded-lg p-6">
-					<h3 class="text-primary-light mb-2 text-xl font-semibold">Subscription Management</h3>
-
-					{#if data.subscription}
-						<div class="text-primary-light w-full max-w-md space-y-4">
-							<!-- Subscription Details -->
-							<div class="rounded-lg bg-background-tertiary-light/50 p-4 shadow-sm">
-								<h4 class="text-primary-light mb-2 font-medium">Your Plan</h4>
-								<div class="text-primary-light/80 grid grid-cols-2 gap-2 text-sm">
-									<span>Status:</span>
-									<span class="font-medium capitalize">
-										{data.subscription.status}
-										{#if data.subscription.cancel_at_period_end}
-											<span class="text-orange-400">(Cancels at period end)</span>
-										{/if}
-									</span>
-
-									<span>Plan:</span>
-									<span class="font-medium">
-										{data.subscription.plan?.name || 'Premium Plan'}
-									</span>
-
-									<span>Price:</span>
-									<span class="font-medium">
-										${(data.subscription.plan?.amount || 0) / 100}/
-										{data.subscription.plan?.interval || 'month'}
-									</span>
-
-									<span>Current period ends:</span>
-									<span class="font-medium">
-										{data.subscription.current_period_end
-											? formatDate(data.subscription.current_period_end)
-											: 'N/A'}
-									</span>
-								</div>
-							</div>
-
-							<!-- Action Buttons -->
-							<div class="mt-4 flex flex-col items-center space-y-3">
-								{#if data.subscription.cancel_at_period_end}
-									<div class="text-primary-light/80 text-center text-sm">
-										<p>
-											Your subscription will end on {formatDate(
-												data.subscription.current_period_end
-											)}.
-										</p>
-										<p>You'll continue to have access until that date.</p>
-									</div>
-
-									<button
-										onclick={() => resumeSubscription()}
-										disabled={resumeLoading}
-										class="mt-2 w-full rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-400 transition-colors hover:bg-blue-500/20 disabled:opacity-50"
-									>
-										{resumeLoading ? 'Processing...' : 'Resume Subscription'}
-									</button>
-
-									{#if resumeSuccess}
-										<div class="mt-2 text-sm text-green-400">
-											Your subscription has been resumed and will continue automatically.
-										</div>
-									{/if}
-
-									{#if resumeError}
-										<div class="mt-2 text-sm text-red-400">
-											Error: {resumeError}
-										</div>
-									{/if}
-								{:else}
-									<button
-										onclick={() => cancelSubscription()}
-										disabled={cancelLoading}
-										class="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
-									>
-										{cancelLoading ? 'Processing...' : 'Cancel Subscription'}
-									</button>
-									<p class="text-primary-light/70 mt-1 text-xs">
-										Your subscription will continue until the end of the current billing period.
-									</p>
-
-									{#if cancelSuccess}
-										<div class="mt-2 text-sm text-green-400">
-											Your subscription has been canceled and will end on {formatDate(
-												data.subscription.current_period_end
-											)}.
-										</div>
-									{/if}
-
-									{#if cancelError}
-										<div class="mt-2 text-sm text-red-400">
-											Error: {cancelError}
-										</div>
-									{/if}
-								{/if}
-							</div>
-
-							<div class="mt-6 text-center">
-								<button
-									onclick={() => goto('/')}
-									class="rounded bg-blue-500/10 px-4 py-2 text-sm text-blue-400 hover:bg-blue-500/20"
-								>
-									Return to Homepage
-								</button>
-							</div>
-						</div>
-					{:else}
-						<!-- Fallback if we couldn't load subscription details -->
-						<div class="text-primary-light text-center">
-							<p class="mb-4">You're a member with active benefits!</p>
-							<p class="text-primary-light/70 text-sm">
-								We couldn't load your subscription details at the moment.
-							</p>
-							<button
-								onclick={() => goto('/')}
-								class="mt-4 rounded bg-blue-500/10 px-4 py-2 text-sm text-blue-400 hover:bg-blue-500/20"
-							>
-								Return to Homepage
-							</button>
-						</div>
-					{/if}
-				</div>
-			</div>
-		</div>
-	{:else if data?.user && showCheckout && selectedPriceId}
-		<!-- Checkout Form (for authenticated users who selected a plan) -->
-		<div class="px-4 py-10 md:px-6">
-			<div class="mx-auto max-w-3xl">
-				<div>
-					<div class="mb-4 flex items-center justify-between">
-						<h2 class="text-primary-light text-xl font-semibold">
-							Subscribe to {selectedPlanName} ({selectedInterval === 'annual'
-								? '$80/year'
-								: '$9/month'})
+				<div class="mb-4 flex items-center justify-between gap-4">
+					<div>
+						<p class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light">
+							Checkout
+						</p>
+						<h2 class="text-primary-light text-2xl font-semibold">
+							{selectedPlanName}
+							{selectedIntervalLabel}
 						</h2>
-						<button
-							onclick={handleCheckoutCancel}
-							class="text-primary-light/70 hover:text-primary-light rounded-full p-1"
-							aria-label="Back to plan selection"
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-6 w-6"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M6 18L18 6M6 6l12 12"
-								/>
-							</svg>
-						</button>
+						<p class="mt-1 text-sm text-text-secondary-light">{selectedPriceLabel}</p>
 					</div>
-					<StripeCheckout
-						priceId={selectedPriceId}
-						clientReferenceId={data.user.id}
-						customerEmail={data.user.email}
-						onSuccess={handleCheckoutSuccess}
-						onCancel={handleCheckoutCancel}
-					/>
+					<button
+						onclick={handleCheckoutCancel}
+						class="text-primary-light/70 hover:text-primary-light rounded-full p-1"
+						aria-label="Back to subscription page"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-6 w-6"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
 				</div>
+				<StripeCheckout
+					purchaseKey={selectedPurchaseKey}
+					onSuccess={handleCheckoutSuccess}
+					onCancel={handleCheckoutCancel}
+				/>
 			</div>
 		</div>
 	{:else}
-		<!-- Plan Selection UI - Always show plans, but change button based on auth status -->
-		<section class="bg-background-secondary-light px-6 py-16">
-			<div class="mx-auto max-w-7xl">
-				<div class="mx-auto max-w-4xl text-center">
-					<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Pricing</h2>
-					<p class="mt-2 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-						Grow from curious to confident
-					</p>
-				</div>
-				<p class="mx-auto mt-6 max-w-2xl text-center text-lg leading-8 text-text-secondary-light">
-					Whether you're just starting or roasting for profit, we have the right plan for your
-					journey. Start free, upgrade anytime.
-				</p>
-				{#if !data?.user}
-					<div
-						class="mx-auto mt-8 max-w-md rounded-lg border border-blue-500/20 bg-blue-500/10 p-4"
+		<section
+			class="border-b border-border-light bg-background-secondary-light px-4 py-14 md:px-6 md:py-20"
+		>
+			<div
+				class="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(20rem,0.9fr)] lg:items-end"
+			>
+				<div class="max-w-3xl space-y-5">
+					<p
+						class="text-sm font-semibold uppercase tracking-[0.2em] text-background-tertiary-light"
 					>
-						<p class="text-sm text-blue-400">
-							🎉 <strong>New users:</strong> Browse our free coffee marketplace first, then upgrade when
-							you're ready!
-						</p>
+						{isSignedIn ? 'Plans and account' : 'Plans and product comparison'}
+					</p>
+					<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
+						{isSignedIn
+							? 'Pricing and account state in one place.'
+							: 'Choose the right product before you ever hit a dashboard.'}
+					</h1>
+					<p class="text-lg leading-8 text-text-secondary-light">
+						{isSignedIn
+							? 'Review Mallard Studio, Parchment API, Parchment Intelligence, and Enterprise in one place so you can see what is active before making a billing change.'
+							: 'Compare Mallard Studio, Parchment API, Parchment Intelligence, and Enterprise from the public site. Start with the surface that matches your workflow, then sign in only when you are ready to buy or confirm account access.'}
+					</p>
+					<div class="flex flex-wrap gap-3">
 						<button
-							onclick={() => goto('/auth')}
-							class="mt-2 text-sm text-blue-400 underline hover:text-blue-300"
+							onclick={() => goto('/catalog')}
+							class="rounded-xl border border-border-light bg-background-primary-light px-4 py-3 text-sm font-medium text-text-primary-light transition-colors hover:border-background-tertiary-light/40 hover:text-background-tertiary-light"
 						>
-							← Explore the marketplace first
+							Browse catalog
 						</button>
+						<button
+							onclick={() => goto('/api')}
+							class="rounded-xl border border-border-light bg-background-primary-light px-4 py-3 text-sm font-medium text-text-primary-light transition-colors hover:border-background-tertiary-light/40 hover:text-background-tertiary-light"
+						>
+							Explore API
+						</button>
+						{#if !data?.user}
+							<button
+								onclick={handleSignIn}
+								class="rounded-xl bg-background-tertiary-light px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+							>
+								Sign in to continue
+							</button>
+						{/if}
 					</div>
-				{/if}
+				</div>
 
 				<div
-					class="isolate mx-auto mt-16 grid max-w-md grid-cols-1 gap-6 sm:mt-20 sm:gap-8 lg:mx-0 lg:max-w-none lg:grid-cols-3 lg:gap-12"
+					class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
-					<!-- Free Plan -->
-					<div
-						class="flex cursor-pointer flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-background-tertiary-light xl:p-10"
-						onclick={() => goto('/auth')}
-						onkeydown={(e) => e.key === 'Enter' && goto('/auth')}
-						tabindex="0"
-						role="button"
-						aria-label="Select Free Plan"
-					>
-						<div>
-							<div class="flex items-center justify-between gap-x-4">
-								<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Curious</h3>
-							</div>
-							<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-								Perfect for coffee enthusiasts discovering the world of home roasting and exploring
-								green coffee options.
-							</p>
-							<p class="mt-6 flex items-baseline gap-x-1">
-								<span class="text-4xl font-bold tracking-tight text-text-primary-light">Free</span>
-							</p>
-							<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Browse green coffee marketplace
-								</li>
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Filter by origin, process, and flavor
-								</li>
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Basic coffee recommendations
-								</li>
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Community support
-								</li>
-							</ul>
-						</div>
-						<button
-							onclick={(e) => {
-								e.stopPropagation();
-								goto('/auth');
-							}}
-							class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
-						>
-							Browse green coffees
-						</button>
-					</div>
+					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary-light">
+						{isSignedIn ? 'Account overview' : 'How the product line is organized'}
+					</p>
+					<h2 class="mt-3 text-2xl font-semibold text-text-primary-light">
+						{isSignedIn
+							? 'Current product access on this account'
+							: 'Start with the product that matches the job to be done'}
+					</h2>
+					<p class="mt-2 text-sm leading-7 text-text-secondary-light">
+						{isSignedIn
+							? 'Use this page to confirm what is active before you start a checkout or change your billing.'
+							: 'Each offer maps to a different workflow so you can compare the right surface before creating an account or opening checkout.'}
+					</p>
 
-					<!-- Professional Plan -->
-					{#if true}
-						{@const currentPlan = isAnnual ? plans.annual : plans.monthly}
-						<div
-							class="flex cursor-pointer flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-2 ring-background-tertiary-light transition-all duration-200 hover:scale-105 hover:shadow-lg hover:ring-background-tertiary-light xl:p-10"
-							onclick={() => handlePlanSelect(isAnnual ? 'annual' : 'monthly')}
-							onkeydown={(e) =>
-								e.key === 'Enter' && handlePlanSelect(isAnnual ? 'annual' : 'monthly')}
-							tabindex="0"
-							role="button"
-							aria-label="Select Professional Plan"
-						>
-							<div>
-								<!-- Billing Toggle inside Professional Plan -->
-								<div class="mb-6 flex items-center justify-center">
-									<div
-										class="flex items-center rounded-full bg-background-secondary-light p-1 ring-1 ring-border-light"
-									>
-										<button
-											onclick={(e) => {
-												e.stopPropagation();
-												isAnnual = false;
-											}}
-											class="rounded-full px-3 py-1.5 text-xs font-medium transition-all {!isAnnual
-												? 'bg-background-tertiary-light text-white'
-												: 'text-text-secondary-light hover:text-text-primary-light'}"
+					<div class="mt-5 space-y-4">
+						{#each accountOverviewItems as item}
+							<div class="rounded-2xl border border-border-light bg-background-secondary-light p-4">
+								<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+									<div>
+										<p
+											class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
 										>
-											Monthly
-										</button>
-										<button
-											onclick={(e) => {
-												e.stopPropagation();
-												isAnnual = true;
-											}}
-											class="rounded-full px-3 py-1.5 text-xs font-medium transition-all {isAnnual
-												? 'bg-background-tertiary-light text-white'
-												: 'text-text-secondary-light hover:text-text-primary-light'}"
-										>
-											Annual
-											{#if !isAnnual}
-												<span
-													class="ml-1 rounded-full bg-green-500/20 px-1.5 py-0.5 text-xs text-green-400"
-												>
-													Save $28
-												</span>
-											{/if}
-										</button>
+											{item.label}
+										</p>
+										<p class="mt-1 text-base font-semibold text-text-primary-light">{item.value}</p>
 									</div>
 								</div>
-								<div class="flex items-center justify-between gap-x-4">
-									<h3 class="text-lg font-semibold leading-8 text-background-tertiary-light">
-										{currentPlan.name}
-									</h3>
-									<p
-										class="rounded-full bg-background-tertiary-light/10 px-2.5 py-1 text-xs font-semibold leading-5 text-background-tertiary-light"
-									>
-										Most popular
-									</p>
-								</div>
-								<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-									{currentPlan.description}
-								</p>
-								<p class="mt-6 flex items-baseline gap-x-1">
-									<span class="text-4xl font-bold tracking-tight text-text-primary-light"
-										>{currentPlan.price}</span
-									>
-									<span class="text-sm font-semibold leading-6 text-text-secondary-light"
-										>/{currentPlan.interval}</span
-									>
-									{#if isAnnual && 'savings' in currentPlan}
-										<span
-											class="ml-2 rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-400"
-											>{currentPlan.savings}</span
-										>
-									{/if}
-								</p>
-								<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
-									{#each currentPlan.features as feature}
-										<li class="flex gap-x-3">
-											<svg
-												class="h-6 w-5 flex-none text-background-tertiary-light"
-												viewBox="0 0 20 20"
-												fill="currentColor"
-											>
-												<path
-													fill-rule="evenodd"
-													d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-													clip-rule="evenodd"
-												/>
-											</svg>
-											{feature}
-										</li>
-									{/each}
-								</ul>
+								<p class="mt-2 text-sm leading-6 text-text-secondary-light">{item.description}</p>
 							</div>
-							{#if data?.user}
-								<button
-									onclick={(e) => {
-										e.stopPropagation();
-										handlePlanSelect(isAnnual ? 'annual' : 'monthly');
-									}}
-									class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
+						{/each}
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="px-4 py-8 md:px-6 md:py-10">
+			<div class="mx-auto max-w-6xl space-y-8">
+				<div class="grid gap-6 xl:grid-cols-2">
+					{#each productCards as product}
+						{@const state = getProductState(product)}
+						<div
+							class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
+						>
+							<div class="flex items-start justify-between gap-4">
+								<div class="space-y-2">
+									<p
+										class="text-xs font-semibold uppercase tracking-[0.18em] text-background-tertiary-light"
+									>
+										{product.eyebrow}
+									</p>
+									<h2 class="text-2xl font-semibold text-text-primary-light">{product.name}</h2>
+									<p class="text-sm font-medium text-text-primary-light">{product.headline}</p>
+								</div>
+								<span
+									class={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses(state.tone)}`}
 								>
-									Start a free trial
-								</button>
+									{product.family === 'enterprise' ? 'Contact sales' : state.label}
+								</span>
+							</div>
+
+							<p class="mt-4 text-sm leading-7 text-text-secondary-light">{product.description}</p>
+
+							<ul class="mt-5 space-y-3 text-sm text-text-secondary-light">
+								{#each product.features as feature}
+									<li class="flex gap-3">
+										<span class="mt-1 h-2 w-2 rounded-full bg-background-tertiary-light"></span>
+										<span>{feature}</span>
+									</li>
+								{/each}
+							</ul>
+
+							{#if isSignedIn}
+								<div
+									class="mt-5 rounded-2xl border border-border-light bg-background-secondary-light p-4"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div>
+											<p
+												class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+											>
+												Account state
+											</p>
+											<p class="mt-2 text-base font-semibold text-text-primary-light">
+												{state.label}
+											</p>
+										</div>
+									</div>
+
+									<p class="mt-3 text-sm leading-7 text-text-secondary-light">{state.description}</p>
+
+									{#if product.family === 'membership'}
+										<p class="mt-3 text-sm text-text-secondary-light">{product.managementCopy}</p>
+										{#if data.subscription}
+											<div
+												class="mt-4 rounded-2xl border border-border-light bg-background-primary-light p-4"
+											>
+												<p
+													class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
+												>
+													Membership billing
+												</p>
+												<div class="mt-3 grid grid-cols-2 gap-3 text-sm text-text-secondary-light">
+													<span>Status</span>
+													<span class="text-right font-medium text-text-primary-light">
+														{data.subscription.status}
+														{#if data.subscription.cancel_at_period_end}
+															<span class="text-orange-400"> (ends at renewal)</span>
+														{/if}
+													</span>
+
+													<span>Plan</span>
+													<span class="text-right font-medium text-text-primary-light">
+														{normalizePlanName(data.subscription.plan?.name)}
+													</span>
+
+													<span>Renews or ends</span>
+													<span class="text-right font-medium text-text-primary-light">
+														{data.subscription.current_period_end
+															? formatDate(data.subscription.current_period_end)
+															: 'N/A'}
+													</span>
+												</div>
+											</div>
+
+											<div class="mt-4 space-y-3">
+												{#if !membershipState?.canManageSubscription && membershipState?.managementBlockedReason}
+													<div
+														class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
+													>
+														{membershipState.managementBlockedReason}
+													</div>
+												{:else if data.subscription.cancel_at_period_end}
+													<button
+														onclick={() => resumeSubscription()}
+														disabled={resumeLoading}
+														class="w-full rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/20 disabled:opacity-50"
+													>
+														{resumeLoading ? 'Processing...' : 'Keep Studio active'}
+													</button>
+													{#if resumeSuccess}
+														<p class="text-sm text-green-400">
+															Studio will continue renewing automatically.
+														</p>
+													{/if}
+													{#if resumeError}
+														<p class="text-sm text-red-400">Error: {resumeError}</p>
+													{/if}
+												{:else}
+													<button
+														onclick={() => cancelSubscription()}
+														disabled={cancelLoading}
+														class="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+													>
+														{cancelLoading ? 'Processing...' : 'End at renewal'}
+													</button>
+													<p class="text-xs text-text-secondary-light">
+														Studio access stays active through the current billing period.
+													</p>
+													{#if cancelSuccess}
+														<p class="text-sm text-green-400">
+															Studio will end at the close of the current billing period.
+														</p>
+													{/if}
+													{#if cancelError}
+														<p class="text-sm text-red-400">Error: {cancelError}</p>
+													{/if}
+												{/if}
+											</div>
+										{:else}
+											<div
+												class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4 text-sm text-text-secondary-light"
+											>
+												{product.inactiveStateCopy}
+											</div>
+										{/if}
+									{:else if product.family === 'api_plan'}
+										<div
+											class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4"
+										>
+											<p class="text-sm leading-7 text-text-secondary-light">
+												{apiState?.description}
+											</p>
+											<p class="mt-2 text-sm text-text-secondary-light">{apiState?.note}</p>
+										</div>
+									{:else if product.family === 'ppi_addon'}
+										<div
+											class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4"
+										>
+											<p class="text-sm leading-7 text-text-secondary-light">
+												{intelligenceState?.description}
+											</p>
+											<p class="mt-2 text-sm text-text-secondary-light">{intelligenceState?.note}</p>
+										</div>
+									{:else}
+										<div
+											class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4 text-sm text-text-secondary-light"
+										>
+											{product.managementCopy}
+										</div>
+									{/if}
+								</div>
+							{/if}
+
+							{#if product.intervals?.length}
+								<div class="mt-5 grid gap-3 sm:grid-cols-2">
+									{#each product.intervals as option}
+										<div
+											class="rounded-2xl border border-border-light bg-background-secondary-light p-4"
+										>
+											<div class="flex items-start justify-between gap-3">
+												<div>
+													<p class="text-sm font-semibold text-text-primary-light">
+														{option.label}
+													</p>
+													<p class="mt-1 text-2xl font-bold text-text-primary-light">
+														{option.price}<span
+															class="ml-1 text-sm font-normal text-text-secondary-light"
+															>{option.interval}</span
+														>
+													</p>
+												</div>
+												{#if option.badge}
+													<span
+														class="rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-300"
+													>
+														{option.badge}
+													</span>
+												{/if}
+											</div>
+
+											{#if !data?.user}
+												<div class="mt-4 space-y-2">
+													<button
+														onclick={handleSignIn}
+														class="w-full rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+													>
+														Sign in to continue
+													</button>
+													{#if product.learnMoreHref}
+														<a
+															href={product.learnMoreHref}
+															class="inline-flex w-full items-center justify-center rounded-lg border border-border-light px-4 py-2 text-sm font-medium text-text-primary-light transition-colors hover:border-background-tertiary-light/40 hover:text-background-tertiary-light"
+														>
+															Learn more
+														</a>
+													{/if}
+												</div>
+											{:else if product.family === 'membership' && membershipState?.hasAccess}
+												<div
+													class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light"
+												>
+													{product.activeCtaLabel}
+												</div>
+											{:else if product.family === 'api_plan' && apiState?.plan !== 'viewer'}
+												<div
+													class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light"
+												>
+													{product.activeCtaLabel}
+												</div>
+											{:else if product.family === 'ppi_addon' && intelligenceState?.enabled}
+												<div
+													class="mt-4 rounded-lg border border-border-light px-4 py-2 text-center text-sm text-text-secondary-light"
+												>
+													{product.activeCtaLabel}
+												</div>
+											{:else}
+												<button
+													onclick={() => openCheckout(product.name, option)}
+													class="mt-4 w-full rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+												>
+													{product.ctaLabel}
+												</button>
+											{/if}
+										</div>
+									{/each}
+								</div>
 							{:else}
-								<button
-									onclick={(e) => {
-										e.stopPropagation();
-										handleSignIn();
-									}}
-									class="mt-8 block w-full rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90"
+								<a
+									href={product.contactHref}
+									class="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-text-primary-light px-4 py-2 text-sm font-semibold text-background-primary-light transition-opacity hover:opacity-90"
 								>
-									Create an Account
-								</button>
-								<p class="mt-2 text-center text-xs text-text-secondary-light">
-									Sign in to start your free trial
-								</p>
+									{product.ctaLabel}
+								</a>
 							{/if}
 						</div>
-					{/if}
-
-					<!-- Enterprise Plan -->
-					<div
-						class="flex cursor-pointer flex-col justify-between rounded-3xl bg-background-primary-light p-8 ring-1 ring-border-light transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-background-tertiary-light xl:p-10"
-						onclick={() => goto('/contact')}
-						onkeydown={(e) => e.key === 'Enter' && goto('/contact')}
-						tabindex="0"
-						role="button"
-						aria-label="Select Enterprise Plan"
-					>
-						<div>
-							<div class="flex items-center justify-between gap-x-4">
-								<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Enterprise</h3>
-							</div>
-							<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-								Business & operations consulting for coffee companies looking to scale their
-								analytics, QA systems, and digital operations infrastructure.
-							</p>
-							<p class="mt-6 flex items-baseline gap-x-1">
-								<span class="text-2xl font-bold tracking-tight text-text-primary-light"
-									>Custom Solutions</span
-								>
-							</p>
-							<ul role="list" class="mt-8 space-y-3 text-sm leading-6 text-text-secondary-light">
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Digital operations strategy & implementation
-								</li>
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Quality assurance system design
-								</li>
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Analytics & business intelligence setup
-								</li>
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Process optimization & workflow design
-								</li>
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Team training & knowledge transfer
-								</li>
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Technology integration consulting
-								</li>
-								<li class="flex gap-x-3">
-									<svg
-										class="h-6 w-5 flex-none text-background-tertiary-light"
-										viewBox="0 0 20 20"
-										fill="currentColor"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									Dedicated strategic partnership
-								</li>
-							</ul>
-						</div>
-						<button
-							onclick={(e) => {
-								e.stopPropagation();
-								goto('/contact');
-							}}
-							class="mt-8 block w-full rounded-md bg-text-primary-light px-3 py-2 text-center text-sm font-semibold text-background-primary-light shadow-sm transition-all duration-200 hover:bg-opacity-90"
-						>
-							Schedule consultation
-						</button>
-					</div>
+					{/each}
 				</div>
 			</div>
 		</section>
 	{/if}
 </div>
-
-<style>
-	/* Add any custom styling for the checkout page here */
-</style>

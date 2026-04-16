@@ -1,76 +1,46 @@
-# 📦 Green Coffee API — Pricing Tier Integration Instructions
+# Parchment API Tier Model
 
-This document outlines the pricing structure and access logic for the Green Coffee API on **purveyors.io**. It is designed for implementation into the app’s frontend, backend authentication/limits, and billing workflow.
+This document outlines the shipped public tier structure and access logic for **Parchment API** on **purveyors.io**. It should be treated as a reference for implementation and audits, not as speculative pricing ideation.
 
 ---
 
-## 🎯 Overview of Pricing Tiers
+## Overview of tiers
 
-We offer **three tiers** of service:
+Parchment API currently markets **three tiers**:
 
-| Tier Name | Plan ID          | Monthly Price    | API Call Limit | Target User           |
-| --------- | ---------------- | ---------------- | -------------- | --------------------- |
-| Explorer  | `api_viewer`     | $0               | 200            | Hobbyists, developers |
-| Roaster+  | `api_member`     | $99              | 10,000         | Active roasters, pros |
-| Integrate | `api_enterprise` | Custom ($1,500+) | Unlimited      | B2B platforms, ERPs   |
+| Public Tier | Internal Key     | Monthly Price | API Call Limit | Target User                                      |
+| ----------- | ---------------- | ------------- | -------------- | ------------------------------------------------ |
+| Green       | `api_viewer`     | $0            | 200            | Evaluation, prototypes, lightweight integrations |
+| Origin      | `api_member`     | $99           | 10,000         | Production integrations and recurring sync jobs  |
+| Enterprise  | `api_enterprise` | Contact sales | Unlimited      | B2B platforms, internal tools, custom support    |
 
 ---
 
 ## 🔐 Tier Permissions / Feature Flags
 
-### 1. 🟢 Explorer (Free Tier)
+### 1. Green
 
-- **Plan ID**: `api_viewer`
-- **Rate Limit**: `200 calls/month`
-- **Features**:
-  - ✅ Access to live inventory feed cached daily
-  - ✅ Basic filters (origin, price, process)
-  - ❌ Advanced cupping filters
-  - ❌ CSV/JSON export
-  - ❌ Alerts or notifications
-  - ❌ Support (community only)
+- **Internal key**: `api_viewer`
+- **Rate limit**: `200 calls/month`
+- **Positioning**: Free evaluation tier for trying the catalog and validating integrations
 - **Upgrade CTA**: Present if user hits 75% of usage quota
 
 ---
 
-### 2. 🟡 Roaster+ (Pro Tier)
+### 2. Origin
 
-- **Plan ID**: `api_member`
-- **Rate Limit**: `10,000 calls/month`
-- **Features**:
-  - ✅ Full real-time supplier inventory
-  - ✅ All filter options: cupping score, process, altitude, price, etc.
-  - ✅ Alerts: e.g., price drops, origin availability
-  - ✅ CSV and JSON data export
-  - ✅ Monthly trend reports - origin, supplier, price, etc
-  - ✅ Email support
-- **Billing**: $99/month or $999/year (if annual prepay selected)
-- **Overage Logic**:
-  - Soft cap with warning at 80% usage
-  - Option to purchase extra calls: `$10 per 1,000 calls`
+- **Internal key**: `api_member`
+- **Rate limit**: `10,000 calls/month`
+- **Positioning**: Self-serve paid tier for production API usage, higher-volume sync jobs, and ongoing integrations
+- **Billing**: $99/month
 
 ---
 
-### 3. 🔵 Integrate (Enterprise Tier)
+### 3. Enterprise
 
-- **Plan ID**: `api_enterprise`
-- **Rate Limit**: Unlimited (or custom with SLA)
-- **Features**:
-  - ✅ All Pro features
-  - ✅ White-labeled or embedded endpoints
-  - ✅ Webhook support (push updates on lot changes)
-  - ✅ Live trend data & custom reporting
-  - ✅ Multi-user access (roles, team API keys)
-  - ✅ Dedicated onboarding + account manager
-  - ✅ SLAs and performance guarantees
-  - ✅ Priority support (Slack/email)
-- **Billing**:
-  - Custom contracts starting at $1,500/month
-  - Requires sales contact flow or admin approval
-- **Optional Add-ons**:
-  - Custom alerts or dashboards
-  - Private vendor integrations
-  - Forecasting or analytics modules
+- **Internal key**: `api_enterprise`
+- **Rate limit**: Unlimited or contract-scoped
+- **Positioning**: Contact-sales tier for custom commercial terms, volume, and support
 
 ---
 
@@ -83,32 +53,35 @@ We offer **three tiers** of service:
 
 ### Billing Infrastructure
 
-Use Stripe for:
+Use Stripe and internal entitlements for:
 
-- Tier subscriptions - `api_viewer`, `api_member`, `api_enterprise`
-- Upgrade/downgrade flows
-- Webhook to update user’s tier in DB on plan change
+- Self-serve paid Origin checkout
+- Upgrade flows from Green to Origin
+- Enterprise contact-sales routing and downstream entitlement assignment
+- Webhook handling to update the account tier state on plan change
 
 ---
 
 ## 🖥️ Frontend Implementation
 
-### Landing Page Structure
+### Landing page structure
 
-| Section                   | Notes                                             |
-| ------------------------- | ------------------------------------------------- |
-| **Hero**                  | “Explore the world’s green coffee in one API”     |
-| **Plan Comparison Table** | Dynamically rendered from pricing metadata        |
-| **Free CTA**              | “Get Started Free – 200 API calls/month”          |
-| **Upgrade Prompts**       | Trigger at 75%, 100%, and 110% of API usage quota |
-| **Enterprise CTA**        | “Need more? Contact us for an integration demo.”  |
+| Section                   | Notes                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------- |
+| **Hero**                  | Position Parchment API as normalized green coffee data for apps, agents, and internal tools |
+| **Plan Comparison Table** | Show Green, Origin, and Enterprise explicitly                                               |
+| **Free CTA**              | Start with Green                                                                            |
+| **Upgrade Prompts**       | Trigger at 75%+ of API usage quota                                                          |
+| **Enterprise CTA**        | Route to contact sales                                                                      |
 
 ---
 
-## ✨ Optional Naming (Marketing-Ready)
+## Canonical naming
 
-| Plan Name | Internal ID      | Display Name |
-| --------- | ---------------- | ------------ |
-| Explorer  | `api_viewer`     | “Hobbiest”   |
-| Roaster+  | `api_member`     | “Member”     |
-| Integrate | `api_enterprise` | “Enterprise” |
+| Public tier | Internal ID      |
+| ----------- | ---------------- |
+| Green       | `api_viewer`     |
+| Origin      | `api_member`     |
+| Enterprise  | `api_enterprise` |
+
+Do not use Explorer, Roaster+, Integrate, or other alternate marketed names in current product copy.

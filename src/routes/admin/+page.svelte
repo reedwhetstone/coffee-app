@@ -16,7 +16,7 @@
 	<title>Admin Dashboard - Purveyors</title>
 	<meta
 		name="description"
-		content="Administrative dashboard for managing users, roles, and system monitoring"
+		content="Administrative dashboard for managing billing entitlements, roles, and system monitoring"
 	/>
 </svelte:head>
 
@@ -77,7 +77,7 @@
 				</div>
 			</div>
 
-			<!-- Role Management Card -->
+			<!-- Entitlement Management Card -->
 			<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
 				<div class="flex items-center">
 					<div class="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
@@ -97,7 +97,9 @@
 					</div>
 					<div class="ml-4">
 						<h3 class="text-lg font-medium text-text-primary-light">Role Management</h3>
-						<p class="text-sm text-text-secondary-light">Monitor user roles & permissions</p>
+						<p class="text-sm text-text-secondary-light">
+							Monitor billing snapshots and entitlement drift
+						</p>
 					</div>
 				</div>
 			</div>
@@ -130,12 +132,15 @@
 
 		<!-- Main Admin Content -->
 		<div class="space-y-8">
-			<!-- Stripe Role Monitor Section -->
+			<!-- Billing entitlement monitor section -->
 			<div class="rounded-lg bg-background-secondary-light ring-1 ring-border-light">
 				<div class="border-b border-border-light px-6 py-4">
-					<h2 class="text-xl font-semibold text-text-primary-light">Stripe Role Management</h2>
+					<h2 class="text-xl font-semibold text-text-primary-light">
+						Billing Entitlement Management
+					</h2>
 					<p class="text-sm text-text-secondary-light">
-						Monitor and resolve role discrepancies between Stripe subscriptions and user roles
+						Monitor and repair entitlement drift between stored user access and local billing
+						snapshots
 					</p>
 				</div>
 				<div class="p-6">

@@ -17,18 +17,18 @@ const API_KEY_LENGTH = 32;
 const HASH_ROUNDS = 12;
 
 // API access plans — separate from app roles.
-// viewer = free/explorer tier; member = Roaster+ (pro); enterprise = Integrate (unlimited).
+// viewer = Green tier, member = Origin tier, enterprise = Enterprise tier.
 const RATE_LIMITS = {
-	viewer: 200, // Explorer (Free Tier) - basic API access
-	member: 10000, // Roaster+ (Pro Tier) - enhanced API access
-	enterprise: -1 // Integrate (Enterprise Tier) - unlimited API access
+	viewer: 200, // Green tier - basic API access
+	member: 10000, // Origin tier - enhanced API access
+	enterprise: -1 // Enterprise tier - unlimited API access
 } as const;
 
 // Row limits per API call by tier
 const ROW_LIMITS = {
-	viewer: 25, // Explorer (Free Tier) - limited rows per call
-	member: -1, // Roaster+ (Pro Tier) - unlimited rows
-	enterprise: -1 // Integrate (Enterprise Tier) - unlimited rows
+	viewer: 25, // Green tier - limited rows per call
+	member: -1, // Origin tier - unlimited rows
+	enterprise: -1 // Enterprise tier - unlimited rows
 } as const;
 
 // Export rate limits and row limits for use in other modules

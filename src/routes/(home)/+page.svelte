@@ -16,6 +16,118 @@
 
 <div class="min-h-screen">
 	<Hero session={data.session} role={data.role} />
+
+	{#if data?.data?.length > 0}
+		<section class="bg-background-secondary-light py-16">
+			<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+				<div class="mb-12 text-center">
+					<h2 class="text-3xl font-bold text-text-primary-light sm:text-4xl">
+						Browse current coffees before you commit to anything else
+					</h2>
+					<p class="mx-auto mt-4 max-w-3xl text-lg text-text-secondary-light">
+						See recent supplier availability in one place, compare likely fits faster, and move into
+						workflow, API, or analytics tools only if you need them.
+					</p>
+				</div>
+
+				<div class="mb-8 text-center">
+					{#if isSignedIn}
+						<p class="text-text-secondary-light">
+							Keep using the public market view to source, then return to your dashboard when you
+							need operations tools.
+						</p>
+					{:else}
+						<p class="text-text-secondary-light">
+							The catalog is open now. Create an account later if you want saved work or paid
+							access.
+						</p>
+					{/if}
+				</div>
+
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+					{#each data.data.slice(0, 6) as coffee}
+						<CoffeeCard {coffee} {parseTastingNotes} />
+					{/each}
+				</div>
+
+				<div class="py-8 text-center">
+					<div
+						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-8"
+					>
+						{#if isSignedIn}
+							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
+								Keep comparing coffees, or return to your workspace
+							</h3>
+							<p class="mb-4 text-text-secondary-light">
+								Open your dashboard for Mallard Studio workflows, or stay in the catalog to keep
+								sourcing.
+							</p>
+							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+								<button
+									onclick={() => goto('/catalog')}
+									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+								>
+									Browse full catalog
+								</button>
+								<button
+									onclick={() => goto('/dashboard')}
+									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+								>
+									Open dashboard
+								</button>
+							</div>
+							{#if canAccessMemberRoutes}
+								<div class="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm">
+									<button
+										onclick={() => goto('/beans')}
+										class="font-medium text-text-secondary-light transition-colors duration-200 hover:text-background-tertiary-light"
+									>
+										Inventory
+									</button>
+									<button
+										onclick={() => goto('/roast')}
+										class="font-medium text-text-secondary-light transition-colors duration-200 hover:text-background-tertiary-light"
+									>
+										Roast
+									</button>
+								</div>
+							{/if}
+						{:else}
+							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
+								Start with the catalog, then choose the right next step
+							</h3>
+							<p class="mb-4 text-text-secondary-light">
+								Use the public catalog to compare coffees first. Move into Mallard Studio, Parchment
+								API, or Parchment Intelligence only when your work calls for it.
+							</p>
+							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+								<button
+									onclick={() => goto('/catalog')}
+									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+								>
+									Browse full catalog
+								</button>
+								<button
+									onclick={() => goto('/subscription')}
+									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+								>
+									See plans
+								</button>
+							</div>
+							<p class="mt-4 text-sm text-text-secondary-light">
+								Need structured data instead? <a
+									href="/api"
+									class="font-medium text-background-tertiary-light hover:underline"
+									>Explore the API</a
+								>.
+							</p>
+						{/if}
+					</div>
+				</div>
+			</div>
+		</section>
+	{/if}
+
 	<LazyLoad threshold={0.3} rootMargin="200px">
 		{#snippet children()}
 			{#await import('$lib/components/marketing/Features.svelte') then module}
@@ -64,102 +176,4 @@
 			{/await}
 		{/snippet}
 	</LazyLoad>
-
-	{#if data?.data?.length > 0}
-		<div class="bg-background-secondary-light py-16">
-			<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-				<div class="mb-12 text-center">
-					<h2 class="text-3xl font-bold text-text-primary-light sm:text-4xl">
-						Explore Our Coffee Marketplace
-					</h2>
-					<p class="mt-4 text-lg text-text-secondary-light">
-						Browse our curated selection of premium coffee beans from around the world
-					</p>
-				</div>
-
-				<div class="mb-8 text-center">
-					{#if isSignedIn}
-						<p class="text-text-secondary-light">
-							The public homepage stays public-first. Jump into your dashboard or browse the full
-							catalog whenever you're ready.
-						</p>
-					{:else}
-						<p class="text-text-secondary-light">
-							Sign in with the header above to access AI recommendations, inventory tracking, and
-							full catalog search
-						</p>
-					{/if}
-				</div>
-
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-					{#each data.data.slice(0, 6) as coffee}
-						<CoffeeCard {coffee} {parseTastingNotes} />
-					{/each}
-				</div>
-
-				<div class="py-8 text-center">
-					<div
-						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-8"
-					>
-						{#if isSignedIn}
-							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">Back to work?</h3>
-							<p class="mb-4 text-text-secondary-light">
-								Open your dashboard to manage inventory, roasts, and analytics, or keep exploring
-								the live catalog.
-							</p>
-							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-								<button
-									onclick={() => goto('/dashboard')}
-									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
-								>
-									Dashboard
-								</button>
-								<button
-									onclick={() => goto('/catalog')}
-									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-								>
-									Browse Full Catalog
-								</button>
-							</div>
-							{#if canAccessMemberRoutes}
-								<div class="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm">
-									<button
-										onclick={() => goto('/beans')}
-										class="font-medium text-text-secondary-light transition-colors duration-200 hover:text-background-tertiary-light"
-									>
-										Inventory
-									</button>
-									<button
-										onclick={() => goto('/roast')}
-										class="font-medium text-text-secondary-light transition-colors duration-200 hover:text-background-tertiary-light"
-									>
-										Roast
-									</button>
-								</div>
-							{/if}
-						{:else}
-							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">Want to see more?</h3>
-							<p class="mb-4 text-text-secondary-light">
-								Sign up to browse our full catalog of hundreds of premium coffee beans
-							</p>
-							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-								<button
-									onclick={() => goto('/auth')}
-									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
-								>
-									Sign Up Free - No Credit Card Required
-								</button>
-								<button
-									onclick={() => goto('/api')}
-									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-								>
-									View API Documentation
-								</button>
-							</div>
-						{/if}
-					</div>
-				</div>
-			</div>
-		</div>
-	{/if}
 </div>

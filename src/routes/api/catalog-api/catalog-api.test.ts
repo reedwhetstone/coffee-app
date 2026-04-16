@@ -1,98 +1,220 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock the catalogResource module to isolate the handler
-vi.mock('$lib/server/catalogResource', () => ({
-	buildCanonicalCatalogResponse: vi.fn()
+const { mockBuildCanonicalCatalogResponse, mockRequireApiKeyAccess } = vi.hoisted(() => ({
+	mockBuildCanonicalCatalogResponse: vi.fn(),
+	mockRequireApiKeyAccess: vi.fn()
 }));
 
+vi.mock('$lib/server/catalogResource', () => ({
+	buildCanonicalCatalogResponse: mockBuildCanonicalCatalogResponse
+}));
+
+vi.mock('$lib/server/auth', () => {
+	class MockAuthError extends Error {
+		status: number;
+
+		constructor(message: string, status = 401) {
+			super(message);
+			this.name = 'AuthError';
+			this.status = status;
+		}
+	}
+
+	return {
+		AuthError: MockAuthError,
+		requireApiKeyAccess: mockRequireApiKeyAccess
+	};
+});
+
+import { AuthError, requireApiKeyAccess } from '$lib/server/auth';
 import { buildCanonicalCatalogResponse } from '$lib/server/catalogResource';
 
 let GET: typeof import('./+server').GET;
+const LEGACY_SUCCESSOR_LINK = '</v1/catalog>; rel="successor-version"';
+const LEGACY_SUNSET = 'Thu, 31 Dec 2026 23:59:59 GMT';
+
+function expectLegacyHeaders(response: Response) {
+	expect(response.headers.get('Deprecation')).toBe('true');
+	expect(response.headers.get('Link')).toBe(LEGACY_SUCCESSOR_LINK);
+	expect(response.headers.get('Sunset')).toBe(LEGACY_SUNSET);
+}
 
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
 	({ GET } = await import('./+server'));
+	mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 });
 
 describe('/api/catalog-api legacy delegate', () => {
-	it('delegates to buildCanonicalCatalogResponse while preserving the legacy requestPath for logging', async () => {
+	it('requires an API key before delegating to the canonical catalog handler', async () => {
 		const mockBody = JSON.stringify({ data: [], pagination: {} });
 		const mockResponse = new Response(mockBody, {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});
+		mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		const response = await GET({
 			url: new URL('https://app.test/api/catalog-api'),
 			request: new Request('https://app.test/api/catalog-api'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
+		expect(requireApiKeyAccess).toHaveBeenCalledWith(
+			expect.objectContaining({ url: expect.any(URL) }),
+			{
+				requiredPlan: 'viewer',
+				requiredScope: 'catalog:read'
+			}
+		);
 		expect(buildCanonicalCatalogResponse).toHaveBeenCalledWith(
 			expect.objectContaining({ url: expect.any(URL) }),
 			{ requestPath: '/api/catalog-api' }
 		);
+		expect(mockRequireApiKeyAccess).toHaveBeenCalledWith(expect.anything(), {
+			requiredPlan: 'viewer',
+			requiredScope: 'catalog:read'
+		});
 		expect(response.status).toBe(200);
 	});
 
-	it('adds Deprecation header to the response', async () => {
+	it('adds deprecation headers to successful responses', async () => {
 		const mockResponse = new Response(JSON.stringify({ data: [] }), {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});
+		mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		const response = await GET({
 			url: new URL('https://app.test/api/catalog-api'),
 			request: new Request('https://app.test/api/catalog-api'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
-		expect(response.headers.get('Deprecation')).toBe('true');
-		expect(response.headers.get('Link')).toContain('/v1/catalog');
+		expectLegacyHeaders(response);
 	});
 
-	it('adds Sunset header with a future date', async () => {
-		const mockResponse = new Response(JSON.stringify({ data: [] }), {
-			status: 200,
-			headers: { 'Content-Type': 'application/json' }
-		});
-		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
+	it('returns a legacy 401 response with deprecation headers when no API key is present', async () => {
+		mockRequireApiKeyAccess.mockRejectedValue(new AuthError('API key authentication required'));
 
 		const response = await GET({
 			url: new URL('https://app.test/api/catalog-api'),
 			request: new Request('https://app.test/api/catalog-api'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
-		const sunset = response.headers.get('Sunset');
-		expect(sunset).toBe('Thu, 31 Dec 2026 23:59:59 GMT');
+		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
+		expect(response.status).toBe(401);
+		expectLegacyHeaders(response);
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'API key authentication required'
+		});
 	});
 
-	it('preserves upstream 401 responses while still adding deprecation headers', async () => {
+	it('returns 401 for session-only callers without delegating and preserves legacy headers', async () => {
+		mockRequireApiKeyAccess.mockRejectedValue(new AuthError('API key authentication required'));
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api'),
+			request: new Request('https://app.test/api/catalog-api', {
+				headers: { Cookie: 'sb-access-token=session-cookie' }
+			}),
+			locals: {
+				principal: {
+					isAuthenticated: true,
+					primaryAppRole: 'member',
+					apiPlan: null,
+					session: { access_token: 'session-cookie' }
+				}
+			}
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
+		expect(response.status).toBe(401);
+		expectLegacyHeaders(response);
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'API key authentication required'
+		});
+	});
+
+	it('returns a legacy 403 response with deprecation headers when the API key lacks catalog access', async () => {
+		mockRequireApiKeyAccess.mockRejectedValue(new AuthError('Insufficient API scope', 403));
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api'),
+			request: new Request('https://app.test/api/catalog-api'),
+			locals: {}
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
+		expect(response.status).toBe(403);
+		expectLegacyHeaders(response);
+		expect(await response.json()).toEqual({
+			error: 'Insufficient permissions',
+			message: 'Insufficient API scope'
+		});
+	});
+
+	it('preserves upstream 400 responses while still adding deprecation headers', async () => {
 		const mockResponse = new Response(
-			JSON.stringify({ error: 'Authentication required', message: 'Authentication required' }),
+			JSON.stringify({
+				error: 'Invalid query parameter',
+				message: 'Query parameter "stocked_date" must use YYYY-MM-DD format'
+			}),
 			{
-				status: 401,
-				headers: { 'Content-Type': 'application/json; charset=utf-8' }
+				status: 400,
+				headers: {
+					'Content-Type': 'application/json; charset=utf-8'
+				}
 			}
 		);
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		const response = await GET({
-			url: new URL('https://app.test/api/catalog-api'),
-			request: new Request('https://app.test/api/catalog-api'),
+			url: new URL('https://app.test/api/catalog-api?stocked_date=30'),
+			request: new Request('https://app.test/api/catalog-api?stocked_date=30'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
-		expect(response.status).toBe(401);
-		expect(response.headers.get('Deprecation')).toBe('true');
-		expect(response.headers.get('Sunset')).toBe('Thu, 31 Dec 2026 23:59:59 GMT');
+		expect(response.status).toBe(400);
+		expectLegacyHeaders(response);
 		expect(await response.json()).toEqual({
-			error: 'Authentication required',
-			message: 'Authentication required'
+			error: 'Invalid query parameter',
+			message: 'Query parameter "stocked_date" must use YYYY-MM-DD format'
+		});
+	});
+
+	it('preserves upstream stocked_days 400 responses while still adding deprecation headers', async () => {
+		const mockResponse = new Response(
+			JSON.stringify({
+				error: 'Invalid query parameter',
+				message: 'Query parameter "stocked_days" must use positive integer format'
+			}),
+			{
+				status: 400,
+				headers: {
+					'Content-Type': 'application/json; charset=utf-8'
+				}
+			}
+		);
+		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api?stocked_days=abc'),
+			request: new Request('https://app.test/api/catalog-api?stocked_days=abc'),
+			locals: {}
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(response.status).toBe(400);
+		expectLegacyHeaders(response);
+		expect(await response.json()).toEqual({
+			error: 'Invalid query parameter',
+			message: 'Query parameter "stocked_days" must use positive integer format'
 		});
 	});
 
@@ -107,16 +229,17 @@ describe('/api/catalog-api legacy delegate', () => {
 				}
 			}
 		);
+		mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		const response = await GET({
 			url: new URL('https://app.test/api/catalog-api'),
 			request: new Request('https://app.test/api/catalog-api'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
 		expect(response.status).toBe(429);
-		expect(response.headers.get('Deprecation')).toBe('true');
+		expectLegacyHeaders(response);
 		expect(response.headers.get('X-RateLimit-Limit')).toBe('200');
 		expect(await response.json()).toEqual({
 			error: 'Rate limit exceeded',
@@ -129,16 +252,53 @@ describe('/api/catalog-api legacy delegate', () => {
 			status: 200,
 			headers: { 'Content-Type': 'application/json' }
 		});
+		mockRequireApiKeyAccess.mockResolvedValue({ apiKeyId: 'key-1' });
 		vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
 		await GET({
 			url: new URL('https://app.test/api/catalog-api?page=2&limit=10&source=sweet_marias'),
 			request: new Request('https://app.test/api/catalog-api?page=2&limit=10&source=sweet_marias'),
 			locals: {}
-		} as Parameters<NonNullable<typeof GET>>[0]);
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
 
-		// The event is passed through to buildCanonicalCatalogResponse which reads
-		// query params from event.url — so the mock just needs to have been called.
 		expect(buildCanonicalCatalogResponse).toHaveBeenCalled();
+	});
+
+	it('rejects anonymous callers because the legacy alias is intentionally API-key-only', async () => {
+		mockRequireApiKeyAccess.mockRejectedValue(new AuthError('API key authentication required'));
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api'),
+			request: new Request('https://app.test/api/catalog-api'),
+			locals: {}
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(response.status).toBe(401);
+		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
+		expect(response.headers.get('Deprecation')).toBe('true');
+		expect(response.headers.get('Link')).toContain('/v1/catalog');
+		expect(await response.json()).toEqual({
+			error: 'Authentication required',
+			message: 'API key authentication required'
+		});
+	});
+
+	it('preserves 403 authorization failures without delegating to the canonical multi-context route', async () => {
+		mockRequireApiKeyAccess.mockRejectedValue(new AuthError('Insufficient API scope', 403));
+
+		const response = await GET({
+			url: new URL('https://app.test/api/catalog-api'),
+			request: new Request('https://app.test/api/catalog-api', {
+				headers: { Authorization: 'Bearer pk_live_limited' }
+			}),
+			locals: {}
+		} as unknown as Parameters<NonNullable<typeof GET>>[0]);
+
+		expect(response.status).toBe(403);
+		expect(buildCanonicalCatalogResponse).not.toHaveBeenCalled();
+		expect(await response.json()).toEqual({
+			error: 'Insufficient permissions',
+			message: 'Insufficient API scope'
+		});
 	});
 });

@@ -94,6 +94,7 @@ interface ParsedCatalogQuery {
 		pricePerLbMax?: number;
 		arrivalDate?: string;
 		stockedDate?: string;
+		stockedDays?: number;
 	};
 }
 
@@ -117,6 +118,7 @@ interface QueryCatalogDataOptions {
 }
 
 const DEFAULT_API_PAGE_LIMIT = 100;
+const ISO_DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 class CatalogRateLimitError extends Error {
 	constructor(
@@ -129,15 +131,58 @@ class CatalogRateLimitError extends Error {
 	}
 }
 
+class CatalogQueryValidationError extends Error {
+	constructor(
+		public parameter: string,
+		public value: string,
+		public expected: string
+	) {
+		super(`Query parameter "${parameter}" must use ${expected} format`);
+		this.name = 'CatalogQueryValidationError';
+	}
+}
+
 function parsePositiveInteger(value: string | null, fallback: number): number {
 	const parsed = Number.parseInt(value ?? '', 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseOptionalPositiveInteger(value: string | null): number | undefined {
+	if (!value) return undefined;
+	if (!/^\d+$/.test(value)) return undefined;
+	const parsed = Number.parseInt(value, 10);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function parseOptionalNumber(value: string | null): number | undefined {
 	if (!value) return undefined;
 	const parsed = Number.parseFloat(value);
 	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function isIsoDateParam(value: string): boolean {
+	if (!ISO_DATE_PARAM_PATTERN.test(value)) return false;
+
+	const [year, month, day] = value.split('-').map((part) => Number.parseInt(part, 10));
+	const parsedDate = new Date(Date.UTC(year, month - 1, day));
+
+	return (
+		parsedDate.getUTCFullYear() === year &&
+		parsedDate.getUTCMonth() === month - 1 &&
+		parsedDate.getUTCDate() === day
+	);
+}
+
+function validateCatalogQuery(url: URL): void {
+	const stockedDate = url.searchParams.get('stocked_date');
+	if (stockedDate !== null && !isIsoDateParam(stockedDate)) {
+		throw new CatalogQueryValidationError('stocked_date', stockedDate, 'YYYY-MM-DD');
+	}
+
+	const stockedDays = url.searchParams.get('stocked_days');
+	if (stockedDays !== null && parseOptionalPositiveInteger(stockedDays) === undefined) {
+		throw new CatalogQueryValidationError('stocked_days', stockedDays, 'positive integer');
+	}
 }
 
 function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
@@ -155,6 +200,8 @@ function parseOptionalNumberFromAliases(url: URL, ...paramNames: string[]): numb
 }
 
 function parseCatalogQuery(url: URL): ParsedCatalogQuery {
+	validateCatalogQuery(url);
+
 	const page = parsePositiveInteger(url.searchParams.get('page'), 1);
 	const limit = parsePositiveInteger(url.searchParams.get('limit'), 15);
 	const ids = url.searchParams
@@ -208,7 +255,8 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 			pricePerLbMin: parseOptionalNumberFromAliases(url, 'price_per_lb_min', 'cost_lb_min'),
 			pricePerLbMax: parseOptionalNumberFromAliases(url, 'price_per_lb_max', 'cost_lb_max'),
 			arrivalDate: url.searchParams.get('arrival_date') ?? undefined,
-			stockedDate: url.searchParams.get('stocked_date') ?? undefined
+			stockedDate: url.searchParams.get('stocked_date') ?? undefined,
+			stockedDays: parseOptionalPositiveInteger(url.searchParams.get('stocked_days'))
 		}
 	};
 }
@@ -402,6 +450,7 @@ async function queryCatalogData(
 		pricePerLbMax: query.filters.pricePerLbMax,
 		arrivalDate: query.filters.arrivalDate,
 		stockedDate: query.filters.stockedDate,
+		stockedDays: query.filters.stockedDays,
 		orderBy: query.ids.length > 0 ? 'name' : query.sortField || 'arrival_date',
 		orderDirection: query.sortDirection || (query.ids.length > 0 ? 'asc' : 'desc'),
 		limit: isPaginated ? effectiveLimit : undefined,
@@ -462,10 +511,10 @@ async function resolveCatalogRouteResult(
 }> {
 	const requestPath = options.requestPath ?? event.url.pathname;
 	const startTime = Date.now();
-	const query = parseCatalogQuery(event.url);
 	let context: CatalogAccessContext | null = null;
 
 	try {
+		const query = parseCatalogQuery(event.url);
 		context = await resolveCatalogAccessContext(event, query, requestPath);
 		const body = await queryCatalogData(context, query, {
 			forceDefaultPagination: options.forceDefaultPagination
@@ -523,6 +572,22 @@ async function resolveCatalogRouteResult(
 				body: {
 					error: error.status === 403 ? 'Insufficient permissions' : 'Authentication required',
 					message: error.message
+				},
+				headers: new Headers()
+			};
+		}
+
+		if (error instanceof CatalogQueryValidationError) {
+			return {
+				status: 400,
+				body: {
+					error: 'Invalid query parameter',
+					message: error.message,
+					details: {
+						parameter: error.parameter,
+						value: error.value,
+						expected: error.expected
+					}
 				},
 				headers: new Headers()
 			};

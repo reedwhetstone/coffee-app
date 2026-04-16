@@ -1,18 +1,29 @@
 import type { PageServerLoad } from './$types';
 import { searchCatalog } from '$lib/data/catalog';
+import {
+	HOMEPAGE_MARKETING_DESCRIPTION,
+	HOMEPAGE_MARKETING_KEYWORDS,
+	HOMEPAGE_MARKETING_OG_DESCRIPTION,
+	HOMEPAGE_MARKETING_PREVIEW_QUERY,
+	HOMEPAGE_MARKETING_SOCIAL_IMAGE,
+	HOMEPAGE_MARKETING_TITLE,
+	HOMEPAGE_MARKETING_TWITTER_DESCRIPTION
+} from '$lib/public-contracts/homepage';
+import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	const { session } = await locals.safeGetSession();
+	const { session, role } = await locals.safeGetSession();
+	const visibility = resolveCatalogVisibility({ session, role });
 
 	let stockedData: Record<string, unknown>[] = [];
 	try {
 		const result = await searchCatalog(locals.supabase, {
-			stockedOnly: true,
-			orderBy: 'arrival_date',
-			orderDirection: 'desc',
-			limit: 6
+			...HOMEPAGE_MARKETING_PREVIEW_QUERY,
+			publicOnly: visibility.publicOnly,
+			showWholesale: visibility.showWholesale,
+			wholesaleOnly: visibility.wholesaleOnly
 		});
 		stockedData = result.data as unknown as Record<string, unknown>[];
 	} catch (error) {
@@ -36,28 +47,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/',
-			title: 'Purveyors - Professional Coffee Roasting Platform & Green Coffee API',
-			description:
-				'Professional coffee roasting platform with inventory management, roast tracking, profit analytics, and the first normalized green coffee API for developers.',
-			keywords: [
-				'coffee roasting',
-				'green coffee',
-				'coffee API',
-				'roast tracking',
-				'coffee inventory',
-				'specialty coffee',
-				'coffee platform'
-			],
-			ogTitle: 'Purveyors - Professional Coffee Roasting Platform',
-			ogDescription:
-				'The complete platform for coffee roasters with inventory management, roast tracking, and the first normalized green coffee API.',
-			twitterTitle: 'Purveyors - Professional Coffee Roasting Platform',
-			twitterDescription:
-				'Professional coffee roasting platform with inventory management, roast tracking, and green coffee API.',
+			title: HOMEPAGE_MARKETING_TITLE,
+			description: HOMEPAGE_MARKETING_DESCRIPTION,
+			keywords: [...HOMEPAGE_MARKETING_KEYWORDS],
+			ogTitle: HOMEPAGE_MARKETING_TITLE,
+			ogDescription: HOMEPAGE_MARKETING_OG_DESCRIPTION,
+			twitterTitle: HOMEPAGE_MARKETING_TITLE,
+			twitterDescription: HOMEPAGE_MARKETING_TWITTER_DESCRIPTION,
 			image: resolvePublicPageSocialImage({
 				baseUrl,
-				preferredPath: '/og/home.jpg',
-				alt: 'Purveyors homepage social preview card'
+				preferredPath: HOMEPAGE_MARKETING_SOCIAL_IMAGE.preferredPath,
+				alt: HOMEPAGE_MARKETING_SOCIAL_IMAGE.alt
 			}),
 			schemaData
 		})

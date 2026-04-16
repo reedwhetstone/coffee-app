@@ -802,6 +802,57 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			billing_subscriptions: {
+				Row: {
+					cancel_at_period_end: boolean;
+					created_at: string | null;
+					current_period_end: string | null;
+					id: string;
+					metadata: Json;
+					product_family: string;
+					product_key: string;
+					status: string;
+					stripe_customer_id: string;
+					stripe_price_id: string;
+					stripe_subscription_id: string;
+					stripe_subscription_item_id: string;
+					updated_at: string | null;
+					user_id: string;
+				};
+				Insert: {
+					cancel_at_period_end?: boolean;
+					created_at?: string | null;
+					current_period_end?: string | null;
+					id?: string;
+					metadata?: Json;
+					product_family: string;
+					product_key: string;
+					status: string;
+					stripe_customer_id: string;
+					stripe_price_id: string;
+					stripe_subscription_id: string;
+					stripe_subscription_item_id: string;
+					updated_at?: string | null;
+					user_id: string;
+				};
+				Update: {
+					cancel_at_period_end?: boolean;
+					created_at?: string | null;
+					current_period_end?: string | null;
+					id?: string;
+					metadata?: Json;
+					product_family?: string;
+					product_key?: string;
+					status?: string;
+					stripe_customer_id?: string;
+					stripe_price_id?: string;
+					stripe_subscription_id?: string;
+					stripe_subscription_item_id?: string;
+					updated_at?: string | null;
+					user_id?: string;
+				};
+				Relationships: [];
+			};
 			user_ai_context: {
 				Row: {
 					global_summary: string | null;
@@ -837,10 +888,10 @@ export type Database = {
 					role: Database['public']['Enums']['user_role'];
 					updated_at: string;
 					user_role: string[];
-					/** Explicit API access plan. Null = derive from user_role array (legacy). */
-					api_plan: 'viewer' | 'member' | 'enterprise' | null;
-					/** Explicit PPI (Price Index) access entitlement. Null = derive from ppi-member pseudo-role (legacy). */
-					ppi_access: boolean | null;
+					/** Explicit API access plan. */
+					api_plan: 'viewer' | 'member' | 'enterprise';
+					/** Explicit PPI (Price Index) access entitlement. */
+					ppi_access: boolean;
 				};
 				Insert: {
 					created_at?: string;
@@ -850,8 +901,8 @@ export type Database = {
 					role?: Database['public']['Enums']['user_role'];
 					updated_at?: string;
 					user_role?: string[];
-					api_plan?: 'viewer' | 'member' | 'enterprise' | null;
-					ppi_access?: boolean | null;
+					api_plan?: 'viewer' | 'member' | 'enterprise';
+					ppi_access?: boolean;
 				};
 				Update: {
 					created_at?: string;
@@ -861,8 +912,8 @@ export type Database = {
 					role?: Database['public']['Enums']['user_role'];
 					updated_at?: string;
 					user_role?: string[];
-					api_plan?: 'viewer' | 'member' | 'enterprise' | null;
-					ppi_access?: boolean | null;
+					api_plan?: 'viewer' | 'member' | 'enterprise';
+					ppi_access?: boolean;
 				};
 				Relationships: [];
 			};

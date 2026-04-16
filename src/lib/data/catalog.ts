@@ -74,7 +74,7 @@ export interface CatalogSearchOptions {
 	pricePerLbMin?: number;
 	pricePerLbMax?: number;
 	arrivalDate?: string;
-	stockedDate?: string; // number-as-string: days back
+	stockedDate?: string; // absolute lower-bound date (YYYY-MM-DD)
 }
 
 /** Standard response from searchCatalog. */
@@ -234,10 +234,7 @@ export async function searchCatalog(
 	// ── Date filters ──────────────────────────────────────────────────────────
 	if (arrivalDate) query = query.eq('arrival_date', arrivalDate);
 	if (stockedDate && stockedDate !== '') {
-		const daysBack = parseInt(stockedDate, 10);
-		const cutoff = new Date();
-		cutoff.setDate(cutoff.getDate() - daysBack);
-		query = query.gte('stocked_date', cutoff.toISOString().split('T')[0]);
+		query = query.gte('stocked_date', stockedDate);
 	}
 	if (stockedDays && stockedDays > 0) {
 		const cutoff = new Date();
@@ -272,6 +269,8 @@ export async function searchCatalog(
 	if (stockedFilter !== undefined) filtersApplied.stockedFilter = stockedFilter;
 	if (pricePerLbMin !== undefined) filtersApplied.pricePerLbMin = pricePerLbMin;
 	if (pricePerLbMax !== undefined) filtersApplied.pricePerLbMax = pricePerLbMax;
+	if (arrivalDate) filtersApplied.arrivalDate = arrivalDate;
+	if (stockedDate) filtersApplied.stockedDate = stockedDate;
 	if (stockedDays) filtersApplied.stockedDays = stockedDays;
 	if (limit) filtersApplied.limit = limit;
 

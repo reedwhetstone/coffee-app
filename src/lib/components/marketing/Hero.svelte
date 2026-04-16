@@ -20,11 +20,11 @@
 	let userLabel = $derived(session?.user?.email?.split('@')[0] ?? 'there');
 
 	function handlePrimaryAction() {
-		goto(isSignedIn ? '/dashboard' : '/auth');
+		goto('/catalog');
 	}
 
 	function handleSecondaryAction() {
-		goto(isSignedIn ? '/catalog' : '/auth');
+		goto(isSignedIn ? '/dashboard' : '/auth');
 	}
 
 	function handleLearnMore() {
@@ -41,22 +41,21 @@
 				<div
 					class="mb-6 inline-flex items-center rounded-full border border-background-tertiary-light/20 bg-background-tertiary-light/10 px-4 py-1.5 text-sm font-medium text-background-tertiary-light"
 				>
-					Signed in as {userLabel}. Your app home now lives at /dashboard.
+					Signed in as {userLabel}. Use the catalog to source, then jump back into your workspace.
 				</div>
 			{/if}
-			<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
-				Smarter Sourcing. Better Roasting.
+			<h1 class="text-center text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
+				Green Coffee Intelligence, Built for Roasters.
 			</h1>
 		</div>
-		<div class="mx-auto max-w-2xl text-center">
+		<div class="mx-auto max-w-3xl text-center">
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
 				{#if isSignedIn}
-					Purveyors keeps the homepage public-first so the product story stays clear. Jump back into
-					your dashboard when you are ready, or keep browsing live coffee data from here.
+					Compare live offerings, shortlist coffees faster, and return to Mallard Studio when you
+					need inventory, roast, tasting, and production workflows.
 				{:else}
-					The only roasting platform built to scale from small-batch home roasting to commercial
-					operations. Discover premium green coffees and grow your roasting journey with
-					enterprise-grade tools, at a fraction of the cost.
+					See current offerings from specialty suppliers in one clean catalog, compare price and
+					profile faster, and move into workflow, data, or market tools only when you need them.
 				{/if}
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
@@ -64,21 +63,27 @@
 					onclick={handlePrimaryAction}
 					class="w-full rounded-md bg-background-tertiary-light px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light sm:w-auto"
 				>
-					{isSignedIn ? 'Dashboard' : 'Get started free'}
+					Browse live catalog
 				</button>
 				<button
 					onclick={handleSecondaryAction}
 					class="w-full rounded-md border border-background-tertiary-light px-6 py-3 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:w-auto"
 				>
-					{isSignedIn ? 'Catalog' : 'Sign In'}
+					{isSignedIn ? 'Open dashboard' : 'Create free account'}
 				</button>
 				<button
 					onclick={handleLearnMore}
 					class="text-sm font-semibold leading-6 text-text-primary-light transition-colors duration-200 hover:text-background-tertiary-light"
 				>
-					Learn more <span aria-hidden="true">→</span>
+					How it works <span aria-hidden="true">→</span>
 				</button>
 			</div>
+			{#if !isSignedIn}
+				<p class="mt-4 text-sm text-text-secondary-light">
+					Start with the public catalog. Add an account later if you want saved workflows or paid
+					access.
+				</p>
+			{/if}
 			{#if isSignedIn && canAccessMemberRoutes}
 				<div class="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm">
 					<button
@@ -109,12 +114,12 @@
 							class="rounded-lg bg-background-primary-light p-4 shadow-sm ring-1 ring-border-light"
 						>
 							<div class="flex items-center justify-between">
-								<h3 class="font-semibold text-text-primary-light">Ethiopian Sidamo</h3>
-								<div class="font-bold text-background-tertiary-light">$7.50/lb</div>
+								<h3 class="font-semibold text-text-primary-light">Colombia Huila Pink Bourbon</h3>
+								<div class="font-bold text-background-tertiary-light">$8.10/lb</div>
 							</div>
-							<p class="mt-1 text-sm text-text-secondary-light">Sweet Shop Coffee</p>
+							<p class="mt-1 text-sm text-text-secondary-light">Recent arrival · Equator Coffee</p>
 							<div class="mt-2 flex items-center justify-between text-xs text-text-secondary-light">
-								<span>Score: 88</span>
+								<span>Score: 87.5</span>
 								<span>Washed</span>
 							</div>
 						</div>
@@ -124,13 +129,14 @@
 						>
 							<div class="mb-2 flex items-center gap-2">
 								<div class="h-2 w-2 rounded-full bg-growth-green"></div>
-								<span class="text-xs text-text-secondary-light">AI Coffee Analytics Assistant</span>
+								<span class="text-xs text-text-secondary-light"
+									>Quick buyer read from live market data</span
+								>
 							</div>
 							<p class="text-sm text-text-primary-light">
-								"I analyzed your recent roasts and found 3 washed Ethiopians under $8/lb with floral
-								notes that match your quality standards. The Sidamo from Sweet Shop Coffee shows
-								consistent cup scores above 86 and would fit your current roasting profile
-								parameters."
+								"Three washed coffees landed this week under $8.50/lb with floral, citrus, and
+								tea-like profiles. This lot fits a clean spring offering and stays inside your usual
+								buy range."
 							</p>
 						</div>
 					</div>

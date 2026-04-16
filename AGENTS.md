@@ -2,7 +2,7 @@
 
 This is the canonical contributor and coding-agent guide for the Purveyors web platform repo.
 
-`CLAUDE.md` and `GEMINI.md` should remain symlinks to this file.
+`CLAUDE.md` and `GEMINI.md` should remain lightweight pointers or symlinks to this file.
 
 ## Repo purpose
 
@@ -47,6 +47,53 @@ pnpm lint
 pnpm check --fail-on-warnings
 ```
 
+## Local validation env contract
+
+Fresh worktrees often need repo-local env setup before static validation succeeds. If required env vars are missing, report that as `VALIDATION_BLOCKED_ENV`, not `VALIDATION_FAIL`.
+
+Validation command classes:
+
+- `pnpm lint`
+- `pnpm check --fail-on-warnings`
+- `pnpm test`
+- `pnpm test:e2e`
+
+For static validation (`pnpm check --fail-on-warnings`), require:
+
+- `PUBLIC_SUPABASE_URL`
+- `PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+
+For E2E (`pnpm test:e2e`), also require:
+
+- `E2E_TEST_EMAIL`
+- `E2E_TEST_USER_ID`
+- `PLAYWRIGHT_BASE_URL` (optional, defaults to localhost)
+
+Repo-local helpers:
+
+```bash
+pnpm worktree:bootstrap
+pnpm env:check
+pnpm env:check:e2e
+```
+
+Rules:
+
+- Placeholder values may unblock static validation, but they do not prove runtime or E2E behavior.
+- Do not auto-copy secrets from outside the repo into a worktree.
+- Do not describe this helper as a fix for detached-worktree module-resolution or stale temp-path install bugs. That is a separate reliability issue.
+
+Reporting guidance:
+
+- `VALIDATION_PASS`
+- `VALIDATION_FAIL`
+- `VALIDATION_BLOCKED_ENV`
+- `VALIDATION_BLOCKED_SERVICE`
+- `VALIDATION_CI_PENDING`
+
 ## Route model
 
 ### Public product routes
@@ -73,16 +120,17 @@ Treat the API as two layers:
 
 1. **Public external API**
 
+   - `GET /v1` advertises the public namespace, active resources, and legacy migration hints
    - `GET /v1/catalog`
-   - Auth: API key, web session, or anonymous (public-only subset with server-side row cap)
+   - Auth: API key, web session, or anonymous (public-only subset unless a privileged session enables wholesale visibility)
    - Rate-limit headers (`X-RateLimit-*`) are only included in API-key responses
    - Stable public contract
 
-2. **Internal app API**
-   - `/api/catalog`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/stripe/*`, and related helpers
-   - Session auth, role checks, ownership checks
+2. **Platform app API**
+   - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/stripe/*`, `/api/admin/*`, and related helpers
+   - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require the member role
    - Important for contributors, but not a broad public compatibility promise
-   - `/api/catalog-api` is a deprecated legacy URL with `Deprecation: true` and `Sunset: Dec 31 2026` headers; migrate to `/v1/catalog`
+   - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation: true`, `Link: </v1/catalog>; rel="successor-version"`, and `Sunset: Dec 31 2026` headers; migrate callers to `/v1/catalog`
    - `/api/tools/*` routes are deprecated; prefer direct CLI-library integration
 
 Do not blur those layers in code comments, docs, or PR descriptions.
@@ -96,12 +144,14 @@ When changing docs, keep these sources aligned:
 - `src/routes/api/+page.svelte`
 - the `/docs` tree under `src/routes/docs`
 - the `/api-dashboard` console surface and any legacy docs redirects
+- `src/routes/api/+page.server.ts` and `/api` copy when plan naming, limits, or route framing changes
 
 ### Docs architecture
 
 - Public docs live under `/docs`
 - API docs live under `/docs/api/*`
 - CLI docs live under `/docs/cli/*`
+- `src/lib/docs/content.ts` is the shared source of truth for docs IA and long-form content
 - Prefer shared docs data/components over duplicated long-form pages
 - Keep public docs accessible without login
 
@@ -109,14 +159,23 @@ When changing docs, keep these sources aligned:
 
 - Verify behavior from source before documenting it
 - Do not claim an endpoint is public unless it truly is
-- Do not claim CLI commands work without auth; all CLI commands require authentication
+- Do not describe `/api/catalog` or `/api/catalog-api` as the canonical contract; that is `/v1/catalog`
+- Do not flatten CLI auth into one rule: catalog commands require an authenticated viewer session; inventory, roast, sales, and tasting require the member role; config is local-only and does not require auth; context is documentation/manifest output, not a live authenticated data command; `purvey context` prints text by default, `--json` and `--pretty` emit the machine-readable manifest contract, and `--csv` is invalid
 - Do not invent filter/query behavior that the route does not implement
-- Be explicit about auth model, tier limits, and session requirements
+- Be explicit about auth model, tier limits, row-limit headers, share-token behavior, and session requirements
 - If analytics are a product surface but not a public REST surface, say that clearly
 
 ## CLI relationship
 
 The web app imports `@purveyors/cli` modules directly in `src/lib/services/tools.ts`.
+
+CLI auth and output rules matter here too:
+
+- `purvey catalog *` requires an authenticated viewer session
+- `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
+- `purvey config` is local-only and does not require auth
+- `purvey context` prints dense text by default, while `purvey manifest` emits the machine-readable contract directly
+- structured stdout and stderr semantics are part of the CLI contract for scripts and agents
 
 That means:
 
@@ -155,4 +214,4 @@ A strong PR in this repo should include:
 - updated docs when behavior, routes, or positioning changed
 - screenshots for UI changes when useful
 
-If the change touches public positioning, docs, or API expectations, review the whole information architecture, not just the line you edited.
+If the change touches public positioning, docs, or API expectations, review the whole information architecture, not just the line you edited. That usually means checking `/api`, `/docs`, `/api-dashboard`, README, and AGENTS together.

@@ -1,17 +1,43 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	interface UserDiscrepancy {
+	interface BillingEntitlementActualState {
+		role: string | null;
+		userRole: string[];
+		apiPlan: string | null;
+		ppiAccess: boolean | null;
+	}
+
+	interface BillingEntitlementExpectedState {
+		role: string;
+		userRole: string[];
+		apiPlan: string;
+		ppiAccess: boolean;
+	}
+
+	interface BillingSubscriptionSnapshotSummary {
+		id: string;
+		stripeSubscriptionId: string;
+		stripeSubscriptionItemId: string;
+		stripePriceId: string;
+		productFamily: string;
+		productKey: string;
+		status: string;
+		currentPeriodEnd: string | null;
+		cancelAtPeriodEnd: boolean;
+	}
+
+	interface BillingEntitlementDiscrepancy {
 		userId: string;
 		email: string;
 		name?: string;
-		currentRole: string;
-		expectedRole: string;
-		stripeCustomerId: string;
-		subscriptionStatus: string;
-		subscriptionId?: string;
-		lastRoleUpdate?: string;
-		issue: string;
+		stripeCustomerId?: string;
+		actual: BillingEntitlementActualState;
+		expected: BillingEntitlementExpectedState;
+		issueFields: Array<'role' | 'user_role' | 'api_plan' | 'ppi_access'>;
+		issueSummary: string[];
+		lastEntitlementUpdate?: string;
+		billingSubscriptions: BillingSubscriptionSnapshotSummary[];
 	}
 
 	interface AuditLogSummary {
@@ -25,12 +51,13 @@
 	}
 
 	interface DiscrepancyReport {
-		shouldBeMemberButArent: UserDiscrepancy[];
-		shouldBeViewerButArent: UserDiscrepancy[];
+		discrepancies: BillingEntitlementDiscrepancy[];
 		recentAuditLogs: AuditLogSummary[];
 		summary: {
 			totalDiscrepancies: number;
+			totalTrackedUsers: number;
 			totalStripeCustomers: number;
+			totalUsersWithBillingSnapshots: number;
 			lastChecked: string;
 		};
 	}
@@ -38,12 +65,12 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let report = $state<DiscrepancyReport | null>(null);
-	let fixingUserId = $state<string | null>(null);
+	let repairingUserId = $state<string | null>(null);
 
 	async function fetchDiscrepancies() {
 		try {
 			loading = true;
-			const response = await fetch('/api/admin/stripe-role-discrepancies');
+			const response = await fetch('/api/admin/billing-entitlement-discrepancies');
 
 			if (!response.ok) {
 				if (response.status === 403) {
@@ -62,43 +89,58 @@
 		}
 	}
 
-	async function fixUserRole(userId: string, expectedRole: string, reason: string) {
+	async function repairUserEntitlements(userId: string) {
 		try {
-			fixingUserId = userId;
-			const response = await fetch('/api/admin/stripe-role-discrepancies', {
+			repairingUserId = userId;
+			const response = await fetch('/api/admin/billing-entitlement-discrepancies', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					userId,
-					expectedRole,
-					reason
+					reason: 'Admin repair via billing entitlement monitor'
 				})
 			});
 
 			if (!response.ok) {
-				throw new Error(`Failed to fix role: ${await response.text()}`);
+				throw new Error(`Failed to repair entitlements: ${await response.text()}`);
 			}
 
-			const result = await response.json();
-			console.log('Role fixed:', result);
-
-			// Refresh the data
 			await fetchDiscrepancies();
 		} catch (err: unknown) {
-			error = (err as Error).message || 'Failed to fix user role';
-			console.error('Error fixing role:', err);
+			error = (err as Error).message || 'Failed to repair entitlements';
+			console.error('Error repairing entitlements:', err);
 		} finally {
-			fixingUserId = null;
+			repairingUserId = null;
 		}
 	}
 
-	function formatDate(dateString: string) {
-		return new Date(dateString).toLocaleString();
+	function formatDate(dateString?: string | null) {
+		return dateString ? new Date(dateString).toLocaleString() : 'Unknown';
 	}
 
-	function getRoleColor(role: string) {
+	function formatScalar(value: string | boolean | null) {
+		if (Array.isArray(value)) {
+			return value.join(', ');
+		}
+
+		if (value === null) {
+			return 'null';
+		}
+
+		if (typeof value === 'boolean') {
+			return value ? 'true' : 'false';
+		}
+
+		return value;
+	}
+
+	function formatRoleMirror(value: string[]) {
+		return value.length > 0 ? `[${value.join(', ')}]` : '[]';
+	}
+
+	function getRoleColor(role: string | null) {
 		switch (role) {
 			case 'member':
 				return 'text-green-600';
@@ -133,7 +175,12 @@
 
 <div class="space-y-6">
 	<div class="flex items-center justify-between">
-		<h2 class="text-2xl font-bold text-text-primary-light">Stripe Role Monitor</h2>
+		<div>
+			<h2 class="text-2xl font-bold text-text-primary-light">Billing Entitlement Monitor</h2>
+			<p class="text-sm text-text-secondary-light">
+				Expected state is recomputed from local billing snapshots plus canonical entitlement logic.
+			</p>
+		</div>
 		<button
 			onclick={fetchDiscrepancies}
 			disabled={loading}
@@ -157,109 +204,169 @@
 			<span class="ml-2 text-text-secondary-light">Loading monitoring data...</span>
 		</div>
 	{:else if report}
-		<!-- Summary -->
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
 				<h3 class="text-sm font-medium text-text-secondary-light">Total Discrepancies</h3>
 				<p class="mt-1 text-2xl font-bold text-red-600">{report.summary.totalDiscrepancies}</p>
 			</div>
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h3 class="text-sm font-medium text-text-secondary-light">Total Customers</h3>
-				<p class="mt-1 text-2xl font-bold text-blue-600">{report.summary.totalStripeCustomers}</p>
+				<h3 class="text-sm font-medium text-text-secondary-light">Tracked Users</h3>
+				<p class="mt-1 text-2xl font-bold text-blue-600">{report.summary.totalTrackedUsers}</p>
 			</div>
 			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h3 class="text-sm font-medium text-text-secondary-light">Last Checked</h3>
-				<p class="mt-1 text-sm text-text-primary-light">{formatDate(report.summary.lastChecked)}</p>
+				<h3 class="text-sm font-medium text-text-secondary-light">Stripe Customers</h3>
+				<p class="mt-1 text-2xl font-bold text-blue-600">
+					{report.summary.totalStripeCustomers}
+				</p>
+			</div>
+			<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+				<h3 class="text-sm font-medium text-text-secondary-light">Users With Snapshots</h3>
+				<p class="mt-1 text-2xl font-bold text-blue-600">
+					{report.summary.totalUsersWithBillingSnapshots}
+				</p>
 			</div>
 		</div>
 
-		<!-- Users who should be members but aren't -->
-		{#if report.shouldBeMemberButArent.length > 0}
-			<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
-				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">
-					Should Be Members ({report.shouldBeMemberButArent.length})
-				</h3>
-				<div class="space-y-3">
-					{#each report.shouldBeMemberButArent as user}
-						<div class="rounded border border-red-200 bg-red-50 p-3">
-							<div class="flex items-center justify-between">
+		<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
+			<h3 class="text-sm font-medium text-text-secondary-light">Last Checked</h3>
+			<p class="mt-1 text-sm text-text-primary-light">{formatDate(report.summary.lastChecked)}</p>
+		</div>
+
+		{#if report.discrepancies.length > 0}
+			<div class="space-y-4">
+				{#each report.discrepancies as discrepancy}
+					<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+							<div class="space-y-2">
 								<div>
-									<p class="font-medium text-gray-900">{user.email}</p>
-									<p class="text-sm text-gray-600">
-										Current: <span class={getRoleColor(user.currentRole)}>{user.currentRole}</span>
-										→ Expected:
-										<span class={getRoleColor(user.expectedRole)}>{user.expectedRole}</span>
+									<h3 class="text-lg font-semibold text-text-primary-light">
+										{discrepancy.name || discrepancy.email}
+									</h3>
+									<p class="text-sm text-text-secondary-light">{discrepancy.email}</p>
+								</div>
+								<div class="flex flex-wrap gap-3 text-xs text-text-secondary-light">
+									<span>User ID: {discrepancy.userId}</span>
+									{#if discrepancy.stripeCustomerId}
+										<span>Customer: {discrepancy.stripeCustomerId}</span>
+									{/if}
+									<span>Updated: {formatDate(discrepancy.lastEntitlementUpdate)}</span>
+								</div>
+							</div>
+							<button
+								onclick={() => repairUserEntitlements(discrepancy.userId)}
+								disabled={repairingUserId === discrepancy.userId}
+								class="rounded bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700 disabled:opacity-50"
+							>
+								{repairingUserId === discrepancy.userId ? 'Repairing...' : 'Repair Entitlements'}
+							</button>
+						</div>
+
+						<div class="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">
+							<ul class="list-disc space-y-1 pl-5">
+								{#each discrepancy.issueSummary as issue}
+									<li>{issue}</li>
+								{/each}
+							</ul>
+						</div>
+
+						<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+							<div class="rounded border border-border-light p-4">
+								<h4
+									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
+								>
+									Actual stored entitlements
+								</h4>
+								<div class="space-y-2 text-sm">
+									<p>
+										<span class="font-medium">role:</span>
+										<span class={getRoleColor(discrepancy.actual.role)}>
+											{formatScalar(discrepancy.actual.role)}
+										</span>
 									</p>
-									<p class="text-xs text-gray-500">
-										Subscription: {user.subscriptionStatus} | Customer: {user.stripeCustomerId.slice(
-											0,
-											12
-										)}...
+									<p>
+										<span class="font-medium">user_role:</span>
+										{formatRoleMirror(discrepancy.actual.userRole)}
+									</p>
+									<p>
+										<span class="font-medium">api_plan:</span>
+										{formatScalar(discrepancy.actual.apiPlan)}
+									</p>
+									<p>
+										<span class="font-medium">ppi_access:</span>
+										{formatScalar(discrepancy.actual.ppiAccess)}
 									</p>
 								</div>
-								<button
-									onclick={() =>
-										fixUserRole(
-											user.userId,
-											user.expectedRole,
-											'Admin fix via monitoring dashboard'
-										)}
-									disabled={fixingUserId === user.userId}
-									class="rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700 disabled:opacity-50"
+							</div>
+
+							<div class="rounded border border-border-light p-4">
+								<h4
+									class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
 								>
-									{fixingUserId === user.userId ? 'Fixing...' : 'Fix Role'}
-								</button>
+									Expected canonical entitlements
+								</h4>
+								<div class="space-y-2 text-sm">
+									<p>
+										<span class="font-medium">role:</span>
+										<span class={getRoleColor(discrepancy.expected.role)}>
+											{discrepancy.expected.role}
+										</span>
+									</p>
+									<p>
+										<span class="font-medium">user_role:</span>
+										{formatRoleMirror(discrepancy.expected.userRole)}
+									</p>
+									<p><span class="font-medium">api_plan:</span> {discrepancy.expected.apiPlan}</p>
+									<p>
+										<span class="font-medium">ppi_access:</span>
+										{formatScalar(discrepancy.expected.ppiAccess)}
+									</p>
+								</div>
 							</div>
 						</div>
-					{/each}
-				</div>
+
+						<div class="rounded border border-border-light p-4">
+							<h4
+								class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary-light"
+							>
+								Billing subscription snapshot rows ({discrepancy.billingSubscriptions.length})
+							</h4>
+							{#if discrepancy.billingSubscriptions.length > 0}
+								<div class="space-y-3">
+									{#each discrepancy.billingSubscriptions as snapshot}
+										<div class="rounded border border-gray-200 bg-gray-50 p-3 text-sm">
+											<p>
+												<span class="font-medium">{snapshot.productKey}</span>
+												({snapshot.productFamily})
+											</p>
+											<p class="text-gray-600">
+												Status: {snapshot.status} · Price: {snapshot.stripePriceId}
+											</p>
+											<p class="text-gray-600">
+												Subscription: {snapshot.stripeSubscriptionId} · Item:
+												{snapshot.stripeSubscriptionItemId}
+											</p>
+											<p class="text-gray-600">
+												Period end: {formatDate(snapshot.currentPeriodEnd)} · Cancel at period end:
+												{formatScalar(snapshot.cancelAtPeriodEnd)}
+											</p>
+										</div>
+									{/each}
+								</div>
+							{:else}
+								<p class="text-sm text-text-secondary-light">
+									No local billing snapshot rows for this user.
+								</p>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+		{:else}
+			<div class="rounded-lg border border-green-300 bg-green-100 p-4">
+				<p class="text-green-700">✅ All tracked users have canonical billing entitlements.</p>
 			</div>
 		{/if}
 
-		<!-- Users who should be viewers but aren't -->
-		{#if report.shouldBeViewerButArent.length > 0}
-			<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
-				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">
-					Should Be Viewers ({report.shouldBeViewerButArent.length})
-				</h3>
-				<div class="space-y-3">
-					{#each report.shouldBeViewerButArent as user}
-						<div class="rounded border border-yellow-200 bg-yellow-50 p-3">
-							<div class="flex items-center justify-between">
-								<div>
-									<p class="font-medium text-gray-900">{user.email}</p>
-									<p class="text-sm text-gray-600">
-										Current: <span class={getRoleColor(user.currentRole)}>{user.currentRole}</span>
-										→ Expected:
-										<span class={getRoleColor(user.expectedRole)}>{user.expectedRole}</span>
-									</p>
-									<p class="text-xs text-gray-500">
-										Subscription: {user.subscriptionStatus} | Customer: {user.stripeCustomerId.slice(
-											0,
-											12
-										)}...
-									</p>
-								</div>
-								<button
-									onclick={() =>
-										fixUserRole(
-											user.userId,
-											user.expectedRole,
-											'Admin fix via monitoring dashboard'
-										)}
-									disabled={fixingUserId === user.userId}
-									class="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
-								>
-									{fixingUserId === user.userId ? 'Fixing...' : 'Fix Role'}
-								</button>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
-
-		<!-- Recent audit logs -->
 		<div class="rounded-lg bg-background-secondary-light p-6 ring-1 ring-border-light">
 			<h3 class="mb-4 text-lg font-semibold text-text-primary-light">
 				Recent Role Changes ({report.recentAuditLogs.length})
@@ -267,7 +374,7 @@
 			<div class="max-h-64 space-y-2 overflow-y-auto">
 				{#each report.recentAuditLogs as log}
 					<div class="rounded border border-gray-200 bg-gray-50 p-2 text-sm">
-						<div class="flex items-center justify-between">
+						<div class="flex items-center justify-between gap-4">
 							<div>
 								<span class="font-medium">{log.email || 'Unknown'}</span>
 								<span class="text-gray-600">
@@ -284,11 +391,5 @@
 				{/each}
 			</div>
 		</div>
-
-		{#if report.summary.totalDiscrepancies === 0}
-			<div class="rounded-lg border border-green-300 bg-green-100 p-4">
-				<p class="text-green-700">✅ All users have correct roles! No discrepancies found.</p>
-			</div>
-		{/if}
 	{/if}
 </div>

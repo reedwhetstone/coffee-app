@@ -9,7 +9,7 @@
 ## Approved decisions
 
 - Canonical public/product API namespace: `/v1/*`
-- Umbrella brand: **Parchment Platform**
+- Public product naming should use the shipped product surfaces directly rather than a separate umbrella brand
 - Endpoint product: **Parchment API**
 - CLI product: **Parchment CLI**
 - Dashboard name: **Parchment Console**
@@ -24,25 +24,33 @@
 ## Core architecture target
 
 ### 1. Contract
+
 One canonical, versioned resource surface under `/v1/*`.
 
 ### 2. Auth
+
 One `resolvePrincipal()` flow normalizes:
+
 - session-cookie auth for first-party app
 - bearer API key auth for external/machine callers
 - future OAuth token auth later
 
 ### 3. Authorization
+
 Separate:
+
 - **roles** for app permissions
 - **plans/entitlements** for API limits and product access
 
 ### 4. Docs
+
 One public docs tree at `/docs` for API + CLI + platform.
 
 ### 5. Product surfaces
-- **Maillard Studio** = first-party application / showcase customer
-- **Parchment Platform** = developer + data + integration layer
+
+- **Mallard Studio** = first-party application / showcase customer
+- **Parchment API** = developer + data integration product
+- **Parchment Intelligence** = premium analytics and market-intelligence product
 - **Parchment Console** = authenticated developer dashboard
 
 ---
@@ -52,18 +60,23 @@ One public docs tree at `/docs` for API + CLI + platform.
 This will be executed as a sequence of focused PRs, each independently verifiable.
 
 ### PR A — Principal foundation and `/v1` scaffolding
+
 Build the normalized auth/principal layer and the shared contract foundation.
 
 ### PR B — Catalog hard cutover to canonical `/v1/catalog`
+
 Make catalog the pilot canonical resource and cut internal/external surfaces over to the new contract.
 
 ### PR C — Role simplification + entitlement migration
+
 Replace hybrid pseudo-roles with app roles plus explicit API/access plans.
 
 ### PR D — Parchment Console + docs consolidation
+
 Rename the dashboard surface, remove `/api-dashboard/docs`, and make `/docs` canonical.
 
 ### PR E — Docs respin / replacement for PR #178
+
 Rewrite the docs against the now-true architecture and corrected product naming.
 
 ---
@@ -89,4 +102,4 @@ The most likely schema-change PR is **PR C**. If DB changes are required, exact 
 - First-party app and external consumers share canonical product contracts
 - Roles are simplified and no longer encode billing/plan semantics
 - Docs reflect the actual architecture instead of compensating for inconsistencies
-- Parchment branding hierarchy is coherent across API, CLI, Console, and Docs
+- Branding hierarchy is coherent across Mallard Studio, Parchment API, Parchment Intelligence, Parchment Console, CLI, and Docs

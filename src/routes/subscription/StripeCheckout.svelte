@@ -1,16 +1,10 @@
 <!-- src/lib/components/StripeCheckout.svelte -->
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import type { BillingPurchaseKey } from '$lib/billing/purchaseKeys';
 
-	const {
-		priceId,
-		clientReferenceId,
-		customerEmail,
-		onSuccess = () => {}
-	} = $props<{
-		priceId: string;
-		clientReferenceId: string;
-		customerEmail: string;
+	const { purchaseKey, onSuccess = () => {} } = $props<{
+		purchaseKey: BillingPurchaseKey;
 		onSuccess?: () => void;
 		onCancel?: () => void;
 	}>();
@@ -50,15 +44,15 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					priceId,
-					clientReferenceId,
-					customerEmail
+					purchaseKeys: [purchaseKey]
 				})
 			});
 
 			if (!response.ok) {
 				const errorData = await response.json();
-				throw new Error(errorData.message || 'Failed to create checkout session');
+				throw new Error(
+					errorData.error || errorData.message || 'Failed to create checkout session'
+				);
 			}
 
 			const { clientSecret } = await response.json();

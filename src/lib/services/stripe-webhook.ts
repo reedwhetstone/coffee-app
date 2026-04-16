@@ -1,8 +1,13 @@
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
-import Stripe from 'stripe';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
+
+import { createAdminClient } from '$lib/supabase-admin';
+import {
+	reconcileStripeSubscriptionEntitlements,
+	type ResolvedBillingEntitlements
+} from '$lib/server/billing/entitlements';
+import type { Database, Json } from '$lib/types/database.types';
+
 import { getStripe } from './stripe';
 
 interface RoleAuditLog {
@@ -13,44 +18,26 @@ interface RoleAuditLog {
 	stripe_customer_id?: string;
 	stripe_subscription_id?: string;
 	session_id?: string;
-	metadata?: Record<string, unknown>;
+	metadata?: Json;
+}
+
+function serializeCompatibilityRole(entitlements: ResolvedBillingEntitlements): string {
+	return entitlements.userRole.join(',');
+}
+
+function serializeEntitlements(entitlements: ResolvedBillingEntitlements): Json {
+	return {
+		role: entitlements.role,
+		userRole: entitlements.userRole,
+		apiPlan: entitlements.apiPlan,
+		ppiAccess: entitlements.ppiAccess
+	};
 }
 
 /**
- * Helper function to manage role arrays for subscription changes
+ * Log entitlement changes for audit trail.
  */
-function updateRoleArray(
-	currentRoles: string[],
-	roleToAdd: string,
-	roleToRemove?: string[]
-): string[] {
-	let updatedRoles = [...currentRoles];
-
-	// Remove old roles if specified
-	if (roleToRemove) {
-		updatedRoles = updatedRoles.filter((role) => !roleToRemove.includes(role));
-	}
-
-	// Add new role if not already present
-	if (!updatedRoles.includes(roleToAdd)) {
-		updatedRoles.push(roleToAdd);
-	}
-
-	// Handle base tier mutual exclusivity: viewer and member cannot coexist
-	if (roleToAdd === 'member' && updatedRoles.includes('viewer')) {
-		updatedRoles = updatedRoles.filter((role) => role !== 'viewer');
-	}
-	if (roleToAdd === 'viewer' && updatedRoles.includes('member')) {
-		updatedRoles = updatedRoles.filter((role) => role !== 'member');
-	}
-
-	return updatedRoles;
-}
-
-/**
- * Log role changes for audit trail
- */
-async function logRoleChange(supabase: SupabaseClient, auditData: RoleAuditLog) {
+async function logRoleChange(supabase: SupabaseClient<Database>, auditData: RoleAuditLog) {
 	try {
 		const { error } = await supabase.from('role_audit_logs').insert({
 			...auditData,
@@ -74,19 +61,14 @@ async function logRoleChange(supabase: SupabaseClient, auditData: RoleAuditLog) 
 }
 
 /**
- * Create Supabase admin client that bypasses RLS for webhook operations
+ * Create Supabase admin client that bypasses RLS for webhook operations.
  */
-export function createAdminSupabase() {
-	return createAdminClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-		auth: {
-			persistSession: false,
-			autoRefreshToken: false
-		}
-	});
+export function createAdminSupabase(): SupabaseClient<Database> {
+	return createAdminClient() as SupabaseClient<Database>;
 }
 
 /**
- * Verify and construct a Stripe event from webhook data
+ * Verify and construct a Stripe event from webhook data.
  */
 export async function constructStripeEvent(
 	body: string,
@@ -102,200 +84,127 @@ export async function constructStripeEvent(
 	}
 }
 
-/**
- * Handle subscription activation (new or updated)
- */
-export async function handleSubscriptionActive(
-	subscription: Stripe.Subscription,
-	supabase: SupabaseClient
-) {
-	const customerId =
-		typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
-
-	console.log('🔍 Looking up user for Stripe customer:', customerId);
-
-	// Look up existing mapping
-	const { data: customerData } = await supabase
+async function resolveUserIdForStripeCustomer(
+	customerId: string,
+	supabase: SupabaseClient<Database>
+): Promise<{ userId: string | null; email: string | null }> {
+	const { data: customerData, error: customerLookupError } = await supabase
 		.from('stripe_customers')
-		.select('user_id')
+		.select('user_id, email')
 		.eq('customer_id', customerId)
-		.single();
-
-	let userId = customerData?.user_id;
-
-	// If no user mapping found, try getting from Stripe metadata
-	if (!userId) {
-		try {
-			const stripe = getStripe();
-			const customer = await stripe.customers.retrieve(customerId);
-
-			if (customer && !('deleted' in customer) && customer.metadata?.supabaseUserId) {
-				userId = customer.metadata.supabaseUserId;
-				console.log('✅ Found user ID in Stripe metadata:', userId);
-
-				// Create the mapping in our database
-				await supabase.from('stripe_customers').upsert({
-					user_id: userId,
-					customer_id: customerId,
-					email: customer.email || null
-				});
-			}
-		} catch (err) {
-			console.error('❌ Error retrieving customer from Stripe:', err);
-			return;
-		}
-	}
-
-	if (!userId) {
-		console.error('❌ Could not determine user ID for customer:', customerId);
-		return;
-	}
-
-	// Get current roles for audit logging
-	const { data: currentRoleData } = await supabase
-		.from('user_roles')
-		.select('user_role')
-		.eq('id', userId)
 		.maybeSingle();
 
-	const currentRoles = currentRoleData?.user_role || ['viewer'];
-
-	// Only update if user doesn't already have member role
-	if (!currentRoles.includes('member')) {
-		// Update user role array to include 'member'
-		const updatedRoles = updateRoleArray(currentRoles, 'member');
-		const { error } = await supabase.from('user_roles').upsert(
-			{
-				id: userId,
-				user_role: updatedRoles,
-				updated_at: new Date().toISOString()
-			},
-			{ onConflict: 'id' }
-		);
-
-		if (error) {
-			console.error('❌ Error updating user role:', error);
-		} else {
-			console.log(`✅ Updated user ${userId} roles to include member:`, updatedRoles);
-
-			// Log the role change
-			await logRoleChange(supabase, {
-				user_id: userId,
-				old_role: currentRoles.join(','),
-				new_role: updatedRoles.join(','),
-				trigger_type: 'webhook_processing',
-				stripe_customer_id: customerId,
-				stripe_subscription_id: subscription.id,
-				metadata: {
-					subscription_status: subscription.status,
-					webhook_event: 'subscription_active',
-					subscription_created: subscription.created,
-					subscription_current_period_end: subscription.current_period_end
-				}
-			});
-		}
-	} else {
-		console.log(`ℹ️ User ${userId} already has member role, no update needed`);
+	if (customerLookupError) {
+		console.error('❌ Error looking up stripe customer mapping:', customerLookupError);
 	}
+
+	if (customerData?.user_id) {
+		return {
+			userId: customerData.user_id,
+			email: customerData.email ?? null
+		};
+	}
+
+	try {
+		const stripe = getStripe();
+		const customer = await stripe.customers.retrieve(customerId);
+
+		if (customer && !('deleted' in customer) && customer.metadata?.supabaseUserId) {
+			const userId = customer.metadata.supabaseUserId;
+
+			const { error: upsertError } = await supabase.from('stripe_customers').upsert(
+				{
+					user_id: userId,
+					customer_id: customerId,
+					email: customer.email || null,
+					updated_at: new Date().toISOString()
+				},
+				{ onConflict: 'user_id' }
+			);
+
+			if (upsertError) {
+				console.error('❌ Error persisting stripe customer mapping from metadata:', upsertError);
+			}
+
+			return {
+				userId,
+				email: customer.email || null
+			};
+		}
+	} catch (err) {
+		console.error('❌ Error retrieving customer from Stripe:', err);
+	}
+
+	return { userId: null, email: null };
 }
 
 /**
- * Handle subscription deactivation (canceled, unpaid, etc.)
+ * Upsert the local billing snapshot for a Stripe subscription and recompute canonical entitlements.
  */
-export async function handleSubscriptionInactive(
+export async function reconcileStripeSubscription(
 	subscription: Stripe.Subscription,
-	supabase: SupabaseClient
+	supabase: SupabaseClient<Database>
 ) {
 	const customerId =
 		typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id;
 
-	console.log('🔍 Looking up user for inactive subscription:', customerId);
+	console.log('🔍 Reconciling billing subscription for Stripe customer:', customerId);
 
-	// Look up existing mapping
-	const { data: customerData } = await supabase
-		.from('stripe_customers')
-		.select('user_id')
-		.eq('customer_id', customerId)
-		.single();
-
-	let userId = customerData?.user_id;
-
-	// If no user mapping found, try getting from Stripe metadata
-	if (!userId) {
-		try {
-			const stripe = getStripe();
-			const customer = await stripe.customers.retrieve(customerId);
-
-			if (customer && !('deleted' in customer) && customer.metadata?.supabaseUserId) {
-				userId = customer.metadata.supabaseUserId;
-				console.log('✅ Found user ID in Stripe metadata:', userId);
-
-				// Create the mapping in our database
-				await supabase.from('stripe_customers').upsert({
-					user_id: userId,
-					customer_id: customerId,
-					email: customer.email || null
-				});
-			}
-		} catch (err) {
-			console.error('❌ Error retrieving customer from Stripe:', err);
-			return;
-		}
-	}
-
+	const { userId } = await resolveUserIdForStripeCustomer(customerId, supabase);
 	if (!userId) {
 		console.error('❌ Could not determine user ID for customer:', customerId);
 		return;
 	}
 
-	// Get current roles for audit logging
-	const { data: currentRoleData } = await supabase
-		.from('user_roles')
-		.select('user_role')
-		.eq('id', userId)
-		.maybeSingle();
+	const reconciliation = await reconcileStripeSubscriptionEntitlements(supabase, {
+		userId,
+		stripeCustomerId: customerId,
+		subscription
+	});
 
-	const currentRoles = currentRoleData?.user_role || ['viewer'];
-
-	// Remove member role and set to viewer (handles downgrade)
-	if (currentRoles.includes('member')) {
-		// Remove member role, keep API roles if present, otherwise default to viewer
-		let updatedRoles = currentRoles.filter((role: string) => role !== 'member');
-		if (updatedRoles.length === 0 || (updatedRoles.length === 1 && updatedRoles[0] === 'viewer')) {
-			updatedRoles = ['viewer'];
-		}
-		const { error } = await supabase.from('user_roles').upsert(
-			{
-				id: userId,
-				user_role: updatedRoles,
-				updated_at: new Date().toISOString()
-			},
-			{ onConflict: 'id' }
+	if (reconciliation.unknownPriceIds.length > 0) {
+		console.warn(
+			'⚠️ Ignored unknown Stripe prices during billing reconciliation:',
+			reconciliation.unknownPriceIds
 		);
-
-		if (error) {
-			console.error('❌ Error updating user role:', error);
-		} else {
-			console.log(`✅ Updated user ${userId} roles after member cancellation:`, updatedRoles);
-
-			// Log the role change
-			await logRoleChange(supabase, {
-				user_id: userId,
-				old_role: currentRoles.join(','),
-				new_role: updatedRoles.join(','),
-				trigger_type: 'webhook_processing',
-				stripe_customer_id: customerId,
-				stripe_subscription_id: subscription.id,
-				metadata: {
-					subscription_status: subscription.status,
-					webhook_event: 'subscription_inactive',
-					subscription_created: subscription.created,
-					subscription_ended_at: subscription.ended_at || subscription.canceled_at,
-					cancel_reason: subscription.cancellation_details?.reason
-				}
-			});
-		}
-	} else {
-		console.log(`ℹ️ User ${userId} doesn't have member role, no update needed`);
 	}
+
+	if (reconciliation.deletedItemIds.length > 0) {
+		console.log('🧹 Removed stale billing snapshot items:', reconciliation.deletedItemIds);
+	}
+
+	if (!reconciliation.changed) {
+		console.log('ℹ️ Billing entitlements already reconciled for user:', userId);
+		return;
+	}
+
+	await logRoleChange(supabase, {
+		user_id: userId,
+		old_role: serializeCompatibilityRole(reconciliation.previousEntitlements),
+		new_role: serializeCompatibilityRole(reconciliation.resolvedEntitlements),
+		trigger_type: 'webhook_processing',
+		stripe_customer_id: customerId,
+		stripe_subscription_id: subscription.id,
+		metadata: {
+			subscription_status: subscription.status,
+			cancel_at_period_end: subscription.cancel_at_period_end,
+			current_period_end: subscription.current_period_end,
+			previous_entitlements: serializeEntitlements(reconciliation.previousEntitlements),
+			resolved_entitlements: serializeEntitlements(reconciliation.resolvedEntitlements),
+			billing_subscriptions: reconciliation.subscriptions.map((row) => ({
+				stripe_subscription_id: row.stripe_subscription_id,
+				stripe_price_id: row.stripe_price_id,
+				product_family: row.product_family,
+				product_key: row.product_key,
+				status: row.status
+			})),
+			unknown_price_ids: reconciliation.unknownPriceIds
+		}
+	});
+
+	console.log(
+		'✅ Reconciled billing entitlements for user:',
+		userId,
+		reconciliation.resolvedEntitlements
+	);
 }
