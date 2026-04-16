@@ -58,20 +58,21 @@
 	// Removed unused derived values (averageMargin, totalPoundsRoasted, sellThroughRate, roastLossRate)
 
 	// Add sales form handlers
-	// SaleForm already submits to the API and calls onSubmit(newSale) after success.
-	// This handler just refreshes local data — no second API call needed.
+	// SaleForm submits to the API, then waits for the parent refresh before closing the modal.
 	async function handleFormSubmit(_data: unknown) {
 		isSaving = 'Refreshing data...';
 		try {
 			await fetchInitialSalesData();
+			hideForm();
+			selectedSale = null;
 		} catch (error) {
 			console.error('Error refreshing sales data:', error);
-			alert(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+			throw new Error(
+				error instanceof Error ? error.message : 'Failed to refresh profit data after saving sale'
+			);
 		} finally {
 			isSaving = null;
 		}
-		hideForm();
-		selectedSale = null;
 	}
 
 	// Removed unused fetchSalesForCoffee
@@ -140,16 +141,15 @@
 	// Removed fetchRoastProfileData
 
 	async function fetchInitialSalesData() {
-		try {
-			const response = await fetch('/api/profit');
-			if (response.ok) {
-				const data = await response.json();
-				salesData = data.sales || [];
-				profitData = data.profit || [];
-			}
-		} catch (error) {
-			console.error('Error fetching sales data:', error);
+		const response = await fetch('/api/profit');
+
+		if (!response.ok) {
+			throw new Error(`Failed to refresh profit data (${response.status})`);
 		}
+
+		const data = await response.json();
+		salesData = data.sales || [];
+		profitData = data.profit || [];
 	}
 
 	function hideForm() {
