@@ -53,7 +53,7 @@
 			managementCopy:
 				'Review your Studio membership, renewal timing, and any changes to billing here.',
 			anonymousStateCopy:
-				'Sign in to see whether this account already has Studio access. You can still compare plans before you do.',
+				'Sign in to check whether this account already has Studio access, or keep comparing plans first.',
 			activeStateCopy: 'Studio is active on this account and ready for day-to-day work.',
 			inactiveStateCopy: 'No Studio membership is attached to this account yet.',
 			ctaLabel: 'Start Studio',
@@ -108,19 +108,19 @@
 		{
 			family: 'ppi_addon',
 			name: 'Parchment Intelligence',
-			eyebrow: 'For deeper market visibility',
-			headline: 'Get fuller pricing visibility, supplier context, and market analysis.',
+			eyebrow: 'For deeper sourcing visibility',
+			headline: 'Unlock supplier comparisons, health, arrivals, delistings, and origin index detail.',
 			description:
-				'Add the premium analytics layer when your team needs richer sourcing visibility without changing your Studio or API plan.',
+				'Parchment Intelligence extends the public analytics surface with the premium supplier and market views used for sourcing decisions.',
 			features: [
-				'Full analytics and price index access',
-				'Deeper supplier, origin, and processing visibility',
-				'Built for sourcing decisions, not internal dashboards'
+				'Supplier comparisons and supplier health',
+				'Arrivals, delistings, and deeper origin index visibility',
+				'Extended trend detail for the premium analytics experience'
 			],
 			managementCopy:
 				'Manage Parchment Intelligence separately so analytics access stays clear and product-specific.',
 			anonymousStateCopy:
-				'Sign in to see whether Intelligence is already enabled for this account, or compare the add-on first.',
+				'Sign in to see whether Intelligence is already enabled for this account, or compare the analytics upgrade first.',
 			activeStateCopy: 'Parchment Intelligence is already active on this account.',
 			inactiveStateCopy: 'Parchment Intelligence is not active on this account yet.',
 			ctaLabel: 'Add Intelligence',
@@ -297,7 +297,8 @@
 				{
 					label: 'Best for sourcing visibility',
 					value: 'Parchment Intelligence',
-					description: 'A richer market view with supplier context, pricing depth, and analytics.'
+					description:
+						'Supplier comparisons, health, arrivals, delistings, and deeper market analytics.'
 				}
 			];
 		}
@@ -453,15 +454,17 @@
 					<p
 						class="text-sm font-semibold uppercase tracking-[0.2em] text-background-tertiary-light"
 					>
-						Plans and account
+						{isSignedIn ? 'Plans and account' : 'Plans and product comparison'}
 					</p>
 					<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-						Pricing that stays connected to the rest of the public site.
+						{isSignedIn
+							? 'Pricing and account state in one place.'
+							: 'Choose the right product before you ever hit a dashboard.'}
 					</h1>
 					<p class="text-lg leading-8 text-text-secondary-light">
-						Review Mallard Studio, Parchment API, Parchment Intelligence, and Enterprise in one
-						place. Signed-out visitors can compare products without leaving the marketing site, and
-						signed-in customers can see what is active before making a change.
+						{isSignedIn
+							? 'Review Mallard Studio, Parchment API, Parchment Intelligence, and Enterprise in one place so you can see what is active before making a billing change.'
+							: 'Compare Mallard Studio, Parchment API, Parchment Intelligence, and Enterprise from the public site. Start with the surface that matches your workflow, then sign in only when you are ready to buy or confirm account access.'}
 					</p>
 					<div class="flex flex-wrap gap-3">
 						<button
@@ -481,7 +484,7 @@
 								onclick={handleSignIn}
 								class="rounded-xl bg-background-tertiary-light px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
 							>
-								Sign in to view your account
+								Sign in to continue
 							</button>
 						{/if}
 					</div>
@@ -491,17 +494,17 @@
 					class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
 					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary-light">
-						Account overview
+						{isSignedIn ? 'Account overview' : 'How the product line is organized'}
 					</p>
 					<h2 class="mt-3 text-2xl font-semibold text-text-primary-light">
 						{isSignedIn
 							? 'Current product access on this account'
-							: 'How the product line is organized'}
+							: 'Start with the product that matches the job to be done'}
 					</h2>
 					<p class="mt-2 text-sm leading-7 text-text-secondary-light">
 						{isSignedIn
 							? 'Use this page to confirm what is active before you start a checkout or change your billing.'
-							: 'Each offer serves a different job to be done, so you can compare the right surface before creating an account.'}
+							: 'Each offer maps to a different workflow so you can compare the right surface before creating an account or opening checkout.'}
 					</p>
 
 					<div class="mt-5 space-y-4">
@@ -561,147 +564,137 @@
 								{/each}
 							</ul>
 
-							<div
-								class="mt-5 rounded-2xl border border-border-light bg-background-secondary-light p-4"
-							>
-								<div class="flex items-start justify-between gap-3">
-									<div>
-										<p
-											class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
-										>
-											Account state
-										</p>
-										<p class="mt-2 text-base font-semibold text-text-primary-light">
-											{state.label}
-										</p>
-									</div>
-								</div>
-
-								<p class="mt-3 text-sm leading-7 text-text-secondary-light">{state.description}</p>
-
-								{#if !data?.user}
-									<div
-										class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4"
-									>
-										<p class="text-sm text-text-secondary-light">{product.managementCopy}</p>
-										<button
-											onclick={handleSignIn}
-											class="mt-3 inline-flex rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-										>
-											Sign in for account details
-										</button>
-									</div>
-								{:else if product.family === 'membership'}
-									<p class="mt-3 text-sm text-text-secondary-light">{product.managementCopy}</p>
-									{#if data.subscription}
-										<div
-											class="mt-4 rounded-2xl border border-border-light bg-background-primary-light p-4"
-										>
+							{#if isSignedIn}
+								<div
+									class="mt-5 rounded-2xl border border-border-light bg-background-secondary-light p-4"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div>
 											<p
 												class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
 											>
-												Membership billing
+												Account state
 											</p>
-											<div class="mt-3 grid grid-cols-2 gap-3 text-sm text-text-secondary-light">
-												<span>Status</span>
-												<span class="text-right font-medium text-text-primary-light">
-													{data.subscription.status}
-													{#if data.subscription.cancel_at_period_end}
-														<span class="text-orange-400"> (ends at renewal)</span>
-													{/if}
-												</span>
-
-												<span>Plan</span>
-												<span class="text-right font-medium text-text-primary-light">
-													{normalizePlanName(data.subscription.plan?.name)}
-												</span>
-
-												<span>Renews or ends</span>
-												<span class="text-right font-medium text-text-primary-light">
-													{data.subscription.current_period_end
-														? formatDate(data.subscription.current_period_end)
-														: 'N/A'}
-												</span>
-											</div>
+											<p class="mt-2 text-base font-semibold text-text-primary-light">
+												{state.label}
+											</p>
 										</div>
+									</div>
 
-										<div class="mt-4 space-y-3">
-											{#if !membershipState?.canManageSubscription && membershipState?.managementBlockedReason}
-												<div
-													class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
+									<p class="mt-3 text-sm leading-7 text-text-secondary-light">{state.description}</p>
+
+									{#if product.family === 'membership'}
+										<p class="mt-3 text-sm text-text-secondary-light">{product.managementCopy}</p>
+										{#if data.subscription}
+											<div
+												class="mt-4 rounded-2xl border border-border-light bg-background-primary-light p-4"
+											>
+												<p
+													class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light"
 												>
-													{membershipState.managementBlockedReason}
-												</div>
-											{:else if data.subscription.cancel_at_period_end}
-												<button
-													onclick={() => resumeSubscription()}
-													disabled={resumeLoading}
-													class="w-full rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/20 disabled:opacity-50"
-												>
-													{resumeLoading ? 'Processing...' : 'Keep Studio active'}
-												</button>
-												{#if resumeSuccess}
-													<p class="text-sm text-green-400">
-														Studio will continue renewing automatically.
-													</p>
-												{/if}
-												{#if resumeError}
-													<p class="text-sm text-red-400">Error: {resumeError}</p>
-												{/if}
-											{:else}
-												<button
-													onclick={() => cancelSubscription()}
-													disabled={cancelLoading}
-													class="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
-												>
-													{cancelLoading ? 'Processing...' : 'End at renewal'}
-												</button>
-												<p class="text-xs text-text-secondary-light">
-													Studio access stays active through the current billing period.
+													Membership billing
 												</p>
-												{#if cancelSuccess}
-													<p class="text-sm text-green-400">
-														Studio will end at the close of the current billing period.
+												<div class="mt-3 grid grid-cols-2 gap-3 text-sm text-text-secondary-light">
+													<span>Status</span>
+													<span class="text-right font-medium text-text-primary-light">
+														{data.subscription.status}
+														{#if data.subscription.cancel_at_period_end}
+															<span class="text-orange-400"> (ends at renewal)</span>
+														{/if}
+													</span>
+
+													<span>Plan</span>
+													<span class="text-right font-medium text-text-primary-light">
+														{normalizePlanName(data.subscription.plan?.name)}
+													</span>
+
+													<span>Renews or ends</span>
+													<span class="text-right font-medium text-text-primary-light">
+														{data.subscription.current_period_end
+															? formatDate(data.subscription.current_period_end)
+															: 'N/A'}
+													</span>
+												</div>
+											</div>
+
+											<div class="mt-4 space-y-3">
+												{#if !membershipState?.canManageSubscription && membershipState?.managementBlockedReason}
+													<div
+														class="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-300"
+													>
+														{membershipState.managementBlockedReason}
+													</div>
+												{:else if data.subscription.cancel_at_period_end}
+													<button
+														onclick={() => resumeSubscription()}
+														disabled={resumeLoading}
+														class="w-full rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/20 disabled:opacity-50"
+													>
+														{resumeLoading ? 'Processing...' : 'Keep Studio active'}
+													</button>
+													{#if resumeSuccess}
+														<p class="text-sm text-green-400">
+															Studio will continue renewing automatically.
+														</p>
+													{/if}
+													{#if resumeError}
+														<p class="text-sm text-red-400">Error: {resumeError}</p>
+													{/if}
+												{:else}
+													<button
+														onclick={() => cancelSubscription()}
+														disabled={cancelLoading}
+														class="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+													>
+														{cancelLoading ? 'Processing...' : 'End at renewal'}
+													</button>
+													<p class="text-xs text-text-secondary-light">
+														Studio access stays active through the current billing period.
 													</p>
+													{#if cancelSuccess}
+														<p class="text-sm text-green-400">
+															Studio will end at the close of the current billing period.
+														</p>
+													{/if}
+													{#if cancelError}
+														<p class="text-sm text-red-400">Error: {cancelError}</p>
+													{/if}
 												{/if}
-												{#if cancelError}
-													<p class="text-sm text-red-400">Error: {cancelError}</p>
-												{/if}
-											{/if}
+											</div>
+										{:else}
+											<div
+												class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4 text-sm text-text-secondary-light"
+											>
+												{product.inactiveStateCopy}
+											</div>
+										{/if}
+									{:else if product.family === 'api_plan'}
+										<div
+											class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4"
+										>
+											<p class="text-sm leading-7 text-text-secondary-light">
+												{apiState?.description}
+											</p>
+											<p class="mt-2 text-sm text-text-secondary-light">{apiState?.note}</p>
+										</div>
+									{:else if product.family === 'ppi_addon'}
+										<div
+											class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4"
+										>
+											<p class="text-sm leading-7 text-text-secondary-light">
+												{intelligenceState?.description}
+											</p>
+											<p class="mt-2 text-sm text-text-secondary-light">{intelligenceState?.note}</p>
 										</div>
 									{:else}
 										<div
 											class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4 text-sm text-text-secondary-light"
 										>
-											{product.inactiveStateCopy}
+											{product.managementCopy}
 										</div>
 									{/if}
-								{:else if product.family === 'api_plan'}
-									<div
-										class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4"
-									>
-										<p class="text-sm leading-7 text-text-secondary-light">
-											{apiState?.description}
-										</p>
-										<p class="mt-2 text-sm text-text-secondary-light">{apiState?.note}</p>
-									</div>
-								{:else if product.family === 'ppi_addon'}
-									<div
-										class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4"
-									>
-										<p class="text-sm leading-7 text-text-secondary-light">
-											{intelligenceState?.description}
-										</p>
-										<p class="mt-2 text-sm text-text-secondary-light">{intelligenceState?.note}</p>
-									</div>
-								{:else}
-									<div
-										class="mt-3 rounded-2xl border border-dashed border-border-light bg-background-primary-light p-4 text-sm text-text-secondary-light"
-									>
-										{product.managementCopy}
-									</div>
-								{/if}
-							</div>
+								</div>
+							{/if}
 
 							{#if product.intervals?.length}
 								<div class="mt-5 grid gap-3 sm:grid-cols-2">
