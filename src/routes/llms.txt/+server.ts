@@ -25,7 +25,6 @@ export const GET: RequestHandler = async ({ url }) => {
 - [Parchment API](${baseUrl}/api): Public API overview, product positioning, and entry point for Parchment API.
 - [Developer Docs](${baseUrl}/docs): Canonical public docs for the HTTP API, CLI, auth contexts, and integration guides.
 - [Catalog API Docs](${baseUrl}/docs/api/catalog): Canonical contract for GET /v1/catalog, including anonymous and API-key usage.
-- [Parchment Console](${baseUrl}/api-dashboard): Authenticated console for API keys, usage analytics, and billing state.
 
 ## Blog Posts
 
