@@ -271,20 +271,18 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 	const stockedFilter: boolean | null =
 		stockedParam === 'false' ? false : stockedParam === 'all' ? null : true;
 
-<<<<<<< HEAD
 	const rawSortField = url.searchParams.get('sortField');
 	const rawSortDirection = url.searchParams.get('sortDirection');
 
 	if (rawSortDirection !== null && rawSortDirection !== 'asc' && rawSortDirection !== 'desc') {
 		throw new CatalogQueryValidationError('sortDirection', rawSortDirection, 'asc or desc');
 	}
-=======
+
 	const countryParams = url.searchParams.getAll('country').filter(Boolean);
 	const countryFilter =
 		countryParams.length > 1
 			? countryParams
 			: (countryParams[0] ?? url.searchParams.get('country') ?? undefined);
->>>>>>> origin/main
 
 	return {
 		ids,
@@ -310,15 +308,24 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 			appearance: url.searchParams.get('appearance') ?? undefined,
 			name: url.searchParams.get('name') ?? undefined,
 			region: url.searchParams.get('region') ?? undefined,
-			scoreValueMin: parseStrictNumber('score_value_min', url.searchParams.get('score_value_min')),
-			scoreValueMax: parseStrictNumber('score_value_max', url.searchParams.get('score_value_max')),
+			scoreValueMin:
+				url.searchParams.get('score_value_min') !== null
+					? parseRequiredNumber(url.searchParams.get('score_value_min')!, 'score_value_min')
+					: undefined,
+			scoreValueMax:
+				url.searchParams.get('score_value_max') !== null
+					? parseRequiredNumber(url.searchParams.get('score_value_max')!, 'score_value_max')
+					: undefined,
 			// cost_lb_* remains as a deprecated compatibility alias. The actual filter
 			// source of truth is price_per_lb, so prefer the canonical params when present.
 			pricePerLbMin: parseOptionalNumberFromAliases(url, 'price_per_lb_min', 'cost_lb_min'),
 			pricePerLbMax: parseOptionalNumberFromAliases(url, 'price_per_lb_max', 'cost_lb_max'),
 			arrivalDate: url.searchParams.get('arrival_date') ?? undefined,
 			stockedDate: url.searchParams.get('stocked_date') ?? undefined,
-			stockedDays: parseStrictPositiveInteger('stocked_days', url.searchParams.get('stocked_days'))
+			stockedDays:
+				url.searchParams.get('stocked_days') !== null
+					? parseRequiredPositiveInteger(url.searchParams.get('stocked_days')!, 'stocked_days')
+					: undefined
 		}
 	};
 }
