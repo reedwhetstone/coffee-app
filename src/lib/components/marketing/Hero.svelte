@@ -24,7 +24,7 @@
 	}
 
 	function handleSecondaryAction() {
-		goto(isSignedIn ? '/dashboard' : '/subscription');
+		goto(isSignedIn ? '/dashboard' : '/auth');
 	}
 
 	function handleLearnMore() {
@@ -45,7 +45,7 @@
 				</div>
 			{/if}
 			<h1 class="text-center text-4xl font-bold tracking-tight text-text-primary-light sm:text-6xl">
-				A better way to source green coffee
+				Green Coffee Intelligence, Built for Roasters.
 			</h1>
 		</div>
 		<div class="mx-auto max-w-3xl text-center">
@@ -63,13 +63,13 @@
 					onclick={handlePrimaryAction}
 					class="w-full rounded-md bg-background-tertiary-light px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-background-tertiary-light sm:w-auto"
 				>
-					Browse catalog
+					Browse live catalog
 				</button>
 				<button
 					onclick={handleSecondaryAction}
 					class="w-full rounded-md border border-background-tertiary-light px-6 py-3 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:w-auto"
 				>
-					{isSignedIn ? 'Open dashboard' : 'See plans'}
+					{isSignedIn ? 'Open dashboard' : 'Create free account'}
 				</button>
 				<button
 					onclick={handleLearnMore}
