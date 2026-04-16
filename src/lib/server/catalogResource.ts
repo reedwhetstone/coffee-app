@@ -147,11 +147,43 @@ function parsePositiveInteger(value: string | null, fallback: number): number {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseRequiredPositiveInteger(value: string, parameter: string): number {
+	if (!/^\d+$/.test(value)) {
+		throw new CatalogQueryValidationError(parameter, value, 'positive integer');
+	}
+
+	const parsed = Number.parseInt(value, 10);
+	if (!Number.isFinite(parsed) || parsed <= 0) {
+		throw new CatalogQueryValidationError(parameter, value, 'positive integer');
+	}
+
+	return parsed;
+}
+
 function parseOptionalPositiveInteger(value: string | null): number | undefined {
 	if (!value) return undefined;
 	if (!/^\d+$/.test(value)) return undefined;
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function parseRequiredNumber(value: string, parameter: string): number {
+	const trimmed = value.trim();
+	if (!trimmed) {
+		throw new CatalogQueryValidationError(parameter, value, 'number');
+	}
+
+	const numericPattern = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/;
+	if (!numericPattern.test(trimmed)) {
+		throw new CatalogQueryValidationError(parameter, value, 'number');
+	}
+
+	const parsed = Number.parseFloat(trimmed);
+	if (!Number.isFinite(parsed)) {
+		throw new CatalogQueryValidationError(parameter, value, 'number');
+	}
+
+	return parsed;
 }
 
 function parseOptionalNumber(value: string | null): number | undefined {
@@ -179,9 +211,28 @@ function validateCatalogQuery(url: URL): void {
 		throw new CatalogQueryValidationError('stocked_date', stockedDate, 'YYYY-MM-DD');
 	}
 
-	const stockedDays = url.searchParams.get('stocked_days');
-	if (stockedDays !== null && parseOptionalPositiveInteger(stockedDays) === undefined) {
-		throw new CatalogQueryValidationError('stocked_days', stockedDays, 'positive integer');
+	const positiveIntegerParams = ['page', 'limit', 'stocked_days'];
+	for (const parameter of positiveIntegerParams) {
+		const value = url.searchParams.get(parameter);
+		if (value !== null) {
+			parseRequiredPositiveInteger(value, parameter);
+		}
+	}
+
+	const numberParams = [
+		'price_per_lb_min',
+		'price_per_lb_max',
+		'cost_lb_min',
+		'cost_lb_max',
+		'score_value_min',
+		'score_value_max'
+	];
+
+	for (const parameter of numberParams) {
+		const value = url.searchParams.get(parameter);
+		if (value !== null) {
+			parseRequiredNumber(value, parameter);
+		}
 	}
 }
 
@@ -192,8 +243,9 @@ function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
 
 function parseOptionalNumberFromAliases(url: URL, ...paramNames: string[]): number | undefined {
 	for (const paramName of paramNames) {
-		const value = parseOptionalNumber(url.searchParams.get(paramName));
-		if (value !== undefined) return value;
+		const rawValue = url.searchParams.get(paramName);
+		if (rawValue === null) continue;
+		return parseRequiredNumber(rawValue, paramName);
 	}
 
 	return undefined;

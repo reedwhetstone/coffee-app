@@ -362,7 +362,8 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Query parameters',
 				body: [
-					'If page is supplied without limit, the route uses a 15-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the 100-row default listing contract.'
+					'If page is supplied without limit, the route uses a 15-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the 100-row default listing contract.',
+					'Malformed numeric params now fail closed with 400 responses instead of silently falling back. That applies to page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases.'
 				],
 				table: {
 					headers: ['Parameter', 'Type', 'Default', 'Description'],
@@ -372,7 +373,7 @@ const docsPages: DocsPage[] = [
 							'limit',
 							'integer',
 							'100 when page and limit are both omitted; otherwise 15 fallback',
-							'Rows per page before any plan cap is applied.'
+							'Rows per page before any plan cap is applied. Invalid values return 400.'
 						],
 						[
 							'ids',

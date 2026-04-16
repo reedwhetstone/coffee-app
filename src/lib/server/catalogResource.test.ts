@@ -347,6 +347,41 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		['limit', 'abc', 'positive integer'],
+		['page', 'zero', 'positive integer'],
+		['price_per_lb_min', 'cheap', 'number'],
+		['score_value_max', 'high', 'number']
+	])(
+		'rejects invalid %s value %s with a structured 400 response',
+		async (parameter, value, expected) => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: false,
+				primaryAppRole: null,
+				apiPlan: null
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(false);
+
+			const response = await buildCanonicalCatalogResponse(
+				makeEvent(`https://app.test/v1/catalog?${parameter}=${value}`)
+			);
+			const body = await response.json();
+
+			expect(response.status).toBe(400);
+			expect(body).toEqual({
+				error: 'Invalid query parameter',
+				message: `Query parameter "${parameter}" must use ${expected} format`,
+				details: {
+					parameter,
+					value,
+					expected
+				}
+			});
+			expect(mockSearchCatalog).not.toHaveBeenCalled();
+		}
+	);
+
 	it.each(['abc', '-1', '3.5', '0', '7abc'])(
 		'rejects invalid stocked_days value %s with a structured 400 response',
 		async (stockedDays) => {
