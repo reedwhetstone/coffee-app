@@ -27,7 +27,7 @@
 				Parchment API
 			</p>
 			<h1 class="mt-3 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-				41+ importers. One API. Daily updates.
+				Green coffee data from 41+ importers. One API. Daily updates.
 			</h1>
 			<p class="mt-5 text-lg leading-relaxed text-text-secondary-light">
 				Normalized pricing, availability, and supplier coverage across 41+ US specialty importers.

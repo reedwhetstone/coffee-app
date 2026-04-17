@@ -4,13 +4,16 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { sanitizeNextPath } from '$lib/utils/safeRedirect';
 
 	let { data } = $props<{ data: PageData }>();
 
 	let loading = $state(false);
 	let error = $state('');
 
-	const nextUrl = $derived(page.url.searchParams.get('next') ?? '/dashboard');
+	// Restrict ?next= to internal paths only — a raw value would allow an
+	// attacker to bounce newly signed-in users to an external phishing page.
+	const nextUrl = $derived(sanitizeNextPath(page.url.searchParams.get('next'), '/dashboard'));
 	const hasCheckoutIntent = $derived(page.url.searchParams.get('intent') === 'checkout');
 
 	async function handleGoogleSignIn() {

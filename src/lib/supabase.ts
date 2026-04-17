@@ -1,5 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { sanitizeNextPath } from './utils/safeRedirect';
 import type { Database } from './types/database.types';
 
 export const createClient = (
@@ -28,7 +29,9 @@ export const signInWithGoogle = (
 	supabase: ReturnType<typeof createClient>,
 	nextUrl: string = '/dashboard'
 ) => {
-	const next = encodeURIComponent(nextUrl);
+	// Defense in depth: even if a caller forwards a tainted value, only allow
+	// internal paths to ride through the OAuth redirect chain.
+	const next = encodeURIComponent(sanitizeNextPath(nextUrl, '/dashboard'));
 
 	return supabase.auth.signInWithOAuth({
 		provider: 'google',
