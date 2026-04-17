@@ -53,7 +53,8 @@
 			family: 'ppi_addon',
 			name: 'Parchment Intelligence',
 			eyebrow: 'Analytics flagship',
-			headline: 'Supplier comparisons, arrivals and delistings, origin benchmarks, and the weekly procurement brief.',
+			headline:
+				'Supplier comparisons, arrivals and delistings, origin benchmarks, and the weekly procurement brief.',
 			description:
 				'Parchment Intelligence gives sourcing pros the full market view: supplier health, arriving and departing lots, origin benchmarks, and price history depth across 41+ US importers.',
 			features: [
@@ -63,10 +64,8 @@
 				'Origin benchmarks and price history depth',
 				'Extended trend detail across the full analytics surface'
 			],
-			managementCopy:
-				'Manage Parchment Intelligence billing and access here.',
-			anonymousStateCopy:
-				'Sign in to see what is on this account.',
+			managementCopy: 'Manage Parchment Intelligence billing and access here.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
 			activeStateCopy: 'Parchment Intelligence is active on this account.',
 			inactiveStateCopy: 'Parchment Intelligence is not active on this account yet.',
 			ctaLabel: 'Start Intelligence',
@@ -105,8 +104,7 @@
 			],
 			managementCopy:
 				'Your current API tier is shown here so billing stays clear and separate from Studio.',
-			anonymousStateCopy:
-				'Sign in to see what is on this account.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
 			activeStateCopy: 'This account has paid API access.',
 			inactiveStateCopy: 'This account is on the free Green tier.',
 			ctaLabel: 'Upgrade to Origin',
@@ -135,10 +133,8 @@
 				'Profit and margin tracking across production',
 				'Workspace tools for team handoff and day-to-day operations'
 			],
-			managementCopy:
-				'Review your Studio membership, renewal timing, and billing here.',
-			anonymousStateCopy:
-				'Sign in to see what is on this account.',
+			managementCopy: 'Review your Studio membership, renewal timing, and billing here.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
 			activeStateCopy: 'Studio is active on this account.',
 			inactiveStateCopy: 'No Studio membership is attached to this account yet.',
 			ctaLabel: 'Start Studio',
@@ -166,7 +162,8 @@
 			family: 'enterprise',
 			name: 'Enterprise',
 			eyebrow: 'Custom commercial needs',
-			headline: 'Tailored integrations, embedded analytics, and commercial terms for teams that need more than self-serve.',
+			headline:
+				'Tailored integrations, embedded analytics, and commercial terms for teams that need more than self-serve.',
 			description:
 				'Choose Enterprise for custom integrations, embedded analytics, procurement support, or commercial terms shaped around your workflow.',
 			features: [
@@ -175,10 +172,8 @@
 				'Procurement support and tailored delivery',
 				'Commercial support and custom contractual terms'
 			],
-			managementCopy:
-				'Enterprise engagements are managed directly with the team.',
-			anonymousStateCopy:
-				'Talk with us to map the right commercial path.',
+			managementCopy: 'Enterprise engagements are managed directly with the team.',
+			anonymousStateCopy: 'Talk with us to map the right commercial path.',
 			activeStateCopy: 'Enterprise engagements are managed directly with the team.',
 			inactiveStateCopy: 'Enterprise is available through a scoped conversation.',
 			ctaLabel: 'Talk to sales',
@@ -203,8 +198,12 @@
 	const intelligenceState = $derived(data.controlPlane?.ppi ?? null);
 	const isSignedIn = $derived(Boolean(data?.user));
 
-	// Purchase intent from URL param (set before sign-in to preserve selection)
+	// Purchase intent from URL params (set before sign-in to preserve selection).
+	// Auto-open is gated on the explicit `intent=checkout` marker so that
+	// bookmarks/shared links like `/subscription?plan=api-monthly` only highlight
+	// the card; they don't force the Stripe modal open.
 	const intendedPlanSlug = $derived(page.url.searchParams.get('plan'));
+	const hasCheckoutIntent = $derived(page.url.searchParams.get('intent') === 'checkout');
 	const intendedPurchaseKey = $derived(
 		intendedPlanSlug ? (planSlugMap[intendedPlanSlug] ?? null) : null
 	);
@@ -457,9 +456,21 @@
 			return;
 		}
 
-		// Auto-open checkout if user just signed in with a preserved plan intent
-		if (isSignedIn && intendedPurchaseKey && !isAlreadyActive(intendedPurchaseKey)) {
+		// Auto-open checkout only when the user is returning from the OAuth flow
+		// with an explicit `intent=checkout` marker. A bare `?plan=...` URL is
+		// treated as a pricing anchor, not a checkout command.
+		if (
+			isSignedIn &&
+			hasCheckoutIntent &&
+			intendedPurchaseKey &&
+			!isAlreadyActive(intendedPurchaseKey)
+		) {
 			openCheckoutByKey(intendedPurchaseKey);
+			// Strip the intent marker so a refresh of this URL doesn't
+			// re-launch the modal. Leave `plan=` intact so the card stays
+			// highlighted for context.
+			url.searchParams.delete('intent');
+			window.history.replaceState({}, '', url.toString());
 		}
 	});
 </script>
@@ -521,9 +532,7 @@
 						{isSignedIn ? 'Your account' : 'Plans'}
 					</p>
 					<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-						{isSignedIn
-							? 'Your Purveyors account.'
-							: 'Source greens with the full market in view.'}
+						{isSignedIn ? 'Your Purveyors account.' : 'Source greens with the full market in view.'}
 					</h1>
 					<p class="text-lg leading-8 text-text-secondary-light">
 						{isSignedIn
@@ -561,9 +570,7 @@
 						{isSignedIn ? 'Account overview' : 'Product line'}
 					</p>
 					<h2 class="mt-3 text-2xl font-semibold text-text-primary-light">
-						{isSignedIn
-							? 'Current access on this account'
-							: 'One platform, three access tiers'}
+						{isSignedIn ? 'Current access on this account' : 'One platform, three access tiers'}
 					</h2>
 					<p class="mt-2 text-sm leading-7 text-text-secondary-light">
 						{isSignedIn
@@ -645,7 +652,9 @@
 										</div>
 									</div>
 
-									<p class="mt-3 text-sm leading-7 text-text-secondary-light">{state.description}</p>
+									<p class="mt-3 text-sm leading-7 text-text-secondary-light">
+										{state.description}
+									</p>
 
 									{#if product.family === 'membership'}
 										<p class="mt-3 text-sm text-text-secondary-light">{product.managementCopy}</p>
@@ -748,7 +757,9 @@
 											<p class="text-sm leading-7 text-text-secondary-light">
 												{intelligenceState?.description}
 											</p>
-											<p class="mt-2 text-sm text-text-secondary-light">{intelligenceState?.note}</p>
+											<p class="mt-2 text-sm text-text-secondary-light">
+												{intelligenceState?.note}
+											</p>
 										</div>
 									{:else}
 										<div
