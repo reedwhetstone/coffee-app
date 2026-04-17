@@ -320,12 +320,13 @@ describe('buildCanonicalCatalogResponse', () => {
 
 	it('prefers canonical price_per_lb query params for per-pound price filtering', async () => {
 		mockResolvePrincipal.mockResolvedValue({
-			isAuthenticated: false,
-			primaryAppRole: null,
-			apiPlan: null
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: null,
+			session: { access_token: 'cookie-token' }
 		});
 		mockIsApiKeyPrincipal.mockReturnValue(false);
-		mockIsSessionPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
 
 		await buildCanonicalCatalogResponse(
 			makeEvent(
@@ -344,12 +345,13 @@ describe('buildCanonicalCatalogResponse', () => {
 
 	it('maps deprecated cost_lb query params onto price_per_lb filtering for compatibility', async () => {
 		mockResolvePrincipal.mockResolvedValue({
-			isAuthenticated: false,
-			primaryAppRole: null,
-			apiPlan: null
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: null,
+			session: { access_token: 'cookie-token' }
 		});
 		mockIsApiKeyPrincipal.mockReturnValue(false);
-		mockIsSessionPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
 
 		await buildCanonicalCatalogResponse(
 			makeEvent('https://app.test/v1/catalog?cost_lb_min=6.5&cost_lb_max=7.75')
@@ -518,8 +520,8 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
-				sortField: 'stocked_date',
-				sortDirection: 'desc',
+				orderBy: 'stocked_date',
+				orderDirection: 'desc',
 				publicOnly: true,
 				stockedFilter: true
 			})
@@ -843,12 +845,13 @@ describe('buildCanonicalCatalogResponse', () => {
 	describe('stocked query parameter', () => {
 		beforeEach(() => {
 			mockResolvePrincipal.mockResolvedValue({
-				isAuthenticated: false,
-				primaryAppRole: null,
-				apiPlan: null
+				isAuthenticated: true,
+				primaryAppRole: 'viewer',
+				apiPlan: null,
+				session: { access_token: 'cookie-token' }
 			});
 			mockIsApiKeyPrincipal.mockReturnValue(false);
-			mockIsSessionPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(true);
 		});
 
 		it('passes stockedFilter=true to searchCatalog when stocked=true is set', async () => {
@@ -893,12 +896,13 @@ describe('buildCanonicalCatalogResponse', () => {
 	describe('origin query parameter', () => {
 		beforeEach(() => {
 			mockResolvePrincipal.mockResolvedValue({
-				isAuthenticated: false,
-				primaryAppRole: null,
-				apiPlan: null
+				isAuthenticated: true,
+				primaryAppRole: 'viewer',
+				apiPlan: null,
+				session: { access_token: 'cookie-token' }
 			});
 			mockIsApiKeyPrincipal.mockReturnValue(false);
-			mockIsSessionPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(true);
 		});
 
 		it('passes origin to searchCatalog when origin param is set', async () => {
@@ -955,12 +959,13 @@ describe('buildCanonicalCatalogResponse', () => {
 	describe('dropdown path stocked filtering', () => {
 		beforeEach(() => {
 			mockResolvePrincipal.mockResolvedValue({
-				isAuthenticated: false,
-				primaryAppRole: null,
-				apiPlan: null
+				isAuthenticated: true,
+				primaryAppRole: 'viewer',
+				apiPlan: null,
+				session: { access_token: 'cookie-token' }
 			});
 			mockIsApiKeyPrincipal.mockReturnValue(false);
-			mockIsSessionPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(true);
 		});
 
 		it('passes stockedFilter=true to getCatalogDropdown when stocked=true is set', async () => {
@@ -1034,12 +1039,13 @@ describe('buildLegacyAppCatalogResponse', () => {
 
 	it('preserves the legacy paginated shape for compatibility consumers', async () => {
 		mockResolvePrincipal.mockResolvedValue({
-			isAuthenticated: false,
-			primaryAppRole: null,
-			apiPlan: null
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: null,
+			session: { access_token: 'cookie-token' }
 		});
 		mockIsApiKeyPrincipal.mockReturnValue(false);
-		mockIsSessionPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
 
 		const response = await buildLegacyAppCatalogResponse(
 			makeEvent('https://app.test/api/catalog?page=2&limit=10')
