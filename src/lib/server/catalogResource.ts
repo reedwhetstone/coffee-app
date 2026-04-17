@@ -6,6 +6,14 @@ import {
 	type CatalogItem
 } from '$lib/data/catalog';
 import {
+	ANONYMOUS_ALLOWED_FILTER_PARAM_LIST,
+	ANONYMOUS_ALLOWED_QUERY_PARAMS,
+	ANONYMOUS_API_PAGE_LIMIT,
+	ANONYMOUS_DEFAULT_SORT_DIRECTION,
+	ANONYMOUS_DEFAULT_SORT_FIELD,
+	DEFAULT_API_PAGE_LIMIT
+} from '$lib/catalog/publicCatalogContract';
+import {
 	checkRateLimit,
 	getApiRowLimit,
 	logApiUsage,
@@ -116,18 +124,8 @@ interface CatalogAccessContext {
 interface QueryCatalogDataOptions {
 	forceDefaultPagination?: boolean;
 }
-
-const DEFAULT_API_PAGE_LIMIT = 100;
-const ANONYMOUS_API_PAGE_LIMIT = 15;
 const ISO_DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const ANONYMOUS_ALLOWED_FILTER_PARAMS = ['country', 'processing', 'name'] as const;
-const ANONYMOUS_ALLOWED_QUERY_PARAMS = new Set<string>([
-	'page',
-	'limit',
-	'sortField',
-	'sortDirection',
-	...ANONYMOUS_ALLOWED_FILTER_PARAMS
-]);
+const ANONYMOUS_ALLOWED_QUERY_PARAM_SET = new Set<string>(ANONYMOUS_ALLOWED_QUERY_PARAMS);
 
 class CatalogRateLimitError extends Error {
 	constructor(
@@ -427,17 +425,17 @@ function enforceAnonymousCatalogContract(
 	if (!publicOnly) {
 		return query;
 	}
-	if (query.sortField && query.sortField !== 'stocked_date') {
+	if (query.sortField && query.sortField !== ANONYMOUS_DEFAULT_SORT_FIELD) {
 		throw new CatalogAnonymousContractError(
 			'sortField',
-			'Anonymous catalog requests only support the default sort stocked_date desc'
+			`Anonymous catalog requests only support the default sort ${ANONYMOUS_DEFAULT_SORT_FIELD} ${ANONYMOUS_DEFAULT_SORT_DIRECTION}`
 		);
 	}
 
-	if (query.sortDirection && query.sortDirection !== 'desc') {
+	if (query.sortDirection && query.sortDirection !== ANONYMOUS_DEFAULT_SORT_DIRECTION) {
 		throw new CatalogAnonymousContractError(
 			'sortDirection',
-			'Anonymous catalog requests only support the default sort stocked_date desc'
+			`Anonymous catalog requests only support the default sort ${ANONYMOUS_DEFAULT_SORT_FIELD} ${ANONYMOUS_DEFAULT_SORT_DIRECTION}`
 		);
 	}
 	if (query.ids.length > 0) {
@@ -462,10 +460,10 @@ function enforceAnonymousCatalogContract(
 	}
 
 	for (const [param] of url.searchParams.entries()) {
-		if (!ANONYMOUS_ALLOWED_QUERY_PARAMS.has(param)) {
+		if (!ANONYMOUS_ALLOWED_QUERY_PARAM_SET.has(param)) {
 			throw new CatalogAnonymousContractError(
 				param,
-				`Anonymous catalog requests only allow filters: ${ANONYMOUS_ALLOWED_FILTER_PARAMS.join(', ')}`
+				`Anonymous catalog requests only allow filters: ${ANONYMOUS_ALLOWED_FILTER_PARAM_LIST}`
 			);
 		}
 	}
@@ -476,8 +474,8 @@ function enforceAnonymousCatalogContract(
 		limit: Math.min(query.limit, ANONYMOUS_API_PAGE_LIMIT),
 		offset: 0,
 		isPaginated: true,
-		sortField: 'stocked_date',
-		sortDirection: 'desc',
+		sortField: ANONYMOUS_DEFAULT_SORT_FIELD,
+		sortDirection: ANONYMOUS_DEFAULT_SORT_DIRECTION,
 		showWholesale: false,
 		wholesaleOnly: false,
 		filters: {
