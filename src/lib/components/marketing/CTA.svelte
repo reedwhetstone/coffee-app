@@ -14,11 +14,11 @@
 	let isSignedIn = $derived(Boolean(session?.user));
 
 	function handlePrimaryAction() {
-		goto('/catalog');
+		goto('/analytics');
 	}
 
 	function handleSecondaryAction() {
-		goto(isSignedIn ? '/dashboard' : '/subscription');
+		goto(isSignedIn ? '/subscription' : '/subscription');
 	}
 </script>
 
@@ -26,15 +26,15 @@
 	<div class="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-				Start with live coffee availability, then go deeper if you need to
+				Stop guessing on price. Source with the full market in view.
 			</h2>
 			<p class="mx-auto mt-6 max-w-xl text-lg leading-8 text-orange-100">
 				{#if isSignedIn}
-					Keep sourcing in the public catalog, or head back to your dashboard to continue the rest
-					of your workflow.
+					41+ importers. Daily pricing. Arrivals and delistings tracked. Your next procurement call
+					starts here.
 				{:else}
-					Browse the catalog first. When you are ready, move into Mallard Studio for workflow,
-					Parchment API for structured data, or Parchment Intelligence for deeper market visibility.
+					Daily-normalized data from 41+ US specialty importers. Price movement, origin benchmarks,
+					and supplier coverage in one analytics surface built for green coffee buyers.
 				{/if}
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
@@ -42,20 +42,14 @@
 					onclick={handlePrimaryAction}
 					class="w-full rounded-md bg-white px-6 py-3 text-sm font-semibold text-background-tertiary-light shadow-sm transition-all duration-200 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:w-auto"
 				>
-					Browse catalog
+					{isSignedIn ? 'Open market analytics' : 'Explore market analytics'}
 				</button>
 				<button
 					onclick={handleSecondaryAction}
 					class="w-full rounded-md border border-orange-100 px-6 py-3 text-sm font-semibold text-orange-100 transition-all duration-200 hover:bg-orange-100 hover:text-background-tertiary-light sm:w-auto"
 				>
-					{isSignedIn ? 'Open dashboard' : 'See plans'}
+					{isSignedIn ? 'Add Intelligence' : 'See plans'}
 				</button>
-				<a
-					href="/api"
-					class="text-sm font-semibold leading-6 text-orange-100 transition-colors duration-200 hover:text-white"
-				>
-					Get API access <span aria-hidden="true">→</span>
-				</a>
 			</div>
 			<div
 				class="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-orange-100"
@@ -68,7 +62,7 @@
 							clip-rule="evenodd"
 						/>
 					</svg>
-					Live supplier catalog
+					41+ importers tracked daily
 				</div>
 				<div class="flex items-center gap-x-2">
 					<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -78,7 +72,7 @@
 							clip-rule="evenodd"
 						/>
 					</svg>
-					Clear product paths
+					90+ days price history
 				</div>
 				<div class="flex items-center gap-x-2">
 					<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -88,7 +82,7 @@
 							clip-rule="evenodd"
 						/>
 					</svg>
-					Buyer-first funnel
+					Arrivals and delistings feed
 				</div>
 			</div>
 		</div>

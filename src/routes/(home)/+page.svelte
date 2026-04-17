@@ -22,24 +22,23 @@
 			<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 				<div class="mb-12 text-center">
 					<h2 class="text-3xl font-bold text-text-primary-light sm:text-4xl">
-						Browse current coffees before you commit to anything else
+						Current offer list across 41+ importers.
 					</h2>
 					<p class="mx-auto mt-4 max-w-3xl text-lg text-text-secondary-light">
-						See recent supplier availability in one place, compare likely fits faster, and move into
-						workflow, API, or analytics tools only if you need them.
+						Live green coffee availability from US specialty importers, normalized by origin,
+						process, score, and price. Updated daily.
 					</p>
 				</div>
 
 				<div class="mb-8 text-center">
 					{#if isSignedIn}
 						<p class="text-text-secondary-light">
-							Keep using the public market view to source, then return to your dashboard when you
-							need operations tools.
+							See what is on offer today. Head to analytics for market context, or to your dashboard
+							for production workflows.
 						</p>
 					{:else}
 						<p class="text-text-secondary-light">
-							The catalog is open now. Create an account later if you want saved work or paid
-							access.
+							The catalog is public. Sign in to save searches or access Intelligence features.
 						</p>
 					{/if}
 				</div>
@@ -56,11 +55,11 @@
 					>
 						{#if isSignedIn}
 							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
-								Keep comparing coffees, or return to your workspace
+								See the full catalog or check market analytics.
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Open your dashboard for Mallard Studio workflows, or stay in the catalog to keep
-								sourcing.
+								Browse all current lots or pull up price movement and origin benchmarks for your
+								next sourcing call.
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 								<button
@@ -70,10 +69,10 @@
 									Browse full catalog
 								</button>
 								<button
-									onclick={() => goto('/dashboard')}
+									onclick={() => goto('/analytics')}
 									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 								>
-									Open dashboard
+									Market analytics
 								</button>
 							</div>
 							{#if canAccessMemberRoutes}
@@ -94,31 +93,31 @@
 							{/if}
 						{:else}
 							<h3 class="mb-2 text-xl font-semibold text-text-primary-light">
-								Start with the catalog, then choose the right next step
+								Ready to source with the full market in view?
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Use the public catalog to compare coffees first. Move into Mallard Studio, Parchment
-								API, or Parchment Intelligence only when your work calls for it.
+								Market analytics, supplier coverage, and origin benchmarks from 41+ importers.
+								Free to explore.
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 								<button
-									onclick={() => goto('/catalog')}
+									onclick={() => goto('/analytics')}
 									class="rounded-md bg-background-tertiary-light px-8 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+								>
+									Explore market analytics
+								</button>
+								<button
+									onclick={() => goto('/catalog')}
+									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 								>
 									Browse full catalog
 								</button>
-								<button
-									onclick={() => goto('/subscription')}
-									class="rounded-md border border-background-tertiary-light px-6 py-3 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-								>
-									See plans
-								</button>
 							</div>
 							<p class="mt-4 text-sm text-text-secondary-light">
-								Need structured data instead? <a
+								Need structured data? <a
 									href="/api"
 									class="font-medium text-background-tertiary-light hover:underline"
-									>Explore the API</a
+									>Parchment API</a
 								>.
 							</p>
 						{/if}

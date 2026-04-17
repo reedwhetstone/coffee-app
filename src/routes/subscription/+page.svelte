@@ -2,6 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import StripeCheckout from './StripeCheckout.svelte';
 	import { signInWithGoogle } from '$lib/supabase';
 	import { BILLING_PURCHASE_KEYS, type BillingPurchaseKey } from '$lib/billing/purchaseKeys';
@@ -17,6 +18,7 @@
 		price: string;
 		interval: string;
 		badge?: string;
+		planSlug: string;
 	}
 
 	interface ProductCard {
@@ -37,24 +39,103 @@
 		learnMoreHref?: string;
 	}
 
+	// Plan slug to purchase key mapping for intent preservation
+	const planSlugMap: Record<string, BillingPurchaseKey> = {
+		'intelligence-monthly': BILLING_PURCHASE_KEYS.ppiAddonMonthly,
+		'intelligence-annual': BILLING_PURCHASE_KEYS.ppiAddonAnnual,
+		'studio-monthly': BILLING_PURCHASE_KEYS.membershipMonthly,
+		'studio-annual': BILLING_PURCHASE_KEYS.membershipAnnual,
+		'api-monthly': BILLING_PURCHASE_KEYS.apiPlanMonthly
+	};
+
 	const productCards: ProductCard[] = [
+		{
+			family: 'ppi_addon',
+			name: 'Parchment Intelligence',
+			eyebrow: 'Analytics flagship',
+			headline:
+				'Supplier comparisons, arrivals and delistings, origin benchmarks, and the weekly procurement brief.',
+			description:
+				'Parchment Intelligence gives sourcing pros the full market view: supplier health, arriving and departing lots, origin benchmarks, and price history depth across 41+ US importers.',
+			features: [
+				'Weekly procurement brief with market movements and notable arrivals',
+				'Supplier comparisons and supplier health scoring',
+				'Arrivals feed and delisting alerts by origin and supplier',
+				'Origin benchmarks and price history depth',
+				'Extended trend detail across the full analytics surface'
+			],
+			managementCopy: 'Manage Parchment Intelligence billing and access here.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
+			activeStateCopy: 'Parchment Intelligence is active on this account.',
+			inactiveStateCopy: 'Parchment Intelligence is not active on this account yet.',
+			ctaLabel: 'Start Intelligence',
+			activeCtaLabel: 'Intelligence active',
+			intervals: [
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonMonthly,
+					label: 'Monthly',
+					price: '$39',
+					interval: '/month',
+					planSlug: 'intelligence-monthly'
+				},
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonAnnual,
+					label: 'Annual',
+					price: '$350',
+					interval: '/year',
+					badge: 'Save $118/year',
+					planSlug: 'intelligence-annual'
+				}
+			],
+			learnMoreHref: '/analytics'
+		},
+		{
+			family: 'api_plan',
+			name: 'Parchment API',
+			eyebrow: 'Data access',
+			headline: 'Normalized green coffee data from 41+ suppliers through one REST API.',
+			description:
+				'Start with the free Green tier to evaluate the dataset, then move to Origin for production integrations, higher rate limits, and an account-aware console.',
+			features: [
+				'Daily-updated catalog from 41+ US specialty importers',
+				'Consistent schema across all supplier sources',
+				'Origin tier for production integrations and higher usage limits',
+				'Parchment Console for API keys, docs, and usage visibility'
+			],
+			managementCopy:
+				'Your current API tier is shown here so billing stays clear and separate from Studio.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
+			activeStateCopy: 'This account has paid API access.',
+			inactiveStateCopy: 'This account is on the free Green tier.',
+			ctaLabel: 'Upgrade to Origin',
+			activeCtaLabel: 'API plan active',
+			intervals: [
+				{
+					purchaseKey: BILLING_PURCHASE_KEYS.apiPlanMonthly,
+					label: 'Origin',
+					price: '$99',
+					interval: '/month',
+					planSlug: 'api-monthly'
+				}
+			],
+			learnMoreHref: '/api'
+		},
 		{
 			family: 'membership',
 			name: 'Mallard Studio',
-			eyebrow: 'For roasters and operators',
-			headline: 'Run inventory, roasting, cupping, and margin tracking in one place.',
+			eyebrow: 'Roaster operations',
+			headline: 'Inventory, roast logs, and profit tracking for roasters running production.',
 			description:
 				'Mallard Studio is the operating workspace for coffee teams that need cleaner production workflows, better record-keeping, and fewer spreadsheets.',
 			features: [
-				'Inventory, roast logs, cupping notes, and profit workflows',
-				'Workspace tools for day-to-day production and team handoff',
-				'CLI access for the same operating environment'
+				'Green coffee inventory and lot tracking',
+				'Roast logs with profile charting and cupping notes',
+				'Profit and margin tracking across production',
+				'Workspace tools for team handoff and day-to-day operations'
 			],
-			managementCopy:
-				'Review your Studio membership, renewal timing, and any changes to billing here.',
-			anonymousStateCopy:
-				'Sign in to check whether this account already has Studio access, or keep comparing plans first.',
-			activeStateCopy: 'Studio is active on this account and ready for day-to-day work.',
+			managementCopy: 'Review your Studio membership, renewal timing, and billing here.',
+			anonymousStateCopy: 'Sign in to see what is on this account.',
+			activeStateCopy: 'Studio is active on this account.',
 			inactiveStateCopy: 'No Studio membership is attached to this account yet.',
 			ctaLabel: 'Start Studio',
 			activeCtaLabel: 'Studio active',
@@ -63,101 +144,36 @@
 					purchaseKey: BILLING_PURCHASE_KEYS.membershipMonthly,
 					label: 'Monthly',
 					price: '$9',
-					interval: '/month'
+					interval: '/month',
+					planSlug: 'studio-monthly'
 				},
 				{
 					purchaseKey: BILLING_PURCHASE_KEYS.membershipAnnual,
 					label: 'Annual',
 					price: '$80',
 					interval: '/year',
-					badge: 'Save $28/year'
+					badge: 'Save $28/year',
+					planSlug: 'studio-annual'
 				}
 			],
 			learnMoreHref: '/catalog'
 		},
 		{
-			family: 'api_plan',
-			name: 'Parchment API',
-			eyebrow: 'For apps, agents, and data workflows',
-			headline: 'Bring normalized green coffee data into your own product or internal stack.',
-			description:
-				'Start with Green to evaluate the dataset, then move to Origin when you need production access, stronger limits, and an account-aware console.',
-			features: [
-				'Free Green tier for evaluation and testing',
-				'Origin for production integrations and higher usage',
-				'Parchment Console for keys, docs, and usage visibility'
-			],
-			managementCopy:
-				'Your current API tier appears here so billing stays clear and separate from Studio.',
-			anonymousStateCopy:
-				'Sign in to view your current API tier, or keep browsing plans if you are still evaluating.',
-			activeStateCopy: 'This account already has paid API access.',
-			inactiveStateCopy: 'This account is currently on the free Green tier.',
-			ctaLabel: 'Choose Origin',
-			activeCtaLabel: 'API plan active',
-			intervals: [
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.apiPlanMonthly,
-					label: 'Origin',
-					price: '$99',
-					interval: '/month'
-				}
-			],
-			learnMoreHref: '/api'
-		},
-		{
-			family: 'ppi_addon',
-			name: 'Parchment Intelligence',
-			eyebrow: 'For deeper sourcing visibility',
-			headline: 'Unlock supplier comparisons, health, arrivals, delistings, and origin index detail.',
-			description:
-				'Parchment Intelligence extends the public analytics surface with the premium supplier and market views used for sourcing decisions.',
-			features: [
-				'Supplier comparisons and supplier health',
-				'Arrivals, delistings, and deeper origin index visibility',
-				'Extended trend detail for the premium analytics experience'
-			],
-			managementCopy:
-				'Manage Parchment Intelligence separately so analytics access stays clear and product-specific.',
-			anonymousStateCopy:
-				'Sign in to see whether Intelligence is already enabled for this account, or compare the analytics upgrade first.',
-			activeStateCopy: 'Parchment Intelligence is already active on this account.',
-			inactiveStateCopy: 'Parchment Intelligence is not active on this account yet.',
-			ctaLabel: 'Add Intelligence',
-			activeCtaLabel: 'Intelligence active',
-			intervals: [
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonMonthly,
-					label: 'Monthly',
-					price: '$39',
-					interval: '/month'
-				},
-				{
-					purchaseKey: BILLING_PURCHASE_KEYS.ppiAddonAnnual,
-					label: 'Annual',
-					price: '$350',
-					interval: '/year',
-					badge: 'Save $118/year'
-				}
-			],
-			learnMoreHref: '/analytics'
-		},
-		{
 			family: 'enterprise',
 			name: 'Enterprise',
-			eyebrow: 'For custom commercial needs',
-			headline: 'Plan a tailored engagement for teams that need more than self-serve.',
+			eyebrow: 'Custom commercial needs',
+			headline:
+				'Tailored integrations, embedded analytics, and commercial terms for teams that need more than self-serve.',
 			description:
-				'Choose Enterprise when you need custom integrations, embedded analytics, procurement support, or commercial terms shaped around your workflow.',
+				'Choose Enterprise for custom integrations, embedded analytics, procurement support, or commercial terms shaped around your workflow.',
 			features: [
-				'Custom integrations and reporting',
+				'Custom integrations and reporting pipelines',
 				'Embedded analytics or internal dashboards',
-				'Commercial support and tailored delivery patterns'
+				'Procurement support and tailored delivery',
+				'Commercial support and custom contractual terms'
 			],
-			managementCopy:
-				'Enterprise is handled with the team directly rather than through self-serve checkout.',
-			anonymousStateCopy:
-				'If you need a tailored rollout, talk with us and we will map the right commercial path.',
+			managementCopy: 'Enterprise engagements are managed directly with the team.',
+			anonymousStateCopy: 'Talk with us to map the right commercial path.',
 			activeStateCopy: 'Enterprise engagements are managed directly with the team.',
 			inactiveStateCopy: 'Enterprise is available through a scoped conversation.',
 			ctaLabel: 'Talk to sales',
@@ -181,6 +197,25 @@
 	const apiState = $derived(data.controlPlane?.api ?? null);
 	const intelligenceState = $derived(data.controlPlane?.ppi ?? null);
 	const isSignedIn = $derived(Boolean(data?.user));
+
+	// Purchase intent from URL params (set before sign-in to preserve selection).
+	// Auto-open is gated on the explicit `intent=checkout` marker so that
+	// bookmarks/shared links like `/subscription?plan=api-monthly` only highlight
+	// the card; they don't force the Stripe modal open.
+	const intendedPlanSlug = $derived(page.url.searchParams.get('plan'));
+	const hasCheckoutIntent = $derived(page.url.searchParams.get('intent') === 'checkout');
+	const intendedPurchaseKey = $derived(
+		intendedPlanSlug ? (planSlugMap[intendedPlanSlug] ?? null) : null
+	);
+
+	// Build a sign-in href that forwards the current subscription page (with
+	// any plan/intent params) as the post-auth target, so a signed-out visitor
+	// who followed a deep-link like /subscription?plan=X&intent=checkout still
+	// lands back on the page with auto-open ready to fire after OAuth.
+	const signInHref = $derived.by(() => {
+		const next = `/subscription${page.url.search}`;
+		return `/auth?next=${encodeURIComponent(next)}`;
+	});
 
 	const toneClasses = (tone: ProductTone) => {
 		switch (tone) {
@@ -219,6 +254,39 @@
 		selectedPriceLabel = `${option.price}${option.interval}`;
 		showCheckout = true;
 	};
+
+	const openCheckoutByKey = (purchaseKey: BillingPurchaseKey) => {
+		for (const product of productCards) {
+			if (!product.intervals) continue;
+			for (const option of product.intervals) {
+				if (option.purchaseKey === purchaseKey) {
+					openCheckout(product.name, option);
+					return;
+				}
+			}
+		}
+	};
+
+	function isAlreadyActive(purchaseKey: BillingPurchaseKey): boolean {
+		if (
+			(purchaseKey === BILLING_PURCHASE_KEYS.membershipMonthly ||
+				purchaseKey === BILLING_PURCHASE_KEYS.membershipAnnual) &&
+			membershipState?.hasAccess
+		) {
+			return true;
+		}
+		if (purchaseKey === BILLING_PURCHASE_KEYS.apiPlanMonthly && apiState?.plan !== 'viewer') {
+			return true;
+		}
+		if (
+			(purchaseKey === BILLING_PURCHASE_KEYS.ppiAddonMonthly ||
+				purchaseKey === BILLING_PURCHASE_KEYS.ppiAddonAnnual) &&
+			intelligenceState?.enabled
+		) {
+			return true;
+		}
+		return false;
+	}
 
 	function getProductState(product: ProductCard) {
 		if (!isSignedIn) {
@@ -265,12 +333,10 @@
 		};
 	}
 
-	async function handleSignIn() {
-		try {
-			await signInWithGoogle(data.supabase);
-		} catch (error) {
-			console.error('Error signing in:', error);
-		}
+	// Build a sign-in URL that preserves the plan intent
+	function signInForPlan(planSlug: string) {
+		const nextUrl = `/subscription?plan=${planSlug}&intent=checkout`;
+		signInWithGoogle(data.supabase, nextUrl);
 	}
 
 	const handleCheckoutSuccess = async () => {
@@ -285,29 +351,30 @@
 		if (!isSignedIn) {
 			return [
 				{
-					label: 'Best for operators',
-					value: 'Mallard Studio',
-					description: 'Inventory, roast logging, cupping, and day-to-day production workflows.'
-				},
-				{
-					label: 'Best for product teams',
-					value: 'Parchment API',
-					description: 'Normalized coffee data for apps, agents, and internal tooling.'
-				},
-				{
-					label: 'Best for sourcing visibility',
+					label: 'Sourcing and procurement',
 					value: 'Parchment Intelligence',
 					description:
-						'Supplier comparisons, health, arrivals, delistings, and deeper market analytics.'
+						'Supplier comparisons, arrivals, delistings, origin benchmarks, and the weekly procurement brief.'
+				},
+				{
+					label: 'Data and integrations',
+					value: 'Parchment API',
+					description: 'Normalized green coffee data from 41+ suppliers through one REST API.'
+				},
+				{
+					label: 'Roaster operations',
+					value: 'Mallard Studio',
+					description: 'Inventory, roast logs, and profit tracking for production teams.'
 				}
 			];
 		}
 
 		return [
 			{
-				label: 'Mallard Studio',
-				value: membershipState?.statusLabel ?? 'Unknown',
-				description: membershipState?.sourceLabel ?? 'Membership status is unavailable right now.'
+				label: 'Parchment Intelligence',
+				value: intelligenceState?.statusLabel ?? 'Unknown',
+				description:
+					intelligenceState?.description ?? 'Intelligence details are unavailable right now.'
 			},
 			{
 				label: 'Parchment API',
@@ -315,10 +382,9 @@
 				description: apiState?.description ?? 'API plan details are unavailable right now.'
 			},
 			{
-				label: 'Parchment Intelligence',
-				value: intelligenceState?.statusLabel ?? 'Unknown',
-				description:
-					intelligenceState?.description ?? 'Intelligence details are unavailable right now.'
+				label: 'Mallard Studio',
+				value: membershipState?.statusLabel ?? 'Unknown',
+				description: membershipState?.sourceLabel ?? 'Membership status is unavailable right now.'
 			}
 		];
 	});
@@ -396,6 +462,26 @@
 		const sessionId = url.searchParams.get('session_id');
 		if (sessionId) {
 			goto(`/subscription/success?session_id=${encodeURIComponent(sessionId)}`);
+			return;
+		}
+
+		// Auto-open checkout only when the user is returning from the OAuth flow
+		// with an explicit `intent=checkout` marker. A bare `?plan=...` URL is
+		// treated as a pricing anchor, not a checkout command.
+		if (
+			isSignedIn &&
+			hasCheckoutIntent &&
+			intendedPurchaseKey &&
+			!isAlreadyActive(intendedPurchaseKey)
+		) {
+			openCheckoutByKey(intendedPurchaseKey);
+			// Strip the intent marker so a refresh of this URL doesn't
+			// re-launch the modal. Leave `plan=` intact so the card stays
+			// highlighted for context. Preserve the existing history.state
+			// object so SvelteKit's client navigation metadata (back/forward
+			// routing) isn't clobbered.
+			url.searchParams.delete('intent');
+			window.history.replaceState(window.history.state, '', url.toString());
 		}
 	});
 </script>
@@ -454,38 +540,36 @@
 					<p
 						class="text-sm font-semibold uppercase tracking-[0.2em] text-background-tertiary-light"
 					>
-						{isSignedIn ? 'Plans and account' : 'Plans and product comparison'}
+						{isSignedIn ? 'Your account' : 'Plans'}
 					</p>
 					<h1 class="text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-						{isSignedIn
-							? 'Pricing and account state in one place.'
-							: 'Choose the right product before you ever hit a dashboard.'}
+						{isSignedIn ? 'Your Purveyors account.' : 'Source greens with the full market in view.'}
 					</h1>
 					<p class="text-lg leading-8 text-text-secondary-light">
 						{isSignedIn
-							? 'Review Mallard Studio, Parchment API, Parchment Intelligence, and Enterprise in one place so you can see what is active before making a billing change.'
-							: 'Compare Mallard Studio, Parchment API, Parchment Intelligence, and Enterprise from the public site. Start with the surface that matches your workflow, then sign in only when you are ready to buy or confirm account access.'}
+							? 'Review access and billing in one place.'
+							: 'Daily-normalized data from 41+ US importers. Pricing movement, arrivals, delistings, and origin benchmarks for sourcing pros.'}
 					</p>
-					<div class="flex flex-wrap gap-3">
+					<div class="flex flex-wrap items-center gap-3">
 						<button
-							onclick={() => goto('/catalog')}
+							onclick={() => goto('/analytics')}
+							class="rounded-xl bg-background-tertiary-light px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+						>
+							See market analytics
+						</button>
+						<a
+							href="/catalog"
 							class="rounded-xl border border-border-light bg-background-primary-light px-4 py-3 text-sm font-medium text-text-primary-light transition-colors hover:border-background-tertiary-light/40 hover:text-background-tertiary-light"
 						>
 							Browse catalog
-						</button>
-						<button
-							onclick={() => goto('/api')}
-							class="rounded-xl border border-border-light bg-background-primary-light px-4 py-3 text-sm font-medium text-text-primary-light transition-colors hover:border-background-tertiary-light/40 hover:text-background-tertiary-light"
-						>
-							Explore API
-						</button>
-						{#if !data?.user}
-							<button
-								onclick={handleSignIn}
-								class="rounded-xl bg-background-tertiary-light px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+						</a>
+						{#if !isSignedIn}
+							<a
+								href={signInHref}
+								class="text-sm text-text-secondary-light underline underline-offset-2 transition-colors hover:text-text-primary-light"
 							>
-								Sign in to continue
-							</button>
+								Already have an account? Sign in
+							</a>
 						{/if}
 					</div>
 				</div>
@@ -494,17 +578,15 @@
 					class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
 				>
 					<p class="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary-light">
-						{isSignedIn ? 'Account overview' : 'How the product line is organized'}
+						{isSignedIn ? 'Account overview' : 'Product line'}
 					</p>
 					<h2 class="mt-3 text-2xl font-semibold text-text-primary-light">
-						{isSignedIn
-							? 'Current product access on this account'
-							: 'Start with the product that matches the job to be done'}
+						{isSignedIn ? 'Current access on this account' : 'One platform, three access tiers'}
 					</h2>
 					<p class="mt-2 text-sm leading-7 text-text-secondary-light">
 						{isSignedIn
-							? 'Use this page to confirm what is active before you start a checkout or change your billing.'
-							: 'Each offer maps to a different workflow so you can compare the right surface before creating an account or opening checkout.'}
+							? 'Confirm what is active before starting a checkout or changing your billing.'
+							: 'Start with the product that matches the job. Sign in when you are ready to subscribe.'}
 					</p>
 
 					<div class="mt-5 space-y-4">
@@ -534,7 +616,7 @@
 					{#each productCards as product}
 						{@const state = getProductState(product)}
 						<div
-							class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm"
+							class={`rounded-3xl border bg-background-primary-light p-6 shadow-sm ${product.family === 'ppi_addon' ? 'border-background-tertiary-light/40 ring-1 ring-background-tertiary-light/20' : 'border-border-light'}`}
 						>
 							<div class="flex items-start justify-between gap-4">
 								<div class="space-y-2">
@@ -581,7 +663,9 @@
 										</div>
 									</div>
 
-									<p class="mt-3 text-sm leading-7 text-text-secondary-light">{state.description}</p>
+									<p class="mt-3 text-sm leading-7 text-text-secondary-light">
+										{state.description}
+									</p>
 
 									{#if product.family === 'membership'}
 										<p class="mt-3 text-sm text-text-secondary-light">{product.managementCopy}</p>
@@ -684,7 +768,9 @@
 											<p class="text-sm leading-7 text-text-secondary-light">
 												{intelligenceState?.description}
 											</p>
-											<p class="mt-2 text-sm text-text-secondary-light">{intelligenceState?.note}</p>
+											<p class="mt-2 text-sm text-text-secondary-light">
+												{intelligenceState?.note}
+											</p>
 										</div>
 									{:else}
 										<div
@@ -723,13 +809,13 @@
 												{/if}
 											</div>
 
-											{#if !data?.user}
+											{#if !isSignedIn}
 												<div class="mt-4 space-y-2">
 													<button
-														onclick={handleSignIn}
+														onclick={() => signInForPlan(option.planSlug)}
 														class="w-full rounded-lg bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
 													>
-														Sign in to continue
+														Start {product.name}
 													</button>
 													{#if product.learnMoreHref}
 														<a

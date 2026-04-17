@@ -3,11 +3,18 @@
 	import { signInWithGoogle } from '$lib/supabase';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { sanitizeNextPath } from '$lib/utils/safeRedirect';
 
 	let { data } = $props<{ data: PageData }>();
 
 	let loading = $state(false);
 	let error = $state('');
+
+	// Restrict ?next= to internal paths only — a raw value would allow an
+	// attacker to bounce newly signed-in users to an external phishing page.
+	const nextUrl = $derived(sanitizeNextPath(page.url.searchParams.get('next'), '/dashboard'));
+	const hasCheckoutIntent = $derived(page.url.searchParams.get('intent') === 'checkout');
 
 	async function handleGoogleSignIn() {
 		if (loading) return;
@@ -16,7 +23,7 @@
 		error = '';
 
 		try {
-			await signInWithGoogle(data.supabase);
+			await signInWithGoogle(data.supabase, nextUrl);
 		} catch (err) {
 			console.error('Sign in error:', err);
 			error = 'Failed to sign in. Please try again.';
@@ -27,14 +34,14 @@
 
 	onMount(() => {
 		if (data.session) {
-			goto('/dashboard');
+			goto(nextUrl);
 		}
 	});
 </script>
 
 <svelte:head>
 	<title>Sign In - Purveyors</title>
-	<meta name="description" content="Sign in to access your coffee roasting platform" />
+	<meta name="description" content="Sign in to your Purveyors account" />
 </svelte:head>
 
 <div
@@ -42,9 +49,13 @@
 >
 	<div class="w-full max-w-md space-y-8">
 		<div class="text-center">
-			<h2 class="mt-6 text-3xl font-bold text-text-primary-light">Welcome to Purveyors</h2>
+			<h2 class="mt-6 text-3xl font-bold text-text-primary-light">Sign in to Purveyors</h2>
 			<p class="mt-2 text-sm text-text-secondary-light">
-				Sign in to start your coffee roasting journey
+				{#if hasCheckoutIntent}
+					Signing you in to complete checkout.
+				{:else}
+					Continue where you left off.
+				{/if}
 			</p>
 		</div>
 
@@ -98,7 +109,7 @@
 				onclick={() => goto('/')}
 				class="text-sm text-text-secondary-light transition-colors duration-200 hover:text-text-primary-light"
 			>
-				← Back to homepage
+				&larr; Back to homepage
 			</button>
 		</div>
 	</div>

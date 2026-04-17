@@ -6,8 +6,8 @@
 				<div>
 					<h3 class="text-lg font-semibold text-text-primary-light">Purveyors</h3>
 					<p class="mt-2 text-sm text-text-secondary-light">
-						green coffee & roasting platform helping roasters discover coffee, track inventory,
-						manage roast profiles, and grow their passion.
+						Coffee intelligence platform. Daily-normalized data from 41+ US specialty importers,
+						turned into procurement-ready analytics for green coffee buyers and roasting teams.
 					</p>
 				</div>
 				<div class="flex space-x-6">
@@ -32,31 +32,32 @@
 			<!-- Links -->
 			<div class="mt-12 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
 				<div class="md:grid md:grid-cols-2 md:gap-8">
+					<!-- Product -->
 					<div>
-						<h3 class="text-sm font-semibold text-text-primary-light">Platform</h3>
+						<h3 class="text-sm font-semibold text-text-primary-light">Product</h3>
 						<ul role="list" class="mt-4 space-y-2">
 							<li>
 								<a
-									href="/auth"
+									href="/analytics"
 									class="text-sm text-text-secondary-light hover:text-text-primary-light"
 								>
-									Sign Up
+									Market Analytics
 								</a>
 							</li>
 							<li>
 								<a
-									href="/auth"
+									href="/catalog"
 									class="text-sm text-text-secondary-light hover:text-text-primary-light"
 								>
-									Sign In
+									Green Coffee Catalog
 								</a>
 							</li>
 							<li>
 								<a
-									href="#features"
+									href="/api"
 									class="text-sm text-text-secondary-light hover:text-text-primary-light"
 								>
-									Features
+									Parchment API
 								</a>
 							</li>
 							<li>
@@ -69,15 +70,16 @@
 							</li>
 						</ul>
 					</div>
+					<!-- Company / Developers / Legal -->
 					<div class="mt-10 md:mt-0">
-						<h3 class="text-sm font-semibold text-text-primary-light">Support</h3>
+						<h3 class="text-sm font-semibold text-text-primary-light">Company</h3>
 						<ul role="list" class="mt-4 space-y-2">
 							<li>
 								<a
 									href="/contact"
 									class="text-sm text-text-secondary-light hover:text-text-primary-light"
 								>
-									Contact Us
+									Contact
 								</a>
 							</li>
 							<li>
@@ -86,6 +88,30 @@
 									class="text-sm text-text-secondary-light hover:text-text-primary-light"
 								>
 									hello@purveyors.io
+								</a>
+							</li>
+							<li>
+								<a
+									href="/docs"
+									class="text-sm text-text-secondary-light hover:text-text-primary-light"
+								>
+									Docs
+								</a>
+							</li>
+							<li>
+								<a
+									href="/blog"
+									class="text-sm text-text-secondary-light hover:text-text-primary-light"
+								>
+									Blog
+								</a>
+							</li>
+							<li>
+								<a
+									href="/auth"
+									class="text-sm text-text-secondary-light hover:text-text-primary-light"
+								>
+									Sign in
 								</a>
 							</li>
 						</ul>
@@ -97,7 +123,7 @@
 		<!-- Bottom section -->
 		<div class="mt-12 border-t border-border-light pt-8">
 			<div class="flex flex-col items-center justify-between sm:flex-row">
-				<p class="text-xs text-text-secondary-light">© 2025 Purveyors. All rights reserved.</p>
+				<p class="text-xs text-text-secondary-light">© 2025 Purveyors.</p>
 				<div class="mt-4 flex space-x-6 sm:mt-0">
 					<a
 						href="/privacy"
@@ -107,12 +133,6 @@
 					</a>
 					<a href="/terms" class="text-xs text-text-secondary-light hover:text-text-primary-light">
 						Terms of Service
-					</a>
-					<a
-						href="/contact"
-						class="text-xs text-text-secondary-light hover:text-text-primary-light"
-					>
-						Contact
 					</a>
 					<a
 						href="https://github.com/reedwhetstone/coffee-app"
