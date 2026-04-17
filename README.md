@@ -71,9 +71,9 @@ CLI auth and output rules are part of the platform contract:
 
 - `purvey catalog *` requires an authenticated viewer session
 - `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
-- `purvey config` is local-only and does not require auth
-- `purvey context` is the shipped dense agent reference and does not require auth
-- do not document a separate `purvey manifest` command unless the installed CLI version actually ships it
+- `purvey config`, `purvey context`, and `purvey manifest` do not require auth
+- `purvey manifest` is the preferred stable machine-readable contract for shells and agents
+- `purvey context` is the shipped dense agent reference; `purvey context --json` and `--pretty` emit manifest-parity output for compatibility
 - stdout stays structured for automation, while operational and fatal messaging is designed to stay on stderr
 
 `src/lib/services/tools.ts` imports CLI modules directly for chat tool execution:

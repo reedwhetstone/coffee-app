@@ -161,7 +161,7 @@ When changing docs, keep these sources aligned:
 - Verify behavior from source before documenting it
 - Do not claim an endpoint is public unless it truly is
 - Do not describe `/api/catalog` or `/api/catalog-api` as the canonical contract; that is `/v1/catalog`
-- Do not flatten CLI auth into one rule: catalog commands require an authenticated viewer session; inventory, roast, sales, and tasting require the member role; config is local-only and does not require auth; `purvey context` is a dense text reference surface, not a live authenticated data command; do not document `purvey manifest` or `purvey context --json` unless the installed CLI version actually ships those contracts; and `--csv` is invalid for context
+- Do not flatten CLI auth into one rule: catalog commands require an authenticated viewer session; inventory, roast, sales, and tasting require the member role; config, context, and manifest are local or onboarding surfaces that do not require auth; `purvey manifest` is the preferred machine-readable contract; `purvey context --json` and `--pretty` are compatibility-parity aliases for callers already using the context entrypoint; and `--csv` is invalid for context or manifest
 - Do not invent filter/query behavior that the route does not implement
 - Be explicit about auth model, tier limits, row-limit headers, share-token behavior, and session requirements
 - If analytics are a product surface but not a public REST surface, say that clearly
@@ -174,9 +174,9 @@ CLI auth and output rules matter here too:
 
 - `purvey catalog *` requires an authenticated viewer session
 - `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
-- `purvey config` is local-only and does not require auth
-- `purvey context` is the shipped dense agent reference and prints text output
-- do not assume a separate `purvey manifest` command exists unless the installed CLI version actually ships it
+- `purvey config`, `purvey context`, and `purvey manifest` do not require auth
+- `purvey context` is the shipped dense agent reference and prints text output by default
+- `purvey manifest` is the preferred machine-readable contract, and `purvey context --json` / `--pretty` provide manifest-parity output for compatibility
 - structured stdout and stderr semantics are part of the CLI contract for scripts and agents
 
 That means:

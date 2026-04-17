@@ -155,8 +155,9 @@ export const DOCS_NAV: DocsNavSection[] = [
 			},
 			{
 				slug: 'context-manifest',
-				title: 'Context reference',
-				summary: 'Dense reference text, ID maps, and onboarding patterns for agents and wrappers.'
+				title: 'Context and manifest',
+				summary:
+					'Dense reference text, machine-readable manifest output, and onboarding patterns for agents and wrappers.'
 			},
 			{
 				slug: 'agent-integration',
@@ -1437,7 +1438,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: '@purveyors/cli',
 		intro: [
 			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session even though GET /v1/catalog supports anonymous and API-key access. Inventory, roast, sales, and tasting commands additionally require the member role.',
-			'Not every command requires auth. auth, config, and context are onboarding or local utility surfaces. The currently shipped CLI exposes purvey context as the dense human-readable agent reference. Do not assume a separate purvey manifest subcommand unless the release actually ships it.'
+			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. purvey context is the dense human-readable reference, while purvey manifest is the preferred machine-readable contract.'
 		],
 		sections: [
 			{
@@ -1451,13 +1452,13 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Agent-friendly bootstrap',
 						language: 'bash',
-						code: 'purvey auth login --headless\npurvey context\npurvey catalog search --origin "Ethiopia" --pretty'
+						code: 'purvey auth login --headless\npurvey context\npurvey manifest --pretty'
 					}
 				],
 				bullets: [
 					'Use purvey auth login for browser OAuth or purvey auth login --headless on servers, CI, and agent hosts.',
 					'Run purvey auth status to confirm both session health and current role before scripting against viewer-only or member-only commands.',
-					'Use purvey context when a human or model should read the dense reference text first. For structured integrations, prefer command-specific JSON or CSV output and direct @purveyors/cli imports over assuming a separate manifest command.'
+					'Use purvey manifest when a wrapper needs the preferred machine-readable contract. Use purvey context when a human or model should read the dense reference text first, or use purvey context --json / --pretty when an existing caller needs manifest-parity output.'
 				]
 			},
 			{
@@ -1473,7 +1474,7 @@ const docsPages: DocsPage[] = [
 							'Authenticated member session'
 						],
 						['config', 'list, get, set, reset', 'None, local-only'],
-						['context', 'Dense reference text, ID map, and workflow guidance', 'None']
+						['context / manifest', 'Dense reference text and machine-readable contract', 'None']
 					]
 				},
 				callout: {
@@ -1532,8 +1533,8 @@ const docsPages: DocsPage[] = [
 			},
 			{
 				href: '/docs/cli/context-manifest',
-				label: 'Context reference',
-				description: 'Dense onboarding text, ID maps, and wrapper guidance for agents.'
+				label: 'Context and manifest',
+				description: 'Text-first onboarding, manifest output, and wrapper guidance for agents.'
 			},
 			{
 				href: '/docs/api/catalog',
@@ -1615,8 +1616,9 @@ const docsPages: DocsPage[] = [
 		related: [
 			{
 				href: '/docs/cli/context-manifest',
-				label: 'Context reference',
-				description: 'Dense onboarding text, ID maps, and agent wrapper guidance.'
+				label: 'Context and manifest',
+				description:
+					'Dense onboarding text, machine-readable contract output, and agent wrapper guidance.'
 			},
 			{
 				href: '/docs/cli/overview',
@@ -1941,17 +1943,17 @@ const docsPages: DocsPage[] = [
 	{
 		section: 'cli',
 		slug: 'context-manifest',
-		title: 'CLI context reference',
+		title: 'CLI context and manifest',
 		summary:
-			'Understand purvey context, the shipped agent-reference surface, and how wrappers should onboard to the CLI contract.',
+			'Understand purvey context, purvey manifest, and how wrappers should onboard to the CLI contract.',
 		eyebrow: 'Agent onboarding',
 		intro: [
-			'purvey context is the shipped dense onboarding surface for the current CLI. It is optimized for a human or model to read once and then use the rest of the command tree correctly.',
-			'There is not currently a separate purvey manifest subcommand in the shipped CLI. If you need structured automation, use the JSON or CSV output of the specific task command or import stable CLI modules directly.'
+			'purvey context and purvey manifest are related but not interchangeable. context is optimized for dense human or model-readable onboarding text. manifest is the preferred machine-readable contract for shells, wrappers, and agents.',
+			'purvey context --json and --pretty emit the same manifest contract for compatibility when an existing caller already uses the context entrypoint. The same contract is also available in-process via @purveyors/cli/manifest.'
 		],
 		sections: [
 			{
-				title: 'Which interface to use',
+				title: 'Which command to use',
 				table: {
 					headers: ['Need', 'Use', 'Notes'],
 					rows: [
@@ -1961,14 +1963,19 @@ const docsPages: DocsPage[] = [
 							'Prints the shipped plain-text agent reference with auth rules, ID maps, workflows, and error patterns.'
 						],
 						[
-							'Structured task output',
-							'purvey <task> ... --json / --pretty / --csv',
-							'Use the command that actually performs the work, then choose its supported output mode.'
+							'Preferred machine-readable contract',
+							'purvey manifest',
+							'Emits the stable manifest JSON on stdout. Use --pretty for indented output.'
+						],
+						[
+							'Compatibility-parity JSON',
+							'purvey context --json / --pretty',
+							'Use when an existing context caller needs the same manifest contract without changing entrypoints.'
 						],
 						[
 							'Code-side integration',
-							'@purveyors/cli subpath imports',
-							'Prefer stable module imports over screen-scraping help text or inventing a manifest layer that is not shipped.'
+							'@purveyors/cli/manifest',
+							'Prefer the dedicated manifest export when an in-process Node.js or agent runtime needs the same contract.'
 						]
 					]
 				}
@@ -1982,22 +1989,22 @@ const docsPages: DocsPage[] = [
 						code: 'purvey context\npurvey context | head -50\npurvey context > cli-reference.txt'
 					},
 					{
-						label: 'Structured task output',
+						label: 'Machine-readable contract',
 						language: 'bash',
-						code: 'purvey auth status --pretty\npurvey catalog search --origin "Ethiopia" --json\npurvey sales list --csv > sales.csv'
+						code: 'purvey manifest\npurvey manifest --pretty\npurvey context --json > cli-manifest.json'
 					}
 				],
 				bullets: [
-					'purvey context prints text in the current shipped CLI. Treat it as reference material, not as a JSON endpoint.',
-					'Do not assume context --json or a separate purvey manifest command exists unless the installed CLI version actually ships that contract.',
-					'Use --csv only on commands that document CSV support. context is not one of them.'
+					'purvey context prints text by default. Use purvey manifest for the preferred machine-readable contract.',
+					'purvey context --json and --pretty intentionally emit the same manifest contract for compatibility with existing context-based callers.',
+					'Use --csv only on commands that document CSV support. Neither context nor manifest supports CSV output.'
 				]
 			},
 			{
-				title: 'What context includes today',
+				title: 'What the manifest contains',
 				bullets: [
 					'Command groups, subcommands, summaries, examples, and auth requirements.',
-					'Output-mode expectations, stderr/stdout notes, and common automation pitfalls.',
+					'Output-mode expectations, stderr/stdout notes, structured error-envelope guidance, and compatibility notes.',
 					'ID-type reference for catalog_id, inventory_id, roast_id, and sale_id so agents do not confuse resource identifiers.',
 					'Workflow examples and common error patterns that help agents recover without reverse-engineering implementation details.'
 				],
@@ -2034,7 +2041,7 @@ const docsPages: DocsPage[] = [
 			'Use the Parchment CLI as a stable interface for AI agents, coding assistants, and external automation.',
 		eyebrow: 'Agent workflows',
 		intro: [
-			'The CLI is the preferred documented automation surface for most non-visual workflows. It gives agents stable command names, explicit auth requirements, and predictable output modes.',
+			'The CLI is the preferred documented automation surface for most non-visual workflows. It gives agents stable command names, explicit auth requirements, predictable output modes, and a machine-readable manifest when needed.',
 			'The Purveyors web app also imports CLI modules directly for chat tools, which keeps browser, terminal, and agent behavior aligned on shared domain logic.'
 		],
 		sections: [
@@ -2042,8 +2049,8 @@ const docsPages: DocsPage[] = [
 				title: 'Recommended agent patterns',
 				bullets: [
 					'For shell-based automation, authenticate once, then call purvey commands with JSON or CSV output that suits the surrounding workflow.',
-					'For code-side integrations, import stable subpaths such as @purveyors/cli/catalog, @purveyors/cli/inventory, @purveyors/cli/roast, @purveyors/cli/sales, or @purveyors/cli/tasting instead of screen-scraping CLI help text.',
-					'Use purvey context first when a model needs dense onboarding text. For structured metadata, rely on task-specific JSON output or direct module imports rather than inventing a manifest surface that is not shipped.',
+					'For code-side integrations, import stable subpaths such as @purveyors/cli/catalog, @purveyors/cli/inventory, @purveyors/cli/roast, @purveyors/cli/sales, @purveyors/cli/tasting, or @purveyors/cli/manifest instead of screen-scraping CLI help text.',
+					'Use purvey context first when a model needs dense onboarding text. Use purvey manifest for the preferred machine-readable contract, or purvey context --json when an existing caller needs compatibility-parity output.',
 					'Prefer the CLI or its shared modules over coupling to deprecated /api/tools/* endpoints or private workspace route payloads.'
 				]
 			},
@@ -2058,7 +2065,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Agent bootstrap sequence',
 						language: 'bash',
-						code: 'purvey auth login --headless\npurvey context\npurvey catalog search --origin "Ethiopia" --json'
+						code: 'purvey auth login --headless\npurvey manifest --pretty\npurvey catalog search --origin "Ethiopia" --json'
 					}
 				]
 			}
@@ -2066,8 +2073,8 @@ const docsPages: DocsPage[] = [
 		related: [
 			{
 				href: '/docs/cli/context-manifest',
-				label: 'Context reference',
-				description: 'Dense onboarding text, ID maps, and wrapper guidance.'
+				label: 'Context and manifest',
+				description: 'Dense onboarding text, manifest output, and wrapper guidance.'
 			},
 			{
 				href: '/docs/cli/auth-output',
