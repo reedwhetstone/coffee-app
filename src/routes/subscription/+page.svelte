@@ -468,9 +468,11 @@
 			openCheckoutByKey(intendedPurchaseKey);
 			// Strip the intent marker so a refresh of this URL doesn't
 			// re-launch the modal. Leave `plan=` intact so the card stays
-			// highlighted for context.
+			// highlighted for context. Preserve the existing history.state
+			// object so SvelteKit's client navigation metadata (back/forward
+			// routing) isn't clobbered.
 			url.searchParams.delete('intent');
-			window.history.replaceState({}, '', url.toString());
+			window.history.replaceState(window.history.state, '', url.toString());
 		}
 	});
 </script>
