@@ -356,9 +356,9 @@
 </script>
 
 <div class="mb-8 border-l-4 border-background-tertiary-light pl-6">
-	<h1 class="mb-2 text-4xl font-bold text-text-primary-light">Green coffee market visibility</h1>
+	<h1 class="mb-2 text-4xl font-bold text-text-primary-light">Green coffee market intelligence</h1>
 	<p class="text-lg text-text-secondary-light">
-		Track live pricing, supplier movement, and origin coverage across {stats.totalSuppliers} US suppliers
+		Daily-normalized pricing, arrivals, and supplier movement across {stats.totalSuppliers} US importers
 		and {stats.originsCount} origins.
 		{#if stats.lastUpdated}
 			Last updated {formatDate(stats.lastUpdated)}.
@@ -767,31 +767,31 @@
 			>
 				<div class="mb-3 text-3xl">📈</div>
 				<h3 class="mb-2 text-2xl font-bold text-text-primary-light">
-					Go deeper with Parchment Intelligence
+					Source with the full market in view.
 				</h3>
 				<p class="mb-4 text-text-secondary-light">
-					The public view gives you the core market picture first. Upgrade when you need supplier
-					comparisons, supplier health, arrivals, delistings, origin benchmarks, and longer-term
-					trends.
+					Supplier comparisons, arrival and delisting feeds, origin benchmarks, and the weekly
+					procurement brief. Built for sourcing pros making real buying decisions.
 				</p>
 				<ul class="mb-6 space-y-2 text-sm text-text-secondary-light">
-					<li>Supplier comparison and catalog health views</li>
-					<li>Arrival and delisting tracking</li>
-					<li>Origin benchmarks plus 6-month and 1-year trend views</li>
+					<li>Compare 41+ importers on price, coverage, and freshness</li>
+					<li>Track new arrivals the day they stock</li>
+					<li>Catch delistings before your next order closes</li>
+					<li>Origin-level benchmarks with 6-month and 1-year depth</li>
 				</ul>
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					<button
-						onclick={() => goto('/subscription')}
+						onclick={() => goto('/subscription?plan=intelligence-monthly&intent=checkout')}
 						class="rounded-md bg-background-tertiary-light px-8 py-3 font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
 					>
-						See plans
+						Start Intelligence
 					</button>
 					{#if !session}
 						<button
 							onclick={() => goto('/subscription')}
 							class="rounded-md border border-background-tertiary-light px-8 py-3 font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						>
-							Browse full catalog first
+							See free market view
 						</button>
 					{/if}
 				</div>

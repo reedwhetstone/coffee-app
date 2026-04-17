@@ -3,11 +3,11 @@
 		<!-- Header -->
 		<div class="text-center">
 			<h1 class="text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-				About Purveyors
+				Contact Purveyors
 			</h1>
 			<p class="mt-4 text-lg text-text-secondary-light">
-				Democratizing Coffee. Purveyors is an open source coffee platform built to democratize
-				coffee sourcing and make roast management more accessible for hobbyist & SMB roasters.
+				Coffee intelligence, built by people who use it. Daily-normalized data from 41+ US
+				specialty importers. Open source where it makes sense.
 			</p>
 		</div>
 
@@ -18,8 +18,8 @@
 				<div>
 					<h2 class="text-2xl font-bold text-text-primary-light">Get in Touch</h2>
 					<p class="mt-4 text-text-secondary-light">
-						Have questions about our coffee roasting platform? Want a feature added? I'd love to
-						hear from you.
+						Questions about Parchment Intelligence, API access, custom integrations, or enterprise?
+						Reach out.
 					</p>
 
 					<div class="mt-8 space-y-6">
@@ -73,7 +73,7 @@
 							<div class="ml-3">
 								<p class="text-sm font-medium text-text-primary-light">Response Time</p>
 								<p class="mt-1 text-sm text-text-secondary-light">
-									I typically respond within 24 hours
+									Typically within 24 hours
 								</p>
 							</div>
 						</div>
@@ -105,11 +105,11 @@
 
 				<!-- Open Source Project -->
 				<div>
-					<h2 class="text-2xl font-bold text-text-primary-light">Open Source Project</h2>
-					<!-- <p class="mt-4 text-text-secondary-light">
-						Democratizing Coffee. Purveyors is an open source coffee platform built to democratize coffee sourcing and
-						make roast management more accessible for hobbyist & SMB roasters.
-					</p> -->
+					<h2 class="text-2xl font-bold text-text-primary-light">Open Source</h2>
+					<p class="mt-4 text-text-secondary-light">
+						Open source where it makes sense. The roast engine and public catalog components are on
+						GitHub under a Sustainable Use License.
+					</p>
 
 					<div class="mt-8 space-y-6">
 						<!-- GitHub -->
@@ -202,70 +202,17 @@
 					<!-- Founder Bio -->
 					<div class="text-center">
 						<h3 class="text-xl font-bold text-text-primary-light">Reed Whetstone</h3>
-						<p class="text-sm font-medium text-background-tertiary-light">
-							Founder & Coffee Enthusiast
-						</p>
+						<p class="text-sm font-medium text-background-tertiary-light">Founder</p>
 					</div>
 
 					<div class="space-y-4 text-text-secondary-light">
 						<p>
-							Hi, I’m Reed — a coffee lover, home roaster, and the creator of Purveyors. With a
-							background in engineering, product, and analytics, I built this platform to make
-							sourcing incredible green coffee easier, smarter, and more fun. Purveyors combines my
-							passion for great coffee with years of experience building systems, tools, and data
-							products that help people make better decisions.
+							Purveyors exists because green coffee data was scattered, inconsistent, and hard to act
+							on. I built the platform to fix that gap for sourcing pros, roasters, and serious home
+							roasters who need reliable, normalized data across the US specialty import market.
+							Background in engineering, product, and analytics.
 						</p>
 					</div>
-					<!-- 
-					<!-- Skills/Expertise 
-					<div class="space-y-3">
-						<h4 class="text-lg font-semibold text-text-primary-light">Expertise</h4>
-						<div class="flex flex-wrap gap-2">
-							<span
-								class="inline-flex items-center rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-medium text-background-tertiary-light"
-							>
-								Coffee & Roasting
-							</span>
-							<span
-								class="inline-flex items-center rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-medium text-background-tertiary-light"
-							>
-								Green Coffee Sourcing
-							</span>
-							<span
-								class="inline-flex items-center rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-medium text-background-tertiary-light"
-							>
-								Product Strategy
-							</span>
-							<span
-								class="inline-flex items-center rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-medium text-background-tertiary-light"
-							>
-								Data & Analytics
-							</span>
-							<span
-								class="inline-flex items-center rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-medium text-background-tertiary-light"
-							>
-								Software & Systems Design
-							</span>
-							<span
-								class="inline-flex items-center rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-medium text-background-tertiary-light"
-							>
-								UX for Tools & Platforms
-							</span>
-							<span
-								class="inline-flex items-center rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-medium text-background-tertiary-light"
-							>
-								Operations & Process Optimization
-							</span><span
-								class="inline-flex items-center rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-medium text-background-tertiary-light"
-							>
-								Coffee Tech & Tooling
-							</span><span
-								class="inline-flex items-center rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-medium text-background-tertiary-light"
-							>
-								AI-Enhanced Workflows
-							</span>
-						</div> 
-					</div>-->
 				</div>
 			</div>
 		</div>

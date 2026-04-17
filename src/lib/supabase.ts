@@ -24,8 +24,11 @@ export const createClient = (
 	});
 };
 
-export const signInWithGoogle = (supabase: ReturnType<typeof createClient>) => {
-	const next = encodeURIComponent('/dashboard');
+export const signInWithGoogle = (
+	supabase: ReturnType<typeof createClient>,
+	nextUrl: string = '/dashboard'
+) => {
+	const next = encodeURIComponent(nextUrl);
 
 	return supabase.auth.signInWithOAuth({
 		provider: 'google',

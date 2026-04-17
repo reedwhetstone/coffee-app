@@ -228,7 +228,7 @@ describe('analytics page loading experience', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		expect(screen.getByText('Go deeper with Parchment Intelligence')).toBeTruthy();
+		expect(screen.getByText('Source with the full market in view.')).toBeTruthy();
 
 		await view.rerender({ data: createData({ session: createSession() }) });
 
@@ -237,7 +237,7 @@ describe('analytics page loading experience', () => {
 		});
 
 		expect(loadMemberAnalyticsModules).not.toHaveBeenCalled();
-		expect(screen.getByText('Go deeper with Parchment Intelligence')).toBeTruthy();
+		expect(screen.getByText('Source with the full market in view.')).toBeTruthy();
 	});
 
 	it('loads the Parchment Intelligence chart when a viewer upgrades on the same route', async () => {
@@ -289,18 +289,17 @@ describe('analytics premium boundary copy', () => {
 		});
 
 		expect(screen.queryByRole('button', { name: 'Spread' })).toBeNull();
-		expect(screen.getByText('Go deeper with Parchment Intelligence')).toBeTruthy();
-		expect(screen.getByText(/the public view gives you the core market picture first\./i)).toBeTruthy();
+		expect(screen.getByText('Source with the full market in view.')).toBeTruthy();
 		expect(
 			screen.getByText(
-				/upgrade when you need supplier comparisons, supplier health, arrivals, delistings, origin benchmarks, and longer-term trends/i
+				/supplier comparisons, arrival and delisting feeds, origin benchmarks, and the weekly procurement brief/i
 			)
 		).toBeTruthy();
-		expect(screen.getByRole('button', { name: 'See plans' })).toBeTruthy();
-		expect(screen.getByRole('button', { name: 'Browse full catalog first' })).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'Start Intelligence' })).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'See free market view' })).toBeTruthy();
 		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
 		expect(screen.queryByText('Recently Gone')).toBeNull();
-		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThan(1);
+		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThanOrEqual(1);
 	});
 
 	it('restores premium supplier analytics modules instead of static fallback tables', async () => {

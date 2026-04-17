@@ -14,7 +14,7 @@
 	<title>Parchment API</title>
 	<meta
 		name="description"
-		content="Add live green coffee catalog data to your product with one API. Daily updates, clear pricing, and fast onboarding for roasters and coffee software teams."
+		content="Green coffee market data as a REST API. Normalized pricing, availability, and supplier coverage across 41+ US specialty importers. Daily updates, one consistent schema."
 	/>
 </svelte:head>
 
@@ -27,12 +27,11 @@
 				Parchment API
 			</p>
 			<h1 class="mt-3 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-				Bring live green coffee data into your product
+				41+ importers. One API. Daily updates.
 			</h1>
 			<p class="mt-5 text-lg leading-relaxed text-text-secondary-light">
-				Give your team or customers a clean, reliable view of green coffee availability, pricing,
-				and supplier coverage. Parchment API delivers daily-updated catalog data from 39+ suppliers
-				through one consistent integration.
+				Normalized pricing, availability, and supplier coverage across 41+ US specialty importers.
+				Ship sourcing features without scraping anyone yourself.
 			</p>
 		</div>
 
@@ -60,31 +59,31 @@
 
 	<section class="grid gap-4 lg:grid-cols-4">
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
-			<div class="text-3xl font-bold text-background-tertiary-light">39+</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Suppliers</div>
+			<div class="text-3xl font-bold text-background-tertiary-light">41+</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">US importers</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Importers and green coffee sources in one normalized catalog.
+				Every major specialty importer in one normalized schema. Wholesale and retail segmented.
 			</p>
 		</div>
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
 			<div class="text-3xl font-bold text-background-tertiary-light">Daily</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Fresh data</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Normalized updates</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				New listings, removals, and price changes update automatically.
+				Arrivals, delistings, and price changes reflected same-day. 90+ days of price history.
 			</p>
 		</div>
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
 			<div class="text-3xl font-bold text-background-tertiary-light">One</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Consistent feed</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Consistent schema</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Clean JSON responses that are easier to plug into apps, reports, and internal tools.
+				Origin, process, grade, price, and availability mapped consistently across every supplier.
 			</p>
 		</div>
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
 			<div class="text-3xl font-bold text-background-tertiary-light">3</div>
-			<div class="mt-2 text-sm font-semibold text-text-primary-light">Plans</div>
+			<div class="mt-2 text-sm font-semibold text-text-primary-light">Access tiers</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Start free, move to production, or talk with us about higher-volume needs.
+				Free evaluation, self-serve production, and enterprise. No scraping infrastructure required.
 			</p>
 		</div>
 	</section>
@@ -97,23 +96,19 @@
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span
-						>Supplier comparison experiences with pricing, origin, and availability in one place</span
-					>
+					<span>Sync your internal sourcing dashboard with live offer lists from 41+ importers</span>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span
-						>Daily syncs for sourcing systems, planning tools, and customer-facing product features</span
-					>
+					<span>Flag lots priced below the origin median for immediate buyer review</span>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Reliable catalog views with a consistent schema across every supplier source</span>
+					<span>Feed agent and procurement workflows with normalized supplier schemas and arrival data</span>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Usage visibility and API key management through Parchment Console</span>
+					<span>Surface supplier coverage gaps and new arrivals in customer-facing sourcing tools</span>
 				</li>
 			</ul>
 		</div>
@@ -125,23 +120,19 @@
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Roasters building better sourcing, planning, or purchasing workflows</span>
+					<span>Green coffee buyers who need market-wide pricing and arrival data before placing orders</span>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Coffee software teams adding market data to customer products</span>
+					<span>Roastery software teams shipping sourcing and procurement features without building scrapers</span>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span
-						>Operators and analysts who need cleaner visibility into supplier coverage and pricing</span
-					>
+					<span>Procurement analysts benchmarking bids against origin-level price distributions</span>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span
-						>Teams that want a faster path from raw supplier listings to usable product data</span
-					>
+					<span>Developers embedding live offer lists, arrival feeds, and supplier comparisons into internal tools</span>
 				</li>
 			</ul>
 		</div>
@@ -168,14 +159,14 @@
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Green</td>
 						<td class="px-4 py-3 align-top">200</td>
 						<td class="px-4 py-3 align-top">25</td>
-						<td class="px-4 py-3 align-top">Evaluation, prototypes, and lightweight data pulls</td>
+						<td class="px-4 py-3 align-top">Evaluate the feed, prototype integrations, validate schema fit</td>
 					</tr>
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Origin</td>
 						<td class="px-4 py-3 align-top">10,000</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top"
-							>Production products, sync jobs, and recurring customer use</td
+							>Production sourcing tools, daily sync jobs, and live customer-facing features</td
 						>
 					</tr>
 					<tr>
@@ -183,16 +174,17 @@
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
 						<td class="px-4 py-3 align-top"
-							>High-volume deployments with custom support and commercial terms</td
+							>High-volume deployments, custom data agreements, and dedicated support</td
 						>
 					</tr>
 				</tbody>
 			</table>
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-text-secondary-light">
-			Green is the free way to evaluate the product. Origin is the self-serve plan for live
-			integrations. Enterprise is for larger teams that need custom volume, support, or terms.
-			Manage your keys and monitor usage in the
+			Green gets you into the feed immediately at no cost. Origin is the self-serve tier for
+			production integrations with full row access and 10,000 monthly requests. Enterprise covers
+			unlimited volume, custom data terms, and dedicated support. Manage keys and monitor usage in
+			the
 			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
 				>Parchment Console</a
 			>.
@@ -231,9 +223,9 @@
 			href="/analytics"
 			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
-			<h2 class="text-xl font-semibold text-text-primary-light">Market visibility</h2>
+			<h2 class="text-xl font-semibold text-text-primary-light">Market intelligence</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Track pricing trends, supplier movement, and market changes with daily analytics.
+				Pricing trends, supplier movement, arrivals, and delistings delivered daily.
 			</p>
 		</a>
 	</section>
