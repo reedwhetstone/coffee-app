@@ -30,7 +30,9 @@ export function sanitizeNextPath(
 	if (next.startsWith('//') || next.startsWith('/\\')) return safeFallback;
 
 	// Reject control characters, whitespace, and anything outside printable ASCII
-	// that could be used to smuggle a redirect past a naive parser.
+	// that could be used to smuggle a redirect past a naive parser. The control
+	// range is intentional — the whole point is to detect those bytes.
+	// eslint-disable-next-line no-control-regex
 	if (/[\x00-\x1F\x7F\s]/.test(next)) return safeFallback;
 
 	// Extra belt-and-suspenders: try to parse against a dummy origin and confirm

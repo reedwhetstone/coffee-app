@@ -96,7 +96,8 @@
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Sync your internal sourcing dashboard with live offer lists from 41+ importers</span>
+					<span>Sync your internal sourcing dashboard with live offer lists from 41+ importers</span
+					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
@@ -104,11 +105,15 @@
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Feed agent and procurement workflows with normalized supplier schemas and arrival data</span>
+					<span
+						>Feed agent and procurement workflows with normalized supplier schemas and arrival data</span
+					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Surface supplier coverage gaps and new arrivals in customer-facing sourcing tools</span>
+					<span
+						>Surface supplier coverage gaps and new arrivals in customer-facing sourcing tools</span
+					>
 				</li>
 			</ul>
 		</div>
@@ -120,19 +125,29 @@
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Green coffee buyers who need market-wide pricing and arrival data before placing orders</span>
+					<span
+						>Green coffee buyers who need market-wide pricing and arrival data before placing orders</span
+					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Roastery software teams shipping sourcing and procurement features without building scrapers</span>
+					<span
+						>Roastery software teams shipping sourcing and procurement features without building
+						scrapers</span
+					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Procurement analysts benchmarking bids against origin-level price distributions</span>
+					<span
+						>Procurement analysts benchmarking bids against origin-level price distributions</span
+					>
 				</li>
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Developers embedding live offer lists, arrival feeds, and supplier comparisons into internal tools</span>
+					<span
+						>Developers embedding live offer lists, arrival feeds, and supplier comparisons into
+						internal tools</span
+					>
 				</li>
 			</ul>
 		</div>
@@ -159,7 +174,9 @@
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Green</td>
 						<td class="px-4 py-3 align-top">200</td>
 						<td class="px-4 py-3 align-top">25</td>
-						<td class="px-4 py-3 align-top">Evaluate the feed, prototype integrations, validate schema fit</td>
+						<td class="px-4 py-3 align-top"
+							>Evaluate the feed, prototype integrations, validate schema fit</td
+						>
 					</tr>
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Origin</td>
