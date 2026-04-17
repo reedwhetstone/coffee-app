@@ -208,6 +208,15 @@
 		intendedPlanSlug ? (planSlugMap[intendedPlanSlug] ?? null) : null
 	);
 
+	// Build a sign-in href that forwards the current subscription page (with
+	// any plan/intent params) as the post-auth target, so a signed-out visitor
+	// who followed a deep-link like /subscription?plan=X&intent=checkout still
+	// lands back on the page with auto-open ready to fire after OAuth.
+	const signInHref = $derived.by(() => {
+		const next = `/subscription${page.url.search}`;
+		return `/auth?next=${encodeURIComponent(next)}`;
+	});
+
 	const toneClasses = (tone: ProductTone) => {
 		switch (tone) {
 			case 'success':
@@ -556,7 +565,7 @@
 						</a>
 						{#if !isSignedIn}
 							<a
-								href="/auth"
+								href={signInHref}
 								class="text-sm text-text-secondary-light underline underline-offset-2 transition-colors hover:text-text-primary-light"
 							>
 								Already have an account? Sign in
