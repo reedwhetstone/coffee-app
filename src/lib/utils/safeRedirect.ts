@@ -35,14 +35,22 @@ export function sanitizeNextPath(
 	// eslint-disable-next-line no-control-regex
 	if (/[\x00-\x1F\x7F\s]/.test(next)) return safeFallback;
 
-	// Extra belt-and-suspenders: try to parse against a dummy origin and confirm
-	// the resolved origin matches. Anything that parses to a different origin
-	// (shouldn't happen given the prefix checks above, but guard anyway) is
-	// rejected.
+	// Parse against a dummy origin and re-check after normalization. Dot-segment
+	// paths like `/..//attacker.example` pass the raw prefix check above but
+	// normalize to `//attacker.example`, which the browser then treats as a
+	// protocol-relative external redirect. Reject any normalized path that
+	// doesn't stay firmly inside the internal origin.
 	try {
 		const parsed = new URL(next, 'http://internal.invalid');
 		if (parsed.origin !== 'http://internal.invalid') return safeFallback;
-		return parsed.pathname + parsed.search + parsed.hash;
+
+		const resolved = parsed.pathname + parsed.search + parsed.hash;
+
+		if (!resolved.startsWith('/') || resolved.startsWith('//') || resolved.startsWith('/\\')) {
+			return safeFallback;
+		}
+
+		return resolved;
 	} catch {
 		return safeFallback;
 	}

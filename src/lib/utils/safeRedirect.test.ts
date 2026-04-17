@@ -37,6 +37,20 @@ describe('sanitizeNextPath', () => {
 		expect(sanitizeNextPath('/\\/attacker.example')).toBe('/dashboard');
 	});
 
+	it('rejects dot-segment paths that normalize to //host', () => {
+		// `new URL('/..//attacker.example', base).pathname` → `//attacker.example`,
+		// which browsers then resolve as protocol-relative. Must be caught after
+		// normalization, not just by the raw prefix check.
+		expect(sanitizeNextPath('/..//attacker.example')).toBe('/dashboard');
+		expect(sanitizeNextPath('/./../..//attacker.example')).toBe('/dashboard');
+		expect(sanitizeNextPath('/a/b/../../..//attacker.example')).toBe('/dashboard');
+	});
+
+	it('still accepts legitimate dot-segment paths that normalize to a single-slash path', () => {
+		// `/foo/../bar` → `/bar` — safe, should pass through.
+		expect(sanitizeNextPath('/foo/../bar')).toBe('/bar');
+	});
+
 	it('rejects paths with control characters or whitespace', () => {
 		expect(sanitizeNextPath('/foo\nbar')).toBe('/dashboard');
 		expect(sanitizeNextPath('/foo\tbar')).toBe('/dashboard');
