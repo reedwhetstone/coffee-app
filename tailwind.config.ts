@@ -33,7 +33,7 @@ export default {
 
 				//accent colors
 				'growth-green': '#7FB069',
-				'harvest-gold': '#7FB069'
+				'harvest-gold': '#D4A574'
 			}
 		}
 	},

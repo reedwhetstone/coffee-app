@@ -2,15 +2,15 @@
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-2xl lg:text-center">
 			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
-				Built for coffee buyers and roasting teams
+				What we track
 			</h2>
 			<p class="mt-2 text-3xl font-bold tracking-tight text-text-primary-light sm:text-4xl">
-				Know what is available, what fits, and what to do next
+				Market intelligence the rest of the industry is still running on spreadsheets for.
 			</p>
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				Purveyors brings live supplier availability, sourcing context, and team workflows into one
-				clear path, so you can move from research to decision without juggling tabs, spreadsheets,
-				and disconnected tools.
+				41+ US importers, scraped and normalized daily. Price movement, arrivals, delistings, origin
+				benchmarks, and supplier comparisons in one place, so procurement decisions start with
+				complete data, not manual research.
 			</p>
 		</div>
 		<div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
@@ -36,13 +36,13 @@
 								/>
 							</svg>
 						</div>
-						Compare live offerings faster
+						See price movement before it hits the offer list.
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Browse current coffees across suppliers with normalized origin, process, score, and
-							pricing data, so your shortlist starts with clean information instead of manual
-							cleanup.
+							90+ days of price index history across origins. Weekly and 30-day deltas, IQR, and
+							standard deviation at the origin level. Know whether a price is a deal or a drift
+							before you commit to a lot.
 						</p>
 					</dd>
 				</div>
@@ -68,12 +68,13 @@
 								/>
 							</svg>
 						</div>
-						Get buying help with context
+						Catch new arrivals the day they stock.
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Ask better sourcing questions, compare similar coffees, and sanity-check roast or menu
-							choices with an assistant grounded in the catalog and your operating context.
+							Arrivals and delistings tracked daily across 41+ importers. See what landed this week,
+							what disappeared, and which suppliers are most active for your target origins before
+							the lot sells out.
 						</p>
 					</dd>
 				</div>
@@ -99,12 +100,13 @@
 								/>
 							</svg>
 						</div>
-						Connect the data to your tools
+						Plug normalized green coffee data into your stack.
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Use the API when you need structured coffee data inside apps, automations, and
-							internal dashboards without rebuilding the catalog yourself.
+							Normalized green coffee data from 41+ suppliers through one REST API. Daily updates,
+							consistent schema. Skip rebuilding the catalog yourself and connect it directly to your
+							internal tools, dashboards, or buying automations.
 						</p>
 					</dd>
 				</div>
@@ -135,12 +137,13 @@
 								/>
 							</svg>
 						</div>
-						Keep sourcing tied to production
+						Compare suppliers on coverage, freshness, and price.
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Move from shortlist to roast and tasting workflows without losing the context behind
-							why you bought a coffee in the first place.
+							Supplier-level stats updated daily: listing counts, active origins, recent arrivals,
+							delisting rate, and price positioning vs. the market. Know which importers are most
+							active for your target profile before you reach out.
 						</p>
 					</dd>
 				</div>
@@ -166,12 +169,12 @@
 								/>
 							</svg>
 						</div>
-						See the market more clearly
+						Find value lots below origin median.
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Track pricing movement, supplier activity, and availability changes with clearer
-							visibility, so you can make sourcing calls earlier and with more confidence.
+							Origin price distributions with IQR and standard deviation updated daily. Identify lots
+							priced below the median for their origin and process, and act before the window closes.
 						</p>
 					</dd>
 				</div>
@@ -197,12 +200,13 @@
 								/>
 							</svg>
 						</div>
-						Fit into the way you already work
+						Track origin supply health across 41+ importers.
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Bring in roast logs, keep your existing process where it still works, and add
-							structure only where it helps your team move faster.
+							Origin-level coverage showing how many lots are active, which importers hold them, and
+							how supply has shifted over time. Build procurement strategy around actual market depth,
+							not guesswork.
 						</p>
 					</dd>
 				</div>

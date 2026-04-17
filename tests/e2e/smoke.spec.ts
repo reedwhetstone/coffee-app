@@ -31,11 +31,11 @@ test.describe('Public pages load without auth', () => {
 
 	test('homepage / exposes the live catalog path for signed-out users', async ({ page }) => {
 		await page.goto('/', { waitUntil: 'domcontentloaded' });
-		await expect(
-			page.getByRole('heading', { name: 'Green Coffee Intelligence, Built for Roasters.' })
-		).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Browse live catalog' }).first()).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Create free account' }).first()).toBeVisible();
+		// Structural: page renders with an H1 and a visible path to the catalog.
+		// Don't assert on marketing copy — that's expected to change over time.
+		await expect(page.locator('h1')).toBeVisible();
+		await expect(page.locator('body')).not.toContainText('Internal Server Error');
+		await expect(page.getByRole('button', { name: /catalog/i }).first()).toBeVisible();
 	});
 
 	test('/catalog', async ({ playwright }) => {
@@ -102,10 +102,11 @@ test.use({ storageState: 'tests/e2e/.auth/user.json' });
 test.describe('Protected pages load with auth', () => {
 	test('/ renders the marketing homepage for signed-in users', async ({ page }) => {
 		await page.goto('/', { waitUntil: 'domcontentloaded' });
+		// Structural: signed-in nav renders (Dashboard visible, no auth toggle).
+		// Don't assert on marketing copy — that's expected to change over time.
 		await expect(page).toHaveURL('/');
-		await expect(
-			page.getByRole('heading', { name: 'Green Coffee Intelligence, Built for Roasters.' })
-		).toBeVisible();
+		await expect(page.locator('body')).not.toContainText('Internal Server Error');
+		await expect(page.locator('h1')).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Dashboard' }).first()).toBeVisible();
 		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(0);
 	});

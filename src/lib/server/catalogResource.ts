@@ -118,7 +118,16 @@ interface QueryCatalogDataOptions {
 }
 
 const DEFAULT_API_PAGE_LIMIT = 100;
+const ANONYMOUS_API_PAGE_LIMIT = 15;
 const ISO_DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ANONYMOUS_ALLOWED_FILTER_PARAMS = ['country', 'processing', 'name'] as const;
+const ANONYMOUS_ALLOWED_QUERY_PARAMS = new Set<string>([
+	'page',
+	'limit',
+	'sortField',
+	'sortDirection',
+	...ANONYMOUS_ALLOWED_FILTER_PARAMS
+]);
 
 class CatalogRateLimitError extends Error {
 	constructor(
@@ -142,6 +151,16 @@ class CatalogQueryValidationError extends Error {
 	}
 }
 
+class CatalogAnonymousContractError extends Error {
+	constructor(
+		public parameter: string,
+		message: string
+	) {
+		super(message);
+		this.name = 'CatalogAnonymousContractError';
+	}
+}
+
 function parsePositiveInteger(value: string | null, fallback: number): number {
 	const parsed = Number.parseInt(value ?? '', 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -158,13 +177,6 @@ function parseRequiredPositiveInteger(value: string, parameter: string): number 
 	}
 
 	return parsed;
-}
-
-function parseOptionalPositiveInteger(value: string | null): number | undefined {
-	if (!value) return undefined;
-	if (!/^\d+$/.test(value)) return undefined;
-	const parsed = Number.parseInt(value, 10);
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function parseRequiredNumber(value: string, parameter: string): number {
@@ -184,12 +196,6 @@ function parseRequiredNumber(value: string, parameter: string): number {
 	}
 
 	return parsed;
-}
-
-function parseOptionalNumber(value: string | null): number | undefined {
-	if (!value) return undefined;
-	const parsed = Number.parseFloat(value);
-	return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function isIsoDateParam(value: string): boolean {
@@ -235,7 +241,6 @@ function validateCatalogQuery(url: URL): void {
 		}
 	}
 }
-
 function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
 	const { coffee_user: _coffeeUser, ...resourceItem } = item;
 	return resourceItem;
@@ -266,6 +271,13 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 	const stockedFilter: boolean | null =
 		stockedParam === 'false' ? false : stockedParam === 'all' ? null : true;
 
+	const rawSortField = url.searchParams.get('sortField');
+	const rawSortDirection = url.searchParams.get('sortDirection');
+
+	if (rawSortDirection !== null && rawSortDirection !== 'asc' && rawSortDirection !== 'desc') {
+		throw new CatalogQueryValidationError('sortDirection', rawSortDirection, 'asc or desc');
+	}
+
 	const countryParams = url.searchParams.getAll('country').filter(Boolean);
 	const countryFilter =
 		countryParams.length > 1
@@ -279,12 +291,8 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 		limit,
 		offset: (page - 1) * limit,
 		isPaginated: url.searchParams.has('page') || url.searchParams.has('limit'),
-		sortField: url.searchParams.get('sortField') ?? undefined,
-		sortDirection:
-			url.searchParams.get('sortDirection') === 'asc' ||
-			url.searchParams.get('sortDirection') === 'desc'
-				? (url.searchParams.get('sortDirection') as 'asc' | 'desc')
-				: undefined,
+		sortField: rawSortField ?? undefined,
+		sortDirection: rawSortDirection ? (rawSortDirection as 'asc' | 'desc') : undefined,
 		showWholesale: url.searchParams.get('showWholesale') === 'true',
 		wholesaleOnly: url.searchParams.get('wholesaleOnly') === 'true',
 		filters: {
@@ -300,15 +308,24 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 			appearance: url.searchParams.get('appearance') ?? undefined,
 			name: url.searchParams.get('name') ?? undefined,
 			region: url.searchParams.get('region') ?? undefined,
-			scoreValueMin: parseOptionalNumber(url.searchParams.get('score_value_min')),
-			scoreValueMax: parseOptionalNumber(url.searchParams.get('score_value_max')),
+			scoreValueMin:
+				url.searchParams.get('score_value_min') !== null
+					? parseRequiredNumber(url.searchParams.get('score_value_min')!, 'score_value_min')
+					: undefined,
+			scoreValueMax:
+				url.searchParams.get('score_value_max') !== null
+					? parseRequiredNumber(url.searchParams.get('score_value_max')!, 'score_value_max')
+					: undefined,
 			// cost_lb_* remains as a deprecated compatibility alias. The actual filter
 			// source of truth is price_per_lb, so prefer the canonical params when present.
 			pricePerLbMin: parseOptionalNumberFromAliases(url, 'price_per_lb_min', 'cost_lb_min'),
 			pricePerLbMax: parseOptionalNumberFromAliases(url, 'price_per_lb_max', 'cost_lb_max'),
 			arrivalDate: url.searchParams.get('arrival_date') ?? undefined,
 			stockedDate: url.searchParams.get('stocked_date') ?? undefined,
-			stockedDays: parseOptionalPositiveInteger(url.searchParams.get('stocked_days'))
+			stockedDays:
+				url.searchParams.get('stocked_days') !== null
+					? parseRequiredPositiveInteger(url.searchParams.get('stocked_days')!, 'stocked_days')
+					: undefined
 		}
 	};
 }
@@ -402,29 +419,105 @@ async function resolveCatalogAccessContext(
 	};
 }
 
+function enforceAnonymousCatalogContract(
+	query: ParsedCatalogQuery,
+	url: URL,
+	publicOnly: boolean
+): ParsedCatalogQuery {
+	if (!publicOnly) {
+		return query;
+	}
+	if (query.sortField && query.sortField !== 'stocked_date') {
+		throw new CatalogAnonymousContractError(
+			'sortField',
+			'Anonymous catalog requests only support the default sort stocked_date desc'
+		);
+	}
+
+	if (query.sortDirection && query.sortDirection !== 'desc') {
+		throw new CatalogAnonymousContractError(
+			'sortDirection',
+			'Anonymous catalog requests only support the default sort stocked_date desc'
+		);
+	}
+	if (query.ids.length > 0) {
+		throw new CatalogAnonymousContractError(
+			'ids',
+			'Anonymous catalog requests cannot fetch specific ids'
+		);
+	}
+
+	if (query.fields === 'dropdown') {
+		throw new CatalogAnonymousContractError(
+			'fields',
+			'Anonymous catalog requests do not support fields=dropdown'
+		);
+	}
+
+	if (query.page > 1) {
+		throw new CatalogAnonymousContractError(
+			'page',
+			'Anonymous catalog requests only support the first page'
+		);
+	}
+
+	for (const [param] of url.searchParams.entries()) {
+		if (!ANONYMOUS_ALLOWED_QUERY_PARAMS.has(param)) {
+			throw new CatalogAnonymousContractError(
+				param,
+				`Anonymous catalog requests only allow filters: ${ANONYMOUS_ALLOWED_FILTER_PARAMS.join(', ')}`
+			);
+		}
+	}
+
+	return {
+		...query,
+		page: 1,
+		limit: Math.min(query.limit, ANONYMOUS_API_PAGE_LIMIT),
+		offset: 0,
+		isPaginated: true,
+		sortField: 'stocked_date',
+		sortDirection: 'desc',
+		showWholesale: false,
+		wholesaleOnly: false,
+		filters: {
+			stocked: true,
+			country: query.filters.country,
+			processing: query.filters.processing,
+			name: query.filters.name
+		}
+	};
+}
+
 async function queryCatalogData(
 	context: CatalogAccessContext,
 	query: ParsedCatalogQuery,
+	url: URL,
 	options: QueryCatalogDataOptions = {}
 ): Promise<CanonicalCatalogResponse> {
+	const effectiveQuery =
+		context.authKind === 'anonymous'
+			? enforceAnonymousCatalogContract(query, url, context.publicOnly)
+			: query;
+
 	// Preserve the existing specialized contracts for explicit ID fetches and
 	// dropdown projection requests. Default pagination is only for the standard
 	// canonical listing response when callers omit both page and limit.
 	const useDefaultPagination =
 		options.forceDefaultPagination === true &&
-		!query.isPaginated &&
-		query.ids.length === 0 &&
-		query.fields !== 'dropdown';
-	const requestedPage = query.isPaginated ? query.page : 1;
-	const requestedLimit = query.isPaginated
-		? query.limit
+		!effectiveQuery.isPaginated &&
+		effectiveQuery.ids.length === 0 &&
+		effectiveQuery.fields !== 'dropdown';
+	const requestedPage = effectiveQuery.isPaginated ? effectiveQuery.page : 1;
+	const requestedLimit = effectiveQuery.isPaginated
+		? effectiveQuery.limit
 		: useDefaultPagination
 			? DEFAULT_API_PAGE_LIMIT
-			: query.limit;
-	const requestedOffset = query.isPaginated ? query.offset : 0;
+			: effectiveQuery.limit;
+	const requestedOffset = effectiveQuery.isPaginated ? effectiveQuery.offset : 0;
 	const useRowLimitedPagination =
-		!query.isPaginated && !useDefaultPagination && context.rowLimit !== null;
-	const isPaginated = query.isPaginated || useDefaultPagination || useRowLimitedPagination;
+		!effectiveQuery.isPaginated && !useDefaultPagination && context.rowLimit !== null;
+	const isPaginated = effectiveQuery.isPaginated || useDefaultPagination || useRowLimitedPagination;
 	const effectiveLimit = context.rowLimit
 		? isPaginated
 			? Math.min(requestedLimit, context.rowLimit)
@@ -436,9 +529,9 @@ async function queryCatalogData(
 	// stocked filter: true = stocked only (default), false = unstocked only, null = all items
 	// parseCatalogQuery always assigns this; no param defaults to true.
 	const stockedFilter: boolean | null =
-		query.filters.stocked !== undefined ? query.filters.stocked : true;
+		effectiveQuery.filters.stocked !== undefined ? effectiveQuery.filters.stocked : true;
 
-	if (query.fields === 'dropdown' && query.ids.length === 0 && !isPaginated) {
+	if (effectiveQuery.fields === 'dropdown' && effectiveQuery.ids.length === 0 && !isPaginated) {
 		// getCatalogDropdown now supports stockedFilter directly (3-way: true/false/null)
 		const rows = await getCatalogDropdown(context.supabase, {
 			stockedFilter,
@@ -483,28 +576,31 @@ async function queryCatalogData(
 		publicOnly: context.publicOnly,
 		showWholesale: context.showWholesale,
 		wholesaleOnly: context.wholesaleOnly,
-		coffeeIds: query.ids.length > 0 ? query.ids : undefined,
-		origin: query.filters.origin,
-		continent: query.filters.continent,
-		country: query.filters.country,
+		coffeeIds: effectiveQuery.ids.length > 0 ? effectiveQuery.ids : undefined,
+		origin: effectiveQuery.filters.origin,
+		continent: effectiveQuery.filters.continent,
+		country: effectiveQuery.filters.country,
 		source:
-			query.filters.source && query.filters.source.length > 0 ? query.filters.source : undefined,
-		processing: query.filters.processing,
-		cultivarDetail: query.filters.cultivarDetail,
-		type: query.filters.type,
-		grade: query.filters.grade,
-		appearance: query.filters.appearance,
-		name: query.filters.name,
-		region: query.filters.region,
-		scoreValueMin: query.filters.scoreValueMin,
-		scoreValueMax: query.filters.scoreValueMax,
-		pricePerLbMin: query.filters.pricePerLbMin,
-		pricePerLbMax: query.filters.pricePerLbMax,
-		arrivalDate: query.filters.arrivalDate,
-		stockedDate: query.filters.stockedDate,
-		stockedDays: query.filters.stockedDays,
-		orderBy: query.ids.length > 0 ? 'name' : query.sortField || 'arrival_date',
-		orderDirection: query.sortDirection || (query.ids.length > 0 ? 'asc' : 'desc'),
+			effectiveQuery.filters.source && effectiveQuery.filters.source.length > 0
+				? effectiveQuery.filters.source
+				: undefined,
+		processing: effectiveQuery.filters.processing,
+		cultivarDetail: effectiveQuery.filters.cultivarDetail,
+		type: effectiveQuery.filters.type,
+		grade: effectiveQuery.filters.grade,
+		appearance: effectiveQuery.filters.appearance,
+		name: effectiveQuery.filters.name,
+		region: effectiveQuery.filters.region,
+		scoreValueMin: effectiveQuery.filters.scoreValueMin,
+		scoreValueMax: effectiveQuery.filters.scoreValueMax,
+		pricePerLbMin: effectiveQuery.filters.pricePerLbMin,
+		pricePerLbMax: effectiveQuery.filters.pricePerLbMax,
+		arrivalDate: effectiveQuery.filters.arrivalDate,
+		stockedDate: effectiveQuery.filters.stockedDate,
+		stockedDays: effectiveQuery.filters.stockedDays,
+		orderBy: effectiveQuery.ids.length > 0 ? 'name' : effectiveQuery.sortField || 'arrival_date',
+		orderDirection:
+			effectiveQuery.sortDirection || (effectiveQuery.ids.length > 0 ? 'asc' : 'desc'),
 		limit: isPaginated ? effectiveLimit : undefined,
 		offset: isPaginated ? offset : undefined
 	});
@@ -512,6 +608,7 @@ async function queryCatalogData(
 	const totalAvailable = result.count || result.data.length;
 	const fullRows = result.data.map(toCatalogResourceItem);
 	const data = !isPaginated && context.rowLimit ? fullRows.slice(0, context.rowLimit) : fullRows;
+	const anonymousTeaserPagination = context.authKind === 'anonymous' && isPaginated;
 	const totalPages = isPaginated ? Math.ceil(totalAvailable / effectiveLimit) : 0;
 
 	return {
@@ -521,9 +618,9 @@ async function queryCatalogData(
 					page,
 					limit: effectiveLimit,
 					total: totalAvailable,
-					totalPages,
-					hasNext: page < totalPages,
-					hasPrev: page > 1
+					totalPages: anonymousTeaserPagination ? 1 : totalPages,
+					hasNext: anonymousTeaserPagination ? false : page < totalPages,
+					hasPrev: anonymousTeaserPagination ? false : page > 1
 				}
 			: null,
 		meta: {
@@ -568,7 +665,7 @@ async function resolveCatalogRouteResult(
 	try {
 		const query = parseCatalogQuery(event.url);
 		context = await resolveCatalogAccessContext(event, query, requestPath);
-		const body = await queryCatalogData(context, query, {
+		const body = await queryCatalogData(context, query, event.url, {
 			forceDefaultPagination: options.forceDefaultPagination
 		});
 		await logCatalogApiUsage(context, event, 200, startTime);
@@ -624,6 +721,20 @@ async function resolveCatalogRouteResult(
 				body: {
 					error: error.status === 403 ? 'Insufficient permissions' : 'Authentication required',
 					message: error.message
+				},
+				headers: new Headers()
+			};
+		}
+
+		if (error instanceof CatalogAnonymousContractError) {
+			return {
+				status: 400,
+				body: {
+					error: 'Anonymous catalog contract violation',
+					message: error.message,
+					details: {
+						parameter: error.parameter
+					}
 				},
 				headers: new Headers()
 			};

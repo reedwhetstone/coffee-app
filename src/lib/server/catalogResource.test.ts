@@ -157,7 +157,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
-	it('applies default pagination to canonical anonymous requests with no explicit page or limit', async () => {
+	it('applies anonymous contract defaults when no explicit page or limit are provided', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
 			primaryAppRole: null,
@@ -177,14 +177,26 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(response.status).toBe(200);
 		expect(body.meta.auth.kind).toBe('anonymous');
 		expect(body.meta.access.publicOnly).toBe(true);
-		expect(body.pagination).toMatchObject({ page: 1, limit: 100, total: 250, totalPages: 3 });
+		expect(body.pagination).toMatchObject({
+			page: 1,
+			limit: 15,
+			total: 250,
+			totalPages: 1,
+			hasNext: false,
+			hasPrev: false
+		});
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
 				stockedFilter: true,
 				publicOnly: true,
-				limit: 100,
-				offset: 0
+				country: undefined,
+				processing: undefined,
+				name: undefined,
+				limit: 15,
+				offset: 0,
+				orderBy: 'stocked_date',
+				orderDirection: 'desc'
 			})
 		);
 	});
@@ -215,10 +227,17 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(response.status).toBe(200);
 		expect(body.meta.access.rowLimit).toBeNull();
 		expect(body.meta.access.limited).toBe(false);
-		expect(body.pagination).toMatchObject({ page: 1, limit: 3, total: 1137, totalPages: 379 });
+		expect(body.pagination).toMatchObject({
+			page: 1,
+			limit: 3,
+			total: 1137,
+			totalPages: 1,
+			hasNext: false,
+			hasPrev: false
+		});
 	});
 
-	it('respects explicit high limits for canonical requests', async () => {
+	it('caps anonymous limits at 15 rows', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
 			primaryAppRole: null,
@@ -227,7 +246,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		mockIsApiKeyPrincipal.mockReturnValue(false);
 		mockIsSessionPrincipal.mockReturnValue(false);
 		mockSearchCatalog.mockResolvedValue({
-			data: Array.from({ length: 500 }, (_, index) => ({
+			data: Array.from({ length: 15 }, (_, index) => ({
 				...sampleCatalogItem,
 				id: index + 1,
 				name: `Coffee ${index + 1}`
@@ -242,17 +261,37 @@ describe('buildCanonicalCatalogResponse', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(body.pagination).toMatchObject({ page: 1, limit: 500, total: 1137, totalPages: 3 });
+		expect(body.pagination).toMatchObject({
+			page: 1,
+			limit: 15,
+			total: 1137,
+			totalPages: 1,
+			hasNext: false,
+			hasPrev: false
+		});
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
-				limit: 500,
-				offset: 0
+				limit: 15,
+				offset: 0,
+				orderBy: 'stocked_date',
+				orderDirection: 'desc'
 			})
 		);
 	});
 
-	it('prefers canonical price_per_lb query params for per-pound price filtering', async () => {
+	it.each([
+		['page', 'abc', 'positive integer'],
+		['page', '-1', 'positive integer'],
+		['limit', '3.5', 'positive integer'],
+		['score_value_min', 'seven', 'number'],
+		['score_value_max', '88points', 'number'],
+		['price_per_lb_min', 'cheap', 'number'],
+		['price_per_lb_max', '12usd', 'number'],
+		['cost_lb_min', 'legacy', 'number'],
+		['cost_lb_max', 'legacy-max', 'number'],
+		['stocked_days', 'thirty', 'positive integer']
+	])('rejects invalid numeric query param %s=%s', async (parameter, value, expected) => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
 			primaryAppRole: null,
@@ -260,6 +299,34 @@ describe('buildCanonicalCatalogResponse', () => {
 		});
 		mockIsApiKeyPrincipal.mockReturnValue(false);
 		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent(`https://app.test/v1/catalog?${parameter}=${encodeURIComponent(value)}`)
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body).toEqual({
+			error: 'Invalid query parameter',
+			message: `Query parameter "${parameter}" must use ${expected} format`,
+			details: {
+				parameter,
+				value,
+				expected
+			}
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
+	it('prefers canonical price_per_lb query params for per-pound price filtering', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: null,
+			session: { access_token: 'cookie-token' }
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
 
 		await buildCanonicalCatalogResponse(
 			makeEvent(
@@ -278,12 +345,13 @@ describe('buildCanonicalCatalogResponse', () => {
 
 	it('maps deprecated cost_lb query params onto price_per_lb filtering for compatibility', async () => {
 		mockResolvePrincipal.mockResolvedValue({
-			isAuthenticated: false,
-			primaryAppRole: null,
-			apiPlan: null
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: null,
+			session: { access_token: 'cookie-token' }
 		});
 		mockIsApiKeyPrincipal.mockReturnValue(false);
-		mockIsSessionPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
 
 		await buildCanonicalCatalogResponse(
 			makeEvent('https://app.test/v1/catalog?cost_lb_min=6.5&cost_lb_max=7.75')
@@ -298,7 +366,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
-	it('passes stocked_date and stocked_days through as distinct filters', async () => {
+	it('rejects anonymous filters outside the public contract', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
 			primaryAppRole: null,
@@ -307,17 +375,18 @@ describe('buildCanonicalCatalogResponse', () => {
 		mockIsApiKeyPrincipal.mockReturnValue(false);
 		mockIsSessionPrincipal.mockReturnValue(false);
 
-		await buildCanonicalCatalogResponse(
+		const response = await buildCanonicalCatalogResponse(
 			makeEvent('https://app.test/v1/catalog?stocked_date=2026-03-01&stocked_days=30')
 		);
+		const body = await response.json();
 
-		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
-			expect.objectContaining({
-				stockedDate: '2026-03-01',
-				stockedDays: 30
-			})
-		);
+		expect(response.status).toBe(400);
+		expect(body).toEqual({
+			error: 'Anonymous catalog contract violation',
+			message: 'Anonymous catalog requests only allow filters: country, processing, name',
+			details: { parameter: 'stocked_date' }
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
 	it('rejects invalid stocked_date values with a structured 400 response', async () => {
@@ -692,12 +761,13 @@ describe('buildCanonicalCatalogResponse', () => {
 	describe('stocked query parameter', () => {
 		beforeEach(() => {
 			mockResolvePrincipal.mockResolvedValue({
-				isAuthenticated: false,
-				primaryAppRole: null,
-				apiPlan: null
+				isAuthenticated: true,
+				primaryAppRole: 'viewer',
+				apiPlan: null,
+				session: { access_token: 'cookie-token' }
 			});
 			mockIsApiKeyPrincipal.mockReturnValue(false);
-			mockIsSessionPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(true);
 		});
 
 		it('passes stockedFilter=true to searchCatalog when stocked=true is set', async () => {
@@ -742,12 +812,13 @@ describe('buildCanonicalCatalogResponse', () => {
 	describe('origin query parameter', () => {
 		beforeEach(() => {
 			mockResolvePrincipal.mockResolvedValue({
-				isAuthenticated: false,
-				primaryAppRole: null,
-				apiPlan: null
+				isAuthenticated: true,
+				primaryAppRole: 'viewer',
+				apiPlan: null,
+				session: { access_token: 'cookie-token' }
 			});
 			mockIsApiKeyPrincipal.mockReturnValue(false);
-			mockIsSessionPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(true);
 		});
 
 		it('passes origin to searchCatalog when origin param is set', async () => {
@@ -804,12 +875,13 @@ describe('buildCanonicalCatalogResponse', () => {
 	describe('dropdown path stocked filtering', () => {
 		beforeEach(() => {
 			mockResolvePrincipal.mockResolvedValue({
-				isAuthenticated: false,
-				primaryAppRole: null,
-				apiPlan: null
+				isAuthenticated: true,
+				primaryAppRole: 'viewer',
+				apiPlan: null,
+				session: { access_token: 'cookie-token' }
 			});
 			mockIsApiKeyPrincipal.mockReturnValue(false);
-			mockIsSessionPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(true);
 		});
 
 		it('passes stockedFilter=true to getCatalogDropdown when stocked=true is set', async () => {
@@ -883,12 +955,13 @@ describe('buildLegacyAppCatalogResponse', () => {
 
 	it('preserves the legacy paginated shape for compatibility consumers', async () => {
 		mockResolvePrincipal.mockResolvedValue({
-			isAuthenticated: false,
-			primaryAppRole: null,
-			apiPlan: null
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: null,
+			session: { access_token: 'cookie-token' }
 		});
 		mockIsApiKeyPrincipal.mockReturnValue(false);
-		mockIsSessionPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
 
 		const response = await buildLegacyAppCatalogResponse(
 			makeEvent('https://app.test/api/catalog?page=2&limit=10')

@@ -86,13 +86,6 @@ ${docsEntries}
 		<priority>0.5</priority>
 	</url>
 
-	<!-- Parchment Console -->
-	<url>
-		<loc>${baseUrl}/api-dashboard</loc>
-		<lastmod>${currentDate}</lastmod>
-		<changefreq>weekly</changefreq>
-		<priority>0.5</priority>
-	</url>
 
 	<!-- Contact page -->
 	<url>

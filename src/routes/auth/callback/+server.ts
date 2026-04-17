@@ -1,9 +1,11 @@
 import { redirect } from '@sveltejs/kit';
+import { sanitizeNextPath } from '$lib/utils/safeRedirect';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 	const code = url.searchParams.get('code') as string;
-	const next = url.searchParams.get('next') ?? '/dashboard';
+	// Harden against open-redirect: only allow internal paths as post-auth targets.
+	const next = sanitizeNextPath(url.searchParams.get('next'), '/dashboard');
 
 	if (code) {
 		const { data, error } = await supabase.auth.exchangeCodeForSession(code);
