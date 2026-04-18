@@ -1,22 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	ANONYMOUS_ALLOWED_FILTER_PARAM_LIST,
-	ANONYMOUS_API_PAGE_LIMIT,
-	DEFAULT_API_PAGE_LIMIT
-} from '$lib/catalog/publicCatalogContract';
 import { getDocsPage } from '$lib/docs/content';
 
 describe('catalog docs contract', () => {
 	const page = getDocsPage('api', 'catalog');
 
-	it('documents the anonymous teaser contract with shared constants', () => {
+	it('documents the broad public query contract and API-key header distinction', () => {
 		expect(page).toBeDefined();
 
 		const serializedPage = JSON.stringify(page);
-		expect(serializedPage).toContain(`up to ${ANONYMOUS_API_PAGE_LIMIT} rows`);
-		expect(serializedPage).toContain(ANONYMOUS_ALLOWED_FILTER_PARAM_LIST);
-		expect(serializedPage).toContain(`${DEFAULT_API_PAGE_LIMIT}-row default listing contract`);
+		expect(serializedPage).toContain(
+			'same public query surface as viewer sessions and API-key callers'
+		);
+		expect(serializedPage).toContain('100 rows');
+		expect(serializedPage).toContain('15-row pagination fallback');
+		expect(serializedPage).toContain('No X-RateLimit-* headers');
 	});
 
 	it('keeps the canonical example on price_per_lb', () => {
@@ -27,10 +25,10 @@ describe('catalog docs contract', () => {
 		expect(example).not.toContain('"cost_lb": 7.5');
 	});
 
-	it('explicitly scopes the broader query table away from anonymous callers', () => {
+	it('scopes wholesale controls to privileged member or admin sessions', () => {
 		const querySection = page?.sections.find((section) => section.title === 'Query parameters');
 		expect(querySection?.body?.join(' ')).toContain(
-			'Anonymous callers do not get the full table below.'
+			'Privileged member and admin sessions may additionally use showWholesale and wholesaleOnly'
 		);
 	});
 });

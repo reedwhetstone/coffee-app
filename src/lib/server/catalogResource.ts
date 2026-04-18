@@ -6,14 +6,6 @@ import {
 	type CatalogItem
 } from '$lib/data/catalog';
 import {
-	ANONYMOUS_ALLOWED_FILTER_PARAM_LIST,
-	ANONYMOUS_ALLOWED_QUERY_PARAMS,
-	ANONYMOUS_API_PAGE_LIMIT,
-	ANONYMOUS_DEFAULT_SORT_DIRECTION,
-	ANONYMOUS_DEFAULT_SORT_FIELD,
-	DEFAULT_API_PAGE_LIMIT
-} from '$lib/catalog/publicCatalogContract';
-import {
 	checkRateLimit,
 	getApiRowLimit,
 	logApiUsage,
@@ -124,8 +116,9 @@ interface CatalogAccessContext {
 interface QueryCatalogDataOptions {
 	forceDefaultPagination?: boolean;
 }
+
+const DEFAULT_API_PAGE_LIMIT = 100;
 const ISO_DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const ANONYMOUS_ALLOWED_QUERY_PARAM_SET = new Set<string>(ANONYMOUS_ALLOWED_QUERY_PARAMS);
 
 class CatalogRateLimitError extends Error {
 	constructor(
@@ -146,16 +139,6 @@ class CatalogQueryValidationError extends Error {
 	) {
 		super(`Query parameter "${parameter}" must use ${expected} format`);
 		this.name = 'CatalogQueryValidationError';
-	}
-}
-
-class CatalogAnonymousContractError extends Error {
-	constructor(
-		public parameter: string,
-		message: string
-	) {
-		super(message);
-		this.name = 'CatalogAnonymousContractError';
 	}
 }
 
@@ -417,86 +400,12 @@ async function resolveCatalogAccessContext(
 	};
 }
 
-function enforceAnonymousCatalogContract(
-	query: ParsedCatalogQuery,
-	url: URL,
-	publicOnly: boolean
-): ParsedCatalogQuery {
-	if (!publicOnly) {
-		return query;
-	}
-	if (query.sortField && query.sortField !== ANONYMOUS_DEFAULT_SORT_FIELD) {
-		throw new CatalogAnonymousContractError(
-			'sortField',
-			`Anonymous catalog requests only support the default sort ${ANONYMOUS_DEFAULT_SORT_FIELD} ${ANONYMOUS_DEFAULT_SORT_DIRECTION}`
-		);
-	}
-
-	if (query.sortDirection && query.sortDirection !== ANONYMOUS_DEFAULT_SORT_DIRECTION) {
-		throw new CatalogAnonymousContractError(
-			'sortDirection',
-			`Anonymous catalog requests only support the default sort ${ANONYMOUS_DEFAULT_SORT_FIELD} ${ANONYMOUS_DEFAULT_SORT_DIRECTION}`
-		);
-	}
-	if (query.ids.length > 0) {
-		throw new CatalogAnonymousContractError(
-			'ids',
-			'Anonymous catalog requests cannot fetch specific ids'
-		);
-	}
-
-	if (query.fields === 'dropdown') {
-		throw new CatalogAnonymousContractError(
-			'fields',
-			'Anonymous catalog requests do not support fields=dropdown'
-		);
-	}
-
-	if (query.page > 1) {
-		throw new CatalogAnonymousContractError(
-			'page',
-			'Anonymous catalog requests only support the first page'
-		);
-	}
-
-	for (const [param] of url.searchParams.entries()) {
-		if (!ANONYMOUS_ALLOWED_QUERY_PARAM_SET.has(param)) {
-			throw new CatalogAnonymousContractError(
-				param,
-				`Anonymous catalog requests only allow filters: ${ANONYMOUS_ALLOWED_FILTER_PARAM_LIST}`
-			);
-		}
-	}
-
-	return {
-		...query,
-		page: 1,
-		limit: Math.min(query.limit, ANONYMOUS_API_PAGE_LIMIT),
-		offset: 0,
-		isPaginated: true,
-		sortField: ANONYMOUS_DEFAULT_SORT_FIELD,
-		sortDirection: ANONYMOUS_DEFAULT_SORT_DIRECTION,
-		showWholesale: false,
-		wholesaleOnly: false,
-		filters: {
-			stocked: true,
-			country: query.filters.country,
-			processing: query.filters.processing,
-			name: query.filters.name
-		}
-	};
-}
-
 async function queryCatalogData(
 	context: CatalogAccessContext,
 	query: ParsedCatalogQuery,
-	url: URL,
 	options: QueryCatalogDataOptions = {}
 ): Promise<CanonicalCatalogResponse> {
-	const effectiveQuery =
-		context.authKind === 'anonymous'
-			? enforceAnonymousCatalogContract(query, url, context.publicOnly)
-			: query;
+	const effectiveQuery = query;
 
 	// Preserve the existing specialized contracts for explicit ID fetches and
 	// dropdown projection requests. Default pagination is only for the standard
@@ -606,7 +515,6 @@ async function queryCatalogData(
 	const totalAvailable = result.count || result.data.length;
 	const fullRows = result.data.map(toCatalogResourceItem);
 	const data = !isPaginated && context.rowLimit ? fullRows.slice(0, context.rowLimit) : fullRows;
-	const anonymousTeaserPagination = context.authKind === 'anonymous' && isPaginated;
 	const totalPages = isPaginated ? Math.ceil(totalAvailable / effectiveLimit) : 0;
 
 	return {
@@ -616,9 +524,9 @@ async function queryCatalogData(
 					page,
 					limit: effectiveLimit,
 					total: totalAvailable,
-					totalPages: anonymousTeaserPagination ? 1 : totalPages,
-					hasNext: anonymousTeaserPagination ? false : page < totalPages,
-					hasPrev: anonymousTeaserPagination ? false : page > 1
+					totalPages,
+					hasNext: page < totalPages,
+					hasPrev: page > 1
 				}
 			: null,
 		meta: {
@@ -663,7 +571,7 @@ async function resolveCatalogRouteResult(
 	try {
 		const query = parseCatalogQuery(event.url);
 		context = await resolveCatalogAccessContext(event, query, requestPath);
-		const body = await queryCatalogData(context, query, event.url, {
+		const body = await queryCatalogData(context, query, {
 			forceDefaultPagination: options.forceDefaultPagination
 		});
 		await logCatalogApiUsage(context, event, 200, startTime);
@@ -719,20 +627,6 @@ async function resolveCatalogRouteResult(
 				body: {
 					error: error.status === 403 ? 'Insufficient permissions' : 'Authentication required',
 					message: error.message
-				},
-				headers: new Headers()
-			};
-		}
-
-		if (error instanceof CatalogAnonymousContractError) {
-			return {
-				status: 400,
-				body: {
-					error: 'Anonymous catalog contract violation',
-					message: error.message,
-					details: {
-						parameter: error.parameter
-					}
 				},
 				headers: new Headers()
 			};
