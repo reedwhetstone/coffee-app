@@ -512,7 +512,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Python requests',
 						language: 'python',
-						code: 'import os\nimport requests\n\nresponse = requests.get(\n    "https://purveyors.io/v1/catalog",\n    params={"processing": "washed", "limit": 25},\n    headers={"Authorization": f"Bearer {os.environ["PARCHMENT_API_KEY"]}"},\n    timeout=30,\n)\nresponse.raise_for_status()\npayload = response.json()\nprint(payload["pagination"]["total"], payload["meta"]["auth"])'
+						code: 'import os\nimport requests\n\nresponse = requests.get(\n    "https://purveyors.io/v1/catalog",\n    params={"processing": "washed", "limit": 25},\n    headers={"Authorization": f"Bearer {os.environ[\'PARCHMENT_API_KEY\']}"},\n    timeout=30,\n)\nresponse.raise_for_status()\npayload = response.json()\nprint(payload["pagination"]["total"], payload["meta"]["auth"])'
 					}
 				]
 			},
