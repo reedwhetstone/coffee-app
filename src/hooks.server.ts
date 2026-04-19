@@ -124,7 +124,7 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	const requiresDashboardAccess = dashboardRoutes.some((route) => currentPath.startsWith(route));
 
 	if (currentPath === '/api-dashboard/docs') {
-		throw redirect(307, '/docs');
+		throw redirect(307, '/docs/api/overview');
 	}
 
 	const session = event.locals.session;

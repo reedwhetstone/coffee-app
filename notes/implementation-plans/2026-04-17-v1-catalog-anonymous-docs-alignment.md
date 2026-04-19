@@ -1,46 +1,45 @@
 # Implementation Plan: /v1/catalog docs truth alignment
 
 **Date:** 2026-04-17
-**Status:** Updated after PR #278 truth audit
+**Status:** Updated after PR #278 re-audit against current `main`
 **Focus area:** Docs accuracy / API contract correctness / cross-surface consistency
 **Related:** `notes/PRODUCT_VISION.md`, `notes/decisions/002-api-first-external-internal-split.md`
 
 ## Audit outcome
 
-PR #278 was originally written around a short-lived anonymous teaser contract. That is no longer the current codebase truth on `main`.
+PR #278 was drafted from an assumption that anonymous `GET /v1/catalog` had widened to the same public contract as viewer sessions and API-key callers. That is not the current codebase truth on `main`.
 
-After re-checking the merged server behavior in `src/lib/server/catalogResource.ts` and `src/lib/server/catalogResource.test.ts`, the canonical contract is:
+After re-checking `src/lib/server/catalogResource.ts` and `src/lib/server/catalogResource.test.ts`, the current contract is:
 
 - anonymous `GET /v1/catalog` is allowed and remains public-only
-- anonymous callers keep the same public query surface as viewer sessions and API-key callers
-- if `page` is supplied without `limit`, pagination falls back to 15 rows
-- if both `page` and `limit` are omitted, the canonical listing defaults to 100 rows
-- `ids`, `fields=dropdown`, broader filters, and non-default sorting are still supported for anonymous public reads
-- only API-key requests emit `X-RateLimit-*` headers
-- privileged member or admin sessions may widen first-party visibility with `showWholesale` and `wholesaleOnly`
+- anonymous access is intentionally teaser-only: first page only, capped at 15 rows, default `stocked=true`, default `stocked_date desc` sort, and only `country`, `processing`, and `name` filters
+- anonymous callers cannot use `ids`, `fields=dropdown`, deep paging, or arbitrary filter combinations
+- viewer sessions keep the broader public query surface while remaining public-only by default
+- privileged member and admin sessions may widen first-party visibility with `showWholesale` and `wholesaleOnly`
+- API-key requests stay public-only, use the broader public query surface, and are the only mode that emits `X-RateLimit-*` headers
 - `/api/catalog-api` remains a deprecated API-key-only alias with `Deprecation`, `Link`, and `Sunset` headers
 
-So the right fix is not to document a teaser-only anonymous contract. The right fix is to align the docs with the broader public contract that `main` now enforces.
+So the right fix is to resolve the merge conflict by taking current code behavior as truth, while still carrying forward the parts of this PR that improve docs clarity.
 
 ## Problem to fix
 
-The catalog docs still had two accuracy issues worth carrying forward in this PR:
+The current merge state still leaves three docs concerns worth fixing in this PR:
 
-1. They blurred the access-mode differences across anonymous, session, API-key, and legacy alias callers.
-2. The main example payload still foregrounded deprecated `cost_lb` naming instead of the canonical `price_per_lb` field.
+1. conflict markers block mergeability
+2. the catalog page should explain the teaser-only anonymous contract more explicitly so it cannot be mistaken for the broader API-key or viewer-session surface
+3. the main response example should continue to foreground canonical `price_per_lb` naming instead of centering deprecated `cost_lb` terminology
 
 ## Minimal credible fix set
 
-1. Resolve the branch conflict by taking the current `main` server behavior as truth.
+1. Resolve the branch conflict by aligning all catalog docs text with current `main` behavior.
 2. Update `src/lib/docs/content.ts` so the catalog page says:
-   - anonymous access is supported and public-only
-   - anonymous, viewer-session, and API-key callers share the same public query surface
-   - the 15-row fallback applies when `page` is supplied without `limit`
-   - the 100-row default applies when both `page` and `limit` are omitted
-   - only API-key requests emit `X-RateLimit-*` headers
+   - anonymous access is teaser-only and public-only
+   - viewer sessions keep the broader public contract
    - privileged member and admin sessions can widen visibility with wholesale flags
-3. Keep the example response on canonical `price_per_lb` naming.
-4. Add a small docs regression test so the broad public contract language and pricing example do not silently drift again.
+   - only API-key requests emit `X-RateLimit-*` headers
+   - the default 100-row listing path applies to non-anonymous callers, while anonymous access stays capped at 15 rows
+3. Keep the response example centered on canonical `price_per_lb` naming.
+4. Add a small docs regression test so the anonymous teaser contract and API-key/session distinctions do not silently drift again.
 
 ## Files in scope
 
@@ -55,9 +54,9 @@ The catalog docs still had two accuracy issues worth carrying forward in this PR
 
 ## Acceptance criteria
 
-- `/docs/api/catalog` no longer describes anonymous `/v1/catalog` as a 15-row teaser-only surface
-- the docs clearly distinguish anonymous, session, API-key, and legacy alias behavior
-- the docs say anonymous callers are public-only but retain the same public query surface
+- `/docs/api/catalog` describes anonymous `/v1/catalog` as a teaser-only public discovery path
+- the docs distinguish anonymous, session, API-key, and deprecated alias behavior accurately
 - the docs say only API-key requests emit `X-RateLimit-*` headers
-- the primary example uses `price_per_lb` and does not present `cost_lb` as the lead field
+- the docs say viewer sessions keep the broader public contract while member/admin sessions may widen visibility further
+- the primary example keeps `price_per_lb` as the canonical price field shown to readers
 - merge conflicts are resolved against current `main` truth
