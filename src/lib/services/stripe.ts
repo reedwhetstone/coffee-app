@@ -176,9 +176,7 @@ export async function getSubscriptionDetails(
 				)
 			: latestSubscription.items.data[0];
 		const priceItem = matchedItem?.price;
-		const catalogEntry = priceItem
-			? getBillingCatalogEntryByStripePriceId(priceItem.id)
-			: null;
+		const catalogEntry = priceItem ? getBillingCatalogEntryByStripePriceId(priceItem.id) : null;
 
 		return {
 			id: latestSubscription.id,

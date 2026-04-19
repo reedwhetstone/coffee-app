@@ -10,9 +10,11 @@
 ## Feature
 
 **DEVLOG item (Priority 2):**
+
 > "Supplier cupping note dashed lines are too dark and visually distracting. Reduce opacity or change to lighter color."
 
 The `TastingNotesRadar` component renders two overlaid data sets on the spider chart:
+
 - **User cupping data:** filled circles with solid stroke at `stroke-opacity: 1`
 - **AI cupping overlay** (when both sets present): dashed circles at `stroke: '#f9a57b'`, `stroke-width: 1`, `stroke-opacity: 0.3`, `stroke-dasharray: '3,6'`
 
@@ -36,11 +38,13 @@ The fix involves reducing opacity values and possibly smoothing the dash-gap rat
 ## Strategy Alignment Audit
 
 **Supports:**
+
 - "Data-rich sourcing intelligence" theme — tasting radar chart is a flagship visualization; rough aesthetics undermine trust in the data
 - "Roaster credibility tools" narrative in blog posts: the cupping interface is part of the product story Reed is actively writing about
 - No contradiction with any current blog or roadmap direction
 
 **Neutral:**
+
 - No bearing on the PPI revenue product, public catalog funnel, or mobile navigation
 
 **Verdict:** Aligned. Polish on a flagship visualization is always safe; this directly supports the tasting-data credibility angle in the market-intelligence blog pillar.
@@ -50,11 +54,13 @@ The fix involves reducing opacity values and possibly smoothing the dash-gap rat
 ## Scope
 
 **In:**
+
 - Reduce visual weight of the AI cupping overlay dashed circles (opacity, dash pattern, or both)
 - Optionally reduce the axis lines opacity slightly if they read dark on light backgrounds
 - No changes to user data circles (keep those solid/vibrant)
 
 **Out:**
+
 - No changes to layout, sizing, or data logic
 - No changes to how the legend text renders ("Solid circles: AI assessment • Dashed circles: Your assessment")
 - No changes to the color palette (`#f9a57b` orange accent for AI is appropriate and on-brand)
@@ -68,6 +74,7 @@ The fix involves reducing opacity values and possibly smoothing the dash-gap rat
 ### Change 1: AI overlay dashed circles (lines ~149–153)
 
 Current:
+
 ```js
 .attr('fill-opacity', 0)
 .attr('stroke', '#f9a57b')
@@ -77,6 +84,7 @@ Current:
 ```
 
 Proposed:
+
 ```js
 .attr('fill-opacity', 0)
 .attr('stroke', '#f9a57b')
@@ -88,6 +96,7 @@ Proposed:
 ### Change 2: Axis lines (lines ~94–96)
 
 Current:
+
 ```js
 .attr('stroke', '#e5e7eb')
 .attr('stroke-width', 1)
@@ -95,6 +104,7 @@ Current:
 ```
 
 Proposed:
+
 ```js
 .attr('stroke', '#e5e7eb')
 .attr('stroke-width', 0.75)      // from 1 → 0.75
@@ -105,8 +115,8 @@ Proposed:
 
 ## Files to Change
 
-| File | Change |
-|------|--------|
+| File                                          | Change                                                                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | `src/lib/components/TastingNotesRadar.svelte` | Reduce AI dashed circle stroke-opacity + stroke-width + dash spacing; reduce axis line opacity + stroke-width |
 
 No other files touched.

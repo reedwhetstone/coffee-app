@@ -2,18 +2,20 @@
 
 **Date:** 2026-04-15  
 **Repository:** coffee-app  
-**Intent:** Refresh /profit page immediately after a successful new sale submission so charts and summary data reflect the saved sale without a manual browser refresh. Keep the URL-driven modal flow intact, and if the post-save refresh fails, do not silently close the modal into stale data.  
+**Intent:** Refresh /profit page immediately after a successful new sale submission so charts and summary data reflect the saved sale without a manual browser refresh. Keep the URL-driven modal flow intact, and if the post-save refresh fails, do not silently close the modal into stale data.
 
 ---
 
 ## Changes at a Glance
 
 ### `src/routes/profit/+page.svelte`
+
 1. `handleFormSubmit`: `hideForm()` and `selectedSale = null` moved from `finally` into the `try` block — modal now only closes after successful data refresh.
 2. On refresh failure: instead of `alert()` then fall-through, now `throw new Error(...)` — the error propagates back to SaleForm.
 3. `fetchInitialSalesData()`: removes the inner try/catch; errors now surface to the caller (which is the right layer for error handling).
 
 ### `src/routes/profit/SaleForm.svelte`
+
 - Changed `onSubmit(newSale); onClose();` to `await onSubmit(newSale);` — the form now waits for the parent's data refresh before returning.
 
 ---
@@ -27,11 +29,12 @@ The flow is: SaleForm POSTs to `/api/profit` → on success, `await onSubmit(new
 
 ### AC2: "The profit page modal closes only after the success path is complete, or otherwise does not leave the UI in a stale/ambiguous state."
 
-**Status: PARTIALLY BROKEN — P0.**  
+**Status: PARTIALLY BROKEN — P0.**
 
 The `finally` → `hideForm()` move is correct for the success path. But on the **failure path**, a critical gap exists.
 
 When `fetchInitialSalesData()` throws in `handleFormSubmit`:
+
 1. The error is thrown from within the `try` block.
 2. The `finally` block runs: `isSaving = null` (saving indicator disappears silently).
 3. The error propagates out to SaleForm's `await onSubmit(newSale)`.
@@ -78,36 +81,39 @@ However, after this PR, when `await onSubmit(newSale)` is called, `onSubmit` (wh
 ### Fix Options (concrete)
 
 **Option A — SaleForm catches the onSubmit error and alerts:**
+
 ```ts
 try {
-    const newSale = await response.json();
-    await onSubmit(newSale);
+	const newSale = await response.json();
+	await onSubmit(newSale);
 } catch (error) {
-    alert('Sale was saved but the page could not refresh. Please refresh your browser manually.');
-    onClose(); // close gracefully rather than leaving modal stuck open
+	alert('Sale was saved but the page could not refresh. Please refresh your browser manually.');
+	onClose(); // close gracefully rather than leaving modal stuck open
 }
 ```
 
 **Option B — Parent returns structured result instead of throwing, SaleForm reads it:**
+
 ```ts
 // In +page.svelte handleFormSubmit:
 try {
-    await fetchInitialSalesData();
-    hideForm();
-    selectedSale = null;
-    return { ok: true };
+	await fetchInitialSalesData();
+	hideForm();
+	selectedSale = null;
+	return { ok: true };
 } catch (error) {
-    // throw and also signal via return
-    return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
+	// throw and also signal via return
+	return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
 }
 ```
 
 Then SaleForm checks the return value:
+
 ```ts
 const result = await onSubmit(newSale);
 if (!result.ok) {
-    alert(`Sale saved but page refresh failed: ${result.error}. Please refresh manually.`);
-    onClose();
+	alert(`Sale saved but page refresh failed: ${result.error}. Please refresh manually.`);
+	onClose();
 }
 ```
 
@@ -116,9 +122,11 @@ Option A is simpler. Option B is cleaner architecturally. Both satisfy AC2.
 ### Minor: "create" hardcoded in alert even on update path
 
 **File:** `src/routes/profit/SaleForm.svelte`, line ~61:
+
 ```ts
 alert(`Failed to ${isUpdate ? 'update' : 'create'} sale: ${data.error}`);
 ```
+
 This uses `isUpdate` correctly for API failures. No issue here.
 
 ### Minor: isSaving cleared before error propagates
@@ -158,12 +166,14 @@ The diff comment mentions "Removed fetchProfitData" and "Removed fetchRoastProfi
 **P3: 0**  
 **NEXT_ACTION: patch_same_pr**  
 **TOP_FIXES:**
+
 - Wrap `await onSubmit(newSale)` in a try/catch in `SaleForm.svelte` that alerts the user on failure and calls `onClose()` gracefully rather than silently falling through.
 - Alternatively, restructure `handleFormSubmit` to return a result object `{ ok, error? }` and have SaleForm read and act on it.
 
 **CONFIDENCE: high**  
 **SCOPE_ASSESSMENT: mergeable**  
 **VALIDATION_STATUS:**
+
 - Code review of success path: VALIDATION_PASS
 - Code review of failure path: VALIDATION_FAIL (confirmed defect above)
 - Local CI: VALIDATION_BLOCKED_ENV (no env exports for this host; CI will run Playwright tests)

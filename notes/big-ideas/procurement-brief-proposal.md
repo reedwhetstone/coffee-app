@@ -13,6 +13,7 @@ Think: the coffee equivalent of a commodity trading desk's morning brief. Dense,
 ## Why This, Why Now
 
 We already have the data infrastructure:
+
 - 41 live suppliers scraped daily
 - `price_index_snapshots` with 90+ days of history
 - `market_daily_summary` with trend deltas (7d, 30d)
@@ -34,6 +35,7 @@ One page. PDF or styled HTML email. Five sections:
 Biggest week-over-week median price changes by origin. Pull from `price_index_snapshots` comparing latest vs 7 days prior.
 
 Example output:
+
 ```
 Ethiopia Yirgacheffe: $7.20/lb -> $6.85/lb (-4.9%)  down
 Colombia Huila: $5.90/lb -> $6.40/lb (+8.5%)        up
@@ -66,19 +68,20 @@ Pull from `coffee_catalog` where `stocked = true` and `price_per_lb < origin_med
 
 ## Data Sources (All Existing)
 
-| Section | Primary Table | Supporting Tables |
-|---|---|---|
-| Price Movers | `price_index_snapshots` | `market_daily_summary` |
-| New Arrivals | `coffee_catalog` | `price_index_snapshots` (for context pricing) |
-| Origin Supply | `supplier_daily_stats` | `price_index_snapshots` |
-| Supplier Reliability | `supplier_daily_stats` | `coffee_catalog` (listing counts) |
-| Value Lots | `coffee_catalog` | `price_index_snapshots` (origin medians) |
+| Section              | Primary Table           | Supporting Tables                             |
+| -------------------- | ----------------------- | --------------------------------------------- |
+| Price Movers         | `price_index_snapshots` | `market_daily_summary`                        |
+| New Arrivals         | `coffee_catalog`        | `price_index_snapshots` (for context pricing) |
+| Origin Supply        | `supplier_daily_stats`  | `price_index_snapshots`                       |
+| Supplier Reliability | `supplier_daily_stats`  | `coffee_catalog` (listing counts)             |
+| Value Lots           | `coffee_catalog`        | `price_index_snapshots` (origin medians)      |
 
 No new scraping. No new data collection. This is a packaging and analysis layer on top of existing infrastructure.
 
 ## Go-to-Market: Design Partner Cohort
 
 ### Structure
+
 - 5 slots, direct outreach
 - Target: small roasters (5-50 bag/month volume) and independent green buyers
 - Monthly subscription: **$350/month** (positions it as a business tool, not content)
@@ -86,6 +89,7 @@ No new scraping. No new data collection. This is a packaging and analysis layer 
 - Includes: weekly brief + a quarterly 30-min call to calibrate what's useful
 
 ### Why $350/month
+
 - A roaster buying 20 bags/month at $6/lb spends ~$8,400/month on green coffee
 - Finding one better deal per month at even $0.50/lb savings on 5 bags = $165 saved
 - The brief pays for itself if it surfaces one good deal every other month
@@ -93,12 +97,14 @@ No new scraping. No new data collection. This is a packaging and analysis layer 
 - $350 signals "this is serious data" without requiring enterprise budget approval
 
 ### Finding the First 5
+
 - Direct outreach to roasters who already use purveyors.io (we have signup data)
 - Coffee Twitter/Instagram DMs to roasters who publicly discuss sourcing
 - Specialty coffee forums (Home-Barista commercial section, r/roasting)
 - One blog post that functions as a product launch announcement, not generic content
 
 ### What Design Partners Get Beyond the Brief
+
 - Input on what sections matter most (we'll iterate the format based on their feedback)
 - Early access to API endpoints for programmatic price data (if they want it)
 - Name recognition as founding PPI members when we scale
@@ -106,18 +112,21 @@ No new scraping. No new data collection. This is a packaging and analysis layer 
 ## Build Plan
 
 ### This Week (MVP)
+
 1. Write a SQL query or script that generates each section's raw data
 2. Format it into a clean 1-page template (could start as markdown, convert to PDF)
 3. Generate the first brief manually from this week's data
 4. Review it ourselves: does this feel like something worth $350/month?
 
 ### Week 2
+
 5. Send the sample brief to 10-15 prospective design partners
 6. Pitch: "We built this for ourselves. We think you'd find it useful. $350/month for early access, 5 slots."
 7. If 3+ say yes: we have a product. Build the delivery pipeline (automated generation + email delivery).
 8. If 0 say yes: learn why. Is it the content? The price? The format? The audience?
 
 ### Week 3+
+
 9. Automate brief generation (cron job: query data, format, generate PDF/email)
 10. Build a simple subscription management flow (Stripe, likely reuse existing purveyors.io billing)
 11. Iterate format based on design partner feedback
@@ -133,12 +142,12 @@ No new scraping. No new data collection. This is a packaging and analysis layer 
 
 At scale (not design partner pricing):
 
-| Cohort | Price | MRR | ARR |
-|---|---|---|---|
-| 5 design partners | $350 | $1,750 | $21,000 |
-| 20 subscribers | $400 | $8,000 | $96,000 |
-| 50 subscribers | $450 | $22,500 | $270,000 |
-| 100 subscribers | $500 | $50,000 | $600,000 |
+| Cohort            | Price | MRR     | ARR      |
+| ----------------- | ----- | ------- | -------- |
+| 5 design partners | $350  | $1,750  | $21,000  |
+| 20 subscribers    | $400  | $8,000  | $96,000  |
+| 50 subscribers    | $450  | $22,500 | $270,000 |
+| 100 subscribers   | $500  | $50,000 | $600,000 |
 
 The US specialty roaster market is ~4,000 companies. Even 1% penetration at $400/month is $192K ARR. And the marginal cost of serving each additional subscriber is near zero since the data infrastructure already exists.
 

@@ -44,6 +44,7 @@ At the same time, align coffee-app docs with the already-merged CLI docs refresh
 ## Executive take: what is right, what needs pushback
 
 ### 1. "Parchment API" is the correct product name
+
 **Agree.**
 
 The prior PR body over-corrected by replacing Parchment API branding too broadly. The better framing is:
@@ -53,6 +54,7 @@ The prior PR body over-corrected by replacing Parchment API branding too broadly
 - **Purveyors CLI** = the terminal / agentic interface
 
 ### Pushback
+
 Do **not** flatten those into one undifferentiated "API" label everywhere. That creates a new problem:
 
 - external product brand gets blurred with
@@ -68,11 +70,13 @@ So the fix is **not** "rename everything back to Parchment API". The fix is:
 ---
 
 ### 2. Two distinct catalog routes comment: what it really means
+
 This is a real concern, and it is more than wording.
 
 There are two catalog-serving surfaces today with very different semantics:
 
 - **`/api/catalog-api`**
+
   - external-facing
   - API-key authenticated
   - rate-limited
@@ -88,6 +92,7 @@ There are two catalog-serving surfaces today with very different semantics:
 These are easy to confuse because both say "catalog" and both live under `/api/*`.
 
 ### Pushback
+
 Docs clarification is necessary, but **docs alone are not the full fix**.
 
 Long term, the internal route namespace is still too confusing for a product that is leaning harder into Parchment API. A later follow-up should consider renaming internal JSON endpoints to something like:
@@ -101,11 +106,13 @@ That route rename is probably **out of scope for the PR 178 docs respin**, but t
 ---
 
 ### 3. CLI/web shared business logic via imports
+
 **Directionally good.**
 
 This is a real strength. The CLI is not just another client; it is part of the product architecture and already acts as a reusable engine for agent and app workflows.
 
 ### Pushback
+
 Direct cross-imports are useful, but they are also a coupling signal.
 
 If the web app imports CLI modules directly, the real architectural conclusion is:
@@ -123,6 +130,7 @@ Do **not** oversell the current state as "finished architecture". It is a good s
 ---
 
 ### 4. Analytics positioning across API, web app, and CLI
+
 This is the most important strategic section.
 
 Your instinct is right: analytics is not some sidecar. It is core product value and should eventually exist coherently across:
@@ -132,6 +140,7 @@ Your instinct is right: analytics is not some sidecar. It is core product value 
 - Parchment API
 
 ### The valid pushback from the audit
+
 The audit was correctly describing the **current shipped state**, not the final strategy.
 
 Today:
@@ -141,6 +150,7 @@ Today:
 - docs should not claim that it already exists externally if it does not
 
 ### Better framing for the revised docs
+
 Use wording closer to this:
 
 > Analytics is a core Purveyors product surface. Today it is delivered primarily through the web app, with CLI and external API expansion planned. Public Parchment API endpoint families for analytics are part of the product direction, but not yet fully shipped as stable external contracts.
@@ -150,6 +160,7 @@ That preserves honesty **and** preserves strategy.
 ---
 
 ### 5. Role simplification idea
+
 The instinct to simplify is good. The current role model is messy.
 
 Current code still contains:
@@ -163,6 +174,7 @@ Current code still contains:
 - plus legacy snake_case mappings in some places
 
 ### Pushback
+
 Do **not** solve this by quietly editing docs first and deleting role names in prose.
 
 That would create a truth gap between:
@@ -182,6 +194,7 @@ The real problem is that roles are doing too many jobs at once:
 - internal permission model
 
 ### Recommended stance
+
 For the PR 178 docs respin:
 
 - document the **current shipped truth** accurately
@@ -196,6 +209,7 @@ For a later product/infra refactor:
   - analytics entitlement as part of member or as an explicit feature entitlement
 
 ### Specific feedback on your suggested collapse
+
 - **`ppi-member` → member**: probably right strategically if analytics is core to member value
 - **`api-viewer` → viewer**: probably right, and the code already trends this way conceptually
 - **`api-enterprise` delete**: maybe right eventually, but not until billing, rate-limit overrides, and customer-specific handling are replaced with a real contract model
@@ -205,6 +219,7 @@ So: **agree with direction, disagree with doing it implicitly inside this docs/r
 ---
 
 ### 6. Deprecated routes guidance
+
 **Agree**, with one improvement.
 
 If docs say some routes are deprecated for new chat/agent tooling, the docs must also tell readers what to use instead.
@@ -223,6 +238,7 @@ A deprecation note without a migration target is half documentation.
 ## Recommended product / docs IA after the re-audit
 
 ### Public surfaces
+
 - `/` = public homepage
 - `/api` = public Parchment API marketing page
 - `/docs` = public docs hub
@@ -230,17 +246,20 @@ A deprecation note without a migration target is half documentation.
 - `/docs/cli/*` = public CLI docs and agent-integration docs
 
 ### Authenticated surfaces
+
 - `/dashboard` = logged-in app home
 - `/api-dashboard` = authenticated Parchment API dashboard / gateway
 - `/api-dashboard/docs` = authenticated docs entry point, account-aware gateway, or wrapper into shared docs content
 
 ### Internal surfaces that should not be marketed as product entry points
+
 - `/api/catalog`
 - `/api/tools/*`
 - `/api/workspaces/*`
 - other app-only JSON handlers
 
 ### Important rule
+
 There should be **one canonical docs content source**, not two drifting docs sets.
 
 That means either:
@@ -255,6 +274,7 @@ But do **not** hand-maintain separate detailed docs trees with different wording
 ## Scope for the PR 178 respin
 
 ### In scope
+
 - Re-audit PR 178 against current main after PR 179 merge
 - Restore correct Parchment API naming where the prior refresh over-corrected it away
 - Align `/api`, `/api-dashboard`, `/api-dashboard/docs`, and `/docs` messaging with the new routing model
@@ -265,6 +285,7 @@ But do **not** hand-maintain separate detailed docs trees with different wording
 - Resolve merge conflicts caused by PR 179 and other recent changes
 
 ### Out of scope
+
 - Actual role deletion / billing migration
 - Internal route namespace rename (`/api/catalog` → `/api/internal/catalog`)
 - Shipping new analytics API-key endpoint families
@@ -276,6 +297,7 @@ But do **not** hand-maintain separate detailed docs trees with different wording
 ## File strategy
 
 ### High-conflict files from PR 178
+
 These need careful manual review against current `main` because PR 179 already changed nearby behavior:
 
 - `src/routes/+layout.svelte`
@@ -285,6 +307,7 @@ These need careful manual review against current `main` because PR 179 already c
 - `src/routes/api/+page.server.ts`
 
 ### Lower-risk docs/content files to port selectively
+
 - `src/lib/docs/content.ts`
 - `src/routes/docs/+page.svelte`
 - `src/routes/docs/[section]/+page.server.ts`
@@ -299,6 +322,7 @@ These need careful manual review against current `main` because PR 179 already c
 - `src/lib/components/marketing/Features.svelte` only if its copy actually changed for docs/IA reasons
 
 ### Guidance
+
 Do **not** blindly replay PR 178's versions of layout/header/nav files. Port only the copy, links, and IA changes that still make sense after PR 179.
 
 ---
@@ -327,6 +351,7 @@ Do **not** blindly replay PR 178's versions of layout/header/nav files. Port onl
 5. Confirm header/nav labels still make sense after 179's routing updates.
 
 **Acceptance check:** a user can tell the difference between:
+
 - marketing page
 - logged-in dashboard
 - public docs
@@ -403,6 +428,7 @@ Cross-check coffee-app docs against purveyors-cli PR #58 and align on these poin
 ## Validation plan
 
 ### Content / architecture validation
+
 - Read the final public pages in sequence:
   - `/api`
   - `/docs`
@@ -413,12 +439,14 @@ Cross-check coffee-app docs against purveyors-cli PR #58 and align on these poin
 - Confirm there is no contradiction in naming, audience, or route purpose
 
 ### Technical validation
+
 - `pnpm check --fail-on-warnings`
 - `pnpm lint`
 - route smoke for touched public pages if practical
 - spot-check authenticated `/api-dashboard` and `/api-dashboard/docs`
 
 ### PR review checklist
+
 - confirm no reintroduction of pre-179 sidebar/header behavior
 - confirm nav labels still match current routing
 - confirm docs do not claim features that are still roadmap only
@@ -428,6 +456,7 @@ Cross-check coffee-app docs against purveyors-cli PR #58 and align on these poin
 ## Recommended sequencing after this PR
 
 ### Ship now in the docs respin
+
 - naming correction
 - IA correction
 - catalog route distinction
@@ -436,6 +465,7 @@ Cross-check coffee-app docs against purveyors-cli PR #58 and align on these poin
 - deprecated-route guidance
 
 ### Defer to follow-up technical PR(s)
+
 - entitlement/role simplification
 - internal API namespace cleanup
 - analytics external endpoint rollout

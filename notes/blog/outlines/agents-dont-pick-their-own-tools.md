@@ -10,6 +10,7 @@
 The B2CC narrative says agents are your next customers and API quality is the new competitive moat. The premise is seductive: agents evaluate docs, test endpoints, and pick the best service with zero switching costs. But agents don't actually choose their own tools. Humans install them, configure them, and approve them. The real competitive surface in an agentic world isn't agent discovery; it's the human allowlist. And the governance data suggests that allowlist is getting stricter, not looser.
 
 ## Voice Constraints
+
 - Short and punchy. 1,500-2,000 words max.
 - Gladwell/Freakonomics framing: take the B2CC consensus ("optimize for agents!") and invert it. The counterintuitive insight is that agentic adoption makes traditional B2B dynamics harder, not irrelevant.
 - No salesmanship. Purveyors appears once as a brief illustration of the dual-gate problem.
@@ -17,6 +18,7 @@ The B2CC narrative says agents are your next customers and API quality is the ne
 - Every section earns its place. If it doesn't deliver new insight, cut it.
 
 ## Verification Checklist
+
 - [ ] Torii 2026 stats: average enterprise runs 830 apps, 61.3% shadow IT, only 15.5% formally sanctioned
 - [ ] Torii: 700+ new AI applications entered enterprise environments in one year
 - [ ] Torii: large enterprises average 2,191 applications
@@ -35,6 +37,7 @@ The B2CC narrative says agents are your next customers and API quality is the ne
 ## Structure
 
 ### The B2CC Promise (~300 words)
+
 Open with the B2CC framing at its most compelling. Caleb John's thesis: agents are the new end users, API docs are the new primary UI, switching costs collapse to near zero. An agent can evaluate, integrate, and switch services in minutes. Per-seat pricing dies. Volume economics explode. The Bezos API Mandate arrives at its final destination: fully autonomous customers.
 
 This isn't fringe. Google, AWS, and Microsoft all launched MCP documentation servers in late 2025 and early 2026. They're designing their docs to be machine-readable because they expect agent consumers. The infrastructure investment is real.
@@ -42,6 +45,7 @@ This isn't fringe. Google, AWS, and Microsoft all launched MCP documentation ser
 The B2CC argument has one critical assumption baked in: that the agent is the decision-maker. That the agent discovers Stripe, evaluates its docs, compares it to Square, and picks Stripe because Stripe's error messages are better. This assumption is wrong.
 
 ### The Allowlist Layer (~400 words)
+
 Walk through what actually happens when an agent "picks" a tool. Take Claude Desktop: the user manually edits a JSON config file to add MCP servers. Take Cursor: the user installs extensions and configures API keys. Take an enterprise coding agent: IT provisions a set of approved integrations.
 
 In every case, a human made the selection before the agent touched anything. The agent operates within a sandbox of pre-approved tools. It can choose between tools on its allowlist, but it cannot expand the allowlist itself.
@@ -53,6 +57,7 @@ The MCP tool discovery conversation (TrueFoundry, various Medium posts) assumes 
 Key insight: the agent doesn't replace the procurement decision. It adds a second evaluation layer on top of it. Your API now needs to pass two gates: (1) a human decides to install/approve it, and (2) the agent effectively uses it. B2CC doesn't simplify your go-to-market. It doubles the number of surfaces you need to win.
 
 ### Who Is the Agent's Principal? (~350 words)
+
 This section grounds the intuition in economic theory. Stocker and Lehr's principal-agent framework for AI asks: whose interests does the agent actually serve?
 
 The B2CC narrative assumes the agent is a pure utility-maximizer for its user. But Stocker and Lehr identify "shadow principals": the agent's developer, the platform provider, the model vendor. Each has their own optimization function. When Claude recommends a tool, is it because that tool has the best API, or because Anthropic has a partnership? When an enterprise agent routes to a specific vendor, is it maximizing for the developer or for the IT team that configured the approved vendor list?
@@ -62,6 +67,7 @@ This ambiguity is precisely why human allowlisting persists. The human doesn't f
 Traditional procurement exists because principals can't fully monitor agents. Software procurement committees, security reviews, vendor assessments: these are all mechanisms to handle the principal-agent problem when the "agent" was a human employee picking tools. Replacing the human employee with an AI agent doesn't dissolve the principal-agent problem. It deepens it, because AI agents are even harder to monitor than human ones.
 
 ### What Actually Wins (~350 words)
+
 If agents don't pick their own tools, what does the competitive landscape actually look like?
 
 **Getting on the allowlist is a B2B sale, not a B2CC one.** The buyer is a human (developer, IT admin, procurement officer) evaluating trust, compliance, pricing, and reputation. Brand matters. Case studies matter. SOC 2 matters. These are the unglamorous dynamics that the B2CC framing dismisses as legacy overhead.
@@ -73,6 +79,7 @@ If agents don't pick their own tools, what does the competitive landscape actual
 Brief Purveyors illustration (one sentence): purveyors' normalized green coffee data from 27+ suppliers is a proprietary dataset that can't be replicated by switching to another API, which is why it survives the allowlist test even in a world of near-zero agent switching costs.
 
 ### The Doubled Surface (~300 words)
+
 Close with the practical implication. The B2CC thesis isn't wrong about agent evaluation mattering. It's wrong about agent evaluation replacing human evaluation. Both happen. The API strategy that works is one designed for two audiences simultaneously:
 
 1. **For the human gatekeeper:** Trust signals, compliance documentation, predictable pricing, clear value proposition. This is marketing and sales. The API landing page still matters because a human still visits it first.
