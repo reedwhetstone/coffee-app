@@ -5,11 +5,16 @@ import { getDocsPage } from '$lib/docs/content';
 describe('catalog docs contract', () => {
 	const page = getDocsPage('api', 'catalog');
 
-	it('documents anonymous teaser limits and API-key header distinctions', () => {
+	it('documents anonymous public-query parity and API-key header distinctions', () => {
 		expect(page).toBeDefined();
 
 		const serializedPage = JSON.stringify(page);
-		expect(serializedPage).toContain('Anonymous access is intentionally teaser-only');
+		expect(serializedPage).toContain(
+			'Anonymous, viewer-session, and API-key requests all share the public catalog query surface.'
+		);
+		expect(serializedPage).toContain(
+			'Defaults to 100 rows when page and limit are omitted; page without limit falls back to 15.'
+		);
 		expect(serializedPage).toContain('Public-only catalog data. No X-RateLimit-* headers.');
 		expect(serializedPage).toContain(
 			'Canonical integration path for developers, sync jobs, and agents.'
