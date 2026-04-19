@@ -12,30 +12,34 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	const content = `# Purveyors.io
 
-> Green coffee marketplace and market intelligence platform. Real-time pricing data from 39+ US green coffee importers and roasters, normalized and updated daily.
+> Coffee intelligence platform for public catalog discovery, market analytics, developer integrations, and account-linked roasting workflows.
 
 ## Public Pages
 
-- [Market Analytics](${baseUrl}/analytics): Live green coffee price trends by origin, processing method distribution, origin price ranges. Updated daily from the live Purveyors market data pipeline.
-- [Coffee Catalog](${baseUrl}/catalog): Browse 1,200+ specialty and commercial green coffees from 39 suppliers with origin, processing, altitude, tasting notes, and pricing.
-- [Blog](${baseUrl}/blog): Coffee intelligence, AI-first product development, supply chain analysis. 10+ articles on coffee data, market structure, and technology.
+- [Market Analytics](${baseUrl}/analytics): Public market-intelligence surface for pricing trends, origin coverage, and supplier movement.
+- [Coffee Catalog](${baseUrl}/catalog): Public catalog for normalized green coffee listings with origin, processing, pricing, and availability data.
+- [Parchment API](${baseUrl}/api): Product overview for the API, access tiers, and Console entry points.
+- [Parchment Console](${baseUrl}/api-dashboard): Authenticated Console for API keys, usage, and billing.
+- [Developer Docs](${baseUrl}/docs): Canonical docs for the HTTP API, CLI, auth modes, and platform-route guidance.
+- [Blog](${baseUrl}/blog): Coffee intelligence, product direction, and platform updates.
 
-## API and Docs
+## API and Platform
 
-- [Parchment API](${baseUrl}/api): Public API overview, product positioning, and entry point for Parchment API.
-- [Developer Docs](${baseUrl}/docs): Canonical public docs for the HTTP API, CLI, auth contexts, and integration guides.
-- [Catalog API Docs](${baseUrl}/docs/api/catalog): Canonical contract for GET /v1/catalog, including anonymous and API-key usage.
+- [Public API namespace](${baseUrl}/v1): Namespace descriptor for the public API surface.
+- [Catalog API](${baseUrl}/docs/api/catalog): Stable contract for GET /v1/catalog, including anonymous discovery, API-key usage, and migration guidance from legacy aliases.
+- [Platform routes](${baseUrl}/docs/api/platform): Route matrix for /api/*, billing flows, Console helpers, and authenticated product internals.
+- /api/* routes are platform routes for the first-party app and Console. They are not the broad public compatibility promise.
 
 ## Blog Posts
 
 ${blogPostLines}
 
-## Data
+## Data and Workflows
 
-- 39+ supplier integrations across US green coffee market
-- Daily price snapshots with origin, processing method, grade breakdowns
-- Historical price index data (26+ weeks)
-- AI-generated tasting notes and bean descriptions
+- Normalized supplier listings with origin, processing, grade, pricing, and availability metadata
+- Daily pricing and availability snapshots for catalog and analytics surfaces
+- Inventory, roast, sales, tasting, chat, and workspace workflows in the web app
+- Shared CLI-backed tooling for terminal and agent workflows
 `;
 
 	return new Response(content, {
