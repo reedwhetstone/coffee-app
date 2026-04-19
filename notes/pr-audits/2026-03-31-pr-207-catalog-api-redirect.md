@@ -18,6 +18,7 @@
 ## Diff Analysis
 
 **Changed files:**
+
 - `src/routes/api/catalog-api/+server.ts` — core fix
 - `src/routes/api/catalog-api/catalog-api.test.ts` — tests updated to match new behavior
 

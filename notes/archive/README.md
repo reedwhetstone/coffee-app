@@ -16,12 +16,14 @@ This archive exists to keep the active `notes/` area readable while preserving h
 ## How to use this archive
 
 Safe uses:
+
 - archaeology
 - tracing decision history
 - understanding why a previous idea was dropped
 - recovering a useful analysis that still applies
 
 Unsafe uses:
+
 - copying naming directly into new product copy
 - treating archived pricing/plans as current
 - assuming archived architecture docs reflect shipped behavior
@@ -29,6 +31,7 @@ Unsafe uses:
 ## Current source-of-truth reminder
 
 For current product direction, read:
+
 1. `../README.md`
 2. `../PRODUCT_VISION.md`
 3. `../decisions/`

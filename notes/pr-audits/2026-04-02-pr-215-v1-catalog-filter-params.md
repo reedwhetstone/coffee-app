@@ -127,6 +127,7 @@ None.
 ### `src/lib/data/catalog.ts`
 
 **getCatalogDropdown** -- add `stockedFilter` support:
+
 ```typescript
 // Change the options interface to accept stockedFilter
 options: {
@@ -148,6 +149,7 @@ if (stockedFilter !== undefined) {
 ```
 
 **filtersApplied** -- add stockedFilter tracking:
+
 ```typescript
 // After line 267, add:
 if (stockedFilter !== undefined) filtersApplied.stockedFilter = stockedFilter;
@@ -156,12 +158,13 @@ if (stockedFilter !== undefined) filtersApplied.stockedFilter = stockedFilter;
 ### `src/lib/server/catalogResource.ts`
 
 **queryCatalogData dropdown path** -- pass stockedFilter directly:
+
 ```typescript
 const rows = await getCatalogDropdown(context.supabase, {
-    stockedFilter,  // pass through directly instead of mapping
-    publicOnly: context.publicOnly,
-    showWholesale: context.showWholesale,
-    wholesaleOnly: context.wholesaleOnly
+	stockedFilter, // pass through directly instead of mapping
+	publicOnly: context.publicOnly,
+	showWholesale: context.showWholesale,
+	wholesaleOnly: context.wholesaleOnly
 });
 ```
 
@@ -180,6 +183,7 @@ Add dropdown path tests in a new `describe('fields=dropdown stocked filtering')`
 **Tests added:** 4 new dropdown path stocked filtering tests covering `stocked=true`, no-param, `stocked=false`, `stocked=all`. All 230 tests pass.
 
 **Remaining deferred:**
+
 - P3: Dual `stockedOnly`/`stockedFilter` interface — 6 legacy callers; follow-up PR.
 - P2: `.or()` interpolation safety — pre-existing, needs Supabase audit.
 

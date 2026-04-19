@@ -11,10 +11,12 @@
 ## Feature
 
 **DEVLOG items (Priority 2):**
+
 - "UI/UX — Clean up beans catalog profiles to remove exposed user reference fields from the display" (adjacent: score visibility on catalog)
 - Implicit from the existing branch: show supplier quality `score_value` as an amber badge on `CoffeeCard` (full and compact modes), and fix rank precision in `BeanProfileTabs` to preserve `.5` ratings instead of rounding to integer.
 
 **The existing `09f2652` commit delivers:**
+
 1. `CoffeeCard.svelte` — amber score badge (`Score: X.X`) visible when `coffee.score_value != null`, in both full and compact card views
 2. `BeanProfileTabs.svelte` — rank display in rating crescent and cupping tab now shows `.5` precision (e.g., 7.5 instead of 8) using the pattern `rank % 1 === 0 ? rank : rank.toFixed(1)`
 
@@ -34,15 +36,15 @@ The rank precision fix is a UI correctness issue: a user who rates a bean 7.5/10
 
 ## Candidate Scoring
 
-| Candidate | Priority | Complexity | Risk | Deps | Total |
-|---|---|---|---|---|---|
-| Score badge + rating precision (this PR) | P2=6 | easy=10 | low=0 | none=0 | **16** |
-| Artisan import loading indicator | P5=4 | easy=10 | low=0 | none=0 | **14** |
-| Profit page reactive refresh | P3=5 | easy=10 | low=0 | none=0 | **15** |
-| Cupping dashed lines opacity | P2=6 | easy=10 | low=0 | none=0 | **16 (stale branch)** |
-| Mobile Navigation | P0=10 | hard=2 | medium=-2 | none=0 | **10** |
-| Cupping notes reactive refresh | P2=6 | medium=6 | medium=-2 | some=-2 | **8** |
-| Cascade delete for beans | P1=8 | hard=2 | high=-5 | none=0 | **5** |
+| Candidate                                | Priority | Complexity | Risk      | Deps    | Total                 |
+| ---------------------------------------- | -------- | ---------- | --------- | ------- | --------------------- |
+| Score badge + rating precision (this PR) | P2=6     | easy=10    | low=0     | none=0  | **16**                |
+| Artisan import loading indicator         | P5=4     | easy=10    | low=0     | none=0  | **14**                |
+| Profit page reactive refresh             | P3=5     | easy=10    | low=0     | none=0  | **15**                |
+| Cupping dashed lines opacity             | P2=6     | easy=10    | low=0     | none=0  | **16 (stale branch)** |
+| Mobile Navigation                        | P0=10    | hard=2     | medium=-2 | none=0  | **10**                |
+| Cupping notes reactive refresh           | P2=6     | medium=6   | medium=-2 | some=-2 | **8**                 |
+| Cascade delete for beans                 | P1=8     | hard=2     | high=-5   | none=0  | **5**                 |
 
 **Winner rationale:** Ties at 16 with cupping dashed lines. Tiebreaker: `fix/score-rating-display` is 1 clean commit ahead of main — the branch needs only a PR opened. The cupping dashed lines branch (`fix/cupping-dashed-lines-opacity`) is 107 files _behind_ main (branched from ~PR #170 era), requiring a full rebase before it can be opened. That's scope creep disguised as an easy win. Score badge wins cleanly.
 
@@ -63,6 +65,7 @@ The rank precision fix is a UI correctness issue: a user who rates a bean 7.5/10
 **CLI cross-check:** `purveyors-cli` recent work (PRs #58-#63) is server-side filter improvements. No CLI changes needed here — `score_value` is already exposed in catalog responses.
 
 **Why this vs. higher-priority items:**
+
 - P0 Mobile Navigation and Homepage Routing are structural/hard (both implemented in large recent PRs; mobile nav redesign is still genuinely complex)
 - P1 cascade delete is hard + high risk (foreign key dependencies, rollback complexity)
 - This is the highest-scoring item that fits one clean PR with zero risk
@@ -72,10 +75,12 @@ The rank precision fix is a UI correctness issue: a user who rates a bean 7.5/10
 ## Scope
 
 **In scope:**
+
 - Open a PR from `origin/fix/score-rating-display` onto `main` with the existing single commit (`09f2652`)
 - Verify CI passes on the branch before opening
 
 **Out of scope:**
+
 - Any changes beyond the 2 files in the commit
 - Score badge styling changes (amber is the existing convention; matches wholesale badge pattern)
 - Cupping notes reactive refresh (separate backlog item, different branch)
@@ -101,10 +106,10 @@ The rank precision fix is a UI correctness issue: a user who rates a bean 7.5/10
 
 ## Files to Change
 
-| File | Change |
-|---|---|
-| `src/lib/components/CoffeeCard.svelte` | Add score badge in both full and compact card modes |
-| `src/routes/beans/BeanProfileTabs.svelte` | Fix rank decimal precision in 2 display locations |
+| File                                      | Change                                              |
+| ----------------------------------------- | --------------------------------------------------- |
+| `src/lib/components/CoffeeCard.svelte`    | Add score badge in both full and compact card modes |
+| `src/routes/beans/BeanProfileTabs.svelte` | Fix rank decimal precision in 2 display locations   |
 
 No other files touched.
 
@@ -149,10 +154,12 @@ None. Both changes are display-only. `score_value` is already included in catalo
 ## Risks and Rollback
 
 **Risk: score_value coverage is low (most cards show no badge)**
+
 - This is expected behavior, not a bug. Score is a scraped field; many suppliers don't expose it.
 - Rollback: trivially revert the 2-line addition in CoffeeCard.
 
 **Risk: amber badge visual overlap with wholesale badge on cards that are both scored and wholesale**
+
 - Probability: very low (wholesale coffees rarely have `score_value` in the current dataset)
 - Mitigation: both badges render sequentially in the same flex row; they stack horizontally or wrap — safe layout behavior
 

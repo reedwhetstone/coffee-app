@@ -46,6 +46,7 @@ None.
 - **Evidence:** `+server.ts:20` sets `Sunset: Sat, 31 Dec 2026 23:59:59 GMT`. December 31, 2026 is a **Thursday**, not Saturday. Per RFC 7231 Section 7.1.1.1, the HTTP-date `day-name` must match the actual day.
 - **Impact:** Strictly non-conforming HTTP header. Most clients parse the date portion and ignore the day name, so functional impact is minimal. But RFC-aware tooling, linters, or pedantic HTTP libraries could reject or warn on the mismatch. For a PR that explicitly claims "RFC-standard deprecation headers," this undermines that claim.
 - **Correction:**
+
   ```diff
   -	headers.set('Sunset', 'Sat, 31 Dec 2026 23:59:59 GMT');
   +	headers.set('Sunset', 'Thu, 31 Dec 2026 23:59:59 GMT');
@@ -55,22 +56,23 @@ None.
 - **Evidence:** All four tests mock `buildCanonicalCatalogResponse` returning a 200. No test verifies behavior when the upstream returns 401, 403, 429, or 500. The implementation does pass through `response.status` (line 22), so these errors will inherit the original status. But the deprecation headers are also appended to error responses.
 - **Impact:** Missing coverage for a realistic edge case. An expired/invalid API key would produce a 401 from the upstream handler, and the legacy endpoint would return a 401 with `Deprecation: true` headers. This is arguably correct behavior (even the error response should signal deprecation), but it's an untested assumption. If the behavior ever regresses, nothing will catch it.
 - **Correction:** Add a test:
+
   ```typescript
   it('preserves error status from upstream and still adds deprecation headers', async () => {
-      const mockResponse = new Response(JSON.stringify({ error: 'Authentication required' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' }
-      });
-      vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
+  	const mockResponse = new Response(JSON.stringify({ error: 'Authentication required' }), {
+  		status: 401,
+  		headers: { 'Content-Type': 'application/json' }
+  	});
+  	vi.mocked(buildCanonicalCatalogResponse).mockResolvedValue(mockResponse);
 
-      const response = await GET({
-          url: new URL('https://app.test/api/catalog-api'),
-          request: new Request('https://app.test/api/catalog-api'),
-          locals: {}
-      } as Parameters<NonNullable<typeof GET>>[0]);
+  	const response = await GET({
+  		url: new URL('https://app.test/api/catalog-api'),
+  		request: new Request('https://app.test/api/catalog-api'),
+  		locals: {}
+  	} as Parameters<NonNullable<typeof GET>>[0]);
 
-      expect(response.status).toBe(401);
-      expect(response.headers.get('Deprecation')).toBe('true');
+  	expect(response.status).toBe(401);
+  	expect(response.headers.get('Deprecation')).toBe('true');
   });
   ```
 
@@ -82,12 +84,12 @@ None.
 - **Correction:** Strengthen the assertion:
   ```typescript
   expect(buildCanonicalCatalogResponse).toHaveBeenCalledWith(
-      expect.objectContaining({
-          url: expect.objectContaining({
-              searchParams: expect.any(URLSearchParams)
-          })
-      }),
-      expect.any(Object)
+  	expect.objectContaining({
+  		url: expect.objectContaining({
+  			searchParams: expect.any(URLSearchParams)
+  		})
+  	}),
+  	expect.any(Object)
   );
   const calledUrl = vi.mocked(buildCanonicalCatalogResponse).mock.calls[0][0].url;
   expect(calledUrl.searchParams.get('page')).toBe('2');
@@ -96,13 +98,13 @@ None.
 
 ## Assumptions Review
 
-| # | Assumption | Validity | Reasoning |
-|---|-----------|----------|-----------|
-| 1 | adapter-vercel silently converts 3xx to 200 with empty body | **Valid** | Documented in PR #207 audit, observed in production. The previous redirect approach failed for this exact reason. |
-| 2 | `buildCanonicalCatalogResponse` accepts the legacy route's `event` object and works correctly | **Valid** | The function takes a generic `RequestEvent` and reads query params from `event.url`. The event object is structurally identical regardless of which route produces it. Confirmed by reading `catalogResource.ts` lines 411-420. |
-| 3 | `new Response(response.body, ...)` correctly transfers the body stream | **Valid** | `Response.body` is a `ReadableStream`. Passing it to a new `Response` constructor is spec-compliant and does not consume or clone the stream prematurely. |
-| 4 | Deprecation headers should appear on all responses including errors | **Weak** | Not explicitly addressed in the PR. The implementation adds deprecation headers regardless of upstream status. This is defensible (callers should know to migrate even when getting errors), but the RFC Deprecation header spec doesn't mandate this. Not a bug, but an undocumented design choice. |
-| 5 | `requestPath: '/v1/catalog'` is intentional for canonical framing | **Invalid** | This causes API usage logging to conflate legacy and canonical traffic. The sibling route `/api/catalog` correctly passes its own path (`'/api/catalog'`). This appears to be a copy error from `/v1/catalog/+server.ts`. |
+| #   | Assumption                                                                                    | Validity    | Reasoning                                                                                                                                                                                                                                                                                            |
+| --- | --------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | adapter-vercel silently converts 3xx to 200 with empty body                                   | **Valid**   | Documented in PR #207 audit, observed in production. The previous redirect approach failed for this exact reason.                                                                                                                                                                                    |
+| 2   | `buildCanonicalCatalogResponse` accepts the legacy route's `event` object and works correctly | **Valid**   | The function takes a generic `RequestEvent` and reads query params from `event.url`. The event object is structurally identical regardless of which route produces it. Confirmed by reading `catalogResource.ts` lines 411-420.                                                                      |
+| 3   | `new Response(response.body, ...)` correctly transfers the body stream                        | **Valid**   | `Response.body` is a `ReadableStream`. Passing it to a new `Response` constructor is spec-compliant and does not consume or clone the stream prematurely.                                                                                                                                            |
+| 4   | Deprecation headers should appear on all responses including errors                           | **Weak**    | Not explicitly addressed in the PR. The implementation adds deprecation headers regardless of upstream status. This is defensible (callers should know to migrate even when getting errors), but the RFC Deprecation header spec doesn't mandate this. Not a bug, but an undocumented design choice. |
+| 5   | `requestPath: '/v1/catalog'` is intentional for canonical framing                             | **Invalid** | This causes API usage logging to conflate legacy and canonical traffic. The sibling route `/api/catalog` correctly passes its own path (`'/api/catalog'`). This appears to be a copy error from `/v1/catalog/+server.ts`.                                                                            |
 
 ## Tech Debt Notes
 
@@ -136,9 +138,11 @@ None.
 ## Optional Patch Guidance
 
 **`src/routes/api/catalog-api/+server.ts`:**
+
 - Line 14: `{ requestPath: '/v1/catalog' }` → `{ requestPath: '/api/catalog-api' }`
 - Line 20: `'Sat, 31 Dec 2026 23:59:59 GMT'` → `'Thu, 31 Dec 2026 23:59:59 GMT'`
 
 **`src/routes/api/catalog-api/catalog-api.test.ts`:**
+
 - After the existing Sunset test, add a new test verifying that a non-200 upstream response preserves status while still carrying deprecation headers.
 - In the query param passthrough test, assert on the actual URL search params of the event passed to the mock.

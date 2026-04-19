@@ -41,12 +41,14 @@
 ## Checklist Coverage
 
 ### 1) Intent Coverage
+
 - Does implementation fully satisfy the stated PR intent? `CONCERN`
 - Are acceptance criteria covered, not partially interpreted? `CONCERN`
 - Any intent drift between description and code? `PASS`
 - Any features implied by intent but missing in implementation? `FAIL`
 
 ### 2) Correctness
+
 - Logic correctness across happy path and edge cases: `CONCERN`
 - Error handling completeness and failure mode behavior: `FAIL`
 - Input validation and type safety: `PASS`
@@ -54,12 +56,14 @@
 - Time/date/locale assumptions: `PASS`
 
 ### 3) Codebase Alignment
+
 - Consistent with existing architecture and patterns: `PASS`
 - Reuses existing abstractions where appropriate: `PASS`
 - Avoids duplicating existing utilities/business logic: `PASS`
 - Naming, file placement, and module boundaries match project conventions: `PASS`
 
 ### 4) Risk and Regressions
+
 - Backward compatibility impact: `CONCERN`
 - Side effects on adjacent systems or consumers: `CONCERN`
 - Race conditions, ordering issues, idempotency risks: `PASS`
@@ -67,6 +71,7 @@
 - Monitoring/observability impact: `PASS`
 
 ### 5) Security and Data Safety
+
 - Authz/authn boundaries preserved: `FAIL`
 - Sensitive data handling unchanged or improved: `PASS`
 - Injection, path traversal, unsafe eval/exec vectors introduced?: `PASS`
@@ -74,30 +79,35 @@
 - Secrets handling and logging hygiene: `PASS`
 
 ### 6) Test and Verification Quality
+
 - Tests cover changed behavior and key edge cases: `FAIL`
 - Existing tests updated where behavior changed: `CONCERN`
 - Missing tests for discovered high-risk paths: `FAIL`
 - Assertions meaningful vs shallow snapshot checks: `PASS`
 
 ### 7) Tech Debt and Maintainability
+
 - New debt introduced: `CONCERN`
 - Existing debt worsened by this change: `CONCERN`
 - Refactor opportunities that should be done now vs deferred: `CONCERN`
 - Clarity/readability for future maintainers: `PASS`
 
 ### 8) Product and UX Alignment
+
 - Behavior matches product intent, not just technical completion: `CONCERN`
 - User-visible outcomes and copy are coherent: `PASS`
 - Failure UX acceptable and actionable: `CONCERN`
 - Metrics/events support product decision-making where needed: `PASS`
 
 ### 9) Assumptions Audit
+
 - List assumptions made by implementation: covered below
 - Mark each assumption as valid/weak/invalid: covered below
 - Identify assumptions that conflict with current codebase reality: covered below
 - Identify hidden assumptions not documented in PR: covered below
 
 ### 10) Final Verdict
+
 - Merge readiness: `Not ready`
 - Highest severity issue level found: `P1`
 - Minimal fix set required before merge: covered below
@@ -111,6 +121,7 @@ None.
 ### P1 (should fix before merge)
 
 #### 1) API-key principal resolution fails open when role lookup fails
+
 - **Evidence:**
   - `src/lib/server/principal.ts:150-165` returns `['viewer']` whenever the `user_roles` lookup errors or returns no row.
   - `src/lib/server/principal.ts:297-311` always builds an API-key principal from that fallback role set.
@@ -127,6 +138,7 @@ None.
   - Add route-level tests proving `/api/catalog-api` returns 401/403 when the role lookup fails after key validation.
 
 #### 2) The new mutation trust check is not wired through admin auth, leaving admin POSTs outside the shared protection model
+
 - **Evidence:**
   - `src/lib/server/auth.ts:63-66` defines the new session mutation trust gate.
   - `src/lib/server/auth.ts:69-88` applies it in `requireUserAuth`.
@@ -143,6 +155,7 @@ None.
 ### P2 (important improvements)
 
 #### 1) Invalid Authorization headers silently fall back to cookie-session auth
+
 - **Evidence:**
   - `src/lib/server/principal.ts:319-329` tries bearer resolution first, but if the header is present and invalid it simply falls through.
   - `src/lib/server/principal.ts:331-343` then resolves a cookie-session principal.
@@ -155,6 +168,7 @@ None.
   - If no, document that precedence explicitly and add tests for invalid-header-plus-cookie combinations.
 
 #### 2) Shared role normalization does not actually normalize documented legacy underscore API roles
+
 - **Evidence:**
   - `src/lib/server/principal.ts:126-145` only recognizes `api`, `api-member`, and `api-enterprise`; it does not accept `api_viewer`, `api_member`, or `api_enterprise`.
   - `src/lib/types/database.types.ts:1199` and `src/lib/types/database.types.ts:1334` still document underscore spellings.
@@ -169,6 +183,7 @@ None.
   - Audit production role data before relying on the new foundation for `/v1` cutover.
 
 #### 3) Tests only cover helper functions, not the risky principal-resolution and route-integration paths
+
 - **Evidence:**
   - `src/lib/server/principal.test.ts:18-134` covers helper normalization, scope matching, plan checks, and origin checks only.
   - There are no tests for `resolvePrincipal`, `requireApiKeyAccess`, `hooks.server.ts` principal wiring, header-vs-cookie precedence, or the migrated `/api/catalog-api` route behavior.
@@ -191,16 +206,19 @@ None.
 ## Assumptions Review
 
 - Assumption: A `user_roles` lookup failure should degrade to `viewer` everywhere.
+
   - Validity: Invalid
   - Why: That is acceptable for some UI decoration flows, but not for API-key principal resolution where authorization should fail closed.
   - Recommended action: Split strict authz identity loading from permissive UI fallback logic.
 
 - Assumption: Admin auth checks do not need access to the request object.
+
   - Validity: Invalid
   - Why: This PR introduces request-aware trust checks for session mutations. A helper that only receives `locals` cannot participate in that model.
   - Recommended action: Pass `RequestEvent` into `validateAdminAccess` and enforce the shared trust rule for unsafe methods.
 
 - Assumption: The only API-role spellings that matter are the canonical hyphenated ones.
+
   - Validity: Weak
   - Why: The schema history, generated DB types, and explicit legacy mapping in `apiAuth.ts` all say underscore spellings are part of this codebase's reality.
   - Recommended action: Normalize both spellings now, before `/v1` cutover depends on this shared layer.

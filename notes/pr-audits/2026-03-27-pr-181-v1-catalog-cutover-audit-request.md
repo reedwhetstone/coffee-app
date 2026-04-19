@@ -32,6 +32,7 @@
 ## Intent Verification
 
 - Stated intent:
+
   - Make `/v1/catalog` the canonical catalog resource.
   - Cut internal and external catalog flows over to shared contract/service logic.
   - Remove semantic divergence between `/api/catalog` and `/api/catalog-api` while preserving legitimate legacy compatibility.
@@ -39,6 +40,7 @@
   - Land the follow-up fixes for visibility/auth behavior, legacy `/api/catalog-api` compatibility, `price_per_lb` canonicalization with deprecated aliases, CI regressions, and CodeQL-safe logging.
 
 - What was implemented:
+
   - Added a substantial shared catalog resource module in `src/lib/server/catalogResource.ts` and pointed `/v1/catalog`, `/api/catalog`, and `/api/catalog-api` at shared builders.
   - Centralized visibility policy in `src/lib/server/catalogVisibility.ts` and reused it in `/catalog` SSR and `/api/catalog/filters`.
   - Added `src/lib/server/pageAuth.ts` and updated page server loads plus `hooks.server.ts` so bearer token auth does not masquerade as cookie-backed page auth.
@@ -64,6 +66,7 @@ None.
 ### P2 (important improvements)
 
 #### 1) First-party catalog filtering still depends on deprecated `cost_lb_*` aliases instead of the canonical `price_per_lb_*` contract
+
 - **Evidence:**
   - The canonical backend now treats `price_per_lb_*` as the real filter surface and only falls back to `cost_lb_*` aliases for compatibility: `src/lib/server/catalogResource.ts:197-200`.
   - The shared data layer also renamed the search options to `pricePerLbMin` / `pricePerLbMax`: `src/lib/data/catalog.ts:73-74`, `src/lib/data/catalog.ts:245-246`.
@@ -79,6 +82,7 @@ None.
   - Add a front-end or route integration test that asserts first-party catalog filtering emits `price_per_lb_min` / `price_per_lb_max`.
 
 #### 2) `/api/catalog/filters` regresses performance by loading full catalog rows to compute filter metadata
+
 - **Evidence:**
   - The new route calls `searchCatalog()` and then derives unique filter values from the returned rows: `src/routes/api/catalog/filters/+server.ts:14-19`, `24-50`.
   - `searchCatalog()` always starts from `.select('*')`: `src/lib/data/catalog.ts:176-179`.
@@ -94,6 +98,7 @@ None.
   - Add a regression test or at least an inline code comment guarding this endpoint against drifting back to full-row scans.
 
 #### 3) `/v1/catalog` discovery/docs/marketing still describe the wrong auth model
+
 - **Evidence:**
   - The `/v1` discovery route advertises only `session` and `apiKey` auth for the namespace: `src/routes/v1/+server.ts:9-17`.
   - The dashboard docs say the catalog API is a paid/member-authenticated service and that all requests require a valid API key: `src/routes/api-dashboard/docs/+page.svelte:109-145`.
@@ -112,6 +117,7 @@ None.
 ### P3 (nice to have)
 
 #### 1) `fields=dropdown` is only honored for unpaginated requests; paginated dropdown requests silently fall back to full rows
+
 - **Evidence:**
   - The parser accepts `fields=dropdown`: `src/lib/server/catalogResource.ts:169-172`.
   - The dropdown fast path only executes when `query.fields === 'dropdown' && query.ids.length === 0 && !isPaginated`: `src/lib/server/catalogResource.ts:313-349`.
@@ -149,10 +155,12 @@ None.
 ## Tech Debt Notes
 
 - Debt introduced:
+
   - The canonical price-filter vocabulary is now split between backend (`price_per_lb_*`) and first-party UI (`cost_lb_*`).
   - Filter metadata generation now pays for full-row catalog queries despite only needing a narrow subset of columns.
 
 - Debt worsened:
+
   - Discovery/docs divergence is now more visible because the PR explicitly elevates `/v1/catalog` to canonical status.
 
 - Suggested follow-up tickets:
@@ -164,12 +172,14 @@ None.
 ## Product Alignment Notes
 
 - Alignment wins:
+
   - The server-side cutover itself is solid. `/v1/catalog` is now the real implementation center, and legacy routes are explicit shims.
   - Visibility/auth behavior is materially cleaner than `main`; the PR closes the earlier anonymous/viewer leakage paths by reusing `resolveCatalogVisibility()`.
   - Legacy `/api/catalog-api` compatibility now looks intentionally preserved rather than accidentally drifting.
   - CodeQL-safe logging changes are present in the new resource layer.
 
 - Misalignments:
+
   - First-party filtering still talks in deprecated `cost_lb_*` vocabulary.
   - Filter metadata pays a new performance tax on a hot path.
   - Public-facing docs/discovery still describe a different auth story than the code ships.
@@ -181,6 +191,7 @@ None.
 ## Test Coverage Assessment
 
 - Existing tests that validate changes:
+
   - `src/lib/server/catalogResource.test.ts` covers anonymous canonical access, canonical `price_per_lb_*` precedence, deprecated `cost_lb_*` alias mapping, member session visibility, bearer-auth page visibility degradation, API-key rate/row limiting, and legacy `/api/catalog-api` compatibility behavior.
   - `src/hooks.server.test.ts` covers invalid bearer handling on page routes and cookie-vs-bearer page auth normalization.
   - `src/routes/api/catalog/filters/filters.test.ts` covers anonymous/viewer/member visibility behavior on filter metadata.
@@ -189,6 +200,7 @@ None.
   - I ran the changed Vitest suite in the worktree and all 24 targeted tests passed.
 
 - Missing tests:
+
   - No test verifies that the first-party UI/store emits canonical `price_per_lb_*` params.
   - No test guards `/api/catalog/filters` against regressions in query shape or column breadth.
   - No test covers paginated `fields=dropdown` behavior.
@@ -208,24 +220,30 @@ None.
 ## Optional Patch Guidance
 
 - `src/lib/components/layout/Settingsbar.svelte`
+
   - Rename the `cost_lb` filter control/state to `price_per_lb`.
   - Keep the displayed label user-friendly if product still wants “Price per lb” or “Cost/lb” copy.
 
 - `src/lib/stores/filterStore.ts`
+
   - Update the catalog route filter key list and range serialization to use `price_per_lb`.
   - Add a narrow unit test around query-param generation so this contract cannot drift silently.
 
 - `src/routes/api/catalog/filters/+server.ts`
+
   - Preserve `resolveCatalogVisibility()`.
   - Swap the full shared search call for a metadata-specific helper or a `searchCatalog` field-selection mode that only requests the columns consumed in this route.
 
 - `src/lib/data/catalog.ts`
+
   - If you want to keep one shared entry point, add an explicit lightweight selector path instead of forcing `select('*')` for every consumer.
 
 - `src/routes/v1/+server.ts`
+
   - Add explicit anonymous/public-only discovery metadata if that mode is intentional.
 
 - `src/routes/api-dashboard/docs/+page.svelte`
+
   - Split auth guidance between anonymous public-only canonical access and API-key-authenticated access.
   - Clarify that `/api/catalog-api` is a legacy alias, while `/v1/catalog` is canonical.
 

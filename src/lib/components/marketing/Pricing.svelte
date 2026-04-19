@@ -36,9 +36,7 @@
 <section id="pricing" class="bg-background-secondary-light py-24 sm:py-32">
 	<div class="mx-auto max-w-7xl px-6 lg:px-8">
 		<div class="mx-auto max-w-4xl text-center">
-			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">
-				Products
-			</h2>
+			<h2 class="text-base font-semibold leading-7 text-background-tertiary-light">Products</h2>
 			<p class="mt-2 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
 				Pick the intelligence layer that matches your work.
 			</p>
@@ -107,9 +105,7 @@
 			>
 				<div>
 					<div class="flex items-center justify-between gap-x-4">
-						<h3 class="text-lg font-semibold leading-8 text-text-primary-light">
-							Parchment API
-						</h3>
+						<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Parchment API</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
 						Normalized green coffee data from 41+ suppliers through one REST API. Daily updates,

@@ -24,7 +24,9 @@ No blocking defects found. The P1 issues are user-facing docs inaccuracies intro
 ## Intent Verification
 
 ### 1. Establish one canonical versioned API surface under `/v1/*`
+
 **Status: PASS**
+
 - `/v1/+server.ts` serves a JSON discovery document listing the catalog resource and legacy aliases.
 - `/v1/catalog/+server.ts` delegates to `buildCanonicalCatalogResponse()` from the shared `catalogResource.ts`.
 - The canonical response shape (`CanonicalCatalogResponse`) includes `meta.namespace: '/v1/catalog'` and `meta.version: 'v1'`.
@@ -32,7 +34,9 @@ No blocking defects found. The P1 issues are user-facing docs inaccuracies intro
 - All three route files are thin one-liners, with all logic centralized in `catalogResource.ts`. Clean single-source-of-truth.
 
 ### 2. Unify auth via `resolvePrincipal()` for session-cookie and bearer API key callers
+
 **Status: PASS**
+
 - `principal.ts` (576 lines) implements a comprehensive discriminated union type system: `AnonymousPrincipal | SessionPrincipal | ApiKeyPrincipal`.
 - `resolvePrincipal()` resolves auth from Authorization headers first (API key prefix detection vs bearer session JWT), then falls back to cookie session via `safeGetSession()`.
 - `hooks.server.ts` calls `resolvePrincipal()` eagerly and sets `event.locals.principal` plus legacy locals via `getLegacyAuthState()`.
@@ -41,7 +45,9 @@ No blocking defects found. The P1 issues are user-facing docs inaccuracies intro
 - The caching pattern (`event.locals.principal` memoization) prevents redundant resolution within a request.
 
 ### 3. Separate app roles (viewer/member/admin) from API plans/entitlements
+
 **Status: PASS**
+
 - `UserRole` type narrowed to `'viewer' | 'member' | 'admin'` only.
 - `normalizeRoleValue()` explicitly drops pseudo-roles (`api-member`, `api-enterprise`, `ppi-member`) from the app roles array.
 - `ApiPlan` type (`'viewer' | 'member' | 'enterprise'`) is separate from UserRole.
@@ -50,7 +56,9 @@ No blocking defects found. The P1 issues are user-facing docs inaccuracies intro
 - Admin users are hard-coded to `enterprise` API plan in `resolveApiPlan()`.
 
 ### 4. Consolidate docs under `/docs` with data-driven content system
+
 **Status: PASS**
+
 - `content.ts` (993 lines) provides a structured data model: `DocsPage`, `DocsNavSection`, `DocsNavItem`, `DocsContentSection` with code blocks, tables, callouts, and related links.
 - 13 docs pages covering API overview, catalog, analytics, roast profiles, inventory, errors/auth, and CLI (overview, catalog, inventory, roast, sales, tasting, agent integration).
 - `DocsShell.svelte` (208 lines) renders the data model into a consistent layout with sidebar nav, prev/next links, code blocks, and callouts.
@@ -61,7 +69,9 @@ No blocking defects found. The P1 issues are user-facing docs inaccuracies intro
 - hooks.server.ts authGuard also redirects `/api-dashboard/docs` to `/docs` (307).
 
 ### 5. Apply Parchment Platform branding
+
 **Status: PASS**
+
 - Navbar.svelte: "Parchment Console" label for `/api-dashboard`.
 - Dashboard quickstart: "Parchment Console" for API keys card.
 - api-dashboard pages: titles use "Parchment Console", meta descriptions reference "Parchment API".
@@ -72,7 +82,9 @@ No blocking defects found. The P1 issues are user-facing docs inaccuracies intro
 - No instances of old "API Dashboard" branding found in user-facing copy.
 
 ### 6. Clean up catalog contract: canonical field names, narrow filter queries
+
 **Status: PASS**
+
 - `parseCatalogQuery()` in `catalogResource.ts` uses `parseOptionalNumberFromAliases()` to prefer `price_per_lb_min`/`price_per_lb_max` over deprecated `cost_lb_min`/`cost_lb_max`.
 - Test coverage confirms canonical params take precedence when both are present.
 - Test coverage confirms deprecated params still work as fallback.
@@ -80,7 +92,9 @@ No blocking defects found. The P1 issues are user-facing docs inaccuracies intro
 - The `searchCatalog` function receives `pricePerLbMin`/`pricePerLbMax` instead of the old `cost_lb` equivalents.
 
 ### 7. Production-quality public-facing copy
+
 **Status: PASS with minor issues (see P1 findings)**
+
 - API page (`/api`) has enterprise-quality copy: clear value prop, honest positioning about what's public vs internal, clean tier table, FAQ section with structured data.
 - Docs home and individual pages are well-written with appropriate callouts distinguishing internal vs external surfaces.
 - README completely rewritten with clean structure, accurate route map, and honest API layer description.
@@ -99,6 +113,7 @@ None.
 #### P1-1: Docs content.ts references stale pseudo-role names
 
 **Evidence:** `src/lib/docs/content.ts:192` says:
+
 > "Viewer users get the free Explorer tier automatically. Higher tiers come from user roles such as api-member and api-enterprise."
 
 Additionally, `content.ts:278` and `content.ts:284` list `api-member` and `api-enterprise` as tier names in the tier behavior table.
@@ -110,6 +125,7 @@ Additionally, `content.ts:278` and `content.ts:284` list `api-member` and `api-e
 #### P1-2: Docs example response shows deprecated `cost_lb` field name
 
 **Evidence:** `src/lib/docs/content.ts:262` includes this in the example JSON response:
+
 ```json
 "cost_lb": 7.5
 ```
@@ -131,6 +147,7 @@ Additionally, `content.ts:278` and `content.ts:284` list `api-member` and `api-e
 #### P2-1: Cookie-session principal path makes a redundant DB query
 
 **Evidence:** In `principal.ts:resolvePrincipal()`, the cookie-session branch (starting around the `sessionContext.session` check):
+
 1. Derives roles from `sessionContext.roles` (already fetched by `safeGetSession`)
 2. Then immediately calls `getUserEntitlements(adminSupabase, sessionContext.user.id)` which queries the DB again
 
@@ -143,6 +160,7 @@ For pre-migration schemas (no `api_plan`/`ppi_access` columns), this is two DB r
 #### P2-2: ~51 routes still use `safeGetSession()` directly
 
 **Evidence:** `grep -rn "safeGetSession" src/ | wc -l` returns 51 callsites. Major examples:
+
 - `/api-dashboard/+page.server.ts`
 - `/api-dashboard/keys/+page.server.ts`
 - `/api-dashboard/usage/+page.server.ts`
@@ -151,6 +169,7 @@ For pre-migration schemas (no `api_plan`/`ppi_access` columns), this is two DB r
 - Several more across the codebase
 
 **Impact:** These routes work correctly because `hooks.server.ts` already resolves the principal and sets legacy locals. But they bypass the principal abstraction, which means:
+
 - They don't get automatic cross-origin mutation protection
 - They don't benefit from the `ApiPlan`/scope model
 - Future auth changes need to update both paths
@@ -160,6 +179,7 @@ For pre-migration schemas (no `api_plan`/`ppi_access` columns), this is two DB r
 #### P2-3: `classify-roast` uses dynamic import for principal functions
 
 **Evidence:** `src/routes/api/ai/classify-roast/+server.ts:43`:
+
 ```typescript
 const { principalHasRole, resolvePrincipal } = await import('$lib/server/principal');
 ```
@@ -171,10 +191,11 @@ const { principalHasRole, resolvePrincipal } = await import('$lib/server/princip
 #### P2-4: Admin discrepancy endpoint manipulates raw role arrays
 
 **Evidence:** `src/routes/api/admin/stripe-role-discrepancies/+server.ts` POST handler:
+
 ```typescript
 updatedRoles = currentRoles.filter((role: string) => role !== 'member');
 if (updatedRoles.length === 0) {
-    updatedRoles = ['viewer'];
+	updatedRoles = ['viewer'];
 }
 ```
 
@@ -185,6 +206,7 @@ if (updatedRoles.length === 0) {
 #### P2-5: `hooks.server.ts` eagerly resolves principal for ALL requests
 
 **Evidence:** Line 96 of `hooks.server.ts`:
+
 ```typescript
 const principal = await resolvePrincipal(event);
 ```
@@ -198,6 +220,7 @@ This runs for every request, including static assets, public pages, etc.
 #### P2-6: Analytics page migration comment should be tracked
 
 **Evidence:** `src/routes/analytics/+page.server.ts:99`:
+
 ```typescript
 // Falls back to ppi-member pseudo-role detection during the migration period.
 ```
@@ -240,32 +263,35 @@ This runs for every request, including static assets, public pages, etc.
 
 ## Assumptions Review
 
-| # | Assumption | Validity | Notes |
-|---|-----------|----------|-------|
-| 1 | `api_plan` and `ppi_access` columns may not exist yet | Valid | Explicit fallback for pre-migration schemas with error code 42703 handling in `getUserEntitlements()`. Defensive and correct. |
-| 2 | Cookie sessions always have `safeGetSession` context | Valid | Provided by `hooks.server.ts` handleSupabase middleware. The function is memoized per-request. |
-| 3 | Admin users always get enterprise API access | Valid | Explicitly coded in `resolveApiPlan()`: `if (rawRoles.includes('admin')) return 'enterprise'`. Reasonable business rule. |
-| 4 | Bearer tokens that aren't API key prefixed are Supabase JWTs | Valid | Consistent with Supabase auth model. `bearerToken.startsWith(API_KEY_PREFIX)` is the discriminator. |
-| 5 | Legacy catalog-api cache is per-instance | Weak | Module-level `let legacyCatalogApiCache` is per-process. Fine for single-instance Vercel, but multi-instance deployments would have inconsistent cache state. Should be documented or moved to a shared cache if scaling. |
-| 6 | `normalizeRoleValue()` returning null for pseudo-roles is safe | Valid | Pseudo-roles are consumed by `deriveApiPlanFromRoles()` and `derivePpiAccessFromRoles()` before being dropped. The raw role array is preserved for those derivation functions. |
-| 7 | The docs `redirect(307)` for sections without explicit slugs is intentional | Valid but suboptimal | Section-level redirects to first slug are correct behavior. Using 307 vs 301 is a minor SEO choice (see P3-2). |
+| #   | Assumption                                                                  | Validity             | Notes                                                                                                                                                                                                                     |
+| --- | --------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `api_plan` and `ppi_access` columns may not exist yet                       | Valid                | Explicit fallback for pre-migration schemas with error code 42703 handling in `getUserEntitlements()`. Defensive and correct.                                                                                             |
+| 2   | Cookie sessions always have `safeGetSession` context                        | Valid                | Provided by `hooks.server.ts` handleSupabase middleware. The function is memoized per-request.                                                                                                                            |
+| 3   | Admin users always get enterprise API access                                | Valid                | Explicitly coded in `resolveApiPlan()`: `if (rawRoles.includes('admin')) return 'enterprise'`. Reasonable business rule.                                                                                                  |
+| 4   | Bearer tokens that aren't API key prefixed are Supabase JWTs                | Valid                | Consistent with Supabase auth model. `bearerToken.startsWith(API_KEY_PREFIX)` is the discriminator.                                                                                                                       |
+| 5   | Legacy catalog-api cache is per-instance                                    | Weak                 | Module-level `let legacyCatalogApiCache` is per-process. Fine for single-instance Vercel, but multi-instance deployments would have inconsistent cache state. Should be documented or moved to a shared cache if scaling. |
+| 6   | `normalizeRoleValue()` returning null for pseudo-roles is safe              | Valid                | Pseudo-roles are consumed by `deriveApiPlanFromRoles()` and `derivePpiAccessFromRoles()` before being dropped. The raw role array is preserved for those derivation functions.                                            |
+| 7   | The docs `redirect(307)` for sections without explicit slugs is intentional | Valid but suboptimal | Section-level redirects to first slug are correct behavior. Using 307 vs 301 is a minor SEO choice (see P3-2).                                                                                                            |
 
 ---
 
 ## Tech Debt Notes
 
 ### Debt Introduced
+
 1. **Dual auth path**: `safeGetSession()` and `resolvePrincipal()` coexist. Legacy locals bridge prevents divergence, but ~51 routes still use the old path directly.
 2. **Redundant DB query**: Cookie-session principal resolution queries `user_roles` twice (once via session middleware, once via `getUserEntitlements`).
 3. **Eager principal resolution**: All requests pay the principal resolution cost even when no auth check is needed.
 
 ### Debt Reduced
+
 1. **Auth consolidation**: 5 separate auth check patterns (raw role checks, safeGetSession inline, custom middleware, etc.) are now unified behind `resolvePrincipal()` + auth module helpers.
 2. **Catalog fragmentation**: 3 separate catalog implementations are now a single `catalogResource.ts` with route-specific adapters.
 3. **Docs sprawl**: Multiple disconnected docs/API pages replaced with a single data-driven content system.
 4. **AGENTS.md bloat**: Reduced from 1,019 lines of implementation details to 153 lines of actionable contributor guidance.
 
 ### Suggested Follow-up Tickets
+
 1. **Migrate high-priority routes from `safeGetSession()` to principal-based auth** (api-dashboard, beans, roast-profiles, workspaces)
 2. **Optimize cookie-session principal to avoid redundant `getUserEntitlements()` query**
 3. **Add `/docs` pages to sitemap.xml** (P1-3)
@@ -279,6 +305,7 @@ This runs for every request, including static assets, public pages, etc.
 ## Product Alignment Notes
 
 ### Alignment Wins
+
 - The separation of "what is public today" vs "what stays internal" is honest and well-executed across API page, docs, README, and sitemap. No over-promising.
 - Parchment Platform branding is consistent across all user-facing surfaces.
 - The docs content accurately describes current behavior rather than aspirational architecture.
@@ -286,11 +313,13 @@ This runs for every request, including static assets, public pages, etc.
 - The cross-linking between docs, CLI, API, and console surfaces creates a cohesive information architecture.
 
 ### Misalignments
+
 - Stale pseudo-role names in docs (P1-1) contradict the role simplification intent.
 - `cost_lb` in example response (P1-2) contradicts the canonical naming intent.
 - Missing sitemap entries for docs (P1-3) undermine the docs consolidation effort.
 
 ### Suggested Product Checks
+
 - Verify the `/api-dashboard/docs` redirect works in production (double redirect: hooks guard + page server load).
 - Confirm the `/docs` tree renders correctly on mobile (DocsShell sidebar behavior).
 - Check that the API page structured data (pricing, FAQ) appears correctly in Google Search Console.
@@ -301,18 +330,18 @@ This runs for every request, including static assets, public pages, etc.
 
 ### Existing Tests That Validate Changes
 
-| Test File | Coverage Area | Quality |
-|-----------|--------------|---------|
-| `principal.test.ts` (253 lines) | Role normalization, priority, scopes, plan hierarchy, legacy state derivation, trusted mutation checks | Strong. Covers pseudo-role dropping, plan hierarchy, cross-origin guards, and legacy bridge. |
-| `auth.test.ts` (273 lines) | Integration of auth helpers with principal system: fail-closed on API key lookup failure, bearer vs cookie priority, cross-origin mutation blocking | Strong. Tests the critical "bearer header takes priority over cookies" behavior. |
-| `hooks.server.test.ts` (172 lines) | End-to-end hooks middleware: invalid bearer rejects, bearer-session redirects, cookie member passes through | Strong. Tests the full middleware chain for the three key auth scenarios. |
-| `catalogResource.test.ts` (479 lines) | All three catalog response builders: canonical, legacy app, legacy external. Anonymous, session, API key. Price param aliases. Row limits. Rate limits. Cache behavior. | Comprehensive. Covers the critical cross-PR integration surface. |
-| `pageAuth.test.ts` (34 lines) | Page auth state drops elevated role when no page session | Focused and correct for its narrow scope. |
-| `catalog.test.ts` (33 lines) | Route delegates to correct builder | Lightweight but sufficient for a thin adapter. |
-| `catalog-api.test.ts` (38 lines) | Route delegates to correct builder | Same pattern. |
-| `v1/catalog.test.ts` (33 lines) | Route delegates to correct builder | Same pattern. |
-| `filters.test.ts` (117 lines) | Filter endpoint visibility policy for anonymous, viewer, and member | Good. Validates the narrow filter query behavior. |
-| `page.server.test.ts` (102 lines) | Catalog page server load visibility policy | Good. Validates SSR catalog visibility. |
+| Test File                             | Coverage Area                                                                                                                                                           | Quality                                                                                      |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `principal.test.ts` (253 lines)       | Role normalization, priority, scopes, plan hierarchy, legacy state derivation, trusted mutation checks                                                                  | Strong. Covers pseudo-role dropping, plan hierarchy, cross-origin guards, and legacy bridge. |
+| `auth.test.ts` (273 lines)            | Integration of auth helpers with principal system: fail-closed on API key lookup failure, bearer vs cookie priority, cross-origin mutation blocking                     | Strong. Tests the critical "bearer header takes priority over cookies" behavior.             |
+| `hooks.server.test.ts` (172 lines)    | End-to-end hooks middleware: invalid bearer rejects, bearer-session redirects, cookie member passes through                                                             | Strong. Tests the full middleware chain for the three key auth scenarios.                    |
+| `catalogResource.test.ts` (479 lines) | All three catalog response builders: canonical, legacy app, legacy external. Anonymous, session, API key. Price param aliases. Row limits. Rate limits. Cache behavior. | Comprehensive. Covers the critical cross-PR integration surface.                             |
+| `pageAuth.test.ts` (34 lines)         | Page auth state drops elevated role when no page session                                                                                                                | Focused and correct for its narrow scope.                                                    |
+| `catalog.test.ts` (33 lines)          | Route delegates to correct builder                                                                                                                                      | Lightweight but sufficient for a thin adapter.                                               |
+| `catalog-api.test.ts` (38 lines)      | Route delegates to correct builder                                                                                                                                      | Same pattern.                                                                                |
+| `v1/catalog.test.ts` (33 lines)       | Route delegates to correct builder                                                                                                                                      | Same pattern.                                                                                |
+| `filters.test.ts` (117 lines)         | Filter endpoint visibility policy for anonymous, viewer, and member                                                                                                     | Good. Validates the narrow filter query behavior.                                            |
+| `page.server.test.ts` (102 lines)     | Catalog page server load visibility policy                                                                                                                              | Good. Validates SSR catalog visibility.                                                      |
 
 ### Missing Tests for High-Risk Paths
 
@@ -323,6 +352,7 @@ This runs for every request, including static assets, public pages, etc.
 5. **`catalogVisibility.ts`**: No dedicated test file, though its behavior is tested indirectly through catalogResource and catalog page server tests.
 
 ### Suggested Test Additions
+
 1. Integration test for `resolvePrincipal()` with mocked Supabase client exercising all three auth paths.
 2. Unit test for `getUserEntitlements()` column-missing fallback specifically.
 3. Simple route test for `/v1/+server.ts`.
@@ -347,9 +377,11 @@ Items 1-3 should ship as a single PR. Items 4-5 can be separate or combined.
 ### P1-1: content.ts pseudo-role references
 
 **`src/lib/docs/content.ts:192`** — Replace:
+
 > "Higher tiers come from user roles such as api-member and api-enterprise."
 
 With something like:
+
 > "Higher API plans (member, enterprise) come from subscription tiers linked to the user account."
 
 **`src/lib/docs/content.ts:278, 284`** — Replace `api-member` and `api-enterprise` in the tier behavior table with the marketing names `Roaster+` and `Enterprise`, or the ApiPlan values `member` and `enterprise`.
@@ -361,20 +393,23 @@ With something like:
 ### P1-3: sitemap docs entries
 
 **`src/routes/sitemap.xml/+server.ts`** — Import `DOCS_NAV` from `$lib/docs/content` and generate entries:
+
 ```typescript
 import { DOCS_NAV } from '$lib/docs/content';
 
 // Inside the sitemap template:
-const docsEntries = DOCS_NAV.flatMap(section =>
-    section.items.map(item =>
-        `<url><loc>${baseUrl}/docs/${section.key}/${item.slug}</loc><lastmod>${currentDate}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`
-    )
+const docsEntries = DOCS_NAV.flatMap((section) =>
+	section.items.map(
+		(item) =>
+			`<url><loc>${baseUrl}/docs/${section.key}/${item.slug}</loc><lastmod>${currentDate}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`
+	)
 ).join('\n');
 ```
 
 ### P2-3: classify-roast static import
 
 Move the dynamic import to a static import at the top of the file:
+
 ```typescript
 import { principalHasRole, resolvePrincipal } from '$lib/server/principal';
 ```
@@ -399,4 +434,4 @@ This audit specifically looked for issues that individual PR reviews might have 
 
 ---
 
-*Audit completed 2026-03-28. This is a read-only audit; no code was modified.*
+_Audit completed 2026-03-28. This is a read-only audit; no code was modified._

@@ -37,7 +37,7 @@ describe('explicit entitlement default SQL contract', () => {
 	});
 
 	it('backfills empty legacy user_role arrays from the authoritative role column', () => {
-		expect(explicitDefaultsMigrationSql).toContain("SET user_role = CASE");
+		expect(explicitDefaultsMigrationSql).toContain('SET user_role = CASE');
 		expect(explicitDefaultsMigrationSql).toContain(
 			"WHEN 'admin'::public.user_role THEN ARRAY['admin']::text[]"
 		);

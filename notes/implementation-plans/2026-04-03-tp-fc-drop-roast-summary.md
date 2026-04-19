@@ -16,6 +16,7 @@ Three related roast data display issues, all stemming from milestone/timing/cont
 ## Bug 1: GenUI Roast Table Shows `-` for FC, Drop, ROR
 
 **Root cause:** The CLI's `listRoasts()` uses a hardcoded SELECT string that omits milestone and analytics columns:
+
 ```
 roast_id, batch_name, coffee_id, coffee_name, roast_date, oz_in, oz_out, weight_loss_percent, roast_notes, roaster_type, roaster_size, temperature_unit, total_roast_time, development_percent, data_source, last_updated
 ```
@@ -33,10 +34,11 @@ The `RoastProfile` interface declares these fields, but they're never fetched. T
 ## Bug 2: Heat/Fan Lines Overflow the Chart
 
 **Root cause:** In `RoastChart.svelte`, the control scale domain is hardcoded:
+
 ```typescript
 controlScale = scaleLinear()
-    .domain([0, 10])
-    .range([innerH, innerH * 0.7]);
+	.domain([0, 10])
+	.range([innerH, innerH * 0.7]);
 ```
 
 Artisan .alog files commonly store heat as 0-100 (percentage) and fan as 0-100. A domain of [0, 10] means values like 60 (heat) and 35 (fan) render far above the chart boundary.
@@ -52,6 +54,7 @@ Artisan .alog files commonly store heat as 0-100 (percentage) and fan as 0-100. 
 **Root cause:** All time fields (`total_roast_time`, `fc_start_time`, `drop_time`, `tp_time`, etc.) are stored in **seconds** in the database. The LLM receives raw numbers like `427` and interprets them as minutes. The system prompt has no guidance about time units.
 
 **Fix (coffee-app):** Format time fields into human-readable `m:ss` strings in the tool output transformation before the LLM sees them. This is better than a system prompt note because:
+
 - Prevents misinterpretation regardless of model
 - Makes the tool output self-documenting
 - Applies consistently across workspace types
@@ -67,6 +70,7 @@ Add formatted fields alongside raw ones (e.g., `total_roast_time_fmt: "7:07"`) s
 **Context from investigation:** The roast profile detail panel (`RoastProfileDisplay.svelte`) currently shows only `oz_in`, `oz_out`, `roast_notes`, and `roast_targets`. Milestone data (TP, FC, DROP) is available from the API and visible on the chart, but not in the summary panel.
 
 **What already shows milestones elsewhere:**
+
 - GenUI `RoastProfilesBlock.svelte` table: FC, Drop, Dev%, WL%, ROR columns (will work once Bug 1 is fixed)
 - Roast chart: milestone markers on the temperature curve
 - Chart tooltip: BT, ET, ROR at hover point
@@ -95,6 +99,7 @@ Total  12:10
 ## Implementation Plan
 
 ### PR 1: purveyors-cli (prerequisite)
+
 **Branch:** `fix/roast-list-select-milestone-fields`
 
 1. Add missing columns to `ROAST_LIST_SELECT` and `ROAST_DETAIL_SELECT` in `src/lib/roast.ts`
@@ -103,6 +108,7 @@ Total  12:10
 4. `npm test`, push, open PR
 
 ### PR 2: coffee-app (all three fixes + milestones display)
+
 **Branch:** `fix/roast-chart-scaling-time-format-milestones`
 
 1. **Chart control scale:** In `RoastChart.svelte`, derive `controlScale` domain from actual data max instead of hardcoded `[0, 10]`

@@ -56,33 +56,38 @@ Wire a minimal set of practical filter params to `/api/catalog-api` using the sa
 
 ### Params to support (Phase 1 — low risk):
 
-| Param | Type | Behavior |
-|-------|------|----------|
-| `stocked` | `true` / `false` | Filter by stocked status (boolean) |
-| `country` | string | Exact match on `country` field (already supported in canonical path) |
-| `continent` | string | Exact match on `continent` field (already supported) |
-| `page` | integer | Page number for pagination |
-| `limit` | integer | Items per page (capped at tier row limit) |
+| Param       | Type             | Behavior                                                             |
+| ----------- | ---------------- | -------------------------------------------------------------------- |
+| `stocked`   | `true` / `false` | Filter by stocked status (boolean)                                   |
+| `country`   | string           | Exact match on `country` field (already supported in canonical path) |
+| `continent` | string           | Exact match on `continent` field (already supported)                 |
+| `page`      | integer          | Page number for pagination                                           |
+| `limit`     | integer          | Items per page (capped at tier row limit)                            |
 
 The `origin` partial match (cross-field across country + continent + region) is a Phase 2 item — it requires a new filter in the DB query since the canonical path only supports separate `country`, `continent`, `region` params today.
 
 ### Files to change
 
 **`src/routes/api/catalog-api/+server.ts`**
+
 - Replace `buildLegacyExternalCatalogResponse` call with `buildCanonicalCatalogResponse`
 - The canonical path already handles auth, rate limiting, tier limits, and proper pagination
 
 **`src/lib/server/catalogResource.ts` — `buildLegacyExternalCatalogResponse`**
+
 - Keep function for backward compat but mark deprecated
 - Alternatively: extract shared auth+rate-limit logic so both paths use it cleanly
 
 **`src/lib/docs/content.ts`**
+
 - Update the Catalog API docs section to document the new query params
 - Remove the "Filter and search on your side" copy once server-side filtering is live
 - Add a query params table with supported filters
 
 ### Response envelope change
+
 The canonical path returns `{ data, meta, pagination }` while the legacy endpoint returns `{ data, total, total_available, limited, tier, cached, api_version }`. Two options:
+
 - **Option A:** Keep the legacy envelope but add `pagination` alongside it for filtered requests (non-breaking addition)
 - **Option B:** Switch to canonical envelope entirely and treat this as a documented breaking change (bump `api_version` to `1.1`)
 

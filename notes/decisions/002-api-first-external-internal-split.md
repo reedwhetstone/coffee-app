@@ -15,6 +15,7 @@ Purveyors.io serves two distinct consumer groups of catalog data:
    and row caps.
 
 The original design split these into separate route handlers:
+
 - `/api/catalog/` — internal, session-authenticated
 - `/api/catalog-api/` — external, API-key-authenticated, with tier enforcement
 

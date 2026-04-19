@@ -3,6 +3,7 @@
 **Goal:** Make catalog the first canonical API resource used by both the app and external callers.
 
 ## Scope
+
 - Introduce `/v1/catalog`
 - Define stable response contract for canonical catalog access
 - Cut existing internal/external catalog flows over to shared contract/service
@@ -10,6 +11,7 @@
 - Decide whether first-party app calls `/v1/catalog` directly or through a same-origin thin adapter that shares the same handler/service logic
 
 ## Candidate files
+
 - `src/routes/api/catalog/+server.ts`
 - `src/routes/api/catalog-api/+server.ts`
 - new `/v1/catalog/+server.ts`
@@ -17,11 +19,13 @@
 - any app loaders/components consuming catalog APIs
 
 ## Out of scope
+
 - Analytics API unification
 - Role simplification
 - Docs rewrite
 
 ## Acceptance criteria
+
 - Canonical `/v1/catalog` exists
 - Internal and external catalog flows use the same shared logic/contract
 - Auth mode affects authorization/limits, not contract semantics

@@ -56,12 +56,12 @@ print(f'limited: {a[\"limited\"]}')     # → False (happens to equal total)
 
 **Summary table:**
 
-| Scenario | data count | total | rowLimit | limited (actual) | limited (correct) |
-|---|---|---|---|---|---|
-| Member plan, page 1, limit=3 | 3 | 1109 | null | **true** | **false** |
-| Member plan, last page, limit=3 | 2 | 1109 | null | **true** | **false** |
-| Member plan, PNG full result | 30 | 30 | null | false | false |
-| Viewer plan (docs example) | 25 | 814 | 25 | true | true |
+| Scenario                        | data count | total | rowLimit | limited (actual) | limited (correct) |
+| ------------------------------- | ---------- | ----- | -------- | ---------------- | ----------------- |
+| Member plan, page 1, limit=3    | 3          | 1109  | null     | **true**         | **false**         |
+| Member plan, last page, limit=3 | 2          | 1109  | null     | **true**         | **false**         |
+| Member plan, PNG full result    | 30         | 30    | null     | false            | false             |
+| Viewer plan (docs example)      | 25         | 814   | 25       | true             | true              |
 
 The last row shows the intended use: viewer plan has `rowLimit: 25`, and a consumer trying to request more than 25 rows should see `limited: true`. But rows 1-3 show the bug: pagination alone is enough to trigger `limited: true`, even on a plan with no row cap.
 
@@ -95,6 +95,7 @@ Or more precisely, limited should only fire when the consumer's tier (`rowLimit`
 This is correct: `rowLimit: 25` and `limited: true` together signal "you're tier-capped." The docs don't describe `limited` as a generic "response is a subset" flag. The intent is clearly a tier-upgrade prompt.
 
 Additionally, `content.ts` line 268 says:
+
 > `limit` — "Rows per page (capped by tier row limit)."
 
 So the docs model `limited` as a tier concept. The code violates this.
@@ -118,6 +119,7 @@ So the docs model `limited` as a tier concept. The code violates this.
 Replace the current "data subset" check with a "tier-capped" check in both the dropdown and paginated code paths.
 
 **Current code (both paths):**
+
 ```typescript
 // Dropdown path (catalogResource.ts ~line 340):
 limited: context.rowLimit !== null && totalAvailable > data.length,
@@ -127,12 +129,14 @@ limited: data.length < totalAvailable,
 ```
 
 **Proposed fix:**
+
 ```typescript
 // Both paths: limited = true only when a tier row cap is the binding constraint
 limited: context.rowLimit !== null && totalAvailable > context.rowLimit,
 ```
 
 This means:
+
 - `rowLimit: null` (no tier cap) → `limited` is always `false` regardless of pagination
 - `rowLimit: 25` and `totalAvailable: 814` → `limited: true` (tier cap is binding)
 - `rowLimit: 25` and `totalAvailable: 10` → `limited: false` (tier cap is not the binding constraint; all data fits within the cap)
@@ -147,11 +151,11 @@ The docs example already shows the correct semantics (`rowLimit: 25, limited: tr
 
 ## Files to Change
 
-| File | Change |
-|------|--------|
-| `src/lib/server/catalogResource.ts` | Fix `limited` computation in both the dropdown and paginated response paths (~lines 340 and 411) |
-| `src/routes/v1/catalog/catalog.test.ts` | Add test: member plan paginated request → `limited: false`; viewer plan request → `limited: true` |
-| `src/lib/server/catalogResource.test.ts` | Add unit tests for the `limited` field under both tier-capped and non-capped contexts |
+| File                                     | Change                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/lib/server/catalogResource.ts`      | Fix `limited` computation in both the dropdown and paginated response paths (~lines 340 and 411)  |
+| `src/routes/v1/catalog/catalog.test.ts`  | Add test: member plan paginated request → `limited: false`; viewer plan request → `limited: true` |
+| `src/lib/server/catalogResource.test.ts` | Add unit tests for the `limited` field under both tier-capped and non-capped contexts             |
 
 ---
 

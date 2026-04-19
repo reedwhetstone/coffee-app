@@ -93,9 +93,8 @@ Add `stocked` to `ParsedCatalogQuery.filters` and parse it in `parseCatalogQuery
 ```typescript
 // In parseCatalogQuery():
 const stockedParam = url.searchParams.get('stocked');
-const stockedFilter: boolean | null = stockedParam === 'false' ? false
-                                    : stockedParam === 'all'   ? null
-                                    : true; // default: stocked only
+const stockedFilter: boolean | null =
+	stockedParam === 'false' ? false : stockedParam === 'all' ? null : true; // default: stocked only
 ```
 
 Then in `queryCatalogData`, replace `stockedOnly: true` with `stockedOnly: stockedFilter !== false`, or pass the raw boolean through as an optional:
@@ -108,6 +107,7 @@ stockedOnly: query.filters.stocked === null ? undefined
 ```
 
 This lets consumers request:
+
 - `stocked=true` or no param → stocked only (current default)
 - `stocked=false` → unstocked/historical items only
 - `stocked=all` → full catalog regardless of stocked status
@@ -142,12 +142,12 @@ Note: `origin` and `country` are not mutually exclusive in `searchCatalog` — i
 
 ## Files to Change
 
-| File | Change |
-|------|--------|
-| `src/lib/server/catalogResource.ts` | Add `stocked` and `origin` to `ParsedCatalogQuery.filters`; parse them in `parseCatalogQuery()`; pass them to `searchCatalog()` in `queryCatalogData()` |
-| `src/lib/docs/content.ts` | Document `stocked`, `origin`, `country`, `continent` as supported query params in the Catalog API reference section |
-| `src/routes/v1/catalog/catalog.test.ts` | Add test cases for `stocked=false` and `origin=Ethiopia` |
-| `src/lib/server/catalogResource.test.ts` | Add test cases for new filter parsing |
+| File                                     | Change                                                                                                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/server/catalogResource.ts`      | Add `stocked` and `origin` to `ParsedCatalogQuery.filters`; parse them in `parseCatalogQuery()`; pass them to `searchCatalog()` in `queryCatalogData()` |
+| `src/lib/docs/content.ts`                | Document `stocked`, `origin`, `country`, `continent` as supported query params in the Catalog API reference section                                     |
+| `src/routes/v1/catalog/catalog.test.ts`  | Add test cases for `stocked=false` and `origin=Ethiopia`                                                                                                |
+| `src/lib/server/catalogResource.test.ts` | Add test cases for new filter parsing                                                                                                                   |
 
 ---
 

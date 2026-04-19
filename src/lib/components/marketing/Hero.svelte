@@ -136,14 +136,12 @@
 						>
 							<div class="mb-2 flex items-center gap-2">
 								<div class="h-2 w-2 rounded-full bg-background-tertiary-light"></div>
-								<span class="text-xs text-text-secondary-light"
-									>Market brief · updated daily</span
-								>
+								<span class="text-xs text-text-secondary-light">Market brief · updated daily</span>
 							</div>
 							<p class="text-sm text-text-primary-light">
 								Ethiopia washed lots down 4.9% median week-over-week. 3 new arrivals from importers
-								this week. 2 lots delisted. Origin IQR: $6.90 to $8.40. Wholesale average holds $0.55
-								below retail.
+								this week. 2 lots delisted. Origin IQR: $6.90 to $8.40. Wholesale average holds
+								$0.55 below retail.
 							</p>
 						</div>
 					</div>

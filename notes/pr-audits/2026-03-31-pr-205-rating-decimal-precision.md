@@ -45,12 +45,14 @@ None.
 - **Evidence:** The expression `selectedBean.rank % 1 === 0 ? selectedBean.rank : selectedBean.rank.toFixed(1)` is now copy-pasted in two locations within BeanProfileTabs.svelte (lines 326 and 859-861), and should also be added at +page.svelte:651. This is the "Never Repeat Truth" anti-pattern cited in AGENTS.md.
 - **Impact:** If the formatting rule changes (e.g., adding 2 decimal places, or a "N/A" fallback), all three sites need updating independently. This is maintenance debt.
 - **Correction:** Extract a utility function:
+
   ```typescript
   // In a shared utils file or at the top of BeanProfileTabs.svelte
   function formatRating(rank: number): string {
-    return rank % 1 === 0 ? String(rank) : rank.toFixed(1);
+  	return rank % 1 === 0 ? String(rank) : rank.toFixed(1);
   }
   ```
+
   Then use `{formatRating(selectedBean.rank)}` everywhere. The function could live in `$lib/utils` if used cross-file or as a local helper if kept within BeanProfileTabs.
 
 - **Title:** `toFixed(1)` returns a string, but template context expects consistent types
@@ -68,11 +70,13 @@ None.
 ## Assumptions Review
 
 - **Assumption:** `selectedBean.rank` is always an integer or has at most one decimal place
+
   - **Validity:** Weak
   - **Why:** The database column is `number | null` (no precision constraint). The current CuppingNotesForm only offers integer buttons (1-10), so current prod data should be integers. However, the CLI tools schema (`z.number().optional()`) accepts any float, and the database type (`rank: number | null`) imposes no constraint. A value like `7.5` could come from a direct API call or future UI change.
   - **Recommended action:** The fix handles this case correctly with `toFixed(1)`. Acceptable assumption for now.
 
 - **Assumption:** `rank` has already been null-checked before the formatting expression runs
+
   - **Validity:** Valid
   - **Why:** Both display sites are inside `{#if selectedBean.rank != null && typeof selectedBean.rank === 'number'}` guards. The expression will only execute on valid numbers.
 
@@ -107,9 +111,11 @@ None.
 ## Optional Patch Guidance
 
 **File: `src/routes/beans/+page.svelte`** (line ~651)
+
 - Replace `⭐ {bean.rank}` with `⭐ {bean.rank % 1 === 0 ? bean.rank : bean.rank.toFixed(1)}`
 - Or better: import/define `formatRating()` and use `⭐ {formatRating(bean.rank)}`
 
 **File: `src/routes/beans/BeanProfileTabs.svelte`** (optional refactor)
+
 - Add at top of `<script>`: `function formatRating(rank: number): string { return rank % 1 === 0 ? String(rank) : rank.toFixed(1); }`
 - Replace both inline ternaries with `{formatRating(selectedBean.rank)}`
