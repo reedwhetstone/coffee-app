@@ -1,74 +1,46 @@
 # Map of Content — Blog Content Cluster
 
 _Created: 2026-04-01_
-_Purpose: Navigation hub for the blog content subgraph — 23+ outline notes plus the ideas bank._
+_Last updated: 2026-04-19_
+_Purpose: Navigation hub for the repo-local blog system: ideas bank, source map, outlines, and published-post hygiene._
 
 ## Entry Points
 
-- [[blog/ideas]] — Full idea bank; all pillars, all statuses
-- [[blog/source-map]] — Traceability: source files → ideas → published posts
-- [[projects/purveyors-blog]] — The blog project itself: strategy, voice, workflow, content calendar
+- `notes/blog/ideas.md` — full idea bank, all pillars, all statuses
+- `notes/blog/source-map.md` — source files to ideas to published-post traceability
+- `notes/blog/outlines/` — active and pending outlines
+- `notes/blog/outlines/published/` — published-outline archive
 
-## Published Posts (11)
+## Current snapshot
+
+- **Published posts live:** 13
+- **Published outline files in `notes/blog/outlines/published/`:** 11
+- **Pending outline files in `notes/blog/outlines/`:** 16
+- **Current cleanup gap:** published-outline filenames and backfills still lag the live blog by 4 posts:
+  - `building-product-philosophy-into-codebase`
+  - `enterprise-second-brains-are-not-knowledge-bases`
+  - `inference-is-in-the-name` (currently tracked as `deterministic-core-adaptive-edge`)
+  - `sycophancy-is-the-last-hard-problem` (currently tracked as `sycophancy-the-final-hurdle`)
+
+## Published posts
 
 | Slug | Pillar | PR |
-|------|--------|-----|
-| what-is-purveyors | supply-chain | #13 |
-| building-a-coffee-data-pipeline | coffee-data-pipeline | #18 |
-| two-weeks-with-ai-co-developer | agentic-stack | #30 |
-| ai-moats-arent-software | ai-first-product | #40/#41 |
-| llm-fair-use-data-extraction | coffee-data-pipeline | #43/#45 |
-| benchmark-leaders-agentic-laggards | agentic-stack | #47/#48 |
-| beyond-the-coffee-belt | supply-chain | #63/#64 |
-| inference-is-in-the-name | agentic-stack | #66/#67 |
-| who-profits-when-coffee-data-stays-scarce | market-intelligence | #87 |
-| why-does-enterprise-ai-cost-more | agentic-stack | — |
-| sycophancy-is-the-last-hard-problem | agentic-stack | #173 |
+|------|--------|----|
+| `what-is-purveyors` | supply-chain | #13 |
+| `building-a-coffee-data-pipeline` | coffee-data-pipeline | #18 |
+| `two-weeks-with-ai-co-developer` | agentic-stack | #30 |
+| `ai-moats-arent-software` | ai-first-product | #40/#41 |
+| `llm-fair-use-data-extraction` | coffee-data-pipeline | #43/#45 |
+| `benchmark-leaders-agentic-laggards` | agentic-stack | #47/#48 |
+| `beyond-the-coffee-belt` | supply-chain | #63/#64 |
+| `inference-is-in-the-name` | agentic-stack | #66/#67 |
+| `who-profits-when-coffee-data-stays-scarce` | market-intelligence | #87 |
+| `why-does-enterprise-ai-cost-more` | agentic-stack | — |
+| `building-product-philosophy-into-codebase` | agentic-stack | #174 |
+| `sycophancy-is-the-last-hard-problem` | agentic-stack | #173 |
+| `enterprise-second-brains-are-not-knowledge-bases` | agentic-stack | #226/#227 |
 
-Published outline files: `brain/blog/outlines/published/`
+## Priority gaps
 
-## Pending Outlines (12)
-
-### AI-First Product / GenUI
-- [[blog/outlines/why-should-an-ai-agent-stop-at-the-write-boundary]] — The propose/confirm pattern
-- [[blog/outlines/embeddings-are-not-search]] — RAG needs a ranking layer
-
-### API Architecture
-- [[blog/outlines/protocol-first-is-the-new-microservices-first]] — MCP hype cycle
-- [[blog/outlines/agents-dont-pick-their-own-tools]] — B2CC blind spot (humans control the allowlist)
-
-### Agentic Stack
-- [[blog/outlines/building-product-philosophy-into-codebase]] — Agents as blank-slate coworkers
-- [[blog/outlines/human-in-vs-out-of-loop-safety]] — When human-out-of-the-loop is lower risk
-- [[blog/outlines/what-an-ai-center-of-excellence-actually-needs]] — Governance over platform selection
-
-### Supply Chain / Coffee
-- [[blog/outlines/co-fermentation-exposed-coffees-real-transparency-gap]] — Is co-fermentation cheating?
-- [[blog/outlines/why-ai-first-coffee-platform]] — Why build an AI-first coffee platform
-
-### Data Quality
-- [[blog/outlines/null-means-two-things]] — Null semantics in pipelines
-- [[blog/outlines/api-calls-wrong-unit-data-pricing]] — API pricing as unit data problem
-- [[blog/outlines/api-docs-new-landing-page]] — Docs as primary product surface
-- [[blog/outlines/why-same-coffee-costs-20-and-6]] — Wholesale as a data classification problem
-
-## Ideas Feeding This Cluster
-
-- [[ideas/ai-saas-disruption-thesis]] → ai-moats-arent-software (published)
-- [[references/b2cc-agents-as-customers]] → agents-dont-pick-their-own-tools, protocol-first (both outlined)
-- [[projects/purveyors-cli-strategy]] → api-architecture pillar broadly
-- [[projects/coffee-scraper]] → coffee-data-pipeline pillar broadly
-- [[ideas/supplier-health-score]] → potential future market-intelligence post on trust signals
-
-## Pillar Coverage (Published)
-
-| Pillar | Published | Pending |
-|--------|-----------|---------|
-| agentic-stack | 5 | 2 |
-| supply-chain | 2 | 1 |
-| coffee-data-pipeline | 2 | 2 |
-| ai-first-product | 1 | 2 |
-| market-intelligence | 1 | 1 |
-| api-architecture | 0 | 4 |
-
-**Underrepresented:** api-architecture (0 published) and ai-first-product (1 published) — both have strong outlined material ready to ship.
+- **api-architecture** still has zero published posts and remains the clearest gap
+- **ai-first-product** is still underweight relative to the amount of strong outline material already available

@@ -1,0 +1,111 @@
+{
+  "auditDate": "2026-04-19",
+  "postsNeedingUpdates": [
+    {
+      "slug": "building-a-coffee-data-pipeline",
+      "title": "Building a Coffee Data Pipeline from Scratch",
+      "reasons": [
+        "Still claims 31 suppliers, 12 live suppliers, and 1,876 coffees across 35 suppliers",
+        "Architecture mix has drifted from the published 5 Playwright / 7 generic Shopify split",
+        "Current product narrative has moved to a 41+ supplier surface"
+      ],
+      "suggestedFix": "Refresh counts throughout or explicitly label the post as a February 2026 snapshot."
+    },
+    {
+      "slug": "what-is-purveyors",
+      "title": "What is Purveyors?",
+      "reasons": [
+        "Uses 35 suppliers twice in present-tense product copy",
+        "Current public surfaces have moved beyond that supplier count"
+      ],
+      "suggestedFix": "Update to a 40+ / 41+ supplier narrative or time-scope the count."
+    },
+    {
+      "slug": "ai-moats-arent-software",
+      "title": "The Real AI Moats Aren't Software",
+      "reasons": [
+        "Moat example still cites a normalized dataset across 35 suppliers"
+      ],
+      "suggestedFix": "Update to the current supplier narrative or generalize to 40+ suppliers."
+    },
+    {
+      "slug": "who-profits-when-coffee-data-stays-scarce",
+      "title": "Who Profits When Coffee Data Stays Scarce?",
+      "reasons": [
+        "Description and intro use 35 suppliers",
+        "Body still presents a 30-supplier dataset snapshot without clearly date-scoping it"
+      ],
+      "suggestedFix": "Either rerun the disclosure analysis for the current supplier surface or explicitly label the article as a March 2026 snapshot."
+    },
+    {
+      "slug": "building-product-philosophy-into-codebase",
+      "title": "The Codebase Is the Onboarding Manual",
+      "reasons": [
+        "GitHub link to notes/MARKET_ANALYSIS.md broke after the 2026-04-13 archive move"
+      ],
+      "suggestedFix": "Replace the broken link with notes/PRODUCT_VISION.md or notes/archive/legacy-product/MARKET_ANALYSIS.md."
+    }
+  ],
+  "newIdeas": [
+    {
+      "title": "The listing schema is the market: why a scraped catalog should become a publishing standard",
+      "pillar": "api-architecture",
+      "status": "raw",
+      "source": "notes/big-ideas/2026-04-09-open-coffee-listing-standard.md",
+      "whyNow": "Recent coffee-app strategy work created a concrete, post-worthy thesis about moving from scraping as the moat to schema ownership as the moat."
+    },
+    {
+      "title": "Retry budgets are data quality policy: rate limits, network flaps, and upstream failures should not share the same counter",
+      "pillar": "coffee-data-pipeline",
+      "status": "raw",
+      "source": "coffee-scraper llmClient hardening (aee8e8c / 7006d18 / bc4db50)",
+      "whyNow": "Last week's scraper changes exposed a strong general lesson about treating retry classes as product policy, not incidental transport logic."
+    }
+  ],
+  "staleIdeas": [
+    {
+      "title": "Is Co-Fermentation Cheating? Wrong Question.",
+      "currentStatus": "drafted (PR #208)",
+      "reason": "Aging drafted post. Before shipping, the processing-coverage claims should be rerun against the current supplier surface."
+    },
+    {
+      "title": "Why Does the Same Coffee Cost $20/lb and $6.58/lb?",
+      "currentStatus": "drafted (PR #118)",
+      "reason": "Aging drafted post. The tier-spread evidence likely needs a fresh data pass or a conscious archive decision."
+    }
+  ],
+  "publicationCadence": {
+    "minimum": "1 post/week",
+    "lastPublishedDate": "2026-04-07",
+    "daysSinceLastPost": 12,
+    "postsLast30Days": 3,
+    "status": "behind",
+    "notes": "Cadence slipped after the 2026-04-07 post. No post shipped during the week ending 2026-04-19."
+  },
+  "backlogHealth": {
+    "publishedPosts": 13,
+    "publishedPillars": {
+      "agentic-stack": 7,
+      "supply-chain": 2,
+      "coffee-data-pipeline": 2,
+      "ai-first-product": 1,
+      "market-intelligence": 1,
+      "api-architecture": 0
+    },
+    "notes": [
+      "Status hygiene improved this audit by reconciling published idea entries for Sycophancy, Product Philosophy, Enterprise Second Brains, and the Who Profits draft lineage.",
+      "Several stale supplier-count idea titles were rewritten into timeless backlog entries instead of frozen historical counts.",
+      "The main backlog weakness is not idea volume. It is pillar imbalance and two aging drafted posts."
+    ]
+  },
+  "nextPriority": {
+    "title": "Can an agent use your API without help?",
+    "pillar": "api-architecture",
+    "status": "outlined",
+    "rationale": [
+      "api-architecture still has zero published posts",
+      "Recent anonymous catalog hardening, docs canonicalization, llms.txt work, and teaser pagination gave the outline fresh shipped evidence",
+      "It aligns directly with PRODUCT_VISION principles around API-first product strategy and public surfaces proving value before the paywall"
+    ]
+  }
+}
