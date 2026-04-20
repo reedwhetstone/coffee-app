@@ -90,6 +90,17 @@ export interface CatalogDropdownResult {
 	count: number;
 }
 
+/** Options for the lightweight dropdown search. */
+export interface CatalogDropdownSearchOptions {
+	stockedOnly?: boolean;
+	stockedFilter?: boolean | null; // 3-way: true=stocked only, false=unstocked only, null=all; takes precedence over stockedOnly
+	publicOnly?: boolean;
+	showWholesale?: boolean;
+	wholesaleOnly?: boolean;
+	limit?: number;
+	offset?: number;
+}
+
 // ── Columns ──────────────────────────────────────────────────────────────────
 
 const DROPDOWN_COLUMNS =
@@ -299,29 +310,26 @@ export async function getCatalogItem(
 
 /**
  * Lightweight dropdown query — returns only the fields needed for pickers.
- * Consumers: /api/catalog?fields=dropdown, bean pickers.
+ * Consumers: /v1/catalog?fields=dropdown, /api/catalog?fields=dropdown, bean pickers.
  */
-export async function getCatalogDropdown(
+export async function searchCatalogDropdown(
 	supabase: SupabaseClient,
-	options: {
-		stockedOnly?: boolean;
-		stockedFilter?: boolean | null; // 3-way: true=stocked only, false=unstocked only, null=all; takes precedence over stockedOnly
-		publicOnly?: boolean;
-		showWholesale?: boolean;
-		wholesaleOnly?: boolean;
-	} = {}
-): Promise<CatalogDropdownItem[]> {
+	options: CatalogDropdownSearchOptions = {}
+): Promise<CatalogDropdownResult> {
 	const {
 		stockedOnly = true,
 		stockedFilter,
 		publicOnly = false,
 		showWholesale,
-		wholesaleOnly = false
+		wholesaleOnly = false,
+		limit,
+		offset
 	} = options;
+	const usePagination = offset !== undefined;
 
 	let query = supabase
 		.from('coffee_catalog')
-		.select(DROPDOWN_COLUMNS)
+		.select(DROPDOWN_COLUMNS, usePagination ? { count: 'exact' } : undefined)
 		.order('arrival_date', { ascending: false });
 
 	if (stockedFilter !== undefined) {
@@ -346,9 +354,30 @@ export async function getCatalogDropdown(
 		query = query.eq('wholesale', false);
 	}
 
-	const { data, error } = await query;
+	if (offset !== undefined && limit !== undefined) {
+		query = query.range(offset, offset + limit - 1);
+	} else if (limit !== undefined) {
+		query = query.limit(limit);
+	}
+
+	const { data, error, count } = await query;
 	if (error) throw error;
-	return (data as CatalogDropdownItem[]) || [];
+
+	return {
+		data: (data as CatalogDropdownItem[]) || [],
+		count: count ?? data?.length ?? 0
+	};
+}
+
+/**
+ * Backward-compatible unpaginated dropdown helper for existing picker consumers.
+ */
+export async function getCatalogDropdown(
+	supabase: SupabaseClient,
+	options: Omit<CatalogDropdownSearchOptions, 'limit' | 'offset'> = {}
+): Promise<CatalogDropdownItem[]> {
+	const result = await searchCatalogDropdown(supabase, options);
+	return result.data;
 }
 
 /**

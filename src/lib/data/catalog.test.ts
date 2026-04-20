@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { searchCatalog } from './catalog';
+import { getCatalogDropdown, searchCatalog, searchCatalogDropdown } from './catalog';
 
 function createSupabaseMock() {
 	const result = {
@@ -9,13 +9,19 @@ function createSupabaseMock() {
 	};
 
 	const state = {
+		selectCalls: [] as Array<[string, unknown?]>,
 		gteCalls: [] as Array<[string, unknown]>,
 		eqCalls: [] as Array<[string, unknown]>,
-		orderCalls: [] as Array<[string, { ascending: boolean }]>
+		orderCalls: [] as Array<[string, { ascending: boolean }]>,
+		rangeCalls: [] as Array<[number, number]>,
+		limitCalls: [] as number[]
 	};
 
 	const builder = {
-		select: vi.fn(() => builder),
+		select: vi.fn((columns: string, options?: unknown) => {
+			state.selectCalls.push([columns, options]);
+			return builder;
+		}),
 		eq: vi.fn((column: string, value: unknown) => {
 			state.eqCalls.push([column, value]);
 			return builder;
@@ -32,8 +38,14 @@ function createSupabaseMock() {
 			state.orderCalls.push([column, options]);
 			return builder;
 		}),
-		range: vi.fn(() => builder),
-		limit: vi.fn(() => builder),
+		range: vi.fn((from: number, to: number) => {
+			state.rangeCalls.push([from, to]);
+			return builder;
+		}),
+		limit: vi.fn((value: number) => {
+			state.limitCalls.push(value);
+			return builder;
+		}),
 		then: (
 			onFulfilled?: (value: typeof result) => unknown,
 			onRejected?: (reason: unknown) => unknown
@@ -65,5 +77,67 @@ describe('searchCatalog stocked date filters', () => {
 		cutoff.setDate(cutoff.getDate() - 30);
 
 		expect(state.gteCalls).toEqual([['stocked_date', cutoff.toISOString().split('T')[0]]]);
+	});
+});
+
+describe('searchCatalogDropdown', () => {
+	it('uses the reduced projection with exact counts for paginated dropdown queries', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await searchCatalogDropdown(supabase as never, {
+			stockedFilter: false,
+			publicOnly: true,
+			showWholesale: false,
+			limit: 15,
+			offset: 15
+		});
+
+		expect(state.selectCalls).toEqual([
+			[
+				'id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee',
+				{ count: 'exact' }
+			]
+		]);
+		expect(state.eqCalls).toEqual([
+			['stocked', false],
+			['public_coffee', true],
+			['wholesale', false]
+		]);
+		expect(state.orderCalls).toEqual([['arrival_date', { ascending: false }]]);
+		expect(state.rangeCalls).toEqual([[15, 29]]);
+	});
+
+	it('keeps unpaginated dropdown queries backward-compatible', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await searchCatalogDropdown(supabase as never, { stockedFilter: null });
+
+		expect(state.selectCalls).toEqual([
+			['id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee', undefined]
+		]);
+		expect(state.eqCalls).toEqual([]);
+		expect(state.rangeCalls).toEqual([]);
+		expect(state.limitCalls).toEqual([]);
+	});
+});
+
+describe('getCatalogDropdown', () => {
+	it('remains a thin unpaginated wrapper for existing callers', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await getCatalogDropdown(supabase as never, {
+			stockedFilter: true,
+			wholesaleOnly: true
+		});
+
+		expect(state.selectCalls).toEqual([
+			['id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee', undefined]
+		]);
+		expect(state.eqCalls).toEqual([
+			['stocked', true],
+			['wholesale', true]
+		]);
+		expect(state.rangeCalls).toEqual([]);
+		expect(state.limitCalls).toEqual([]);
 	});
 });

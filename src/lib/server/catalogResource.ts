@@ -2,6 +2,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 import {
 	getCatalogDropdown,
 	searchCatalog,
+	searchCatalogDropdown,
 	type CatalogDropdownItem,
 	type CatalogItem
 } from '$lib/data/catalog';
@@ -438,21 +439,69 @@ async function queryCatalogData(
 	const stockedFilter: boolean | null =
 		effectiveQuery.filters.stocked !== undefined ? effectiveQuery.filters.stocked : true;
 
-	if (effectiveQuery.fields === 'dropdown' && effectiveQuery.ids.length === 0 && !isPaginated) {
-		// getCatalogDropdown now supports stockedFilter directly (3-way: true/false/null)
-		const rows = await getCatalogDropdown(context.supabase, {
+	if (effectiveQuery.fields === 'dropdown' && effectiveQuery.ids.length === 0) {
+		if (!isPaginated) {
+			// getCatalogDropdown now supports stockedFilter directly (3-way: true/false/null)
+			const rows = await getCatalogDropdown(context.supabase, {
+				stockedFilter,
+				publicOnly: context.publicOnly,
+				showWholesale: context.showWholesale,
+				wholesaleOnly: context.wholesaleOnly
+			});
+
+			const totalAvailable = rows.length;
+			const data = context.rowLimit ? rows.slice(0, context.rowLimit) : rows;
+
+			return {
+				data,
+				pagination: null,
+				meta: {
+					resource: 'catalog',
+					namespace: '/v1/catalog',
+					version: 'v1',
+					auth: {
+						kind: context.authKind,
+						role: context.role,
+						apiPlan: context.apiPlan
+					},
+					access: {
+						publicOnly: context.publicOnly,
+						showWholesale: context.showWholesale,
+						wholesaleOnly: context.wholesaleOnly,
+						rowLimit: context.rowLimit,
+						limited: context.rowLimit !== null && totalAvailable > data.length,
+						totalAvailable
+					},
+					cache: {
+						hit: false,
+						timestamp: null
+					}
+				}
+			};
+		}
+
+		const dropdownResult = await searchCatalogDropdown(context.supabase, {
 			stockedFilter,
 			publicOnly: context.publicOnly,
 			showWholesale: context.showWholesale,
-			wholesaleOnly: context.wholesaleOnly
+			wholesaleOnly: context.wholesaleOnly,
+			limit: effectiveLimit,
+			offset
 		});
 
-		const totalAvailable = rows.length;
-		const data = context.rowLimit ? rows.slice(0, context.rowLimit) : rows;
+		const totalAvailable = dropdownResult.count || dropdownResult.data.length;
+		const totalPages = Math.ceil(totalAvailable / effectiveLimit);
 
 		return {
-			data,
-			pagination: null,
+			data: dropdownResult.data,
+			pagination: {
+				page,
+				limit: effectiveLimit,
+				total: totalAvailable,
+				totalPages,
+				hasNext: page < totalPages,
+				hasPrev: page > 1
+			},
 			meta: {
 				resource: 'catalog',
 				namespace: '/v1/catalog',
@@ -467,7 +516,7 @@ async function queryCatalogData(
 					showWholesale: context.showWholesale,
 					wholesaleOnly: context.wholesaleOnly,
 					rowLimit: context.rowLimit,
-					limited: context.rowLimit !== null && totalAvailable > data.length,
+					limited: context.rowLimit !== null && totalAvailable > context.rowLimit,
 					totalAvailable
 				},
 				cache: {
