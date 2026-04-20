@@ -92,11 +92,31 @@ export interface CatalogDropdownResult {
 
 /** Options for the lightweight dropdown search. */
 export interface CatalogDropdownSearchOptions {
+	origin?: CatalogSearchOptions['origin'];
 	stockedOnly?: boolean;
 	stockedFilter?: boolean | null; // 3-way: true=stocked only, false=unstocked only, null=all; takes precedence over stockedOnly
 	publicOnly?: boolean;
 	showWholesale?: boolean;
 	wholesaleOnly?: boolean;
+	continent?: CatalogSearchOptions['continent'];
+	country?: CatalogSearchOptions['country'];
+	source?: CatalogSearchOptions['source'];
+	processing?: CatalogSearchOptions['processing'];
+	cultivarDetail?: CatalogSearchOptions['cultivarDetail'];
+	type?: CatalogSearchOptions['type'];
+	grade?: CatalogSearchOptions['grade'];
+	appearance?: CatalogSearchOptions['appearance'];
+	name?: CatalogSearchOptions['name'];
+	region?: CatalogSearchOptions['region'];
+	scoreValueMin?: CatalogSearchOptions['scoreValueMin'];
+	scoreValueMax?: CatalogSearchOptions['scoreValueMax'];
+	pricePerLbMin?: CatalogSearchOptions['pricePerLbMin'];
+	pricePerLbMax?: CatalogSearchOptions['pricePerLbMax'];
+	arrivalDate?: CatalogSearchOptions['arrivalDate'];
+	stockedDate?: CatalogSearchOptions['stockedDate'];
+	stockedDays?: CatalogSearchOptions['stockedDays'];
+	orderBy?: CatalogSearchOptions['orderBy'];
+	orderDirection?: CatalogSearchOptions['orderDirection'];
 	limit?: number;
 	offset?: number;
 }
@@ -317,11 +337,31 @@ export async function searchCatalogDropdown(
 	options: CatalogDropdownSearchOptions = {}
 ): Promise<CatalogDropdownResult> {
 	const {
+		origin,
 		stockedOnly = true,
 		stockedFilter,
 		publicOnly = false,
 		showWholesale,
 		wholesaleOnly = false,
+		continent,
+		country,
+		source,
+		processing,
+		cultivarDetail,
+		type,
+		grade,
+		appearance,
+		name,
+		region,
+		scoreValueMin,
+		scoreValueMax,
+		pricePerLbMin,
+		pricePerLbMax,
+		arrivalDate,
+		stockedDate,
+		stockedDays,
+		orderBy = 'arrival_date',
+		orderDirection = 'desc',
 		limit,
 		offset
 	} = options;
@@ -329,8 +369,7 @@ export async function searchCatalogDropdown(
 
 	let query = supabase
 		.from('coffee_catalog')
-		.select(DROPDOWN_COLUMNS, usePagination ? { count: 'exact' } : undefined)
-		.order('arrival_date', { ascending: false });
+		.select(DROPDOWN_COLUMNS, usePagination ? { count: 'exact' } : undefined);
 
 	if (stockedFilter !== undefined) {
 		if (stockedFilter === true) {
@@ -353,6 +392,41 @@ export async function searchCatalogDropdown(
 		// Only filter out wholesale rows when caller explicitly opts out.
 		query = query.eq('wholesale', false);
 	}
+
+	if (origin) {
+		query = query.or(
+			`continent.ilike.%${origin}%,country.ilike.%${origin}%,region.ilike.%${origin}%`
+		);
+	}
+	if (continent) query = query.eq('continent', continent);
+	if (Array.isArray(country) && country.length > 0) {
+		query = country.length === 1 ? query.eq('country', country[0]) : query.in('country', country);
+	} else if (country) {
+		query = query.eq('country', country);
+	}
+	if (region) query = query.ilike('region', `%${region}%`);
+	if (source && source.length > 0) query = query.in('source', source);
+	if (name) query = query.ilike('name', `%${name}%`);
+	if (processing) query = query.ilike('processing', `%${processing}%`);
+	if (cultivarDetail) query = query.ilike('cultivar_detail', `%${cultivarDetail}%`);
+	if (type) query = query.ilike('type', `%${type}%`);
+	if (grade) query = query.ilike('grade', `%${grade}%`);
+	if (appearance) query = query.ilike('appearance', `%${appearance}%`);
+	if (scoreValueMin !== undefined) query = query.gte('score_value', scoreValueMin);
+	if (scoreValueMax !== undefined) query = query.lte('score_value', scoreValueMax);
+	if (pricePerLbMin !== undefined) query = query.gte('price_per_lb', pricePerLbMin);
+	if (pricePerLbMax !== undefined) query = query.lte('price_per_lb', pricePerLbMax);
+	if (arrivalDate) query = query.eq('arrival_date', arrivalDate);
+	if (stockedDate && stockedDate !== '') {
+		query = query.gte('stocked_date', stockedDate);
+	}
+	if (stockedDays && stockedDays > 0) {
+		const cutoff = new Date();
+		cutoff.setDate(cutoff.getDate() - stockedDays);
+		query = query.gte('stocked_date', cutoff.toISOString().split('T')[0]);
+	}
+
+	query = query.order(orderBy, { ascending: orderDirection === 'asc' });
 
 	if (offset !== undefined && limit !== undefined) {
 		query = query.range(offset, offset + limit - 1);

@@ -1174,6 +1174,31 @@ describe('buildCanonicalCatalogResponse', () => {
 				expect.objectContaining({ stockedFilter: null })
 			);
 		});
+
+		it('preserves canonical filters and sorting for paginated dropdown requests', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent(
+					'https://app.test/v1/catalog?fields=dropdown&page=2&limit=10&origin=Africa&country=Ethiopia&source=sweet_maria&name=Sidamo&processing=Washed&sortField=name&sortDirection=asc'
+				)
+			);
+
+			expect(mockSearchCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					stockedFilter: true,
+					publicOnly: true,
+					origin: 'Africa',
+					country: 'Ethiopia',
+					source: ['sweet_maria'],
+					name: 'Sidamo',
+					processing: 'Washed',
+					orderBy: 'name',
+					orderDirection: 'asc',
+					limit: 10,
+					offset: 10
+				})
+			);
+		});
 	});
 });
 
