@@ -24,6 +24,7 @@ import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { jsonResponse } from '$lib/server/http';
 import { createAdminClient } from '$lib/supabase-admin';
 import type { UserRole } from '$lib/types/auth.types';
+import { DEFAULT_CATALOG_LISTING_LIMIT, MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 
 export type CatalogResourceItem = Omit<CatalogItem, 'coffee_user'>;
 export type CatalogResponseItem = CatalogResourceItem | CatalogDropdownItem;
@@ -118,7 +119,6 @@ interface QueryCatalogDataOptions {
 	forceDefaultPagination?: boolean;
 }
 
-const DEFAULT_API_PAGE_LIMIT = 100;
 const ISO_DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 class CatalogRateLimitError extends Error {
@@ -199,7 +199,19 @@ function validateCatalogQuery(url: URL): void {
 		throw new CatalogQueryValidationError('stocked_date', stockedDate, 'YYYY-MM-DD');
 	}
 
-	const positiveIntegerParams = ['page', 'limit', 'stocked_days'];
+	const limit = url.searchParams.get('limit');
+	if (limit !== null) {
+		const parsedLimit = parseRequiredPositiveInteger(limit, 'limit');
+		if (parsedLimit > MAX_CATALOG_PAGE_LIMIT) {
+			throw new CatalogQueryValidationError(
+				'limit',
+				limit,
+				`positive integer less than or equal to ${MAX_CATALOG_PAGE_LIMIT}`
+			);
+		}
+	}
+
+	const positiveIntegerParams = ['page', 'stocked_days'];
 	for (const parameter of positiveIntegerParams) {
 		const value = url.searchParams.get(parameter);
 		if (value !== null) {
@@ -420,7 +432,7 @@ async function queryCatalogData(
 	const requestedLimit = effectiveQuery.isPaginated
 		? effectiveQuery.limit
 		: useDefaultPagination
-			? DEFAULT_API_PAGE_LIMIT
+			? DEFAULT_CATALOG_LISTING_LIMIT
 			: effectiveQuery.limit;
 	const requestedOffset = effectiveQuery.isPaginated ? effectiveQuery.offset : 0;
 	const useRowLimitedPagination =

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 
 const mockSearchCatalog = vi.fn();
 const mockSearchCatalogDropdown = vi.fn();
@@ -243,7 +244,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		});
 	});
 
-	it('preserves explicit anonymous pagination limits', async () => {
+	it('preserves explicit anonymous pagination limits up to the shared max page size', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
 			primaryAppRole: null,
@@ -262,29 +263,59 @@ describe('buildCanonicalCatalogResponse', () => {
 		});
 
 		const response = await buildCanonicalCatalogResponse(
-			makeEvent('https://app.test/v1/catalog?limit=500')
+			makeEvent(`https://app.test/v1/catalog?limit=${MAX_CATALOG_PAGE_LIMIT}`)
 		);
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
 		expect(body.pagination).toMatchObject({
 			page: 1,
-			limit: 500,
+			limit: MAX_CATALOG_PAGE_LIMIT,
 			total: 1137,
-			totalPages: 3,
+			totalPages: 2,
 			hasNext: true,
 			hasPrev: false
 		});
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
-				limit: 500,
+				limit: MAX_CATALOG_PAGE_LIMIT,
 				offset: 0,
 				orderBy: 'arrival_date',
 				orderDirection: 'desc'
 			})
 		);
 	});
+
+	it.each([MAX_CATALOG_PAGE_LIMIT + 100, MAX_CATALOG_PAGE_LIMIT * 2])(
+		'rejects oversized limit=%i so pagination metadata cannot lie about truncated responses',
+		async (limit) => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: false,
+				primaryAppRole: null,
+				apiPlan: null
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(false);
+
+			const response = await buildCanonicalCatalogResponse(
+				makeEvent(`https://app.test/v1/catalog?limit=${limit}`)
+			);
+			const body = await response.json();
+
+			expect(response.status).toBe(400);
+			expect(body).toEqual({
+				error: 'Invalid query parameter',
+				message: `Query parameter "limit" must use positive integer less than or equal to ${MAX_CATALOG_PAGE_LIMIT} format`,
+				details: {
+					parameter: 'limit',
+					value: String(limit),
+					expected: `positive integer less than or equal to ${MAX_CATALOG_PAGE_LIMIT}`
+				}
+			});
+			expect(mockSearchCatalog).not.toHaveBeenCalled();
+		}
+	);
 
 	it.each([
 		['page', 'abc', 'positive integer'],
@@ -1300,6 +1331,34 @@ describe('buildLegacyAppCatalogResponse', () => {
 				parameter: 'stocked_date',
 				value: '30',
 				expected: 'YYYY-MM-DD'
+			}
+		});
+		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBeNull();
+	});
+
+	it('preserves oversized limit validation for the deprecated /api/catalog-api alias', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			primaryAppRole: 'member',
+			apiPlan: 'viewer',
+			session: { access_token: 'cookie-token' }
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
+
+		const response = await buildLegacyAppCatalogResponse(
+			makeEvent(`https://app.test/api/catalog-api?limit=${MAX_CATALOG_PAGE_LIMIT + 100}`)
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body).toEqual({
+			error: 'Invalid query parameter',
+			message: `Query parameter "limit" must use positive integer less than or equal to ${MAX_CATALOG_PAGE_LIMIT} format`,
+			details: {
+				parameter: 'limit',
+				value: String(MAX_CATALOG_PAGE_LIMIT + 100),
+				expected: `positive integer less than or equal to ${MAX_CATALOG_PAGE_LIMIT}`
 			}
 		});
 		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBeNull();

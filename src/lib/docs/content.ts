@@ -1,5 +1,8 @@
-const DEFAULT_CATALOG_LISTING_LIMIT = 100;
-const DEFAULT_PAGINATED_PAGE_SIZE = 15;
+import {
+	DEFAULT_CATALOG_LISTING_LIMIT,
+	DEFAULT_PAGINATED_PAGE_SIZE,
+	MAX_CATALOG_PAGE_LIMIT
+} from '$lib/constants/catalog';
 
 export type DocsSectionKey = 'api' | 'cli';
 
@@ -330,7 +333,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Public endpoint',
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, processing method, pricing, price tiers, and availability metadata.',
-			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API-key requests all share the public catalog query surface. Anonymous and viewer-session requests stay public-only, while member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied.`
+			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API-key requests all share the public catalog query surface. Anonymous and viewer-session requests stay public-only, while member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`
 		],
 		sections: [
 			{
@@ -352,7 +355,7 @@ const docsPages: DocsPage[] = [
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
 					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and visibility: only API-key requests emit X-RateLimit-* headers, and only privileged member or admin sessions can widen beyond public-only data.',
-					'Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans are uncapped at the row level. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.',
+					`Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans remove that lower plan cap but still share the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.`,
 					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
 				],
 				codeBlocks: [
@@ -385,7 +388,7 @@ const docsPages: DocsPage[] = [
 							'limit',
 							'integer',
 							'100 when page and limit are both omitted; otherwise 15 fallback',
-							'Rows per page before any plan cap is applied. Invalid values return 400.'
+							`Rows per page before any plan cap is applied, up to ${MAX_CATALOG_PAGE_LIMIT}. Values above ${MAX_CATALOG_PAGE_LIMIT} return 400.`
 						],
 						[
 							'ids',
@@ -548,20 +551,21 @@ const docsPages: DocsPage[] = [
 							'Origin',
 							'member',
 							'10,000',
-							'Unlimited',
-							'Self-serve paid tier for production integrations and sync jobs.'
+							`Up to ${MAX_CATALOG_PAGE_LIMIT} per request`,
+							'No additional plan row cap beyond the shared request-size ceiling. Best for production integrations and sync jobs.'
 						],
 						[
 							'Enterprise',
 							'enterprise',
 							'Unlimited',
-							'Unlimited',
-							'Contact-sales plan for custom commercial volume and support.'
+							`Up to ${MAX_CATALOG_PAGE_LIMIT} per request`,
+							'No additional plan row cap beyond the shared request-size ceiling. Contact sales for commercial volume and support.'
 						]
 					]
 				},
 				bullets: [
 					'The public docs use marketed tier names Green, Origin, and Enterprise, while API responses and server code use apiPlan keys viewer, member, and enterprise.',
+					`All callers share a hard per-request page-size ceiling of ${MAX_CATALOG_PAGE_LIMIT}, even when a paid plan removes the lower viewer-tier row cap.`,
 					'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset are only emitted for API-key responses.',
 					'429 responses also include Retry-After.',
 					'Anonymous and session-based catalog requests are not counted against an API-key quota and therefore do not receive those headers.'
