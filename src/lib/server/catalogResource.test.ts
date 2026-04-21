@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockSearchCatalog = vi.fn();
+const mockSearchCatalogDropdown = vi.fn();
 const mockGetCatalogDropdown = vi.fn();
 
 const mockCheckRateLimit = vi.fn();
@@ -25,6 +26,7 @@ class MockAuthError extends Error {
 
 vi.mock('$lib/data/catalog', () => ({
 	searchCatalog: mockSearchCatalog,
+	searchCatalogDropdown: mockSearchCatalogDropdown,
 	getCatalogDropdown: mockGetCatalogDropdown
 }));
 
@@ -116,6 +118,10 @@ beforeEach(async () => {
 	mockLogApiUsage.mockResolvedValue(undefined);
 	mockCreateAdminClient.mockReturnValue({ kind: 'admin-client' });
 	mockGetCatalogDropdown.mockResolvedValue([]);
+	mockSearchCatalogDropdown.mockResolvedValue({
+		data: [],
+		count: 0
+	});
 	mockSearchCatalog.mockResolvedValue({
 		data: [sampleCatalogItem],
 		count: 1,
@@ -511,6 +517,154 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 		expect(dropdownResponse.status).toBe(200);
 		expect(mockGetCatalogDropdown).toHaveBeenCalled();
+	});
+
+	it('routes paginated dropdown requests through the dropdown helper and preserves pagination metadata', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalogDropdown.mockResolvedValue({
+			data: [{ id: 7, name: 'Dropdown Coffee', source: 'sweet_marias', stocked: true }],
+			count: 42
+		});
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?fields=dropdown&page=2&limit=10')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.data).toEqual([
+			expect.objectContaining({ id: 7, name: 'Dropdown Coffee', source: 'sweet_marias' })
+		]);
+		expect(body.pagination).toEqual({
+			page: 2,
+			limit: 10,
+			total: 42,
+			totalPages: 5,
+			hasNext: true,
+			hasPrev: true
+		});
+		expect(mockSearchCatalogDropdown).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				stockedFilter: true,
+				publicOnly: true,
+				limit: 10,
+				offset: 10
+			})
+		);
+		expect(mockGetCatalogDropdown).not.toHaveBeenCalled();
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
+	it('keeps paginated dropdown responses on the reduced projection for anonymous callers', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalogDropdown.mockResolvedValue({
+			data: [
+				{
+					id: 7,
+					source: 'sweet_marias',
+					name: 'Dropdown Coffee',
+					stocked: true,
+					cost_lb: 7.5,
+					price_per_lb: 7.5,
+					price_tiers: null,
+					public_coffee: true
+				}
+			],
+			count: 40
+		});
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?fields=dropdown&limit=2')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.pagination).toMatchObject({ page: 1, limit: 2, total: 40, totalPages: 20 });
+		expect(body.data[0]).toEqual({
+			id: 7,
+			source: 'sweet_marias',
+			name: 'Dropdown Coffee',
+			stocked: true,
+			cost_lb: 7.5,
+			price_per_lb: 7.5,
+			price_tiers: null,
+			public_coffee: true
+		});
+		expect(mockSearchCatalogDropdown).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				stockedFilter: true,
+				publicOnly: true,
+				limit: 2,
+				offset: 0
+			})
+		);
+		expect(mockGetCatalogDropdown).not.toHaveBeenCalled();
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
+	it('keeps api-key paginated dropdown responses reduced and preserves row caps', async () => {
+		const apiKeyPrincipal = {
+			isAuthenticated: true,
+			primaryAppRole: 'viewer',
+			apiPlan: 'viewer',
+			apiKeyId: 'key-1'
+		};
+
+		mockResolvePrincipal.mockResolvedValue(apiKeyPrincipal);
+		mockIsApiKeyPrincipal.mockReturnValue(true);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockRequireApiKeyAccess.mockResolvedValue(apiKeyPrincipal);
+		mockSearchCatalogDropdown.mockResolvedValue({
+			data: [
+				{
+					id: 7,
+					source: 'sweet_marias',
+					name: 'Dropdown Coffee',
+					stocked: true,
+					cost_lb: 7.5,
+					price_per_lb: 7.5,
+					price_tiers: null,
+					public_coffee: true
+				}
+			],
+			count: 40
+		});
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?fields=dropdown&page=1&limit=50', {
+				Authorization: 'Bearer pk_live_valid'
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.meta.auth.kind).toBe('api-key');
+		expect(body.pagination).toMatchObject({ page: 1, limit: 25, total: 40, totalPages: 2 });
+		expect(mockSearchCatalogDropdown).toHaveBeenCalledWith(
+			{ kind: 'admin-client' },
+			expect.objectContaining({
+				stockedFilter: true,
+				publicOnly: true,
+				limit: 25,
+				offset: 0
+			})
+		);
+		expect(response.headers.get('X-RateLimit-Limit')).toBe('200');
+		expect(response.headers.get('X-RateLimit-Remaining')).toBe('199');
 	});
 
 	it('allows anonymous callers to explicitly request the default stocked_date desc sort', async () => {
@@ -1018,6 +1172,31 @@ describe('buildCanonicalCatalogResponse', () => {
 			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({ stockedFilter: null })
+			);
+		});
+
+		it('preserves canonical filters and sorting for paginated dropdown requests', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent(
+					'https://app.test/v1/catalog?fields=dropdown&page=2&limit=10&origin=Africa&country=Ethiopia&source=sweet_maria&name=Sidamo&processing=Washed&sortField=name&sortDirection=asc'
+				)
+			);
+
+			expect(mockSearchCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					stockedFilter: true,
+					publicOnly: true,
+					origin: 'Africa',
+					country: 'Ethiopia',
+					source: ['sweet_maria'],
+					name: 'Sidamo',
+					processing: 'Washed',
+					orderBy: 'name',
+					orderDirection: 'asc',
+					limit: 10,
+					offset: 10
+				})
 			);
 		});
 	});
