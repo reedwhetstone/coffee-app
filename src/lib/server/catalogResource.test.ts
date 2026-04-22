@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { formatAllowedValues, PUBLIC_CATALOG_SORT_FIELDS } from '$lib/catalog/publicQueryContract';
 
 const mockSearchCatalog = vi.fn();
 const mockSearchCatalogDropdown = vi.fn();
@@ -54,6 +55,7 @@ vi.mock('$lib/supabase-admin', () => ({
 
 let buildCanonicalCatalogResponse: typeof import('./catalogResource').buildCanonicalCatalogResponse;
 let buildLegacyAppCatalogResponse: typeof import('./catalogResource').buildLegacyAppCatalogResponse;
+const SORT_FIELD_EXPECTED = formatAllowedValues(PUBLIC_CATALOG_SORT_FIELDS);
 
 const sampleCatalogItem = {
 	id: 1,
@@ -616,6 +618,27 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
+	it('keeps fields=dropdown working after strict enum validation', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockGetCatalogDropdown.mockResolvedValue([{ id: 7, name: 'Dropdown Coffee' }]);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?fields=dropdown')
+		);
+
+		expect(response.status).toBe(200);
+		expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({ stockedFilter: true, publicOnly: true })
+		);
+	});
+
 	it('keeps api-key paginated dropdown responses reduced and preserves row caps', async () => {
 		const apiKeyPrincipal = {
 			isAuthenticated: true,
@@ -746,6 +769,44 @@ describe('buildCanonicalCatalogResponse', () => {
 		});
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		['fields', 'bogus', 'full or dropdown'],
+		['stocked', 'maybe', 'true, false, or all'],
+		['showWholesale', 'maybe', 'true or false'],
+		['wholesaleOnly', 'maybe', 'true or false'],
+		['sortField', 'bogus', SORT_FIELD_EXPECTED]
+	])(
+		'rejects malformed typed query parameter %s=%s with a structured 400 response',
+		async (parameter, value, expected) => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: false,
+				primaryAppRole: null,
+				apiPlan: null
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(false);
+
+			const response = await buildCanonicalCatalogResponse(
+				makeEvent(`https://app.test/v1/catalog?${parameter}=${encodeURIComponent(value)}`)
+			);
+			const body = await response.json();
+
+			expect(response.status).toBe(400);
+			expect(body).toEqual({
+				error: 'Invalid query parameter',
+				message: `Query parameter "${parameter}" must use ${expected} format`,
+				details: {
+					parameter,
+					value,
+					expected
+				}
+			});
+			expect(mockSearchCatalog).not.toHaveBeenCalled();
+			expect(mockSearchCatalogDropdown).not.toHaveBeenCalled();
+			expect(mockGetCatalogDropdown).not.toHaveBeenCalled();
+		}
+	);
 
 	it('viewer sessions keep the same broad public catalog parameter surface', async () => {
 		mockResolvePrincipal.mockResolvedValue({
@@ -1060,6 +1121,21 @@ describe('buildCanonicalCatalogResponse', () => {
 				expect.objectContaining({ stockedFilter: null })
 			);
 		});
+
+		it('rejects invalid stocked values instead of silently defaulting to stocked-only', async () => {
+			const response = await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?stocked=maybe&page=1&limit=10')
+			);
+			const body = await response.json();
+
+			expect(response.status).toBe(400);
+			expect(body.details).toEqual({
+				parameter: 'stocked',
+				value: 'maybe',
+				expected: 'true, false, or all'
+			});
+			expect(mockSearchCatalog).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('origin query parameter', () => {
@@ -1304,6 +1380,39 @@ describe('buildLegacyAppCatalogResponse', () => {
 		});
 		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBeNull();
 	});
+
+	it.each([
+		['sortField', 'bogus', SORT_FIELD_EXPECTED],
+		['fields', 'bogus', 'full or dropdown']
+	])(
+		'preserves upstream %s validation failures for legacy callers',
+		async (parameter, value, expected) => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: true,
+				primaryAppRole: 'member',
+				apiPlan: 'viewer',
+				session: { access_token: 'cookie-token' }
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(true);
+
+			const response = await buildLegacyAppCatalogResponse(
+				makeEvent(`https://app.test/api/catalog?${parameter}=${encodeURIComponent(value)}`)
+			);
+			const body = await response.json();
+
+			expect(response.status).toBe(400);
+			expect(body).toEqual({
+				error: 'Invalid query parameter',
+				message: `Query parameter "${parameter}" must use ${expected} format`,
+				details: {
+					parameter,
+					value,
+					expected
+				}
+			});
+		}
+	);
 
 	it('preserves upstream rate-limit failures for legacy callers', async () => {
 		const resetTime = new Date('2026-03-28T00:00:00Z');
