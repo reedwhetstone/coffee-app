@@ -1,0 +1,104 @@
+---
+title: "Is Coffee Supply More Concentrated Than the Catalog Suggests?"
+date: "2026-04-22"
+description: "The public green coffee shelf looks diverse. The fresh flow of new listings is much narrower, more concentrated by origin, and more relevant to buyers who actually care about freshness."
+tags: ["coffee", "market-intelligence", "supply-chain", "data"]
+pillar: "market-intelligence"
+draft: true
+readingTime: 8
+---
+
+The green coffee catalog can look diversified and still mislead you.
+
+That sounds contradictory, but it is the cleanest lesson from the public Purveyors catalog on April 22, 2026. The shelf looked broad: 1,071 public in-stock listings. The flow looked much narrower: only 64 of those listings were new in the last 30 days. Once I stopped reading the market as a shelf and started reading it as flow, the diversity picture changed fast.
+
+Across the full public catalog, country concentration was fairly moderate. The country-level HHI was 578.2, and the top five origins made up 44.0% of listings. Across only the last 30 days of new listings, HHI jumped to 918.0 and the top five origins rose to 56.3%. Colombia alone went from 11.5% of the full shelf to 21.9% of recent arrivals. Brazil, Kenya, and Rwanda also over-indexed. Ethiopia moved the other direction.
+
+That is the counterintuitive point: the market can look diverse right before it narrows.
+
+If you are buying coffee as a collector of catalog breadth, that distinction barely matters. If you are buying coffee as a roaster who cares about what has landed recently, it matters a lot.
+
+## Catalog Diversity Is a Stock Metric. Sourcing Diversity Is a Flow Metric.
+
+Most catalog views flatten time. They show everything that is currently in stock, regardless of whether a coffee landed last week or has been sitting in a warehouse for months. That is useful for browsing. It is less useful for understanding what the market is actually replenishing with right now.
+
+The difference is not cosmetic. It changes the decision surface.
+
+On April 22, the public shelf contained 1,071 listings. The last 30 days contained 64 new ones. The last 14 days contained 33. The last 7 days contained 19. As the window tightened, concentration rose further. Country HHI climbed from 918.0 in the last 30 days to 1092.7 in the last 14 days and 1135.7 in the last 7 days.
+
+That is what a narrowing flow looks like. The shelf stays broad because older inventory accumulates. The incoming mix gets tighter.
+
+This is why static availability can overstate real sourcing diversity. Buyers do not roast the entire visible shelf equally. They disproportionately care about the newest arrivals, especially when freshness, arrival timing, and replacement risk affect cup quality and planning.
+
+There is a second, subtler point in the same data. The narrower recent flow was not more expensive. Median price per pound was $10.10 across the full catalog, but $9.25 in the last 30 days, $9.15 in the last 14 days, and $8.99 in the last 7 days. So the market was getting more concentrated while also looking cheaper at the margin.
+
+That is exactly the kind of pattern static catalog views hide. Most buyers are trained to treat diversity and price as if they move together. They do not have to. The market can narrow into a few lower-priced, high-volume-origin lanes and still feel comfortable on first glance.
+
+## Freshness Turns the Shelf Into a Different Market
+
+If you care about freshness, you are not really shopping the whole shelf. You are shopping some weighted blend of the shelf and the arrival stream. That means the relevant question is not just, "How many origins are currently represented?" It is, "What share of fresh arrivals is coming from each origin right now?"
+
+That is where the skew gets real.
+
+In the last 30 days of new public listings, Colombia accounted for 14 of 64 coffees, or 21.9%. Brazil was 10.9%. Kenya was 9.4%. Rwanda was 7.8%. Ethiopia, despite being one of the largest countries in the full shelf at 10.6% overall, was only 6.3% of recent arrivals. The top five origins in fresh flow were doing more of the work than the full catalog suggests.
+
+The process mix narrowed too. Recent arrivals were heavily washed: 38 of 64 in the last 30 days. Naturals were only 8, honeys 5, anaerobic lots 3, and everything else was marginal. If a buyer thinks they are entering a broad multi-origin, multi-process market because the shelf still looks wide, they are partly looking at inventory history.
+
+There is also an irony in the metadata. Arrival-date coverage was better in recent flow than in the full shelf: 67.2% versus 44.6%. Multi-tier pricing coverage also improved in recent arrivals: 51.6% versus 38.8%. In other words, the newest part of the market is narrower, but often easier to interpret on logistics and pricing structure. That makes the failure to separate stock from flow even more frustrating. The data is good enough to show the pattern if the product chooses to surface it.
+
+## Why the Flow Is Narrower Right Now
+
+Some of this concentration is structural. Some of it is seasonal. Some of it is logistics.
+
+Colombia is a good example of how a country can over-index in a freshness-weighted view without proving any permanent dominance. Nordic Approach's Colombia origin guide shows why Colombia behaves differently from many origins. Harvest windows are staggered across regions: Antioquia runs roughly October through January, Central Huila June through November, Southern Huila September through January, and Nariño May through September. Their stated arrival windows are December through February and September through November. That kind of staggered calendar creates more chances to appear in a recent-arrivals slice than an origin with one tighter seasonal pulse.
+
+Kenya shows a different pattern. Nordic Approach's 2026 Kenya harvest update says the harvest peaked early, overall volumes were down roughly 10% to 20%, and the best coffees were already in circulation. Availability was front-loaded, with arrivals expected in March and strong lots moving quickly. That fits the catalog pattern. Kenya is present in recent flow, but the lesson is not "Kenya is abundant." It is "Kenya is early, visible, and time-sensitive."
+
+Ethiopia helps explain the opposite side of the chart. In Nordic Approach's first-quarter harvest update, Ethiopia's harvest was running later than usual, volumes were down, red cherry prices had more than doubled versus the prior season, and SPOT availability was expected to be more selective. Washed coffees were expected from February and naturals from March, but with tighter volumes than usual. If you only read the shelf, Ethiopia still looks like a core diversified origin. If you read the fresh flow, it is under-indexing precisely when buyers focused on new arrivals might expect it to be plentiful.
+
+Then there is the broader trade backdrop. The ICO's March 2026 Coffee Market Report said the I-CIP averaged 273.70 US cents per pound in March, up 2.3% from February, and specifically tied that move to Strait of Hormuz disruption that sent energy costs and shipping freight higher. The same report said global green bean exports in February were 9.79 million bags, down 9.0% year over year, while total coffee exports were 11.46 million bags, down 5.7%. Brazil's total exports were down 21.1% to 2.62 million bags. That does not tell us exactly which Purveyors listings should appear next week. It does reinforce the larger point that replacement flow is being shaped by real trade pressure, not just catalog randomness.
+
+## Immediate Risk Versus Tail Risk
+
+This is the kind of pattern that matters twice.
+
+The immediate risk is operational. Buyers can mistake shelf breadth for current sourcing breadth. They can think they are making a diversified fresh-crop decision when they are actually leaning harder into a few origins than the catalog UI implies. They can also misread price. Recent flow looked narrower and cheaper, which means a buyer using the full shelf as the comparison set may underestimate correlation risk right when freshness matters most.
+
+There is also a more practical cliff risk. If your system does not foreground stocked dates, first-seen dates, or replacement flow by origin, you do not notice narrowing until the visible shelf actually thins or the coffee you wanted is gone. By then the market signal has already moved.
+
+The tail risk is product-level and epistemic. Catalog products teach users how to think. If the interface only expresses stock and not replenishment flow, it trains buyers to read a historical pileup as a live diversity signal. That mistake compounds. Procurement plans underprice concentration. Market commentary overstates optionality. Supplier comparison tools blend stale and fresh inventory into one false present.
+
+This is not a small UX issue. It is a market-model issue.
+
+## Opportunity Map
+
+The good news is that the fix is conceptually simple.
+
+First, buyers should watch freshness-weighted origin share, not just shelf share. If Colombia is 11.5% of the shelf but 21.9% of the last 30 days, those are two different truths with two different uses.
+
+Second, roasters should treat current over-indexing as a timing signal rather than a stable worldview. Colombia appearing heavily in the flow today does not mean the market has structurally solved diversification. It means Colombia is doing more of the current replenishment work.
+
+Third, analysts should compare multiple windows at once. A 7-day, 14-day, and 30-day view is more informative than a single static snapshot because it shows whether concentration is tightening or easing.
+
+Fourth, recent-flow price behavior deserves more attention. If the market narrows into lower-priced lanes, the right reaction is not relief. It is to ask whether the low price is masking concentration, timing, or a process mix shift.
+
+Finally, platforms have an obvious opportunity to expose what is already latent in the data. A catalog should be able to answer not just "what is in stock?" but also "what is new?" and "how different is the new flow from the full shelf?"
+
+## What Purveyors Should Track Next
+
+Purveyors should stop treating availability as a flat snapshot and start treating it as a time-shaped market.
+
+That means a few fields matter more than they currently look:
+
+- `harvest_season`, because arrival date is not the same thing as crop timing
+- `arrival_date_confidence`, because logistics metadata often comes in messy or partial
+- `first_seen_at` or a cleaner public-facing `stocked_date`, because flow analysis depends on it
+- `last_seen_at` or `unstocked_date`, because replacement and disappearance are both signals
+- replacement-flow metrics by origin and process, because stock share alone is not enough
+- warehouse or arrival region when available, because landed geography affects timing and comparability
+
+The concrete product implication is straightforward: add a freshness-weighted availability view by origin. Give buyers a simple comparison between the full shelf and the last 30 days of arrivals. If the fresh flow is materially narrower than the full shelf, the product should say so explicitly.
+
+That would do more than improve a chart. It would teach a better mental model.
+
+The broad shelf is real. It is just not the whole truth. The more relevant truth for many buyers is the flow. Right now, that flow is narrower than it looks.
