@@ -69,8 +69,10 @@ CLI auth and output rules are part of the platform contract:
 
 - `purvey catalog *` requires an authenticated viewer session
 - `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
-- `purvey config`, `purvey context`, and `purvey manifest` do not require auth
-- `purvey context` prints dense reference text by default; `purvey manifest` emits the machine-readable contract directly
+- `purvey config` is local-only and does not require auth
+- `purvey context` is documentation/manifest output, not a live authenticated data command
+- `purvey context` prints dense reference text by default; `--json` and `--pretty` emit the same machine-readable manifest contract as `purvey manifest`; `--csv` is invalid
+- `purvey manifest` is the preferred machine-readable contract
 - stdout stays structured for automation, while operational and fatal messaging is designed to stay on stderr
 
 `src/lib/services/tools.ts` imports CLI modules directly for chat tool execution:
@@ -85,7 +87,7 @@ Improvements to the CLI automatically improve browser and AI chat workflows. The
 
 ## Tech stack
 
-- **Framework:** SvelteKit 5 + TypeScript
+- **Framework:** SvelteKit 2 + Svelte 5 + TypeScript
 - **Styling:** Tailwind CSS
 - **Data:** Supabase
 - **Auth:** Supabase Auth

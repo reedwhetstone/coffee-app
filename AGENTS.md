@@ -19,7 +19,8 @@ It also depends on `@purveyors/cli`, which is a first-class interface to the sam
 
 ## Stack
 
-- SvelteKit 5
+- SvelteKit 2
+- Svelte 5
 - TypeScript
 - Tailwind CSS
 - Supabase
@@ -174,7 +175,9 @@ CLI auth and output rules matter here too:
 - `purvey catalog *` requires an authenticated viewer session
 - `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
 - `purvey config` is local-only and does not require auth
-- `purvey context` prints dense text by default, while `purvey manifest` emits the machine-readable contract directly
+- `purvey context` is documentation/manifest output, not a live authenticated data command
+- `purvey context` prints dense text by default; `--json` and `--pretty` emit the same machine-readable manifest contract as `purvey manifest`; `--csv` is invalid
+- `purvey manifest` is the preferred machine-readable contract
 - structured stdout and stderr semantics are part of the CLI contract for scripts and agents
 
 That means:
