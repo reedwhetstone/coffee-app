@@ -5,117 +5,61 @@ description: "AI should remove chores, not load-bearing friction. In learning, t
 tags: ["ai", "education", "learning", "cognition"]
 pillar: "ai-first-product"
 draft: false
-readingTime: 9
+readingTime: 4
 ---
 
-I use AI constantly.
+AI is an incredible tool. That is not the debate.
 
-I use it to tighten drafts, explore arguments, summarize a domain faster than I could alone, and clear away the kind of mechanical drag that makes work slower without making it better. I am not interested in giving that up. So this is not an anti-AI argument.
+The debate is about which kinds of friction it should be removing, because not all friction is the same.
 
-It is a line-drawing argument.
+Some is just tax. Reformatting notes. Looking up facts you once knew. Cleaning prose after the thinking is done. AI should eat all of that.
 
-I think AI is great at removing incidental friction and dangerous when it removes load-bearing friction.
+Other friction is load-bearing. Recalling an idea from memory. Writing an explanation before the words are ready. Getting an answer wrong and having to figure out why. That friction feels inefficient, but it is often the mechanism that makes learning stick, not the obstacle to it.
 
-That distinction matters most in learning, because the real risk is not just automation. It is unfinished thinking being made to look finished.
+AI removes both kinds with the same efficiency. Ask it to draft, synthesize, or answer, and it will, whether the effort you are skipping was useless or essential. The output looks polished either way, so there is no felt signal that anything was lost. The cognitive debt is silent. You only notice it when the tool is not there.
 
-Some friction is just tax. Reformatting notes. Cleaning up prose you already know how to write. Looking up a fact you once understood and forgot. Turning a rough outline into a cleaner structure. I am happy to let AI eat that.
+## What the Research Says
 
-Other friction is the work itself. Recalling an idea from memory. Trying to explain something before the words are ready. Getting an answer wrong, seeing why it is wrong, then rebuilding the model in my head. That friction feels inefficient in the moment, but it is often the mechanism that makes learning stick.
+The most-cited study here is the MIT Media Lab preprint ["Your Brain on ChatGPT"](https://www.media.mit.edu/publications/your-brain-on-chatgpt/). It is a preprint, 54 people, and the task is narrow. I would not treat it as definitive. But the direction is hard to ignore.
 
-That is not just intuition. A [Nature review on spacing and retrieval practice](https://www.nature.com/articles/s44159-022-00089-1) summarizes a large body of evidence showing that people retain more when learning is spaced over time and when they have to retrieve knowledge rather than just reread it. In other words, the feeling of ease is a bad proxy for durable learning. Sometimes ease means fluency. Very often it means I have removed the very act that would have made the knowledge mine.
+Participants wrote essays under three conditions: LLM-assisted, search-assisted, and brain-only. Brain-only showed the strongest and most distributed neural connectivity. The LLM group showed the weakest, and struggled to accurately quote essays they had just produced. Lower self-reported ownership too. When the tool does the cognitive work, the learner does less of it.
 
-The current AI-in-education debate is misframed. The core question is not whether students should use AI. Of course they will. The more important question is which kinds of friction the tool is removing, and whether those were disposable in the first place.
+A [2025 survey by Michael Gerlich](https://www.mdpi.com/2075-4698/15/1/6) found a significant negative correlation between heavy AI use and critical thinking scores. Correlational, not causal. But consistent with the pattern: once a strong offloading path exists, people take it.
 
-## Learning Is Full of Load-Bearing Friction
+Anthropic's [Education Report](https://www.anthropic.com/news/anthropic-education-report-how-university-students-use-claude) analyzed 574,740 higher-ed conversations with Claude and found students primarily using it for creating and analyzing, not rote lookup, with nearly half of interactions being direct single-exchange rather than collaborative back-and-forth. Their response was to build a Learning Mode that pushes Socratic guidance over straight answers. That is a product team seeing a problem in its own data and trying to design around it.
 
-A lot of good learning feels inefficient when I am inside it.
-
-Retrieval feels worse than rereading. Spaced practice feels worse than cramming. Writing from a blank page feels worse than polishing a generated draft. But the "worse" feeling is exactly what makes these methods work. I have to reconstruct the idea. I have to notice where my model is weak. I have to confront the gap between recognition and recall.
-
-That is what I mean by load-bearing friction. It is not just difficulty for its own sake. It is the effort that carries the cognitive load that learning depends on.
-
-Incidental friction is different. If I already understand the concept, manually cleaning citations or reformatting a paragraph is not building much. That is clerical work. The fact that AI collapses those chores is a real gain.
-
-The problem is that large language models do not know the difference.
-
-They remove the annoying friction and the formative friction with the same cheerful efficiency. If I ask for an outline, a draft, an interpretation, a synthesis, or the answer itself, the tool can save me effort whether that effort was useless or essential. And because the output often looks polished, I get very little feedback that something important may have been skipped.
-
-That is the danger. The loss is not loud. It often feels like productivity.
-
-## The Evidence Is Suggestive, and the Pattern Is Real
-
-The most discussed recent study here is the MIT Media Lab preprint ["Your Brain on ChatGPT"](https://www.media.mit.edu/publications/your-brain-on-chatgpt/), subtitled *Accumulation of cognitive debt when using an AI assistant for essay writing task*. I want to be careful with it. It is a preprint, the sample is small, and the task is narrow. I do not think one EEG essay study settles the broader case on its own.
-
-Still, I do think it is worth paying attention to.
-
-In that study, 54 participants wrote essays under three conditions: LLM-assisted, search-engine-assisted, and brain-only. Across the first sessions, the brain-only group showed the strongest and most distributed neural connectivity, the search group was in the middle, and the LLM group showed the weakest coupling. The authors also report lower self-reported ownership in the LLM condition and difficulty accurately quoting the essay they had just produced. Even if I treat the whole paper as suggestive rather than dispositive, the direction is hard to ignore: when the tool does more of the cognitive work, the learner appears to do less of it.
-
-That basic pattern shows up elsewhere.
-
-Anthropic's [Education Report on how university students use Claude](https://www.anthropic.com/news/anthropic-education-report-how-university-students-use-claude) analyzed roughly a million anonymized conversations and filtered down to 574,740 higher-ed academic chats. Students primarily used Claude for creating and analyzing, not just rote lookup. Anthropic also notes that nearly half of those conversations were "Direct" interactions rather than more collaborative back-and-forth. The part I find most important is not that students use the tool a lot. Of course they do. It is that Anthropic explicitly frames this as a question of students offloading higher-order cognitive tasks, and then responds by experimenting with a Learning Mode that pushes toward Socratic guidance and conceptual understanding instead of straight answers.
-
-That is a product-design tell. The problem is not merely access to AI. The problem is how the tool is shaped.
-
-A [2025 survey by Michael Gerlich](https://www.mdpi.com/2075-4698/15/1/6) points in the same direction, with a caveat that matters just as much as the result: it is survey-based and correlational, not causal. So I would not use it to claim AI causes lower critical thinking. I do think it supports a narrower statement: heavier AI-tool use was associated with more cognitive offloading and lower critical-thinking scores in that sample. Put differently, the survey is consistent with the worry that once a strong offloading path exists, people take it.
-
-None of this proves AI is bad for learning in every context. I do not believe that. What it does suggest is simpler: if the system makes it easy to outsource analysis, articulation, and synthesis, many people will outsource analysis, articulation, and synthesis.
+None of this says AI makes people dumber. It says when AI does the cognitive work, the cognitive work does not happen. Stated that way it is a tautology, but one we keep managing to ignore.
 
 ## Why the Calculator Analogy Breaks
 
-The standard defense here is the calculator analogy. We did not ban calculators. We taught the underlying skill, then let tools accelerate the parts that no longer needed to be manual.
+The standard defense: we did not ban calculators, we taught arithmetic first. True. But a calculator abstracts one narrow operation after foundations are built. A language model can collapse the whole loop: framing the problem, generating arguments, drafting, revising.
 
-I think that analogy works up to a point, then breaks.
+The distinction that matters is not old tool versus new tool. It is augmentation after mastery versus substitution before mastery.
 
-A calculator abstracts a relatively narrow operation. A language model can collapse the whole loop. It can help frame the problem, propose the structure, generate candidate arguments, write the paragraph, and clean up the voice. That is not the same category of assistance.
+For someone with a strong foundation, AI is an exoskeleton. It multiplies what they already do. For someone still building the foundation, the same tool becomes a substitute. It produces the shape of thinking without requiring much of the thinking, and there is no obvious moment when the deficit shows up.
 
-The important distinction is not old tool versus new tool. It is augmentation after mastery versus substitution before mastery.
+The calculator analogy works for students who already built the base. It does not work if we hand them the calculator first, tell them it is fine, and then wonder why they cannot estimate whether an answer is off by an order of magnitude.
 
-If I already know how to reason through a problem, AI can act like an exoskeleton. It helps me move faster, test more angles, and spend less time on clerical work. If I have not built the underlying skill, the same tool becomes a substitute. It produces the shape of thinking without requiring much of the thinking.
+## The Incentive Problem
 
-That is why I do not worry most about top students or experienced knowledge workers. Many of them already have enough foundation to use AI as leverage. I worry about people who are still building the foundation, especially in environments where the immediate incentive is to get to the polished answer as fast as possible.
+People can think deeply with AI in the loop. The problem is that deep thinking has become optional at exactly the moment we are normalizing tools that make optional thinking look finished.
 
-## The Real Risk Is the Incentive Gradient
+The rewards for skipping are immediate. The costs are delayed. Struggle through a first draft and you get confusion now, judgment later. Outsource it and you get relief now, no obvious penalty until you hit a problem the tool cannot solve for you. For adults who already know what good thinking feels like, that tradeoff is legible. For learners, it often is not.
 
-People can absolutely think deeply with AI in the loop. I do. The stronger concern is that deep thinking has become optional at the exact moment we are normalizing tools that make optional thinking look finished.
-
-That matters because the rewards are immediate and the costs are delayed.
-
-If I struggle through a first draft myself, I get confusion now and judgment later. If I outsource the draft, I get relief now and often no obvious penalty until I hit a problem the tool cannot solve for me. For adults who already know what good thinking feels like, that tradeoff is visible. For learners, it often is not.
-
-So I expect a bifurcation.
-
-For people with a strong base, AI compounds capability. For people without one, AI can mask the absence of one. Those are very different futures hiding behind the same interface.
-
-This is also why the ownership question matters, but only up to a point. I do not need a grand philosophy of mind to notice that work feels different when I have actually wrestled it into existence. The MIT preprint's ownership finding resonates because it matches ordinary experience. When I skip too much of the struggle, the result may be usable, but it does not feel fully mine. If that becomes the default way students write, argue, and solve, I think we should expect thinner ownership and weaker judgment as downstream effects.
+So I expect a bifurcation. For people with a strong base, AI compounds capability. For people without one, it masks the absence. Those are very different futures hiding behind the same interface.
 
 ## What I Would Actually Protect
 
-I am not interested in a blanket ban. I am interested in designing better defaults.
+The answer is not a blanket restriction. It is better defaults.
 
-If I were designing AI for learning, I would aggressively remove incidental friction and deliberately preserve load-bearing friction.
-
-I would let the model help with formatting, scaffolds, feedback on an attempted answer, counterarguments after a student commits to a position, and targeted explanation after retrieval has been attempted.
-
-I would be much more careful about one-shot answer generation for first-pass work. I would treat blank-page drafting, recall, self-explanation, and revision after error as protected zones. Those are not bugs in learning. They are a large part of the process.
+Let AI handle formatting, scaffolds, feedback on attempted answers, and counterarguments after a student has committed to a position. Keep it away from blank-page first drafts, unaided recall, and self-explanation. Those are not bugs in the learning process. They are a large part of it.
 
 That is why Anthropic's Learning Mode is more interesting to me than another benchmark win. It suggests at least one major lab sees the same design fork: AI can either collapse the path to the answer or structure the path so the learner still does the important work.
 
-I think that is the real product question for this category.
+The real question for this category is not whether the model can solve the task. It is whether it can help without erasing the effort that makes the task educational.
 
-Not: can the model solve the task?
+Ease will always market better than effort. Default product behavior removes all friction indiscriminately, because in most domains that is exactly right.
 
-Can it help without erasing the effort that makes the task educational?
+In learning, it quietly erodes the thing the product is supposed to build.
 
-That is a narrower question than most of the public debate, but it is the one I trust.
-
-Because ease will always market better than effort. Schools, parents, and students will feel pressure to adopt the fastest path, especially when the output looks competent. If we do nothing, the default product behavior will be to remove all friction indiscriminately, since that is what good software usually does.
-
-In most domains, that instinct is right.
-
-In learning, it can quietly erode the thing the product is supposed to build.
-
-The friction we should hate is the friction that wastes time without building skill. The friction we should defend is the friction that makes recall possible, judgment sturdier, and thought more truly our own.
-
-I want AI everywhere that it clears the brush.
-
-I do not want it bulldozing the foundation.
+The friction we should defend is the friction that makes recall possible, judgment sturdier, and thought more genuinely our own. Ease sells itself. Friction has to be chosen.
