@@ -10,6 +10,7 @@ Atomic blog ideas extracted from purveyors notes, brain captures, and conversati
 
 - [ ] Sycophancy, the final hurdle: alignment debt and why frictionless implementation makes software worse | Source: #blog discussion 2026-03-13 | Pillar: agentic-stack | Status: outlined | Outline: brain/blog/outlines/sycophancy-the-final-hurdle.md
 - [ ] Building product philosophy into the codebase: agents as blank-slate coworkers and the onboarding problem at scale | Source: #blog discussion 2026-03-25 | Pillar: agentic-stack | Status: outlined | Outline: brain/blog/outlines/building-product-philosophy-into-codebase.md
+- [ ] The Friction We Can't Afford to Lose | Source: #blog discussion + attached essay (2026-04-23) | Pillar: ai-first-product | Status: drafted | Outline: notes/blog/outlines/the-friction-we-cant-afford-to-lose.md | Draft: src/content/blog/the-friction-we-cant-afford-to-lose.svx | Note: AI is best when it removes incidental friction and risky when it removes load-bearing friction in learning. Grounded with the Nature spacing/retrieval review, MIT Media Lab's cognitive-debt preprint, Anthropic's education report, and Gerlich's correlational survey.
 
 - [ ] The canvas is a whiteboard, not a sidebar. Why spatial persistence changes AI chat. | Source: notes/genui-platform-transition-plan.md | Pillar: ai-first-product | Status: raw
 - [ ] Progressive disclosure through conversation: replacing menus with intelligence | Source: notes/genui-platform-transition-plan.md | Pillar: ai-first-product | Status: raw
