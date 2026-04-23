@@ -1,102 +1,84 @@
 ---
 title: "Is Co-Fermentation Cheating? Wrong Question."
 date: "2026-04-02"
-description: "The specialty coffee world is split on whether co-fermented coffee belongs in competition. But the controversy accidentally revealed something more fundamental: most green coffee sellers can't even tell you if a lot was washed or natural."
+description: "The specialty coffee world is split on whether co-fermented coffee belongs in competition. The more useful question is what processing transparency should require from everyone else."
 tags: ["coffee", "supply-chain", "data", "market-intelligence"]
 pillar: "supply-chain"
 draft: true
-readingTime: 9
+readingTime: 5
 ---
 
-The specialty coffee industry's most divisive argument right now is whether co-fermented coffee belongs in competition. In June 2024, the Best of Panama disqualified several entries for using "foreign additives." The Specialty Coffee Association of Panama called the practice an attempt to "cheat" by altering coffees "from their natural DNA expression." The World Barista Championship, meanwhile, allows co-fermented coffees to compete — the two major competitions landing on opposite sides of the same question.
+The co-fermentation fight sounds like a moral argument. It is really an information argument.
 
-Both camps argue as if the industry has an established baseline for processing transparency that co-ferments either respect or violate.
+In June 2024, Best of Panama disqualified several entries for using "foreign additives." The Specialty Coffee Association of Panama framed the issue as protecting coffee from alteration away from its "natural DNA expression." The World Barista Championship has been more permissive, which leaves producers in an awkward place: the same coffee can be legitimate in one prestige context and disqualifying in another.
 
-The data says otherwise.
+The obvious question is whether co-fermented coffee belongs in competition. I think that is the wrong first question.
 
-Across 35 green coffee suppliers in the catalog I've built, five don't capture processing information at all. Among those that do, disclosure quality ranges from "Washed" (one word, no context) to Prime Green Coffee's nine-category taxonomy: Anaerobic, Black Honey, Carbonic Maceration, Fruit Fermentation, Honey Process, Mossto, Natural, Washed, and Yeast Inoculation. That's not a range — it's a different information regime.
+The better question is: what level of processing disclosure should specialty coffee require from everyone?
 
-The co-fermentation debate is a proxy war being fought on terrain that doesn't exist yet.
+## The baseline is weaker than the controversy admits
 
-## The Dispute, Briefly
+Across the 35-supplier catalog pipeline this draft started from, five sellers captured no structured processing data at all: captain-coffee, java-bean-plus, lavanta, theta-ridge, and tm-ward-coffee. Among the rest, disclosure ranges from one-word labels like "Washed" to Prime Green Coffee's nine-category taxonomy: Anaerobic, Black Honey, Carbonic Maceration, Fruit Fermentation, Honey Process, Mossto, Natural, Washed, and Yeast Inoculation.
 
-Co-fermented coffee involves introducing non-coffee materials into the fermentation process: fruits, spices, hops, starter cultures. Edwin Noreña's "Black Ginger Ale Gesha," described as "black honey double carbonic maceration mossto and galaxy hop," became a touchstone example. Flavor profiles are distinctive, often extreme, and clearly intentional.
+That is not a normal range of detail. It is a different information regime.
 
-The traditionalist concern has a legitimate surface: if judges can't distinguish terroir from tank additives, what is specialty coffee actually selecting for? But the SCAP's framing — "foreign additives," DNA alteration, fraud — is overwrought. Honey processing entered commercial production in the early 1990s. Anaerobic fermentation was controversial a decade ago. Every generation of processing innovation has faced this exact argument, and each time the argument lost.
+The richest processing vocabularies often belong to the experimental sellers traditionalists accuse of being opaque. Prime Green Coffee, a Colombian microlot source heavy on unusual processing, gives buyers a vocabulary they can actually filter. A conventional seller with "Washed" and no further context gives buyers much less.
 
-What's different now is stakes. The top Best of Panama lot sold for $10,000 per kilo in 2023. At that level, process manipulation has real financial consequences, which is why BOP's disqualifications aren't purely ideological — they're about competition integrity in a specific high-auction context.
+That does not make every co-ferment good. It makes the transparency critique more complicated.
 
-But the broader debate, whether co-fermentation belongs in specialty coffee at all, is having the wrong conversation.
+## Wine already showed the pattern
 
-## What the Controversy Actually Exposed
+Natural wine is the useful parallel, not because coffee and wine are the same product, but because the argument rhymes.
 
-The premise of both camps is that specialty coffee has reliable processing transparency that co-fermentation either extends or undermines. It doesn't.
+Natural wine forced consumers to ask what conventional wine had been adding all along: commercial yeasts, acid adjustment, color concentrates, oak dust, stabilization chemistry. Critics were right that some natural wines were unstable and poorly defined. They were wrong that the movement only mattered if "natural" became a perfect category.
 
-In my 35-supplier pipeline, five sellers collect zero structured processing data: captain-coffee, java-bean-plus, lavanta, theta-ridge, and tm-ward-coffee. Another significant portion collapses their full processing vocabulary into "Washed" or "Natural" with no further context. Bodhi Leaf, Burman Coffee, Café Imports, and Ally Coffee include processing in their structured data. But Java Bean Plus — one of the higher-volume commodity sellers in the dataset — provides no processing fields at all.
+The legacy of natural wine was not defining natural. It was making conventional explain itself.
 
-The richest processing taxonomies belong to specialty-forward sellers and, notably, the co-fermentation specialists themselves. Prime Green Coffee, a Colombian microlot source heavy on experimental processing, provides more structured process metadata than most conventional sellers. Their nine-category system is hierarchical in practice: base methods (Natural, Washed, Honey Process) plus process modifiers (Anaerobic, Carbonic Maceration, Mossto, Fruit Fermentation, Yeast Inoculation). A buyer can actually filter on that.
+Co-fermentation can do the same thing for coffee. Once buyers ask, "what else entered the tank?" the question does not stop at fruit co-ferments. It applies to yeast strains, fermentation duration, temperature, water source, drying method, and every other processing choice that shapes flavor but rarely appears in structured catalog data.
 
-The segment that traditionalists accuse of being opaque about what they're putting in coffee is the most transparent about what they're doing to it.
+## Competition integrity is real, but narrow
 
-## Wine Already Did This
+The traditionalist concern is not fake. In a high-auction competition, judges are trying to reward genetics, terroir, processing skill, and cup quality. If a producer can introduce mango, hops, spices, or other flavor-driving inputs without clear category separation, the competition may no longer be selecting for the thing it claims to select for.
 
-The natural wine movement is the most direct structural parallel. Starting in the 2000s, a cohort of winemakers began producing without the 60+ additives conventional winemaking routinely uses: commercial yeasts, Mega Purple, tartaric acid, oak dust and extract. "Natural wine" was immediately controversial — unstable, inconsistent, poorly defined. Critics were mostly right on the technical complaints and entirely wrong about the larger implication.
+That matters more when auction prices get absurd. The top Best of Panama lot sold for $10,000 per kilo in 2023. At that price, category boundaries are not philosophy. They are market structure.
 
-Once the question "what's actually in your wine?" became a legitimate consumer question, conventional producers had to explain what they were adding. Labels shifted. The FDA's additive list wasn't secret, but it also wasn't front of mind. Natural wine made the unstated explicit.
+But competition integrity is not the same as commercial illegitimacy. A method can be inappropriate for one competition category and still be valid, desirable, and worth selling, as long as the buyer knows what it is.
 
-Coffee is on the same arc. The co-fermentation controversy is forcing the specialty industry to ask: what exactly is in this coffee, and at what point in processing? That question doesn't stop at co-ferments. It applies to conventional processing too. What yeast strains? What fermentation temperatures and durations? Municipal or spring water? These were always relevant to flavor; they just weren't being asked.
+The industry keeps collapsing those questions into one fight because it lacks a shared processing vocabulary.
 
-The legacy of natural wine wasn't defining "natural" — it was making "conventional" explain itself. Co-fermentation is doing the same thing to coffee processing.
+## The underpriced risk is disclosure liability
 
-## Why Processing Is the Hard Field
+There is also a practical tail risk hiding underneath the taste debate: additives create ingredient-disclosure questions.
 
-There's a data reason processing disclosure lags behind other attributes. Country and region are nearly universal: you either know origin or you can't sell the coffee. Variety and farm name are marketing assets — sellers disclose them when they differentiate positively. Processing is harder.
+If a coffee is fermented with hops, fruit, spices, or other biological materials, buyers should not need to infer that from tasting notes. Today, many green coffee listings have no field that can carry additive ingredients. A hop co-ferment listed only as "Anaerobic Natural" is not just bad metadata. It is a product-risk blind spot.
 
-Processing descriptions are inconsistent at the source. "Washed" can mean a 12-hour wet ferment or a 48-hour dry ferment with a final machine wash. "Natural" can mean raised beds in direct sun or mounded in shade on the ground. The same label covers meaningfully different practices. Even sellers who want to disclose accurately often lack structured vocabulary to do it.
+That risk is manageable while volumes are small. It gets uglier if co-fermented coffees become normal retail products and the catalog infrastructure still cannot say what entered the fermentation process.
 
-Co-fermentation made this worse by introducing process descriptors that don't map onto any existing SCA classification. "Yeast Inoculation" is a new category. "Mossto" (using concentrated coffee juice as a fermentation starter) is adapted from Colombian winemaking. "Carbonic Maceration" was borrowed from wine with modifications. The vocabulary is expanding faster than any infrastructure to standardize it.
+## Describing it changes who wins
 
-Royal Coffee noted in their co-fermentation reporting that the FDA considers co-fermented coffee identical to regular green coffee — no additional labeling requirements exist. The regulatory vacuum mirrors the data vacuum. In the absence of standards, everyone invents a taxonomy, and none are compatible.
+This is the part that makes the fight interesting.
 
-## Immediate vs. Tail Risk
+Standardizing co-ferment disclosure would not stop at co-ferments. Once the market agrees that "processing" needs more structure, conventional coffees have to explain themselves too. Suddenly "washed" is not enough. Was it wet fermented or mechanically demucilaged? How long? Under what conditions? What drying method followed?
 
-**Immediate risk:** Competition bodies are making inconsistent, uncoordinated decisions. Producers entering co-fermented lots into some competitions but not others are navigating policy uncertainty that directly affects auction prices. A lot disqualified from BOP but eligible for WBC commands a different price ceiling than one eligible for both. That uncertainty depresses investment in processing experimentation precisely where the most interesting work is happening.
+That changes incentives. Sellers with strong process documentation gain a visible advantage. Sellers who rely on brand, relationship, and vague labels lose some of their information rent.
 
-**Tail risk:** Allergen and food safety exposure. Introducing fruits, hops, or other biologicals into coffee fermentation without disclosure creates labeling liability that doesn't exist for conventional processing. No current green coffee catalog infrastructure captures additive ingredients. If a buyer with a hop allergy sources an undisclosed hop co-ferment from a supplier whose listing just says "Anaerobic Natural," there's no current mechanism to prevent that. This is manageable now because co-fermented volumes are small; it becomes a product liability question as volumes grow.
+That is the real resistance hiding behind some of the purity language. Accurate description changes who gets rewarded.
 
-**Structural risk:** The co-fermentation debate ends one of two ways. Either the industry develops shared processing vocabulary (data infrastructure problem) or it fragments into regulated competition contexts and unregulated commercial channels, with no common description standard between them. The second outcome is stable but permanently limits what buyers can comparison-shop on.
+## What the product should track
 
-## Opportunity Map
+The current pipeline captures `processing` as a single text field. That cannot answer the questions this controversy is raising. The next schema should separate:
 
-The industry needs a processing taxonomy before it can resolve the competition debate, and the data suggests no one has built one yet. That's a structural gap with value on the other side.
+- `base_method`: washed / natural / honey / wet-hulled
+- `fermentation_type`: aerobic / anaerobic / carbonic maceration
+- `additives`: fruit / yeast / spice / hops / none / unspecified
+- `fermentation_duration_hours`
+- `drying_method`: raised bed / patio / mechanical / shade
 
-**For sourcing buyers:** Suppliers with rich processing vocabularies are better differentiated right now, before standards emerge. Building supplier relationships now with producers who already describe process hierarchically — Prime Green Coffee, Sweet Maria's, Bodhi Leaf — positions buyers ahead of when processing becomes the primary selection variable in high-end lots.
+None of this settles the taste argument. It makes the argument honest.
 
-**For platforms:** The catalog that first normalizes processing descriptions across suppliers — structured fields rather than free text, controlled vocabulary rather than supplier-invented terms — becomes the de facto reference layer. When the industry eventually standardizes, they'll standardize against something. Being that something is a moat.
+Co-fermentation is not cheating by default. Undisclosed co-fermentation probably is. But the same standard should apply to conventional processing too: if a method affects flavor, price, safety, or competition eligibility, the market should be able to name it.
 
-**For producers:** Detailed process documentation is the credentialing mechanism for co-fermentation premiums. Noreña's "9-word process description" commands attention precisely because it's specific. Conventional producers who provide zero process context are leaving the same lever unpulled.
-
-## Data Fields the Product Should Track Next
-
-The current pipeline captures `processing` as a single text field. To actually serve the competitive information need, the catalog should evolve toward:
-
-- `base_method`: enum (washed / natural / honey / wet-hulled)
-- `fermentation_type`: enum (aerobic / anaerobic / carbonic maceration)
-- `additives`: array (fruit / yeast / spice / none / unspecified)
-- `fermentation_duration_hours`: numeric
-- `drying_method`: enum (raised bed / patio / mechanical / shade)
-
-Prime Green Coffee's category taxonomy can serve as a starting schema for the `additives` and `fermentation_type` fields. None of this is speculative — the data already exists at the producer level, it's just not being captured systematically.
-
-## The Economic Structure Behind the Gap
-
-When processing descriptions are absent or inconsistent, buyers can't comparison-shop on method. A conventional "Washed Ethiopian" and a "White Honey Micro-Fermented Ethiopian" are indistinguishable in a listing that says only "Washed." That ambiguity favors sellers who win on brand and relationship rather than product differentiation.
-
-Co-fermentation is uncomfortable because it threatens that dynamic from both directions. From the top: if exotic process descriptions command premiums, they raise the question of what buyers are paying for when they pay for "terroir." From the bottom: if you have to describe your process to compete, and your process is "washed" with no further context, you're now on a field where you're at a disadvantage.
-
-Standardizing processing descriptions — even just enough to regulate co-ferments in competition — would standardize them for everyone. Suddenly "washed" isn't sufficient, and a substantial portion of high-volume commodity sellers has a transparency problem they've never had to acknowledge.
-
-That's the real resistance. Not that the industry doesn't know how to describe what it does. It's that describing it accurately changes who wins.
+The uncomfortable truth is that co-ferments are not the threat to specialty coffee transparency. They are the first category forcing everyone else to admit how little the baseline explains.
 
 ---
 
