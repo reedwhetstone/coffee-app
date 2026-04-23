@@ -1,0 +1,61 @@
+---
+title: "The Friction We Can't Afford to Lose"
+date: "2026-04-23"
+description: "AI should remove chores, not load-bearing friction. In learning, the dangerous shortcut is not automation itself but skipping the effort that builds judgment."
+tags: ["ai", "education", "learning", "cognition"]
+pillar: "ai-first-product"
+draft: false
+readingTime: 4
+---
+
+AI is an incredible tool. That is not the debate.
+
+The debate is about which friction it should remove. Some friction is just tax: reformatting notes, finding a source, cleaning prose after the thinking is done. AI should eat all of that.
+
+Other friction is load-bearing. Recalling an idea from memory. Explaining something before the explanation feels ready. Getting an answer wrong, then finding the mistake. That work feels inefficient because it is work. It is also where learning happens.
+
+The problem is that AI removes both kinds with the same smoothness. Ask it to draft, summarize, or answer, and it will. The output looks finished whether you skipped a chore or skipped the part that would have built judgment. There is no felt signal that anything important went missing. The debt is silent until the tool is gone.
+
+## What the Research Actually Says
+
+The most-cited study here is the MIT Media Lab preprint ["Your Brain on ChatGPT"](https://www.media.mit.edu/publications/your-brain-on-chatgpt/). It is small, narrow, and not definitive: 54 people writing essays under LLM-assisted, search-assisted, and brain-only conditions. Still, the direction is hard to shrug off.
+
+The brain-only group showed the strongest and most distributed neural connectivity. The LLM group showed the weakest, and struggled to quote essays they had just produced. They also reported lower ownership. That does not prove AI makes anyone dumber. It shows something simpler: when the model does the cognitive work, the learner does less of it.
+
+A [2025 survey by Michael Gerlich](https://www.mdpi.com/2075-4698/15/1/6) found a significant negative correlation between heavy AI use and critical thinking scores. Correlation is not causation, but the pattern is familiar. Once a strong offloading path exists, people use it.
+
+Anthropic's [Education Report](https://www.anthropic.com/news/anthropic-education-report-how-university-students-use-claude) analyzed 574,740 higher-ed conversations with Claude and found students using it heavily for creating and analyzing, not just lookup. Nearly half of interactions were direct single-exchange rather than collaborative back-and-forth. Their answer was Learning Mode, which nudges students toward Socratic guidance instead of straight answers. That is a product team seeing the risk in its own usage data.
+
+## The Calculator Analogy Is Too Convenient
+
+The standard defense is obvious: we did not ban calculators, we taught arithmetic first. True. But a calculator automates one narrow operation after the foundation exists. A language model can collapse the whole loop: framing the problem, making the argument, drafting, revising, and polishing.
+
+The distinction that matters is not old tool versus new tool. It is augmentation after mastery versus substitution before mastery.
+
+For someone with a strong base, AI is an exoskeleton. It multiplies what they can already do. For someone still building the base, the same tool can become a costume. It produces the shape of thinking without requiring much thinking, and the deficit is easy to miss because the artifact looks competent.
+
+The calculator analogy works for students who can already estimate whether an answer is off by an order of magnitude. It does not work if we hand them the calculator first, praise the speed, and later act surprised that their number sense never formed.
+
+## The Incentive Problem
+
+People can think deeply with AI in the loop. The issue is that deep thinking has become optional at exactly the moment tools can make optional thinking look finished.
+
+The rewards for skipping are immediate. The costs arrive late. Struggle through a first draft and you get confusion now, judgment later. Outsource it and you get relief now, with no obvious penalty until you hit a problem the tool cannot solve for you.
+
+Adults with strong taste can sometimes manage that tradeoff. Learners often cannot, because they have not yet built the internal signal for what good thinking feels like.
+
+So I expect a split. For people with a foundation, AI compounds capability. For people without one, it can mask the absence. Those are different futures hiding behind the same interface.
+
+## What I Would Protect
+
+The answer is not a blanket restriction. It is better defaults.
+
+Let AI handle formatting, scaffolds, feedback on attempted answers, and counterarguments after a student has committed to a position. Keep it away from blank-page first drafts, unaided recall, and self-explanation. Those are not bugs in the learning process. They are a large part of it.
+
+That is why Anthropic's Learning Mode is more interesting to me than another benchmark win. It points at the real design fork: AI can collapse the path to the answer, or it can structure the path so the learner still does the important work.
+
+The real question is not whether the model can solve the task. Of course it can. The question is whether it can help without erasing the effort that makes the task educational.
+
+Ease will always market better than effort. Most products should remove friction aggressively. In learning, that default can quietly remove the thing the product is supposed to build.
+
+The friction worth defending is the friction that makes recall possible, judgment sturdier, and thought more genuinely our own. Ease sells itself. Friction has to be chosen.
