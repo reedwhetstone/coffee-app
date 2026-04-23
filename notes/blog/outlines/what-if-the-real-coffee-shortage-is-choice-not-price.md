@@ -1,9 +1,9 @@
 # Outline: What If the Real Coffee Shortage Is Choice, Not Price?
 
 **Pillar:** market-intelligence  
-**Target:** 1,900-2,300 words  
-**Status:** outlined  
-**Source material:** Purveyors `/analytics/__data.json` snapshot pulled 2026-04-08, `notes/PRODUCT_VISION.md`, `notes/BLOG_STRATEGY.md`, ADR-003 public analytics gate
+**Target:** under 1,000 words  
+**Status:** drafted and tightened  
+**Source material:** Purveyors `/analytics/__data.json` snapshot pulled 2026-04-23, `notes/PRODUCT_VISION.md`, `notes/BLOG_STRATEGY.md`, ADR-003 public analytics gate
 
 ## Thesis
 
@@ -19,13 +19,13 @@ The coffee market's most useful weekly signal is not the headline price. It is s
 
 ## Verification
 
-- [ ] Re-pull `https://www.purveyors.io/analytics/__data.json` right before final handoff and confirm stats still match the draft.
-- [ ] Confirm `stats.lastUpdated` remains `2026-04-08` and note absolute date in the post.
-- [ ] Confirm the current weekly deltas still read roughly: retail median +3.5%, supply -10.4%.
-- [ ] Confirm current stocked totals still read roughly: 1,086 retail / 844 wholesale / 36 suppliers.
-- [ ] Confirm latest available spread snapshot date still resolves to `2026-04-03` in the public dataset.
-- [ ] Confirm Colombia spread still reads about 57.8% and Ethiopia spread about 23.1% on the latest available paired snapshot.
-- [ ] Confirm origin range outlier examples still hold: Ethiopia max near $230, Indonesia max near $433.64.
+- [x] Re-pulled `https://www.purveyors.io/analytics/__data.json` before handoff and updated the draft to the current public snapshot.
+- [x] Confirmed `stats.lastUpdated` is `2026-04-23` and noted the absolute date in the post.
+- [x] Updated weekly deltas: retail median +0.5%, supply -2.5%.
+- [x] Updated current stocked totals: 1,073 retail / 820 wholesale / 38 suppliers / 3,945 total beans tracked.
+- [x] Confirmed latest available paired snapshot is `2026-04-23` in the public dataset.
+- [x] Updated spread examples to Guatemala +90.2% and Ethiopia +77.6%, both with thin wholesale supplier coverage.
+- [x] Confirmed origin range outlier examples still hold: Ethiopia max near $230, Indonesia max near $433.64.
 - [ ] If using the visible arrivals/delistings country window, explicitly label it as the visible 50-row public window rather than the full 30-day universe.
 
 ## External References
