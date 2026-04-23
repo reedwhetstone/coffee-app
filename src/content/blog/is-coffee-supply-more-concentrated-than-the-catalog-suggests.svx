@@ -10,15 +10,15 @@ readingTime: 5
 
 The green coffee catalog can look diversified and still mislead you.
 
-That is the cleanest lesson from the public Purveyors catalog on April 22, 2026. The shelf looked broad: 1,071 public in-stock listings. The flow looked much narrower: only 64 of those listings were new in the last 30 days.
+That is the cleanest lesson from the Purveyors catalog on April 22, 2026. The shelf looked broad: 1,071 public in-stock listings. The flow looked much narrower: only 64 were new in the last 30 days.
 
-When I read the market as flow instead of shelf, the diversity picture changed fast.
+When I read the market as flow, the diversity picture changed fast.
 
 Across the full catalog, country concentration was moderate. The country-level HHI was 578.2, and the top five origins made up 44.0% of listings. Across only the last 30 days of new listings, HHI jumped to 918.0 and the top five origins rose to 56.3%. Colombia alone went from 11.5% of the full shelf to 21.9% of recent arrivals.
 
 That is the point: the market can look diverse right before it narrows.
 
-If you are buying as a collector of catalog breadth, that distinction barely matters. If you are a roaster who cares about what landed recently, it matters a lot.
+If you are collecting catalog breadth, that distinction barely matters. If you care about what landed recently, it matters a lot.
 
 ## The Shelf Is Stock. The Market Is Flow.
 
@@ -30,17 +30,17 @@ The shelf stayed broad because older inventory accumulated. The incoming mix got
 
 Price did not rescue the picture. Median price per pound was $10.10 across the full catalog, but $9.25 in the last 30 days, $9.15 in the last 14 days, and $8.99 in the last 7 days. The fresh flow was narrower and cheaper at the same time.
 
-That is the pattern static catalog views hide. The market can narrow into a few lower-priced, high-volume-origin lanes and still feel comfortable on first glance.
+Static catalog views hide that. The market can narrow into lower-priced, high-volume-origin lanes and still feel comfortable at first glance.
 
 ## Freshness Changes the Market You Are Actually Shopping
 
-If freshness matters, you are not really shopping the whole shelf. You are shopping a blend of shelf and arrival stream. The question is not just, "How many origins are represented?" It is, "What share of fresh arrivals is each origin doing right now?"
+If freshness matters, you are not shopping the whole shelf. You are shopping a blend of shelf and arrival stream. The question is not just, "How many origins are represented?" It is, "What share of fresh arrivals is each origin doing right now?"
 
 In the last 30 days, Colombia accounted for 14 of 64 new public listings, or 21.9%. Brazil was 10.9%. Kenya was 9.4%. Rwanda was 7.8%. Ethiopia, one of the largest countries in the full shelf at 10.6%, was only 6.3% of recent arrivals.
 
-The process mix narrowed too. Recent arrivals were heavily washed: 38 of 64. Naturals were 8, honeys 5, anaerobic lots 3, and everything else was marginal. A buyer who sees a broad multi-origin, multi-process shelf is partly looking at inventory history.
+The process mix narrowed too. Recent arrivals were heavily washed: 38 of 64. Naturals were 8, honeys 5, anaerobic lots 3, and everything else was marginal. A broad multi-origin, multi-process shelf is partly inventory history.
 
-There is a useful irony in the metadata. Arrival-date coverage was better in recent flow than in the full shelf: 67.2% versus 44.6%. Multi-tier pricing coverage also improved: 51.6% versus 38.8%. The newest part of the market was narrower, but easier to interpret. The product just has to separate stock from flow.
+There is a useful irony in the metadata. Arrival-date coverage was better in recent flow than in the full shelf: 67.2% versus 44.6%. Multi-tier pricing coverage also improved: 51.6% versus 38.8%. The newest part of the market was narrower, but easier to interpret. The product has to separate stock from flow.
 
 ## Why This May Be Happening
 
