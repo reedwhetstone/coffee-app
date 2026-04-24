@@ -88,7 +88,7 @@ Improvements to the CLI automatically improve browser and AI chat workflows. The
 
 ## Tech stack
 
-- **Framework:** SvelteKit 5 + TypeScript
+- **Framework:** SvelteKit 2 + Svelte 5 + TypeScript
 - **Styling:** Tailwind CSS
 - **Data:** Supabase
 - **Auth:** Supabase Auth
