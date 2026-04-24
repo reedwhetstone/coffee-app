@@ -42,6 +42,7 @@ limited: data.length < totalAvailable,
 This condition is always true when `data.length < total` — i.e., any paginated request that doesn't return every row. It does not check whether a tier cap is actually responsible.
 
 The dropdown path (line ~340) is correct:
+
 ```typescript
 limited: context.rowLimit !== null && totalAvailable > data.length,
 ```
@@ -57,16 +58,19 @@ Replace the paginated-path `limited` computation with the same tier-cap check us
 **File:** `src/lib/server/catalogResource.ts`
 
 **Current (line ~412):**
+
 ```typescript
 limited: data.length < totalAvailable,
 ```
 
 **Proposed:**
+
 ```typescript
 limited: context.rowLimit !== null && totalAvailable > context.rowLimit,
 ```
 
 **Semantics after fix:**
+
 - `rowLimit: null` → `limited: false` always (no tier cap active)
 - `rowLimit: 25`, `totalAvailable: 814` → `limited: true` (tier cap is binding, upgrade prompt valid)
 - `rowLimit: 25`, `totalAvailable: 10` → `limited: false` (tier cap exists but all data fits within it)
@@ -89,11 +93,11 @@ The fix brings code into alignment with the existing documented contract.
 
 ## Files to Change
 
-| File | Change |
-|------|--------|
-| `src/lib/server/catalogResource.ts` | Fix `limited` in the paginated response path (~line 412) |
-| `src/routes/v1/catalog/catalog.test.ts` | Add tests: member plan paginated → `limited: false`; no-cap paginated → `limited: false` |
-| `src/lib/server/catalogResource.test.ts` | Add unit tests for `limited` under tier-capped vs non-capped contexts |
+| File                                     | Change                                                                                   |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `src/lib/server/catalogResource.ts`      | Fix `limited` in the paginated response path (~line 412)                                 |
+| `src/routes/v1/catalog/catalog.test.ts`  | Add tests: member plan paginated → `limited: false`; no-cap paginated → `limited: false` |
+| `src/lib/server/catalogResource.test.ts` | Add unit tests for `limited` under tier-capped vs non-capped contexts                    |
 
 Total files: 3 (1 source, 2 test). Minimal blast radius.
 
@@ -138,11 +142,13 @@ print('PASS: full-result query → limited=false')
 ## Test Plan
 
 **Unit (catalogResource.test.ts):**
+
 - `rowLimit: null` + paginated context → `limited: false`
 - `rowLimit: 25` + `totalAvailable: 814` → `limited: true`
 - `rowLimit: 25` + `totalAvailable: 10` → `limited: false`
 
 **Integration (catalog.test.ts):**
+
 - Mock member-plan context with `rowLimit: null`: paginated response → `limited: false`
 - Mock viewer-plan context with `rowLimit: 25`: response → `limited: true`
 

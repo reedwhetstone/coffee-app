@@ -18,35 +18,37 @@
 
 ## Checklist Summary
 
-- 1) Intent Coverage: **CONCERN**
+- 1. Intent Coverage: **CONCERN**
   - The rerun patch fixes the prior page-visibility, filter-metadata, page-auth, and legacy compatibility misses. The main remaining gap is one canonical filter-contract bug on `cost_lb`.
-- 2) Correctness: **FAIL**
+- 2. Correctness: **FAIL**
   - `cost_lb_min` / `cost_lb_max` are parsed and forwarded by the canonical resource, but the underlying query still filters `price_per_lb` instead of `cost_lb`.
-- 3) Codebase Alignment: **PASS**
+- 3. Codebase Alignment: **PASS**
   - The PR successfully centralizes catalog visibility logic and route shaping far better than `origin/main`.
-- 4) Risk and Regressions: **CONCERN**
+- 4. Risk and Regressions: **CONCERN**
   - The original high-risk regressions called out in the first audit are fixed, but the canonical price-filter mismatch is now more important because `/v1/catalog` is the public contract.
-- 5) Security and Data Safety: **PASS**
+- 5. Security and Data Safety: **PASS**
   - The follow-up patch closes the earlier visibility leak paths for page SSR and `/api/catalog/filters`.
-- 6) Test and Verification Quality: **CONCERN**
+- 6. Test and Verification Quality: **CONCERN**
   - The new tests cover the rerun fixes well, but there is still no regression test for the `cost_lb` filter contract.
-- 7) Tech Debt and Maintainability: **CONCERN**
+- 7. Tech Debt and Maintainability: **CONCERN**
   - `/api/catalog-api` compatibility is restored, but it does so through a parallel legacy query path instead of a stricter single-fetch canonical shim.
-- 8) Product and UX Alignment: **CONCERN**
+- 8. Product and UX Alignment: **CONCERN**
   - The canonical route behavior and the `/v1` discovery/docs auth story are still not fully aligned.
-- 9) Assumptions Audit: **CONCERN**
+- 9. Assumptions Audit: **CONCERN**
   - One important assumption about price filtering remains invalid.
-- 10) Final Verdict: **Ready with fixes**, highest severity **P1**
+- 10. Final Verdict: **Ready with fixes**, highest severity **P1**
 
 ## Intent Verification
 
 - Stated intent:
+
   - Make `/v1/catalog` the real canonical catalog resource.
   - Cut internal and external catalog usage over to shared logic/contract.
   - Turn `/api/catalog` and `/api/catalog-api` into explicit compatibility shims.
   - Absorb the remaining PR A page-auth alignment work where catalog/page consumption intersects.
 
 - What was implemented:
+
   - Added shared canonical catalog builders in `src/lib/server/catalogResource.ts`.
   - Added `resolveCatalogVisibility()` and reused it in page SSR and `/api/catalog/filters`.
   - Updated `getPageAuthState()` to downgrade role to `viewer` when no page session exists.
@@ -66,6 +68,7 @@ None.
 ### P1 (should fix before merge)
 
 #### 1) Canonical `cost_lb` filtering still queries the wrong column
+
 - **Evidence:**
   - The canonical route forwards `costLbMin` / `costLbMax` into the shared search path: `src/lib/server/catalogResource.ts:341-361`.
   - The catalog UI builds `cost_lb_min` / `cost_lb_max` query params from the `cost_lb` filter control: `src/lib/stores/filterStore.ts:98-109` and `src/lib/components/layout/Settingsbar.svelte:318-356`.
@@ -91,6 +94,7 @@ None.
 ### P3 (nice to have)
 
 #### 1) `/v1` discovery and docs still misdescribe the canonical auth model
+
 - **Evidence:**
   - The discovery endpoint advertises only `session` and `apiKey` auth: `src/routes/v1/+server.ts:9-12`.
   - The API docs say the catalog API is a paid service and that all requests require a valid API key: `src/routes/api-dashboard/docs/+page.svelte:110-112` and `src/routes/api-dashboard/docs/+page.svelte:137-145`.
@@ -118,9 +122,11 @@ None.
 ## Tech Debt Notes
 
 - Debt introduced:
+
   - The legacy external compatibility path restores old behavior through a dedicated query/cache path rather than post-processing canonical rows. Specifically, `buildLegacyExternalCatalogResponse()` still fetches via `getPublicCatalog(createAdminClient(), CATALOG_API_COLUMNS)`: `src/lib/server/catalogResource.ts:634-637`.
 
 - Debt worsened:
+
   - The system is much better centralized than before, but the legacy external path is still more parallel than ideal relative to the “explicit shim over canonical service” architecture goal.
 
 - Suggested follow-up tickets:
@@ -131,12 +137,14 @@ None.
 ## Product Alignment Notes
 
 - Alignment wins:
+
   - The rerun patch fixes the earlier page-side visibility miss. `/catalog/+page.server.ts` now uses shared visibility rules: `src/routes/catalog/+page.server.ts:7-20`.
   - `/api/catalog/filters` now uses the same visibility rules and no longer leaks hidden-row metadata: `src/routes/api/catalog/filters/+server.ts:6-16`.
   - `getPageAuthState()` now correctly downgrades role when there is no page session: `src/lib/server/pageAuth.ts:4-13`.
   - `/api/catalog-api` compatibility for projection, ordering, and cache semantics is restored and covered by tests: `src/lib/server/catalogResource.test.ts:279-364`.
 
 - Misalignments:
+
   - The canonical price filter contract still does not match the field users and docs think they are filtering.
   - Discovery/docs still present `/v1/catalog` as API-key-only even though the route supports anonymous public-only reads.
 
@@ -147,6 +155,7 @@ None.
 ## Test Coverage Assessment
 
 - Existing tests that validate changes:
+
   - `src/lib/server/catalogResource.test.ts` now covers anonymous canonical access, member visibility, bearer-session page visibility behavior, API-key limits, and restored legacy external compatibility.
   - `src/routes/api/catalog/filters/filters.test.ts` covers anonymous, viewer, and member visibility behavior.
   - `src/routes/catalog/page.server.test.ts` covers viewer vs member SSR catalog visibility.
@@ -154,10 +163,12 @@ None.
   - `src/hooks.server.test.ts` covers bearer/cookie auth guard behavior.
 
 - Tests run during this audit:
+
   - `pnpm exec vitest run src/lib/server/catalogResource.test.ts src/lib/server/pageAuth.test.ts src/routes/api/catalog/filters/filters.test.ts src/routes/catalog/page.server.test.ts src/routes/api/catalog-api/catalog-api.test.ts src/routes/api/catalog/catalog.test.ts src/routes/v1/catalog/catalog.test.ts src/hooks.server.test.ts`
   - Result: 8 files passed, 20 tests passed.
 
 - Missing tests:
+
   - No test currently proves that `cost_lb_min` / `cost_lb_max` filter the `cost_lb` column instead of `price_per_lb`.
   - No test covers the `/v1` discovery/auth contract.
 
@@ -174,10 +185,12 @@ None.
 ## Optional Patch Guidance
 
 - `src/lib/data/catalog.ts`
+
   - Replace `gte/lte('price_per_lb', ...)` for `costLbMin` / `costLbMax` with `gte/lte('cost_lb', ...)`.
   - Review whether `priceRange` is redundant or misnamed now that `cost_lb` is the public contract.
 
 - Tests
+
   - Add a regression fixture where `cost_lb=6.5` and `price_per_lb=8.0` so a `cost_lb_max=7` request can assert the correct row survives.
 
 - `src/routes/v1/+server.ts` and `src/routes/api-dashboard/docs/+page.svelte`

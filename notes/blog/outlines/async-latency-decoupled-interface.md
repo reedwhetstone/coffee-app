@@ -43,13 +43,14 @@ Break it into three reasons:
 
 **Friction 1 — Input cost.** Typing a request takes 5-15 seconds. Opening a calendar app takes one tap. Natural language was supposed to reduce input friction by eliminating UI navigation. For simple lookups, it does the opposite: typing is more input than tapping. NL only wins when the task has real complexity — "find two free hours next week that don't conflict with Allison's schedule" — where the alternative is manually scanning across multiple calendars.
 
-**Friction 2 — Latency.** Even the fastest production LLMs in 2026 have a P50 TTFT of 600ms-2s, with total response times for a medium query in the 2-8 second range. P95 latency on the same query can be 3-5x the median, which means you genuinely don't know if you're waiting 3 seconds or 30. Google Calendar renders in ~50ms. The calendar doesn't just win on speed; it wins on *predictability*. Nielsen (1993) established that 10 seconds is the outer limit of sustained user attention, and that variable latency is especially damaging because users don't know what to expect.
+**Friction 2 — Latency.** Even the fastest production LLMs in 2026 have a P50 TTFT of 600ms-2s, with total response times for a medium query in the 2-8 second range. P95 latency on the same query can be 3-5x the median, which means you genuinely don't know if you're waiting 3 seconds or 30. Google Calendar renders in ~50ms. The calendar doesn't just win on speed; it wins on _predictability_. Nielsen (1993) established that 10 seconds is the outer limit of sustained user attention, and that variable latency is especially damaging because users don't know what to expect.
 
 **Friction 3 — Verifiability.** When Google Calendar shows Thursday, you believe it. When an AI tells you Thursday, a low-level background process starts checking: did it miss anything, did it hallucinate, is this actually right? You open the calendar to verify anyway. The AI saved you zero time and added a trust-resolution step.
 
 The calendar beats AI across all three axes for this task. That's not a bug in the AI; it's a signal about task type.
 
 **Evidence targets:**
+
 - Nielsen (1993) three response time limits: 0.1s, 1.0s, 10s
 - Doherty & Thadhani (1982): Doherty Threshold — sub-400ms response times produce measurable productivity gains; above this, flow breaks
 - Bench data: Claude Haiku 4.5 P50 TTFT 639ms, total 952ms; Claude Sonnet 4 TTFT ~1946ms; GPT-4.1 Mini P95 TTFT 4004ms (Ganglani, March 2026)
@@ -63,11 +64,11 @@ The calendar beats AI across all three axes for this task. That's not a bug in t
 
 Every AI request carries three costs the traditional UI doesn't:
 
-| Friction | AI Interface | Direct Manipulation |
-|---|---|---|
-| Input | Type NL query (5-15s, compositional effort) | 1 tap or keyboard shortcut |
-| Latency | 2-30s (variable, unpredictable) | 50-200ms (deterministic) |
-| Verifiability | Trust + cross-check overhead | Visual scan (immediate) |
+| Friction      | AI Interface                                | Direct Manipulation        |
+| ------------- | ------------------------------------------- | -------------------------- |
+| Input         | Type NL query (5-15s, compositional effort) | 1 tap or keyboard shortcut |
+| Latency       | 2-30s (variable, unpredictable)             | 50-200ms (deterministic)   |
+| Verifiability | Trust + cross-check overhead                | Visual scan (immediate)    |
 
 The latency problem is the one people talk about. But the input cost is underrated. Natural language isn't free to produce — it requires compositional effort, context-setting, and disambiguation that a well-designed direct manipulation UI does for you through affordances. Fitts's Law describes pointing efficiency; there's an analogous principle for language formulation that has no clean name but the costs are real.
 
@@ -84,22 +85,26 @@ Verifiability is the quietest of the three. An AI summary requires you to mainta
 Map the three axes to task type:
 
 **AI loses (all three frictions high, task complexity low):**
+
 - "What's on my calendar Thursday?" — 1-tap lookup, instant, visual verification
 - "What's the price of X?" — structured data, instant, single-source
 - "Is this file saved?" — deterministic system state, zero ambiguity
 
 **AI wins (frictions amortize against task complexity):**
-- "Find two free hours next week that don't conflict with Allison's schedule and avoid Tuesday mornings" — requires cross-calendar synthesis, NL is *less* input than clicking through two calendars manually
+
+- "Find two free hours next week that don't conflict with Allison's schedule and avoid Tuesday mornings" — requires cross-calendar synthesis, NL is _less_ input than clicking through two calendars manually
 - "Summarize everything I know about this supplier from emails, notes, and contracts" — no direct manipulation interface can do this task at all; latency is tolerated because the alternative is hours of manual work
 - "Draft a blog post outline from these six notes" — output replaces hours of work; 30-second wait is trivially worth it
 
 **The general rule:**
+
 - AI wins when: task complexity is real, synthesis across sources is required, latency tolerance is high, and output verification is coarse (directional accuracy acceptable)
 - AI loses when: task is a single-source lookup, immediacy matters, and the user needs to verify precisely
 
 This is also why async architectures self-select for the winning case (preview of Section 5).
 
 **Evidence targets:**
+
 - Cased.com (December 2025) on the GenUI tradeoff: "click a button, wait for the model. Load a page, wait for the model. The UX suffers" — they solved it by generating a controller once and executing deterministically thereafter
 - designative.info "The Conversation Trap" (March 2026): "The dominant response to LLMs has been to rebuild everything as a chat window — not because conversation suits complex knowledge work, but because it is the most visible affordance the technology offers"
 - Don Norman's action theory: direct manipulation works because users see the state, act on it, and see the result. Chat breaks all three when output is probabilistic and latency is variable.
@@ -117,11 +122,12 @@ P50 latency tells you the median case. P95 tells you whether the interface feels
 - Claude Sonnet 4: P50 TTFT 1946ms, P95 2358ms (moderate variance)
 - Reasoning/extended thinking models: TTFT in the 5-30s range routinely; total generation 30-120s for complex tasks
 
-Streaming tokens address *perceived* latency — seeing text appear at TTFT instead of waiting for the full response. But it only helps when TTFT itself is sub-1s. If you're waiting 4 seconds before the first token appears, streaming the rest doesn't fix the broken opening. And for structured tasks (is X on my calendar?), you need the complete answer, not a stream of reasoning — streaming is irrelevant.
+Streaming tokens address _perceived_ latency — seeing text appear at TTFT instead of waiting for the full response. But it only helps when TTFT itself is sub-1s. If you're waiting 4 seconds before the first token appears, streaming the rest doesn't fix the broken opening. And for structured tasks (is X on my calendar?), you need the complete answer, not a stream of reasoning — streaming is irrelevant.
 
 Nielsen (1993) specifically flags variable latency: "Feedback during the delay is especially important if the response time is likely to be highly variable, since users will then not know what to expect." The LLM latency problem isn't that it's slow; it's that it's unpredictably slow.
 
 **Evidence targets:**
+
 - Ganglani benchmark data (March 2026) — the P95 spread across models
 - Nielsen (1993) on variable latency specifically
 - The Doherty Threshold: sub-400ms for productivity flow. Even the fastest LLM (Haiku) at 639ms P50 TTFT doesn't clear this bar. Sonnet at 2s+ is 5x outside it.
@@ -135,6 +141,7 @@ Nielsen (1993) specifically flags variable latency: "Feedback during the delay i
 The synchronous chat window is the wrong container for tasks that take 10-120 seconds. It was borrowed from messaging apps because that's what the technology looked like, not because it's the right UX model for agentic work.
 
 The async, decoupled pattern reframes the interaction contract:
+
 - You fire a request (low input friction if the interface is right — one message, one command)
 - The agent works in the background
 - You get a push notification / Discord message / email when it's done
@@ -149,6 +156,7 @@ Devin: "Devin is for asynchronous task delegation — you assign a task and Devi
 The key insight: async decoupled architectures self-select for the task types where AI wins (Section 3). You don't fire background agents for calendar lookups. You fire them for research, code generation, synthesis, and audits — all high-complexity, latency-tolerant tasks. The architecture filter does the task qualification for you.
 
 **Evidence targets:**
+
 - Devin.ai: "asynchronous task delegation" as explicit design choice
 - CI/CD mental model: known-good async UX pattern that users already trust
 - Mobile push notifications as the native async delivery mechanism — the notification arrives when work is done, not when you ask
@@ -168,6 +176,7 @@ The Cased.com solution (December 2025) is instructive: generate a controller fun
 This is the pattern that will win for GenUI: LLM reasoning happens once at intent-capture time; execution is deterministic thereafter. The calendar equivalent: an AI agent that understands "I want to see my week view with conflict highlighting" and generates a persistent calendar configuration, rather than re-answering "what's on my calendar?" every time.
 
 **Evidence targets:**
+
 - Cased.com "How We Build Generative UI" (December 2025) — generate controller, not snapshot
 - The structural incompatibility: GenUI at interaction time vs GenUI at intent-capture time
 - Why skeleton screens help but don't fix the problem: they address perceived latency for short waits but can't mask 5-15s LLM calls without feeling broken
@@ -193,6 +202,7 @@ The proliferation of async agent orchestration systems in 2026 isn't an interim 
 ## Scope Control
 
 **In:**
+
 - The three friction axes and the task complexity filter (core framework)
 - LLM latency benchmarks as concrete grounding
 - Nielsen/Doherty HCI thresholds as the theoretical baseline
@@ -201,6 +211,7 @@ The proliferation of async agent orchestration systems in 2026 isn't an interim 
 - Calendar example threaded throughout
 
 **Out:**
+
 - LLM capability improvements (this is about interface design, not model benchmarks)
 - Specific product recommendations for which AI tool to use
 - Enterprise AI governance (separate post)
@@ -212,22 +223,26 @@ The proliferation of async agent orchestration systems in 2026 isn't an interim 
 ## Reference List
 
 1. **Nielsen, J. (1993).** "Response Times: The 3 Important Limits." NN/g. [https://www.nngroup.com/articles/response-times-3-important-limits/](https://www.nngroup.com/articles/response-times-3-important-limits/)
+
    - The 0.1s / 1.0s / 10s thresholds. Specifically: "Feedback during the delay is especially important if the response time is likely to be highly variable."
 
 2. **Doherty, W.J. & Thadhani, A.J. (1982).** "The Economic Value of Rapid Response Time." IBM. The Doherty Threshold: sub-400ms response times produce measurable productivity gains. Flow breaks above this threshold.
 
 3. **Ganglani, K. (March 2026).** "LLM API Latency Benchmarks 2026: 5 Models Tested." [https://www.kunalganglani.com/blog/llm-api-latency-benchmarks-2026](https://www.kunalganglani.com/blog/llm-api-latency-benchmarks-2026)
+
    - Claude Haiku 4.5: P50 TTFT 639ms, total 952ms. GPT-4.1 Mini: P50 TTFT 2205ms, P95 4004ms. Claude Sonnet 4: P50 TTFT 1946ms.
 
 4. **Cased (December 2025).** "How We Build Generative UI." [https://cased.com/blog/2025-12-11-how-we-build-generative-ui](https://cased.com/blog/2025-12-11-how-we-build-generative-ui)
+
    - The "generate controller, not snapshot" pattern for decoupling LLM reasoning from interaction-time rendering.
 
 5. **designative.info (March 2026).** "The Conversation Trap: why defaulting to chat might be the biggest interaction design mistake of the AI era." [https://www.designative.info/2026/03/19/the-conversation-trap-why-defaulting-to-chat-might-be-the-biggest-interaction-design-mistake-of-the-ai-era/](https://www.designative.info/2026/03/19/the-conversation-trap-why-defaulting-to-chat-might-be-the-biggest-interaction-design-mistake-of-the-ai-era/)
+
    - Don Norman action theory applied to LLM interfaces. Direct manipulation provides state visibility, action, and feedback that chat breaks.
 
-6. **Norman, D.A. (1988).** *The Design of Everyday Things.* — Direct manipulation theory: users see state, act on it, observe result. AI chat breaks this loop when output is probabilistic and latency is variable.
+6. **Norman, D.A. (1988).** _The Design of Everyday Things._ — Direct manipulation theory: users see state, act on it, observe result. AI chat breaks this loop when output is probabilistic and latency is variable.
 
-7. **Fitts, P.M. (1954).** "The Information Capacity of the Human Motor System in Controlling the Amplitude of Movement." *Journal of Experimental Psychology.* — Pointing efficiency model; analogous to the unstated "language formulation effort" axis. Tapping a calendar icon has a known, minimal Fitts cost; composing a NL query has a higher and variable one.
+7. **Fitts, P.M. (1954).** "The Information Capacity of the Human Motor System in Controlling the Amplitude of Movement." _Journal of Experimental Psychology._ — Pointing efficiency model; analogous to the unstated "language formulation effort" axis. Tapping a calendar icon has a known, minimal Fitts cost; composing a NL query has a higher and variable one.
 
 8. **AIMulitple Research (January 2026).** "LLM Latency Benchmark by Use Cases in 2026." [https://research.aimultiple.com/llm-latency-benchmark/](https://research.aimultiple.com/llm-latency-benchmark/) — Cross-model TTFT comparison across use cases.
 

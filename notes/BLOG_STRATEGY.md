@@ -40,6 +40,7 @@ A public blog at `purveyors.io/blog` that serves as Reed's thinking-out-loud spa
 5. **Reed's voice additions** — "man yells at cloud" LinkedIn touch, healthcare parallel suggestion, tribal economy framing. The best posts are collaborative.
 
 ### What to fix next time
+
 - First draft was too verbose (2,400 words with repeated sections). Self-edit pass needed before showing Reed.
 - Hero image missing from draft PR. Must be in the same PR, always.
 - One complete PR per post. Never merge post without hero.
@@ -47,14 +48,17 @@ A public blog at `purveyors.io/blog` that serves as Reed's thinking-out-loud spa
 ## Weekly Wednesday Coffee Intelligence System
 
 ### Objective
+
 Ship one high-signal Coffee Intelligence piece every Wednesday that can be published same day after review.
 
 ### Weekly cadence
+
 - **Tuesday:** choose thesis + collect evidence stack
 - **Wednesday morning:** write draft (`draft: false`), generate hero image, open single complete PR
 - **Wednesday afternoon:** Reed reviews and merges to publish
 
 ### Required structure per piece
+
 1. Counterintuitive thesis
 2. Immediate vs tail risk map
 3. Opportunity map (actionable plays)
@@ -62,11 +66,13 @@ Ship one high-signal Coffee Intelligence piece every Wednesday that can be publi
 5. 3-4 canonical tags
 
 ### Operating rule
+
 Wednesdays are reserved for Coffee Intelligence output first; other blog experiments happen around this anchor.
 
 ## Content Pillars
 
 ### 1. Building an AI-First Product (GenUI + Purveyors)
+
 - The canvas architecture: why we're building a conversation-driven workspace, not a chatbot with a sidebar
 - Progressive disclosure through AI: replacing navigation with intelligence
 - Lessons from implementing tool-calling, action cards, and the propose/confirm pattern
@@ -74,6 +80,7 @@ Wednesdays are reserved for Coffee Intelligence output first; other blog experim
 - What "AI-first" actually means when you strip away the hype
 
 ### 2. The Coffee Data Pipeline (Scraper + Marketplace)
+
 - Architecture of the multi-supplier scraper: Playwright, generic adapters, the Source class pattern
 - The CI feedback loop: scrape → normalize → rank → surface → user feedback → improve
 - Data normalization challenges across suppliers (grading systems, origin naming, processing methods)
@@ -81,6 +88,7 @@ Wednesdays are reserved for Coffee Intelligence output first; other blog experim
 - Building a data moat through aggregation and enrichment
 
 ### 3. Green Coffee Market Intelligence
+
 - Market analysis from the scraped data: pricing trends, availability patterns, seasonal shifts
 - Origin deep dives: what's happening in Ethiopia, Colombia, Kenya, etc.
 - Supplier analysis: who carries what, pricing strategies, stock turnover
@@ -88,6 +96,7 @@ Wednesdays are reserved for Coffee Intelligence output first; other blog experim
 - This is the unique-content pillar. Nobody else has this dataset publishing publicly.
 
 ### 4. API-First Platform Architecture (B2CC)
+
 - **The B2CC thesis applied to purveyors:** agents are customers now. The API docs are the primary UI for a growing segment of users. [[b2cc-agents-as-customers]]
 - Designing the purveyors API: data modeling for coffee, roasting, and inventory
 - The dual-audience problem: B2B walled gardens for enterprise + open marketplace for hobbyists, but also human consumers vs agent consumers of the same data
@@ -98,6 +107,7 @@ Wednesdays are reserved for Coffee Intelligence output first; other blog experim
 - The death of per-seat pricing and what usage-based billing looks like for coffee data
 
 ### 5. The Agentic Stack (OpenClaw + Second Brain)
+
 - How we manage a production codebase with an AI agent: PRs, code review, testing
 - Second brain as operating system: zettelkasten meets agentic workflows
 - Memory architecture: how an AI assistant maintains continuity across sessions
@@ -105,6 +115,7 @@ Wednesdays are reserved for Coffee Intelligence output first; other blog experim
 - Honest assessment: where this works well and where it breaks down
 
 ### 6. Supply Chain + Coffee Industry
+
 - Bridging the gap between traditional industry and technology
 - The green coffee supply chain explained for non-specialists
 - Why the specialty coffee market needs better data infrastructure
@@ -113,24 +124,31 @@ Wednesdays are reserved for Coffee Intelligence output first; other blog experim
 ## Insights You're Missing
 
 ### The "working with AI" meta-narrative is the hook
+
 The most shareable content won't be the coffee data or the architecture docs. It's the honest account of what it's like to build a product where your co-developer is an AI agent. The friction, the surprises, the moments where it genuinely feels like pair programming vs the moments where you're babysitting a confident idiot. This is the story that gets linked on Hacker News.
 
 ### Content as a forcing function for clarity
+
 Writing a blog post about your architecture forces you to articulate decisions that are currently implicit. The GenUI transition plan is a 33KB internal doc. Distilling that into a 2,000-word public post will surface the assumptions you haven't questioned yet. The blog doesn't just describe the work; it improves it.
 
 ### The coffee data is genuinely unique content
+
 Nobody else is publishing aggregated, normalized green coffee market data. A weekly or bi-weekly "market pulse" post with actual data visualizations from the scraper would be the highest-value SEO content. Roasters searching for sourcing insights land on purveyors.io and discover the platform.
 
 ### Build-in-public as business development
+
 For the B2B API play, technical blog posts are the best sales tool. A VP of Engineering at a coffee tech company reading a post about your data normalization pipeline understands the value proposition immediately. Better than any sales deck.
 
 ### The recursive loop you described is the real innovation
+
 You nailed it: the blog isn't just output, it's a processing layer. Ideas go in, get refined through the act of writing, and come out as clearer direction for the product. The flywheel: building generates ideas, ideas become posts, posts clarify direction, direction improves the building.
 
 ### Documentation-as-content
+
 API docs, getting-started guides, and READMEs are traditionally treated as support material. But well-written docs ARE content. Stripe built half their developer brand on documentation quality. Your API docs can live at `/blog` alongside insights posts, making the blog the single entry point for everything public-facing about purveyors.
 
 ### Fair use and the LLM content pipeline
+
 One of the more interesting technical/legal topics to write about: how the scraper handles supplier marketing copy. The pipeline takes raw marketing language, runs it through an LLM to strip supplier-specific phrasing and generate original descriptions, addressing fair use concerns while preserving the factual coffee data. This is a real problem anyone aggregating supplier data faces, and the approach is worth documenting publicly.
 
 ## Architecture
@@ -156,11 +174,11 @@ Each post is a `.svx` file with frontmatter:
 
 ```markdown
 ---
-title: "The Architecture of a Coffee Data Pipeline"
+title: 'The Architecture of a Coffee Data Pipeline'
 date: 2026-02-25
 tags: [scraper, architecture, data]
 pillar: coffee-data-pipeline
-description: "How we built a multi-supplier scraper that normalizes green coffee data from 26 sources."
+description: 'How we built a multi-supplier scraper that normalizes green coffee data from 26 sources.'
 draft: false
 ---
 
@@ -168,6 +186,7 @@ Post content here with full Svelte component support...
 ```
 
 Benefits:
+
 - Posts can embed live Svelte components (interactive charts from the scraper data, D3 visualizations)
 - No external platform dependency
 - Full control over design and SEO
@@ -197,6 +216,7 @@ repos/coffee-app/
 ```
 
 **Flow:**
+
 1. Idea captured in `brain/ideas/` or `brain/fleeting/`
 2. When ready to develop → draft in `repos/coffee-app/src/routes/blog/` (with `draft: true`)
 3. Review, edit, iterate (same PR workflow as code)

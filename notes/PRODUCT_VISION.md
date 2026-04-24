@@ -13,12 +13,14 @@ This is not just a marketplace and not just a roast logger. The core value is st
 ## Who it is for
 
 ### Primary users
+
 - **Serious home roasters and micro-roasters** who need better sourcing, roasting, and profitability workflows
 - **Commercial roasters** who need systematic quality, visibility, and operational leverage
 - **Developers and API consumers** who want normalized coffee data and machine-friendly platform access
 - **AI agents and internal automations** that consume Purveyors through the CLI, shared library functions, and external API contracts
 
 ### Secondary users
+
 - Curious coffee buyers who benefit from better public catalog and analytics surfaces
 
 ## Core product beliefs
@@ -47,6 +49,7 @@ This is not just a marketplace and not just a roast logger. The core value is st
 ## What we are building toward
 
 ### Near-term bets
+
 - A trusted, normalized coffee catalog with meaningful filtering and semantic search
 - Public analytics that prove the value of the underlying data asset
 - A stable v1 API that external developers and agents can build against
@@ -55,6 +58,7 @@ This is not just a marketplace and not just a roast logger. The core value is st
 - A conversational / agentic interface layer that helps users act on the data, not just browse it
 
 ### Long-term direction
+
 Purveyors should become the operating system for coffee intelligence: the place where sourcing, evaluation, operational workflows, and machine-readable coffee context all converge.
 
 ## What we should not do
@@ -70,6 +74,7 @@ Purveyors should become the operating system for coffee intelligence: the place 
 ## Strategy test for new work
 
 A feature, fix, or plan is strategically strong if it does at least one of these:
+
 - strengthens the coffee data moat
 - improves decision quality for roasters
 - increases consistency across web / CLI / API / agent surfaces
@@ -78,6 +83,7 @@ A feature, fix, or plan is strategically strong if it does at least one of these
 - reduces operational friction through intelligence rather than extra UI
 
 A piece of work is strategically weak if it mainly:
+
 - adds surface area without improving the data layer
 - creates one-off logic for a single interface
 - increases complexity without improving trust, clarity, or leverage
@@ -86,6 +92,7 @@ A piece of work is strategically weak if it mainly:
 ## Authority order
 
 When documents conflict, use this order:
+
 1. **`notes/PRODUCT_VISION.md`** — canonical direction, brand, scope, and product principles
 2. **ADRs in `notes/decisions/`** — canonical rationale for local architectural and product decisions
 3. **`notes/MARKET_ANALYSIS.md`, `notes/API_notes/API-strategy.md`, `notes/BLOG_STRATEGY.md`** — supporting strategy docs
@@ -95,6 +102,7 @@ When documents conflict, use this order:
 ## How to use this file
 
 When planning, building, or reviewing work:
+
 - read this file first
 - explicitly note alignment or tension with it
 - prefer work that compounds across multiple surfaces

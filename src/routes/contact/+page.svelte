@@ -6,8 +6,8 @@
 				Contact Purveyors
 			</h1>
 			<p class="mt-4 text-lg text-text-secondary-light">
-				Coffee intelligence, built by people who use it. Daily-normalized data from 41+ US
-				specialty importers. Open source where it makes sense.
+				Coffee intelligence, built by people who use it. Daily-normalized data from 41+ US specialty
+				importers. Open source where it makes sense.
 			</p>
 		</div>
 
@@ -72,9 +72,7 @@
 							</div>
 							<div class="ml-3">
 								<p class="text-sm font-medium text-text-primary-light">Response Time</p>
-								<p class="mt-1 text-sm text-text-secondary-light">
-									Typically within 24 hours
-								</p>
+								<p class="mt-1 text-sm text-text-secondary-light">Typically within 24 hours</p>
 							</div>
 						</div>
 
@@ -207,10 +205,10 @@
 
 					<div class="space-y-4 text-text-secondary-light">
 						<p>
-							Purveyors exists because green coffee data was scattered, inconsistent, and hard to act
-							on. I built the platform to fix that gap for sourcing pros, roasters, and serious home
-							roasters who need reliable, normalized data across the US specialty import market.
-							Background in engineering, product, and analytics.
+							Purveyors exists because green coffee data was scattered, inconsistent, and hard to
+							act on. I built the platform to fix that gap for sourcing pros, roasters, and serious
+							home roasters who need reliable, normalized data across the US specialty import
+							market. Background in engineering, product, and analytics.
 						</p>
 					</div>
 				</div>

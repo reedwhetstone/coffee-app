@@ -5,6 +5,7 @@
 ## Decision: Do not surface score_value in the UI
 
 `score_value` in `coffee_catalog` is scraped from supplier-provided cupping notes. It is not a standardized, cross-comparable metric:
+
 - Different suppliers use different scoring scales
 - Many suppliers don't score at all (null rate is high)
 - Scores reflect different evaluators, conditions, and methodologies

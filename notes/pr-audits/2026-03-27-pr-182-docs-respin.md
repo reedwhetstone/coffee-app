@@ -21,6 +21,7 @@ This PR gets the broad structure right: the shared `/docs` tree exists, the cont
 ## Intent Verification
 
 - Stated intent:
+
   - Replace the stale split docs model with a shared `/docs` tree.
   - Make `/docs` the canonical public docs location.
   - Redirect legacy `/api-dashboard/docs` to `/docs`.
@@ -29,6 +30,7 @@ This PR gets the broad structure right: the shared `/docs` tree exists, the cont
   - Preserve public-route/auth behavior.
 
 - What was implemented:
+
   - New shared docs content source at `src/lib/docs/content.ts` and shared renderer at `src/lib/components/docs/DocsShell.svelte`.
   - Public docs landing page at `src/routes/docs/+page.svelte` plus section and slug routes under `src/routes/docs/[section]/...`.
   - Legacy redirects for `/api/docs` and `/api-dashboard/docs`.
@@ -58,6 +60,7 @@ None.
   - External readers get a muddled story: the docs both say `/api/catalog` supports public page usage and say it is session-oriented.
   - The real distinction is not “session vs non-session”; it is “publicly callable for first-party pages but not a stable external contract”. The current copy blurs that.
 - **Correction:**
+
   - Rewrite the `/api/catalog` copy in `src/lib/docs/content.ts` so it consistently says:
     - `/api/catalog-api` is the stable external API-key contract.
     - `/api/catalog` is a first-party web-app route that is publicly callable by site pages, but is not a compatibility promise for external integrators.
@@ -89,6 +92,7 @@ None.
   - This does not break auth, but it does create a confusing public flow: documentation and product pages invite the user into Parchment Console, then the router dumps them onto the catalog instead of a sign-in or onboarding path.
   - That weakens the “public-route/auth behavior is preserved” story on the user-facing side, especially now that docs are central to the API funnel.
 - **Correction:**
+
   - Make these CTAs session-aware.
   - For signed-out users, route to `/auth` with a return target, or to `/api` with explanatory copy.
   - Reserve the direct `/api-dashboard` target for already-authenticated sessions.
@@ -144,9 +148,11 @@ None.
 ## Tech Debt Notes
 
 - Debt introduced:
+
   - The new docs source is a large code-defined content object in `src/lib/docs/content.ts` (1050+ lines). It is workable, but every copy update now lives in a single TypeScript blob with no schema/tests around factual consistency.
 
 - Debt worsened:
+
   - Redirect behavior for legacy docs paths is now split between hooks and route files.
   - Public discovery metadata remains manually curated instead of derived from the docs source of truth, which is why `/docs` was easy to miss.
 
@@ -158,11 +164,13 @@ None.
 ## Product Alignment Notes
 
 - Alignment wins:
+
   - Naming is substantially better across `/api`, `/docs`, dashboard copy, README, and AGENTS.
   - The new docs do a much better job separating the external catalog contract from the broader platform story.
   - `/api-dashboard/docs` now hands off to the shared public docs tree instead of preserving the stale split-docs model.
 
 - Misalignments:
+
   - The canonical docs path is still not the canonical discovery path.
   - Public copy invites users into Parchment Console without honoring the actual unauthenticated flow.
   - `/api/catalog` is still described in a way that conflates “non-contract” with “session-auth”.
@@ -174,10 +182,12 @@ None.
 ## Test Coverage Assessment
 
 - Existing tests that validate changes:
+
   - `pnpm check` passed locally with 0 errors and 0 warnings.
   - Existing auth/catalog tests provide some confidence that core API behavior remains intact.
 
 - Missing tests:
+
   - No tests for `/docs` section redirects.
   - No tests for `/api/docs` or `/api-dashboard/docs` redirects.
   - No tests that protect the “public but non-contract” messaging around `/api/catalog`.
@@ -197,18 +207,22 @@ None.
 ## Optional Patch Guidance
 
 - `src/lib/docs/content.ts`
+
   - Update the catalog intro (`/docs/api/catalog`) to replace “session-oriented” with language that distinguishes auth from stability.
   - Keep the overview table, intro paragraph, and warning callout aligned so they do not contradict each other.
 
 - `src/routes/sitemap.xml/+server.ts`
+
   - Add `/docs` plus top-level docs entry pages.
   - Consider whether authenticated-only routes such as `/api-dashboard` and `/subscription/success` should remain listed in a public sitemap at their current priority.
 
 - `src/routes/llms.txt/+server.ts`
+
   - Add a docs bullet such as “Parchment Docs” pointing to `/docs` and its API/CLI entry pages.
   - Avoid making the auth-walled console look like the primary public documentation resource.
 
 - `src/routes/api/+page.svelte`, `src/routes/docs/+page.svelte`, `src/lib/docs/content.ts`
+
   - Route signed-out users to `/auth?next=/api-dashboard` or equivalent instead of linking them directly into a path that immediately redirects elsewhere.
 
 - `src/hooks.server.ts` / `src/routes/api-dashboard/docs/+page.server.ts`

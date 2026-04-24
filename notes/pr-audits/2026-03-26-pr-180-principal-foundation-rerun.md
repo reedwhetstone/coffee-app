@@ -40,12 +40,14 @@
 ## Checklist Coverage
 
 ### 1) Intent Coverage
+
 - Does implementation fully satisfy the stated PR intent? `CONCERN`
 - Are acceptance criteria covered, not partially interpreted? `CONCERN`
 - Any intent drift between description and code? `PASS`
 - Any features implied by intent but missing in implementation? `CONCERN`
 
 ### 2) Correctness
+
 - Logic correctness across happy path and edge cases: `CONCERN`
 - Error handling completeness and failure mode behavior: `PASS`
 - Input validation and type safety: `PASS`
@@ -53,12 +55,14 @@
 - Time/date/locale assumptions: `PASS`
 
 ### 3) Codebase Alignment
+
 - Consistent with existing architecture and patterns: `CONCERN`
 - Reuses existing abstractions where appropriate: `CONCERN`
 - Avoids duplicating existing utilities/business logic: `CONCERN`
 - Naming, file placement, and module boundaries match project conventions: `PASS`
 
 ### 4) Risk and Regressions
+
 - Backward compatibility impact: `CONCERN`
 - Side effects on adjacent systems or consumers: `CONCERN`
 - Race conditions, ordering issues, idempotency risks: `PASS`
@@ -66,6 +70,7 @@
 - Monitoring/observability impact: `PASS`
 
 ### 5) Security and Data Safety
+
 - Authz/authn boundaries preserved: `FAIL`
 - Sensitive data handling unchanged or improved: `PASS`
 - Injection, path traversal, unsafe eval/exec vectors introduced?: `PASS`
@@ -73,30 +78,35 @@
 - Secrets handling and logging hygiene: `PASS`
 
 ### 6) Test and Verification Quality
+
 - Tests cover changed behavior and key edge cases: `CONCERN`
 - Existing tests updated where behavior changed: `PASS`
 - Missing tests for discovered high-risk paths: `FAIL`
 - Assertions meaningful vs shallow snapshot checks: `PASS`
 
 ### 7) Tech Debt and Maintainability
+
 - New debt introduced: `CONCERN`
 - Existing debt worsened by this change: `CONCERN`
 - Refactor opportunities that should be done now vs deferred: `CONCERN`
 - Clarity/readability for future maintainers: `PASS`
 
 ### 8) Product and UX Alignment
+
 - Behavior matches product intent, not just technical completion: `CONCERN`
 - User-visible outcomes and copy are coherent: `PASS`
 - Failure UX acceptable and actionable: `PASS`
 - Metrics/events support product decision-making where needed: `N/A`
 
 ### 9) Assumptions Audit
+
 - List assumptions made by implementation: covered below
 - Mark each assumption as valid/weak/invalid: covered below
 - Identify assumptions that conflict with current codebase reality: covered below
 - Identify hidden assumptions not documented in PR: covered below
 
 ### 10) Final Verdict
+
 - Merge readiness: `Not ready`
 - Highest severity issue level found: `P1`
 - Minimal fix set required before merge: covered below
@@ -110,6 +120,7 @@ None.
 ### P1 (should fix before merge)
 
 #### 1) `requireAuth()` still bypasses the shared trusted-mutation guard for unsafe session-backed requests
+
 - **Evidence:**
   - `src/lib/server/auth.ts:31-39` now resolves the normalized principal, but it returns any session principal directly and never calls `assertSessionMutationIsTrusted()`.
   - `src/lib/server/auth.ts:63-83` does apply that trust gate in `requireUserAuth()`, so the policy exists but is not shared across all session auth helpers.
@@ -129,6 +140,7 @@ None.
 ### P2 (important improvements)
 
 #### 1) Hooks still expose contradictory auth state for bearer/API-key callers, so auth normalization in `locals` is only partial
+
 - **Evidence:**
   - `src/hooks.server.ts:92-101` sets `event.locals.session`, `event.locals.user`, and `event.locals.role` exclusively from `safeGetSession()`, which is cookie-session derived.
   - `src/lib/server/principal.ts:337-350` then treats any explicit `Authorization` header as authoritative and can resolve `event.locals.principal` to a bearer-session user or an API-key principal instead.
@@ -145,6 +157,7 @@ None.
     - invalid `Authorization` header plus valid cookie session
 
 #### 2) Test coverage improved meaningfully, but still does not exercise route-level or hook-level integration for the new foundation
+
 - **Evidence:**
   - `src/lib/server/principal.test.ts` covers normalization, scope parsing, role/plan checks, and request-trust helpers.
   - `src/lib/server/auth.test.ts` covers the newly patched behaviors: fail-closed API-key role lookup, authoritative invalid `Authorization`, and admin mutation trust enforcement.
@@ -163,11 +176,13 @@ None.
 ## Assumptions Review
 
 - Assumption: `requireAuth()` is safe to leave outside the new unsafe-method trust gate.
+
   - Validity: Invalid
   - Why: It is used on a `POST` endpoint today (`/api/ai/classify-roast`), so it is not purely a read-only helper. The foundation’s session trust policy should not depend on which helper a route author happened to pick.
   - Recommended action: Unify session-helper trust enforcement so all unsafe session-backed paths inherit the same rule.
 
 - Assumption: Exposing both `locals.principal` and cookie-derived `locals.session/user/role` does not create meaningful ambiguity.
+
   - Validity: Weak
   - Why: Bearer/API-key requests can produce contradictory local state. That is manageable if tightly documented, but the current code does not enforce or document a single source of truth.
   - Recommended action: Align locals or document and enforce `locals.principal` as authoritative for API/server auth.

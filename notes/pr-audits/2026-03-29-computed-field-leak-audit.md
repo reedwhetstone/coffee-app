@@ -25,28 +25,40 @@ The `saveChanges()` function now explicitly strips `is_wholesale`, `green_coffee
 #### 2. `src/routes/beans/BeanProfileTabs.svelte:163-181` — Client sends joined data, server strips — medium
 
 **`saveChanges()` function (line 163):**
+
 ```typescript
 const dataForAPI = {
-    ...selectedBean, // includes coffee_catalog, roast_profiles, name, etc.
-    ...Object.fromEntries(
-        Object.entries(editedBean).filter(([key]) => editableFields.includes(key))
-    ),
-    purchase_date: prepareDateForAPI(editedBean.purchase_date ?? ''),
-    last_updated: new Date().toISOString()
+	...selectedBean, // includes coffee_catalog, roast_profiles, name, etc.
+	...Object.fromEntries(Object.entries(editedBean).filter(([key]) => editableFields.includes(key))),
+	purchase_date: prepareDateForAPI(editedBean.purchase_date ?? ''),
+	last_updated: new Date().toISOString()
 };
 ```
 
 The `...selectedBean` spread includes all joined fields from `buildGreenCoffeeQuery()`:
+
 - `coffee_catalog` (entire nested object with 30+ fields)
 - `roast_profiles` (array of profile objects)
 - `name` (if present at inventory level)
 
 **Server-side protection:** The `PUT /api/beans` handler (line 185-196) has a `validColumns` allowlist that filters before update:
+
 ```typescript
-const validColumns = ['rank', 'notes', 'purchase_date', 'purchased_qty_lbs',
-    'bean_cost', 'tax_ship_cost', 'last_updated', 'user', 'catalog_id', 'stocked', 'cupping_notes'];
+const validColumns = [
+	'rank',
+	'notes',
+	'purchase_date',
+	'purchased_qty_lbs',
+	'bean_cost',
+	'tax_ship_cost',
+	'last_updated',
+	'user',
+	'catalog_id',
+	'stocked',
+	'cupping_notes'
+];
 const updateData = Object.fromEntries(
-    Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
+	Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
 );
 ```
 
@@ -59,12 +71,13 @@ const updateData = Object.fromEntries(
 #### 3. `src/routes/beans/BeanProfileTabs.svelte:218-236` — Client sends joined data, server strips — medium
 
 **`handleCuppingSave()` function (line 218):**
+
 ```typescript
 const dataForAPI = {
-    ...selectedBean, // includes coffee_catalog, roast_profiles
-    cupping_notes: JSON.stringify(notes),
-    rank: rating,
-    last_updated: new Date().toISOString()
+	...selectedBean, // includes coffee_catalog, roast_profiles
+	cupping_notes: JSON.stringify(notes),
+	rank: rating,
+	last_updated: new Date().toISOString()
 };
 ```
 
@@ -77,15 +90,18 @@ Same pattern as #2 — spreads the full `selectedBean` (with all joins) into the
 #### 4. `src/routes/profit/SaleForm.svelte:44-50` — Sends all formData fields including computed — medium
 
 **`handleSubmit()` function:**
+
 ```typescript
 const cleanedSale = Object.fromEntries(
-    Object.entries(formData).map(([key, value]) => [
-        key, value === '' || value === undefined ? null : value
-    ])
+	Object.entries(formData).map(([key, value]) => [
+		key,
+		value === '' || value === undefined ? null : value
+	])
 );
 ```
 
 When editing an existing sale (`sale?.id` is truthy), `formData` is initialized with `{ ...sale }` (line 33). The `sale` object comes from `listSales()` which enriches each sale with:
+
 - `coffee_name` (joined from coffee_catalog)
 - `wholesale` (joined from coffee_catalog)
 - `green_coffee_inv` (nested join object)
@@ -93,11 +109,13 @@ When editing an existing sale (`sale?.id` is truthy), `formData` is initialized 
 All these fields flow into `cleanedSale` and are sent in the PUT body.
 
 **Server-side protection:** The `PUT /api/profit` handler (line 53) only strips `coffee_name`:
+
 ```typescript
 const { coffee_name: _, ...updateData } = updates;
 ```
 
 It does NOT strip `wholesale` or `green_coffee_inv`. These are passed directly to `updateSale()` which calls:
+
 ```typescript
 .update(data as Database['public']['Tables']['sales']['Update'])
 ```
@@ -113,14 +131,15 @@ PostgREST will reject fields not in the `sales` table schema. If `wholesale` or 
 #### 5. `src/routes/profit/+page.svelte:64-76` — Double-submit with enriched data — medium
 
 **`handleFormSubmit()` function:**
+
 ```typescript
 const response = await fetch(
-    `/api/profit${isUpdate && selectedSale ? `?id=${selectedSale.id}` : ''}`,
-    {
-        method: isUpdate ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(saleData)
-    }
+	`/api/profit${isUpdate && selectedSale ? `?id=${selectedSale.id}` : ''}`,
+	{
+		method: isUpdate ? 'PUT' : 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(saleData)
+	}
 );
 ```
 
@@ -135,9 +154,15 @@ Additionally, this is a **double-submit bug**: the sale gets created/updated twi
 #### 6. `src/routes/roast/RoastProfileDisplay.svelte` — Hardcoded allowlist is brittle — low
 
 The fix from PR #193 uses a hardcoded `NON_COLUMN_FIELDS` array:
+
 ```typescript
-const NON_COLUMN_FIELDS = ['is_wholesale', 'green_coffee_inv', 'roast_temperatures',
-    'roast_events', 'coffee_catalog'];
+const NON_COLUMN_FIELDS = [
+	'is_wholesale',
+	'green_coffee_inv',
+	'roast_temperatures',
+	'roast_events',
+	'coffee_catalog'
+];
 ```
 
 If a new join or computed field is added to the `listRoasts()` query, this list must be manually updated. A missed field will cause the same 400 error.
@@ -201,17 +226,19 @@ import { createClient } from '$lib/supabase';
 // ...
 const supabase = createClient();
 const { data: customerData } = await supabase
-    .from('stripe_customers')
-    .select('customer_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
+	.from('stripe_customers')
+	.select('customer_id')
+	.eq('user_id', user.id)
+	.maybeSingle();
 ```
 
 This creates a browser client (`createBrowserClient` from `@supabase/ssr`) in a `+page.server.ts` context. This client uses the anon key with no session context, meaning:
+
 - It bypasses RLS policies on `stripe_customers`
 - It can potentially read any user's Stripe customer ID (if RLS is enforced, it may read nothing; if the anon role has SELECT on `stripe_customers`, it reads everything)
 
 **The fix:** Use `locals.supabase` which is available in the load function:
+
 ```typescript
 const supabase = locals.supabase;
 ```
@@ -229,6 +256,7 @@ const bearerSupabase = createClient();
 This creates a module-level browser client used by `resolveBearerSessionPrincipal()` to call `bearerSupabase.auth.getUser(token)`. This is specifically for validating Bearer tokens in API requests (not cookie sessions).
 
 **Analysis:** The `auth.getUser()` call validates JWT tokens against the Supabase auth service — it doesn't query user data tables. The anon key is sufficient for token validation. However:
+
 - Using `createBrowserClient` (browser SSR client) in a server module is architecturally wrong
 - The client persists auth state in the module scope, which could leak between requests in a server environment
 - Better pattern: use `createClient` from `@supabase/supabase-js` directly (like `supabase-admin.ts` does) with the anon key for auth-only operations
@@ -267,27 +295,75 @@ Standard admin client creation. Excluded per audit scope.
 
 // Column definitions per table
 export const GREEN_COFFEE_INV_COLUMNS = [
-    'id', 'rank', 'notes', 'purchase_date', 'purchased_qty_lbs',
-    'bean_cost', 'tax_ship_cost', 'last_updated', 'user', 'catalog_id',
-    'stocked', 'cupping_notes'
+	'id',
+	'rank',
+	'notes',
+	'purchase_date',
+	'purchased_qty_lbs',
+	'bean_cost',
+	'tax_ship_cost',
+	'last_updated',
+	'user',
+	'catalog_id',
+	'stocked',
+	'cupping_notes'
 ] as const;
 
 export const ROAST_PROFILES_COLUMNS = [
-    'roast_id', 'user', 'coffee_id', 'coffee_name', 'batch_name',
-    'roast_date', 'last_updated', 'oz_in', 'oz_out', 'weight_loss_percent',
-    'roast_notes', 'roast_targets', 'title', 'roaster_type', 'roaster_size',
-    'roast_uuid', 'temperature_unit', 'charge_time', 'dry_end_time',
-    'fc_start_time', 'fc_end_time', 'sc_start_time', 'drop_time',
-    'cool_time', 'charge_temp', 'dry_end_temp', 'fc_start_temp',
-    'fc_end_temp', 'sc_start_temp', 'drop_temp', 'cool_temp',
-    'dry_percent', 'maillard_percent', 'development_percent',
-    'total_roast_time', 'chart_x_min', 'chart_x_max', 'chart_y_min',
-    'chart_y_max', 'chart_z_min', 'chart_z_max', 'data_source'
+	'roast_id',
+	'user',
+	'coffee_id',
+	'coffee_name',
+	'batch_name',
+	'roast_date',
+	'last_updated',
+	'oz_in',
+	'oz_out',
+	'weight_loss_percent',
+	'roast_notes',
+	'roast_targets',
+	'title',
+	'roaster_type',
+	'roaster_size',
+	'roast_uuid',
+	'temperature_unit',
+	'charge_time',
+	'dry_end_time',
+	'fc_start_time',
+	'fc_end_time',
+	'sc_start_time',
+	'drop_time',
+	'cool_time',
+	'charge_temp',
+	'dry_end_temp',
+	'fc_start_temp',
+	'fc_end_temp',
+	'sc_start_temp',
+	'drop_temp',
+	'cool_temp',
+	'dry_percent',
+	'maillard_percent',
+	'development_percent',
+	'total_roast_time',
+	'chart_x_min',
+	'chart_x_max',
+	'chart_y_min',
+	'chart_y_max',
+	'chart_z_min',
+	'chart_z_max',
+	'data_source'
 ] as const;
 
 export const SALES_COLUMNS = [
-    'id', 'user', 'green_coffee_inv_id', 'oz_sold', 'price',
-    'buyer', 'batch_name', 'sell_date', 'purchase_date'
+	'id',
+	'user',
+	'green_coffee_inv_id',
+	'oz_sold',
+	'price',
+	'buyer',
+	'batch_name',
+	'sell_date',
+	'purchase_date'
 ] as const;
 
 type ColumnName = string;
@@ -297,17 +373,18 @@ type ColumnName = string;
  * Prefer this over denylist (NON_COLUMN_FIELDS) — it's forward-safe.
  */
 export function pickColumns<T extends Record<string, unknown>>(
-    obj: T,
-    columns: readonly ColumnName[]
+	obj: T,
+	columns: readonly ColumnName[]
 ): Partial<T> {
-    const columnSet = new Set(columns);
-    return Object.fromEntries(
-        Object.entries(obj).filter(([key]) => columnSet.has(key))
-    ) as Partial<T>;
+	const columnSet = new Set(columns);
+	return Object.fromEntries(
+		Object.entries(obj).filter(([key]) => columnSet.has(key))
+	) as Partial<T>;
 }
 ```
 
 **Consumers that should use it:**
+
 1. `RoastProfileDisplay.svelte` — replace hardcoded `NON_COLUMN_FIELDS` denylist with `pickColumns(cleanedProfile, ROAST_PROFILES_COLUMNS)`
 2. `BeanProfileTabs.svelte` `saveChanges()` — replace `...selectedBean` spread with `pickColumns(dataForAPI, GREEN_COFFEE_INV_COLUMNS)`
 3. `BeanProfileTabs.svelte` `handleCuppingSave()` — same treatment
@@ -321,16 +398,24 @@ export function pickColumns<T extends Record<string, unknown>>(
 The `PUT /api/profit` handler should add a `validColumns` allowlist, matching the pattern already used by `PUT /api/beans`:
 
 ```typescript
-const validColumns = ['green_coffee_inv_id', 'oz_sold', 'price', 'buyer',
-    'batch_name', 'sell_date', 'purchase_date'];
+const validColumns = [
+	'green_coffee_inv_id',
+	'oz_sold',
+	'price',
+	'buyer',
+	'batch_name',
+	'sell_date',
+	'purchase_date'
+];
 const updateData = Object.fromEntries(
-    Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
+	Object.entries(rawUpdateData).filter(([key]) => validColumns.includes(key))
 );
 ```
 
 ### 3C: Fix double-submit in profit page
 
 `profit/+page.svelte` `handleFormSubmit()` sends a second PUT/POST after `SaleForm` already submitted. Either:
+
 - Remove the duplicate fetch from `handleFormSubmit()` and only use it for data refresh
 - OR remove the fetch from `SaleForm` and let the parent handle submission
 
@@ -341,6 +426,7 @@ Replace `createClient()` with `locals.supabase` in `subscription/success/+page.s
 ### 3E: Fix browser client usage in principal.ts
 
 Replace the module-level `createClient()` (browser client) with a proper server-side client:
+
 ```typescript
 import { createClient } from '@supabase/supabase-js';
 const bearerSupabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
@@ -352,11 +438,11 @@ This uses the raw Supabase JS client (no browser session persistence) which is a
 
 ## Summary
 
-| Pattern | Findings | Critical | Medium | Low | Safe |
-|---------|----------|----------|--------|-----|------|
-| 1: Computed field leaks | 10 | 0 | 3 | 2 | 5 |
-| 2: Wrong Supabase client | 5 | 1 | 1 | 0 | 3 |
-| **Total** | **15** | **1** | **4** | **2** | **8** |
+| Pattern                  | Findings | Critical | Medium | Low   | Safe  |
+| ------------------------ | -------- | -------- | ------ | ----- | ----- |
+| 1: Computed field leaks  | 10       | 0        | 3      | 2     | 5     |
+| 2: Wrong Supabase client | 5        | 1        | 1      | 0     | 3     |
+| **Total**                | **15**   | **1**    | **4**  | **2** | **8** |
 
 ### Priority fixes (recommended PR order)
 

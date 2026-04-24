@@ -1,3 +1,9 @@
+import {
+	DEFAULT_CATALOG_LISTING_LIMIT,
+	DEFAULT_PAGINATED_PAGE_SIZE,
+	MAX_CATALOG_PAGE_LIMIT
+} from '$lib/constants/catalog';
+
 export type DocsSectionKey = 'api' | 'cli';
 
 export interface DocsCodeBlock {
@@ -327,7 +333,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Public endpoint',
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, processing method, pricing, price tiers, and availability metadata.',
-			'The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous and viewer-session requests are public-only. Member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the only ones that receive X-RateLimit-* headers. Use anonymous access for discovery and proof-of-value. Use API keys for production integrations that need quota visibility and a durable machine contract. When page and limit are both omitted, the canonical listing response defaults to page 1 and up to 100 rows before any plan-based cap is applied.'
+			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API-key requests all share the public catalog query surface. Anonymous and viewer-session requests stay public-only, while member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`
 		],
 		sections: [
 			{
@@ -348,23 +354,31 @@ const docsPages: DocsPage[] = [
 				title: 'Request and response',
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
-					'Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans are uncapped at the row level. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.',
+					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and visibility: only API-key requests emit X-RateLimit-* headers, and only privileged member or admin sessions can widen beyond public-only data.',
+					`Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans remove that lower plan cap but still share the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.`,
 					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
 				],
 				codeBlocks: [
 					{
 						label: 'GET /v1/catalog',
 						language: 'json',
-						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "price_per_lb": 7.5,\n      "cost_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
+						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "price_per_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
+					},
+					{
+						label: 'GET /v1/catalog?fields=dropdown&page=2&limit=2',
+						language: 'json',
+						code: '{\n  "data": [\n    {\n      "id": 205,\n      "source": "sweet_marias",\n      "name": "Kenya Nyeri AB",\n      "stocked": true,\n      "cost_lb": 8.1,\n      "price_per_lb": 8.1,\n      "price_tiers": [{ "min_lbs": 1, "price": 8.1 }],\n      "public_coffee": true\n    },\n    {\n      "id": 204,\n      "source": "cafe_imports",\n      "name": "Colombia Huila Washed",\n      "stocked": true,\n      "cost_lb": 7.65,\n      "price_per_lb": 7.65,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.65 }],\n      "public_coffee": true\n    }\n  ],\n  "pagination": {\n    "page": 2,\n    "limit": 2,\n    "total": 814,\n    "totalPages": 407,\n    "hasNext": true,\n    "hasPrev": true\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "anonymous", "role": null, "apiPlan": null },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": null,\n      "limited": false,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
 					}
 				]
 			},
 			{
 				title: 'Query parameters',
 				body: [
-					'If page is supplied without limit, the route uses a 15-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the 100-row default listing contract.',
-					'Malformed numeric params now fail closed with 400 responses instead of silently falling back. That applies to page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases.',
-					'Anonymous discovery is narrower than the full contract. Public teaser requests are limited to the default stocked-only first page and only allow country, processing, and name filters.'
+					`The table below describes the full canonical query surface. If page is supplied without limit, the route uses a ${DEFAULT_PAGINATED_PAGE_SIZE}-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the ${DEFAULT_CATALOG_LISTING_LIMIT}-row default listing contract.`,
+					'Anonymous, viewer-session, and API-key requests all share the public query surface documented below.',
+					'fields=dropdown stays compatible with normal page and limit params. The reduced projection is limited to id, source, name, stocked, cost_lb, price_per_lb, price_tiers, and public_coffee.',
+					'Privileged member and admin sessions may additionally use showWholesale and wholesaleOnly to widen first-party visibility.',
+					'Malformed numeric params now fail closed with 400 responses instead of silently falling back. That applies to page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases.'
 				],
 				table: {
 					headers: ['Parameter', 'Type', 'Default', 'Description'],
@@ -374,7 +388,7 @@ const docsPages: DocsPage[] = [
 							'limit',
 							'integer',
 							'100 when page and limit are both omitted; otherwise 15 fallback',
-							'Rows per page before any plan cap is applied. Invalid values return 400.'
+							`Rows per page before any plan cap is applied, up to ${MAX_CATALOG_PAGE_LIMIT}. Values above ${MAX_CATALOG_PAGE_LIMIT} return 400.`
 						],
 						[
 							'ids',
@@ -386,7 +400,7 @@ const docsPages: DocsPage[] = [
 							'fields',
 							'full | dropdown',
 							'full',
-							'dropdown returns the reduced projection used by filter UIs and select menus.'
+							'dropdown returns the reduced projection used by filter UIs and select menus (id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee), and it works with normal page and limit params.'
 						],
 						[
 							'stocked',
@@ -452,41 +466,52 @@ const docsPages: DocsPage[] = [
 						['sortField', 'string', 'arrival_date', 'Sort field for non-ID queries.'],
 						['sortDirection', 'asc | desc', 'desc', 'Sort direction for non-ID queries.']
 					]
-				}
+				},
+				codeBlocks: [
+					{
+						label: 'Paginated dropdown projection',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog?fields=dropdown&page=2&limit=15"'
+					}
+				]
 			},
 			{
 				title: 'Access mode comparison',
 				table: {
-					headers: ['Mode', 'Best for', 'Headers', 'Data scope'],
+					headers: ['Mode', 'Best for', 'Query envelope', 'Headers', 'Notes'],
 					rows: [
 						[
 							'Anonymous /v1/catalog',
 							'Discovery, evaluation, and public embeds',
+							`Full public query surface. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted; page without limit falls back to ${DEFAULT_PAGINATED_PAGE_SIZE}.`,
 							'Cache-Control only',
-							'Public-only teaser contract: first page only, max 15 rows, default stocked_date desc sort, and only country / processing / name filters.'
+							'Public-only catalog data. No X-RateLimit-* headers.'
 						],
 						[
 							'API-key /v1/catalog',
 							'Production integrations and accounted usage',
+							`Full public query surface, subject to plan caps and row limits. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted.`,
 							'Cache-Control plus X-RateLimit-*',
-							'Public-only catalog data with plan limits, row caps where applicable, and stable compatibility guarantees.'
+							'Canonical integration path for developers, sync jobs, and agents.'
 						],
 						[
 							'Session /v1/catalog',
 							'First-party product reads',
+							'Viewer sessions stay public-only and keep the same public query surface. Privileged member/admin sessions may unlock showWholesale and wholesaleOnly.',
 							'Session-dependent app headers only',
-							'Viewer stays public-only; member/admin may see richer in-app visibility. First-party product path only.'
+							'Cookies are only relevant when they resolve to a valid first-party session.'
 						],
 						[
 							'GET /api/catalog-api',
 							'Legacy API-key callers during migration',
+							'Uses the same API-key query contract as /v1/catalog.',
 							'Deprecation, Sunset, Link, plus X-RateLimit-*',
-							'Public-only catalog data via deprecated alias'
+							'API-key-only deprecated alias. Sunset: Dec 31 2026.'
 						]
 					]
 				},
 				bullets: [
-					'Anonymous calls are intentionally narrower than API-key calls. They do not support ids, fields=dropdown, page > 1, or arbitrary filter combinations.',
+					'Anonymous calls use the same public query surface as viewer-session and API-key requests, but they stay public-only and do not emit X-RateLimit-* headers.',
 					'If an Authorization header is present but invalid, the route returns 401 instead of silently treating the request as anonymous.'
 				]
 			},
@@ -494,7 +519,7 @@ const docsPages: DocsPage[] = [
 				title: 'Example requests',
 				codeBlocks: [
 					{
-						label: 'Anonymous teaser request',
+						label: 'Anonymous discovery request',
 						language: 'bash',
 						code: 'curl "https://purveyors.io/v1/catalog?country=Ethiopia&processing=Natural&limit=15"'
 					},
@@ -526,20 +551,21 @@ const docsPages: DocsPage[] = [
 							'Origin',
 							'member',
 							'10,000',
-							'Unlimited',
-							'Self-serve paid tier for production integrations and sync jobs.'
+							`Up to ${MAX_CATALOG_PAGE_LIMIT} per request`,
+							'No additional plan row cap beyond the shared request-size ceiling. Best for production integrations and sync jobs.'
 						],
 						[
 							'Enterprise',
 							'enterprise',
 							'Unlimited',
-							'Unlimited',
-							'Contact-sales plan for custom commercial volume and support.'
+							`Up to ${MAX_CATALOG_PAGE_LIMIT} per request`,
+							'No additional plan row cap beyond the shared request-size ceiling. Contact sales for commercial volume and support.'
 						]
 					]
 				},
 				bullets: [
 					'The public docs use marketed tier names Green, Origin, and Enterprise, while API responses and server code use apiPlan keys viewer, member, and enterprise.',
+					`All callers share a hard per-request page-size ceiling of ${MAX_CATALOG_PAGE_LIMIT}, even when a paid plan removes the lower viewer-tier row cap.`,
 					'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset are only emitted for API-key responses.',
 					'429 responses also include Retry-After.',
 					'Anonymous and session-based catalog requests are not counted against an API-key quota and therefore do not receive those headers.'
@@ -1384,7 +1410,7 @@ const docsPages: DocsPage[] = [
 				title: 'Edge cases worth knowing',
 				bullets: [
 					'For external catalog access, prefer /v1/catalog. Use an API key for machine-to-machine access or authenticate the CLI with purvey auth login.',
-					'Anonymous /v1/catalog calls are intentionally constrained: first page only, max 15 rows, default stocked_date desc sort, and only country / processing / name filters.',
+					'Anonymous /v1/catalog calls use the same public query surface as other public callers. If page is supplied without limit, the route falls back to 15 rows; if both page and limit are omitted, the canonical listing response defaults to 100 rows.',
 					'GET /api/beans with no session and no valid share token returns an empty data array, not a 401. Do not mistake that behavior for public inventory access.',
 					'Catalog rate-limit headers only exist on API-key requests. Anonymous and session requests to /v1/catalog do not emit X-RateLimit-* headers.',
 					'An invalid Authorization header on the public catalog can turn what looks like an anonymous request into a 401 because the route detects an auth attempt that failed.',

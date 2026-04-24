@@ -24,21 +24,21 @@ _Purpose: Navigation hub for the repo-local blog system: ideas bank, source map,
 
 ## Published posts
 
-| Slug | Pillar | PR |
-|------|--------|----|
-| `what-is-purveyors` | supply-chain | #13 |
-| `building-a-coffee-data-pipeline` | coffee-data-pipeline | #18 |
-| `two-weeks-with-ai-co-developer` | agentic-stack | #30 |
-| `ai-moats-arent-software` | ai-first-product | #40/#41 |
-| `llm-fair-use-data-extraction` | coffee-data-pipeline | #43/#45 |
-| `benchmark-leaders-agentic-laggards` | agentic-stack | #47/#48 |
-| `beyond-the-coffee-belt` | supply-chain | #63/#64 |
-| `inference-is-in-the-name` | agentic-stack | #66/#67 |
-| `who-profits-when-coffee-data-stays-scarce` | market-intelligence | #87 |
-| `why-does-enterprise-ai-cost-more` | agentic-stack | — |
-| `building-product-philosophy-into-codebase` | agentic-stack | #174 |
-| `sycophancy-is-the-last-hard-problem` | agentic-stack | #173 |
-| `enterprise-second-brains-are-not-knowledge-bases` | agentic-stack | #226/#227 |
+| Slug                                               | Pillar               | PR        |
+| -------------------------------------------------- | -------------------- | --------- |
+| `what-is-purveyors`                                | supply-chain         | #13       |
+| `building-a-coffee-data-pipeline`                  | coffee-data-pipeline | #18       |
+| `two-weeks-with-ai-co-developer`                   | agentic-stack        | #30       |
+| `ai-moats-arent-software`                          | ai-first-product     | #40/#41   |
+| `llm-fair-use-data-extraction`                     | coffee-data-pipeline | #43/#45   |
+| `benchmark-leaders-agentic-laggards`               | agentic-stack        | #47/#48   |
+| `beyond-the-coffee-belt`                           | supply-chain         | #63/#64   |
+| `inference-is-in-the-name`                         | agentic-stack        | #66/#67   |
+| `who-profits-when-coffee-data-stays-scarce`        | market-intelligence  | #87       |
+| `why-does-enterprise-ai-cost-more`                 | agentic-stack        | —         |
+| `building-product-philosophy-into-codebase`        | agentic-stack        | #174      |
+| `sycophancy-is-the-last-hard-problem`              | agentic-stack        | #173      |
+| `enterprise-second-brains-are-not-knowledge-bases` | agentic-stack        | #226/#227 |
 
 ## Priority gaps
 

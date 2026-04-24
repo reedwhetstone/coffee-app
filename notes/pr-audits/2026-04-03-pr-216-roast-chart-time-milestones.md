@@ -37,8 +37,8 @@ None.
 - **Correction:** Either use `profile.temperature_unit ?? 'F'` to display the correct unit, or follow the pattern in `RoastProfilesBlock.svelte` which uses `formatTemp()` returning just `${Math.round(temp)}°` (unit-agnostic). The simpler fix is to drop the "F":
   ```typescript
   function formatMilestoneTemp(temp: number | null): string {
-      if (temp == null) return '';
-      return `@ ${Math.round(temp)}°`;
+  	if (temp == null) return '';
+  	return `@ ${Math.round(temp)}°`;
   }
   ```
   Or, for full correctness, pass `temperature_unit` into the function.
@@ -48,7 +48,7 @@ None.
 **P2-1: `tp_time_display` missing from formatted tool output and system prompt**
 
 - **Evidence:** `src/lib/services/tools.ts` maps `total_roast_time`, `fc_start_time`, `fc_end_time`, `drop_time`, and `charge_time` to `_display` fields. But `tp_time` (turning point time) exists in the database schema (`database.types.ts` line 449) and is rendered in the new milestones UI. The system prompt's ROAST DATA UNITS section in `+server.ts` also omits `tp_time` from its list.
-- **Impact:** If the LLM discusses turning point timing, it will receive raw seconds for `tp_time` without a `_display` companion, creating inconsistency with the other timing fields. The LLM *might* still format it correctly using the general system prompt instruction, but the asymmetry is a latent source of incorrect output.
+- **Impact:** If the LLM discusses turning point timing, it will receive raw seconds for `tp_time` without a `_display` companion, creating inconsistency with the other timing fields. The LLM _might_ still format it correctly using the general system prompt instruction, but the asymmetry is a latent source of incorrect output.
 - **Correction:** Add `tp_time_display: formatSecondsToTime(p.tp_time ?? null)` to the mapping in `tools.ts`, and add `tp_time` to the ROAST DATA UNITS list in `+server.ts`.
 
 **P2-2: Duplicated time formatting logic across three files**
@@ -62,9 +62,9 @@ None.
 - **Correction:** Extract a shared utility to `src/lib/utils/time.ts`:
   ```typescript
   export function formatSecondsToMinSec(seconds: number): string {
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.round(seconds % 60);
-      return `${mins}:${String(secs).padStart(2, '0')}`;
+  	const mins = Math.floor(seconds / 60);
+  	const secs = Math.round(seconds % 60);
+  	return `${mins}:${String(secs).padStart(2, '0')}`;
   }
   ```
   Each consumer wraps it with its own null handling. Can be done in follow-up.
@@ -85,13 +85,13 @@ None.
 
 ## Assumptions Review
 
-| Assumption | Validity | Why | Action |
-|---|---|---|---|
-| Control series values max at ~100 (Artisan range) | **Valid** | Artisan .alog heat/fan values range 0-100. Ceiling snapping to 50/100/ceil(n/50)*50 covers all practical ranges | None |
-| All time fields on roast_profiles are in seconds | **Valid** | Confirmed by database schema, .alog parsing code, and existing `formatTime()` usages in RoastProfilesBlock | None |
-| Temperatures are in °F | **Weak** | Database has `temperature_unit` field that can be 'F' or 'C'. Most users use °F but Celsius is valid | Fix P1-1 |
-| LLM will respect `_display` field guidance | **Valid** | System prompt is explicit and provides example. Standard AI SDK pattern | None |
-| TP/FC/Drop fields are populated for most roast profiles | **Weak** | These come from .alog milestone extraction. Manual roast entries may have nulls. The UI handles this with em-dash fallback, so functional behavior is correct | None (graceful degradation works) |
+| Assumption                                              | Validity  | Why                                                                                                                                                           | Action                            |
+| ------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Control series values max at ~100 (Artisan range)       | **Valid** | Artisan .alog heat/fan values range 0-100. Ceiling snapping to 50/100/ceil(n/50)\*50 covers all practical ranges                                              | None                              |
+| All time fields on roast_profiles are in seconds        | **Valid** | Confirmed by database schema, .alog parsing code, and existing `formatTime()` usages in RoastProfilesBlock                                                    | None                              |
+| Temperatures are in °F                                  | **Weak**  | Database has `temperature_unit` field that can be 'F' or 'C'. Most users use °F but Celsius is valid                                                          | Fix P1-1                          |
+| LLM will respect `_display` field guidance              | **Valid** | System prompt is explicit and provides example. Standard AI SDK pattern                                                                                       | None                              |
+| TP/FC/Drop fields are populated for most roast profiles | **Weak**  | These come from .alog milestone extraction. Manual roast entries may have nulls. The UI handles this with em-dash fallback, so functional behavior is correct | None (graceful degradation works) |
 
 ## Tech Debt Notes
 
@@ -124,20 +124,25 @@ None.
 ### P1-1 Fix (RoastProfileDisplay.svelte)
 
 Replace:
+
 ```typescript
 function formatMilestoneTemp(temp: number | null): string {
-    if (temp == null) return '';
-    return `@ ${Math.round(temp)}°F`;
+	if (temp == null) return '';
+	return `@ ${Math.round(temp)}°F`;
 }
 ```
+
 With:
+
 ```typescript
 function formatMilestoneTemp(temp: number | null, unit?: string | null): string {
-    if (temp == null) return '';
-    return `@ ${Math.round(temp)}°${unit ?? 'F'}`;
+	if (temp == null) return '';
+	return `@ ${Math.round(temp)}°${unit ?? 'F'}`;
 }
 ```
+
 And update all callsites to pass `profile.temperature_unit`:
+
 ```svelte
 {formatMilestoneTemp(profile.tp_temp ?? null, profile.temperature_unit)}
 ```
@@ -145,11 +150,13 @@ And update all callsites to pass `profile.temperature_unit`:
 ### P2-1 Fix (tools.ts + +server.ts)
 
 In `tools.ts`, add to the `formattedProfiles` mapping:
+
 ```typescript
 tp_time_display: formatSecondsToTime(p.tp_time ?? null),
 ```
 
 In `+server.ts`, update the ROAST DATA UNITS block:
+
 ```
 All roast timing fields (total_roast_time, fc_start_time, fc_end_time, drop_time, charge_time, tp_time) are in SECONDS, not minutes.
 ```

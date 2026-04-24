@@ -48,7 +48,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			billingDuration: 'P1M',
 			description:
 				'Self-serve plan for production integrations, sync jobs, and recurring customer use',
-			features: ['10,000 requests per month', 'Unlimited rows per call', 'Usage visibility'],
+			features: ['10,000 requests per month', 'Up to 1000 rows per request', 'Usage visibility'],
 			popular: true
 		},
 		{
@@ -59,7 +59,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			description: 'Contact-sales plan for larger deployments, custom volume, and premium support',
 			features: [
 				'Unlimited requests',
-				'Unlimited rows per call',
+				'Up to 1000 rows per request',
 				'Custom support and commercial terms'
 			],
 			popular: false

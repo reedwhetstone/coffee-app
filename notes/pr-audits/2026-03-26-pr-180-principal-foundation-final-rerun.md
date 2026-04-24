@@ -39,12 +39,14 @@
 ## Checklist Coverage
 
 ### 1) Intent Coverage
+
 - Does implementation fully satisfy the stated PR intent? `CONCERN`
 - Are acceptance criteria covered, not partially interpreted? `CONCERN`
 - Any intent drift between description and code? `PASS`
 - Any features implied by intent but missing in implementation? `CONCERN`
 
 ### 2) Correctness
+
 - Logic correctness across happy path and edge cases: `CONCERN`
 - Error handling completeness and failure mode behavior: `PASS`
 - Input validation and type safety: `PASS`
@@ -52,12 +54,14 @@
 - Time/date/locale assumptions: `PASS`
 
 ### 3) Codebase Alignment
+
 - Consistent with existing architecture and patterns: `CONCERN`
 - Reuses existing abstractions where appropriate: `PASS`
 - Avoids duplicating existing utilities/business logic: `PASS`
 - Naming, file placement, and module boundaries match project conventions: `PASS`
 
 ### 4) Risk and Regressions
+
 - Backward compatibility impact: `CONCERN`
 - Side effects on adjacent systems or consumers: `CONCERN`
 - Race conditions, ordering issues, idempotency risks: `PASS`
@@ -65,6 +69,7 @@
 - Monitoring/observability impact: `PASS`
 
 ### 5) Security and Data Safety
+
 - Authz/authn boundaries preserved: `PASS`
 - Sensitive data handling unchanged or improved: `PASS`
 - Injection, path traversal, unsafe eval/exec vectors introduced?: `PASS`
@@ -72,30 +77,35 @@
 - Secrets handling and logging hygiene: `PASS`
 
 ### 6) Test and Verification Quality
+
 - Tests cover changed behavior and key edge cases: `CONCERN`
 - Existing tests updated where behavior changed: `PASS`
 - Missing tests for discovered high-risk paths: `CONCERN`
 - Assertions meaningful vs shallow snapshot checks: `PASS`
 
 ### 7) Tech Debt and Maintainability
+
 - New debt introduced: `CONCERN`
 - Existing debt worsened by this change: `CONCERN`
 - Refactor opportunities that should be done now vs deferred: `CONCERN`
 - Clarity/readability for future maintainers: `PASS`
 
 ### 8) Product and UX Alignment
+
 - Behavior matches product intent, not just technical completion: `CONCERN`
 - User-visible outcomes and copy are coherent: `PASS`
 - Failure UX acceptable and actionable: `PASS`
 - Metrics/events support product decision-making where needed: `N/A`
 
 ### 9) Assumptions Audit
+
 - List assumptions made by implementation: covered below
 - Mark each assumption as valid/weak/invalid: covered below
 - Identify assumptions that conflict with current codebase reality: covered below
 - Identify hidden assumptions not documented in PR: covered below
 
 ### 10) Final Verdict
+
 - Merge readiness: `Ready with fixes`
 - Highest severity issue level found: `P2`
 - Minimal fix set required before merge: covered below
@@ -113,6 +123,7 @@ None.
 ### P2 (important improvements)
 
 #### 1) Page/layout auth state is still only partially normalized, so bearer-backed requests can satisfy page role guards while page data remains cookie-null
+
 - **Evidence:**
   - `src/hooks.server.ts:93-107` now treats the resolved principal as authoritative and derives `event.locals.session/user/role` from it.
   - `src/hooks.server.ts:127-145` still runs page-route protection with `session` from `safeGetSession()` but role checks from `event.locals.role`.
@@ -129,6 +140,7 @@ None.
   - Add at least one integration test that hits a protected page with a bearer session and asserts the intended behavior.
 
 #### 2) Test coverage is much better, but it still does not exercise the hook/authGuard integration where the remaining ambiguity lives
+
 - **Evidence:**
   - `src/lib/server/auth.test.ts:163-279` covers the previously missing auth defects: fail-closed API keys, authoritative invalid `Authorization`, admin mutation trust, and `requireAuth()` mutation trust.
   - `src/lib/server/principal.test.ts:30-222` covers helper normalization and `getLegacyAuthState()` behavior.
@@ -152,11 +164,13 @@ None.
 ## Assumptions Review
 
 - Assumption: deriving `event.locals.session/user/role` from the resolved principal is enough to make auth state coherent across the app.
+
   - Validity: Weak
   - Why: Many page and layout loaders still read `locals.safeGetSession()`, which is cookie-session only. So the hook-local view and the load-data view can still diverge for bearer-backed requests.
   - Recommended action: define whether principal normalization applies only to APIs or to all server surfaces, then align helpers accordingly.
 
 - Assumption: protected page routes should accept any request with a member-capable normalized role, even if there is no cookie session.
+
   - Validity: Weak
   - Why: `authGuard` uses `event.locals.role` for page protection, but several page loaders still depend on cookie-only session state. That creates behavior that is technically allowed by the guard but not fully supported by downstream loads.
   - Recommended action: either require cookie session for page protection or normalize page loaders too.

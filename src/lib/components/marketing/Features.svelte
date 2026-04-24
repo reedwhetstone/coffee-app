@@ -105,8 +105,8 @@
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
 							Normalized green coffee data from 41+ suppliers through one REST API. Daily updates,
-							consistent schema. Skip rebuilding the catalog yourself and connect it directly to your
-							internal tools, dashboards, or buying automations.
+							consistent schema. Skip rebuilding the catalog yourself and connect it directly to
+							your internal tools, dashboards, or buying automations.
 						</p>
 					</dd>
 				</div>
@@ -173,8 +173,9 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Origin price distributions with IQR and standard deviation updated daily. Identify lots
-							priced below the median for their origin and process, and act before the window closes.
+							Origin price distributions with IQR and standard deviation updated daily. Identify
+							lots priced below the median for their origin and process, and act before the window
+							closes.
 						</p>
 					</dd>
 				</div>
@@ -205,8 +206,8 @@
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
 							Origin-level coverage showing how many lots are active, which importers hold them, and
-							how supply has shifted over time. Build procurement strategy around actual market depth,
-							not guesswork.
+							how supply has shifted over time. Build procurement strategy around actual market
+							depth, not guesswork.
 						</p>
 					</dd>
 				</div>
