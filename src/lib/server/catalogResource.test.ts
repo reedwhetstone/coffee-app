@@ -365,6 +365,52 @@ describe('buildCanonicalCatalogResponse', () => {
 		});
 	});
 
+	it('coerces missing process projection columns to null when resource queries fall back to full rows', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalog.mockResolvedValue({
+			data: [
+				{
+					...sampleCatalogItem,
+					processing_base_method: undefined,
+					fermentation_type: undefined,
+					process_additives: undefined,
+					process_additive_detail: undefined,
+					fermentation_duration_hours: undefined,
+					drying_method: undefined,
+					processing_notes: undefined,
+					processing_disclosure_level: undefined,
+					processing_confidence: undefined,
+					processing_evidence: undefined,
+					processing_evidence_available: false
+				}
+			],
+			count: 1,
+			filtersApplied: {}
+		});
+
+		const response = await buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog'));
+		const body = await response.json();
+
+		expect(body.data[0].process).toEqual({
+			base_method: null,
+			fermentation_type: null,
+			additives: null,
+			additive_detail: null,
+			fermentation_duration_hours: null,
+			drying_method: null,
+			notes: null,
+			disclosure_level: null,
+			confidence: null,
+			evidence_available: false
+		});
+	});
+
 	it('preserves explicit anonymous pagination limits up to the shared max page size', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,

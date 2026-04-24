@@ -141,6 +141,19 @@ const DROPDOWN_COLUMNS =
 const CATALOG_RESOURCE_COLUMNS: string =
 	'id, name, score_value, arrival_date, region, processing, processing_base_method, fermentation_type, process_additives, process_additive_detail, fermentation_duration_hours, processing_notes, processing_disclosure_level, processing_confidence, processing_evidence_available, drying_method, roast_recs, lot_size, bag_size, packaging, cultivar_detail, grade, appearance, description_short, farm_notes, type, description_long, link, cost_lb, price_per_lb, price_tiers, last_updated, source, stocked, cupping_notes, unstocked_date, stocked_date, ai_description, ai_tasting_notes, public_coffee, country, continent, wholesale';
 
+const RESOURCE_MISSING_COLUMN_HINTS = [
+	'processing_base_method',
+	'fermentation_type',
+	'process_additives',
+	'process_additive_detail',
+	'fermentation_duration_hours',
+	'processing_notes',
+	'processing_disclosure_level',
+	'processing_confidence',
+	'processing_evidence_available',
+	'drying_method'
+] as const;
+
 const DISCLOSED_ADDITIVE_VALUES = [
 	'fruit',
 	'yeast',
@@ -152,12 +165,17 @@ const DISCLOSED_ADDITIVE_VALUES = [
 	'other'
 ] as const;
 
-function isMissingColumnError(error: unknown): boolean {
+function isMissingColumnError(error: unknown, columnHints: readonly string[] = []): boolean {
+	if (typeof error !== 'object' || error === null) return false;
+
+	const { code, message } = error as { code?: unknown; message?: unknown };
+	const normalizedMessage = typeof message === 'string' ? message.toLowerCase() : '';
+
 	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'code' in error &&
-		(error as { code?: unknown }).code === '42703'
+		code === '42703' ||
+		code === 'PGRST200' ||
+		normalizedMessage.includes('does not exist') ||
+		columnHints.some((column) => normalizedMessage.includes(column.toLowerCase()))
 	);
 }
 
@@ -348,7 +366,7 @@ export async function searchCatalog(
 
 	const { data, error, count } = await query;
 	if (error) {
-		if (fields === 'resource' && isMissingColumnError(error)) {
+		if (fields === 'resource' && isMissingColumnError(error, RESOURCE_MISSING_COLUMN_HINTS)) {
 			// The resource projection references processing-transparency columns added by
 			// this PR. Preview/test databases can lag the migration; fall back to the
 			// legacy full-row query so existing catalog endpoints keep serving data until
@@ -582,6 +600,16 @@ export async function getCatalogItemsByIds(
 const FILTER_METADATA_COLUMNS =
 	'source, continent, country, processing, processing_base_method, fermentation_type, process_additives, processing_disclosure_level, cultivar_detail, type, grade, appearance, arrival_date' as const;
 
+const FILTER_METADATA_FALLBACK_COLUMNS =
+	'source, continent, country, processing, cultivar_detail, type, grade, appearance, arrival_date' as const;
+
+const FILTER_METADATA_MISSING_COLUMN_HINTS = [
+	'processing_base_method',
+	'fermentation_type',
+	'process_additives',
+	'processing_disclosure_level'
+] as const;
+
 /** Row shape returned by the narrow filter-metadata query. */
 export type CatalogFilterMetadataRow = {
 	source: string | null;
@@ -615,20 +643,62 @@ export async function getCatalogFilterMetadata(
 ): Promise<CatalogFilterMetadataRow[]> {
 	const { stockedOnly, publicOnly, showWholesale, wholesaleOnly } = options;
 
-	let query = supabase
-		.from('coffee_catalog')
-		.select(FILTER_METADATA_COLUMNS)
-		.order('arrival_date', { ascending: false });
+	const applyVisibilityFilters = <T extends { eq(column: string, value: unknown): T }>(
+		query: T
+	): T => {
+		let filteredQuery = query;
+		if (stockedOnly) filteredQuery = filteredQuery.eq('stocked', true);
+		if (publicOnly) filteredQuery = filteredQuery.eq('public_coffee', true);
+		if (wholesaleOnly) {
+			filteredQuery = filteredQuery.eq('wholesale', true);
+		} else if (showWholesale === false) {
+			filteredQuery = filteredQuery.eq('wholesale', false);
+		}
+		return filteredQuery;
+	};
 
-	if (stockedOnly) query = query.eq('stocked', true);
-	if (publicOnly) query = query.eq('public_coffee', true);
-	if (wholesaleOnly) {
-		query = query.eq('wholesale', true);
-	} else if (showWholesale === false) {
-		query = query.eq('wholesale', false);
-	}
+	const query = applyVisibilityFilters(
+		supabase
+			.from('coffee_catalog')
+			.select(FILTER_METADATA_COLUMNS)
+			.order('arrival_date', { ascending: false })
+	);
 
 	const { data, error } = await query;
-	if (error) throw error;
+	if (error) {
+		if (!isMissingColumnError(error, FILTER_METADATA_MISSING_COLUMN_HINTS)) throw error;
+
+		const fallbackQuery = applyVisibilityFilters(
+			supabase
+				.from('coffee_catalog')
+				.select(FILTER_METADATA_FALLBACK_COLUMNS)
+				.order('arrival_date', { ascending: false })
+		);
+		const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+		if (fallbackError) throw fallbackError;
+
+		return (
+			(fallbackData as Array<
+				Pick<
+					CatalogFilterMetadataRow,
+					| 'source'
+					| 'continent'
+					| 'country'
+					| 'processing'
+					| 'cultivar_detail'
+					| 'type'
+					| 'grade'
+					| 'appearance'
+					| 'arrival_date'
+				>
+			>) || []
+		).map((row) => ({
+			...row,
+			processing_base_method: null,
+			fermentation_type: null,
+			process_additives: null,
+			processing_disclosure_level: null
+		}));
+	}
 	return (data as CatalogFilterMetadataRow[]) || [];
 }

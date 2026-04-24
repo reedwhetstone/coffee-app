@@ -308,15 +308,15 @@ function toCatalogResourceItem(item: CatalogResourceQueryItem): CatalogResourceI
 	return {
 		...resourceItem,
 		process: {
-			base_method: item.processing_base_method,
-			fermentation_type: item.fermentation_type,
-			additives: item.process_additives,
-			additive_detail: item.process_additive_detail,
-			fermentation_duration_hours: item.fermentation_duration_hours,
-			drying_method: item.drying_method,
-			notes: item.processing_notes,
-			disclosure_level: item.processing_disclosure_level,
-			confidence: item.processing_confidence,
+			base_method: item.processing_base_method ?? null,
+			fermentation_type: item.fermentation_type ?? null,
+			additives: item.process_additives ?? null,
+			additive_detail: item.process_additive_detail ?? null,
+			fermentation_duration_hours: item.fermentation_duration_hours ?? null,
+			drying_method: item.drying_method ?? null,
+			notes: item.processing_notes ?? null,
+			disclosure_level: item.processing_disclosure_level ?? null,
+			confidence: item.processing_confidence ?? null,
 			evidence_available: evidenceAvailable
 		}
 	};
