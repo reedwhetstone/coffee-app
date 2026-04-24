@@ -5,8 +5,9 @@ function createSupabaseMock() {
 	const result = {
 		data: [],
 		count: 0,
-		error: null
+		error: null as unknown
 	};
+	const results: Array<typeof result> = [];
 
 	const state = {
 		selectCalls: [] as Array<[string, unknown?]>,
@@ -80,14 +81,18 @@ function createSupabaseMock() {
 		then: (
 			onFulfilled?: (value: typeof result) => unknown,
 			onRejected?: (reason: unknown) => unknown
-		) => Promise.resolve(result).then(onFulfilled, onRejected)
+		) => Promise.resolve(results.shift() ?? result).then(onFulfilled, onRejected)
 	};
 
 	const supabase = {
 		from: vi.fn(() => builder)
 	};
 
-	return { supabase, state };
+	return {
+		supabase,
+		state,
+		queueResult: (next: typeof result) => results.push(next)
+	};
 }
 
 describe('searchCatalog stocked date filters', () => {
@@ -110,6 +115,22 @@ describe('searchCatalog stocked date filters', () => {
 		);
 		expect(columns).not.toBe('*');
 		expect(columns).not.toMatch(/(^|, )processing_evidence(,|$)/);
+	});
+
+	it('falls back to the full projection when the resource projection is ahead of the database schema', async () => {
+		const { supabase, state, queueResult } = createSupabaseMock();
+
+		// Simulate a preview/test database that has not run the processing transparency
+		// migration yet. The first resource projection should not make catalog reads fail.
+		queueResult({ data: [], count: 0, error: { code: '42703' } });
+		queueResult({ data: [], count: 0, error: null });
+
+		await searchCatalog(supabase as never, { fields: 'resource' });
+
+		expect(state.selectCalls.at(-2)?.[0]).toContain(
+			'processing_evidence_schema_version:processing_evidence->>schema_version'
+		);
+		expect(state.selectCalls.at(-1)).toEqual(['*', undefined]);
 	});
 
 	it('keeps relative stockedDays filtering behind stockedDays', async () => {

@@ -152,6 +152,15 @@ const DISCLOSED_ADDITIVE_VALUES = [
 	'other'
 ] as const;
 
+function isMissingColumnError(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		(error as { code?: unknown }).code === '42703'
+	);
+}
+
 // ── Core functions ────────────────────────────────────────────────────────────
 
 /**
@@ -338,7 +347,16 @@ export async function searchCatalog(
 	}
 
 	const { data, error, count } = await query;
-	if (error) throw error;
+	if (error) {
+		if (fields === 'resource' && isMissingColumnError(error)) {
+			// The resource projection references processing-transparency columns added by
+			// this PR. Preview/test databases can lag the migration; fall back to the
+			// legacy full-row query so existing catalog endpoints keep serving data until
+			// the schema is applied.
+			return searchCatalog(supabase, { ...options, fields: 'full' });
+		}
+		throw error;
+	}
 
 	const filtersApplied: Record<string, unknown> = {};
 	if (origin) filtersApplied.origin = origin;
