@@ -1,0 +1,102 @@
+<!-- Archived from closed PR #118 on 2026-04-24. Not published and not part of src/content/blog.
+Reason: concept is not current priority and still felt half-baked after red-team pass. Preserve as source material only. -->
+
+---
+title: "Why Does the Same Coffee Cost $20/lb and $6.58/lb?"
+date: "2026-03-18"
+description: "The green coffee industry sorts pricing into wholesale and retail. The data shows a continuous nonlinear curve. That binary label hides useful information from buyers and distorts how comparison tools present the market."
+tags: ["coffee", "market-intelligence", "pricing", "supply-chain"]
+pillar: "market-intelligence"
+draft: false
+readingTime: 4
+---
+
+One supplier in our catalog sells the same single-origin green coffee at three prices: **$10.00/lb at 5 pounds**, **$6.94/lb at 25 pounds**, and **$6.58/lb at 100 pounds**.
+
+Same coffee. Same seller. A 34% spread.
+
+Another tiered listing shows the more dramatic version buyers recognize immediately: **$20/lb at 1 pound** and **$10/lb at 25 pounds**. The exact numbers change by supplier, but the structure does not. Green coffee pricing is not a number. It is a curve.
+
+The industry still talks as if it is a switch: retail or wholesale.
+
+That switch is useful for operations. It is bad for comparison.
+
+## The 5-Pound Line
+
+In our pipeline, the classification rule is intentionally simple:
+
+```
+return tiers[0].min_lbs > 5;
+```
+
+If the smallest purchasable tier is over 5 pounds, the product is wholesale. Five pounds or under, it is retail.
+
+That threshold approximates a real boundary. Home roasters often buy 1 to 5 pounds. Commercial buyers usually buy more. Shipping 2 pounds in a box is not the same business as moving 100 pounds of green coffee.
+
+But the edge cases show the weakness. A supplier with a 5-pound minimum is retail. A supplier with a 6-pound minimum is wholesale. The buyer experience is almost identical. The label flips anyway.
+
+That matters because labels become product behavior. Purveyors has a `showWholesale` filter. Many coffee sellers split their customer experience the same way: home-roaster storefront over here, commercial/importer catalog over there. The industry treats a continuous price schedule as two different markets.
+
+Sometimes that is operationally honest. Often it hides the better comparison.
+
+## What the Binary Deletes
+
+When you collapse a curve into a boolean, three useful things disappear.
+
+**Curve shape.** Some suppliers reward volume aggressively. Others barely move. A wholesale badge cannot tell you whether 25 pounds earns a real discount or a token one.
+
+**Crossover points.** Supplier A might be cheapest at 5 pounds. Supplier B might win at 25. Supplier C might only make sense at 100. If those products live behind different filters, the buyer never sees the actual answer to: what is cheapest at my quantity?
+
+**Minimum-order signal.** A 10-pound minimum is not just a price. It tells you something about packaging, logistics, and who the seller is built to serve. Flattening that into `wholesale = true` strips out the operational context.
+
+This is not a new economics problem. Robert Wilson's work on [nonlinear pricing](https://www.gsb.stanford.edu/faculty-research/books/nonlinear-pricing) defines pricing as nonlinear when it is not strictly proportional to quantity. Arthur Pigou's [second-degree price discrimination](https://en.wikipedia.org/wiki/Price_discrimination) describes the same mechanism from another angle: price varies by quantity purchased, not by who the buyer is.
+
+Coffee already behaves this way. The software just keeps pretending it does not.
+
+## Normalization Is the Real Product
+
+Unit conversion is table stakes. DataWeave's pricing-intelligence work makes the basic point well: without unit-of-measure normalization, comparison is garbage.
+
+Green coffee needs a harder version of that normalization. The buyer does not need "retail" and "wholesale" as first-class answers. They need price at the quantity they actually buy.
+
+A buyer purchasing 25 pounds should see every supplier ranked at 25 pounds. Not retail suppliers on one page, wholesale suppliers on another. Not the lowest visible tier. Not the default display price. The actual cost at 25 pounds.
+
+That would make the hidden crossover points visible:
+
+- Supplier A wins below 10 pounds
+- Supplier B wins from 10 to 50
+- Supplier C wins above 50
+
+That is the useful market map. The binary is a blurry thumbnail.
+
+The [SCA/Emory Specialty Coffee Transaction Guide](https://www.transactionguide.coffee/reports/specialty-coffee-retail-price-index-2024-q4) tracks roasted specialty coffee retail prices in a broad range. Green coffee volume pricing adds another layer underneath. If sourcing software cannot represent that layer cleanly, it will keep over-explaining the label and under-explaining the economics.
+
+## Why the Binary Survives
+
+Three reasons.
+
+**Logistics are real.** Suppliers need a fast way to separate small-order and commercial-order workflows. The binary is not stupid. It compresses a real cost structure.
+
+**Opacity is convenient.** A buyer paying $10/lb at 5 pounds may not want 100 pounds at $6.58. But they might want 25 pounds at $6.94 if the comparison were obvious. The category boundary keeps that tradeoff quiet.
+
+**Tooling calcifies.** Once a marketplace ships a wholesale toggle, the category spreads through filters, APIs, cards, badges, and query defaults. The label stops being a convenience and becomes infrastructure.
+
+That is the real risk. Bad abstractions do not just describe the market. They teach buyers how to look at it.
+
+## Build for the Curve
+
+The right primitive is not "retail or wholesale."
+
+It is **price at quantity X**.
+
+That is why `price_tiers` should be a first-class data type, not a footnote next to `cost_lb`. A tier array like `{min_lbs, price}` preserves the curve. A helper like `getPriceAtQuantity(tiers, lbs)` turns the curve into a buyer answer.
+
+The practical product move is simple: replace the wholesale-first mental model with a volume slider. Let buyers enter 5, 25, 50, or 100 pounds and rank the market by their real cost.
+
+The wholesale badge can still exist. It just should not be the main truth.
+
+Boolean classifications on continuous spectra destroy information. They force a threshold, hide who chose it, and make the missing data feel natural.
+
+In green coffee, that threshold is five pounds.
+
+Everything downstream flows from it, including what the buyer never sees.

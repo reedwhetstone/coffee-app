@@ -55,7 +55,10 @@ Published outline files: `brain/blog/outlines/published/`
 - [[blog/outlines/null-means-two-things]] — Null semantics in pipelines
 - [[blog/outlines/api-calls-wrong-unit-data-pricing]] — API pricing as unit data problem
 - [[blog/outlines/api-docs-new-landing-page]] — Docs as primary product surface
-- [[blog/outlines/why-same-coffee-costs-20-and-6]] — Wholesale as a data classification problem
+
+## Archived / Parked Drafts
+
+- [[blog/outlines/archive/why-same-coffee-costs-20-and-6]]: Closed PR #118; useful pricing-curve source material, but not a current publishing priority
 
 ## Ideas Feeding This Cluster
 
@@ -73,7 +76,7 @@ Published outline files: `brain/blog/outlines/published/`
 | supply-chain         | 2         | 1       |
 | coffee-data-pipeline | 2         | 2       |
 | ai-first-product     | 1         | 2       |
-| market-intelligence  | 1         | 1       |
+| market-intelligence  | 1         | 0       |
 | api-architecture     | 0         | 4       |
 
-**Underrepresented:** api-architecture (0 published) and ai-first-product (1 published) — both have strong outlined material ready to ship.
+**Underrepresented:** api-architecture (0 published) and ai-first-product (1 published) have the strongest outlined material ready to ship. Market-intelligence remains underrepresented too, but the PR #118 pricing-curve draft is parked until the concept better matches current priorities.
