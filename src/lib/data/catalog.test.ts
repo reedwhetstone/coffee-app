@@ -15,6 +15,8 @@ function createSupabaseMock() {
 		eqCalls: [] as Array<[string, unknown]>,
 		ilikeCalls: [] as Array<[string, string]>,
 		inCalls: [] as Array<[string, unknown[]]>,
+		containsCalls: [] as Array<[string, unknown[]]>,
+		overlapsCalls: [] as Array<[string, unknown[]]>,
 		orCalls: [] as string[],
 		orderCalls: [] as Array<[string, { ascending: boolean }]>,
 		rangeCalls: [] as Array<[number, number]>,
@@ -44,6 +46,14 @@ function createSupabaseMock() {
 		}),
 		in: vi.fn((column: string, value: unknown[]) => {
 			state.inCalls.push([column, value]);
+			return builder;
+		}),
+		contains: vi.fn((column: string, value: unknown[]) => {
+			state.containsCalls.push([column, value]);
+			return builder;
+		}),
+		overlaps: vi.fn((column: string, value: unknown[]) => {
+			state.overlapsCalls.push([column, value]);
 			return builder;
 		}),
 		or: vi.fn((value: string) => {
@@ -93,6 +103,52 @@ describe('searchCatalog stocked date filters', () => {
 		cutoff.setDate(cutoff.getDate() - 30);
 
 		expect(state.gteCalls).toEqual([['stocked_date', cutoff.toISOString().split('T')[0]]]);
+	});
+});
+
+describe('searchCatalog processing transparency filters', () => {
+	it('applies structured process filters without replacing legacy processing search', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await searchCatalog(supabase as never, {
+			processing: 'Anaerobic',
+			processingBaseMethod: 'Natural',
+			fermentationType: 'Anaerobic',
+			processAdditive: 'hops',
+			processingDisclosureLevel: 'high_detail',
+			processingConfidenceMin: 0.8
+		});
+
+		expect(state.ilikeCalls).toContainEqual(['processing', '%Anaerobic%']);
+		expect(state.eqCalls).toEqual([
+			['processing_base_method', 'Natural'],
+			['fermentation_type', 'Anaerobic'],
+			['processing_disclosure_level', 'high_detail']
+		]);
+		expect(state.containsCalls).toEqual([['process_additives', ['hops']]]);
+		expect(state.gteCalls).toEqual([['processing_confidence', 0.8]]);
+	});
+
+	it('treats hasAdditives=false as explicit none, not unknown metadata', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await searchCatalog(supabase as never, { hasAdditives: false });
+
+		expect(state.containsCalls).toEqual([['process_additives', ['none']]]);
+		expect(state.overlapsCalls).toEqual([]);
+	});
+
+	it('filters hasAdditives=true to disclosed additive values', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await searchCatalog(supabase as never, { hasAdditives: true });
+
+		expect(state.overlapsCalls).toEqual([
+			[
+				'process_additives',
+				['fruit', 'yeast', 'hops', 'spice', 'botanical', 'mossto', 'starter-culture', 'other']
+			]
+		]);
 	});
 });
 

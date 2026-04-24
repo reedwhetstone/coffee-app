@@ -26,7 +26,22 @@ import { createAdminClient } from '$lib/supabase-admin';
 import type { UserRole } from '$lib/types/auth.types';
 import { DEFAULT_CATALOG_LISTING_LIMIT, MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 
-export type CatalogResourceItem = Omit<CatalogItem, 'coffee_user'>;
+export interface CatalogProcessSummary {
+	base_method: string | null;
+	fermentation_type: string | null;
+	additives: string[] | null;
+	additive_detail: string | null;
+	fermentation_duration_hours: number | null;
+	drying_method: string | null;
+	notes: string | null;
+	disclosure_level: string | null;
+	confidence: number | null;
+	evidence_available: boolean;
+}
+
+export type CatalogResourceItem = Omit<CatalogItem, 'coffee_user' | 'processing_evidence'> & {
+	process: CatalogProcessSummary;
+};
 export type CatalogResponseItem = CatalogResourceItem | CatalogDropdownItem;
 export type CatalogAuthKind = 'anonymous' | 'session' | 'api-key';
 
@@ -84,6 +99,12 @@ interface ParsedCatalogQuery {
 		country?: string | string[];
 		source?: string[];
 		processing?: string;
+		processingBaseMethod?: string;
+		fermentationType?: string;
+		processAdditive?: string;
+		hasAdditives?: boolean;
+		processingDisclosureLevel?: string;
+		processingConfidenceMin?: number;
 		cultivarDetail?: string;
 		type?: string;
 		grade?: string;
@@ -225,7 +246,8 @@ function validateCatalogQuery(url: URL): void {
 		'cost_lb_min',
 		'cost_lb_max',
 		'score_value_min',
-		'score_value_max'
+		'score_value_max',
+		'processing_confidence_min'
 	];
 
 	for (const parameter of numberParams) {
@@ -234,10 +256,51 @@ function validateCatalogQuery(url: URL): void {
 			parseRequiredNumber(value, parameter);
 		}
 	}
+
+	const processingConfidenceMin = url.searchParams.get('processing_confidence_min');
+	if (processingConfidenceMin !== null) {
+		const parsedConfidence = parseRequiredNumber(
+			processingConfidenceMin,
+			'processing_confidence_min'
+		);
+		if (parsedConfidence < 0 || parsedConfidence > 1) {
+			throw new CatalogQueryValidationError(
+				'processing_confidence_min',
+				processingConfidenceMin,
+				'number between 0 and 1'
+			);
+		}
+	}
 }
+
+function parseOptionalBoolean(value: string | null, parameter: string): boolean | undefined {
+	if (value === null) return undefined;
+	if (value === 'true') return true;
+	if (value === 'false') return false;
+	throw new CatalogQueryValidationError(parameter, value, 'true or false');
+}
+
 function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
-	const { coffee_user: _coffeeUser, ...resourceItem } = item;
-	return resourceItem;
+	const {
+		coffee_user: _coffeeUser,
+		processing_evidence: processingEvidence,
+		...resourceItem
+	} = item;
+	return {
+		...resourceItem,
+		process: {
+			base_method: item.processing_base_method,
+			fermentation_type: item.fermentation_type,
+			additives: item.process_additives,
+			additive_detail: item.process_additive_detail,
+			fermentation_duration_hours: item.fermentation_duration_hours,
+			drying_method: item.drying_method,
+			notes: item.processing_notes,
+			disclosure_level: item.processing_disclosure_level,
+			confidence: item.processing_confidence,
+			evidence_available: processingEvidence != null
+		}
+	};
 }
 
 function parseOptionalNumberFromAliases(url: URL, ...paramNames: string[]): number | undefined {
@@ -296,6 +359,18 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 			country: countryFilter,
 			source: url.searchParams.getAll('source'),
 			processing: url.searchParams.get('processing') ?? undefined,
+			processingBaseMethod: url.searchParams.get('processing_base_method') ?? undefined,
+			fermentationType: url.searchParams.get('fermentation_type') ?? undefined,
+			processAdditive: url.searchParams.get('process_additive') ?? undefined,
+			hasAdditives: parseOptionalBoolean(url.searchParams.get('has_additives'), 'has_additives'),
+			processingDisclosureLevel: url.searchParams.get('processing_disclosure_level') ?? undefined,
+			processingConfidenceMin:
+				url.searchParams.get('processing_confidence_min') !== null
+					? parseRequiredNumber(
+							url.searchParams.get('processing_confidence_min')!,
+							'processing_confidence_min'
+						)
+					: undefined,
 			cultivarDetail: url.searchParams.get('cultivar_detail') ?? undefined,
 			type: url.searchParams.get('type') ?? undefined,
 			grade: url.searchParams.get('grade') ?? undefined,
@@ -505,6 +580,12 @@ async function queryCatalogData(
 					? effectiveQuery.filters.source
 					: undefined,
 			processing: effectiveQuery.filters.processing,
+			processingBaseMethod: effectiveQuery.filters.processingBaseMethod,
+			fermentationType: effectiveQuery.filters.fermentationType,
+			processAdditive: effectiveQuery.filters.processAdditive,
+			hasAdditives: effectiveQuery.filters.hasAdditives,
+			processingDisclosureLevel: effectiveQuery.filters.processingDisclosureLevel,
+			processingConfidenceMin: effectiveQuery.filters.processingConfidenceMin,
 			cultivarDetail: effectiveQuery.filters.cultivarDetail,
 			type: effectiveQuery.filters.type,
 			grade: effectiveQuery.filters.grade,
@@ -576,6 +657,12 @@ async function queryCatalogData(
 				? effectiveQuery.filters.source
 				: undefined,
 		processing: effectiveQuery.filters.processing,
+		processingBaseMethod: effectiveQuery.filters.processingBaseMethod,
+		fermentationType: effectiveQuery.filters.fermentationType,
+		processAdditive: effectiveQuery.filters.processAdditive,
+		hasAdditives: effectiveQuery.filters.hasAdditives,
+		processingDisclosureLevel: effectiveQuery.filters.processingDisclosureLevel,
+		processingConfidenceMin: effectiveQuery.filters.processingConfidenceMin,
 		cultivarDetail: effectiveQuery.filters.cultivarDetail,
 		type: effectiveQuery.filters.type,
 		grade: effectiveQuery.filters.grade,

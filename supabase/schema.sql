@@ -46,6 +46,15 @@ CREATE TABLE public.coffee_catalog (
   arrival_date text,
   region text,
   processing text,
+  processing_base_method text,
+  fermentation_type text,
+  process_additives text[],
+  process_additive_detail text,
+  fermentation_duration_hours numeric,
+  processing_notes text,
+  processing_disclosure_level text,
+  processing_confidence numeric,
+  processing_evidence jsonb,
   drying_method text,
   roast_recs text,
   lot_size text,
@@ -72,6 +81,9 @@ CREATE TABLE public.coffee_catalog (
   coffee_user uuid,
   country text,
   continent text,
+  CONSTRAINT coffee_catalog_fermentation_duration_hours_nonnegative CHECK (fermentation_duration_hours IS NULL OR fermentation_duration_hours >= 0),
+  CONSTRAINT coffee_catalog_processing_confidence_unit_interval CHECK (processing_confidence IS NULL OR (processing_confidence >= 0 AND processing_confidence <= 1)),
+  CONSTRAINT coffee_catalog_processing_disclosure_level_known CHECK (processing_disclosure_level IS NULL OR processing_disclosure_level IN ('none', 'label_only', 'structured', 'narrative', 'high_detail')),
   CONSTRAINT coffee_catalog_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.coffee_chunks (

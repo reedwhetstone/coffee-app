@@ -64,6 +64,12 @@ export interface CatalogSearchOptions {
 	country?: string | string[];
 	source?: string[];
 	processing?: string;
+	processingBaseMethod?: string;
+	fermentationType?: string;
+	processAdditive?: string;
+	hasAdditives?: boolean;
+	processingDisclosureLevel?: string;
+	processingConfidenceMin?: number;
 	cultivarDetail?: string;
 	type?: string;
 	grade?: string;
@@ -102,6 +108,12 @@ export interface CatalogDropdownSearchOptions {
 	country?: CatalogSearchOptions['country'];
 	source?: CatalogSearchOptions['source'];
 	processing?: CatalogSearchOptions['processing'];
+	processingBaseMethod?: CatalogSearchOptions['processingBaseMethod'];
+	fermentationType?: CatalogSearchOptions['fermentationType'];
+	processAdditive?: CatalogSearchOptions['processAdditive'];
+	hasAdditives?: CatalogSearchOptions['hasAdditives'];
+	processingDisclosureLevel?: CatalogSearchOptions['processingDisclosureLevel'];
+	processingConfidenceMin?: CatalogSearchOptions['processingConfidenceMin'];
 	cultivarDetail?: CatalogSearchOptions['cultivarDetail'];
 	type?: CatalogSearchOptions['type'];
 	grade?: CatalogSearchOptions['grade'];
@@ -125,6 +137,17 @@ export interface CatalogDropdownSearchOptions {
 
 const DROPDOWN_COLUMNS =
 	'id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee' as const;
+
+const DISCLOSED_ADDITIVE_VALUES = [
+	'fruit',
+	'yeast',
+	'hops',
+	'spice',
+	'botanical',
+	'mossto',
+	'starter-culture',
+	'other'
+] as const;
 
 // ── Core functions ────────────────────────────────────────────────────────────
 
@@ -166,6 +189,12 @@ export async function searchCatalog(
 		type,
 		grade,
 		appearance,
+		processingBaseMethod,
+		fermentationType,
+		processAdditive,
+		hasAdditives,
+		processingDisclosureLevel,
+		processingConfidenceMin,
 		region,
 		scoreValueMin,
 		scoreValueMax,
@@ -230,6 +259,23 @@ export async function searchCatalog(
 	if (name) query = query.ilike('name', `%${name}%`);
 	if (process) query = query.ilike('processing', `%${process}%`);
 	if (processing) query = query.ilike('processing', `%${processing}%`);
+	if (processingBaseMethod) query = query.eq('processing_base_method', processingBaseMethod);
+	if (fermentationType) query = query.eq('fermentation_type', fermentationType);
+	if (processAdditive) query = query.contains('process_additives', [processAdditive]);
+	if (hasAdditives === true) {
+		query = query.overlaps('process_additives', [...DISCLOSED_ADDITIVE_VALUES]);
+	} else if (hasAdditives === false) {
+		// false means the supplier explicitly disclosed no additives. Unknown or
+		// unspecified rows are intentionally excluded so missing metadata is not
+		// treated as real data.
+		query = query.contains('process_additives', ['none']);
+	}
+	if (processingDisclosureLevel) {
+		query = query.eq('processing_disclosure_level', processingDisclosureLevel);
+	}
+	if (processingConfidenceMin !== undefined) {
+		query = query.gte('processing_confidence', processingConfidenceMin);
+	}
 	if (variety) query = query.ilike('cultivar_detail', `%${variety}%`);
 	if (cultivarDetail) query = query.ilike('cultivar_detail', `%${cultivarDetail}%`);
 	if (type) query = query.ilike('type', `%${type}%`);
@@ -295,6 +341,15 @@ export async function searchCatalog(
 	if (name) filtersApplied.name = name;
 	if (dryingMethod) filtersApplied.dryingMethod = dryingMethod;
 	if (supplier) filtersApplied.supplier = supplier;
+	if (processingBaseMethod) filtersApplied.processingBaseMethod = processingBaseMethod;
+	if (fermentationType) filtersApplied.fermentationType = fermentationType;
+	if (processAdditive) filtersApplied.processAdditive = processAdditive;
+	if (hasAdditives !== undefined) filtersApplied.hasAdditives = hasAdditives;
+	if (processingDisclosureLevel)
+		filtersApplied.processingDisclosureLevel = processingDisclosureLevel;
+	if (processingConfidenceMin !== undefined) {
+		filtersApplied.processingConfidenceMin = processingConfidenceMin;
+	}
 	if (coffeeIds) filtersApplied.coffeeIds = coffeeIds;
 	if (stockedOnly) filtersApplied.stockedOnly = stockedOnly;
 	if (stockedFilter !== undefined) filtersApplied.stockedFilter = stockedFilter;
@@ -351,6 +406,12 @@ export async function searchCatalogDropdown(
 		type,
 		grade,
 		appearance,
+		processingBaseMethod,
+		fermentationType,
+		processAdditive,
+		hasAdditives,
+		processingDisclosureLevel,
+		processingConfidenceMin,
 		name,
 		region,
 		scoreValueMin,
@@ -408,6 +469,20 @@ export async function searchCatalogDropdown(
 	if (source && source.length > 0) query = query.in('source', source);
 	if (name) query = query.ilike('name', `%${name}%`);
 	if (processing) query = query.ilike('processing', `%${processing}%`);
+	if (processingBaseMethod) query = query.eq('processing_base_method', processingBaseMethod);
+	if (fermentationType) query = query.eq('fermentation_type', fermentationType);
+	if (processAdditive) query = query.contains('process_additives', [processAdditive]);
+	if (hasAdditives === true) {
+		query = query.overlaps('process_additives', [...DISCLOSED_ADDITIVE_VALUES]);
+	} else if (hasAdditives === false) {
+		query = query.contains('process_additives', ['none']);
+	}
+	if (processingDisclosureLevel) {
+		query = query.eq('processing_disclosure_level', processingDisclosureLevel);
+	}
+	if (processingConfidenceMin !== undefined) {
+		query = query.gte('processing_confidence', processingConfidenceMin);
+	}
 	if (cultivarDetail) query = query.ilike('cultivar_detail', `%${cultivarDetail}%`);
 	if (type) query = query.ilike('type', `%${type}%`);
 	if (grade) query = query.ilike('grade', `%${grade}%`);
@@ -477,7 +552,7 @@ export async function getCatalogItemsByIds(
 
 /** Minimal column set for building unique filter option lists. */
 const FILTER_METADATA_COLUMNS =
-	'source, continent, country, processing, cultivar_detail, type, grade, appearance, arrival_date' as const;
+	'source, continent, country, processing, processing_base_method, fermentation_type, process_additives, processing_disclosure_level, cultivar_detail, type, grade, appearance, arrival_date' as const;
 
 /** Row shape returned by the narrow filter-metadata query. */
 export type CatalogFilterMetadataRow = {
@@ -485,6 +560,10 @@ export type CatalogFilterMetadataRow = {
 	continent: string | null;
 	country: string | null;
 	processing: string | null;
+	processing_base_method: string | null;
+	fermentation_type: string | null;
+	process_additives: string[] | null;
+	processing_disclosure_level: string | null;
 	cultivar_detail: string | null;
 	type: string | null;
 	grade: string | null;
@@ -494,7 +573,7 @@ export type CatalogFilterMetadataRow = {
 
 /**
  * Narrow query for building filter option lists (/api/catalog/filters).
- * Selects only the 9 columns needed for unique-value extraction instead of
+ * Selects only the columns needed for unique-value extraction instead of
  * fetching full rows via searchCatalog().
  */
 export async function getCatalogFilterMetadata(

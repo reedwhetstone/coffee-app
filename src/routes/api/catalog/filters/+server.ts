@@ -34,6 +34,30 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			const processing = [...new Set(rows.map((row) => row.processing).filter(Boolean))].sort();
 			if (processing.length > 0) uniqueValues.processing = processing;
 
+			const processingBaseMethods = [
+				...new Set(rows.map((row) => row.processing_base_method).filter(Boolean))
+			].sort();
+			if (processingBaseMethods.length > 0) {
+				uniqueValues.processing_base_method = processingBaseMethods;
+			}
+
+			const fermentationTypes = [
+				...new Set(rows.map((row) => row.fermentation_type).filter(Boolean))
+			].sort();
+			if (fermentationTypes.length > 0) uniqueValues.fermentation_type = fermentationTypes;
+
+			const processAdditives = [
+				...new Set(rows.flatMap((row) => row.process_additives ?? []).filter(Boolean))
+			].sort();
+			if (processAdditives.length > 0) uniqueValues.process_additives = processAdditives;
+
+			const processingDisclosureLevels = [
+				...new Set(rows.map((row) => row.processing_disclosure_level).filter(Boolean))
+			].sort();
+			if (processingDisclosureLevels.length > 0) {
+				uniqueValues.processing_disclosure_level = processingDisclosureLevels;
+			}
+
 			const cultivars = [...new Set(rows.map((row) => row.cultivar_detail).filter(Boolean))].sort();
 			if (cultivars.length > 0) uniqueValues.cultivar_detail = cultivars;
 
