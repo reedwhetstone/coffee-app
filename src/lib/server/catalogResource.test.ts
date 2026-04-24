@@ -1371,6 +1371,29 @@ describe('buildCanonicalCatalogResponse', () => {
 			);
 		});
 
+		it('preserves processing transparency filters for unpaginated dropdown requests', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent(
+					'https://app.test/v1/catalog?fields=dropdown&processing_base_method=Natural&fermentation_type=Anaerobic&process_additive=hops&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
+				)
+			);
+
+			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					stockedFilter: true,
+					publicOnly: true,
+					processingBaseMethod: 'Natural',
+					fermentationType: 'Anaerobic',
+					processAdditive: 'hops',
+					hasAdditives: true,
+					processingDisclosureLevel: 'high_detail',
+					processingConfidenceMin: 0.8
+				})
+			);
+			expect(mockSearchCatalogDropdown).not.toHaveBeenCalled();
+		});
+
 		it('preserves canonical filters and sorting for paginated dropdown requests', async () => {
 			await buildCanonicalCatalogResponse(
 				makeEvent(

@@ -17,6 +17,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'coffee_catalog_fermentation_duration_hours_nonnegative'
+      AND conrelid = 'public.coffee_catalog'::regclass
   ) THEN
     ALTER TABLE public.coffee_catalog
       ADD CONSTRAINT coffee_catalog_fermentation_duration_hours_nonnegative
@@ -25,6 +26,7 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'coffee_catalog_processing_confidence_unit_interval'
+      AND conrelid = 'public.coffee_catalog'::regclass
   ) THEN
     ALTER TABLE public.coffee_catalog
       ADD CONSTRAINT coffee_catalog_processing_confidence_unit_interval
@@ -33,6 +35,7 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'coffee_catalog_processing_disclosure_level_known'
+      AND conrelid = 'public.coffee_catalog'::regclass
   ) THEN
     ALTER TABLE public.coffee_catalog
       ADD CONSTRAINT coffee_catalog_processing_disclosure_level_known

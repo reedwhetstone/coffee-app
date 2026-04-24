@@ -533,7 +533,36 @@ async function queryCatalogData(
 				stockedFilter,
 				publicOnly: context.publicOnly,
 				showWholesale: context.showWholesale,
-				wholesaleOnly: context.wholesaleOnly
+				wholesaleOnly: context.wholesaleOnly,
+				origin: effectiveQuery.filters.origin,
+				continent: effectiveQuery.filters.continent,
+				country: effectiveQuery.filters.country,
+				source:
+					effectiveQuery.filters.source && effectiveQuery.filters.source.length > 0
+						? effectiveQuery.filters.source
+						: undefined,
+				processing: effectiveQuery.filters.processing,
+				processingBaseMethod: effectiveQuery.filters.processingBaseMethod,
+				fermentationType: effectiveQuery.filters.fermentationType,
+				processAdditive: effectiveQuery.filters.processAdditive,
+				hasAdditives: effectiveQuery.filters.hasAdditives,
+				processingDisclosureLevel: effectiveQuery.filters.processingDisclosureLevel,
+				processingConfidenceMin: effectiveQuery.filters.processingConfidenceMin,
+				cultivarDetail: effectiveQuery.filters.cultivarDetail,
+				type: effectiveQuery.filters.type,
+				grade: effectiveQuery.filters.grade,
+				appearance: effectiveQuery.filters.appearance,
+				name: effectiveQuery.filters.name,
+				region: effectiveQuery.filters.region,
+				scoreValueMin: effectiveQuery.filters.scoreValueMin,
+				scoreValueMax: effectiveQuery.filters.scoreValueMax,
+				pricePerLbMin: effectiveQuery.filters.pricePerLbMin,
+				pricePerLbMax: effectiveQuery.filters.pricePerLbMax,
+				arrivalDate: effectiveQuery.filters.arrivalDate,
+				stockedDate: effectiveQuery.filters.stockedDate,
+				stockedDays: effectiveQuery.filters.stockedDays,
+				orderBy: effectiveQuery.sortField || 'arrival_date',
+				orderDirection: effectiveQuery.sortDirection || 'desc'
 			});
 
 			const totalAvailable = rows.length;
