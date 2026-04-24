@@ -167,6 +167,7 @@ describe('buildCanonicalCatalogResponse', () => {
 			expect.objectContaining({
 				stockedFilter: true,
 				publicOnly: true,
+				fields: 'resource',
 				limit: 15,
 				offset: 0
 			})

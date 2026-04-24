@@ -39,6 +39,12 @@ export interface CatalogProcessSummary {
 	evidence_available: boolean;
 }
 
+type CatalogResourceQueryItem = Omit<CatalogItem, 'coffee_user' | 'processing_evidence'> & {
+	coffee_user?: CatalogItem['coffee_user'];
+	processing_evidence?: CatalogItem['processing_evidence'];
+	processing_evidence_schema_version?: string | number | null;
+};
+
 export type CatalogResourceItem = Omit<CatalogItem, 'coffee_user' | 'processing_evidence'> & {
 	process: CatalogProcessSummary;
 };
@@ -280,10 +286,11 @@ function parseOptionalBoolean(value: string | null, parameter: string): boolean 
 	throw new CatalogQueryValidationError(parameter, value, 'true or false');
 }
 
-function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
+function toCatalogResourceItem(item: CatalogResourceQueryItem): CatalogResourceItem {
 	const {
 		coffee_user: _coffeeUser,
 		processing_evidence: processingEvidence,
+		processing_evidence_schema_version: processingEvidenceSchemaVersion,
 		...resourceItem
 	} = item;
 	return {
@@ -298,7 +305,7 @@ function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
 			notes: item.processing_notes,
 			disclosure_level: item.processing_disclosure_level,
 			confidence: item.processing_confidence,
-			evidence_available: processingEvidence != null
+			evidence_available: processingEvidenceSchemaVersion != null || processingEvidence != null
 		}
 	};
 }
@@ -705,6 +712,7 @@ async function queryCatalogData(
 		arrivalDate: effectiveQuery.filters.arrivalDate,
 		stockedDate: effectiveQuery.filters.stockedDate,
 		stockedDays: effectiveQuery.filters.stockedDays,
+		fields: 'resource',
 		orderBy: effectiveQuery.ids.length > 0 ? 'name' : effectiveQuery.sortField || 'arrival_date',
 		orderDirection:
 			effectiveQuery.sortDirection || (effectiveQuery.ids.length > 0 ? 'asc' : 'desc'),

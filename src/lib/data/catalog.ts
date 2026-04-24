@@ -53,7 +53,7 @@ export interface CatalogSearchOptions {
 	offset?: number; // pagination offset
 
 	// Field set
-	fields?: 'full' | 'dropdown'; // dropdown → id,source,name,stocked,cost_lb,price_tiers
+	fields?: 'full' | 'dropdown' | 'resource'; // resource → public/API projection without raw evidence blobs
 
 	// Sorting
 	orderBy?: string;
@@ -138,6 +138,9 @@ export interface CatalogDropdownSearchOptions {
 const DROPDOWN_COLUMNS =
 	'id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee' as const;
 
+const CATALOG_RESOURCE_COLUMNS: string =
+	'id, name, score_value, arrival_date, region, processing, processing_base_method, fermentation_type, process_additives, process_additive_detail, fermentation_duration_hours, processing_notes, processing_disclosure_level, processing_confidence, processing_evidence_schema_version:processing_evidence->>schema_version, drying_method, roast_recs, lot_size, bag_size, packaging, cultivar_detail, grade, appearance, description_short, farm_notes, type, description_long, link, cost_lb, price_per_lb, price_tiers, last_updated, source, stocked, cupping_notes, unstocked_date, stocked_date, ai_description, ai_tasting_notes, public_coffee, country, continent, wholesale';
+
 const DISCLOSED_ADDITIVE_VALUES = [
 	'fruit',
 	'yeast',
@@ -172,6 +175,7 @@ export async function searchCatalog(
 		stockedOnly,
 		stockedFilter,
 		stockedDays,
+		fields = 'full',
 
 		publicOnly,
 		showWholesale,
@@ -206,10 +210,12 @@ export async function searchCatalog(
 
 	const usePagination = offset !== undefined;
 
+	const selectColumns = fields === 'resource' ? CATALOG_RESOURCE_COLUMNS : '*';
+
 	let query = supabase
 		.from('coffee_catalog')
 		// Only request an exact count when paginating — it adds an extra DB pass
-		.select('*', usePagination ? { count: 'exact' } : undefined);
+		.select(selectColumns, usePagination ? { count: 'exact' } : undefined);
 
 	// ── Visibility filters ────────────────────────────────────────────────────
 	// stockedFilter takes precedence: true = stocked only, false = unstocked only, null = no filter
@@ -265,10 +271,12 @@ export async function searchCatalog(
 	if (hasAdditives === true) {
 		query = query.overlaps('process_additives', [...DISCLOSED_ADDITIVE_VALUES]);
 	} else if (hasAdditives === false) {
-		// false means the supplier explicitly disclosed no additives. Unknown or
-		// unspecified rows are intentionally excluded so missing metadata is not
-		// treated as real data.
-		query = query.contains('process_additives', ['none']);
+		// false means the supplier explicitly disclosed no additives. Unknown,
+		// unspecified, or mixed additive arrays are intentionally excluded so
+		// missing/contradictory metadata is not treated as real no-additives data.
+		query = query
+			.contains('process_additives', ['none'])
+			.containedBy('process_additives', ['none']);
 	}
 	if (processingDisclosureLevel) {
 		query = query.eq('processing_disclosure_level', processingDisclosureLevel);
@@ -361,7 +369,7 @@ export async function searchCatalog(
 	if (limit) filtersApplied.limit = limit;
 
 	return {
-		data: (data as CatalogItem[]) || [],
+		data: (data as unknown as CatalogItem[]) || [],
 		count: count ?? data?.length ?? 0,
 		filtersApplied
 	};
@@ -475,7 +483,9 @@ export async function searchCatalogDropdown(
 	if (hasAdditives === true) {
 		query = query.overlaps('process_additives', [...DISCLOSED_ADDITIVE_VALUES]);
 	} else if (hasAdditives === false) {
-		query = query.contains('process_additives', ['none']);
+		query = query
+			.contains('process_additives', ['none'])
+			.containedBy('process_additives', ['none']);
 	}
 	if (processingDisclosureLevel) {
 		query = query.eq('processing_disclosure_level', processingDisclosureLevel);

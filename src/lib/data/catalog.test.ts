@@ -17,6 +17,7 @@ function createSupabaseMock() {
 		inCalls: [] as Array<[string, unknown[]]>,
 		containsCalls: [] as Array<[string, unknown[]]>,
 		overlapsCalls: [] as Array<[string, unknown[]]>,
+		containedByCalls: [] as Array<[string, unknown[]]>,
 		orCalls: [] as string[],
 		orderCalls: [] as Array<[string, { ascending: boolean }]>,
 		rangeCalls: [] as Array<[number, number]>,
@@ -56,6 +57,10 @@ function createSupabaseMock() {
 			state.overlapsCalls.push([column, value]);
 			return builder;
 		}),
+		containedBy: vi.fn((column: string, value: unknown[]) => {
+			state.containedByCalls.push([column, value]);
+			return builder;
+		}),
 		or: vi.fn((value: string) => {
 			state.orCalls.push(value);
 			return builder;
@@ -92,6 +97,19 @@ describe('searchCatalog stocked date filters', () => {
 		await searchCatalog(supabase as never, { stockedDate: '2026-03-01' });
 
 		expect(state.gteCalls).toEqual([['stocked_date', '2026-03-01']]);
+	});
+
+	it('uses the resource projection without selecting raw processing evidence blobs', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await searchCatalog(supabase as never, { fields: 'resource' });
+
+		const [columns] = state.selectCalls[0];
+		expect(columns).toContain(
+			'processing_evidence_schema_version:processing_evidence->>schema_version'
+		);
+		expect(columns).not.toBe('*');
+		expect(columns).not.toMatch(/(^|, )processing_evidence(,|$)/);
 	});
 
 	it('keeps relative stockedDays filtering behind stockedDays', async () => {
@@ -135,6 +153,7 @@ describe('searchCatalog processing transparency filters', () => {
 		await searchCatalog(supabase as never, { hasAdditives: false });
 
 		expect(state.containsCalls).toEqual([['process_additives', ['none']]]);
+		expect(state.containedByCalls).toEqual([['process_additives', ['none']]]);
 		expect(state.overlapsCalls).toEqual([]);
 	});
 
