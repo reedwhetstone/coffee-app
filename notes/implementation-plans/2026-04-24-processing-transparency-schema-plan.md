@@ -123,24 +123,24 @@ Example evidence envelope:
 
 ```json
 {
-  "method": "agent_description_pass",
-  "source_fields": ["description_long", "farm_notes", "processing"],
-  "raw_processing": "Anaerobic Natural with hops",
-  "evidence": [
-    {
-      "field": "description_long",
-      "quote": "fermented with hops",
-      "supports": ["process_additives", "fermentation_type"]
-    }
-  ],
-  "confidence_by_field": {
-    "processing_base_method": 0.82,
-    "fermentation_type": 0.91,
-    "process_additives": 0.95
-  },
-  "needs_review": false,
-  "review_reason": null,
-  "schema_version": 1
+	"method": "agent_description_pass",
+	"source_fields": ["description_long", "farm_notes", "processing"],
+	"raw_processing": "Anaerobic Natural with hops",
+	"evidence": [
+		{
+			"field": "description_long",
+			"quote": "fermented with hops",
+			"supports": ["process_additives", "fermentation_type"]
+		}
+	],
+	"confidence_by_field": {
+		"processing_base_method": 0.82,
+		"fermentation_type": 0.91,
+		"process_additives": 0.95
+	},
+	"needs_review": false,
+	"review_reason": null,
+	"schema_version": 1
 }
 ```
 
@@ -178,16 +178,16 @@ Extend `ScrapedData` in `coffee-scraper` with a nested object first, then map to
 
 ```ts
 export interface ProcessingBreakdown {
-  baseMethod: string | null;
-  fermentationType: string | null;
-  additives: string[] | null;
-  additiveDetail: string | null;
-  fermentationDurationHours: number | null;
-  dryingMethod: string | null;
-  notes: string | null;
-  disclosureLevel: string | null;
-  confidence: number | null;
-  evidence: ProcessingEvidence | null;
+	baseMethod: string | null;
+	fermentationType: string | null;
+	additives: string[] | null;
+	additiveDetail: string | null;
+	fermentationDurationHours: number | null;
+	dryingMethod: string | null;
+	notes: string | null;
+	disclosureLevel: string | null;
+	confidence: number | null;
+	evidence: ProcessingEvidence | null;
 }
 ```
 
@@ -258,19 +258,19 @@ Keep current top-level fields for compatibility. Add a nested `process` object i
 
 ```json
 {
-  "processing": "Anaerobic Natural",
-  "drying_method": "Raised beds",
-  "process": {
-    "base_method": "Natural",
-    "fermentation_type": "Anaerobic",
-    "additives": ["hops"],
-    "additive_detail": "hops",
-    "fermentation_duration_hours": 72,
-    "drying_method": "Raised beds",
-    "disclosure_level": "high_detail",
-    "confidence": 0.92,
-    "evidence_available": true
-  }
+	"processing": "Anaerobic Natural",
+	"drying_method": "Raised beds",
+	"process": {
+		"base_method": "Natural",
+		"fermentation_type": "Anaerobic",
+		"additives": ["hops"],
+		"additive_detail": "hops",
+		"fermentation_duration_hours": 72,
+		"drying_method": "Raised beds",
+		"disclosure_level": "high_detail",
+		"confidence": 0.92,
+		"evidence_available": true
+	}
 }
 ```
 
