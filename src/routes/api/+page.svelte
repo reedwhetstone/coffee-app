@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { MAX_CATALOG_PAGE_LIMIT_DISPLAY } from '$lib/constants/catalog';
+
+	const maxCatalogRowsPerRequest = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} per request`;
 
 	function openDocs() {
 		goto('/docs/api/overview');
@@ -200,7 +203,7 @@
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Origin</td>
 						<td class="px-4 py-3 align-top">10,000</td>
-						<td class="px-4 py-3 align-top">Up to 1000 per request</td>
+						<td class="px-4 py-3 align-top">{maxCatalogRowsPerRequest}</td>
 						<td class="px-4 py-3 align-top"
 							>Production sourcing tools, daily sync jobs, and live customer-facing features</td
 						>
@@ -208,7 +211,7 @@
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Enterprise</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
-						<td class="px-4 py-3 align-top">Up to 1000 per request</td>
+						<td class="px-4 py-3 align-top">{maxCatalogRowsPerRequest}</td>
 						<td class="px-4 py-3 align-top"
 							>High-volume deployments, custom data agreements, and dedicated support</td
 						>
@@ -218,9 +221,9 @@
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-text-secondary-light">
 			Green gets you into the feed immediately at no cost. Origin is the self-serve tier for
-			production integrations with up to 1000 rows per request and 10,000 monthly requests.
-			Enterprise keeps the same per-request ceiling while covering unlimited request volume, custom
-			data terms, and dedicated support. Manage keys and monitor usage in the
+			production integrations with up to {MAX_CATALOG_PAGE_LIMIT_DISPLAY} rows per request and 10,000
+			monthly requests. Enterprise keeps the same per-request ceiling while covering unlimited request
+			volume, custom data terms, and dedicated support. Manage keys and monitor usage in the
 			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
 				>Parchment Console</a
 			>.
