@@ -4,7 +4,7 @@ date: "2026-04-02"
 description: "The specialty coffee world is split on whether co-fermented coffee belongs in competition. The more useful question is what processing transparency should require from everyone else."
 tags: ["coffee", "supply-chain", "data", "market-intelligence"]
 pillar: "supply-chain"
-draft: true
+draft: false
 readingTime: 5
 ---
 
