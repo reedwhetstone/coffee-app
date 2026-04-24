@@ -44,3 +44,7 @@ _Purpose: Navigation hub for the repo-local blog system: ideas bank, source map,
 
 - **api-architecture** still has zero published posts and remains the clearest gap
 - **ai-first-product** is still underweight relative to the amount of strong outline material already available
+
+## Archived / Parked Drafts
+
+- [[blog/outlines/archive/why-same-coffee-costs-20-and-6]]: Closed PR #118; useful pricing-curve source material, but not a current publishing priority
