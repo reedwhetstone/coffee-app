@@ -165,6 +165,75 @@ const DISCLOSED_ADDITIVE_VALUES = [
 	'other'
 ] as const;
 
+const STRUCTURED_PROCESS_FILTER_MISSING_COLUMN_HINTS = [
+	'processing_base_method',
+	'fermentation_type',
+	'process_additives',
+	'processing_disclosure_level',
+	'processing_confidence'
+] as const;
+
+function stripStructuredProcessFilters(options: CatalogSearchOptions): CatalogSearchOptions {
+	const {
+		processingBaseMethod: _processingBaseMethod,
+		fermentationType: _fermentationType,
+		processAdditive: _processAdditive,
+		hasAdditives: _hasAdditives,
+		processingDisclosureLevel: _processingDisclosureLevel,
+		processingConfidenceMin: _processingConfidenceMin,
+		...compatibleOptions
+	} = options;
+
+	return compatibleOptions;
+}
+
+function stripStructuredProcessDropdownFilters(
+	options: CatalogDropdownSearchOptions
+): CatalogDropdownSearchOptions {
+	const {
+		processingBaseMethod: _processingBaseMethod,
+		fermentationType: _fermentationType,
+		processAdditive: _processAdditive,
+		hasAdditives: _hasAdditives,
+		processingDisclosureLevel: _processingDisclosureLevel,
+		processingConfidenceMin: _processingConfidenceMin,
+		...compatibleOptions
+	} = options;
+
+	return compatibleOptions;
+}
+
+function hasStructuredProcessFilters(
+	options:
+		| Pick<
+				CatalogSearchOptions,
+				| 'processingBaseMethod'
+				| 'fermentationType'
+				| 'processAdditive'
+				| 'hasAdditives'
+				| 'processingDisclosureLevel'
+				| 'processingConfidenceMin'
+		  >
+		| Pick<
+				CatalogDropdownSearchOptions,
+				| 'processingBaseMethod'
+				| 'fermentationType'
+				| 'processAdditive'
+				| 'hasAdditives'
+				| 'processingDisclosureLevel'
+				| 'processingConfidenceMin'
+		  >
+): boolean {
+	return (
+		options.processingBaseMethod !== undefined ||
+		options.fermentationType !== undefined ||
+		options.processAdditive !== undefined ||
+		options.hasAdditives !== undefined ||
+		options.processingDisclosureLevel !== undefined ||
+		options.processingConfidenceMin !== undefined
+	);
+}
+
 function isMissingColumnError(error: unknown, columnHints: readonly string[] = []): boolean {
 	if (typeof error !== 'object' || error === null) return false;
 
@@ -370,8 +439,12 @@ export async function searchCatalog(
 			// The resource projection references processing-transparency columns added by
 			// this PR. Preview/test databases can lag the migration; fall back to the
 			// legacy full-row query so existing catalog endpoints keep serving data until
-			// the schema is applied.
-			return searchCatalog(supabase, { ...options, fields: 'full' });
+			// the schema is applied. Structured process filters must also be dropped for
+			// the retry because they reference the same new columns.
+			return searchCatalog(supabase, {
+				...stripStructuredProcessFilters(options),
+				fields: 'full'
+			});
 		}
 		throw error;
 	}
@@ -556,7 +629,15 @@ export async function searchCatalogDropdown(
 	}
 
 	const { data, error, count } = await query;
-	if (error) throw error;
+	if (error) {
+		if (
+			hasStructuredProcessFilters(options) &&
+			isMissingColumnError(error, STRUCTURED_PROCESS_FILTER_MISSING_COLUMN_HINTS)
+		) {
+			return searchCatalogDropdown(supabase, stripStructuredProcessDropdownFilters(options));
+		}
+		throw error;
+	}
 
 	return {
 		data: (data as CatalogDropdownItem[]) || [],
