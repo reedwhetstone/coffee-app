@@ -61,7 +61,7 @@ Lay out the concrete Purveyors pattern.
 Key points to cover:
 
 - The canonical resource is `GET /v1/catalog`
-- Anonymous callers are allowed, but only as a teaser: page 1, max 15 rows, only `country`, `processing`, and `name`
+- Anonymous callers hit the same public query surface for public discovery; when `page` and `limit` are omitted, the canonical listing defaults to page 1 with up to 100 rows before any plan-based cap is applied
 - First-party sessions hit the same canonical resource, but can unlock richer in-app visibility depending on role
 - API-key callers also hit the same canonical resource, stay public-only, but get plan enforcement and `X-RateLimit-*` headers
 - Green/viewer is 200 calls per month and 25 rows per call; Origin/member is 10,000 calls per month and uncapped at the row level
