@@ -14,7 +14,7 @@
 	<title>Parchment API</title>
 	<meta
 		name="description"
-		content="Green coffee market data as a REST API. Normalized pricing, availability, and supplier coverage across 41+ US specialty importers. Daily updates, one consistent schema."
+		content="Stable /v1/catalog access for green coffee market data, with unified docs, the Parchment Console, and clear separation between the public contract and platform routes."
 	/>
 </svelte:head>
 
@@ -27,11 +27,12 @@
 				Parchment API
 			</p>
 			<h1 class="mt-3 text-4xl font-bold tracking-tight text-text-primary-light sm:text-5xl">
-				Green coffee data from 41+ importers. One API. Daily updates.
+				Stable green coffee data for sourcing tools, apps, and agents.
 			</h1>
 			<p class="mt-5 text-lg leading-relaxed text-text-secondary-light">
-				Normalized pricing, availability, and supplier coverage across 41+ US specialty importers.
-				Ship sourcing features without scraping anyone yourself.
+				GET /v1/catalog is the stable public contract for normalized pricing, availability, and
+				supplier coverage. Browse anonymously to evaluate the feed, then move to API keys in the
+				Parchment Console for production usage.
 			</p>
 		</div>
 
@@ -55,6 +56,24 @@
 				Explore the catalog
 			</a>
 		</div>
+
+		<p class="mt-4 max-w-3xl text-sm leading-relaxed text-text-secondary-light">
+			Start with <code
+				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs text-text-primary-light"
+				>GET /v1/catalog</code
+			>
+			for the public contract. Treat
+			<code
+				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs text-text-primary-light"
+				>/api/*</code
+			>
+			as the platform layer that powers the web app and Console. Use
+			<a href="/docs" class="text-background-tertiary-light hover:underline">/docs</a>
+			as the canonical docs entry and
+			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
+				>/api-dashboard</a
+			> for keys, usage, and billing.
+		</p>
 	</section>
 
 	<section class="grid gap-4 lg:grid-cols-4">
@@ -181,7 +200,7 @@
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Origin</td>
 						<td class="px-4 py-3 align-top">10,000</td>
-						<td class="px-4 py-3 align-top">Unlimited</td>
+						<td class="px-4 py-3 align-top">Up to 1000 per request</td>
 						<td class="px-4 py-3 align-top"
 							>Production sourcing tools, daily sync jobs, and live customer-facing features</td
 						>
@@ -189,7 +208,7 @@
 					<tr>
 						<td class="px-4 py-3 align-top font-medium text-text-primary-light">Enterprise</td>
 						<td class="px-4 py-3 align-top">Unlimited</td>
-						<td class="px-4 py-3 align-top">Unlimited</td>
+						<td class="px-4 py-3 align-top">Up to 1000 per request</td>
 						<td class="px-4 py-3 align-top"
 							>High-volume deployments, custom data agreements, and dedicated support</td
 						>
@@ -199,9 +218,9 @@
 		</div>
 		<p class="mt-4 text-sm leading-relaxed text-text-secondary-light">
 			Green gets you into the feed immediately at no cost. Origin is the self-serve tier for
-			production integrations with full row access and 10,000 monthly requests. Enterprise covers
-			unlimited volume, custom data terms, and dedicated support. Manage keys and monitor usage in
-			the
+			production integrations with up to 1000 rows per request and 10,000 monthly requests.
+			Enterprise keeps the same per-request ceiling while covering unlimited request volume, custom
+			data terms, and dedicated support. Manage keys and monitor usage in the
 			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
 				>Parchment Console</a
 			>.
@@ -215,7 +234,7 @@
 		>
 			<h2 class="text-xl font-semibold text-text-primary-light">API docs</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Authentication, response format, limits, and code examples for getting started fast.
+				Stable /v1/catalog contract, auth modes, limits, migration notes, and production examples.
 			</p>
 		</a>
 		<a
@@ -224,7 +243,7 @@
 		>
 			<h2 class="text-xl font-semibold text-text-primary-light">Parchment Console</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Create keys, review usage, and manage access in one place.
+				Create and deactivate keys, review usage, and manage billing in one place.
 			</p>
 		</a>
 		<a

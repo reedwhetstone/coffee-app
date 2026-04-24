@@ -20,6 +20,7 @@ Make every important public Purveyors URL behave like a polished, high-signal la
 This is not just a metadata cleanup. It is a **public discoverability system**.
 
 The outcome should be:
+
 - better link previews
 - better search snippet quality
 - better crawlability/indexing consistency
@@ -33,7 +34,9 @@ The outcome should be:
 ## What already exists
 
 ### 1. Shared meta injection in layout
+
 `src/routes/+layout.svelte` already renders:
+
 - title
 - description
 - canonical
@@ -44,7 +47,9 @@ The outcome should be:
 This is good. The system is centralized enough to build on.
 
 ### 2. Some public routes already provide good metadata
+
 These routes already return `data.meta` from `+page.server.ts`:
+
 - home
 - catalog
 - analytics
@@ -53,6 +58,7 @@ These routes already return `data.meta` from `+page.server.ts`:
 - blog post pages (`/blog/[slug]`)
 
 ### 3. Crawl surfaces already exist
+
 - `static/robots.txt`
 - `src/routes/sitemap.xml/+server.ts`
 - `src/routes/llms.txt/+server.ts`
@@ -64,9 +70,11 @@ So Purveyors already has the right structural pieces.
 ## Gaps / Problems
 
 ### A. Metadata coverage is inconsistent across public pages
+
 Some routes are still using ad hoc `<svelte:head>` tags instead of the shared `data.meta` system.
 
 Known weak spots:
+
 - `src/routes/blog/+page.server.ts` returns no `meta`
 - `src/routes/blog/tag/[tag]/+page.server.ts` returns no `meta`
 - some public utility pages likely still lack robust OG/Twitter metadata
@@ -74,19 +82,24 @@ Known weak spots:
 This creates drift and uneven preview behavior.
 
 ### B. Social preview images are not standardized
+
 Current public pages often use:
+
 - `/purveyors_orange.svg`
 - blog `hero.webp`
 - founder photo JPG in at least one route
 
 Problems:
+
 - SVG is not the most reliable social preview asset for LinkedIn and some scrapers
 - WebP works in many places, but JPG/PNG is still safer for social unfurls
 - image dimensions are not consistently declared
 - preview images are not clearly designed as social cards
 
 ### C. Blog article metadata is only partially wired
+
 `/blog/[slug]/+page.server.ts` includes fields like:
+
 - `articlePublishedTime`
 - `articleTags`
 
@@ -95,7 +108,9 @@ But the shared layout does not currently render these as `article:*` meta tags.
 So the data exists but part of the preview/search value is being dropped.
 
 ### D. No audit harness exists for public discoverability
+
 There is currently no script that checks, page by page:
+
 - canonical correctness
 - OG/Twitter tag presence
 - image reachability
@@ -106,7 +121,9 @@ There is currently no script that checks, page by page:
 This makes regressions easy.
 
 ### E. LLM/searchability is present but not intentional enough
+
 `llms.txt` exists, but there is no full audit for:
+
 - whether all key public pages are represented consistently
 - whether page titles/descriptions are optimized for retrieval
 - whether pages expose strong first-screen summary content for model-based consumption
@@ -117,6 +134,7 @@ This makes regressions easy.
 ## Product Position
 
 Purveyors is not just a normal SaaS website. It is a public knowledge surface for:
+
 - green coffee market intelligence
 - coffee catalog discovery
 - API product discovery
@@ -131,10 +149,13 @@ That means discoverability should be treated as a first-class product system, no
 ## Workstream 1: Route inventory + public discoverability audit
 
 ### Objective
+
 Create a complete inventory of public pages and score each one for preview/search/LLM readiness.
 
 ### Public route inventory (initial target set)
+
 Core public routes:
+
 - `/`
 - `/catalog`
 - `/analytics`
@@ -151,16 +172,20 @@ Core public routes:
 - `/auth` (likely lower priority/noindex candidate)
 
 ### Deliverable
+
 Create a machine-readable audit output and a markdown report.
 
 Suggested files:
+
 - `scripts/audit-public-discoverability.ts`
 - `notes/public-discoverability-audit.md`
 
 ### Audit dimensions
+
 For each public page, verify:
 
 #### Metadata
+
 - title exists and is specific
 - meta description exists and is specific
 - canonical exists and is absolute
@@ -170,6 +195,7 @@ For each public page, verify:
 - `og:image:width`, `og:image:height`, `og:image:alt` present where relevant
 
 #### Search / crawler
+
 - route is included in sitemap when appropriate
 - robots treatment is correct
 - no accidental blocking of intended public pages
@@ -177,17 +203,20 @@ For each public page, verify:
 - visible intro content is meaningful without JS interaction
 
 #### Structured data
+
 - JSON-LD exists where it should
 - schema type matches page intent
 - schema content aligns with visible page content
 
 #### LLM discoverability
+
 - page has a strong summary near top of content
 - route is represented appropriately in `llms.txt`
 - headings are semantically strong and non-generic
 - page exposes durable nouns/keywords that make retrieval better
 
 #### Preview readiness
+
 - image asset type is safe for social bots
 - preview image aspect ratio is social-card friendly
 - title/description lengths are within practical preview bounds
@@ -197,40 +226,47 @@ For each public page, verify:
 ## Workstream 2: Unified metadata builder
 
 ### Objective
+
 Stop hand-rolling public metadata route by route.
 
 ### Recommendation
+
 Create a shared helper, something like:
+
 - `src/lib/seo/meta.ts`
 - or `src/lib/services/metaService.ts`
 
 ### API shape
+
 Example:
 
 ```ts
 buildPublicMeta({
-  baseUrl,
-  path,
-  title,
-  description,
-  type,
-  image,
-  imageAlt,
-  keywords,
-  article,
-  schemaData,
-  robots
-})
+	baseUrl,
+	path,
+	title,
+	description,
+	type,
+	image,
+	imageAlt,
+	keywords,
+	article,
+	schemaData,
+	robots
+});
 ```
 
 ### Benefits
+
 - one consistent output shape for `data.meta`
 - eliminates drift between public routes
 - easier to add fields like `og:image:width` once
 - easier to enforce standards
 
 ### Required output fields
+
 Every public page should be able to emit:
+
 - `title`
 - `description`
 - `canonical`
@@ -252,7 +288,9 @@ Every public page should be able to emit:
 - optional `articlePublishedTime`, `articleModifiedTime`, `articleTags`, `articleAuthor`
 
 ### Required layout follow-up
+
 Update `src/routes/+layout.svelte` to actually render:
+
 - `og:image:alt`
 - `og:image:width`
 - `og:image:height`
@@ -270,23 +308,30 @@ Right now some of this data exists on the blog post route but is not emitted int
 ## Workstream 3: Social preview image system
 
 ### Objective
+
 Standardize share images for public pages so previews look intentional and reliable.
 
 ### Recommendation
+
 Use dedicated **social card assets** rather than reusing arbitrary page/hero images.
 
 ### Format recommendation
+
 Prefer:
+
 - **1200x627 JPG or PNG** for social previews
 
 Avoid depending on:
+
 - SVG as primary social preview image
 - WebP as the only share asset
 
 ### Proposed asset strategy
 
 #### Generic page-level cards
+
 Create dedicated social cards for:
+
 - homepage
 - catalog
 - analytics
@@ -295,6 +340,7 @@ Create dedicated social cards for:
 - blog index
 
 Suggested structure:
+
 - `static/og/home.jpg`
 - `static/og/catalog.jpg`
 - `static/og/analytics.jpg`
@@ -303,18 +349,24 @@ Suggested structure:
 - `static/og/contact.jpg`
 
 #### Blog posts
+
 For each blog post, add a dedicated social image:
+
 - `static/blog/images/<slug>/social.jpg`
 
 Page hero can remain:
+
 - `hero.webp`
 
 But social preview should use:
+
 - `social.jpg`
 
 ### Why separate hero from social preview
+
 A good page hero is not always a good unfurl card.
 Social cards should optimize for:
+
 - readable title
 - recognizable brand
 - correct aspect ratio
@@ -325,23 +377,28 @@ Social cards should optimize for:
 ## Workstream 4: Public route metadata completion
 
 ### Objective
+
 Bring all major public routes onto the same standard.
 
 ### Priority fixes
 
 #### P0
+
 - `/blog` — move to server-generated `meta` and add full OG/Twitter image set
 - `/blog/tag/[tag]` — add complete metadata, not just `<title>`
 - `/blog/[slug]` — switch social preview asset away from `hero.webp` to dedicated `social.jpg` (or safe fallback)
 - `/` `/catalog` `/analytics` `/api` `/contact` — stop using SVG as primary OG image where possible
 
 #### P1
+
 - audit `/no-cookies`, `/subscription`, `/auth`, `/subscription/success`
 - decide which should be indexed vs noindexed
 - ensure non-marketing routes do not dilute crawl quality
 
 ### Public page standards
+
 Every indexable public page should have:
+
 - one H1
 - strong description paragraph near top
 - one canonical URL
@@ -354,13 +411,17 @@ Every indexable public page should have:
 ## Workstream 5: Search + scraper + LLM content audit
 
 ### Objective
+
 Audit page content, not just metadata.
 
 ### Why
-LLM retrieval and search snippet quality depend on what the page *says*, not just the tags.
+
+LLM retrieval and search snippet quality depend on what the page _says_, not just the tags.
 
 ### Audit questions
+
 For each page:
+
 - Can a generic scraper fetch meaningful content without auth?
 - Is the first visible paragraph actually descriptive?
 - Does the page clearly state what Purveyors is / does / offers?
@@ -370,17 +431,22 @@ For each page:
 - Does the page explain product intent before interactive UI?
 
 ### Recommendation
+
 For public pages, add a short, scannable intro block that is both:
+
 - good for humans
 - good for bots/LLMs
 
 Example for analytics:
+
 - explicit mention of supplier count, data type, update cadence, and what the user can learn
 
 Example for catalog:
+
 - explicit mention of origins, processing, suppliers, pricing, and update cadence
 
 Example for API:
+
 - explicit mention of what data is exposed and who it is for
 
 ---
@@ -388,10 +454,13 @@ Example for API:
 ## Workstream 6: Validation and QA workflow
 
 ### Objective
+
 Make discoverability testable and repeatable.
 
 ### Deliverables
+
 1. **Local audit script**
+
    - fetch rendered HTML for all public routes
    - parse head tags and JSON-LD
    - validate required fields
@@ -399,6 +468,7 @@ Make discoverability testable and repeatable.
    - emit scorecard
 
 2. **Manual validation checklist**
+
    - LinkedIn Post Inspector
    - Slack/Discord test unfurl
    - page source verification
@@ -409,7 +479,9 @@ Make discoverability testable and repeatable.
    - fail if required public metadata is missing on key routes
 
 ### Suggested script outputs
+
 Per page:
+
 - title present
 - description present
 - canonical present
@@ -425,29 +497,34 @@ Per page:
 ## Implementation Order
 
 ## Phase 1 — Audit + foundation
+
 1. Add `notes/public-discoverability-audit.md`
 2. Build `scripts/audit-public-discoverability.ts`
 3. Inventory all public routes
 4. Score current state
 
 ## Phase 2 — Shared metadata system
+
 5. Add unified public metadata builder
 6. Update `+layout.svelte` to emit missing OG/Twitter/article image fields
 7. Migrate blog index and tag pages to server-side `meta`
 
 ## Phase 3 — Social preview assets
+
 8. Define social card image convention
 9. Add page-level default social cards
 10. Add blog post social image convention + fallback logic
 11. Switch OG/Twitter tags to those assets
 
 ## Phase 4 — Search + LLM content improvements
+
 12. Audit public intro copy for each key page
 13. Tighten H1s, descriptions, and first-screen summaries
 14. Update `llms.txt` if needed for consistency and coverage
 15. Review sitemap inclusion/noindex decisions
 
 ## Phase 5 — Validation
+
 16. Run audit script
 17. Fix any remaining broken/unreachable assets or tag gaps
 18. Manually validate on LinkedIn preview tooling and at least one other unfurl surface
@@ -457,6 +534,7 @@ Per page:
 ## Concrete Initial Deliverables
 
 ### Files likely to be added
+
 - `src/lib/seo/meta.ts` (or equivalent)
 - `scripts/audit-public-discoverability.ts`
 - `notes/public-discoverability-audit.md`
@@ -464,6 +542,7 @@ Per page:
 - `static/blog/images/<slug>/social.jpg` convention docs and/or fallback support
 
 ### Files likely to be changed
+
 - `src/routes/+layout.svelte`
 - `src/routes/(home)/+page.server.ts`
 - `src/routes/catalog/+page.server.ts`
@@ -482,23 +561,27 @@ Per page:
 ## Acceptance Criteria
 
 ### Metadata / previews
+
 - [ ] Every key public page emits full OG + Twitter metadata via the shared path
 - [ ] Social preview images are absolute, reachable, and standardized
 - [ ] Blog post pages emit article-specific metadata in final HTML
 - [ ] Blog index and tag pages have complete metadata, not just title/canonical
 
 ### SEO / crawling
+
 - [ ] Public route inventory is complete and documented
 - [ ] Sitemap includes intended public pages and excludes junk routes
 - [ ] Robots treatment is intentional
 - [ ] Index/noindex posture is explicit for borderline pages
 
 ### LLM discoverability
+
 - [ ] `llms.txt` is aligned with key public routes and product positioning
 - [ ] Key public pages have strong, descriptive first-screen summaries
 - [ ] Public pages expose content that generic scrapers and LLMs can meaningfully parse
 
 ### Tooling / validation
+
 - [ ] Audit script runs locally and produces a clear scorecard
 - [ ] At least one LinkedIn-style preview validation has been checked against final metadata/image output
 - [ ] `pnpm check` passes
@@ -517,6 +600,7 @@ If we want to address this **right now** with the highest leverage, the first im
 5. switch key public pages from SVG/WebP-first OG usage to dedicated social preview assets or a safe fallback path
 
 That gets both:
+
 - immediate LinkedIn/social preview improvement
 - a durable audit system for the rest
 
@@ -527,6 +611,7 @@ That gets both:
 The biggest mistake would be treating this as “just add more meta tags.”
 
 The right move is:
+
 - build a **public discoverability layer**
 - make previews intentional
 - make crawler/LLM surfaces testable

@@ -57,6 +57,8 @@ Purveyors ships two API layers:
    - Powers the first-party web app, Console, billing, chat, and admin workflows
    - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require the member role
    - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation`, `Link`, and `Sunset: Dec 31 2026` headers
+   - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
+   - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `/docs/api/overview`
    - `/api/tools/*` routes are deprecated compatibility shims; prefer shared CLI-library integration for new work
 
 Do not document the whole `/api/*` tree as a stable public contract. The public contract is the catalog feed at `/v1/catalog`; the broader `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.
@@ -69,10 +71,9 @@ CLI auth and output rules are part of the platform contract:
 
 - `purvey catalog *` requires an authenticated viewer session
 - `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
-- `purvey config` is local-only and does not require auth
-- `purvey context` is documentation/manifest output, not a live authenticated data command
-- `purvey context` prints dense reference text by default; `--json` and `--pretty` emit the same machine-readable manifest contract as `purvey manifest`; `--csv` is invalid
-- `purvey manifest` is the preferred machine-readable contract
+- `purvey config`, `purvey context`, and `purvey manifest` do not require auth
+- `purvey manifest` is the preferred stable machine-readable contract for shells and agents
+- `purvey context` is the shipped dense agent reference; `purvey context --json` and `--pretty` emit manifest-parity output for compatibility
 - stdout stays structured for automation, while operational and fatal messaging is designed to stay on stderr
 
 `src/lib/services/tools.ts` imports CLI modules directly for chat tool execution:

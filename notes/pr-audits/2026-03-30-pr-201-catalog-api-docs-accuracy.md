@@ -20,13 +20,13 @@
 
 ### Changes Made
 
-| Fix | Before | After | Evidence |
-|-----|--------|-------|---------|
-| curl domain | `purveyors.io` | `www.purveyors.io` | 308 redirect strips `Authorization` header on non-www domain; validated live with curl |
-| Price field name | `price_per_lb` | `cost_lb` | 0/1000 live items have `price_per_lb`; all 1000 have `cost_lb` |
-| Phantom `limit` field | `"limit": 25` present | Removed | Live API top-level response has no `limit` field |
-| total_available example | `814` | `1000` | Current live catalog has 1000 rows (reflects real data) |
-| source example | `sweet_marias` | `sweet_maria` | Minor typo correction (actual source slug is `sweet_maria`) |
+| Fix                     | Before                | After              | Evidence                                                                               |
+| ----------------------- | --------------------- | ------------------ | -------------------------------------------------------------------------------------- |
+| curl domain             | `purveyors.io`        | `www.purveyors.io` | 308 redirect strips `Authorization` header on non-www domain; validated live with curl |
+| Price field name        | `price_per_lb`        | `cost_lb`          | 0/1000 live items have `price_per_lb`; all 1000 have `cost_lb`                         |
+| Phantom `limit` field   | `"limit": 25` present | Removed            | Live API top-level response has no `limit` field                                       |
+| total_available example | `814`                 | `1000`             | Current live catalog has 1000 rows (reflects real data)                                |
+| source example          | `sweet_marias`        | `sweet_maria`      | Minor typo correction (actual source slug is `sweet_maria`)                            |
 
 ### Correctness Assessment
 

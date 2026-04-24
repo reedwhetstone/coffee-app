@@ -14,7 +14,7 @@ Integrate a "roast darkness token" — a readable label (e.g. "Light", "Medium",
 The DEVLOG explicitly defines the lookup table:
 
 | Weight Loss | Label         |
-|-------------|---------------|
+| ----------- | ------------- |
 | <11%        | Under-roasted |
 | 11–13%      | Light         |
 | 14–16%      | Medium        |
@@ -37,6 +37,7 @@ The DEVLOG explicitly defines the lookup table:
 ## Strategy Alignment Audit
 
 **Active strategy themes from blog + DEVLOG:**
+
 1. AI-first workspace / data-driven coffee sourcing (blog: "who-profits-when-data-stays-scarce", "why-ai-first-coffee-platform")
 2. Public conversion funnel — free users see catalog, members get full tools
 3. Risk-aware sourcing and product transparency
@@ -54,6 +55,7 @@ The darkness token directly serves theme 4 (demystify roasting) and theme 3 (tra
 ## Scope
 
 **In scope:**
+
 - Add `getRoastDarknessToken(weightLossPercent: number | null | undefined)` to `src/lib/utils/formatters.ts`
 - Add a corresponding Vitest unit test to `src/lib/utils/formatters.ts` or its co-located test file (create `src/lib/utils/formatters.test.ts` if it doesn't exist)
 - Wire the token into `src/routes/roast/RoastHistoryTable.svelte`:
@@ -63,6 +65,7 @@ The darkness token directly serves theme 4 (demystify roasting) and theme 3 (tra
   - Per-roast card in the "Roasting" tab: alongside the existing "Loss: X.X%" display
 
 **Out of scope:**
+
 - Color coding or icon theming beyond the label (keep it text-only for now)
 - Tooltips explaining each level (separate P6 item)
 - Schema changes or new DB columns
@@ -74,18 +77,21 @@ The darkness token directly serves theme 4 (demystify roasting) and theme 3 (tra
 ## Proposed UX Behavior
 
 **RoastHistoryTable per-roast card (current):**
+
 ```
 Loss %        Drop Temp
 14.3%         410°F
 ```
 
 **After:**
+
 ```
 Loss          Drop Temp
 14.3% · Medium   410°F
 ```
 
 Or as a badge/pill:
+
 ```
 Loss %        Level        Drop Temp
 14.3%         Medium       410°F
@@ -94,21 +100,25 @@ Loss %        Level        Drop Temp
 Lean toward the simpler inline approach (`14.3% · Medium`) to avoid adding a new cell.
 
 **Batch summary row (current):**
+
 ```
 Avg Loss: 14.3%
 ```
 
 **After:**
+
 ```
 Avg Loss: 14.3% · Medium
 ```
 
 **BeanProfileTabs roasting tab per-roast button (current):**
+
 ```
 Loss: 14.3%
 ```
 
 **After:**
+
 ```
 Loss: 14.3% · Medium
 ```
@@ -117,12 +127,12 @@ Loss: 14.3% · Medium
 
 ## Files to Change
 
-| File | Change |
-|------|--------|
-| `src/lib/utils/formatters.ts` | Add `getRoastDarknessToken()` function; export it |
-| `src/lib/utils/formatters.test.ts` | Create (or extend) with unit tests for the new function |
+| File                                        | Change                                                    |
+| ------------------------------------------- | --------------------------------------------------------- |
+| `src/lib/utils/formatters.ts`               | Add `getRoastDarknessToken()` function; export it         |
+| `src/lib/utils/formatters.test.ts`          | Create (or extend) with unit tests for the new function   |
 | `src/routes/roast/RoastHistoryTable.svelte` | Import + render token in per-roast card and batch summary |
-| `src/routes/beans/BeanProfileTabs.svelte` | Import + render token in roasting tab per-roast button |
+| `src/routes/beans/BeanProfileTabs.svelte`   | Import + render token in roasting tab per-roast button    |
 
 **Total files: 4** (3 non-test). Clean single-PR scope.
 
@@ -131,6 +141,7 @@ Loss: 14.3% · Medium
 ## API / Data Impact
 
 None. `weight_loss_percent` is already fetched in all three display contexts:
+
 - `RoastHistoryTable` — `calculateWeightLossPercentage()` already reads `profile.weight_loss_percent`
 - `BeanProfileTabs` — `profile.weight_loss_percent` already rendered on line ~959
 
@@ -149,29 +160,31 @@ No new API routes, no new DB queries, no server changes.
  * Returns null when weight_loss_percent is null/undefined (caller should omit display).
  */
 export function getRoastDarknessToken(weightLossPercent: number | null | undefined): string | null {
-  if (weightLossPercent == null) return null;
-  if (weightLossPercent < 11) return 'Under-roasted';
-  if (weightLossPercent <= 13) return 'Light';
-  if (weightLossPercent <= 16) return 'Medium';
-  if (weightLossPercent <= 18) return 'Dark';
-  if (weightLossPercent <= 21) return 'Very Dark';
-  return 'Dangerous';
+	if (weightLossPercent == null) return null;
+	if (weightLossPercent < 11) return 'Under-roasted';
+	if (weightLossPercent <= 13) return 'Light';
+	if (weightLossPercent <= 16) return 'Medium';
+	if (weightLossPercent <= 18) return 'Dark';
+	if (weightLossPercent <= 21) return 'Very Dark';
+	return 'Dangerous';
 }
 ```
 
 In the table components:
+
 ```svelte
 {@const token = getRoastDarknessToken(profile.weight_loss_percent)}
 <p class="font-semibold text-red-500">
-  {calculateWeightLossPercentage(profile)}{token ? ` · ${token}` : ''}
+	{calculateWeightLossPercentage(profile)}{token ? ` · ${token}` : ''}
 </p>
 ```
 
 For the batch summary (avg weight loss is already a string like `"14.3"`):
+
 ```svelte
 {@const avgToken = getRoastDarknessToken(parseFloat(batchSummary.avgWeightLoss))}
 <p class="font-semibold text-red-500">
-  {batchSummary.avgWeightLoss}%{avgToken ? ` · ${avgToken}` : ''}
+	{batchSummary.avgWeightLoss}%{avgToken ? ` · ${avgToken}` : ''}
 </p>
 ```
 
@@ -196,15 +209,18 @@ For the batch summary (avg weight loss is already a string like `"14.3"`):
 ## Test Plan
 
 **Unit (Vitest):**
+
 - `src/lib/utils/formatters.test.ts` — test all 6 label outputs + null input + boundary edges
 - Run: `pnpm vitest run src/lib/utils/formatters.test.ts`
 
 **Visual (manual or E2E):**
+
 - Navigate to `/roast`, expand a batch with existing oz_in/oz_out data, verify label appears
 - Navigate to `/beans`, select a bean with roast history, check roasting tab
 - Verify no label appears when weight_loss_percent is null
 
 **Lint + Type check:**
+
 - `pnpm lint && pnpm check`
 
 ---
@@ -212,6 +228,7 @@ For the batch summary (avg weight loss is already a string like `"14.3"`):
 ## Risks and Rollback
 
 **Risks:**
+
 - Low. Pure display change. No data mutation, no API calls, no auth surface.
 - Edge case: `calculateWeightLossPercentage()` can derive loss from oz_in/oz_out when `weight_loss_percent` is null; the token function will receive null and render nothing. Consistent behavior.
 

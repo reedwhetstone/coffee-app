@@ -96,8 +96,8 @@
 								Ready to source with the full market in view?
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Market analytics, supplier coverage, and origin benchmarks from 41+ importers.
-								Free to explore.
+								Market analytics, supplier coverage, and origin benchmarks from 41+ importers. Free
+								to explore.
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
 								<button

@@ -61,7 +61,7 @@ Atomic blog ideas extracted from purveyors notes, brain captures, and conversati
 - [ ] Agentic workflows follow power laws: a few tight feedback loops drive most output | Source: brain/ideas/power-laws-soc.md | Pillar: agentic-stack | Status: raw
 - [x] Deterministic core, adaptive edge: use AI to improve systems, not impersonate them | Source: #blog discussion 2026-03-05 (LinkedIn blurb critique) | Pillar: agentic-stack | Status: published (PR #66/#67, slug: inference-is-in-the-name)
 - [ ] Human-in-the-loop is not always safer: when human-out-of-the-loop becomes lower-risk | Source: #blog discussion 2026-03-05 (control frameworks) | Pillar: agentic-stack | Status: outlined (`brain/blog/outlines/human-in-vs-out-of-loop-safety.md`)
-- [x] Two weeks with an AI co-developer: what works and what breaks | Source: memory/*.md, reflections, system files, PR history | Pillar: agentic-stack | Status: published (PR #30)
+- [x] Two weeks with an AI co-developer: what works and what breaks | Source: memory/\*.md, reflections, system files, PR history | Pillar: agentic-stack | Status: published (PR #30)
 - [ ] Second brain as operating system: zettelkasten meets agentic workflows | Source: brain/ structure, AGENTS.md | Pillar: agentic-stack | Status: raw
 - [ ] The blog as recursive loop: how writing about work improves the work | Source: conversation 2026-02-19 | Pillar: agentic-stack | Status: raw
 - [ ] Memory architecture for AI assistants: what works and what breaks down | Source: MEMORY.md patterns | Pillar: agentic-stack | Status: raw
@@ -104,6 +104,7 @@ Atomic blog ideas extracted from purveyors notes, brain captures, and conversati
 - [ ] We Built a Real-Time Specialty Coffee Price Index | Source: PPI implementation plan | Pillar: market-intelligence | Status: raw | Notes: Launch post when PPI ships. Data journalism angle: 6-month origin price trends, volatility by process, correlation with harvest cycles. Hook: nobody else has daily-resolution specialty green pricing.
 
 ### What an AI Center of Excellence Actually Needs
+
 - **Status:** outlined
 - **Pillar:** agentic-stack
 - **Tags:** enterprise-ai, governance, agentic-workflows

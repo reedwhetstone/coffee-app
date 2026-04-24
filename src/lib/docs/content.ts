@@ -1,3 +1,9 @@
+import {
+	DEFAULT_CATALOG_LISTING_LIMIT,
+	DEFAULT_PAGINATED_PAGE_SIZE,
+	MAX_CATALOG_PAGE_LIMIT
+} from '$lib/constants/catalog';
+
 export type DocsSectionKey = 'api' | 'cli';
 
 export interface DocsCodeBlock {
@@ -157,7 +163,7 @@ export const DOCS_NAV: DocsNavSection[] = [
 				slug: 'context-manifest',
 				title: 'Context and manifest',
 				summary:
-					'Dense reference text, machine-readable manifest output, and onboarding patterns for agents.'
+					'Dense reference text, machine-readable manifest output, and onboarding patterns for agents and wrappers.'
 			},
 			{
 				slug: 'agent-integration',
@@ -327,7 +333,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Public endpoint',
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, processing method, pricing, price tiers, and availability metadata.',
-			'The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous and viewer-session requests are public-only. Member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the only ones that receive X-RateLimit-* headers. Use anonymous access for discovery and proof-of-value. Use API keys for production integrations that need quota visibility and a durable machine contract. When page and limit are both omitted, the canonical listing response defaults to page 1 and up to 100 rows before any plan-based cap is applied.'
+			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API-key requests all share the public catalog query surface. Anonymous and viewer-session requests stay public-only, while member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`
 		],
 		sections: [
 			{
@@ -348,21 +354,30 @@ const docsPages: DocsPage[] = [
 				title: 'Request and response',
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
-					'Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans are uncapped at the row level. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.',
+					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and visibility: only API-key requests emit X-RateLimit-* headers, and only privileged member or admin sessions can widen beyond public-only data.',
+					`Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans remove that lower plan cap but still share the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.`,
 					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
 				],
 				codeBlocks: [
 					{
 						label: 'GET /v1/catalog',
 						language: 'json',
-						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "price_per_lb": 7.5,\n      "cost_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
+						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "price_per_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
+					},
+					{
+						label: 'GET /v1/catalog?fields=dropdown&page=2&limit=2',
+						language: 'json',
+						code: '{\n  "data": [\n    {\n      "id": 205,\n      "source": "sweet_marias",\n      "name": "Kenya Nyeri AB",\n      "stocked": true,\n      "cost_lb": 8.1,\n      "price_per_lb": 8.1,\n      "price_tiers": [{ "min_lbs": 1, "price": 8.1 }],\n      "public_coffee": true\n    },\n    {\n      "id": 204,\n      "source": "cafe_imports",\n      "name": "Colombia Huila Washed",\n      "stocked": true,\n      "cost_lb": 7.65,\n      "price_per_lb": 7.65,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.65 }],\n      "public_coffee": true\n    }\n  ],\n  "pagination": {\n    "page": 2,\n    "limit": 2,\n    "total": 814,\n    "totalPages": 407,\n    "hasNext": true,\n    "hasPrev": true\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "anonymous", "role": null, "apiPlan": null },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": null,\n      "limited": false,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
 					}
 				]
 			},
 			{
 				title: 'Query parameters',
 				body: [
-					'If page is supplied without limit, the route uses a 15-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the 100-row default listing contract.',
+					`The table below describes the full canonical query surface. If page is supplied without limit, the route uses a ${DEFAULT_PAGINATED_PAGE_SIZE}-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the ${DEFAULT_CATALOG_LISTING_LIMIT}-row default listing contract.`,
+					'Anonymous, viewer-session, and API-key requests all share the public query surface documented below.',
+					'fields=dropdown stays compatible with normal page and limit params. The reduced projection is limited to id, source, name, stocked, cost_lb, price_per_lb, price_tiers, and public_coffee.',
+					'Privileged member and admin sessions may additionally use showWholesale and wholesaleOnly to widen first-party visibility.',
 					'Malformed numeric params now fail closed with 400 responses instead of silently falling back. That applies to page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases.'
 				],
 				table: {
@@ -373,7 +388,7 @@ const docsPages: DocsPage[] = [
 							'limit',
 							'integer',
 							'100 when page and limit are both omitted; otherwise 15 fallback',
-							'Rows per page before any plan cap is applied. Invalid values return 400.'
+							`Rows per page before any plan cap is applied, up to ${MAX_CATALOG_PAGE_LIMIT}. Values above ${MAX_CATALOG_PAGE_LIMIT} return 400.`
 						],
 						[
 							'ids',
@@ -385,7 +400,7 @@ const docsPages: DocsPage[] = [
 							'fields',
 							'full | dropdown',
 							'full',
-							'dropdown returns the reduced projection used by filter UIs and select menus.'
+							'dropdown returns the reduced projection used by filter UIs and select menus (id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee), and it works with normal page and limit params.'
 						],
 						[
 							'stocked',
@@ -451,39 +466,80 @@ const docsPages: DocsPage[] = [
 						['sortField', 'string', 'arrival_date', 'Sort field for non-ID queries.'],
 						['sortDirection', 'asc | desc', 'desc', 'Sort direction for non-ID queries.']
 					]
-				}
+				},
+				codeBlocks: [
+					{
+						label: 'Paginated dropdown projection',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog?fields=dropdown&page=2&limit=15"'
+					}
+				]
 			},
 			{
 				title: 'Access mode comparison',
 				table: {
-					headers: ['Mode', 'Best for', 'Headers', 'Data scope'],
+					headers: ['Mode', 'Best for', 'Query envelope', 'Headers', 'Notes'],
 					rows: [
 						[
 							'Anonymous /v1/catalog',
 							'Discovery, evaluation, and public embeds',
+							`Full public query surface. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted; page without limit falls back to ${DEFAULT_PAGINATED_PAGE_SIZE}.`,
 							'Cache-Control only',
-							'Public-only catalog data'
+							'Public-only catalog data. No X-RateLimit-* headers.'
 						],
 						[
 							'API-key /v1/catalog',
 							'Production integrations and accounted usage',
+							`Full public query surface, subject to plan caps and row limits. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted.`,
 							'Cache-Control plus X-RateLimit-*',
-							'Public-only catalog data'
+							'Canonical integration path for developers, sync jobs, and agents.'
 						],
 						[
 							'Session /v1/catalog',
 							'First-party product reads',
+							'Viewer sessions stay public-only and keep the same public query surface. Privileged member/admin sessions may unlock showWholesale and wholesaleOnly.',
 							'Session-dependent app headers only',
-							'Viewer stays public-only; member/admin may see richer in-app visibility. First-party product path only.'
+							'Cookies are only relevant when they resolve to a valid first-party session.'
 						],
 						[
 							'GET /api/catalog-api',
 							'Legacy API-key callers during migration',
+							'Uses the same API-key query contract as /v1/catalog.',
 							'Deprecation, Sunset, Link, plus X-RateLimit-*',
-							'Public-only catalog data via deprecated alias'
+							'API-key-only deprecated alias. Sunset: Dec 31 2026.'
 						]
 					]
-				}
+				},
+				bullets: [
+					'Anonymous calls use the same public query surface as viewer-session and API-key requests, but they stay public-only and do not emit X-RateLimit-* headers.',
+					'If an Authorization header is present but invalid, the route returns 401 instead of silently treating the request as anonymous.'
+				]
+			},
+			{
+				title: 'Example requests',
+				codeBlocks: [
+					{
+						label: 'Anonymous discovery request',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog?country=Ethiopia&processing=Natural&limit=15"'
+					},
+					{
+						label: 'API-key request with production headers',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog?stocked_days=30&price_per_lb_max=9&limit=50" \
+  -H "Authorization: Bearer pk_live_your_key_here"'
+					},
+					{
+						label: 'JavaScript fetch',
+						language: 'js',
+						code: 'const response = await fetch("https://purveyors.io/v1/catalog?country=Colombia&limit=25", {\n  headers: { Authorization: `Bearer ${process.env.PARCHMENT_API_KEY}` }\n});\n\nconst payload = await response.json();\nconsole.log(payload.meta.access, payload.data.length);'
+					},
+					{
+						label: 'Python requests',
+						language: 'python',
+						code: 'import os\nimport requests\n\nresponse = requests.get(\n    "https://purveyors.io/v1/catalog",\n    params={"processing": "washed", "limit": 25},\n    headers={"Authorization": f"Bearer {os.environ[\'PARCHMENT_API_KEY\']}"},\n    timeout=30,\n)\nresponse.raise_for_status()\npayload = response.json()\nprint(payload["pagination"]["total"], payload["meta"]["auth"])'
+					}
+				]
 			},
 			{
 				title: 'Tier limits and headers',
@@ -495,20 +551,21 @@ const docsPages: DocsPage[] = [
 							'Origin',
 							'member',
 							'10,000',
-							'Unlimited',
-							'Self-serve paid tier for production integrations and sync jobs.'
+							`Up to ${MAX_CATALOG_PAGE_LIMIT} per request`,
+							'No additional plan row cap beyond the shared request-size ceiling. Best for production integrations and sync jobs.'
 						],
 						[
 							'Enterprise',
 							'enterprise',
 							'Unlimited',
-							'Unlimited',
-							'Contact-sales plan for custom commercial volume and support.'
+							`Up to ${MAX_CATALOG_PAGE_LIMIT} per request`,
+							'No additional plan row cap beyond the shared request-size ceiling. Contact sales for commercial volume and support.'
 						]
 					]
 				},
 				bullets: [
 					'The public docs use marketed tier names Green, Origin, and Enterprise, while API responses and server code use apiPlan keys viewer, member, and enterprise.',
+					`All callers share a hard per-request page-size ceiling of ${MAX_CATALOG_PAGE_LIMIT}, even when a paid plan removes the lower viewer-tier row cap.`,
 					'X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset are only emitted for API-key responses.',
 					'429 responses also include Retry-After.',
 					'Anonymous and session-based catalog requests are not counted against an API-key quota and therefore do not receive those headers.'
@@ -726,6 +783,32 @@ const docsPages: DocsPage[] = [
 					title: 'Workspace routes are product internals, not agent APIs',
 					body: 'These endpoints exist to support the Purveyors chat product. For external automation, prefer the public catalog API or the CLI instead of coupling to chat workspace payloads.'
 				}
+			},
+			{
+				title: 'Console and docs-adjacent routes',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/api-dashboard/keys/generate',
+							'POST',
+							'Session',
+							'Console control-plane route',
+							'Creates one API key for the authenticated user and returns the plaintext apiKey only at creation time.'
+						],
+						[
+							'/api-dashboard/keys/deactivate',
+							'POST',
+							'Session + key ownership',
+							'Console control-plane route',
+							'Deactivates an owned API key by keyId without exposing the secret again.'
+						]
+					]
+				},
+				body: [
+					'Outside the JSON route layer, /api/docs and /api-dashboard/docs are legacy docs entry points that 307 redirect to /docs/api/overview.',
+					'Treat /docs as the canonical information architecture, /api as the product page, and /api-dashboard as the authenticated Console surface.'
+				]
 			},
 			{
 				title: 'Deprecated tool routes',
@@ -1099,7 +1182,7 @@ const docsPages: DocsPage[] = [
 							'/api/stripe/create-checkout-session',
 							'POST',
 							'Session',
-							'Create a checkout flow from a server-side purchase key and return a client secret'
+							'Create a checkout flow from one or more purchase keys and return a client secret'
 						],
 						[
 							'/api/stripe/create-customer',
@@ -1126,10 +1209,40 @@ const docsPages: DocsPage[] = [
 							'Verify checkout by sessionId, dedupe repeat processing, reconcile billing snapshots, and return the final entitlement state after purchase'
 						],
 						[
+							'/api/stripe/verify-and-update-role',
+							'POST',
+							'Session',
+							'Compatibility alias to the same reconcile-session handler for older success flows'
+						],
+						[
 							'/api/stripe/webhook',
 							'POST',
 							'Stripe signature',
 							'Process checkout and subscription lifecycle events'
+						]
+					]
+				},
+				body: [
+					'create-checkout-session accepts purchaseKey or purchaseKeys, rejects unknown or non-self-serve entries, and returns 409 when the request mixes same-family plans or conflicts with an existing active subscription.',
+					'cancel-subscription and resume-subscription are intentionally limited to membership subscriptions and return 409 when the same Stripe subscription also bundles API or Parchment Intelligence products.'
+				]
+			},
+			{
+				title: 'Console key management routes',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Purpose'],
+					rows: [
+						[
+							'/api-dashboard/keys/generate',
+							'POST',
+							'Session',
+							'Create a named API key for the authenticated user and return the plaintext apiKey once'
+						],
+						[
+							'/api-dashboard/keys/deactivate',
+							'POST',
+							'Session + key ownership',
+							'Deactivate an owned API key by keyId'
 						]
 					]
 				}
@@ -1144,6 +1257,12 @@ const docsPages: DocsPage[] = [
 							'GET POST',
 							'Admin session',
 							'Audit billing entitlement drift versus local billing snapshots and trigger safe recompute-based repairs'
+						],
+						[
+							'/api/admin/stripe-role-discrepancies',
+							'GET POST',
+							'Admin session',
+							'Compatibility alias that currently reuses the billing-entitlement-discrepancies handler'
 						],
 						[
 							'/api/admin/backfill-milestones',
@@ -1164,7 +1283,8 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'Billing docs should always cross-link to /api-dashboard because that is the user-facing surface for keys, usage, and subscription state.',
 					'Webhook routes are machine-to-machine infrastructure and should never be presented as browser-consumable product APIs.',
-					'When role-sync behavior changes, review subscription success flows, webhook docs, and admin discrepancy tooling together.'
+					'GET /api/docs and GET /api-dashboard/docs are legacy docs handoff routes that redirect to /docs/api/overview.',
+					'When role-sync behavior changes, review subscription success flows, webhook docs, Console key-management docs, and admin discrepancy tooling together.'
 				]
 			}
 		],
@@ -1217,7 +1337,7 @@ const docsPages: DocsPage[] = [
 						],
 						[
 							'400',
-							'Missing query params, bad form payloads, unsupported import files, invalid catalog dates',
+							'Missing query params, bad form payloads, unsupported import files, invalid catalog dates, anonymous contract violations',
 							'The caller provided an invalid request.'
 						],
 						['401', 'Missing or invalid session or API key', 'Authentication required.'],
@@ -1232,10 +1352,16 @@ const docsPages: DocsPage[] = [
 							'The resource is absent or not visible to the caller.'
 						],
 						[
+							'409',
+							'Billing plan conflicts and bundled membership management limits',
+							'The request is valid but conflicts with current subscription state.'
+						],
+						[
 							'429',
 							'Public catalog API-key requests or AI provider backpressure',
 							'Quota or provider rate limit reached.'
 						],
+						['499', 'Cancelled chat requests', 'The caller aborted the request before completion.'],
 						['500', 'Unhandled internal failures', 'Unexpected server-side error.'],
 						[
 							'502',
@@ -1254,6 +1380,11 @@ const docsPages: DocsPage[] = [
 						code: '{\n  "error": "Invalid query parameter",\n  "message": "Query parameter \\"stocked_date\\" must use YYYY-MM-DD format",\n  "details": {\n    "parameter": "stocked_date",\n    "value": "30",\n    "expected": "YYYY-MM-DD"\n  }\n}'
 					},
 					{
+						label: '400 Anonymous contract violation',
+						language: 'json',
+						code: '{\n  "error": "Anonymous catalog contract violation",\n  "message": "Anonymous catalog requests only allow filters: country, processing, name",\n  "details": {\n    "parameter": "origin"\n  }\n}'
+					},
+					{
 						label: '401 Authentication required',
 						language: 'json',
 						code: '{\n  "error": "Authentication required"\n}'
@@ -1262,6 +1393,11 @@ const docsPages: DocsPage[] = [
 						label: '403 Member role required',
 						language: 'json',
 						code: '{\n  "error": "Member role required"\n}'
+					},
+					{
+						label: '409 Subscription conflict',
+						language: 'json',
+						code: '{\n  "error": "You already have an active API subscription. Use subscription management to change intervals."\n}'
 					},
 					{
 						label: '429 Public catalog quota exceeded',
@@ -1274,9 +1410,11 @@ const docsPages: DocsPage[] = [
 				title: 'Edge cases worth knowing',
 				bullets: [
 					'For external catalog access, prefer /v1/catalog. Use an API key for machine-to-machine access or authenticate the CLI with purvey auth login.',
+					'Anonymous /v1/catalog calls use the same public query surface as other public callers. If page is supplied without limit, the route falls back to 15 rows; if both page and limit are omitted, the canonical listing response defaults to 100 rows.',
 					'GET /api/beans with no session and no valid share token returns an empty data array, not a 401. Do not mistake that behavior for public inventory access.',
 					'Catalog rate-limit headers only exist on API-key requests. Anonymous and session requests to /v1/catalog do not emit X-RateLimit-* headers.',
 					'An invalid Authorization header on the public catalog can turn what looks like an anonymous request into a 401 because the route detects an auth attempt that failed.',
+					'/api-dashboard/keys/generate returns the plaintext apiKey only at creation time. Plan Console UX and support docs around that one-time reveal.',
 					'Cookies only matter when they resolve to a valid first-party session. A stray Cookie header is not part of the public API contract.',
 					'/api/catalog-api is a deprecated API-key-only alias. It should not be treated as an anonymous or session-friendly discovery route.',
 					'Workspace and chat routes mostly use member-role enforcement, so 403 is often the expected failure for logged-in non-members.',
@@ -1326,7 +1464,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: '@purveyors/cli',
 		intro: [
 			'The Parchment CLI (purvey) provides terminal access to the same coffee domain model as the web app. Catalog commands require an authenticated viewer session even though GET /v1/catalog supports anonymous and API-key access. Inventory, roast, sales, and tasting commands additionally require the member role.',
-			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. context prints dense human-readable reference text by default, while manifest emits the machine-readable contract directly.'
+			'Not every command requires auth. auth, config, context, and manifest are onboarding or local utility surfaces. purvey context is the dense human-readable reference, while purvey manifest is the preferred machine-readable contract.'
 		],
 		sections: [
 			{
@@ -1346,7 +1484,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'Use purvey auth login for browser OAuth or purvey auth login --headless on servers, CI, and agent hosts.',
 					'Run purvey auth status to confirm both session health and current role before scripting against viewer-only or member-only commands.',
-					'Use purvey manifest when a wrapper needs the machine-readable contract directly. Use purvey context when a human or model should read the dense reference text first.'
+					'Use purvey manifest when a wrapper needs the preferred machine-readable contract. Use purvey context when a human or model should read the dense reference text first, or use purvey context --json / --pretty when an existing caller needs manifest-parity output.'
 				]
 			},
 			{
@@ -1422,7 +1560,7 @@ const docsPages: DocsPage[] = [
 			{
 				href: '/docs/cli/context-manifest',
 				label: 'Context and manifest',
-				description: 'Understand text-first onboarding versus machine-readable contract output.'
+				description: 'Text-first onboarding, manifest output, and wrapper guidance for agents.'
 			},
 			{
 				href: '/docs/api/catalog',
@@ -1505,7 +1643,8 @@ const docsPages: DocsPage[] = [
 			{
 				href: '/docs/cli/context-manifest',
 				label: 'Context and manifest',
-				description: 'Dense onboarding text versus machine-readable contract output.'
+				description:
+					'Dense onboarding text, machine-readable contract output, and agent wrapper guidance.'
 			},
 			{
 				href: '/docs/cli/overview',
@@ -1673,29 +1812,29 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Commands',
 				bullets: [
-					'purvey roast list: list profiles, optionally filtered by --coffee-id, --coffee-name, --catalog-id, --date-start, or --date-end.',
+					'purvey roast list: list profiles, optionally filtered by --coffee-id, --roast-id, --batch-name, --coffee-name, --catalog-id, --date-start, or --date-end.',
 					'purvey roast get <id>: fetch a single roast profile (--include-temps, --include-events for full telemetry).',
 					'purvey roast create: create a roast record manually.',
 					'purvey roast import: import an Artisan .alog file.',
 					'purvey roast update <id>: update notes, batch name, oz-out, or targets on an existing profile.',
 					'purvey roast delete <id>: delete a roast profile.',
-					'purvey roast watch: watch a directory for new .alog files and auto-import them.'
+					'purvey roast watch: watch a directory for new .alog files with --coffee-id, --prompt-each, or --auto-match, and resume long-running sessions with --resume.'
 				],
 				codeBlocks: [
 					{
-						label: 'Create, import, list, and update',
+						label: 'Create, import, list, update, and watch',
 						language: 'bash',
-						code: 'purvey roast create --coffee-id 7 --batch-name "Ethiopia Guji Light" --oz-in 16 --pretty\npurvey roast import ~/artisan/ethiopia-guji.alog --coffee-id 7 --pretty\npurvey roast list --coffee-name "Guji" --pretty\npurvey roast list --catalog-id 128 --pretty\npurvey roast list --date-start 2026-01-01 --date-end 2026-03-31\npurvey roast update 123 --targets "Aim for FC at 390F, 18% dev"\npurvey roast update 123 --oz-out 13.2'
+						code: 'purvey roast create --coffee-id 7 --batch-name "Ethiopia Guji Light" --oz-in 16 --pretty\npurvey roast import ~/artisan/ethiopia-guji.alog --coffee-id 7 --pretty\npurvey roast list --roast-id 123 --pretty\npurvey roast list --batch-name "Guji" --pretty\npurvey roast list --catalog-id 128 --pretty\npurvey roast update 123 --targets "Aim for FC at 390F, 18% dev"\npurvey roast watch ~/artisan/ --auto-match\npurvey roast watch --resume'
 					}
 				]
 			},
 			{
 				title: 'Behavior notes',
 				bullets: [
-					'--coffee-id always refers to green_coffee_inv.id (use purvey inventory list to find IDs).',
-					'--coffee-name filters by coffee name with a partial match (case-insensitive).',
+					'--coffee-id always refers to green_coffee_inv.id (use purvey inventory list to find IDs), while --catalog-id on roast list cross-references the underlying coffee_catalog row.',
+					'--roast-id filters by the exact roast profile ID while keeping the list output shape, which is useful in scripts that already expect arrays.',
 					'Import extracts roast curves, events, and milestone timing from .alog files.',
-					'Interactive --form mode provides a guided workflow for create and import.'
+					'Interactive --form mode provides a guided workflow for create, import, and watch setup. --auto-match and --coffee-id are mutually exclusive on roast watch.'
 				]
 			}
 		],
@@ -1734,13 +1873,13 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Record and list sales',
 						language: 'bash',
-						code: 'purvey sales record --roast-id 123 --oz 12 --price 22.00 --buyer "Jane Smith" --pretty\npurvey sales list --pretty\npurvey sales list --roast-id 123 --pretty\npurvey sales list --buyer "Jane" --date-start 2026-01-01\npurvey sales list --csv > sales.csv'
+						code: 'purvey sales record --roast-id 123 --oz 12 --price 22.00 --buyer "Jane Smith" --pretty\npurvey sales record --form\npurvey sales list --pretty\npurvey sales list --roast-id 123 --pretty\npurvey sales list --buyer "Jane" --date-start 2026-01-01\npurvey sales list --csv > sales.csv'
 					}
 				],
 				bullets: [
 					'Required flags for record: --roast-id, --oz, --price.',
-					'Use purvey roast list to find roast IDs.',
-					'--price is the total sale price, not per-ounce.'
+					'Use purvey roast list to find roast IDs. The CLI write flow uses roast_id, not inventory_id.',
+					'--price is the total sale price, not per-ounce. Use --form for an interactive picker when you do not already know the roast ID.'
 				]
 			},
 			{
@@ -1749,7 +1888,8 @@ const docsPages: DocsPage[] = [
 					'--roast-id <id>: filter by roast profile ID.',
 					'--date-start / --date-end <YYYY-MM-DD>: filter by date range.',
 					'--buyer <name>: filter by buyer name (partial match).',
-					'--limit <n>: maximum results returned (default: 20).'
+					'--limit <n>: maximum results returned (default: 20).',
+					'--offset <n>: skip rows for pagination when exporting or reconciling larger histories.'
 				]
 			},
 			{
@@ -1757,7 +1897,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'purvey sales update <id>: update oz, price, buyer, or sell-date on an existing sale.',
 					'purvey sales delete <id>: delete a sale record.',
-					'Both commands expect a sale ID from purvey sales list.'
+					'Both commands expect a sale_id from purvey sales list, not a roast_id.'
 				]
 			}
 		],
@@ -1794,15 +1934,16 @@ const docsPages: DocsPage[] = [
 				title: 'Read and rate',
 				codeBlocks: [
 					{
-						label: 'Retrieve tasting notes',
+						label: 'Retrieve and rate tasting data',
 						language: 'bash',
-						code: 'purvey tasting get 128 --filter both --pretty\npurvey tasting get 128 --filter supplier --pretty'
+						code: 'purvey tasting get 128 --filter both --pretty\npurvey tasting get 128 --filter supplier --pretty\npurvey tasting rate 7 --aroma 4 --body 3 --acidity 5 --sweetness 4 --aftertaste 4\npurvey tasting rate --form'
 					}
 				],
 				bullets: [
 					'The <bean-id> for tasting get is a coffee_catalog ID, not an inventory ID.',
+					'purvey tasting rate uses an inventory_id, not a catalog_id. That split mirrors the supplier-notes versus personal-cupping data model.',
 					'--filter both returns both supplier and personal notes when available.',
-					'purvey tasting rate updates your cupping scores on the corresponding inventory row.'
+					'Rate supports aroma, body, acidity, sweetness, aftertaste, brew-method, notes, and --form.'
 				]
 			}
 		],
@@ -1824,42 +1965,43 @@ const docsPages: DocsPage[] = [
 			}
 		]
 	},
+
 	{
 		section: 'cli',
 		slug: 'context-manifest',
 		title: 'CLI context and manifest',
 		summary:
-			'Understand purvey context, purvey manifest, JSON versus text output, and how agents should onboard to the CLI contract.',
+			'Understand purvey context, purvey manifest, and how wrappers should onboard to the CLI contract.',
 		eyebrow: 'Agent onboarding',
 		intro: [
-			'purvey context and purvey manifest are related but not interchangeable. context is optimized for dense human or model-readable onboarding text. manifest is optimized for wrappers and code that want the machine-readable contract directly.',
-			'Both commands are unauthenticated and intentionally describe the CLI itself rather than fetching live user data.'
+			'purvey context and purvey manifest are related but not interchangeable. context is optimized for dense human or model-readable onboarding text. manifest is the preferred machine-readable contract for shells, wrappers, and agents.',
+			'purvey context --json and --pretty emit the same manifest contract for compatibility when an existing caller already uses the context entrypoint. The same contract is also available in-process via @purveyors/cli/manifest.'
 		],
 		sections: [
 			{
 				title: 'Which command to use',
 				table: {
-					headers: ['Command', 'Default output', 'Best for'],
+					headers: ['Need', 'Use', 'Notes'],
 					rows: [
 						[
+							'Dense onboarding text',
 							'purvey context',
-							'Dense human-readable text',
-							'Bootstrapping an agent or giving a human operator a compact reference'
+							'Prints the shipped plain-text agent reference with auth rules, ID maps, workflows, and error patterns.'
 						],
 						[
-							'purvey context --json / --pretty',
-							'Machine-readable manifest JSON',
-							'Wrappers that want the manifest but still call context'
-						],
-						[
+							'Preferred machine-readable contract',
 							'purvey manifest',
-							'Compact JSON manifest',
-							'Scripts, SDK wrappers, and direct contract ingestion'
+							'Emits the stable manifest JSON on stdout. Use --pretty for indented output.'
 						],
 						[
-							'purvey manifest --pretty',
-							'Indented JSON manifest',
-							'Debugging or inspecting the manifest manually'
+							'Compatibility-parity JSON',
+							'purvey context --json / --pretty',
+							'Use when an existing context caller needs the same manifest contract without changing entrypoints.'
+						],
+						[
+							'Code-side integration',
+							'@purveyors/cli/manifest',
+							'Prefer the dedicated manifest export when an in-process Node.js or agent runtime needs the same contract.'
 						]
 					]
 				}
@@ -1870,7 +2012,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Text-first onboarding',
 						language: 'bash',
-						code: 'purvey context\npurvey context | head -50'
+						code: 'purvey context\npurvey context | head -50\npurvey context > cli-reference.txt'
 					},
 					{
 						label: 'Machine-readable contract',
@@ -1879,16 +2021,16 @@ const docsPages: DocsPage[] = [
 					}
 				],
 				bullets: [
-					'Neither context nor manifest supports --csv.',
-					'context defaults to text, not JSON. That distinction matters for wrappers that assume every CLI command emits JSON by default.',
-					'manifest always emits the machine-readable contract on stdout.'
+					'purvey context prints text by default. Use purvey manifest for the preferred machine-readable contract.',
+					'purvey context --json and --pretty intentionally emit the same manifest contract for compatibility with existing context-based callers.',
+					'Use --csv only on commands that document CSV support. Neither context nor manifest supports CSV output.'
 				]
 			},
 			{
 				title: 'What the manifest contains',
 				bullets: [
 					'Command groups, subcommands, summaries, examples, and auth requirements.',
-					'Output-mode expectations, stderr/stdout notes, structured error-envelope guidance, and exit codes.',
+					'Output-mode expectations, stderr/stdout notes, structured error-envelope guidance, and compatibility notes.',
 					'ID-type reference for catalog_id, inventory_id, roast_id, and sale_id so agents do not confuse resource identifiers.',
 					'Workflow examples and common error patterns that help agents recover without reverse-engineering implementation details.'
 				],
@@ -1933,8 +2075,8 @@ const docsPages: DocsPage[] = [
 				title: 'Recommended agent patterns',
 				bullets: [
 					'For shell-based automation, authenticate once, then call purvey commands with JSON or CSV output that suits the surrounding workflow.',
-					'For code-side integrations, import stable subpaths such as @purveyors/cli/catalog, @purveyors/cli/inventory, or @purveyors/cli/manifest instead of screen-scraping CLI help text.',
-					'Use purvey context first when a model needs dense onboarding text. Use purvey manifest when the wrapper wants structured metadata directly.',
+					'For code-side integrations, import stable subpaths such as @purveyors/cli/catalog, @purveyors/cli/inventory, @purveyors/cli/roast, @purveyors/cli/sales, @purveyors/cli/tasting, or @purveyors/cli/manifest instead of screen-scraping CLI help text.',
+					'Use purvey context first when a model needs dense onboarding text. Use purvey manifest for the preferred machine-readable contract, or purvey context --json when an existing caller needs compatibility-parity output.',
 					'Prefer the CLI or its shared modules over coupling to deprecated /api/tools/* endpoints or private workspace route payloads.'
 				]
 			},
@@ -1949,7 +2091,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'Agent bootstrap sequence',
 						language: 'bash',
-						code: 'purvey auth login --headless\npurvey context\npurvey catalog search --origin "Ethiopia" --json'
+						code: 'purvey auth login --headless\npurvey manifest --pretty\npurvey catalog search --origin "Ethiopia" --json'
 					}
 				]
 			}
@@ -1958,7 +2100,7 @@ const docsPages: DocsPage[] = [
 			{
 				href: '/docs/cli/context-manifest',
 				label: 'Context and manifest',
-				description: 'Choose the right onboarding output for your agent or wrapper.'
+				description: 'Dense onboarding text, manifest output, and wrapper guidance.'
 			},
 			{
 				href: '/docs/cli/auth-output',

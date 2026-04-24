@@ -35,11 +35,13 @@ None.
 ### P2 (important improvements)
 
 - **P2-1: `auth.test.ts` still uses `/api/catalog-api` as default test URL**
+
   - **Evidence:** `src/lib/server/auth.test.ts:85` — `const url = options.url ?? 'https://app.test/api/catalog-api';`
   - **Impact:** Not a functional bug (the auth test doesn't exercise the redirect handler), but it's a stale reference that will confuse anyone reading the test. The URL is used as a dummy for constructing request events, so it still "works," but the semantic intent is misleading now that this endpoint is a redirect stub.
   - **Correction:** Update the default URL to `'https://app.test/v1/catalog'` in a follow-up commit.
 
 - **P2-2: `AGENTS.md` and `README.md` still reference `/api/catalog-api`**
+
   - **Evidence:** `AGENTS.md:75` lists `GET /api/catalog-api` as an endpoint. `README.md:33` does the same.
   - **Impact:** Anyone (human or agent) reading the repo's top-level docs will believe `/api/catalog-api` is still the active external endpoint. This is documentation debt that directly contradicts the PR's intent.
   - **Correction:** Update both files to reference `GET /v1/catalog` instead.
@@ -52,6 +54,7 @@ None.
 ### P3 (nice to have)
 
 - **P3-1: Several `notes/` files reference `/api/catalog-api`**
+
   - **Evidence:** `notes/API_notes/API-strategy.md`, `notes/API_notes/APITODOS.md`, `notes/archive/2026-03-14-phase-0-data-layer-extraction.md`, various implementation plans.
   - **Impact:** Historical context; not user-facing. These are planning/archival docs. No action required unless the notes are used as living references.
   - **Correction:** Optional. Could add a note that `/api/catalog-api` is archived as of PR #202.
@@ -62,12 +65,12 @@ None.
 
 ## Assumptions Review
 
-| Assumption | Validity | Rationale | Action |
-|---|---|---|---|
-| HTTP 308 preserves Authorization header across redirect | **Valid** | RFC 7538: 308 requires the client to preserve the request method AND body. The spec says "the user agent MUST NOT change the request method" and most HTTP clients (curl, fetch, axios) also preserve headers including Authorization on 308. This is the correct status code for this use case. 301/302 would risk method downgrade to GET and header stripping. | N/A |
-| SvelteKit `redirect()` throws (not returns) | **Valid** | SvelteKit's `redirect()` function works by throwing an object with `status` and `location`. The tests correctly use try/catch to assert on the thrown object. The handler uses `throw redirect(...)` which is idiomatic SvelteKit. | N/A |
-| No external consumers will break | **Weak** | This is a hard cutover. Any API consumer that doesn't follow 308 redirects (some HTTP clients need explicit configuration) will get an empty redirect response instead of data. The PR intent explicitly states "hard cutover, no going back," so this is an accepted risk, not a bug. | Document in changelog/release notes for API consumers. |
-| `/v1/catalog` handles all query params that `/api/catalog-api` clients might send | **Valid** | The old endpoint ignored query params entirely (fetched all rows, applied row limits server-side). `/v1/catalog` supports `page`, `limit`, `source`, and other filters. Forwarding old params is harmless (unknown params are ignored by `searchCatalog`). | N/A |
+| Assumption                                                                        | Validity  | Rationale                                                                                                                                                                                                                                                                                                                                                         | Action                                                 |
+| --------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| HTTP 308 preserves Authorization header across redirect                           | **Valid** | RFC 7538: 308 requires the client to preserve the request method AND body. The spec says "the user agent MUST NOT change the request method" and most HTTP clients (curl, fetch, axios) also preserve headers including Authorization on 308. This is the correct status code for this use case. 301/302 would risk method downgrade to GET and header stripping. | N/A                                                    |
+| SvelteKit `redirect()` throws (not returns)                                       | **Valid** | SvelteKit's `redirect()` function works by throwing an object with `status` and `location`. The tests correctly use try/catch to assert on the thrown object. The handler uses `throw redirect(...)` which is idiomatic SvelteKit.                                                                                                                                | N/A                                                    |
+| No external consumers will break                                                  | **Weak**  | This is a hard cutover. Any API consumer that doesn't follow 308 redirects (some HTTP clients need explicit configuration) will get an empty redirect response instead of data. The PR intent explicitly states "hard cutover, no going back," so this is an accepted risk, not a bug.                                                                            | Document in changelog/release notes for API consumers. |
+| `/v1/catalog` handles all query params that `/api/catalog-api` clients might send | **Valid** | The old endpoint ignored query params entirely (fetched all rows, applied row limits server-side). `/v1/catalog` supports `page`, `limit`, `source`, and other filters. Forwarding old params is harmless (unknown params are ignored by `searchCatalog`).                                                                                                        | N/A                                                    |
 
 ## Tech Debt Notes
 

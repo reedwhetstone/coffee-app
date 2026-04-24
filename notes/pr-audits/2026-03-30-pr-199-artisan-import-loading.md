@@ -46,12 +46,12 @@ None.
 - **Correction:** Add `disabled={isImporting}` to the file input element. One-line change:
   ```svelte
   <input
-    id="artisan-file-input"
-    type="file"
-    accept=".alog,.alog.json,.json"
-    onchange={handleFileSelect}
-    disabled={isImporting}
-    class="..."
+  	id="artisan-file-input"
+  	type="file"
+  	accept=".alog,.alog.json,.json"
+  	onchange={handleFileSelect}
+  	disabled={isImporting}
+  	class="..."
   />
   ```
 
@@ -78,13 +78,13 @@ None.
 
 ## Assumptions Review
 
-| Assumption | Validity | Notes |
-|---|---|---|
-| `isImporting` state correctly prevents re-entry | Valid | Guard at top of `importFile()` and in `close()` ensures no double-submit and no premature close. |
-| Disabling backdrop `<button>` is sufficient to block backdrop close | Valid | A disabled button does not fire click events. |
-| `finally` block always resets `isImporting` | Valid | JavaScript `finally` executes regardless of throw/return in try/catch. |
-| The `alert()` calls block before `finally` runs | Valid | `alert()` is synchronous and modal; execution pauses until user clicks OK. State sequence is correct: alert → isImporting=false → close(). |
-| No other code path calls `close()` during import | Valid | `close()` is only triggered by backdrop click (disabled) and Cancel button (disabled). No Escape handler exists. |
+| Assumption                                                          | Validity | Notes                                                                                                                                      |
+| ------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `isImporting` state correctly prevents re-entry                     | Valid    | Guard at top of `importFile()` and in `close()` ensures no double-submit and no premature close.                                           |
+| Disabling backdrop `<button>` is sufficient to block backdrop close | Valid    | A disabled button does not fire click events.                                                                                              |
+| `finally` block always resets `isImporting`                         | Valid    | JavaScript `finally` executes regardless of throw/return in try/catch.                                                                     |
+| The `alert()` calls block before `finally` runs                     | Valid    | `alert()` is synchronous and modal; execution pauses until user clicks OK. State sequence is correct: alert → isImporting=false → close(). |
+| No other code path calls `close()` during import                    | Valid    | `close()` is only triggered by backdrop click (disabled) and Cancel button (disabled). No Escape handler exists.                           |
 
 ## Tech Debt Notes
 
@@ -119,6 +119,7 @@ Both items are improvements, not blockers. The PR is merge-ready as-is.
 **File: `src/lib/components/roast/ArtisanImportDialog.svelte`**
 
 For P2 #1 (file input disabled):
+
 ```diff
  <input
    id="artisan-file-input"
@@ -131,13 +132,12 @@ For P2 #1 (file input disabled):
 ```
 
 For P2 #2 (spinner consistency), replace the SVG block (lines ~171-189) with:
+
 ```svelte
 {#if isImporting}
-  <div
-    class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
-  ></div>
-  Importing…
+	<div class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+	Importing…
 {:else}
-  Import File
+	Import File
 {/if}
 ```

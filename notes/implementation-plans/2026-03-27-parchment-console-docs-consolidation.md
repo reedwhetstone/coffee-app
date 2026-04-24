@@ -22,15 +22,15 @@ DEVLOG source: Priority 0 Parchment Platform sequence (PR D plan in `notes/imple
 
 Scored against the daily easy-win rubric:
 
-| Candidate | Priority | Complexity | Risk | Deps | Total |
-|---|---|---|---|---|---|
-| PR D: Parchment Console/Docs Consolidation | P0=10 | medium=6 | low=0 | none=0 | **16** |
-| Score & rating display formatting | P2=6 | easy=10 | low=0 | none=0 | **16** |
-| Bean catalog profile cleanup | P2=6 | easy=10 | low=0 | none=0 | **16** |
-| PR B: Catalog `/v1` hard cutover | P0=10 | medium=6 | medium=-2 | none=0 | **14** |
-| Roast chart resize on navigation | P2=6 | medium=6 | medium=-2 | some=-2 | **8** |
-| PR C: Role simplification | P0=10 | hard=2 | high=-5 | none=0 | **7** |
-| Bean cascade delete | P1=8 | hard=2 | high=-5 | none=0 | **5** |
+| Candidate                                  | Priority | Complexity | Risk      | Deps    | Total  |
+| ------------------------------------------ | -------- | ---------- | --------- | ------- | ------ |
+| PR D: Parchment Console/Docs Consolidation | P0=10    | medium=6   | low=0     | none=0  | **16** |
+| Score & rating display formatting          | P2=6     | easy=10    | low=0     | none=0  | **16** |
+| Bean catalog profile cleanup               | P2=6     | easy=10    | low=0     | none=0  | **16** |
+| PR B: Catalog `/v1` hard cutover           | P0=10    | medium=6   | medium=-2 | none=0  | **14** |
+| Roast chart resize on navigation           | P2=6     | medium=6   | medium=-2 | some=-2 | **8**  |
+| PR C: Role simplification                  | P0=10    | hard=2     | high=-5   | none=0  | **7**  |
+| Bean cascade delete                        | P1=8     | hard=2     | high=-5   | none=0  | **5**  |
 
 **Winner: PR D (Parchment Console/Docs Consolidation)**
 
@@ -130,36 +130,44 @@ CLI cross-check: recent `purveyors-cli` PRs #54-#56 are structural/filter improv
 ## Files to change
 
 1. **`src/routes/docs/+page.server.ts`** (new)
+
    - Copy auth logic from `/api-dashboard/docs/+page.server.ts`
    - If not authenticated, redirect to `/api/docs` (login gate) rather than embedding the gate here
    - Or: include the gate inline (simpler, matches current `/api/docs` pattern)
 
 2. **`src/routes/docs/+page.svelte`** (new)
+
    - Move content from `/api-dashboard/docs/+page.svelte`
    - Update title to "Parchment API Documentation"
    - Update internal back-link from "← Back to Dashboard" to "← Back to Console"
    - Internal links from docs to `/api-dashboard` should update to say "Back to Parchment Console"
 
 3. **`src/routes/api-dashboard/docs/+page.server.ts`**
+
    - Replace content with `redirect(308, '/docs')`
    - Remove auth check (redirect unconditionally; `/docs` handles auth)
 
 4. **`src/routes/api-dashboard/docs/+page.svelte`**
+
    - Can be emptied or removed; redirect fires server-side so this page should never render
 
 5. **`src/routes/api-dashboard/+page.svelte`**
+
    - Page heading: "API Dashboard" → "Parchment Console"
    - Any descriptive copy referencing "API Dashboard" updated to "Parchment Console"
    - `onMount` document.title: "Parchment Console - Purveyors"
 
 6. **`src/routes/api/docs/+page.svelte`**
+
    - `goto('/api-dashboard/docs')` → `goto('/docs')`
    - `document.title`: "Parchment API Documentation" (already correct, no change)
 
 7. **`src/lib/components/layout/UnifiedHeader.svelte`**
+
    - `isApiNavActive`: add `|| currentPath.startsWith('/docs')` so the nav item stays active when on the docs route
 
 8. **`src/lib/components/layout/Navbar.svelte`**
+
    - Same active-path update as UnifiedHeader to include `/docs`
 
 9. **`src/routes/api-dashboard/usage/+page.svelte`** (check)
@@ -222,9 +230,11 @@ CLI cross-check: recent `purveyors-cli` PRs #54-#56 are structural/filter improv
 ### Risks
 
 1. **Active-path detection gap in nav**: If `/docs` isn't added to the active-path check, the "Parchment API" nav button goes dark when users are reading docs. Low impact but visible.
+
    - Mitigation: explicit check in both UnifiedHeader and Navbar.
 
 2. **Stale internal links**: Other pages or components may hard-code `/api-dashboard/docs`. The redirect handles external links, but internal `goto()` calls or `<a href>` tags should be updated to `/docs` directly.
+
    - Mitigation: `grep -r "api-dashboard/docs"` before PR to catch remaining references.
 
 3. **Docs content for unauthenticated users**: Today `/api/docs` shows a "login to access docs" gate. If `/docs` instead requires auth and throws a 303 redirect to login, anonymous users who navigate directly to `/docs` end up on the auth page with no context.

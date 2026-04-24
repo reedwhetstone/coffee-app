@@ -41,6 +41,7 @@ If the goal is to understand the current product direction, implementation contr
 Anything in `notes/archive/` is historical reference unless explicitly revived.
 
 Use archive material for:
+
 - implementation archaeology
 - understanding abandoned ideas
 - recovering prior rationale

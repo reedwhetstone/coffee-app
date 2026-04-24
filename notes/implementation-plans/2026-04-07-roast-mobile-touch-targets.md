@@ -15,6 +15,7 @@ Improve usability of roast chart controls on mobile.
 **DEVLOG source:** Priority 4 — "Improve usability of roast chart buttons on mobile. Touch targets are too small and controls overlap."
 
 This plan focuses on the two mobile interaction clusters that matter during an active roast session:
+
 - `src/lib/components/roast/RoastControls.svelte` — fan and heat stepper controls
 - `src/lib/components/roast/EventTimeline.svelte` — milestone/event buttons
 
@@ -27,6 +28,7 @@ The current mobile UI uses small tap areas (`h-8` stepper buttons; dense `p-2 te
 Only candidates that survived completion reconciliation and still look safely shippable in one PR were considered.
 
 - **Mobile roast chart buttons touch-target fix**
+
   - Priority: P4 → 4
   - Complexity: easy → 10
   - Risk: low → 0
@@ -34,6 +36,7 @@ Only candidates that survived completion reconciliation and still look safely sh
   - **Total: 14**
 
 - **Roast chart resize on navigation**
+
   - Priority: P2 → 6
   - Complexity: medium → 6
   - Risk: medium → -2
@@ -42,9 +45,11 @@ Only candidates that survived completion reconciliation and still look safely sh
   - Not selected because it touches chart lifecycle/layout behavior and is no longer an easy-win.
 
 - **Beans profile cleanup for exposed user reference fields**
+
   - Excluded from scoring as the remaining scope is too ambiguous for a one-purpose PR without additional discovery.
 
 - **Profit page auto-refresh on new sale form submission**
+
   - Excluded from scoring because the current code already contains refresh-oriented client-side logic; this now looks closer to a verification/regression question than a clean planning target.
 
 - **Roast profile / bean profile mobile appearance**
@@ -111,17 +116,20 @@ This is not a flagship strategy bet, but it is solidly on-strategy: a scoped usa
 ### RoastControls (`RoastControls.svelte`)
 
 On mobile:
+
 - Fan and heat controls keep the same vertical stepper model, but buttons become finger-sized instead of tiny taps.
 - Increment/decrement buttons should be at least ~44px tall in practice.
 - The displayed numeric value should have a larger, more stable visual container so the control does not feel cramped.
 - The two control groups should keep clear separation without wasting so much horizontal space that they collide with surrounding content.
 
 On tablet/desktop:
+
 - Existing desktop layout should stay visually the same unless a class simplification is required for responsive consistency.
 
 ### EventTimeline (`EventTimeline.svelte`)
 
 On mobile:
+
 - Event buttons remain a compact grid, but each button gets a taller tap area and slightly more forgiving internal padding.
 - Long labels like `FC Rolling` and `Cool End` should remain readable without feeling clipped or too tiny.
 - Button states should remain visually obvious: disabled before roasting, active/selected when logged.
@@ -129,6 +137,7 @@ On mobile:
 ### RoastChartInterface (`RoastChartInterface.svelte`)
 
 Only if needed:
+
 - Slight spacing/layout adjustments around the controls + timeline section to ensure the enlarged mobile controls still fit comfortably below the chart.
 
 ---
@@ -136,11 +145,13 @@ Only if needed:
 ## Files to change
 
 ### Primary
+
 - `src/lib/components/roast/RoastControls.svelte`
 - `src/lib/components/roast/EventTimeline.svelte`
 - `src/routes/roast/RoastChartInterface.svelte` (only if layout spacing needs a small companion adjustment)
 
 ### Test / verification
+
 - `tests/e2e/smoke.spec.ts` or a new focused mobile roast smoke test file if that is cleaner
 
 ---
@@ -178,10 +189,12 @@ This is a presentation-layer usability PR only.
 ## Test plan
 
 ### Static verification
+
 - Run `pnpm lint`
 - Run `pnpm check`
 
 ### Manual UI verification
+
 - Open `/roast` on a mobile viewport in browser devtools or Playwright mobile emulation.
 - Confirm fan/heat controls are comfortable to tap repeatedly.
 - Confirm event buttons remain readable and do not clip awkwardly.
@@ -189,11 +202,13 @@ This is a presentation-layer usability PR only.
 - Confirm the chart remains visually separated from the control block.
 
 ### Playwright expectation
+
 - Prefer one focused mobile smoke path covering `/roast` at an iPhone-ish viewport.
 - Assert the roast controls section renders and key buttons are visible/interactable.
 - Keep scope narrow; do not turn this into a full roast-session end-to-end rewrite.
 
 ### Vitest expectation
+
 - No new unit tests are strictly required if the change is purely responsive classes/layout.
 - If a helper is introduced for responsive layout state, add a narrow test for that helper only.
 
@@ -202,11 +217,13 @@ This is a presentation-layer usability PR only.
 ## Risks and rollback
 
 ### Risks
+
 - Enlarging controls could accidentally create wrapping or spacing regressions in the roast control panel.
 - Over-correcting for mobile could degrade the current desktop/tablet layout if responsive classes are not carefully scoped.
 - Touch-target improvements can easily sprawl into broader "roast page redesign" work if scope is not held.
 
 ### Rollback
+
 - Low risk and easy rollback: revert the UI component changes.
 - No data migration or state cleanup is needed.
 

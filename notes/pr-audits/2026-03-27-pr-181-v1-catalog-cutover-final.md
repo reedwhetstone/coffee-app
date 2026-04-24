@@ -33,6 +33,7 @@ This PR implements the v1 catalog cutover cleanly. The canonical `/v1/catalog` r
 ## Intent Verification
 
 **Stated intent:**
+
 1. Make `/v1/catalog` the real canonical catalog resource.
 2. Cut internal and external catalog usage over to shared logic/contract.
 3. Turn `/api/catalog` and `/api/catalog-api` into explicit compatibility shims over the canonical service.
@@ -40,6 +41,7 @@ This PR implements the v1 catalog cutover cleanly. The canonical `/v1/catalog` r
 5. Deprecation fix: `price_per_lb` is the source of truth; canonical params are `price_per_lb_min`/`price_per_lb_max`; `cost_lb_*` are compatibility aliases only.
 
 **What was implemented:**
+
 1. **New `catalogResource.ts`** (726 lines) contains three builder functions: `buildCanonicalCatalogResponse`, `buildLegacyAppCatalogResponse`, `buildLegacyExternalCatalogResponse`. All catalog routes delegate here.
 2. **New `catalogVisibility.ts`** (33 lines) extracts the `hasPrivilegedCatalogSession` / `resolveCatalogVisibility` logic into a reusable module.
 3. **New `pageAuth.ts`** (16 lines) extracts `getPageAuthState` for page server load functions, correctly stripping bearer session state and returning `viewer` when no cookie session exists.
@@ -70,6 +72,7 @@ _None._
 **P2-A: API docs page overstates authentication requirement for /v1/catalog**
 
 - **Evidence:** `src/routes/api-dashboard/docs/+page.svelte` line 138-139:
+
   > "All API requests require authentication using Bearer token authentication with a valid API key."
   > "API keys are provided upon subscription activation"
 
@@ -106,8 +109,9 @@ _None._
 **P3-B: Stale comment in filterStore.ts priceRange handling**
 
 - **Evidence:** `src/lib/stores/filterStore.ts` line 17 comment says `showWholesale: boolean` but the comment for the range filter handling at line 113-119 still references `cost_lb`:
+
   > `// Handle range filters (score_value, cost_lb)`
-  This comment refers to the filter key naming convention in the store, not the actual DB column. The store builds params like `price_per_lb_min`/`price_per_lb_max` (matching the canonical contract), so the comment is misleading.
+  > This comment refers to the filter key naming convention in the store, not the actual DB column. The store builds params like `price_per_lb_min`/`price_per_lb_max` (matching the canonical contract), so the comment is misleading.
 
 - **Impact:** Low (cosmetic/misleading comment).
 
@@ -117,25 +121,28 @@ _None._
 
 ## Assumptions Review
 
-| Assumption | Validity | Why | Recommended action |
-|---|---|---|---|
-| `/api/catalog` is only used by internal UI pages (beans page) | Valid | Beans page is the only caller found via grep. `/api/catalog` requires a session cookie (no anonymous access possible). | None |
-| `safeGetSession()` returns a singleton promise, so caching `event.locals.session` in hooks is safe | Valid | `safeGetSession` memoizes on `sessionContextPromise` within the request. Setting `event.locals.session` to the resolved value before the guard runs is equivalent. | None |
-| `priceRange` in `catalog.ts` (the `[min, max]` tuple option) is used by internal callers that should be updated | Weak | Only one caller found: `src/routes/api/tools/coffee-catalog/+server.ts` (line 69). This is an internal tool. Whether it needs updating is unclear from this PR. | Verify `coffee-catalog` tool's `price_range` param maps correctly to `pricePerLbMin`/`pricePerLbMax` |
-| The `ids` parameter support in the old `/api/catalog` route is unused | Valid | Grep found zero callers in the codebase. The function `getCatalogItemsByIds` is still exported from `catalog.ts` for direct use. | None |
-| `CATALOG_API_COLUMNS` intentionally omits `price_per_lb` | Valid | The legacy external contract predates `price_per_lb`. The PR intentionally keeps the shim frozen. | Document the frozen nature in a comment |
+| Assumption                                                                                                      | Validity | Why                                                                                                                                                                | Recommended action                                                                                   |
+| --------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `/api/catalog` is only used by internal UI pages (beans page)                                                   | Valid    | Beans page is the only caller found via grep. `/api/catalog` requires a session cookie (no anonymous access possible).                                             | None                                                                                                 |
+| `safeGetSession()` returns a singleton promise, so caching `event.locals.session` in hooks is safe              | Valid    | `safeGetSession` memoizes on `sessionContextPromise` within the request. Setting `event.locals.session` to the resolved value before the guard runs is equivalent. | None                                                                                                 |
+| `priceRange` in `catalog.ts` (the `[min, max]` tuple option) is used by internal callers that should be updated | Weak     | Only one caller found: `src/routes/api/tools/coffee-catalog/+server.ts` (line 69). This is an internal tool. Whether it needs updating is unclear from this PR.    | Verify `coffee-catalog` tool's `price_range` param maps correctly to `pricePerLbMin`/`pricePerLbMax` |
+| The `ids` parameter support in the old `/api/catalog` route is unused                                           | Valid    | Grep found zero callers in the codebase. The function `getCatalogItemsByIds` is still exported from `catalog.ts` for direct use.                                   | None                                                                                                 |
+| `CATALOG_API_COLUMNS` intentionally omits `price_per_lb`                                                        | Valid    | The legacy external contract predates `price_per_lb`. The PR intentionally keeps the shim frozen.                                                                  | Document the frozen nature in a comment                                                              |
 
 ---
 
 ## Tech Debt Notes
 
 **Debt introduced:**
+
 - `legacyCatalogApiCache` is a module-level mutable singleton in `catalogResource.ts`. It persists across requests but is not tied to any TTL cleanup beyond the `LEGACY_CATALOG_API_CACHE_TTL` check. This is inherited from the old `/api/catalog-api` pattern and not made worse.
 
 **Debt worsened:**
+
 - The `CatalogItem` type (`Database['public']['Tables']['coffee_catalog']['Row']`) includes `coffee_user`. All catalog queries return this type, which technically carries a sensitive field. This was already true before the PR.
 
 **Suggested follow-up tickets:**
+
 - [ ] Audit `coffee-catalog` tool's price_range param for correct canonical mapping
 - [ ] Consider adding `price_per_lb` to `CATALOG_API_COLUMNS` as a non-breaking field addition
 - [ ] Add E2E smoke tests for `/v1/catalog` anonymous, cookie-session, and API-key paths
@@ -145,11 +152,13 @@ _None._
 ## Product Alignment Notes
 
 **Alignment wins:**
+
 - The canonical `/v1/catalog` response shape is clean and well-structured with `data`, `pagination`, and `meta` top-level keys.
 - The `X-Purveyors-Canonical-Resource: /v1/catalog` header on all three routes signals the architecture clearly to API consumers.
 - The `/v1/+server.ts` root resource correctly lists `/v1/catalog` as live and marks legacy aliases.
 
 **Misalignments:**
+
 - The API docs page (`/api-dashboard/docs`) still references `/api/catalog-api` as the primary example URL (line 127: `>https://purveyors.io/api/catalog-api`), which is the OLD canonical URL. It was partially updated (lines 192, 366, 391 reference `/v1/catalog`), but the Rate Limits section (line 422-424) correctly explains the canonical vs. legacy distinction.
 - The marketing page (`/api/+page.svelte`) correctly shows `/v1/catalog` in the request preview.
 
@@ -158,6 +167,7 @@ _None._
 ## Test Coverage Assessment
 
 **Existing tests that validate changes:**
+
 - `src/lib/server/catalogResource.test.ts` (424 lines): Excellent coverage of canonical response building, price aliasing (both canonical and deprecated paths), member session visibility, bearer-session public-only enforcement, API-key rate limiting and row limiting, legacy external projection and cache behavior. Tests are well-structured with clear descriptions.
 - `src/routes/api/catalog/catalog.test.ts` (33 lines): Tests delegation pattern for `/api/catalog` shim.
 - `src/routes/v1/catalog/catalog.test.ts` (33 lines): Tests delegation pattern for `/v1/catalog` route.
@@ -168,11 +178,13 @@ _None._
 - `src/lib/server/pageAuth.test.ts` (34 lines): Tests `getPageAuthState` role stripping behavior.
 
 **Missing tests:**
+
 - No integration test for the full `/api/catalog` shim response shape with actual Supabase data (the shim's `legacyBody` unwrapping logic is only tested indirectly).
 - No test for the `/api/catalog-api` price filtering behavior (either confirming it ignores params or confirming it doesn't support them).
 - No test for the `/api/catalog` shim with pagination vs. non-pagination path.
 
 **Suggested test additions:**
+
 1. `buildLegacyAppCatalogResponse` test: verify non-paginated response returns a plain array (not wrapped in `{data, pagination}`), and paginated response returns `{data, pagination}`.
 2. `buildLegacyExternalCatalogResponse` test: confirm that query params (continent, country, price) are ignored and the full public catalog is returned.
 
@@ -196,10 +208,10 @@ In `src/routes/api-dashboard/docs/+page.svelte`, add a note after line 139:
 
 ```svelte
 <p class="mb-4 text-text-secondary-light">
-  All API requests require authentication using Bearer token authentication with a valid
-  API key. The canonical <code>/v1/catalog</code> endpoint also accepts anonymous
-  requests and returns public catalog data. The legacy <code>/api/catalog-api</code>
-  shim requires a valid API key for all requests.
+	All API requests require authentication using Bearer token authentication with a valid API key.
+	The canonical <code>/v1/catalog</code> endpoint also accepts anonymous requests and returns public
+	catalog data. The legacy <code>/api/catalog-api</code>
+	shim requires a valid API key for all requests.
 </p>
 ```
 
@@ -216,10 +228,11 @@ In `src/routes/api/catalog-api/+server.ts`, add after the function signature com
 ### P3-B Fix (filterStore comment)
 
 In `src/lib/stores/filterStore.ts` line 113:
+
 ```typescript
 // Handle range filters (score_value, price_per_lb)
 ```
 
 ---
 
-*Report generated by verify-pr subagent. No fixes were applied.*
+_Report generated by verify-pr subagent. No fixes were applied._

@@ -19,12 +19,14 @@
 ## Intent Verification
 
 - Stated intent:
+
   - Make `/v1/catalog` the canonical catalog resource.
   - Preserve `/api/catalog` and `/api/catalog-api` as compatibility shims.
   - Normalize catalog visibility and page-auth behavior.
   - Clarify price filtering semantics so `price_per_lb` is the filter source of truth, `price_per_lb_min` / `price_per_lb_max` are canonical params, and `cost_lb_*` remains compatibility-only.
 
 - What was implemented:
+
   - Shared canonical and legacy catalog builders were introduced in `src/lib/server/catalogResource.ts`.
   - Visibility policy was centralized in `src/lib/server/catalogVisibility.ts` and reused by SSR and filter metadata routes.
   - Page auth now correctly keys off real page sessions in `src/lib/server/pageAuth.ts` and `src/hooks.server.ts`.
@@ -48,6 +50,7 @@ None.
 ### P2 (important improvements)
 
 #### 1) First-party catalog UI still depends on deprecated `cost_lb_*` query aliases
+
 - **Evidence:**
   - The canonical route now explicitly treats `price_per_lb_min` / `price_per_lb_max` as primary and falls back to `cost_lb_*` aliases only for compatibility: `src/lib/server/catalogResource.ts:197-200`.
   - The shared search layer now exposes `pricePerLbMin` / `pricePerLbMax` as the canonical filter options: `src/lib/data/catalog.ts:73-74` and `src/lib/data/catalog.ts:245-246`.
@@ -65,6 +68,7 @@ None.
 ### P3 (nice to have)
 
 #### 1) Discovery/docs still understate the canonical route's anonymous public-only mode
+
 - **Evidence:**
   - `/v1` discovery currently advertises only `session` and `apiKey` auth: `src/routes/v1/+server.ts:9-12`.
   - The dashboard API docs say all requests require an API key: `src/routes/api-dashboard/docs/+page.svelte:137-150`.
@@ -91,9 +95,11 @@ None.
 ## Tech Debt Notes
 
 - Debt introduced:
+
   - The canonical price-filter migration is now split across two vocabularies: backend canonical `price_per_lb_*`, first-party client `cost_lb_*`.
 
 - Debt worsened:
+
   - None materially beyond that migration split.
 
 - Suggested follow-up tickets:
@@ -103,11 +109,13 @@ None.
 ## Product Alignment Notes
 
 - Alignment wins:
+
   - The previous blocking issue on price-filter semantics is fixed. Canonical params now map to `price_per_lb`, and deprecated `cost_lb_*` aliases correctly resolve onto that same filter path.
   - Visibility normalization across `/catalog`, `/api/catalog/filters`, and page auth remains solid.
   - Legacy `/api/catalog-api` compatibility behavior still looks intentionally preserved.
 
 - Misalignments:
+
   - The first-party catalog UI has not fully adopted the new canonical price-filter vocabulary.
   - Discovery/docs still describe a narrower auth model than the code actually serves.
 
@@ -117,11 +125,13 @@ None.
 ## Test Coverage Assessment
 
 - Existing tests that validate changes:
+
   - `src/lib/server/catalogResource.test.ts` covers canonical `price_per_lb_*` precedence and deprecated `cost_lb_*` alias compatibility.
   - `src/routes/api/catalog/filters/filters.test.ts`, `src/routes/catalog/page.server.test.ts`, `src/lib/server/pageAuth.test.ts`, and `src/hooks.server.test.ts` cover the previously identified visibility/auth regressions.
   - `src/routes/api/catalog-api/catalog-api.test.ts` and `src/routes/api/catalog/catalog.test.ts` cover the compatibility-route delegation.
 
 - Missing tests:
+
   - No test currently proves that the first-party catalog UI serializes price filters using the new canonical param names.
   - No test covers the `/v1` discovery auth story.
 
@@ -138,9 +148,11 @@ None.
 ## Optional Patch Guidance
 
 - `src/lib/stores/filterStore.ts`
+
   - Introduce explicit mapping so the price range filter serializes to `price_per_lb_min` / `price_per_lb_max` instead of relying on the generic `${key}_min` / `${key}_max` path for `cost_lb`.
 
 - `src/lib/components/layout/Settingsbar.svelte`
+
   - Decide whether the UI state key should stay `cost_lb` for display semantics or be renamed for full contract alignment; either way, the outgoing request params should be canonical.
 
 - `src/routes/v1/+server.ts` and `src/routes/api-dashboard/docs/+page.svelte`

@@ -6,14 +6,16 @@
 2. **The $30-a-Month Lobotomy: How Microsoft Turns Frontier AI Into a Corporate Product**
 3. **Microsoft Knows How to Ship Frontier AI. Copilot for 365 Isn't It.**
 
-*Note on title: Option 1 is the cleanest for HN. Option 3 is the sharpest given Reed's new context about Microsoft's rapid execution on the Anthropic enterprise partnership. Consider a subtitle pairing: "Why Does Enterprise AI Cost More and Deliver Less? / The deliberate architecture of Microsoft Copilot for 365."*
+_Note on title: Option 1 is the cleanest for HN. Option 3 is the sharpest given Reed's new context about Microsoft's rapid execution on the Anthropic enterprise partnership. Consider a subtitle pairing: "Why Does Enterprise AI Cost More and Deliver Less? / The deliberate architecture of Microsoft Copilot for 365."_
 
 ---
 
 ## Pillar
+
 - Agentic Stack
 
 ## Tags (candidate)
+
 - ai, enterprise, microsoft, product-strategy, inference-economics
 
 ---
@@ -42,7 +44,7 @@ Start with a concrete comparison: the same prompt, sent to Copilot for 365 and t
 
 This is not a cherry-picked anecdote. It is the consistent experience of every enterprise knowledge worker who has used both.
 
-The interesting question is not whether the gap exists. It is *why*. And the answer is not that Microsoft can't build good AI.
+The interesting question is not whether the gap exists. It is _why_. And the answer is not that Microsoft can't build good AI.
 
 **Key claim:** Microsoft moved fast enough to ship an enterprise integration of Anthropic's model within roughly a month of Anthropic's own rollout of the feature. For a company that size, that is extraordinary execution speed. They clearly have the engineering and partnership capacity to access frontier model capability. Which means the Copilot quality gap is a product strategy decision, not a technical constraint.
 
@@ -55,6 +57,7 @@ The interesting question is not whether the gap exists. It is *why*. And the ans
 **The numbers:**
 
 A typical Copilot query involves:
+
 - Enterprise system prompt: ~3,000 tokens (conservative; includes compliance framing, behavioral instructions, persona, safety rules)
 - Microsoft Graph grounding context (relevant emails, SharePoint snippets, meeting summaries): ~8,000 tokens
 - User query: ~150 tokens
@@ -62,6 +65,7 @@ A typical Copilot query involves:
 - **Total: ~11,150 input tokens + 600 output tokens per query**
 
 At Azure OpenAI pricing (public rack rates, no volume discount):
+
 - **GPT-4-turbo at 2023 launch** ($10/M input, $30/M output): $0.13/query. An average enterprise user making 20 queries/day across 22 working days costs **$57/month** in inference alone — nearly double the $30 fee, before Microsoft's own margin. Power users (50 queries/day): **$142/month**.
 - **GPT-4o today** ($2.50/M input, $10/M output): $0.034/query. Average user: **$14.91/month**. Power user: **$37/month** — still exceeds the subscription fee.
 - **GPT-4o-mini** ($0.15/M input, $0.60/M output): $0.002/query. Average user: **$0.89/month**. Power user: **$2.24/month**. Healthy margin at $30.
@@ -97,6 +101,7 @@ Copilot's enterprise compliance requirements layer additional fine-tuning and fi
 In AI research and practitioner communities, the term "lobotomization" is used informally for this phenomenon: the process of making a capable model less capable through alignment and safety constraints. The term is provocative but technically grounded. It describes capability regression, not moral failure.
 
 **Evidence targets:**
+
 - InstructGPT: Ouyang et al. (2022). "Training language models to follow instructions with human feedback." arXiv:2203.02155. https://arxiv.org/abs/2203.02155
 - Reward model overoptimization: Gao et al. (2022). "Scaling Laws for Reward Model Overoptimization." arXiv:2210.10760. https://arxiv.org/abs/2210.10760
 - Sycophancy: Sharma et al. (2023). "Towards Understanding Sycophancy in Language Models." arXiv:2310.13548. https://arxiv.org/abs/2310.13548
@@ -112,6 +117,7 @@ In AI research and practitioner communities, the term "lobotomization" is used i
 Per Microsoft's official architecture documentation, Copilot queries the Microsoft Graph — email threads, SharePoint documents, Teams messages, calendar events, and meeting transcripts — to construct a grounded context before generating a response. This "personalized context" is injected into the prompt alongside the enterprise system prompt and the user's query.
 
 A plausible context window for a standard Copilot query:
+
 - System prompt + compliance framing: 3,000+ tokens
 - Graph grounding (retrieved email thread, relevant document excerpts): 6,000–15,000 tokens
 - User query: 150 tokens
@@ -129,6 +135,7 @@ Two published research findings are directly relevant:
 The graph-grounded context is only as good as the organizational data. Enterprise SharePoint and Teams environments are hostile to retrieval quality: version sprawl, expired documents, redundant wikis, and no authority signals that distinguish current policy from a three-year-old draft. (This is the same argument made in detail in the "Embeddings Are Not Search" outline.) The retrieval layer adds noise, not signal, to a meaningful fraction of queries.
 
 **Evidence targets:**
+
 - Lost in the Middle: Liu et al. (2023). arXiv:2307.03172. https://arxiv.org/abs/2307.03172
 - Same Task, More Tokens: Levy et al. (2024). arXiv:2402.14848. https://arxiv.org/abs/2402.14848
 - Microsoft Graph architecture: https://learn.microsoft.com/en-us/copilot/microsoft-365/microsoft-365-copilot-privacy
@@ -154,6 +161,7 @@ Microsoft's own Work Trend Index data (2024) found that 78% of enterprise AI use
 This is where the product strategy thesis sharpens. Microsoft integrated an enterprise version of Anthropic's Claude within roughly a month of Anthropic's own rollout. That is world-class execution speed for a company of Microsoft's size. They clearly have the engineering capacity and the partnership infrastructure to access frontier-quality models. The Copilot quality gap is therefore not a capability constraint — it is a product design decision. They have chosen an architecture that prioritizes cost structure, compliance posture, and 365 ecosystem lock-in over output quality. That is a defensible business decision. It is also the decision that explains why Copilot feels worse than a $20/month direct subscription.
 
 **Evidence targets:**
+
 - Microsoft Work Trend Index 2024 (BYOAI stat): https://www.microsoft.com/en-us/worklab/work-trend-index/ai-at-work-is-here-now-comes-the-hard-part
 - Copilot data boundary commitment: https://learn.microsoft.com/en-us/copilot/microsoft-365/microsoft-365-copilot-privacy
 - Microsoft 365 E3/E5 pricing: https://www.microsoft.com/en-us/microsoft-365/enterprise/compare-office-365-plans
@@ -167,6 +175,7 @@ This is where the product strategy thesis sharpens. Microsoft integrated an ente
 The opposite of Copilot's architecture is not "no compliance" — it is thoughtful compliance that doesn't destroy context window efficiency.
 
 **What the alternatives do differently:**
+
 - **Direct API access with thin system prompts:** Organizations that give knowledge workers direct Claude or GPT-4o API access with minimal wrapper overhead — maybe 200–400 tokens of system context instead of 3,000+ — see materially better output. The model gets to do its job instead of navigating compliance guardrails first.
 - **Selective graph grounding:** Rather than injecting all retrieved context, good implementations rank retrieved chunks, use reranking layers to filter noise (the PageRank-for-enterprise problem described in the "Embeddings Are Not Search" outline), and inject only the highest-confidence relevant context. Less noise in, cleaner output out.
 - **Transparent model selection:** Products that give users access to model choice — Anthropic's console, OpenAI's API, custom wrappers — allow the context to drive model selection. Synthesis tasks don't need the most expensive model; multi-step reasoning tasks do.
@@ -181,6 +190,7 @@ The opposite of Copilot's architecture is not "no compliance" — it is thoughtf
 **Core claim:** The category error is treating Copilot as an AI product when it is an enterprise software feature.
 
 **Practical takeaway for enterprise decision-makers:**
+
 - Copilot for 365 is best understood as a convenience layer for low-stakes tasks: drafting email replies, summarizing meeting transcripts, generating agenda items. For these tasks, the quality degradation from model routing, alignment tax, and context overhead is tolerable.
 - For tasks where AI quality actually matters — analysis, synthesis, novel reasoning, competitive intelligence, technical writing — direct frontier model access outperforms Copilot on both quality and often cost. $20/month for Claude.ai Pro gives one user better AI than $30/month of Copilot.
 - The "data stays in our tenant" value proposition is real, and for regulated industries may be the dispositive factor. Know what you're paying for.
@@ -195,38 +205,38 @@ The opposite of Copilot's architecture is not "no compliance" — it is thoughtf
 ### Academic papers
 
 1. **Ouyang et al. (2022). "Training language models to follow instructions with human feedback" (InstructGPT).** arXiv:2203.02155. https://arxiv.org/abs/2203.02155
-   *Use for: RLHF introduces alignment tax; capability regressions on NLP benchmarks even while preference scores improve.*
+   _Use for: RLHF introduces alignment tax; capability regressions on NLP benchmarks even while preference scores improve._
 
 2. **Gao et al. (2022). "Scaling Laws for Reward Model Overoptimization."** arXiv:2210.10760. https://arxiv.org/abs/2210.10760
-   *Use for: Goodhart's Law applied to RLHF — optimizing against proxy reward model hurts true performance. Mathematical grounding for why safety tuning degrades capability.*
+   _Use for: Goodhart's Law applied to RLHF — optimizing against proxy reward model hurts true performance. Mathematical grounding for why safety tuning degrades capability._
 
 3. **Sharma et al. (2023). "Towards Understanding Sycophancy in Language Models."** arXiv:2310.13548. https://arxiv.org/abs/2310.13548
-   *Use for: RLHF produces sycophancy systematically across tasks; humans and preference models both reward sycophantic responses over correct ones.*
+   _Use for: RLHF produces sycophancy systematically across tasks; humans and preference models both reward sycophantic responses over correct ones._
 
 4. **Liu et al. (2023). "Lost in the Middle: How Language Models Use Long Contexts."** arXiv:2307.03172. Accepted to TACL 2023. https://arxiv.org/abs/2307.03172
-   *Use for: Context degradation when relevant information is buried in long prompts — directly relevant to enterprise system prompt + graph grounding overhead.*
+   _Use for: Context degradation when relevant information is buried in long prompts — directly relevant to enterprise system prompt + graph grounding overhead._
 
 5. **Levy et al. (2024). "Same Task, More Tokens: the Impact of Input Length on the Reasoning Performance of Large Language Models."** arXiv:2402.14848. ACL 2024. https://arxiv.org/abs/2402.14848
-   *Use for: Extending input length degrades LLM reasoning at lengths far shorter than the technical maximum. Supports context overhead argument.*
+   _Use for: Extending input length degrades LLM reasoning at lengths far shorter than the technical maximum. Supports context overhead argument._
 
 6. **Chen, Zaharia, Zou (2023). "How is ChatGPT's behavior changing over time?"** arXiv:2307.09009. https://arxiv.org/abs/2307.09009
-   *Use for: GPT-4 accuracy dropped significantly (84% → 51%) between March and June 2023 versions; model became less willing to answer certain questions. Evidence that opaque model updates change quality without user notification — directly analogous to Copilot's "regularly updated" language.*
+   _Use for: GPT-4 accuracy dropped significantly (84% → 51%) between March and June 2023 versions; model became less willing to answer certain questions. Evidence that opaque model updates change quality without user notification — directly analogous to Copilot's "regularly updated" language._
 
 ### Microsoft documentation
 
 7. **Microsoft 365 Copilot privacy, security, and compliance documentation.** https://learn.microsoft.com/en-us/copilot/microsoft-365/microsoft-365-copilot-privacy
-   *Use for: Architecture description (LLMs + Graph), multiple pre-execution classifiers, Anthropic as subprocessor, EU Data Boundary exclusion for Anthropic models, "foundation models are regularly updated" language.*
+   _Use for: Architecture description (LLMs + Graph), multiple pre-execution classifiers, Anthropic as subprocessor, EU Data Boundary exclusion for Anthropic models, "foundation models are regularly updated" language._
 
 8. **Microsoft 365 Copilot overview.** https://learn.microsoft.com/en-us/microsoft-365-copilot/microsoft-365-copilot-overview
-   *Use for: Architecture overview, Graph grounding description, semantic indexing description.*
+   _Use for: Architecture overview, Graph grounding description, semantic indexing description._
 
 9. **Azure OpenAI Service pricing.** https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/
-   *Use for: Public rack rates for inference cost math. Note: Microsoft's actual internal cost via OpenAI partnership is lower, but direction of math holds.*
+   _Use for: Public rack rates for inference cost math. Note: Microsoft's actual internal cost via OpenAI partnership is lower, but direction of math holds._
 
 ### Microsoft market data
 
 10. **Microsoft Work Trend Index 2024: "AI at Work Is Here. Now Comes the Hard Part."** https://www.microsoft.com/en-us/worklab/work-trend-index/ai-at-work-is-here-now-comes-the-hard-part
-    *Use for: 78% BYOAI stat; 59% of leaders unable to quantify productivity gains; 60% say leadership lacks AI implementation plan. Microsoft's own data showing Copilot ROI uncertainty.*
+    _Use for: 78% BYOAI stat; 59% of leaders unable to quantify productivity gains; 60% say leadership lacks AI implementation plan. Microsoft's own data showing Copilot ROI uncertainty._
 
 ### Reporting targets (require subscription access; cite as paywalled/attributed)
 

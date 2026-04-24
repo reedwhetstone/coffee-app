@@ -20,6 +20,7 @@ quantity (the first entry in `price_tiers`, sorted ascending by `min_lbs`) is
 **greater than 5 lbs**.
 
 The threshold is 5 lbs because:
+
 - 5 lb is the largest "home roaster" bag size sold by retail-oriented suppliers.
 - Suppliers with a 5 lb minimum (Sweet Maria's, Happy Mug, etc.) still serve hobbyists.
 - Suppliers with a 10+ lb minimum are structurally wholesale even if their catalog

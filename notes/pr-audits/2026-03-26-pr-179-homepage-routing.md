@@ -37,25 +37,25 @@
 
 ## Checklist Coverage
 
-- 1) Intent Coverage: `FAIL`
+- 1. Intent Coverage: `FAIL`
   - Core behavior mostly landed, but server-side fallback redirects still preserve `/catalog` as the effective home in several signed-in flows.
-- 2) Correctness: `CONCERN`
+- 2. Correctness: `CONCERN`
   - Main paths look coherent; auth callback still trusts arbitrary `next`, and signed-in users still encounter stale redirect targets indirectly.
-- 3) Codebase Alignment: `PASS`
+- 3. Codebase Alignment: `PASS`
   - The new `/dashboard` route and layout changes fit the existing SvelteKit structure and auth model.
-- 4) Risk and Regressions: `CONCERN`
+- 4. Risk and Regressions: `CONCERN`
   - Routing-heavy change with incomplete redirect coverage and weak assertions around redirect destinations.
-- 5) Security and Data Safety: `CONCERN`
+- 5. Security and Data Safety: `CONCERN`
   - No obvious auth boundary break was introduced, but `/auth/callback` still redirects to unsanitized `next` values.
-- 6) Test and Verification Quality: `FAIL`
+- 6. Test and Verification Quality: `FAIL`
   - Tests cover rendering, not the redirect contract that this PR actually changes.
-- 7) Tech Debt and Maintainability: `CONCERN`
+- 7. Tech Debt and Maintainability: `CONCERN`
   - Home/dashboard preview loading is duplicated; auth redirect behavior is still scattered across hooks, auth pages, callback, and marketing CTAs.
-- 8) Product and UX Alignment: `CONCERN`
+- 8. Product and UX Alignment: `CONCERN`
   - The public-first homepage goal landed, but signed-in UX still has duplicate nav items and anonymous acquisition CTAs.
-- 9) Assumptions Audit: `CONCERN`
+- 9. Assumptions Audit: `CONCERN`
   - Several assumptions are weak or invalid; see dedicated section below.
-- 10) Final Verdict: `Not ready`
+- 10. Final Verdict: `Not ready`
 
 ## Findings by Severity
 
@@ -110,16 +110,19 @@
 ## Assumptions Review
 
 - Assumption: Updating auth page redirects and the new dashboard route is enough to make `/dashboard` the canonical logged-in home.
+
   - Validity: Invalid
   - Why: `src/hooks.server.ts:119-124` still routes failed protected/admin requests to `/catalog`.
   - Recommended action: Update server-side guard fallbacks for authenticated users and test them.
 
 - Assumption: Leaving the rest of the marketing homepage anonymous-only is acceptable for signed-in users.
+
   - Validity: Weak
   - Why: `Hero` and the preview block are signed-in aware, but `Pricing` and `CTA` still present sign-up/sign-in acquisition flows.
   - Recommended action: Make lower-page CTAs conditional on session state or replace them with signed-in actions.
 
 - Assumption: `next` on the auth callback is safe because current callers generate it.
+
   - Validity: Weak
   - Why: `src/routes/auth/callback/+server.ts:6,16` accepts any query-string `next` and redirects to it without validation.
   - Recommended action: Restrict `next` to same-origin relative paths, or whitelist allowed internal destinations.

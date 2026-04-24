@@ -37,6 +37,7 @@ The discrepancy is small but could confuse users if the LLM quotes a time that d
 ### P2-2: Duplicate `formatTime` / `formatMilestoneTime` logic across three locations
 
 **Files:**
+
 - `src/lib/services/tools.ts:292` (`formatTime`)
 - `src/routes/roast/RoastProfileDisplay.svelte:21` (`formatMilestoneTime`)
 - `src/lib/components/genui/blocks/RoastProfilesBlock.svelte:19` (`formatTime`)
@@ -67,6 +68,7 @@ The array literal already infers as `string[]`. The `as string[]` cast widens th
 **File:** `src/lib/components/roast/chart/RoastChart.svelte:55-62`
 
 The ceiling snaps to discrete values: 10, 50, 100, then multiples of 100. This means:
+
 - A max value of 11 snaps to 50 (4.5x headroom)
 - A max value of 51 snaps to 100 (nearly 2x headroom)
 
@@ -83,6 +85,7 @@ When `chartData.controlSeries` is an empty array, the loop never executes and `m
 **File:** `src/routes/roast/RoastProfileDisplay.svelte:224`
 
 The visibility guard checks:
+
 ```svelte
 {#if profile.tp_time != null || profile.fc_start_time != null || profile.drop_time != null || profile.total_roast_time != null}
 ```

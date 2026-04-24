@@ -18,35 +18,37 @@
 
 ## Checklist Summary
 
-- 1) Intent Coverage: **FAIL**
+- 1. Intent Coverage: **FAIL**
   - Canonical `/v1/catalog` exists and legacy routes delegate to shared builders, but page-side catalog consumers still do not consistently enforce the same visibility/auth policy, and the external compatibility alias no longer preserves legacy contract details.
-- 2) Correctness: **FAIL**
+- 2. Correctness: **FAIL**
   - Viewer and anonymous page flows can still see inconsistent catalog data/filter metadata versus the canonical resource.
-- 3) Codebase Alignment: **CONCERN**
+- 3. Codebase Alignment: **CONCERN**
   - The new canonical builder is solid, but page SSR preview and filter metadata still bypass it with bespoke queries.
-- 4) Risk and Regressions: **FAIL**
+- 4. Risk and Regressions: **FAIL**
   - `/api/catalog-api` regresses compatibility on field projection, ordering, and cache semantics.
-- 5) Security and Data Safety: **FAIL**
+- 5. Security and Data Safety: **FAIL**
   - Non-member page consumers still have paths that can observe non-public catalog details or metadata outside the canonical visibility rules.
-- 6) Test and Verification Quality: **CONCERN**
+- 6. Test and Verification Quality: **CONCERN**
   - New tests cover route delegation and some auth edge cases, but there is no regression coverage for public/viewer catalog visibility on page loads or for the legacy external alias contract.
-- 7) Tech Debt and Maintainability: **CONCERN**
+- 7. Tech Debt and Maintainability: **CONCERN**
   - Visibility policy is still split across canonical resource code, page SSR code, and filter metadata code.
-- 8) Product and UX Alignment: **FAIL**
+- 8. Product and UX Alignment: **FAIL**
   - Public/viewer catalog UX can show filter options or SSR preview items that the canonical API immediately hides.
-- 9) Assumptions Audit: **FAIL**
+- 9. Assumptions Audit: **FAIL**
   - Several implementation assumptions are weak or invalid; see Assumptions Review.
-- 10) Final Verdict: **Not ready**, highest severity **P1**
+- 10. Final Verdict: **Not ready**, highest severity **P1**
 
 ## Intent Verification
 
 - Stated intent:
+
   - Make `/v1/catalog` the canonical catalog resource.
   - Cut both internal and external consumers over to shared logic/contract.
   - Turn `/api/catalog` and `/api/catalog-api` into explicit compatibility shims.
   - Absorb the remaining page-auth alignment work where catalog/page consumption intersects.
 
 - What was implemented:
+
   - Added a substantial shared catalog builder in `src/lib/server/catalogResource.ts`.
   - Wired `/v1/catalog`, `/api/catalog`, and `/api/catalog-api` through that shared builder.
   - Updated catalog client fetches to hit `/v1/catalog`.
@@ -65,6 +67,7 @@ None.
 ### P1 (should fix before merge)
 
 #### 1) Page-side catalog consumers still bypass the canonical visibility policy
+
 - **Evidence:**
   - Canonical visibility is member-gated, not merely session-gated: `src/lib/server/catalogResource.ts:253-263` sets `publicOnly` to `!isPrivilegedSession`, where `isPrivilegedSession` requires `principalHasRole(principal, 'member')`.
   - The public catalog SSR preview still checks only `locals.session`: `src/routes/catalog/+page.server.ts:8-20`. A logged-in `viewer` session skips the `public_coffee` filter and can receive non-public rows in the initial SSR payload.
@@ -80,6 +83,7 @@ None.
   - Add regression tests for anonymous and viewer sessions covering SSR preview data and filter metadata.
 
 #### 2) `/api/catalog-api` no longer behaves like a compatibility shim; it changes the legacy external contract
+
 - **Evidence:**
   - The legacy external route is now a thin delegate: `src/routes/api/catalog-api/+server.ts` calls `buildLegacyExternalCatalogResponse()`.
   - That compatibility builder forwards `body.data` directly from the canonical response: `src/lib/server/catalogResource.ts:503-544`.
@@ -99,6 +103,7 @@ None.
 ### P2 (important improvements)
 
 #### 1) Page auth normalization is still incomplete; role is preserved even when page session auth is intentionally stripped
+
 - **Evidence:**
   - `getPageAuthState()` nulls `user` when there is no page session, but still returns `role: locals.role ?? 'viewer'`: `src/lib/server/pageAuth.ts:4-15`.
   - `src/routes/+layout.server.ts:4-34` exports that role to all pages.
@@ -113,6 +118,7 @@ None.
 ### P3 (nice to have)
 
 #### 1) Test coverage still misses the highest-risk integration regressions introduced by the cutover
+
 - **Evidence:**
   - New tests cover canonical builder happy paths and route delegation.
   - There are no tests covering:
@@ -149,10 +155,12 @@ None.
 ## Tech Debt Notes
 
 - Debt introduced:
+
   - Visibility policy is still duplicated across canonical resource code, page SSR preview code, and filter metadata code.
   - The external alias now depends on implicit canonical behavior instead of an explicit compatibility contract.
 
 - Debt worsened:
+
   - `CATALOG_API_COLUMNS` and `getPublicCatalog()` remain in the codebase, but the new alias path no longer uses them, which makes the intended external contract ambiguous.
 
 - Suggested follow-up tickets:
@@ -163,10 +171,12 @@ None.
 ## Product Alignment Notes
 
 - Alignment wins:
+
   - `/v1/catalog` is real and the app now points its primary filter-store fetches at the canonical resource.
   - Legacy aliases clearly annotate the canonical resource via `X-Purveyors-Canonical-Resource`.
 
 - Misalignments:
+
   - Viewer and anonymous catalog experiences can still expose data or filter metadata outside the canonical public contract.
   - The external alias drifts from compatibility while still presenting itself as a legacy alias.
 
@@ -177,12 +187,14 @@ None.
 ## Test Coverage Assessment
 
 - Existing tests that validate changes:
+
   - `src/lib/server/catalogResource.test.ts` covers anonymous, member-session, and API-key happy paths for the canonical builder.
   - `src/hooks.server.test.ts` covers invalid Authorization handling and bearer-session page-route redirects.
   - Route tests for `/v1/catalog`, `/api/catalog`, and `/api/catalog-api` confirm delegation wiring.
   - In isolated worktree validation, the relevant Vitest suite passed.
 
 - Missing tests:
+
   - Viewer-session SSR preview on `/catalog` should remain public-only.
   - `/api/catalog/filters` should match canonical public-only/member-only visibility.
   - `/api/catalog-api` should assert legacy field projection, default ordering, and cache metadata behavior.
@@ -202,19 +214,23 @@ None.
 ## Optional Patch Guidance
 
 - `src/lib/server/catalogResource.ts`
+
   - Add a reusable access helper for canonical/page-side consumers.
   - For `buildLegacyExternalCatalogResponse()`, map canonical rows back to the legacy public external field subset before responding.
   - Reapply legacy ordering and decide explicitly on cache behavior.
 
 - `src/routes/catalog/+page.server.ts`
+
   - Replace `if (!locals.session)` with a privilege-aware check that matches canonical access rules.
   - Consider sourcing the SSR preview through a shared query helper so visibility and ordering cannot drift again.
 
 - `src/routes/api/catalog/filters/+server.ts`
+
   - Apply the same public-only/member-only visibility policy as `/v1/catalog`.
   - Consider reusing shared query/filter helpers rather than raw table queries.
 
 - `src/lib/server/pageAuth.ts` and `src/routes/+layout.server.ts`
+
   - Normalize page-facing role to viewer when there is no cookie-backed session, or expose a separate session-derived page role.
 
 - Tests

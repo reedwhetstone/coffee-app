@@ -119,14 +119,17 @@ This change directly supports the current public discoverability push, sharpens 
 ## Files to change
 
 1. **`src/routes/+layout.svelte`**
+
    - Change the layout decision so `/` always uses the marketing layout, not the authenticated sidebar shell
    - Update unified-header logic so the public header can appear on `/` even when a session exists
 
 2. **`src/routes/(home)/+page.server.ts`**
+
    - Remove page-level session branching responsibility from the homepage load
    - Keep public landing data and metadata generation focused on catalog preview + schema/meta
 
 3. **`src/routes/(home)/+page.svelte`**
+
    - Remove the authenticated dashboard branch entirely
    - Always render the marketing landing content
    - Add a light signed-in affordance, such as a small banner or CTA row
@@ -134,15 +137,18 @@ This change directly supports the current public discoverability push, sharpens 
    - Compact secondary app links can sit below or beside the primary CTA if they stay visually quiet
 
 4. **`src/routes/dashboard/+page.*`** (new or moved route)
+
    - Create or formalize `/dashboard` as the canonical logged-in app home
    - If the current signed-in `/` branch contains useful app-entry content, move it here rather than deleting it outright
 
 5. **`src/lib/components/layout/UnifiedHeader.svelte`**
+
    - Accept auth-aware state or derive it from layout data
    - Swap `Sign In` / `Get Started` controls for `Dashboard` when a session exists
    - Optionally include compact app links in the authenticated header state if they do not clutter the nav
 
 6. **`src/lib/components/marketing/Hero.svelte`**
+
    - Make hero CTAs session-aware so authenticated users are not sent to `/auth`
    - Anonymous primary CTA remains marketing/conversion-oriented
    - Authenticated primary CTA becomes `/dashboard`
@@ -217,10 +223,12 @@ This change directly supports the current public discoverability push, sharpens 
 ### Risks
 
 1. **Layout-condition spillover**
+
    - Changing how `/` is classified in `+layout.svelte` could accidentally affect other public pages if the condition is written too broadly.
    - Mitigation: keep the special-case check strictly tied to `pathname === '/'`.
 
 2. **Signed-in user friction**
+
    - Existing users may miss the old dashboard-style root experience if the replacement does not provide a clear app entry point.
    - Mitigation: give authenticated users a prominent `Open Catalog` or `Open App` CTA above the fold.
 
