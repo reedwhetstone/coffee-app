@@ -19,7 +19,8 @@ It also depends on `@purveyors/cli`, which is a first-class interface to the sam
 
 ## Stack
 
-- SvelteKit 5
+- SvelteKit 2
+- Svelte 5
 - TypeScript
 - Tailwind CSS
 - Supabase

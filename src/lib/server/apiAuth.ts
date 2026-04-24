@@ -27,8 +27,8 @@ const RATE_LIMITS = {
 // Row limits per API call by tier
 const ROW_LIMITS = {
 	viewer: 25, // Green tier - limited rows per call
-	member: -1, // Origin tier - unlimited rows
-	enterprise: -1 // Enterprise tier - unlimited rows
+	member: -1, // Origin tier - no additional plan row cap beyond the shared request limit
+	enterprise: -1 // Enterprise tier - no additional plan row cap beyond the shared request limit
 } as const;
 
 // Export rate limits and row limits for use in other modules
