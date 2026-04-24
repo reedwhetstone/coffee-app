@@ -1,3 +1,5 @@
+> **Archived 2026-04-24.** Closed PR #118 because the concept no longer reflects current blog priorities and still felt half-baked. Keep this as source material for future pricing/quantity-tier work, not as an active outline.
+
 # Outline: Why Does the Same Coffee Cost $20/lb and $6.58/lb?
 
 **Pillar:** market-intelligence
