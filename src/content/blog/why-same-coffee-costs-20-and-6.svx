@@ -4,7 +4,7 @@ date: "2026-03-18"
 description: "The green coffee industry sorts pricing into wholesale and retail. The data shows a continuous nonlinear curve. That binary label hides useful information from buyers and distorts how comparison tools present the market."
 tags: ["coffee", "market-intelligence", "pricing", "supply-chain"]
 pillar: "market-intelligence"
-draft: true
+draft: false
 readingTime: 4
 ---
 
