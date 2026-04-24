@@ -94,6 +94,7 @@ const sampleCatalogItem = {
 	processing_disclosure_level: 'label_only',
 	processing_confidence: 0.85,
 	processing_evidence: { schema_version: 1 },
+	processing_evidence_available: true,
 	region: 'Sidamo',
 	roast_recs: 'City+',
 	score_value: 87.5,
@@ -286,7 +287,37 @@ describe('buildCanonicalCatalogResponse', () => {
 			}
 		});
 		expect(body.data[0].processing_evidence).toBeUndefined();
+		expect(body.data[0].processing_evidence_available).toBeUndefined();
 		expect(body.data[0].coffee_user).toBeUndefined();
+	});
+
+	it('uses the projected evidence availability boolean when raw evidence is not selected', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalog.mockResolvedValue({
+			data: [
+				{
+					...sampleCatalogItem,
+					processing_evidence: undefined,
+					processing_evidence_available: true
+				}
+			],
+			count: 1,
+			filtersApplied: {}
+		});
+
+		const response = await buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog'));
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.data[0].process.evidence_available).toBe(true);
+		expect(body.data[0].processing_evidence).toBeUndefined();
+		expect(body.data[0].processing_evidence_available).toBeUndefined();
 	});
 
 	it('preserves null process metadata instead of filling fake placeholders', async () => {
@@ -309,7 +340,8 @@ describe('buildCanonicalCatalogResponse', () => {
 					processing_notes: null,
 					processing_disclosure_level: null,
 					processing_confidence: null,
-					processing_evidence: null
+					processing_evidence: null,
+					processing_evidence_available: false
 				}
 			],
 			count: 1,

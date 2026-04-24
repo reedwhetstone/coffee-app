@@ -55,6 +55,7 @@ CREATE TABLE public.coffee_catalog (
   processing_disclosure_level text,
   processing_confidence numeric,
   processing_evidence jsonb,
+  processing_evidence_available boolean GENERATED ALWAYS AS (processing_evidence IS NOT NULL) STORED,
   drying_method text,
   roast_recs text,
   lot_size text,

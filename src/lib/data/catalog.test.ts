@@ -110,11 +110,12 @@ describe('searchCatalog stocked date filters', () => {
 		await searchCatalog(supabase as never, { fields: 'resource' });
 
 		const [columns] = state.selectCalls[0];
-		expect(columns).toContain(
-			'processing_evidence_schema_version:processing_evidence->>schema_version'
-		);
+		expect(columns).toContain('processing_evidence_available');
 		expect(columns).not.toBe('*');
 		expect(columns).not.toMatch(/(^|, )processing_evidence(,|$)/);
+		expect(columns).not.toContain(
+			'processing_evidence_schema_version:processing_evidence->>schema_version'
+		);
 	});
 
 	it('falls back to the full projection when the resource projection is ahead of the database schema', async () => {
@@ -127,9 +128,7 @@ describe('searchCatalog stocked date filters', () => {
 
 		await searchCatalog(supabase as never, { fields: 'resource' });
 
-		expect(state.selectCalls.at(-2)?.[0]).toContain(
-			'processing_evidence_schema_version:processing_evidence->>schema_version'
-		);
+		expect(state.selectCalls.at(-2)?.[0]).toContain('processing_evidence_available');
 		expect(state.selectCalls.at(-1)).toEqual(['*', undefined]);
 	});
 

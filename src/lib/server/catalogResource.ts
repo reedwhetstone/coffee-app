@@ -39,13 +39,20 @@ export interface CatalogProcessSummary {
 	evidence_available: boolean;
 }
 
-type CatalogResourceQueryItem = Omit<CatalogItem, 'coffee_user' | 'processing_evidence'> & {
+type CatalogResourceQueryItem = Omit<
+	CatalogItem,
+	'coffee_user' | 'processing_evidence' | 'processing_evidence_available'
+> & {
 	coffee_user?: CatalogItem['coffee_user'];
 	processing_evidence?: CatalogItem['processing_evidence'];
+	processing_evidence_available?: boolean | null;
 	processing_evidence_schema_version?: string | number | null;
 };
 
-export type CatalogResourceItem = Omit<CatalogItem, 'coffee_user' | 'processing_evidence'> & {
+export type CatalogResourceItem = Omit<
+	CatalogItem,
+	'coffee_user' | 'processing_evidence' | 'processing_evidence_available'
+> & {
 	process: CatalogProcessSummary;
 };
 export type CatalogResponseItem = CatalogResourceItem | CatalogDropdownItem;
@@ -290,9 +297,14 @@ function toCatalogResourceItem(item: CatalogResourceQueryItem): CatalogResourceI
 	const {
 		coffee_user: _coffeeUser,
 		processing_evidence: processingEvidence,
+		processing_evidence_available: processingEvidenceAvailable,
 		processing_evidence_schema_version: processingEvidenceSchemaVersion,
 		...resourceItem
 	} = item;
+	const evidenceAvailable =
+		processingEvidenceAvailable ??
+		(processingEvidence != null || processingEvidenceSchemaVersion != null);
+
 	return {
 		...resourceItem,
 		process: {
@@ -305,7 +317,7 @@ function toCatalogResourceItem(item: CatalogResourceQueryItem): CatalogResourceI
 			notes: item.processing_notes,
 			disclosure_level: item.processing_disclosure_level,
 			confidence: item.processing_confidence,
-			evidence_available: processingEvidenceSchemaVersion != null || processingEvidence != null
+			evidence_available: evidenceAvailable
 		}
 	};
 }

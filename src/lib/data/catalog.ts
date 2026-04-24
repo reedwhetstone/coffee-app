@@ -139,7 +139,7 @@ const DROPDOWN_COLUMNS =
 	'id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee' as const;
 
 const CATALOG_RESOURCE_COLUMNS: string =
-	'id, name, score_value, arrival_date, region, processing, processing_base_method, fermentation_type, process_additives, process_additive_detail, fermentation_duration_hours, processing_notes, processing_disclosure_level, processing_confidence, processing_evidence_schema_version:processing_evidence->>schema_version, drying_method, roast_recs, lot_size, bag_size, packaging, cultivar_detail, grade, appearance, description_short, farm_notes, type, description_long, link, cost_lb, price_per_lb, price_tiers, last_updated, source, stocked, cupping_notes, unstocked_date, stocked_date, ai_description, ai_tasting_notes, public_coffee, country, continent, wholesale';
+	'id, name, score_value, arrival_date, region, processing, processing_base_method, fermentation_type, process_additives, process_additive_detail, fermentation_duration_hours, processing_notes, processing_disclosure_level, processing_confidence, processing_evidence_available, drying_method, roast_recs, lot_size, bag_size, packaging, cultivar_detail, grade, appearance, description_short, farm_notes, type, description_long, link, cost_lb, price_per_lb, price_tiers, last_updated, source, stocked, cupping_notes, unstocked_date, stocked_date, ai_description, ai_tasting_notes, public_coffee, country, continent, wholesale';
 
 const DISCLOSED_ADDITIVE_VALUES = [
 	'fruit',

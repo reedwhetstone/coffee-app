@@ -11,7 +11,9 @@ ALTER TABLE public.coffee_catalog
   ADD COLUMN IF NOT EXISTS processing_notes text,
   ADD COLUMN IF NOT EXISTS processing_disclosure_level text,
   ADD COLUMN IF NOT EXISTS processing_confidence numeric,
-  ADD COLUMN IF NOT EXISTS processing_evidence jsonb;
+  ADD COLUMN IF NOT EXISTS processing_evidence jsonb,
+  ADD COLUMN IF NOT EXISTS processing_evidence_available boolean
+    GENERATED ALWAYS AS (processing_evidence IS NOT NULL) STORED;
 
 DO $$
 BEGIN
@@ -66,6 +68,8 @@ COMMENT ON COLUMN public.coffee_catalog.processing_confidence IS
   '0 to 1 confidence score for the structured processing breakdown.';
 COMMENT ON COLUMN public.coffee_catalog.processing_evidence IS
   'Internal provenance envelope for structured processing extraction. Public API surfaces expose evidence_available rather than raw quotes by default.';
+COMMENT ON COLUMN public.coffee_catalog.processing_evidence_available IS
+  'Generated boolean for public API projections; true when internal processing_evidence is present without selecting the raw JSONB blob.';
 
 CREATE INDEX IF NOT EXISTS idx_coffee_catalog_processing_base_method
   ON public.coffee_catalog(processing_base_method);

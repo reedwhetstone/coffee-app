@@ -168,6 +168,7 @@ export type Database = {
 					processing_disclosure_level: string | null;
 					processing_confidence: number | null;
 					processing_evidence: Json | null;
+					processing_evidence_available: boolean;
 					public_coffee: boolean | null;
 					region: string | null;
 					roast_recs: string | null;
@@ -213,6 +214,7 @@ export type Database = {
 					processing_disclosure_level?: string | null;
 					processing_confidence?: number | null;
 					processing_evidence?: Json | null;
+					processing_evidence_available?: never;
 					public_coffee?: boolean | null;
 					region?: string | null;
 					roast_recs?: string | null;
@@ -258,6 +260,7 @@ export type Database = {
 					processing_disclosure_level?: string | null;
 					processing_confidence?: number | null;
 					processing_evidence?: Json | null;
+					processing_evidence_available?: never;
 					public_coffee?: boolean | null;
 					region?: string | null;
 					roast_recs?: string | null;
