@@ -643,37 +643,33 @@ export async function getCatalogFilterMetadata(
 ): Promise<CatalogFilterMetadataRow[]> {
 	const { stockedOnly, publicOnly, showWholesale, wholesaleOnly } = options;
 
-	const applyVisibilityFilters = <T extends { eq(column: string, value: unknown): T }>(
-		query: T
-	): T => {
-		let filteredQuery = query;
-		if (stockedOnly) filteredQuery = filteredQuery.eq('stocked', true);
-		if (publicOnly) filteredQuery = filteredQuery.eq('public_coffee', true);
-		if (wholesaleOnly) {
-			filteredQuery = filteredQuery.eq('wholesale', true);
-		} else if (showWholesale === false) {
-			filteredQuery = filteredQuery.eq('wholesale', false);
-		}
-		return filteredQuery;
-	};
-
-	const query = applyVisibilityFilters(
-		supabase
-			.from('coffee_catalog')
-			.select(FILTER_METADATA_COLUMNS)
-			.order('arrival_date', { ascending: false })
-	);
+	let query = supabase
+		.from('coffee_catalog')
+		.select(FILTER_METADATA_COLUMNS)
+		.order('arrival_date', { ascending: false });
+	if (stockedOnly) query = query.eq('stocked', true);
+	if (publicOnly) query = query.eq('public_coffee', true);
+	if (wholesaleOnly) {
+		query = query.eq('wholesale', true);
+	} else if (showWholesale === false) {
+		query = query.eq('wholesale', false);
+	}
 
 	const { data, error } = await query;
 	if (error) {
 		if (!isMissingColumnError(error, FILTER_METADATA_MISSING_COLUMN_HINTS)) throw error;
 
-		const fallbackQuery = applyVisibilityFilters(
-			supabase
-				.from('coffee_catalog')
-				.select(FILTER_METADATA_FALLBACK_COLUMNS)
-				.order('arrival_date', { ascending: false })
-		);
+		let fallbackQuery = supabase
+			.from('coffee_catalog')
+			.select(FILTER_METADATA_FALLBACK_COLUMNS)
+			.order('arrival_date', { ascending: false });
+		if (stockedOnly) fallbackQuery = fallbackQuery.eq('stocked', true);
+		if (publicOnly) fallbackQuery = fallbackQuery.eq('public_coffee', true);
+		if (wholesaleOnly) {
+			fallbackQuery = fallbackQuery.eq('wholesale', true);
+		} else if (showWholesale === false) {
+			fallbackQuery = fallbackQuery.eq('wholesale', false);
+		}
 		const { data: fallbackData, error: fallbackError } = await fallbackQuery;
 		if (fallbackError) throw fallbackError;
 

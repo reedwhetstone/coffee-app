@@ -7,10 +7,14 @@ import {
 } from './catalog';
 
 function createSupabaseMock() {
-	const result = {
+	const result: {
+		data: unknown[];
+		count: number;
+		error: unknown;
+	} = {
 		data: [],
 		count: 0,
-		error: null as unknown
+		error: null
 	};
 	const results: Array<typeof result> = [];
 
