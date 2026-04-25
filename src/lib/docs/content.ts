@@ -1,8 +1,11 @@
+import { formatAllowedValues, PUBLIC_CATALOG_SORT_FIELDS } from '$lib/catalog/publicQueryContract';
 import {
 	DEFAULT_CATALOG_LISTING_LIMIT,
 	DEFAULT_PAGINATED_PAGE_SIZE,
 	MAX_CATALOG_PAGE_LIMIT
 } from '$lib/constants/catalog';
+
+const PUBLIC_CATALOG_SORT_FIELD_LIST = formatAllowedValues(PUBLIC_CATALOG_SORT_FIELDS);
 
 export type DocsSectionKey = 'api' | 'cli';
 
@@ -378,7 +381,7 @@ const docsPages: DocsPage[] = [
 					'Anonymous, viewer-session, and API-key requests all share the public query surface documented below.',
 					'fields=dropdown stays compatible with normal page and limit params. The reduced projection is limited to id, source, name, stocked, cost_lb, price_per_lb, price_tiers, and public_coffee.',
 					'Privileged member and admin sessions may additionally use showWholesale and wholesaleOnly to widen first-party visibility.',
-					'Malformed numeric params now fail closed with 400 responses instead of silently falling back. That applies to page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases.'
+					`Malformed typed params now fail closed with 400 responses instead of silently falling back or bubbling into generic 500s. That applies to fields, stocked, showWholesale, wholesaleOnly, sortField, page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases. Supported sortField values are ${PUBLIC_CATALOG_SORT_FIELD_LIST}.`
 				],
 				table: {
 					headers: ['Parameter', 'Type', 'Default', 'Description'],
@@ -400,13 +403,13 @@ const docsPages: DocsPage[] = [
 							'fields',
 							'full | dropdown',
 							'full',
-							'dropdown returns the reduced projection used by filter UIs and select menus (id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee), and it works with normal page and limit params.'
+							'dropdown returns the reduced projection used by filter UIs and select menus (id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee), and it works with normal page and limit params. Invalid values return 400.'
 						],
 						[
 							'stocked',
 							'true | false | all',
 							'true',
-							'Filter to stocked-only, unstocked-only, or the full catalog.'
+							'Filter to stocked-only, unstocked-only, or the full catalog. Invalid values return 400.'
 						],
 						['origin', 'string', '—', 'Partial match across continent, country, and region.'],
 						['country', 'string', '—', 'Exact match on country.'],
@@ -455,15 +458,20 @@ const docsPages: DocsPage[] = [
 							'showWholesale',
 							'boolean',
 							'false',
-							'Only effective for privileged member sessions. Ignored for anonymous and API-key requests.'
+							'Only effective for privileged member sessions. Ignored for anonymous and API-key requests. Invalid values return 400.'
 						],
 						[
 							'wholesaleOnly',
 							'boolean',
 							'false',
-							'Requires showWholesale=true and a privileged member session.'
+							'Requires showWholesale=true and a privileged member session. Invalid values return 400.'
 						],
-						['sortField', 'string', 'arrival_date', 'Sort field for non-ID queries.'],
+						[
+							'sortField',
+							PUBLIC_CATALOG_SORT_FIELD_LIST,
+							'arrival_date',
+							'Sort field for non-ID queries. Invalid values return 400.'
+						],
 						['sortDirection', 'asc | desc', 'desc', 'Sort direction for non-ID queries.']
 					]
 				},

@@ -23,6 +23,14 @@ import {
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { jsonResponse } from '$lib/server/http';
 import { createAdminClient } from '$lib/supabase-admin';
+import {
+	formatAllowedValues,
+	PUBLIC_CATALOG_BOOLEAN_VALUES,
+	PUBLIC_CATALOG_FIELD_VALUES,
+	PUBLIC_CATALOG_SORT_FIELDS,
+	PUBLIC_CATALOG_STOCKED_VALUES,
+	type PublicCatalogSortField
+} from '$lib/catalog/publicQueryContract';
 import type { UserRole } from '$lib/types/auth.types';
 import { DEFAULT_CATALOG_LISTING_LIMIT, MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 
@@ -73,7 +81,7 @@ interface ParsedCatalogQuery {
 	limit: number;
 	offset: number;
 	isPaginated: boolean;
-	sortField?: string;
+	sortField?: PublicCatalogSortField;
 	sortDirection?: 'asc' | 'desc';
 	showWholesale: boolean;
 	wholesaleOnly: boolean;
@@ -193,11 +201,28 @@ function isIsoDateParam(value: string): boolean {
 	);
 }
 
+function validateEnumQueryParam(
+	url: URL,
+	parameter: string,
+	allowedValues: readonly string[]
+): void {
+	const value = url.searchParams.get(parameter);
+	if (value !== null && !allowedValues.includes(value)) {
+		throw new CatalogQueryValidationError(parameter, value, formatAllowedValues(allowedValues));
+	}
+}
+
 function validateCatalogQuery(url: URL): void {
 	const stockedDate = url.searchParams.get('stocked_date');
 	if (stockedDate !== null && !isIsoDateParam(stockedDate)) {
 		throw new CatalogQueryValidationError('stocked_date', stockedDate, 'YYYY-MM-DD');
 	}
+
+	validateEnumQueryParam(url, 'fields', PUBLIC_CATALOG_FIELD_VALUES);
+	validateEnumQueryParam(url, 'stocked', PUBLIC_CATALOG_STOCKED_VALUES);
+	validateEnumQueryParam(url, 'showWholesale', PUBLIC_CATALOG_BOOLEAN_VALUES);
+	validateEnumQueryParam(url, 'wholesaleOnly', PUBLIC_CATALOG_BOOLEAN_VALUES);
+	validateEnumQueryParam(url, 'sortField', PUBLIC_CATALOG_SORT_FIELDS);
 
 	const limit = url.searchParams.get('limit');
 	if (limit !== null) {
@@ -285,7 +310,7 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 		limit,
 		offset: (page - 1) * limit,
 		isPaginated: url.searchParams.has('page') || url.searchParams.has('limit'),
-		sortField: rawSortField ?? undefined,
+		sortField: (rawSortField as PublicCatalogSortField | null) ?? undefined,
 		sortDirection: rawSortDirection ? (rawSortDirection as 'asc' | 'desc') : undefined,
 		showWholesale: url.searchParams.get('showWholesale') === 'true',
 		wholesaleOnly: url.searchParams.get('wholesaleOnly') === 'true',

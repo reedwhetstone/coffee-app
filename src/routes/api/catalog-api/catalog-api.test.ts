@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { formatAllowedValues, PUBLIC_CATALOG_SORT_FIELDS } from '$lib/catalog/publicQueryContract';
 
 const { mockBuildCanonicalCatalogResponse, mockRequireApiKeyAccess } = vi.hoisted(() => ({
 	mockBuildCanonicalCatalogResponse: vi.fn(),
@@ -32,6 +33,7 @@ import { buildCanonicalCatalogResponse } from '$lib/server/catalogResource';
 let GET: typeof import('./+server').GET;
 const LEGACY_SUCCESSOR_LINK = '</v1/catalog>; rel="successor-version"';
 const LEGACY_SUNSET = 'Thu, 31 Dec 2026 23:59:59 GMT';
+const SORT_FIELD_EXPECTED = formatAllowedValues(PUBLIC_CATALOG_SORT_FIELDS);
 
 function expectLegacyHeaders(response: Response) {
 	expect(response.headers.get('Deprecation')).toBe('true');
@@ -193,7 +195,9 @@ describe('/api/catalog-api legacy delegate', () => {
 		['stocked_days', 'abc', 'positive integer'],
 		['limit', 'abc', 'positive integer'],
 		['price_per_lb_min', 'cheap', 'number'],
-		['cost_lb_min', 'cheap', 'number']
+		['cost_lb_min', 'cheap', 'number'],
+		['fields', 'bogus', 'full or dropdown'],
+		['sortField', 'bogus', SORT_FIELD_EXPECTED]
 	])(
 		'preserves upstream %s 400 responses while still adding deprecation headers',
 		async (parameter, value, expected) => {
