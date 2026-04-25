@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { formatAllowedValues, PUBLIC_CATALOG_SORT_FIELDS } from '$lib/catalog/publicQueryContract';
 import { MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 
 const mockSearchCatalog = vi.fn();
@@ -55,6 +56,7 @@ vi.mock('$lib/supabase-admin', () => ({
 
 let buildCanonicalCatalogResponse: typeof import('./catalogResource').buildCanonicalCatalogResponse;
 let buildLegacyAppCatalogResponse: typeof import('./catalogResource').buildLegacyAppCatalogResponse;
+const SORT_FIELD_EXPECTED = formatAllowedValues(PUBLIC_CATALOG_SORT_FIELDS);
 
 const sampleCatalogItem = {
 	id: 1,
@@ -85,6 +87,16 @@ const sampleCatalogItem = {
 	lot_size: '320 bags',
 	packaging: 'GrainPro',
 	processing: 'Washed',
+	processing_base_method: 'Washed',
+	fermentation_type: 'None Stated',
+	process_additives: ['none'],
+	process_additive_detail: null,
+	fermentation_duration_hours: null,
+	processing_notes: 'Washed process disclosed by supplier label',
+	processing_disclosure_level: 'label_only',
+	processing_confidence: 0.85,
+	processing_evidence: { schema_version: 1 },
+	processing_evidence_available: true,
 	region: 'Sidamo',
 	roast_recs: 'City+',
 	score_value: 87.5,
@@ -158,6 +170,7 @@ describe('buildCanonicalCatalogResponse', () => {
 			expect.objectContaining({
 				stockedFilter: true,
 				publicOnly: true,
+				fields: 'resource',
 				limit: 15,
 				offset: 0
 			})
@@ -244,6 +257,162 @@ describe('buildCanonicalCatalogResponse', () => {
 		});
 	});
 
+	it('adds a provenance-aware process summary without exposing raw evidence', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog'));
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.data[0]).toMatchObject({
+			processing: 'Washed',
+			processing_base_method: 'Washed',
+			fermentation_type: 'None Stated',
+			process_additives: ['none'],
+			process: {
+				base_method: 'Washed',
+				fermentation_type: 'None Stated',
+				additives: ['none'],
+				additive_detail: null,
+				fermentation_duration_hours: null,
+				drying_method: 'Patio',
+				notes: 'Washed process disclosed by supplier label',
+				disclosure_level: 'label_only',
+				confidence: 0.85,
+				evidence_available: true
+			}
+		});
+		expect(body.data[0].processing_evidence).toBeUndefined();
+		expect(body.data[0].processing_evidence_available).toBeUndefined();
+		expect(body.data[0].coffee_user).toBeUndefined();
+	});
+
+	it('uses the projected evidence availability boolean when raw evidence is not selected', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalog.mockResolvedValue({
+			data: [
+				{
+					...sampleCatalogItem,
+					processing_evidence: undefined,
+					processing_evidence_available: true
+				}
+			],
+			count: 1,
+			filtersApplied: {}
+		});
+
+		const response = await buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog'));
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.data[0].process.evidence_available).toBe(true);
+		expect(body.data[0].processing_evidence).toBeUndefined();
+		expect(body.data[0].processing_evidence_available).toBeUndefined();
+	});
+
+	it('preserves null process metadata instead of filling fake placeholders', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalog.mockResolvedValue({
+			data: [
+				{
+					...sampleCatalogItem,
+					processing_base_method: null,
+					fermentation_type: null,
+					process_additives: null,
+					process_additive_detail: null,
+					fermentation_duration_hours: null,
+					processing_notes: null,
+					processing_disclosure_level: null,
+					processing_confidence: null,
+					processing_evidence: null,
+					processing_evidence_available: false
+				}
+			],
+			count: 1,
+			filtersApplied: {}
+		});
+
+		const response = await buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog'));
+		const body = await response.json();
+
+		expect(body.data[0].process).toEqual({
+			base_method: null,
+			fermentation_type: null,
+			additives: null,
+			additive_detail: null,
+			fermentation_duration_hours: null,
+			drying_method: 'Patio',
+			notes: null,
+			disclosure_level: null,
+			confidence: null,
+			evidence_available: false
+		});
+	});
+
+	it('coerces missing process projection columns to null when resource queries fall back to full rows', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalog.mockResolvedValue({
+			data: [
+				{
+					...sampleCatalogItem,
+					processing_base_method: undefined,
+					fermentation_type: undefined,
+					process_additives: undefined,
+					process_additive_detail: undefined,
+					fermentation_duration_hours: undefined,
+					drying_method: undefined,
+					processing_notes: undefined,
+					processing_disclosure_level: undefined,
+					processing_confidence: undefined,
+					processing_evidence: undefined,
+					processing_evidence_available: false
+				}
+			],
+			count: 1,
+			filtersApplied: {}
+		});
+
+		const response = await buildCanonicalCatalogResponse(makeEvent('https://app.test/v1/catalog'));
+		const body = await response.json();
+
+		expect(body.data[0].process).toEqual({
+			base_method: null,
+			fermentation_type: null,
+			additives: null,
+			additive_detail: null,
+			fermentation_duration_hours: null,
+			drying_method: null,
+			notes: null,
+			disclosure_level: null,
+			confidence: null,
+			evidence_available: false
+		});
+	});
+
 	it('preserves explicit anonymous pagination limits up to the shared max page size', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
@@ -327,6 +496,7 @@ describe('buildCanonicalCatalogResponse', () => {
 		['price_per_lb_max', '12usd', 'number'],
 		['cost_lb_min', 'legacy', 'number'],
 		['cost_lb_max', 'legacy-max', 'number'],
+		['processing_confidence_min', 'high', 'number'],
 		['stocked_days', 'thirty', 'positive integer']
 	])('rejects invalid numeric query param %s=%s', async (parameter, value, expected) => {
 		mockResolvePrincipal.mockResolvedValue({
@@ -425,6 +595,82 @@ describe('buildCanonicalCatalogResponse', () => {
 				stockedDays: 30
 			})
 		);
+	});
+
+	it('passes processing transparency filters through to the catalog data layer', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent(
+				'https://app.test/v1/catalog?processing=Anaerobic&processing_base_method=Natural&fermentation_type=Anaerobic&process_additive=hops&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
+			)
+		);
+
+		expect(response.status).toBe(200);
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				processing: 'Anaerobic',
+				processingBaseMethod: 'Natural',
+				fermentationType: 'Anaerobic',
+				processAdditive: 'hops',
+				hasAdditives: true,
+				processingDisclosureLevel: 'high_detail',
+				processingConfidenceMin: 0.8
+			})
+		);
+	});
+
+	it('rejects malformed has_additives values so unknown is not collapsed into false', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?has_additives=unknown')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body.details).toEqual({
+			parameter: 'has_additives',
+			value: 'unknown',
+			expected: 'true or false'
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
+	it('rejects out-of-range processing confidence filters', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?processing_confidence_min=1.5')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body.details).toEqual({
+			parameter: 'processing_confidence_min',
+			value: '1.5',
+			expected: 'number between 0 and 1'
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
 	it('rejects invalid stocked_date values with a structured 400 response', async () => {
@@ -647,6 +893,27 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
+	it('keeps fields=dropdown working after strict enum validation', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockGetCatalogDropdown.mockResolvedValue([{ id: 7, name: 'Dropdown Coffee' }]);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?fields=dropdown')
+		);
+
+		expect(response.status).toBe(200);
+		expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({ stockedFilter: true, publicOnly: true })
+		);
+	});
+
 	it('keeps api-key paginated dropdown responses reduced and preserves row caps', async () => {
 		const apiKeyPrincipal = {
 			isAuthenticated: true,
@@ -777,6 +1044,44 @@ describe('buildCanonicalCatalogResponse', () => {
 		});
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		['fields', 'bogus', 'full or dropdown'],
+		['stocked', 'maybe', 'true, false, or all'],
+		['showWholesale', 'maybe', 'true or false'],
+		['wholesaleOnly', 'maybe', 'true or false'],
+		['sortField', 'bogus', SORT_FIELD_EXPECTED]
+	])(
+		'rejects malformed typed query parameter %s=%s with a structured 400 response',
+		async (parameter, value, expected) => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: false,
+				primaryAppRole: null,
+				apiPlan: null
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(false);
+
+			const response = await buildCanonicalCatalogResponse(
+				makeEvent(`https://app.test/v1/catalog?${parameter}=${encodeURIComponent(value)}`)
+			);
+			const body = await response.json();
+
+			expect(response.status).toBe(400);
+			expect(body).toEqual({
+				error: 'Invalid query parameter',
+				message: `Query parameter "${parameter}" must use ${expected} format`,
+				details: {
+					parameter,
+					value,
+					expected
+				}
+			});
+			expect(mockSearchCatalog).not.toHaveBeenCalled();
+			expect(mockSearchCatalogDropdown).not.toHaveBeenCalled();
+			expect(mockGetCatalogDropdown).not.toHaveBeenCalled();
+		}
+	);
 
 	it('viewer sessions keep the same broad public catalog parameter surface', async () => {
 		mockResolvePrincipal.mockResolvedValue({
@@ -1091,6 +1396,21 @@ describe('buildCanonicalCatalogResponse', () => {
 				expect.objectContaining({ stockedFilter: null })
 			);
 		});
+
+		it('rejects invalid stocked values instead of silently defaulting to stocked-only', async () => {
+			const response = await buildCanonicalCatalogResponse(
+				makeEvent('https://app.test/v1/catalog?stocked=maybe&page=1&limit=10')
+			);
+			const body = await response.json();
+
+			expect(response.status).toBe(400);
+			expect(body.details).toEqual({
+				parameter: 'stocked',
+				value: 'maybe',
+				expected: 'true, false, or all'
+			});
+			expect(mockSearchCatalog).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('origin query parameter', () => {
@@ -1204,6 +1524,29 @@ describe('buildCanonicalCatalogResponse', () => {
 				expect.anything(),
 				expect.objectContaining({ stockedFilter: null })
 			);
+		});
+
+		it('preserves processing transparency filters for unpaginated dropdown requests', async () => {
+			await buildCanonicalCatalogResponse(
+				makeEvent(
+					'https://app.test/v1/catalog?fields=dropdown&processing_base_method=Natural&fermentation_type=Anaerobic&process_additive=hops&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
+				)
+			);
+
+			expect(mockGetCatalogDropdown).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					stockedFilter: true,
+					publicOnly: true,
+					processingBaseMethod: 'Natural',
+					fermentationType: 'Anaerobic',
+					processAdditive: 'hops',
+					hasAdditives: true,
+					processingDisclosureLevel: 'high_detail',
+					processingConfidenceMin: 0.8
+				})
+			);
+			expect(mockSearchCatalogDropdown).not.toHaveBeenCalled();
 		});
 
 		it('preserves canonical filters and sorting for paginated dropdown requests', async () => {
@@ -1335,6 +1678,39 @@ describe('buildLegacyAppCatalogResponse', () => {
 		});
 		expect(response.headers.get('X-Purveyors-Canonical-Resource')).toBeNull();
 	});
+
+	it.each([
+		['sortField', 'bogus', SORT_FIELD_EXPECTED],
+		['fields', 'bogus', 'full or dropdown']
+	])(
+		'preserves upstream %s validation failures for legacy callers',
+		async (parameter, value, expected) => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: true,
+				primaryAppRole: 'member',
+				apiPlan: 'viewer',
+				session: { access_token: 'cookie-token' }
+			});
+			mockIsApiKeyPrincipal.mockReturnValue(false);
+			mockIsSessionPrincipal.mockReturnValue(true);
+
+			const response = await buildLegacyAppCatalogResponse(
+				makeEvent(`https://app.test/api/catalog?${parameter}=${encodeURIComponent(value)}`)
+			);
+			const body = await response.json();
+
+			expect(response.status).toBe(400);
+			expect(body).toEqual({
+				error: 'Invalid query parameter',
+				message: `Query parameter "${parameter}" must use ${expected} format`,
+				details: {
+					parameter,
+					value,
+					expected
+				}
+			});
+		}
+	);
 
 	it('preserves oversized limit validation for the deprecated /api/catalog-api alias', async () => {
 		mockResolvePrincipal.mockResolvedValue({

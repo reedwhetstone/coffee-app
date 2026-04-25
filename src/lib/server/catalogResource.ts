@@ -23,10 +23,46 @@ import {
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { jsonResponse } from '$lib/server/http';
 import { createAdminClient } from '$lib/supabase-admin';
+import {
+	formatAllowedValues,
+	PUBLIC_CATALOG_BOOLEAN_VALUES,
+	PUBLIC_CATALOG_FIELD_VALUES,
+	PUBLIC_CATALOG_SORT_FIELDS,
+	PUBLIC_CATALOG_STOCKED_VALUES,
+	type PublicCatalogSortField
+} from '$lib/catalog/publicQueryContract';
 import type { UserRole } from '$lib/types/auth.types';
 import { DEFAULT_CATALOG_LISTING_LIMIT, MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 
-export type CatalogResourceItem = Omit<CatalogItem, 'coffee_user'>;
+export interface CatalogProcessSummary {
+	base_method: string | null;
+	fermentation_type: string | null;
+	additives: string[] | null;
+	additive_detail: string | null;
+	fermentation_duration_hours: number | null;
+	drying_method: string | null;
+	notes: string | null;
+	disclosure_level: string | null;
+	confidence: number | null;
+	evidence_available: boolean;
+}
+
+type CatalogResourceQueryItem = Omit<
+	CatalogItem,
+	'coffee_user' | 'processing_evidence' | 'processing_evidence_available'
+> & {
+	coffee_user?: CatalogItem['coffee_user'];
+	processing_evidence?: CatalogItem['processing_evidence'];
+	processing_evidence_available?: boolean | null;
+	processing_evidence_schema_version?: string | number | null;
+};
+
+export type CatalogResourceItem = Omit<
+	CatalogItem,
+	'coffee_user' | 'processing_evidence' | 'processing_evidence_available'
+> & {
+	process: CatalogProcessSummary;
+};
 export type CatalogResponseItem = CatalogResourceItem | CatalogDropdownItem;
 export type CatalogAuthKind = 'anonymous' | 'session' | 'api-key';
 
@@ -73,7 +109,7 @@ interface ParsedCatalogQuery {
 	limit: number;
 	offset: number;
 	isPaginated: boolean;
-	sortField?: string;
+	sortField?: PublicCatalogSortField;
 	sortDirection?: 'asc' | 'desc';
 	showWholesale: boolean;
 	wholesaleOnly: boolean;
@@ -84,6 +120,12 @@ interface ParsedCatalogQuery {
 		country?: string | string[];
 		source?: string[];
 		processing?: string;
+		processingBaseMethod?: string;
+		fermentationType?: string;
+		processAdditive?: string;
+		hasAdditives?: boolean;
+		processingDisclosureLevel?: string;
+		processingConfidenceMin?: number;
 		cultivarDetail?: string;
 		type?: string;
 		grade?: string;
@@ -193,11 +235,28 @@ function isIsoDateParam(value: string): boolean {
 	);
 }
 
+function validateEnumQueryParam(
+	url: URL,
+	parameter: string,
+	allowedValues: readonly string[]
+): void {
+	const value = url.searchParams.get(parameter);
+	if (value !== null && !allowedValues.includes(value)) {
+		throw new CatalogQueryValidationError(parameter, value, formatAllowedValues(allowedValues));
+	}
+}
+
 function validateCatalogQuery(url: URL): void {
 	const stockedDate = url.searchParams.get('stocked_date');
 	if (stockedDate !== null && !isIsoDateParam(stockedDate)) {
 		throw new CatalogQueryValidationError('stocked_date', stockedDate, 'YYYY-MM-DD');
 	}
+
+	validateEnumQueryParam(url, 'fields', PUBLIC_CATALOG_FIELD_VALUES);
+	validateEnumQueryParam(url, 'stocked', PUBLIC_CATALOG_STOCKED_VALUES);
+	validateEnumQueryParam(url, 'showWholesale', PUBLIC_CATALOG_BOOLEAN_VALUES);
+	validateEnumQueryParam(url, 'wholesaleOnly', PUBLIC_CATALOG_BOOLEAN_VALUES);
+	validateEnumQueryParam(url, 'sortField', PUBLIC_CATALOG_SORT_FIELDS);
 
 	const limit = url.searchParams.get('limit');
 	if (limit !== null) {
@@ -225,7 +284,8 @@ function validateCatalogQuery(url: URL): void {
 		'cost_lb_min',
 		'cost_lb_max',
 		'score_value_min',
-		'score_value_max'
+		'score_value_max',
+		'processing_confidence_min'
 	];
 
 	for (const parameter of numberParams) {
@@ -234,10 +294,57 @@ function validateCatalogQuery(url: URL): void {
 			parseRequiredNumber(value, parameter);
 		}
 	}
+
+	const processingConfidenceMin = url.searchParams.get('processing_confidence_min');
+	if (processingConfidenceMin !== null) {
+		const parsedConfidence = parseRequiredNumber(
+			processingConfidenceMin,
+			'processing_confidence_min'
+		);
+		if (parsedConfidence < 0 || parsedConfidence > 1) {
+			throw new CatalogQueryValidationError(
+				'processing_confidence_min',
+				processingConfidenceMin,
+				'number between 0 and 1'
+			);
+		}
+	}
 }
-function toCatalogResourceItem(item: CatalogItem): CatalogResourceItem {
-	const { coffee_user: _coffeeUser, ...resourceItem } = item;
-	return resourceItem;
+
+function parseOptionalBoolean(value: string | null, parameter: string): boolean | undefined {
+	if (value === null) return undefined;
+	if (value === 'true') return true;
+	if (value === 'false') return false;
+	throw new CatalogQueryValidationError(parameter, value, 'true or false');
+}
+
+function toCatalogResourceItem(item: CatalogResourceQueryItem): CatalogResourceItem {
+	const {
+		coffee_user: _coffeeUser,
+		processing_evidence: processingEvidence,
+		processing_evidence_available: processingEvidenceAvailable,
+		processing_evidence_schema_version: processingEvidenceSchemaVersion,
+		...resourceItem
+	} = item;
+	const evidenceAvailable =
+		processingEvidenceAvailable ??
+		(processingEvidence != null || processingEvidenceSchemaVersion != null);
+
+	return {
+		...resourceItem,
+		process: {
+			base_method: item.processing_base_method ?? null,
+			fermentation_type: item.fermentation_type ?? null,
+			additives: item.process_additives ?? null,
+			additive_detail: item.process_additive_detail ?? null,
+			fermentation_duration_hours: item.fermentation_duration_hours ?? null,
+			drying_method: item.drying_method ?? null,
+			notes: item.processing_notes ?? null,
+			disclosure_level: item.processing_disclosure_level ?? null,
+			confidence: item.processing_confidence ?? null,
+			evidence_available: evidenceAvailable
+		}
+	};
 }
 
 function parseOptionalNumberFromAliases(url: URL, ...paramNames: string[]): number | undefined {
@@ -285,7 +392,7 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 		limit,
 		offset: (page - 1) * limit,
 		isPaginated: url.searchParams.has('page') || url.searchParams.has('limit'),
-		sortField: rawSortField ?? undefined,
+		sortField: (rawSortField as PublicCatalogSortField | null) ?? undefined,
 		sortDirection: rawSortDirection ? (rawSortDirection as 'asc' | 'desc') : undefined,
 		showWholesale: url.searchParams.get('showWholesale') === 'true',
 		wholesaleOnly: url.searchParams.get('wholesaleOnly') === 'true',
@@ -296,6 +403,18 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 			country: countryFilter,
 			source: url.searchParams.getAll('source'),
 			processing: url.searchParams.get('processing') ?? undefined,
+			processingBaseMethod: url.searchParams.get('processing_base_method') ?? undefined,
+			fermentationType: url.searchParams.get('fermentation_type') ?? undefined,
+			processAdditive: url.searchParams.get('process_additive') ?? undefined,
+			hasAdditives: parseOptionalBoolean(url.searchParams.get('has_additives'), 'has_additives'),
+			processingDisclosureLevel: url.searchParams.get('processing_disclosure_level') ?? undefined,
+			processingConfidenceMin:
+				url.searchParams.get('processing_confidence_min') !== null
+					? parseRequiredNumber(
+							url.searchParams.get('processing_confidence_min')!,
+							'processing_confidence_min'
+						)
+					: undefined,
 			cultivarDetail: url.searchParams.get('cultivar_detail') ?? undefined,
 			type: url.searchParams.get('type') ?? undefined,
 			grade: url.searchParams.get('grade') ?? undefined,
@@ -458,7 +577,36 @@ async function queryCatalogData(
 				stockedFilter,
 				publicOnly: context.publicOnly,
 				showWholesale: context.showWholesale,
-				wholesaleOnly: context.wholesaleOnly
+				wholesaleOnly: context.wholesaleOnly,
+				origin: effectiveQuery.filters.origin,
+				continent: effectiveQuery.filters.continent,
+				country: effectiveQuery.filters.country,
+				source:
+					effectiveQuery.filters.source && effectiveQuery.filters.source.length > 0
+						? effectiveQuery.filters.source
+						: undefined,
+				processing: effectiveQuery.filters.processing,
+				processingBaseMethod: effectiveQuery.filters.processingBaseMethod,
+				fermentationType: effectiveQuery.filters.fermentationType,
+				processAdditive: effectiveQuery.filters.processAdditive,
+				hasAdditives: effectiveQuery.filters.hasAdditives,
+				processingDisclosureLevel: effectiveQuery.filters.processingDisclosureLevel,
+				processingConfidenceMin: effectiveQuery.filters.processingConfidenceMin,
+				cultivarDetail: effectiveQuery.filters.cultivarDetail,
+				type: effectiveQuery.filters.type,
+				grade: effectiveQuery.filters.grade,
+				appearance: effectiveQuery.filters.appearance,
+				name: effectiveQuery.filters.name,
+				region: effectiveQuery.filters.region,
+				scoreValueMin: effectiveQuery.filters.scoreValueMin,
+				scoreValueMax: effectiveQuery.filters.scoreValueMax,
+				pricePerLbMin: effectiveQuery.filters.pricePerLbMin,
+				pricePerLbMax: effectiveQuery.filters.pricePerLbMax,
+				arrivalDate: effectiveQuery.filters.arrivalDate,
+				stockedDate: effectiveQuery.filters.stockedDate,
+				stockedDays: effectiveQuery.filters.stockedDays,
+				orderBy: effectiveQuery.sortField || 'arrival_date',
+				orderDirection: effectiveQuery.sortDirection || 'desc'
 			});
 
 			const totalAvailable = rows.length;
@@ -505,6 +653,12 @@ async function queryCatalogData(
 					? effectiveQuery.filters.source
 					: undefined,
 			processing: effectiveQuery.filters.processing,
+			processingBaseMethod: effectiveQuery.filters.processingBaseMethod,
+			fermentationType: effectiveQuery.filters.fermentationType,
+			processAdditive: effectiveQuery.filters.processAdditive,
+			hasAdditives: effectiveQuery.filters.hasAdditives,
+			processingDisclosureLevel: effectiveQuery.filters.processingDisclosureLevel,
+			processingConfidenceMin: effectiveQuery.filters.processingConfidenceMin,
 			cultivarDetail: effectiveQuery.filters.cultivarDetail,
 			type: effectiveQuery.filters.type,
 			grade: effectiveQuery.filters.grade,
@@ -576,6 +730,12 @@ async function queryCatalogData(
 				? effectiveQuery.filters.source
 				: undefined,
 		processing: effectiveQuery.filters.processing,
+		processingBaseMethod: effectiveQuery.filters.processingBaseMethod,
+		fermentationType: effectiveQuery.filters.fermentationType,
+		processAdditive: effectiveQuery.filters.processAdditive,
+		hasAdditives: effectiveQuery.filters.hasAdditives,
+		processingDisclosureLevel: effectiveQuery.filters.processingDisclosureLevel,
+		processingConfidenceMin: effectiveQuery.filters.processingConfidenceMin,
 		cultivarDetail: effectiveQuery.filters.cultivarDetail,
 		type: effectiveQuery.filters.type,
 		grade: effectiveQuery.filters.grade,
@@ -589,6 +749,7 @@ async function queryCatalogData(
 		arrivalDate: effectiveQuery.filters.arrivalDate,
 		stockedDate: effectiveQuery.filters.stockedDate,
 		stockedDays: effectiveQuery.filters.stockedDays,
+		fields: 'resource',
 		orderBy: effectiveQuery.ids.length > 0 ? 'name' : effectiveQuery.sortField || 'arrival_date',
 		orderDirection:
 			effectiveQuery.sortDirection || (effectiveQuery.ids.length > 0 ? 'asc' : 'desc'),

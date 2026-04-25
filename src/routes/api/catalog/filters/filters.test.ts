@@ -14,6 +14,10 @@ const visibleRows = [
 		continent: 'Africa',
 		country: 'Ethiopia',
 		processing: 'Washed',
+		processing_base_method: 'Washed',
+		fermentation_type: 'None Stated',
+		process_additives: ['none'],
+		processing_disclosure_level: 'structured',
 		cultivar_detail: 'Heirloom',
 		type: 'Arabica',
 		grade: 'Grade 1',
@@ -25,6 +29,10 @@ const visibleRows = [
 		continent: 'South America',
 		country: 'Brazil',
 		processing: 'Natural',
+		processing_base_method: 'Natural',
+		fermentation_type: 'Anaerobic',
+		process_additives: ['hops', 'fruit'],
+		processing_disclosure_level: 'high_detail',
 		cultivar_detail: 'Bourbon',
 		type: 'Arabica',
 		grade: 'Grade 2',
@@ -69,6 +77,10 @@ describe('/api/catalog/filters', () => {
 			})
 		);
 		expect(body.sources).toEqual(['A', 'B']);
+		expect(body.processing_base_method).toEqual(['Natural', 'Washed']);
+		expect(body.fermentation_type).toEqual(['Anaerobic', 'None Stated']);
+		expect(body.process_additives).toEqual(['fruit', 'hops', 'none']);
+		expect(body.processing_disclosure_level).toEqual(['high_detail', 'structured']);
 	});
 
 	it('keeps viewer sessions on the same public-only filter metadata policy', async () => {
