@@ -1,4 +1,5 @@
 import type { PageServerLoad } from './$types';
+import { MAX_CATALOG_PAGE_LIMIT_DISPLAY } from '$lib/constants/catalog';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 import { generateBreadcrumbs } from '$lib/utils/breadcrumbs';
@@ -31,6 +32,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		]
 	};
 
+	const maxCatalogPageLimitFeature = `Up to ${MAX_CATALOG_PAGE_LIMIT_DISPLAY} rows per request`;
+
 	const pricingTiers = [
 		{
 			name: 'Green',
@@ -48,7 +51,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			billingDuration: 'P1M',
 			description:
 				'Self-serve plan for production integrations, sync jobs, and recurring customer use',
-			features: ['10,000 requests per month', 'Up to 1000 rows per request', 'Usage visibility'],
+			features: ['10,000 requests per month', maxCatalogPageLimitFeature, 'Usage visibility'],
 			popular: true
 		},
 		{
@@ -59,7 +62,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			description: 'Contact-sales plan for larger deployments, custom volume, and premium support',
 			features: [
 				'Unlimited requests',
-				'Up to 1000 rows per request',
+				maxCatalogPageLimitFeature,
 				'Custom support and commercial terms'
 			],
 			popular: false

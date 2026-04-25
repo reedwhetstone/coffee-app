@@ -1,8 +1,11 @@
+import { formatAllowedValues, PUBLIC_CATALOG_SORT_FIELDS } from '$lib/catalog/publicQueryContract';
 import {
 	DEFAULT_CATALOG_LISTING_LIMIT,
 	DEFAULT_PAGINATED_PAGE_SIZE,
 	MAX_CATALOG_PAGE_LIMIT
 } from '$lib/constants/catalog';
+
+const PUBLIC_CATALOG_SORT_FIELD_LIST = formatAllowedValues(PUBLIC_CATALOG_SORT_FIELDS);
 
 export type DocsSectionKey = 'api' | 'cli';
 
@@ -332,7 +335,7 @@ const docsPages: DocsPage[] = [
 			'GET /v1/catalog is the stable public contract for normalized green coffee listings and tier-aware API access.',
 		eyebrow: 'Public endpoint',
 		intro: [
-			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, processing method, pricing, price tiers, and availability metadata.',
+			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, pricing, price tiers, and availability metadata.',
 			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API-key requests all share the public catalog query surface. Anonymous and viewer-session requests stay public-only, while member and admin sessions may unlock richer in-app visibility. API-key requests stay public-only, use plan-based limits, and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`
 		],
 		sections: [
@@ -354,6 +357,7 @@ const docsPages: DocsPage[] = [
 				title: 'Request and response',
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
+					'Full catalog rows include legacy raw processing fields plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
 					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and visibility: only API-key requests emit X-RateLimit-* headers, and only privileged member or admin sessions can widen beyond public-only data.',
 					`Viewer-tier API keys are capped to 25 rows per call. Member and enterprise API plans remove that lower plan cap but still share the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables wholesale visibility.`,
 					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
@@ -362,7 +366,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'GET /v1/catalog',
 						language: 'json',
-						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "price_per_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
+						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "drying_method": "Raised beds",\n      "process": {\n        "base_method": "Natural",\n        "fermentation_type": "Anaerobic",\n        "additives": null,\n        "additive_detail": null,\n        "fermentation_duration_hours": 72,\n        "drying_method": "Raised beds",\n        "notes": "Anaerobic natural process disclosed by supplier notes",\n        "disclosure_level": "high_detail",\n        "confidence": 0.92,\n        "evidence_available": true\n      },\n      "price_per_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
 					},
 					{
 						label: 'GET /v1/catalog?fields=dropdown&page=2&limit=2',
@@ -378,7 +382,7 @@ const docsPages: DocsPage[] = [
 					'Anonymous, viewer-session, and API-key requests all share the public query surface documented below.',
 					'fields=dropdown stays compatible with normal page and limit params. The reduced projection is limited to id, source, name, stocked, cost_lb, price_per_lb, price_tiers, and public_coffee.',
 					'Privileged member and admin sessions may additionally use showWholesale and wholesaleOnly to widen first-party visibility.',
-					'Malformed numeric params now fail closed with 400 responses instead of silently falling back. That applies to page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases.'
+					`Malformed typed params now fail closed with 400 responses instead of silently falling back or bubbling into generic 500s. That applies to fields, stocked, showWholesale, wholesaleOnly, sortField, page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases. Supported sortField values are ${PUBLIC_CATALOG_SORT_FIELD_LIST}.`
 				],
 				table: {
 					headers: ['Parameter', 'Type', 'Default', 'Description'],
@@ -400,13 +404,13 @@ const docsPages: DocsPage[] = [
 							'fields',
 							'full | dropdown',
 							'full',
-							'dropdown returns the reduced projection used by filter UIs and select menus (id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee), and it works with normal page and limit params.'
+							'dropdown returns the reduced projection used by filter UIs and select menus (id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee), and it works with normal page and limit params. Invalid values return 400.'
 						],
 						[
 							'stocked',
 							'true | false | all',
 							'true',
-							'Filter to stocked-only, unstocked-only, or the full catalog.'
+							'Filter to stocked-only, unstocked-only, or the full catalog. Invalid values return 400.'
 						],
 						['origin', 'string', 'none', 'Partial match across continent, country, and region.'],
 						['country', 'string', 'none', 'Exact match on country.'],
@@ -417,8 +421,49 @@ const docsPages: DocsPage[] = [
 							'none',
 							'Repeat to filter across multiple supplier slugs.'
 						],
-						['processing', 'string', 'none', 'Partial match on processing method.'],
+						[
+							'processing',
+							'string',
+							'none',
+							'Partial match on the legacy processing label. This remains supported for compatibility.'
+						],
 						['name', 'string', 'none', 'Partial match on coffee name.'],
+						[
+							'processing_base_method',
+							'string',
+							'none',
+							'Exact match on normalized base process, for example Washed, Natural, Honey, Wet-Hulled, Decaf, Other, or Unknown.'
+						],
+						[
+							'fermentation_type',
+							'string',
+							'none',
+							'Exact match on normalized fermentation technique, for example Anaerobic, Carbonic Maceration, Yeast Inoculated, Co-Fermented, None Stated, or Unknown.'
+						],
+						[
+							'process_additive',
+							'string',
+							'none',
+							'Array containment filter for disclosed additives such as fruit, yeast, hops, mossto, starter-culture, none, or unspecified.'
+						],
+						[
+							'has_additives',
+							'true | false',
+							'none',
+							'true returns rows with a disclosed additive value. false returns explicit none only, not unknown or unspecified rows.'
+						],
+						[
+							'processing_disclosure_level',
+							'string',
+							'none',
+							'Exact match on supplier disclosure quality: none, label_only, structured, narrative, or high_detail.'
+						],
+						[
+							'processing_confidence_min',
+							'number',
+							'none',
+							'Minimum 0 to 1 confidence score for the structured process breakdown.'
+						],
 						['region', 'string', 'none', 'Partial match on region.'],
 						['cultivar_detail', 'string', 'none', 'Partial match on cultivar or variety detail.'],
 						['type', 'string', 'none', 'Partial match on type.'],
@@ -455,15 +500,20 @@ const docsPages: DocsPage[] = [
 							'showWholesale',
 							'boolean',
 							'false',
-							'Only effective for privileged member sessions. Ignored for anonymous and API-key requests.'
+							'Only effective for privileged member sessions. Ignored for anonymous and API-key requests. Invalid values return 400.'
 						],
 						[
 							'wholesaleOnly',
 							'boolean',
 							'false',
-							'Requires showWholesale=true and a privileged member session.'
+							'Requires showWholesale=true and a privileged member session. Invalid values return 400.'
 						],
-						['sortField', 'string', 'arrival_date', 'Sort field for non-ID queries.'],
+						[
+							'sortField',
+							PUBLIC_CATALOG_SORT_FIELD_LIST,
+							'arrival_date',
+							'Sort field for non-ID queries. Invalid values return 400.'
+						],
 						['sortDirection', 'asc | desc', 'desc', 'Sort direction for non-ID queries.']
 					]
 				},

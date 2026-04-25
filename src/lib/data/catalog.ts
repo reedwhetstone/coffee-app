@@ -53,7 +53,7 @@ export interface CatalogSearchOptions {
 	offset?: number; // pagination offset
 
 	// Field set
-	fields?: 'full' | 'dropdown'; // dropdown → id,source,name,stocked,cost_lb,price_tiers
+	fields?: 'full' | 'dropdown' | 'resource'; // resource → public/API projection without raw evidence blobs
 
 	// Sorting
 	orderBy?: string;
@@ -64,6 +64,12 @@ export interface CatalogSearchOptions {
 	country?: string | string[];
 	source?: string[];
 	processing?: string;
+	processingBaseMethod?: string;
+	fermentationType?: string;
+	processAdditive?: string;
+	hasAdditives?: boolean;
+	processingDisclosureLevel?: string;
+	processingConfidenceMin?: number;
 	cultivarDetail?: string;
 	type?: string;
 	grade?: string;
@@ -102,6 +108,12 @@ export interface CatalogDropdownSearchOptions {
 	country?: CatalogSearchOptions['country'];
 	source?: CatalogSearchOptions['source'];
 	processing?: CatalogSearchOptions['processing'];
+	processingBaseMethod?: CatalogSearchOptions['processingBaseMethod'];
+	fermentationType?: CatalogSearchOptions['fermentationType'];
+	processAdditive?: CatalogSearchOptions['processAdditive'];
+	hasAdditives?: CatalogSearchOptions['hasAdditives'];
+	processingDisclosureLevel?: CatalogSearchOptions['processingDisclosureLevel'];
+	processingConfidenceMin?: CatalogSearchOptions['processingConfidenceMin'];
 	cultivarDetail?: CatalogSearchOptions['cultivarDetail'];
 	type?: CatalogSearchOptions['type'];
 	grade?: CatalogSearchOptions['grade'];
@@ -126,6 +138,116 @@ export interface CatalogDropdownSearchOptions {
 const DROPDOWN_COLUMNS =
 	'id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee' as const;
 
+const CATALOG_RESOURCE_COLUMNS: string =
+	'id, name, score_value, arrival_date, region, processing, processing_base_method, fermentation_type, process_additives, process_additive_detail, fermentation_duration_hours, processing_notes, processing_disclosure_level, processing_confidence, processing_evidence_available, drying_method, roast_recs, lot_size, bag_size, packaging, cultivar_detail, grade, appearance, description_short, farm_notes, type, description_long, link, cost_lb, price_per_lb, price_tiers, last_updated, source, stocked, cupping_notes, unstocked_date, stocked_date, ai_description, ai_tasting_notes, public_coffee, country, continent, wholesale';
+
+const RESOURCE_MISSING_COLUMN_HINTS = [
+	'processing_base_method',
+	'fermentation_type',
+	'process_additives',
+	'process_additive_detail',
+	'fermentation_duration_hours',
+	'processing_notes',
+	'processing_disclosure_level',
+	'processing_confidence',
+	'processing_evidence_available',
+	'drying_method'
+] as const;
+
+const DISCLOSED_ADDITIVE_VALUES = [
+	'fruit',
+	'yeast',
+	'hops',
+	'spice',
+	'botanical',
+	'mossto',
+	'starter-culture',
+	'other'
+] as const;
+
+const STRUCTURED_PROCESS_FILTER_MISSING_COLUMN_HINTS = [
+	'processing_base_method',
+	'fermentation_type',
+	'process_additives',
+	'processing_disclosure_level',
+	'processing_confidence'
+] as const;
+
+function stripStructuredProcessFilters(options: CatalogSearchOptions): CatalogSearchOptions {
+	const {
+		processingBaseMethod: _processingBaseMethod,
+		fermentationType: _fermentationType,
+		processAdditive: _processAdditive,
+		hasAdditives: _hasAdditives,
+		processingDisclosureLevel: _processingDisclosureLevel,
+		processingConfidenceMin: _processingConfidenceMin,
+		...compatibleOptions
+	} = options;
+
+	return compatibleOptions;
+}
+
+function stripStructuredProcessDropdownFilters(
+	options: CatalogDropdownSearchOptions
+): CatalogDropdownSearchOptions {
+	const {
+		processingBaseMethod: _processingBaseMethod,
+		fermentationType: _fermentationType,
+		processAdditive: _processAdditive,
+		hasAdditives: _hasAdditives,
+		processingDisclosureLevel: _processingDisclosureLevel,
+		processingConfidenceMin: _processingConfidenceMin,
+		...compatibleOptions
+	} = options;
+
+	return compatibleOptions;
+}
+
+function hasStructuredProcessFilters(
+	options:
+		| Pick<
+				CatalogSearchOptions,
+				| 'processingBaseMethod'
+				| 'fermentationType'
+				| 'processAdditive'
+				| 'hasAdditives'
+				| 'processingDisclosureLevel'
+				| 'processingConfidenceMin'
+		  >
+		| Pick<
+				CatalogDropdownSearchOptions,
+				| 'processingBaseMethod'
+				| 'fermentationType'
+				| 'processAdditive'
+				| 'hasAdditives'
+				| 'processingDisclosureLevel'
+				| 'processingConfidenceMin'
+		  >
+): boolean {
+	return (
+		options.processingBaseMethod !== undefined ||
+		options.fermentationType !== undefined ||
+		options.processAdditive !== undefined ||
+		options.hasAdditives !== undefined ||
+		options.processingDisclosureLevel !== undefined ||
+		options.processingConfidenceMin !== undefined
+	);
+}
+
+function isMissingColumnError(error: unknown, columnHints: readonly string[] = []): boolean {
+	if (typeof error !== 'object' || error === null) return false;
+
+	const { code, message } = error as { code?: unknown; message?: unknown };
+	const normalizedMessage = typeof message === 'string' ? message.toLowerCase() : '';
+
+	return (
+		code === '42703' ||
+		code === 'PGRST200' ||
+		normalizedMessage.includes('does not exist') ||
+		columnHints.some((column) => normalizedMessage.includes(column.toLowerCase()))
+	);
+}
+
 // ── Core functions ────────────────────────────────────────────────────────────
 
 /**
@@ -149,6 +271,7 @@ export async function searchCatalog(
 		stockedOnly,
 		stockedFilter,
 		stockedDays,
+		fields = 'full',
 
 		publicOnly,
 		showWholesale,
@@ -166,6 +289,12 @@ export async function searchCatalog(
 		type,
 		grade,
 		appearance,
+		processingBaseMethod,
+		fermentationType,
+		processAdditive,
+		hasAdditives,
+		processingDisclosureLevel,
+		processingConfidenceMin,
 		region,
 		scoreValueMin,
 		scoreValueMax,
@@ -177,10 +306,12 @@ export async function searchCatalog(
 
 	const usePagination = offset !== undefined;
 
+	const selectColumns = fields === 'resource' ? CATALOG_RESOURCE_COLUMNS : '*';
+
 	let query = supabase
 		.from('coffee_catalog')
 		// Only request an exact count when paginating — it adds an extra DB pass
-		.select('*', usePagination ? { count: 'exact' } : undefined);
+		.select(selectColumns, usePagination ? { count: 'exact' } : undefined);
 
 	// ── Visibility filters ────────────────────────────────────────────────────
 	// stockedFilter takes precedence: true = stocked only, false = unstocked only, null = no filter
@@ -230,6 +361,25 @@ export async function searchCatalog(
 	if (name) query = query.ilike('name', `%${name}%`);
 	if (process) query = query.ilike('processing', `%${process}%`);
 	if (processing) query = query.ilike('processing', `%${processing}%`);
+	if (processingBaseMethod) query = query.eq('processing_base_method', processingBaseMethod);
+	if (fermentationType) query = query.eq('fermentation_type', fermentationType);
+	if (processAdditive) query = query.contains('process_additives', [processAdditive]);
+	if (hasAdditives === true) {
+		query = query.overlaps('process_additives', [...DISCLOSED_ADDITIVE_VALUES]);
+	} else if (hasAdditives === false) {
+		// false means the supplier explicitly disclosed no additives. Unknown,
+		// unspecified, or mixed additive arrays are intentionally excluded so
+		// missing/contradictory metadata is not treated as real no-additives data.
+		query = query
+			.contains('process_additives', ['none'])
+			.containedBy('process_additives', ['none']);
+	}
+	if (processingDisclosureLevel) {
+		query = query.eq('processing_disclosure_level', processingDisclosureLevel);
+	}
+	if (processingConfidenceMin !== undefined) {
+		query = query.gte('processing_confidence', processingConfidenceMin);
+	}
 	if (variety) query = query.ilike('cultivar_detail', `%${variety}%`);
 	if (cultivarDetail) query = query.ilike('cultivar_detail', `%${cultivarDetail}%`);
 	if (type) query = query.ilike('type', `%${type}%`);
@@ -284,7 +434,20 @@ export async function searchCatalog(
 	}
 
 	const { data, error, count } = await query;
-	if (error) throw error;
+	if (error) {
+		if (fields === 'resource' && isMissingColumnError(error, RESOURCE_MISSING_COLUMN_HINTS)) {
+			// The resource projection references processing-transparency columns added by
+			// this PR. Preview/test databases can lag the migration; fall back to the
+			// legacy full-row query so existing catalog endpoints keep serving data until
+			// the schema is applied. Structured process filters must also be dropped for
+			// the retry because they reference the same new columns.
+			return searchCatalog(supabase, {
+				...stripStructuredProcessFilters(options),
+				fields: 'full'
+			});
+		}
+		throw error;
+	}
 
 	const filtersApplied: Record<string, unknown> = {};
 	if (origin) filtersApplied.origin = origin;
@@ -295,6 +458,15 @@ export async function searchCatalog(
 	if (name) filtersApplied.name = name;
 	if (dryingMethod) filtersApplied.dryingMethod = dryingMethod;
 	if (supplier) filtersApplied.supplier = supplier;
+	if (processingBaseMethod) filtersApplied.processingBaseMethod = processingBaseMethod;
+	if (fermentationType) filtersApplied.fermentationType = fermentationType;
+	if (processAdditive) filtersApplied.processAdditive = processAdditive;
+	if (hasAdditives !== undefined) filtersApplied.hasAdditives = hasAdditives;
+	if (processingDisclosureLevel)
+		filtersApplied.processingDisclosureLevel = processingDisclosureLevel;
+	if (processingConfidenceMin !== undefined) {
+		filtersApplied.processingConfidenceMin = processingConfidenceMin;
+	}
 	if (coffeeIds) filtersApplied.coffeeIds = coffeeIds;
 	if (stockedOnly) filtersApplied.stockedOnly = stockedOnly;
 	if (stockedFilter !== undefined) filtersApplied.stockedFilter = stockedFilter;
@@ -306,7 +478,7 @@ export async function searchCatalog(
 	if (limit) filtersApplied.limit = limit;
 
 	return {
-		data: (data as CatalogItem[]) || [],
+		data: (data as unknown as CatalogItem[]) || [],
 		count: count ?? data?.length ?? 0,
 		filtersApplied
 	};
@@ -351,6 +523,12 @@ export async function searchCatalogDropdown(
 		type,
 		grade,
 		appearance,
+		processingBaseMethod,
+		fermentationType,
+		processAdditive,
+		hasAdditives,
+		processingDisclosureLevel,
+		processingConfidenceMin,
 		name,
 		region,
 		scoreValueMin,
@@ -408,6 +586,22 @@ export async function searchCatalogDropdown(
 	if (source && source.length > 0) query = query.in('source', source);
 	if (name) query = query.ilike('name', `%${name}%`);
 	if (processing) query = query.ilike('processing', `%${processing}%`);
+	if (processingBaseMethod) query = query.eq('processing_base_method', processingBaseMethod);
+	if (fermentationType) query = query.eq('fermentation_type', fermentationType);
+	if (processAdditive) query = query.contains('process_additives', [processAdditive]);
+	if (hasAdditives === true) {
+		query = query.overlaps('process_additives', [...DISCLOSED_ADDITIVE_VALUES]);
+	} else if (hasAdditives === false) {
+		query = query
+			.contains('process_additives', ['none'])
+			.containedBy('process_additives', ['none']);
+	}
+	if (processingDisclosureLevel) {
+		query = query.eq('processing_disclosure_level', processingDisclosureLevel);
+	}
+	if (processingConfidenceMin !== undefined) {
+		query = query.gte('processing_confidence', processingConfidenceMin);
+	}
 	if (cultivarDetail) query = query.ilike('cultivar_detail', `%${cultivarDetail}%`);
 	if (type) query = query.ilike('type', `%${type}%`);
 	if (grade) query = query.ilike('grade', `%${grade}%`);
@@ -435,7 +629,15 @@ export async function searchCatalogDropdown(
 	}
 
 	const { data, error, count } = await query;
-	if (error) throw error;
+	if (error) {
+		if (
+			hasStructuredProcessFilters(options) &&
+			isMissingColumnError(error, STRUCTURED_PROCESS_FILTER_MISSING_COLUMN_HINTS)
+		) {
+			return searchCatalogDropdown(supabase, stripStructuredProcessDropdownFilters(options));
+		}
+		throw error;
+	}
 
 	return {
 		data: (data as CatalogDropdownItem[]) || [],
@@ -477,7 +679,17 @@ export async function getCatalogItemsByIds(
 
 /** Minimal column set for building unique filter option lists. */
 const FILTER_METADATA_COLUMNS =
+	'source, continent, country, processing, processing_base_method, fermentation_type, process_additives, processing_disclosure_level, cultivar_detail, type, grade, appearance, arrival_date' as const;
+
+const FILTER_METADATA_FALLBACK_COLUMNS =
 	'source, continent, country, processing, cultivar_detail, type, grade, appearance, arrival_date' as const;
+
+const FILTER_METADATA_MISSING_COLUMN_HINTS = [
+	'processing_base_method',
+	'fermentation_type',
+	'process_additives',
+	'processing_disclosure_level'
+] as const;
 
 /** Row shape returned by the narrow filter-metadata query. */
 export type CatalogFilterMetadataRow = {
@@ -485,6 +697,10 @@ export type CatalogFilterMetadataRow = {
 	continent: string | null;
 	country: string | null;
 	processing: string | null;
+	processing_base_method: string | null;
+	fermentation_type: string | null;
+	process_additives: string[] | null;
+	processing_disclosure_level: string | null;
 	cultivar_detail: string | null;
 	type: string | null;
 	grade: string | null;
@@ -494,7 +710,7 @@ export type CatalogFilterMetadataRow = {
 
 /**
  * Narrow query for building filter option lists (/api/catalog/filters).
- * Selects only the 9 columns needed for unique-value extraction instead of
+ * Selects only the columns needed for unique-value extraction instead of
  * fetching full rows via searchCatalog().
  */
 export async function getCatalogFilterMetadata(
@@ -512,7 +728,6 @@ export async function getCatalogFilterMetadata(
 		.from('coffee_catalog')
 		.select(FILTER_METADATA_COLUMNS)
 		.order('arrival_date', { ascending: false });
-
 	if (stockedOnly) query = query.eq('stocked', true);
 	if (publicOnly) query = query.eq('public_coffee', true);
 	if (wholesaleOnly) {
@@ -522,6 +737,45 @@ export async function getCatalogFilterMetadata(
 	}
 
 	const { data, error } = await query;
-	if (error) throw error;
+	if (error) {
+		if (!isMissingColumnError(error, FILTER_METADATA_MISSING_COLUMN_HINTS)) throw error;
+
+		let fallbackQuery = supabase
+			.from('coffee_catalog')
+			.select(FILTER_METADATA_FALLBACK_COLUMNS)
+			.order('arrival_date', { ascending: false });
+		if (stockedOnly) fallbackQuery = fallbackQuery.eq('stocked', true);
+		if (publicOnly) fallbackQuery = fallbackQuery.eq('public_coffee', true);
+		if (wholesaleOnly) {
+			fallbackQuery = fallbackQuery.eq('wholesale', true);
+		} else if (showWholesale === false) {
+			fallbackQuery = fallbackQuery.eq('wholesale', false);
+		}
+		const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+		if (fallbackError) throw fallbackError;
+
+		return (
+			(fallbackData as Array<
+				Pick<
+					CatalogFilterMetadataRow,
+					| 'source'
+					| 'continent'
+					| 'country'
+					| 'processing'
+					| 'cultivar_detail'
+					| 'type'
+					| 'grade'
+					| 'appearance'
+					| 'arrival_date'
+				>
+			>) || []
+		).map((row) => ({
+			...row,
+			processing_base_method: null,
+			fermentation_type: null,
+			process_additives: null,
+			processing_disclosure_level: null
+		}));
+	}
 	return (data as CatalogFilterMetadataRow[]) || [];
 }
