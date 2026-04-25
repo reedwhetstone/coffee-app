@@ -37,8 +37,10 @@ pnpm build
 pnpm preview
 pnpm sync
 pnpm lint
-pnpm check
+pnpm check --fail-on-warnings
 pnpm test
+pnpm verify:catalog-http-contract
+pnpm audit:discoverability
 ```
 
 Required validation for repo changes unless explicitly waived:
@@ -76,9 +78,9 @@ For E2E (`pnpm test:e2e`), also require:
 Repo-local helpers:
 
 ```bash
-pnpm worktree:bootstrap
-pnpm env:check
-pnpm env:check:e2e
+pnpm worktree:bootstrap   # copy example env files and print required keys
+pnpm env:check            # verify static validation env values
+pnpm env:check:e2e        # verify E2E-specific env values
 ```
 
 Rules:

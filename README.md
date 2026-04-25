@@ -107,13 +107,15 @@ pnpm dev
 ### Core commands
 
 ```bash
-pnpm dev        # start dev server
-pnpm build      # production build
-pnpm preview    # preview production build
-pnpm sync       # regenerate SvelteKit types
-pnpm lint       # lint + format check
-pnpm check      # TypeScript check (--fail-on-warnings in CI)
-pnpm test       # run tests
+pnpm dev                           # start dev server
+pnpm build                         # production build
+pnpm preview                       # preview production build
+pnpm sync                          # regenerate SvelteKit types
+pnpm lint                          # lint + format check
+pnpm check --fail-on-warnings      # Svelte + TypeScript check
+pnpm test                          # run unit tests
+pnpm verify:catalog-http-contract  # verify the public catalog HTTP contract
+pnpm audit:discoverability         # audit public SEO and discoverability metadata
 ```
 
 ### Worktree-friendly local validation
@@ -197,9 +199,9 @@ For E2E (`pnpm test:e2e`), also provide:
 Helpful commands:
 
 ```bash
-pnpm worktree:bootstrap
-pnpm env:check
-pnpm env:check:e2e
+pnpm worktree:bootstrap   # copy example env files into a fresh worktree and print required keys
+pnpm env:check            # verify static validation env values
+pnpm env:check:e2e        # verify E2E-specific env values
 ```
 
 Notes:

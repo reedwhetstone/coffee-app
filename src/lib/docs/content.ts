@@ -397,7 +397,7 @@ const docsPages: DocsPage[] = [
 						[
 							'ids',
 							'integer (repeatable)',
-							'—',
+							'none',
 							'Fetch specific catalog IDs. When present, pagination is ignored and results are sorted by name ascending.'
 						],
 						[
@@ -412,22 +412,22 @@ const docsPages: DocsPage[] = [
 							'true',
 							'Filter to stocked-only, unstocked-only, or the full catalog. Invalid values return 400.'
 						],
-						['origin', 'string', '—', 'Partial match across continent, country, and region.'],
-						['country', 'string', '—', 'Exact match on country.'],
-						['continent', 'string', '—', 'Exact match on continent.'],
+						['origin', 'string', 'none', 'Partial match across continent, country, and region.'],
+						['country', 'string', 'none', 'Exact match on country.'],
+						['continent', 'string', 'none', 'Exact match on continent.'],
 						[
 							'source',
 							'string (repeatable)',
-							'—',
+							'none',
 							'Repeat to filter across multiple supplier slugs.'
 						],
 						[
 							'processing',
 							'string',
-							'—',
+							'none',
 							'Partial match on the legacy processing label. This remains supported for compatibility.'
 						],
-						['name', 'string', '—', 'Partial match on coffee name.'],
+						['name', 'string', 'none', 'Partial match on coffee name.'],
 						[
 							'processing_base_method',
 							'string',
@@ -464,36 +464,36 @@ const docsPages: DocsPage[] = [
 							'none',
 							'Minimum 0 to 1 confidence score for the structured process breakdown.'
 						],
-						['region', 'string', '—', 'Partial match on region.'],
-						['cultivar_detail', 'string', '—', 'Partial match on cultivar or variety detail.'],
-						['type', 'string', '—', 'Partial match on type.'],
-						['grade', 'string', '—', 'Partial match on grade.'],
-						['appearance', 'string', '—', 'Partial match on appearance.'],
-						['price_per_lb_min / price_per_lb_max', 'number', '—', 'Canonical price filters.'],
+						['region', 'string', 'none', 'Partial match on region.'],
+						['cultivar_detail', 'string', 'none', 'Partial match on cultivar or variety detail.'],
+						['type', 'string', 'none', 'Partial match on type.'],
+						['grade', 'string', 'none', 'Partial match on grade.'],
+						['appearance', 'string', 'none', 'Partial match on appearance.'],
+						['price_per_lb_min / price_per_lb_max', 'number', 'none', 'Canonical price filters.'],
 						[
 							'cost_lb_min / cost_lb_max',
 							'number',
-							'—',
+							'none',
 							'Deprecated compatibility aliases for the canonical price filters. Prefer price_per_lb_min / price_per_lb_max in new integrations.'
 						],
-						['score_value_min', 'number', '—', 'Minimum cupping or quality score (inclusive).'],
-						['score_value_max', 'number', '—', 'Maximum cupping or quality score (inclusive).'],
+						['score_value_min', 'number', 'none', 'Minimum cupping or quality score (inclusive).'],
+						['score_value_max', 'number', 'none', 'Maximum cupping or quality score (inclusive).'],
 						[
 							'arrival_date',
 							'string (YYYY-MM-DD)',
-							'—',
+							'none',
 							'Filter to coffees with a specific arrival date.'
 						],
 						[
 							'stocked_date',
 							'string (YYYY-MM-DD)',
-							'—',
+							'none',
 							'Filter to coffees stocked on or after a given absolute date. Invalid formats return 400.'
 						],
 						[
 							'stocked_days',
 							'integer',
-							'—',
+							'none',
 							'Filter to coffees stocked within the last N days. Use stocked_date for absolute dates.'
 						],
 						[
@@ -534,14 +534,14 @@ const docsPages: DocsPage[] = [
 							'Anonymous /v1/catalog',
 							'Discovery, evaluation, and public embeds',
 							`Full public query surface. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted; page without limit falls back to ${DEFAULT_PAGINATED_PAGE_SIZE}.`,
-							'Cache-Control only',
+							'Content-Type only',
 							'Public-only catalog data. No X-RateLimit-* headers.'
 						],
 						[
 							'API-key /v1/catalog',
 							'Production integrations and accounted usage',
 							`Full public query surface, subject to plan caps and row limits. Defaults to ${DEFAULT_CATALOG_LISTING_LIMIT} rows when page and limit are omitted.`,
-							'Cache-Control plus X-RateLimit-*',
+							'Content-Type plus X-RateLimit-*',
 							'Canonical integration path for developers, sync jobs, and agents.'
 						],
 						[
@@ -1387,7 +1387,7 @@ const docsPages: DocsPage[] = [
 						],
 						[
 							'400',
-							'Missing query params, bad form payloads, unsupported import files, invalid catalog dates, anonymous contract violations',
+							'Missing query params, bad form payloads, unsupported import files, and invalid catalog dates or numeric values',
 							'The caller provided an invalid request.'
 						],
 						['401', 'Missing or invalid session or API key', 'Authentication required.'],
@@ -1428,11 +1428,6 @@ const docsPages: DocsPage[] = [
 						label: '400 Invalid query parameter',
 						language: 'json',
 						code: '{\n  "error": "Invalid query parameter",\n  "message": "Query parameter \\"stocked_date\\" must use YYYY-MM-DD format",\n  "details": {\n    "parameter": "stocked_date",\n    "value": "30",\n    "expected": "YYYY-MM-DD"\n  }\n}'
-					},
-					{
-						label: '400 Anonymous contract violation',
-						language: 'json',
-						code: '{\n  "error": "Anonymous catalog contract violation",\n  "message": "Anonymous catalog requests only allow filters: country, processing, name",\n  "details": {\n    "parameter": "origin"\n  }\n}'
 					},
 					{
 						label: '401 Authentication required',
@@ -1797,7 +1792,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Commands',
 				bullets: [
-					'purvey inventory list: list inventory with optional filters — --stocked, --catalog-id, --origin, --purchase-date-start, --purchase-date-end, --limit.',
+					'purvey inventory list: list inventory with optional filters including --stocked, --catalog-id, --origin, --purchase-date-start, --purchase-date-end, and --limit.',
 					'purvey inventory get <id>: fetch a single inventory item by ID.',
 					'purvey inventory add: add a new inventory item (--catalog-id and --qty are required).',
 					'purvey inventory update <id>: update fields on an existing inventory item.',
@@ -1868,7 +1863,7 @@ const docsPages: DocsPage[] = [
 					'purvey roast import: import an Artisan .alog file.',
 					'purvey roast update <id>: update notes, batch name, oz-out, or targets on an existing profile.',
 					'purvey roast delete <id>: delete a roast profile.',
-					'purvey roast watch: watch a directory for new .alog files with --coffee-id, --prompt-each, or --auto-match, and resume long-running sessions with --resume.'
+					'purvey roast watch: watch a directory for new .alog files with --coffee-id, --batch-prefix, --prompt-each, or --auto-match, and resume long-running sessions with --resume.'
 				],
 				codeBlocks: [
 					{
@@ -1884,7 +1879,7 @@ const docsPages: DocsPage[] = [
 					'--coffee-id always refers to green_coffee_inv.id (use purvey inventory list to find IDs), while --catalog-id on roast list cross-references the underlying coffee_catalog row.',
 					'--roast-id filters by the exact roast profile ID while keeping the list output shape, which is useful in scripts that already expect arrays.',
 					'Import extracts roast curves, events, and milestone timing from .alog files.',
-					'Interactive --form mode provides a guided workflow for create, import, and watch setup. --auto-match and --coffee-id are mutually exclusive on roast watch.'
+					'Interactive --form mode provides a guided workflow for create, import, and watch setup. On roast watch, --auto-match and --coffee-id are mutually exclusive, session state is saved for --resume, and the command runs until interrupted.'
 				]
 			}
 		],
@@ -1914,7 +1909,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Sales',
 		intro: [
 			'Sales commands record roasted-coffee sales against roast profiles. They complement the /profit page in the web app.',
-			'The record flow uses roast IDs, not inventory IDs.'
+			'The flag-based record flow uses roast IDs, not inventory IDs. Use --form when you want an interactive roast picker instead of passing an ID directly.'
 		],
 		sections: [
 			{
@@ -1927,8 +1922,8 @@ const docsPages: DocsPage[] = [
 					}
 				],
 				bullets: [
-					'Required flags for record: --roast-id, --oz, --price.',
-					'Use purvey roast list to find roast IDs. The CLI write flow uses roast_id, not inventory_id.',
+					'Required flags for flag-based record: --roast-id, --oz, --price. --buyer and --sell-date are optional.',
+					'Use purvey roast list to find roast IDs. The CLI write flow records against roast_data.roast_id, not green_coffee_inv.id or coffee_catalog.id.',
 					'--price is the total sale price, not per-ounce. Use --form for an interactive picker when you do not already know the roast ID.'
 				]
 			},
@@ -2125,7 +2120,7 @@ const docsPages: DocsPage[] = [
 				title: 'Recommended agent patterns',
 				bullets: [
 					'For shell-based automation, authenticate once, then call purvey commands with JSON or CSV output that suits the surrounding workflow.',
-					'For code-side integrations, import stable subpaths such as @purveyors/cli/catalog, @purveyors/cli/inventory, @purveyors/cli/roast, @purveyors/cli/sales, @purveyors/cli/tasting, or @purveyors/cli/manifest instead of screen-scraping CLI help text.',
+					'For code-side integrations, import stable subpaths such as @purveyors/cli/catalog, @purveyors/cli/inventory, @purveyors/cli/roast, @purveyors/cli/sales, @purveyors/cli/tasting, @purveyors/cli/manifest, @purveyors/cli/artisan, or @purveyors/cli/ai instead of screen-scraping CLI help text.',
 					'Use purvey context first when a model needs dense onboarding text. Use purvey manifest for the preferred machine-readable contract, or purvey context --json when an existing caller needs compatibility-parity output.',
 					'Prefer the CLI or its shared modules over coupling to deprecated /api/tools/* endpoints or private workspace route payloads.'
 				]
@@ -2133,7 +2128,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'How the web app uses the CLI',
 				bullets: [
-					'The app imports CLI modules for catalog, inventory, roast, sales, and tasting operations inside chat tool execution.',
+					'The app imports CLI modules for catalog, inventory, roast, sales, and tasting operations inside chat tool execution. The CLI package also publishes manifest, Artisan, and AI helper subpaths for agent and integration surfaces.',
 					'Read tools execute shared CLI functions directly. Write tools stay user-confirmed through proposal cards and constrained execution routes.',
 					'This architecture keeps terminal, browser, and agent workflows aligned on the same domain rules and reduces drift between docs and implementation.'
 				],
