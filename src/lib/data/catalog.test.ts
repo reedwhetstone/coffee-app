@@ -1,12 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getCatalogDropdown, searchCatalog, searchCatalogDropdown } from './catalog';
+import {
+	getCatalogDropdown,
+	getCatalogFilterMetadata,
+	searchCatalog,
+	searchCatalogDropdown
+} from './catalog';
 
 function createSupabaseMock() {
-	const result = {
+	const result: {
+		data: unknown[];
+		count: number;
+		error: unknown;
+	} = {
 		data: [],
 		count: 0,
 		error: null
 	};
+	const results: Array<typeof result> = [];
 
 	const state = {
 		selectCalls: [] as Array<[string, unknown?]>,
@@ -15,6 +25,9 @@ function createSupabaseMock() {
 		eqCalls: [] as Array<[string, unknown]>,
 		ilikeCalls: [] as Array<[string, string]>,
 		inCalls: [] as Array<[string, unknown[]]>,
+		containsCalls: [] as Array<[string, unknown[]]>,
+		overlapsCalls: [] as Array<[string, unknown[]]>,
+		containedByCalls: [] as Array<[string, unknown[]]>,
 		orCalls: [] as string[],
 		orderCalls: [] as Array<[string, { ascending: boolean }]>,
 		rangeCalls: [] as Array<[number, number]>,
@@ -46,6 +59,18 @@ function createSupabaseMock() {
 			state.inCalls.push([column, value]);
 			return builder;
 		}),
+		contains: vi.fn((column: string, value: unknown[]) => {
+			state.containsCalls.push([column, value]);
+			return builder;
+		}),
+		overlaps: vi.fn((column: string, value: unknown[]) => {
+			state.overlapsCalls.push([column, value]);
+			return builder;
+		}),
+		containedBy: vi.fn((column: string, value: unknown[]) => {
+			state.containedByCalls.push([column, value]);
+			return builder;
+		}),
 		or: vi.fn((value: string) => {
 			state.orCalls.push(value);
 			return builder;
@@ -65,14 +90,18 @@ function createSupabaseMock() {
 		then: (
 			onFulfilled?: (value: typeof result) => unknown,
 			onRejected?: (reason: unknown) => unknown
-		) => Promise.resolve(result).then(onFulfilled, onRejected)
+		) => Promise.resolve(results.shift() ?? result).then(onFulfilled, onRejected)
 	};
 
 	const supabase = {
 		from: vi.fn(() => builder)
 	};
 
-	return { supabase, state };
+	return {
+		supabase,
+		state,
+		queueResult: (next: typeof result) => results.push(next)
+	};
 }
 
 describe('searchCatalog stocked date filters', () => {
@@ -84,6 +113,98 @@ describe('searchCatalog stocked date filters', () => {
 		expect(state.gteCalls).toEqual([['stocked_date', '2026-03-01']]);
 	});
 
+	it('uses the resource projection without selecting raw processing evidence blobs', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await searchCatalog(supabase as never, { fields: 'resource' });
+
+		const [columns] = state.selectCalls[0];
+		expect(columns).toContain('processing_evidence_available');
+		expect(columns).not.toBe('*');
+		expect(columns).not.toMatch(/(^|, )processing_evidence(,|$)/);
+		expect(columns).not.toContain(
+			'processing_evidence_schema_version:processing_evidence->>schema_version'
+		);
+	});
+
+	it('falls back to the full projection when the resource projection is ahead of the database schema', async () => {
+		const { supabase, state, queueResult } = createSupabaseMock();
+
+		// Simulate a preview/test database that has not run the processing transparency
+		// migration yet. The first resource projection should not make catalog reads fail.
+		queueResult({ data: [], count: 0, error: { code: '42703' } });
+		queueResult({ data: [], count: 0, error: null });
+
+		await searchCatalog(supabase as never, { fields: 'resource' });
+
+		expect(state.selectCalls.at(-2)?.[0]).toContain('processing_evidence_available');
+		expect(state.selectCalls.at(-1)).toEqual(['*', undefined]);
+	});
+
+	it('treats PostgREST schema-cache misses as missing-column errors for the resource fallback', async () => {
+		const { supabase, state, queueResult } = createSupabaseMock();
+
+		queueResult({
+			data: [],
+			count: 0,
+			error: {
+				code: 'PGRST200',
+				message: "Could not find the 'processing_base_method' column in the schema cache"
+			}
+		});
+		queueResult({ data: [], count: 0, error: null });
+
+		await searchCatalog(supabase as never, { fields: 'resource' });
+
+		expect(state.selectCalls.at(-2)?.[0]).toContain('processing_evidence_available');
+		expect(state.selectCalls.at(-1)).toEqual(['*', undefined]);
+	});
+
+	it('drops structured process filters when retrying the full-schema fallback', async () => {
+		const { supabase, state, queueResult } = createSupabaseMock();
+
+		queueResult({
+			data: [],
+			count: 0,
+			error: {
+				code: 'PGRST200',
+				message: "Could not find the 'processing_base_method' column in the schema cache"
+			}
+		});
+		queueResult({ data: [], count: 0, error: null });
+
+		await searchCatalog(supabase as never, {
+			fields: 'resource',
+			processingBaseMethod: 'Natural',
+			fermentationType: 'Anaerobic',
+			processAdditive: 'hops',
+			hasAdditives: true,
+			processingDisclosureLevel: 'high_detail',
+			processingConfidenceMin: 0.8,
+			processing: 'Washed'
+		});
+
+		expect(state.selectCalls.at(-2)?.[0]).toContain('processing_evidence_available');
+		expect(state.selectCalls.at(-1)).toEqual(['*', undefined]);
+		expect(state.eqCalls).toEqual([
+			['processing_base_method', 'Natural'],
+			['fermentation_type', 'Anaerobic'],
+			['processing_disclosure_level', 'high_detail']
+		]);
+		expect(state.containsCalls).toEqual([['process_additives', ['hops']]]);
+		expect(state.overlapsCalls).toEqual([
+			[
+				'process_additives',
+				['fruit', 'yeast', 'hops', 'spice', 'botanical', 'mossto', 'starter-culture', 'other']
+			]
+		]);
+		expect(state.gteCalls).toEqual([['processing_confidence', 0.8]]);
+		expect(state.ilikeCalls).toEqual([
+			['processing', '%Washed%'],
+			['processing', '%Washed%']
+		]);
+	});
+
 	it('keeps relative stockedDays filtering behind stockedDays', async () => {
 		const { supabase, state } = createSupabaseMock();
 
@@ -93,6 +214,113 @@ describe('searchCatalog stocked date filters', () => {
 		cutoff.setDate(cutoff.getDate() - 30);
 
 		expect(state.gteCalls).toEqual([['stocked_date', cutoff.toISOString().split('T')[0]]]);
+	});
+});
+
+describe('searchCatalog processing transparency filters', () => {
+	it('applies structured process filters without replacing legacy processing search', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await searchCatalog(supabase as never, {
+			processing: 'Anaerobic',
+			processingBaseMethod: 'Natural',
+			fermentationType: 'Anaerobic',
+			processAdditive: 'hops',
+			processingDisclosureLevel: 'high_detail',
+			processingConfidenceMin: 0.8
+		});
+
+		expect(state.ilikeCalls).toContainEqual(['processing', '%Anaerobic%']);
+		expect(state.eqCalls).toEqual([
+			['processing_base_method', 'Natural'],
+			['fermentation_type', 'Anaerobic'],
+			['processing_disclosure_level', 'high_detail']
+		]);
+		expect(state.containsCalls).toEqual([['process_additives', ['hops']]]);
+		expect(state.gteCalls).toEqual([['processing_confidence', 0.8]]);
+	});
+
+	it('treats hasAdditives=false as explicit none, not unknown metadata', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await searchCatalog(supabase as never, { hasAdditives: false });
+
+		expect(state.containsCalls).toEqual([['process_additives', ['none']]]);
+		expect(state.containedByCalls).toEqual([['process_additives', ['none']]]);
+		expect(state.overlapsCalls).toEqual([]);
+	});
+
+	it('filters hasAdditives=true to disclosed additive values', async () => {
+		const { supabase, state } = createSupabaseMock();
+
+		await searchCatalog(supabase as never, { hasAdditives: true });
+
+		expect(state.overlapsCalls).toEqual([
+			[
+				'process_additives',
+				['fruit', 'yeast', 'hops', 'spice', 'botanical', 'mossto', 'starter-culture', 'other']
+			]
+		]);
+	});
+});
+
+describe('getCatalogFilterMetadata', () => {
+	it('falls back to the legacy filter projection when processing-transparency columns are missing', async () => {
+		const { supabase, state, queueResult } = createSupabaseMock();
+
+		queueResult({
+			data: [],
+			count: 0,
+			error: {
+				code: 'PGRST200',
+				message: "Could not find the 'processing_base_method' column in the schema cache"
+			}
+		});
+		queueResult({
+			data: [
+				{
+					source: 'Cafe Imports',
+					continent: 'Africa',
+					country: 'Ethiopia',
+					processing: 'Washed',
+					cultivar_detail: '74110',
+					type: 'Green',
+					grade: 'Grade 1',
+					appearance: 'Clean',
+					arrival_date: '2026-04-01'
+				}
+			],
+			count: 1,
+			error: null
+		});
+
+		const rows = await getCatalogFilterMetadata(supabase as never, {
+			stockedOnly: true,
+			publicOnly: true,
+			showWholesale: false
+		});
+
+		expect(state.selectCalls.at(-2)?.[0]).toContain('processing_base_method');
+		expect(state.selectCalls.at(-1)?.[0]).toBe(
+			'source, continent, country, processing, cultivar_detail, type, grade, appearance, arrival_date'
+		);
+		expect(rows).toEqual([
+			{
+				source: 'Cafe Imports',
+				continent: 'Africa',
+				country: 'Ethiopia',
+				processing: 'Washed',
+				processing_base_method: null,
+				fermentation_type: null,
+				process_additives: null,
+				processing_disclosure_level: null,
+				cultivar_detail: '74110',
+				type: 'Green',
+				grade: 'Grade 1',
+				appearance: 'Clean',
+				arrival_date: '2026-04-01'
+			}
+		]);
 	});
 });
 
@@ -168,6 +396,52 @@ describe('searchCatalogDropdown', () => {
 		expect(state.lteCalls).toEqual([['score_value', 88]]);
 		expect(state.orderCalls).toEqual([['name', { ascending: true }]]);
 		expect(state.rangeCalls).toEqual([[10, 19]]);
+	});
+
+	it('drops structured process filters when dropdown queries hit schema lag', async () => {
+		const { supabase, state, queueResult } = createSupabaseMock();
+
+		queueResult({
+			data: [],
+			count: 0,
+			error: {
+				code: 'PGRST200',
+				message: "Could not find the 'processing_base_method' column in the schema cache"
+			}
+		});
+		queueResult({ data: [], count: 0, error: null });
+
+		await searchCatalogDropdown(supabase as never, {
+			processingBaseMethod: 'Natural',
+			fermentationType: 'Anaerobic',
+			processAdditive: 'hops',
+			hasAdditives: true,
+			processingDisclosureLevel: 'high_detail',
+			processingConfidenceMin: 0.8,
+			processing: 'Washed'
+		});
+
+		expect(state.selectCalls).toEqual([
+			['id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee', undefined],
+			['id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee', undefined]
+		]);
+		expect(state.eqCalls).toEqual([
+			['processing_base_method', 'Natural'],
+			['fermentation_type', 'Anaerobic'],
+			['processing_disclosure_level', 'high_detail']
+		]);
+		expect(state.containsCalls).toEqual([['process_additives', ['hops']]]);
+		expect(state.overlapsCalls).toEqual([
+			[
+				'process_additives',
+				['fruit', 'yeast', 'hops', 'spice', 'botanical', 'mossto', 'starter-culture', 'other']
+			]
+		]);
+		expect(state.gteCalls).toEqual([['processing_confidence', 0.8]]);
+		expect(state.ilikeCalls).toEqual([
+			['processing', '%Washed%'],
+			['processing', '%Washed%']
+		]);
 	});
 });
 
