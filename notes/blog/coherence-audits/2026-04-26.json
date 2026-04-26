@@ -1,0 +1,144 @@
+{
+  "auditDate": "2026-04-26",
+  "postsNeedingUpdates": [
+    {
+      "slug": "building-a-coffee-data-pipeline",
+      "title": "Building a Coffee Data Pipeline from Scratch",
+      "reasons": [
+        "Claims 31 suppliers, 12 live suppliers, and 1,876 coffees across 35 suppliers",
+        "Current scraper docs state 41 live sources",
+        "Architecture mix has moved beyond the 5 Playwright / 7 generic Shopify split"
+      ],
+      "suggestedFix": "Refresh counts and architecture, or label as a February 2026 snapshot."
+    },
+    {
+      "slug": "what-is-purveyors",
+      "title": "What is Purveyors?",
+      "reasons": [
+        "Uses 35 suppliers twice in present-tense product copy",
+        "Current source narrative is 41 live sources"
+      ],
+      "suggestedFix": "Update to 40+ / 41 live sources or time-scope the count."
+    },
+    {
+      "slug": "ai-moats-arent-software",
+      "title": "The Real AI Moats Aren't Software",
+      "reasons": [
+        "Moat example cites a normalized dataset across 35 suppliers"
+      ],
+      "suggestedFix": "Use current source language or generalize to 40+."
+    },
+    {
+      "slug": "who-profits-when-coffee-data-stays-scarce",
+      "title": "Who Profits When Coffee Data Stays Scarce?",
+      "reasons": [
+        "Description and intro use 35 suppliers",
+        "Body uses a 30-supplier dataset snapshot without enough date scoping"
+      ],
+      "suggestedFix": "Rerun disclosure analysis or label the numbers as a March 2026 snapshot."
+    },
+    {
+      "slug": "building-product-philosophy-into-codebase",
+      "title": "The Codebase Is the Onboarding Manual",
+      "reasons": [
+        "GitHub link to notes/MARKET_ANALYSIS.md broke after archive move"
+      ],
+      "suggestedFix": "Replace with PRODUCT_VISION or the archived legacy market analysis path."
+    },
+    {
+      "slug": "co-fermentation-wrong-question",
+      "title": "Is Co-Fermentation Cheating? Wrong Question.",
+      "reasons": [
+        "Uses a 35-supplier processing coverage snapshot while current docs say 41 live sources",
+        "Says processing is a single text field, but ADR-004 and recent scraper/app changes added structured process fields",
+        "Frontmatter date 2026-04-02 conflicts with apparent PR #208 publication on 2026-04-23"
+      ],
+      "suggestedFix": "Update with current structured processing schema or add a postscript that frames the post as the pre-schema snapshot that motivated the implementation."
+    }
+  ],
+  "newIdeas": [
+    {
+      "title": "Processing transparency is a schema problem, not a vocabulary problem",
+      "pillar": "api-architecture",
+      "status": "raw",
+      "source": "coffee-app ADR-004 and PR #289; coffee-scraper PRs #208/#216",
+      "whyNow": "The co-fermentation post exposed the gap, then the code shipped structured fields for base method, fermentation type, additives, duration, disclosure level, confidence, and evidence."
+    },
+    {
+      "title": "Producer identity is market infrastructure, not listing copy",
+      "pillar": "coffee-data-pipeline",
+      "status": "raw",
+      "source": "coffee-scraper producer column and residue-filtering work in PRs #209/#215",
+      "whyNow": "Recent fixes show that farm, producer, region, and marketing labels need provenance-aware entity extraction before supplier comparison can become trustworthy."
+    },
+    {
+      "title": "The listing schema is the market",
+      "pillar": "api-architecture",
+      "status": "outlined",
+      "source": "notes/blog/outlines/what-if-the-real-marketplace-is-the-listing-schema.md; coffee-app PRs #289/#291",
+      "whyNow": "The outline now has current code evidence from the 41-source footprint, /v1/catalog, and structured catalog filtering."
+    }
+  ],
+  "staleIdeas": [
+    {
+      "title": "Co-fermentation in specialty coffee",
+      "previousStatus": "drafted (PR #208)",
+      "action": "Fixed to published and moved outline path to notes/blog/outlines/published/co-fermentation-exposed-coffees-real-transparency-gap.md"
+    },
+    {
+      "title": "The listing schema is the market",
+      "previousStatus": "raw",
+      "action": "Fixed to outlined because the outline exists and was merged in PR #291"
+    },
+    {
+      "title": "Enterprise second brains are not knowledge bases",
+      "status": "published but outline backfill missing",
+      "action": "Left as backlog hygiene; not blocking next post selection."
+    },
+    {
+      "title": "Why Does the Same Coffee Cost $20/lb and $6.58/lb?",
+      "status": "archived",
+      "action": "No longer treated as an active stale draft."
+    }
+  ],
+  "publicationCadence": {
+    "minimum": "1 post/week",
+    "publishedPostCount": 14,
+    "frontmatterLastPublishedDate": "2026-04-07",
+    "latestMergedPost": {
+      "slug": "co-fermentation-wrong-question",
+      "merged": "2026-04-23",
+      "frontmatterDate": "2026-04-02"
+    },
+    "postsWithFrontmatterDatesLast30Days": 2,
+    "status": "technically current by merge date, visually stale by post metadata",
+    "notes": "A post appears to have shipped within the last week, but its frontmatter date predates publication. The blog page may look like it has not shipped since 2026-04-07. Next post should use current publication metadata deliberately."
+  },
+  "backlogHealth": {
+    "publishedPillars": {
+      "agentic-stack": 7,
+      "supply-chain": 3,
+      "coffee-data-pipeline": 2,
+      "ai-first-product": 1,
+      "market-intelligence": 1,
+      "api-architecture": 0
+    },
+    "status": "healthy volume, weak balance",
+    "notes": [
+      "api-architecture remains unpublished despite several strong outlines",
+      "published supplier/source counts need a cleanup pass",
+      "recent code work is generating better ideas than the older generic backlog"
+    ]
+  },
+  "nextPriority": {
+    "title": "What If the Real Marketplace Is the Listing Schema?",
+    "pillar": "api-architecture",
+    "status": "outlined",
+    "rationale": [
+      "api-architecture still has zero published posts",
+      "The outline is already written and current",
+      "Recent code changes provide fresh proof: 41-source scraper footprint, /v1/catalog contract, ADR-004 processing schema, and listing-schema work",
+      "The angle is sharper than a generic API docs post because it ties market structure to the canonical listing object"
+    ]
+  }
+}
