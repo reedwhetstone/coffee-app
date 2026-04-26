@@ -173,35 +173,15 @@ const STRUCTURED_PROCESS_FILTER_MISSING_COLUMN_HINTS = [
 	'processing_confidence'
 ] as const;
 
-function stripStructuredProcessFilters(options: CatalogSearchOptions): CatalogSearchOptions {
-	const {
-		processingBaseMethod: _processingBaseMethod,
-		fermentationType: _fermentationType,
-		processAdditive: _processAdditive,
-		hasAdditives: _hasAdditives,
-		processingDisclosureLevel: _processingDisclosureLevel,
-		processingConfidenceMin: _processingConfidenceMin,
-		...compatibleOptions
-	} = options;
-
-	return compatibleOptions;
+export class CatalogSchemaUnavailableError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'CatalogSchemaUnavailableError';
+	}
 }
 
-function stripStructuredProcessDropdownFilters(
-	options: CatalogDropdownSearchOptions
-): CatalogDropdownSearchOptions {
-	const {
-		processingBaseMethod: _processingBaseMethod,
-		fermentationType: _fermentationType,
-		processAdditive: _processAdditive,
-		hasAdditives: _hasAdditives,
-		processingDisclosureLevel: _processingDisclosureLevel,
-		processingConfidenceMin: _processingConfidenceMin,
-		...compatibleOptions
-	} = options;
-
-	return compatibleOptions;
-}
+const STRUCTURED_PROCESS_SCHEMA_UNAVAILABLE_MESSAGE =
+	'Structured process filters are unavailable because processing transparency columns are missing from the database schema.';
 
 function hasStructuredProcessFilters(
 	options:
@@ -437,12 +417,15 @@ export async function searchCatalog(
 	if (error) {
 		if (fields === 'resource' && isMissingColumnError(error, RESOURCE_MISSING_COLUMN_HINTS)) {
 			// The resource projection references processing-transparency columns added by
-			// this PR. Preview/test databases can lag the migration; fall back to the
-			// legacy full-row query so existing catalog endpoints keep serving data until
-			// the schema is applied. Structured process filters must also be dropped for
-			// the retry because they reference the same new columns.
+			// this PR. Preview/test databases can lag the migration; fall back only when
+			// the request does not depend on those columns. Returning broadened results for
+			// structured process filters would violate the public API contract.
+			if (hasStructuredProcessFilters(options)) {
+				throw new CatalogSchemaUnavailableError(STRUCTURED_PROCESS_SCHEMA_UNAVAILABLE_MESSAGE);
+			}
+
 			return searchCatalog(supabase, {
-				...stripStructuredProcessFilters(options),
+				...options,
 				fields: 'full'
 			});
 		}
@@ -634,7 +617,7 @@ export async function searchCatalogDropdown(
 			hasStructuredProcessFilters(options) &&
 			isMissingColumnError(error, STRUCTURED_PROCESS_FILTER_MISSING_COLUMN_HINTS)
 		) {
-			return searchCatalogDropdown(supabase, stripStructuredProcessDropdownFilters(options));
+			throw new CatalogSchemaUnavailableError(STRUCTURED_PROCESS_SCHEMA_UNAVAILABLE_MESSAGE);
 		}
 		throw error;
 	}

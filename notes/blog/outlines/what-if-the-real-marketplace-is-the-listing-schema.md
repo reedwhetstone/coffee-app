@@ -6,9 +6,11 @@
 **Source material:** repos/coffee-app/notes/PRODUCT_VISION.md, repos/coffee-app/notes/BLOG_STRATEGY.md, repos/coffee-app/notes/big-ideas/2026-04-09-open-coffee-listing-standard.md, repos/coffee-app/notes/API_notes/API-strategy.md, repos/coffee-app/notes/decisions/002-api-first-external-internal-split.md, repos/coffee-app/src/lib/server/catalogResource.ts, repos/coffee-app/src/lib/docs/content.ts, repos/coffee-app/src/routes/api/catalog-api/+server.ts, repos/coffee-scraper/scrape/sources/index.ts, repos/coffee-scraper/scrape/sources/configs/shopify-configs.ts, repos/coffee-scraper/scrape/sources/configs/woocommerce-configs.ts
 
 ## Thesis
+
 Most people look at a fragmented market and think the moat is aggregation: scrape more suppliers, build a better catalog, win on coverage. The stronger control point is usually lower in the stack. Once buyers, suppliers, and agents all depend on the same normalized listing object, the platform that defines the schema, validates the feed, and distributes the contract starts to shape the market itself.
 
 ## Voice Constraints
+
 - Short and punchy. 1,500-2,000 words max.
 - Gladwell/Freakonomics framing: the counterintuitive claim is that the durable marketplace moat is not the scraper or storefront. It is the listing contract underneath them.
 - No salesmanship, no network-effects hand-waving. Stay specific about the mechanism.
@@ -18,6 +20,7 @@ Most people look at a fragmented market and think the moat is aggregation: scrap
 - Every section earns its place. If a section does not sharpen the schema-as-market argument, cut it.
 
 ## Verification Checklist
+
 - [ ] `repos/coffee-scraper/scrape/sources/index.ts` plus generic config files still resolve to 41 live sources, or update the count before drafting
 - [ ] `repos/coffee-app/src/lib/server/catalogResource.ts` still defines `/v1/catalog` as the canonical namespace and still supports `anonymous`, `session`, and `api-key` auth kinds
 - [ ] `repos/coffee-app/src/routes/api/catalog-api/+server.ts` still delegates to `/v1/catalog` with `Deprecation`, `Link`, and `Sunset` headers
@@ -26,6 +29,7 @@ Most people look at a fragmented market and think the moat is aggregation: scrap
 - [ ] If the draft mentions public catalog, public analytics, or current supplier footprint as proof-of-value, verify the live routes and current counts on publish day
 
 ## External References
+
 1. **Gregory Lewis, "Asymmetric Information, Adverse Selection and Online Disclosure: The Case of eBay Motors"** (American Economic Review, 2011)
    URL: https://www.aeaweb.org/articles?id=10.1257/aer.101.4.1535
    Key quote: "disclosure is the single most important determinant of prices"
@@ -37,10 +41,13 @@ Most people look at a fragmented market and think the moat is aggregation: scrap
    Why it matters: gives the clean cross-industry analogy. The strategic control point is often the listing network itself, not the service bundle wrapped around it.
 
 ## Structure
+
 ### Scraping Feels Like the Moat. It Isn’t. (~300 words)
+
 Open with the obvious story: fragmented markets reward whoever aggregates the most supply. That story is directionally true but strategically incomplete. A scraper-backed catalog proves demand, exposes opacity, and makes the market legible, but it still leaves the platform in the role of observer.
 
 Use Purveyors as concrete evidence, not pitch material:
+
 - the scraper already normalizes inventory across 41 live coffee sources
 - the app already exposes a public catalog and public-facing intelligence surface
 - ADR-002 and the docs stack already push toward one shared machine contract across web, API, CLI, and agent consumers
@@ -48,9 +55,11 @@ Use Purveyors as concrete evidence, not pitch material:
 Key move in this section: draw the distinction between **market map** and **market infrastructure**. Scraping builds the map. The winning platform often owns the infrastructure layer the map eventually gets published through.
 
 ### Listing Fields Decide What the Market Can Compare (~330 words)
+
 This section explains why the schema matters so much. Markets do not just depend on inventory existing. They depend on buyers being able to compare the right attributes consistently.
 
 Key points:
+
 - in green coffee, decision-critical fields are things like arrival date, provenance depth, cultivar, processing, pricing tiers, freshness, and availability
 - when sellers disclose these inconsistently, buyers fall back to relationship, vibes, and scattered PDF-level interpretation
 - once those fields are normalized, the market stops comparing pages and starts comparing objects
@@ -61,9 +70,11 @@ Use the Lewis paper here to reinforce the mechanism: disclosure affects market o
 Section goal: make the reader see that a schema is not just a database concern. It determines what buyers can even perceive as comparable.
 
 ### The MLS Lesson: The Interface Is Not the Whole Product (~320 words)
+
 Use the real-estate analogy carefully. Zillow gets the attention, but MLS is the deeper infrastructure lesson. The product that looks like a search experience often sits on top of the more strategic asset: the standardized listing network.
 
 Key points:
+
 - Bernheim and Meer make the core point directly: the listing network is the valuable service layer
 - the important shift is not “beautiful UI replaces brokers”; it is “shared listing infrastructure reorganizes the market around a common object”
 - coffee has similar fragmentation: supplier-owned pages, relationship moats, uneven metadata, and no widely trusted canonical listing format
@@ -72,9 +83,11 @@ Key points:
 Tie this back to Purveyors' current architecture. `/v1/catalog` is already the beginning of a canonical market surface. The unshipped strategic leap is moving from canonical read contract to canonical publish contract.
 
 ### From Observer to Publishing Standard (~470 words)
+
 This is the heart of the outline. Lay out the proposed kernel clearly and explicitly as future-state product strategy.
 
 Core pieces to cover:
+
 - claimed supplier profiles
 - dead-simple direct feed paths: CSV, JSON feed, API, eventually CLI-assisted publishing
 - canonical listing-schema validation
@@ -84,6 +97,7 @@ Core pieces to cover:
 - scraper retained as bootstrap, discovery, and audit infrastructure rather than removed
 
 Important framing:
+
 - this is not a generic marketplace thesis
 - it is a governance thesis about who defines the market object and who gets trusted to publish it
 - the moat shifts from coverage alone to schema + validation + distribution + workflow
@@ -92,9 +106,11 @@ Important framing:
 This section should also surface the biggest risk honestly: suppliers may resist transparency because better comparison reduces relationship rents. That tension is part of why the idea is interesting.
 
 ### The Smallest Test That Would Prove It (~280 words)
+
 Close with the cheap experiment from the strategy note, tightened into a clean operator test.
 
 Suggested structure:
+
 - 3-5 supplier claim-and-verify pilot
 - one dead-simple publishing path, probably CSV or JSON upload
 - richer profile plus verified badge for participating suppliers
