@@ -183,6 +183,10 @@ export class CatalogSchemaUnavailableError extends Error {
 const STRUCTURED_PROCESS_SCHEMA_UNAVAILABLE_MESSAGE =
 	'Structured process filters are unavailable because processing transparency columns are missing from the database schema.';
 
+function hasStructuredFilterValue(value: unknown): boolean {
+	return value !== undefined && value !== null && value !== '';
+}
+
 function hasStructuredProcessFilters(
 	options:
 		| Pick<
@@ -205,12 +209,12 @@ function hasStructuredProcessFilters(
 		  >
 ): boolean {
 	return (
-		options.processingBaseMethod !== undefined ||
-		options.fermentationType !== undefined ||
-		options.processAdditive !== undefined ||
-		options.hasAdditives !== undefined ||
-		options.processingDisclosureLevel !== undefined ||
-		options.processingConfidenceMin !== undefined
+		hasStructuredFilterValue(options.processingBaseMethod) ||
+		hasStructuredFilterValue(options.fermentationType) ||
+		hasStructuredFilterValue(options.processAdditive) ||
+		hasStructuredFilterValue(options.hasAdditives) ||
+		hasStructuredFilterValue(options.processingDisclosureLevel) ||
+		hasStructuredFilterValue(options.processingConfidenceMin)
 	);
 }
 

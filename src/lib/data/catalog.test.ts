@@ -160,6 +160,33 @@ describe('searchCatalog stocked date filters', () => {
 		expect(state.selectCalls.at(-1)).toEqual(['*', undefined]);
 	});
 
+	it('ignores empty structured process filter values before resource schema fallback gating', async () => {
+		const { supabase, state, queueResult } = createSupabaseMock();
+
+		queueResult({
+			data: [],
+			count: 0,
+			error: {
+				code: 'PGRST200',
+				message: "Could not find the 'processing_base_method' column in the schema cache"
+			}
+		});
+		queueResult({ data: [], count: 0, error: null });
+
+		await searchCatalog(supabase as never, {
+			fields: 'resource',
+			processingBaseMethod: '',
+			fermentationType: '',
+			processAdditive: '',
+			processingDisclosureLevel: ''
+		});
+
+		expect(state.selectCalls.at(-2)?.[0]).toContain('processing_evidence_available');
+		expect(state.selectCalls.at(-1)).toEqual(['*', undefined]);
+		expect(state.eqCalls).toEqual([]);
+		expect(state.containsCalls).toEqual([]);
+	});
+
 	it('does not broaden structured process filters when the resource schema is missing', async () => {
 		const { supabase, state, queueResult } = createSupabaseMock();
 
