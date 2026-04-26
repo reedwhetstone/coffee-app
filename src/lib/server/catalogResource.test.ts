@@ -1083,6 +1083,32 @@ describe('buildCanonicalCatalogResponse', () => {
 		}
 	);
 
+	it('returns schema-unavailable instead of broadened data for structured process schema lag', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		const schemaError = new Error(
+			'Structured process filters are unavailable because processing transparency columns are missing from the database schema.'
+		);
+		schemaError.name = 'CatalogSchemaUnavailableError';
+		mockSearchCatalog.mockRejectedValueOnce(schemaError);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?processing_base_method=Natural')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(503);
+		expect(body).toEqual({
+			error: 'Catalog schema unavailable',
+			message: schemaError.message
+		});
+	});
+
 	it('viewer sessions keep the same broad public catalog parameter surface', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,

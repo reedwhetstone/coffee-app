@@ -160,7 +160,7 @@ describe('searchCatalog stocked date filters', () => {
 		expect(state.selectCalls.at(-1)).toEqual(['*', undefined]);
 	});
 
-	it('drops structured process filters when retrying the full-schema fallback', async () => {
+	it('ignores empty structured process filter values before resource schema fallback gating', async () => {
 		const { supabase, state, queueResult } = createSupabaseMock();
 
 		queueResult({
@@ -175,17 +175,45 @@ describe('searchCatalog stocked date filters', () => {
 
 		await searchCatalog(supabase as never, {
 			fields: 'resource',
-			processingBaseMethod: 'Natural',
-			fermentationType: 'Anaerobic',
-			processAdditive: 'hops',
-			hasAdditives: true,
-			processingDisclosureLevel: 'high_detail',
-			processingConfidenceMin: 0.8,
-			processing: 'Washed'
+			processingBaseMethod: '',
+			fermentationType: '',
+			processAdditive: '',
+			processingDisclosureLevel: ''
 		});
 
 		expect(state.selectCalls.at(-2)?.[0]).toContain('processing_evidence_available');
 		expect(state.selectCalls.at(-1)).toEqual(['*', undefined]);
+		expect(state.eqCalls).toEqual([]);
+		expect(state.containsCalls).toEqual([]);
+	});
+
+	it('does not broaden structured process filters when the resource schema is missing', async () => {
+		const { supabase, state, queueResult } = createSupabaseMock();
+
+		queueResult({
+			data: [],
+			count: 0,
+			error: {
+				code: 'PGRST200',
+				message: "Could not find the 'processing_base_method' column in the schema cache"
+			}
+		});
+
+		await expect(
+			searchCatalog(supabase as never, {
+				fields: 'resource',
+				processingBaseMethod: 'Natural',
+				fermentationType: 'Anaerobic',
+				processAdditive: 'hops',
+				hasAdditives: true,
+				processingDisclosureLevel: 'high_detail',
+				processingConfidenceMin: 0.8,
+				processing: 'Washed'
+			})
+		).rejects.toThrow('Structured process filters are unavailable');
+
+		expect(state.selectCalls).toHaveLength(1);
+		expect(state.selectCalls[0][0]).toContain('processing_evidence_available');
 		expect(state.eqCalls).toEqual([
 			['processing_base_method', 'Natural'],
 			['fermentation_type', 'Anaerobic'],
@@ -199,10 +227,7 @@ describe('searchCatalog stocked date filters', () => {
 			]
 		]);
 		expect(state.gteCalls).toEqual([['processing_confidence', 0.8]]);
-		expect(state.ilikeCalls).toEqual([
-			['processing', '%Washed%'],
-			['processing', '%Washed%']
-		]);
+		expect(state.ilikeCalls).toEqual([['processing', '%Washed%']]);
 	});
 
 	it('keeps relative stockedDays filtering behind stockedDays', async () => {
@@ -398,7 +423,7 @@ describe('searchCatalogDropdown', () => {
 		expect(state.rangeCalls).toEqual([[10, 19]]);
 	});
 
-	it('drops structured process filters when dropdown queries hit schema lag', async () => {
+	it('does not broaden structured process filters when dropdown queries hit schema lag', async () => {
 		const { supabase, state, queueResult } = createSupabaseMock();
 
 		queueResult({
@@ -409,23 +434,24 @@ describe('searchCatalogDropdown', () => {
 				message: "Could not find the 'processing_base_method' column in the schema cache"
 			}
 		});
-		queueResult({ data: [], count: 0, error: null });
 
-		await searchCatalogDropdown(supabase as never, {
-			processingBaseMethod: 'Natural',
-			fermentationType: 'Anaerobic',
-			processAdditive: 'hops',
-			hasAdditives: true,
-			processingDisclosureLevel: 'high_detail',
-			processingConfidenceMin: 0.8,
-			processing: 'Washed'
-		});
+		await expect(
+			searchCatalogDropdown(supabase as never, {
+				processingBaseMethod: 'Natural',
+				fermentationType: 'Anaerobic',
+				processAdditive: 'hops',
+				hasAdditives: true,
+				processingDisclosureLevel: 'high_detail',
+				processingConfidenceMin: 0.8,
+				processing: 'Washed'
+			})
+		).rejects.toThrow('Structured process filters are unavailable');
 
 		expect(state.selectCalls).toEqual([
-			['id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee', undefined],
 			['id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee', undefined]
 		]);
 		expect(state.eqCalls).toEqual([
+			['stocked', true],
 			['processing_base_method', 'Natural'],
 			['fermentation_type', 'Anaerobic'],
 			['processing_disclosure_level', 'high_detail']
@@ -438,10 +464,7 @@ describe('searchCatalogDropdown', () => {
 			]
 		]);
 		expect(state.gteCalls).toEqual([['processing_confidence', 0.8]]);
-		expect(state.ilikeCalls).toEqual([
-			['processing', '%Washed%'],
-			['processing', '%Washed%']
-		]);
+		expect(state.ilikeCalls).toEqual([['processing', '%Washed%']]);
 	});
 });
 

@@ -893,6 +893,21 @@ async function resolveCatalogRouteResult(
 			};
 		}
 
+		if (error instanceof Error && error.name === 'CatalogSchemaUnavailableError') {
+			if (context) {
+				await logCatalogApiUsage(context, event, 503, startTime);
+			}
+
+			return {
+				status: 503,
+				body: {
+					error: 'Catalog schema unavailable',
+					message: error.message
+				},
+				headers: new Headers()
+			};
+		}
+
 		const safeError = error instanceof Error ? error.message : String(error);
 		console.error('Error querying canonical catalog:', safeError);
 		if (context) {
