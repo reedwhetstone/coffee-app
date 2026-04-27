@@ -7,7 +7,7 @@
 ## Priority 0: New Product Priorities (Mar 2026)
 
 - [ ] **Purveyors Price Index (PPI)** — First revenue-generating data product. Daily specialty green coffee price index by origin, process, and grade, derived from 35 scraped suppliers. `/api/v1/price-index` endpoint with tier-based access (free/member $29/enterprise $199). Blog teaser page as top-of-funnel. Revenue target: $35K+/year at modest adoption. Existing auth + Stripe infrastructure reused. Full plan: `notes/implementation-plans/2026-03-16-purveyors-price-index.md`.
-- [ ] **Mobile Navigation** - Redesign sidebar behavior on mobile. Current desktop-style sidebar consumes too much horizontal space. Evaluate one of: top nav, bottom nav, or minimal single-button trigger that opens a full-screen menu.
+- [x] **Mobile Navigation** - Redesign sidebar behavior on mobile. Current desktop-style sidebar consumes too much horizontal space. Evaluated the mobile shell approach and shipped a top app bar + full-screen menu / overlay model for authenticated pages. (Implemented in PR #230: mobile-first shell foundation)
 - [x] **Homepage Routing** - Make `/` the true landing page and move catalog to its own dedicated route. Remove login-driven reroute behavior that hurts first contentful paint and perceived responsiveness. (Fixed PR #179)
 - [ ] **Public Catalog Access + Conversion Funnel** - Allow non-auth users to browse catalog with limited access (example: page 1 only) while keeping filters available. Add clear incentives to sign up/log in and promote AI search as a premium conversion lever.
 
@@ -56,7 +56,7 @@ Mobile-specific improvements for roasters on the go.
 - [ ] **Mobile** - Improve roast profile/bean profile appearance on mobile. Cards and details are cramped or cut off.
 - [ ] **Mobile** - Improve usability of roast chart buttons on mobile. Touch targets are too small and controls overlap.
 - [ ] **Mobile** - Move fan settings display below the chart on mobile. Currently covers chart area on small screens.
-- [ ] **Mobile** - Move navigation menu bar to bottom bar for mobile. Easier thumb-reach for common actions.
+- [ ] **Mobile** - Consider moving the existing authenticated mobile shell from its current top app bar to a bottom bar for easier thumb-reach on phones. This is now a refinement of the shipped mobile shell, not a missing shell foundation.
 
 ---
 
@@ -190,6 +190,7 @@ Longer-term feature concepts to explore.
 - [ ] **Feature Ideation** - Publish quarterly "State of the Green Coffee Market" data blog post using collected data.
 - [ ] **Feature Ideation** - Lot buying model like ThoughtfulCoffee for green coffee group purchases.
 - [ ] **Feature Ideation** - Focus on viral, shareable tools. Filter URLs, recommendation engines, easy-share API outputs.
+- [ ] **Feature Ideation** - Add a macro data transparency ranking column or score for catalog coffees based on the number, specificity, and source quality of disclosed data points. Keep this separate from raw API/CLI output so machine consumers receive clean data while the web UI can offer buyer-facing analysis.
 - [ ] **Feature Ideation** - License cleaned coffee dataset to roast machine companies (like RoastWorld) for integration.
 
 ### Beyond the Coffee Belt: Platform Feature Ideas (Mar 2026)
@@ -219,6 +220,9 @@ Ongoing code maintenance tasks.
 
 - [x] **TypeScript** - Fix 5 critical generic type issues in `VirtualScrollList.svelte`. 'T' is not defined errors.
 - [ ] **TypeScript** - Address ~380 explicit `any` type violations across codebase. Major files: RoastLogChart (~151), roast/+page (~49), beans/+page (~34). See `notes/lint-issues-prioritized.md`.
+- [ ] **Lint Boundary** - Split repo-wide prose/notes formatting from product lint, or narrow `pnpm lint` so docs and code PRs are not blocked by historical markdown drift outside the changed scope.
+- [ ] **Public Route Metadata** - Centralize public route metadata for `/v1`, `/docs`, `/api`, `/api-dashboard`, and legacy docs redirects so README, `llms.txt`, and docs marketing copy share one source of truth.
+- [ ] **CLI Docs Contract Sync** - Consume a tiny generated docs fragment from `@purveyors/cli/manifest` (published or vendored) so coffee-app docs stay in lockstep with the shipped CLI contract instead of manually shadowing it.
 - [ ] **API Migration** - Implement share token support in `/api/roast-profiles` endpoint. Currently missing from new endpoint. See `notes/MIGRATION-NOTES.md`.
 
 ---
