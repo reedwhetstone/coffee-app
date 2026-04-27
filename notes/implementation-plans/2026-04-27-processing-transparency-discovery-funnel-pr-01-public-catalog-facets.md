@@ -65,7 +65,7 @@ Likely files:
 
 ## Test plan
 
-- `pnpm check`
+- `pnpm check --fail-on-warnings`
 - Focused URL-state parse/serialize tests for all new params.
 - Existing catalog server/page tests plus at least one query-param preservation case.
 - Store/filter tests proving `processing_confidence_min` and string process filters are sent correctly.

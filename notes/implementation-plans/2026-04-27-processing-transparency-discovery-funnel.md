@@ -187,7 +187,7 @@ Likely repo: `/root/.openclaw/workspace/repos/purveyors-cli`
 
 ### PR 01
 
-- `pnpm check`
+- `pnpm check --fail-on-warnings`
 - Focused unit tests for catalog URL-state parsing/serialization.
 - Existing catalog page server tests, plus a new case for structured process query params.
 - Component-level or store tests for filter controls if the existing test stack supports it.
