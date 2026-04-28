@@ -11,6 +11,7 @@
 		formatProcessDisplayValue,
 		isPublicProcessFacetOption
 	} from '$lib/catalog/processDisplay';
+	import { PROCESSING_CONFIDENCE_OPTIONS } from '$lib/catalog/urlState';
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
@@ -69,12 +70,6 @@
 		'process_additive',
 		'processing_disclosure_level',
 		'processing_confidence_min'
-	] as const;
-
-	const PROCESS_CONFIDENCE_OPTIONS = [
-		{ value: '0.6', label: 'Moderate confidence' },
-		{ value: '0.8', label: 'High confidence' },
-		{ value: '0.9', label: 'Very high confidence' }
 	] as const;
 
 	function isActiveFilterValue(value: unknown): boolean {
@@ -368,8 +363,8 @@
 							class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
 						>
 							<option value="">Any confidence</option>
-							{#each PROCESS_CONFIDENCE_OPTIONS as option}
-								<option value={option.value}>{option.label}</option>
+							{#each PROCESSING_CONFIDENCE_OPTIONS as option}
+								<option value={option.value.toString()}>{option.label}</option>
 							{/each}
 						</select>
 					</label>

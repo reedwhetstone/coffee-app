@@ -95,6 +95,16 @@ const FILTER_SERIALIZATION_ORDER = [
 	'stocked_date'
 ] as const;
 
+export const PROCESSING_CONFIDENCE_OPTIONS = [
+	{ value: 0.6, label: 'Moderate confidence' },
+	{ value: 0.8, label: 'High confidence' },
+	{ value: 0.9, label: 'Very high confidence' }
+] as const;
+
+const SUPPORTED_PROCESSING_CONFIDENCE_THRESHOLDS = new Set<number>(
+	PROCESSING_CONFIDENCE_OPTIONS.map((option) => option.value)
+);
+
 function parsePositiveInteger(value: string | null, fallback: number): number {
 	const parsed = Number.parseInt(value ?? '', 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -109,7 +119,7 @@ function parseOptionalNumber(value: string | null): number | undefined {
 
 function parseProcessingConfidenceMin(value: string | null): number | undefined {
 	const parsed = parseOptionalNumber(value);
-	if (parsed === undefined || parsed < 0 || parsed > 1) {
+	if (parsed === undefined || !SUPPORTED_PROCESSING_CONFIDENCE_THRESHOLDS.has(parsed)) {
 		return undefined;
 	}
 
@@ -249,6 +259,14 @@ function appendFilterParam(
 		}
 		if (value.max !== '') {
 			params.append(`${paramKey}_max`, value.max.toString());
+		}
+		return;
+	}
+
+	if (filterKey === 'processing_confidence_min') {
+		const threshold = parseProcessingConfidenceMin(value.toString());
+		if (threshold !== undefined) {
+			params.append(paramKey, threshold.toString());
 		}
 		return;
 	}

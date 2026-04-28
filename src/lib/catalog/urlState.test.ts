@@ -79,17 +79,23 @@ describe('catalog URL state helpers', () => {
 		});
 	});
 
-	it('drops invalid processing confidence thresholds instead of serializing impossible claims', () => {
-		const state = parseCatalogUrlState(
+	it('drops unsupported processing confidence thresholds instead of serializing hidden filters', () => {
+		const invalidState = parseCatalogUrlState(
 			new URL('https://app.test/catalog?processing_confidence_min=1.5'),
 			'/catalog'
 		);
+		const unsupportedState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?processing_confidence_min=0.75'),
+			'/catalog'
+		);
 
-		expect(state.filters).not.toHaveProperty('processing_confidence_min');
+		expect(invalidState.filters).not.toHaveProperty('processing_confidence_min');
+		expect(unsupportedState.filters).not.toHaveProperty('processing_confidence_min');
 
 		const searchState = createDefaultCatalogUrlState('/catalog');
-		searchState.filters = { processing_confidence_min: '5' };
+		searchState.filters = { processing_confidence_min: '0.75' };
 		expect(catalogUrlStateToSearchState(searchState).processingConfidenceMin).toBeUndefined();
+		expect(buildCatalogRequestParams(searchState, '/catalog').toString()).toBe('page=1&limit=15');
 	});
 
 	it('keeps active sort settings in share URLs when filters are cleared', () => {
