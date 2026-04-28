@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { searchCatalog } from '$lib/data/catalog';
+import { toCatalogResourceItem } from '$lib/server/catalogResource';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
@@ -38,24 +39,26 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		publicOnly: visibility.publicOnly,
 		showWholesale: visibility.showWholesale,
 		wholesaleOnly: visibility.wholesaleOnly,
+		fields: 'resource',
 		...searchState
 	});
+	const catalogResources = (catalogData ?? []).map(toCatalogResourceItem);
 
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const schemaService = createSchemaService(baseUrl);
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),
 		schemaService.generateCoffeeCollectionSchema(
-			(catalogData ?? []) as Record<string, unknown>[],
+			catalogResources as Record<string, unknown>[],
 			`${baseUrl}/catalog`
 		)
 	]);
 
 	return {
-		data: catalogData || [],
-		trainingData: catalogData || [],
+		data: catalogResources,
+		trainingData: catalogResources,
 		initialCatalogState,
-		pagination: buildPagination(initialCatalogState, count ?? catalogData.length),
+		pagination: buildPagination(initialCatalogState, count ?? catalogResources.length),
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/catalog',

@@ -102,6 +102,176 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		);
 	});
 
+	it('serializes public process transparency filters with canonical v1 query params', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+
+			if (url.startsWith('/v1/catalog?')) {
+				return createCatalogResponse();
+			}
+
+			if (url.startsWith('/api/catalog/filters?')) {
+				return new Response(JSON.stringify({}), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		filterStore.initializeForRoute('/catalog', [
+			{ id: 1, stocked_date: '2026-04-05', wholesale: false }
+		]);
+
+		await vi.runOnlyPendingTimersAsync();
+		fetchSpy.mockClear();
+
+		filterStore.setFilter('processing_base_method', 'natural');
+		filterStore.setFilter('fermentation_type', 'anaerobic');
+		filterStore.setFilter('process_additive', 'fruit');
+		filterStore.setFilter('processing_disclosure_level', 'high_detail');
+		filterStore.setFilter('processing_confidence_min', '0.8');
+
+		await vi.runOnlyPendingTimersAsync();
+
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		const requestUrl = fetchSpy.mock.calls[0][0].toString();
+		expect(requestUrl).toContain('/v1/catalog?');
+		expect(requestUrl).toContain('processing_base_method=natural');
+		expect(requestUrl).toContain('fermentation_type=anaerobic');
+		expect(requestUrl).toContain('process_additive=fruit');
+		expect(requestUrl).toContain('processing_disclosure_level=high_detail');
+		expect(requestUrl).toContain('processing_confidence_min=0.8');
+	});
+
+	it('clears process transparency filters without dropping simple catalog filters', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+
+			if (url.startsWith('/v1/catalog')) {
+				return createCatalogResponse();
+			}
+
+			if (url.startsWith('/api/catalog/filters?')) {
+				return new Response(JSON.stringify({}), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		filterStore.initializeForRoute('/catalog', [], {
+			catalogUrlState: {
+				filters: {
+					country: ['Ethiopia'],
+					processing: 'Washed',
+					processing_base_method: 'natural',
+					fermentation_type: 'anaerobic',
+					process_additive: 'fruit',
+					processing_disclosure_level: 'high_detail',
+					processing_confidence_min: 0.8
+				},
+				sortField: null,
+				sortDirection: null,
+				showWholesale: false,
+				pagination: { page: 2, limit: 15 }
+			},
+			serverData: [],
+			pagination: {
+				page: 2,
+				limit: 15,
+				total: 20,
+				totalPages: 2,
+				hasNext: false,
+				hasPrev: true
+			}
+		});
+
+		await vi.runOnlyPendingTimersAsync();
+		fetchSpy.mockClear();
+
+		filterStore.clearFiltersByKeys([
+			'processing_base_method',
+			'fermentation_type',
+			'process_additive',
+			'processing_disclosure_level',
+			'processing_confidence_min'
+		]);
+		await vi.runOnlyPendingTimersAsync();
+
+		const state = get(filterStore);
+		expect(state.filters).toEqual({ country: ['Ethiopia'], processing: 'Washed' });
+		expect(state.pagination.page).toBe(1);
+		const requestUrl = fetchSpy.mock.calls.at(-1)?.[0].toString() ?? '';
+		expect(requestUrl).toContain('country=Ethiopia');
+		expect(requestUrl).toContain('processing=Washed');
+		expect(requestUrl).not.toContain('processing_base_method');
+		expect(requestUrl).not.toContain('processing_confidence_min');
+	});
+
+	it('clears process transparency filters without dropping unrelated catalog filters', async () => {
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = input.toString();
+
+			if (url.startsWith('/v1/catalog?')) {
+				return createCatalogResponse();
+			}
+
+			if (url.startsWith('/api/catalog/filters?')) {
+				return new Response(JSON.stringify({}), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+
+			throw new Error(`Unexpected fetch: ${url}`);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { filterStore } = await loadFilterStore();
+		filterStore.initializeForRoute(
+			'/catalog',
+			[{ id: 1, stocked_date: '2026-04-05', wholesale: false }],
+			{
+				catalogUrlState: {
+					filters: {
+						country: ['Ethiopia'],
+						processing_base_method: 'natural',
+						fermentation_type: 'anaerobic',
+						processing_confidence_min: 0.8
+					},
+					sortField: null,
+					sortDirection: null,
+					showWholesale: false,
+					pagination: { page: 2, limit: 15 }
+				},
+				serverData: [{ id: 1, stocked_date: '2026-04-05', wholesale: false }]
+			}
+		);
+
+		await vi.runOnlyPendingTimersAsync();
+		fetchSpy.mockClear();
+
+		filterStore.clearFiltersByKeys([
+			'processing_base_method',
+			'fermentation_type',
+			'processing_confidence_min'
+		]);
+		await vi.runOnlyPendingTimersAsync();
+
+		const state = get(filterStore);
+		expect(state.filters).toEqual({ country: ['Ethiopia'] });
+		expect(state.pagination.page).toBe(1);
+		expect(fetchSpy).toHaveBeenNthCalledWith(1, '/v1/catalog?page=1&limit=15&country=Ethiopia');
+	});
+
 	it('serializes stocked_date and stocked_days as distinct catalog query params', async () => {
 		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
 			const url = input.toString();

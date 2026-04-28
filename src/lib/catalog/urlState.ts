@@ -23,6 +23,11 @@ export interface CatalogSearchState {
 	country?: string | string[];
 	source?: string[];
 	processing?: string;
+	processingBaseMethod?: string;
+	fermentationType?: string;
+	processAdditive?: string;
+	processingDisclosureLevel?: string;
+	processingConfidenceMin?: number;
 	cultivarDetail?: string;
 	type?: string;
 	grade?: string;
@@ -54,6 +59,10 @@ const STRING_FILTER_KEYS = [
 	'origin',
 	'continent',
 	'processing',
+	'processing_base_method',
+	'fermentation_type',
+	'process_additive',
+	'processing_disclosure_level',
 	'cultivar_detail',
 	'type',
 	'grade',
@@ -69,6 +78,11 @@ const FILTER_SERIALIZATION_ORDER = [
 	'country',
 	'source',
 	'processing',
+	'processing_base_method',
+	'fermentation_type',
+	'process_additive',
+	'processing_disclosure_level',
+	'processing_confidence_min',
 	'cultivar_detail',
 	'type',
 	'grade',
@@ -91,6 +105,15 @@ function parseOptionalNumber(value: string | null): number | undefined {
 
 	const parsed = Number.parseFloat(value);
 	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseProcessingConfidenceMin(value: string | null): number | undefined {
+	const parsed = parseOptionalNumber(value);
+	if (parsed === undefined || parsed < 0 || parsed > 1) {
+		return undefined;
+	}
+
+	return parsed;
 }
 
 function parseOptionalNumberFromAliases(
@@ -164,6 +187,13 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 			min: pricePerLbMin?.toString() ?? '',
 			max: pricePerLbMax?.toString() ?? ''
 		};
+	}
+
+	const processingConfidenceMin = parseProcessingConfidenceMin(
+		url.searchParams.get('processing_confidence_min')
+	);
+	if (processingConfidenceMin !== undefined) {
+		filters.processing_confidence_min = processingConfidenceMin;
 	}
 
 	const sortField = url.searchParams.get('sortField') ?? defaultSort.field;
@@ -360,6 +390,13 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		country: countries && countries.length === 1 ? countries[0] : countries,
 		source: readArrayValue(state.filters.source),
 		processing: readStringValue(state.filters.processing),
+		processingBaseMethod: readStringValue(state.filters.processing_base_method),
+		fermentationType: readStringValue(state.filters.fermentation_type),
+		processAdditive: readStringValue(state.filters.process_additive),
+		processingDisclosureLevel: readStringValue(state.filters.processing_disclosure_level),
+		processingConfidenceMin: parseProcessingConfidenceMin(
+			state.filters.processing_confidence_min?.toString() ?? null
+		),
 		cultivarDetail: readStringValue(state.filters.cultivar_detail),
 		type: readStringValue(state.filters.type),
 		grade: readStringValue(state.filters.grade),

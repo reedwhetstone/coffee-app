@@ -421,6 +421,30 @@ function createFilterStore() {
 	}
 
 	/**
+	 * Clears a set of filters in one catalog request.
+	 */
+	function clearFiltersByKeys(keys: string[]) {
+		const keySet = new Set(keys);
+		update((state) => {
+			state.filters = Object.fromEntries(
+				Object.entries(state.filters).filter(([key]) => !keySet.has(key))
+			) as Record<string, FilterValue>;
+			if (isCatalogRoute(state.routeId)) {
+				state.pagination.page = 1;
+			}
+			return state;
+		});
+
+		const currentState = get({ subscribe });
+		if (isCatalogRoute(currentState.routeId)) {
+			syncCatalogUrl(currentState);
+			fetchServerData();
+		} else {
+			processAndUpdateFilteredData();
+		}
+	}
+
+	/**
 	 * Toggles wholesale visibility on catalog routes.
 	 * false (default): retail only
 	 * true: show retail + wholesale
@@ -1029,6 +1053,7 @@ function createFilterStore() {
 		setSortField,
 		setSortDirection,
 		setFilter,
+		clearFiltersByKeys,
 		setShowWholesale,
 		toggleSort,
 		clearFilters,

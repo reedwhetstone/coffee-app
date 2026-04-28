@@ -318,7 +318,7 @@ function parseOptionalBoolean(value: string | null, parameter: string): boolean 
 	throw new CatalogQueryValidationError(parameter, value, 'true or false');
 }
 
-function toCatalogResourceItem(item: CatalogResourceQueryItem): CatalogResourceItem {
+export function toCatalogResourceItem(item: CatalogResourceQueryItem): CatalogResourceItem {
 	const {
 		coffee_user: _coffeeUser,
 		processing_evidence: processingEvidence,

@@ -12,6 +12,24 @@ vi.mock('$lib/data/catalog', () => ({
 	searchCatalog: mockSearchCatalog
 }));
 
+vi.mock('$lib/server/catalogResource', () => ({
+	toCatalogResourceItem: (item: Record<string, unknown>) => ({
+		...item,
+		process: {
+			base_method: item.processing_base_method ?? null,
+			fermentation_type: item.fermentation_type ?? null,
+			additives: item.process_additives ?? null,
+			additive_detail: item.process_additive_detail ?? null,
+			fermentation_duration_hours: item.fermentation_duration_hours ?? null,
+			drying_method: item.drying_method ?? null,
+			notes: item.processing_notes ?? null,
+			disclosure_level: item.processing_disclosure_level ?? null,
+			confidence: item.processing_confidence ?? null,
+			evidence_available: Boolean(item.processing_evidence_available)
+		}
+	})
+}));
+
 vi.mock('$lib/seo/meta', () => ({
 	buildPublicMeta: mockBuildPublicMeta,
 	resolvePublicPageSocialImage: mockResolvePublicPageSocialImage
@@ -23,7 +41,22 @@ vi.mock('$lib/services/schemaService', () => ({
 
 let load: typeof import('./+page.server').load;
 
-const catalogRows = [{ id: 1, name: 'Alpha' }];
+const catalogRows = [
+	{
+		id: 1,
+		name: 'Alpha',
+		processing_base_method: 'washed',
+		fermentation_type: 'anaerobic',
+		process_additives: ['none'],
+		process_additive_detail: null,
+		fermentation_duration_hours: 48,
+		drying_method: 'raised_bed',
+		processing_notes: 'Slow fermentation',
+		processing_disclosure_level: 'high_detail',
+		processing_confidence: 0.85,
+		processing_evidence_available: true
+	}
+];
 
 beforeEach(async () => {
 	vi.resetModules();
@@ -68,8 +101,8 @@ describe('/catalog page load', () => {
 		const viewerSession = { access_token: 'cookie-token' } as App.Locals['session'];
 
 		const result = (await load(makeLoadInput('viewer', viewerSession))) as {
-			data: typeof catalogRows;
-			trainingData: typeof catalogRows;
+			data: Array<Record<string, unknown>>;
+			trainingData: Array<Record<string, unknown>>;
 			pagination: {
 				page: number;
 				limit: number;
@@ -92,14 +125,26 @@ describe('/catalog page load', () => {
 				publicOnly: true,
 				showWholesale: false,
 				wholesaleOnly: false,
+				fields: 'resource',
 				limit: 15,
 				offset: 0,
 				orderBy: undefined,
 				orderDirection: undefined
 			})
 		);
-		expect(result.data).toEqual(catalogRows);
-		expect(result.trainingData).toEqual(catalogRows);
+		expect(result.data[0]).toMatchObject({
+			id: 1,
+			name: 'Alpha',
+			process: {
+				base_method: 'washed',
+				fermentation_type: 'anaerobic',
+				additives: ['none'],
+				disclosure_level: 'high_detail',
+				confidence: 0.85,
+				evidence_available: true
+			}
+		});
+		expect(result.trainingData).toEqual(result.data);
 		expect(result.initialCatalogState).toMatchObject({
 			showWholesale: false,
 			sortField: null,
@@ -138,6 +183,28 @@ describe('/catalog page load', () => {
 		);
 	});
 
+	it('passes canonical process transparency query params to catalog search', async () => {
+		await load(
+			makeLoadInput(
+				'viewer',
+				null,
+				'https://app.test/catalog?processing_base_method=natural&fermentation_type=anaerobic&process_additive=fruit&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
+			)
+		);
+
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				processingBaseMethod: 'natural',
+				fermentationType: 'anaerobic',
+				processAdditive: 'fruit',
+				processingDisclosureLevel: 'high_detail',
+				processingConfidenceMin: 0.8,
+				fields: 'resource'
+			})
+		);
+	});
+
 	it('lets member SSR previews use the internal catalog visibility policy', async () => {
 		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
 
@@ -151,7 +218,8 @@ describe('/catalog page load', () => {
 				stockedOnly: true,
 				publicOnly: false,
 				showWholesale: true,
-				wholesaleOnly: false
+				wholesaleOnly: false,
+				fields: 'resource'
 			})
 		);
 	});
