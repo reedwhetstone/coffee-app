@@ -264,7 +264,8 @@
 		>
 			<h2 class="text-xl font-semibold text-text-primary-light">Market intelligence</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
-				Pricing trends, supplier movement, arrivals, and delistings delivered daily.
+				Public price and market overview charts, with supplier movement, arrivals, and
+				delistings in gated Parchment Intelligence modules.
 			</p>
 		</a>
 	</section>

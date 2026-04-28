@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 ## Public Pages
 
-- [Market Analytics](${baseUrl}/analytics): Public market-intelligence surface for pricing trends, origin coverage, and supplier movement.
+- [Market Analytics](${baseUrl}/analytics): Public market-intelligence surface for origin price trends, processing mix, origin price ranges, and gated Parchment Intelligence modules.
 - [Coffee Catalog](${baseUrl}/catalog): Public catalog for normalized green coffee listings with origin, processing, pricing, and availability data.
 - [Parchment API](${baseUrl}/api): Product overview for the API, access tiers, and Console entry points.
 - [Parchment Console](${baseUrl}/api-dashboard): Authenticated Console for API keys, usage, and billing.
@@ -26,7 +26,7 @@ export const GET: RequestHandler = async ({ url }) => {
 ## API and Platform
 
 - [Public API namespace](${baseUrl}/v1): Namespace descriptor for the public API surface.
-- [Catalog API](${baseUrl}/docs/api/catalog): Stable contract for GET /v1/catalog, including anonymous discovery, API-key usage, and migration guidance from legacy aliases.
+- [Catalog API](${baseUrl}/docs/api/catalog): Stable contract for GET /v1/catalog, including anonymous discovery, API-key usage, structured process transparency fields, and migration guidance from legacy aliases.
 - [Platform routes](${baseUrl}/docs/api/platform): Route matrix for /api/*, billing flows, Console helpers, and authenticated product internals.
 - /api/* routes are platform routes for the first-party app and Console. They are not the broad public compatibility promise.
 
@@ -36,7 +36,7 @@ ${blogPostLines}
 
 ## Data and Workflows
 
-- Normalized supplier listings with origin, processing, grade, pricing, and availability metadata
+- Normalized supplier listings with origin, legacy processing labels, structured process transparency, grade, pricing, and availability metadata
 - Daily pricing and availability snapshots for catalog and analytics surfaces
 - Inventory, roast, sales, tasting, chat, and workspace workflows in the web app
 - Shared CLI-backed tooling for terminal and agent workflows

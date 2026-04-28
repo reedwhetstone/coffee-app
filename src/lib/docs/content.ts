@@ -382,7 +382,7 @@ const docsPages: DocsPage[] = [
 					'Anonymous, viewer-session, and API-key requests all share the public query surface documented below.',
 					'fields=dropdown stays compatible with normal page and limit params. The reduced projection is limited to id, source, name, stocked, cost_lb, price_per_lb, price_tiers, and public_coffee.',
 					'Privileged member and admin sessions may additionally use showWholesale and wholesaleOnly to widen first-party visibility.',
-					`Malformed typed params now fail closed with 400 responses instead of silently falling back or bubbling into generic 500s. That applies to fields, stocked, showWholesale, wholesaleOnly, sortField, page, limit, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, and their deprecated cost_lb aliases. Supported sortField values are ${PUBLIC_CATALOG_SORT_FIELD_LIST}.`
+					`Malformed typed params now fail closed with 400 responses instead of silently falling back or bubbling into generic 500s. That applies to fields, stocked, showWholesale, wholesaleOnly, has_additives, sortField, sortDirection, page, limit, stocked_date, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, processing_confidence_min, and deprecated cost_lb aliases. Supported sortField values are ${PUBLIC_CATALOG_SORT_FIELD_LIST}.`
 				],
 				table: {
 					headers: ['Parameter', 'Type', 'Default', 'Description'],
@@ -413,7 +413,12 @@ const docsPages: DocsPage[] = [
 							'Filter to stocked-only, unstocked-only, or the full catalog. Invalid values return 400.'
 						],
 						['origin', 'string', 'none', 'Partial match across continent, country, and region.'],
-						['country', 'string', 'none', 'Exact match on country.'],
+						[
+							'country',
+							'string (repeatable)',
+							'none',
+							'Exact match on country. Repeat the parameter to match any of several country labels.'
+						],
 						['continent', 'string', 'none', 'Exact match on continent.'],
 						[
 							'source',
@@ -480,9 +485,9 @@ const docsPages: DocsPage[] = [
 						['score_value_max', 'number', 'none', 'Maximum cupping or quality score (inclusive).'],
 						[
 							'arrival_date',
-							'string (YYYY-MM-DD)',
+							'string',
 							'none',
-							'Filter to coffees with a specific arrival date.'
+							'Exact match on the stored arrival_date value. Use YYYY-MM-DD when the supplier row has a normalized date.'
 						],
 						[
 							'stocked_date',
@@ -522,6 +527,23 @@ const docsPages: DocsPage[] = [
 						label: 'Paginated dropdown projection',
 						language: 'bash',
 						code: 'curl "https://purveyors.io/v1/catalog?fields=dropdown&page=2&limit=15"'
+					}
+				]
+			},
+			{
+				title: 'Structured process filter edge cases',
+				bullets: [
+					'processing remains the backward-compatible partial match against the legacy display label. Use the structured filters when an integration needs process transparency semantics instead of text search.',
+					'processing_base_method, fermentation_type, process_additive, processing_disclosure_level, and processing_confidence_min only match rows where the structured metadata is present. Null supplier metadata is preserved and should not be treated as explicit none.',
+					'has_additives=true matches rows with disclosed additive values such as fruit, yeast, hops, mossto, or starter-culture. has_additives=false matches only rows whose additive array is exactly none; it intentionally excludes unknown, unspecified, null, or mixed values.',
+					'process_additive is an array-containment filter. A row with multiple disclosed additives can match any one repeated request pattern only by issuing separate requests today.',
+					'Full rows include process.evidence_available but never expose raw processing_evidence quotes. The dropdown projection does not include the nested process object.'
+				],
+				codeBlocks: [
+					{
+						label: 'Filter for disclosed co-fermentation or explicit no-additive rows',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog?fermentation_type=Co-Fermented&has_additives=true&limit=25"\n\ncurl "https://purveyors.io/v1/catalog?has_additives=false&processing_disclosure_level=structured&limit=25"'
 					}
 				]
 			},
@@ -1134,7 +1156,7 @@ const docsPages: DocsPage[] = [
 			'Analytics is a product surface on Purveyors, not a standalone public API family, with session-auth roast analysis helpers behind the scenes.',
 		eyebrow: 'Market intelligence',
 		intro: [
-			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse major market summaries, while deeper product experiences layer on top of authenticated access and platform state.',
+			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse the core market overview: origin price trends, processing mix, origin price ranges, and the supplier/listing/origin stat bar. Parchment Intelligence users get the deeper supplier comparison, supplier health, arrivals, delistings, and extended trend modules.',
 			'Analytics is important to the platform story, but it is not currently sold as a separate API-key namespace. When documenting analytics, keep the distinction between product UI and public REST contract explicit.'
 		],
 		sections: [
@@ -1142,6 +1164,9 @@ const docsPages: DocsPage[] = [
 				title: 'What is public today',
 				bullets: [
 					'/analytics is a web product surface, not an API-key endpoint family.',
+					'Logged-out visitors and logged-in viewers share the same core analytics view. The server resolves Parchment Intelligence access separately and uses it to decide whether to load the gated modules.',
+					'Public chart data includes 90 days of price-index snapshots, current stocked processing distribution, current origin price ranges, recent-arrival/delisting counts for the upgrade preview, and the latest market summary counts.',
+					'Parchment Intelligence expands the same page to 365 days of snapshot history plus supplier comparison, supplier health, recent arrivals, recent delistings, and origin-level aggregate modules.',
 					'The public catalog and public analytics should be cross-linked because they describe the same coffee market from different angles: raw records versus curated analysis.',
 					'Authenticated and premium analytics views may expose deeper app features, but they still ride through the first-party product rather than a stable public REST schema.'
 				]
@@ -1295,7 +1320,30 @@ const docsPages: DocsPage[] = [
 							'Deactivate an owned API key by keyId'
 						]
 					]
-				}
+				},
+				body: [
+					'These are Console control-plane routes, not public API contracts. A browser session is required because key creation and deactivation mutate the signed-in account.',
+					'generate requires a non-empty JSON name field and returns apiKey only in the creation response. Store it immediately; later Console views should show metadata, not the secret.',
+					'deactivate requires keyId and verifies ownership before marking a key inactive. There is no public delete-by-secret flow.'
+				],
+				codeBlocks: [
+					{
+						label: 'Generate an API key from the signed-in Console session',
+						language: 'bash',
+						code: `curl -X POST https://purveyors.io/api-dashboard/keys/generate \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <signed-in session cookie>" \
+  -d '{"name":"local sync job"}'`
+					},
+					{
+						label: 'Deactivate an owned key',
+						language: 'bash',
+						code: `curl -X POST https://purveyors.io/api-dashboard/keys/deactivate \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <signed-in session cookie>" \
+  -d '{"keyId":"api_key_row_id"}'`
+					}
+				]
 			},
 			{
 				title: 'Admin routes',

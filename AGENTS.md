@@ -168,6 +168,7 @@ When changing docs, keep these sources aligned:
 - Do not invent filter/query behavior that the route does not implement
 - Be explicit about auth model, tier limits, row-limit headers, share-token behavior, and session requirements
 - If analytics are a product surface but not a public REST surface, say that clearly
+- Preserve structured process semantics in docs: null supplier metadata is not explicit none, `has_additives=false` means an exact disclosed-none additive array, and raw processing evidence quotes are not public API fields
 
 ## CLI relationship
 
