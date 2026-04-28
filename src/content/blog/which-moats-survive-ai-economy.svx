@@ -1,0 +1,120 @@
+---
+title: "Which Moats Survive When AI Makes Software Cheap?"
+date: "2026-04-28"
+description: "AI compresses software build time, but it does not compress elapsed time, permission, distribution, physical infrastructure, or operational data flywheels."
+tags: ["ai", "moats", "strategy", "defensibility"]
+pillar: "ai-first-product"
+draft: false
+readingTime: 8
+---
+
+The AI moat conversation has a blind spot. It is obsessed with what can be defended. It spends much less time asking whether the thing being defended will still matter.
+
+That distinction is everything.
+
+Software features are getting cheaper to build. Interfaces, integrations, dashboards, internal tools, data transforms, and basic workflow automation are moving from months to days. Sometimes hours. A lot of old SaaS defensibility was built on the scarcity of engineering time. That scarcity is collapsing.
+
+But AI does not compress elapsed time. It does not instantly create trust with a buyer, earn regulatory permission, wire a data center to the grid, build a marketplace with liquidity on both sides, or accumulate years of operational edge cases.
+
+So the useful question is not "what is defensible after AI?" It is sharper: **which advantages deepen as AI gets cheaper, and which ones merely protect an asset that may stop mattering?**
+
+## AI erodes anything bottlenecked by implementation
+
+Michael Bloch's Quiet Capital thesis landed because the core distinction is right: AI compresses the time it takes to do things, not the time it takes for things to happen. Forbes summarized the framework as a shift toward assets that required real-world time to accumulate: living proprietary data, network effects, regulatory permission, capital at scale, and physical infrastructure.
+
+That is the right starting point. If the advantage is "we built this first," it is probably weak. If the advantage is "our UI is nicer," weaker. If the advantage is "we integrated with ten systems," weaker than it used to be.
+
+This does not mean every incumbent dies. Enterprise adoption is still slow because switching systems is not just an engineering project. It is data migration, process retraining, compliance review, procurement risk, and internal politics. The near-term curve is not extinction. It is pricing pressure.
+
+The CIO reviewing a large renewal does not need to believe an internal agent can replace the vendor tomorrow. They only need to believe the vendor's marginal feature work is no longer worth last year's price.
+
+That is a different problem, but it is still a serious one.
+
+## The first bucket: time-locked moats
+
+Time-locked moats require the passage of real time. Better models can help you operate them, but they cannot skip the clock.
+
+**Distribution** is the most underweighted one. If you own the customer relationship, you decide which AI tools get adopted. This is why marketplace liquidity matters. DoorDash is not defended by the restaurant ordering UI. It is defended by the density of restaurants, drivers, and customers. As software gets easier to build, the cold-start problem gets worse, not better. A hundred competent clones can now chase the same empty network.
+
+**Regulatory permission** is another. Bank charters, FDA approvals, procurement clearances, audits, and certifications move at institutional speed. Codurance makes the same point in private-equity language: in regulated sectors, auditability and explainability are not product polish. They are market access. AI increases the regulatory surface area because the stakes rise.
+
+The trap is treating permission as the whole moat. Permission buys time. It does not decide what you build with that time. The durable version is permission plus a compounding asset inside the protected window.
+
+**Physical infrastructure** is even less compressible. Power plants, fabs, battery networks, data centers, fiber routes, warehouses, test labs, and installed equipment live in the world of atoms. AI can improve planning and utilization, but it cannot negotiate interconnection queues into nonexistence or deploy hardware before it has been manufactured and permitted.
+
+**Capital at scale** belongs here too. Raising $20 million can be a pitch. Raising $20 billion is an institutional trust problem. The relationships, track record, and balance-sheet credibility behind that kind of capital take years.
+
+**Standards and protocols** are the category I think gets missed most often. Whoever defines the object model often controls the market around it. SWIFT, OpenAPI, RSS, CSV, JSON Schema, HL7, OAuth: these are not glamorous moats, but they decide what integration means. Once an ecosystem builds against a standard, every downstream integration becomes a switching cost.
+
+This is the part of Purveyors that interests me most. The scraper is useful, but it is not the moat. The web app is useful, but it is not the moat. The more interesting bet is that a normalized green-coffee listing object can become the way suppliers, buyers, software, and agents compare coffee. If the schema becomes the market language, the standard is the asset.
+
+## The second bucket: compounding moats
+
+Compounding moats get stronger the faster the system runs.
+
+Data is the obvious example, but "data moat" is too sloppy a phrase. A static dataset that was expensive to collect is not automatically durable. It can be scraped, bought, inferred, or rebuilt. The durable version is a data flywheel: usage creates proprietary signal, the signal improves the product, the better product attracts more usage, and the loop repeats.
+
+Codurance calls this the proprietary data flywheel. Euclid Ventures frames it as data loops and data gravity. The mechanism matters more than the label. If the data does not improve through use, the moat is probably weaker than the slide deck claims.
+
+That is why operational data beats archival data. Orchard Robotics is a clean example from the Quiet Capital thesis: cameras on farm equipment generate crop intelligence season after season. A competitor cannot compress a missing history of orchard observations into one weekend of coding.
+
+Purveyors has a smaller version of the same pattern. The normalized catalog is not just raw supplier HTML. It is the accumulated edge-case knowledge from repeated scraper runs: which supplier hides arrival date in copy, which origin names need normalization, which processing labels are marketing language, which price tiers signal wholesale availability. Someone could scrape the pages faster tomorrow. They would still have to relearn the operational mess.
+
+**Workflow embedding** is another compounding moat, but only when it creates operational dependence. Edison Partners puts it well: AI becomes infrastructure when removing it introduces operational risk. That is stronger than a normal switching cost. A normal switching cost is migration pain. Workflow embedding means the system has learned how a business handles exceptions, approvals, audits, and edge cases. Removing it breaks memory, not just software.
+
+There is a tension here. The more deeply your product embeds into a customer's workflow, the stickier it becomes for them. But the more deeply your own company embeds around an old architecture, the less agile you become. That tension matters because the largest AI threat is not always commodity replication. Sometimes it is a value-chain shift.
+
+**Network effects** need the same precision. Data network effects, social network effects, and marketplace network effects are different animals. Data network effects can improve model quality. Social network effects depend on identity and habit. Marketplace network effects depend on liquidity across multiple sides. AI-era products should stop saying "network effects" as if the term itself is a moat. Which loop compounds? Who benefits? What breaks it?
+
+**Trust** is the meta-layer. When polished software becomes cheap, buyers need shortcuts for judgment. Brand, provenance, audit trails, explainability, and human accountability reduce evaluation cost. In high-stakes domains, trust is not a vibe. It is part of the product. But trust rarely stands alone. It amplifies another moat: data, workflow, compliance, distribution, or standard-setting.
+
+## Speed is not the moat. Agility might be.
+
+A lot of AI strategy writing treats speed as the surviving moat. I think that is half right and half dangerous.
+
+Speed is a rate: how fast you ship, test, learn, hire, fire, and decide. It matters because AI makes iteration cheaper. NFX and Altimeter are right that opportunity cost has gone up. Slow teams will get punished.
+
+But speed by itself is brittle. Nokia was fast. Yahoo shipped constantly. Kodak had deep technical talent and even invented a portable digital camera in 1975, though the simplified legend around that story is messier than the meme version. These companies did not fail because they were too dumb to see signal. They failed because the value chain moved and the organization could not reorganize around it fast enough.
+
+The moat is not speed. The moat is agility: the institutional ability to notice that your direction is wrong and change the architecture before the market finishes changing without you.
+
+That is much harder to copy than raw shipping velocity because it lives in decision rights, incentives, culture, and willingness to kill profitable old assumptions.
+
+## The Kodak test
+
+This is the limit most moat taxonomies miss.
+
+A moat can be real and still become irrelevant.
+
+Kodak had real assets: distribution, manufacturing infrastructure, chemistry expertise, brand trust, and a profitable film ecosystem. Those moats protected film photography. They did not protect Kodak when value moved away from film.
+
+That is the Kodak test: **is the asset this moat protects still in the value chain five years from now?**
+
+A workflow-embedded enterprise product can be genuinely sticky and still be exposed if an AI-native system bypasses the workflow entirely. A proprietary dataset can compound beautifully in a market that stops mattering. A regulatory license can protect access to a shrinking profit pool. A standard can become irrelevant if the ecosystem moves to a different abstraction.
+
+Defensible and valuable are different questions. A good moat framework answers the first. Builders still have to answer the second.
+
+## A better filter for builders
+
+I would rank AI-era moats less by category name and more by the mechanism that protects them:
+
+- Does this require elapsed time in the real world?
+- Does this improve through use?
+- Does this control distribution or market language?
+- Does this create operational dependence?
+- Does this reduce evaluation risk in a market flooded with plausible alternatives?
+- Does this remain relevant if the value chain shifts?
+
+If the answer is yes to the first five and no to the last one, you do not have a safe moat. You have Kodak with better tooling.
+
+The strongest position is a time-locked asset that also compounds. Distribution that generates proprietary usage data. Regulatory permission that creates a protected learning window. Physical infrastructure that throws off operational signal. A standard that becomes the default language for a growing market.
+
+That is where I think the AI economy pushes builders: away from feature defensibility and toward accumulated assets.
+
+For Purveyors, that means I should not pretend the website is the moat. It is not. The scraper code is not either. Both could be rebuilt faster every month.
+
+The defensible bet is the normalized coffee data layer, the schema that makes supplier listings comparable, and the daily operational loop that keeps turning messy supplier reality into structured intelligence. The software is the vehicle. The data is the asset. The schema is the standard. The loop is what makes it compound.
+
+And every few months, the Kodak test has to come back: is supplier comparison still where value is moving, or has the market shifted somewhere else?
+
+That question is uncomfortable. Good. A moat that cannot survive that question is probably just a feature with a better name.
