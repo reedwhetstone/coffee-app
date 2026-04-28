@@ -48,6 +48,7 @@ _Last coherence audit: 2026-04-26_
 | Sycophancy Is the Last Hard Problem in AI-Assisted Software Development | `sycophancy-is-the-last-hard-problem` | 2026-03-26 | agentic-stack | #173 | Clean |
 | Is Co-Fermentation Cheating? Wrong Question. | `co-fermentation-wrong-question` | 2026-04-02 | supply-chain | #208 | Needs update |
 | What a New Hire Learns That Enterprise AI Still Misses | `enterprise-second-brains-are-not-knowledge-bases` | 2026-04-07 | agentic-stack | #226/#227 | Clean |
+| Which Moats Survive When AI Makes Software Cheap? | `which-moats-survive-ai-economy` | 2026-04-28 | ai-first-product | #301 | New |
 
 ## Drift Flags (2026-04-26)
 
@@ -124,5 +125,3 @@ _Last coherence audit: 2026-04-26_
 ## Next priority
 
 **Draft `What If the Real Marketplace Is the Listing Schema?` next.** It is already outlined, fills the zero-post api-architecture pillar gap, and now has fresh evidence from the 41-source scraper footprint, ADR-004, `/v1/catalog`, and the listing-schema outline work. The strongest angle is not generic API docs. It is the sharper claim that the durable marketplace control point is the listing contract the market learns to publish through.
-
-| Which Moats Survive When AI Makes Software Cheap? | `which-moats-survive-ai-economy` | 2026-04-28 | ai-first-product | #301 | New |
