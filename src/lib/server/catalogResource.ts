@@ -2,8 +2,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { getCatalogDropdown, searchCatalog, searchCatalogDropdown } from '$lib/data/catalog';
 import {
 	toCatalogResourceItem,
-	type CatalogResponseItem,
-	type CatalogResourceItem
+	type CatalogResponseItem
 } from '$lib/catalog/catalogResourceItem';
 import {
 	checkRateLimit,
