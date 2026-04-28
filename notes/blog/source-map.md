@@ -125,4 +125,4 @@ _Last coherence audit: 2026-04-26_
 
 **Draft `What If the Real Marketplace Is the Listing Schema?` next.** It is already outlined, fills the zero-post api-architecture pillar gap, and now has fresh evidence from the 41-source scraper footprint, ADR-004, `/v1/catalog`, and the listing-schema outline work. The strongest angle is not generic API docs. It is the sharper claim that the durable marketplace control point is the listing contract the market learns to publish through.
 
-| Which Moats Survive When AI Makes Software Cheap? | `which-moats-survive-ai-economy` | 2026-04-28 | ai-first-product | PR pending | New |
+| Which Moats Survive When AI Makes Software Cheap? | `which-moats-survive-ai-economy` | 2026-04-28 | ai-first-product | #301 | New |
