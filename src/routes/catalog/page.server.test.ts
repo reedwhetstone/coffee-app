@@ -12,7 +12,7 @@ vi.mock('$lib/data/catalog', () => ({
 	searchCatalog: mockSearchCatalog
 }));
 
-vi.mock('$lib/server/catalogResource', () => ({
+vi.mock('$lib/catalog/catalogResourceItem', () => ({
 	toCatalogResourceItem: (item: Record<string, unknown>) => ({
 		...item,
 		process: {

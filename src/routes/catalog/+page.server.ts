@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { searchCatalog } from '$lib/data/catalog';
-import { toCatalogResourceItem } from '$lib/server/catalogResource';
+import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
