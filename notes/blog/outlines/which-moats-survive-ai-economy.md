@@ -110,7 +110,14 @@ Most moat discussions conflate all three. For AI-era products, data network effe
 
 **Integration depth.** Surface-level API connections are trivial to replicate. Deep integrations into mission-critical workflows — where the AI system has learned the organization's specific edge cases, exception patterns, and institutional knowledge — are not. Euclid Ventures: "Vertical AI that can graduate into a lasting platform will need to do more than innovate at a single layer of the customer value chain."
 
-**Speed — but not the way most people think.** NFX and Altimeter argue speed is the moat: execution velocity, learning loops, talent magnetism. Euclid pushes back: "Speed is the moat until it isn't." The Nokia/Yahoo problem: both companies moved fast for years and still got disrupted — not because a faster competitor showed up, but because the architecture shifted under them (smartphones, search). Speed creates optionality; optionality expires if not converted to durable assets. The durable version of the speed moat is *accumulated learning from speed* — the iterations completed, the insights gathered, the course corrections made. Moving fast for longer.
+**Speed vs agility — a necessary distinction.** NFX and Altimeter argue speed is the moat: execution velocity, learning loops, talent magnetism. Euclid pushes back: "Speed is the moat until it isn't." Both are right about different things, and the post should make the distinction explicit.
+
+Speed is a rate — how fast you ship. Agility is a capacity — the ability to sense that your direction is wrong and reorganize before the architecture shifts under you. Nokia was fast. They shipped phones quickly, iterated rapidly on Symbian, and moved faster than most incumbents. What they lacked was the organizational agility to abandon Symbian when the value moved to software platforms. Yahoo was fast at adding portal features; they couldn't structurally pivot to treat search as a fundamentally different paradigm. Both failed not because a faster competitor outran them, but because the architecture moved and they couldn't change direction.
+
+The refined claim: **speed creates optionality; agility is what lets you exercise it.** Speed without agility is brittle — you accumulate fast-moving learning in a direction that may stop mattering. The durable moat is organizational agility: the proven capacity to sense architectural shifts early and reorganize around them. That is harder to replicate than raw shipping velocity because it is embedded in culture, decision rights, and track record — not tooling.
+
+- **Note the tension with workflow-embedding moats:** deep embedding builds switching-cost moats for *your customers* but reduces *your own* agility. The companies that thread this needle (Amazon, Netflix) separate stable-core from agile-edge — two-pizza teams, chaos engineering, willingness to kill their own products before competitors do. That organizational architecture is itself a form of compounding moat.
+- **This also sharpens the Kodak test** (see Section 4): Kodak didn't fail to see digital coming — they invented digital photography internally in 1975. What they lacked was agility to act on it. Their entire organization was built around film margins; they couldn't reorganize away from that even with the signal in hand. So the Kodak test has a second dimension: not just "is my asset still in the value chain?" but "can I recognize when it isn't, and do I have the agility to build a new one in time?"
 
 ---
 
@@ -120,9 +127,11 @@ Most moat discussions conflate all three. For AI-era products, data network effe
 
 **The Kodak test.** This is the framework's critical limit. Kodak had real, defensible moats: physical manufacturing infrastructure (factories, film production), proprietary chemistry data accumulated over decades, regulatory-adjacent supply chain relationships, and strong distribution through every drugstore in America. All of those moats were genuine. They were disrupted not because a competitor replicated their film formula faster, but because digital photography made film *irrelevant*. The moat protected against commodity competition within the existing value chain. It provided zero protection against an architectural shift that moved the value chain elsewhere.
 
-The lesson: **defensible** and **valuable** are two separate questions. The moat framework answers the first. You still have to answer the second independently. Ask not just "can this be replicated?" but "is this still in the value chain in five years?"
+The lesson: **defensible** and **valuable** are two separate questions. The moat framework answers the first. You still have to answer the second independently. Ask not just "can this be replicated?" but "is this still in the value chain in five years?" And then the harder question: "if it's not, do I have the agility to recognize that and build a new asset before the window closes?"
 
-- **AI-era version of the Kodak problem:** A company that builds a strong workflow-embedding moat around legacy enterprise software (e.g., deep integration into a pre-AI ERP system) faces this risk. The moat is real; the asset may become structurally irrelevant as AI-native competitors replace the underlying system.
+Kodak's failure was not ignorance — they invented digital photography internally in 1975. The failure was organizational: their margins, incentive structures, and identity were so embedded in film that they could not act on the signal they already had. The moat was real. The asset became irrelevant. And the organization lacked the agility to pivot in time.
+
+- **AI-era version of the Kodak problem:** A company that builds a strong workflow-embedding moat around legacy enterprise software (e.g., deep integration into a pre-AI ERP system) faces this risk. The moat is real; the asset may become structurally irrelevant as AI-native competitors replace the underlying system. The compounding factor: the deeper the embedding, the less agile the company — which means the harder it is to escape when the architecture shifts.
 
 **OpenAI stress test.** Run the framework against OpenAI, since they're at the center of this conversation. Distribution moat: strong — ChatGPT has 300M+ weekly active users, the strongest consumer AI distribution on the planet. Compounding data: unclear — they don't publish details, and their RLHF data advantage may be less durable than it appears. Regulatory: early mover in government and enterprise relationships, but also regulatory target. Physical infrastructure: limited without Microsoft partnership. The stress test reveals that OpenAI's most durable moat is distribution, not model quality — which explains their strategic choices (consumer products, API ubiquity) better than their stated mission does.
 
@@ -158,7 +167,7 @@ Not all moats are equal. Rank by durability in an AI-accelerated world and expla
 6. **Distribution / multi-sided network effects** — hard to bootstrap; once established, very sticky; cold-start problem worsens as AI lowers software barriers
 7. **Workflow embedding** — strong, but vulnerable to "good enough" AI-native alternatives that bypass the embedded system entirely
 8. **Social network effects** — real but historically vulnerable to identity/platform shifts
-9. **Speed / execution velocity** — real but temporary; durable only if converted to learning
+9. **Agility (not speed)** — the organizational capacity to sense architectural shifts and reorganize around them; durable only if institutionalized as culture and decision-rights, not just current velocity
 
 **The 2×2 decision tool** (this is the "choose accordingly" framework for builders):
 
@@ -179,7 +188,7 @@ If both answers are yes, build hard. If only the first is yes, keep building but
 
 The moats are shifting, not vanishing. Everything that can be replicated in a sprint will be. Everything that takes years of accumulated data, domain knowledge, regulatory permission, or physical presence to build won't be — *as long as the value chain holds*.
 
-The builders who understand this distinction will make better bets. Build on data that compounds, not data that's static. Own the distribution channel, not just the product. Turn compliance from cost into barrier. Move fast, but convert speed into learning, not just shipping. And every six months, run the Kodak test: is the asset I'm building still going to be in the value chain, or am I defending a film factory in a digital world?
+The builders who understand this distinction will make better bets. Build on data that compounds, not data that's static. Own the distribution channel, not just the product. Turn compliance from cost into barrier. Cultivate agility, not just speed — the two are not the same, and only one of them helps when the architecture shifts. And every six months, run the Kodak test: is the asset I'm building still going to be in the value chain — and if it isn't, do I have the organizational agility to act on that signal before it's too late?
 
 **The Purveyors closing example** (use this to make it concrete and personal):
 
