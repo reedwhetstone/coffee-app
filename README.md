@@ -25,7 +25,7 @@ It also depends on `@purveyors/cli`, which is a first-class interface to the sam
 | ------------ | ------------------------------------------------------------------- |
 | `/`          | Marketing landing page                                              |
 | `/catalog`   | Green coffee catalog with filters and live pricing                  |
-| `/analytics` | Market intelligence: pricing trends, origin coverage, supplier data |
+| `/analytics` | Market intelligence: public overview charts plus gated Parchment Intelligence modules |
 | `/api`       | API product page: plans, pricing, and quick start                   |
 | `/docs`      | Unified documentation for API and CLI                               |
 | `/blog`      | Coffee content and platform updates                                 |
@@ -50,6 +50,7 @@ Purveyors ships two API layers:
    - `GET /v1` advertises the public namespace, resource map, and legacy migration hints
    - `GET /v1/catalog` is the stable public contract for external integrations
    - Auth: Bearer API key, web session, or anonymous
+   - Full responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
    - Rate-limit headers are only emitted on API-key requests
    - [See API docs](https://purveyors.io/docs/api/overview)
 
