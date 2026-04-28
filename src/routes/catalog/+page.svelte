@@ -7,6 +7,10 @@
 	import { checkRole } from '$lib/types/auth.types';
 
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
+	import {
+		formatProcessDisplayValue,
+		isPublicProcessFacetOption
+	} from '$lib/catalog/processDisplay';
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
@@ -81,10 +85,7 @@
 
 	function formatFilterOption(value: unknown): string {
 		if (value === undefined || value === null || value === '') return '';
-		return String(value)
-			.split('_')
-			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-			.join(' ');
+		return formatProcessDisplayValue(String(value));
 	}
 
 	function clearProcessTransparencyFilters() {
@@ -305,7 +306,7 @@
 							class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
 						>
 							<option value="">Any method</option>
-							{#each $filterStore.uniqueValues.processing_base_method ?? [] as method}
+							{#each ($filterStore.uniqueValues.processing_base_method ?? []).filter(isPublicProcessFacetOption) as method}
 								<option value={String(method)}>{formatFilterOption(method)}</option>
 							{/each}
 						</select>
@@ -319,7 +320,7 @@
 							class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
 						>
 							<option value="">Any fermentation</option>
-							{#each $filterStore.uniqueValues.fermentation_type ?? [] as fermentationType}
+							{#each ($filterStore.uniqueValues.fermentation_type ?? []).filter(isPublicProcessFacetOption) as fermentationType}
 								<option value={String(fermentationType)}
 									>{formatFilterOption(fermentationType)}</option
 								>
@@ -335,7 +336,7 @@
 							class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
 						>
 							<option value="">Any additive</option>
-							{#each $filterStore.uniqueValues.process_additives ?? [] as additive}
+							{#each ($filterStore.uniqueValues.process_additives ?? []).filter(isPublicProcessFacetOption) as additive}
 								<option value={String(additive)}>{formatFilterOption(additive)}</option>
 							{/each}
 						</select>
@@ -350,7 +351,7 @@
 							class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm text-text-primary-light shadow-sm focus:outline-none focus:ring-2 focus:ring-background-tertiary-light"
 						>
 							<option value="">Any disclosure</option>
-							{#each $filterStore.uniqueValues.processing_disclosure_level ?? [] as disclosureLevel}
+							{#each ($filterStore.uniqueValues.processing_disclosure_level ?? []).filter(isPublicProcessFacetOption) as disclosureLevel}
 								<option value={String(disclosureLevel)}
 									>{formatFilterOption(disclosureLevel)}</option
 								>

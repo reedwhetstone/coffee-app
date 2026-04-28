@@ -83,6 +83,30 @@ describe('CoffeeCard process analysis', () => {
 		expect(screen.queryByText('Lower confidence, verify before buying')).toBeNull();
 	});
 
+	it('suppresses None Stated process placeholders without hiding meaningful fields', () => {
+		render(CoffeeCard, {
+			coffee: createCoffee({
+				process: {
+					base_method: 'natural',
+					fermentation_type: 'None Stated',
+					additives: ['none'],
+					additive_detail: null,
+					fermentation_duration_hours: null,
+					drying_method: null,
+					notes: null,
+					disclosure_level: null,
+					confidence: 0.86,
+					evidence_available: false
+				}
+			}),
+			parseTastingNotes
+		});
+
+		expect(screen.getByText('Natural process transparency')).toBeTruthy();
+		expect(screen.queryByText('Fermentation: None Stated')).toBeNull();
+		expect(screen.getByText('No additives disclosed')).toBeTruthy();
+	});
+
 	it('preserves legacy processing without inventing structured process claims', () => {
 		render(CoffeeCard, {
 			coffee: createCoffee({ processing: 'Washed', process: null }),

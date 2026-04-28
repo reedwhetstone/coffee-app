@@ -9,6 +9,10 @@
 	} from '$lib/utils/pricing';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
+	import {
+		formatProcessDisplayValue,
+		normalizeProcessDisplayValue
+	} from '$lib/catalog/processDisplay';
 
 	let {
 		coffee,
@@ -88,28 +92,10 @@
 		buildProcessAnalysis(coffee as CoffeeWithStructuredProcess)
 	);
 
-	function formatProcessValue(value: string): string {
-		return value
-			.split('_')
-			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-			.join(' ');
-	}
-
-	function cleanProcessText(value: string | null | undefined): string | null {
-		if (!value) return null;
-		const trimmed = value.trim();
-		if (!trimmed) return null;
-		const normalized = trimmed.toLowerCase();
-		if (normalized === 'unknown' || normalized === 'not specified' || normalized === 'n/a') {
-			return null;
-		}
-		return trimmed;
-	}
-
 	function formatAdditives(additives: string[] | null | undefined): string | null {
 		if (!additives?.length) return null;
 		const cleaned = additives
-			.map((additive) => cleanProcessText(additive))
+			.map((additive) => normalizeProcessDisplayValue(additive))
 			.filter((additive): additive is string => Boolean(additive));
 		if (cleaned.length === 0) return null;
 
@@ -118,18 +104,18 @@
 			return 'No additives disclosed';
 		}
 
-		return `Additives disclosed: ${disclosedAdditives.map(formatProcessValue).join(', ')}`;
+		return `Additives disclosed: ${disclosedAdditives.map(formatProcessDisplayValue).join(', ')}`;
 	}
 
 	function formatDisclosureLabel(value: string | null | undefined): string | null {
-		const cleaned = cleanProcessText(value);
+		const cleaned = normalizeProcessDisplayValue(value);
 		if (!cleaned) return null;
 		const labels: Record<string, string> = {
 			high_detail: 'High-detail disclosure',
 			structured: 'Structured disclosure',
 			minimal: 'Minimal disclosure'
 		};
-		return labels[cleaned] ?? formatProcessValue(cleaned);
+		return labels[cleaned] ?? formatProcessDisplayValue(cleaned);
 	}
 
 	function formatConfidenceLabel(confidence: number | null | undefined): string | null {
@@ -144,24 +130,24 @@
 		const process = coffeeItem.process;
 		if (!process) return null;
 
-		const baseMethod = cleanProcessText(process.base_method);
-		const fermentationType = cleanProcessText(process.fermentation_type);
+		const baseMethod = normalizeProcessDisplayValue(process.base_method);
+		const fermentationType = normalizeProcessDisplayValue(process.fermentation_type);
 		const additiveSummary = formatAdditives(process.additives);
-		const additiveDetail = cleanProcessText(process.additive_detail);
-		const dryingMethod = cleanProcessText(process.drying_method);
-		const notes = cleanProcessText(process.notes);
+		const additiveDetail = normalizeProcessDisplayValue(process.additive_detail);
+		const dryingMethod = normalizeProcessDisplayValue(process.drying_method);
+		const notes = normalizeProcessDisplayValue(process.notes);
 		const disclosureLabel = formatDisclosureLabel(process.disclosure_level);
 		const confidenceLabel = formatConfidenceLabel(process.confidence);
 		const evidenceLabel = process.evidence_available ? 'Supplier evidence available' : null;
 
 		const details = [
-			fermentationType ? `Fermentation: ${formatProcessValue(fermentationType)}` : null,
+			fermentationType ? `Fermentation: ${formatProcessDisplayValue(fermentationType)}` : null,
 			additiveSummary,
 			additiveDetail ? `Additive detail: ${additiveDetail}` : null,
 			process.fermentation_duration_hours
 				? `Fermentation time: ${process.fermentation_duration_hours} hours`
 				: null,
-			dryingMethod ? `Drying: ${formatProcessValue(dryingMethod)}` : null,
+			dryingMethod ? `Drying: ${formatProcessDisplayValue(dryingMethod)}` : null,
 			notes
 		].filter((detail): detail is string => Boolean(detail));
 
@@ -177,7 +163,7 @@
 
 		return {
 			headline: baseMethod
-				? `${formatProcessValue(baseMethod)} process transparency`
+				? `${formatProcessDisplayValue(baseMethod)} process transparency`
 				: 'Process transparency',
 			details,
 			confidenceLabel,
