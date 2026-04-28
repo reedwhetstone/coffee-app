@@ -1,0 +1,69 @@
+---
+title: "Which Moats Survive When AI Makes Software Cheap?"
+date: "2026-04-28"
+description: "AI compresses software build time, but it does not compress elapsed time, permission, distribution, physical infrastructure, or operational data flywheels."
+tags: ["ai", "moats", "strategy", "defensibility"]
+pillar: "ai-first-product"
+draft: false
+readingTime: 6
+---
+
+The moat conversation has a blind spot. [Everyone is asking what can be defended](https://michaelxbloch.substack.com/p/the-only-moats-that-matter). Almost nobody is asking whether the thing being defended will still matter.
+
+Software features are getting cheaper to build. Interfaces, integrations, dashboards, workflow automation: months to days. [SaaS defensibility was built on engineering-time scarcity](https://www.forbes.com/sites/josipamajic/2026/03/31/vcs-rethink-startup-moats-as-ai-compresses-time-to-build/). That scarcity is collapsing.
+
+But AI does not compress elapsed time. It does not create trust, earn regulatory permission, wire a data center to the grid, or accumulate years of operational edge cases overnight. The interesting question is which advantages deepen as AI gets cheaper, and which ones just protect an asset that might stop mattering.
+
+## What actually erodes
+
+If the advantage is "we built this first," it is probably weak. "Our UI is nicer" is weaker. "We integrated with ten systems" is weaker than it used to be.
+
+Enterprise adoption is still slow. Switching involves data migration, retraining, compliance review, and internal politics. The near-term curve is not extinction. It is pricing pressure. The CIO reviewing a renewal only needs to believe the vendor's marginal feature work is no longer worth last year's price.
+
+## Time-locked moats
+
+These require passage of real time. Better models help you operate them, but they cannot skip the clock.
+
+**Distribution** is the most underweighted one. If you own the customer relationship, you decide which AI tools get adopted. DoorDash is not defended by the restaurant ordering UI. It is defended by the density of restaurants, drivers, and customers. As software gets easier to build, the cold-start problem gets worse. A hundred competent clones can now chase the same empty network. [Whoever holds the liquidity compounds; everyone else fights for scraps](https://michaelxbloch.substack.com/p/the-only-moats-that-matter).
+
+**Regulatory permission** moves at institutional speed. Bank charters, FDA approvals, procurement clearances, certifications. AI increases the regulatory surface area because the stakes rise. Permission buys time. The durable version is permission plus a compounding asset inside that protected window.
+
+**Physical infrastructure** is even less compressible. Power plants, fabs, data centers, fiber routes, warehouses. AI can improve planning and utilization, but it cannot negotiate interconnection queues away or deploy hardware before it has been manufactured.
+
+**Capital at scale** belongs here too. Raising $20 million is a pitch. Raising $20 billion is an institutional trust problem built over decades.
+
+**Standards and protocols** get missed most often. Whoever defines the object model controls the market around it. SWIFT, OAuth, HL7, JSON Schema: not glamorous, but they decide what integration means. Once an ecosystem builds against a standard, every downstream integration becomes a switching cost. This is the part of Purveyors that interests me most. The more interesting bet is that a normalized green-coffee listing object becomes the way suppliers, buyers, and agents compare coffee. If the schema becomes market language, the standard is the asset.
+
+## Compounding moats
+
+These get stronger the faster the system runs.
+
+"Data moat" is too sloppy a phrase. A static dataset that was expensive to collect is not automatically durable. It can be scraped, bought, or rebuilt. The durable version is a data flywheel: usage creates proprietary signal, the signal improves the product, the better product attracts more usage, and the loop repeats. If the data does not improve through use, the moat is probably weaker than the slide deck claims.
+
+That is why operational data beats archival data. A competitor cannot compress a missing history of real-world observations into one weekend of coding. Purveyors has a smaller version of the same pattern. The normalized catalog is the accumulated edge-case knowledge from repeated scraper runs: which supplier hides arrival date in copy, which origin names need normalization, which processing labels are marketing language. Someone could scrape the pages faster tomorrow. They would still have to relearn the operational mess.
+
+**Workflow embedding** creates operational dependence. The system has learned how a business handles exceptions, approvals, audits, and edge cases. Removing it breaks memory, not just software. [Systems become defensible when deeply embedded in workflows, trusted during audits, and relied upon for decisions with real regulatory or liability consequences](https://www.edisonpartners.com/blog/ai-where-it-actually-matters-part-3-what-actually-creates-defensibility-in-mission-critical-ai). But there is a tension: the more deeply your product embeds into a customer's workflow, the stickier it becomes; the more deeply your own company embeds around an old architecture, the less agile you become.
+
+**Trust** is the meta-layer. When polished software becomes cheap, buyers need shortcuts for judgment. Brand, provenance, audit trails, and human accountability reduce evaluation cost. Trust rarely stands alone. It amplifies another moat: data, workflow, compliance, or distribution.
+
+## Speed is not the moat
+
+[Speed matters](https://www.nfx.com/post/speed-and-ai) because AI makes iteration cheaper. Slow teams get punished. But speed by itself is brittle. Nokia was fast. Yahoo shipped constantly. These companies did not fail because they were too dumb to see signal. They failed because the value chain moved and the organization could not reorganize around it.
+
+The moat is not speed. The moat is agility: institutional ability to notice your direction is wrong and change the architecture before the market finishes changing without you. That is harder to copy than raw shipping velocity because it lives in decision rights, incentives, and willingness to kill profitable old assumptions. [Defensibility increasingly comes from proprietary data, deep workflow integration, and specialized domain expertise rather than features alone](https://www.codurance.com/publications/beyond-functionality-building-durable-moats-in-the-ai-era).
+
+## The Kodak test
+
+A moat can be real and still become irrelevant. Kodak had real assets: distribution, manufacturing infrastructure, chemistry expertise, brand trust, and a profitable film ecosystem. Those moats protected film photography. They did not protect Kodak when value moved away from film.
+
+The Kodak test: is the asset this moat protects still in the value chain five years from now? A workflow-embedded product can be genuinely sticky and still exposed if an AI-native system bypasses the workflow entirely. A proprietary dataset can compound beautifully in a market that stops mattering. A regulatory license can protect access to a shrinking profit pool.
+
+Defensible and valuable are different questions. Builders have to answer both.
+
+## What this means for builders
+
+The strongest position is a time-locked asset that also compounds. Distribution that generates proprietary usage data. Regulatory permission that creates a protected learning window. Physical infrastructure that throws off operational signal. A standard that becomes the market's default language.
+
+For Purveyors, the website is not the moat. The scraper code is not either. Both could be rebuilt faster every month. The defensible bet is the normalized coffee data layer, the schema that makes supplier listings comparable, and the daily loop that turns messy supplier reality into structured intelligence. The software is the vehicle. The data is the asset. The schema is the standard. The loop is what compounds.
+
+And every few months, the Kodak test comes back: is supplier comparison still where value is moving, or has the market shifted?
