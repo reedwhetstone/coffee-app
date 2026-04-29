@@ -2,7 +2,7 @@
 
 **Status:** Canonical product direction
 **Owner:** Reed Whetstone
-**Last updated:** 2026-04-18
+**Last updated:** 2026-04-29
 
 ## What Purveyors is
 
@@ -41,17 +41,20 @@ This is not just a marketplace and not just a roast logger. The core value is st
    Purveyors should feel like a system that helps users decide, not a pile of disconnected CRUD screens. Search, analytics, recommendations, and conversational workflows should reduce operational friction.
 
 6. **Public surfaces should prove value before the paywall.**
-   Public catalog, docs, blog, and selected analytics should make the product's intelligence legible. Gating should protect the deeper workflow, not hide the existence of value.
+   Public catalog, docs, blog, and selected analytics should make the product's intelligence legible. Gating should protect the deeper workflow, not hide the existence of value. Anonymous surfaces are a CTA and trust surface, not the place to keep adding new filters, charts, exports, saved searches, or premium query tools.
 
-7. **Professional depth should remain accessible.**
+7. **Data visibility and search leverage are different products.**
+   Viewers should be able to inspect the coffee catalog deeply enough to trust the data asset. Subscribed members should receive the best methods for using that data: advanced filtering, semantic search, saved searches, alerts, premium charts, comparisons, exports, and workflow automation. See `notes/decisions/005-catalog-access-level-positioning.md` for the canonical access-level contract.
+
+8. **Professional depth should remain accessible.**
    The platform should scale from a serious individual roaster to a commercial operation without changing its conceptual model. We want enterprise-grade thinking without enterprise bloat.
 
 ## What we are building toward
 
 ### Near-term bets
 
-- A trusted, normalized coffee catalog with meaningful filtering and semantic search
-- Public analytics that prove the value of the underlying data asset
+- A trusted, normalized coffee catalog with meaningful member-level filtering and semantic search
+- Public analytics that prove the value of the underlying data asset without turning anonymous access into the power-user surface
 - A stable v1 API that external developers and agents can build against
 - A first-class CLI that is designed agent-first, shares business logic with the web app, and remains easy to call directly from real agent workflows
 - Scraper quality systems that improve data coverage, provenance, and resilience over time
@@ -80,6 +83,7 @@ A feature, fix, or plan is strategically strong if it does at least one of these
 - increases consistency across web / CLI / API / agent surfaces
 - makes the CLI easier for agents to discover, call, and trust directly
 - makes public product value more legible
+- moves users up the access ladder by separating proof from leverage
 - reduces operational friction through intelligence rather than extra UI
 
 A piece of work is strategically weak if it mainly:
