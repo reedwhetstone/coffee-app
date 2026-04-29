@@ -60,13 +60,13 @@ This is the current, lower-risk successor to the older March 16 PPI plan. The or
 
 Candidate set was limited to Priority 0 through Priority 4 and skipped unclear or already-shipped items.
 
-| Candidate | DEVLOG priority | Shipped-state reconciliation | priority_score | complexity_score | risk_penalty | dependency_penalty | strategic_leverage_bonus | Total | Decision |
-| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| Parchment Intelligence API and CLI bridge | P0 | Foundation shipped, external contract not shipped | 10 | 6 | -2 | 0 | 4 | 18 | Selected |
-| Clean up beans catalog profiles to remove exposed user reference fields | P2 | No direct shipped evidence found | 6 | 10 | 0 | 0 | 1 | 17 | Valid, but narrower |
-| Catalog route server-load performance cleanup | P3 | Some performance fixes shipped, catalog route work may remain | 5 | 6 | -2 | 0 | 3 | 12 | Defer behind P0 data product |
-| Roast chart resize on route navigation | P2 | No direct shipped evidence found | 6 | 6 | -2 | 0 | 1 | 11 | Defer |
-| Mobile roast/profile chart controls polish | P4 | Mobile shell shipped, chart-specific polish remains | 4 | 6 | -2 | 0 | 2 | 10 | Defer |
+| Candidate                                                               | DEVLOG priority | Shipped-state reconciliation                                  | priority_score | complexity_score | risk_penalty | dependency_penalty | strategic_leverage_bonus | Total | Decision                     |
+| ----------------------------------------------------------------------- | --------------: | ------------------------------------------------------------- | -------------: | ---------------: | -----------: | -----------------: | -----------------------: | ----: | ---------------------------- |
+| Parchment Intelligence API and CLI bridge                               |              P0 | Foundation shipped, external contract not shipped             |             10 |                6 |           -2 |                  0 |                        4 |    18 | Selected                     |
+| Clean up beans catalog profiles to remove exposed user reference fields |              P2 | No direct shipped evidence found                              |              6 |               10 |            0 |                  0 |                        1 |    17 | Valid, but narrower          |
+| Catalog route server-load performance cleanup                           |              P3 | Some performance fixes shipped, catalog route work may remain |              5 |                6 |           -2 |                  0 |                        3 |    12 | Defer behind P0 data product |
+| Roast chart resize on route navigation                                  |              P2 | No direct shipped evidence found                              |              6 |                6 |           -2 |                  0 |                        1 |    11 | Defer                        |
+| Mobile roast/profile chart controls polish                              |              P4 | Mobile shell shipped, chart-specific polish remains           |              4 |                6 |           -2 |                  0 |                        2 |    10 | Defer                        |
 
 Skipped as already shipped or too ambiguous for this run:
 
@@ -105,55 +105,55 @@ Skipped as already shipped or too ambiguous for this run:
 
 ```json
 {
-  "data": [
-    {
-      "date": "2026-04-29",
-      "origin": "Ethiopia",
-      "process": "Washed",
-      "grade": "G1",
-      "wholesale": false,
-      "price": {
-        "min": 6.25,
-        "max": 9.8,
-        "avg": 7.45,
-        "median": 7.2,
-        "p25": 6.9,
-        "p75": 8.1,
-        "stdev": 0.7
-      },
-      "sample": {
-        "suppliers": 8,
-        "listings": 31,
-        "aggregation_tier": 1
-      }
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 100,
-    "total": 240,
-    "totalPages": 3,
-    "hasNext": true,
-    "hasPrev": false
-  },
-  "meta": {
-    "resource": "price-index",
-    "namespace": "/v1/price-index",
-    "version": "v1",
-    "auth": {
-      "kind": "api-key",
-      "apiPlan": "member",
-      "ppiAccess": true
-    },
-    "filters": {
-      "from": "2026-03-30",
-      "to": "2026-04-29",
-      "origin": "Ethiopia",
-      "process": null,
-      "grade": null,
-      "wholesale": false
-    }
-  }
+	"data": [
+		{
+			"date": "2026-04-29",
+			"origin": "Ethiopia",
+			"process": "Washed",
+			"grade": "G1",
+			"wholesale": false,
+			"price": {
+				"min": 6.25,
+				"max": 9.8,
+				"avg": 7.45,
+				"median": 7.2,
+				"p25": 6.9,
+				"p75": 8.1,
+				"stdev": 0.7
+			},
+			"sample": {
+				"suppliers": 8,
+				"listings": 31,
+				"aggregation_tier": 1
+			}
+		}
+	],
+	"pagination": {
+		"page": 1,
+		"limit": 100,
+		"total": 240,
+		"totalPages": 3,
+		"hasNext": true,
+		"hasPrev": false
+	},
+	"meta": {
+		"resource": "price-index",
+		"namespace": "/v1/price-index",
+		"version": "v1",
+		"auth": {
+			"kind": "api-key",
+			"apiPlan": "member",
+			"ppiAccess": true
+		},
+		"filters": {
+			"from": "2026-03-30",
+			"to": "2026-04-29",
+			"origin": "Ethiopia",
+			"process": null,
+			"grade": null,
+			"wholesale": false
+		}
+	}
 }
 ```
 

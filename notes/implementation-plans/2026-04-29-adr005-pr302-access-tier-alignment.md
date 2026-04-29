@@ -213,18 +213,18 @@ Proposed shape:
 
 ```ts
 export interface CatalogAccessCapabilities {
-  canViewPublicCatalog: boolean;
-  canViewFullCatalog: boolean;
-  canViewWholesale: boolean;
-  canUseBasicFilters: boolean;
-  canUseAdvancedFilters: boolean;
-  canUseProcessFacets: boolean;
-  canUsePriceScoreRanges: boolean;
-  canUseAdvancedSorts: boolean;
-  canViewPremiumFilterMetadata: boolean;
-  canUseSemanticSearch: boolean;
-  canUseSavedSearches: boolean;
-  canExport: boolean;
+	canViewPublicCatalog: boolean;
+	canViewFullCatalog: boolean;
+	canViewWholesale: boolean;
+	canUseBasicFilters: boolean;
+	canUseAdvancedFilters: boolean;
+	canUseProcessFacets: boolean;
+	canUsePriceScoreRanges: boolean;
+	canUseAdvancedSorts: boolean;
+	canViewPremiumFilterMetadata: boolean;
+	canUseSemanticSearch: boolean;
+	canUseSavedSearches: boolean;
+	canExport: boolean;
 }
 ```
 

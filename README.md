@@ -21,14 +21,14 @@ It also depends on `@purveyors/cli`, which is a first-class interface to the sam
 
 ### Public
 
-| Route        | Description                                                         |
-| ------------ | ------------------------------------------------------------------- |
-| `/`          | Marketing landing page                                              |
-| `/catalog`   | Green coffee catalog with filters and live pricing                  |
+| Route        | Description                                                                           |
+| ------------ | ------------------------------------------------------------------------------------- |
+| `/`          | Marketing landing page                                                                |
+| `/catalog`   | Green coffee catalog with filters and live pricing                                    |
 | `/analytics` | Market intelligence: public overview charts plus gated Parchment Intelligence modules |
-| `/api`       | API product page: plans, pricing, and quick start                   |
-| `/docs`      | Unified documentation for API and CLI                               |
-| `/blog`      | Coffee content and platform updates                                 |
+| `/api`       | API product page: plans, pricing, and quick start                                     |
+| `/docs`      | Unified documentation for API and CLI                                                 |
+| `/blog`      | Coffee content and platform updates                                                   |
 
 ### Authenticated
 
