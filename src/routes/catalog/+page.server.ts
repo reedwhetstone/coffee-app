@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { searchCatalog } from '$lib/data/catalog';
+import { CatalogSchemaUnavailableError, searchCatalog } from '$lib/data/catalog';
 import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
 import {
@@ -68,14 +68,29 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		showWholesale: visibility.showWholesale
 	};
 	const searchState = catalogUrlStateToSearchState(initialCatalogState);
-	const { data: catalogData, count } = await searchCatalog(locals.supabase, {
-		stockedOnly: true,
-		publicOnly: visibility.publicOnly,
-		showWholesale: visibility.showWholesale,
-		wholesaleOnly: visibility.wholesaleOnly,
-		fields: 'resource',
-		...searchState
-	});
+	let catalogData: Awaited<ReturnType<typeof searchCatalog>>['data'] = [];
+	let count: number | null = 0;
+	let catalogSchemaUnavailable: { message: string } | null = null;
+
+	try {
+		const catalogResult = await searchCatalog(locals.supabase, {
+			stockedOnly: true,
+			publicOnly: visibility.publicOnly,
+			showWholesale: visibility.showWholesale,
+			wholesaleOnly: visibility.wholesaleOnly,
+			fields: 'resource',
+			...searchState
+		});
+		catalogData = catalogResult.data;
+		count = catalogResult.count;
+	} catch (error) {
+		if (!(error instanceof CatalogSchemaUnavailableError)) {
+			throw error;
+		}
+
+		catalogSchemaUnavailable = { message: error.message };
+	}
+
 	const catalogResources = (catalogData ?? []).map(toCatalogResourceItem);
 
 	const baseUrl = `${url.protocol}//${url.host}`;
@@ -94,6 +109,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		initialCatalogState,
 		catalogAccess,
 		catalogAccessNotice,
+		catalogSchemaUnavailable,
 		pagination: buildPagination(initialCatalogState, count ?? catalogResources.length),
 		meta: buildPublicMeta({
 			baseUrl,

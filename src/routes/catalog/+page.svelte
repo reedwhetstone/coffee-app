@@ -281,6 +281,15 @@
 			</div>
 		{/if}
 
+		{#if data.catalogSchemaUnavailable}
+			<div class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
+				<h2 class="text-sm font-semibold">Catalog filters are temporarily unavailable</h2>
+				<p class="mt-1 text-sm">
+					{data.catalogSchemaUnavailable.message}
+				</p>
+			</div>
+		{/if}
+
 		{#if data.catalogAccess?.canUseProcessFacets}
 			<div class="rounded-lg border border-border-light bg-background-secondary-light px-4 py-3">
 				<details open={hasAdvancedProcessFilters} class="group">

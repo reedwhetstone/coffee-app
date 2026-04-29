@@ -8,7 +8,15 @@ const mockGenerateCoffeeCollectionSchema = vi.fn();
 const mockGenerateSchemaGraph = vi.fn();
 const mockCreateSchemaService = vi.fn();
 
+class MockCatalogSchemaUnavailableError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'CatalogSchemaUnavailableError';
+	}
+}
+
 vi.mock('$lib/data/catalog', () => ({
+	CatalogSchemaUnavailableError: MockCatalogSchemaUnavailableError,
 	searchCatalog: mockSearchCatalog
 }));
 
@@ -303,6 +311,33 @@ describe('/catalog page load', () => {
 			expect(result.catalogAccess.canUseProcessFacets).toBe(true);
 			expect(result.catalogAccessNotice).toBeNull();
 		}
+	});
+
+	it('returns a controlled catalog schema unavailable response instead of throwing SSR 500', async () => {
+		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		mockSearchCatalog.mockRejectedValue(
+			new MockCatalogSchemaUnavailableError('Structured process filters are unavailable.')
+		);
+
+		const result = (await load(
+			makeLoadInput(
+				'member',
+				memberSession,
+				'https://app.test/catalog?processing_base_method=natural'
+			)
+		)) as {
+			data: Array<Record<string, unknown>>;
+			trainingData: Array<Record<string, unknown>>;
+			catalogSchemaUnavailable: { message: string } | null;
+			pagination: { total: number; totalPages: number };
+		};
+
+		expect(result.catalogSchemaUnavailable).toEqual({
+			message: 'Structured process filters are unavailable.'
+		});
+		expect(result.data).toEqual([]);
+		expect(result.trainingData).toEqual([]);
+		expect(result.pagination).toMatchObject({ total: 0, totalPages: 0 });
 	});
 
 	it('lets member SSR previews use the internal catalog visibility policy', async () => {
