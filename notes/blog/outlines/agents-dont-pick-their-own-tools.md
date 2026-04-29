@@ -76,7 +76,7 @@ If agents don't pick their own tools, what does the competitive landscape actual
 
 **The allowlist is stickier than B2CC predicts.** Once a tool is approved, integrated, configured with API keys, and wired into workflows, removing it has real costs. Not the old-world costs of retraining and migration, but new costs: updating agent configs across teams, re-validating workflows, re-testing edge cases. Switching costs didn't collapse; they shifted from user-facing to infrastructure.
 
-Brief Purveyors illustration (one sentence): purveyors' normalized green coffee data from 27+ suppliers is a proprietary dataset that can't be replicated by switching to another API, which is why it survives the allowlist test even in a world of near-zero agent switching costs.
+Brief Purveyors illustration (one sentence): purveyors' normalized green coffee data from 42 suppliers is a proprietary dataset that can't be replicated by switching to another API, which is why it survives the allowlist test even in a world of near-zero agent switching costs.
 
 ### The Doubled Surface (~300 words)
 

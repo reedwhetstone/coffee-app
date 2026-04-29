@@ -95,7 +95,7 @@ AI compresses the time it takes to build software. It does not compress the time
 
 - **The flywheel mechanism** (make this explicit in the post): data → better model → better product → more users/usage → more data. Breaking any link breaks the compounding. The moat is the flywheel, not the dataset.
 - **Red-team:** Couldn't a well-funded competitor just collect the same data faster with better AI? *Response:* For some datasets, yes — this is why "data moat" is overused. The test is whether the data requires the passage of real operations to generate. You can't scrape longitudinal crop-health data faster by having better scrapers. You can scrape static product listings faster.
-- **Purveyors application:** The normalized coffee dataset across 41 suppliers isn't just a static scrape — it accumulates corrections, normalization edge cases, and supplier-specific parsing logic learned over months of daily runs. That accumulated cleaning intelligence is the compounding asset. Someone starting today would collect the raw HTML faster; they'd spend months relearning the same edge cases.
+- **Purveyors application:** The normalized coffee dataset across 42 suppliers isn't just a static scrape — it accumulates corrections, normalization edge cases, and supplier-specific parsing logic learned over months of daily runs. That accumulated cleaning intelligence is the compounding asset. Someone starting today would collect the raw HTML faster; they'd spend months relearning the same edge cases.
 
 **Workflow embedding.** Edison Partners' thesis: "AI becomes infrastructure when removing it introduces operational risk." The moat isn't the software — it's the operational dependency. Removing the system means retraining staff, re-certifying compliance, and re-learning edge cases accumulated over years of production use.
 
@@ -192,7 +192,7 @@ The builders who understand this distinction will make better bets. Build on dat
 
 **The Purveyors closing example** (use this to make it concrete and personal):
 
-The moat isn't the web app or the scraper code — both could be replicated in weeks with better AI than I used to build them. The moat is the normalized dataset across 41 suppliers, the listing schema that encodes how green coffee should be compared, and the daily operational flywheel that adds signal every time a scraper run corrects a new edge case. The software is the vehicle. The schema is the standard. The data is the asset. None of those compound if the AI-transformed specialty coffee market stops caring about supplier comparison — which is why the Kodak test matters more than the moat taxonomy.
+The moat isn't the web app or the scraper code — both could be replicated in weeks with better AI than I used to build them. The moat is the normalized dataset across 42 suppliers, the listing schema that encodes how green coffee should be compared, and the daily operational flywheel that adds signal every time a scraper run corrects a new edge case. The software is the vehicle. The schema is the standard. The data is the asset. None of those compound if the AI-transformed specialty coffee market stops caring about supplier comparison — which is why the Kodak test matters more than the moat taxonomy.
 
 ---
 

@@ -77,7 +77,7 @@ The Stripe analogy: Stripe won developers with documentation quality when the cu
 
 Three structural shifts that follow from agents-as-customers:
 
-**Switching costs collapse.** An agent can evaluate, integrate, and switch to a competitor in minutes. The traditional SaaS moats (workflow lock-in, integration complexity, retraining costs) evaporate. New moats: proprietary data depth, API reliability, and response quality. Brief Purveyors illustration: normalized green coffee data across 14+ suppliers isn't replicable by switching to a competitor API, because the competitor doesn't have the data.
+**Switching costs collapse.** An agent can evaluate, integrate, and switch to a competitor in minutes. The traditional SaaS moats (workflow lock-in, integration complexity, retraining costs) evaporate. New moats: proprietary data depth, API reliability, and response quality. Brief Purveyors illustration: normalized green coffee data across 42 suppliers isn't replicable by switching to a competitor API, because the competitor doesn't have the data.
 
 **Per-seat pricing breaks.** One human + an agent replaces a team of five. The agent makes 100x the API calls the human would. Usage-based pricing is the only model that survives this math. Purveyors' tier structure (free/200 calls, pro/10k, enterprise/unlimited) is designed for this: the pricing scales with consumption, not headcount.
 
