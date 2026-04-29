@@ -77,22 +77,24 @@ describe('/api/catalog/filters', () => {
 			})
 		);
 		expect(body.sources).toEqual(['A', 'B']);
-		expect(body.processing_base_method).toEqual(['Natural', 'Washed']);
-		expect(body.fermentation_type).toEqual(['Anaerobic', 'None Stated']);
-		expect(body.process_additives).toEqual(['fruit', 'hops', 'none']);
-		expect(body.processing_disclosure_level).toEqual(['high_detail', 'structured']);
+		expect(body.processing).toEqual(['Natural', 'Washed']);
+		expect(body.processing_base_method).toBeUndefined();
+		expect(body.fermentation_type).toBeUndefined();
+		expect(body.process_additives).toBeUndefined();
+		expect(body.processing_disclosure_level).toBeUndefined();
 	});
 
-	it('keeps viewer sessions on the same public-only filter metadata policy', async () => {
+	it('keeps viewer sessions on public-only metadata without premium process facets', async () => {
 		const viewerSession = { access_token: 'cookie-token' } as App.Locals['session'];
 
-		await GET(
+		const response = await GET(
 			makeRequest(
 				'https://app.test/api/catalog/filters?wholesaleOnly=true',
 				'viewer',
 				viewerSession
 			)
 		);
+		const body = await response.json();
 
 		expect(mockGetCatalogFilterMetadata).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
@@ -103,27 +105,40 @@ describe('/api/catalog/filters', () => {
 				wholesaleOnly: false
 			})
 		);
+		expect(body.processing_base_method).toBeUndefined();
+		expect(body.fermentation_type).toBeUndefined();
+		expect(body.process_additives).toBeUndefined();
+		expect(body.processing_disclosure_level).toBeUndefined();
 	});
 
-	it('lets member sessions request internal filter metadata when wholesale flags are explicitly requested', async () => {
-		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+	it('lets member and admin sessions request internal filter metadata and premium process facets', async () => {
+		for (const role of ['member', 'admin'] as const) {
+			vi.clearAllMocks();
+			mockGetCatalogFilterMetadata.mockResolvedValue(visibleRows);
+			const session = { access_token: 'cookie-token' } as App.Locals['session'];
 
-		await GET(
-			makeRequest(
-				'https://app.test/api/catalog/filters?showWholesale=true&wholesaleOnly=true',
-				'member',
-				memberSession
-			)
-		);
+			const response = await GET(
+				makeRequest(
+					'https://app.test/api/catalog/filters?showWholesale=true&wholesaleOnly=true',
+					role,
+					session
+				)
+			);
+			const body = await response.json();
 
-		expect(mockGetCatalogFilterMetadata).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
-			expect.objectContaining({
-				stockedOnly: true,
-				publicOnly: false,
-				showWholesale: true,
-				wholesaleOnly: true
-			})
-		);
+			expect(mockGetCatalogFilterMetadata).toHaveBeenCalledWith(
+				{ kind: 'session-client' },
+				expect.objectContaining({
+					stockedOnly: true,
+					publicOnly: false,
+					showWholesale: true,
+					wholesaleOnly: true
+				})
+			);
+			expect(body.processing_base_method).toEqual(['Natural', 'Washed']);
+			expect(body.fermentation_type).toEqual(['Anaerobic', 'None Stated']);
+			expect(body.process_additives).toEqual(['fruit', 'hops', 'none']);
+			expect(body.processing_disclosure_level).toEqual(['high_detail', 'structured']);
+		}
 	});
 });

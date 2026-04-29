@@ -1,9 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { getCatalogDropdown, searchCatalog, searchCatalogDropdown } from '$lib/data/catalog';
-import {
-	toCatalogResourceItem,
-	type CatalogResponseItem
-} from '$lib/catalog/catalogResourceItem';
+import { toCatalogResourceItem, type CatalogResponseItem } from '$lib/catalog/catalogResourceItem';
 import {
 	checkRateLimit,
 	getApiRowLimit,
@@ -19,6 +16,12 @@ import {
 	type RequestPrincipal
 } from '$lib/server/principal';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
+import {
+	createProcessFacetDeniedNotice,
+	getRequestedProcessFacetParams,
+	resolveCatalogAccessCapabilities,
+	type CatalogAccessCapabilities
+} from '$lib/server/catalogAccess';
 import { jsonResponse } from '$lib/server/http';
 import { createAdminClient } from '$lib/supabase-admin';
 import {
@@ -123,6 +126,7 @@ interface CatalogAccessContext {
 	apiKeyId: string | null;
 	requestPath: string;
 	supabase: RequestEvent['locals']['supabase'];
+	catalogAccess: CatalogAccessCapabilities;
 }
 
 interface QueryCatalogDataOptions {
@@ -419,6 +423,7 @@ async function resolveCatalogAccessContext(
 			requiredPlan: 'viewer',
 			requiredScope: 'catalog:read'
 		});
+		const catalogAccess = resolveCatalogAccessCapabilities({ principal: apiPrincipal });
 		const rowLimit = getApiRowLimit(apiPrincipal.apiPlan);
 		const rateLimit = await checkRateLimit(apiPrincipal.apiKeyId, apiPrincipal.apiPlan);
 
@@ -444,10 +449,12 @@ async function resolveCatalogAccessContext(
 			rateLimitHeaders: headers,
 			apiKeyId: apiPrincipal.apiKeyId,
 			requestPath,
-			supabase: createAdminClient() as unknown as RequestEvent['locals']['supabase']
+			supabase: createAdminClient() as unknown as RequestEvent['locals']['supabase'],
+			catalogAccess
 		};
 	}
 
+	const catalogAccess = resolveCatalogAccessCapabilities({ principal });
 	const visibility = resolveCatalogVisibility({
 		session: isSessionPrincipal(principal) ? principal.session : null,
 		role: principal.primaryAppRole,
@@ -467,7 +474,8 @@ async function resolveCatalogAccessContext(
 		rateLimitHeaders: null,
 		apiKeyId: null,
 		requestPath,
-		supabase: event.locals.supabase
+		supabase: event.locals.supabase,
+		catalogAccess
 	};
 }
 
@@ -755,6 +763,16 @@ async function resolveCatalogRouteResult(
 	try {
 		const query = parseCatalogQuery(event.url);
 		context = await resolveCatalogAccessContext(event, query, requestPath);
+		const deniedProcessParams = context.catalogAccess.canUseProcessFacets
+			? []
+			: getRequestedProcessFacetParams(event.url.searchParams);
+		const deniedNotice = createProcessFacetDeniedNotice({
+			isAuthenticated: context.principal.isAuthenticated,
+			deniedParams: deniedProcessParams
+		});
+		if (deniedNotice) {
+			throw new AuthError(deniedNotice.message, deniedNotice.status);
+		}
 		const body = await queryCatalogData(context, query, {
 			forceDefaultPagination: options.forceDefaultPagination
 		});

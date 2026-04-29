@@ -183,26 +183,100 @@ describe('/catalog page load', () => {
 		);
 	});
 
-	it('passes canonical process transparency query params to catalog search', async () => {
-		await load(
+	it('strips anonymous process transparency query params before catalog search', async () => {
+		const result = (await load(
 			makeLoadInput(
 				'viewer',
 				null,
 				'https://app.test/catalog?processing_base_method=natural&fermentation_type=anaerobic&process_additive=fruit&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
 			)
-		);
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			catalogAccess: { canUseProcessFacets: boolean };
+			catalogAccessNotice: { status: number; deniedParams: string[] } | null;
+		};
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
-			expect.objectContaining({
+			expect.not.objectContaining({
 				processingBaseMethod: 'natural',
 				fermentationType: 'anaerobic',
 				processAdditive: 'fruit',
 				processingDisclosureLevel: 'high_detail',
-				processingConfidenceMin: 0.8,
-				fields: 'resource'
+				processingConfidenceMin: 0.8
 			})
 		);
+		expect(result.initialCatalogState.filters).not.toHaveProperty('processing_base_method');
+		expect(result.catalogAccess.canUseProcessFacets).toBe(false);
+		expect(result.catalogAccessNotice).toMatchObject({
+			status: 401,
+			deniedParams: [
+				'processing_base_method',
+				'fermentation_type',
+				'process_additive',
+				'processing_disclosure_level',
+				'processing_confidence_min'
+			]
+		});
+	});
+
+	it('strips viewer process transparency query params before catalog search', async () => {
+		const viewerSession = { access_token: 'cookie-token' } as App.Locals['session'];
+
+		const result = (await load(
+			makeLoadInput(
+				'viewer',
+				viewerSession,
+				'https://app.test/catalog?processing_base_method=natural'
+			)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			catalogAccessNotice: { status: number; deniedParams: string[] } | null;
+		};
+
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.not.objectContaining({ processingBaseMethod: 'natural' })
+		);
+		expect(result.initialCatalogState.filters).not.toHaveProperty('processing_base_method');
+		expect(result.catalogAccessNotice).toMatchObject({
+			status: 403,
+			deniedParams: ['processing_base_method']
+		});
+	});
+
+	it('lets member and admin SSR previews pass process transparency query params to catalog search', async () => {
+		for (const role of ['member', 'admin'] as const) {
+			vi.clearAllMocks();
+			mockSearchCatalog.mockResolvedValue({
+				data: catalogRows,
+				count: 42,
+				filtersApplied: {}
+			});
+			const session = { access_token: 'cookie-token' } as App.Locals['session'];
+
+			const result = (await load(
+				makeLoadInput(
+					role,
+					session,
+					'https://app.test/catalog?processing_base_method=natural&fermentation_type=anaerobic&process_additive=fruit&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
+				)
+			)) as { catalogAccess: { canUseProcessFacets: boolean }; catalogAccessNotice: null };
+
+			expect(mockSearchCatalog).toHaveBeenCalledWith(
+				{ kind: 'session-client' },
+				expect.objectContaining({
+					processingBaseMethod: 'natural',
+					fermentationType: 'anaerobic',
+					processAdditive: 'fruit',
+					processingDisclosureLevel: 'high_detail',
+					processingConfidenceMin: 0.8,
+					fields: 'resource'
+				})
+			);
+			expect(result.catalogAccess.canUseProcessFacets).toBe(true);
+			expect(result.catalogAccessNotice).toBeNull();
+		}
 	});
 
 	it('lets member SSR previews use the internal catalog visibility policy', async () => {

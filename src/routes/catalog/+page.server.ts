@@ -2,6 +2,13 @@ import type { PageServerLoad } from './$types';
 import { searchCatalog } from '$lib/data/catalog';
 import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
+import {
+	PROCESS_FACET_FILTER_KEYS,
+	createProcessFacetDeniedNotice,
+	getRequestedProcessFacetParams,
+	resolveCatalogAccessCapabilities,
+	type CatalogAccessDeniedNotice
+} from '$lib/server/catalogAccess';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 import {
@@ -22,15 +29,42 @@ function buildPagination(state: CatalogUrlState, total: number) {
 	};
 }
 
+function stripProcessFacetFilters(state: CatalogUrlState): CatalogUrlState {
+	const filters = { ...state.filters };
+	for (const key of PROCESS_FACET_FILTER_KEYS) {
+		delete filters[key];
+	}
+
+	return {
+		...state,
+		filters
+	};
+}
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const requestedCatalogState = parseCatalogUrlState(url, '/catalog');
+	const catalogAccess = resolveCatalogAccessCapabilities({
+		principal: locals.principal,
+		session: locals.session,
+		role: locals.role
+	});
+	const deniedProcessParams = catalogAccess.canUseProcessFacets
+		? []
+		: getRequestedProcessFacetParams(url.searchParams);
+	const catalogAccessNotice: CatalogAccessDeniedNotice | null = createProcessFacetDeniedNotice({
+		isAuthenticated: locals.principal?.isAuthenticated ?? Boolean(locals.session),
+		deniedParams: deniedProcessParams
+	});
+	const authorizedCatalogState = catalogAccess.canUseProcessFacets
+		? requestedCatalogState
+		: stripProcessFacetFilters(requestedCatalogState);
 	const visibility = resolveCatalogVisibility({
 		session: locals.session,
 		role: locals.role,
-		showWholesaleRequested: requestedCatalogState.showWholesale
+		showWholesaleRequested: authorizedCatalogState.showWholesale
 	});
 	const initialCatalogState: CatalogUrlState = {
-		...requestedCatalogState,
+		...authorizedCatalogState,
 		showWholesale: visibility.showWholesale
 	};
 	const searchState = catalogUrlStateToSearchState(initialCatalogState);
@@ -58,6 +92,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		data: catalogResources,
 		trainingData: catalogResources,
 		initialCatalogState,
+		catalogAccess,
+		catalogAccessNotice,
 		pagination: buildPagination(initialCatalogState, count ?? catalogResources.length),
 		meta: buildPublicMeta({
 			baseUrl,

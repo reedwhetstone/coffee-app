@@ -1,10 +1,16 @@
 import { json } from '@sveltejs/kit';
 import { getCatalogFilterMetadata } from '$lib/data/catalog';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
+import { resolveCatalogAccessCapabilities } from '$lib/server/catalogAccess';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	try {
+		const catalogAccess = resolveCatalogAccessCapabilities({
+			principal: locals.principal,
+			session: locals.session,
+			role: locals.role
+		});
 		const visibility = resolveCatalogVisibility({
 			session: locals.session,
 			role: locals.role,
@@ -34,28 +40,30 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			const processing = [...new Set(rows.map((row) => row.processing).filter(Boolean))].sort();
 			if (processing.length > 0) uniqueValues.processing = processing;
 
-			const processingBaseMethods = [
-				...new Set(rows.map((row) => row.processing_base_method).filter(Boolean))
-			].sort();
-			if (processingBaseMethods.length > 0) {
-				uniqueValues.processing_base_method = processingBaseMethods;
-			}
+			if (catalogAccess.canViewPremiumFilterMetadata) {
+				const processingBaseMethods = [
+					...new Set(rows.map((row) => row.processing_base_method).filter(Boolean))
+				].sort();
+				if (processingBaseMethods.length > 0) {
+					uniqueValues.processing_base_method = processingBaseMethods;
+				}
 
-			const fermentationTypes = [
-				...new Set(rows.map((row) => row.fermentation_type).filter(Boolean))
-			].sort();
-			if (fermentationTypes.length > 0) uniqueValues.fermentation_type = fermentationTypes;
+				const fermentationTypes = [
+					...new Set(rows.map((row) => row.fermentation_type).filter(Boolean))
+				].sort();
+				if (fermentationTypes.length > 0) uniqueValues.fermentation_type = fermentationTypes;
 
-			const processAdditives = [
-				...new Set(rows.flatMap((row) => row.process_additives ?? []).filter(Boolean))
-			].sort();
-			if (processAdditives.length > 0) uniqueValues.process_additives = processAdditives;
+				const processAdditives = [
+					...new Set(rows.flatMap((row) => row.process_additives ?? []).filter(Boolean))
+				].sort();
+				if (processAdditives.length > 0) uniqueValues.process_additives = processAdditives;
 
-			const processingDisclosureLevels = [
-				...new Set(rows.map((row) => row.processing_disclosure_level).filter(Boolean))
-			].sort();
-			if (processingDisclosureLevels.length > 0) {
-				uniqueValues.processing_disclosure_level = processingDisclosureLevels;
+				const processingDisclosureLevels = [
+					...new Set(rows.map((row) => row.processing_disclosure_level).filter(Boolean))
+				].sort();
+				if (processingDisclosureLevels.length > 0) {
+					uniqueValues.processing_disclosure_level = processingDisclosureLevels;
+				}
 			}
 
 			const cultivars = [...new Set(rows.map((row) => row.cultivar_detail).filter(Boolean))].sort();
