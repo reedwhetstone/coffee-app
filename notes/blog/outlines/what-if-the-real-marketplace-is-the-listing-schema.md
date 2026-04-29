@@ -3,7 +3,7 @@
 **Pillar:** api-architecture
 **Target:** 1,500-2,000 words (HARD CEILING)
 **Status:** outlined
-**Source material:** repos/coffee-app/notes/PRODUCT_VISION.md, repos/coffee-app/notes/BLOG_STRATEGY.md, repos/coffee-app/notes/big-ideas/2026-04-09-open-coffee-listing-standard.md, repos/coffee-app/notes/API_notes/API-strategy.md, repos/coffee-app/notes/decisions/002-api-first-external-internal-split.md, repos/coffee-app/src/lib/server/catalogResource.ts, repos/coffee-app/src/lib/docs/content.ts, repos/coffee-app/src/routes/api/catalog-api/+server.ts, repos/coffee-scraper/scrape/sources/index.ts, repos/coffee-scraper/scrape/sources/configs/shopify-configs.ts, repos/coffee-scraper/scrape/sources/configs/woocommerce-configs.ts
+**Source material:** repos/coffee-app/notes/PRODUCT_VISION.md, repos/coffee-app/notes/BLOG_STRATEGY.md, brain/moonshots/2026-04-09-open-coffee-listing-standard.md, repos/coffee-app/notes/API_notes/API-strategy.md, repos/coffee-app/notes/decisions/002-api-first-external-internal-split.md, repos/coffee-app/src/lib/server/catalogResource.ts, repos/coffee-app/src/lib/docs/content.ts, repos/coffee-app/src/routes/api/catalog-api/+server.ts, repos/coffee-scraper/scrape/sources/index.ts, repos/coffee-scraper/scrape/sources/configs/shopify-configs.ts, repos/coffee-scraper/scrape/sources/configs/woocommerce-configs.ts
 
 ## Thesis
 
@@ -14,14 +14,14 @@ Most people look at a fragmented market and think the moat is aggregation: scrap
 - Short and punchy. 1,500-2,000 words max.
 - Gladwell/Freakonomics framing: the counterintuitive claim is that the durable marketplace moat is not the scraper or storefront. It is the listing contract underneath them.
 - No salesmanship, no network-effects hand-waving. Stay specific about the mechanism.
-- Data and analysis over narrative. Use the real 41-source footprint, the canonical `/v1/catalog` contract, and disclosure-quality examples.
+- Data and analysis over narrative. Use the real 42-source footprint, the canonical `/v1/catalog` contract, and disclosure-quality examples.
 - 1-2 research citations only, each doing real work.
 - Purveyors should illustrate the principle, not become the pitch.
 - Every section earns its place. If a section does not sharpen the schema-as-market argument, cut it.
 
 ## Verification Checklist
 
-- [ ] `repos/coffee-scraper/scrape/sources/index.ts` plus generic config files still resolve to 41 live sources, or update the count before drafting
+- [ ] `repos/coffee-scraper/scrape/sources/index.ts` plus generic config files still resolve to 42 live sources, or update the count before drafting
 - [ ] `repos/coffee-app/src/lib/server/catalogResource.ts` still defines `/v1/catalog` as the canonical namespace and still supports `anonymous`, `session`, and `api-key` auth kinds
 - [ ] `repos/coffee-app/src/routes/api/catalog-api/+server.ts` still delegates to `/v1/catalog` with `Deprecation`, `Link`, and `Sunset` headers
 - [ ] `repos/coffee-app/src/lib/docs/content.ts` still positions `/v1/catalog` as the stable public contract and the CLI as the account-linked surface
@@ -48,7 +48,7 @@ Open with the obvious story: fragmented markets reward whoever aggregates the mo
 
 Use Purveyors as concrete evidence, not pitch material:
 
-- the scraper already normalizes inventory across 41 live coffee sources
+- the scraper already normalizes inventory across 42 live coffee sources
 - the app already exposes a public catalog and public-facing intelligence surface
 - ADR-002 and the docs stack already push toward one shared machine contract across web, API, CLI, and agent consumers
 
