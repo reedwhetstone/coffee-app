@@ -220,6 +220,32 @@ describe('/catalog page load', () => {
 		});
 	});
 
+	it('does not show an entitlement notice for empty anonymous process transparency params', async () => {
+		const result = (await load(
+			makeLoadInput(
+				'viewer',
+				null,
+				'https://app.test/catalog?processing_base_method=&fermentation_type=&process_additive=&processing_disclosure_level=&processing_confidence_min='
+			)
+		)) as {
+			initialCatalogState: { filters: Record<string, unknown> };
+			catalogAccessNotice: { status: number; deniedParams: string[] } | null;
+		};
+
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.not.objectContaining({
+				processingBaseMethod: expect.anything(),
+				fermentationType: expect.anything(),
+				processAdditive: expect.anything(),
+				processingDisclosureLevel: expect.anything(),
+				processingConfidenceMin: expect.anything()
+			})
+		);
+		expect(result.initialCatalogState.filters).not.toHaveProperty('processing_base_method');
+		expect(result.catalogAccessNotice).toBeNull();
+	});
+
 	it('strips viewer process transparency query params before catalog search', async () => {
 		const viewerSession = { access_token: 'cookie-token' } as App.Locals['session'];
 

@@ -106,8 +106,12 @@ export function resolveCatalogAccessCapabilities(
 	};
 }
 
+function hasNonEmptyParamValue(searchParams: URLSearchParams, key: string): boolean {
+	return searchParams.getAll(key).some((value) => value.trim() !== '');
+}
+
 export function getRequestedProcessFacetParams(searchParams: URLSearchParams): string[] {
-	return PROCESS_FACET_FILTER_KEYS.filter((key) => searchParams.has(key));
+	return PROCESS_FACET_FILTER_KEYS.filter((key) => hasNonEmptyParamValue(searchParams, key));
 }
 
 export function createProcessFacetDeniedNotice(input: {

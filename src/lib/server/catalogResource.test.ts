@@ -644,6 +644,27 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
+	it('does not deny anonymous requests for empty process transparency params', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent(
+				'https://app.test/v1/catalog?processing_base_method=&fermentation_type=&process_additive=&processing_disclosure_level='
+			)
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.meta.auth.kind).toBe('anonymous');
+		expect(mockSearchCatalog).toHaveBeenCalled();
+	});
+
 	it('passes member processing transparency filters through to the catalog data layer', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: true,

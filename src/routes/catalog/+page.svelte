@@ -406,7 +406,7 @@
 					</div>
 					<button
 						type="button"
-						onclick={() => goto(session ? '/subscription' : '/login')}
+						onclick={() => goto(session ? '/subscription' : '/auth')}
 						class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-colors hover:bg-background-tertiary-light hover:text-white"
 					>
 						{session ? 'Compare paid products' : 'Create an account'}
