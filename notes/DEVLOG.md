@@ -4,23 +4,28 @@
 
 ---
 
-## Priority 0: New Product Priorities (Mar 2026)
+## Priority 0: Current Product Priorities (reconciled Apr 29, 2026)
 
-- [ ] **Purveyors Price Index (PPI)** — First revenue-generating data product. Daily specialty green coffee price index by origin, process, and grade, derived from 35 scraped suppliers. `/api/v1/price-index` endpoint with tier-based access (free/member $29/enterprise $199). Blog teaser page as top-of-funnel. Revenue target: $35K+/year at modest adoption. Existing auth + Stripe infrastructure reused. Full plan: `notes/implementation-plans/2026-03-16-purveyors-price-index.md`.
-- [x] **Mobile Navigation** - Redesign sidebar behavior on mobile. Current desktop-style sidebar consumes too much horizontal space. Evaluated the mobile shell approach and shipped a top app bar + full-screen menu / overlay model for authenticated pages. (Implemented in PR #230: mobile-first shell foundation)
-- [x] **Homepage Routing** - Make `/` the true landing page and move catalog to its own dedicated route. Remove login-driven reroute behavior that hurts first contentful paint and perceived responsiveness. (Fixed PR #179)
-- [ ] **Public Catalog Access + Conversion Funnel** - Allow non-auth users to browse catalog with limited access (example: page 1 only) while keeping filters available. Add clear incentives to sign up/log in and promote AI search as a premium conversion lever.
+These are the highest-leverage active product bets after reconciling `origin/main` across coffee-app, coffee-scraper, and purveyors-cli. The CLI is treated as a core agent/product surface, not a separate utility silo.
 
----
+- [ ] **Parchment Intelligence API + CLI Bridge** - Externalize the shipped price-index foundation through a stable `GET /v1/price-index` contract, then add a `purvey intelligence price-index` command/export and conversion docs. Use existing `price_index_snapshots`, Parchment Intelligence entitlements, public analytics gating, and API-key infrastructure; do not rebuild the March PPI plan from scratch. Plans: `notes/implementation-plans/2026-04-29-parchment-intelligence-api-cli-bridge.md` and PR slice docs.
+- [ ] **CLI API-Key Catalog Parity** - Make read-only `purvey catalog` commands able to use the canonical `/v1/catalog` API-key contract in headless environments via `PARCHMENT_API_KEY` / `PURVEYORS_API_KEY`, while keeping inventory, roast, sales, and tasting session-bound. This targets purveyors-cli first, then coffee-app docs after release. Plans: `notes/implementation-plans/2026-04-29-cli-api-key-catalog-parity.md` and PR slice docs.
+- [ ] **Catalog Access Entitlement Alignment** - Apply ADR-005 consistently across `/catalog`, `/api/catalog/filters`, and `/v1/catalog`: public surfaces prove value, viewers inspect data, members get advanced search leverage, and API tiers map to explicit query/field/rate capabilities. Start by correcting process-facet exposure and then centralize capability resolution. Plan: `notes/implementation-plans/2026-04-29-adr005-pr302-access-tier-alignment.md`; decision: `notes/decisions/005-catalog-access-level-positioning.md`.
+- [ ] **V1 Catalog Summary Projection** - Add `fields=summary` to `GET /v1/catalog` as a lean, decision-ready middle shape between `full` and `dropdown` for agents, CLI defaults, and external integrations. Plan: `notes/implementation-plans/2026-04-28-v1-catalog-summary-projection.md`.
+- [ ] **Process Transparency Data Quality + Member Facets** - Backgenerate ADR-004 process fields through coffee-scraper, normalize `drying_method`, and expose high-signal process facets only behind the member/API capability contract once coverage is meaningful. Plan: `notes/implementation-plans/2026-04-29-process-transparency-backgeneration.md`; scraper source truth lives in `../coffee-scraper`.
+
+### Reconciled March P0 items
+
+- **Purveyors Price Index / PPI:** the data foundation, analytics UI, entitlement fields, and Stripe copy have shipped under Parchment Intelligence. The active gap is external API + CLI access, captured above.
+- **Mobile navigation:** shipped as the mobile shell foundation in PR #230; remaining mobile items are lower-priority refinements.
+- **Homepage routing:** shipped in PR #179.
+- **Public catalog access:** base anonymous public catalog and analytics access shipped in PR #152 and follow-up hardening. Residual work is entitlement, conversion copy, and member/API search leverage, not the old unchecked access item.
 
 ## Priority 1: Critical Bugs
 
-These issues break core functionality and should be fixed first.
+These issues break core functionality and should be fixed before feature work.
 
-- [ ] **Bug** - Cannot delete a bean from green coffee inventory if it references a sales row or roast profile. Needs cascade delete function or proper dependency handling to prevent orphaned records.
-- [x] **Bug** - Bean profile data collection incomplete. The `/beans` profile should pull all non-null data fields into the form display in an organized layout. (Fixed PR #123)
-
----
+- [ ] **Critical bug intake** - No unreconciled Priority 1 item from the old March list remains after bean cascade deletion shipped in PR #133 (`fix/cascade-delete-bean-sales`). Add only newly verified core-functionality breakages here with reproduction evidence.
 
 ## Priority 2: UI/UX Issues Affecting User Experience
 
@@ -64,7 +69,7 @@ Mobile-specific improvements for roasters on the go.
 
 The roast chart is a core feature that needs refinement.
 
-- [x] **Bug** - Artisan file import (`/roast` page "Import Artisan File") has no loading indicator after clicking save. Takes noticeably longer than it used to and gives no feedback during the wait — looks like nothing happened. (Fixed PR #199)
+- [x] **Bug** - Artisan file import (`/roast` page "Import Artisan File") has no loading indicator after clicking save. Takes noticeably longer than it used to and gives no feedback during the wait - looks like nothing happened. (Fixed PR #199)
 - [ ] **Bug** - Fan/heat settings from `.alog` imports render off-chart. Settings axes need to auto-detect the actual value range from the imported data (e.g., 0–100 in steps of 5 vs. 0–10) and scale accordingly instead of using a fixed axis range.
 - [ ] **Roast Chart** - Add visual save confirmation when clicking "cool end" button. Users need feedback that the action succeeded.
 - [ ] **Roast Chart** - Remove y-axis gridlines for cleaner appearance.
@@ -168,13 +173,14 @@ Data analysis and visualization features.
 
 Public API for external developers and integrations.
 
-- [ ] **API** - Integrate full API infrastructure into front-end app. Internal app should consume same APIs sold externally.
-- [ ] **API** - Green coffee processing API endpoint. Input a URL or coffee name, output a cleaned, normalized data row.
-- [ ] **API** - Tasting notes API endpoint. Input tasting notes text, output a cupping score chart with custom visualization.
-- [ ] **API** - Roast calculations API endpoint. Input roast tracking data, output full charted interface with RoR calculations.
-- [x] **API** - Implement API tier row limits. Free tier: limited rows, Member: more rows, Enterprise: unlimited.
+- [ ] **API** - Add `GET /v1/price-index` as the first stable Parchment Intelligence API family, backed by existing `price_index_snapshots` and entitlement checks.
+- [ ] **API** - Add `fields=summary` to `GET /v1/catalog` for agent/CLI/API list workloads that need decision-ready rows without full narrative payloads.
+- [ ] **API** - Centralize catalog capability enforcement so `/catalog`, `/api/catalog/filters`, and `/v1/catalog` share the same anonymous/viewer/member/API entitlement contract.
+- [ ] **API** - Keep raw process evidence private by default while exposing provenance-safe nested process summaries.
 - [ ] **API** - Implement API key limits per tier. Free: 1 key, Member: up to 10 keys, Enterprise: unlimited keys.
 - [ ] **API** - Add roast IDs to profiles for more accurate tagging and API reference.
+- [ ] **API** - Longer-term endpoint ideas remain open: green coffee processing, tasting note scoring, and roast calculations as stable API products once the catalog/intelligence contracts are coherent.
+- [x] **API** - Implement API tier row limits. Free tier: limited rows, Member: more rows, Enterprise: unlimited.
 
 ---
 
@@ -223,7 +229,8 @@ Ongoing code maintenance tasks.
 - [ ] **Lint Boundary** - Split repo-wide prose/notes formatting from product lint, or narrow `pnpm lint` so docs and code PRs are not blocked by historical markdown drift outside the changed scope.
 - [ ] **Public Route Metadata** - Centralize public route metadata for `/v1`, `/docs`, `/api`, `/api-dashboard`, and legacy docs redirects so README, `llms.txt`, and docs marketing copy share one source of truth.
 - [ ] **CLI Docs Contract Sync** - Consume a tiny generated docs fragment from `@purveyors/cli/manifest` (published or vendored) so coffee-app docs stay in lockstep with the shipped CLI contract instead of manually shadowing it.
-- [ ] **API Migration** - Implement share token support in `/api/roast-profiles` endpoint. Currently missing from new endpoint. See `notes/MIGRATION-NOTES.md`.
+- [ ] **CLI Product Surface** - Keep coffee-app product docs aligned with purveyors-cli `origin/main` (`purvey` 0.15.1 source): command groups are auth, catalog, inventory, roast, sales, tasting, config, context, and manifest; exported subpaths include catalog, inventory, roast, sales, tasting, manifest, artisan, ai, and shared lib.
+- [ ] **API Migration** - Re-audit share-token support in `/api/roast-profiles`; the old `notes/MIGRATION-NOTES.md` pointer is gone, so this needs fresh source evidence before implementation.
 
 ---
 
@@ -280,34 +287,24 @@ Items that need more context before they can be actionable.
 
 ## Supplier Tracking
 
-### Integrated Suppliers (39 live as of 2026-03-20)
+Supplier implementation details live in `../coffee-scraper/SUPPLIERS.md`; keep this section as product-level context only. Coffee-app should not duplicate the full supplier matrix.
 
-See `coffee-scraper` repo `SUPPLIERS.md` for the full list. Representative examples:
+### Current source-of-truth state
 
-- [x] Bodhi Leaf
-- [x] Sweet Maria's
-- [x] Coffee Bean Corral
-- [x] Burman Coffee Traders
-- [x] Happy Mug
-- [x] Mill City Roasters
-- [x] T.M. Ward Coffee (added PR #99 2026-03-17)
-- [x] Ally Coffee (wholesale catalog, added PR #107 2026-03-20)
-- [x] Roastmasters (Miva Merchant, added PR #105 2026-03-20)
-- [x] Genuine Origin (NetSuite, added PR #109 2026-03-20)
-- [x] Ally Open (Shopify, added PR #106 2026-03-20)
+- **42 live suppliers as of 2026-04-29** in coffee-scraper `origin/main` (`c54d22d`).
+- **Coffee Shrub** is now live as a custom Playwright/Magento source and should be treated as a wholesale-capable source, not as an exclusion.
+- **Wholesale-capable suppliers are in scope** when they expose useful public inventory. Classification should use `price_tiers` plus the DB `wholesale` flag rather than excluding by bag size or title alone.
+- **Recent scraper moat work:** processing transparency persistence, producer column support, conditional field policies, high-noise source policy tuning, and source-specific fixes for Coffee Shrub, Genuine Origin, Roastmasters, and processing/additive evidence extraction.
 
-### Suppliers to Add
+### Product implications for coffee-app
 
-- [ ] ~~Onyx Green Coffee~~ — Onyx Box is not a public green bean offering; excluded
-- [ ] Green Coffee Buying Club
-- [ ] Len's Coffee
-- [ ] Leverhead Coffee
-- [ ] Lost Dutchman
-- [ ] Roast Coffee Company
-- [ ] Blazing Bean Roasters
-- [ ] Crop to Cup
+- Public catalog, API, analytics, and CLI surfaces should assume the scraper is expanding into richer wholesale and process-transparency data.
+- New catalog filters or charts should be entitlement-aware per ADR-005; public visibility is proof, advanced multi-facet search is member/API leverage.
+- Process transparency UI should not get ahead of data quality: `processing_base_method` has seed coverage, `drying_method` has broad but noisy coverage, and `fermentation_type` / additive fields need backgeneration before polished facets.
 
----
+### Suppliers to add
+
+No current ready-for-implementation supplier candidates are listed in coffee-scraper `SUPPLIERS.md`. Deferred wholesale candidates such as Forest Coffee, Cofinet, and Invalsa should be reconsidered when commercial-roaster coverage or geographic scope becomes a priority.
 
 ## Weight Loss Reference Guide
 
@@ -326,22 +323,23 @@ For roast darkness token implementation:
 
 ## Reference Documentation
 
-Additional detailed notes are available in the `/notes` folder:
+Additional detailed notes are available in the `/notes` folder and sibling product repos:
 
-- `API-strategy.md` - Full API-first platform strategy
-- `APITIER.md` - API pricing tier details
-- `APITODOS.md` - Detailed API implementation plan
-- `Chart.md` - Roast chart refactoring project status
-- `MARKET_ANALYSIS.md` - Market analysis and user targeting
-- `MIGRATION-NOTES.md` - API migration notes and missing features
-- `page-loading-optimization-plan.md` - Performance optimization plan
-- `DEVLOG-DAILY-PR-AUDIT.md` - Daily PR automation audit and easy-win selection rubric
-- `lint-issues-prioritized.md` - TypeScript/lint issue tracking
-- `UI-FRAMEWORK.md` - Design system documentation
-- `svelte5README.md` - SvelteKit 5 migration reference
-- `artisan-upload/artisan-data-mapping-analysis.md` - Artisan data schema documentation
-
----
+- `notes/PRODUCT_VISION.md` - Canonical product direction and authority order
+- `notes/API_notes/API-strategy.md` - API-first platform strategy
+- `notes/API_notes/APITIER.md` - API pricing tier details
+- `notes/decisions/005-catalog-access-level-positioning.md` - Canonical catalog access and entitlement positioning
+- `notes/implementation-plans/2026-04-29-parchment-intelligence-api-cli-bridge.md` - Price-index API + CLI bridge program
+- `notes/implementation-plans/2026-04-29-cli-api-key-catalog-parity.md` - CLI API-key catalog mode program
+- `notes/implementation-plans/2026-04-29-process-transparency-backgeneration.md` - Scraper-backed process transparency data quality plan
+- `notes/implementation-plans/2026-04-28-v1-catalog-summary-projection.md` - `fields=summary` API projection plan
+- `notes/DEVLOG-DAILY-PR-AUDIT.md` - Daily PR automation audit and easy-win selection rubric
+- `notes/UI-FRAMEWORK.md` - Design system documentation
+- `notes/svelte5README.md` - SvelteKit 5 migration reference
+- `notes/archive/Chart.md` - Archived roast chart refactoring status
+- `notes/artisan-upload/artisan-data-mapping-analysis.md` - Artisan data schema documentation
+- `../coffee-scraper/SUPPLIERS.md` and `../coffee-scraper/docs/PROJECT_OVERVIEW.md` - Supplier/source truth for the data pipeline
+- `../purveyors-cli/docs/CLI_STRATEGY.md` - CLI architecture, command surface, auth model, and agent-first product contract
 
 ## Tech Stack
 
