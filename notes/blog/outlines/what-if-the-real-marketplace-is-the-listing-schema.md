@@ -3,7 +3,7 @@
 **Pillar:** api-architecture
 **Target:** 1,500-2,000 words (HARD CEILING)
 **Status:** outlined
-**Source material:** repos/coffee-app/notes/PRODUCT_VISION.md, repos/coffee-app/notes/BLOG_STRATEGY.md, brain/moonshots/2026-04-09-open-coffee-listing-standard.md, repos/coffee-app/notes/API_notes/API-strategy.md, repos/coffee-app/notes/decisions/002-api-first-external-internal-split.md, repos/coffee-app/src/lib/server/catalogResource.ts, repos/coffee-app/src/lib/docs/content.ts, repos/coffee-app/src/routes/api/catalog-api/+server.ts, repos/coffee-scraper/scrape/sources/index.ts, repos/coffee-scraper/scrape/sources/configs/shopify-configs.ts, repos/coffee-scraper/scrape/sources/configs/woocommerce-configs.ts
+**Source material:** repos/coffee-app/notes/PRODUCT_VISION.md, repos/coffee-app/notes/BLOG_STRATEGY.md, notes/big-ideas/2026-04-09-open-coffee-listing-standard.md, repos/coffee-app/notes/API_notes/API-strategy.md, repos/coffee-app/notes/decisions/002-api-first-external-internal-split.md, repos/coffee-app/src/lib/server/catalogResource.ts, repos/coffee-app/src/lib/docs/content.ts, repos/coffee-app/src/routes/api/catalog-api/+server.ts, repos/coffee-scraper/scrape/sources/index.ts, repos/coffee-scraper/scrape/sources/configs/shopify-configs.ts, repos/coffee-scraper/scrape/sources/configs/woocommerce-configs.ts
 
 ## Thesis
 
