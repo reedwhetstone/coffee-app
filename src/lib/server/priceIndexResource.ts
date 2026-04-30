@@ -79,7 +79,6 @@ export interface CanonicalPriceIndexResponse {
 interface ParsedPriceIndexQuery {
 	page: number;
 	limit: number;
-	offset: number;
 	filters: {
 		origin: string | null;
 		process: string | null;
@@ -265,7 +264,6 @@ function parsePriceIndexQuery(url: URL): ParsedPriceIndexQuery {
 	return {
 		page,
 		limit,
-		offset: (page - 1) * limit,
 		filters: {
 			origin: parseOptionalStringParam(url, 'origin'),
 			process: parseOptionalStringParam(url, 'process'),
@@ -369,8 +367,9 @@ async function queryPriceIndexData(
 		dbQuery = dbQuery.order(order.column, { ascending: order.ascending });
 	}
 
-	const end = query.offset + effectiveLimit - 1;
-	const { data, error, count } = await dbQuery.range(query.offset, end);
+	const offset = (query.page - 1) * effectiveLimit;
+	const end = offset + effectiveLimit - 1;
+	const { data, error, count } = await dbQuery.range(offset, end);
 
 	if (error) {
 		throw new Error(`Failed to query price index snapshots: ${error.message}`);

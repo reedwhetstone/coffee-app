@@ -300,4 +300,25 @@ describe('buildCanonicalPriceIndexResponse', () => {
 			totalAvailable: 240
 		});
 	});
+
+	it('uses the capped effective page size when computing row-limited page offsets', async () => {
+		mockGetApiRowLimit.mockReturnValue(25);
+		const { query } = createQueryMock({ data: [sampleSnapshot], count: 240 });
+
+		const response = await buildCanonicalPriceIndexResponse(
+			makeEvent('https://app.test/v1/price-index?page=2&limit=100')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(query.range).toHaveBeenCalledWith(25, 49);
+		expect(body.pagination).toMatchObject({
+			page: 2,
+			limit: 25,
+			total: 240,
+			totalPages: 10,
+			hasNext: true,
+			hasPrev: true
+		});
+	});
 });
