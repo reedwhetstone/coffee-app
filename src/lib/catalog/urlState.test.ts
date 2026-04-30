@@ -10,7 +10,7 @@ import {
 describe('catalog URL state helpers', () => {
 	it('parses canonical catalog query params into route state', () => {
 		const url = new URL(
-			'https://app.test/catalog?country=Ethiopia&country=Colombia&processing=Washed&processing_base_method=washed&fermentation_type=anaerobic&process_additive=fruit&processing_disclosure_level=high_detail&processing_confidence_min=0.8&name=guji&price_per_lb_min=7.5&price_per_lb_max=9&page=2&showWholesale=true'
+			'https://app.test/catalog?country=Ethiopia&country=Colombia&processing=Washed&processing_base_method=washed&fermentation_type=anaerobic&process_additive=fruit&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8&name=guji&price_per_lb_min=7.5&price_per_lb_max=9&page=2&showWholesale=true'
 		);
 
 		const state = parseCatalogUrlState(url, '/catalog');
@@ -22,6 +22,7 @@ describe('catalog URL state helpers', () => {
 				processing_base_method: 'washed',
 				fermentation_type: 'anaerobic',
 				process_additive: 'fruit',
+				has_additives: true,
 				processing_disclosure_level: 'high_detail',
 				processing_confidence_min: 0.8,
 				name: 'guji',
@@ -48,6 +49,7 @@ describe('catalog URL state helpers', () => {
 			processing_base_method: 'washed',
 			fermentation_type: 'anaerobic',
 			process_additive: 'fruit',
+			has_additives: true,
 			processing_disclosure_level: 'high_detail',
 			processing_confidence_min: 0.8,
 			cost_lb: { min: '7.5', max: '' }
@@ -56,7 +58,7 @@ describe('catalog URL state helpers', () => {
 		const params = buildCatalogShareParams(state, '/catalog');
 
 		expect(params.toString()).toBe(
-			'country=Ethiopia&processing=Washed&processing_base_method=washed&fermentation_type=anaerobic&process_additive=fruit&processing_disclosure_level=high_detail&processing_confidence_min=0.8&price_per_lb_min=7.5'
+			'country=Ethiopia&processing=Washed&processing_base_method=washed&fermentation_type=anaerobic&process_additive=fruit&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8&price_per_lb_min=7.5'
 		);
 	});
 
@@ -66,6 +68,7 @@ describe('catalog URL state helpers', () => {
 			processing_base_method: 'natural',
 			fermentation_type: 'anaerobic',
 			process_additive: 'fruit',
+			has_additives: false,
 			processing_disclosure_level: 'high_detail',
 			processing_confidence_min: '0.8'
 		};
@@ -74,6 +77,7 @@ describe('catalog URL state helpers', () => {
 			processingBaseMethod: 'natural',
 			fermentationType: 'anaerobic',
 			processAdditive: 'fruit',
+			hasAdditives: false,
 			processingDisclosureLevel: 'high_detail',
 			processingConfidenceMin: 0.8
 		});
@@ -96,6 +100,41 @@ describe('catalog URL state helpers', () => {
 		searchState.filters = { processing_confidence_min: '0.75' };
 		expect(catalogUrlStateToSearchState(searchState).processingConfidenceMin).toBeUndefined();
 		expect(buildCatalogRequestParams(searchState, '/catalog').toString()).toBe('page=1&limit=15');
+	});
+
+	it('parses and serializes has_additives with strict boolean semantics', () => {
+		const trueState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?has_additives=true'),
+			'/catalog'
+		);
+		const falseState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?has_additives=false'),
+			'/catalog'
+		);
+		const malformedState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?has_additives=unknown'),
+			'/catalog'
+		);
+		const emptyState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?has_additives='),
+			'/catalog'
+		);
+
+		expect(trueState.filters.has_additives).toBe(true);
+		expect(falseState.filters.has_additives).toBe(false);
+		expect(catalogUrlStateToSearchState(falseState).hasAdditives).toBe(false);
+		expect(buildCatalogRequestParams(falseState, '/catalog').toString()).toBe(
+			'page=1&limit=15&has_additives=false'
+		);
+		expect(malformedState.filters).not.toHaveProperty('has_additives');
+		expect(emptyState.filters).not.toHaveProperty('has_additives');
+
+		const stringBooleanState = createDefaultCatalogUrlState('/catalog');
+		stringBooleanState.filters = { has_additives: 'false' };
+		expect(catalogUrlStateToSearchState(stringBooleanState).hasAdditives).toBeUndefined();
+		expect(buildCatalogRequestParams(stringBooleanState, '/catalog').toString()).toBe(
+			'page=1&limit=15'
+		);
 	});
 
 	it('keeps active sort settings in share URLs when filters are cleared', () => {
@@ -125,6 +164,7 @@ describe('catalog URL state helpers', () => {
 			processing_base_method: 'Natural',
 			fermentation_type: 'anaerobic',
 			process_additive: 'hops',
+			has_additives: true,
 			processing_disclosure_level: 'high_detail',
 			processing_confidence_min: 0.8,
 			score_value: { min: '86', max: '90' },
@@ -144,6 +184,7 @@ describe('catalog URL state helpers', () => {
 			processingBaseMethod: 'Natural',
 			fermentationType: 'anaerobic',
 			processAdditive: 'hops',
+			hasAdditives: true,
 			processingDisclosureLevel: 'high_detail',
 			processingConfidenceMin: 0.8,
 			cultivarDetail: undefined,
