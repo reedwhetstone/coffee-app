@@ -23,6 +23,11 @@ export interface CatalogSearchState {
 	country?: string | string[];
 	source?: string[];
 	processing?: string;
+	processingBaseMethod?: string;
+	fermentationType?: string;
+	processAdditive?: string;
+	processingDisclosureLevel?: string;
+	processingConfidenceMin?: number;
 	cultivarDetail?: string;
 	type?: string;
 	grade?: string;
@@ -54,6 +59,10 @@ const STRING_FILTER_KEYS = [
 	'origin',
 	'continent',
 	'processing',
+	'processing_base_method',
+	'fermentation_type',
+	'process_additive',
+	'processing_disclosure_level',
 	'cultivar_detail',
 	'type',
 	'grade',
@@ -69,6 +78,11 @@ const FILTER_SERIALIZATION_ORDER = [
 	'country',
 	'source',
 	'processing',
+	'processing_base_method',
+	'fermentation_type',
+	'process_additive',
+	'processing_disclosure_level',
+	'processing_confidence_min',
 	'cultivar_detail',
 	'type',
 	'grade',
@@ -81,6 +95,16 @@ const FILTER_SERIALIZATION_ORDER = [
 	'stocked_date'
 ] as const;
 
+export const PROCESSING_CONFIDENCE_OPTIONS = [
+	{ value: 0.6, label: 'Moderate confidence' },
+	{ value: 0.8, label: 'High confidence' },
+	{ value: 0.9, label: 'Very high confidence' }
+] as const;
+
+const SUPPORTED_PROCESSING_CONFIDENCE_THRESHOLDS = new Set<number>(
+	PROCESSING_CONFIDENCE_OPTIONS.map((option) => option.value)
+);
+
 function parsePositiveInteger(value: string | null, fallback: number): number {
 	const parsed = Number.parseInt(value ?? '', 10);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -91,6 +115,15 @@ function parseOptionalNumber(value: string | null): number | undefined {
 
 	const parsed = Number.parseFloat(value);
 	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseProcessingConfidenceMin(value: string | null): number | undefined {
+	const parsed = parseOptionalNumber(value);
+	if (parsed === undefined || !SUPPORTED_PROCESSING_CONFIDENCE_THRESHOLDS.has(parsed)) {
+		return undefined;
+	}
+
+	return parsed;
 }
 
 function parseOptionalNumberFromAliases(
@@ -166,6 +199,13 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 		};
 	}
 
+	const processingConfidenceMin = parseProcessingConfidenceMin(
+		url.searchParams.get('processing_confidence_min')
+	);
+	if (processingConfidenceMin !== undefined) {
+		filters.processing_confidence_min = processingConfidenceMin;
+	}
+
 	const sortField = url.searchParams.get('sortField') ?? defaultSort.field;
 	const sortDirectionParam = url.searchParams.get('sortDirection');
 	const sortDirection =
@@ -219,6 +259,14 @@ function appendFilterParam(
 		}
 		if (value.max !== '') {
 			params.append(`${paramKey}_max`, value.max.toString());
+		}
+		return;
+	}
+
+	if (filterKey === 'processing_confidence_min') {
+		const threshold = parseProcessingConfidenceMin(value.toString());
+		if (threshold !== undefined) {
+			params.append(paramKey, threshold.toString());
 		}
 		return;
 	}
@@ -360,6 +408,13 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		country: countries && countries.length === 1 ? countries[0] : countries,
 		source: readArrayValue(state.filters.source),
 		processing: readStringValue(state.filters.processing),
+		processingBaseMethod: readStringValue(state.filters.processing_base_method),
+		fermentationType: readStringValue(state.filters.fermentation_type),
+		processAdditive: readStringValue(state.filters.process_additive),
+		processingDisclosureLevel: readStringValue(state.filters.processing_disclosure_level),
+		processingConfidenceMin: parseProcessingConfidenceMin(
+			state.filters.processing_confidence_min?.toString() ?? null
+		),
 		cultivarDetail: readStringValue(state.filters.cultivar_detail),
 		type: readStringValue(state.filters.type),
 		grade: readStringValue(state.filters.grade),

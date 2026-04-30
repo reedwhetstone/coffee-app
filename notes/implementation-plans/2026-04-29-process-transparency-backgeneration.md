@@ -34,17 +34,17 @@ A read-only public `/v1/catalog?stocked=all&page=N&limit=100` sample on 2026-04-
 
 Coverage in that sample:
 
-| Field | Populated rows | Unique values | Notes |
-| --- | ---: | ---: | --- |
-| `processing_base_method` | 51 | 5 | Has useful seed coverage. Values: `Decaf`, `Natural`, `Semi-Washed`, `Washed`, `Wet-Hulled`. |
-| `fermentation_type` | 0 | 0 | Not ready for UI facets. |
-| `process_additives` | 0 | 0 | Not ready for UI facets. |
-| `process_additive_detail` | 0 | 0 | Not ready for UI facets. |
-| `fermentation_duration_hours` | 1 | 1 | Too sparse for filtering. |
-| `processing_notes` | 20 | 20 | Useful for evidence and card context, not facet-ready. |
-| `processing_disclosure_level` | 54 | 3 | Useful internally. Values: `high_detail`, `none`, `structured`. |
-| `processing_confidence` | 51 | 4 | Useful for gating and QA, not a public free filter. |
-| `drying_method` | 1,305 | 171 | Strong coverage, poor normalization. Needs taxonomy before dropdown exposure. |
+| Field                         | Populated rows | Unique values | Notes                                                                                        |
+| ----------------------------- | -------------: | ------------: | -------------------------------------------------------------------------------------------- |
+| `processing_base_method`      |             51 |             5 | Has useful seed coverage. Values: `Decaf`, `Natural`, `Semi-Washed`, `Washed`, `Wet-Hulled`. |
+| `fermentation_type`           |              0 |             0 | Not ready for UI facets.                                                                     |
+| `process_additives`           |              0 |             0 | Not ready for UI facets.                                                                     |
+| `process_additive_detail`     |              0 |             0 | Not ready for UI facets.                                                                     |
+| `fermentation_duration_hours` |              1 |             1 | Too sparse for filtering.                                                                    |
+| `processing_notes`            |             20 |            20 | Useful for evidence and card context, not facet-ready.                                       |
+| `processing_disclosure_level` |             54 |             3 | Useful internally. Values: `high_detail`, `none`, `structured`.                              |
+| `processing_confidence`       |             51 |             4 | Useful for gating and QA, not a public free filter.                                          |
+| `drying_method`               |          1,305 |           171 | Strong coverage, poor normalization. Needs taxonomy before dropdown exposure.                |
 
 ## Existing scraper support
 

@@ -1,6 +1,14 @@
 import type { PageServerLoad } from './$types';
-import { searchCatalog } from '$lib/data/catalog';
+import { CatalogSchemaUnavailableError, searchCatalog } from '$lib/data/catalog';
+import { toCatalogResourceItem } from '$lib/catalog/catalogResourceItem';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
+import {
+	PROCESS_FACET_FILTER_KEYS,
+	createProcessFacetDeniedNotice,
+	getRequestedProcessFacetParams,
+	resolveCatalogAccessCapabilities,
+	type CatalogAccessDeniedNotice
+} from '$lib/server/catalogAccess';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { createSchemaService } from '$lib/services/schemaService';
 import {
@@ -21,41 +29,88 @@ function buildPagination(state: CatalogUrlState, total: number) {
 	};
 }
 
+function stripProcessFacetFilters(state: CatalogUrlState): CatalogUrlState {
+	const filters = { ...state.filters };
+	for (const key of PROCESS_FACET_FILTER_KEYS) {
+		delete filters[key];
+	}
+
+	return {
+		...state,
+		filters
+	};
+}
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const requestedCatalogState = parseCatalogUrlState(url, '/catalog');
+	const catalogAccess = resolveCatalogAccessCapabilities({
+		principal: locals.principal,
+		session: locals.session,
+		role: locals.role
+	});
+	const deniedProcessParams = catalogAccess.canUseProcessFacets
+		? []
+		: getRequestedProcessFacetParams(url.searchParams);
+	const catalogAccessNotice: CatalogAccessDeniedNotice | null = createProcessFacetDeniedNotice({
+		isAuthenticated: locals.principal?.isAuthenticated ?? Boolean(locals.session),
+		deniedParams: deniedProcessParams
+	});
+	const authorizedCatalogState = catalogAccess.canUseProcessFacets
+		? requestedCatalogState
+		: stripProcessFacetFilters(requestedCatalogState);
 	const visibility = resolveCatalogVisibility({
 		session: locals.session,
 		role: locals.role,
-		showWholesaleRequested: requestedCatalogState.showWholesale
+		showWholesaleRequested: authorizedCatalogState.showWholesale
 	});
 	const initialCatalogState: CatalogUrlState = {
-		...requestedCatalogState,
+		...authorizedCatalogState,
 		showWholesale: visibility.showWholesale
 	};
 	const searchState = catalogUrlStateToSearchState(initialCatalogState);
-	const { data: catalogData, count } = await searchCatalog(locals.supabase, {
-		stockedOnly: true,
-		publicOnly: visibility.publicOnly,
-		showWholesale: visibility.showWholesale,
-		wholesaleOnly: visibility.wholesaleOnly,
-		...searchState
-	});
+	let catalogData: Awaited<ReturnType<typeof searchCatalog>>['data'] = [];
+	let count: number | null = 0;
+	let catalogSchemaUnavailable: { message: string } | null = null;
+
+	try {
+		const catalogResult = await searchCatalog(locals.supabase, {
+			stockedOnly: true,
+			publicOnly: visibility.publicOnly,
+			showWholesale: visibility.showWholesale,
+			wholesaleOnly: visibility.wholesaleOnly,
+			fields: 'resource',
+			...searchState
+		});
+		catalogData = catalogResult.data;
+		count = catalogResult.count;
+	} catch (error) {
+		if (!(error instanceof CatalogSchemaUnavailableError)) {
+			throw error;
+		}
+
+		catalogSchemaUnavailable = { message: error.message };
+	}
+
+	const catalogResources = (catalogData ?? []).map(toCatalogResourceItem);
 
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const schemaService = createSchemaService(baseUrl);
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),
 		schemaService.generateCoffeeCollectionSchema(
-			(catalogData ?? []) as Record<string, unknown>[],
+			catalogResources as Record<string, unknown>[],
 			`${baseUrl}/catalog`
 		)
 	]);
 
 	return {
-		data: catalogData || [],
-		trainingData: catalogData || [],
+		data: catalogResources,
+		trainingData: catalogResources,
 		initialCatalogState,
-		pagination: buildPagination(initialCatalogState, count ?? catalogData.length),
+		catalogAccess,
+		catalogAccessNotice,
+		catalogSchemaUnavailable,
+		pagination: buildPagination(initialCatalogState, count ?? catalogResources.length),
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/catalog',

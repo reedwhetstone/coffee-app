@@ -10,7 +10,7 @@ import {
 describe('catalog URL state helpers', () => {
 	it('parses canonical catalog query params into route state', () => {
 		const url = new URL(
-			'https://app.test/catalog?country=Ethiopia&country=Colombia&processing=Washed&name=guji&price_per_lb_min=7.5&price_per_lb_max=9&page=2&showWholesale=true'
+			'https://app.test/catalog?country=Ethiopia&country=Colombia&processing=Washed&processing_base_method=washed&fermentation_type=anaerobic&process_additive=fruit&processing_disclosure_level=high_detail&processing_confidence_min=0.8&name=guji&price_per_lb_min=7.5&price_per_lb_max=9&page=2&showWholesale=true'
 		);
 
 		const state = parseCatalogUrlState(url, '/catalog');
@@ -19,6 +19,11 @@ describe('catalog URL state helpers', () => {
 			filters: {
 				country: ['Ethiopia', 'Colombia'],
 				processing: 'Washed',
+				processing_base_method: 'washed',
+				fermentation_type: 'anaerobic',
+				process_additive: 'fruit',
+				processing_disclosure_level: 'high_detail',
+				processing_confidence_min: 0.8,
 				name: 'guji',
 				cost_lb: {
 					min: '7.5',
@@ -40,12 +45,57 @@ describe('catalog URL state helpers', () => {
 		state.filters = {
 			country: ['Ethiopia'],
 			processing: 'Washed',
+			processing_base_method: 'washed',
+			fermentation_type: 'anaerobic',
+			process_additive: 'fruit',
+			processing_disclosure_level: 'high_detail',
+			processing_confidence_min: 0.8,
 			cost_lb: { min: '7.5', max: '' }
 		};
 
 		const params = buildCatalogShareParams(state, '/catalog');
 
-		expect(params.toString()).toBe('country=Ethiopia&processing=Washed&price_per_lb_min=7.5');
+		expect(params.toString()).toBe(
+			'country=Ethiopia&processing=Washed&processing_base_method=washed&fermentation_type=anaerobic&process_additive=fruit&processing_disclosure_level=high_detail&processing_confidence_min=0.8&price_per_lb_min=7.5'
+		);
+	});
+
+	it('maps process transparency filters onto shared catalog search options', () => {
+		const state = createDefaultCatalogUrlState('/catalog');
+		state.filters = {
+			processing_base_method: 'natural',
+			fermentation_type: 'anaerobic',
+			process_additive: 'fruit',
+			processing_disclosure_level: 'high_detail',
+			processing_confidence_min: '0.8'
+		};
+
+		expect(catalogUrlStateToSearchState(state)).toMatchObject({
+			processingBaseMethod: 'natural',
+			fermentationType: 'anaerobic',
+			processAdditive: 'fruit',
+			processingDisclosureLevel: 'high_detail',
+			processingConfidenceMin: 0.8
+		});
+	});
+
+	it('drops unsupported processing confidence thresholds instead of serializing hidden filters', () => {
+		const invalidState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?processing_confidence_min=1.5'),
+			'/catalog'
+		);
+		const unsupportedState = parseCatalogUrlState(
+			new URL('https://app.test/catalog?processing_confidence_min=0.75'),
+			'/catalog'
+		);
+
+		expect(invalidState.filters).not.toHaveProperty('processing_confidence_min');
+		expect(unsupportedState.filters).not.toHaveProperty('processing_confidence_min');
+
+		const searchState = createDefaultCatalogUrlState('/catalog');
+		searchState.filters = { processing_confidence_min: '0.75' };
+		expect(catalogUrlStateToSearchState(searchState).processingConfidenceMin).toBeUndefined();
+		expect(buildCatalogRequestParams(searchState, '/catalog').toString()).toBe('page=1&limit=15');
 	});
 
 	it('keeps active sort settings in share URLs when filters are cleared', () => {
@@ -60,11 +110,11 @@ describe('catalog URL state helpers', () => {
 
 	it('keeps request params explicit for server fetches', () => {
 		const state = createDefaultCatalogUrlState('/catalog');
-		state.filters = { name: 'guji' };
+		state.filters = { name: 'guji', processing_confidence_min: 0.8 };
 
 		const params = buildCatalogRequestParams(state, '/catalog');
 
-		expect(params.toString()).toBe('page=1&limit=15&name=guji');
+		expect(params.toString()).toBe('page=1&limit=15&processing_confidence_min=0.8&name=guji');
 	});
 
 	it('maps URL state back onto shared catalog search options', () => {
@@ -72,6 +122,11 @@ describe('catalog URL state helpers', () => {
 		state.filters = {
 			country: ['Ethiopia', 'Colombia'],
 			source: ['sweet_marias', 'genuine_origin'],
+			processing_base_method: 'Natural',
+			fermentation_type: 'anaerobic',
+			process_additive: 'hops',
+			processing_disclosure_level: 'high_detail',
+			processing_confidence_min: 0.8,
 			score_value: { min: '86', max: '90' },
 			cost_lb: { min: '7.5', max: '9.25' },
 			stocked_date: '30'
@@ -86,6 +141,11 @@ describe('catalog URL state helpers', () => {
 			country: ['Ethiopia', 'Colombia'],
 			source: ['sweet_marias', 'genuine_origin'],
 			processing: undefined,
+			processingBaseMethod: 'Natural',
+			fermentationType: 'anaerobic',
+			processAdditive: 'hops',
+			processingDisclosureLevel: 'high_detail',
+			processingConfidenceMin: 0.8,
 			cultivarDetail: undefined,
 			type: undefined,
 			grade: undefined,

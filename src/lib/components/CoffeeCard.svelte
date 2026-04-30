@@ -9,6 +9,10 @@
 	} from '$lib/utils/pricing';
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
+	import {
+		formatProcessDisplayValue,
+		normalizeProcessDisplayValue
+	} from '$lib/catalog/processDisplay';
 
 	let {
 		coffee,
@@ -23,6 +27,31 @@
 		highlighted?: boolean;
 		annotation?: string;
 	}>();
+
+	type ProcessSummary = {
+		base_method?: string | null;
+		fermentation_type?: string | null;
+		additives?: string[] | null;
+		additive_detail?: string | null;
+		fermentation_duration_hours?: number | null;
+		drying_method?: string | null;
+		notes?: string | null;
+		disclosure_level?: string | null;
+		confidence?: number | null;
+		evidence_available?: boolean | null;
+	};
+
+	type CoffeeWithStructuredProcess = CoffeeCatalog & {
+		process?: ProcessSummary | null;
+	};
+
+	type ProcessAnalysis = {
+		headline: string;
+		details: string[];
+		confidenceLabel: string | null;
+		disclosureLabel: string | null;
+		evidenceLabel: string | null;
+	};
 
 	let TastingNotesRadar = $state<Component | null>(null);
 	let radarComponentLoading = $state(true);
@@ -59,6 +88,89 @@
 		const highestTier = priceTiers[priceTiers.length - 1];
 		return `Save up to ${bulkSavings.percentOff}% at ${highestTier.min_lbs}+ lb`;
 	});
+	let processAnalysis = $derived.by(() =>
+		buildProcessAnalysis(coffee as CoffeeWithStructuredProcess)
+	);
+
+	function formatAdditives(additives: string[] | null | undefined): string | null {
+		if (!additives?.length) return null;
+		const cleaned = additives
+			.map((additive) => normalizeProcessDisplayValue(additive))
+			.filter((additive): additive is string => Boolean(additive));
+		if (cleaned.length === 0) return null;
+
+		const disclosedAdditives = cleaned.filter((additive) => additive.toLowerCase() !== 'none');
+		if (disclosedAdditives.length === 0) {
+			return 'No additives disclosed';
+		}
+
+		return `Additives disclosed: ${disclosedAdditives.map(formatProcessDisplayValue).join(', ')}`;
+	}
+
+	function formatDisclosureLabel(value: string | null | undefined): string | null {
+		const cleaned = normalizeProcessDisplayValue(value);
+		if (!cleaned) return null;
+		const labels: Record<string, string> = {
+			high_detail: 'High-detail disclosure',
+			structured: 'Structured disclosure',
+			minimal: 'Minimal disclosure'
+		};
+		return labels[cleaned] ?? formatProcessDisplayValue(cleaned);
+	}
+
+	function formatConfidenceLabel(confidence: number | null | undefined): string | null {
+		if (confidence === undefined || confidence === null) return null;
+		if (confidence >= 0.9) return 'Very high confidence';
+		if (confidence >= 0.8) return 'High confidence';
+		if (confidence >= 0.6) return 'Moderate confidence';
+		return null;
+	}
+
+	function buildProcessAnalysis(coffeeItem: CoffeeWithStructuredProcess): ProcessAnalysis | null {
+		const process = coffeeItem.process;
+		if (!process) return null;
+
+		const baseMethod = normalizeProcessDisplayValue(process.base_method);
+		const fermentationType = normalizeProcessDisplayValue(process.fermentation_type);
+		const additiveSummary = formatAdditives(process.additives);
+		const additiveDetail = normalizeProcessDisplayValue(process.additive_detail);
+		const dryingMethod = normalizeProcessDisplayValue(process.drying_method);
+		const notes = normalizeProcessDisplayValue(process.notes);
+		const disclosureLabel = formatDisclosureLabel(process.disclosure_level);
+		const confidenceLabel = formatConfidenceLabel(process.confidence);
+		const evidenceLabel = process.evidence_available ? 'Supplier evidence available' : null;
+
+		const details = [
+			fermentationType ? `Fermentation: ${formatProcessDisplayValue(fermentationType)}` : null,
+			additiveSummary,
+			additiveDetail ? `Additive detail: ${additiveDetail}` : null,
+			process.fermentation_duration_hours
+				? `Fermentation time: ${process.fermentation_duration_hours} hours`
+				: null,
+			dryingMethod ? `Drying: ${formatProcessDisplayValue(dryingMethod)}` : null,
+			notes
+		].filter((detail): detail is string => Boolean(detail));
+
+		if (
+			!baseMethod &&
+			details.length === 0 &&
+			!disclosureLabel &&
+			!confidenceLabel &&
+			!evidenceLabel
+		) {
+			return null;
+		}
+
+		return {
+			headline: baseMethod
+				? `${formatProcessDisplayValue(baseMethod)} process transparency`
+				: 'Process transparency',
+			details,
+			confidenceLabel,
+			disclosureLabel,
+			evidenceLabel
+		};
+	}
 
 	function togglePricingDetails(event: MouseEvent) {
 		event.preventDefault();
@@ -111,6 +223,12 @@
 					<span>{coffee.processing}</span>
 				{/if}
 			</div>
+
+			{#if processAnalysis}
+				<p class="mt-2 text-xs font-medium text-background-tertiary-light">
+					{processAnalysis.headline}
+				</p>
+			{/if}
 
 			<div class="mt-3 flex flex-wrap gap-2">
 				{#if hasMultiplePriceTiers}
@@ -299,6 +417,51 @@
 							<span>Processing: {coffee.processing}</span>
 						{/if}
 					</div>
+
+					{#if processAnalysis}
+						<div class="sm:col-span-2">
+							<div
+								class="rounded-xl border border-background-tertiary-light/20 bg-background-tertiary-light/5 p-3 text-text-secondary-light"
+							>
+								<div
+									class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light"
+								>
+									Process analysis
+								</div>
+								<p class="mt-1 font-medium text-text-primary-light">{processAnalysis.headline}</p>
+								{#if processAnalysis.details.length > 0}
+									<ul class="mt-2 space-y-1">
+										{#each processAnalysis.details as detail}
+											<li>{detail}</li>
+										{/each}
+									</ul>
+								{/if}
+								<div class="mt-2 flex flex-wrap gap-2">
+									{#if processAnalysis.disclosureLabel}
+										<span
+											class="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-text-secondary-light ring-1 ring-border-light"
+										>
+											{processAnalysis.disclosureLabel}
+										</span>
+									{/if}
+									{#if processAnalysis.confidenceLabel}
+										<span
+											class="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-text-secondary-light ring-1 ring-border-light"
+										>
+											{processAnalysis.confidenceLabel}
+										</span>
+									{/if}
+									{#if processAnalysis.evidenceLabel}
+										<span
+											class="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-text-secondary-light ring-1 ring-border-light"
+										>
+											{processAnalysis.evidenceLabel}
+										</span>
+									{/if}
+								</div>
+							</div>
+						</div>
+					{/if}
 					<div>
 						{#if coffee.cultivar_detail}
 							<span>Cultivar: {coffee.cultivar_detail}</span>

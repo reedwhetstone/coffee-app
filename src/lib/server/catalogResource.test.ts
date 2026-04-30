@@ -597,7 +597,60 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
-	it('passes processing transparency filters through to the catalog data layer', async () => {
+	it('rejects anonymous processing transparency filters before the catalog data layer', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			authKind: 'anonymous',
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?processing_base_method=Natural')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(401);
+		expect(body).toMatchObject({
+			error: 'Authentication required',
+			message: 'Structured process filters require a member account.',
+			code: 'auth_required',
+			deniedParams: ['processing_base_method'],
+			requiredCapability: 'canUseProcessFacets'
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
+	it('rejects viewer session processing transparency filters before the catalog data layer', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			authKind: 'session',
+			session: { access_token: 'viewer-token' },
+			primaryAppRole: 'viewer',
+			apiPlan: 'viewer'
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?processing_base_method=Natural')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(403);
+		expect(body).toMatchObject({
+			error: 'Insufficient permissions',
+			message: 'Structured process filters are available to members and paid API tiers.',
+			code: 'entitlement_required',
+			deniedParams: ['processing_base_method'],
+			requiredCapability: 'canUseProcessFacets'
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
+	it('does not deny anonymous requests for empty process transparency params', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
 			primaryAppRole: null,
@@ -605,6 +658,29 @@ describe('buildCanonicalCatalogResponse', () => {
 		});
 		mockIsApiKeyPrincipal.mockReturnValue(false);
 		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent(
+				'https://app.test/v1/catalog?processing_base_method=&fermentation_type=&process_additive=&processing_disclosure_level='
+			)
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.meta.auth.kind).toBe('anonymous');
+		expect(mockSearchCatalog).toHaveBeenCalled();
+	});
+
+	it('passes member processing transparency filters through to the catalog data layer', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			authKind: 'session',
+			session: { access_token: 'member-token' },
+			primaryAppRole: 'member',
+			apiPlan: 'viewer'
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
 
 		const response = await buildCanonicalCatalogResponse(
 			makeEvent(
@@ -965,6 +1041,69 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(response.headers.get('X-RateLimit-Remaining')).toBe('199');
 	});
 
+	it('rejects API Green processing transparency filters before the catalog data layer', async () => {
+		const apiKeyPrincipal = {
+			isAuthenticated: true,
+			authKind: 'api-key',
+			primaryAppRole: 'viewer',
+			apiPlan: 'viewer',
+			apiKeyId: 'key-1'
+		};
+
+		mockResolvePrincipal.mockResolvedValue(apiKeyPrincipal);
+		mockIsApiKeyPrincipal.mockReturnValue(true);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockRequireApiKeyAccess.mockResolvedValue(apiKeyPrincipal);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?processing_base_method=Natural', {
+				Authorization: 'Bearer pk_live_valid'
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(403);
+		expect(body).toMatchObject({
+			error: 'Insufficient permissions',
+			message: 'Structured process filters are available to members and paid API tiers.',
+			code: 'entitlement_required',
+			deniedParams: ['processing_base_method'],
+			requiredCapability: 'canUseProcessFacets'
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+	});
+
+	it('lets paid API tiers use processing transparency filters', async () => {
+		const apiKeyPrincipal = {
+			isAuthenticated: true,
+			authKind: 'api-key',
+			primaryAppRole: 'viewer',
+			apiPlan: 'member',
+			apiKeyId: 'key-1'
+		};
+
+		mockResolvePrincipal.mockResolvedValue(apiKeyPrincipal);
+		mockIsApiKeyPrincipal.mockReturnValue(true);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockRequireApiKeyAccess.mockResolvedValue(apiKeyPrincipal);
+		mockGetApiRowLimit.mockReturnValue(-1);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?processing_base_method=Natural', {
+				Authorization: 'Bearer pk_live_valid'
+			})
+		);
+
+		expect(response.status).toBe(200);
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'admin-client' },
+			expect.objectContaining({
+				publicOnly: true,
+				processingBaseMethod: 'Natural'
+			})
+		);
+	});
+
 	it('allows anonymous callers to explicitly request the default stocked_date desc sort', async () => {
 		mockResolvePrincipal.mockResolvedValue({
 			isAuthenticated: false,
@@ -1083,14 +1222,16 @@ describe('buildCanonicalCatalogResponse', () => {
 		}
 	);
 
-	it('returns schema-unavailable instead of broadened data for structured process schema lag', async () => {
+	it('returns schema-unavailable instead of broadened data for authorized structured process schema lag', async () => {
 		mockResolvePrincipal.mockResolvedValue({
-			isAuthenticated: false,
-			primaryAppRole: null,
-			apiPlan: null
+			isAuthenticated: true,
+			authKind: 'session',
+			primaryAppRole: 'member',
+			apiPlan: 'viewer',
+			session: { access_token: 'member-token' }
 		});
 		mockIsApiKeyPrincipal.mockReturnValue(false);
-		mockIsSessionPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
 		const schemaError = new Error(
 			'Structured process filters are unavailable because processing transparency columns are missing from the database schema.'
 		);
@@ -1552,7 +1693,14 @@ describe('buildCanonicalCatalogResponse', () => {
 			);
 		});
 
-		it('preserves processing transparency filters for unpaginated dropdown requests', async () => {
+		it('preserves processing transparency filters for member unpaginated dropdown requests', async () => {
+			mockResolvePrincipal.mockResolvedValue({
+				isAuthenticated: true,
+				primaryAppRole: 'member',
+				apiPlan: 'viewer',
+				session: { access_token: 'member-token' }
+			});
+
 			await buildCanonicalCatalogResponse(
 				makeEvent(
 					'https://app.test/v1/catalog?fields=dropdown&processing_base_method=Natural&fermentation_type=Anaerobic&process_additive=hops&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
@@ -1563,7 +1711,7 @@ describe('buildCanonicalCatalogResponse', () => {
 				expect.anything(),
 				expect.objectContaining({
 					stockedFilter: true,
-					publicOnly: true,
+					publicOnly: false,
 					processingBaseMethod: 'Natural',
 					fermentationType: 'Anaerobic',
 					processAdditive: 'hops',

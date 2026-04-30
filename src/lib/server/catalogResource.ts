@@ -1,11 +1,6 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import {
-	getCatalogDropdown,
-	searchCatalog,
-	searchCatalogDropdown,
-	type CatalogDropdownItem,
-	type CatalogItem
-} from '$lib/data/catalog';
+import { getCatalogDropdown, searchCatalog, searchCatalogDropdown } from '$lib/data/catalog';
+import { toCatalogResourceItem, type CatalogResponseItem } from '$lib/catalog/catalogResourceItem';
 import {
 	checkRateLimit,
 	getApiRowLimit,
@@ -21,6 +16,12 @@ import {
 	type RequestPrincipal
 } from '$lib/server/principal';
 import { resolveCatalogVisibility } from '$lib/server/catalogVisibility';
+import {
+	createProcessFacetDeniedNotice,
+	getRequestedProcessFacetParams,
+	resolveCatalogAccessCapabilities,
+	type CatalogAccessCapabilities
+} from '$lib/server/catalogAccess';
 import { jsonResponse } from '$lib/server/http';
 import { createAdminClient } from '$lib/supabase-admin';
 import {
@@ -34,36 +35,6 @@ import {
 import type { UserRole } from '$lib/types/auth.types';
 import { DEFAULT_CATALOG_LISTING_LIMIT, MAX_CATALOG_PAGE_LIMIT } from '$lib/constants/catalog';
 
-export interface CatalogProcessSummary {
-	base_method: string | null;
-	fermentation_type: string | null;
-	additives: string[] | null;
-	additive_detail: string | null;
-	fermentation_duration_hours: number | null;
-	drying_method: string | null;
-	notes: string | null;
-	disclosure_level: string | null;
-	confidence: number | null;
-	evidence_available: boolean;
-}
-
-type CatalogResourceQueryItem = Omit<
-	CatalogItem,
-	'coffee_user' | 'processing_evidence' | 'processing_evidence_available'
-> & {
-	coffee_user?: CatalogItem['coffee_user'];
-	processing_evidence?: CatalogItem['processing_evidence'];
-	processing_evidence_available?: boolean | null;
-	processing_evidence_schema_version?: string | number | null;
-};
-
-export type CatalogResourceItem = Omit<
-	CatalogItem,
-	'coffee_user' | 'processing_evidence' | 'processing_evidence_available'
-> & {
-	process: CatalogProcessSummary;
-};
-export type CatalogResponseItem = CatalogResourceItem | CatalogDropdownItem;
 export type CatalogAuthKind = 'anonymous' | 'session' | 'api-key';
 
 export interface CatalogPagination {
@@ -155,6 +126,7 @@ interface CatalogAccessContext {
 	apiKeyId: string | null;
 	requestPath: string;
 	supabase: RequestEvent['locals']['supabase'];
+	catalogAccess: CatalogAccessCapabilities;
 }
 
 interface QueryCatalogDataOptions {
@@ -318,35 +290,6 @@ function parseOptionalBoolean(value: string | null, parameter: string): boolean 
 	throw new CatalogQueryValidationError(parameter, value, 'true or false');
 }
 
-function toCatalogResourceItem(item: CatalogResourceQueryItem): CatalogResourceItem {
-	const {
-		coffee_user: _coffeeUser,
-		processing_evidence: processingEvidence,
-		processing_evidence_available: processingEvidenceAvailable,
-		processing_evidence_schema_version: processingEvidenceSchemaVersion,
-		...resourceItem
-	} = item;
-	const evidenceAvailable =
-		processingEvidenceAvailable ??
-		(processingEvidence != null || processingEvidenceSchemaVersion != null);
-
-	return {
-		...resourceItem,
-		process: {
-			base_method: item.processing_base_method ?? null,
-			fermentation_type: item.fermentation_type ?? null,
-			additives: item.process_additives ?? null,
-			additive_detail: item.process_additive_detail ?? null,
-			fermentation_duration_hours: item.fermentation_duration_hours ?? null,
-			drying_method: item.drying_method ?? null,
-			notes: item.processing_notes ?? null,
-			disclosure_level: item.processing_disclosure_level ?? null,
-			confidence: item.processing_confidence ?? null,
-			evidence_available: evidenceAvailable
-		}
-	};
-}
-
 function parseOptionalNumberFromAliases(url: URL, ...paramNames: string[]): number | undefined {
 	for (const paramName of paramNames) {
 		const rawValue = url.searchParams.get(paramName);
@@ -480,6 +423,7 @@ async function resolveCatalogAccessContext(
 			requiredPlan: 'viewer',
 			requiredScope: 'catalog:read'
 		});
+		const catalogAccess = resolveCatalogAccessCapabilities({ principal: apiPrincipal });
 		const rowLimit = getApiRowLimit(apiPrincipal.apiPlan);
 		const rateLimit = await checkRateLimit(apiPrincipal.apiKeyId, apiPrincipal.apiPlan);
 
@@ -505,10 +449,12 @@ async function resolveCatalogAccessContext(
 			rateLimitHeaders: headers,
 			apiKeyId: apiPrincipal.apiKeyId,
 			requestPath,
-			supabase: createAdminClient() as unknown as RequestEvent['locals']['supabase']
+			supabase: createAdminClient() as unknown as RequestEvent['locals']['supabase'],
+			catalogAccess
 		};
 	}
 
+	const catalogAccess = resolveCatalogAccessCapabilities({ principal });
 	const visibility = resolveCatalogVisibility({
 		session: isSessionPrincipal(principal) ? principal.session : null,
 		role: principal.primaryAppRole,
@@ -528,7 +474,8 @@ async function resolveCatalogAccessContext(
 		rateLimitHeaders: null,
 		apiKeyId: null,
 		requestPath,
-		supabase: event.locals.supabase
+		supabase: event.locals.supabase,
+		catalogAccess
 	};
 }
 
@@ -816,6 +763,29 @@ async function resolveCatalogRouteResult(
 	try {
 		const query = parseCatalogQuery(event.url);
 		context = await resolveCatalogAccessContext(event, query, requestPath);
+		const deniedProcessParams = context.catalogAccess.canUseProcessFacets
+			? []
+			: getRequestedProcessFacetParams(event.url.searchParams);
+		const deniedNotice = createProcessFacetDeniedNotice({
+			isAuthenticated: context.principal.isAuthenticated,
+			deniedParams: deniedProcessParams
+		});
+		if (deniedNotice) {
+			await logCatalogApiUsage(context, event, deniedNotice.status, startTime);
+
+			return {
+				status: deniedNotice.status,
+				body: {
+					error:
+						deniedNotice.status === 403 ? 'Insufficient permissions' : 'Authentication required',
+					message: deniedNotice.message,
+					code: deniedNotice.code,
+					deniedParams: deniedNotice.deniedParams,
+					requiredCapability: 'canUseProcessFacets'
+				},
+				headers: new Headers()
+			};
+		}
 		const body = await queryCatalogData(context, query, {
 			forceDefaultPagination: options.forceDefaultPagination
 		});
