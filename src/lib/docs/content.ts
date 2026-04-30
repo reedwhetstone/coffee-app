@@ -248,7 +248,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'GET /v1/catalog supports anonymous requests for public-only catalog discovery. Anonymous callers get the same public payload shape, but no API-key billing, quota, or X-RateLimit-* usage headers.',
 					'GET /v1/catalog also supports first-party session requests. Viewer sessions stay public-only; member and admin sessions may unlock richer in-app visibility.',
-					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API-key requests stay public-only, use plan-based limits, and are the intended production path for server-to-server integrations.',
+					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API Green stays on the basic public query surface; paid API tiers add structured process facet filtering while remaining public-catalog scoped. API keys use plan-based limits and are the intended production path for server-to-server integrations.',
 					'GET /api/catalog-api is a deprecated legacy alias to /v1/catalog, but it remains API-key-only for backward-compatible machine access.',
 					'Cookies only matter when they resolve to a valid first-party session. A raw Cookie header is not part of the public API contract.',
 					'Inventory share links are the one notable anonymous data exception on the product side: GET /api/beans?share=... can return a scoped inventory view without a user session.'
