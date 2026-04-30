@@ -615,7 +615,10 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(response.status).toBe(401);
 		expect(body).toMatchObject({
 			error: 'Authentication required',
-			message: 'Structured process filters require a member account.'
+			message: 'Structured process filters require a member account.',
+			code: 'auth_required',
+			deniedParams: ['processing_base_method'],
+			requiredCapability: 'canUseProcessFacets'
 		});
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
@@ -639,7 +642,10 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(response.status).toBe(403);
 		expect(body).toMatchObject({
 			error: 'Insufficient permissions',
-			message: 'Structured process filters are available to members and paid API tiers.'
+			message: 'Structured process filters are available to members and paid API tiers.',
+			code: 'entitlement_required',
+			deniedParams: ['processing_base_method'],
+			requiredCapability: 'canUseProcessFacets'
 		});
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
@@ -1059,7 +1065,10 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(response.status).toBe(403);
 		expect(body).toMatchObject({
 			error: 'Insufficient permissions',
-			message: 'Structured process filters are available to members and paid API tiers.'
+			message: 'Structured process filters are available to members and paid API tiers.',
+			code: 'entitlement_required',
+			deniedParams: ['processing_base_method'],
+			requiredCapability: 'canUseProcessFacets'
 		});
 		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});

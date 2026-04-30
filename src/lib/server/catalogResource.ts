@@ -771,7 +771,20 @@ async function resolveCatalogRouteResult(
 			deniedParams: deniedProcessParams
 		});
 		if (deniedNotice) {
-			throw new AuthError(deniedNotice.message, deniedNotice.status);
+			await logCatalogApiUsage(context, event, deniedNotice.status, startTime);
+
+			return {
+				status: deniedNotice.status,
+				body: {
+					error:
+						deniedNotice.status === 403 ? 'Insufficient permissions' : 'Authentication required',
+					message: deniedNotice.message,
+					code: deniedNotice.code,
+					deniedParams: deniedNotice.deniedParams,
+					requiredCapability: 'canUseProcessFacets'
+				},
+				headers: new Headers()
+			};
 		}
 		const body = await queryCatalogData(context, query, {
 			forceDefaultPagination: options.forceDefaultPagination
