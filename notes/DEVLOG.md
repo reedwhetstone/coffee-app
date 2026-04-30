@@ -13,6 +13,7 @@ These are the highest-leverage active product bets after reconciling `origin/mai
 - [ ] **Catalog Access Entitlement Alignment** - Apply ADR-005 consistently across `/catalog`, `/api/catalog/filters`, and `/v1/catalog`: public surfaces prove value, viewers inspect data, members get advanced search leverage, and API tiers map to explicit query/field/rate capabilities. Start by correcting process-facet exposure and then centralize capability resolution. Plan: `notes/implementation-plans/2026-04-29-adr005-pr302-access-tier-alignment.md`; decision: `notes/decisions/005-catalog-access-level-positioning.md`.
 - [ ] **V1 Catalog Summary Projection** - Add `fields=summary` to `GET /v1/catalog` as a lean, decision-ready middle shape between `full` and `dropdown` for agents, CLI defaults, and external integrations. Plan: `notes/implementation-plans/2026-04-28-v1-catalog-summary-projection.md`.
 - [ ] **Process Transparency Data Quality + Member Facets** - Backgenerate ADR-004 process fields through coffee-scraper, normalize `drying_method`, and expose high-signal process facets only behind the member/API capability contract once coverage is meaningful. Plan: `notes/implementation-plans/2026-04-29-process-transparency-backgeneration.md`; scraper source truth lives in `../coffee-scraper`.
+- [ ] **Certifications Taxonomy Schema** - Promote recurring Organic/Fair Trade/Rainforest/etc. evidence out of overloaded scraper text fields into a first-class `coffee_catalog.certifications` contract, then extract/backfill conservative high-confidence values for catalog, API, CLI, and agent filtering. Scraper plan: `../coffee-scraper/notes/implementation-plans/2026-04-29-certifications-taxonomy-schema.md`.
 
 ### Reconciled March P0 items
 
@@ -177,6 +178,7 @@ Public API for external developers and integrations.
 - [ ] **API** - Add `fields=summary` to `GET /v1/catalog` for agent/CLI/API list workloads that need decision-ready rows without full narrative payloads.
 - [ ] **API** - Centralize catalog capability enforcement so `/catalog`, `/api/catalog/filters`, and `/v1/catalog` share the same anonymous/viewer/member/API entitlement contract.
 - [ ] **API** - Keep raw process evidence private by default while exposing provenance-safe nested process summaries.
+- [ ] **API** - Expose normalized `certifications` once the scraper schema and backfill are credible, keeping raw marketing text out of the stable contract while enabling certification filters for buyers, API users, CLI commands, and agents.
 - [ ] **API** - Implement API key limits per tier. Free: 1 key, Member: up to 10 keys, Enterprise: unlimited keys.
 - [ ] **API** - Add roast IDs to profiles for more accurate tagging and API reference.
 - [ ] **API** - Longer-term endpoint ideas remain open: green coffee processing, tasting note scoring, and roast calculations as stable API products once the catalog/intelligence contracts are coherent.
