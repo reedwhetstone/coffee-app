@@ -172,5 +172,5 @@ The Proof Layer is risky because it touches legal, supplier relationship, and tr
 
 - EU deforestation regulation overview: https://environment.ec.europa.eu/topics/forests/deforestation/regulation-deforestation-free-products_en
 - EU Digital Product Passport policy context: https://commission.europa.eu/energy-climate-change-environment/standards-tools-and-labels/products-labelling-rules-and-requirements/sustainable-products/ecodesign-sustainable-products-regulation_en
-- Specialty Coffee Association traceability framing: https://sca.coffee/sca-news/understanding-specialty-coffees-value-assessment-system
+- Specialty Coffee Association traceability framing: https://sca.coffee/value-assessment
 - GS1 product data and traceability standards: https://www.gs1.org/standards/traceability
