@@ -266,10 +266,10 @@ Live smoke after deploy:
 API_KEY=$(grep '^PURVEYORS_API_KEY=' ~/.env | cut -d= -f2-)
 
 curl -sS 'https://www.purveyors.io/v1/catalog?include=proof&limit=5' \
-  -H "Authorization: Bearer $API_KEY" | jq '.data[0].proof'
+  -H "Authorization: Bearer $API_KEY" | jq -e '.data[0] | has("proof")'
 
 curl -sS 'https://www.purveyors.io/v1/catalog?limit=5' \
-  -H "Authorization: Bearer $API_KEY" | jq 'has("proof")'
+  -H "Authorization: Bearer $API_KEY" | jq -e '(.data | length > 0) and all(.data[]; has("proof") | not)'
 ```
 
 ### PR 2
