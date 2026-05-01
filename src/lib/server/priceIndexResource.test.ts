@@ -141,7 +141,7 @@ describe('buildCanonicalPriceIndexResponse', () => {
 					p75: 8.1,
 					stdev: 0.7
 				},
-				sample: { suppliers: 8, listings: 31, aggregation_tier: 1 },
+				sample: { suppliers: 8, listings: 31, aggregationTier: 1 },
 				provenance: { synthetic: false }
 			}
 		]);
@@ -263,7 +263,7 @@ describe('buildCanonicalPriceIndexResponse', () => {
 		expect(query.eq).toHaveBeenCalledWith('grade', 'G1');
 		expect(query.eq).toHaveBeenCalledWith('wholesale_only', true);
 		expect(query.order.mock.calls).toEqual([
-			['snapshot_date', { ascending: false }],
+			['snapshot_date', { ascending: true }],
 			['origin', { ascending: true }],
 			['process', { ascending: true }],
 			['grade', { ascending: true }],

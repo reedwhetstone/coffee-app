@@ -37,7 +37,7 @@ export interface PriceIndexItem {
 	sample: {
 		suppliers: number;
 		listings: number;
-		aggregation_tier: number | null;
+		aggregationTier: number | null;
 	};
 	provenance: {
 		synthetic: boolean;
@@ -136,7 +136,7 @@ const STRING_PARAM_MAX_LENGTH = 128;
 const PRICE_INDEX_SELECT =
 	'id, snapshot_date, origin, process, grade, wholesale_only, price_min, price_max, price_avg, price_median, price_p25, price_p75, price_stdev, supplier_count, sample_size, aggregation_tier, synthetic';
 const PRICE_INDEX_ORDER_COLUMNS = [
-	{ column: 'snapshot_date', ascending: false },
+	{ column: 'snapshot_date', ascending: true },
 	{ column: 'origin', ascending: true },
 	{ column: 'process', ascending: true },
 	{ column: 'grade', ascending: true },
@@ -306,7 +306,7 @@ function toPriceIndexItem(row: PriceIndexSnapshotRow): PriceIndexItem {
 		sample: {
 			suppliers: toInteger(row.supplier_count),
 			listings: toInteger(row.sample_size),
-			aggregation_tier: toNullableNumber(row.aggregation_tier)
+			aggregationTier: toNullableNumber(row.aggregation_tier)
 		},
 		provenance: {
 			synthetic: row.synthetic === true

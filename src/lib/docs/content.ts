@@ -355,7 +355,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Namespace and compatibility',
 				bullets: [
-					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog.',
+					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog and /v1/price-index.',
 					'GET /v1/catalog is the source-of-truth public contract for integrations.',
 					'GET /api/catalog-api is a deprecated API-key-only alias to the canonical handler. Responses include Deprecation: true, Link: </v1/catalog>; rel="successor-version", and Sunset: Thu, 31 Dec 2026 23:59:59 GMT.',
 					'GET /api/catalog also delegates to the same catalog resource, but it is an internal adapter with legacy response-shape behavior and should not be treated as a long-term external contract.'
@@ -1177,7 +1177,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Market intelligence',
 		intro: [
 			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse the core market overview: origin price trends, processing mix, origin price ranges, and the supplier/listing/origin stat bar. Parchment Intelligence users get the deeper supplier comparison, supplier health, arrivals, delistings, and extended trend modules.',
-			'Analytics is important to the platform story, but it is not currently sold as a separate API-key namespace. When documenting analytics, keep the distinction between product UI and public REST contract explicit.'
+			'Analytics is important to the platform story, but only the aggregate /v1/price-index subset is exposed as a stable API-key contract. Keep the distinction between product UI, internal helpers, and public REST contract explicit.'
 		],
 		sections: [
 			{
@@ -1189,7 +1189,7 @@ const docsPages: DocsPage[] = [
 					'Public chart data includes 90 days of price-index snapshots, current stocked processing distribution, current origin price ranges, recent-arrival/delisting counts for the upgrade preview, and the latest market summary counts.',
 					'Parchment Intelligence expands the same page to 365 days of snapshot history plus supplier comparison, supplier health, recent arrivals, recent delistings, and origin-level aggregate modules.',
 					'The public catalog and public analytics should be cross-linked because they describe the same coffee market from different angles: raw records versus curated analysis.',
-					'Authenticated and premium analytics views may expose deeper app features, but they still ride through the first-party product rather than a stable public REST schema.'
+					'Authenticated and premium analytics views may expose deeper app features, but only aggregate price-index snapshots currently ride through the stable public REST schema.'
 				]
 			},
 			{
