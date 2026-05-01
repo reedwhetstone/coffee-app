@@ -18,6 +18,7 @@ The product has structured process fields, public catalog visibility, access-tie
 - Add `src/lib/catalog/proofSummary.ts` and unit tests.
 - Compute proof families for process, provenance, freshness, and pricing.
 - Add an opt-in `include=proof` query path to `GET /v1/catalog`.
+- Add explicit validation for `include` so unsupported include values return structured `400` errors instead of silent no-ops.
 - Preserve default `/v1/catalog` response shape.
 - Withhold raw `processing_evidence` and supplier quote text.
 - Add compact CoffeeCard trust badges when reliable signals exist.
@@ -50,6 +51,7 @@ The product has structured process fields, public catalog visibility, access-tie
 
 - `GET /v1/catalog?include=proof&limit=5` returns proof summaries in the canonical envelope.
 - `GET /v1/catalog?limit=5` remains unchanged unless the caller opts in.
+- `GET /v1/catalog?include=wat&limit=5` returns a structured `400`, protecting agent/developer trust from silent unsupported-parameter success.
 - Proof summaries include process, provenance, freshness, and pricing families.
 - Proof summaries include explicit limitations such as `not_certification` and `raw_evidence_not_included`.
 - Raw `processing_evidence` is not exposed.
@@ -66,6 +68,14 @@ pnpm exec vitest run \
   src/lib/server/catalogResource.test.ts \
   src/routes/v1/catalog/catalog.test.ts \
   src/lib/components/CoffeeCard.svelte.test.ts
+
+API_KEY=$(grep '^PURVEYORS_API_KEY=' ~/.env | cut -d= -f2-)
+curl -sS 'https://www.purveyors.io/v1/catalog?include=proof&limit=5' \
+  -H "Authorization: Bearer $API_KEY" | jq -e '(.data | length > 0) and all(.data[]; has("proof"))'
+status=$(curl -sS -o /tmp/proof-include-error.json -w '%{http_code}' \
+  'https://www.purveyors.io/v1/catalog?include=wat&limit=5' \
+  -H "Authorization: Bearer $API_KEY")
+test "$status" = 400
 ```
 
 ## Risks

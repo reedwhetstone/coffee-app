@@ -27,6 +27,19 @@ Ordered slices:
 - Open PR #312 already implements the first Parchment Intelligence price-index API slice, with passing checks. Planning another price-index endpoint now would duplicate work in flight.
 - `notes/MARKET_ANALYSIS.md` is not present on current `origin/main`; the legacy market analysis at `notes/archive/legacy-product/MARKET_ANALYSIS.md` still reinforces the same market gap: fragmented supplier data, inconsistent disclosure, and developer/API demand for normalized coffee intelligence.
 
+## Live API evidence, 2026-05-01 Parchment API planner recheck
+
+Commands used the live `PURVEYORS_API_KEY` from `~/.env`; the key value was not written into this plan.
+
+- `GET /v1/catalog` returned `HTTP 200`, the canonical `{ data, meta, pagination }` envelope, `100` default rows, `pagination.total = 1064`, and a `462,743` byte response. Rows already include legacy process fields plus the nested `process` object, but no `proof` object.
+- `GET /api/catalog-api` returned the same canonical row shape and `pagination.total = 1064` with `Deprecation: true` and `Sunset: Thu, 31 Dec 2026 23:59:59 GMT`, confirming ADR-002 alias delegation still matters for the proof include.
+- `GET /v1/catalog?limit=1` with the API key returned `meta.auth.kind = "api-key"`, `meta.auth.role = "member"`, and rate headers including `X-RateLimit-Limit: 10000`, so proof smoke tests should preserve API-key quota metadata.
+- Anonymous `GET /v1/catalog?limit=3` returned `HTTP 200`; the same endpoint with `Authorization: Bearer not-a-real-key` returned `HTTP 401`. The proof feature must preserve that public-discovery plus fail-closed-invalid-key behavior.
+- `GET /v1/catalog?include=proof&limit=3` currently returns `HTTP 200` but silently omits `proof`, proving the selected slice is not already implemented and that `include` validation needs to be explicit.
+- Supported process filters work when exact canonical values are used: `processing_base_method=Natural` returned `total = 116`, `processing_base_method=Washed` returned `total = 285`, `processing_confidence_min=0.8` returned `total = 360`, and `processing_disclosure_level=structured` returned `total = 417`.
+- Unsupported or mistyped params are currently silent no-ops in some cases: `process=Washed` and `foo=bar` both returned unfiltered `total = 1064`. PR 1 should avoid repeating that ambiguity for `include`; unknown include values should return a structured `400` instead of looking like a successful empty feature.
+- The installed `purvey` CLI is not currently logged in in this cron environment: `purvey auth status` reports `authenticated: false`, and `purvey catalog stats` exits with `AUTH_ERROR`. That does not block the coffee-app proof-contract PR, but it reinforces why PR 2 should support an explicit API-key-backed proof path rather than assuming session auth is always available to agents.
+
 ## Strategy Alignment Audit
 
 - **Canonical direction:** This directly supports `notes/PRODUCT_VISION.md` by strengthening truthful coffee data, the data moat, public value legibility, API-first behavior, and agent/CLI trust.
@@ -60,6 +73,7 @@ Scores use the Product Leverage Index from the planner skill: vision alignment 0
   - pricing proof: price per pound, price tiers, wholesale classification
 - Add a reusable helper such as `src/lib/catalog/proofSummary.ts` with unit tests.
 - Add an optional `/v1/catalog` include, likely `include=proof`, that returns a nested `proof` object without raw supplier quotes.
+- Add explicit `include` allowlist validation so unsupported include values fail closed instead of silently returning the default shape.
 - Preserve the default `/v1/catalog` response shape unless the implementation proves an additive default is safer.
 - Add compact CoffeeCard trust badges for public proof: for example, `Process disclosed`, `Freshness dated`, `Price tiers`, `Provenance partial`.
 - Update docs to state that proof summaries are evidence summaries, not certification.
@@ -230,6 +244,7 @@ Recommended first PR: PR 1. It creates the shared contract and trust vocabulary.
 - A deterministic proof helper returns stable labels and signal lists for process, provenance, freshness, and pricing.
 - `GET /v1/catalog?include=proof` returns a nested proof object in the canonical envelope.
 - `include=proof` does not alter pagination, filters, rate-limit behavior, or default response shape.
+- Unknown include values such as `include=wat` return a structured `400` instead of silently behaving like the default catalog response.
 - Missing, unknown, and not-disclosed values remain distinct where the current data allows that distinction.
 - Raw `processing_evidence` is withheld.
 - CoffeeCards render compact proof badges when reliable signals exist and avoid badges when claims are too thin.
@@ -270,6 +285,12 @@ curl -sS 'https://www.purveyors.io/v1/catalog?include=proof&limit=5' \
 
 curl -sS 'https://www.purveyors.io/v1/catalog?limit=5' \
   -H "Authorization: Bearer $API_KEY" | jq -e '(.data | length > 0) and all(.data[]; has("proof") | not)'
+
+status=$(curl -sS -o /tmp/proof-include-error.json -w '%{http_code}' \
+  'https://www.purveyors.io/v1/catalog?include=wat&limit=5' \
+  -H "Authorization: Bearer $API_KEY")
+test "$status" = 400
+jq -e '.error' /tmp/proof-include-error.json
 ```
 
 ### PR 2
