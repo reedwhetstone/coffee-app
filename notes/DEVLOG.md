@@ -4,7 +4,7 @@
 
 ---
 
-## Priority 0: Current Product Priorities (reconciled Apr 29, 2026)
+## Priority 0: Current Product Priorities (reconciled May 2, 2026)
 
 These are the highest-leverage active product bets after reconciling `origin/main` across coffee-app, coffee-scraper, and purveyors-cli. The CLI is treated as a core agent/product surface, not a separate utility silo.
 
@@ -294,7 +294,7 @@ Supplier implementation details live in `../coffee-scraper/SUPPLIERS.md`; keep t
 
 ### Current source-of-truth state
 
-- **42 live suppliers as of 2026-04-29** in coffee-scraper `origin/main` (`c54d22d`).
+- **42 live suppliers as of 2026-05-02** in coffee-scraper `origin/main` (`f254ef9`).
 - **Coffee Shrub** is now live as a custom Playwright/Magento source and should be treated as a wholesale-capable source, not as an exclusion.
 - **Wholesale-capable suppliers are in scope** when they expose useful public inventory. Classification should use `price_tiers` plus the DB `wholesale` flag rather than excluding by bag size or title alone.
 - **Recent scraper moat work:** processing transparency persistence, producer column support, conditional field policies, high-noise source policy tuning, and source-specific fixes for Coffee Shrub, Genuine Origin, Roastmasters, and processing/additive evidence extraction.
