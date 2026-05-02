@@ -132,6 +132,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		filterStore.setFilter('processing_base_method', 'natural');
 		filterStore.setFilter('fermentation_type', 'anaerobic');
 		filterStore.setFilter('process_additive', 'fruit');
+		filterStore.setFilter('has_additives', true);
 		filterStore.setFilter('processing_disclosure_level', 'high_detail');
 		filterStore.setFilter('processing_confidence_min', '0.8');
 
@@ -143,6 +144,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		expect(requestUrl).toContain('processing_base_method=natural');
 		expect(requestUrl).toContain('fermentation_type=anaerobic');
 		expect(requestUrl).toContain('process_additive=fruit');
+		expect(requestUrl).toContain('has_additives=true');
 		expect(requestUrl).toContain('processing_disclosure_level=high_detail');
 		expect(requestUrl).toContain('processing_confidence_min=0.8');
 	});
@@ -175,6 +177,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 					processing_base_method: 'natural',
 					fermentation_type: 'anaerobic',
 					process_additive: 'fruit',
+					has_additives: false,
 					processing_disclosure_level: 'high_detail',
 					processing_confidence_min: 0.8
 				},
@@ -201,6 +204,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 			'processing_base_method',
 			'fermentation_type',
 			'process_additive',
+			'has_additives',
 			'processing_disclosure_level',
 			'processing_confidence_min'
 		]);
@@ -213,6 +217,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		expect(requestUrl).toContain('country=Ethiopia');
 		expect(requestUrl).toContain('processing=Washed');
 		expect(requestUrl).not.toContain('processing_base_method');
+		expect(requestUrl).not.toContain('has_additives');
 		expect(requestUrl).not.toContain('processing_confidence_min');
 	});
 
@@ -245,6 +250,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 						country: ['Ethiopia'],
 						processing_base_method: 'natural',
 						fermentation_type: 'anaerobic',
+						has_additives: true,
 						processing_confidence_min: 0.8
 					},
 					sortField: null,
@@ -262,6 +268,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		filterStore.clearFiltersByKeys([
 			'processing_base_method',
 			'fermentation_type',
+			'has_additives',
 			'processing_confidence_min'
 		]);
 		await vi.runOnlyPendingTimersAsync();

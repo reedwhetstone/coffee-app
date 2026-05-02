@@ -68,6 +68,7 @@
 		'processing_base_method',
 		'fermentation_type',
 		'process_additive',
+		'has_additives',
 		'processing_disclosure_level',
 		'processing_confidence_min'
 	] as const;

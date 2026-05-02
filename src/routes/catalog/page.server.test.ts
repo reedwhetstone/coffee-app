@@ -196,7 +196,7 @@ describe('/catalog page load', () => {
 			makeLoadInput(
 				'viewer',
 				null,
-				'https://app.test/catalog?processing_base_method=natural&fermentation_type=anaerobic&process_additive=fruit&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
+				'https://app.test/catalog?processing_base_method=natural&fermentation_type=anaerobic&process_additive=fruit&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
 			)
 		)) as {
 			initialCatalogState: { filters: Record<string, unknown> };
@@ -210,6 +210,7 @@ describe('/catalog page load', () => {
 				processingBaseMethod: 'natural',
 				fermentationType: 'anaerobic',
 				processAdditive: 'fruit',
+				hasAdditives: true,
 				processingDisclosureLevel: 'high_detail',
 				processingConfidenceMin: 0.8
 			})
@@ -222,6 +223,7 @@ describe('/catalog page load', () => {
 				'processing_base_method',
 				'fermentation_type',
 				'process_additive',
+				'has_additives',
 				'processing_disclosure_level',
 				'processing_confidence_min'
 			]
@@ -233,7 +235,7 @@ describe('/catalog page load', () => {
 			makeLoadInput(
 				'viewer',
 				null,
-				'https://app.test/catalog?processing_base_method=&fermentation_type=&process_additive=&processing_disclosure_level=&processing_confidence_min='
+				'https://app.test/catalog?processing_base_method=&fermentation_type=&process_additive=&has_additives=&processing_disclosure_level=&processing_confidence_min='
 			)
 		)) as {
 			initialCatalogState: { filters: Record<string, unknown> };
@@ -246,6 +248,7 @@ describe('/catalog page load', () => {
 				processingBaseMethod: expect.anything(),
 				fermentationType: expect.anything(),
 				processAdditive: expect.anything(),
+				hasAdditives: expect.anything(),
 				processingDisclosureLevel: expect.anything(),
 				processingConfidenceMin: expect.anything()
 			})
@@ -293,7 +296,7 @@ describe('/catalog page load', () => {
 				makeLoadInput(
 					role,
 					session,
-					'https://app.test/catalog?processing_base_method=natural&fermentation_type=anaerobic&process_additive=fruit&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
+					'https://app.test/catalog?processing_base_method=natural&fermentation_type=anaerobic&process_additive=fruit&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8'
 				)
 			)) as { catalogAccess: { canUseProcessFacets: boolean }; catalogAccessNotice: null };
 
@@ -303,6 +306,7 @@ describe('/catalog page load', () => {
 					processingBaseMethod: 'natural',
 					fermentationType: 'anaerobic',
 					processAdditive: 'fruit',
+					hasAdditives: true,
 					processingDisclosureLevel: 'high_detail',
 					processingConfidenceMin: 0.8,
 					fields: 'resource'

@@ -71,7 +71,7 @@ export const DOCS_NAV: DocsNavSection[] = [
 		key: 'api',
 		title: 'API docs',
 		description:
-			'Public catalog contract, platform route matrix, analytics, billing flows, auth, and operational guidance.',
+			'Public catalog and price-index contracts, platform route matrix, analytics, billing flows, auth, and operational guidance.',
 		basePath: '/docs/api',
 		items: [
 			{
@@ -183,11 +183,11 @@ const docsPages: DocsPage[] = [
 		slug: 'overview',
 		title: 'API overview',
 		summary:
-			'Parchment Platform ships one stable public catalog API and a larger internal platform route layer for the web app.',
+			'Parchment Platform ships stable public catalog and price-index APIs plus a larger internal platform route layer for the web app.',
 		eyebrow: 'Parchment Platform',
 		intro: [
-			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data through a small public HTTP contract and a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
-			'The stable public contract is GET /v1/catalog. Anonymous requests are supported for public discovery, while API-key requests are the intended production integration path because they carry plan enforcement and X-RateLimit-* usage headers. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
+			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
+			'The stable public catalog contract is GET /v1/catalog. Anonymous requests are supported for public discovery, while API-key requests are the intended production integration path because they carry plan enforcement and X-RateLimit-* usage headers. GET /v1/price-index is a Parchment Intelligence API-key contract for aggregate price_index_snapshots data only. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
@@ -209,6 +209,12 @@ const docsPages: DocsPage[] = [
 							'Anonymous, session, or API key',
 							'External integrations, CLI complements, first-party app',
 							'Stable public contract.'
+						],
+						[
+							'GET /v1/price-index',
+							'API key with Parchment Intelligence access',
+							'External integrations and agent workflows consuming market aggregates',
+							'Stable aggregate contract backed by price_index_snapshots. No raw supplier rows, CSV export, alerts, or webhooks.'
 						],
 						[
 							'GET /api/catalog-api',
@@ -249,6 +255,7 @@ const docsPages: DocsPage[] = [
 					'GET /v1/catalog supports anonymous requests for public-only catalog discovery. Anonymous callers get the same public payload shape, but no API-key billing, quota, or X-RateLimit-* usage headers.',
 					'GET /v1/catalog also supports first-party session requests. Viewer sessions stay public-only; member and admin sessions may unlock richer in-app visibility.',
 					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API Green stays on the basic public query surface; paid API tiers add structured process facet filtering while remaining public-catalog scoped. API keys use plan-based limits and are the intended production path for server-to-server integrations.',
+					'GET /v1/price-index requires an API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
 					'GET /api/catalog-api is a deprecated legacy alias to /v1/catalog, but it remains API-key-only for backward-compatible machine access.',
 					'Cookies only matter when they resolve to a valid first-party session. A raw Cookie header is not part of the public API contract.',
 					'Inventory share links are the one notable anonymous data exception on the product side: GET /api/beans?share=... can return a scoped inventory view without a user session.'
@@ -277,6 +284,12 @@ const docsPages: DocsPage[] = [
 							'Production integrations, sync jobs, and server-to-server tooling',
 							'Authorization: Bearer <api_key>',
 							'Public-only data with plan enforcement, X-RateLimit-* headers, and stable HTTP compatibility guarantees.'
+						],
+						[
+							'API-key GET /v1/price-index',
+							'Market-intelligence integrations and agents',
+							'Authorization: Bearer <api_key> plus Parchment Intelligence entitlement',
+							'Aggregate price_index_snapshots data with pagination and rate-limit headers. No CSV, alerts, webhooks, or supplier-level rows.'
 						],
 						[
 							'Session GET /v1/catalog',
@@ -342,7 +355,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Namespace and compatibility',
 				bullets: [
-					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog.',
+					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog and /v1/price-index.',
 					'GET /v1/catalog is the source-of-truth public contract for integrations.',
 					'GET /api/catalog-api is a deprecated API-key-only alias to the canonical handler. Responses include Deprecation: true, Link: </v1/catalog>; rel="successor-version", and Sunset: Thu, 31 Dec 2026 23:59:59 GMT.',
 					'GET /api/catalog also delegates to the same catalog resource, but it is an internal adapter with legacy response-shape behavior and should not be treated as a long-term external contract.'
@@ -1164,18 +1177,19 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Market intelligence',
 		intro: [
 			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse the core market overview: origin price trends, processing mix, origin price ranges, and the supplier/listing/origin stat bar. Parchment Intelligence users get the deeper supplier comparison, supplier health, arrivals, delistings, and extended trend modules.',
-			'Analytics is important to the platform story, but it is not currently sold as a separate API-key namespace. When documenting analytics, keep the distinction between product UI and public REST contract explicit.'
+			'Analytics is important to the platform story, but only the aggregate /v1/price-index subset is exposed as a stable API-key contract. Keep the distinction between product UI, internal helpers, and public REST contract explicit.'
 		],
 		sections: [
 			{
 				title: 'What is public today',
 				bullets: [
-					'/analytics is a web product surface, not an API-key endpoint family.',
+					'/analytics is a web product surface, while /v1/price-index is the API-key contract for the aggregate price-index subset backed by price_index_snapshots.',
+					'/v1/price-index intentionally starts with JSON pagination only. Do not document CSV, alerts, watchlists, webhooks, or supplier-level raw rows as supported.',
 					'Logged-out visitors and logged-in viewers share the same core analytics view. The server resolves Parchment Intelligence access separately and uses it to decide whether to load the gated modules.',
 					'Public chart data includes 90 days of price-index snapshots, current stocked processing distribution, current origin price ranges, recent-arrival/delisting counts for the upgrade preview, and the latest market summary counts.',
 					'Parchment Intelligence expands the same page to 365 days of snapshot history plus supplier comparison, supplier health, recent arrivals, recent delistings, and origin-level aggregate modules.',
 					'The public catalog and public analytics should be cross-linked because they describe the same coffee market from different angles: raw records versus curated analysis.',
-					'Authenticated and premium analytics views may expose deeper app features, but they still ride through the first-party product rather than a stable public REST schema.'
+					'Authenticated and premium analytics views may expose deeper app features, but only aggregate price-index snapshots currently ride through the stable public REST schema.'
 				]
 			},
 			{
@@ -1583,6 +1597,7 @@ const docsPages: DocsPage[] = [
 				],
 				bullets: [
 					'Use purvey auth login for browser OAuth or purvey auth login --headless on servers, CI, and agent hosts.',
+					'Headed purvey auth login also supports a pasted callback URL when a browser opens on a different machine, localhost is unreachable, or the automatic callback fails. That manual fallback is intentional for SSH, containers, and agent hosts, not a degraded path.',
 					'Run purvey auth status to confirm both session health and current role before scripting against viewer-only or member-only commands.',
 					'Use purvey manifest when a wrapper needs the preferred machine-readable contract. Use purvey context when a human or model should read the dense reference text first, or use purvey context --json / --pretty when an existing caller needs manifest-parity output.'
 				]
@@ -1691,7 +1706,8 @@ const docsPages: DocsPage[] = [
 					}
 				],
 				bullets: [
-					'purvey auth login launches the browser OAuth flow. purvey auth login --headless prints a URL and expects a pasted callback URL, which is better for agents and remote hosts.',
+					'purvey auth login launches the browser OAuth flow. If the browser cannot return to the local callback server, paste the full callback URL into the waiting terminal; the command keeps listening after invalid pasted URLs so you can retry.',
+					'purvey auth login --headless prints a URL and expects a pasted callback URL, which is better for agents, CI, containers, and remote hosts.',
 					'purvey auth status does not require an existing valid session. It reports authenticated state, role, and token timing when available.',
 					'Catalog commands require the viewer role. Inventory, roast, sales, and tasting commands require the member role.'
 				]
@@ -1934,6 +1950,7 @@ const docsPages: DocsPage[] = [
 					'--coffee-id always refers to green_coffee_inv.id (use purvey inventory list to find IDs), while --catalog-id on roast list cross-references the underlying coffee_catalog row.',
 					'--roast-id filters by the exact roast profile ID while keeping the list output shape, which is useful in scripts that already expect arrays.',
 					'Import extracts roast curves, events, and milestone timing from .alog files.',
+					'Interactive file and directory prompts normalize pasted path input: surrounding quotes are removed, shell-escaped spaces and common special characters are unescaped, and Windows or UNC path separators are preserved.',
 					'Interactive --form mode provides a guided workflow for create, import, and watch setup. On roast watch, --auto-match and --coffee-id are mutually exclusive, session state is saved for --resume, and the command runs until interrupted.'
 				]
 			}

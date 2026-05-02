@@ -26,6 +26,7 @@ export interface CatalogSearchState {
 	processingBaseMethod?: string;
 	fermentationType?: string;
 	processAdditive?: string;
+	hasAdditives?: boolean;
 	processingDisclosureLevel?: string;
 	processingConfidenceMin?: number;
 	cultivarDetail?: string;
@@ -81,6 +82,7 @@ const FILTER_SERIALIZATION_ORDER = [
 	'processing_base_method',
 	'fermentation_type',
 	'process_additive',
+	'has_additives',
 	'processing_disclosure_level',
 	'processing_confidence_min',
 	'cultivar_detail',
@@ -124,6 +126,12 @@ function parseProcessingConfidenceMin(value: string | null): number | undefined 
 	}
 
 	return parsed;
+}
+
+function parseStrictBoolean(value: string | null): boolean | undefined {
+	if (value === 'true') return true;
+	if (value === 'false') return false;
+	return undefined;
 }
 
 function parseOptionalNumberFromAliases(
@@ -206,6 +214,11 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 		filters.processing_confidence_min = processingConfidenceMin;
 	}
 
+	const hasAdditives = parseStrictBoolean(url.searchParams.get('has_additives'));
+	if (hasAdditives !== undefined) {
+		filters.has_additives = hasAdditives;
+	}
+
 	const sortField = url.searchParams.get('sortField') ?? defaultSort.field;
 	const sortDirectionParam = url.searchParams.get('sortDirection');
 	const sortDirection =
@@ -267,6 +280,13 @@ function appendFilterParam(
 		const threshold = parseProcessingConfidenceMin(value.toString());
 		if (threshold !== undefined) {
 			params.append(paramKey, threshold.toString());
+		}
+		return;
+	}
+
+	if (filterKey === 'has_additives') {
+		if (typeof value === 'boolean') {
+			params.append(paramKey, value.toString());
 		}
 		return;
 	}
@@ -397,6 +417,10 @@ function readArrayValue(value: CatalogFilterValue | undefined): string[] | undef
 	return values.length > 0 ? values : undefined;
 }
 
+function readBooleanValue(value: CatalogFilterValue | undefined): boolean | undefined {
+	return typeof value === 'boolean' ? value : undefined;
+}
+
 export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSearchState {
 	const scoreRange = readRangeValue(state.filters.score_value);
 	const priceRange = readRangeValue(state.filters.cost_lb);
@@ -411,6 +435,7 @@ export function catalogUrlStateToSearchState(state: CatalogUrlState): CatalogSea
 		processingBaseMethod: readStringValue(state.filters.processing_base_method),
 		fermentationType: readStringValue(state.filters.fermentation_type),
 		processAdditive: readStringValue(state.filters.process_additive),
+		hasAdditives: readBooleanValue(state.filters.has_additives),
 		processingDisclosureLevel: readStringValue(state.filters.processing_disclosure_level),
 		processingConfidenceMin: parseProcessingConfidenceMin(
 			state.filters.processing_confidence_min?.toString() ?? null

@@ -14,6 +14,7 @@ These are the highest-leverage active product bets after reconciling `origin/mai
 - [ ] **V1 Catalog Summary Projection** - Add `fields=summary` to `GET /v1/catalog` as a lean, decision-ready middle shape between `full` and `dropdown` for agents, CLI defaults, and external integrations. Plan: `notes/implementation-plans/2026-04-28-v1-catalog-summary-projection.md`.
 - [ ] **Process Transparency Data Quality + Member Facets** - Backgenerate ADR-004 process fields through coffee-scraper, normalize `drying_method`, and expose high-signal process facets only behind the member/API capability contract once coverage is meaningful. Plan: `notes/implementation-plans/2026-04-29-process-transparency-backgeneration.md`; scraper source truth lives in `../coffee-scraper`.
 - [ ] **Certifications Taxonomy Schema** - Promote recurring Organic/Fair Trade/Rainforest/etc. evidence out of overloaded scraper text fields into a first-class `coffee_catalog.certifications` contract, then extract/backfill conservative high-confidence values for catalog, API, CLI, and agent filtering. Scraper plan: `../coffee-scraper/notes/implementation-plans/2026-04-29-certifications-taxonomy-schema.md`.
+- [ ] **Scraper Runtime Dependency Preflight** - Protect daily catalog freshness by adding a dependency/env preflight to `coffee-scraper/run-scraper.sh` before `npm run scrape all`; fail with explicit `RUNTIME_PREFLIGHT_*` classes when `tsx`, Supabase env, or OpenRouter env are missing. Plan: `../coffee-scraper/notes/implementation-plans/2026-04-30-runtime-dependency-preflight.md`.
 
 ### Reconciled March P0 items
 
@@ -231,7 +232,7 @@ Ongoing code maintenance tasks.
 - [ ] **Lint Boundary** - Split repo-wide prose/notes formatting from product lint, or narrow `pnpm lint` so docs and code PRs are not blocked by historical markdown drift outside the changed scope.
 - [ ] **Public Route Metadata** - Centralize public route metadata for `/v1`, `/docs`, `/api`, `/api-dashboard`, and legacy docs redirects so README, `llms.txt`, and docs marketing copy share one source of truth.
 - [ ] **CLI Docs Contract Sync** - Consume a tiny generated docs fragment from `@purveyors/cli/manifest` (published or vendored) so coffee-app docs stay in lockstep with the shipped CLI contract instead of manually shadowing it.
-- [ ] **CLI Product Surface** - Keep coffee-app product docs aligned with purveyors-cli `origin/main` (`purvey` 0.15.2 source): command groups are auth, catalog, inventory, roast, sales, tasting, config, context, and manifest; exported subpaths include catalog, inventory, roast, sales, tasting, manifest, artisan, ai, and shared lib.
+- [ ] **CLI Product Surface** - Keep coffee-app product docs aligned with purveyors-cli `origin/main` (`purvey` 0.15.2 source): command groups are auth, catalog, inventory, roast, sales, tasting, config, context, and manifest; exported subpaths include catalog, inventory, roast, sales, tasting, manifest, artisan, ai, and shared lib. Account for the 0.15.2 interactive UX fixes: pasted auth callback fallback, shell-escaped roast file/directory paths, and raw Ctrl+C watch shutdown are shipped CLI behavior, not future gaps.
 - [ ] **API Migration** - Re-audit share-token support in `/api/roast-profiles`; the old `notes/MIGRATION-NOTES.md` pointer is gone, so this needs fresh source evidence before implementation.
 
 ---

@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { getDocsPage } from '$lib/docs/content';
 
-describe('catalog docs contract', () => {
+describe('api docs contract', () => {
 	const page = getDocsPage('api', 'catalog');
 
-	it('documents the basic public query surface and paid process facet boundary', () => {
+	it('documents the basic public catalog query surface and paid process facet boundary', () => {
 		expect(page).toBeDefined();
 
 		const serializedPage = JSON.stringify(page);
@@ -21,6 +21,19 @@ describe('catalog docs contract', () => {
 		expect(serializedPage).toContain('Public-only catalog data. No X-RateLimit-* headers.');
 		expect(serializedPage).toContain(
 			'Canonical integration path for developers, sync jobs, and agents. API Green is for evaluation; API Origin and Enterprise unlock process search leverage.'
+		);
+	});
+
+	it('documents /v1/price-index without overclaiming unsupported premium surfaces', () => {
+		const overview = getDocsPage('api', 'overview');
+		const analytics = getDocsPage('api', 'analytics');
+		const serializedDocs = `${JSON.stringify(overview)} ${JSON.stringify(analytics)}`;
+
+		expect(serializedDocs).toContain('GET /v1/price-index');
+		expect(serializedDocs).toContain('aggregate price_index_snapshots data');
+		expect(serializedDocs).toContain('not raw supplier-level rows');
+		expect(serializedDocs).toContain(
+			'Do not document CSV, alerts, watchlists, webhooks, or supplier-level raw rows as supported.'
 		);
 	});
 
