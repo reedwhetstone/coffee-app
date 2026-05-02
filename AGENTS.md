@@ -126,6 +126,7 @@ Treat the API as two layers:
    - `GET /v1` advertises the public namespace, active resources, and legacy migration hints
    - `GET /v1/catalog`
    - Auth: API key, web session, or anonymous (public-only subset unless a privileged session enables wholesale visibility)
+   - Full responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
    - Rate-limit headers (`X-RateLimit-*`) are only included in API-key responses
    - Stable public contract
 
