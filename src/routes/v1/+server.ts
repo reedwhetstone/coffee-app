@@ -47,6 +47,22 @@ export const GET: RequestHandler = async () => {
 						sunset: 'Thu, 31 Dec 2026 23:59:59 GMT'
 					}
 				]
+			},
+			priceIndex: {
+				href: '/v1/price-index',
+				status: 'live',
+				auth: {
+					apiKey: true,
+					anonymous: false,
+					session: false
+				},
+				access: {
+					apiKey: 'requires Parchment Intelligence access; aggregate snapshots only'
+				},
+				source: {
+					table: 'price_index_snapshots',
+					aggregateOnly: true
+				}
 			}
 		}
 	});

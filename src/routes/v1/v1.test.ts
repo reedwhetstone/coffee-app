@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { GET } from './+server';
 
 describe('/v1 discovery route', () => {
-	it('publishes the catalog auth matrix and legacy alias metadata', async () => {
+	it('publishes the catalog and price-index auth matrix metadata', async () => {
 		const response = await GET({
 			url: new URL('https://app.test/v1'),
 			request: new Request('https://app.test/v1'),
@@ -37,5 +37,21 @@ describe('/v1 discovery route', () => {
 				sunset: 'Thu, 31 Dec 2026 23:59:59 GMT'
 			})
 		);
+		expect(body.resources.priceIndex).toMatchObject({
+			href: '/v1/price-index',
+			status: 'live',
+			auth: {
+				apiKey: true,
+				anonymous: false,
+				session: false
+			},
+			access: {
+				apiKey: 'requires Parchment Intelligence access; aggregate snapshots only'
+			},
+			source: {
+				table: 'price_index_snapshots',
+				aggregateOnly: true
+			}
+		});
 	});
 });
