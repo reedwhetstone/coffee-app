@@ -4,7 +4,7 @@
 
 ---
 
-## Priority 0: Current Product Priorities (reconciled Apr 29, 2026)
+## Priority 0: Current Product Priorities (reconciled May 2, 2026)
 
 These are the highest-leverage active product bets after reconciling `origin/main` across coffee-app, coffee-scraper, and purveyors-cli. The CLI is treated as a core agent/product surface, not a separate utility silo.
 
@@ -231,7 +231,7 @@ Ongoing code maintenance tasks.
 - [ ] **Lint Boundary** - Split repo-wide prose/notes formatting from product lint, or narrow `pnpm lint` so docs and code PRs are not blocked by historical markdown drift outside the changed scope.
 - [ ] **Public Route Metadata** - Centralize public route metadata for `/v1`, `/docs`, `/api`, `/api-dashboard`, and legacy docs redirects so README, `llms.txt`, and docs marketing copy share one source of truth.
 - [ ] **CLI Docs Contract Sync** - Consume a tiny generated docs fragment from `@purveyors/cli/manifest` (published or vendored) so coffee-app docs stay in lockstep with the shipped CLI contract instead of manually shadowing it.
-- [ ] **CLI Product Surface** - Keep coffee-app product docs aligned with purveyors-cli `origin/main` (`purvey` 0.15.1 source): command groups are auth, catalog, inventory, roast, sales, tasting, config, context, and manifest; exported subpaths include catalog, inventory, roast, sales, tasting, manifest, artisan, ai, and shared lib.
+- [ ] **CLI Product Surface** - Keep coffee-app product docs aligned with purveyors-cli `origin/main` (`purvey` 0.15.2 source): command groups are auth, catalog, inventory, roast, sales, tasting, config, context, and manifest; exported subpaths include catalog, inventory, roast, sales, tasting, manifest, artisan, ai, and shared lib.
 - [ ] **API Migration** - Re-audit share-token support in `/api/roast-profiles`; the old `notes/MIGRATION-NOTES.md` pointer is gone, so this needs fresh source evidence before implementation.
 
 ---
@@ -293,7 +293,7 @@ Supplier implementation details live in `../coffee-scraper/SUPPLIERS.md`; keep t
 
 ### Current source-of-truth state
 
-- **42 live suppliers as of 2026-04-29** in coffee-scraper `origin/main` (`c54d22d`).
+- **42 live suppliers as of 2026-05-02** in coffee-scraper `origin/main` (`f254ef9`).
 - **Coffee Shrub** is now live as a custom Playwright/Magento source and should be treated as a wholesale-capable source, not as an exclusion.
 - **Wholesale-capable suppliers are in scope** when they expose useful public inventory. Classification should use `price_tiers` plus the DB `wholesale` flag rather than excluding by bag size or title alone.
 - **Recent scraper moat work:** processing transparency persistence, producer column support, conditional field policies, high-noise source policy tuning, and source-specific fixes for Coffee Shrub, Genuine Origin, Roastmasters, and processing/additive evidence extraction.
