@@ -1597,6 +1597,7 @@ const docsPages: DocsPage[] = [
 				],
 				bullets: [
 					'Use purvey auth login for browser OAuth or purvey auth login --headless on servers, CI, and agent hosts.',
+					'Headed purvey auth login also supports a pasted callback URL when a browser opens on a different machine, localhost is unreachable, or the automatic callback fails. That manual fallback is intentional for SSH, containers, and agent hosts, not a degraded path.',
 					'Run purvey auth status to confirm both session health and current role before scripting against viewer-only or member-only commands.',
 					'Use purvey manifest when a wrapper needs the preferred machine-readable contract. Use purvey context when a human or model should read the dense reference text first, or use purvey context --json / --pretty when an existing caller needs manifest-parity output.'
 				]
@@ -1705,7 +1706,8 @@ const docsPages: DocsPage[] = [
 					}
 				],
 				bullets: [
-					'purvey auth login launches the browser OAuth flow. purvey auth login --headless prints a URL and expects a pasted callback URL, which is better for agents and remote hosts.',
+					'purvey auth login launches the browser OAuth flow. If the browser cannot return to the local callback server, paste the full callback URL into the waiting terminal; the command keeps listening after invalid pasted URLs so you can retry.',
+					'purvey auth login --headless prints a URL and expects a pasted callback URL, which is better for agents, CI, containers, and remote hosts.',
 					'purvey auth status does not require an existing valid session. It reports authenticated state, role, and token timing when available.',
 					'Catalog commands require the viewer role. Inventory, roast, sales, and tasting commands require the member role.'
 				]
@@ -1948,6 +1950,7 @@ const docsPages: DocsPage[] = [
 					'--coffee-id always refers to green_coffee_inv.id (use purvey inventory list to find IDs), while --catalog-id on roast list cross-references the underlying coffee_catalog row.',
 					'--roast-id filters by the exact roast profile ID while keeping the list output shape, which is useful in scripts that already expect arrays.',
 					'Import extracts roast curves, events, and milestone timing from .alog files.',
+					'Interactive file and directory prompts normalize pasted path input: surrounding quotes are removed, shell-escaped spaces and common special characters are unescaped, and Windows or UNC path separators are preserved.',
 					'Interactive --form mode provides a guided workflow for create, import, and watch setup. On roast watch, --auto-match and --coffee-id are mutually exclusive, session state is saved for --resume, and the command runs until interrupted.'
 				]
 			}
