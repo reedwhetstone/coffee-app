@@ -2,7 +2,7 @@
 
 Maps strategy docs, code, and audit findings to extracted ideas and published posts. This is the traceability and coherence layer between what is written publicly and what exists in the repos.
 
-_Last coherence audit: 2026-04-26_
+_Last coherence audit: 2026-05-03_
 
 ## Core strategy sources
 
@@ -16,6 +16,9 @@ _Last coherence audit: 2026-04-26_
 | `notes/decisions/004-processing-transparency-schema-api.md` | Structured process metadata decision                 | Supports processing transparency, schema-as-market, and disclosure-quality posts     |
 | `notes/archive/legacy-product/MARKET_ANALYSIS.md`           | Historical source for early supply-chain posts       | Feeds `what-is-purveyors` and legacy supply-chain infrastructure framing             |
 | `brain/references/b2cc-agents-as-customers.md`              | External theory / reference                          | Feeds agents-as-customers, docs-as-product, and allowlist-governance ideas           |
+| `notes/big-ideas/2026-04-30-purveyors-proof-layer.md`        | Strategic proof-layer proposal                       | Feeds claim provenance, proof passport, and evidence-as-product ideas                |
+| `notes/implementation-plans/2026-04-29-parchment-intelligence-api-cli-bridge.md` | Price-index API and CLI bridge plan                  | Feeds Parchment Intelligence launch and machine-readable market-data posts           |
+| `../coffee-scraper/notes/implementation-plans/2026-04-29-certifications-taxonomy-schema.md` | Certification taxonomy schema plan                   | Feeds certification schema and structured claim-data ideas                           |
 
 ## Recent source material checked in this audit (2026-04-19 to 2026-04-26)
 
@@ -29,6 +32,21 @@ _Last coherence audit: 2026-04-26_
 | coffee-scraper PRs #209/#215                                                    | Producer column extraction and residue filtering                                 | Added new raw idea: `Producer identity is market infrastructure, not listing copy`                                        |
 | coffee-scraper PRs #204/#206                                                    | Conditional source-field contracts and audit compatibility                       | Refreshed the existing `Null Means Two Things` / field-contract backlog theme; no duplicate idea added                    |
 | `repos/coffee-scraper/README.md` and `scrape/sources/index.ts` at `origin/main` | Current supplier/source count check                                              | Current public scraper docs say 41 live sources; older posts still cite 30, 31, or 35 supplier snapshots                  |
+
+## Recent source material checked in this audit (2026-04-27 to 2026-05-03)
+
+| Source                                                                      | Audit use                                             | Outcome                                                                                                            |
+| --------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| coffee-app PR #301                                                          | Open publish-ready blog PR                            | Treat as the near-term queue item to resolve before opening another full draft                                     |
+| coffee-app PR #323                                                          | Open outline-only GenUI PR                            | Confirms active ai-first-product backlog remains healthy; does not close the api-architecture publication gap      |
+| coffee-app PRs #302/#304/#319                                               | Process facets, access-tier positioning, docs updates | Reinforces that visibility versus search leverage is now a central public/product narrative                         |
+| coffee-app PR #312                                                          | `/v1/price-index` endpoint                            | Updated price-index idea: endpoint has shipped, but CLI/docs bridge should determine launch-post framing           |
+| coffee-app PR #313 and proof-summary plans                                  | Purveyors Proof Layer planning                        | Added new raw api-architecture idea for proof passports and claim provenance                                        |
+| coffee-scraper PRs #225/#234 plus certification taxonomy plan               | Producer evidence and certifications contract         | Added new raw coffee-data-pipeline idea: certification data needs a schema, not substring search                    |
+| coffee-scraper PRs #237/#239                                                | Runtime preflight and architecture docs refresh       | Useful product-quality evidence, but not strong enough for a standalone blog idea this week                        |
+| purveyors-cli PR #103                                                       | Structured process catalog filters                    | Confirms process transparency is now a cross-surface API/CLI/web story, not just a catalog UI detail               |
+| open Coffee Intelligence draft PRs #228/#267/#285                           | Active draft queue                                    | Flagged as stale snapshot risk; refresh, close, or rebase before promotion                                          |
+
 
 ## Published Posts
 
@@ -109,24 +127,35 @@ _Last coherence audit: 2026-04-26_
 - **coffee-app**
 
   - `Processing transparency is a schema problem, not a vocabulary problem`
-    - Source: ADR-004, PR #289, and the structured `/v1/catalog` process fields.
-    - Why now: the co-fermentation post identified the transparency gap, then the app turned it into an API contract.
+    - Source: ADR-004, PR #289, PR #302, ADR-005, and the structured `/v1/catalog` process fields.
+    - Why now: the co-fermentation post identified the transparency gap, then the app turned it into a cross-surface API, access-tier, and catalog contract.
   - `The listing schema is the market`
-    - Source: PR #291 outline plus PR #289 catalog contract work.
-    - Status fix: moved from raw to outlined in `ideas.md`.
+    - Source: PR #291 outline, PR #289 catalog contract work, PR #302 facets, and ADR-005.
+    - Status: outlined in `ideas.md`.
+  - `Proof passports for coffee claims: why the next marketplace unit is evidence, not listings`
+    - Source: `notes/big-ideas/2026-04-30-purveyors-proof-layer.md` and `notes/implementation-plans/2026-05-01-catalog-proof-summary-seed.md`.
+    - Why now: process transparency, producer evidence, access tiers, and proof-summary planning now point at claim provenance as a paid trust layer.
+  - `We Built a Real-Time Specialty Coffee Price Index`
+    - Source: PR #312 and the Parchment Intelligence API/CLI bridge plan.
+    - Why now: `/v1/price-index` has shipped. Draft after CLI/docs bridge if the post should claim cross-surface completeness.
 
 - **coffee-scraper**
   - `Producer identity is market infrastructure, not listing copy`
-    - Source: producer column pipeline support and composite producer residue fixes in PRs #209/#215.
-  - `Processing breakdown extraction` now provides concrete implementation evidence for a follow-up to the co-fermentation post.
-  - Conditional source-field contracts reinforced the existing `Null Means Two Things` backlog theme; no duplicate idea added.
+    - Source: producer column pipeline support and composite producer residue fixes in PRs #209/#215/#225.
+  - `Certification data needs a schema, not a substring search`
+    - Source: certification taxonomy plan and PR #234.
+    - Why now: audit evidence found certification claims broadly trapped in overloaded fields; a first-class schema turns them into buyer and agent leverage.
+  - Runtime preflight and Coffee Shrub fixes are operationally useful but did not produce a stronger blog idea than proof, certifications, or price-index work.
 
 ## Pillar balance snapshot
 
-- Published posts: agentic-stack 7, supply-chain 3, coffee-data-pipeline 2, ai-first-product 1, market-intelligence 1, api-architecture 0.
+- Published posts on `origin/main`: agentic-stack 7, supply-chain 3, coffee-data-pipeline 2, ai-first-product 1, market-intelligence 1, api-architecture 0.
 - Priority gap: **api-architecture** remains the clearest underrepresented published pillar.
-- Backlog condition: idea volume is healthy; the main problems are stale published counts, one newly published post with post-publish schema drift, and several outlined API posts competing for the next slot.
+- Backlog condition: idea volume is healthy; the active risk is queue management, not idea scarcity. Several complete draft PRs are open, while recent product work is generating stronger API/data ideas than the older generic backlog.
+- Cadence condition: the visible blog frontmatter still looks stale after 2026-04-07, but PR #301 is a complete near-term publish candidate with a hero and source links.
 
 ## Next priority
 
-**Draft `What If the Real Marketplace Is the Listing Schema?` next.** It is already outlined, fills the zero-post api-architecture pillar gap, and now has fresh evidence from the 41-source scraper footprint, ADR-004, `/v1/catalog`, and the listing-schema outline work. The strongest angle is not generic API docs. It is the sharper claim that the durable marketplace control point is the listing contract the market learns to publish through.
+1. **Resolve PR #301, `Which Moats Survive When AI Makes Software Cheap?`.** It is already drafted with hero and source links. Ship, revise, or close it before opening more full draft PRs.
+2. **Draft `What If the Real Marketplace Is the Listing Schema?` next.** It is already outlined, fills the zero-post api-architecture pillar gap, and now has fresh evidence from `/v1/catalog`, ADR-004, ADR-005, structured process fields, and the public/API/CLI access split. The strongest angle is that the durable marketplace control point is the listing contract the market learns to publish through.
+3. **Queue `We Built a Real-Time Specialty Coffee Price Index` after the API/CLI bridge story is coherent.** PR #312 shipped `/v1/price-index`, but the better post is a cross-surface market-data launch once CLI/docs work catches up, unless Reed wants a narrower API-contract launch post sooner.
