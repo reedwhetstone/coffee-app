@@ -39,6 +39,7 @@ Atomic blog ideas extracted from purveyors notes, brain captures, and conversati
 
 ## Market Intelligence
 
+- [ ] Is coffee supply more concentrated than the catalog suggests? | Source: Purveyors public catalog flow analysis (2026-04-22), Nordic Approach harvest updates, ICO Coffee Market Report March 2026 | Pillar: market-intelligence | Status: drafted (PR #285) | Outline: notes/blog/outlines/is-coffee-supply-more-concentrated-than-the-catalog-suggests.md | Note: Counterintuitive shelf-vs-flow thesis. The full catalog looks broad, but fresh arrivals in the last 30 days are materially narrower and more concentrated by origin than the static shelf suggests.
 - [ ] Green coffee market pulse: what the data shows right now | Source: dev DB coffee_catalog analysis | Pillar: market-intelligence | Status: raw
 - [ ] Origin deep dive template: pricing, availability, processing trends by country | Source: scraped data | Pillar: market-intelligence | Status: raw
 - [x] Which suppliers carry what: a data-driven comparison | Source: scraped data | Pillar: market-intelligence | Status: published via "Who Profits When Coffee Data Stays Scarce?" (PR #87, slug: who-profits-when-coffee-data-stays-scarce) | Outline: no standalone repo outline file retained | Note: Reframed away from a generic comparison post into the information-asymmetry thesis. The current live post still needs a supplier-count refresh/date-scope pass in the drift ledger.
