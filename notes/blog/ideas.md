@@ -39,7 +39,7 @@ Atomic blog ideas extracted from purveyors notes, brain captures, and conversati
 
 ## Market Intelligence
 
-- [ ] Green coffee market pulse: what the data shows right now | Source: dev DB coffee_catalog analysis | Pillar: market-intelligence | Status: raw
+- [ ] Green coffee market pulse: what the data shows right now | Source: dev DB coffee_catalog analysis | Pillar: market-intelligence | Status: drafted (PR #228) | Outline: notes/blog/outlines/what-if-the-real-coffee-shortage-is-choice-not-price.md | Note: Reframed as "What If the Real Coffee Shortage Is Choice, Not Price?" The angle is that this week's real market signal is thinning choice, not just higher sticker price. Current internal analytics show retail median price up 3.5% week-over-week while supply is down 10.4%, with large retail-vs-wholesale access gaps in origins like Colombia and Ethiopia.
 - [ ] Origin deep dive template: pricing, availability, processing trends by country | Source: scraped data | Pillar: market-intelligence | Status: raw
 - [x] Which suppliers carry what: a data-driven comparison | Source: scraped data | Pillar: market-intelligence | Status: published via "Who Profits When Coffee Data Stays Scarce?" (PR #87, slug: who-profits-when-coffee-data-stays-scarce) | Outline: no standalone repo outline file retained | Note: Reframed away from a generic comparison post into the information-asymmetry thesis. The current live post still needs a supplier-count refresh/date-scope pass in the drift ledger.
 - [ ] Seasonal patterns in green coffee availability | Source: scraped data (stocked_date/unstocked_date) | Pillar: market-intelligence | Status: raw
