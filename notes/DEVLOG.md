@@ -183,6 +183,7 @@ Public API for external developers and integrations.
 - [ ] **API** - Centralize catalog capability enforcement so `/catalog`, `/api/catalog/filters`, and `/v1/catalog` share the same anonymous/viewer/member/API entitlement contract.
 - [ ] **API** - Keep raw process evidence private by default while exposing provenance-safe nested process summaries.
 - [ ] **API** - Expose normalized `certifications` once the scraper schema and backfill are credible, keeping raw marketing text out of the stable contract while enabling certification filters for buyers, API users, CLI commands, and agents.
+- [ ] **API / Procurement** - Build explicit user watchlists and procurement alerts: let users save criteria such as “washed Colombias under $X/lb” and get notified when comparable lots appear. Keep the first slice catalog/API-driven with user-authored watchlists; defer inventory-depletion-triggered alerts until the explicit watchlist loop proves value.
 - [ ] **API** - Implement API key limits per tier. Free: 1 key, Member: up to 10 keys, Enterprise: unlimited keys.
 - [ ] **API** - Add roast IDs to profiles for more accurate tagging and API reference.
 - [ ] **API** - Longer-term endpoint ideas remain open: green coffee processing, tasting note scoring, and roast calculations as stable API products once the catalog/intelligence contracts are coherent.
