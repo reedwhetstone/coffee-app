@@ -87,6 +87,7 @@ Add backward-compatible CLI-style aliases to `GET /v1/catalog` while keeping the
 ### In scope
 
 1. **Add `offset` parsing as a pagination alias**
+
    - Accept `offset` as a non-negative integer.
    - When `offset` is supplied with `limit`, derive the effective offset directly or derive `page = floor(offset / limit) + 1` only when doing so preserves truthful pagination metadata.
    - Recommended v1 behavior: require `offset % limit === 0` and return HTTP 400 for non-page-aligned offsets unless the implementation also adds an explicit `pagination.offset` field. Truthful metadata matters more than accepting every possible offset shape.
@@ -94,6 +95,7 @@ Add backward-compatible CLI-style aliases to `GET /v1/catalog` while keeping the
    - Preserve `ids` behavior: explicit IDs still ignore pagination.
 
 2. **Add `sort` parsing as a CLI-compatible alias**
+
    - `sort=price` -> `sortField=price_per_lb&sortDirection=asc`
    - `sort=price-desc` -> `sortField=price_per_lb&sortDirection=desc`
    - `sort=name` -> `sortField=name&sortDirection=asc`
@@ -103,6 +105,7 @@ Add backward-compatible CLI-style aliases to `GET /v1/catalog` while keeping the
    - Invalid `sort` values should return the same structured `CatalogQueryValidationError` envelope as invalid canonical params.
 
 3. **Share the mapping as a named helper**
+
    - Avoid duplicating CLI vocabulary by burying a switch statement inside route parsing.
    - Suggested coffee-app helper location: `src/lib/catalog/publicQueryContract.ts` or a sibling `catalogQueryAliases.ts`.
    - The helper should be directly unit-tested and easy for future CLI API-key mode work to mirror or import conceptually.

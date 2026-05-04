@@ -32,6 +32,7 @@ The coffee industry keeps treating processing transparency as a vocabulary probl
 ## External References
 
 1. **Gregory Lewis, American Economic Review (2011), "Asymmetric Information, Adverse Selection and Online Disclosure: The Case of eBay Motors."**
+
    - URL: https://www.aeaweb.org/articles?id=10.1257/aer.101.4.1535
    - Key quote: "online disclosures are important price determinants"
    - Why it matters: disclosure is not cosmetic. In a market where buyers cannot inspect quality directly, structured seller disclosure affects prices and participation. Coffee processing metadata has the same market-structure problem: buyers cannot reward what suppliers do not disclose in comparable form.
@@ -52,6 +53,7 @@ Key move: absence is not a value. If the schema only has one free-text `processi
 Use the co-fermentation post as the setup, not the body. That post exposed the gap. This one asks what had to change after the debate moved from taste to infrastructure.
 
 Concrete source points:
+
 - ADR-004: legacy `processing` collapses base method, fermentation environment, additives, duration, drying, disclosure quality, and provenance into one string.
 - PR #208 scraper work: extraction had to preserve raw compound context like "Anaerobic Natural" before legacy normalization, otherwise the system lost the exact split the market needs.
 
@@ -62,6 +64,7 @@ Bring in Lewis's eBay Motors paper as the transferable economics frame. Online u
 The sharper claim: disclosure only becomes market infrastructure when it becomes comparable. A seller who gives fermentation duration, additives, drying method, and confidence should receive market credit for that work. But if one catalog stores "Black Honey Double Carbonic Maceration Mossto with Galaxy Hops" as one string and another stores "Natural" as one string, the comparison layer is gone.
 
 Use current Purveyors numbers as a concrete, draft-time check:
+
 - ADR-005 sample of 1,058 anonymous `/v1/catalog` rows had 51 `processing_base_method` values, 0 `fermentation_type`, 0 `process_additives`, 54 `processing_disclosure_level`, and 435 `drying_method` values.
 - That is not a failure of ambition. It is the honest shape of a newly structured field family before the upstream market has learned to publish into it.
 
@@ -82,6 +85,7 @@ Explain ADR-004 as a product governance move. The field list matters because eac
 - `processing_evidence_available`: public signal that evidence exists without exposing raw supplier text.
 
 The important part is not the exact field names. It is the semantics:
+
 - Null means not disclosed or not safely known.
 - Explicit `none` means the source actually said none.
 - Raw evidence stays protected because provenance is needed for review, but supplier copy should not be dumped into public API responses by default.
@@ -94,6 +98,7 @@ This section should make the reader feel the hidden product philosophy: a databa
 Connect ADR-005 without turning the post into pricing strategy. Purveyors distinguishes data visibility from search leverage. It can show process facts publicly because that proves the dataset is real and helps users trust individual coffees. But the ability to search across structured method, fermentation, additives, disclosure level, and confidence is sourcing leverage. That belongs in member/API tiers.
 
 This is not arbitrary gating if the boundary is honest:
+
 - Public/viewer surface: "Can I see whether this coffee has credible processing facts?"
 - Member/API surface: "Can I search the market by those facts and make faster sourcing decisions?"
 
@@ -108,6 +113,7 @@ End by widening the aperture. The most interesting version of this is not that P
 Tie back to SCA CVA. The industry is already moving toward a higher-resolution picture of coffee value. Processing transparency is one slice of that. But high-resolution evaluation needs high-resolution data plumbing. Otherwise every rich assessment collapses back into a paragraph.
 
 Possible final turn:
+
 - The co-fermentation debate asked whether a process is legitimate.
 - The schema question asks whether the market can describe any process precisely enough for buyers to compare it.
 - That second question is less dramatic, but it is more durable. The market does not get more transparent when everyone agrees on better words. It gets more transparent when the data model makes omission visible.

@@ -48,20 +48,14 @@
 				{#if isSignedIn}
 					Back to the full market view.
 				{:else}
-					Source greens with the whole market in view.
+					Source green coffee <br /> with the whole market in view.
 				{/if}
 			</h1>
 		</div>
 		<div class="mx-auto max-w-3xl text-center">
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				{#if isSignedIn}
-					Daily normalized data from 41+ US suppliers. Price movement, arrivals, delistings, and
-					origin benchmarks in one place, so you make procurement calls on complete information.
-				{:else}
-					41+ US specialty importers, scraped daily. Pricing movement, new arrivals, delistings, and
-					origin-level benchmarks normalized into one view. The market intelligence your procurement
-					process is missing.
-				{/if}
+				Daily normalized data from 41+ US suppliers. Price movement, arrivals, delistings, and
+				origin benchmarks in one place, so you make procurement calls with real time intelligence.
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">
 				<button

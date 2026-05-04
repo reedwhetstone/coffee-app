@@ -53,14 +53,14 @@ Commands used the live `PURVEYORS_API_KEY` from `~/.env`; the key value was not 
 
 Scores use the Product Leverage Index from the planner skill: vision alignment 0-5, data moat / decision quality 0-5, cross-surface leverage 0-4, public value / access ladder 0-3, foundation unlock 0-3.
 
-| Candidate | Vision | Data moat | Cross-surface | Public/access | Foundation | Total | Feasibility gate | Decision |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| Catalog Proof Summary Seed | 5 | 5 | 4 | 3 | 3 | 20 | Medium. No migration required if computed from existing fields; careful wording needed. | Selected |
-| Parchment Intelligence CLI follow-up | 5 | 4 | 4 | 2 | 2 | 17 | Depends on PR #312 merging or at least stabilizing. Existing plan already covers it. | Defer until endpoint lands |
-| Process transparency backgeneration | 5 | 5 | 2 | 1 | 3 | 16 | Belongs mostly in coffee-scraper and already has a plan. Higher data-write risk. | Defer to scraper builder |
-| CLI API-key catalog parity | 5 | 3 | 4 | 2 | 2 | 16 | Strong, but already planned on 2026-04-29 and less tied to the new moonshot. | Defer |
-| V1 Catalog Summary Projection | 4 | 3 | 4 | 2 | 2 | 15 | Strong API hygiene, already planned on 2026-04-28. | Defer |
-| Runtime dependency preflight | 4 | 4 | 2 | 0 | 3 | 13 | Protects data freshness but is operational hygiene, not today's best product bet. | Defer |
+| Candidate                            | Vision | Data moat | Cross-surface | Public/access | Foundation | Total | Feasibility gate                                                                        | Decision                   |
+| ------------------------------------ | -----: | --------: | ------------: | ------------: | ---------: | ----: | --------------------------------------------------------------------------------------- | -------------------------- |
+| Catalog Proof Summary Seed           |      5 |         5 |             4 |             3 |          3 |    20 | Medium. No migration required if computed from existing fields; careful wording needed. | Selected                   |
+| Parchment Intelligence CLI follow-up |      5 |         4 |             4 |             2 |          2 |    17 | Depends on PR #312 merging or at least stabilizing. Existing plan already covers it.    | Defer until endpoint lands |
+| Process transparency backgeneration  |      5 |         5 |             2 |             1 |          3 |    16 | Belongs mostly in coffee-scraper and already has a plan. Higher data-write risk.        | Defer to scraper builder   |
+| CLI API-key catalog parity           |      5 |         3 |             4 |             2 |          2 |    16 | Strong, but already planned on 2026-04-29 and less tied to the new moonshot.            | Defer                      |
+| V1 Catalog Summary Projection        |      4 |         3 |             4 |             2 |          2 |    15 | Strong API hygiene, already planned on 2026-04-28.                                      | Defer                      |
+| Runtime dependency preflight         |      4 |         4 |             2 |             0 |          3 |    13 | Protects data freshness but is operational hygiene, not today's best product bet.       | Defer                      |
 
 ## Scope in / out
 
@@ -104,44 +104,44 @@ Suggested row shape:
 
 ```json
 {
-  "id": 123,
-  "name": "Ethiopia Guji Natural",
-  "process": {
-    "base_method": "Natural",
-    "disclosure_level": "structured",
-    "confidence": 0.85,
-    "evidence_available": true
-  },
-  "proof": {
-    "version": "proof-summary-v1",
-    "overall": {
-      "label": "partial",
-      "score": 0.64
-    },
-    "families": {
-      "process": {
-        "label": "disclosed",
-        "confidence": 0.85,
-        "signals": ["structured_process", "evidence_available"]
-      },
-      "provenance": {
-        "label": "partial",
-        "confidence": 0.5,
-        "signals": ["country", "region"]
-      },
-      "freshness": {
-        "label": "dated",
-        "confidence": 0.7,
-        "signals": ["stocked_date"]
-      },
-      "pricing": {
-        "label": "tiered",
-        "confidence": 0.9,
-        "signals": ["price_per_lb", "price_tiers"]
-      }
-    },
-    "limitations": ["not_certification", "raw_evidence_not_included"]
-  }
+	"id": 123,
+	"name": "Ethiopia Guji Natural",
+	"process": {
+		"base_method": "Natural",
+		"disclosure_level": "structured",
+		"confidence": 0.85,
+		"evidence_available": true
+	},
+	"proof": {
+		"version": "proof-summary-v1",
+		"overall": {
+			"label": "partial",
+			"score": 0.64
+		},
+		"families": {
+			"process": {
+				"label": "disclosed",
+				"confidence": 0.85,
+				"signals": ["structured_process", "evidence_available"]
+			},
+			"provenance": {
+				"label": "partial",
+				"confidence": 0.5,
+				"signals": ["country", "region"]
+			},
+			"freshness": {
+				"label": "dated",
+				"confidence": 0.7,
+				"signals": ["stocked_date"]
+			},
+			"pricing": {
+				"label": "tiered",
+				"confidence": 0.9,
+				"signals": ["price_per_lb", "price_tiers"]
+			}
+		},
+		"limitations": ["not_certification", "raw_evidence_not_included"]
+	}
 }
 ```
 
