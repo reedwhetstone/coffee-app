@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { resolvePrincipal } from '$lib/server/principal';
+import { createAdminClient } from '$lib/supabase-admin';
 import { createSchemaService } from '$lib/services/schemaService';
 
 export interface ArrivalBean {
@@ -164,6 +165,9 @@ export const load: PageServerLoad = async (event) => {
 	const supabase = event.locals.supabase;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const sb = supabase as any;
+	// price_index_snapshots is entitlement-sensitive. Public analytics still exposes a
+	// bounded server-rendered slice, but direct anon/auth table access is revoked.
+	const priceIndexSupabase = createAdminClient();
 
 	// ─── PUBLIC QUERIES (run for all visitors, in parallel) ─────────────────────
 	const thirtyDaysAgo = new Date();
@@ -250,7 +254,7 @@ export const load: PageServerLoad = async (event) => {
 			.limit(50),
 		// Price index snapshots — 90 days public, 365 days for Parchment Intelligence users
 		_loadPriceSnapshotsPaginated({
-			supabase: sb,
+			supabase: priceIndexSupabase,
 			fromDate: snapshotFromDate
 		})
 	]);

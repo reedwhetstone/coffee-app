@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const { mockCreateAdminClient } = vi.hoisted(() => ({
+	mockCreateAdminClient: vi.fn()
+}));
+
 vi.mock('$lib/server/principal', () => ({
 	resolvePrincipal: vi.fn()
 }));
@@ -7,6 +11,10 @@ vi.mock('$lib/server/principal', () => ({
 vi.mock('$lib/seo/meta', () => ({
 	buildPublicMeta: vi.fn((value) => value),
 	resolvePublicPageSocialImage: vi.fn(() => '/og/analytics.jpg')
+}));
+
+vi.mock('$lib/supabase-admin', () => ({
+	createAdminClient: mockCreateAdminClient
 }));
 
 vi.mock('$lib/services/schemaService', () => ({
@@ -48,12 +56,15 @@ type SnapshotQueryCall = {
 let load: typeof import('./+page.server').load;
 let loadPriceSnapshotsPaginated: typeof import('./+page.server')._loadPriceSnapshotsPaginated;
 let resolvePrincipalMock: ReturnType<typeof vi.fn>;
+let currentPriceIndexClient: unknown;
 
 beforeEach(async () => {
 	vi.resetModules();
 	vi.clearAllMocks();
 	vi.useFakeTimers();
 	vi.setSystemTime(new Date('2026-04-08T12:00:00.000Z'));
+	currentPriceIndexClient = undefined;
+	mockCreateAdminClient.mockImplementation(() => currentPriceIndexClient);
 
 	({ load, _loadPriceSnapshotsPaginated: loadPriceSnapshotsPaginated } = await import(
 		'./+page.server'
@@ -343,6 +354,7 @@ describe('loadPriceSnapshotsPaginated', () => {
 describe('analytics load', () => {
 	it('preserves the 90-day baseline window and 365-day Parchment Intelligence window', async () => {
 		const anonymousClient = createAnalyticsClient([{ data: [], error: null }]);
+		currentPriceIndexClient = anonymousClient;
 		resolvePrincipalMock.mockResolvedValueOnce({
 			isAuthenticated: false,
 			ppiAccess: false,
@@ -353,6 +365,7 @@ describe('analytics load', () => {
 		expect(anonymousClient.snapshotFromDates).toEqual(['2026-01-08']);
 
 		const memberClient = createAnalyticsClient([{ data: [], error: null }]);
+		currentPriceIndexClient = memberClient;
 		resolvePrincipalMock.mockResolvedValueOnce({
 			isAuthenticated: true,
 			ppiAccess: true,
@@ -368,6 +381,8 @@ describe('analytics load', () => {
 			{ data: Array.from({ length: 1000 }, (_, index) => makeSnapshotRow(index)), error: null },
 			{ data: null, error: { message: 'page timeout' } }
 		]);
+
+		currentPriceIndexClient = client;
 
 		await expect(load(createLoadEvent(client))).rejects.toThrow(
 			'Failed to load analytics price snapshots page 2: page timeout'
