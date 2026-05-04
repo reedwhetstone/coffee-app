@@ -30,6 +30,7 @@ describe('resolveCatalogAccessCapabilities', () => {
 			expect(capabilities.canUseBasicFilters).toBe(true);
 			expect(capabilities.canViewFullCatalog).toBe(false);
 			expect(capabilities.canUseProcessFacets).toBe(false);
+			expect(capabilities.canUseBeanMatching).toBe(false);
 			expect(capabilities.canViewPremiumFilterMetadata).toBe(false);
 			expect(capabilities.canUseAdvancedFilters).toBe(false);
 		}
@@ -44,6 +45,7 @@ describe('resolveCatalogAccessCapabilities', () => {
 			expect(capabilities.canUseProcessFacets).toBe(true);
 			expect(capabilities.canUsePriceScoreRanges).toBe(true);
 			expect(capabilities.canUseAdvancedSorts).toBe(true);
+			expect(capabilities.canUseBeanMatching).toBe(true);
 			expect(capabilities.canViewPremiumFilterMetadata).toBe(true);
 		}
 	});
@@ -55,10 +57,13 @@ describe('resolveCatalogAccessCapabilities', () => {
 
 		expect(green.canUseBasicFilters).toBe(true);
 		expect(green.canUseProcessFacets).toBe(false);
+		expect(green.canUseBeanMatching).toBe(false);
 		expect(green.canViewPremiumFilterMetadata).toBe(false);
 		expect(origin.canUseProcessFacets).toBe(true);
+		expect(origin.canUseBeanMatching).toBe(true);
 		expect(origin.canViewPremiumFilterMetadata).toBe(true);
 		expect(enterprise.canUseProcessFacets).toBe(true);
+		expect(enterprise.canUseBeanMatching).toBe(true);
 		expect(enterprise.canViewPremiumFilterMetadata).toBe(true);
 	});
 });

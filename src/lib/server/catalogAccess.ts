@@ -14,6 +14,7 @@ export interface CatalogAccessCapabilities {
 	canUseAdvancedSorts: boolean;
 	canViewPremiumFilterMetadata: boolean;
 	canUseSemanticSearch: boolean;
+	canUseBeanMatching: boolean;
 	canUseSavedSearches: boolean;
 	canExport: boolean;
 }
@@ -101,6 +102,7 @@ export function resolveCatalogAccessCapabilities(
 		canUseAdvancedSorts: canUseMemberSearchLeverage,
 		canViewPremiumFilterMetadata: canUseMemberSearchLeverage,
 		canUseSemanticSearch: canUseMemberSearchLeverage,
+		canUseBeanMatching: canUseMemberSearchLeverage,
 		canUseSavedSearches: canUseMemberSearchLeverage,
 		canExport: canUseMemberSearchLeverage
 	};

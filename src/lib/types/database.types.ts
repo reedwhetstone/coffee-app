@@ -1032,6 +1032,14 @@ export type Database = {
 		};
 		Functions: {
 			celsius_to_fahrenheit: { Args: { temp_c: number }; Returns: number };
+			count_similar_beans_aggregated_v2: {
+				Args: {
+					target_coffee_id: number;
+					match_threshold?: number;
+					stocked_only?: boolean;
+				};
+				Returns: number;
+			};
 			fahrenheit_to_celsius: { Args: { temp_f: number }; Returns: number };
 			get_api_usage_summary: {
 				Args: { key_id: string; start_date: string };
@@ -1122,6 +1130,62 @@ export type Database = {
 					environmental_temp: number;
 					ror_bean_temp: number;
 					time_seconds: number;
+				}[];
+			};
+			find_similar_beans_v2: {
+				Args: {
+					target_coffee_id: number;
+					match_threshold?: number;
+					match_count?: number;
+					chunk_types?: string[];
+					stocked_only?: boolean;
+				};
+				Returns: {
+					coffee_id: number;
+					coffee_name: string;
+					source: string | null;
+					origin: string | null;
+					country: string | null;
+					continent: string | null;
+					processing: string | null;
+					processing_base_method: string | null;
+					fermentation_type: string | null;
+					drying_method: string | null;
+					cost_lb: number | null;
+					price_per_lb: number | null;
+					price_tiers: Json | null;
+					stocked: boolean | null;
+					similarity: number;
+					chunk_type: string;
+				}[];
+			};
+			find_similar_beans_aggregated_v2: {
+				Args: {
+					target_coffee_id: number;
+					match_threshold?: number;
+					match_count?: number;
+					stocked_only?: boolean;
+				};
+				Returns: {
+					coffee_id: number;
+					coffee_name: string;
+					source: string | null;
+					origin: string | null;
+					country: string | null;
+					continent: string | null;
+					processing: string | null;
+					processing_base_method: string | null;
+					fermentation_type: string | null;
+					drying_method: string | null;
+					cost_lb: number | null;
+					price_per_lb: number | null;
+					price_tiers: Json | null;
+					stocked: boolean | null;
+					avg_similarity: number;
+					origin_similarity: number | null;
+					processing_similarity: number | null;
+					tasting_similarity: number | null;
+					chunk_matches: number;
 				}[];
 			};
 			match_coffee_catalog: {
