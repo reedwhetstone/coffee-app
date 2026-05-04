@@ -1,6 +1,10 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { getCatalogDropdown, searchCatalog, searchCatalogDropdown } from '$lib/data/catalog';
-import { toCatalogResourceItem, type CatalogResponseItem } from '$lib/catalog/catalogResourceItem';
+import {
+	toCatalogResourceItem,
+	withCatalogProofSummary,
+	type CatalogResponseItem
+} from '$lib/catalog/catalogResourceItem';
 import {
 	checkRateLimit,
 	getApiRowLimit,
@@ -76,6 +80,9 @@ export interface CanonicalCatalogResponse<T extends CatalogResponseItem = Catalo
 interface ParsedCatalogQuery {
 	ids: number[];
 	fields: 'full' | 'dropdown';
+	includes: {
+		proof: boolean;
+	};
 	page: number;
 	limit: number;
 	offset: number;
@@ -134,6 +141,7 @@ interface QueryCatalogDataOptions {
 }
 
 const ISO_DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const CATALOG_INCLUDE_VALUES = ['proof'] as const;
 
 class CatalogRateLimitError extends Error {
 	constructor(
@@ -218,6 +226,14 @@ function validateEnumQueryParam(
 	}
 }
 
+function parseIncludeParams(url: URL): string[] {
+	return url.searchParams
+		.getAll('include')
+		.flatMap((value) => value.split(','))
+		.map((value) => value.trim())
+		.filter(Boolean);
+}
+
 function validateCatalogQuery(url: URL): void {
 	const stockedDate = url.searchParams.get('stocked_date');
 	if (stockedDate !== null && !isIsoDateParam(stockedDate)) {
@@ -229,6 +245,16 @@ function validateCatalogQuery(url: URL): void {
 	validateEnumQueryParam(url, 'showWholesale', PUBLIC_CATALOG_BOOLEAN_VALUES);
 	validateEnumQueryParam(url, 'wholesaleOnly', PUBLIC_CATALOG_BOOLEAN_VALUES);
 	validateEnumQueryParam(url, 'sortField', PUBLIC_CATALOG_SORT_FIELDS);
+
+	for (const includeValue of parseIncludeParams(url)) {
+		if (!CATALOG_INCLUDE_VALUES.includes(includeValue as (typeof CATALOG_INCLUDE_VALUES)[number])) {
+			throw new CatalogQueryValidationError('include', includeValue, 'proof');
+		}
+	}
+
+	if (url.searchParams.has('include') && parseIncludeParams(url).length === 0) {
+		throw new CatalogQueryValidationError('include', '', 'proof');
+	}
 
 	const limit = url.searchParams.get('limit');
 	if (limit !== null) {
@@ -328,9 +354,14 @@ function parseCatalogQuery(url: URL): ParsedCatalogQuery {
 			? countryParams
 			: (countryParams[0] ?? url.searchParams.get('country') ?? undefined);
 
+	const includes = new Set(parseIncludeParams(url));
+
 	return {
 		ids,
 		fields: url.searchParams.get('fields') === 'dropdown' ? 'dropdown' : 'full',
+		includes: {
+			proof: includes.has('proof')
+		},
 		page,
 		limit,
 		offset: (page - 1) * limit,
@@ -706,7 +737,13 @@ async function queryCatalogData(
 
 	const totalAvailable = result.count || result.data.length;
 	const fullRows = result.data.map(toCatalogResourceItem);
-	const data = !isPaginated && context.rowLimit ? fullRows.slice(0, context.rowLimit) : fullRows;
+	const rowsWithIncludes = effectiveQuery.includes.proof
+		? fullRows.map(withCatalogProofSummary)
+		: fullRows;
+	const data =
+		!isPaginated && context.rowLimit
+			? rowsWithIncludes.slice(0, context.rowLimit)
+			: rowsWithIncludes;
 	const totalPages = isPaginated ? Math.ceil(totalAvailable / effectiveLimit) : 0;
 
 	return {

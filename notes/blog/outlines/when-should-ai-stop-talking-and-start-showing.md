@@ -4,6 +4,7 @@
 **Target:** 1,100-1,200 words (standard post ceiling)
 **Status:** outlined
 **Source material:**
+
 - `repos/coffee-app/notes/PRODUCT_VISION.md`
 - `repos/coffee-app/notes/BLOG_STRATEGY.md`
 - `repos/coffee-app/notes/genui-platform-transition-plan.md`
@@ -32,6 +33,7 @@ The hard part of generative UI is not getting an AI model to produce cards, char
 ## External References
 
 1. **Google A2UI repository**: https://github.com/google/A2UI
+
    - Key support: A2UI frames agent-generated UI as declarative JSON rendered by the client with trusted native components. The important citation is not the protocol detail; it is the separation between agent intent and host rendering. That supports the post's claim that generative UI is becoming a contract, not a loose design flourish.
 
 2. **Vercel, "Introducing AI SDK 3.0 with Generative UI support"**: https://vercel.com/blog/ai-sdk-3-generative-ui
