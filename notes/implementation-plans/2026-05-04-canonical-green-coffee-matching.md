@@ -102,6 +102,7 @@ Historical planning and current repo evidence line up unusually well:
 ### API behavior
 
 - `GET /v1/catalog/:id/similar`
+
   - Member session or paid API tier required for match details.
   - Supports `threshold`, `limit`, `stocked_only`, and possibly `mode=similar|likely_same|all`.
   - Returns canonical catalog response fragments, canonical pricing, match scores, proof-safe explanation, beta/confidence copy, and access metadata.
@@ -109,6 +110,7 @@ Historical planning and current repo evidence line up unusually well:
   - Can support a non-sensitive teaser count for non-members, for example `likely_match_count`, without returning supplier/price details.
 
 - `GET /v1/catalog/:id/canonical`
+
   - Member session or paid API tier required.
   - Before identity records exist, may return a provisional beta view built from high-confidence similarity candidates with `identity_status: provisional`.
   - After identity records exist, returns the accepted identity and member listings.
@@ -130,6 +132,7 @@ Historical planning and current repo evidence line up unusually well:
 ### Candidate tables
 
 - `bean_identities`
+
   - `id`
   - `canonical_name`
   - `identity_key` or slug
@@ -139,6 +142,7 @@ Historical planning and current repo evidence line up unusually well:
   - timestamps
 
 - `bean_identity_links`
+
   - `id`
   - `bean_identity_id`
   - `coffee_catalog_id`
@@ -150,6 +154,7 @@ Historical planning and current repo evidence line up unusually well:
   - partial unique index so a catalog row can have only one active accepted identity link
 
 - `bean_identity_candidates`
+
   - optional if candidate links become too noisy for the main link table
   - stores candidate pairs or candidate-to-identity proposals with threshold state and reason codes
 

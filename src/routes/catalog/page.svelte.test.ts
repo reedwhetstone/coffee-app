@@ -64,6 +64,7 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			canUseAdvancedSorts: false,
 			canViewPremiumFilterMetadata: false,
 			canUseSemanticSearch: false,
+			canUseBeanMatching: false,
 			canUseSavedSearches: false,
 			canExport: false
 		},
@@ -147,6 +148,7 @@ describe('/catalog process controls', () => {
 					canUseAdvancedSorts: true,
 					canViewPremiumFilterMetadata: true,
 					canUseSemanticSearch: true,
+					canUseBeanMatching: true,
 					canUseSavedSearches: true,
 					canExport: true
 				}
