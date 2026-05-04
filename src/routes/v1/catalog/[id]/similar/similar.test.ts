@@ -112,7 +112,9 @@ const matchRow = {
 function createSupabaseMock(
 	options: { target?: unknown | null; matches?: unknown[]; count?: number } = {}
 ) {
-	const maybeSingle = vi.fn().mockResolvedValue({ data: options.target ?? targetRow, error: null });
+	const maybeSingle = vi
+		.fn()
+		.mockResolvedValue({ data: 'target' in options ? options.target : targetRow, error: null });
 	const eq = vi.fn(() => ({ maybeSingle }));
 	const select = vi.fn(() => ({ eq }));
 	const from = vi.fn(() => ({ select }));
@@ -196,6 +198,23 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(JSON.stringify(body)).not.toContain('Supplier B');
 	});
 
+	it('returns the same 403 entitlement response for signed-in viewers when the id is unknown', async () => {
+		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
+		const { rpc } = createSupabaseMock({ target: null });
+
+		const response = await GET(makeEvent('https://app.test/v1/catalog/999999/similar'));
+		const body = await response.json();
+
+		expect(response.status).toBe(403);
+		expect(body).toMatchObject({
+			error: 'Insufficient permissions',
+			code: 'entitlement_required',
+			teaser: { locked: true, similar_match_count: null, beta: true }
+		});
+		expect(rpc).not.toHaveBeenCalledWith('count_similar_beans_aggregated_v2', expect.anything());
+		expect(JSON.stringify(body)).not.toContain('not found');
+	});
+
 	it('returns 400 for invalid params', async () => {
 		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?limit=99'));
 		const body = await response.json();
@@ -223,7 +242,7 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: null,
+			match_count: 125,
 			stocked_only: false
 		});
 		expect(body.data.target).toMatchObject({
@@ -251,7 +270,7 @@ describe('/v1/catalog/[id]/similar', () => {
 		});
 	});
 
-	it('overfetches before mode filtering so profile rows do not hide likely-same matches', async () => {
+	it('uses a bounded overfetch before mode filtering so profile rows do not hide likely-same matches', async () => {
 		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
 		const profileRows = Array.from({ length: 30 }, (_, index) => ({
 			...matchRow,
@@ -280,7 +299,7 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: null,
+			match_count: 125,
 			stocked_only: true
 		});
 		expect(body.data.matches).toHaveLength(2);

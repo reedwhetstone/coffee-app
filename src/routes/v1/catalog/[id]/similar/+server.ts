@@ -98,13 +98,18 @@ export const GET: RequestHandler = async (event) => {
 		const adminSupabase = createAdminClient();
 
 		if (!capabilities.canUseBeanMatching) {
-			const similarMatchCount = isSessionPrincipal(principal)
-				? await countCatalogSimilarityMatches({
+			let similarMatchCount: number | null = null;
+			if (isSessionPrincipal(principal)) {
+				try {
+					similarMatchCount = await countCatalogSimilarityMatches({
 						supabase: adminSupabase,
 						coffeeId,
 						query: { threshold: query.threshold, stockedOnly: query.stockedOnly }
-					})
-				: null;
+					});
+				} catch (error) {
+					if (!(error instanceof CatalogSimilarityNotFoundError)) throw error;
+				}
+			}
 
 			await logSimilarApiUsage({ principal, statusCode: 403, startTime, event });
 

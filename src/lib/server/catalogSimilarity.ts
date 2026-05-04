@@ -206,6 +206,8 @@ const TARGET_SELECT =
 export const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.7;
 export const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
 export const MAX_CATALOG_SIMILARITY_LIMIT = 25;
+const MODE_FILTER_OVERFETCH_MULTIPLIER = 5;
+const MODE_FILTER_RPC_MATCH_LIMIT = MAX_CATALOG_SIMILARITY_LIMIT * MODE_FILTER_OVERFETCH_MULTIPLIER;
 export const MIN_CATALOG_SIMILARITY_THRESHOLD = 0.5;
 export const MAX_CATALOG_SIMILARITY_THRESHOLD = 0.99;
 
@@ -464,6 +466,11 @@ function matchesMode(match: CatalogSimilarityMatch, mode: CatalogSimilarityMode)
 	return match.match.category === mode;
 }
 
+function resolveRpcMatchCount(query: CatalogSimilarityQuery): number {
+	if (query.mode === 'all') return query.limit;
+	return MODE_FILTER_RPC_MATCH_LIMIT;
+}
+
 function toTargetSummary(row: CatalogSimilarityTargetRow): CatalogSimilarityTargetSummary {
 	const pricing = normalizeCanonicalPricing(row);
 	return {
@@ -507,7 +514,7 @@ export async function fetchCatalogSimilarityMatches(input: {
 }): Promise<{ target: CatalogSimilarityTargetSummary; matches: CatalogSimilarityMatch[] }> {
 	const supabase = input.supabase as unknown as SimilaritySupabaseClient;
 	const target = await fetchTarget(supabase, input.coffeeId);
-	const rpcMatchCount = input.query.mode === 'all' ? input.query.limit : null;
+	const rpcMatchCount = resolveRpcMatchCount(input.query);
 	const { data, error } = await supabase.rpc('find_similar_beans_aggregated_v2', {
 		target_coffee_id: input.coffeeId,
 		match_threshold: input.query.threshold,
