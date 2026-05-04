@@ -57,6 +57,20 @@ describe('CoffeeCard proof badges', () => {
 		expect(screen.getByText('Tiered pricing')).toBeTruthy();
 	});
 
+	it('renders process proof from legacy top-level evidence when proof is absent', () => {
+		render(CoffeeCard, {
+			coffee: createCoffee({
+				proof: null,
+				process: null,
+				processing_base_method: 'Washed',
+				processing_evidence_available: true
+			}),
+			parseTastingNotes
+		});
+
+		expect(screen.getByText('Process disclosed')).toBeTruthy();
+	});
+
 	it('does not invent proof badges when no reliable signals exist', () => {
 		render(CoffeeCard, {
 			coffee: createCoffee({

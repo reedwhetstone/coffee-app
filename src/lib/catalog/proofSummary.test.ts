@@ -110,6 +110,7 @@ describe('createCatalogProofSummary', () => {
 			processing_base_method: 'Washed',
 			processing_disclosure_level: 'structured',
 			processing_confidence: 0.83,
+			processing_evidence_available: true,
 			processing_notes: 'Existing process note should only become a presence signal',
 			price_per_lb: 7.5,
 			price_tiers: JSON.stringify([{ min_lbs: 1, price: 7.5 }])
@@ -122,6 +123,7 @@ describe('createCatalogProofSummary', () => {
 				'base_method',
 				'disclosure_level',
 				'confidence_score',
+				'evidence_presence',
 				'process_notes_present'
 			])
 		});
@@ -131,6 +133,19 @@ describe('createCatalogProofSummary', () => {
 		});
 		expect(summary.families.pricing.label).toBe('listed');
 		expect(JSON.stringify(summary)).not.toContain('Existing process note');
+	});
+
+	it('uses the legacy top-level evidence flag when process evidence is absent', () => {
+		const summary = createCatalogProofSummary({
+			processing_base_method: 'Washed',
+			processing_evidence_available: true
+		});
+
+		expect(summary.families.process).toMatchObject({
+			label: 'disclosed',
+			confidence: null,
+			signals: expect.arrayContaining(['base_method', 'evidence_presence'])
+		});
 	});
 });
 

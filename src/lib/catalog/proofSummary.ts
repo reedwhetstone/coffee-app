@@ -52,6 +52,7 @@ export interface CatalogProofInput {
 	processing_notes?: string | null;
 	processing_disclosure_level?: string | null;
 	processing_confidence?: number | null;
+	processing_evidence_available?: boolean | null;
 	process?: CatalogProofProcessInput | null;
 }
 
@@ -136,7 +137,7 @@ function getProcessInput(item: CatalogProofInput): Required<CatalogProofProcessI
 		notes: process.notes ?? item.processing_notes ?? null,
 		disclosure_level: process.disclosure_level ?? item.processing_disclosure_level ?? null,
 		confidence: process.confidence ?? item.processing_confidence ?? null,
-		evidence_available: process.evidence_available ?? null
+		evidence_available: process.evidence_available ?? item.processing_evidence_available ?? null
 	};
 }
 
