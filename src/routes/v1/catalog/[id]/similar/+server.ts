@@ -98,7 +98,7 @@ export const GET: RequestHandler = async (event) => {
 		const adminSupabase = createAdminClient();
 
 		if (!capabilities.canUseBeanMatching) {
-			const likelyMatchCount = isSessionPrincipal(principal)
+			const similarMatchCount = isSessionPrincipal(principal)
 				? await countCatalogSimilarityMatches({
 						supabase: adminSupabase,
 						coffeeId,
@@ -116,7 +116,7 @@ export const GET: RequestHandler = async (event) => {
 					requiredCapability: 'canUseBeanMatching',
 					teaser: {
 						locked: true,
-						likely_match_count: likelyMatchCount,
+						similar_match_count: similarMatchCount,
 						beta: true
 					}
 				},

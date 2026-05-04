@@ -306,8 +306,8 @@ export function getPriceFromTiersAtQuantity(
 	if (tiers.length === 0) return null;
 
 	const eligible = tiers.filter((tier) => (tier.min_lbs ?? 0) <= quantityLbs);
-	const selected = eligible.at(-1) ?? tiers[0];
-	return selected.price;
+	const selected = eligible.at(-1);
+	return selected?.price ?? null;
 }
 
 export function normalizeCanonicalPricing(input: {
@@ -498,10 +498,12 @@ export async function fetchCatalogSimilarityMatches(input: {
 }): Promise<{ target: CatalogSimilarityTargetSummary; matches: CatalogSimilarityMatch[] }> {
 	const supabase = input.supabase as unknown as SimilaritySupabaseClient;
 	const target = await fetchTarget(supabase, input.coffeeId);
+	const rpcMatchCount =
+		input.query.mode === 'all' ? input.query.limit : MAX_CATALOG_SIMILARITY_LIMIT;
 	const { data, error } = await supabase.rpc('find_similar_beans_aggregated_v2', {
 		target_coffee_id: input.coffeeId,
 		match_threshold: input.query.threshold,
-		match_count: input.query.limit,
+		match_count: rpcMatchCount,
 		stocked_only: input.query.stockedOnly
 	});
 
@@ -509,7 +511,8 @@ export async function fetchCatalogSimilarityMatches(input: {
 
 	const matches = (data ?? [])
 		.map((row) => normalizeSimilarityRow(row, target.pricing))
-		.filter((match) => matchesMode(match, input.query.mode));
+		.filter((match) => matchesMode(match, input.query.mode))
+		.slice(0, input.query.limit);
 
 	return { target, matches };
 }

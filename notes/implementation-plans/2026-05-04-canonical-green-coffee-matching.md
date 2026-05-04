@@ -107,7 +107,7 @@ Historical planning and current repo evidence line up unusually well:
   - Supports `threshold`, `limit`, `stocked_only`, and possibly `mode=similar|likely_same|all`.
   - Returns canonical catalog response fragments, canonical pricing, match scores, proof-safe explanation, beta/confidence copy, and access metadata.
   - Denies anonymous callers with `401`; denies authenticated non-member users with `403` for details.
-  - Can support a non-sensitive teaser count for non-members, for example `likely_match_count`, without returning supplier/price details.
+  - Can support a non-sensitive teaser count for non-members, for example `similar_match_count`, without returning supplier/price details.
 
 - `GET /v1/catalog/:id/canonical`
 

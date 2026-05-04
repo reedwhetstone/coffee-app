@@ -46,6 +46,24 @@ describe('catalog similarity helpers', () => {
 		});
 	});
 
+	it('does not treat higher-minimum tiers as a 1 lb baseline', () => {
+		expect(getPriceFromTiersAtQuantity([{ min_lbs: 5, price: 6.25 }], 1)).toBeNull();
+		expect(
+			normalizeCanonicalPricing({
+				price_per_lb: null,
+				price_tiers: [{ min_lbs: 5, price: 6.25 }],
+				cost_lb: null
+			})
+		).toMatchObject({ baseline_price_per_lb: null, baseline_source: null });
+		expect(
+			normalizeCanonicalPricing({
+				price_per_lb: null,
+				price_tiers: [{ min_lbs: 5, price: 6.25 }],
+				cost_lb: 7
+			})
+		).toMatchObject({ baseline_price_per_lb: 7, baseline_source: 'cost_lb' });
+	});
+
 	it('derives beta categories without overclaiming canonical certainty', () => {
 		expect(
 			deriveMatchCategory({ average: 0.91, origin: 0.89, processing: 0.9, chunkMatches: 2 })

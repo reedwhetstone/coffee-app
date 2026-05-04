@@ -222,10 +222,13 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION find_similar_beans_v2(INT, FLOAT, INT, TEXT[], BOOLEAN) FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION find_similar_beans_aggregated_v2(INT, FLOAT, INT, BOOLEAN) FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION count_similar_beans_aggregated_v2(INT, FLOAT, BOOLEAN) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION find_similar_beans_v2(INT, FLOAT, INT, TEXT[], BOOLEAN) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION find_similar_beans_aggregated_v2(INT, FLOAT, INT, BOOLEAN) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION count_similar_beans_aggregated_v2(INT, FLOAT, BOOLEAN) FROM PUBLIC, anon, authenticated;
 
-GRANT EXECUTE ON FUNCTION find_similar_beans_v2(INT, FLOAT, INT, TEXT[], BOOLEAN) TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION find_similar_beans_aggregated_v2(INT, FLOAT, INT, BOOLEAN) TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION count_similar_beans_aggregated_v2(INT, FLOAT, BOOLEAN) TO authenticated, service_role;
+-- The v2 functions are a premium contract and must only be called through
+-- trusted server routes that enforce member/API entitlements. Legacy v1 RPCs
+-- remain available for compatibility until CLI/tool callers migrate.
+GRANT EXECUTE ON FUNCTION find_similar_beans_v2(INT, FLOAT, INT, TEXT[], BOOLEAN) TO service_role;
+GRANT EXECUTE ON FUNCTION find_similar_beans_aggregated_v2(INT, FLOAT, INT, BOOLEAN) TO service_role;
+GRANT EXECUTE ON FUNCTION count_similar_beans_aggregated_v2(INT, FLOAT, BOOLEAN) TO service_role;

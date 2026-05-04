@@ -116,11 +116,15 @@ function createSupabaseMock(
 	const eq = vi.fn(() => ({ maybeSingle }));
 	const select = vi.fn(() => ({ eq }));
 	const from = vi.fn(() => ({ select }));
-	const rpc = vi.fn((fn: string) => {
+	const rpc = vi.fn((fn: string, args?: { match_count?: number }) => {
 		if (fn === 'count_similar_beans_aggregated_v2') {
 			return Promise.resolve({ data: options.count ?? 3, error: null });
 		}
-		return Promise.resolve({ data: options.matches ?? [matchRow], error: null });
+		const matches = options.matches ?? [matchRow];
+		return Promise.resolve({
+			data: matches.slice(0, args?.match_count ?? matches.length),
+			error: null
+		});
 	});
 	const supabase = { from, rpc };
 	mockCreateAdminClient.mockReturnValue(supabase);
@@ -180,7 +184,7 @@ describe('/v1/catalog/[id]/similar', () => {
 			error: 'Insufficient permissions',
 			code: 'entitlement_required',
 			requiredCapability: 'canUseBeanMatching',
-			teaser: { locked: true, likely_match_count: 4, beta: true }
+			teaser: { locked: true, similar_match_count: 4, beta: true }
 		});
 		expect(rpc).toHaveBeenCalledWith('count_similar_beans_aggregated_v2', {
 			target_coffee_id: 1182,
@@ -217,7 +221,7 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 5,
+			match_count: 25,
 			stocked_only: false
 		});
 		expect(body.data.target).toMatchObject({
@@ -243,6 +247,49 @@ describe('/v1/catalog/[id]/similar', () => {
 			auth: { kind: 'session', role: 'member' },
 			access: { requiredCapability: 'canUseBeanMatching', canUseBeanMatching: true }
 		});
+	});
+
+	it('overfetches before mode filtering so profile rows do not hide likely-same matches', async () => {
+		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
+		const profileRows = Array.from({ length: 5 }, (_, index) => ({
+			...matchRow,
+			coffee_id: 3000 + index,
+			avg_similarity: 0.96 - index * 0.01,
+			origin_similarity: 0.7,
+			processing_similarity: 0.91,
+			chunk_matches: 3
+		}));
+		const likelyRows = Array.from({ length: 2 }, (_, index) => ({
+			...matchRow,
+			coffee_id: 4000 + index,
+			avg_similarity: 0.9 - index * 0.01,
+			origin_similarity: 0.9,
+			processing_similarity: 0.9,
+			chunk_matches: 3
+		}));
+		const { rpc } = createSupabaseMock({ matches: [...profileRows, ...likelyRows] });
+
+		const response = await GET(
+			makeEvent('https://app.test/v1/catalog/1182/similar?limit=2&mode=likely_same')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 25,
+			stocked_only: true
+		});
+		expect(body.data.matches).toHaveLength(2);
+		expect(body.data.matches.map((match: { coffee: { id: number } }) => match.coffee.id)).toEqual([
+			4000, 4001
+		]);
+		expect(
+			body.data.matches.every(
+				(match: { match: { category: string } }) => match.match.category === 'likely_same'
+			)
+		).toBe(true);
 	});
 
 	it('allows paid API callers with rate headers and usage logging', async () => {
