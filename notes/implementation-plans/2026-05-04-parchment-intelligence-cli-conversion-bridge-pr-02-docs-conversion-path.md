@@ -48,6 +48,7 @@ Docs should not advertise unreleased CLI behavior. After PR 1 lands and the CLI 
 
 ```bash
 cd /root/.openclaw/workspace/repos/coffee-app
+pnpm lint
 pnpm check --fail-on-warnings
 pnpm exec vitest run src/lib/docs/content.test.ts
 ```
