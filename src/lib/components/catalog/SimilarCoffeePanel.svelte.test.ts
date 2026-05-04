@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import SimilarCoffeePanel from './SimilarCoffeePanel.svelte';
 import type { CoffeeCatalog } from '$lib/types/component.types';
+import { createCatalogProofSummary } from '$lib/catalog/proofSummary';
 
 function createCoffee(overrides: Record<string, unknown> = {}): CoffeeCatalog {
 	return {
@@ -31,7 +32,29 @@ function createCoffee(overrides: Record<string, unknown> = {}): CoffeeCatalog {
 	} as unknown as CoffeeCatalog;
 }
 
-function similarityResponse() {
+function proof(overrides: Record<string, unknown> = {}) {
+	return createCatalogProofSummary({
+		country: 'Panama',
+		region: 'Boquete',
+		source: 'Target Importer',
+		stocked: true,
+		stocked_date: '2026-04-01',
+		price_per_lb: 22,
+		price_tiers: [
+			{ min_lbs: 1, price: 22 },
+			{ min_lbs: 10, price: 20 }
+		],
+		wholesale: false,
+		processing_base_method: 'washed',
+		drying_method: 'raised_bed',
+		processing_disclosure_level: 'high_detail',
+		processing_confidence: 0.86,
+		processing_evidence_available: true,
+		...overrides
+	});
+}
+
+function similarityResponse(overrides: { matches?: unknown[] } = {}) {
 	return {
 		data: {
 			target: {
@@ -46,6 +69,9 @@ function similarityResponse() {
 				fermentation_type: null,
 				drying_method: 'raised_bed',
 				stocked: true,
+				arrival_date: '2026-03-15',
+				stocked_date: '2026-04-01',
+				proof: proof(),
 				price_per_lb: 22,
 				price_tiers: [
 					{ min_lbs: 1, price: 22 },
@@ -64,7 +90,7 @@ function similarityResponse() {
 					baseline_source: 'price_per_lb'
 				}
 			},
-			matches: [
+			matches: overrides.matches ?? [
 				{
 					coffee: {
 						id: 2,
@@ -77,7 +103,18 @@ function similarityResponse() {
 						processing_base_method: 'washed',
 						fermentation_type: null,
 						drying_method: 'raised_bed',
-						stocked: true
+						stocked: true,
+						arrival_date: '2026-03-20',
+						stocked_date: '2026-04-02',
+						proof: proof({
+							source: 'Similar Supplier',
+							stocked_date: '2026-04-02',
+							price_per_lb: 20,
+							price_tiers: [
+								{ min_lbs: 1, price: 20 },
+								{ min_lbs: 5, price: 18 }
+							]
+						})
 					},
 					pricing: {
 						price_per_lb: 20,
@@ -141,12 +178,35 @@ describe('SimilarCoffeePanel', () => {
 			headers: { Accept: 'application/json' }
 		});
 		expect(screen.getByText('Similar Supplier · In stock')).toBeInTheDocument();
+		expect(
+			screen.getByText('Stocked: 2026-04-02 · date signal, not a quality claim')
+		).toBeInTheDocument();
+		expect(screen.getAllByText('Process disclosed')[0]).toBeInTheDocument();
+		expect(screen.getAllByText('Freshness dated')[0]).toBeInTheDocument();
 		expect(screen.getAllByText('$20.00/lb')[0]).toBeInTheDocument();
 		expect(screen.getByText('$2.00/lb lower (9.1%)')).toBeInTheDocument();
 		expect(screen.getByText('High beta confidence')).toBeInTheDocument();
 		expect(screen.getByText('Origin:')).toBeInTheDocument();
 		expect(screen.getByText('94%')).toBeInTheDocument();
 		expect(screen.getByText('2 tiers from 1+ lb $20.00/lb to 5+ lb $18.00/lb')).toBeInTheDocument();
+	});
+
+	it('renders an empty state when no beta matches clear the threshold', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(JSON.stringify(similarityResponse({ matches: [] })), {
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					})
+			)
+		);
+
+		render(SimilarCoffeePanel, { coffee: createCoffee() });
+
+		await waitFor(() => expect(screen.getByText('No beta matches found')).toBeInTheDocument());
+		expect(screen.queryByText('Comparable Gesha')).not.toBeInTheDocument();
 	});
 
 	it('renders entitlement teaser errors without match details', async () => {

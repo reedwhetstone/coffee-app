@@ -2,6 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ApiPlan } from '$lib/server/apiAuth';
 import type { Json } from '$lib/types/database.types';
 import type { UserRole } from '$lib/types/auth.types';
+import {
+	createCatalogProofSummary,
+	type CatalogProofInput,
+	type CatalogProofSummary
+} from '$lib/catalog/proofSummary';
 
 export type CatalogSimilarityMode = 'all' | 'likely_same' | 'similar_profile';
 export type CatalogMatchCategory = 'likely_same' | 'similar_profile';
@@ -26,10 +31,13 @@ export interface CatalogSimilarityTargetSummary {
 	fermentation_type: string | null;
 	drying_method: string | null;
 	stocked: boolean | null;
+	arrival_date: string | null;
+	stocked_date: string | null;
 	price_per_lb: number | null;
 	price_tiers: Json | null;
 	cost_lb: number | null;
 	pricing: CatalogCanonicalPricing;
+	proof: CatalogProofSummary;
 }
 
 export interface CatalogCanonicalPricing {
@@ -54,6 +62,9 @@ export interface CatalogSimilarityMatch {
 		fermentation_type: string | null;
 		drying_method: string | null;
 		stocked: boolean | null;
+		arrival_date: string | null;
+		stocked_date: string | null;
+		proof: CatalogProofSummary;
 	};
 	pricing: CatalogCanonicalPricing;
 	price_delta_1lb: {
@@ -151,7 +162,22 @@ export interface FindSimilarBeansAggregatedV2Row {
 	chunk_matches: number | string;
 }
 
-interface CatalogSimilarityTargetRow {
+interface CatalogSimilarityProofFields {
+	arrival_date: string | null;
+	stocked_date: string | null;
+	last_updated: string | null;
+	farm_notes: string | null;
+	wholesale: boolean | null;
+	process_additives: string[] | null;
+	process_additive_detail: string | null;
+	fermentation_duration_hours: number | null;
+	processing_notes: string | null;
+	processing_disclosure_level: string | null;
+	processing_confidence: number | null;
+	processing_evidence_available: boolean | null;
+}
+
+interface CatalogSimilarityTargetRow extends CatalogSimilarityProofFields {
 	id: number;
 	name: string;
 	source: string | null;
@@ -168,6 +194,8 @@ interface CatalogSimilarityTargetRow {
 	price_tiers: Json | null;
 }
 
+type CatalogSimilarityDetailRow = CatalogSimilarityTargetRow;
+
 interface SimilaritySupabaseClient {
 	from(table: 'coffee_catalog'): {
 		select(columns: string): {
@@ -180,6 +208,10 @@ interface SimilaritySupabaseClient {
 					error: { message: string } | null;
 				}>;
 			};
+			in(
+				column: 'id',
+				values: number[]
+			): Promise<{ data: CatalogSimilarityDetailRow[] | null; error: { message: string } | null }>;
 		};
 	};
 	rpc(
@@ -202,7 +234,7 @@ interface SimilaritySupabaseClient {
 }
 
 const TARGET_SELECT =
-	'id, name, source, region, country, continent, processing, processing_base_method, fermentation_type, drying_method, stocked, cost_lb, price_per_lb, price_tiers';
+	'id, name, source, region, country, continent, processing, processing_base_method, fermentation_type, drying_method, stocked, arrival_date, stocked_date, last_updated, farm_notes, wholesale, process_additives, process_additive_detail, fermentation_duration_hours, processing_notes, processing_disclosure_level, processing_confidence, processing_evidence_available, cost_lb, price_per_lb, price_tiers';
 export const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.7;
 export const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
 export const MAX_CATALOG_SIMILARITY_LIMIT = 25;
@@ -387,9 +419,41 @@ function buildSignals(row: FindSimilarBeansAggregatedV2Row): string[] {
 	return signals;
 }
 
+function proofInputFromSimilarityRow(
+	row: FindSimilarBeansAggregatedV2Row | CatalogSimilarityTargetRow,
+	pricing: CatalogCanonicalPricing
+): CatalogProofInput {
+	const hasProofFields = 'arrival_date' in row;
+	return {
+		country: row.country,
+		region: 'region' in row ? row.region : row.origin,
+		farm_notes: hasProofFields ? row.farm_notes : null,
+		source: row.source,
+		arrival_date: hasProofFields ? row.arrival_date : null,
+		stocked_date: hasProofFields ? row.stocked_date : null,
+		last_updated: hasProofFields ? row.last_updated : null,
+		stocked: row.stocked,
+		price_per_lb: pricing.price_per_lb,
+		cost_lb: pricing.cost_lb,
+		price_tiers: pricing.price_tiers,
+		wholesale: hasProofFields ? row.wholesale : null,
+		processing_base_method: row.processing_base_method,
+		fermentation_type: row.fermentation_type,
+		process_additives: hasProofFields ? row.process_additives : null,
+		process_additive_detail: hasProofFields ? row.process_additive_detail : null,
+		fermentation_duration_hours: hasProofFields ? row.fermentation_duration_hours : null,
+		drying_method: row.drying_method,
+		processing_notes: hasProofFields ? row.processing_notes : null,
+		processing_disclosure_level: hasProofFields ? row.processing_disclosure_level : null,
+		processing_confidence: hasProofFields ? row.processing_confidence : null,
+		processing_evidence_available: hasProofFields ? row.processing_evidence_available : null
+	};
+}
+
 export function normalizeSimilarityRow(
 	row: FindSimilarBeansAggregatedV2Row,
-	targetPricing: CatalogCanonicalPricing
+	targetPricing: CatalogCanonicalPricing,
+	detail?: CatalogSimilarityDetailRow
 ): CatalogSimilarityMatch {
 	const rawAverage = toFiniteNumber(row.avg_similarity) ?? 0;
 	const rawOrigin = toFiniteNumber(row.origin_similarity);
@@ -407,7 +471,7 @@ export function normalizeSimilarityRow(
 		chunkMatches
 	});
 	const confidence = deriveConfidenceLabel(rawAverage);
-	const pricing = normalizeCanonicalPricing(row);
+	const pricing = normalizeCanonicalPricing(detail ?? row);
 	const targetBaseline = targetPricing.baseline_price_per_lb;
 	const matchBaseline = pricing.baseline_price_per_lb;
 	const deltaAmount =
@@ -419,19 +483,23 @@ export function normalizeSimilarityRow(
 			? Math.round((deltaAmount / targetBaseline) * 1000) / 10
 			: null;
 
+	const proofSource = detail ?? row;
 	return {
 		coffee: {
 			id: row.coffee_id,
-			name: row.coffee_name,
-			source: row.source,
-			origin: row.origin,
-			country: row.country,
-			continent: row.continent,
-			processing: row.processing,
-			processing_base_method: row.processing_base_method,
-			fermentation_type: row.fermentation_type,
-			drying_method: row.drying_method,
-			stocked: row.stocked
+			name: detail?.name ?? row.coffee_name,
+			source: detail?.source ?? row.source,
+			origin: detail?.region ?? row.origin,
+			country: detail?.country ?? row.country,
+			continent: detail?.continent ?? row.continent,
+			processing: detail?.processing ?? row.processing,
+			processing_base_method: detail?.processing_base_method ?? row.processing_base_method,
+			fermentation_type: detail?.fermentation_type ?? row.fermentation_type,
+			drying_method: detail?.drying_method ?? row.drying_method,
+			stocked: detail?.stocked ?? row.stocked,
+			arrival_date: detail?.arrival_date ?? null,
+			stocked_date: detail?.stocked_date ?? null,
+			proof: createCatalogProofSummary(proofInputFromSimilarityRow(proofSource, pricing))
 		},
 		pricing,
 		price_delta_1lb: {
@@ -485,10 +553,13 @@ function toTargetSummary(row: CatalogSimilarityTargetRow): CatalogSimilarityTarg
 		fermentation_type: row.fermentation_type,
 		drying_method: row.drying_method,
 		stocked: row.stocked,
+		arrival_date: row.arrival_date,
+		stocked_date: row.stocked_date,
 		price_per_lb: pricing.price_per_lb,
 		price_tiers: pricing.price_tiers,
 		cost_lb: pricing.cost_lb,
-		pricing
+		pricing,
+		proof: createCatalogProofSummary(proofInputFromSimilarityRow(row, pricing))
 	};
 }
 
@@ -505,6 +576,21 @@ async function fetchTarget(
 	if (error) throw new Error(error.message);
 	if (!data) throw new CatalogSimilarityNotFoundError(coffeeId);
 	return toTargetSummary(data);
+}
+
+async function fetchMatchDetails(
+	supabase: SimilaritySupabaseClient,
+	coffeeIds: number[]
+): Promise<Map<number, CatalogSimilarityDetailRow>> {
+	if (coffeeIds.length === 0) return new Map();
+	const uniqueIds = [...new Set(coffeeIds)];
+	const { data, error } = await supabase
+		.from('coffee_catalog')
+		.select(TARGET_SELECT)
+		.in('id', uniqueIds);
+
+	if (error) throw new Error(error.message);
+	return new Map((data ?? []).map((row) => [row.id, row]));
 }
 
 export async function fetchCatalogSimilarityMatches(input: {
@@ -524,8 +610,12 @@ export async function fetchCatalogSimilarityMatches(input: {
 
 	if (error) throw new Error(error.message);
 
+	const detailById = await fetchMatchDetails(
+		supabase,
+		(data ?? []).map((row) => row.coffee_id)
+	);
 	const matches = (data ?? [])
-		.map((row) => normalizeSimilarityRow(row, target.pricing))
+		.map((row) => normalizeSimilarityRow(row, target.pricing, detailById.get(row.coffee_id)))
 		.filter((match) => matchesMode(match, input.query.mode))
 		.slice(0, input.query.limit);
 

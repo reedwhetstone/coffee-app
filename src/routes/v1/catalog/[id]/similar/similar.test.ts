@@ -82,6 +82,18 @@ const targetRow = {
 	fermentation_type: null,
 	drying_method: 'Raised bed',
 	stocked: true,
+	arrival_date: '2026-03-15',
+	stocked_date: '2026-04-01',
+	last_updated: '2026-04-02',
+	farm_notes: 'Farm note',
+	wholesale: false,
+	process_additives: null,
+	process_additive_detail: null,
+	fermentation_duration_hours: null,
+	processing_notes: null,
+	processing_disclosure_level: 'high_detail',
+	processing_confidence: 0.86,
+	processing_evidence_available: true,
 	cost_lb: '7.10',
 	price_per_lb: null,
 	price_tiers: [{ min_lbs: 1, price: 8 }]
@@ -109,14 +121,54 @@ const matchRow = {
 	chunk_matches: 3
 };
 
+const matchDetailRow = {
+	id: 2200,
+	name: 'Ethiopia Guji Natural Lot B',
+	source: 'Supplier B',
+	region: 'Guji',
+	country: 'Ethiopia',
+	continent: 'Africa',
+	processing: 'Natural',
+	processing_base_method: 'natural',
+	fermentation_type: null,
+	drying_method: 'Raised bed',
+	stocked: true,
+	arrival_date: '2026-03-20',
+	stocked_date: '2026-04-03',
+	last_updated: '2026-04-04',
+	farm_notes: 'Supplier B farm note',
+	wholesale: false,
+	process_additives: null,
+	process_additive_detail: null,
+	fermentation_duration_hours: null,
+	processing_notes: null,
+	processing_disclosure_level: 'high_detail',
+	processing_confidence: 0.9,
+	processing_evidence_available: true,
+	cost_lb: '6.75',
+	price_per_lb: '8.75',
+	price_tiers: [{ min_lbs: 1, price: 8.75 }]
+};
+
 function createSupabaseMock(
-	options: { target?: unknown | null; matches?: unknown[]; count?: number } = {}
+	options: {
+		target?: unknown | null;
+		matches?: unknown[];
+		details?: unknown[];
+		count?: number;
+	} = {}
 ) {
 	const maybeSingle = vi
 		.fn()
 		.mockResolvedValue({ data: 'target' in options ? options.target : targetRow, error: null });
 	const eq = vi.fn(() => ({ maybeSingle }));
-	const select = vi.fn(() => ({ eq }));
+	const inFilter = vi.fn(() =>
+		Promise.resolve({
+			data: options.details ?? [matchDetailRow],
+			error: null
+		})
+	);
+	const select = vi.fn(() => ({ eq, in: inFilter }));
 	const from = vi.fn(() => ({ select }));
 	const rpc = vi.fn((fn: string, args?: { match_count?: number }) => {
 		if (fn === 'count_similar_beans_aggregated_v2') {
@@ -132,7 +184,7 @@ function createSupabaseMock(
 	});
 	const supabase = { from, rpc };
 	mockCreateAdminClient.mockReturnValue(supabase);
-	return { supabase, from, select, eq, maybeSingle, rpc };
+	return { supabase, from, select, eq, inFilter, maybeSingle, rpc };
 }
 
 function makeEvent(url: string, init: { id?: string; headers?: HeadersInit } = {}) {
@@ -267,12 +319,19 @@ describe('/v1/catalog/[id]/similar', () => {
 		});
 		expect(body.data.target).toMatchObject({
 			id: 1182,
+			stocked_date: '2026-04-01',
 			price_per_lb: null,
 			price_tiers: [{ min_lbs: 1, price: 8 }],
-			pricing: { baseline_price_per_lb: 8, baseline_source: 'price_tiers' }
+			pricing: { baseline_price_per_lb: 8, baseline_source: 'price_tiers' },
+			proof: { families: { freshness: { signals: expect.arrayContaining(['stocked_date']) } } }
 		});
 		expect(body.data.matches[0]).toMatchObject({
-			coffee: { id: 2200, source: 'Supplier B' },
+			coffee: {
+				id: 2200,
+				source: 'Supplier B',
+				stocked_date: '2026-04-03',
+				proof: { families: { process: { label: 'disclosed' } } }
+			},
 			pricing: {
 				price_per_lb: 8.75,
 				price_tiers: [{ min_lbs: 1, price: 8.75 }],

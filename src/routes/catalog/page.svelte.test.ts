@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import CatalogPage from './+page.svelte';
 import type { PageData } from './$types';
+import { createCatalogProofSummary } from '$lib/catalog/proofSummary';
 
 const { goto, pageState } = vi.hoisted(() => ({
 	goto: vi.fn(),
@@ -86,6 +87,25 @@ function renderCatalog(data: PageData) {
 	return render(CatalogPage, { data });
 }
 
+function proof(overrides: Record<string, unknown> = {}) {
+	return createCatalogProofSummary({
+		country: 'Colombia',
+		region: 'Huila',
+		source: 'Example Importer',
+		stocked: true,
+		stocked_date: '2026-04-01',
+		price_per_lb: 8.5,
+		price_tiers: [{ min_lbs: 1, price: 8.5 }],
+		wholesale: false,
+		processing_base_method: 'washed',
+		drying_method: 'raised_bed',
+		processing_disclosure_level: 'high_detail',
+		processing_confidence: 0.86,
+		processing_evidence_available: true,
+		...overrides
+	});
+}
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	pageState.url = new URL('https://app.test/catalog');
@@ -119,6 +139,9 @@ beforeEach(() => {
 								fermentation_type: null,
 								drying_method: null,
 								stocked: true,
+								arrival_date: '2026-03-15',
+								stocked_date: '2026-04-01',
+								proof: proof(),
 								price_per_lb: 8.5,
 								price_tiers: [{ min_lbs: 1, price: 8.5 }],
 								cost_lb: 9,
@@ -144,7 +167,15 @@ beforeEach(() => {
 										processing_base_method: 'washed',
 										fermentation_type: null,
 										drying_method: null,
-										stocked: true
+										stocked: true,
+										arrival_date: '2026-03-20',
+										stocked_date: '2026-04-02',
+										proof: proof({
+											source: 'Match Importer',
+											stocked_date: '2026-04-02',
+											price_per_lb: 7.5,
+											price_tiers: [{ min_lbs: 1, price: 7.5 }]
+										})
 									},
 									pricing: {
 										price_per_lb: 7.5,
@@ -195,6 +226,37 @@ describe('/catalog similar comparison controls', () => {
 		expect(screen.queryByText('Member Match Lot')).not.toBeInTheDocument();
 	});
 
+	it('routes anonymous users to auth before fetching member comparison data', async () => {
+		renderCatalog(createData());
+
+		await fireEvent.click(
+			screen.getByRole('button', { name: /upgrade to compare similar coffees/i })
+		);
+
+		expect(goto).toHaveBeenCalledWith('/auth');
+		expect(fetch).not.toHaveBeenCalledWith('/v1/catalog/1/similar?limit=8&stocked_only=true', {
+			headers: { Accept: 'application/json' }
+		});
+	});
+
+	it('routes signed-in non-members to subscription before fetching member comparison data', async () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'viewer-token' } as PageData['session'],
+				role: 'viewer'
+			} as Partial<PageData>)
+		);
+
+		await fireEvent.click(
+			screen.getByRole('button', { name: /upgrade to compare similar coffees/i })
+		);
+
+		expect(goto).toHaveBeenCalledWith('/subscription');
+		expect(fetch).not.toHaveBeenCalledWith('/v1/catalog/1/similar?limit=8&stocked_only=true', {
+			headers: { Accept: 'application/json' }
+		});
+	});
+
 	it('lets members open an on-demand similar coffee comparison panel', async () => {
 		renderCatalog(
 			createData({
@@ -222,6 +284,9 @@ describe('/catalog similar comparison controls', () => {
 
 		await waitFor(() => expect(screen.getByText('Member Match Lot')).toBeInTheDocument());
 		expect(screen.getByText('Match Importer · In stock')).toBeInTheDocument();
+		expect(
+			screen.getByText('Stocked: 2026-04-02 · date signal, not a quality claim')
+		).toBeInTheDocument();
 		expect(screen.getByText('$1.00/lb lower (11.8%)')).toBeInTheDocument();
 	});
 });

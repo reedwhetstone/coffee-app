@@ -5,6 +5,7 @@
 		formatPriceDelta,
 		formatPriceTierSummary
 	} from '$lib/utils/pricing';
+	import { getCatalogProofBadges, type CatalogProofSummary } from '$lib/catalog/proofSummary';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import type { Json } from '$lib/types/database.types';
 
@@ -31,6 +32,9 @@
 		fermentation_type: string | null;
 		drying_method: string | null;
 		stocked: boolean | null;
+		arrival_date: string | null;
+		stocked_date: string | null;
+		proof: CatalogProofSummary | null;
 		price_per_lb: number | null;
 		price_tiers: Json | null;
 		cost_lb: number | null;
@@ -50,6 +54,9 @@
 			fermentation_type: string | null;
 			drying_method: string | null;
 			stocked: boolean | null;
+			arrival_date: string | null;
+			stocked_date: string | null;
+			proof: CatalogProofSummary | null;
 		};
 		pricing: SimilarityPricing;
 		price_delta_1lb: {
@@ -137,6 +144,19 @@
 		if (source === 'price_tiers') return '1 lb tier';
 		if (source === 'cost_lb') return 'legacy fallback';
 		return 'unavailable';
+	}
+
+	function freshnessLabel(item: {
+		stocked_date: string | null;
+		arrival_date: string | null;
+	}): string | null {
+		if (item.stocked_date) return `Stocked: ${item.stocked_date}`;
+		if (item.arrival_date) return `Arrival: ${item.arrival_date}`;
+		return null;
+	}
+
+	function proofBadges(proof: CatalogProofSummary | null | undefined) {
+		return proof ? getCatalogProofBadges(proof) : [];
 	}
 
 	function tierSummary(pricing: SimilarityPricing): string {
@@ -253,6 +273,23 @@
 							'Origin unavailable'}
 						{response.data.target.processing ? ` · ${response.data.target.processing}` : ''}
 					</p>
+					{#if freshnessLabel(response.data.target)}
+						<p class="mt-1 text-xs text-text-secondary-light">
+							{freshnessLabel(response.data.target)} · date signal, not a quality claim
+						</p>
+					{/if}
+					{#if proofBadges(response.data.target.proof).length > 0}
+						<div class="mt-2 flex flex-wrap gap-1.5" aria-label="Target catalog proof signals">
+							{#each proofBadges(response.data.target.proof) as badge (badge.key)}
+								<span
+									class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100"
+									title={badge.title}
+								>
+									{badge.label}
+								</span>
+							{/each}
+						</div>
+					{/if}
 				</div>
 				<div
 					class="rounded-xl bg-background-secondary-light px-4 py-3 text-sm text-text-secondary-light"
@@ -313,6 +350,23 @@
 										'Origin unavailable'}
 									{match.coffee.processing ? ` · ${match.coffee.processing}` : ''}
 								</p>
+								{#if freshnessLabel(match.coffee)}
+									<p class="mt-1 text-xs text-text-secondary-light">
+										{freshnessLabel(match.coffee)} · date signal, not a quality claim
+									</p>
+								{/if}
+								{#if proofBadges(match.coffee.proof).length > 0}
+									<div class="mt-2 flex flex-wrap gap-1.5" aria-label="Match catalog proof signals">
+										{#each proofBadges(match.coffee.proof) as badge (badge.key)}
+											<span
+												class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100"
+												title={badge.title}
+											>
+												{badge.label}
+											</span>
+										{/each}
+									</div>
+								{/if}
 								<p class="mt-2 text-sm text-text-secondary-light">{match.match.language}</p>
 							</div>
 							<div
