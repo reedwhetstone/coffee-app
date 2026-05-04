@@ -297,7 +297,7 @@ Supplier implementation details live in `../coffee-scraper/SUPPLIERS.md`; keep t
 
 ### Current source-of-truth state
 
-- **42 live suppliers as of 2026-05-02** in coffee-scraper `origin/main` (`f254ef9`).
+- **40 live suppliers as of 2026-05-04** in coffee-scraper `origin/main` (`d1efe86`). Sleepy Mango and Ally Open are intentionally inactive until public green-coffee inventory/JSON access returns.
 - **Coffee Shrub** is now live as a custom Playwright/Magento source and should be treated as a wholesale-capable source, not as an exclusion.
 - **Wholesale-capable suppliers are in scope** when they expose useful public inventory. Classification should use `price_tiers` plus the DB `wholesale` flag rather than excluding by bag size or title alone.
 - **Recent scraper moat work:** processing transparency persistence, producer column support, conditional field policies, high-noise source policy tuning, and source-specific fixes for Coffee Shrub, Genuine Origin, Roastmasters, and processing/additive evidence extraction.

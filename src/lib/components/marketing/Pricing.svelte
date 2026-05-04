@@ -108,7 +108,7 @@
 						<h3 class="text-lg font-semibold leading-8 text-text-primary-light">Parchment API</h3>
 					</div>
 					<p class="mt-4 text-sm leading-6 text-text-secondary-light">
-						Normalized green coffee data from 41+ suppliers through one REST API. Daily updates,
+						Normalized green coffee data from 40+ suppliers through one REST API. Daily updates,
 						consistent schema. Connect it to your tools without rebuilding what we already track.
 					</p>
 					<p class="mt-6 flex items-baseline gap-x-2">

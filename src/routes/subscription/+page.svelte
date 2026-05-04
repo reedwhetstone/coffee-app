@@ -56,7 +56,7 @@
 			headline:
 				'Supplier comparisons, arrivals and delistings, origin benchmarks, and the weekly procurement brief.',
 			description:
-				'Parchment Intelligence gives sourcing pros the full market view: supplier health, arriving and departing lots, origin benchmarks, and price history depth across 41+ US importers.',
+				'Parchment Intelligence gives sourcing pros the full market view: supplier health, arriving and departing lots, origin benchmarks, and price history depth across 40+ US importers.',
 			features: [
 				'Weekly procurement brief with market movements and notable arrivals',
 				'Supplier comparisons and supplier health scoring',
@@ -93,11 +93,11 @@
 			family: 'api_plan',
 			name: 'Parchment API',
 			eyebrow: 'Data access',
-			headline: 'Normalized green coffee data from 41+ suppliers through one REST API.',
+			headline: 'Normalized green coffee data from 40+ suppliers through one REST API.',
 			description:
 				'Start with the free Green tier to evaluate the dataset, then move to Origin for production integrations, higher rate limits, and an account-aware console.',
 			features: [
-				'Daily-updated catalog from 41+ US specialty importers',
+				'Daily-updated catalog from 40+ US specialty importers',
 				'Consistent schema across all supplier sources',
 				'Origin tier for production integrations and higher usage limits',
 				'Parchment Console for API keys, docs, and usage visibility'
@@ -359,7 +359,7 @@
 				{
 					label: 'Data and integrations',
 					value: 'Parchment API',
-					description: 'Normalized green coffee data from 41+ suppliers through one REST API.'
+					description: 'Normalized green coffee data from 40+ suppliers through one REST API.'
 				},
 				{
 					label: 'Roaster operations',
@@ -548,7 +548,7 @@
 					<p class="text-lg leading-8 text-text-secondary-light">
 						{isSignedIn
 							? 'Review access and billing in one place.'
-							: 'Daily-normalized data from 41+ US importers. Pricing movement, arrivals, delistings, and origin benchmarks for sourcing pros.'}
+							: 'Daily-normalized data from 40+ US importers. Pricing movement, arrivals, delistings, and origin benchmarks for sourcing pros.'}
 					</p>
 					<div class="flex flex-wrap items-center gap-3">
 						<button

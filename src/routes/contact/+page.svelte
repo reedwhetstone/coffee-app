@@ -6,7 +6,7 @@
 				Contact Purveyors
 			</h1>
 			<p class="mt-4 text-lg text-text-secondary-light">
-				Coffee intelligence, built by people who use it. Daily-normalized data from 41+ US specialty
+				Coffee intelligence, built by people who use it. Daily-normalized data from 40+ US specialty
 				importers. Open source where it makes sense.
 			</p>
 		</div>

@@ -25,7 +25,7 @@ The coffee industry keeps treating processing transparency as a vocabulary probl
 - [ ] Confirm `/v1/catalog` exposes a sanitized nested `process` summary while withholding raw `processing_evidence` by default.
 - [ ] Confirm `has_additives=false` still means explicit `['none']`, not missing or undisclosed additives.
 - [ ] Confirm current coverage numbers before drafting. ADR-005's 2026-04-29 anonymous sample: 1,058 rows; `processing_base_method` populated on 51 rows with 5 unique values; `fermentation_type` and `process_additives` populated on 0 rows; `processing_disclosure_level` populated on 54 rows with 3 unique values; `drying_method` populated on 435 rows with 74 raw values.
-- [ ] Confirm current source count before using any supplier-scale claim. Source-map audit says scraper docs reported 41 live sources on 2026-04-26.
+- [ ] Confirm current source count before using any supplier-scale claim. Source-map audit says scraper docs report 40 live sources as of 2026-05-04.
 - [ ] Confirm process facets remain gated as search leverage under ADR-005 while process facts can still be displayed as trust proof.
 - [ ] Confirm the draft does not repeat the co-fermentation post. This is a follow-up about schema as market infrastructure, not another taste/authenticity debate.
 

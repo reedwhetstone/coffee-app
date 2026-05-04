@@ -6,7 +6,7 @@
 				<div>
 					<h3 class="text-lg font-semibold text-text-primary-light">Purveyors</h3>
 					<p class="mt-2 text-sm text-text-secondary-light">
-						Coffee intelligence platform. Daily-normalized data from 41+ US specialty importers,
+						Coffee intelligence platform. Daily-normalized data from 40+ US specialty importers,
 						turned into procurement-ready analytics for green coffee buyers and roasting teams.
 					</p>
 				</div>

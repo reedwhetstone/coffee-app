@@ -54,7 +54,7 @@
 		</div>
 		<div class="mx-auto max-w-3xl text-center">
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				Daily normalized data from 41+ US suppliers. Price movement, arrivals, delistings, and
+				Daily normalized data from 40+ US suppliers. Price movement, arrivals, delistings, and
 				origin benchmarks in one place, so you make procurement calls with real time intelligence.
 			</p>
 			<div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-x-6">

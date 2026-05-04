@@ -31,7 +31,7 @@ _Last coherence audit: 2026-05-03_
 | coffee-scraper PRs #208/#216                                                    | Processing breakdown extraction and persistence                                  | Confirms the co-fermentation post now trails the implementation and supplies evidence for a schema-focused follow-up      |
 | coffee-scraper PRs #209/#215                                                    | Producer column extraction and residue filtering                                 | Added new raw idea: `Producer identity is market infrastructure, not listing copy`                                        |
 | coffee-scraper PRs #204/#206                                                    | Conditional source-field contracts and audit compatibility                       | Refreshed the existing `Null Means Two Things` / field-contract backlog theme; no duplicate idea added                    |
-| `repos/coffee-scraper/README.md` and `scrape/sources/index.ts` at `origin/main` | Current supplier/source count check                                              | Current public scraper docs say 41 live sources; older posts still cite 30, 31, or 35 supplier snapshots                  |
+| `repos/coffee-scraper/README.md` and `scrape/sources/index.ts` at `origin/main` | Current supplier/source count check                                              | Current public scraper docs say 40 live sources; older posts still cite 30, 31, or 35 supplier snapshots                  |
 
 ## Recent source material checked in this audit (2026-04-27 to 2026-05-03)
 
@@ -74,15 +74,15 @@ _Last coherence audit: 2026-05-03_
 - **`building-a-coffee-data-pipeline`**
 
   - Still claims 31 suppliers, 12 live suppliers, and 1,876 coffees across 35 suppliers.
-  - Current scraper docs state 41 live sources.
+  - Current scraper docs state 40 live sources.
   - Architecture mix has shifted from the post's 5 Playwright / 7 generic Shopify split to 6 Playwright, 28 custom HTTP, and 7 generic Shopify sources in current docs.
   - Fix path: refresh counts throughout, or explicitly label the post as a February 2026 snapshot.
 
 - **`what-is-purveyors`**
 
   - Uses `35 suppliers` twice in present-tense product copy.
-  - Current public product and scraper docs have moved to a 41-source narrative.
-  - Fix path: update to `40+` / `41` live sources, or time-scope the count.
+  - Current public product and scraper docs have moved to a 40-source narrative.
+  - Fix path: update to `40+` live sources, or time-scope the count.
 
 - **`ai-moats-arent-software`**
 
@@ -101,7 +101,7 @@ _Last coherence audit: 2026-05-03_
   - Fix path: replace with `notes/PRODUCT_VISION.md` or `notes/archive/legacy-product/MARKET_ANALYSIS.md`, depending on the intended reference.
 
 - **`co-fermentation-wrong-question`**
-  - Uses a 35-supplier processing coverage snapshot while current scraper docs say 41 live sources.
+  - Uses a 35-supplier processing coverage snapshot while current scraper docs say 40 live sources.
   - Says the current pipeline captures `processing` as a single text field, but ADR-004 and the recent scraper/app work now add structured process fields for base method, fermentation type, additives, duration, disclosure level, confidence, and evidence.
   - Frontmatter date is 2026-04-02, while the post appears to have shipped via PR #208 on 2026-04-23. This makes cadence reporting ambiguous.
   - Fix path: either label the post as the pre-schema snapshot that motivated ADR-004, or update it with a short postscript explaining that the schema work shipped after the draft.
