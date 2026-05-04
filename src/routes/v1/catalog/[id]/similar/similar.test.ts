@@ -227,6 +227,26 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(mockResolvePrincipal).not.toHaveBeenCalled();
 	});
 
+	it.each(['2147483648', '999999999999', '9007199254740992'])(
+		'returns 400 before database access for catalog id %s outside the int4 range',
+		async (id) => {
+			const response = await GET(makeEvent(`https://app.test/v1/catalog/${id}/similar`, { id }));
+			const body = await response.json();
+
+			expect(response.status).toBe(400);
+			expect(body).toMatchObject({
+				error: 'Invalid query parameter',
+				details: {
+					parameter: 'id',
+					value: id,
+					expected: 'positive integer less than or equal to 2147483647'
+				}
+			});
+			expect(mockResolvePrincipal).not.toHaveBeenCalled();
+			expect(mockCreateAdminClient).not.toHaveBeenCalled();
+		}
+	);
+
 	it('returns beta matches for member session callers with canonical pricing fields', async () => {
 		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
 		const { rpc } = createSupabaseMock();

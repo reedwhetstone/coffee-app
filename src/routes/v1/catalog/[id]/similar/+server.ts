@@ -20,6 +20,9 @@ import {
 import { createAdminClient } from '$lib/supabase-admin';
 
 const REQUEST_PATH = '/v1/catalog/{id}/similar';
+const POSTGRES_INT4_MAX = 2_147_483_647;
+const POSTGRES_INT4_MAX_STRING = String(POSTGRES_INT4_MAX);
+const CATALOG_ID_EXPECTED_FORMAT = `positive integer less than or equal to ${POSTGRES_INT4_MAX}`;
 
 class CatalogSimilarRateLimitError extends Error {
 	constructor(
@@ -35,8 +38,19 @@ function parseCoffeeId(rawId: string | undefined): number {
 	if (!rawId || !/^\d+$/.test(rawId)) {
 		throw new CatalogSimilarityValidationError('id', rawId ?? '', 'positive integer');
 	}
-	const coffeeId = Number.parseInt(rawId, 10);
-	if (!Number.isFinite(coffeeId) || coffeeId <= 0) {
+	const normalizedId = rawId.replace(/^0+/, '') || '0';
+	if (normalizedId === '0') {
+		throw new CatalogSimilarityValidationError('id', rawId, 'positive integer');
+	}
+	if (
+		normalizedId.length > POSTGRES_INT4_MAX_STRING.length ||
+		(normalizedId.length === POSTGRES_INT4_MAX_STRING.length &&
+			normalizedId > POSTGRES_INT4_MAX_STRING)
+	) {
+		throw new CatalogSimilarityValidationError('id', rawId, CATALOG_ID_EXPECTED_FORMAT);
+	}
+	const coffeeId = Number.parseInt(normalizedId, 10);
+	if (!Number.isSafeInteger(coffeeId)) {
 		throw new CatalogSimilarityValidationError('id', rawId, 'positive integer');
 	}
 	return coffeeId;
