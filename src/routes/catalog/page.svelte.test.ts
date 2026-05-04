@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import CatalogPage from './+page.svelte';
@@ -103,12 +103,127 @@ beforeEach(() => {
 				);
 			}
 
+			if (url.startsWith('/v1/catalog/1/similar')) {
+				return new Response(
+					JSON.stringify({
+						data: {
+							target: {
+								id: 1,
+								name: 'Process Lot',
+								source: 'Example Importer',
+								origin: 'Huila',
+								country: 'Colombia',
+								continent: 'South America',
+								processing: 'Washed',
+								processing_base_method: 'washed',
+								fermentation_type: null,
+								drying_method: null,
+								stocked: true,
+								price_per_lb: 8.5,
+								price_tiers: [{ min_lbs: 1, price: 8.5 }],
+								cost_lb: 9,
+								pricing: {
+									price_per_lb: 8.5,
+									price_tiers: [{ min_lbs: 1, price: 8.5 }],
+									cost_lb: 9,
+									baseline_quantity_lbs: 1,
+									baseline_price_per_lb: 8.5,
+									baseline_source: 'price_per_lb'
+								}
+							},
+							matches: [
+								{
+									coffee: {
+										id: 2,
+										name: 'Member Match Lot',
+										source: 'Match Importer',
+										origin: 'Huila',
+										country: 'Colombia',
+										continent: 'South America',
+										processing: 'Washed',
+										processing_base_method: 'washed',
+										fermentation_type: null,
+										drying_method: null,
+										stocked: true
+									},
+									pricing: {
+										price_per_lb: 7.5,
+										price_tiers: [{ min_lbs: 1, price: 7.5 }],
+										cost_lb: 8,
+										baseline_quantity_lbs: 1,
+										baseline_price_per_lb: 7.5,
+										baseline_source: 'price_per_lb'
+									},
+									price_delta_1lb: { amount: -1, percent: -11.8, currency: 'USD' },
+									score: {
+										average: 0.89,
+										dimensions: { origin: 0.91, processing: 0.87, tasting: 0.85 },
+										chunk_matches: 2
+									},
+									match: {
+										category: 'likely_same',
+										confidence: 'medium_beta',
+										beta: true,
+										language: 'Beta likely same coffee candidate.'
+									},
+									explanation: {
+										summary: 'Beta similarity score.',
+										signals: ['Origin similarity 0.91']
+									}
+								}
+							]
+						},
+						meta: { copy: { confidence: 'Beta confidence copy.' } }
+					}),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				);
+			}
+
 			return new Response(JSON.stringify({ data: [], pagination: null }), {
 				status: 200,
 				headers: { 'Content-Type': 'application/json' }
 			});
 		})
 	);
+});
+
+describe('/catalog similar comparison controls', () => {
+	it('shows a locked member comparison CTA without leaking match data for non-members', () => {
+		renderCatalog(createData());
+
+		expect(screen.getByText('Member comparison')).toBeInTheDocument();
+		expect(screen.queryByText('Member Match Lot')).not.toBeInTheDocument();
+	});
+
+	it('lets members open an on-demand similar coffee comparison panel', async () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' } as PageData['session'],
+				role: 'member',
+				catalogAccess: {
+					canViewPublicCatalog: true,
+					canViewFullCatalog: true,
+					canViewWholesale: true,
+					canUseBasicFilters: true,
+					canUseAdvancedFilters: true,
+					canUseProcessFacets: true,
+					canUsePriceScoreRanges: true,
+					canUseAdvancedSorts: true,
+					canViewPremiumFilterMetadata: true,
+					canUseSemanticSearch: true,
+					canUseBeanMatching: true,
+					canUseSavedSearches: true,
+					canExport: true
+				}
+			} as Partial<PageData>)
+		);
+
+		await fireEvent.click(screen.getByRole('button', { name: /compare similar coffees/i }));
+
+		await waitFor(() => expect(screen.getByText('Member Match Lot')).toBeInTheDocument());
+		expect(screen.getByText('Match Importer · In stock')).toBeInTheDocument();
+		expect(screen.getByText('$1.00/lb lower (11.8%)')).toBeInTheDocument();
+	});
 });
 
 describe('/catalog process controls', () => {

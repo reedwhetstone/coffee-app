@@ -6,8 +6,12 @@ import {
 	getApplicableTier,
 	getPriceAtQuantity,
 	calculatePurchaseTotal,
+	formatCanonicalBaselinePrice,
+	formatPriceDelta,
 	formatPricePerLb,
+	formatPriceTierSummary,
 	formatTier,
+	getCanonicalOneLbPrice,
 	hasMultipleTiers,
 	getMinOrderLbs,
 	getBulkSavings,
@@ -158,6 +162,44 @@ describe('parsePriceTiers', () => {
 	it('returns null when all items are invalid', () => {
 		const raw = [{ min_lbs: 0, price: 0 }, null, { bad: 'data' }];
 		expect(parsePriceTiers(raw as unknown as null)).toBeNull();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// getCanonicalOneLbPrice
+// ---------------------------------------------------------------------------
+
+describe('getCanonicalOneLbPrice', () => {
+	it('prefers canonical price_per_lb over legacy cost_lb for comparison baselines', () => {
+		const coffee = makeCoffee({ cost_lb: 99, price_per_lb: 12, price_tiers: asJson(RETAIL_TIERS) });
+		expect(getCanonicalOneLbPrice(coffee)).toBe(12);
+		expect(formatCanonicalBaselinePrice(coffee)).toBe('$12.00/lb');
+	});
+
+	it('falls back to an eligible 1 lb tier before legacy cost_lb', () => {
+		const coffee = makeCoffee({
+			cost_lb: 99,
+			price_per_lb: null,
+			price_tiers: asJson(RETAIL_TIERS)
+		});
+		expect(getCanonicalOneLbPrice(coffee)).toBe(20);
+	});
+
+	it('does not treat higher-minimum tiers as the 1 lb baseline', () => {
+		const coffee = makeCoffee({
+			cost_lb: 11,
+			price_per_lb: null,
+			price_tiers: asJson([{ min_lbs: 5, price: 8 }])
+		});
+		expect(getCanonicalOneLbPrice(coffee)).toBe(11);
+	});
+
+	it('formats tier summaries and price deltas for comparison UI', () => {
+		expect(formatPriceTierSummary(asJson(RETAIL_TIERS))).toBe(
+			'3 tiers from 1+ lb $20.00/lb to 25+ lb $10.00/lb'
+		);
+		expect(formatPriceDelta(-2, -10)).toBe('$2.00/lb lower (10.0%)');
+		expect(formatPriceDelta(0, 0)).toBe('Same as target at 1 lb');
 	});
 });
 
