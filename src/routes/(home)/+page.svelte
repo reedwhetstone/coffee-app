@@ -22,7 +22,7 @@
 			<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 				<div class="mb-12 text-center">
 					<h2 class="text-3xl font-bold text-text-primary-light sm:text-4xl">
-						Current offer list across 41+ importers.
+						Current offer list across 40+ importers.
 					</h2>
 					<p class="mx-auto mt-4 max-w-3xl text-lg text-text-secondary-light">
 						Live green coffee availability from US specialty importers, normalized by origin,
@@ -96,7 +96,7 @@
 								Ready to source with the full market in view?
 							</h3>
 							<p class="mb-4 text-text-secondary-light">
-								Market analytics, supplier coverage, and origin benchmarks from 41+ importers. Free
+								Market analytics, supplier coverage, and origin benchmarks from 40+ importers. Free
 								to explore.
 							</p>
 							<div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">

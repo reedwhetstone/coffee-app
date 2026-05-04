@@ -8,7 +8,7 @@
 				Market intelligence the rest of the industry is still running on spreadsheets for.
 			</p>
 			<p class="mt-6 text-lg leading-8 text-text-secondary-light">
-				41+ US importers, scraped and normalized daily. Price movement, arrivals, delistings, origin
+				40+ US importers, scraped and normalized daily. Price movement, arrivals, delistings, origin
 				benchmarks, and supplier comparisons in one place, so procurement decisions start with
 				complete data, not manual research.
 			</p>
@@ -72,7 +72,7 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Arrivals and delistings tracked daily across 41+ importers. See what landed this week,
+							Arrivals and delistings tracked daily across 40+ importers. See what landed this week,
 							what disappeared, and which suppliers are most active for your target origins before
 							the lot sells out.
 						</p>
@@ -104,7 +104,7 @@
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">
-							Normalized green coffee data from 41+ suppliers through one REST API. Daily updates,
+							Normalized green coffee data from 40+ suppliers through one REST API. Daily updates,
 							consistent schema. Skip rebuilding the catalog yourself and connect it directly to
 							your internal tools, dashboards, or buying automations.
 						</p>
@@ -201,7 +201,7 @@
 								/>
 							</svg>
 						</div>
-						Track origin supply health across 41+ importers.
+						Track origin supply health across 40+ importers.
 					</dt>
 					<dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-text-secondary-light">
 						<p class="flex-auto">

@@ -81,7 +81,7 @@
 
 	<section class="grid gap-4 lg:grid-cols-4">
 		<div class="rounded-2xl border border-border-light bg-background-primary-light p-5 shadow-sm">
-			<div class="text-3xl font-bold text-background-tertiary-light">41+</div>
+			<div class="text-3xl font-bold text-background-tertiary-light">40+</div>
 			<div class="mt-2 text-sm font-semibold text-text-primary-light">US importers</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
 				Every major specialty importer in one normalized schema. Wholesale and retail segmented.
@@ -118,7 +118,7 @@
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
 				<li class="flex gap-3">
 					<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-background-tertiary-light"></span>
-					<span>Sync your internal sourcing dashboard with live offer lists from 41+ importers</span
+					<span>Sync your internal sourcing dashboard with live offer lists from 40+ importers</span
 					>
 				</li>
 				<li class="flex gap-3">

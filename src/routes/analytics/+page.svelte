@@ -774,7 +774,7 @@
 					procurement brief. Built for sourcing pros making real buying decisions.
 				</p>
 				<ul class="mb-6 space-y-2 text-sm text-text-secondary-light">
-					<li>Compare 41+ importers on price, coverage, and freshness</li>
+					<li>Compare 40+ importers on price, coverage, and freshness</li>
 					<li>Track new arrivals the day they stock</li>
 					<li>Catch delistings before your next order closes</li>
 					<li>Origin-level benchmarks with 6-month and 1-year depth</li>

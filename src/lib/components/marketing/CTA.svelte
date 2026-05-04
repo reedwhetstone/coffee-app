@@ -30,10 +30,10 @@
 			</h2>
 			<p class="mx-auto mt-6 max-w-xl text-lg leading-8 text-orange-100">
 				{#if isSignedIn}
-					41+ importers. Daily pricing. Arrivals and delistings tracked. Your next procurement call
+					40+ importers. Daily pricing. Arrivals and delistings tracked. Your next procurement call
 					starts here.
 				{:else}
-					Daily-normalized data from 41+ US specialty importers. Price movement, origin benchmarks,
+					Daily-normalized data from 40+ US specialty importers. Price movement, origin benchmarks,
 					and supplier coverage in one analytics surface built for green coffee buyers.
 				{/if}
 			</p>
@@ -62,7 +62,7 @@
 							clip-rule="evenodd"
 						/>
 					</svg>
-					41+ importers tracked daily
+					40+ importers tracked daily
 				</div>
 				<div class="flex items-center gap-x-2">
 					<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
