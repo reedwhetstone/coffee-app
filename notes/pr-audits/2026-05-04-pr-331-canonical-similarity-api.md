@@ -1,10 +1,10 @@
 # PR #331 Verify Audit: Canonical Similarity API
 
-**Date:** 2026-05-04  
-**Reviewer:** OpenClaw verify-pr subagent  
-**Base:** `origin/main`  
-**Head:** `HEAD` / `feat/canonical-similarity-api`  
-**Verdict:** `ready_with_fixes`  
+**Date:** 2026-05-04
+**Reviewer:** OpenClaw verify-pr subagent
+**Base:** `origin/main`
+**Head:** `HEAD` / `feat/canonical-similarity-api`
+**Verdict:** `ready_with_fixes`
 **Scope assessment:** `mergeable_with_followups`
 
 ## Operator summary
