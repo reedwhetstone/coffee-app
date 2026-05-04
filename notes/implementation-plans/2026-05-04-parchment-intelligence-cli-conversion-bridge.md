@@ -181,6 +181,7 @@ PR 2 validation:
 
 ```bash
 cd /root/.openclaw/workspace/repos/coffee-app
+pnpm lint
 pnpm check --fail-on-warnings
 pnpm exec vitest run src/lib/docs/content.test.ts
 ```
