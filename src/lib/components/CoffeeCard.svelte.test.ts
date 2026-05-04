@@ -31,6 +31,57 @@ function createCoffee(overrides: Record<string, unknown> = {}): CoffeeCatalog {
 
 const parseTastingNotes = () => null;
 
+describe('CoffeeCard proof badges', () => {
+	it('renders compact proof badges when reliable signals exist', () => {
+		render(CoffeeCard, {
+			coffee: createCoffee({
+				price_tiers: [
+					{ min_lbs: 1, price: 8.5 },
+					{ min_lbs: 10, price: 8 }
+				],
+				stocked_date: '2026-04-01',
+				stocked: true,
+				process: {
+					base_method: 'washed',
+					disclosure_level: 'structured',
+					confidence: 0.84,
+					evidence_available: true
+				}
+			}),
+			parseTastingNotes
+		});
+
+		expect(screen.getByText('Process disclosed')).toBeTruthy();
+		expect(screen.getByText('Provenance identified')).toBeTruthy();
+		expect(screen.getByText('Freshness dated')).toBeTruthy();
+		expect(screen.getByText('Tiered pricing')).toBeTruthy();
+	});
+
+	it('does not invent proof badges when no reliable signals exist', () => {
+		render(CoffeeCard, {
+			coffee: createCoffee({
+				country: null,
+				region: null,
+				continent: null,
+				source: null,
+				price_per_lb: null,
+				cost_lb: null,
+				price_tiers: null,
+				stocked_date: null,
+				arrival_date: null,
+				last_updated: null,
+				stocked: null,
+				process: null
+			}),
+			parseTastingNotes
+		});
+
+		expect(screen.queryByLabelText('Catalog proof signals')).toBeNull();
+		expect(screen.queryByText('Process disclosed')).toBeNull();
+		expect(screen.queryByText('Price listed')).toBeNull();
+	});
+});
+
 describe('CoffeeCard process analysis', () => {
 	it('renders buyer-readable process analysis when structured process metadata exists', () => {
 		render(CoffeeCard, {

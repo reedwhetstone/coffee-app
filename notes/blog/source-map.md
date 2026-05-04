@@ -6,18 +6,18 @@ _Last coherence audit: 2026-05-03_
 
 ## Core strategy sources
 
-| Source File                                                 | Current role                                         | Blog links                                                                           |
-| ----------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `notes/PRODUCT_VISION.md`                                   | Canonical product direction                          | Grounds product, intelligence, API, public-surface, and marketplace-standard framing |
-| `notes/BLOG_STRATEGY.md`                                    | Canonical blog positioning, cadence, and quality bar | Governs pillar balance, cadence, voice, and maintenance rules                        |
-| `notes/genui-platform-transition-plan.md`                   | Primary ai-first-product source                      | Feeds GenUI, canvas, propose/confirm, memory, and AI-first product ideas             |
-| `notes/API_notes/API-strategy.md`                           | Primary API / B2CC source                            | Feeds dual-audience API, agent-first QA, pricing, and docs-as-product ideas          |
-| `notes/decisions/002-api-first-external-internal-split.md`  | API-first architecture decision                      | Supports public discovery, paid API, and endpoint governance posts                   |
-| `notes/decisions/004-processing-transparency-schema-api.md` | Structured process metadata decision                 | Supports processing transparency, schema-as-market, and disclosure-quality posts     |
-| `notes/archive/legacy-product/MARKET_ANALYSIS.md`           | Historical source for early supply-chain posts       | Feeds `what-is-purveyors` and legacy supply-chain infrastructure framing             |
-| `brain/references/b2cc-agents-as-customers.md`              | External theory / reference                          | Feeds agents-as-customers, docs-as-product, and allowlist-governance ideas           |
-| `notes/big-ideas/2026-04-30-purveyors-proof-layer.md`        | Strategic proof-layer proposal                       | Feeds claim provenance, proof passport, and evidence-as-product ideas                |
-| `notes/implementation-plans/2026-04-29-parchment-intelligence-api-cli-bridge.md` | Price-index API and CLI bridge plan                  | Feeds Parchment Intelligence launch and machine-readable market-data posts           |
+| Source File                                                                                 | Current role                                         | Blog links                                                                           |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `notes/PRODUCT_VISION.md`                                                                   | Canonical product direction                          | Grounds product, intelligence, API, public-surface, and marketplace-standard framing |
+| `notes/BLOG_STRATEGY.md`                                                                    | Canonical blog positioning, cadence, and quality bar | Governs pillar balance, cadence, voice, and maintenance rules                        |
+| `notes/genui-platform-transition-plan.md`                                                   | Primary ai-first-product source                      | Feeds GenUI, canvas, propose/confirm, memory, and AI-first product ideas             |
+| `notes/API_notes/API-strategy.md`                                                           | Primary API / B2CC source                            | Feeds dual-audience API, agent-first QA, pricing, and docs-as-product ideas          |
+| `notes/decisions/002-api-first-external-internal-split.md`                                  | API-first architecture decision                      | Supports public discovery, paid API, and endpoint governance posts                   |
+| `notes/decisions/004-processing-transparency-schema-api.md`                                 | Structured process metadata decision                 | Supports processing transparency, schema-as-market, and disclosure-quality posts     |
+| `notes/archive/legacy-product/MARKET_ANALYSIS.md`                                           | Historical source for early supply-chain posts       | Feeds `what-is-purveyors` and legacy supply-chain infrastructure framing             |
+| `brain/references/b2cc-agents-as-customers.md`                                              | External theory / reference                          | Feeds agents-as-customers, docs-as-product, and allowlist-governance ideas           |
+| `notes/big-ideas/2026-04-30-purveyors-proof-layer.md`                                       | Strategic proof-layer proposal                       | Feeds claim provenance, proof passport, and evidence-as-product ideas                |
+| `notes/implementation-plans/2026-04-29-parchment-intelligence-api-cli-bridge.md`            | Price-index API and CLI bridge plan                  | Feeds Parchment Intelligence launch and machine-readable market-data posts           |
 | `../coffee-scraper/notes/implementation-plans/2026-04-29-certifications-taxonomy-schema.md` | Certification taxonomy schema plan                   | Feeds certification schema and structured claim-data ideas                           |
 
 ## Recent source material checked in this audit (2026-04-19 to 2026-04-26)
@@ -35,18 +35,17 @@ _Last coherence audit: 2026-05-03_
 
 ## Recent source material checked in this audit (2026-04-27 to 2026-05-03)
 
-| Source                                                                      | Audit use                                             | Outcome                                                                                                            |
-| --------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| coffee-app PR #301                                                          | Open publish-ready blog PR                            | Treat as the near-term queue item to resolve before opening another full draft                                     |
-| coffee-app PR #323                                                          | Open outline-only GenUI PR                            | Confirms active ai-first-product backlog remains healthy; does not close the api-architecture publication gap      |
-| coffee-app PRs #302/#304/#319                                               | Process facets, access-tier positioning, docs updates | Reinforces that visibility versus search leverage is now a central public/product narrative                         |
-| coffee-app PR #312                                                          | `/v1/price-index` endpoint                            | Updated price-index idea: endpoint has shipped, but CLI/docs bridge should determine launch-post framing           |
-| coffee-app PR #313 and proof-summary plans                                  | Purveyors Proof Layer planning                        | Added new raw api-architecture idea for proof passports and claim provenance                                        |
-| coffee-scraper PRs #225/#234 plus certification taxonomy plan               | Producer evidence and certifications contract         | Added new raw coffee-data-pipeline idea: certification data needs a schema, not substring search                    |
-| coffee-scraper PRs #237/#239                                                | Runtime preflight and architecture docs refresh       | Useful product-quality evidence, but not strong enough for a standalone blog idea this week                        |
-| purveyors-cli PR #103                                                       | Structured process catalog filters                    | Confirms process transparency is now a cross-surface API/CLI/web story, not just a catalog UI detail               |
-| open Coffee Intelligence draft PRs #228/#267/#285                           | Active draft queue                                    | Flagged as stale snapshot risk; refresh, close, or rebase before promotion                                          |
-
+| Source                                                        | Audit use                                             | Outcome                                                                                                       |
+| ------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| coffee-app PR #301                                            | Open publish-ready blog PR                            | Treat as the near-term queue item to resolve before opening another full draft                                |
+| coffee-app PR #323                                            | Open outline-only GenUI PR                            | Confirms active ai-first-product backlog remains healthy; does not close the api-architecture publication gap |
+| coffee-app PRs #302/#304/#319                                 | Process facets, access-tier positioning, docs updates | Reinforces that visibility versus search leverage is now a central public/product narrative                   |
+| coffee-app PR #312                                            | `/v1/price-index` endpoint                            | Updated price-index idea: endpoint has shipped, but CLI/docs bridge should determine launch-post framing      |
+| coffee-app PR #313 and proof-summary plans                    | Purveyors Proof Layer planning                        | Added new raw api-architecture idea for proof passports and claim provenance                                  |
+| coffee-scraper PRs #225/#234 plus certification taxonomy plan | Producer evidence and certifications contract         | Added new raw coffee-data-pipeline idea: certification data needs a schema, not substring search              |
+| coffee-scraper PRs #237/#239                                  | Runtime preflight and architecture docs refresh       | Useful product-quality evidence, but not strong enough for a standalone blog idea this week                   |
+| purveyors-cli PR #103                                         | Structured process catalog filters                    | Confirms process transparency is now a cross-surface API/CLI/web story, not just a catalog UI detail          |
+| open Coffee Intelligence draft PRs #228/#267/#285             | Active draft queue                                    | Flagged as stale snapshot risk; refresh, close, or rebase before promotion                                    |
 
 ## Published Posts
 

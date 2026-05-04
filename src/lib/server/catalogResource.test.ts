@@ -291,6 +291,84 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(body.data[0].processing_evidence).toBeUndefined();
 		expect(body.data[0].processing_evidence_available).toBeUndefined();
 		expect(body.data[0].coffee_user).toBeUndefined();
+		expect(body.data[0].proof).toBeUndefined();
+	});
+
+	it('adds opt-in proof summaries without exposing raw evidence fields', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?include=proof&limit=5')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.data[0].proof).toMatchObject({
+			version: 'proof-summary-v1',
+			overall: {
+				label: 'strong',
+				families_with_signals: 4
+			},
+			families: {
+				process: {
+					label: 'disclosed',
+					signals: expect.arrayContaining(['base_method', 'evidence_presence'])
+				},
+				provenance: {
+					label: 'identified',
+					signals: expect.arrayContaining(['country', 'region', 'supplier_source'])
+				},
+				freshness: {
+					label: 'recently_stocked',
+					signals: expect.arrayContaining(['stocked_date', 'arrival_date'])
+				},
+				pricing: {
+					label: 'listed',
+					signals: expect.arrayContaining(['price_per_lb'])
+				}
+			},
+			limitations: [
+				'not_certification',
+				'raw_evidence_not_included',
+				'supplier_verification_not_performed'
+			]
+		});
+		expect(body.data[0].processing_evidence).toBeUndefined();
+		expect(body.data[0].processing_evidence_available).toBeUndefined();
+		expect(JSON.stringify(body.data[0].proof)).not.toContain('Washed process disclosed');
+	});
+
+	it('rejects unsupported include values with a structured 400', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+
+		const response = await buildCanonicalCatalogResponse(
+			makeEvent('https://app.test/v1/catalog?include=wat&limit=5')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body).toEqual({
+			error: 'Invalid query parameter',
+			message: 'Query parameter "include" must use proof format',
+			details: {
+				parameter: 'include',
+				value: 'wat',
+				expected: 'proof'
+			}
+		});
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
 	});
 
 	it('uses the projected evidence availability boolean when raw evidence is not selected', async () => {
@@ -1189,7 +1267,8 @@ describe('buildCanonicalCatalogResponse', () => {
 		['stocked', 'maybe', 'true, false, or all'],
 		['showWholesale', 'maybe', 'true or false'],
 		['wholesaleOnly', 'maybe', 'true or false'],
-		['sortField', 'bogus', SORT_FIELD_EXPECTED]
+		['sortField', 'bogus', SORT_FIELD_EXPECTED],
+		['include', 'bogus', 'proof']
 	])(
 		'rejects malformed typed query parameter %s=%s with a structured 400 response',
 		async (parameter, value, expected) => {

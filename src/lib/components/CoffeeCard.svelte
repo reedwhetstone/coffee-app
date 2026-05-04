@@ -13,6 +13,12 @@
 		formatProcessDisplayValue,
 		normalizeProcessDisplayValue
 	} from '$lib/catalog/processDisplay';
+	import {
+		createCatalogProofSummary,
+		getCatalogProofBadges,
+		type CatalogProofInput,
+		type CatalogProofSummary
+	} from '$lib/catalog/proofSummary';
 
 	let {
 		coffee,
@@ -43,6 +49,7 @@
 
 	type CoffeeWithStructuredProcess = CoffeeCatalog & {
 		process?: ProcessSummary | null;
+		proof?: CatalogProofSummary | null;
 	};
 
 	type ProcessAnalysis = {
@@ -91,6 +98,11 @@
 	let processAnalysis = $derived.by(() =>
 		buildProcessAnalysis(coffee as CoffeeWithStructuredProcess)
 	);
+	let proofBadges = $derived.by(() => {
+		const coffeeWithProof = coffee as CoffeeWithStructuredProcess;
+		const proof = coffeeWithProof.proof ?? createCatalogProofSummary(coffee as CatalogProofInput);
+		return getCatalogProofBadges(proof);
+	});
 
 	function formatAdditives(additives: string[] | null | undefined): string | null {
 		if (!additives?.length) return null;
@@ -224,6 +236,19 @@
 				{/if}
 			</div>
 
+			{#if proofBadges.length > 0}
+				<div class="mt-2 flex flex-wrap gap-1.5" aria-label="Catalog proof signals">
+					{#each proofBadges as badge (badge.key)}
+						<span
+							class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100"
+							title={badge.title}
+						>
+							{badge.label}
+						</span>
+					{/each}
+				</div>
+			{/if}
+
 			{#if processAnalysis}
 				<p class="mt-2 text-xs font-medium text-background-tertiary-light">
 					{processAnalysis.headline}
@@ -311,6 +336,18 @@
 								>
 							{/if}
 						</div>
+						{#if proofBadges.length > 0}
+							<div class="mt-2 flex flex-wrap gap-1.5" aria-label="Catalog proof signals">
+								{#each proofBadges as badge (badge.key)}
+									<span
+										class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100"
+										title={badge.title}
+									>
+										{badge.label}
+									</span>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				</div>
 

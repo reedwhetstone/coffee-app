@@ -349,7 +349,8 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Public endpoint',
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, pricing, price tiers, and availability metadata.',
-			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API Green requests share the basic public catalog query surface. Member/admin sessions and paid API tiers additionally unlock structured process facet filters. Public callers can still inspect factual process fields in full rows; the gated feature is process search leverage, not data visibility. API-key requests use plan-based limits and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`
+			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API Green requests share the basic public catalog query surface. Member/admin sessions and paid API tiers additionally unlock structured process facet filters. Public callers can still inspect factual process fields in full rows; the gated feature is process search leverage, not data visibility. API-key requests use plan-based limits and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`,
+			'Use include=proof when callers need compact proof-summary families for process, provenance, freshness, and pricing. Proof summaries are cautious catalog signals, not certifications, and raw supplier evidence remains withheld.'
 		],
 		sections: [
 			{
@@ -370,7 +371,7 @@ const docsPages: DocsPage[] = [
 				title: 'Request and response',
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
-					'Full catalog rows include legacy raw processing fields plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
+					'Full catalog rows include legacy structured processing fields plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
 					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and search leverage: only API-key requests emit X-RateLimit-* headers, and only member/admin sessions or paid API tiers can use structured process facet filters.',
 					`Viewer-tier API keys are capped to 25 rows per call and cannot use structured process facet filters. Member and enterprise API plans remove that lower plan cap and unlock process facet filters, while still sharing the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables richer first-party visibility.`,
 					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
@@ -394,8 +395,9 @@ const docsPages: DocsPage[] = [
 					`The table below describes the full canonical query surface. If page is supplied without limit, the route uses a ${DEFAULT_PAGINATED_PAGE_SIZE}-row pagination fallback. If both page and limit are omitted, the canonical listing path uses the ${DEFAULT_CATALOG_LISTING_LIMIT}-row default listing contract.`,
 					'Anonymous, viewer-session, and API Green requests share the basic public query surface. Structured process facet filters are gated to member/admin sessions and paid API tiers.',
 					'fields=dropdown stays compatible with normal page and limit params. The reduced projection is limited to id, source, name, stocked, cost_lb, price_per_lb, price_tiers, and public_coffee.',
+					'include=proof is opt-in. Default full rows keep their existing shape, while proof requests add a cautious proof object with process, provenance, freshness, and pricing families plus explicit limitations.',
 					'Privileged member and admin sessions may additionally use showWholesale and wholesaleOnly to widen first-party visibility. Paid API tiers unlock process facet filters but remain public-catalog scoped.',
-					`Malformed typed params now fail closed with 400 responses instead of silently falling back or bubbling into generic 500s. That applies to fields, stocked, showWholesale, wholesaleOnly, has_additives, sortField, sortDirection, page, limit, stocked_date, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, processing_confidence_min, and deprecated cost_lb aliases. Supported sortField values are ${PUBLIC_CATALOG_SORT_FIELD_LIST}.`
+					`Malformed typed params now fail closed with 400 responses instead of silently falling back or bubbling into generic 500s. That applies to include, fields, stocked, showWholesale, wholesaleOnly, has_additives, sortField, sortDirection, page, limit, stocked_date, stocked_days, score_value_min, score_value_max, price_per_lb_min, price_per_lb_max, processing_confidence_min, and deprecated cost_lb aliases. Supported sortField values are ${PUBLIC_CATALOG_SORT_FIELD_LIST}.`
 				],
 				table: {
 					headers: ['Parameter', 'Type', 'Default', 'Description'],
@@ -418,6 +420,12 @@ const docsPages: DocsPage[] = [
 							'full | dropdown',
 							'full',
 							'dropdown returns the reduced projection used by filter UIs and select menus (id, source, name, stocked, cost_lb, price_per_lb, price_tiers, public_coffee), and it works with normal page and limit params. Invalid values return 400.'
+						],
+						[
+							'include',
+							'proof',
+							'none',
+							'Opt-in proof summaries for full catalog rows. Unsupported include values return 400. Proof summaries include cautious family signals and limitations, not raw evidence or certification claims.'
 						],
 						[
 							'stocked',
@@ -550,7 +558,8 @@ const docsPages: DocsPage[] = [
 					'processing_base_method, fermentation_type, process_additive, processing_disclosure_level, and processing_confidence_min only match rows where the structured metadata is present. Null supplier metadata is preserved and should not be treated as explicit none. These params return 401 for anonymous callers and 403 for viewer/API Green callers.',
 					'has_additives=true matches rows with disclosed additive values such as fruit, yeast, hops, mossto, or starter-culture. has_additives=false matches only rows whose additive array is exactly none; it intentionally excludes unknown, unspecified, null, or mixed values. This is also gated as a process facet.',
 					'process_additive is an array-containment filter. A row with multiple disclosed additives can match any one repeated request pattern only by issuing separate requests today.',
-					'Full rows include process.evidence_available but never expose raw processing_evidence quotes. The dropdown projection does not include the nested process object.'
+					'Full rows include process.evidence_available but never expose raw processing_evidence quotes. The dropdown projection does not include the nested process object.',
+					'include=proof adds proof.families.process, provenance, freshness, and pricing plus limitations such as not_certification and raw_evidence_not_included. Badge copy in public cards uses the same cautious vocabulary: disclosed, identified, dated, listed, or tiered.'
 				],
 				codeBlocks: [
 					{

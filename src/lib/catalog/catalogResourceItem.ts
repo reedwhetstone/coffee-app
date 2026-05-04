@@ -1,4 +1,5 @@
 import type { CatalogDropdownItem, CatalogItem } from '$lib/data/catalog';
+import { createCatalogProofSummary, type CatalogProofSummary } from '$lib/catalog/proofSummary';
 
 export interface CatalogProcessSummary {
 	base_method: string | null;
@@ -28,9 +29,17 @@ export type CatalogResourceItem = Omit<
 	'coffee_user' | 'processing_evidence' | 'processing_evidence_available'
 > & {
 	process: CatalogProcessSummary;
+	proof?: CatalogProofSummary;
 };
 
 export type CatalogResponseItem = CatalogResourceItem | CatalogDropdownItem;
+
+export function withCatalogProofSummary(item: CatalogResourceItem): CatalogResourceItem {
+	return {
+		...item,
+		proof: createCatalogProofSummary(item)
+	};
+}
 
 export function toCatalogResourceItem(item: CatalogResourceQueryItem): CatalogResourceItem {
 	const {
