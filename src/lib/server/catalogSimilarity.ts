@@ -187,7 +187,7 @@ interface SimilaritySupabaseClient {
 		args: {
 			target_coffee_id: number;
 			match_threshold: number;
-			match_count: number;
+			match_count: number | null;
 			stocked_only: boolean;
 		}
 	): Promise<{ data: FindSimilarBeansAggregatedV2Row[] | null; error: { message: string } | null }>;
@@ -389,13 +389,22 @@ export function normalizeSimilarityRow(
 	row: FindSimilarBeansAggregatedV2Row,
 	targetPricing: CatalogCanonicalPricing
 ): CatalogSimilarityMatch {
-	const average = roundScore(toFiniteNumber(row.avg_similarity) ?? 0) ?? 0;
-	const origin = roundScore(toFiniteNumber(row.origin_similarity));
-	const processing = roundScore(toFiniteNumber(row.processing_similarity));
-	const tasting = roundScore(toFiniteNumber(row.tasting_similarity));
+	const rawAverage = toFiniteNumber(row.avg_similarity) ?? 0;
+	const rawOrigin = toFiniteNumber(row.origin_similarity);
+	const rawProcessing = toFiniteNumber(row.processing_similarity);
+	const rawTasting = toFiniteNumber(row.tasting_similarity);
+	const average = roundScore(rawAverage) ?? 0;
+	const origin = roundScore(rawOrigin);
+	const processing = roundScore(rawProcessing);
+	const tasting = roundScore(rawTasting);
 	const chunkMatches = Math.trunc(toFiniteNumber(row.chunk_matches) ?? 0);
-	const category = deriveMatchCategory({ average, origin, processing, chunkMatches });
-	const confidence = deriveConfidenceLabel(average);
+	const category = deriveMatchCategory({
+		average: rawAverage,
+		origin: rawOrigin,
+		processing: rawProcessing,
+		chunkMatches
+	});
+	const confidence = deriveConfidenceLabel(rawAverage);
 	const pricing = normalizeCanonicalPricing(row);
 	const targetBaseline = targetPricing.baseline_price_per_lb;
 	const matchBaseline = pricing.baseline_price_per_lb;
@@ -498,8 +507,7 @@ export async function fetchCatalogSimilarityMatches(input: {
 }): Promise<{ target: CatalogSimilarityTargetSummary; matches: CatalogSimilarityMatch[] }> {
 	const supabase = input.supabase as unknown as SimilaritySupabaseClient;
 	const target = await fetchTarget(supabase, input.coffeeId);
-	const rpcMatchCount =
-		input.query.mode === 'all' ? input.query.limit : MAX_CATALOG_SIMILARITY_LIMIT;
+	const rpcMatchCount = input.query.mode === 'all' ? input.query.limit : null;
 	const { data, error } = await supabase.rpc('find_similar_beans_aggregated_v2', {
 		target_coffee_id: input.coffeeId,
 		match_threshold: input.query.threshold,

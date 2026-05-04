@@ -7,11 +7,12 @@ P2: 0
 P3: 2
 NEXT_ACTION: patch_same_pr
 TOP_FIXES:
+
 - Remove trailing whitespace from `notes/pr-audits/2026-05-04-pr-331-canonical-similarity-api.md` so `git diff --check` is green.
 - Decide whether the residual `mode` filtering under-return edge is acceptable for beta, or overfetch beyond the public max/apply category filtering before SQL limit.
-CONFIDENCE: high
-SCOPE_ASSESSMENT: mergeable_with_followups
-VALIDATION_STATUS:
+  CONFIDENCE: high
+  SCOPE_ASSESSMENT: mergeable_with_followups
+  VALIDATION_STATUS:
 - `git diff --check origin/main...HEAD`: VALIDATION_FAIL, trailing whitespace in the newly added prior audit markdown file.
 - `pnpm vitest run src/lib/server/catalogSimilarity.test.ts src/lib/server/catalogAccess.test.ts src/routes/v1/catalog/[id]/similar/similar.test.ts`: VALIDATION_PASS
 - `pnpm vitest run src/lib/server/catalogSimilarity.test.ts src/lib/server/catalogAccess.test.ts src/routes/v1/catalog/[id]/similar/similar.test.ts src/routes/catalog/page.svelte.test.ts`: VALIDATION_FAIL, `src/routes/catalog/page.svelte.test.ts` fails on `Invalid Chai property: toBeInTheDocument`; the only PR diff in that file adds `canUseBeanMatching` fixture fields, while the failing matcher assertions already exist on `origin/main`.

@@ -121,8 +121,10 @@ function createSupabaseMock(
 			return Promise.resolve({ data: options.count ?? 3, error: null });
 		}
 		const matches = options.matches ?? [matchRow];
+		const cappedMatches =
+			typeof args?.match_count === 'number' ? matches.slice(0, args.match_count) : matches;
 		return Promise.resolve({
-			data: matches.slice(0, args?.match_count ?? matches.length),
+			data: cappedMatches,
 			error: null
 		});
 	});
@@ -221,7 +223,7 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 25,
+			match_count: null,
 			stocked_only: false
 		});
 		expect(body.data.target).toMatchObject({
@@ -251,7 +253,7 @@ describe('/v1/catalog/[id]/similar', () => {
 
 	it('overfetches before mode filtering so profile rows do not hide likely-same matches', async () => {
 		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
-		const profileRows = Array.from({ length: 5 }, (_, index) => ({
+		const profileRows = Array.from({ length: 30 }, (_, index) => ({
 			...matchRow,
 			coffee_id: 3000 + index,
 			avg_similarity: 0.96 - index * 0.01,
@@ -278,7 +280,7 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 25,
+			match_count: null,
 			stocked_only: true
 		});
 		expect(body.data.matches).toHaveLength(2);

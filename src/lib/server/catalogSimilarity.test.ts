@@ -73,6 +73,48 @@ describe('catalog similarity helpers', () => {
 		).toBe('similar_profile');
 	});
 
+	it('uses raw scores for classification before rounding display scores', () => {
+		const targetPricing = normalizeCanonicalPricing({
+			price_per_lb: 8,
+			price_tiers: null,
+			cost_lb: null
+		});
+
+		const match = normalizeSimilarityRow(
+			{
+				coffee_id: 43,
+				coffee_name: 'Borderline Coffee',
+				source: 'Supplier C',
+				origin: 'Borderline',
+				country: 'Colombia',
+				continent: 'South America',
+				processing: 'Washed',
+				processing_base_method: 'washed',
+				fermentation_type: null,
+				drying_method: null,
+				cost_lb: null,
+				price_per_lb: null,
+				price_tiers: null,
+				stocked: true,
+				avg_similarity: 0.8796,
+				origin_similarity: 0.8996,
+				processing_similarity: 0.8996,
+				tasting_similarity: null,
+				chunk_matches: 2
+			},
+			targetPricing
+		);
+
+		expect(match.score).toMatchObject({
+			average: 0.88,
+			dimensions: { origin: 0.9, processing: 0.9, tasting: null }
+		});
+		expect(match.match).toMatchObject({
+			category: 'similar_profile',
+			confidence: 'medium_beta'
+		});
+	});
+
 	it('normalizes RPC rows with canonical pricing, deltas, dimensions, and confidence copy', () => {
 		const targetPricing = normalizeCanonicalPricing({
 			price_per_lb: null,
