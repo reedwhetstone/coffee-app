@@ -545,6 +545,10 @@ function resolveRpcMatchCount(query: CatalogSimilarityQuery): number {
 	return MODE_FILTER_RPC_MATCH_LIMIT;
 }
 
+function resolveSuggestibleSimilarityThreshold(threshold: number): number {
+	return Math.max(threshold, CATALOG_SIMILARITY_THRESHOLDS.similarProfile.average);
+}
+
 function toTargetSummary(row: CatalogSimilarityTargetRow): CatalogSimilarityTargetSummary {
 	const pricing = normalizeCanonicalPricing(row);
 	return {
@@ -616,7 +620,7 @@ export async function countCatalogSimilarityMatches(input: {
 	await fetchTarget(supabase, input.coffeeId);
 	const { data, error } = await supabase.rpc('count_similar_beans_aggregated_v2', {
 		target_coffee_id: input.coffeeId,
-		match_threshold: input.query.threshold,
+		match_threshold: resolveSuggestibleSimilarityThreshold(input.query.threshold),
 		stocked_only: input.query.stockedOnly
 	});
 

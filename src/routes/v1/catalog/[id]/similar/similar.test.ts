@@ -198,6 +198,24 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(JSON.stringify(body)).not.toContain('Supplier B');
 	});
 
+	it('keeps locked teaser counts on the suggestible threshold floor when viewers lower request threshold', async () => {
+		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
+		const { rpc } = createSupabaseMock({ count: 2 });
+
+		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?threshold=0.5'));
+		const body = await response.json();
+
+		expect(response.status).toBe(403);
+		expect(body).toMatchObject({
+			teaser: { locked: true, similar_match_count: 2, beta: true }
+		});
+		expect(rpc).toHaveBeenCalledWith('count_similar_beans_aggregated_v2', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			stocked_only: true
+		});
+	});
+
 	it('returns the same 403 entitlement response for signed-in viewers when the id is unknown', async () => {
 		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
 		const { rpc } = createSupabaseMock({ target: null });
