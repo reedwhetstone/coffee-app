@@ -110,6 +110,7 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		const adminSupabase = createAdminClient();
+		const publicOnly = !isSessionPrincipal(principal) || !capabilities.canViewFullCatalog;
 
 		if (!capabilities.canUseBeanMatching) {
 			let similarMatchCount: number | null = null;
@@ -118,7 +119,8 @@ export const GET: RequestHandler = async (event) => {
 					similarMatchCount = await countCatalogSimilarityMatches({
 						supabase: adminSupabase,
 						coffeeId,
-						query: { threshold: query.threshold, stockedOnly: query.stockedOnly }
+						query: { threshold: query.threshold, stockedOnly: query.stockedOnly },
+						publicOnly
 					});
 				} catch (error) {
 					if (!(error instanceof CatalogSimilarityNotFoundError)) throw error;
@@ -161,7 +163,8 @@ export const GET: RequestHandler = async (event) => {
 		const result = await fetchCatalogSimilarityMatches({
 			supabase: adminSupabase,
 			coffeeId,
-			query
+			query,
+			publicOnly
 		});
 
 		const body: CatalogSimilarityResponse = {

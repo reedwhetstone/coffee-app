@@ -1037,6 +1037,7 @@ export type Database = {
 					target_coffee_id: number;
 					match_threshold?: number;
 					stocked_only?: boolean;
+					public_only?: boolean;
 				};
 				Returns: number;
 			};
@@ -1139,6 +1140,7 @@ export type Database = {
 					match_count?: number;
 					chunk_types?: string[];
 					stocked_only?: boolean;
+					public_only?: boolean;
 				};
 				Returns: {
 					coffee_id: number;
@@ -1165,6 +1167,7 @@ export type Database = {
 					match_threshold?: number;
 					match_count?: number;
 					stocked_only?: boolean;
+					public_only?: boolean;
 				};
 				Returns: {
 					coffee_id: number;
