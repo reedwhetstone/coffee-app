@@ -3,6 +3,7 @@ import { catalogSimilarityCalibrationExamples } from './__fixtures__/catalogSimi
 import {
 	deriveCalibrationBand,
 	deriveMatchCategory,
+	isCatalogSimilaritySuggestion,
 	getPriceFromTiersAtQuantity,
 	normalizeCanonicalPricing,
 	normalizeSimilarityRow,
@@ -73,6 +74,17 @@ describe('catalog similarity helpers', () => {
 		expect(
 			deriveMatchCategory({ average: 0.91, origin: 0.7, processing: 0.9, chunkMatches: 2 })
 		).toBe('similar_profile');
+		expect(
+			deriveMatchCategory({ average: 0.69, origin: 0.9, processing: 0.9, chunkMatches: 3 })
+		).toBeNull();
+		expect(
+			isCatalogSimilaritySuggestion({
+				average: 0.69,
+				origin: 0.9,
+				processing: 0.9,
+				chunkMatches: 3
+			})
+		).toBe(false);
 	});
 
 	it('uses raw scores for classification before rounding display scores', () => {

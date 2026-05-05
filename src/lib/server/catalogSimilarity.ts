@@ -405,11 +405,18 @@ export function deriveCalibrationBand(
 	return 'below_threshold';
 }
 
-export function deriveMatchCategory(input: CatalogSimilarityScoreInput): CatalogMatchCategory {
+export function deriveMatchCategory(
+	input: CatalogSimilarityScoreInput
+): CatalogMatchCategory | null {
 	const band = deriveCalibrationBand(input);
+	if (band === 'below_threshold') return null;
 	return band === 'auto_link_candidate' || band === 'likely_same'
 		? 'likely_same'
 		: 'similar_profile';
+}
+
+export function isCatalogSimilaritySuggestion(input: CatalogSimilarityScoreInput): boolean {
+	return deriveMatchCategory(input) !== null;
 }
 
 export function deriveConfidenceLabel(score: number): CatalogMatchConfidenceLabel {
@@ -430,6 +437,19 @@ function confidenceLanguage(
 	return 'Beta similar profile candidate. Useful for substitution research, not an identity claim.';
 }
 
+function toSimilarityScoreInput(row: FindSimilarBeansAggregatedV2Row): CatalogSimilarityScoreInput {
+	return {
+		average: toFiniteNumber(row.avg_similarity) ?? 0,
+		origin: toFiniteNumber(row.origin_similarity),
+		processing: toFiniteNumber(row.processing_similarity),
+		chunkMatches: Math.trunc(toFiniteNumber(row.chunk_matches) ?? 0)
+	};
+}
+
+function isSuggestibleSimilarityRow(row: FindSimilarBeansAggregatedV2Row): boolean {
+	return isCatalogSimilaritySuggestion(toSimilarityScoreInput(row));
+}
+
 function buildSignals(row: FindSimilarBeansAggregatedV2Row): string[] {
 	const signals: string[] = [];
 	const origin = roundScore(toFiniteNumber(row.origin_similarity));
@@ -446,21 +466,20 @@ export function normalizeSimilarityRow(
 	row: FindSimilarBeansAggregatedV2Row,
 	targetPricing: CatalogCanonicalPricing
 ): CatalogSimilarityMatch {
-	const rawAverage = toFiniteNumber(row.avg_similarity) ?? 0;
-	const rawOrigin = toFiniteNumber(row.origin_similarity);
-	const rawProcessing = toFiniteNumber(row.processing_similarity);
+	const scoreInput = toSimilarityScoreInput(row);
+	const rawAverage = scoreInput.average;
+	const rawOrigin = scoreInput.origin;
+	const rawProcessing = scoreInput.processing;
 	const rawTasting = toFiniteNumber(row.tasting_similarity);
 	const average = roundScore(rawAverage) ?? 0;
 	const origin = roundScore(rawOrigin);
 	const processing = roundScore(rawProcessing);
 	const tasting = roundScore(rawTasting);
-	const chunkMatches = Math.trunc(toFiniteNumber(row.chunk_matches) ?? 0);
-	const category = deriveMatchCategory({
-		average: rawAverage,
-		origin: rawOrigin,
-		processing: rawProcessing,
-		chunkMatches
-	});
+	const chunkMatches = scoreInput.chunkMatches;
+	const category = deriveMatchCategory(scoreInput);
+	if (category === null) {
+		throw new Error('Below-threshold catalog similarity rows cannot be normalized as suggestions');
+	}
 	const confidence = deriveConfidenceLabel(rawAverage);
 	const pricing = normalizeCanonicalPricing(row);
 	const targetBaseline = targetPricing.baseline_price_per_lb;
@@ -580,6 +599,7 @@ export async function fetchCatalogSimilarityMatches(input: {
 	if (error) throw new Error(error.message);
 
 	const matches = (data ?? [])
+		.filter(isSuggestibleSimilarityRow)
 		.map((row) => normalizeSimilarityRow(row, target.pricing))
 		.filter((match) => matchesMode(match, input.query.mode))
 		.slice(0, input.query.limit);

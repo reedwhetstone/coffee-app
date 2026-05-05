@@ -333,6 +333,48 @@ describe('/v1/catalog/[id]/similar', () => {
 		).toBe(true);
 	});
 
+	it('filters below-threshold rows even when callers lower the request threshold', async () => {
+		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
+		const belowThresholdRow = {
+			...matchRow,
+			coffee_id: 2300,
+			avg_similarity: 0.69,
+			origin_similarity: 0.93,
+			processing_similarity: 0.93,
+			chunk_matches: 3
+		};
+		const similarProfileRow = {
+			...matchRow,
+			coffee_id: 2301,
+			avg_similarity: 0.71,
+			origin_similarity: 0.72,
+			processing_similarity: 0.91,
+			chunk_matches: 3
+		};
+		const { rpc } = createSupabaseMock({ matches: [belowThresholdRow, similarProfileRow] });
+
+		const response = await GET(
+			makeEvent(
+				'https://app.test/v1/catalog/1182/similar?threshold=0.5&mode=similar_profile&limit=5'
+			)
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
+			target_coffee_id: 1182,
+			match_threshold: 0.5,
+			match_count: 125,
+			stocked_only: true
+		});
+		expect(body.data.matches).toHaveLength(1);
+		expect(body.data.matches[0]).toMatchObject({
+			coffee: { id: 2301 },
+			match: { category: 'similar_profile' }
+		});
+		expect(JSON.stringify(body.data.matches)).not.toContain('2300');
+	});
+
 	it('allows paid API callers with rate headers and usage logging', async () => {
 		mockResolvePrincipal.mockResolvedValue(apiPrincipal);
 		mockRequireApiKeyAccess.mockResolvedValue(apiPrincipal);
