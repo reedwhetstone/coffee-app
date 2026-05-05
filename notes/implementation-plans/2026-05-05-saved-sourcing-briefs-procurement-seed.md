@@ -250,7 +250,7 @@ pnpm test -- \
   src/lib/procurement/sourcingBriefCriteria.test.ts \
   src/lib/server/procurement/sourcingBriefs.test.ts \
   src/routes/v1/procurement/briefs/briefs.test.ts
-pnpm check
+pnpm check --fail-on-warnings
 pnpm lint
 ```
 
@@ -278,7 +278,7 @@ curl -sS -D /tmp/procurement-brief-matches.headers \
 
 ```bash
 pnpm test -- src/routes/procurement/procurement.test.ts src/routes/catalog/page.svelte.test.ts
-pnpm check
+pnpm check --fail-on-warnings
 pnpm lint
 ```
 
@@ -295,7 +295,7 @@ node dist/index.js procurement briefs list --json
 
 ```bash
 pnpm test -- src/lib/procurement/recommendations.test.ts src/routes/procurement/recommendations.test.ts
-pnpm check
+pnpm check --fail-on-warnings
 pnpm lint
 ```
 
