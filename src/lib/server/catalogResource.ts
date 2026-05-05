@@ -1,8 +1,10 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { getCatalogDropdown, searchCatalog, searchCatalogDropdown } from '$lib/data/catalog';
+import { createCatalogProofCoverage } from '$lib/catalog/proofCoverage';
 import {
 	toCatalogResourceItem,
 	withCatalogProofSummary,
+	type CatalogResourceItem,
 	type CatalogResponseItem
 } from '$lib/catalog/catalogResourceItem';
 import {
@@ -783,6 +785,31 @@ async function queryCatalogData(
 	};
 }
 
+function buildProofCoverageUrl(url: URL): URL {
+	const coverageUrl = new URL(url);
+
+	// Coverage is an aggregate over the visible catalog scope. Projection and
+	// pagination controls are valid on /v1/catalog, but they must not truncate or
+	// change this aggregate contract.
+	for (const parameter of ['ids', 'fields', 'include', 'page', 'limit']) {
+		coverageUrl.searchParams.delete(parameter);
+	}
+
+	return coverageUrl;
+}
+
+function getCoverageFilters(query: ParsedCatalogQuery): Record<string, unknown> {
+	const filters: Record<string, unknown> = {};
+
+	for (const [key, value] of Object.entries(query.filters)) {
+		if (value === undefined) continue;
+		if (Array.isArray(value) && value.length === 0) continue;
+		filters[key] = value;
+	}
+
+	return filters;
+}
+
 // Share the resolved catalog payload across route adapters so legacy shims do not
 // pay an extra parse/stringify pass on large unpaginated responses.
 async function resolveCatalogRouteResult(
@@ -926,6 +953,54 @@ async function resolveCatalogRouteResult(
 			headers: new Headers()
 		};
 	}
+}
+
+export async function buildCatalogProofCoverageResponse(
+	event: RequestEvent,
+	options: { requestPath?: string } = {}
+): Promise<Response> {
+	const coverageUrl = buildProofCoverageUrl(event.url);
+	const coverageEvent = {
+		...event,
+		url: coverageUrl
+	} as RequestEvent;
+	const result = await resolveCatalogRouteResult(coverageEvent, {
+		requestPath: options.requestPath ?? '/v1/catalog/proof-coverage',
+		forceDefaultPagination: false
+	});
+
+	if (result.status >= 400) {
+		return jsonResponse(result.body, {
+			status: result.status,
+			headers: result.headers
+		});
+	}
+
+	const catalogBody = result.body as CanonicalCatalogResponse<CatalogResourceItem>;
+	const query = parseCatalogQuery(coverageUrl);
+	const coverage = createCatalogProofCoverage(catalogBody.data);
+	const generatedAt = new Date().toISOString();
+
+	return jsonResponse(
+		{
+			resource: 'catalog-proof-coverage',
+			namespace: '/v1/catalog/proof-coverage',
+			version: 'v1',
+			generated_at: generatedAt,
+			scope: {
+				auth: catalogBody.meta.auth,
+				filters: getCoverageFilters(query),
+				access: catalogBody.meta.access,
+				total_rows: catalogBody.data.length,
+				total_available: catalogBody.meta.access.totalAvailable
+			},
+			...coverage
+		},
+		{
+			status: result.status,
+			headers: result.headers
+		}
+	);
 }
 
 export async function buildCanonicalCatalogResponse(

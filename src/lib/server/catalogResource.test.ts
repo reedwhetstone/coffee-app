@@ -55,6 +55,7 @@ vi.mock('$lib/supabase-admin', () => ({
 }));
 
 let buildCanonicalCatalogResponse: typeof import('./catalogResource').buildCanonicalCatalogResponse;
+let buildCatalogProofCoverageResponse: typeof import('./catalogResource').buildCatalogProofCoverageResponse;
 let buildLegacyAppCatalogResponse: typeof import('./catalogResource').buildLegacyAppCatalogResponse;
 const SORT_FIELD_EXPECTED = formatAllowedValues(PUBLIC_CATALOG_SORT_FIELDS);
 
@@ -141,9 +142,11 @@ beforeEach(async () => {
 		filtersApplied: {}
 	});
 
-	({ buildCanonicalCatalogResponse, buildLegacyAppCatalogResponse } = await import(
-		'./catalogResource'
-	));
+	({
+		buildCanonicalCatalogResponse,
+		buildCatalogProofCoverageResponse,
+		buildLegacyAppCatalogResponse
+	} = await import('./catalogResource'));
 });
 
 describe('buildCanonicalCatalogResponse', () => {
@@ -342,6 +345,130 @@ describe('buildCanonicalCatalogResponse', () => {
 		expect(body.data[0].processing_evidence).toBeUndefined();
 		expect(body.data[0].processing_evidence_available).toBeUndefined();
 		expect(JSON.stringify(body.data[0].proof)).not.toContain('Washed process disclosed');
+	});
+
+	it('serves proof coverage aggregates over the visible catalog scope', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalog.mockResolvedValue({
+			data: [
+				sampleCatalogItem,
+				{
+					...sampleCatalogItem,
+					id: 2,
+					name: 'Colombia Huila',
+					country: 'Colombia',
+					region: null,
+					farm_notes: null,
+					source: null,
+					processing_base_method: null,
+					fermentation_type: null,
+					process_additives: null,
+					process_additive_detail: null,
+					fermentation_duration_hours: null,
+					drying_method: null,
+					processing_notes: null,
+					processing_disclosure_level: null,
+					processing_confidence: null,
+					processing_evidence_available: false,
+					stocked_date: null,
+					arrival_date: null,
+					price_tiers: [
+						{ min_lbs: 1, price: 7 },
+						{ min_lbs: 10, price: 6.5 }
+					]
+				}
+			],
+			count: 2,
+			filtersApplied: {}
+		});
+
+		const response = await buildCatalogProofCoverageResponse(
+			makeEvent('https://app.test/v1/catalog/proof-coverage?stocked=true&limit=1')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body).toMatchObject({
+			resource: 'catalog-proof-coverage',
+			namespace: '/v1/catalog/proof-coverage',
+			version: 'v1',
+			scope: {
+				auth: { kind: 'anonymous', role: null, apiPlan: null },
+				filters: { stocked: true },
+				total_rows: 2,
+				total_available: 2
+			},
+			overall: expect.arrayContaining([
+				{ label: 'strong', count: 1, share: 0.5 },
+				{ label: 'partial', count: 1, share: 0.5 }
+			]),
+			families: {
+				process: expect.arrayContaining([
+					{ label: 'disclosed', count: 1, share: 0.5 },
+					{ label: 'not_available', count: 1, share: 0.5 }
+				])
+			},
+			limitations: [
+				'not_certification',
+				'raw_evidence_not_included',
+				'supplier_verification_not_performed'
+			]
+		});
+		expect(body.generated_at).toEqual(expect.any(String));
+		expect(body.signals['process.evidence_presence']).toBe(1);
+		expect(body.top_gaps).toContainEqual({
+			family: 'process',
+			label: 'not_available',
+			count: 1,
+			share: 0.5
+		});
+		expect(JSON.stringify(body)).not.toContain('Washed process disclosed');
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				fields: 'resource',
+				limit: undefined,
+				offset: undefined
+			})
+		);
+	});
+
+	it('preserves API-key rate-limit headers for proof coverage requests', async () => {
+		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: true, apiKeyId: 'key-1' });
+		mockIsApiKeyPrincipal.mockReturnValue(true);
+		mockRequireApiKeyAccess.mockResolvedValue({
+			isAuthenticated: true,
+			apiKeyId: 'key-1',
+			apiPlan: 'member',
+			primaryAppRole: 'member'
+		});
+		mockGetApiRowLimit.mockReturnValue(10000);
+
+		const response = await buildCatalogProofCoverageResponse(
+			makeEvent('https://app.test/v1/catalog/proof-coverage', {
+				Authorization: 'Bearer pk_test'
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get('X-RateLimit-Limit')).toBe('200');
+		expect(response.headers.get('X-RateLimit-Remaining')).toBe('199');
+		expect(body.scope.auth).toMatchObject({ kind: 'api-key', apiPlan: 'member' });
+		expect(mockLogApiUsage).toHaveBeenCalledWith(
+			'key-1',
+			'/v1/catalog/proof-coverage',
+			200,
+			expect.any(Number),
+			undefined,
+			undefined
+		);
 	});
 
 	it('rejects unsupported include values with a structured 400', async () => {

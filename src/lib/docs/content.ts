@@ -350,7 +350,7 @@ const docsPages: DocsPage[] = [
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, pricing, price tiers, and availability metadata.',
 			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API Green requests share the basic public catalog query surface. Member/admin sessions and paid API tiers additionally unlock structured process facet filters. Public callers can still inspect factual process fields in full rows; the gated feature is process search leverage, not data visibility. API-key requests use plan-based limits and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`,
-			'Use include=proof when callers need compact proof-summary families for process, provenance, freshness, and pricing. Proof summaries are cautious catalog signals, not certifications, and raw supplier evidence remains withheld.'
+			'Use include=proof when callers need compact proof-summary families for process, provenance, freshness, and pricing. Proof summaries are cautious catalog signals, not certifications, and raw supplier evidence remains withheld. Use GET /v1/catalog/proof-coverage when callers need aggregate proof label distributions and gap counts for the same visible catalog scope.'
 		],
 		sections: [
 			{
@@ -358,6 +358,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog and /v1/price-index.',
 					'GET /v1/catalog is the source-of-truth public contract for integrations.',
+					'GET /v1/catalog/proof-coverage returns aggregate proof-summary coverage for the visible catalog scope without raw evidence, supplier quotes, certification language, or row-level proof search leverage.',
 					'GET /api/catalog-api is a deprecated API-key-only alias to the canonical handler. Responses include Deprecation: true, Link: </v1/catalog>; rel="successor-version", and Sunset: Thu, 31 Dec 2026 23:59:59 GMT.',
 					'GET /api/catalog also delegates to the same catalog resource, but it is an internal adapter with legacy response-shape behavior and should not be treated as a long-term external contract.'
 				],
@@ -548,6 +549,27 @@ const docsPages: DocsPage[] = [
 						label: 'Paginated dropdown projection',
 						language: 'bash',
 						code: 'curl "https://purveyors.io/v1/catalog?fields=dropdown&page=2&limit=15"'
+					}
+				]
+			},
+			{
+				title: 'Proof coverage aggregate',
+				body: [
+					'GET /v1/catalog/proof-coverage summarizes the same proof-summary vocabulary exposed by include=proof. It reports overall labels, family label distributions, signal counts, top missing families, and explicit limitations for the visible catalog scope.',
+					'The endpoint is aggregate-only. It is safe as a public proof-of-value surface because it does not expose raw processing_evidence, raw supplier quotes, row-level evidence, certification claims, supplier rankings, or paid proof-query filters.',
+					'API-key requests preserve X-RateLimit-* headers and plan-scoped visibility. Anonymous and session requests follow the same catalog visibility and process-facet capability rules as /v1/catalog.'
+				],
+				codeBlocks: [
+					{
+						label: 'GET /v1/catalog/proof-coverage',
+						language: 'json',
+						code: '{\n  "resource": "catalog-proof-coverage",\n  "namespace": "/v1/catalog/proof-coverage",\n  "version": "v1",\n  "scope": { "total_rows": 814 },\n  "overall": [{ "label": "strong", "count": 488, "share": 0.6 }],\n  "families": {\n    "process": [{ "label": "disclosed", "count": 260, "share": 0.319 }]\n  },\n  "signals": { "process.base_method": 260 },\n  "top_gaps": [{ "family": "process", "label": "not_available", "count": 320, "share": 0.393 }],\n  "limitations": ["not_certification", "raw_evidence_not_included"]\n}'
+					},
+					{
+						label: 'Proof coverage smoke test',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog/proof-coverage?stocked=true" \\\
+  -H "Authorization: Bearer $PURVEYORS_API_KEY"'
 					}
 				]
 			},
