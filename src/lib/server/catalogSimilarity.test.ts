@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { catalogSimilarityCalibrationExamples } from './__fixtures__/catalogSimilarityCalibration';
 import {
+	deriveCalibrationBand,
 	deriveMatchCategory,
 	getPriceFromTiersAtQuantity,
 	normalizeCanonicalPricing,
@@ -113,6 +115,48 @@ describe('catalog similarity helpers', () => {
 			category: 'similar_profile',
 			confidence: 'medium_beta'
 		});
+	});
+
+	it('keeps calibrated threshold bands conservative for identity work', () => {
+		expect(
+			deriveCalibrationBand({ average: 0.96, origin: 0.93, processing: 0.92, chunkMatches: 3 })
+		).toBe('auto_link_candidate');
+		expect(
+			deriveCalibrationBand({ average: 0.91, origin: 0.89, processing: 0.88, chunkMatches: 2 })
+		).toBe('likely_same');
+		expect(
+			deriveCalibrationBand({ average: 0.91, origin: 0.72, processing: 0.9, chunkMatches: 3 })
+		).toBe('similar_profile');
+		expect(
+			deriveCalibrationBand({ average: 0.63, origin: 0.7, processing: 0.42, chunkMatches: 2 })
+		).toBe('below_threshold');
+	});
+
+	it('matches the reproducible calibration fixture expectations', () => {
+		const evaluated = catalogSimilarityCalibrationExamples.map((example) => ({
+			...example,
+			actualBand: deriveCalibrationBand(example)
+		}));
+
+		expect(evaluated).toEqual(
+			expect.arrayContaining(
+				catalogSimilarityCalibrationExamples.map((example) =>
+					expect.objectContaining({ id: example.id, actualBand: example.expectedBand })
+				)
+			)
+		);
+		expect(
+			evaluated.filter(
+				(example) => example.actualBand === 'auto_link_candidate' && example.truth !== 'same_bean'
+			)
+		).toHaveLength(0);
+		expect(
+			evaluated.filter(
+				(example) =>
+					(example.actualBand === 'auto_link_candidate' || example.actualBand === 'likely_same') &&
+					example.truth === 'not_match'
+			)
+		).toHaveLength(0);
 	});
 
 	it('normalizes RPC rows with canonical pricing, deltas, dimensions, and confidence copy', () => {

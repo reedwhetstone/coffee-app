@@ -53,14 +53,14 @@ Still open:
 
 Scores use the Product Leverage Index from the planner skill: vision alignment 0-5, data moat / decision quality 0-5, cross-surface leverage 0-4, public value / access ladder 0-3, foundation unlock 0-3.
 
-| Candidate | Vision | Data moat | Cross-surface | Public/access | Foundation | Total | Feasibility gate | Decision |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| Parchment Intelligence CLI Conversion Bridge | 5 | 4 | 4 | 3 | 3 | 19 | Medium. Endpoint exists; CLI command and docs are straightforward but cross-repo release sequencing matters. | Selected |
-| Procurement Brief data packet pilot | 5 | 5 | 3 | 2 | 3 | 18 | Needs clearer product framing and likely benefits from CLI price-index access first. | Defer behind selected bridge |
-| Catalog Proof Coverage Pilot | 5 | 5 | 3 | 2 | 2 | 17 | Useful proof-layer follow-up, but mostly a report/data-quality audit rather than the strongest next product/API/CLI capability. | Defer |
-| V1 Catalog Summary Projection | 4 | 3 | 4 | 2 | 2 | 15 | Still useful and unshipped, but lower urgency than completing the live price-index bridge. | Defer |
-| Process transparency backgeneration | 5 | 5 | 2 | 1 | 3 | 16 | Belongs primarily in coffee-scraper and data backfill sequencing. | Defer to scraper planning |
-| Pure UI/UX cleanup from DEVLOG P2-P4 | 1-3 | 0-2 | 0-1 | 0-1 | 0-1 | Low | Does not unblock a named product milestone today. | Reject for this run |
+| Candidate                                    | Vision | Data moat | Cross-surface | Public/access | Foundation | Total | Feasibility gate                                                                                                                | Decision                     |
+| -------------------------------------------- | -----: | --------: | ------------: | ------------: | ---------: | ----: | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Parchment Intelligence CLI Conversion Bridge |      5 |         4 |             4 |             3 |          3 |    19 | Medium. Endpoint exists; CLI command and docs are straightforward but cross-repo release sequencing matters.                    | Selected                     |
+| Procurement Brief data packet pilot          |      5 |         5 |             3 |             2 |          3 |    18 | Needs clearer product framing and likely benefits from CLI price-index access first.                                            | Defer behind selected bridge |
+| Catalog Proof Coverage Pilot                 |      5 |         5 |             3 |             2 |          2 |    17 | Useful proof-layer follow-up, but mostly a report/data-quality audit rather than the strongest next product/API/CLI capability. | Defer                        |
+| V1 Catalog Summary Projection                |      4 |         3 |             4 |             2 |          2 |    15 | Still useful and unshipped, but lower urgency than completing the live price-index bridge.                                      | Defer                        |
+| Process transparency backgeneration          |      5 |         5 |             2 |             1 |          3 |    16 | Belongs primarily in coffee-scraper and data backfill sequencing.                                                               | Defer to scraper planning    |
+| Pure UI/UX cleanup from DEVLOG P2-P4         |    1-3 |       0-2 |           0-1 |           0-1 |        0-1 |   Low | Does not unblock a named product milestone today.                                                                               | Reject for this run          |
 
 ## Strategy Alignment Audit
 

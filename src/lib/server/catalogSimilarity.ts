@@ -6,6 +6,18 @@ import type { UserRole } from '$lib/types/auth.types';
 export type CatalogSimilarityMode = 'all' | 'likely_same' | 'similar_profile';
 export type CatalogMatchCategory = 'likely_same' | 'similar_profile';
 export type CatalogMatchConfidenceLabel = 'high_beta' | 'medium_beta' | 'low_beta';
+export type CatalogMatchCalibrationBand =
+	| 'auto_link_candidate'
+	| 'likely_same'
+	| 'similar_profile'
+	| 'below_threshold';
+
+export interface CatalogSimilarityScoreInput {
+	average: number;
+	origin: number | null;
+	processing: number | null;
+	chunkMatches: number;
+}
 
 export interface CatalogSimilarityQuery {
 	threshold: number;
@@ -206,6 +218,21 @@ const TARGET_SELECT =
 export const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.7;
 export const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
 export const MAX_CATALOG_SIMILARITY_LIMIT = 25;
+export const CATALOG_SIMILARITY_THRESHOLDS = {
+	similarProfile: {
+		average: DEFAULT_CATALOG_SIMILARITY_THRESHOLD
+	},
+	likelySame: {
+		average: 0.88,
+		dimension: 0.84,
+		chunkMatches: 2
+	},
+	autoLinkCandidate: {
+		average: 0.94,
+		dimension: 0.9,
+		chunkMatches: 3
+	}
+} as const;
 const MODE_FILTER_OVERFETCH_MULTIPLIER = 5;
 const MODE_FILTER_RPC_MATCH_LIMIT = MAX_CATALOG_SIMILARITY_LIMIT * MODE_FILTER_OVERFETCH_MULTIPLIER;
 export const MIN_CATALOG_SIMILARITY_THRESHOLD = 0.5;
@@ -340,21 +367,49 @@ export function normalizeCanonicalPricing(input: {
 	};
 }
 
-export function deriveMatchCategory(input: {
-	average: number;
-	origin: number | null;
-	processing: number | null;
-	chunkMatches: number;
-}): CatalogMatchCategory {
+function dimensionMeetsThreshold(value: number | null, threshold: number): boolean {
+	return value === null || value >= threshold;
+}
+
+export function deriveCalibrationBand(
+	input: CatalogSimilarityScoreInput
+): CatalogMatchCalibrationBand {
 	if (
-		input.average >= 0.88 &&
-		input.chunkMatches >= 2 &&
-		(input.origin === null || input.origin >= 0.84) &&
-		(input.processing === null || input.processing >= 0.84)
+		input.average >= CATALOG_SIMILARITY_THRESHOLDS.autoLinkCandidate.average &&
+		input.chunkMatches >= CATALOG_SIMILARITY_THRESHOLDS.autoLinkCandidate.chunkMatches &&
+		dimensionMeetsThreshold(
+			input.origin,
+			CATALOG_SIMILARITY_THRESHOLDS.autoLinkCandidate.dimension
+		) &&
+		dimensionMeetsThreshold(
+			input.processing,
+			CATALOG_SIMILARITY_THRESHOLDS.autoLinkCandidate.dimension
+		)
+	) {
+		return 'auto_link_candidate';
+	}
+
+	if (
+		input.average >= CATALOG_SIMILARITY_THRESHOLDS.likelySame.average &&
+		input.chunkMatches >= CATALOG_SIMILARITY_THRESHOLDS.likelySame.chunkMatches &&
+		dimensionMeetsThreshold(input.origin, CATALOG_SIMILARITY_THRESHOLDS.likelySame.dimension) &&
+		dimensionMeetsThreshold(input.processing, CATALOG_SIMILARITY_THRESHOLDS.likelySame.dimension)
 	) {
 		return 'likely_same';
 	}
-	return 'similar_profile';
+
+	if (input.average >= CATALOG_SIMILARITY_THRESHOLDS.similarProfile.average) {
+		return 'similar_profile';
+	}
+
+	return 'below_threshold';
+}
+
+export function deriveMatchCategory(input: CatalogSimilarityScoreInput): CatalogMatchCategory {
+	const band = deriveCalibrationBand(input);
+	return band === 'auto_link_candidate' || band === 'likely_same'
+		? 'likely_same'
+		: 'similar_profile';
 }
 
 export function deriveConfidenceLabel(score: number): CatalogMatchConfidenceLabel {
