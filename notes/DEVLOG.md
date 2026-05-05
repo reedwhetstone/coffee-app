@@ -4,20 +4,22 @@
 
 ---
 
-## Priority 0: Current Product Priorities (reconciled May 3, 2026)
+## Priority 0: Current Product Priorities (reconciled May 5, 2026)
 
 These are the highest-leverage active product bets after reconciling `origin/main` across coffee-app, coffee-scraper, and purveyors-cli. The CLI is treated as a core agent/product surface, not a separate utility silo.
 
-- [ ] **Parchment Intelligence API + CLI Bridge** - With `GET /v1/price-index` shipped in PR #312, finish the `purvey intelligence price-index` command/export and conversion docs, then verify the CLI and docs point at the same entitlement-safe contract. Plans: `notes/implementation-plans/2026-04-29-parchment-intelligence-api-cli-bridge.md` and remaining PR slice docs.
-- [ ] **CLI API-Key Catalog Parity** - Make read-only `purvey catalog` commands able to use the canonical `/v1/catalog` API-key contract in headless environments via `PARCHMENT_API_KEY` / `PURVEYORS_API_KEY`, while keeping inventory, roast, sales, and tasting session-bound. This targets purveyors-cli first, then coffee-app docs after release. Plans: `notes/implementation-plans/2026-04-29-cli-api-key-catalog-parity.md` and PR slice docs.
-- [ ] **Catalog Proof Summary Seed** - Add deterministic proof summaries for process, provenance, freshness, and pricing claims; expose them through optional `/v1/catalog?include=proof`, public CoffeeCard trust badges, and a later `purvey catalog --include-proof` path without raw evidence or certification language. Plans: `notes/implementation-plans/2026-05-01-catalog-proof-summary-seed.md` and PR slice docs.
+- [ ] **Parchment Intelligence API + CLI Bridge** - With `GET /v1/price-index` shipped in PR #312, finish the `purvey intelligence price-index` command/export and conversion docs, then verify the CLI and public docs point at the same entitlement-safe contract. Current plan: `notes/implementation-plans/2026-05-04-parchment-intelligence-cli-conversion-bridge.md` and PR slice docs.
+- [ ] **CLI API-Key Catalog Parity** - `purvey catalog search/get --include-proof` now uses the canonical `/v1/catalog?include=proof` API path with `PARCHMENT_API_KEY` / `PURVEYORS_API_KEY` support in purveyors-cli PR #108. Remaining parity work: move default read-only catalog commands and new intelligence commands onto canonical API contracts where semantics match, while keeping inventory, roast, sales, and tasting session-bound. Plan: `notes/implementation-plans/2026-04-29-cli-api-key-catalog-parity.md`.
 - [ ] **Catalog Access Entitlement Alignment** - Apply ADR-005 consistently across `/catalog`, `/api/catalog/filters`, and `/v1/catalog`: public surfaces prove value, viewers inspect data, members get advanced search leverage, and API tiers map to explicit query/field/rate capabilities. Start by correcting process-facet exposure and then centralize capability resolution. Plan: `notes/implementation-plans/2026-04-29-adr005-pr302-access-tier-alignment.md`; decision: `notes/decisions/005-catalog-access-level-positioning.md`.
 - [ ] **V1 Catalog Summary Projection** - Add `fields=summary` to `GET /v1/catalog` as a lean, decision-ready middle shape between `full` and `dropdown` for agents, CLI defaults, and external integrations. Plan: `notes/implementation-plans/2026-04-28-v1-catalog-summary-projection.md`.
 - [ ] **Process Transparency Data Quality + Member Facets** - Backgenerate ADR-004 process fields through coffee-scraper, normalize `drying_method`, and expose high-signal process facets only behind the member/API capability contract once coverage is meaningful. Plan: `notes/implementation-plans/2026-04-29-process-transparency-backgeneration.md`; scraper source truth lives in `../coffee-scraper`.
+- [ ] **Canonical Green Coffee Matching** - The beta `/v1/catalog/:id/similar` member/API endpoint and v2 similarity contract shipped in PR #331. Next slices are CLI/agent alignment, threshold calibration, member comparison UI, identity review queue, scraper resolution pipeline, and canonical merged-view work. Program: `notes/implementation-plans/2026-05-04-canonical-green-coffee-matching.md`.
+- [ ] **Catalog Proof Coverage + Query Filters** - Turn shipped `proof-summary-v1` rows into a measurable intelligence surface with `GET /v1/catalog/proof-coverage`, then add capability-gated proof query filters for member sessions and paid API tiers. Plan: `notes/implementation-plans/2026-05-04-catalog-proof-coverage-query.md`.
 - [ ] **Certifications Taxonomy Schema** - Promote recurring Organic/Fair Trade/Rainforest/etc. evidence out of overloaded scraper text fields into a first-class `coffee_catalog.certifications` contract, then extract/backfill conservative high-confidence values for catalog, API, CLI, and agent filtering. Scraper plan: `../coffee-scraper/notes/implementation-plans/2026-04-29-certifications-taxonomy-schema.md`.
 
-### Reconciled March P0 items
+### Reconciled March and May P0 items
 
+- **Catalog proof summaries:** deterministic proof summaries, evidence-safe `/v1/catalog?include=proof`, CoffeeCard proof badges, and `purvey catalog search/get --include-proof` shipped in coffee-app PR #327 and purveyors-cli PR #108. Remaining proof work is now coverage measurement, query filters, and copy discipline, captured above.
 - **Purveyors Price Index / PPI:** the data foundation, analytics UI, entitlement fields, Stripe copy, and `/v1/price-index` endpoint have shipped under Parchment Intelligence. The active gap is CLI access plus docs/conversion examples, captured above.
 - **Mobile navigation:** shipped as the mobile shell foundation in PR #230; remaining mobile items are lower-priority refinements.
 - **Homepage routing:** shipped in PR #179.
@@ -179,8 +181,10 @@ Public API for external developers and integrations.
 - [x] **API** - Add `GET /v1/price-index` as the first stable Parchment Intelligence API family, backed by existing `price_index_snapshots` and entitlement checks. (Shipped PR #312)
 - [ ] **API** - Add CLI-compatible `offset` and `sort` aliases to `GET /v1/catalog` so direct API calls fail closed instead of silently ignoring plausible CLI vocabulary. Plan: `notes/implementation-plans/2026-04-30-v1-catalog-cli-compatible-query-aliases.md`.
 - [ ] **API** - Add `fields=summary` to `GET /v1/catalog` for agent/CLI/API list workloads that need decision-ready rows without full narrative payloads.
-- [ ] **API** - Add optional `include=proof` summaries to `GET /v1/catalog`, with explicit include validation and evidence-safe output for API, CoffeeCard, CLI, and agent surfaces. Plan: `notes/implementation-plans/2026-05-01-catalog-proof-summary-seed.md`.
+- [x] **API** - Add optional `include=proof` summaries to `GET /v1/catalog`, with explicit include validation and evidence-safe output for API, CoffeeCard, CLI, and agent surfaces. Shipped in coffee-app PR #327; CLI consumption shipped in purveyors-cli PR #108.
 - [ ] **API** - Centralize catalog capability enforcement so `/catalog`, `/api/catalog/filters`, and `/v1/catalog` share the same anonymous/viewer/member/API entitlement contract.
+- [ ] **API** - Add `GET /v1/catalog/proof-coverage` and proof query filters so process/provenance/freshness/pricing evidence quality becomes measurable before agents rely on it. Plan: `notes/implementation-plans/2026-05-04-catalog-proof-coverage-query.md`.
+- [ ] **API / Matching** - Extend the shipped beta `/v1/catalog/:id/similar` contract into CLI/agent workflows and a member comparison UI, keeping legacy RPC compatibility debt explicit until callers migrate. Program: `notes/implementation-plans/2026-05-04-canonical-green-coffee-matching.md`.
 - [ ] **API** - Keep raw process evidence private by default while exposing provenance-safe nested process summaries.
 - [ ] **API** - Expose normalized `certifications` once the scraper schema and backfill are credible, keeping raw marketing text out of the stable contract while enabling certification filters for buyers, API users, CLI commands, and agents.
 - [ ] **API / Procurement** - Build explicit user watchlists and procurement alerts: let users save criteria such as “washed Colombias under $X/lb” and get notified when comparable lots appear. Keep the first slice catalog/API-driven with user-authored watchlists; defer inventory-depletion-triggered alerts until the explicit watchlist loop proves value.
@@ -298,10 +302,10 @@ Supplier implementation details live in `../coffee-scraper/SUPPLIERS.md`; keep t
 
 ### Current source-of-truth state
 
-- **40 live suppliers as of 2026-05-04** in coffee-scraper `origin/main` (`d1efe86`). Sleepy Mango and Ally Open are intentionally inactive until public green-coffee inventory/JSON access returns.
+- **40 live suppliers as of 2026-05-05** in coffee-scraper `origin/main` (`6320efa`). Sleepy Mango and Ally Open are intentionally inactive until public green-coffee inventory/JSON access returns.
 - **Coffee Shrub** is now live as a custom Playwright/Magento source and should be treated as a wholesale-capable source, not as an exclusion.
 - **Wholesale-capable suppliers are in scope** when they expose useful public inventory. Classification should use `price_tiers` plus the DB `wholesale` flag rather than excluding by bag size or title alone.
-- **Recent scraper moat work:** processing transparency persistence, producer column support, conditional field policies, high-noise source policy tuning, and source-specific fixes for Coffee Shrub, Genuine Origin, Roastmasters, and processing/additive evidence extraction.
+- **Recent scraper moat work:** processing transparency persistence, producer column support, conditional field policies, proof-readiness audit scoring, AI-note denominator hardening, high-noise source policy tuning, and source-specific fixes for Coffee Shrub, Genuine Origin, Roastmasters, and processing/additive evidence extraction.
 
 ### Product implications for coffee-app
 
@@ -337,6 +341,9 @@ Additional detailed notes are available in the `/notes` folder and sibling produ
 - `notes/API_notes/APITIER.md` - API pricing tier details
 - `notes/decisions/005-catalog-access-level-positioning.md` - Canonical catalog access and entitlement positioning
 - `notes/implementation-plans/2026-04-29-parchment-intelligence-api-cli-bridge.md` - Price-index API + CLI bridge program
+- `notes/implementation-plans/2026-05-04-parchment-intelligence-cli-conversion-bridge.md` - Current CLI price-index command and docs conversion bridge plan
+- `notes/implementation-plans/2026-05-04-catalog-proof-coverage-query.md` - Proof coverage endpoint and proof query filter plan
+- `notes/implementation-plans/2026-05-04-canonical-green-coffee-matching.md` - Canonical green coffee matching program
 - `notes/implementation-plans/2026-04-29-cli-api-key-catalog-parity.md` - CLI API-key catalog mode program
 - `notes/implementation-plans/2026-04-29-process-transparency-backgeneration.md` - Scraper-backed process transparency data quality plan
 - `notes/implementation-plans/2026-04-28-v1-catalog-summary-projection.md` - `fields=summary` API projection plan
