@@ -1,4 +1,5 @@
 import { catalogSimilarityCalibrationExamples } from '../src/lib/server/__fixtures__/catalogSimilarityCalibration';
+import type { CatalogMatchCalibrationBand } from '../src/lib/server/catalogSimilarity';
 import {
 	CATALOG_SIMILARITY_THRESHOLDS,
 	deriveCalibrationBand
@@ -10,21 +11,91 @@ const rows = catalogSimilarityCalibrationExamples.map((example) => ({
 	passed: deriveCalibrationBand(example) === example.expectedBand
 }));
 
-const autoLinkCandidates = rows.filter((row) => row.actualBand === 'auto_link_candidate');
-const falsePositiveAutoLinks = autoLinkCandidates.filter((row) => row.truth !== 'same_bean');
-const likelyOrBetter = rows.filter(
-	(row) => row.actualBand === 'auto_link_candidate' || row.actualBand === 'likely_same'
+type EvaluatedRow = (typeof rows)[number];
+type CalibrationMetric = {
+	target: string;
+	truePositives: number;
+	falsePositives: number;
+	falseNegatives: number;
+	precision: number | null;
+	recall: number | null;
+	support: number;
+};
+
+function roundMetric(value: number): number {
+	return Math.round(value * 1000) / 1000;
+}
+
+function divideOrNull(numerator: number, denominator: number): number | null {
+	return denominator === 0 ? null : roundMetric(numerator / denominator);
+}
+
+function calculateMetric(input: {
+	target: string;
+	isPositiveTruth: (row: EvaluatedRow) => boolean;
+	isPositivePrediction: (row: EvaluatedRow) => boolean;
+}): CalibrationMetric {
+	const truePositives = rows.filter(
+		(row) => input.isPositiveTruth(row) && input.isPositivePrediction(row)
+	).length;
+	const falsePositives = rows.filter(
+		(row) => !input.isPositiveTruth(row) && input.isPositivePrediction(row)
+	).length;
+	const falseNegatives = rows.filter(
+		(row) => input.isPositiveTruth(row) && !input.isPositivePrediction(row)
+	).length;
+	const support = rows.filter(input.isPositiveTruth).length;
+
+	return {
+		target: input.target,
+		truePositives,
+		falsePositives,
+		falseNegatives,
+		precision: divideOrNull(truePositives, truePositives + falsePositives),
+		recall: divideOrNull(truePositives, truePositives + falseNegatives),
+		support
+	};
+}
+
+const bandCounts = rows.reduce(
+	(counts, row) => {
+		counts[row.actualBand] += 1;
+		return counts;
+	},
+	{
+		auto_link_candidate: 0,
+		likely_same: 0,
+		similar_profile: 0,
+		below_threshold: 0
+	} satisfies Record<CatalogMatchCalibrationBand, number>
 );
-const likelyFalsePositives = likelyOrBetter.filter((row) => row.truth === 'not_match');
+const autoLinkMetric = calculateMetric({
+	target: 'same_bean => auto_link_candidate',
+	isPositiveTruth: (row) => row.truth === 'same_bean',
+	isPositivePrediction: (row) => row.actualBand === 'auto_link_candidate'
+});
+const likelyOrBetterMetric = calculateMetric({
+	target: 'same_bean => likely_same_or_better',
+	isPositiveTruth: (row) => row.truth === 'same_bean',
+	isPositivePrediction: (row) =>
+		row.actualBand === 'auto_link_candidate' || row.actualBand === 'likely_same'
+});
+const clearNonMatchMetric = calculateMetric({
+	target: 'not_match => below_threshold',
+	isPositiveTruth: (row) => row.truth === 'not_match',
+	isPositivePrediction: (row) => row.actualBand === 'below_threshold'
+});
 
 const summary = {
 	thresholds: CATALOG_SIMILARITY_THRESHOLDS,
 	examples: rows.length,
 	passingExpectations: rows.filter((row) => row.passed).length,
-	autoLinkCandidates: autoLinkCandidates.length,
-	falsePositiveAutoLinks: falsePositiveAutoLinks.length,
-	likelyOrBetter: likelyOrBetter.length,
-	likelyFalsePositives: likelyFalsePositives.length
+	bandCounts,
+	metrics: {
+		autoLink: autoLinkMetric,
+		likelyOrBetter: likelyOrBetterMetric,
+		clearNonMatchRejection: clearNonMatchMetric
+	}
 };
 
 if (process.argv.includes('--json')) {
@@ -34,9 +105,17 @@ if (process.argv.includes('--json')) {
 	console.log();
 	console.log(`Examples: ${summary.examples}`);
 	console.log(`Expectation pass count: ${summary.passingExpectations}/${summary.examples}`);
-	console.log(`Auto-link candidates: ${summary.autoLinkCandidates}`);
-	console.log(`False-positive auto-link candidates: ${summary.falsePositiveAutoLinks}`);
-	console.log(`Likely-or-better non-match false positives: ${summary.likelyFalsePositives}`);
+	console.log('Band counts:');
+	for (const [band, count] of Object.entries(summary.bandCounts)) {
+		console.log(`- ${band}: ${count}`);
+	}
+	console.log('Metrics:');
+	for (const metric of Object.values(summary.metrics)) {
+		console.log(
+			`- ${metric.target}: precision=${metric.precision ?? 'n/a'}, recall=${metric.recall ?? 'n/a'}, ` +
+				`tp=${metric.truePositives}, fp=${metric.falsePositives}, fn=${metric.falseNegatives}, support=${metric.support}`
+		);
+	}
 	console.log();
 	for (const row of rows) {
 		console.log(
@@ -47,8 +126,9 @@ if (process.argv.includes('--json')) {
 
 if (
 	rows.some((row) => !row.passed) ||
-	falsePositiveAutoLinks.length > 0 ||
-	likelyFalsePositives.length > 0
+	autoLinkMetric.falsePositives > 0 ||
+	likelyOrBetterMetric.falsePositives > 0 ||
+	clearNonMatchMetric.falseNegatives > 0
 ) {
 	process.exitCode = 1;
 }

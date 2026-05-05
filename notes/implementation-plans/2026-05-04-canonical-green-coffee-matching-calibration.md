@@ -1,7 +1,9 @@
 # Canonical Green Coffee Matching Calibration
 
-**Date:** 2026-05-05  
-**Program:** Canonical Green Coffee Matching and Identity Resolution  
+**Date:** 2026-05-05
+
+**Program:** Canonical Green Coffee Matching and Identity Resolution
+
 **Related plan:** `notes/implementation-plans/2026-05-04-canonical-green-coffee-matching-pr-04-threshold-calibration.md`
 
 ## Calibration position
@@ -30,7 +32,7 @@ pnpm exec tsx scripts/catalog-similarity-calibration.ts
 pnpm exec tsx scripts/catalog-similarity-calibration.ts --json
 ```
 
-The fixture currently encodes score shapes rather than supplier names. This keeps the threshold policy testable without live catalog access. As reviewed live pairs become available, append them to the fixture with source-safe labels and expected bands.
+The fixture currently encodes score shapes rather than supplier names. This keeps the threshold policy testable without live catalog access. As reviewed live pairs become available, append them to the fixture with source-safe labels and expected bands. The harness reports band counts plus precision, recall, false positives, and false negatives for the auto-link, likely-or-better, and clear non-match rejection policies.
 
 ## Current fixture expectations
 
@@ -45,8 +47,11 @@ The seed set includes:
 The acceptance rule for this floor is strict:
 
 - zero false-positive `auto_link_candidate` rows
-- zero clear non-matches classified as `likely_same` or stronger
+- zero false-positive likely-or-better rows against non-same-bean examples
+- zero clear non-matches escaping the `below_threshold` rejection band
 - all fixture examples match their expected band
+
+Low auto-link recall is intentional at this stage. The fixture includes a same-bean shape that should remain `likely_same`, not `auto_link_candidate`, because the first identity policy should optimize precision over recall.
 
 ## Product alignment
 
