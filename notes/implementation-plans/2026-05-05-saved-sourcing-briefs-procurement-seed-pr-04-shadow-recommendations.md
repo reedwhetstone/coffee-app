@@ -58,7 +58,7 @@ Likely files:
 
 ```bash
 pnpm test -- src/lib/procurement/recommendations.test.ts src/routes/procurement/recommendations.test.ts
-pnpm check
+pnpm check --fail-on-warnings
 pnpm lint
 ```
 

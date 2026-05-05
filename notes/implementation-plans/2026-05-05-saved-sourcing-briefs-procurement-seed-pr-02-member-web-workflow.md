@@ -52,7 +52,7 @@ Likely files:
 
 ```bash
 pnpm test -- src/routes/procurement/procurement.test.ts src/routes/catalog/page.svelte.test.ts
-pnpm check
+pnpm check --fail-on-warnings
 pnpm lint
 ```
 

@@ -61,7 +61,7 @@ pnpm test -- \
   src/lib/procurement/sourcingBriefCriteria.test.ts \
   src/lib/server/procurement/sourcingBriefs.test.ts \
   src/routes/v1/procurement/briefs/briefs.test.ts
-pnpm check
+pnpm check --fail-on-warnings
 pnpm lint
 ```
 
