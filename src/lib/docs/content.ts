@@ -6,6 +6,9 @@ import {
 } from '$lib/constants/catalog';
 
 const PUBLIC_CATALOG_SORT_FIELD_LIST = formatAllowedValues(PUBLIC_CATALOG_SORT_FIELDS);
+const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.7;
+const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
+const MAX_CATALOG_SIMILARITY_LIMIT = 25;
 
 export type DocsSectionKey = 'api' | 'cli';
 
@@ -84,6 +87,12 @@ export const DOCS_NAV: DocsNavSection[] = [
 				title: 'Catalog',
 				summary:
 					'The stable public /v1/catalog contract: fields, limits, compatibility aliases, headers, and query parameters.'
+			},
+			{
+				slug: 'catalog-similarity',
+				title: 'Catalog similarity',
+				summary:
+					'The beta /v1/catalog/{id}/similar endpoint for member and paid API matching workflows.'
 			},
 			{
 				slug: 'platform',
@@ -186,8 +195,8 @@ const docsPages: DocsPage[] = [
 			'Parchment ships stable public catalog and price-index APIs plus the internal route layer that powers the web app.',
 		eyebrow: 'Parchment',
 		intro: [
-			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
-			'The stable public catalog contract is GET /v1/catalog. Anonymous requests are supported for public discovery, while API-key requests are the intended production integration path because they carry plan enforcement and X-RateLimit-* usage headers. GET /v1/price-index is a Parchment Intelligence API-key contract for aggregate price_index_snapshots data only. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most /api/* routes exist to power the Purveyors web app: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
+			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
+			'The stable public catalog contract is GET /v1/catalog. Anonymous requests are supported for public discovery, while API-key requests are the intended production integration path because they carry plan enforcement and X-RateLimit-* usage headers. GET /v1/catalog/{id}/similar is a beta member and paid API route for candidate matching, not a canonical identity claim. GET /v1/price-index is a Parchment Intelligence API-key contract for aggregate price_index_snapshots data only. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
 		],
 		sections: [
 			{
@@ -209,6 +218,12 @@ const docsPages: DocsPage[] = [
 							'Anonymous, session, or API key',
 							'External integrations, CLI complements, first-party app',
 							'Stable public contract.'
+						],
+						[
+							'GET /v1/catalog/{id}/similar',
+							'Member session or API key with API Origin or Enterprise and catalog:read',
+							'Matching workflows, substitution research, and account-linked agents',
+							'Beta public contract. Returns cautious candidates, score dimensions, and price deltas, not canonical identity decisions.'
 						],
 						[
 							'GET /v1/price-index',
@@ -255,6 +270,7 @@ const docsPages: DocsPage[] = [
 					'GET /v1/catalog supports anonymous requests for public-only catalog discovery. Anonymous callers get the same public payload shape, but no API-key billing, quota, or X-RateLimit-* usage headers.',
 					'GET /v1/catalog also supports first-party session requests. Viewer sessions stay public-only; member and admin sessions may unlock richer in-app visibility.',
 					'GET /v1/catalog supports API-key requests via Authorization: Bearer <api_key>. API Green stays on the basic public query surface; paid API tiers add structured process facet filtering while remaining public-catalog scoped. API keys use plan-based limits and are the intended production path for server-to-server integrations.',
+					'GET /v1/catalog/{id}/similar requires a member session or an API key with API Origin or Enterprise plus catalog:read. It returns beta similarity candidates for account-linked matching workflows; anonymous callers get 401 and viewer or API Green callers get 403.',
 					'GET /v1/price-index requires an API key whose owner has Parchment Intelligence access. It returns aggregate price-index snapshots, not raw supplier-level rows.',
 					'GET /api/catalog-api is a deprecated legacy alias to /v1/catalog, but it remains API-key-only for backward-compatible machine access.',
 					'Cookies only matter when they resolve to a valid first-party session. A raw Cookie header is not part of the public API contract.',
@@ -284,6 +300,12 @@ const docsPages: DocsPage[] = [
 							'Production integrations, sync jobs, and server-to-server tooling',
 							'Authorization: Bearer <api_key>',
 							'Public-only data with plan enforcement, X-RateLimit-* headers, and stable HTTP compatibility guarantees.'
+						],
+						[
+							'API-key GET /v1/catalog/{id}/similar',
+							'Beta similar-coffee matching and substitution research',
+							'Authorization: Bearer <api_key> with API Origin or Enterprise plus catalog:read',
+							'Plan-limited beta response with target, matches, score dimensions, match category, confidence labels, price_delta_1lb, X-RateLimit-* headers, and cautious copy.'
 						],
 						[
 							'API-key GET /v1/price-index',
@@ -358,6 +380,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog and /v1/price-index.',
 					'GET /v1/catalog is the source-of-truth public contract for integrations.',
+					'GET /v1/catalog/{id}/similar is the beta matching endpoint in the catalog family. It is not anonymous, and it should be presented as candidate discovery rather than accepted identity resolution.',
 					'GET /api/catalog-api is a deprecated API-key-only alias to the canonical handler. Responses include Deprecation: true, Link: </v1/catalog>; rel="successor-version", and Sunset: Thu, 31 Dec 2026 23:59:59 GMT.',
 					'GET /api/catalog also delegates to the same catalog resource, but it is an internal adapter with legacy response-shape behavior and should not be treated as a long-term external contract.'
 				],
@@ -570,6 +593,25 @@ const docsPages: DocsPage[] = [
 				]
 			},
 			{
+				title: 'Proof summaries',
+				body: [
+					'include=proof adds a compact proof object to full catalog rows. It is designed for public cards, agent summaries, and integration UIs that need to explain why a listing looks trustworthy without exposing raw supplier evidence.',
+					'The proof object groups signals into process, provenance, freshness, and pricing families. Each family uses cautious labels and limitations. It is not a certification system, and it does not expose raw processing evidence quotes by default.'
+				],
+				codeBlocks: [
+					{
+						label: 'Catalog proof request',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog?include=proof&country=Ethiopia&limit=5" \\\n  -H "Authorization: Bearer pk_live_your_key_here"'
+					},
+					{
+						label: 'Proof response fragment',
+						language: 'json',
+						code: '{\n  "proof": {\n    "families": {\n      "process": { "label": "disclosed", "confidence": 0.92 },\n      "provenance": { "label": "identified" },\n      "freshness": { "label": "dated" },\n      "pricing": { "label": "tiered" }\n    },\n    "limitations": ["not_certification", "raw_evidence_not_included"]\n  }\n}'
+					}
+				]
+			},
+			{
 				title: 'Access mode comparison',
 				table: {
 					headers: ['Mode', 'Best for', 'Query envelope', 'Headers', 'Notes'],
@@ -685,6 +727,11 @@ const docsPages: DocsPage[] = [
 				description: 'See the product surface that consumes the same data model.'
 			},
 			{
+				href: '/docs/api/catalog-similarity',
+				label: 'Catalog similarity beta',
+				description: 'Find candidate matches for a catalog coffee with member or paid API access.'
+			},
+			{
 				href: '/docs/api/platform',
 				label: 'Platform route matrix',
 				description: 'Internal /api/* companions to the public contract.'
@@ -696,6 +743,143 @@ const docsPages: DocsPage[] = [
 			}
 		]
 	},
+
+	{
+		section: 'api',
+		slug: 'catalog-similarity',
+		title: 'Catalog similarity API',
+		summary:
+			'GET /v1/catalog/{id}/similar returns beta similar-coffee candidates for member sessions and paid API-key integrations.',
+		eyebrow: 'Beta endpoint',
+		intro: [
+			'GET /v1/catalog/{id}/similar finds candidate coffees related to one catalog entry. The route is useful for likely-same-bean checks, substitution research, account-linked agents, and pricing context around comparable lots.',
+			'Matches are beta confidence candidates based on origin, processing, and tasting similarity signals. The endpoint intentionally does not claim canonical identity. UI copy and API responses should keep that cautious framing.'
+		],
+		sections: [
+			{
+				title: 'Endpoint and access',
+				table: {
+					headers: ['Route', 'Method', 'Auth', 'Status', 'Contract'],
+					rows: [
+						[
+							'/v1/catalog/{id}/similar',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise and catalog:read',
+							'Beta',
+							'Returns target plus beta matches, score dimensions, category/confidence labels, price_delta_1lb, pricing fallbacks, and cautious copy.'
+						]
+					]
+				},
+				bullets: [
+					'Anonymous callers receive 401 auth_required. The response does not leak match data.',
+					'Signed-in viewer sessions and API Green keys receive 403 entitlement_required. Viewer sessions can receive a locked teaser count when the target exists, but not match rows.',
+					'API-key callers must satisfy requiredPlan member and requiredScope catalog:read. Successful API-key responses include X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset.',
+					'429 responses use the same quota envelope as /v1/catalog and include Retry-After.',
+					'404 means the target catalog coffee was not found after the caller has enough access to request matches.'
+				]
+			},
+			{
+				title: 'Path and query parameters',
+				table: {
+					headers: ['Parameter', 'Type', 'Default', 'Description'],
+					rows: [
+						[
+							'id',
+							'positive integer',
+							'required',
+							'Catalog coffee ID. The route validates against the Postgres int4 ceiling of 2147483647 before any database work.'
+						],
+						[
+							'threshold',
+							'number between 0.5 and 0.99',
+							String(DEFAULT_CATALOG_SIMILARITY_THRESHOLD),
+							'Minimum similarity score sent to the matching RPC.'
+						],
+						[
+							'limit',
+							`positive integer up to ${MAX_CATALOG_SIMILARITY_LIMIT}`,
+							String(DEFAULT_CATALOG_SIMILARITY_LIMIT),
+							'Number of matches returned after any mode filtering.'
+						],
+						[
+							'stocked_only',
+							'true | false',
+							'true',
+							'Whether candidate rows must currently be stocked.'
+						],
+						[
+							'mode',
+							'all | likely_same | similar_profile',
+							'all',
+							'Filters normalized matches after scoring. likely_same asks the server to overfetch before filtering so likely-same rows are not hidden by profile matches.'
+						]
+					]
+				},
+				callout: {
+					tone: 'warning',
+					title: 'Structured validation is part of the contract',
+					body: 'Invalid id, threshold, limit, stocked_only, or mode values return HTTP 400 with error: Invalid query parameter and a details block containing parameter, value, and expected.'
+				}
+			},
+			{
+				title: 'Response shape',
+				body: [
+					'data.target summarizes the requested coffee with origin, process, stocked state, legacy cost_lb compatibility, and canonical pricing fields.',
+					'data.matches contains candidate coffees. Each match includes coffee identity fields, canonical pricing, price_delta_1lb, score.average, score.dimensions.origin, score.dimensions.processing, score.dimensions.tasting, score.chunk_matches, match.category, match.confidence, match.beta, match.language, explanation.summary, explanation.signals, and compatibility.cost_lb.',
+					'meta.status is beta and meta.copy.confidence repeats the non-canonical identity warning. Preserve that framing in client copy.'
+				],
+				codeBlocks: [
+					{
+						label: 'Member or API-key request',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog/1182/similar?threshold=0.8&limit=5&mode=likely_same" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+					},
+					{
+						label: 'Successful response fragment',
+						language: 'json',
+						code: '{\n  "data": {\n    "target": {\n      "id": 1182,\n      "name": "Ethiopia Guji Natural",\n      "source": "Supplier A",\n      "origin": "Guji",\n      "country": "Ethiopia",\n      "processing": "Natural",\n      "stocked": true,\n      "pricing": {\n        "price_per_lb": null,\n        "price_tiers": [{ "min_lbs": 1, "price": 8 }],\n        "cost_lb": 7.1,\n        "baseline_quantity_lbs": 1,\n        "baseline_price_per_lb": 8,\n        "baseline_source": "price_tiers"\n      }\n    },\n    "matches": [\n      {\n        "coffee": { "id": 2200, "name": "Ethiopia Guji Natural Lot B", "stocked": true },\n        "pricing": { "baseline_price_per_lb": 8.75, "baseline_source": "price_per_lb" },\n        "price_delta_1lb": { "amount": 0.75, "percent": 9.4, "currency": "USD" },\n        "score": {\n          "average": 0.92,\n          "dimensions": { "origin": 0.94, "processing": 0.91, "tasting": 0.87 },\n          "chunk_matches": 3\n        },\n        "match": {\n          "category": "likely_same",\n          "confidence": "high_beta",\n          "beta": true,\n          "language": "High beta confidence likely same coffee candidate. Review supplier details before acting."\n        },\n        "explanation": {\n          "summary": "Beta similarity score based on available origin, processing, and tasting embeddings.",\n          "signals": ["Origin similarity 0.94", "Processing similarity 0.91"]\n        }\n      }\n    ]\n  },\n  "meta": {\n    "resource": "catalog-similarity",\n    "namespace": "/v1/catalog/{id}/similar",\n    "version": "v1",\n    "status": "beta",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "member" },\n    "access": { "requiredCapability": "canUseBeanMatching", "canUseBeanMatching": true },\n    "query": { "threshold": 0.8, "limit": 5, "stockedOnly": true, "mode": "likely_same" }\n  }\n}'
+					}
+				]
+			},
+			{
+				title: 'Error examples',
+				codeBlocks: [
+					{
+						label: '401 anonymous request',
+						language: 'json',
+						code: '{\n  "error": "Authentication required",\n  "message": "Similar coffee matching requires a member account or paid API tier.",\n  "code": "auth_required",\n  "requiredCapability": "canUseBeanMatching"\n}'
+					},
+					{
+						label: '403 locked viewer teaser',
+						language: 'json',
+						code: '{\n  "error": "Insufficient permissions",\n  "message": "Similar coffee matching is available to members and paid API tiers.",\n  "code": "entitlement_required",\n  "requiredCapability": "canUseBeanMatching",\n  "teaser": {\n    "locked": true,\n    "similar_match_count": 4,\n    "beta": true\n  }\n}'
+					},
+					{
+						label: '400 invalid query parameter',
+						language: 'json',
+						code: '{\n  "error": "Invalid query parameter",\n  "message": "Query parameter limit must use positive integer less than or equal to 25",\n  "details": {\n    "parameter": "limit",\n    "value": "99",\n    "expected": "positive integer less than or equal to 25"\n  }\n}'
+					}
+				]
+			}
+		],
+		related: [
+			{
+				href: '/docs/api/catalog',
+				label: 'Catalog API',
+				description: 'The stable listing endpoint that provides the target IDs.'
+			},
+			{
+				href: '/docs/cli/catalog',
+				label: 'CLI catalog commands',
+				description: 'Account-linked terminal access to catalog search and similar matching.'
+			},
+			{
+				href: '/docs/api/errors',
+				label: 'Errors and auth',
+				description: 'Shared auth, entitlement, validation, and rate-limit conventions.'
+			}
+		]
+	},
 	{
 		section: 'api',
 		slug: 'platform',
@@ -704,12 +888,55 @@ const docsPages: DocsPage[] = [
 			'Authenticated and internal /api/* routes that power the Purveyors product surface, grouped by capability and stability.',
 		eyebrow: 'Internal app routes',
 		intro: [
-			'This page is the route map for the first-party web app. These endpoints matter for contributors, support, internal tooling, and advanced product debugging.',
-			'Most of these routes are not public compatibility promises. Document them accurately, but keep external integrations pointed at /v1/catalog or @purveyors/cli whenever possible.'
+			'This page distinguishes the stable external v1 contracts, beta catalog endpoints, legacy aliases, internal app APIs, Console control-plane routes, and admin-only surfaces.',
+			'Most /api/* routes are not public compatibility promises. Document them accurately, but keep external integrations pointed at /v1/catalog, /v1/catalog/{id}/similar when matching access is available, /v1/price-index for aggregate market data, or @purveyors/cli whenever possible.'
 		],
 		sections: [
 			{
-				title: 'Catalog and discovery routes',
+				title: 'Public v1 and legacy route families',
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/v1',
+							'GET',
+							'Anonymous, session, or API key',
+							'Namespace descriptor',
+							'Advertises the v1 namespace and stable catalog and price-index resources.'
+						],
+						[
+							'/v1/catalog',
+							'GET',
+							'Anonymous, session, or API key',
+							'Stable external contract',
+							'Canonical catalog resource for normalized listing reads, proof summaries, plan caps, and API-key rate-limit headers.'
+						],
+						[
+							'/v1/catalog/{id}/similar',
+							'GET',
+							'Member session or API key with API Origin or Enterprise plus catalog:read',
+							'Beta external contract',
+							'Catalog similarity candidates with target, matches, score dimensions, price deltas, category/confidence labels, and cautious beta copy.'
+						],
+						[
+							'/v1/price-index',
+							'GET',
+							'API key with Parchment Intelligence access',
+							'Stable external aggregate contract',
+							'Reads aggregate price_index_snapshots only. No raw supplier rows, CSV, alerts, watchlists, or webhooks.'
+						],
+						[
+							'/api/catalog-api',
+							'GET',
+							'API key only',
+							'Deprecated legacy alias',
+							'API-key-only alias to /v1/catalog. Always public-only. Sunset: Dec 31 2026.'
+						]
+					]
+				}
+			},
+			{
+				title: 'Catalog and discovery app routes',
 				table: {
 					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
 					rows: [
@@ -1792,7 +2019,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Catalog data',
 		intro: [
 			'Catalog commands are the fastest way to explore the green coffee feed from the terminal when the workflow is tied to a signed-in account. They require an authenticated viewer session; run purvey auth login before using them.',
-			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. If the goal is anonymous discovery or API-key integration, use GET /v1/catalog instead. See the CLI overview for install and login instructions.'
+			'The search command supports filters for origin, processing method, price range, flavor notes, stocked-only, and result limits. purvey catalog similar <id> mirrors the account-linked matching workflow exposed by the beta /v1/catalog/{id}/similar endpoint, but the CLI uses viewer-session auth instead of API keys. If the goal is anonymous discovery or API-key integration, use the HTTP API instead. See the CLI overview for install and login instructions.'
 		],
 		sections: [
 			{
@@ -1809,6 +2036,15 @@ const docsPages: DocsPage[] = [
 						language: 'bash',
 						code: 'purvey catalog search --origin "Ethiopia" --process "natural" --pretty\npurvey catalog search --variety "Heirloom" --stocked --pretty\npurvey catalog search --drying-method "raised bed" --stocked --limit 20\npurvey catalog search --stocked-days 30 --sort newest --pretty\npurvey catalog search --ids "1182,1183,1200" --pretty\npurvey catalog similar 1182 --threshold 0.85 --stocked-only --pretty'
 					}
+				]
+			},
+			{
+				title: 'Similar matching',
+				bullets: [
+					'purvey catalog similar <id> finds beta similar-coffee candidates for one catalog ID. Treat results as leads for comparison, not canonical identity claims.',
+					'--threshold sets the minimum similarity score. The HTTP beta endpoint accepts 0.5 through 0.99 and defaults to 0.7.',
+					'--stocked-only limits matches to currently stocked coffees. The HTTP endpoint defaults stocked_only to true.',
+					'When an integration needs API-key access, rate-limit headers, or explicit beta response metadata, call GET /v1/catalog/{id}/similar directly.'
 				]
 			},
 			{
@@ -1849,6 +2085,11 @@ const docsPages: DocsPage[] = [
 				href: '/docs/api/catalog',
 				label: 'HTTP catalog docs',
 				description: 'Compare CLI access with the API-key endpoint.'
+			},
+			{
+				href: '/docs/api/catalog-similarity',
+				label: 'Catalog similarity API',
+				description: 'The beta HTTP matching endpoint for member sessions and paid API keys.'
 			},
 			{
 				href: '/docs/cli/overview',

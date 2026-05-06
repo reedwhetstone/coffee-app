@@ -1153,7 +1153,7 @@ export type Database = {
 					drying_method: string | null;
 					cost_lb: number | null;
 					price_per_lb: number | null;
-					price_tiers: Json | null;
+					price_tiers: Json[] | null;
 					stocked: boolean | null;
 					similarity: number;
 					chunk_type: string;
@@ -1179,7 +1179,7 @@ export type Database = {
 					drying_method: string | null;
 					cost_lb: number | null;
 					price_per_lb: number | null;
-					price_tiers: Json | null;
+					price_tiers: Json[] | null;
 					stocked: boolean | null;
 					avg_similarity: number;
 					origin_similarity: number | null;

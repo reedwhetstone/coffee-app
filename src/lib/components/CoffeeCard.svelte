@@ -25,13 +25,21 @@
 		parseTastingNotes,
 		compact = false,
 		highlighted = false,
-		annotation = ''
+		annotation = '',
+		showSimilarComparisonAction = false,
+		canUseBeanMatching = false,
+		similarComparisonActive = false,
+		onCompareSimilar
 	} = $props<{
 		coffee: CoffeeCatalog;
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
 		compact?: boolean;
 		highlighted?: boolean;
 		annotation?: string;
+		showSimilarComparisonAction?: boolean;
+		canUseBeanMatching?: boolean;
+		similarComparisonActive?: boolean;
+		onCompareSimilar?: (coffee: CoffeeCatalog) => void;
 	}>();
 
 	type ProcessSummary = {
@@ -190,6 +198,12 @@
 		showPricingDetails = !showPricingDetails;
 	}
 
+	function handleCompareSimilar(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
+		onCompareSimilar?.(coffee);
+	}
+
 	$effect(() => {
 		if (coffee.ai_tasting_notes && !tastingNotes) {
 			console.log(
@@ -265,6 +279,28 @@
 					>
 						<span>{showPricingDetails ? 'Hide volume pricing' : 'View volume pricing'}</span>
 						<span class="text-xs text-text-secondary-light">{priceTiers?.length} tiers</span>
+					</button>
+				{/if}
+				{#if showSimilarComparisonAction}
+					<button
+						type="button"
+						onclick={handleCompareSimilar}
+						class="inline-flex items-center gap-2 rounded-full border border-background-tertiary-light/50 px-3 py-1.5 text-sm font-semibold text-background-tertiary-light transition-colors hover:bg-background-tertiary-light hover:text-white"
+						aria-expanded={canUseBeanMatching ? similarComparisonActive : undefined}
+						aria-label={canUseBeanMatching
+							? `${similarComparisonActive ? 'Hide' : 'Compare'} similar coffees for ${coffee.name}`
+							: `Upgrade to compare similar coffees for ${coffee.name}`}
+					>
+						<span
+							>{canUseBeanMatching
+								? similarComparisonActive
+									? 'Hide matches'
+									: 'Compare matches'
+								: 'Member comparison'}</span
+						>
+						{#if !canUseBeanMatching}
+							<span aria-hidden="true">🔒</span>
+						{/if}
 					</button>
 				{/if}
 				{#if coffee.link}
@@ -390,6 +426,28 @@
 								>
 									<span>{showPricingDetails ? 'Hide volume pricing' : 'View volume pricing'}</span>
 									<span class="text-xs text-text-secondary-light">{priceTiers?.length} tiers</span>
+								</button>
+							{/if}
+							{#if showSimilarComparisonAction}
+								<button
+									type="button"
+									onclick={handleCompareSimilar}
+									class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-background-tertiary-light/50 px-4 py-2.5 text-sm font-semibold text-background-tertiary-light transition-colors hover:bg-background-tertiary-light hover:text-white"
+									aria-expanded={canUseBeanMatching ? similarComparisonActive : undefined}
+									aria-label={canUseBeanMatching
+										? `${similarComparisonActive ? 'Hide' : 'Compare'} similar coffees for ${coffee.name}`
+										: `Upgrade to compare similar coffees for ${coffee.name}`}
+								>
+									<span
+										>{canUseBeanMatching
+											? similarComparisonActive
+												? 'Hide matches'
+												: 'Compare matches'
+											: 'Member comparison'}</span
+									>
+									{#if !canUseBeanMatching}
+										<span aria-hidden="true">🔒</span>
+									{/if}
 								</button>
 							{/if}
 							{#if coffee.link}

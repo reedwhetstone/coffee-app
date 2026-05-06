@@ -7,6 +7,7 @@
 	import { checkRole } from '$lib/types/auth.types';
 
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
+	import SimilarCoffeePanel from '$lib/components/catalog/SimilarCoffeePanel.svelte';
 	import {
 		formatProcessDisplayValue,
 		isPublicProcessFacetOption
@@ -32,6 +33,7 @@
 	let displayLimit = $state(15);
 	let isLoadingMore = $state(false);
 	let copyLinkStatus = $state<'idle' | 'copied' | 'error'>('idle');
+	let selectedComparisonCoffee = $state<CoffeeCatalog | null>(null);
 	let copyLinkResetTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	$effect(() => {
@@ -98,6 +100,8 @@
 			Boolean($filterStore.filters.name) ||
 			hasAdvancedProcessFilters
 	);
+
+	let canUseBeanMatching = $derived(data.catalogAccess?.canUseBeanMatching === true);
 
 	async function handleScroll() {
 		if (!session) {
@@ -168,6 +172,19 @@
 				updateCopyLinkStatus('error');
 			}
 		}
+	}
+
+	function handleSimilarComparison(coffee: CoffeeCatalog) {
+		if (!canUseBeanMatching) {
+			void goto(session ? '/subscription' : '/auth');
+			return;
+		}
+
+		selectedComparisonCoffee = selectedComparisonCoffee?.id === coffee.id ? null : coffee;
+	}
+
+	function closeSimilarComparison() {
+		selectedComparisonCoffee = null;
 	}
 
 	function parseTastingNotes(tastingNotesJson: string | null | object): TastingNotes | null {
@@ -472,7 +489,22 @@
 				{:else}
 					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 						{#each session ? displayData() : displayData().slice(0, 15) as coffee}
-							<CoffeeCard {coffee} {parseTastingNotes} />
+							<div class="space-y-3">
+								<CoffeeCard
+									{coffee}
+									{parseTastingNotes}
+									showSimilarComparisonAction={true}
+									{canUseBeanMatching}
+									similarComparisonActive={selectedComparisonCoffee?.id === coffee.id}
+									onCompareSimilar={handleSimilarComparison}
+								/>
+								{#if selectedComparisonCoffee?.id === coffee.id}
+									<SimilarCoffeePanel
+										coffee={selectedComparisonCoffee}
+										onClose={closeSimilarComparison}
+									/>
+								{/if}
+							</div>
 						{/each}
 
 						{#if isLoadingMore}
