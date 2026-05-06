@@ -162,6 +162,18 @@ export interface FindSimilarBeansAggregatedV2Row {
 	chunk_matches: number | string;
 }
 
+interface FindSimilarBeansAggregatedLegacyRow {
+	coffee_id: number;
+	coffee_name: string;
+	source: string | null;
+	origin: string | null;
+	processing: string | null;
+	cost_lb: number | string | null;
+	stocked: boolean | null;
+	avg_similarity: number | string;
+	chunk_matches: number | string;
+}
+
 interface CatalogSimilarityProofFields {
 	arrival_date: string | null;
 	stocked_date: string | null;
@@ -224,13 +236,24 @@ interface SimilaritySupabaseClient {
 		}
 	): Promise<{ data: FindSimilarBeansAggregatedV2Row[] | null; error: { message: string } | null }>;
 	rpc(
+		fn: 'find_similar_beans_aggregated',
+		args: {
+			target_coffee_id: number;
+			match_threshold: number;
+			match_count: number;
+		}
+	): Promise<{
+		data: FindSimilarBeansAggregatedLegacyRow[] | null;
+		error: { message: string; code?: string } | null;
+	}>;
+	rpc(
 		fn: 'count_similar_beans_aggregated_v2',
 		args: {
 			target_coffee_id: number;
 			match_threshold: number;
 			stocked_only: boolean;
 		}
-	): Promise<{ data: number | null; error: { message: string } | null }>;
+	): Promise<{ data: number | null; error: { message: string; code?: string } | null }>;
 }
 
 const TARGET_SELECT =
@@ -563,6 +586,72 @@ function toTargetSummary(row: CatalogSimilarityTargetRow): CatalogSimilarityTarg
 	};
 }
 
+function isLikelyMissingCanonicalSimilarityRpc(error: { message: string; code?: string }): boolean {
+	const message = error.message.toLowerCase();
+	return (
+		error.code === '42883' ||
+		error.code === 'PGRST202' ||
+		message.includes('could not find the function') ||
+		message.includes('function find_similar_beans_aggregated_v2') ||
+		message.includes('function count_similar_beans_aggregated_v2') ||
+		message.includes('permission denied for function find_similar_beans_aggregated_v2') ||
+		message.includes('permission denied for function count_similar_beans_aggregated_v2')
+	);
+}
+
+function normalizeLegacySimilarityRow(
+	row: FindSimilarBeansAggregatedLegacyRow
+): FindSimilarBeansAggregatedV2Row {
+	return {
+		coffee_id: row.coffee_id,
+		coffee_name: row.coffee_name,
+		source: row.source,
+		origin: row.origin,
+		country: null,
+		continent: null,
+		processing: row.processing,
+		processing_base_method: null,
+		fermentation_type: null,
+		drying_method: null,
+		cost_lb: row.cost_lb,
+		price_per_lb: null,
+		price_tiers: null,
+		stocked: row.stocked,
+		avg_similarity: row.avg_similarity,
+		origin_similarity: null,
+		processing_similarity: null,
+		tasting_similarity: null,
+		chunk_matches: row.chunk_matches
+	};
+}
+
+async function fetchCanonicalSimilarityRows(input: {
+	supabase: SimilaritySupabaseClient;
+	coffeeId: number;
+	query: CatalogSimilarityQuery;
+	rpcMatchCount: number;
+}): Promise<FindSimilarBeansAggregatedV2Row[]> {
+	const { data, error } = await input.supabase.rpc('find_similar_beans_aggregated_v2', {
+		target_coffee_id: input.coffeeId,
+		match_threshold: input.query.threshold,
+		match_count: input.rpcMatchCount,
+		stocked_only: input.query.stockedOnly
+	});
+
+	if (!error) return data ?? [];
+	if (!isLikelyMissingCanonicalSimilarityRpc(error)) throw new Error(error.message);
+
+	const legacy = await input.supabase.rpc('find_similar_beans_aggregated', {
+		target_coffee_id: input.coffeeId,
+		match_threshold: input.query.threshold,
+		match_count: input.rpcMatchCount
+	});
+
+	if (legacy.error) return [];
+	const rows = (legacy.data ?? []).filter((row) => !input.query.stockedOnly || row.stocked === true);
+	return rows.map(normalizeLegacySimilarityRow);
+}
+
 async function fetchTarget(
 	supabase: SimilaritySupabaseClient,
 	coffeeId: number
@@ -601,20 +690,18 @@ export async function fetchCatalogSimilarityMatches(input: {
 	const supabase = input.supabase as unknown as SimilaritySupabaseClient;
 	const target = await fetchTarget(supabase, input.coffeeId);
 	const rpcMatchCount = resolveRpcMatchCount(input.query);
-	const { data, error } = await supabase.rpc('find_similar_beans_aggregated_v2', {
-		target_coffee_id: input.coffeeId,
-		match_threshold: input.query.threshold,
-		match_count: rpcMatchCount,
-		stocked_only: input.query.stockedOnly
+	const data = await fetchCanonicalSimilarityRows({
+		supabase,
+		coffeeId: input.coffeeId,
+		query: input.query,
+		rpcMatchCount
 	});
-
-	if (error) throw new Error(error.message);
 
 	const detailById = await fetchMatchDetails(
 		supabase,
-		(data ?? []).map((row) => row.coffee_id)
+		data.map((row) => row.coffee_id)
 	);
-	const matches = (data ?? [])
+	const matches = data
 		.map((row) => normalizeSimilarityRow(row, target.pricing, detailById.get(row.coffee_id)))
 		.filter((match) => matchesMode(match, input.query.mode))
 		.slice(0, input.query.limit);
@@ -635,6 +722,16 @@ export async function countCatalogSimilarityMatches(input: {
 		stocked_only: input.query.stockedOnly
 	});
 
-	if (error) throw new Error(error.message);
+	if (error) {
+		if (!isLikelyMissingCanonicalSimilarityRpc(error)) throw new Error(error.message);
+		const legacy = await supabase.rpc('find_similar_beans_aggregated', {
+			target_coffee_id: input.coffeeId,
+			match_threshold: input.query.threshold,
+			match_count: 1000
+		});
+		if (legacy.error) return 0;
+		return (legacy.data ?? []).filter((row) => !input.query.stockedOnly || row.stocked === true)
+			.length;
+	}
 	return Math.max(0, Math.trunc(toFiniteNumber(data) ?? 0));
 }
