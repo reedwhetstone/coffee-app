@@ -22,7 +22,7 @@ RETURNS TABLE (
   drying_method TEXT,
   cost_lb NUMERIC,
   price_per_lb NUMERIC,
-  price_tiers JSONB,
+  price_tiers JSONB[],
   stocked BOOLEAN,
   similarity FLOAT,
   chunk_type TEXT
@@ -109,7 +109,7 @@ RETURNS TABLE (
   drying_method TEXT,
   cost_lb NUMERIC,
   price_per_lb NUMERIC,
-  price_tiers JSONB,
+  price_tiers JSONB[],
   stocked BOOLEAN,
   avg_similarity FLOAT,
   origin_similarity FLOAT,
