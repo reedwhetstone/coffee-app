@@ -117,7 +117,7 @@ describe('CoffeeCard process analysis', () => {
 		});
 
 		expect(screen.getByText('Process analysis')).toBeTruthy();
-		expect(screen.getByText('Natural process transparency')).toBeTruthy();
+		expect(screen.getByText('Natural process')).toBeTruthy();
 		expect(screen.getByText('Fermentation: Anaerobic')).toBeTruthy();
 		expect(screen.getByText('Additives disclosed: Fruit')).toBeTruthy();
 		expect(screen.getByText('High-detail disclosure')).toBeTruthy();
@@ -167,7 +167,7 @@ describe('CoffeeCard process analysis', () => {
 			parseTastingNotes
 		});
 
-		expect(screen.getByText('Natural process transparency')).toBeTruthy();
+		expect(screen.getByText('Natural process')).toBeTruthy();
 		expect(screen.queryByText('Fermentation: None Stated')).toBeNull();
 		expect(screen.getByText('No additives disclosed')).toBeTruthy();
 	});

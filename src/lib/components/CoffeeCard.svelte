@@ -110,6 +110,14 @@
 		].filter((entry): entry is { label: string; value: string } => Boolean(entry))
 	);
 
+	let hasBreakoutContent = $derived(
+		Boolean(coffee.ai_description) ||
+			Boolean(tastingNotes) ||
+			Boolean(processAnalysis) ||
+			(hasMultiplePriceTiers && Boolean(priceTiers)) ||
+			auxFacts.length > 0
+	);
+
 	function clampScore(value: unknown): number {
 		const numeric = typeof value === 'number' ? value : Number(value);
 		if (!Number.isFinite(numeric)) return 0;
@@ -186,9 +194,7 @@
 		}
 
 		return {
-			headline: baseMethod
-				? `${formatProcessDisplayValue(baseMethod)} process transparency`
-				: 'Process transparency',
+			headline: baseMethod ? `${formatProcessDisplayValue(baseMethod)} process` : 'Process',
 			details,
 			confidenceLabel,
 			disclosureLabel,
@@ -229,11 +235,11 @@
 
 <article
 	bind:this={cardEl}
-	class="group relative flex flex-col overflow-hidden rounded-lg bg-background-primary-light text-left shadow-sm ring-1 transition-colors {highlighted
+	class="group relative flex flex-col overflow-hidden rounded-xl bg-background-primary-light text-left shadow-md ring-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl {highlighted
 		? 'ring-2 ring-background-tertiary-light'
-		: 'ring-border-light hover:ring-background-tertiary-light/60'}"
+		: 'ring-border-light hover:ring-background-tertiary-light/70'}"
 >
-	<span class="block h-[3px] w-full bg-background-tertiary-light/80" aria-hidden="true"></span>
+	<span class="block h-1 w-full bg-background-tertiary-light" aria-hidden="true"></span>
 
 	<div class="flex flex-1 flex-col {compact ? 'gap-2 p-3' : 'gap-3 p-4'}">
 		{#if annotation}
@@ -263,10 +269,10 @@
 				</div>
 			</div>
 			<div
-				class="shrink-0 rounded-md bg-background-secondary-light px-2.5 py-1.5 text-right ring-1 ring-border-light"
+				class="shrink-0 rounded-md bg-background-tertiary-light/10 px-2.5 py-1.5 text-right ring-1 ring-background-tertiary-light/30"
 			>
 				<div
-					class="font-bold leading-none text-text-primary-light {compact
+					class="font-bold leading-none text-background-tertiary-light {compact
 						? 'text-base'
 						: 'text-lg sm:text-xl'}"
 				>
@@ -312,14 +318,6 @@
 			</div>
 		{/if}
 
-		{#if !compact && coffee.ai_description}
-			<p
-				class="line-clamp-3 border-l-2 border-background-tertiary-light/40 pl-3 text-xs italic leading-relaxed text-text-secondary-light"
-			>
-				{coffee.ai_description}
-			</p>
-		{/if}
-
 		{#if !compact && tastingNotes}
 			<section
 				class="rounded-md bg-background-secondary-light px-3 py-2.5 ring-1 ring-border-light"
@@ -335,6 +333,7 @@
 					{#each TASTING_AXES as axis (axis.key)}
 						{@const note = tastingNotes[axis.key]}
 						{@const score = clampScore(note?.score)}
+						{@const fill = note?.color || '#F9A57B'}
 						<div class="flex items-center gap-2">
 							<span
 								class="w-12 shrink-0 text-[10px] font-medium uppercase tracking-wide text-text-secondary-light"
@@ -349,8 +348,8 @@
 								aria-valuemax="5"
 							>
 								<div
-									class="h-full rounded-full bg-background-tertiary-light"
-									style="width: {(score / 5) * 100}%"
+									class="h-full rounded-full"
+									style="width: {(score / 5) * 100}%; background-color: {fill};"
 								></div>
 							</div>
 							<span
@@ -360,92 +359,35 @@
 						</div>
 					{/each}
 				</div>
-				<details class="card-disclosure mt-2">
-					<summary
-						class="flex cursor-pointer list-none items-center gap-1 text-[11px] font-medium text-link-light hover:text-background-tertiary-light"
-					>
-						<span>View full tasting profile</span>
-						<span
-							class="card-disclosure__chevron text-[10px] transition-transform"
-							aria-hidden="true">▾</span
-						>
-					</summary>
-					<div class="mt-2 flex justify-center">
-						{#if isVisible}
-							{#if TastingNotesRadar}
-								<TastingNotesRadar {tastingNotes} size={220} responsive={true} lazy={true} />
-							{:else}
-								<ChartSkeleton height="220px" title="Loading tasting profile..." />
-							{/if}
-						{:else}
-							<div style="height: 220px"></div>
-						{/if}
-					</div>
-				</details>
 			</section>
 		{/if}
 
-		{#if processAnalysis}
-			<details class="card-disclosure rounded-md ring-1 ring-border-light">
+		{#if !compact && hasBreakoutContent}
+			<details class="card-disclosure -mx-1 rounded-lg ring-1 ring-border-light">
 				<summary
-					class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md px-3 py-2 text-xs font-medium text-text-primary-light transition-colors hover:text-background-tertiary-light"
+					class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg bg-background-secondary-light px-3 py-2.5 text-sm font-semibold text-text-primary-light transition-colors hover:bg-background-tertiary-light/10 hover:text-background-tertiary-light"
 				>
-					<span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-						<span class="font-semibold">Process analysis</span>
-						<span class="truncate text-text-secondary-light">{processAnalysis.headline}</span>
-					</span>
-					<span
-						class="card-disclosure__chevron select-none text-text-secondary-light transition-transform"
-						aria-hidden="true">▾</span
-					>
-				</summary>
-				<div class="space-y-2 px-3 pb-3 text-xs text-text-secondary-light">
-					{#if processAnalysis.details.length > 0}
-						<ul class="space-y-1">
-							{#each processAnalysis.details as detail}
-								<li>{detail}</li>
-							{/each}
-						</ul>
-					{/if}
-					{#if processAnalysis.disclosureLabel || processAnalysis.confidenceLabel || processAnalysis.evidenceLabel}
-						<div class="flex flex-wrap gap-1.5">
-							{#if processAnalysis.disclosureLabel}
-								<span
-									class="rounded-full bg-background-secondary-light px-2 py-0.5 text-[10px] font-medium ring-1 ring-border-light"
-								>
-									{processAnalysis.disclosureLabel}
-								</span>
-							{/if}
-							{#if processAnalysis.confidenceLabel}
-								<span
-									class="rounded-full bg-background-secondary-light px-2 py-0.5 text-[10px] font-medium ring-1 ring-border-light"
-								>
-									{processAnalysis.confidenceLabel}
-								</span>
-							{/if}
-							{#if processAnalysis.evidenceLabel}
-								<span
-									class="rounded-full bg-background-secondary-light px-2 py-0.5 text-[10px] font-medium ring-1 ring-border-light"
-								>
-									{processAnalysis.evidenceLabel}
-								</span>
-							{/if}
-						</div>
-					{/if}
-				</div>
-			</details>
-		{/if}
-
-		{#if hasMultiplePriceTiers && priceTiers}
-			<details class="card-disclosure rounded-md ring-1 ring-border-light">
-				<summary
-					class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md px-3 py-2 text-xs font-medium text-text-primary-light transition-colors hover:text-background-tertiary-light"
-				>
-					<span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-						<span class="font-semibold">Volume pricing</span>
-						<span class="text-text-secondary-light">{priceTiers.length} tiers</span>
+					<span class="flex items-center gap-2">
+						<svg
+							class="h-4 w-4 text-background-tertiary-light"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+							/>
+						</svg>
+						<span>Coffee details</span>
 						{#if savingsSummary}
-							<span class="font-medium text-background-tertiary-light">{savingsSummary}</span>
+							<span
+								class="rounded-full bg-background-primary-light px-2 py-0.5 text-[10px] font-medium text-background-tertiary-light ring-1 ring-background-tertiary-light/30"
+								>{savingsSummary}</span
+							>
 						{/if}
 					</span>
 					<span
@@ -453,36 +395,130 @@
 						aria-hidden="true">▾</span
 					>
 				</summary>
-				<div class="grid gap-2 px-3 pb-3 sm:grid-cols-2">
-					{#each priceTiers as tier (tier.min_lbs)}
-						<div
-							class="rounded-md bg-background-secondary-light px-3 py-2 ring-1 ring-border-light"
-						>
-							<div
-								class="text-[10px] font-semibold uppercase tracking-wide text-text-secondary-light"
+
+				<div class="space-y-4 px-3 pb-4 pt-3">
+					{#if coffee.ai_description}
+						<section>
+							<h4
+								class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-secondary-light"
 							>
-								{tier.min_lbs}+ lb
+								Description
+							</h4>
+							<p
+								class="whitespace-pre-line border-l-2 border-background-tertiary-light/40 pl-3 text-xs italic leading-relaxed text-text-secondary-light"
+							>
+								{coffee.ai_description}
+							</p>
+						</section>
+					{/if}
+
+					{#if tastingNotes}
+						<section>
+							<h4
+								class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-secondary-light"
+							>
+								Full tasting profile
+							</h4>
+							<div class="flex justify-center">
+								{#if isVisible}
+									{#if TastingNotesRadar}
+										<TastingNotesRadar {tastingNotes} size={220} responsive={true} lazy={true} />
+									{:else}
+										<ChartSkeleton height="220px" title="Loading tasting profile..." />
+									{/if}
+								{:else}
+									<div style="height: 220px"></div>
+								{/if}
 							</div>
-							<div class="mt-0.5 text-sm font-semibold text-text-primary-light">
-								{formatPricePerLb(tier.price)}
+						</section>
+					{/if}
+
+					{#if processAnalysis}
+						<section>
+							<div class="mb-1.5 flex flex-wrap items-baseline gap-x-2">
+								<h4 class="text-xs font-semibold text-text-primary-light">Process analysis</h4>
+								<span class="text-xs text-text-secondary-light">{processAnalysis.headline}</span>
 							</div>
-						</div>
-					{/each}
+							{#if processAnalysis.details.length > 0}
+								<ul class="space-y-1 text-xs text-text-secondary-light">
+									{#each processAnalysis.details as detail}
+										<li>{detail}</li>
+									{/each}
+								</ul>
+							{/if}
+							{#if processAnalysis.disclosureLabel || processAnalysis.confidenceLabel || processAnalysis.evidenceLabel}
+								<div class="mt-2 flex flex-wrap gap-1.5">
+									{#if processAnalysis.disclosureLabel}
+										<span
+											class="rounded-full bg-background-primary-light px-2 py-0.5 text-[10px] font-medium ring-1 ring-border-light"
+										>
+											{processAnalysis.disclosureLabel}
+										</span>
+									{/if}
+									{#if processAnalysis.confidenceLabel}
+										<span
+											class="rounded-full bg-background-primary-light px-2 py-0.5 text-[10px] font-medium ring-1 ring-border-light"
+										>
+											{processAnalysis.confidenceLabel}
+										</span>
+									{/if}
+									{#if processAnalysis.evidenceLabel}
+										<span
+											class="rounded-full bg-background-primary-light px-2 py-0.5 text-[10px] font-medium ring-1 ring-border-light"
+										>
+											{processAnalysis.evidenceLabel}
+										</span>
+									{/if}
+								</div>
+							{/if}
+						</section>
+					{/if}
+
+					{#if hasMultiplePriceTiers && priceTiers}
+						<section>
+							<h4
+								class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-secondary-light"
+							>
+								Volume pricing · {priceTiers.length} tiers
+							</h4>
+							<div class="grid gap-2 sm:grid-cols-2">
+								{#each priceTiers as tier (tier.min_lbs)}
+									<div
+										class="rounded-md bg-background-primary-light px-3 py-2 ring-1 ring-border-light"
+									>
+										<div
+											class="text-[10px] font-semibold uppercase tracking-wide text-text-secondary-light"
+										>
+											{tier.min_lbs}+ lb
+										</div>
+										<div class="mt-0.5 text-sm font-semibold text-text-primary-light">
+											{formatPricePerLb(tier.price)}
+										</div>
+									</div>
+								{/each}
+							</div>
+						</section>
+					{/if}
+
+					{#if auxFacts.length > 0}
+						<section>
+							<h4
+								class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-text-secondary-light"
+							>
+								Specs
+							</h4>
+							<dl class="grid grid-cols-1 gap-x-3 gap-y-1 text-[11px] sm:grid-cols-2">
+								{#each auxFacts as fact (fact.label)}
+									<div class="flex items-baseline gap-1">
+										<dt class="font-medium text-text-primary-light">{fact.label}:</dt>
+										<dd class="text-text-secondary-light">{fact.value}</dd>
+									</div>
+								{/each}
+							</dl>
+						</section>
+					{/if}
 				</div>
 			</details>
-		{/if}
-
-		{#if !compact && auxFacts.length > 0}
-			<dl
-				class="flex flex-wrap gap-x-2 gap-y-1 border-t border-border-light pt-2 text-[11px] text-text-secondary-light"
-			>
-				{#each auxFacts as fact (fact.label)}
-					<div class="inline-flex items-baseline gap-1">
-						<dt class="font-medium text-text-primary-light">{fact.label}:</dt>
-						<dd>{fact.value}</dd>
-					</div>
-				{/each}
-			</dl>
 		{/if}
 
 		{#if coffee.link}
@@ -491,7 +527,7 @@
 					href={coffee.link}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
+					class="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:opacity-90 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
 					aria-label={`Open supplier page for ${coffee.name}`}
 				>
 					<span>Supplier page</span>
