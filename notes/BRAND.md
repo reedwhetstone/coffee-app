@@ -17,6 +17,8 @@ Use it to:
 
 `notes/PRODUCT_VISION.md` remains the product compass. This document governs expression: how that strategy should sound, look, and behave.
 
+For component-level implementation recipes, use `notes/UI-FRAMEWORK.md` as the tactical companion to this file. `UI-FRAMEWORK.md` should follow this document and should not introduce independent brand direction.
+
 ## Brand Core
 
 Purveyors is a coffee intelligence platform.
@@ -226,13 +228,20 @@ These are findings from the initial static audit. Direction is needed before com
 
 ## Initial Correction Queue
 
-No component corrections have been made in this pass. Recommended next steps after direction:
+Initial correction pass started on 2026-05-06. Completed items:
 
-1. Replace active `Parchment Platform` copy with Parchment or Parchment API depending on context.
-2. Add role-based Tailwind color aliases and keep current names as compatibility aliases.
-3. Remove ornamental `harvest-gold` usage from product UI.
-4. Define semantic color families for success, warning, danger, info, intelligence, and chart series.
-5. Standardize shared components around `rounded-md` controls and `rounded-lg` panels.
-6. Make mechanical consistency fixes: sign-in capitalization, Coffee App references, no-cookies contrast, and deprecated naming in active docs.
-7. Convert the old UI framework into a short implementation companion to this document.
-8. Audit public pages visually after the language and token decisions are made.
+- Replaced active `Parchment Platform` product copy with Parchment or internal app route language.
+- Added role-based Tailwind color aliases while preserving current compatibility aliases.
+- Removed live `harvest-gold` usage from product UI.
+- Corrected the no-cookies and error surfaces to use brand text, surfaces, and accent buttons.
+- Standardized visible sign-in capitalization to sentence case.
+- Replaced several visible emoji/dashboard markers with compact text badges.
+- Tightened docs/API large-radius usage where it was a low-risk alignment change.
+- Fixed invalid `text-primary-light` class usage in active UI files.
+
+Recommended next steps:
+
+1. Define semantic color usage for all chart series and KPI values before migrating analytics/profit/roast charts.
+2. Decide whether pricing and subscription product cards should keep `rounded-3xl` as an intentional editorial exception.
+3. Choose an icon system and replace remaining ad hoc inline SVG and emoji usage intentionally.
+4. Audit public pages visually after the language and token decisions are made.

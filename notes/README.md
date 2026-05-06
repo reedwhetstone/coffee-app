@@ -10,21 +10,27 @@ If the goal is to understand the current product direction, implementation contr
    - Canonical product direction and strategy test
 2. `BRAND.md`
    - Working brand identity, product language, visual rules, UI/UX principles, and inconsistency log
-3. `decisions/`
+3. `UI-FRAMEWORK.md`
+   - Tactical Svelte/Tailwind component implementation companion for applying `BRAND.md`
+4. `decisions/`
    - Accepted ADRs for real shipped behavior
-4. `API_notes/APITIER.md`
+5. `API_notes/APITIER.md`
    - Current Parchment API tier model
-5. `API_notes/API-strategy.md`
+6. `API_notes/API-strategy.md`
    - Current API strategy, with older speculative ideas trimmed back
-6. `marketing-audits/`
+7. `marketing-audits/`
    - Recent product-language and funnel audits
-7. `implementation-plans/`
+8. `implementation-plans/`
    - Active or recent execution plans
 
 ## Current directories
 
 - `API_notes/`
   - Current API product notes and implementation references
+- `BRAND.md`
+  - Brand identity, product language, visual rules, UI/UX principles, and audit log
+- `UI-FRAMEWORK.md`
+  - Tactical component and Tailwind pattern guide for applying `BRAND.md`
 - `decisions/`
   - ADRs and accepted architecture/product decisions
 - `implementation-plans/`

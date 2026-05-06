@@ -110,14 +110,14 @@
 
 <div class="flex min-h-[calc(100vh-80px)] flex-col items-center justify-center py-10">
 	<div
-		class="max-w-md rounded-2xl border border-background-tertiary-light bg-background-secondary-light p-8 shadow-md"
+		class="max-w-md rounded-lg border border-background-tertiary-light bg-background-secondary-light p-8 shadow-md"
 	>
 		{#if loading}
 			<div class="flex flex-col items-center justify-center py-10">
 				<div
-					class="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"
+					class="h-12 w-12 animate-spin rounded-full border-4 border-accent border-t-transparent"
 				></div>
-				<p class="text-primary-light mt-4">Reconciling your checkout session...</p>
+				<p class="mt-4 text-text-primary-light">Reconciling your checkout session...</p>
 			</div>
 		{:else if error}
 			<div class="flex flex-col items-center justify-center text-center">
@@ -135,13 +135,13 @@
 						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					/>
 				</svg>
-				<h2 class="text-primary-light mt-4 text-xl font-bold">Something went wrong</h2>
-				<p class="text-primary-light mt-2">{error}</p>
+				<h2 class="mt-4 text-xl font-bold text-text-primary-light">Something went wrong</h2>
+				<p class="mt-2 text-text-primary-light">{error}</p>
 				<button
 					onclick={() => goto('/subscription')}
-					class="mt-6 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-white transition-opacity hover:opacity-90"
 				>
-					Try Again
+					Try again
 				</button>
 			</div>
 		{:else if sessionStatus === 'complete'}
@@ -160,14 +160,14 @@
 						d="M5 13l4 4L19 7"
 					/>
 				</svg>
-				<h2 class="text-primary-light mt-4 text-xl font-bold">Payment Successful</h2>
-				<p class="text-primary-light mt-2">
+				<h2 class="mt-4 text-xl font-bold text-text-primary-light">Payment successful</h2>
+				<p class="mt-2 text-text-primary-light">
 					Thank you. {reconciliationMessage || 'Your payment has been confirmed.'}
 				</p>
 				{#if reconciliationComplete}
-					<p class="mt-1 text-sm text-green-600">✅ Entitlement reconciliation completed</p>
+					<p class="mt-1 text-sm text-success-strong">Entitlement reconciliation completed</p>
 				{:else}
-					<p class="mt-1 text-sm text-blue-600">⏳ Billing reconciliation in progress...</p>
+					<p class="mt-1 text-sm text-info">Billing reconciliation in progress...</p>
 				{/if}
 
 				{#if resolvedEntitlements}
@@ -194,16 +194,16 @@
 
 				<button
 					onclick={returnToSubscription}
-					class="mt-6 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-white transition-opacity hover:opacity-90"
 				>
-					Return to Subscription Control Plane
+					Return to subscription control plane
 				</button>
 			</div>
 		{:else}
 			<div class="flex flex-col items-center justify-center text-center">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-					class="h-16 w-16 text-yellow-500"
+					class="h-16 w-16 text-warning"
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"
@@ -215,16 +215,16 @@
 						d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					/>
 				</svg>
-				<h2 class="text-primary-light mt-4 text-xl font-bold">Payment Pending</h2>
-				<p class="text-primary-light mt-2">
+				<h2 class="mt-4 text-xl font-bold text-text-primary-light">Payment pending</h2>
+				<p class="mt-2 text-text-primary-light">
 					Your payment is still being processed. We'll reconcile entitlements as soon as Stripe
 					marks the checkout complete.
 				</p>
 				<button
 					onclick={returnToSubscription}
-					class="mt-6 rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-white transition-opacity hover:opacity-90"
 				>
-					Return to Subscription Control Plane
+					Return to subscription control plane
 				</button>
 			</div>
 		{/if}

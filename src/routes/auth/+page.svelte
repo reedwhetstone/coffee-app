@@ -40,7 +40,7 @@
 </script>
 
 <svelte:head>
-	<title>Sign In - Purveyors</title>
+	<title>Sign in - Purveyors</title>
 	<meta name="description" content="Sign in to your Purveyors account" />
 </svelte:head>
 

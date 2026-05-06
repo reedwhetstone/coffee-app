@@ -17,13 +17,13 @@
 	<title>Parchment API</title>
 	<meta
 		name="description"
-		content="Stable /v1/catalog access for green coffee market data, with unified docs, the Parchment Console, and clear separation between the public contract and platform routes."
+		content="Stable /v1/catalog access for green coffee market data, with unified docs, the Parchment Console, and clear separation between the public contract and internal app routes."
 	/>
 </svelte:head>
 
 <div class="space-y-8">
 	<section
-		class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8 lg:p-10"
+		class="rounded-2xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8 lg:p-10"
 	>
 		<div class="max-w-4xl">
 			<p class="text-xs font-semibold uppercase tracking-[0.18em] text-background-tertiary-light">
@@ -70,7 +70,7 @@
 				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-xs text-text-primary-light"
 				>/api/*</code
 			>
-			as the platform layer that powers the web app and Console. Use
+			as the internal app layer that powers the web app and Console. Use
 			<a href="/docs" class="text-background-tertiary-light hover:underline">/docs</a>
 			as the canonical docs entry and
 			<a href="/api-dashboard" class="text-background-tertiary-light hover:underline"
@@ -112,7 +112,7 @@
 
 	<section class="grid gap-6 lg:grid-cols-2">
 		<div
-			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
+			class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 		>
 			<h2 class="text-2xl font-semibold text-text-primary-light">What you can build</h2>
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
@@ -141,7 +141,7 @@
 		</div>
 
 		<div
-			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
+			class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 		>
 			<h2 class="text-2xl font-semibold text-text-primary-light">Built for</h2>
 			<ul class="mt-5 space-y-3 text-sm leading-relaxed text-text-primary-light sm:text-base">
@@ -176,7 +176,7 @@
 	</section>
 
 	<section
-		class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
+		class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 	>
 		<h2 class="text-2xl font-semibold text-text-primary-light">Plans</h2>
 		<div class="mt-5 overflow-x-auto rounded-2xl border border-border-light">
@@ -233,7 +233,7 @@
 	<section class="grid gap-6 xl:grid-cols-4">
 		<a
 			href="/docs/api/overview"
-			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
+			class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
 			<h2 class="text-xl font-semibold text-text-primary-light">API docs</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
@@ -242,7 +242,7 @@
 		</a>
 		<a
 			href="/api-dashboard"
-			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
+			class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
 			<h2 class="text-xl font-semibold text-text-primary-light">Parchment Console</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
@@ -251,7 +251,7 @@
 		</a>
 		<a
 			href="/catalog"
-			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
+			class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
 			<h2 class="text-xl font-semibold text-text-primary-light">Live catalog</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
@@ -260,7 +260,7 @@
 		</a>
 		<a
 			href="/analytics"
-			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
+			class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm transition-colors hover:border-background-tertiary-light/40 hover:bg-background-secondary-light"
 		>
 			<h2 class="text-xl font-semibold text-text-primary-light">Market intelligence</h2>
 			<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
