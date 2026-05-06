@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc">
+  <title id="title">Purveyors visionary homepage redesign</title>
+  <desc id="desc">A dark premium market intelligence homepage concept with live coffee market cards, charts, and catalog previews.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#150f0a"/>
+      <stop offset="0.48" stop-color="#28170d"/>
+      <stop offset="1" stop-color="#061d22"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="58%" cy="28%" r="58%">
+      <stop offset="0" stop-color="#f6b35e" stop-opacity="0.45"/>
+      <stop offset="0.45" stop-color="#2dd4bf" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff4dc" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.04"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <style>
+      .serif { font-family: Georgia, 'Times New Roman', serif; }
+      .sans { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .muted { fill: #d7c7ae; opacity: 0.78; }
+      .cream { fill: #fff7e8; }
+      .amber { fill: #f6b35e; }
+      .teal { fill: #49ead7; }
+      .stroke { stroke: #fff0d0; stroke-opacity: 0.16; }
+      .thin { stroke-width: 1; }
+      .chip { fill: #fff7e8; fill-opacity: 0.08; stroke: #fff0d0; stroke-opacity: 0.18; }
+    </style>
+  </defs>
+  <rect width="1600" height="1100" fill="url(#bg)"/>
+  <rect width="1600" height="1100" fill="url(#halo)"/>
+  <g opacity="0.18" stroke="#fff0d0" stroke-width="1">
+    <path d="M0 210H1600M0 410H1600M0 610H1600M0 810H1600"/>
+    <path d="M210 0V1100M510 0V1100M810 0V1100M1110 0V1100M1410 0V1100"/>
+  </g>
+  <g class="sans" transform="translate(88 54)">
+    <text x="0" y="24" class="cream" font-size="26" font-weight="800">purveyors.io</text>
+    <text x="260" y="23" class="muted" font-size="16">For Buyers</text>
+    <text x="380" y="23" class="muted" font-size="16">Pricing</text>
+    <text x="468" y="23" class="muted" font-size="16">Market Data</text>
+    <text x="600" y="23" class="muted" font-size="16">API</text>
+    <text x="660" y="23" class="muted" font-size="16">Docs</text>
+    <rect x="1236" y="-14" width="128" height="44" rx="22" fill="#fff7e8" fill-opacity="0.08" stroke="#fff0d0" stroke-opacity="0.18"/>
+    <text x="1268" y="13" class="cream" font-size="15" font-weight="700">Sign in</text>
+    <rect x="1380" y="-14" width="124" height="44" rx="22" fill="#f6b35e"/>
+    <text x="1410" y="13" fill="#1b1009" font-size="15" font-weight="800">See plans</text>
+  </g>
+  <g transform="translate(88 154)">
+    <rect x="0" y="0" width="260" height="38" rx="19" class="chip"/>
+    <circle cx="24" cy="19" r="6" fill="#49ead7"/>
+    <text x="44" y="25" class="sans amber" font-size="14" font-weight="800">LIVE MARKET INTELLIGENCE</text>
+    <text x="0" y="130" class="serif cream" font-size="86" font-weight="700" letter-spacing="-2">Source coffee with</text>
+    <text x="0" y="222" class="serif cream" font-size="86" font-weight="700" letter-spacing="-2">the whole market</text>
+    <text x="0" y="314" class="serif cream" font-size="86" font-weight="700" letter-spacing="-2">already mapped.</text>
+    <text x="4" y="378" class="sans muted" font-size="23">41+ importers, daily listings, delistings, price movement,</text>
+    <text x="4" y="412" class="sans muted" font-size="23">process evidence, and origin benchmarks in one procurement cockpit.</text>
+    <rect x="4" y="462" width="240" height="58" rx="29" fill="#f6b35e"/>
+    <text x="40" y="498" fill="#1b1009" class="sans" font-size="18" font-weight="900">Explore analytics</text>
+    <rect x="264" y="462" width="208" height="58" rx="29" class="chip"/>
+    <text x="305" y="498" class="sans cream" font-size="18" font-weight="800">Browse catalog</text>
+    <text x="502" y="498" class="sans teal" font-size="17" font-weight="800">How it works →</text>
+  </g>
+  <g transform="translate(904 142)" filter="url(#shadow)">
+    <rect x="0" y="0" width="604" height="602" rx="38" fill="url(#card)" stroke="#fff0d0" stroke-opacity="0.18"/>
+    <g transform="translate(36 34)">
+      <text x="0" y="24" class="sans cream" font-size="18" font-weight="900">Morning market pulse</text>
+      <text x="0" y="54" class="sans muted" font-size="14">Updated after scraper completion · 06:12 UTC</text>
+      <g transform="translate(0 92)">
+        <rect width="250" height="148" rx="24" fill="#fff7e8" fill-opacity="0.08" stroke="#fff0d0" stroke-opacity="0.14"/>
+        <text x="24" y="38" class="sans muted" font-size="13" font-weight="800">ORIGIN SIGNAL</text>
+        <text x="24" y="82" class="serif cream" font-size="32" font-weight="700">Ethiopia</text>
+        <text x="24" y="116" class="sans teal" font-size="20" font-weight="900">−4.9% WoW</text>
+      </g>
+      <g transform="translate(278 92)">
+        <rect width="250" height="148" rx="24" fill="#fff7e8" fill-opacity="0.08" stroke="#fff0d0" stroke-opacity="0.14"/>
+        <text x="24" y="38" class="sans muted" font-size="13" font-weight="800">CATALOG COVERAGE</text>
+        <text x="24" y="82" class="serif cream" font-size="32" font-weight="700">1,064 lots</text>
+        <text x="24" y="116" class="sans amber" font-size="20" font-weight="900">41+ importers</text>
+      </g>
+      <g transform="translate(0 278)">
+        <rect width="528" height="210" rx="28" fill="#071f23" fill-opacity="0.72" stroke="#49ead7" stroke-opacity="0.22"/>
+        <text x="28" y="42" class="sans cream" font-size="17" font-weight="900">Price index corridor</text>
+        <polyline points="32,156 94,132 154,142 216,86 280,98 342,74 406,110 492,58" fill="none" stroke="#49ead7" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="32,174 94,168 154,152 216,146 280,126 342,136 406,118 492,104" fill="none" stroke="#f6b35e" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 12"/>
+        <g class="sans muted" font-size="12">
+          <text x="32" y="190">Brazil</text><text x="142" y="190">Guatemala</text><text x="288" y="190">Ethiopia</text><text x="430" y="190">Yemen</text>
+        </g>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(88 812)">
+    <text x="0" y="0" class="sans muted" font-size="15" font-weight="900">CATALOG PREVIEW</text>
+    <g transform="translate(0 36)">
+      <rect width="430" height="176" rx="26" fill="#fff7e8" fill-opacity="0.08" stroke="#fff0d0" stroke-opacity="0.15"/>
+      <text x="28" y="42" class="serif cream" font-size="27" font-weight="700">Guatemala Huehuetenango</text>
+      <text x="28" y="76" class="sans muted" font-size="15">Washed · 1524–1830 MASL · SHB</text>
+      <text x="28" y="128" class="sans amber" font-size="30" font-weight="900">$16.00/lb</text>
+      <rect x="274" y="104" width="126" height="36" rx="18" fill="#49ead7" fill-opacity="0.14"/>
+      <text x="294" y="127" class="sans teal" font-size="13" font-weight="900">HIGH CONF.</text>
+    </g>
+    <g transform="translate(462 36)">
+      <rect width="430" height="176" rx="26" fill="#fff7e8" fill-opacity="0.08" stroke="#fff0d0" stroke-opacity="0.15"/>
+      <text x="28" y="42" class="serif cream" font-size="27" font-weight="700">Ethiopia Sidamo Natural</text>
+      <text x="28" y="76" class="sans muted" font-size="15">Wild heirloom · 1770–2200 MASL</text>
+      <text x="28" y="128" class="sans amber" font-size="30" font-weight="900">$16.00/lb</text>
+      <rect x="274" y="104" width="126" height="36" rx="18" fill="#fff7e8" fill-opacity="0.10"/>
+      <text x="300" y="127" class="sans cream" font-size="13" font-weight="900">NEW LOT</text>
+    </g>
+    <g transform="translate(924 36)">
+      <rect width="430" height="176" rx="26" fill="#fff7e8" fill-opacity="0.08" stroke="#fff0d0" stroke-opacity="0.15"/>
+      <text x="28" y="42" class="serif cream" font-size="27" font-weight="700">Yemen Ismaili</text>
+      <text x="28" y="76" class="sans muted" font-size="15">Natural · tiny dense beans · scarce</text>
+      <text x="28" y="128" class="sans amber" font-size="30" font-weight="900">$94.00/lb</text>
+      <rect x="274" y="104" width="126" height="36" rx="18" fill="#f6b35e" fill-opacity="0.14"/>
+      <text x="301" y="127" class="sans amber" font-size="13" font-weight="900">SCARCE</text>
+    </g>
+  </g>
+</svg>
