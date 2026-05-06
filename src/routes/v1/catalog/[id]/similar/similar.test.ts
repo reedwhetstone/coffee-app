@@ -390,7 +390,32 @@ describe('/v1/catalog/[id]/similar', () => {
 		});
 		expect(body.data.matches[0]).toMatchObject({
 			coffee: { id: 2200, source: 'Supplier B' },
-			score: { dimensions: { origin: null, processing: null, tasting: null } }
+			score: { dimensions: { origin: null, processing: null, tasting: null } },
+			match: { category: 'similar_profile' }
+		});
+	});
+
+	it('does not return legacy fallback rows without dimensions for likely-same mode', async () => {
+		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
+		const { rpc } = createSupabaseMock({
+			v2Error: {
+				message: 'permission denied for function find_similar_beans_aggregated_v2',
+				code: '42501'
+			},
+			legacyMatches: [{ ...matchRow, avg_similarity: 0.97, chunk_matches: 4 }]
+		});
+
+		const response = await GET(
+			makeEvent('https://app.test/v1/catalog/1182/similar?limit=5&mode=likely_same')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.data.matches).toEqual([]);
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 125
 		});
 	});
 
@@ -412,6 +437,32 @@ describe('/v1/catalog/[id]/similar', () => {
 
 		expect(response.status).toBe(403);
 		expect(body.teaser).toMatchObject({ locked: true, similar_match_count: 1, beta: true });
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 1000
+		});
+	});
+
+	it('does not present a capped legacy count fallback as an exact teaser count', async () => {
+		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
+		const { rpc } = createSupabaseMock({
+			v2Error: {
+				message: 'Could not find the function public.count_similar_beans_aggregated_v2',
+				code: 'PGRST202'
+			},
+			legacyMatches: Array.from({ length: 1000 }, (_, index) => ({
+				...matchRow,
+				coffee_id: 3000 + index,
+				stocked: index % 2 === 0
+			}))
+		});
+
+		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
+		const body = await response.json();
+
+		expect(response.status).toBe(403);
+		expect(body.teaser).toMatchObject({ locked: true, similar_match_count: null, beta: true });
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,

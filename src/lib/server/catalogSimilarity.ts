@@ -263,6 +263,7 @@ export const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
 export const MAX_CATALOG_SIMILARITY_LIMIT = 25;
 const MODE_FILTER_OVERFETCH_MULTIPLIER = 5;
 const MODE_FILTER_RPC_MATCH_LIMIT = MAX_CATALOG_SIMILARITY_LIMIT * MODE_FILTER_OVERFETCH_MULTIPLIER;
+const LEGACY_COUNT_FALLBACK_MATCH_LIMIT = 1000;
 export const MIN_CATALOG_SIMILARITY_THRESHOLD = 0.5;
 export const MAX_CATALOG_SIMILARITY_THRESHOLD = 0.99;
 
@@ -401,7 +402,9 @@ export function deriveMatchCategory(input: {
 	processing: number | null;
 	chunkMatches: number;
 }): CatalogMatchCategory {
+	const hasDimensionalEvidence = input.origin !== null || input.processing !== null;
 	if (
+		hasDimensionalEvidence &&
 		input.average >= 0.88 &&
 		input.chunkMatches >= 2 &&
 		(input.origin === null || input.origin >= 0.84) &&
@@ -715,7 +718,7 @@ export async function countCatalogSimilarityMatches(input: {
 	supabase: SupabaseClient;
 	coffeeId: number;
 	query: Pick<CatalogSimilarityQuery, 'threshold' | 'stockedOnly'>;
-}): Promise<number> {
+}): Promise<number | null> {
 	const supabase = input.supabase as unknown as SimilaritySupabaseClient;
 	await fetchTarget(supabase, input.coffeeId);
 	const { data, error } = await supabase.rpc('count_similar_beans_aggregated_v2', {
@@ -729,11 +732,12 @@ export async function countCatalogSimilarityMatches(input: {
 		const legacy = await supabase.rpc('find_similar_beans_aggregated', {
 			target_coffee_id: input.coffeeId,
 			match_threshold: input.query.threshold,
-			match_count: 1000
+			match_count: LEGACY_COUNT_FALLBACK_MATCH_LIMIT
 		});
 		if (legacy.error) throw new Error(legacy.error.message);
-		return (legacy.data ?? []).filter((row) => !input.query.stockedOnly || row.stocked === true)
-			.length;
+		const rows = legacy.data ?? [];
+		if (rows.length >= LEGACY_COUNT_FALLBACK_MATCH_LIMIT) return null;
+		return rows.filter((row) => !input.query.stockedOnly || row.stocked === true).length;
 	}
 	return Math.max(0, Math.trunc(toFiniteNumber(data) ?? 0));
 }

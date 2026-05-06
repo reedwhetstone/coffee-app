@@ -71,6 +71,9 @@ describe('catalog similarity helpers', () => {
 		expect(
 			deriveMatchCategory({ average: 0.91, origin: 0.7, processing: 0.9, chunkMatches: 2 })
 		).toBe('similar_profile');
+		expect(
+			deriveMatchCategory({ average: 0.95, origin: null, processing: null, chunkMatches: 4 })
+		).toBe('similar_profile');
 	});
 
 	it('uses raw scores for classification before rounding display scores', () => {
