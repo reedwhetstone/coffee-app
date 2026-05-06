@@ -605,11 +605,7 @@ function isLikelyMissingCanonicalSimilarityRpc(error: { message: string; code?: 
 		error.code === 'PGRST202' ||
 		message.includes('structure of query does not match function result type') ||
 		message.includes('returned type jsonb[] does not match expected type jsonb') ||
-		message.includes('could not find the function') ||
-		message.includes('function find_similar_beans_aggregated_v2') ||
-		message.includes('function count_similar_beans_aggregated_v2') ||
-		message.includes('permission denied for function find_similar_beans_aggregated_v2') ||
-		message.includes('permission denied for function count_similar_beans_aggregated_v2')
+		message.includes('could not find the function')
 	);
 }
 
