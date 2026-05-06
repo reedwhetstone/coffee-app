@@ -6,13 +6,13 @@
 	<title>Purveyors docs | Parchment API and CLI</title>
 	<meta
 		name="description"
-		content="Unified public documentation for the Parchment API, Parchment Console, and @purveyors/cli. Start with /v1/catalog, then explore platform and automation workflows."
+		content="Unified public documentation for the Parchment API, Parchment Console, and @purveyors/cli. Start with /v1/catalog, then explore internal routes and automation workflows."
 	/>
 </svelte:head>
 
 <div class="space-y-8">
 	<section
-		class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
+		class="rounded-2xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 	>
 		<p class="text-xs font-semibold uppercase tracking-[0.18em] text-background-tertiary-light">
 			Purveyors docs
@@ -23,17 +23,17 @@
 		<p class="mt-4 max-w-3xl text-base leading-relaxed text-text-secondary-light sm:text-lg">
 			Unified documentation for the stable public catalog endpoint at <code
 				class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/v1/catalog</code
-			>, the broader platform route layer under
+			>, the broader internal route layer under
 			<code class="rounded bg-background-secondary-light px-1.5 py-0.5 text-sm">/api/*</code>, the
-			Parchment Console, and the CLI. Start with API docs for HTTP integrations, then use the
-			platform and CLI docs for product internals, automation workflows, and agent-friendly tooling.
+			Parchment Console, and the CLI. Start with API docs for HTTP integrations, then use the app
+			and CLI docs for product internals, automation workflows, and agent-friendly tooling.
 		</p>
 	</section>
 
 	<section class="grid gap-6 lg:grid-cols-2">
 		{#each DOCS_NAV as section}
 			<div
-				class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
+				class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 			>
 				<div class="flex items-start justify-between gap-4">
 					<div>
@@ -76,7 +76,7 @@
 		>
 			<div class="text-sm font-semibold text-text-primary-light">API product page</div>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary-light">
-				Plans, pricing, quick start, and the public-versus-platform contract split.
+				Plans, pricing, quick start, and the public-versus-internal contract split.
 			</p>
 		</a>
 		<a

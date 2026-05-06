@@ -24,53 +24,53 @@
 	const quickStartCards: QuickStartCard[] = [
 		{
 			href: '/catalog',
-			icon: '☕',
+			icon: 'CAT',
 			title: 'Catalog',
 			description: 'Browse live green coffees, filters, and sourcing context.'
 		},
 		{
 			href: '/analytics',
-			icon: '📈',
+			icon: 'MKT',
 			title: 'Market Data',
 			description: 'Track supply index changes and public market movement.'
 		},
 		{
 			href: '/api-dashboard',
-			icon: '🔑',
+			icon: 'API',
 			title: 'Parchment Console',
 			description: 'Manage Parchment API keys, docs, and usage.'
 		},
 		{
 			href: '/beans',
-			icon: '🌱',
+			icon: 'INV',
 			title: 'Inventory',
 			description: 'Track green coffee stock, purchases, and usage.',
 			requiresMember: true
 		},
 		{
 			href: '/roast',
-			icon: '🔥',
+			icon: 'RST',
 			title: 'Roast',
 			description: 'Log roast profiles and monitor development over time.',
 			requiresMember: true
 		},
 		{
 			href: '/profit',
-			icon: '📊',
+			icon: 'PFT',
 			title: 'Profit',
 			description: 'Review margins, sales, and roastery profitability.',
 			requiresMember: true
 		},
 		{
 			href: '/chat',
-			icon: '💬',
+			icon: 'CHT',
 			title: 'Chat',
 			description: 'Ask questions about coffees and your roasting data.',
 			requiresMember: true
 		},
 		{
 			href: '/admin',
-			icon: '🛠️',
+			icon: 'ADM',
 			title: 'Admin',
 			description: 'Manage administrative workflows and internal tooling.',
 			requiresAdmin: true
@@ -114,14 +114,14 @@
 					onclick={() => goto('/catalog')}
 					class="rounded-md border border-background-tertiary-light px-5 py-2.5 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 				>
-					Browse Catalog
+					Browse catalog
 				</button>
 				{#if canAccessMemberRoutes}
 					<button
 						onclick={() => goto('/beans')}
 						class="rounded-md bg-background-tertiary-light px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 					>
-						Open Inventory
+						Open inventory
 					</button>
 				{/if}
 			</div>
@@ -129,9 +129,7 @@
 	</section>
 
 	{#if !canAccessMemberRoutes}
-		<section
-			class="rounded-2xl border border-background-tertiary-light/20 bg-gradient-to-r from-background-tertiary-light/10 to-harvest-gold/10 p-6"
-		>
+		<section class="rounded-lg border border-background-tertiary-light/20 bg-accent-subtle/10 p-6">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 				<div>
 					<h2 class="text-xl font-semibold text-text-primary-light">
@@ -146,7 +144,7 @@
 					onclick={() => goto('/subscription')}
 					class="rounded-md bg-background-tertiary-light px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 				>
-					Start Free Trial
+					Start free trial
 				</button>
 			</div>
 		</section>
@@ -169,7 +167,11 @@
 					onclick={() => goto(card.href)}
 					class="group rounded-xl border border-border-light bg-background-secondary-light p-6 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-background-tertiary-light/40 hover:shadow-md"
 				>
-					<div class="mb-4 text-3xl">{card.icon}</div>
+					<div
+						class="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-md bg-accent-subtle/15 text-xs font-semibold tracking-wide text-background-tertiary-light"
+					>
+						{card.icon}
+					</div>
 					<h3
 						class="text-lg font-semibold text-text-primary-light transition-colors duration-200 group-hover:text-background-tertiary-light"
 					>

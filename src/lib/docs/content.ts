@@ -74,7 +74,7 @@ export const DOCS_NAV: DocsNavSection[] = [
 		key: 'api',
 		title: 'API docs',
 		description:
-			'Public catalog and price-index contracts, platform route matrix, analytics, billing flows, auth, and operational guidance.',
+			'Public catalog and price-index contracts, internal route matrix, analytics, billing flows, auth, and operational guidance.',
 		basePath: '/docs/api',
 		items: [
 			{
@@ -96,7 +96,7 @@ export const DOCS_NAV: DocsNavSection[] = [
 			},
 			{
 				slug: 'platform',
-				title: 'Platform routes',
+				title: 'Internal app routes',
 				summary:
 					'Authenticated and internal /api/* route matrix for catalog app flows, chat, workspaces, and tools.'
 			},
@@ -192,8 +192,8 @@ const docsPages: DocsPage[] = [
 		slug: 'overview',
 		title: 'API overview',
 		summary:
-			'Parchment Platform ships stable public catalog and price-index APIs plus a larger internal platform route layer for the web app.',
-		eyebrow: 'Parchment Platform',
+			'Parchment ships stable public catalog and price-index APIs plus the internal route layer that powers the web app.',
+		eyebrow: 'Parchment',
 		intro: [
 			'Parchment is the API and Console layer inside Purveyors. It exposes normalized green coffee catalog data, beta catalog similarity matching, and aggregate market intelligence through small public HTTP contracts plus a broader authenticated product backend. Those surfaces share domain logic, but they do not carry the same compatibility promises.',
 			'The stable public catalog contract is GET /v1/catalog. Anonymous requests are supported for public discovery, while API-key requests are the intended production integration path because they carry plan enforcement and X-RateLimit-* usage headers. GET /v1/catalog/{id}/similar is a beta member and paid API route for candidate matching, not a canonical identity claim. GET /v1/price-index is a Parchment Intelligence API-key contract for aggregate price_index_snapshots data only. It does not expose raw supplier rows, CSV exports, alerts, or webhook support. Most /api/* routes exist to power the Purveyors web platform: catalog UI helpers, inventory, roast workflows, sales tracking, AI chat, workspaces, billing, and admin tooling.'
@@ -202,7 +202,7 @@ const docsPages: DocsPage[] = [
 			{
 				title: 'Surface map',
 				body: [
-					'Treat the platform as two layers. /v1/* is the public namespace for external integrations. /api/* is the first-party application layer. Some /api/* routes are still externally reachable, but that does not make them stable public contracts.'
+					'Treat the API model as two layers. /v1/* is the public namespace for external integrations. /api/* is the first-party application layer. Some /api/* routes are still externally reachable, but that does not make them stable public contracts.'
 				],
 				table: {
 					headers: ['Surface', 'Auth', 'Audience', 'Contract'],
@@ -883,10 +883,10 @@ const docsPages: DocsPage[] = [
 	{
 		section: 'api',
 		slug: 'platform',
-		title: 'Platform route matrix',
+		title: 'Internal app route matrix',
 		summary:
 			'Authenticated and internal /api/* routes that power the Purveyors product surface, grouped by capability and stability.',
-		eyebrow: 'Internal platform routes',
+		eyebrow: 'Internal app routes',
 		intro: [
 			'This page distinguishes the stable external v1 contracts, beta catalog endpoints, legacy aliases, internal app APIs, Console control-plane routes, and admin-only surfaces.',
 			'Most /api/* routes are not public compatibility promises. Document them accurately, but keep external integrations pointed at /v1/catalog, /v1/catalog/{id}/similar when matching access is available, /v1/price-index for aggregate market data, or @purveyors/cli whenever possible.'
@@ -1310,7 +1310,7 @@ const docsPages: DocsPage[] = [
 		slug: 'roast-profiles',
 		title: 'Roast profile routes',
 		summary:
-			'Create, import, analyze, and clear roast profiles through session-authenticated platform endpoints.',
+			'Create, import, analyze, and clear roast profiles through session-authenticated internal endpoints.',
 		eyebrow: 'Roasting',
 		intro: [
 			'Roast routes cover CRUD for roast profiles, Artisan import, chart telemetry, chart display settings, data clearing, and AI-assisted classification.',
@@ -1413,7 +1413,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Market intelligence',
 		intro: [
 			'The /analytics page delivers market intelligence derived from the same normalized catalog that powers the public API. Public visitors can browse the core market overview: origin price trends, processing mix, origin price ranges, and the supplier/listing/origin stat bar. Parchment Intelligence users get the deeper supplier comparison, supplier health, arrivals, delistings, and extended trend modules.',
-			'Analytics is important to the platform story, but only the aggregate /v1/price-index subset is exposed as a stable API-key contract. Keep the distinction between product UI, internal helpers, and public REST contract explicit.'
+			'Analytics is important to the product story, but only the aggregate /v1/price-index subset is exposed as a stable API-key contract. Keep the distinction between product UI, internal helpers, and public REST contract explicit.'
 		],
 		sections: [
 			{
@@ -1495,7 +1495,7 @@ const docsPages: DocsPage[] = [
 			'Stripe lifecycle routes, Console-adjacent account flows, webhook processing, and admin-only maintenance endpoints.',
 		eyebrow: 'Operations',
 		intro: [
-			'The billing and admin layer sits behind the Parchment Console and subscription flows. These routes are operational, not public platform APIs.',
+			'The billing and admin layer sits behind the Parchment Console and subscription flows. These routes are operational, not public APIs.',
 			'Most billing routes require a user session. The Stripe webhook requires a valid Stripe signature. Admin routes should be treated as support and maintenance surfaces.'
 		],
 		sections: [
