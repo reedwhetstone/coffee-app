@@ -8,15 +8,17 @@ If the goal is to understand the current product direction, implementation contr
 
 1. `PRODUCT_VISION.md`
    - Canonical product direction and strategy test
-2. `decisions/`
+2. `BRAND.md`
+   - Working brand identity, product language, visual rules, UI/UX principles, and inconsistency log
+3. `decisions/`
    - Accepted ADRs for real shipped behavior
-3. `API_notes/APITIER.md`
+4. `API_notes/APITIER.md`
    - Current Parchment API tier model
-4. `API_notes/API-strategy.md`
+5. `API_notes/API-strategy.md`
    - Current API strategy, with older speculative ideas trimmed back
-5. `marketing-audits/`
+6. `marketing-audits/`
    - Recent product-language and funnel audits
-6. `implementation-plans/`
+7. `implementation-plans/`
    - Active or recent execution plans
 
 ## Current directories
