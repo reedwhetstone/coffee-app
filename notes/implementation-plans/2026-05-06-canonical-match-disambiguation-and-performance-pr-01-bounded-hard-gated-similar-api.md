@@ -108,7 +108,7 @@ A blocked row can still be a `similar_recommendation`.
 Run local validation:
 
 ```bash
-pnpm run check
+pnpm check --fail-on-warnings
 pnpm run lint
 pnpm exec vitest run \
   src/lib/server/catalogSimilarity.test.ts \

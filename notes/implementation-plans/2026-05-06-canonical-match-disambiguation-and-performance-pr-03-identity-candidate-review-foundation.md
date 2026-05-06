@@ -57,7 +57,7 @@ Likely coffee-app files:
 ## Test plan
 
 ```bash
-pnpm run check
+pnpm check --fail-on-warnings
 pnpm run lint
 pnpm exec vitest run src/lib/server/beanIdentity.test.ts
 ```
