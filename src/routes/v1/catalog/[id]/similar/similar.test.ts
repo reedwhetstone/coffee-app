@@ -387,13 +387,49 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 5
+			match_count: 125
 		});
 		expect(body.data.matches[0]).toMatchObject({
 			coffee: { id: 2200, source: 'Supplier B' },
 			score: { dimensions: { origin: null, processing: null, tasting: null } },
 			match: { category: 'similar_profile' }
 		});
+	});
+
+	it('overfetches legacy fallback rows before applying stocked filtering', async () => {
+		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
+		const { rpc } = createSupabaseMock({
+			v2Error: {
+				message: 'Could not find the function public.find_similar_beans_aggregated_v2',
+				code: 'PGRST202'
+			},
+			legacyMatches: [
+				{ ...matchRow, coffee_id: 3001, stocked: false },
+				{ ...matchRow, coffee_id: 3002, stocked: false },
+				{ ...matchRow, coffee_id: 3003, stocked: true },
+				{ ...matchRow, coffee_id: 3004, stocked: true }
+			],
+			details: [
+				{ ...matchDetailRow, id: 3003, stocked: true },
+				{ ...matchDetailRow, id: 3004, stocked: true }
+			]
+		});
+
+		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?limit=2'));
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 125
+		});
+		expect(body.data.matches.map((match: { coffee: { id: number } }) => match.coffee.id)).toEqual([
+			3003, 3004
+		]);
+		expect(
+			body.data.matches.every((match: { coffee: { stocked: boolean } }) => match.coffee.stocked)
+		).toBe(true);
 	});
 
 	it('does not return legacy fallback rows without dimensions for likely-same mode', async () => {

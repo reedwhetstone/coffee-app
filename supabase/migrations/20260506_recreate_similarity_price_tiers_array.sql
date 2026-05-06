@@ -1,8 +1,15 @@
--- Canonical similarity contract v2
--- Adds canonical pricing and dimension-score fields without changing the legacy RPC
--- signatures consumed by older CLI/app clients.
+-- Recreate canonical similarity RPCs with the live coffee_catalog.price_tiers type.
+--
+-- The original 20260504 migration declared price_tiers as JSONB, but prod has
+-- coffee_catalog.price_tiers as JSONB[] (information_schema: data_type ARRAY,
+-- udt_name _jsonb). PostgreSQL cannot change a TABLE-returning function's
+-- return type with CREATE OR REPLACE, so this forward migration drops and
+-- recreates the v2 functions before restoring the intended grants.
 
-CREATE OR REPLACE FUNCTION find_similar_beans_v2(
+DROP FUNCTION IF EXISTS find_similar_beans_v2(INT, FLOAT, INT, TEXT[], BOOLEAN);
+DROP FUNCTION IF EXISTS find_similar_beans_aggregated_v2(INT, FLOAT, INT, BOOLEAN);
+
+CREATE FUNCTION find_similar_beans_v2(
   target_coffee_id INT,
   match_threshold FLOAT DEFAULT 0.70,
   match_count INT DEFAULT 10,
@@ -22,7 +29,7 @@ RETURNS TABLE (
   drying_method TEXT,
   cost_lb NUMERIC,
   price_per_lb NUMERIC,
-  price_tiers JSONB,
+  price_tiers JSONB[],
   stocked BOOLEAN,
   similarity FLOAT,
   chunk_type TEXT
@@ -90,7 +97,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION find_similar_beans_aggregated_v2(
+CREATE FUNCTION find_similar_beans_aggregated_v2(
   target_coffee_id INT,
   match_threshold FLOAT DEFAULT 0.70,
   match_count INT DEFAULT 10,
@@ -109,7 +116,7 @@ RETURNS TABLE (
   drying_method TEXT,
   cost_lb NUMERIC,
   price_per_lb NUMERIC,
-  price_tiers JSONB,
+  price_tiers JSONB[],
   stocked BOOLEAN,
   avg_similarity FLOAT,
   origin_similarity FLOAT,
@@ -185,50 +192,8 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION count_similar_beans_aggregated_v2(
-  target_coffee_id INT,
-  match_threshold FLOAT DEFAULT 0.70,
-  stocked_only BOOLEAN DEFAULT TRUE
-)
-RETURNS INT
-LANGUAGE plpgsql
-STABLE
-AS $$
-DECLARE
-  match_total INT;
-BEGIN
-  WITH target_embeddings AS (
-    SELECT cc.embedding, cc.chunk_type
-    FROM coffee_chunks cc
-    WHERE cc.coffee_id = target_coffee_id
-      AND cc.chunk_type IN ('origin', 'processing', 'tasting')
-      AND cc.embedding IS NOT NULL
-  ),
-  matched_coffees AS (
-    SELECT cc.coffee_id
-    FROM coffee_chunks cc
-    JOIN coffee_catalog c ON c.id = cc.coffee_id
-    CROSS JOIN target_embeddings te
-    WHERE cc.coffee_id != target_coffee_id
-      AND cc.chunk_type = te.chunk_type
-      AND cc.embedding IS NOT NULL
-      AND (stocked_only IS FALSE OR c.stocked IS TRUE)
-      AND 1 - (cc.embedding <=> te.embedding) > match_threshold
-    GROUP BY cc.coffee_id
-  )
-  SELECT COUNT(*)::INT INTO match_total FROM matched_coffees;
-
-  RETURN COALESCE(match_total, 0);
-END;
-$$;
-
 REVOKE EXECUTE ON FUNCTION find_similar_beans_v2(INT, FLOAT, INT, TEXT[], BOOLEAN) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION find_similar_beans_aggregated_v2(INT, FLOAT, INT, BOOLEAN) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION count_similar_beans_aggregated_v2(INT, FLOAT, BOOLEAN) FROM PUBLIC, anon, authenticated;
 
--- The v2 functions are a premium contract and must only be called through
--- trusted server routes that enforce member/API entitlements. Legacy v1 RPCs
--- remain available for compatibility until CLI/tool callers migrate.
 GRANT EXECUTE ON FUNCTION find_similar_beans_v2(INT, FLOAT, INT, TEXT[], BOOLEAN) TO service_role;
 GRANT EXECUTE ON FUNCTION find_similar_beans_aggregated_v2(INT, FLOAT, INT, BOOLEAN) TO service_role;
-GRANT EXECUTE ON FUNCTION count_similar_beans_aggregated_v2(INT, FLOAT, BOOLEAN) TO service_role;

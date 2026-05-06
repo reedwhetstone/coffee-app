@@ -565,6 +565,14 @@ function resolveRpcMatchCount(query: CatalogSimilarityQuery): number {
 	return MODE_FILTER_RPC_MATCH_LIMIT;
 }
 
+function resolveLegacyFallbackMatchCount(input: {
+	query: CatalogSimilarityQuery;
+	rpcMatchCount: number;
+}): number {
+	if (!input.query.stockedOnly) return input.rpcMatchCount;
+	return Math.max(input.rpcMatchCount, MODE_FILTER_RPC_MATCH_LIMIT);
+}
+
 function toTargetSummary(row: CatalogSimilarityTargetRow): CatalogSimilarityTargetSummary {
 	const pricing = normalizeCanonicalPricing(row);
 	return {
@@ -650,7 +658,7 @@ async function fetchCanonicalSimilarityRows(input: {
 	const legacy = await input.supabase.rpc('find_similar_beans_aggregated', {
 		target_coffee_id: input.coffeeId,
 		match_threshold: input.query.threshold,
-		match_count: input.rpcMatchCount
+		match_count: resolveLegacyFallbackMatchCount(input)
 	});
 
 	if (legacy.error) throw new Error(legacy.error.message);
