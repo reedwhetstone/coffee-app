@@ -472,7 +472,7 @@
 							: ''}
 					</p>
 				{:else}
-					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+					<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 						{#each session ? displayData() : displayData().slice(0, 15) as coffee}
 							<CoffeeCard {coffee} {parseTastingNotes} />
 						{/each}
