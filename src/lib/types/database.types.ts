@@ -158,6 +158,12 @@ export type Database = {
 					packaging: string | null;
 					price_per_lb: number | null;
 					price_tiers: Json | null;
+					purveyor_score: number | null;
+					purveyor_score_confidence: number | null;
+					purveyor_score_factors: Json;
+					purveyor_score_tier: string | null;
+					purveyor_score_updated_at: string | null;
+					purveyor_score_version: string;
 					processing: string | null;
 					processing_base_method: string | null;
 					fermentation_type: string | null;
@@ -204,6 +210,12 @@ export type Database = {
 					name: string;
 					packaging?: string | null;
 					price_tiers?: Json | null;
+					purveyor_score?: number | null;
+					purveyor_score_confidence?: number | null;
+					purveyor_score_factors?: Json;
+					purveyor_score_tier?: string | null;
+					purveyor_score_updated_at?: string | null;
+					purveyor_score_version?: string;
 					processing?: string | null;
 					processing_base_method?: string | null;
 					fermentation_type?: string | null;
@@ -250,6 +262,12 @@ export type Database = {
 					name?: string;
 					packaging?: string | null;
 					price_tiers?: Json | null;
+					purveyor_score?: number | null;
+					purveyor_score_confidence?: number | null;
+					purveyor_score_factors?: Json;
+					purveyor_score_tier?: string | null;
+					purveyor_score_updated_at?: string | null;
+					purveyor_score_version?: string;
 					processing?: string | null;
 					processing_base_method?: string | null;
 					fermentation_type?: string | null;

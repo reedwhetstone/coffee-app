@@ -7,7 +7,6 @@
 	import { checkRole } from '$lib/types/auth.types';
 
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
-	import SimilarCoffeePanel from '$lib/components/catalog/SimilarCoffeePanel.svelte';
 	import {
 		formatProcessDisplayValue,
 		isPublicProcessFacetOption
@@ -33,7 +32,6 @@
 	let displayLimit = $state(15);
 	let isLoadingMore = $state(false);
 	let copyLinkStatus = $state<'idle' | 'copied' | 'error'>('idle');
-	let selectedComparisonCoffee = $state<CoffeeCatalog | null>(null);
 	let copyLinkResetTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	$effect(() => {
@@ -172,19 +170,6 @@
 				updateCopyLinkStatus('error');
 			}
 		}
-	}
-
-	function handleSimilarComparison(coffee: CoffeeCatalog) {
-		if (!canUseBeanMatching) {
-			void goto(session ? '/subscription' : '/auth');
-			return;
-		}
-
-		selectedComparisonCoffee = selectedComparisonCoffee?.id === coffee.id ? null : coffee;
-	}
-
-	function closeSimilarComparison() {
-		selectedComparisonCoffee = null;
 	}
 
 	function parseTastingNotes(tastingNotesJson: string | null | object): TastingNotes | null {
@@ -487,24 +472,14 @@
 							: ''}
 					</p>
 				{:else}
-					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 						{#each session ? displayData() : displayData().slice(0, 15) as coffee}
-							<div class="space-y-3">
-								<CoffeeCard
-									{coffee}
-									{parseTastingNotes}
-									showSimilarComparisonAction={true}
-									{canUseBeanMatching}
-									similarComparisonActive={selectedComparisonCoffee?.id === coffee.id}
-									onCompareSimilar={handleSimilarComparison}
-								/>
-								{#if selectedComparisonCoffee?.id === coffee.id}
-									<SimilarCoffeePanel
-										coffee={selectedComparisonCoffee}
-										onClose={closeSimilarComparison}
-									/>
-								{/if}
-							</div>
+							<CoffeeCard
+								{coffee}
+								{parseTastingNotes}
+								showSimilarComparisonAction={true}
+								{canUseBeanMatching}
+							/>
 						{/each}
 
 						{#if isLoadingMore}

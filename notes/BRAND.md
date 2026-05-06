@@ -181,9 +181,11 @@ Avoid:
 
 ### Components
 
-- Primary buttons: orange fill, white text, medium weight, clear verb.
+- Primary buttons: orange fill, dark ink text, medium weight, clear verb.
 - Secondary buttons: neutral or orange outline, only when the action is truly secondary.
 - Cards: neutral background, subtle border/ring, light shadow only when useful.
+- Coffee cards: mobile-first sourcing essentials first, whole-card click into a user-initiated slide-out, icon-only supplier/match affordances, dot-accent tasting cues, and a vertical-bar description summary. Keep the collapsed card on the warm primary surface, not pure white.
+- Purveyor Score: branded listing-intelligence score for metadata completeness, structure, confidence, and buyer usefulness. It is not cup quality, certification, supplier verification, or regulatory assurance.
 - Forms: clear labels, compact controls, obvious save/cancel placement.
 - Tables/charts: prioritize legibility, filter state, empty/error states, and direct comparison.
 - Icons: use a consistent icon system once chosen; inline SVGs are currently inconsistent.
@@ -238,10 +240,11 @@ Initial correction pass started on 2026-05-06. Completed items:
 - Replaced several visible emoji/dashboard markers with compact text badges.
 - Tightened docs/API large-radius usage where it was a low-risk alignment change.
 - Fixed invalid `text-primary-light` class usage in active UI files.
+- Added Purveyor Score as the branded trust primitive for catalog coffee cards and public score methodology.
 
 Recommended next steps:
 
 1. Define semantic color usage for all chart series and KPI values before migrating analytics/profit/roast charts.
 2. Decide whether pricing and subscription product cards should keep `rounded-3xl` as an intentional editorial exception.
 3. Choose an icon system and replace remaining ad hoc inline SVG and emoji usage intentionally.
-4. Audit public pages visually after the language and token decisions are made.
+4. Audit public pages visually after the language, score, and token decisions are made.
