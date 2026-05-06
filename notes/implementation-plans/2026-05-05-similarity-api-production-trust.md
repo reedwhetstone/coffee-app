@@ -44,8 +44,8 @@ Similarity route evidence:
 
 ```json
 {
-  "error": "Failed to fetch similar coffees",
-  "message": "Internal server error"
+	"error": "Failed to fetch similar coffees",
+	"message": "Internal server error"
 }
 ```
 
@@ -131,14 +131,14 @@ The PR is independently shippable after PR 1 because it only makes the already-w
 
 Scores use the Product Leverage Index from the planner skill: vision alignment 0-5, data moat / decision quality 0-5, cross-surface leverage 0-4, public value / access ladder 0-3, foundation unlock 0-3.
 
-| Candidate | Vision | Data moat / decision quality | Cross-surface | Public/access | Foundation | Total | Feasibility gate | Decision |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| Similarity API production trust repair | 5 | 5 | 4 | 3 | 3 | 20 | Medium. Requires logs/SQL verification, but scope is narrow and live failure is concrete. | Selected |
-| Proof coverage endpoint | 5 | 5 | 4 | 3 | 3 | 20 | Already covered by open PR #335. | Defer, avoid duplicate planning |
-| Similarity threshold calibration | 5 | 5 | 3 | 2 | 3 | 18 | Already covered by open PR #336, and it should not calibrate against a broken live route. | Defer behind repair |
-| Saved sourcing brief procurement seed | 5 | 5 | 3 | 3 | 3 | 19 | Already covered by open PR #337, and it depends on trustworthy API primitives. | Defer, avoid duplicate planning |
-| Parchment Intelligence CLI price-index bridge | 5 | 4 | 4 | 3 | 3 | 19 | Existing 2026-05-04 plan covers it; cross-repo CLI release sequencing is separate. | Defer |
-| Pure `/v1` discovery cleanup | 3 | 1 | 3 | 3 | 1 | 11 | Useful only after endpoints work. | Fold into PR 2 |
+| Candidate                                     | Vision | Data moat / decision quality | Cross-surface | Public/access | Foundation | Total | Feasibility gate                                                                          | Decision                        |
+| --------------------------------------------- | -----: | ---------------------------: | ------------: | ------------: | ---------: | ----: | ----------------------------------------------------------------------------------------- | ------------------------------- |
+| Similarity API production trust repair        |      5 |                            5 |             4 |             3 |          3 |    20 | Medium. Requires logs/SQL verification, but scope is narrow and live failure is concrete. | Selected                        |
+| Proof coverage endpoint                       |      5 |                            5 |             4 |             3 |          3 |    20 | Already covered by open PR #335.                                                          | Defer, avoid duplicate planning |
+| Similarity threshold calibration              |      5 |                            5 |             3 |             2 |          3 |    18 | Already covered by open PR #336, and it should not calibrate against a broken live route. | Defer behind repair             |
+| Saved sourcing brief procurement seed         |      5 |                            5 |             3 |             3 |          3 |    19 | Already covered by open PR #337, and it depends on trustworthy API primitives.            | Defer, avoid duplicate planning |
+| Parchment Intelligence CLI price-index bridge |      5 |                            4 |             4 |             3 |          3 |    19 | Existing 2026-05-04 plan covers it; cross-repo CLI release sequencing is separate.        | Defer                           |
+| Pure `/v1` discovery cleanup                  |      3 |                            1 |             3 |             3 |          1 |    11 | Useful only after endpoints work.                                                         | Fold into PR 2                  |
 
 ## Scope in and out
 

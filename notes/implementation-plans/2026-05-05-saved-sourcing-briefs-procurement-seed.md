@@ -55,14 +55,14 @@ Already shipped or actively covered elsewhere:
 
 Scores use the Product Leverage Index from the planner skill: vision alignment 0-5, data moat / decision quality 0-5, cross-surface leverage 0-4, public value / access ladder 0-3, foundation unlock 0-3.
 
-| Candidate | Vision | Data moat / decision quality | Cross-surface | Public/access | Foundation | Total | Feasibility gate | Decision |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| Saved sourcing briefs and procurement recommendation seed | 5 | 5 | 4 | 3 | 3 | 20 | Medium. Needs user-owned schema and careful entitlement boundaries, but starts with manual matching and existing catalog filters. | Selected |
-| Canonical matching continuation | 5 | 5 | 4 | 3 | 3 | 20 | Strong, but already has merged/open implementation PRs and a full plan. | Defer to active PRs |
-| Proof coverage and proof query leverage | 5 | 5 | 4 | 3 | 3 | 20 | Strong, but PR #335 is already open and a plan exists. | Defer to active PR |
-| Parchment Intelligence CLI bridge | 5 | 4 | 4 | 3 | 3 | 19 | Still important, but already planned on 2026-05-04 and does not create new recurring buyer intent. | Implement existing plan, do not replan |
-| Certifications taxonomy schema | 5 | 5 | 3 | 2 | 2 | 17 | Good data-moat work, but less immediately tied to a paid workflow or current active product milestone. | Defer |
-| V1 catalog summary projection | 4 | 3 | 4 | 2 | 2 | 15 | Existing plan, useful for agents, but less strategic than saved procurement intent today. | Defer |
+| Candidate                                                 | Vision | Data moat / decision quality | Cross-surface | Public/access | Foundation | Total | Feasibility gate                                                                                                                  | Decision                               |
+| --------------------------------------------------------- | -----: | ---------------------------: | ------------: | ------------: | ---------: | ----: | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Saved sourcing briefs and procurement recommendation seed |      5 |                            5 |             4 |             3 |          3 |    20 | Medium. Needs user-owned schema and careful entitlement boundaries, but starts with manual matching and existing catalog filters. | Selected                               |
+| Canonical matching continuation                           |      5 |                            5 |             4 |             3 |          3 |    20 | Strong, but already has merged/open implementation PRs and a full plan.                                                           | Defer to active PRs                    |
+| Proof coverage and proof query leverage                   |      5 |                            5 |             4 |             3 |          3 |    20 | Strong, but PR #335 is already open and a plan exists.                                                                            | Defer to active PR                     |
+| Parchment Intelligence CLI bridge                         |      5 |                            4 |             4 |             3 |          3 |    19 | Still important, but already planned on 2026-05-04 and does not create new recurring buyer intent.                                | Implement existing plan, do not replan |
+| Certifications taxonomy schema                            |      5 |                            5 |             3 |             2 |          2 |    17 | Good data-moat work, but less immediately tied to a paid workflow or current active product milestone.                            | Defer                                  |
+| V1 catalog summary projection                             |      4 |                            3 |             4 |             2 |          2 |    15 | Existing plan, useful for agents, but less strategic than saved procurement intent today.                                         | Defer                                  |
 
 ## Strategy Alignment Audit
 

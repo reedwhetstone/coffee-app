@@ -18,7 +18,7 @@
 		</p>
 		<a
 			href="/"
-			class="mt-6 inline-block rounded-md bg-accent px-4 py-2 font-medium text-white transition-opacity hover:opacity-90"
+			class="mt-6 inline-block rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity hover:opacity-90"
 		>
 			Go home
 		</a>

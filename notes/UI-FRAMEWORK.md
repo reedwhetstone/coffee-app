@@ -138,14 +138,14 @@ mt-1                            /* Small top margin for values */
 ```svelte
 <!-- Primary Button -->
 <button
-	class="rounded-md bg-accent px-4 py-2 font-medium text-white transition-opacity duration-200 hover:opacity-90"
+	class="rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity duration-200 hover:opacity-90"
 >
 	Primary Action
 </button>
 
 <!-- Secondary Button -->
 <button
-	class="rounded-md border border-accent px-4 py-2 text-accent transition-colors duration-200 hover:bg-accent hover:text-white"
+	class="rounded-md border border-accent px-4 py-2 text-accent transition-colors duration-200 hover:bg-accent hover:text-ink"
 >
 	Secondary Action
 </button>

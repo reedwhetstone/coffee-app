@@ -7,7 +7,7 @@
 		</p>
 		<a
 			href="/"
-			class="inline-block rounded-md bg-accent px-4 py-2 font-medium text-white transition-opacity hover:opacity-90"
+			class="inline-block rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity hover:opacity-90"
 		>
 			Go home
 		</a>

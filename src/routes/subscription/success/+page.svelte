@@ -139,7 +139,7 @@
 				<p class="mt-2 text-text-primary-light">{error}</p>
 				<button
 					onclick={() => goto('/subscription')}
-					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-white transition-opacity hover:opacity-90"
+					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity hover:opacity-90"
 				>
 					Try again
 				</button>
@@ -194,7 +194,7 @@
 
 				<button
 					onclick={returnToSubscription}
-					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-white transition-opacity hover:opacity-90"
+					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity hover:opacity-90"
 				>
 					Return to subscription control plane
 				</button>
@@ -222,7 +222,7 @@
 				</p>
 				<button
 					onclick={returnToSubscription}
-					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-white transition-opacity hover:opacity-90"
+					class="mt-6 rounded-md bg-accent px-4 py-2 font-medium text-ink transition-opacity hover:opacity-90"
 				>
 					Return to subscription control plane
 				</button>
