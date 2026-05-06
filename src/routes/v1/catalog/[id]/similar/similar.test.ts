@@ -365,8 +365,9 @@ describe('/v1/catalog/[id]/similar', () => {
 		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
 		const { rpc } = createSupabaseMock({
 			v2Error: {
-				message: 'permission denied for function find_similar_beans_aggregated_v2',
-				code: '42501'
+				message:
+					'structure of query does not match function result type: Returned type jsonb[] does not match expected type jsonb in column 13.',
+				code: '42804'
 			},
 			legacyMatches: [
 				{ ...matchRow, origin_similarity: undefined, processing_similarity: undefined }

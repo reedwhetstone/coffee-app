@@ -592,8 +592,11 @@ function toTargetSummary(row: CatalogSimilarityTargetRow): CatalogSimilarityTarg
 function isLikelyMissingCanonicalSimilarityRpc(error: { message: string; code?: string }): boolean {
 	const message = error.message.toLowerCase();
 	return (
+		error.code === '42804' ||
 		error.code === '42883' ||
 		error.code === 'PGRST202' ||
+		message.includes('structure of query does not match function result type') ||
+		message.includes('returned type jsonb[] does not match expected type jsonb') ||
 		message.includes('could not find the function') ||
 		message.includes('function find_similar_beans_aggregated_v2') ||
 		message.includes('function count_similar_beans_aggregated_v2') ||
