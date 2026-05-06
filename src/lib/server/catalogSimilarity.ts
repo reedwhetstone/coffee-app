@@ -647,8 +647,10 @@ async function fetchCanonicalSimilarityRows(input: {
 		match_count: input.rpcMatchCount
 	});
 
-	if (legacy.error) return [];
-	const rows = (legacy.data ?? []).filter((row) => !input.query.stockedOnly || row.stocked === true);
+	if (legacy.error) throw new Error(legacy.error.message);
+	const rows = (legacy.data ?? []).filter(
+		(row) => !input.query.stockedOnly || row.stocked === true
+	);
 	return rows.map(normalizeLegacySimilarityRow);
 }
 
@@ -729,7 +731,7 @@ export async function countCatalogSimilarityMatches(input: {
 			match_threshold: input.query.threshold,
 			match_count: 1000
 		});
-		if (legacy.error) return 0;
+		if (legacy.error) throw new Error(legacy.error.message);
 		return (legacy.data ?? []).filter((row) => !input.query.stockedOnly || row.stocked === true)
 			.length;
 	}

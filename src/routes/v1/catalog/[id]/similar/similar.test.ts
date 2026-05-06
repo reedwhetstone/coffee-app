@@ -157,6 +157,7 @@ function createSupabaseMock(
 		details?: unknown[];
 		count?: number;
 		v2Error?: { message: string; code?: string };
+		legacyError?: { message: string; code?: string };
 		legacyMatches?: unknown[];
 	} = {}
 ) {
@@ -178,6 +179,7 @@ function createSupabaseMock(
 			return Promise.resolve({ data: options.count ?? 3, error: null });
 		}
 		if (fn === 'find_similar_beans_aggregated') {
+			if (options.legacyError) return Promise.resolve({ data: null, error: options.legacyError });
 			const matches = options.legacyMatches ?? options.matches ?? [matchRow];
 			const cappedMatches =
 				typeof args?.match_count === 'number' ? matches.slice(0, args.match_count) : matches;
@@ -366,7 +368,9 @@ describe('/v1/catalog/[id]/similar', () => {
 				message: 'permission denied for function find_similar_beans_aggregated_v2',
 				code: '42501'
 			},
-			legacyMatches: [{ ...matchRow, origin_similarity: undefined, processing_similarity: undefined }]
+			legacyMatches: [
+				{ ...matchRow, origin_similarity: undefined, processing_similarity: undefined }
+			]
 		});
 
 		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?limit=5'));
@@ -397,7 +401,10 @@ describe('/v1/catalog/[id]/similar', () => {
 				message: 'Could not find the function public.count_similar_beans_aggregated_v2',
 				code: 'PGRST202'
 			},
-			legacyMatches: [{ ...matchRow, stocked: true }, { ...matchRow, coffee_id: 2300, stocked: false }]
+			legacyMatches: [
+				{ ...matchRow, stocked: true },
+				{ ...matchRow, coffee_id: 2300, stocked: false }
+			]
 		});
 
 		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
@@ -409,6 +416,52 @@ describe('/v1/catalog/[id]/similar', () => {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
 			match_count: 1000
+		});
+	});
+
+	it('surfaces legacy similarity RPC failures after canonical fallback instead of returning empty matches', async () => {
+		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
+		createSupabaseMock({
+			v2Error: {
+				message: 'permission denied for function find_similar_beans_aggregated_v2',
+				code: '42501'
+			},
+			legacyError: {
+				message: 'permission denied for function find_similar_beans_aggregated',
+				code: '42501'
+			}
+		});
+
+		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?limit=5'));
+		const body = await response.json();
+
+		expect(response.status).toBe(500);
+		expect(body).toMatchObject({
+			error: 'Failed to fetch similar coffees',
+			message: 'Internal server error'
+		});
+	});
+
+	it('surfaces legacy count RPC failures after canonical fallback instead of returning a zero teaser', async () => {
+		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
+		createSupabaseMock({
+			v2Error: {
+				message: 'Could not find the function public.count_similar_beans_aggregated_v2',
+				code: 'PGRST202'
+			},
+			legacyError: {
+				message: 'permission denied for function find_similar_beans_aggregated',
+				code: '42501'
+			}
+		});
+
+		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
+		const body = await response.json();
+
+		expect(response.status).toBe(500);
+		expect(body).toMatchObject({
+			error: 'Failed to fetch similar coffees',
+			message: 'Internal server error'
 		});
 	});
 
