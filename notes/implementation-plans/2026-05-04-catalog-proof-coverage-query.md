@@ -69,38 +69,36 @@ Suggested response shape:
 
 ```json
 {
-  "resource": "catalog-proof-coverage",
-  "namespace": "/v1/catalog/proof-coverage",
-  "version": "v1",
-  "generated_at": "2026-05-04T16:00:00.000Z",
-  "scope": {
-    "auth": { "kind": "api-key", "apiPlan": "member" },
-    "filters": { "stocked": true, "country": "Ethiopia" },
-    "total_rows": 137
-  },
-  "overall": [
-    { "label": "strong", "count": 83, "share": 0.606 },
-    { "label": "partial", "count": 54, "share": 0.394 }
-  ],
-  "families": {
-    "process": [
-      { "label": "disclosed", "count": 44, "share": 0.321 },
-      { "label": "partial", "count": 39, "share": 0.285 },
-      { "label": "not_available", "count": 54, "share": 0.394 }
-    ],
-    "provenance": [],
-    "freshness": [],
-    "pricing": []
-  },
-  "signals": {
-    "process.base_method": 44,
-    "freshness.stocked_date": 137,
-    "pricing.price_tiers": 79
-  },
-  "top_gaps": [
-    { "family": "process", "label": "not_available", "count": 54 }
-  ],
-  "limitations": ["not_certification", "raw_evidence_not_included"]
+	"resource": "catalog-proof-coverage",
+	"namespace": "/v1/catalog/proof-coverage",
+	"version": "v1",
+	"generated_at": "2026-05-04T16:00:00.000Z",
+	"scope": {
+		"auth": { "kind": "api-key", "apiPlan": "member" },
+		"filters": { "stocked": true, "country": "Ethiopia" },
+		"total_rows": 137
+	},
+	"overall": [
+		{ "label": "strong", "count": 83, "share": 0.606 },
+		{ "label": "partial", "count": 54, "share": 0.394 }
+	],
+	"families": {
+		"process": [
+			{ "label": "disclosed", "count": 44, "share": 0.321 },
+			{ "label": "partial", "count": 39, "share": 0.285 },
+			{ "label": "not_available", "count": 54, "share": 0.394 }
+		],
+		"provenance": [],
+		"freshness": [],
+		"pricing": []
+	},
+	"signals": {
+		"process.base_method": 44,
+		"freshness.stocked_date": 137,
+		"pricing.price_tiers": 79
+	},
+	"top_gaps": [{ "family": "process", "label": "not_available", "count": 54 }],
+	"limitations": ["not_certification", "raw_evidence_not_included"]
 }
 ```
 
@@ -146,14 +144,14 @@ Implementation should avoid post-pagination filtering. If a proof label cannot b
 
 Scores use the Product Leverage Index from the planner skill: vision alignment 0-5, data moat / decision quality 0-5, cross-surface leverage 0-4, public value / access ladder 0-3, foundation unlock 0-3.
 
-| Candidate | Vision | Data moat | Cross-surface | Public/access | Foundation | Total | Feasibility gate | Decision |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| Catalog proof coverage and gated proof query | 5 | 5 | 4 | 3 | 3 | 20 | Medium. PR 1 is straightforward; PR 2 must avoid post-pagination filtering and overexposure. | Selected |
-| Parchment Intelligence CLI bridge | 5 | 4 | 4 | 2 | 2 | 17 | Strong, but already covered by open PR #328 planning docs. | Defer |
-| Proof summary CLI output | 5 | 4 | 4 | 2 | 2 | 17 | Already covered by the 2026-05-01 proof summary program; wait for CLI lane. | Defer |
-| Process transparency backgeneration | 5 | 5 | 2 | 1 | 3 | 16 | Mostly coffee-scraper owned; existing plan already tracks it. | Defer |
-| V1 catalog summary projection | 4 | 3 | 4 | 2 | 2 | 15 | Existing 2026-04-28 plan; useful but less tied to today's proof moonshot slice. | Defer |
-| Unknown query-param validation hardening | 3 | 2 | 3 | 1 | 2 | 11 | Worth doing, but too broad and mostly contract hygiene. | Defer |
+| Candidate                                    | Vision | Data moat | Cross-surface | Public/access | Foundation | Total | Feasibility gate                                                                             | Decision |
+| -------------------------------------------- | -----: | --------: | ------------: | ------------: | ---------: | ----: | -------------------------------------------------------------------------------------------- | -------- |
+| Catalog proof coverage and gated proof query |      5 |         5 |             4 |             3 |          3 |    20 | Medium. PR 1 is straightforward; PR 2 must avoid post-pagination filtering and overexposure. | Selected |
+| Parchment Intelligence CLI bridge            |      5 |         4 |             4 |             2 |          2 |    17 | Strong, but already covered by open PR #328 planning docs.                                   | Defer    |
+| Proof summary CLI output                     |      5 |         4 |             4 |             2 |          2 |    17 | Already covered by the 2026-05-01 proof summary program; wait for CLI lane.                  | Defer    |
+| Process transparency backgeneration          |      5 |         5 |             2 |             1 |          3 |    16 | Mostly coffee-scraper owned; existing plan already tracks it.                                | Defer    |
+| V1 catalog summary projection                |      4 |         3 |             4 |             2 |          2 |    15 | Existing 2026-04-28 plan; useful but less tied to today's proof moonshot slice.              | Defer    |
+| Unknown query-param validation hardening     |      3 |         2 |             3 |             1 |          2 |    11 | Worth doing, but too broad and mostly contract hygiene.                                      | Defer    |
 
 ## Strategy Alignment Audit
 
