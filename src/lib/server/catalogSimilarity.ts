@@ -512,16 +512,6 @@ export function deriveCalibrationBand(
 	return 'below_threshold';
 }
 
-export function deriveMatchCategory(
-	input: CatalogSimilarityScoreInput
-): CatalogMatchCategory | null {
-	const band = deriveCalibrationBand(input);
-	if (band === 'below_threshold') return null;
-	return band === 'auto_link_candidate' || band === 'likely_same'
-		? 'likely_same'
-		: 'similar_profile';
-}
-
 export function deriveConfidenceLabel(score: number): CatalogMatchConfidenceLabel {
 	if (score >= 0.9) return 'high_beta';
 	if (score >= 0.8) return 'medium_beta';
