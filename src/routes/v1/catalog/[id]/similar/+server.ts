@@ -144,9 +144,10 @@ export const GET: RequestHandler = async (event) => {
 			coffeeId,
 			query
 		});
+		const { queryStrategy, ...data } = result;
 
 		const body: CatalogSimilarityResponse = {
-			data: result,
+			data,
 			meta: {
 				resource: 'catalog-similarity',
 				namespace: REQUEST_PATH,
@@ -167,7 +168,7 @@ export const GET: RequestHandler = async (event) => {
 						'Matches are beta confidence candidates based on similarity signals and deterministic identity gates. Canonical candidates are not accepted identities; similar recommendations are not same-coffee claims.'
 				},
 				classification_version: 'canonical-match-v1',
-				query_strategy: result.queryStrategy
+				query_strategy: queryStrategy
 			}
 		};
 

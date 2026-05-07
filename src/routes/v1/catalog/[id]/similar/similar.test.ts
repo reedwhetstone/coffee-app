@@ -354,6 +354,7 @@ describe('/v1/catalog/[id]/similar', () => {
 		});
 		expect(body.data.groups.canonical_candidates).toHaveLength(1);
 		expect(body.data.groups.similar_recommendations).toHaveLength(0);
+		expect(body.data).not.toHaveProperty('queryStrategy');
 		expect(body.data.matches[0].match.classification).toMatchObject({
 			kind: 'canonical_candidate',
 			identity_eligibility: 'eligible',
