@@ -238,4 +238,60 @@ describe('sourcing brief API helpers', () => {
 			])
 		);
 	});
+
+	it('does not apply or explain a stocked-only match unless the saved criteria requested it', async () => {
+		const db = makeDbMock({
+			...briefRow,
+			criteria: {
+				version: 1,
+				country: 'Colombia',
+				max_price_per_lb: 6.5
+			} as unknown as typeof briefRow.criteria
+		});
+		mockCreateAdminClient.mockReturnValue(db.client);
+		mockSearchCatalog.mockResolvedValue({
+			data: [
+				{
+					id: 7,
+					name: 'Colombia Huila Washed',
+					country: 'Colombia',
+					region: 'Huila',
+					processing: 'Washed',
+					processing_base_method: 'Washed',
+					price_per_lb: 6.25,
+					stocked: true,
+					stocked_date: '2026-05-01',
+					wholesale: false
+				}
+			],
+			count: 17,
+			filtersApplied: {}
+		});
+
+		const response = await buildSourcingBriefMatchesResponse(
+			makeEvent(
+				'https://app.test/v1/procurement/briefs/22222222-2222-4222-8222-222222222222/matches?limit=5',
+				{
+					headers: { Authorization: 'Bearer pk_live_test' }
+				}
+			),
+			'22222222-2222-4222-8222-222222222222'
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			db.client,
+			expect.objectContaining({
+				country: 'Colombia',
+				pricePerLbMax: 6.5,
+				stockedFilter: null,
+				limit: 5
+			})
+		);
+		expect(body.data[0].matchReasons).toEqual(
+			expect.arrayContaining(['country_match', 'price_under_target'])
+		);
+		expect(body.data[0].matchReasons).not.toContain('stocked_now');
+	});
 });

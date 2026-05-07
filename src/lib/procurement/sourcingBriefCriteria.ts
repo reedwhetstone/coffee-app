@@ -159,12 +159,21 @@ export function validateSourcingBriefCriteria(input: unknown): SourcingBriefCrit
 	if (processing !== undefined) criteria.processing = processing;
 	if (processingBaseMethod !== undefined) criteria.processing_base_method = processingBaseMethod;
 	if (maxPricePerLb !== undefined) criteria.max_price_per_lb = maxPricePerLb;
-	if (stockedOnly !== undefined) criteria.stocked_only = stockedOnly;
-	if (wholesaleOnly !== undefined) criteria.wholesale_only = wholesaleOnly;
+	if (stockedOnly === true) criteria.stocked_only = stockedOnly;
+	if (wholesaleOnly === true) criteria.wholesale_only = wholesaleOnly;
 	if (stockedDays !== undefined) criteria.stocked_days = stockedDays;
 
-	const meaningfulFieldCount = Object.keys(criteria).filter((field) => field !== 'version').length;
-	if (meaningfulFieldCount === 0) {
+	const hasEffectiveConstraint = Boolean(
+		criteria.country !== undefined ||
+			criteria.region !== undefined ||
+			criteria.processing !== undefined ||
+			criteria.processing_base_method !== undefined ||
+			criteria.max_price_per_lb !== undefined ||
+			criteria.stocked_only === true ||
+			criteria.wholesale_only === true ||
+			criteria.stocked_days !== undefined
+	);
+	if (!hasEffectiveConstraint) {
 		issues.push({
 			field: 'criteria',
 			message: 'criteria must include at least one supported sourcing constraint',
@@ -198,7 +207,7 @@ export function sourcingBriefCriteriaToCatalogSearchOptions(
 		processing: criteria.processing,
 		processingBaseMethod: criteria.processing_base_method,
 		pricePerLbMax: criteria.max_price_per_lb,
-		stockedFilter: criteria.stocked_only === false ? null : true,
+		stockedFilter: criteria.stocked_only === true ? true : null,
 		wholesaleOnly: criteria.wholesale_only === true,
 		stockedDays: criteria.stocked_days
 	};

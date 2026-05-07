@@ -20,7 +20,6 @@ describe('validateSourcingBriefCriteria', () => {
 			country: 'Colombia',
 			max_price_per_lb: 6.5,
 			stocked_only: true,
-			wholesale_only: false,
 			stocked_days: 30
 		});
 	});
@@ -46,6 +45,19 @@ describe('validateSourcingBriefCriteria', () => {
 		);
 	});
 
+	it('does not count no-op boolean flags as sourcing constraints', () => {
+		expect(() => validateSourcingBriefCriteria({ stocked_only: false })).toThrow(
+			SourcingBriefCriteriaValidationError
+		);
+		expect(() => validateSourcingBriefCriteria({ wholesale_only: false })).toThrow(
+			SourcingBriefCriteriaValidationError
+		);
+		expect(validateSourcingBriefCriteria({ country: 'Colombia', wholesale_only: false })).toEqual({
+			version: 1,
+			country: 'Colombia'
+		});
+	});
+
 	it('maps criteria to pre-pagination catalog filters', () => {
 		expect(
 			sourcingBriefCriteriaToCatalogSearchOptions(
@@ -67,6 +79,19 @@ describe('validateSourcingBriefCriteria', () => {
 			stockedFilter: true,
 			wholesaleOnly: true,
 			stockedDays: 14
+		});
+	});
+
+	it('does not force stocked-only catalog matches when criteria omit stocked_only', () => {
+		expect(
+			sourcingBriefCriteriaToCatalogSearchOptions(
+				validateSourcingBriefCriteria({ country: 'Colombia', max_price_per_lb: 6.5 })
+			)
+		).toMatchObject({
+			country: 'Colombia',
+			pricePerLbMax: 6.5,
+			stockedFilter: null,
+			wholesaleOnly: false
 		});
 	});
 });

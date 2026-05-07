@@ -372,7 +372,7 @@ function computeMatchReasons(criteria: SourcingBriefCriteria, row: CatalogItem):
 			),
 			'price_under_target'
 		),
-		...reasonIf(Boolean(criteria.stocked_only !== false && row.stocked === true), 'stocked_now'),
+		...reasonIf(Boolean(criteria.stocked_only === true && row.stocked === true), 'stocked_now'),
 		...reasonIf(
 			Boolean(criteria.wholesale_only === true && row.wholesale === true),
 			'wholesale_match'
