@@ -1,20 +1,20 @@
 # PR #336 Verify Audit: Calibration harness after PR #347
 
-**Date:** 2026-05-07  
-**Repo:** `coffee-app`  
-**Branch:** `fix/pr336-merge-main`  
-**Base:** `origin/main`  
+**Date:** 2026-05-07
+**Repo:** `coffee-app`
+**Branch:** `fix/pr336-merge-main`
+**Base:** `origin/main`
 **PR:** #336
 
 ## Operator summary
 
-VERDICT: fail  
-P0: 0  
-P1: 1  
-P2: 0  
-P3: 0  
-NEXT_ACTION: patch_same_pr  
-CONFIDENCE: high  
+VERDICT: fail
+P0: 0
+P1: 1
+P2: 0
+P3: 0
+NEXT_ACTION: patch_same_pr
+CONFIDENCE: high
 SCOPE_ASSESSMENT: mergeable_after_targeted_patch
 
 ## Scope and intent coverage
@@ -51,7 +51,7 @@ Remove the exported `deriveMatchCategory()` helper and its test assertions. Keep
 
 ## Validation
 
-- `pnpm exec tsx scripts/catalog-similarity-calibration.ts --json`  
+- `pnpm exec tsx scripts/catalog-similarity-calibration.ts --json`
   **VALIDATION_PASS:** 8 examples, 8/8 expectations, zero false positives in the guarded metrics.
 - CI evidence supplied by the requester: Format/Check/Lint, Playwright, CodeQL, GitGuardian, and Vercel are green.
 - Local targeted vitest remained environment-blocked per requester evidence due to the temp worktree module symlink issue; not re-run as a blocker because CI covered repo checks.
