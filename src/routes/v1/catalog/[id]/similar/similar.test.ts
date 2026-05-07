@@ -155,7 +155,6 @@ function createSupabaseMock(
 		target?: unknown | null;
 		matches?: unknown[];
 		details?: unknown[];
-		count?: number;
 		v2Error?: { message: string; code?: string };
 		legacyError?: { message: string; code?: string };
 		legacyMatches?: unknown[];
@@ -174,10 +173,6 @@ function createSupabaseMock(
 	const select = vi.fn(() => ({ eq, in: inFilter }));
 	const from = vi.fn(() => ({ select }));
 	const rpc = vi.fn((fn: string, args?: { match_count?: number }) => {
-		if (fn === 'count_similar_beans_aggregated_v2') {
-			if (options.v2Error) return Promise.resolve({ data: null, error: options.v2Error });
-			return Promise.resolve({ data: options.count ?? 3, error: null });
-		}
 		if (fn === 'find_similar_beans_aggregated') {
 			if (options.legacyError) return Promise.resolve({ data: null, error: options.legacyError });
 			const matches = options.legacyMatches ?? options.matches ?? [matchRow];
@@ -240,9 +235,9 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(mockCreateAdminClient).not.toHaveBeenCalled();
 	});
 
-	it('returns 403 plus a locked count teaser for signed-in viewers', async () => {
+	it('returns 403 plus a locked teaser without running expensive similarity counts for signed-in viewers', async () => {
 		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
-		const { rpc } = createSupabaseMock({ count: 4 });
+		const { rpc } = createSupabaseMock();
 
 		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?threshold=0.8'));
 		const body = await response.json();
@@ -252,13 +247,9 @@ describe('/v1/catalog/[id]/similar', () => {
 			error: 'Insufficient permissions',
 			code: 'entitlement_required',
 			requiredCapability: 'canUseBeanMatching',
-			teaser: { locked: true, similar_match_count: 4, beta: true }
+			teaser: { locked: true, similar_match_count: null, beta: true }
 		});
-		expect(rpc).toHaveBeenCalledWith('count_similar_beans_aggregated_v2', {
-			target_coffee_id: 1182,
-			match_threshold: 0.8,
-			stocked_only: true
-		});
+		expect(rpc).not.toHaveBeenCalled();
 		expect(JSON.stringify(body)).not.toContain('Supplier B');
 	});
 
@@ -275,7 +266,7 @@ describe('/v1/catalog/[id]/similar', () => {
 			code: 'entitlement_required',
 			teaser: { locked: true, similar_match_count: null, beta: true }
 		});
-		expect(rpc).not.toHaveBeenCalledWith('count_similar_beans_aggregated_v2', expect.anything());
+		expect(rpc).not.toHaveBeenCalled();
 		expect(JSON.stringify(body)).not.toContain('not found');
 	});
 
@@ -494,78 +485,6 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).not.toHaveBeenCalledWith('find_similar_beans_aggregated', expect.anything());
 	});
 
-	it('falls back to a legacy count teaser when the canonical count RPC is unavailable', async () => {
-		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
-		const { rpc } = createSupabaseMock({
-			v2Error: {
-				message: 'Could not find the function public.count_similar_beans_aggregated_v2',
-				code: 'PGRST202'
-			},
-			legacyMatches: [
-				{ ...matchRow, stocked: true },
-				{ ...matchRow, coffee_id: 2300, stocked: false }
-			]
-		});
-
-		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
-		const body = await response.json();
-
-		expect(response.status).toBe(403);
-		expect(body.teaser).toMatchObject({ locked: true, similar_match_count: 1, beta: true });
-		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated', {
-			target_coffee_id: 1182,
-			match_threshold: 0.7,
-			match_count: 1000
-		});
-	});
-
-	it('surfaces canonical count RPC permission errors instead of falling back to legacy counts', async () => {
-		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
-		const { rpc } = createSupabaseMock({
-			v2Error: {
-				message: 'permission denied for function count_similar_beans_aggregated_v2',
-				code: '42501'
-			},
-			legacyMatches: [{ ...matchRow, coffee_id: 3003, stocked: true }]
-		});
-
-		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
-		const body = await response.json();
-
-		expect(response.status).toBe(500);
-		expect(body).toMatchObject({
-			error: 'Failed to fetch similar coffees',
-			message: 'Internal server error'
-		});
-		expect(rpc).not.toHaveBeenCalledWith('find_similar_beans_aggregated', expect.anything());
-	});
-
-	it('does not present a capped legacy count fallback as an exact teaser count', async () => {
-		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
-		const { rpc } = createSupabaseMock({
-			v2Error: {
-				message: 'Could not find the function public.count_similar_beans_aggregated_v2',
-				code: 'PGRST202'
-			},
-			legacyMatches: Array.from({ length: 1000 }, (_, index) => ({
-				...matchRow,
-				coffee_id: 3000 + index,
-				stocked: index % 2 === 0
-			}))
-		});
-
-		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
-		const body = await response.json();
-
-		expect(response.status).toBe(403);
-		expect(body.teaser).toMatchObject({ locked: true, similar_match_count: null, beta: true });
-		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated', {
-			target_coffee_id: 1182,
-			match_threshold: 0.7,
-			match_count: 1000
-		});
-	});
-
 	it('surfaces legacy similarity RPC failures after canonical fallback instead of returning empty matches', async () => {
 		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
 		createSupabaseMock({
@@ -580,29 +499,6 @@ describe('/v1/catalog/[id]/similar', () => {
 		});
 
 		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?limit=5'));
-		const body = await response.json();
-
-		expect(response.status).toBe(500);
-		expect(body).toMatchObject({
-			error: 'Failed to fetch similar coffees',
-			message: 'Internal server error'
-		});
-	});
-
-	it('surfaces legacy count RPC failures after canonical fallback instead of returning a zero teaser', async () => {
-		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
-		createSupabaseMock({
-			v2Error: {
-				message: 'Could not find the function public.count_similar_beans_aggregated_v2',
-				code: 'PGRST202'
-			},
-			legacyError: {
-				message: 'permission denied for function find_similar_beans_aggregated',
-				code: '42501'
-			}
-		});
-
-		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
 		const body = await response.json();
 
 		expect(response.status).toBe(500);

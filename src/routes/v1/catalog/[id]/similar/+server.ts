@@ -5,18 +5,12 @@ import { resolveCatalogAccessCapabilities } from '$lib/server/catalogAccess';
 import {
 	CatalogSimilarityNotFoundError,
 	CatalogSimilarityValidationError,
-	countCatalogSimilarityMatches,
 	fetchCatalogSimilarityMatches,
 	parseCatalogSimilarityQuery,
 	type CatalogSimilarityResponse
 } from '$lib/server/catalogSimilarity';
 import { jsonResponse } from '$lib/server/http';
-import {
-	isApiKeyPrincipal,
-	isSessionPrincipal,
-	resolvePrincipal,
-	type RequestPrincipal
-} from '$lib/server/principal';
+import { isApiKeyPrincipal, resolvePrincipal, type RequestPrincipal } from '$lib/server/principal';
 import { createAdminClient } from '$lib/supabase-admin';
 
 const REQUEST_PATH = '/v1/catalog/{id}/similar';
@@ -109,22 +103,7 @@ export const GET: RequestHandler = async (event) => {
 			);
 		}
 
-		const adminSupabase = createAdminClient();
-
 		if (!capabilities.canUseBeanMatching) {
-			let similarMatchCount: number | null = null;
-			if (isSessionPrincipal(principal)) {
-				try {
-					similarMatchCount = await countCatalogSimilarityMatches({
-						supabase: adminSupabase,
-						coffeeId,
-						query: { threshold: query.threshold, stockedOnly: query.stockedOnly }
-					});
-				} catch (error) {
-					if (!(error instanceof CatalogSimilarityNotFoundError)) throw error;
-				}
-			}
-
 			await logSimilarApiUsage({ principal, statusCode: 403, startTime, event });
 
 			return jsonResponse(
@@ -135,13 +114,15 @@ export const GET: RequestHandler = async (event) => {
 					requiredCapability: 'canUseBeanMatching',
 					teaser: {
 						locked: true,
-						similar_match_count: similarMatchCount,
+						similar_match_count: null,
 						beta: true
 					}
 				},
 				{ status: 403 }
 			);
 		}
+
+		const adminSupabase = createAdminClient();
 
 		let headers = new Headers();
 		if (isApiKeyPrincipal(principal)) {

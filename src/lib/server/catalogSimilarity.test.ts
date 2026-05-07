@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
 	classifyCatalogMatch,
-	deriveMatchCategory,
 	getPriceFromTiersAtQuantity,
 	normalizeCanonicalPricing,
 	normalizeSimilarityRow,
@@ -63,18 +62,6 @@ describe('catalog similarity helpers', () => {
 				cost_lb: 7
 			})
 		).toMatchObject({ baseline_price_per_lb: 7, baseline_source: 'cost_lb' });
-	});
-
-	it('derives beta categories without overclaiming canonical certainty', () => {
-		expect(
-			deriveMatchCategory({ average: 0.91, origin: 0.89, processing: 0.9, chunkMatches: 2 })
-		).toBe('likely_same');
-		expect(
-			deriveMatchCategory({ average: 0.91, origin: 0.7, processing: 0.9, chunkMatches: 2 })
-		).toBe('similar_profile');
-		expect(
-			deriveMatchCategory({ average: 0.95, origin: null, processing: null, chunkMatches: 4 })
-		).toBe('similar_profile');
 	});
 
 	it('uses raw scores for classification before rounding display scores', () => {

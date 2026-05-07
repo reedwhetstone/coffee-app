@@ -66,17 +66,25 @@ AS $$
     ) candidate
     WHERE candidate.similarity >= match_threshold
   ),
+  best_per_dimension AS (
+    SELECT DISTINCT ON (bm.coffee_id, bm.chunk_type)
+      bm.coffee_id,
+      bm.chunk_type,
+      bm.similarity
+    FROM bounded_matches bm
+    ORDER BY bm.coffee_id, bm.chunk_type, bm.similarity DESC
+  ),
   aggregated AS (
     SELECT
-      bm.coffee_id,
-      AVG(bm.similarity)::FLOAT AS avg_similarity,
-      MAX(bm.similarity) FILTER (WHERE bm.chunk_type = 'origin')::FLOAT AS origin_similarity,
-      MAX(bm.similarity) FILTER (WHERE bm.chunk_type = 'processing')::FLOAT AS processing_similarity,
-      MAX(bm.similarity) FILTER (WHERE bm.chunk_type = 'tasting')::FLOAT AS tasting_similarity,
-      COUNT(*)::BIGINT AS chunk_matches
-    FROM bounded_matches bm
-    GROUP BY bm.coffee_id
-    HAVING AVG(bm.similarity) >= match_threshold
+      bpd.coffee_id,
+      AVG(bpd.similarity)::FLOAT AS avg_similarity,
+      MAX(bpd.similarity) FILTER (WHERE bpd.chunk_type = 'origin')::FLOAT AS origin_similarity,
+      MAX(bpd.similarity) FILTER (WHERE bpd.chunk_type = 'processing')::FLOAT AS processing_similarity,
+      MAX(bpd.similarity) FILTER (WHERE bpd.chunk_type = 'tasting')::FLOAT AS tasting_similarity,
+      COUNT(DISTINCT bpd.chunk_type)::BIGINT AS chunk_matches
+    FROM best_per_dimension bpd
+    GROUP BY bpd.coffee_id
+    HAVING AVG(bpd.similarity) >= match_threshold
   )
   SELECT
     c.id AS coffee_id,
