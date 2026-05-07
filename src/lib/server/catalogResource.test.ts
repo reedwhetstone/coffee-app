@@ -97,6 +97,18 @@ const sampleCatalogItem = {
 	processing_confidence: 0.85,
 	processing_evidence: { schema_version: 1 },
 	processing_evidence_available: true,
+	purveyor_score: 88,
+	purveyor_score_confidence: 0.91,
+	purveyor_score_factors: {
+		provenance_depth: 18,
+		process_transparency: 20,
+		freshness_availability: 17,
+		pricing_comparability: 15,
+		sensory_context: 18
+	},
+	purveyor_score_tier: 'Exceptional',
+	purveyor_score_updated_at: '2026-05-06T00:00:00.000Z',
+	purveyor_score_version: 'purveyor-score-v1',
 	region: 'Sidamo',
 	roast_recs: 'City+',
 	score_value: 87.5,

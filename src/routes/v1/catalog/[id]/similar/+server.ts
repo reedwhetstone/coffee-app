@@ -5,7 +5,6 @@ import { resolveCatalogAccessCapabilities } from '$lib/server/catalogAccess';
 import {
 	CatalogSimilarityNotFoundError,
 	CatalogSimilarityValidationError,
-	countCatalogSimilarityMatches,
 	fetchCatalogSimilarityMatches,
 	parseCatalogSimilarityQuery,
 	type CatalogSimilarityResponse
@@ -109,25 +108,13 @@ export const GET: RequestHandler = async (event) => {
 			);
 		}
 
-		const adminSupabase = createAdminClient();
-		const publicOnly = !isSessionPrincipal(principal) || !capabilities.canViewFullCatalog;
-
 		if (!capabilities.canUseBeanMatching) {
-			let similarMatchCount: number | null = null;
-			if (isSessionPrincipal(principal)) {
-				try {
-					similarMatchCount = await countCatalogSimilarityMatches({
-						supabase: adminSupabase,
-						coffeeId,
-						query: { threshold: query.threshold, stockedOnly: query.stockedOnly },
-						publicOnly
-					});
-				} catch (error) {
-					if (!(error instanceof CatalogSimilarityNotFoundError)) throw error;
-				}
-			}
-
-			await logSimilarApiUsage({ principal, statusCode: 403, startTime, event });
+			await logSimilarApiUsage({
+				principal,
+				statusCode: 403,
+				startTime,
+				event
+			});
 
 			return jsonResponse(
 				{
@@ -137,13 +124,16 @@ export const GET: RequestHandler = async (event) => {
 					requiredCapability: 'canUseBeanMatching',
 					teaser: {
 						locked: true,
-						similar_match_count: similarMatchCount,
+						similar_match_count: null,
 						beta: true
 					}
 				},
 				{ status: 403 }
 			);
 		}
+
+		const adminSupabase = createAdminClient();
+		const publicOnly = !isSessionPrincipal(principal) || !capabilities.canViewFullCatalog;
 
 		let headers = new Headers();
 		if (isApiKeyPrincipal(principal)) {
@@ -166,9 +156,10 @@ export const GET: RequestHandler = async (event) => {
 			query,
 			publicOnly
 		});
+		const { queryStrategy, ...data } = result;
 
 		const body: CatalogSimilarityResponse = {
-			data: result,
+			data,
 			meta: {
 				resource: 'catalog-similarity',
 				namespace: REQUEST_PATH,
@@ -186,8 +177,10 @@ export const GET: RequestHandler = async (event) => {
 				query,
 				copy: {
 					confidence:
-						'Matches are beta confidence candidates based on similarity signals, not accepted canonical identities.'
-				}
+						'Matches are beta confidence candidates based on similarity signals and deterministic identity gates. Canonical candidates are not accepted identities; similar recommendations are not same-coffee claims.'
+				},
+				classification_version: 'canonical-match-v1',
+				query_strategy: queryStrategy
 			}
 		};
 
@@ -219,7 +212,12 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		if (error instanceof AuthError) {
-			await logSimilarApiUsage({ principal, statusCode: error.status, startTime, event });
+			await logSimilarApiUsage({
+				principal,
+				statusCode: error.status,
+				startTime,
+				event
+			});
 			return jsonResponse(
 				{
 					error: error.status === 403 ? 'Insufficient permissions' : 'Authentication required',
@@ -231,7 +229,12 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		if (error instanceof CatalogSimilarityValidationError) {
-			await logSimilarApiUsage({ principal, statusCode: 400, startTime, event });
+			await logSimilarApiUsage({
+				principal,
+				statusCode: 400,
+				startTime,
+				event
+			});
 			return jsonResponse(
 				{
 					error: 'Invalid query parameter',
@@ -247,7 +250,12 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		if (error instanceof CatalogSimilarityNotFoundError) {
-			await logSimilarApiUsage({ principal, statusCode: 404, startTime, event });
+			await logSimilarApiUsage({
+				principal,
+				statusCode: 404,
+				startTime,
+				event
+			});
 			return jsonResponse(
 				{
 					error: 'Catalog coffee not found',
@@ -261,7 +269,10 @@ export const GET: RequestHandler = async (event) => {
 		console.error('Error querying catalog similarity:', safeError);
 		await logSimilarApiUsage({ principal, statusCode: 500, startTime, event });
 		return jsonResponse(
-			{ error: 'Failed to fetch similar coffees', message: 'Internal server error' },
+			{
+				error: 'Failed to fetch similar coffees',
+				message: 'Internal server error'
+			},
 			{ status: 500 }
 		);
 	}

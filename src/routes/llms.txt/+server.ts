@@ -26,7 +26,8 @@ export const GET: RequestHandler = async ({ url }) => {
 ## API and Platform
 
 - [Public API namespace](${baseUrl}/v1): Namespace descriptor for the public API surface.
-- [Catalog API](${baseUrl}/docs/api/catalog): Stable contract for GET /v1/catalog, including anonymous discovery, API-key usage, structured process transparency fields, and migration guidance from legacy aliases.
+- [Catalog API](${baseUrl}/docs/api/catalog): Stable contract for GET /v1/catalog, including anonymous discovery, API-key usage, structured process transparency fields, proof summaries, and migration guidance from legacy aliases.
+- [Catalog Similarity API](${baseUrl}/docs/api/catalog-similarity): Beta GET /v1/catalog/{id}/similar contract for member sessions and paid API-key matching workflows.
 - [Platform routes](${baseUrl}/docs/api/platform): Route matrix for /api/*, billing flows, Console helpers, and authenticated product internals.
 - /api/* routes are platform routes for the first-party app and Console. They are not the broad public compatibility promise.
 
@@ -36,7 +37,8 @@ ${blogPostLines}
 
 ## Data and Workflows
 
-- Normalized supplier listings with origin, legacy processing labels, structured process transparency, grade, pricing, and availability metadata
+- Normalized supplier listings with origin, legacy processing labels, structured process transparency, grade, pricing, availability metadata, and opt-in proof summaries
+- Beta catalog similarity matching for likely-same-bean and similar-profile research with cautious confidence labels
 - Daily pricing and availability snapshots for catalog and analytics surfaces
 - Inventory, roast, sales, tasting, chat, and workspace workflows in the web app
 - Shared CLI-backed tooling for terminal and agent workflows

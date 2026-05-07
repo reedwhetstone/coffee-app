@@ -197,7 +197,7 @@
 	<div class="space-y-6">
 		<!-- Header Section -->
 		<div class="mb-6">
-			<h1 class="text-primary-light mb-2 text-2xl font-bold">Coffee Sales & Profit</h1>
+			<h1 class="mb-2 text-2xl font-bold text-text-primary-light">Coffee Sales & Profit</h1>
 			<p class="text-text-secondary-light">Track your coffee sales performance and profitability</p>
 		</div>
 

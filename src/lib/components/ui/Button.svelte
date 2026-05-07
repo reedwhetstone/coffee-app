@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 
-	// Button component following the Coffee App UI Framework
+	// Button component following the Purveyors UI framework
 	let {
 		variant = 'primary',
 		size = 'default',

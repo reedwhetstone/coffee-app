@@ -158,6 +158,12 @@ export type Database = {
 					packaging: string | null;
 					price_per_lb: number | null;
 					price_tiers: Json | null;
+					purveyor_score: number | null;
+					purveyor_score_confidence: number | null;
+					purveyor_score_factors: Json;
+					purveyor_score_tier: string | null;
+					purveyor_score_updated_at: string | null;
+					purveyor_score_version: string;
 					processing: string | null;
 					processing_base_method: string | null;
 					fermentation_type: string | null;
@@ -204,6 +210,12 @@ export type Database = {
 					name: string;
 					packaging?: string | null;
 					price_tiers?: Json | null;
+					purveyor_score?: number | null;
+					purveyor_score_confidence?: number | null;
+					purveyor_score_factors?: Json;
+					purveyor_score_tier?: string | null;
+					purveyor_score_updated_at?: string | null;
+					purveyor_score_version?: string;
 					processing?: string | null;
 					processing_base_method?: string | null;
 					fermentation_type?: string | null;
@@ -250,6 +262,12 @@ export type Database = {
 					name?: string;
 					packaging?: string | null;
 					price_tiers?: Json | null;
+					purveyor_score?: number | null;
+					purveyor_score_confidence?: number | null;
+					purveyor_score_factors?: Json;
+					purveyor_score_tier?: string | null;
+					purveyor_score_updated_at?: string | null;
+					purveyor_score_version?: string;
 					processing?: string | null;
 					processing_base_method?: string | null;
 					fermentation_type?: string | null;
@@ -1155,7 +1173,7 @@ export type Database = {
 					drying_method: string | null;
 					cost_lb: number | null;
 					price_per_lb: number | null;
-					price_tiers: Json | null;
+					price_tiers: Json[] | null;
 					stocked: boolean | null;
 					similarity: number;
 					chunk_type: string;
@@ -1182,7 +1200,37 @@ export type Database = {
 					drying_method: string | null;
 					cost_lb: number | null;
 					price_per_lb: number | null;
-					price_tiers: Json | null;
+					price_tiers: Json[] | null;
+					stocked: boolean | null;
+					avg_similarity: number;
+					origin_similarity: number | null;
+					processing_similarity: number | null;
+					tasting_similarity: number | null;
+					chunk_matches: number;
+				}[];
+			};
+			find_similar_beans_aggregated_v3: {
+				Args: {
+					target_coffee_id: number;
+					match_threshold?: number;
+					match_count?: number;
+					stocked_only?: boolean;
+					candidate_pool?: number;
+				};
+				Returns: {
+					coffee_id: number;
+					coffee_name: string;
+					source: string | null;
+					origin: string | null;
+					country: string | null;
+					continent: string | null;
+					processing: string | null;
+					processing_base_method: string | null;
+					fermentation_type: string | null;
+					drying_method: string | null;
+					cost_lb: number | null;
+					price_per_lb: number | null;
+					price_tiers: Json[] | null;
 					stocked: boolean | null;
 					avg_similarity: number;
 					origin_similarity: number | null;
