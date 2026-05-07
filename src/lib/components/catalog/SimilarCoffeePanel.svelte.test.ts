@@ -135,6 +135,13 @@ function similarityResponse(overrides: { matches?: unknown[] } = {}) {
 					},
 					match: {
 						category: 'likely_same',
+						classification: {
+							kind: 'canonical_candidate',
+							identity_eligibility: 'eligible',
+							confidence: 'high_beta',
+							blockers: [],
+							evidence: ['Processing base method matches: washed']
+						},
 						confidence: 'high_beta',
 						beta: true,
 						language: 'High beta confidence likely same coffee candidate.'
@@ -186,9 +193,52 @@ describe('SimilarCoffeePanel', () => {
 		expect(screen.getAllByText('$20.00/lb')[0]).toBeInTheDocument();
 		expect(screen.getByText('$2.00/lb lower (9.1%)')).toBeInTheDocument();
 		expect(screen.getByText('High beta confidence')).toBeInTheDocument();
+		expect(screen.getByText('Likely same coffee candidate')).toBeInTheDocument();
 		expect(screen.getByText('Origin:')).toBeInTheDocument();
 		expect(screen.getByText('94%')).toBeInTheDocument();
 		expect(screen.getByText('2 tiers from 1+ lb $20.00/lb to 5+ lb $18.00/lb')).toBeInTheDocument();
+	});
+
+	it('renders similar recommendation identity blockers without calling it same coffee', async () => {
+		const blockedMatch = {
+			...(similarityResponse().data.matches[0] as Record<string, unknown>),
+			match: {
+				category: 'similar_profile',
+				classification: {
+					kind: 'similar_recommendation',
+					identity_eligibility: 'blocked',
+					confidence: 'high_beta',
+					blockers: [
+						{
+							code: 'processing_base_method_conflict',
+							severity: 'hard',
+							target_value: 'washed',
+							candidate_value: 'natural'
+						}
+					],
+					evidence: []
+				},
+				confidence: 'high_beta',
+				beta: true,
+				language: 'Similar profile, not a same-coffee claim.'
+			}
+		};
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(JSON.stringify(similarityResponse({ matches: [blockedMatch] })), {
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					})
+			)
+		);
+
+		render(SimilarCoffeePanel, { coffee: createCoffee() });
+
+		await waitFor(() => expect(screen.getByText('Similar recommendation')).toBeInTheDocument());
+		expect(screen.getByText('Processing method differs: washed vs natural')).toBeInTheDocument();
+		expect(screen.queryByText('Likely same coffee candidate')).not.toBeInTheDocument();
 	});
 
 	it('renders an empty state when no beta matches clear the threshold', async () => {

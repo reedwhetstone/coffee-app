@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-	deriveMatchCategory,
+	classifyCatalogMatch,
 	getPriceFromTiersAtQuantity,
 	normalizeCanonicalPricing,
 	normalizeSimilarityRow,
@@ -62,18 +62,6 @@ describe('catalog similarity helpers', () => {
 				cost_lb: 7
 			})
 		).toMatchObject({ baseline_price_per_lb: 7, baseline_source: 'cost_lb' });
-	});
-
-	it('derives beta categories without overclaiming canonical certainty', () => {
-		expect(
-			deriveMatchCategory({ average: 0.91, origin: 0.89, processing: 0.9, chunkMatches: 2 })
-		).toBe('likely_same');
-		expect(
-			deriveMatchCategory({ average: 0.91, origin: 0.7, processing: 0.9, chunkMatches: 2 })
-		).toBe('similar_profile');
-		expect(
-			deriveMatchCategory({ average: 0.95, origin: null, processing: null, chunkMatches: 4 })
-		).toBe('similar_profile');
 	});
 
 	it('uses raw scores for classification before rounding display scores', () => {
@@ -164,6 +152,87 @@ describe('catalog similarity helpers', () => {
 			beta: true
 		});
 		expect(match.match.language).toContain('beta confidence');
+	});
+
+	it('blocks identity claims for hard structured conflicts while retaining recommendations', () => {
+		const classification = classifyCatalogMatch({
+			target: {
+				name: 'Colombia Huila Washed',
+				country: 'Colombia',
+				processing: 'Washed',
+				processing_base_method: 'washed',
+				fermentation_type: null
+			},
+			candidate: {
+				name: 'Ethiopia Guji Natural',
+				country: 'Ethiopia',
+				processing: 'Natural',
+				processing_base_method: 'natural',
+				fermentation_type: null
+			},
+			score: { average: 0.94, origin: 0.91, processing: 0.92, chunkMatches: 3 }
+		});
+
+		expect(classification).toMatchObject({
+			kind: 'similar_recommendation',
+			identity_eligibility: 'blocked',
+			blockers: expect.arrayContaining([
+				expect.objectContaining({ code: 'processing_base_method_conflict', severity: 'hard' }),
+				expect.objectContaining({ code: 'country_conflict', severity: 'hard' })
+			])
+		});
+	});
+
+	it('requires structured process evidence before promoting a high score to canonical candidate', () => {
+		const classification = classifyCatalogMatch({
+			target: {
+				name: 'Ethiopia Guji Natural',
+				country: 'Ethiopia',
+				processing: 'Natural',
+				processing_base_method: null,
+				fermentation_type: null
+			},
+			candidate: {
+				name: 'Ethiopia Guji Lot B',
+				country: 'Ethiopia',
+				processing: null,
+				processing_base_method: null,
+				fermentation_type: null
+			},
+			score: { average: 0.97, origin: 0.95, processing: 0.95, chunkMatches: 3 }
+		});
+
+		expect(classification).toMatchObject({
+			kind: 'similar_recommendation',
+			identity_eligibility: 'insufficient_evidence',
+			blockers: [expect.objectContaining({ code: 'insufficient_structured_process' })]
+		});
+	});
+
+	it('promotes high-scoring rows only after identity gates pass', () => {
+		const classification = classifyCatalogMatch({
+			target: {
+				name: 'Ethiopia Guji Natural',
+				country: 'Ethiopia',
+				processing: 'Natural',
+				processing_base_method: 'natural',
+				fermentation_type: null
+			},
+			candidate: {
+				name: 'Ethiopia Guji Natural Lot B',
+				country: 'Ethiopia',
+				processing: 'Natural',
+				processing_base_method: 'natural',
+				fermentation_type: null
+			},
+			score: { average: 0.92, origin: 0.94, processing: 0.91, chunkMatches: 3 }
+		});
+
+		expect(classification).toMatchObject({
+			kind: 'canonical_candidate',
+			identity_eligibility: 'eligible',
+			blockers: []
+		});
 	});
 
 	it('validates threshold, limit, stocked_only, and mode query params', () => {

@@ -155,7 +155,7 @@ function createSupabaseMock(
 		target?: unknown | null;
 		matches?: unknown[];
 		details?: unknown[];
-		count?: number;
+		v3Error?: { message: string; code?: string };
 		v2Error?: { message: string; code?: string };
 		legacyError?: { message: string; code?: string };
 		legacyMatches?: unknown[];
@@ -174,10 +174,6 @@ function createSupabaseMock(
 	const select = vi.fn(() => ({ eq, in: inFilter }));
 	const from = vi.fn(() => ({ select }));
 	const rpc = vi.fn((fn: string, args?: { match_count?: number }) => {
-		if (fn === 'count_similar_beans_aggregated_v2') {
-			if (options.v2Error) return Promise.resolve({ data: null, error: options.v2Error });
-			return Promise.resolve({ data: options.count ?? 3, error: null });
-		}
 		if (fn === 'find_similar_beans_aggregated') {
 			if (options.legacyError) return Promise.resolve({ data: null, error: options.legacyError });
 			const matches = options.legacyMatches ?? options.matches ?? [matchRow];
@@ -185,7 +181,13 @@ function createSupabaseMock(
 				typeof args?.match_count === 'number' ? matches.slice(0, args.match_count) : matches;
 			return Promise.resolve({ data: cappedMatches, error: null });
 		}
-		if (options.v2Error) return Promise.resolve({ data: null, error: options.v2Error });
+		if (fn === 'find_similar_beans_aggregated_v3') {
+			const v3Error = options.v3Error ?? options.v2Error;
+			if (v3Error) return Promise.resolve({ data: null, error: v3Error });
+		}
+		if (fn === 'find_similar_beans_aggregated_v2' && options.v2Error) {
+			return Promise.resolve({ data: null, error: options.v2Error });
+		}
 		const matches = options.matches ?? [matchRow];
 		const cappedMatches =
 			typeof args?.match_count === 'number' ? matches.slice(0, args.match_count) : matches;
@@ -240,9 +242,9 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(mockCreateAdminClient).not.toHaveBeenCalled();
 	});
 
-	it('returns 403 plus a locked count teaser for signed-in viewers', async () => {
+	it('returns 403 plus a locked teaser without running expensive similarity counts for signed-in viewers', async () => {
 		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
-		const { rpc } = createSupabaseMock({ count: 4 });
+		const { rpc } = createSupabaseMock();
 
 		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?threshold=0.8'));
 		const body = await response.json();
@@ -252,13 +254,9 @@ describe('/v1/catalog/[id]/similar', () => {
 			error: 'Insufficient permissions',
 			code: 'entitlement_required',
 			requiredCapability: 'canUseBeanMatching',
-			teaser: { locked: true, similar_match_count: 4, beta: true }
+			teaser: { locked: true, similar_match_count: null, beta: true }
 		});
-		expect(rpc).toHaveBeenCalledWith('count_similar_beans_aggregated_v2', {
-			target_coffee_id: 1182,
-			match_threshold: 0.8,
-			stocked_only: true
-		});
+		expect(rpc).not.toHaveBeenCalled();
 		expect(JSON.stringify(body)).not.toContain('Supplier B');
 	});
 
@@ -275,7 +273,7 @@ describe('/v1/catalog/[id]/similar', () => {
 			code: 'entitlement_required',
 			teaser: { locked: true, similar_match_count: null, beta: true }
 		});
-		expect(rpc).not.toHaveBeenCalledWith('count_similar_beans_aggregated_v2', expect.anything());
+		expect(rpc).not.toHaveBeenCalled();
 		expect(JSON.stringify(body)).not.toContain('not found');
 	});
 
@@ -323,11 +321,12 @@ describe('/v1/catalog/[id]/similar', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
 			match_count: 125,
-			stocked_only: false
+			stocked_only: false,
+			candidate_pool: 1000
 		});
 		expect(body.data.target).toMatchObject({
 			id: 1182,
@@ -353,12 +352,51 @@ describe('/v1/catalog/[id]/similar', () => {
 			score: { dimensions: { origin: 0.94, processing: 0.91, tasting: 0.87 } },
 			match: { category: 'likely_same', confidence: 'high_beta', beta: true }
 		});
+		expect(body.data.groups.canonical_candidates).toHaveLength(1);
+		expect(body.data.groups.similar_recommendations).toHaveLength(0);
+		expect(body.data).not.toHaveProperty('queryStrategy');
+		expect(body.data.matches[0].match.classification).toMatchObject({
+			kind: 'canonical_candidate',
+			identity_eligibility: 'eligible',
+			blockers: []
+		});
 		expect(body.meta).toMatchObject({
 			resource: 'catalog-similarity',
 			status: 'beta',
 			auth: { kind: 'session', role: 'member' },
-			access: { requiredCapability: 'canUseBeanMatching', canUseBeanMatching: true }
+			access: { requiredCapability: 'canUseBeanMatching', canUseBeanMatching: true },
+			classification_version: 'canonical-match-v1',
+			query_strategy: 'bounded-vector-candidates-v1'
 		});
+	});
+
+	it('reports the v2 query strategy when bounded v3 falls back to the canonical RPC', async () => {
+		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
+		const { rpc } = createSupabaseMock({
+			v3Error: {
+				message: 'Could not find the function public.find_similar_beans_aggregated_v3',
+				code: 'PGRST202'
+			}
+		});
+
+		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?limit=5'));
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 5,
+			stocked_only: true,
+			candidate_pool: 200
+		});
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 5,
+			stocked_only: true
+		});
+		expect(body.meta.query_strategy).toBe('canonical-vector-aggregated-v2');
 	});
 
 	it('falls back to the legacy similarity RPC when preview data has not deployed the canonical RPC yet', async () => {
@@ -378,6 +416,13 @@ describe('/v1/catalog/[id]/similar', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 5,
+			stocked_only: true,
+			candidate_pool: 200
+		});
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
@@ -394,6 +439,7 @@ describe('/v1/catalog/[id]/similar', () => {
 			score: { dimensions: { origin: null, processing: null, tasting: null } },
 			match: { category: 'similar_profile' }
 		});
+		expect(body.meta.query_strategy).toBe('legacy-vector-aggregated-v1');
 	});
 
 	it('overfetches legacy fallback rows before applying stocked filtering', async () => {
@@ -477,78 +523,6 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).not.toHaveBeenCalledWith('find_similar_beans_aggregated', expect.anything());
 	});
 
-	it('falls back to a legacy count teaser when the canonical count RPC is unavailable', async () => {
-		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
-		const { rpc } = createSupabaseMock({
-			v2Error: {
-				message: 'Could not find the function public.count_similar_beans_aggregated_v2',
-				code: 'PGRST202'
-			},
-			legacyMatches: [
-				{ ...matchRow, stocked: true },
-				{ ...matchRow, coffee_id: 2300, stocked: false }
-			]
-		});
-
-		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
-		const body = await response.json();
-
-		expect(response.status).toBe(403);
-		expect(body.teaser).toMatchObject({ locked: true, similar_match_count: 1, beta: true });
-		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated', {
-			target_coffee_id: 1182,
-			match_threshold: 0.7,
-			match_count: 1000
-		});
-	});
-
-	it('surfaces canonical count RPC permission errors instead of falling back to legacy counts', async () => {
-		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
-		const { rpc } = createSupabaseMock({
-			v2Error: {
-				message: 'permission denied for function count_similar_beans_aggregated_v2',
-				code: '42501'
-			},
-			legacyMatches: [{ ...matchRow, coffee_id: 3003, stocked: true }]
-		});
-
-		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
-		const body = await response.json();
-
-		expect(response.status).toBe(500);
-		expect(body).toMatchObject({
-			error: 'Failed to fetch similar coffees',
-			message: 'Internal server error'
-		});
-		expect(rpc).not.toHaveBeenCalledWith('find_similar_beans_aggregated', expect.anything());
-	});
-
-	it('does not present a capped legacy count fallback as an exact teaser count', async () => {
-		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
-		const { rpc } = createSupabaseMock({
-			v2Error: {
-				message: 'Could not find the function public.count_similar_beans_aggregated_v2',
-				code: 'PGRST202'
-			},
-			legacyMatches: Array.from({ length: 1000 }, (_, index) => ({
-				...matchRow,
-				coffee_id: 3000 + index,
-				stocked: index % 2 === 0
-			}))
-		});
-
-		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
-		const body = await response.json();
-
-		expect(response.status).toBe(403);
-		expect(body.teaser).toMatchObject({ locked: true, similar_match_count: null, beta: true });
-		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated', {
-			target_coffee_id: 1182,
-			match_threshold: 0.7,
-			match_count: 1000
-		});
-	});
-
 	it('surfaces legacy similarity RPC failures after canonical fallback instead of returning empty matches', async () => {
 		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
 		createSupabaseMock({
@@ -563,29 +537,6 @@ describe('/v1/catalog/[id]/similar', () => {
 		});
 
 		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?limit=5'));
-		const body = await response.json();
-
-		expect(response.status).toBe(500);
-		expect(body).toMatchObject({
-			error: 'Failed to fetch similar coffees',
-			message: 'Internal server error'
-		});
-	});
-
-	it('surfaces legacy count RPC failures after canonical fallback instead of returning a zero teaser', async () => {
-		mockResolvePrincipal.mockResolvedValue(viewerPrincipal);
-		createSupabaseMock({
-			v2Error: {
-				message: 'Could not find the function public.count_similar_beans_aggregated_v2',
-				code: 'PGRST202'
-			},
-			legacyError: {
-				message: 'permission denied for function find_similar_beans_aggregated',
-				code: '42501'
-			}
-		});
-
-		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar'));
 		const body = await response.json();
 
 		expect(response.status).toBe(500);
@@ -621,11 +572,12 @@ describe('/v1/catalog/[id]/similar', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
 			match_count: 125,
-			stocked_only: true
+			stocked_only: true,
+			candidate_pool: 1000
 		});
 		expect(body.data.matches).toHaveLength(2);
 		expect(body.data.matches.map((match: { coffee: { id: number } }) => match.coffee.id)).toEqual([

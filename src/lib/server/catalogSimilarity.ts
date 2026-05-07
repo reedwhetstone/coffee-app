@@ -10,7 +10,33 @@ import {
 
 export type CatalogSimilarityMode = 'all' | 'likely_same' | 'similar_profile';
 export type CatalogMatchCategory = 'likely_same' | 'similar_profile';
+export type CatalogMatchKind = 'canonical_candidate' | 'similar_recommendation';
+export type CatalogIdentityEligibility = 'eligible' | 'blocked' | 'insufficient_evidence';
 export type CatalogMatchConfidenceLabel = 'high_beta' | 'medium_beta' | 'low_beta';
+
+export type CatalogIdentityBlockerCode =
+	| 'processing_base_method_conflict'
+	| 'fermentation_type_conflict'
+	| 'country_conflict'
+	| 'decaf_conflict'
+	| 'blend_single_origin_conflict'
+	| 'harvest_year_conflict'
+	| 'insufficient_structured_process';
+
+export interface CatalogIdentityBlocker {
+	code: CatalogIdentityBlockerCode;
+	severity: 'hard' | 'soft';
+	target_value: string | null;
+	candidate_value: string | null;
+}
+
+export interface CatalogMatchClassification {
+	kind: CatalogMatchKind;
+	identity_eligibility: CatalogIdentityEligibility;
+	confidence: CatalogMatchConfidenceLabel;
+	blockers: CatalogIdentityBlocker[];
+	evidence: string[];
+}
 
 export interface CatalogSimilarityQuery {
 	threshold: number;
@@ -18,6 +44,11 @@ export interface CatalogSimilarityQuery {
 	stockedOnly: boolean;
 	mode: CatalogSimilarityMode;
 }
+
+export type CatalogSimilarityQueryStrategy =
+	| 'bounded-vector-candidates-v1'
+	| 'canonical-vector-aggregated-v2'
+	| 'legacy-vector-aggregated-v1';
 
 export interface CatalogSimilarityTargetSummary {
 	id: number;
@@ -83,6 +114,7 @@ export interface CatalogSimilarityMatch {
 	};
 	match: {
 		category: CatalogMatchCategory;
+		classification: CatalogMatchClassification;
 		confidence: CatalogMatchConfidenceLabel;
 		beta: true;
 		language: string;
@@ -99,6 +131,10 @@ export interface CatalogSimilarityMatch {
 export interface CatalogSimilarityResponse {
 	data: {
 		target: CatalogSimilarityTargetSummary;
+		groups: {
+			canonical_candidates: CatalogSimilarityMatch[];
+			similar_recommendations: CatalogSimilarityMatch[];
+		};
 		matches: CatalogSimilarityMatch[];
 	};
 	meta: {
@@ -119,6 +155,8 @@ export interface CatalogSimilarityResponse {
 		copy: {
 			confidence: string;
 		};
+		classification_version: 'canonical-match-v1';
+		query_strategy: CatalogSimilarityQueryStrategy;
 	};
 }
 
@@ -208,6 +246,15 @@ interface CatalogSimilarityTargetRow extends CatalogSimilarityProofFields {
 
 type CatalogSimilarityDetailRow = CatalogSimilarityTargetRow;
 
+type CatalogIdentityComparable = {
+	name?: string | null;
+	coffee_name?: string | null;
+	country: string | null;
+	processing: string | null;
+	processing_base_method: string | null;
+	fermentation_type: string | null;
+};
+
 interface SimilaritySupabaseClient {
 	from(table: 'coffee_catalog'): {
 		select(columns: string): {
@@ -226,6 +273,19 @@ interface SimilaritySupabaseClient {
 			): Promise<{ data: CatalogSimilarityDetailRow[] | null; error: { message: string } | null }>;
 		};
 	};
+	rpc(
+		fn: 'find_similar_beans_aggregated_v3',
+		args: {
+			target_coffee_id: number;
+			match_threshold: number;
+			match_count: number | null;
+			stocked_only: boolean;
+			candidate_pool?: number;
+		}
+	): Promise<{
+		data: FindSimilarBeansAggregatedV2Row[] | null;
+		error: { message: string; code?: string } | null;
+	}>;
 	rpc(
 		fn: 'find_similar_beans_aggregated_v2',
 		args: {
@@ -246,14 +306,6 @@ interface SimilaritySupabaseClient {
 		data: FindSimilarBeansAggregatedLegacyRow[] | null;
 		error: { message: string; code?: string } | null;
 	}>;
-	rpc(
-		fn: 'count_similar_beans_aggregated_v2',
-		args: {
-			target_coffee_id: number;
-			match_threshold: number;
-			stocked_only: boolean;
-		}
-	): Promise<{ data: number | null; error: { message: string; code?: string } | null }>;
 }
 
 const TARGET_SELECT =
@@ -263,7 +315,6 @@ export const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
 export const MAX_CATALOG_SIMILARITY_LIMIT = 25;
 const MODE_FILTER_OVERFETCH_MULTIPLIER = 5;
 const MODE_FILTER_RPC_MATCH_LIMIT = MAX_CATALOG_SIMILARITY_LIMIT * MODE_FILTER_OVERFETCH_MULTIPLIER;
-const LEGACY_COUNT_FALLBACK_MATCH_LIMIT = 1000;
 export const MIN_CATALOG_SIMILARITY_THRESHOLD = 0.5;
 export const MAX_CATALOG_SIMILARITY_THRESHOLD = 0.99;
 
@@ -396,29 +447,184 @@ export function normalizeCanonicalPricing(input: {
 	};
 }
 
-export function deriveMatchCategory(input: {
-	average: number;
-	origin: number | null;
-	processing: number | null;
-	chunkMatches: number;
-}): CatalogMatchCategory {
-	const hasDimensionalEvidence = input.origin !== null || input.processing !== null;
-	if (
-		hasDimensionalEvidence &&
-		input.average >= 0.88 &&
-		input.chunkMatches >= 2 &&
-		(input.origin === null || input.origin >= 0.84) &&
-		(input.processing === null || input.processing >= 0.84)
-	) {
-		return 'likely_same';
-	}
-	return 'similar_profile';
-}
-
 export function deriveConfidenceLabel(score: number): CatalogMatchConfidenceLabel {
 	if (score >= 0.9) return 'high_beta';
 	if (score >= 0.8) return 'medium_beta';
 	return 'low_beta';
+}
+
+function normalizeIdentityValue(value: string | null | undefined): string | null {
+	if (!value) return null;
+	const normalized = value.trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+	return normalized.length > 0 ? normalized : null;
+}
+
+function hasDecafSignal(...values: Array<string | null | undefined>): boolean | null {
+	const normalized = values
+		.map(normalizeIdentityValue)
+		.filter((value): value is string => value !== null);
+	if (normalized.length === 0) return null;
+	return normalized.some((value) => /\bdecaf(?:feinated)?\b/.test(value));
+}
+
+function hasBlendSignal(...values: Array<string | null | undefined>): boolean | null {
+	const normalized = values
+		.map(normalizeIdentityValue)
+		.filter((value): value is string => value !== null);
+	if (normalized.length === 0) return null;
+	return normalized.some((value) => /\bblend\b|\bcomponent\b/.test(value));
+}
+
+function extractHarvestYear(...values: Array<string | null | undefined>): string | null {
+	for (const value of values) {
+		const normalized = normalizeIdentityValue(value);
+		if (!normalized) continue;
+		const match = normalized.match(/\b(20[12][0-9])\b/);
+		if (match) return match[1];
+	}
+	return null;
+}
+
+function blocker(
+	code: CatalogIdentityBlockerCode,
+	severity: CatalogIdentityBlocker['severity'],
+	targetValue: string | null,
+	candidateValue: string | null
+): CatalogIdentityBlocker {
+	return {
+		code,
+		severity,
+		target_value: targetValue,
+		candidate_value: candidateValue
+	};
+}
+
+export function classifyCatalogMatch(input: {
+	target?: Pick<
+		CatalogSimilarityTargetSummary,
+		'name' | 'country' | 'processing' | 'processing_base_method' | 'fermentation_type'
+	>;
+	candidate: CatalogIdentityComparable;
+	score: {
+		average: number;
+		origin: number | null;
+		processing: number | null;
+		chunkMatches: number;
+	};
+}): CatalogMatchClassification {
+	const confidence = deriveConfidenceLabel(input.score.average);
+	const blockers: CatalogIdentityBlocker[] = [];
+	const evidence: string[] = [];
+	const targetProcess = normalizeIdentityValue(input.target?.processing_base_method);
+	const candidateProcess = normalizeIdentityValue(input.candidate.processing_base_method);
+	const targetCountry = normalizeIdentityValue(input.target?.country);
+	const candidateCountry = normalizeIdentityValue(input.candidate.country);
+	const targetFermentation = normalizeIdentityValue(input.target?.fermentation_type);
+	const candidateFermentation = normalizeIdentityValue(input.candidate.fermentation_type);
+
+	if (targetProcess && candidateProcess) {
+		if (targetProcess !== candidateProcess) {
+			blockers.push(
+				blocker('processing_base_method_conflict', 'hard', targetProcess, candidateProcess)
+			);
+		} else {
+			evidence.push(`Processing base method matches: ${targetProcess}`);
+		}
+	} else if (input.target) {
+		blockers.push(
+			blocker('insufficient_structured_process', 'soft', targetProcess, candidateProcess)
+		);
+	}
+
+	if (targetCountry && candidateCountry) {
+		if (targetCountry !== candidateCountry) {
+			blockers.push(blocker('country_conflict', 'hard', targetCountry, candidateCountry));
+		} else {
+			evidence.push(`Country matches: ${targetCountry}`);
+		}
+	}
+
+	if (targetFermentation && candidateFermentation && targetFermentation !== candidateFermentation) {
+		blockers.push(
+			blocker('fermentation_type_conflict', 'hard', targetFermentation, candidateFermentation)
+		);
+	}
+
+	const targetName = input.target?.name ?? null;
+	const candidateName = input.candidate.name ?? input.candidate.coffee_name ?? null;
+	const targetDecaf = hasDecafSignal(targetName, input.target?.processing);
+	const candidateDecaf = hasDecafSignal(candidateName, input.candidate.processing);
+	if (targetDecaf !== null && candidateDecaf !== null && targetDecaf !== candidateDecaf) {
+		blockers.push(
+			blocker(
+				'decaf_conflict',
+				'hard',
+				targetDecaf ? 'decaf' : 'not decaf',
+				candidateDecaf ? 'decaf' : 'not decaf'
+			)
+		);
+	}
+
+	const targetBlend = hasBlendSignal(targetName, input.target?.processing);
+	const candidateBlend = hasBlendSignal(candidateName, input.candidate.processing);
+	if (targetBlend !== null && candidateBlend !== null && targetBlend !== candidateBlend) {
+		blockers.push(
+			blocker(
+				'blend_single_origin_conflict',
+				'hard',
+				targetBlend ? 'blend' : 'single-origin',
+				candidateBlend ? 'blend' : 'single-origin'
+			)
+		);
+	}
+
+	const targetHarvest = extractHarvestYear(targetName, input.target?.processing);
+	const candidateHarvest = extractHarvestYear(candidateName, input.candidate.processing);
+	if (targetHarvest && candidateHarvest && targetHarvest !== candidateHarvest) {
+		blockers.push(blocker('harvest_year_conflict', 'hard', targetHarvest, candidateHarvest));
+	}
+
+	if (input.score.origin !== null && input.score.origin >= 0.84) {
+		evidence.push(`Origin similarity clears identity floor: ${roundScore(input.score.origin)}`);
+	}
+	if (input.score.processing !== null && input.score.processing >= 0.84) {
+		evidence.push(
+			`Processing similarity clears identity floor: ${roundScore(input.score.processing)}`
+		);
+	}
+	if (input.score.average >= 0.88 && input.score.chunkMatches >= 2) {
+		evidence.push(
+			`Average similarity ${roundScore(input.score.average)} across ${input.score.chunkMatches} chunks`
+		);
+	}
+
+	const hasHardBlocker = blockers.some((item) => item.severity === 'hard');
+	const hasInsufficientEvidence = blockers.some(
+		(item) => item.code === 'insufficient_structured_process'
+	);
+	const hasDimensionalIdentityEvidence =
+		input.score.origin !== null || input.score.processing !== null;
+	const scoreEligible =
+		hasDimensionalIdentityEvidence &&
+		input.score.average >= 0.88 &&
+		input.score.chunkMatches >= 2 &&
+		(input.score.origin === null || input.score.origin >= 0.84) &&
+		(input.score.processing === null || input.score.processing >= 0.84);
+	const identity_eligibility: CatalogIdentityEligibility = hasHardBlocker
+		? 'blocked'
+		: hasInsufficientEvidence || !scoreEligible
+			? 'insufficient_evidence'
+			: 'eligible';
+	const kind: CatalogMatchKind =
+		identity_eligibility === 'eligible' ? 'canonical_candidate' : 'similar_recommendation';
+
+	return {
+		kind,
+		identity_eligibility,
+		confidence,
+		blockers,
+		evidence
+	};
 }
 
 function confidenceLanguage(
@@ -479,7 +685,8 @@ function proofInputFromSimilarityRow(
 export function normalizeSimilarityRow(
 	row: FindSimilarBeansAggregatedV2Row,
 	targetPricing: CatalogCanonicalPricing,
-	detail?: CatalogSimilarityDetailRow
+	detail?: CatalogSimilarityDetailRow,
+	target?: CatalogSimilarityTargetSummary
 ): CatalogSimilarityMatch {
 	const rawAverage = toFiniteNumber(row.avg_similarity) ?? 0;
 	const rawOrigin = toFiniteNumber(row.origin_similarity);
@@ -490,13 +697,19 @@ export function normalizeSimilarityRow(
 	const processing = roundScore(rawProcessing);
 	const tasting = roundScore(rawTasting);
 	const chunkMatches = Math.trunc(toFiniteNumber(row.chunk_matches) ?? 0);
-	const category = deriveMatchCategory({
-		average: rawAverage,
-		origin: rawOrigin,
-		processing: rawProcessing,
-		chunkMatches
+	const classification = classifyCatalogMatch({
+		target,
+		candidate: detail ?? row,
+		score: {
+			average: rawAverage,
+			origin: rawOrigin,
+			processing: rawProcessing,
+			chunkMatches
+		}
 	});
-	const confidence = deriveConfidenceLabel(rawAverage);
+	const category: CatalogMatchCategory =
+		classification.kind === 'canonical_candidate' ? 'likely_same' : 'similar_profile';
+	const confidence = classification.confidence;
 	const pricing = normalizeCanonicalPricing(detail ?? row);
 	const targetBaseline = targetPricing.baseline_price_per_lb;
 	const matchBaseline = pricing.baseline_price_per_lb;
@@ -540,6 +753,7 @@ export function normalizeSimilarityRow(
 		},
 		match: {
 			category,
+			classification,
 			confidence,
 			beta: true,
 			language: confidenceLanguage(category, confidence)
@@ -552,6 +766,20 @@ export function normalizeSimilarityRow(
 		compatibility: {
 			cost_lb: pricing.cost_lb
 		}
+	};
+}
+
+export function groupCatalogSimilarityMatches(matches: CatalogSimilarityMatch[]): {
+	canonical_candidates: CatalogSimilarityMatch[];
+	similar_recommendations: CatalogSimilarityMatch[];
+} {
+	return {
+		canonical_candidates: matches.filter(
+			(match) => match.match.classification.kind === 'canonical_candidate'
+		),
+		similar_recommendations: matches.filter(
+			(match) => match.match.classification.kind === 'similar_recommendation'
+		)
 	};
 }
 
@@ -640,7 +868,22 @@ async function fetchCanonicalSimilarityRows(input: {
 	coffeeId: number;
 	query: CatalogSimilarityQuery;
 	rpcMatchCount: number;
-}): Promise<FindSimilarBeansAggregatedV2Row[]> {
+}): Promise<{
+	rows: FindSimilarBeansAggregatedV2Row[];
+	queryStrategy: CatalogSimilarityQueryStrategy;
+}> {
+	const candidatePool = Math.min(Math.max(input.rpcMatchCount * 40, 200), 1000);
+	const v3 = await input.supabase.rpc('find_similar_beans_aggregated_v3', {
+		target_coffee_id: input.coffeeId,
+		match_threshold: input.query.threshold,
+		match_count: input.rpcMatchCount,
+		stocked_only: input.query.stockedOnly,
+		candidate_pool: candidatePool
+	});
+
+	if (!v3.error) return { rows: v3.data ?? [], queryStrategy: 'bounded-vector-candidates-v1' };
+	if (!isLikelyMissingCanonicalSimilarityRpc(v3.error)) throw new Error(v3.error.message);
+
 	const { data, error } = await input.supabase.rpc('find_similar_beans_aggregated_v2', {
 		target_coffee_id: input.coffeeId,
 		match_threshold: input.query.threshold,
@@ -648,7 +891,7 @@ async function fetchCanonicalSimilarityRows(input: {
 		stocked_only: input.query.stockedOnly
 	});
 
-	if (!error) return data ?? [];
+	if (!error) return { rows: data ?? [], queryStrategy: 'canonical-vector-aggregated-v2' };
 	if (!isLikelyMissingCanonicalSimilarityRpc(error)) throw new Error(error.message);
 
 	const legacy = await input.supabase.rpc('find_similar_beans_aggregated', {
@@ -661,7 +904,10 @@ async function fetchCanonicalSimilarityRows(input: {
 	const rows = (legacy.data ?? []).filter(
 		(row) => !input.query.stockedOnly || row.stocked === true
 	);
-	return rows.map(normalizeLegacySimilarityRow);
+	return {
+		rows: rows.map(normalizeLegacySimilarityRow),
+		queryStrategy: 'legacy-vector-aggregated-v1'
+	};
 }
 
 async function fetchTarget(
@@ -698,11 +944,19 @@ export async function fetchCatalogSimilarityMatches(input: {
 	supabase: SupabaseClient;
 	coffeeId: number;
 	query: CatalogSimilarityQuery;
-}): Promise<{ target: CatalogSimilarityTargetSummary; matches: CatalogSimilarityMatch[] }> {
+}): Promise<{
+	target: CatalogSimilarityTargetSummary;
+	groups: {
+		canonical_candidates: CatalogSimilarityMatch[];
+		similar_recommendations: CatalogSimilarityMatch[];
+	};
+	matches: CatalogSimilarityMatch[];
+	queryStrategy: CatalogSimilarityQueryStrategy;
+}> {
 	const supabase = input.supabase as unknown as SimilaritySupabaseClient;
 	const target = await fetchTarget(supabase, input.coffeeId);
 	const rpcMatchCount = resolveRpcMatchCount(input.query);
-	const data = await fetchCanonicalSimilarityRows({
+	const { rows, queryStrategy } = await fetchCanonicalSimilarityRows({
 		supabase,
 		coffeeId: input.coffeeId,
 		query: input.query,
@@ -711,40 +965,15 @@ export async function fetchCatalogSimilarityMatches(input: {
 
 	const detailById = await fetchMatchDetails(
 		supabase,
-		data.map((row) => row.coffee_id)
+		rows.map((row) => row.coffee_id)
 	);
-	const matches = data
-		.map((row) => normalizeSimilarityRow(row, target.pricing, detailById.get(row.coffee_id)))
+	const matches = rows
+		.map((row) =>
+			normalizeSimilarityRow(row, target.pricing, detailById.get(row.coffee_id), target)
+		)
 		.filter((match) => matchesMode(match, input.query.mode))
 		.slice(0, input.query.limit);
+	const groups = groupCatalogSimilarityMatches(matches);
 
-	return { target, matches };
-}
-
-export async function countCatalogSimilarityMatches(input: {
-	supabase: SupabaseClient;
-	coffeeId: number;
-	query: Pick<CatalogSimilarityQuery, 'threshold' | 'stockedOnly'>;
-}): Promise<number | null> {
-	const supabase = input.supabase as unknown as SimilaritySupabaseClient;
-	await fetchTarget(supabase, input.coffeeId);
-	const { data, error } = await supabase.rpc('count_similar_beans_aggregated_v2', {
-		target_coffee_id: input.coffeeId,
-		match_threshold: input.query.threshold,
-		stocked_only: input.query.stockedOnly
-	});
-
-	if (error) {
-		if (!isLikelyMissingCanonicalSimilarityRpc(error)) throw new Error(error.message);
-		const legacy = await supabase.rpc('find_similar_beans_aggregated', {
-			target_coffee_id: input.coffeeId,
-			match_threshold: input.query.threshold,
-			match_count: LEGACY_COUNT_FALLBACK_MATCH_LIMIT
-		});
-		if (legacy.error) throw new Error(legacy.error.message);
-		const rows = legacy.data ?? [];
-		if (rows.length >= LEGACY_COUNT_FALLBACK_MATCH_LIMIT) return null;
-		return rows.filter((row) => !input.query.stockedOnly || row.stocked === true).length;
-	}
-	return Math.max(0, Math.trunc(toFiniteNumber(data) ?? 0));
+	return { target, groups, matches, queryStrategy };
 }
