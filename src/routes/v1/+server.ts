@@ -63,6 +63,21 @@ export const GET: RequestHandler = async () => {
 					table: 'price_index_snapshots',
 					aggregateOnly: true
 				}
+			},
+			procurementBriefs: {
+				href: '/v1/procurement/briefs',
+				status: 'live',
+				auth: {
+					anonymous: false,
+					session: true,
+					apiKey: true
+				},
+				access: {
+					session: 'requires member or admin role',
+					apiKey: 'requires member or enterprise API plan'
+				},
+				capabilities: ['create', 'list', 'get', 'manualMatches'],
+				matchRoute: '/v1/procurement/briefs/:id/matches'
 			}
 		}
 	});

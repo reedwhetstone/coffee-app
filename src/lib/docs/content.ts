@@ -95,6 +95,12 @@ export const DOCS_NAV: DocsNavSection[] = [
 					'The beta /v1/catalog/{id}/similar endpoint for member and paid API matching workflows.'
 			},
 			{
+				slug: 'procurement-briefs',
+				title: 'Procurement briefs',
+				summary:
+					'User-owned saved sourcing criteria and manual catalog matches for procurement workflows.'
+			},
+			{
 				slug: 'platform',
 				title: 'Internal app routes',
 				summary:
@@ -1019,6 +1025,111 @@ const docsPages: DocsPage[] = [
 			}
 		]
 	},
+
+	{
+		section: 'api',
+		slug: 'procurement-briefs',
+		title: 'Procurement briefs API',
+		summary:
+			'Create saved sourcing criteria and run deterministic catalog matches for procurement workflows.',
+		eyebrow: 'Procurement seed',
+		intro: [
+			'Procurement briefs save a narrow, versioned sourcing intent for one account. They are the durable contract for agents, CLI workflows, and later web surfaces that need to ask: what currently matches this buying brief?',
+			'The first version deliberately supports only pre-pagination-safe catalog constraints. Unsupported filters are rejected instead of stored as no-ops, and manual matches explain why each returned listing satisfies the saved criteria without ranking the coffee as objectively better.'
+		],
+		sections: [
+			{
+				title: 'Endpoint and access',
+				table: {
+					headers: ['Route', 'Method', 'Auth', 'Contract'],
+					rows: [
+						[
+							'/v1/procurement/briefs',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Lists active saved briefs owned by the caller.'
+						],
+						[
+							'/v1/procurement/briefs',
+							'POST',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Creates one active manual brief after validating the versioned criteria contract.'
+						],
+						[
+							'/v1/procurement/briefs/{id}',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Returns one active caller-owned brief.'
+						],
+						[
+							'/v1/procurement/briefs/{id}/matches',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Applies saved criteria to current catalog rows before pagination and returns match reasons plus limitations.'
+						]
+					]
+				},
+				bullets: [
+					'Anonymous callers receive 401 Authentication required.',
+					'Signed-in viewers and API Green keys receive a structured 403 entitlement error before brief data is read or written.',
+					'API-key requests use the same X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, and Retry-After conventions as other paid API routes.',
+					'Brief records are user-owned; one caller cannot fetch or run another account’s brief.'
+				]
+			},
+			{
+				title: 'Criteria contract',
+				body: [
+					'Every stored criteria object is normalized to version: 1. The supported fields are country, region, processing, processing_base_method, max_price_per_lb, stocked_only, wholesale_only, and stocked_days.',
+					'At least one supported sourcing constraint is required. Unknown fields, wrong value types, empty strings, invalid versions, and out-of-range stocked_days values return 400 with an issues array and allowedFields.'
+				],
+				codeBlocks: [
+					{
+						label: 'Create a washed Colombia brief',
+						language: 'bash',
+						code: 'curl -X POST "https://purveyors.io/v1/procurement/briefs" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key" \\\n  -H "Content-Type: application/json" \\\n  --data \'{\n    "name": "Washed Colombia under 6.50",\n    "criteria": {\n      "country": "Colombia",\n      "processing_base_method": "Washed",\n      "max_price_per_lb": 6.5,\n      "stocked_only": true\n    }\n  }\''
+					}
+				]
+			},
+			{
+				title: 'Manual matches',
+				body: [
+					'GET /v1/procurement/briefs/{id}/matches accepts page and limit query parameters. limit defaults to 25 and is capped at 100.',
+					'The response includes data rows in the catalog resource shape with matchReasons, truthful pagination, generatedAt, the saved brief, the criteria used, and limitations explaining that deterministic matches are not quality rankings.'
+				],
+				codeBlocks: [
+					{
+						label: 'Run one brief manually',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/procurement/briefs/00000000-0000-4000-8000-000000000000/matches?limit=10" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+					},
+					{
+						label: 'Invalid criteria response',
+						language: 'json',
+						code: '{\n  "error": "Invalid criteria",\n  "message": "Sourcing brief criteria contains unsupported or invalid fields",\n  "details": {\n    "issues": [\n      {\n        "field": "unsupported_filter",\n        "message": "unsupported_filter is not supported by sourcing brief criteria"\n      }\n    ],\n    "allowedFields": ["country", "region", "processing", "processing_base_method", "max_price_per_lb", "stocked_only", "wholesale_only", "stocked_days"]\n  }\n}'
+					}
+				]
+			}
+		],
+		related: [
+			{
+				href: '/docs/api/catalog',
+				label: 'Catalog API',
+				description: 'The current catalog rows matched by saved procurement criteria.'
+			},
+			{
+				href: '/docs/api/catalog-similarity',
+				label: 'Catalog similarity',
+				description:
+					'Beta matching primitives that remain separate from deterministic sourcing-brief matches.'
+			},
+			{
+				href: '/docs/api/errors',
+				label: 'Errors and auth',
+				description: 'Shared auth, entitlement, validation, and rate-limit conventions.'
+			}
+		]
+	},
+
 	{
 		section: 'api',
 		slug: 'platform',
@@ -1056,6 +1167,13 @@ const docsPages: DocsPage[] = [
 							'Member session or API key with API Origin or Enterprise plus catalog:read',
 							'Beta external contract',
 							'Catalog similarity candidates with target, grouped canonical candidates vs similar recommendations, score dimensions, identity blocker reasons, price deltas, and cautious beta copy.'
+						],
+						[
+							'/v1/procurement/briefs',
+							'GET, POST',
+							'Member session or API key with API Origin or Enterprise plus catalog:read',
+							'Stable external procurement seed',
+							'Creates and lists user-owned saved sourcing criteria. /v1/procurement/briefs/{id} gets one brief, and /v1/procurement/briefs/{id}/matches runs deterministic catalog matches.'
 						],
 						[
 							'/v1/price-index',

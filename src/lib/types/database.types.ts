@@ -927,6 +927,50 @@ export type Database = {
 					}
 				];
 			};
+			sourcing_briefs: {
+				Row: {
+					cadence: string;
+					created_at: string;
+					criteria: Json;
+					id: string;
+					is_active: boolean;
+					last_run_at: string | null;
+					name: string;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					cadence?: string;
+					created_at?: string;
+					criteria: Json;
+					id?: string;
+					is_active?: boolean;
+					last_run_at?: string | null;
+					name: string;
+					updated_at?: string;
+					user_id: string;
+				};
+				Update: {
+					cadence?: string;
+					created_at?: string;
+					criteria?: Json;
+					id?: string;
+					is_active?: boolean;
+					last_run_at?: string | null;
+					name?: string;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'sourcing_briefs_user_id_fkey';
+						columns: ['user_id'];
+						isOneToOne: false;
+						referencedRelation: 'user_roles';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			user_roles: {
 				Row: {
 					created_at: string;
