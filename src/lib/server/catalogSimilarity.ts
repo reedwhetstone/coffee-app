@@ -13,6 +13,18 @@ export type CatalogMatchCategory = 'likely_same' | 'similar_profile';
 export type CatalogMatchKind = 'canonical_candidate' | 'similar_recommendation';
 export type CatalogIdentityEligibility = 'eligible' | 'blocked' | 'insufficient_evidence';
 export type CatalogMatchConfidenceLabel = 'high_beta' | 'medium_beta' | 'low_beta';
+export type CatalogMatchCalibrationBand =
+	| 'auto_link_candidate'
+	| 'likely_same'
+	| 'similar_profile'
+	| 'below_threshold';
+
+export interface CatalogSimilarityScoreInput {
+	average: number;
+	origin: number | null;
+	processing: number | null;
+	chunkMatches: number;
+}
 
 export type CatalogIdentityBlockerCode =
 	| 'processing_base_method_conflict'
@@ -313,6 +325,21 @@ const TARGET_SELECT =
 export const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.7;
 export const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
 export const MAX_CATALOG_SIMILARITY_LIMIT = 25;
+export const CATALOG_SIMILARITY_THRESHOLDS = {
+	similarProfile: {
+		average: DEFAULT_CATALOG_SIMILARITY_THRESHOLD
+	},
+	likelySame: {
+		average: 0.88,
+		dimension: 0.84,
+		chunkMatches: 2
+	},
+	autoLinkCandidate: {
+		average: 0.94,
+		dimension: 0.9,
+		chunkMatches: 3
+	}
+} as const;
 const MODE_FILTER_OVERFETCH_MULTIPLIER = 5;
 const MODE_FILTER_RPC_MATCH_LIMIT = MAX_CATALOG_SIMILARITY_LIMIT * MODE_FILTER_OVERFETCH_MULTIPLIER;
 export const MIN_CATALOG_SIMILARITY_THRESHOLD = 0.5;
@@ -445,6 +472,44 @@ export function normalizeCanonicalPricing(input: {
 		baseline_price_per_lb: baselinePrice,
 		baseline_source: baselineSource
 	};
+}
+
+function dimensionMeetsThreshold(value: number | null, threshold: number): boolean {
+	return value === null || value >= threshold;
+}
+
+export function deriveCalibrationBand(
+	input: CatalogSimilarityScoreInput
+): CatalogMatchCalibrationBand {
+	if (
+		input.average >= CATALOG_SIMILARITY_THRESHOLDS.autoLinkCandidate.average &&
+		input.chunkMatches >= CATALOG_SIMILARITY_THRESHOLDS.autoLinkCandidate.chunkMatches &&
+		dimensionMeetsThreshold(
+			input.origin,
+			CATALOG_SIMILARITY_THRESHOLDS.autoLinkCandidate.dimension
+		) &&
+		dimensionMeetsThreshold(
+			input.processing,
+			CATALOG_SIMILARITY_THRESHOLDS.autoLinkCandidate.dimension
+		)
+	) {
+		return 'auto_link_candidate';
+	}
+
+	if (
+		input.average >= CATALOG_SIMILARITY_THRESHOLDS.likelySame.average &&
+		input.chunkMatches >= CATALOG_SIMILARITY_THRESHOLDS.likelySame.chunkMatches &&
+		dimensionMeetsThreshold(input.origin, CATALOG_SIMILARITY_THRESHOLDS.likelySame.dimension) &&
+		dimensionMeetsThreshold(input.processing, CATALOG_SIMILARITY_THRESHOLDS.likelySame.dimension)
+	) {
+		return 'likely_same';
+	}
+
+	if (input.average >= CATALOG_SIMILARITY_THRESHOLDS.similarProfile.average) {
+		return 'similar_profile';
+	}
+
+	return 'below_threshold';
 }
 
 export function deriveConfidenceLabel(score: number): CatalogMatchConfidenceLabel {
@@ -584,15 +649,24 @@ export function classifyCatalogMatch(input: {
 		blockers.push(blocker('harvest_year_conflict', 'hard', targetHarvest, candidateHarvest));
 	}
 
-	if (input.score.origin !== null && input.score.origin >= 0.84) {
+	if (
+		input.score.origin !== null &&
+		input.score.origin >= CATALOG_SIMILARITY_THRESHOLDS.likelySame.dimension
+	) {
 		evidence.push(`Origin similarity clears identity floor: ${roundScore(input.score.origin)}`);
 	}
-	if (input.score.processing !== null && input.score.processing >= 0.84) {
+	if (
+		input.score.processing !== null &&
+		input.score.processing >= CATALOG_SIMILARITY_THRESHOLDS.likelySame.dimension
+	) {
 		evidence.push(
 			`Processing similarity clears identity floor: ${roundScore(input.score.processing)}`
 		);
 	}
-	if (input.score.average >= 0.88 && input.score.chunkMatches >= 2) {
+	if (
+		input.score.average >= CATALOG_SIMILARITY_THRESHOLDS.likelySame.average &&
+		input.score.chunkMatches >= CATALOG_SIMILARITY_THRESHOLDS.likelySame.chunkMatches
+	) {
 		evidence.push(
 			`Average similarity ${roundScore(input.score.average)} across ${input.score.chunkMatches} chunks`
 		);
@@ -606,10 +680,16 @@ export function classifyCatalogMatch(input: {
 		input.score.origin !== null || input.score.processing !== null;
 	const scoreEligible =
 		hasDimensionalIdentityEvidence &&
-		input.score.average >= 0.88 &&
-		input.score.chunkMatches >= 2 &&
-		(input.score.origin === null || input.score.origin >= 0.84) &&
-		(input.score.processing === null || input.score.processing >= 0.84);
+		input.score.average >= CATALOG_SIMILARITY_THRESHOLDS.likelySame.average &&
+		input.score.chunkMatches >= CATALOG_SIMILARITY_THRESHOLDS.likelySame.chunkMatches &&
+		dimensionMeetsThreshold(
+			input.score.origin,
+			CATALOG_SIMILARITY_THRESHOLDS.likelySame.dimension
+		) &&
+		dimensionMeetsThreshold(
+			input.score.processing,
+			CATALOG_SIMILARITY_THRESHOLDS.likelySame.dimension
+		);
 	const identity_eligibility: CatalogIdentityEligibility = hasHardBlocker
 		? 'blocked'
 		: hasInsufficientEvidence || !scoreEligible

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { catalogSimilarityCalibrationExamples } from './__fixtures__/catalogSimilarityCalibration';
 import {
 	classifyCatalogMatch,
+	deriveCalibrationBand,
 	getPriceFromTiersAtQuantity,
 	normalizeCanonicalPricing,
 	normalizeSimilarityRow,
@@ -233,6 +235,59 @@ describe('catalog similarity helpers', () => {
 			identity_eligibility: 'eligible',
 			blockers: []
 		});
+	});
+
+	it('keeps calibrated threshold bands conservative for score-only identity work', () => {
+		expect(
+			deriveCalibrationBand({ average: 0.96, origin: 0.93, processing: 0.92, chunkMatches: 3 })
+		).toBe('auto_link_candidate');
+		expect(
+			deriveCalibrationBand({ average: 0.91, origin: 0.89, processing: 0.88, chunkMatches: 2 })
+		).toBe('likely_same');
+		expect(
+			deriveCalibrationBand({ average: 0.91, origin: 0.72, processing: 0.9, chunkMatches: 3 })
+		).toBe('similar_profile');
+		expect(
+			deriveCalibrationBand({ average: 0.63, origin: 0.7, processing: 0.42, chunkMatches: 2 })
+		).toBe('below_threshold');
+	});
+
+	it('matches the reproducible calibration fixture against score bands and hard identity gates', () => {
+		const evaluated = catalogSimilarityCalibrationExamples.map((example) => {
+			const actualBand = deriveCalibrationBand(example);
+			const classification = classifyCatalogMatch({
+				target: example.target,
+				candidate: example.candidate,
+				score: example
+			});
+			return { ...example, actualBand, classification };
+		});
+
+		expect(evaluated).toEqual(
+			expect.arrayContaining(
+				catalogSimilarityCalibrationExamples.map((example) =>
+					expect.objectContaining({
+						id: example.id,
+						actualBand: example.expectedBand,
+						classification: expect.objectContaining({
+							kind: example.expectedKind,
+							identity_eligibility: example.expectedIdentityEligibility
+						})
+					})
+				)
+			)
+		);
+		expect(
+			evaluated.filter(
+				(example) =>
+					example.classification.kind === 'canonical_candidate' && example.truth !== 'same_bean'
+			)
+		).toHaveLength(0);
+		expect(
+			evaluated.filter(
+				(example) => example.actualBand === 'below_threshold' && example.truth !== 'not_match'
+			)
+		).toHaveLength(0);
 	});
 
 	it('validates threshold, limit, stocked_only, and mode query params', () => {
