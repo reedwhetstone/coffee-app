@@ -772,7 +772,7 @@ const docsPages: DocsPage[] = [
 				},
 				bullets: [
 					'Anonymous callers receive 401 auth_required. The response does not leak match data.',
-					'Signed-in viewer sessions and API Green keys receive 403 entitlement_required. Viewer sessions can receive a locked teaser count when the target exists, but not match rows.',
+					'Signed-in viewer sessions and API Green keys receive 403 entitlement_required. Locked teasers return similar_match_count: null so denied requests do not run the expensive similarity count path or leak match rows.',
 					'API-key callers must satisfy requiredPlan member and requiredScope catalog:read. Successful API-key responses include X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset.',
 					'429 responses use the same quota envelope as /v1/catalog and include Retry-After.',
 					'404 means the target catalog coffee was not found after the caller has enough access to request matches.'
@@ -852,7 +852,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: '403 locked viewer teaser',
 						language: 'json',
-						code: '{\n  "error": "Insufficient permissions",\n  "message": "Similar coffee matching is available to members and paid API tiers.",\n  "code": "entitlement_required",\n  "requiredCapability": "canUseBeanMatching",\n  "teaser": {\n    "locked": true,\n    "similar_match_count": 4,\n    "beta": true\n  }\n}'
+						code: '{\n  "error": "Insufficient permissions",\n  "message": "Similar coffee matching is available to members and paid API tiers.",\n  "code": "entitlement_required",\n  "requiredCapability": "canUseBeanMatching",\n  "teaser": {\n    "locked": true,\n    "similar_match_count": null,\n    "beta": true\n  }\n}'
 					},
 					{
 						label: '400 invalid query parameter',
