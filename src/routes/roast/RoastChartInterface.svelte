@@ -404,7 +404,7 @@
 	<div class="flex w-full flex-col justify-center gap-4 sm:flex-row">
 		<!-- Chart -->
 		<div class="w-full min-w-0 overflow-hidden">
-			<div class="text-primary-light mx-auto h-[400px] w-full sm:h-[500px]">
+			<div class="mx-auto h-[400px] w-full text-text-primary-light sm:h-[500px]">
 				<RoastChart
 					chartData={preparedChartData}
 					isLive={isDuringRoasting}

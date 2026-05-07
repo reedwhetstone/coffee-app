@@ -115,7 +115,7 @@
 						onclick={() => navigateTo('/auth')}
 						class="hidden items-center rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white sm:inline-flex"
 					>
-						Sign In
+						Sign in
 					</button>
 					<button
 						onclick={() => navigateTo('/subscription')}
@@ -193,7 +193,7 @@
 							onclick={() => navigateTo('/auth')}
 							class="block w-full rounded-xl px-3 py-3 text-left text-sm font-medium text-background-tertiary-light transition-colors duration-200 hover:bg-background-secondary-light"
 						>
-							Sign In
+							Sign in
 						</button>
 						<button
 							onclick={() => navigateTo('/subscription')}
