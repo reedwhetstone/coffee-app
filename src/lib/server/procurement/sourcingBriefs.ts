@@ -418,11 +418,6 @@ async function runSourcingBriefMatches(
 	const totalPages = Math.ceil(totalAvailable / pagination.limit);
 	const generatedAt = new Date().toISOString();
 
-	await table(context.supabase)
-		.update({ last_run_at: generatedAt })
-		.eq('id', row.id)
-		.eq('user_id', context.userId);
-
 	return {
 		data: createMatches(criteria, result.data),
 		pagination: {
@@ -443,7 +438,7 @@ async function runSourcingBriefMatches(
 				role: context.role,
 				apiPlan: context.apiPlan
 			},
-			brief: toBriefResource({ ...row, last_run_at: generatedAt }),
+			brief: toBriefResource(row),
 			criteria,
 			limitations: [
 				'Matches are deterministic catalog rows that satisfy saved criteria before pagination.',

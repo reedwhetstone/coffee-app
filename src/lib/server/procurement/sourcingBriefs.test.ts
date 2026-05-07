@@ -182,7 +182,7 @@ describe('sourcing brief API helpers', () => {
 		});
 	});
 
-	it('runs matches with saved criteria before pagination and returns match reasons', async () => {
+	it('runs matches with saved criteria before pagination, returns match reasons, and leaves the GET read-only', async () => {
 		const db = makeDbMock();
 		mockCreateAdminClient.mockReturnValue(db.client);
 		mockSearchCatalog.mockResolvedValue({
@@ -229,6 +229,8 @@ describe('sourcing brief API helpers', () => {
 			})
 		);
 		expect(body.pagination.total).toBe(17);
+		expect(body.meta.brief.lastRunAt).toBeNull();
+		expect(db.builder.update).not.toHaveBeenCalled();
 		expect(body.data[0].matchReasons).toEqual(
 			expect.arrayContaining([
 				'country_match',
