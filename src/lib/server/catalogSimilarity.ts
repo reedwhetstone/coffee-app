@@ -45,6 +45,11 @@ export interface CatalogSimilarityQuery {
 	mode: CatalogSimilarityMode;
 }
 
+export type CatalogSimilarityQueryStrategy =
+	| 'bounded-vector-candidates-v1'
+	| 'canonical-vector-aggregated-v2'
+	| 'legacy-vector-aggregated-v1';
+
 export interface CatalogSimilarityTargetSummary {
 	id: number;
 	name: string;
@@ -151,7 +156,7 @@ export interface CatalogSimilarityResponse {
 			confidence: string;
 		};
 		classification_version: 'canonical-match-v1';
-		query_strategy: 'bounded-vector-candidates-v1';
+		query_strategy: CatalogSimilarityQueryStrategy;
 	};
 }
 
@@ -863,7 +868,10 @@ async function fetchCanonicalSimilarityRows(input: {
 	coffeeId: number;
 	query: CatalogSimilarityQuery;
 	rpcMatchCount: number;
-}): Promise<FindSimilarBeansAggregatedV2Row[]> {
+}): Promise<{
+	rows: FindSimilarBeansAggregatedV2Row[];
+	queryStrategy: CatalogSimilarityQueryStrategy;
+}> {
 	const candidatePool = Math.min(Math.max(input.rpcMatchCount * 40, 200), 1000);
 	const v3 = await input.supabase.rpc('find_similar_beans_aggregated_v3', {
 		target_coffee_id: input.coffeeId,
@@ -873,7 +881,7 @@ async function fetchCanonicalSimilarityRows(input: {
 		candidate_pool: candidatePool
 	});
 
-	if (!v3.error) return v3.data ?? [];
+	if (!v3.error) return { rows: v3.data ?? [], queryStrategy: 'bounded-vector-candidates-v1' };
 	if (!isLikelyMissingCanonicalSimilarityRpc(v3.error)) throw new Error(v3.error.message);
 
 	const { data, error } = await input.supabase.rpc('find_similar_beans_aggregated_v2', {
@@ -883,7 +891,7 @@ async function fetchCanonicalSimilarityRows(input: {
 		stocked_only: input.query.stockedOnly
 	});
 
-	if (!error) return data ?? [];
+	if (!error) return { rows: data ?? [], queryStrategy: 'canonical-vector-aggregated-v2' };
 	if (!isLikelyMissingCanonicalSimilarityRpc(error)) throw new Error(error.message);
 
 	const legacy = await input.supabase.rpc('find_similar_beans_aggregated', {
@@ -896,7 +904,10 @@ async function fetchCanonicalSimilarityRows(input: {
 	const rows = (legacy.data ?? []).filter(
 		(row) => !input.query.stockedOnly || row.stocked === true
 	);
-	return rows.map(normalizeLegacySimilarityRow);
+	return {
+		rows: rows.map(normalizeLegacySimilarityRow),
+		queryStrategy: 'legacy-vector-aggregated-v1'
+	};
 }
 
 async function fetchTarget(
@@ -940,11 +951,12 @@ export async function fetchCatalogSimilarityMatches(input: {
 		similar_recommendations: CatalogSimilarityMatch[];
 	};
 	matches: CatalogSimilarityMatch[];
+	queryStrategy: CatalogSimilarityQueryStrategy;
 }> {
 	const supabase = input.supabase as unknown as SimilaritySupabaseClient;
 	const target = await fetchTarget(supabase, input.coffeeId);
 	const rpcMatchCount = resolveRpcMatchCount(input.query);
-	const data = await fetchCanonicalSimilarityRows({
+	const { rows, queryStrategy } = await fetchCanonicalSimilarityRows({
 		supabase,
 		coffeeId: input.coffeeId,
 		query: input.query,
@@ -953,9 +965,9 @@ export async function fetchCatalogSimilarityMatches(input: {
 
 	const detailById = await fetchMatchDetails(
 		supabase,
-		data.map((row) => row.coffee_id)
+		rows.map((row) => row.coffee_id)
 	);
-	const matches = data
+	const matches = rows
 		.map((row) =>
 			normalizeSimilarityRow(row, target.pricing, detailById.get(row.coffee_id), target)
 		)
@@ -963,5 +975,5 @@ export async function fetchCatalogSimilarityMatches(input: {
 		.slice(0, input.query.limit);
 	const groups = groupCatalogSimilarityMatches(matches);
 
-	return { target, groups, matches };
+	return { target, groups, matches, queryStrategy };
 }

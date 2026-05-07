@@ -155,6 +155,7 @@ function createSupabaseMock(
 		target?: unknown | null;
 		matches?: unknown[];
 		details?: unknown[];
+		v3Error?: { message: string; code?: string };
 		v2Error?: { message: string; code?: string };
 		legacyError?: { message: string; code?: string };
 		legacyMatches?: unknown[];
@@ -180,7 +181,13 @@ function createSupabaseMock(
 				typeof args?.match_count === 'number' ? matches.slice(0, args.match_count) : matches;
 			return Promise.resolve({ data: cappedMatches, error: null });
 		}
-		if (options.v2Error) return Promise.resolve({ data: null, error: options.v2Error });
+		if (fn === 'find_similar_beans_aggregated_v3') {
+			const v3Error = options.v3Error ?? options.v2Error;
+			if (v3Error) return Promise.resolve({ data: null, error: v3Error });
+		}
+		if (fn === 'find_similar_beans_aggregated_v2' && options.v2Error) {
+			return Promise.resolve({ data: null, error: options.v2Error });
+		}
 		const matches = options.matches ?? [matchRow];
 		const cappedMatches =
 			typeof args?.match_count === 'number' ? matches.slice(0, args.match_count) : matches;
@@ -362,6 +369,35 @@ describe('/v1/catalog/[id]/similar', () => {
 		});
 	});
 
+	it('reports the v2 query strategy when bounded v3 falls back to the canonical RPC', async () => {
+		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
+		const { rpc } = createSupabaseMock({
+			v3Error: {
+				message: 'Could not find the function public.find_similar_beans_aggregated_v3',
+				code: 'PGRST202'
+			}
+		});
+
+		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?limit=5'));
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 5,
+			stocked_only: true,
+			candidate_pool: 200
+		});
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 5,
+			stocked_only: true
+		});
+		expect(body.meta.query_strategy).toBe('canonical-vector-aggregated-v2');
+	});
+
 	it('falls back to the legacy similarity RPC when preview data has not deployed the canonical RPC yet', async () => {
 		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
 		const { rpc } = createSupabaseMock({
@@ -402,6 +438,7 @@ describe('/v1/catalog/[id]/similar', () => {
 			score: { dimensions: { origin: null, processing: null, tasting: null } },
 			match: { category: 'similar_profile' }
 		});
+		expect(body.meta.query_strategy).toBe('legacy-vector-aggregated-v1');
 	});
 
 	it('overfetches legacy fallback rows before applying stocked filtering', async () => {
