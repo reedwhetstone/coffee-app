@@ -75,6 +75,18 @@
 		};
 		match: {
 			category: 'likely_same' | 'similar_profile';
+			classification?: {
+				kind: 'canonical_candidate' | 'similar_recommendation';
+				identity_eligibility: 'eligible' | 'blocked' | 'insufficient_evidence';
+				confidence: 'high_beta' | 'medium_beta' | 'low_beta';
+				blockers: Array<{
+					code: string;
+					severity: 'hard' | 'soft';
+					target_value: string | null;
+					candidate_value: string | null;
+				}>;
+				evidence: string[];
+			};
 			confidence: 'high_beta' | 'medium_beta' | 'low_beta';
 			beta: true;
 			language: string;
@@ -130,8 +142,28 @@
 		return 'Low beta confidence';
 	}
 
-	function categoryLabel(category: SimilarityMatch['match']['category']): string {
-		return category === 'likely_same' ? 'Likely same coffee' : 'Similar profile';
+	function categoryLabel(match: SimilarityMatch): string {
+		if (match.match.classification?.kind === 'canonical_candidate') {
+			return 'Likely same coffee candidate';
+		}
+		if (match.match.classification?.kind === 'similar_recommendation') {
+			return 'Similar recommendation';
+		}
+		return match.match.category === 'likely_same'
+			? 'Likely same coffee candidate'
+			: 'Similar recommendation';
+	}
+
+	function blockerLabel(code: string): string {
+		if (code === 'processing_base_method_conflict') return 'Processing method differs';
+		if (code === 'fermentation_type_conflict') return 'Fermentation type differs';
+		if (code === 'country_conflict') return 'Country differs';
+		if (code === 'decaf_conflict') return 'Decaf status differs';
+		if (code === 'blend_single_origin_conflict') return 'Blend status differs';
+		if (code === 'harvest_year_conflict') return 'Harvest year differs';
+		if (code === 'insufficient_structured_process')
+			return 'Structured process evidence is incomplete';
+		return code.replaceAll('_', ' ');
 	}
 
 	function percentScore(score: number | null): string {
@@ -332,7 +364,7 @@
 									<span
 										class="rounded-full bg-background-tertiary-light/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-background-tertiary-light"
 									>
-										{categoryLabel(match.match.category)}
+										{categoryLabel(match)}
 									</span>
 									<span
 										class="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100"
@@ -368,6 +400,17 @@
 									</div>
 								{/if}
 								<p class="mt-2 text-sm text-text-secondary-light">{match.match.language}</p>
+								{#if match.match.classification?.blockers?.length}
+									<ul class="mt-2 space-y-1 text-xs text-amber-800" aria-label="Identity blockers">
+										{#each match.match.classification.blockers as blocker}
+											<li>
+												{blockerLabel(blocker.code)}{blocker.target_value && blocker.candidate_value
+													? `: ${blocker.target_value} vs ${blocker.candidate_value}`
+													: ''}
+											</li>
+										{/each}
+									</ul>
+								{/if}
 							</div>
 							<div
 								class="rounded-xl bg-background-secondary-light px-4 py-3 text-sm text-text-secondary-light lg:min-w-[15rem]"

@@ -323,11 +323,12 @@ describe('/v1/catalog/[id]/similar', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
 			match_count: 125,
-			stocked_only: false
+			stocked_only: false,
+			candidate_pool: 1000
 		});
 		expect(body.data.target).toMatchObject({
 			id: 1182,
@@ -353,11 +354,20 @@ describe('/v1/catalog/[id]/similar', () => {
 			score: { dimensions: { origin: 0.94, processing: 0.91, tasting: 0.87 } },
 			match: { category: 'likely_same', confidence: 'high_beta', beta: true }
 		});
+		expect(body.data.groups.canonical_candidates).toHaveLength(1);
+		expect(body.data.groups.similar_recommendations).toHaveLength(0);
+		expect(body.data.matches[0].match.classification).toMatchObject({
+			kind: 'canonical_candidate',
+			identity_eligibility: 'eligible',
+			blockers: []
+		});
 		expect(body.meta).toMatchObject({
 			resource: 'catalog-similarity',
 			status: 'beta',
 			auth: { kind: 'session', role: 'member' },
-			access: { requiredCapability: 'canUseBeanMatching', canUseBeanMatching: true }
+			access: { requiredCapability: 'canUseBeanMatching', canUseBeanMatching: true },
+			classification_version: 'canonical-match-v1',
+			query_strategy: 'bounded-vector-candidates-v1'
 		});
 	});
 
@@ -378,6 +388,13 @@ describe('/v1/catalog/[id]/similar', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 5,
+			stocked_only: true,
+			candidate_pool: 200
+		});
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
@@ -621,11 +638,12 @@ describe('/v1/catalog/[id]/similar', () => {
 		const body = await response.json();
 
 		expect(response.status).toBe(200);
-		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
 			match_count: 125,
-			stocked_only: true
+			stocked_only: true,
+			candidate_pool: 1000
 		});
 		expect(body.data.matches).toHaveLength(2);
 		expect(body.data.matches.map((match: { coffee: { id: number } }) => match.coffee.id)).toEqual([

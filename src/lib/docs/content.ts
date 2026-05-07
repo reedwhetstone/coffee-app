@@ -753,7 +753,7 @@ const docsPages: DocsPage[] = [
 		eyebrow: 'Beta endpoint',
 		intro: [
 			'GET /v1/catalog/{id}/similar finds candidate coffees related to one catalog entry. The route is useful for likely-same-bean checks, substitution research, account-linked agents, and pricing context around comparable lots.',
-			'Matches are beta confidence candidates based on origin, processing, and tasting similarity signals. The endpoint intentionally does not claim canonical identity. UI copy and API responses should keep that cautious framing.'
+			'Matches are beta confidence candidates based on origin, processing, tasting similarity signals, and deterministic identity gates. The endpoint separates canonical candidates from similar recommendations; neither group is an accepted canonical identity.'
 		],
 		sections: [
 			{
@@ -766,7 +766,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Member/admin session or API key with API Origin or Enterprise and catalog:read',
 							'Beta',
-							'Returns target plus beta matches, score dimensions, category/confidence labels, price_delta_1lb, pricing fallbacks, and cautious copy.'
+							'Returns target plus grouped beta matches, score dimensions, identity classification, blocker reasons, price_delta_1lb, pricing fallbacks, and cautious copy.'
 						]
 					]
 				},
@@ -825,8 +825,8 @@ const docsPages: DocsPage[] = [
 				title: 'Response shape',
 				body: [
 					'data.target summarizes the requested coffee with origin, process, stocked state, legacy cost_lb compatibility, and canonical pricing fields.',
-					'data.matches contains candidate coffees. Each match includes coffee identity fields, canonical pricing, price_delta_1lb, score.average, score.dimensions.origin, score.dimensions.processing, score.dimensions.tasting, score.chunk_matches, match.category, match.confidence, match.beta, match.language, explanation.summary, explanation.signals, and compatibility.cost_lb.',
-					'meta.status is beta and meta.copy.confidence repeats the non-canonical identity warning. Preserve that framing in client copy.'
+					'data.groups.canonical_candidates and data.groups.similar_recommendations are the preferred grouped contract. data.matches remains as a transitional flat list. Each match includes coffee identity fields, canonical pricing, price_delta_1lb, score.average, score.dimensions.origin, score.dimensions.processing, score.dimensions.tasting, score.chunk_matches, match.category, match.classification.kind, match.classification.identity_eligibility, match.classification.blockers, match.confidence, match.beta, match.language, explanation.summary, explanation.signals, and compatibility.cost_lb.',
+					'meta.status is beta. meta.classification_version and meta.query_strategy identify the hard-gated identity contract and bounded vector retrieval path. Preserve the non-canonical identity warning in client copy.'
 				],
 				codeBlocks: [
 					{
@@ -916,7 +916,7 @@ const docsPages: DocsPage[] = [
 							'GET',
 							'Member session or API key with API Origin or Enterprise plus catalog:read',
 							'Beta external contract',
-							'Catalog similarity candidates with target, matches, score dimensions, price deltas, category/confidence labels, and cautious beta copy.'
+							'Catalog similarity candidates with target, grouped canonical candidates vs similar recommendations, score dimensions, identity blocker reasons, price deltas, and cautious beta copy.'
 						],
 						[
 							'/v1/price-index',

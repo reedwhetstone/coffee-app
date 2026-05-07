@@ -183,8 +183,10 @@ export const GET: RequestHandler = async (event) => {
 				query,
 				copy: {
 					confidence:
-						'Matches are beta confidence candidates based on similarity signals, not accepted canonical identities.'
-				}
+						'Matches are beta confidence candidates based on similarity signals and deterministic identity gates. Canonical candidates are not accepted identities; similar recommendations are not same-coffee claims.'
+				},
+				classification_version: 'canonical-match-v1',
+				query_strategy: 'bounded-vector-candidates-v1'
 			}
 		};
 
