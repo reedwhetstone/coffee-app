@@ -24,7 +24,7 @@ describe('Purveyor Score migration SQL contract', () => {
 		);
 	});
 
-	it('keeps range and tier constraints explicit', () => {
+	it('keeps range and tier constraints explicit and scoped to coffee_catalog', () => {
 		expect(migrationSql).toContain('coffee_catalog_purveyor_score_range');
 		expect(migrationSql).toContain('purveyor_score >= 0 AND purveyor_score <= 100');
 		expect(migrationSql).toContain('coffee_catalog_purveyor_score_confidence_range');
@@ -34,6 +34,7 @@ describe('Purveyor Score migration SQL contract', () => {
 		expect(migrationSql).toContain(
 			"ARRAY['Exceptional'::text, 'Strong'::text, 'Developing'::text, 'Limited'::text, 'Unscored'::text]"
 		);
+		expect(migrationSql.match(/conrelid = 'public\.coffee_catalog'::regclass/g)).toHaveLength(3);
 	});
 
 	it('computes score dimensions and confidence separately', () => {
@@ -57,6 +58,12 @@ describe('Purveyor Score migration SQL contract', () => {
 		expect(migrationSql).toContain('CASE WHEN has_process_evidence THEN 0.1 ELSE 0 END');
 	});
 
+	it('matches app scoring semantics for positive numeric and price-tier inputs', () => {
+		expect(migrationSql).toContain('IF item.price_per_lb > 0 OR item.cost_lb > 0 THEN');
+		expect(migrationSql).toContain('IF item.score_value > 0 THEN sensory := sensory + 4; END IF;');
+		expect(migrationSql).toContain('jsonb_array_length(to_jsonb(item.price_tiers))');
+	});
+
 	it('updates scores through a trigger on relevant metadata columns and backfills existing rows', () => {
 		expect(migrationSql).toContain('CREATE TRIGGER set_purveyor_score_fields_on_catalog');
 		expect(migrationSql).toContain('BEFORE INSERT OR UPDATE OF');
@@ -70,7 +77,13 @@ describe('Purveyor Score migration SQL contract', () => {
 			'price_tiers',
 			'ai_tasting_notes',
 			'score_value',
-			'roast_recs'
+			'roast_recs',
+			'purveyor_score',
+			'purveyor_score_confidence',
+			'purveyor_score_tier',
+			'purveyor_score_factors',
+			'purveyor_score_version',
+			'purveyor_score_updated_at'
 		]) {
 			expect(migrationSql).toContain(column);
 		}
