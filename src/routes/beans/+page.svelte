@@ -367,7 +367,7 @@
 	<div class="">
 		<!-- Header Section -->
 		<div class="mb-6">
-			<h1 class="text-primary-light mb-2 text-2xl font-bold">Coffee Inventory</h1>
+			<h1 class="mb-2 text-2xl font-bold text-text-primary-light">Coffee Inventory</h1>
 			<p class="text-text-secondary-light">
 				Manage your green coffee bean inventory and track purchases
 			</p>
@@ -485,7 +485,7 @@
 							{ count: number; weight: number; value: number }
 						]}
 						<div class="rounded-lg bg-background-primary-light p-3">
-							<h4 class="text-primary-light font-medium">{source}</h4>
+							<h4 class="font-medium text-text-primary-light">{source}</h4>
 							<div class="mt-2 space-y-1 text-sm text-text-secondary-light">
 								<div>{stats.count} coffee{stats.count !== 1 ? 's' : ''}</div>
 								<div>{stats.weight.toFixed(1)} lbs</div>

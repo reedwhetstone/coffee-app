@@ -786,7 +786,7 @@
 				href="/auth"
 				class="rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 			>
-				Sign In
+				Sign in
 			</a>
 		</div>
 	</div>

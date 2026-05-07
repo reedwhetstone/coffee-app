@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
 	return json({
-		product: 'Parchment Platform',
+		product: 'Parchment',
 		namespace: '/v1',
 		version: 'v1',
 		auth: {

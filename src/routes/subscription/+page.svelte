@@ -495,7 +495,7 @@
 						<p class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light">
 							Checkout
 						</p>
-						<h2 class="text-primary-light text-2xl font-semibold">
+						<h2 class="text-2xl font-semibold text-text-primary-light">
 							{selectedPlanName}
 							{selectedIntervalLabel}
 						</h2>
@@ -503,7 +503,7 @@
 					</div>
 					<button
 						onclick={handleCheckoutCancel}
-						class="text-primary-light/70 hover:text-primary-light rounded-full p-1"
+						class="rounded-full p-1 text-text-primary-light/70 hover:text-text-primary-light"
 						aria-label="Back to subscription page"
 					>
 						<svg

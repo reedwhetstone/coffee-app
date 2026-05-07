@@ -572,9 +572,7 @@
 						<div
 							class="flex h-40 flex-col items-center justify-center rounded-lg bg-background-secondary-light"
 						>
-							<p class="text-sm font-medium text-text-secondary-light">
-								📊 No origin data available
-							</p>
+							<p class="text-sm font-medium text-text-secondary-light">No origin data available</p>
 							<p class="mt-1 text-xs text-text-secondary-light">
 								Requires stocked beans with price_per_lb values in the catalog.
 							</p>

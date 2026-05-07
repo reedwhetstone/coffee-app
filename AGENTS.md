@@ -124,11 +124,12 @@ Treat the API as two layers:
 1. **Public external API**
 
    - `GET /v1` advertises the public namespace, active resources, and legacy migration hints
-   - `GET /v1/catalog`
-   - Auth: API key, web session, or anonymous (public-only subset unless a privileged session enables wholesale visibility)
-   - Full responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
+   - `GET /v1/catalog` is the stable public catalog contract
+   - `GET /v1/catalog/{id}/similar` is a beta catalog matching contract for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
+   - `GET /v1/price-index` is an aggregate `price_index_snapshots` contract for API keys with Parchment Intelligence access
+   - Auth varies by route: catalog supports API key, web session, or anonymous; similarity and price-index require entitlement-backed auth
+   - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
    - Rate-limit headers (`X-RateLimit-*`) are only included in API-key responses
-   - Stable public contract
 
 2. **Platform app API**
    - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/stripe/*`, `/api/admin/*`, and related helpers
@@ -164,7 +165,8 @@ When changing docs, keep these sources aligned:
 
 - Verify behavior from source before documenting it
 - Do not claim an endpoint is public unless it truly is
-- Do not describe `/api/catalog` or `/api/catalog-api` as the canonical contract; that is `/v1/catalog`
+- Do not describe `/api/catalog` or `/api/catalog-api` as the canonical catalog contract; that is `/v1/catalog`
+- Document `/v1/catalog/{id}/similar` as beta candidate matching, not canonical identity resolution. Preserve auth requirements, query bounds, 401/403/404/429 behavior, and cautious confidence copy.
 - Do not flatten CLI auth into one rule: catalog commands require an authenticated viewer session; inventory, roast, sales, and tasting require the member role; config, context, and manifest are local or onboarding surfaces that do not require auth; `purvey manifest` is the preferred machine-readable contract; `purvey context --json` and `--pretty` are compatibility-parity aliases for callers already using the context entrypoint; and `--csv` is invalid for context or manifest
 - Do not invent filter/query behavior that the route does not implement
 - Be explicit about auth model, tier limits, row-limit headers, share-token behavior, and session requirements

@@ -135,7 +135,7 @@
 	<div class="mb-4">
 		<div class="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-0">
 			<div class="flex-1 text-center sm:text-left">
-				<h1 class="text-primary-light break-words text-lg font-bold sm:text-xl">
+				<h1 class="break-words text-lg font-bold text-text-primary-light sm:text-xl">
 					{profile.coffee_name}
 				</h1>
 				{#if profile.roast_id}
@@ -170,7 +170,7 @@
 									: ''}"
 							>
 								<div class="flex flex-col">
-									<span class="text-primary-light mb-1 font-medium"
+									<span class="mb-1 font-medium text-text-primary-light"
 										>{key.replace(/_/g, ' ').toUpperCase()}:</span
 									>
 									{#if isEditing}
@@ -224,13 +224,13 @@
 	<!-- Milestones Section (read-only) -->
 	{#if profile.tp_time != null || profile.fc_start_time != null || profile.drop_time != null || profile.total_roast_time != null}
 		<div class="mt-4">
-			<h2 class="text-primary-light mb-2 text-sm font-semibold uppercase tracking-wide">
+			<h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-text-primary-light">
 				Milestones
 			</h2>
 			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 				{#if profile.tp_time != null}
 					<div class="rounded border border-background-tertiary-light p-3">
-						<div class="text-primary-light mb-1 text-xs font-medium uppercase">TP</div>
+						<div class="mb-1 text-xs font-medium uppercase text-text-primary-light">TP</div>
 						<div class="text-sm text-text-primary-light">
 							{formatMilestoneTime(profile.tp_time)}{profile.tp_temp != null
 								? ` @ ${profile.tp_temp}°${profile.temperature_unit || 'F'}`
@@ -240,7 +240,7 @@
 				{/if}
 				{#if profile.fc_start_time != null}
 					<div class="rounded border border-background-tertiary-light p-3">
-						<div class="text-primary-light mb-1 text-xs font-medium uppercase">FC</div>
+						<div class="mb-1 text-xs font-medium uppercase text-text-primary-light">FC</div>
 						<div class="text-sm text-text-primary-light">
 							{formatMilestoneTime(profile.fc_start_time)}{profile.fc_start_temp != null
 								? ` @ ${profile.fc_start_temp}°${profile.temperature_unit || 'F'}`
@@ -250,7 +250,7 @@
 				{/if}
 				{#if profile.fc_end_time != null}
 					<div class="rounded border border-background-tertiary-light p-3">
-						<div class="text-primary-light mb-1 text-xs font-medium uppercase">FC End</div>
+						<div class="mb-1 text-xs font-medium uppercase text-text-primary-light">FC End</div>
 						<div class="text-sm text-text-primary-light">
 							{formatMilestoneTime(profile.fc_end_time)}{profile.fc_end_temp != null
 								? ` @ ${profile.fc_end_temp}°${profile.temperature_unit || 'F'}`
@@ -260,7 +260,7 @@
 				{/if}
 				{#if profile.drop_time != null}
 					<div class="rounded border border-background-tertiary-light p-3">
-						<div class="text-primary-light mb-1 text-xs font-medium uppercase">Drop</div>
+						<div class="mb-1 text-xs font-medium uppercase text-text-primary-light">Drop</div>
 						<div class="text-sm text-text-primary-light">
 							{formatMilestoneTime(profile.drop_time)}{profile.drop_temp != null
 								? ` @ ${profile.drop_temp}°${profile.temperature_unit || 'F'}`
@@ -270,7 +270,7 @@
 				{/if}
 				{#if profile.total_roast_time != null}
 					<div class="rounded border border-background-tertiary-light p-3">
-						<div class="text-primary-light mb-1 text-xs font-medium uppercase">Total</div>
+						<div class="mb-1 text-xs font-medium uppercase text-text-primary-light">Total</div>
 						<div class="text-sm text-text-primary-light">
 							{formatMilestoneTime(profile.total_roast_time)}
 						</div>
