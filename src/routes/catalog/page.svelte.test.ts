@@ -222,24 +222,23 @@ describe('/catalog similar comparison controls', () => {
 	it('shows a locked member comparison CTA without leaking match data for non-members', () => {
 		renderCatalog(createData());
 
-		expect(screen.getByText('Member comparison')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /unlock matches/i })).toBeInTheDocument();
 		expect(screen.queryByText('Member Match Lot')).not.toBeInTheDocument();
 	});
 
-	it('routes anonymous users to auth before fetching member comparison data', async () => {
+	it('shows anonymous users the locked matches detail without fetching member data', async () => {
 		renderCatalog(createData());
 
-		await fireEvent.click(
-			screen.getByRole('button', { name: /upgrade to compare similar coffees/i })
-		);
+		await fireEvent.click(screen.getByRole('button', { name: /unlock matches/i }));
 
-		expect(goto).toHaveBeenCalledWith('/auth');
+		expect(screen.getByText('Unlock similar coffee matches')).toBeInTheDocument();
+		expect(goto).not.toHaveBeenCalled();
 		expect(fetch).not.toHaveBeenCalledWith('/v1/catalog/1/similar?limit=8&stocked_only=true', {
 			headers: { Accept: 'application/json' }
 		});
 	});
 
-	it('routes signed-in non-members to subscription before fetching member comparison data', async () => {
+	it('shows signed-in non-members the locked matches detail without fetching member data', async () => {
 		renderCatalog(
 			createData({
 				session: { access_token: 'viewer-token' } as PageData['session'],
@@ -247,11 +246,10 @@ describe('/catalog similar comparison controls', () => {
 			} as Partial<PageData>)
 		);
 
-		await fireEvent.click(
-			screen.getByRole('button', { name: /upgrade to compare similar coffees/i })
-		);
+		await fireEvent.click(screen.getByRole('button', { name: /unlock matches/i }));
 
-		expect(goto).toHaveBeenCalledWith('/subscription');
+		expect(screen.getByText('Unlock similar coffee matches')).toBeInTheDocument();
+		expect(goto).not.toHaveBeenCalled();
 		expect(fetch).not.toHaveBeenCalledWith('/v1/catalog/1/similar?limit=8&stocked_only=true', {
 			headers: { Accept: 'application/json' }
 		});
@@ -280,7 +278,7 @@ describe('/catalog similar comparison controls', () => {
 			} as Partial<PageData>)
 		);
 
-		await fireEvent.click(screen.getByRole('button', { name: /compare similar coffees/i }));
+		await fireEvent.click(screen.getByRole('button', { name: /compare matches/i }));
 
 		await waitFor(() => expect(screen.getByText('Member Match Lot')).toBeInTheDocument());
 		expect(screen.getByText('Match Importer · In stock')).toBeInTheDocument();

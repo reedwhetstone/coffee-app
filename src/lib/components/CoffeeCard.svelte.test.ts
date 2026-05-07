@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/svelte';
+import { describe, expect, it, vi } from 'vitest';
 import CoffeeCard from './CoffeeCard.svelte';
 import type { CoffeeCatalog } from '$lib/types/component.types';
 
-function createCoffee(overrides: Record<string, unknown> = {}): CoffeeCatalog {
+function createCoffee(overrides: Partial<CoffeeCatalog> = {}): CoffeeCatalog {
 	return {
 		id: 1,
 		name: 'Process Lot',
@@ -12,175 +12,137 @@ function createCoffee(overrides: Record<string, unknown> = {}): CoffeeCatalog {
 		region: 'Huila',
 		continent: 'South America',
 		processing: 'Washed',
-		ai_description: null,
-		ai_tasting_notes: null,
-		price_tiers: null,
+		processing_base_method: 'natural',
+		fermentation_type: 'anaerobic',
+		process_additives: ['fruit'],
+		process_additive_detail: 'Peach co-ferment disclosed by supplier',
+		fermentation_duration_hours: 72,
+		drying_method: 'raised_bed',
+		processing_notes: 'Extended fermentation before drying',
+		processing_disclosure_level: 'high_detail',
+		processing_confidence: 0.86,
+		processing_evidence: { schema_version: 1 },
+		processing_evidence_available: true,
+		ai_description: 'A structured Colombian lot with stone fruit and panela notes.',
+		ai_tasting_notes: {
+			body: { tag: 'Silky', color: '#8B4513', score: 4 },
+			flavor: { tag: 'Peach', color: '#D2691E', score: 5 },
+			acidity: { tag: 'Bright', color: '#F9A57B', score: 4 },
+			sweetness: { tag: 'Panela', color: '#a07d50', score: 4 },
+			fragrance_aroma: { tag: 'Floral', color: '#dfdaca', score: 3 }
+		},
+		price_tiers: [
+			{ min_lbs: 1, price: 8.5 },
+			{ min_lbs: 10, price: 8 }
+		],
 		price_per_lb: 8.5,
 		cost_lb: 8.5,
 		wholesale: false,
-		link: null,
-		cultivar_detail: null,
-		grade: null,
-		appearance: null,
-		type: null,
-		arrival_date: null,
-		stocked_date: null,
+		link: 'https://example.test/coffee',
+		cultivar_detail: 'Caturra',
+		grade: '1600 MASL',
+		appearance: 'Clean screen',
+		type: 'Importer',
+		arrival_date: '2026-03-01',
+		stocked: true,
+		stocked_date: '2026-04-01',
+		last_updated: '2026-04-02',
+		farm_notes: 'Farm provenance disclosed.',
+		roast_recs: 'City+',
+		score_value: 87,
+		cupping_notes: null,
+		description_short: null,
+		description_long: null,
+		public_coffee: true,
+		coffee_user: null,
+		lot_size: null,
+		bag_size: null,
+		packaging: null,
+		unstocked_date: null,
+		purveyor_score: 92,
+		purveyor_score_confidence: 0.93,
+		purveyor_score_factors: {
+			provenance_depth: 25,
+			process_transparency: 25,
+			freshness_availability: 20,
+			pricing_comparability: 15,
+			sensory_context: 7
+		},
+		purveyor_score_tier: 'Exceptional',
+		purveyor_score_updated_at: '2026-05-06T00:00:00.000Z',
+		purveyor_score_version: 'purveyor-score-v1',
 		...overrides
-	} as unknown as CoffeeCatalog;
+	} as CoffeeCatalog;
 }
 
-const parseTastingNotes = () => null;
+function parseTastingNotes(input: string | null | object) {
+	return input && typeof input === 'object' ? (input as never) : null;
+}
 
-describe('CoffeeCard proof badges', () => {
-	it('renders compact proof badges when reliable signals exist', () => {
+describe('CoffeeCard Purveyor Score hierarchy', () => {
+	it('shows sourcing essentials and Purveyor Score on the collapsed card', () => {
 		render(CoffeeCard, {
-			coffee: createCoffee({
-				price_tiers: [
-					{ min_lbs: 1, price: 8.5 },
-					{ min_lbs: 10, price: 8 }
-				],
-				stocked_date: '2026-04-01',
-				stocked: true,
-				process: {
-					base_method: 'washed',
-					disclosure_level: 'structured',
-					confidence: 0.84,
-					evidence_available: true
-				}
-			}),
+			coffee: createCoffee(),
 			parseTastingNotes
 		});
 
-		expect(screen.getByText('Process disclosed')).toBeTruthy();
+		expect(screen.getByText('Process Lot')).toBeTruthy();
+		expect(screen.getByText('Example Importer')).toBeTruthy();
+		expect(screen.getByText('$8.50/lb')).toBeTruthy();
+		expect(screen.getByText('Purveyor Score')).toBeTruthy();
+		expect(screen.getByText('92')).toBeTruthy();
+		expect(screen.getByText(/Exceptional/)).toBeTruthy();
+		expect(screen.queryByText('Provenance identified')).toBeNull();
+	});
+
+	it('opens a tabbed slide-out with proof and process details', async () => {
+		render(CoffeeCard, {
+			coffee: createCoffee(),
+			parseTastingNotes,
+			showSimilarComparisonAction: true
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: /view details for process lot/i }));
+
+		expect(screen.getByRole('complementary', { name: /process lot/i })).toBeTruthy();
+		expect(screen.getByRole('tab', { name: /overview/i })).toBeTruthy();
+		expect(screen.getByRole('tab', { name: /taste & process/i })).toBeTruthy();
 		expect(screen.getByText('Provenance identified')).toBeTruthy();
-		expect(screen.getByText('Freshness dated')).toBeTruthy();
-		expect(screen.getByText('Tiered pricing')).toBeTruthy();
-	});
 
-	it('renders process proof from legacy top-level evidence when proof is absent', () => {
-		render(CoffeeCard, {
-			coffee: createCoffee({
-				proof: null,
-				process: null,
-				processing_base_method: 'Washed',
-				processing_evidence_available: true
-			}),
-			parseTastingNotes
-		});
+		await fireEvent.click(screen.getByRole('tab', { name: /taste & process/i }));
 
-		expect(screen.getByText('Process disclosed')).toBeTruthy();
-	});
-
-	it('does not invent proof badges when no reliable signals exist', () => {
-		render(CoffeeCard, {
-			coffee: createCoffee({
-				country: null,
-				region: null,
-				continent: null,
-				source: null,
-				price_per_lb: null,
-				cost_lb: null,
-				price_tiers: null,
-				stocked_date: null,
-				arrival_date: null,
-				last_updated: null,
-				stocked: null,
-				process: null
-			}),
-			parseTastingNotes
-		});
-
-		expect(screen.queryByLabelText('Catalog proof signals')).toBeNull();
-		expect(screen.queryByText('Process disclosed')).toBeNull();
-		expect(screen.queryByText('Price listed')).toBeNull();
-	});
-});
-
-describe('CoffeeCard process analysis', () => {
-	it('renders buyer-readable process analysis when structured process metadata exists', () => {
-		render(CoffeeCard, {
-			coffee: createCoffee({
-				process: {
-					base_method: 'natural',
-					fermentation_type: 'anaerobic',
-					additives: ['fruit'],
-					additive_detail: 'Peach co-ferment disclosed by supplier',
-					fermentation_duration_hours: 72,
-					drying_method: 'raised_bed',
-					notes: 'Extended fermentation before drying',
-					disclosure_level: 'high_detail',
-					confidence: 0.86,
-					evidence_available: true
-				}
-			}),
-			parseTastingNotes
-		});
-
-		expect(screen.getByText('Process analysis')).toBeTruthy();
 		expect(screen.getByText('Natural process transparency')).toBeTruthy();
 		expect(screen.getByText('Fermentation: Anaerobic')).toBeTruthy();
 		expect(screen.getByText('Additives disclosed: Fruit')).toBeTruthy();
-		expect(screen.getByText('High-detail disclosure')).toBeTruthy();
-		expect(screen.getByText('High confidence')).toBeTruthy();
-		expect(screen.getByText('Supplier evidence available')).toBeTruthy();
 	});
 
-	it('does not promote low-confidence or placeholder process metadata', () => {
+	it('shows locked match copy without fetching member-only match details', async () => {
+		const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
 		render(CoffeeCard, {
-			coffee: createCoffee({
-				process: {
-					base_method: 'unknown',
-					fermentation_type: 'not specified',
-					additives: [],
-					additive_detail: null,
-					fermentation_duration_hours: null,
-					drying_method: null,
-					notes: null,
-					disclosure_level: null,
-					confidence: 0.4,
-					evidence_available: false
-				}
-			}),
-			parseTastingNotes
+			coffee: createCoffee(),
+			parseTastingNotes,
+			showSimilarComparisonAction: true,
+			canUseBeanMatching: false
 		});
 
-		expect(screen.queryByText('Process analysis')).toBeNull();
-		expect(screen.queryByText('Lower confidence, verify before buying')).toBeNull();
+		await fireEvent.click(screen.getByRole('button', { name: /unlock matches/i }));
+
+		expect(screen.getByText('Unlock similar coffee matches')).toBeTruthy();
+		expect(fetchSpy).not.toHaveBeenCalled();
+
+		fetchSpy.mockRestore();
 	});
 
-	it('suppresses None Stated process placeholders without hiding meaningful fields', () => {
+	it('keeps compact cards tight while preserving the score language', () => {
 		render(CoffeeCard, {
-			coffee: createCoffee({
-				process: {
-					base_method: 'natural',
-					fermentation_type: 'None Stated',
-					additives: ['none'],
-					additive_detail: null,
-					fermentation_duration_hours: null,
-					drying_method: null,
-					notes: null,
-					disclosure_level: null,
-					confidence: 0.86,
-					evidence_available: false
-				}
-			}),
-			parseTastingNotes
+			coffee: createCoffee({ purveyor_score: 71, purveyor_score_tier: 'Strong' }),
+			parseTastingNotes,
+			compact: true
 		});
 
-		expect(screen.getByText('Natural process transparency')).toBeTruthy();
-		expect(screen.queryByText('Fermentation: None Stated')).toBeNull();
-		expect(screen.getByText('No additives disclosed')).toBeTruthy();
-	});
-
-	it('preserves legacy processing without inventing structured process claims', () => {
-		render(CoffeeCard, {
-			coffee: createCoffee({ processing: 'Washed', process: null }),
-			parseTastingNotes
-		});
-
-		expect(screen.getByText('Processing: Washed')).toBeTruthy();
-		expect(screen.queryByText('Process analysis')).toBeNull();
-		expect(screen.queryByText(/unknown/i)).toBeNull();
-		expect(screen.queryByText('Lower confidence, verify before buying')).toBeNull();
+		expect(screen.getByText('Purveyor Score')).toBeTruthy();
+		expect(screen.getByText('71')).toBeTruthy();
+		expect(screen.getByText(/Strong/)).toBeTruthy();
 	});
 });

@@ -189,6 +189,39 @@ mt-1                            /* Small top margin for values */
 </button>
 ```
 
+### 4a. Coffee Card Pattern
+
+Coffee cards should use progressive disclosure. The collapsed card is for scanning; the
+user-initiated slide-out is for proof, process, pricing, tasting depth, and member comparison
+tools. Do not treat this expanded surface as a modal: it should add context without dimming or
+blocking the catalog view on desktop, and it may become full-width only on mobile.
+
+Collapsed card must prioritize:
+
+- coffee name and supplier
+- origin/region, process, and freshness cue
+- baseline price
+- compact tasting preview when available, using the tasting-note colors as small dot accents
+- inline `Purveyor Score` as an accent signal, not a boxed card-within-card
+
+Collapsed cards should use the warm primary surface with a subtle ring/shadow. Avoid pure white
+card backgrounds in the catalog grid because they make the surrounding Purveyors canvas read
+browner and heavier.
+
+Interaction should stay quiet: clicking the card opens the slide-out, supplier links should be
+icon-only with accessible labels, and matching actions should be small icon affordances rather
+than full CTA buttons. Use the vertical accent-bar summary pattern for short description copy.
+
+`Purveyor Score` is a Purveyors listing-intelligence metric. It measures metadata completeness,
+structure, confidence, and buyer usefulness. Never describe it as cup quality, certification,
+supplier verification, or regulatory assurance.
+
+Catalog grids should scale beyond the old two-column desktop layout:
+
+```css
+grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4
+```
+
 ### 5. Table/List Pattern (Based on RoastHistoryTable)
 
 ```svelte
@@ -245,7 +278,7 @@ mt-1                            /* Small top margin for values */
 
 ```css
 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4    /* KPI cards */
-grid-cols-1 md:grid-cols-2                   /* Coffee cards */
+grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 /* Catalog coffee cards */
 grid-cols-1 sm:grid-cols-3                   /* Secondary metrics */
 ```
 

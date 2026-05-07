@@ -10,7 +10,7 @@ const DEFAULT_CATALOG_SIMILARITY_THRESHOLD = 0.7;
 const DEFAULT_CATALOG_SIMILARITY_LIMIT = 10;
 const MAX_CATALOG_SIMILARITY_LIMIT = 25;
 
-export type DocsSectionKey = 'api' | 'cli';
+export type DocsSectionKey = 'api' | 'catalog' | 'cli';
 
 export interface DocsCodeBlock {
 	label?: string;
@@ -130,6 +130,21 @@ export const DOCS_NAV: DocsNavSection[] = [
 		]
 	},
 	{
+		key: 'catalog',
+		title: 'Catalog methodology',
+		description:
+			'Buyer-facing methodology for Purveyor Score, metadata quality, and catalog trust signals.',
+		basePath: '/docs/catalog',
+		items: [
+			{
+				slug: 'purveyor-score',
+				title: 'Purveyor Score',
+				summary:
+					'How Purveyors scores listing metadata depth, structure, buyer usefulness, and confidence.'
+			}
+		]
+	},
+	{
 		key: 'cli',
 		title: 'CLI docs',
 		description:
@@ -187,6 +202,130 @@ export const DOCS_NAV: DocsNavSection[] = [
 ];
 
 const docsPages: DocsPage[] = [
+	{
+		section: 'catalog',
+		slug: 'purveyor-score',
+		title: 'Purveyor Score',
+		summary:
+			'Purveyor Score is a metadata and listing-intelligence score for green coffee listings.',
+		eyebrow: 'Catalog methodology',
+		intro: [
+			'Purveyor Score makes green coffee metadata quality visible at the point of comparison. It rewards structured, comparable, buyer-useful listing information because buyers cannot evaluate what suppliers do not disclose.',
+			'The score is proprietary to Purveyors, deterministic, and intentionally narrow. It is not a cup quality score, supplier verification, certification, regulatory assurance, or a promise that a coffee is better than another coffee.',
+			'This methodology follows the argument in Who Profits When Coffee Data Stays Scarce?: the industry has made progress on price transparency, but product metadata remains inconsistent and relationship-gated. Purveyor Score turns that disclosure gap into an inspectable product signal.'
+		],
+		sections: [
+			{
+				title: 'What it measures',
+				body: [
+					'Purveyor Score is scored from the normalized coffee_catalog metadata already used by the catalog, API, CLI, and analytics surfaces. It favors fields that help a buyer compare similar listings across suppliers: provenance, process transparency, freshness, pricing comparability, and sensory context.',
+					'Confidence is separate from the score. Score measures metadata richness and buyer usefulness. Confidence measures how reliable and structured the inputs look, including recency, processing confidence, and evidence availability.'
+				],
+				table: {
+					headers: ['Dimension', 'Max points', 'Examples'],
+					rows: [
+						[
+							'Provenance depth',
+							'25',
+							'Country, region, farm or producer notes, cultivar, grade, and appearance.'
+						],
+						[
+							'Process transparency',
+							'25',
+							'Base method, fermentation, additives, drying method, duration, disclosure level, and processing confidence.'
+						],
+						[
+							'Freshness and availability',
+							'20',
+							'Stock status, stocked date, arrival date, and last-updated date.'
+						],
+						[
+							'Pricing comparability',
+							'15',
+							'Per-pound price, tiered pricing, and wholesale classification.'
+						],
+						[
+							'Sensory context',
+							'15',
+							'Tasting notes, supplier cup score when present, roast recommendations, and useful catalog descriptions.'
+						]
+					]
+				}
+			},
+			{
+				title: 'Tier language',
+				table: {
+					headers: ['Score', 'Tier', 'Meaning'],
+					rows: [
+						[
+							'85-100',
+							'Exceptional',
+							'Deep, structured metadata across most buyer-relevant dimensions.'
+						],
+						['70-84', 'Strong', 'Enough structured disclosure for confident comparison.'],
+						[
+							'50-69',
+							'Developing',
+							'Useful listing, but key metadata is missing or less structured.'
+						],
+						[
+							'1-49',
+							'Limited',
+							'Sparse metadata. Treat as a starting point, not a complete sourcing picture.'
+						],
+						['0', 'Unscored', 'No usable score inputs are available.']
+					]
+				}
+			},
+			{
+				title: 'Why metadata matters',
+				bullets: [
+					'Price answers whether a transaction may be fair. Metadata answers whether this is the right coffee to buy.',
+					'Decision-critical fields such as arrival date, farm provenance, processing detail, cup score, and cultivar are less consistently disclosed than broad fields such as country.',
+					'Normalizing listings across suppliers makes both disclosed data and missing data visible. That visibility creates an incentive for richer disclosure.',
+					'The scraper and audit loop behind Purveyors treats data quality as something measurable: extraction gaps, field completeness, format validation, and source health all become signals the product can improve over time.'
+				],
+				callout: {
+					tone: 'warning',
+					title: 'Not verification',
+					body: 'Purveyor Score does not verify supplier claims, certify a coffee, replace buyer due diligence, or rate cup quality. It summarizes the listing intelligence Purveyors can currently see.'
+				}
+			},
+			{
+				title: 'Implementation contract',
+				bullets: [
+					'Purveyor Score v1 is stored on coffee_catalog as purveyor_score, purveyor_score_confidence, purveyor_score_tier, purveyor_score_factors, purveyor_score_version, and purveyor_score_updated_at.',
+					'A database function computes the score from normalized fields and a trigger refreshes score fields when relevant metadata changes.',
+					'The score can be recalculated when the formula changes. Consumers should read purveyor_score_version before comparing scores across major methodology updates.',
+					'Raw supplier evidence remains withheld from public catalog responses unless a future product surface explicitly supports safe evidence inspection.'
+				],
+				codeBlocks: [
+					{
+						label: 'Response fragment',
+						language: 'json',
+						code: '{\n  "purveyor_score": 82,\n  "purveyor_score_tier": "Strong",\n  "purveyor_score_confidence": 0.78,\n  "purveyor_score_version": "purveyor-score-v1"\n}'
+					}
+				]
+			}
+		],
+		related: [
+			{
+				href: '/catalog',
+				label: 'Green Coffee Catalog',
+				description: 'Browse the public catalog using the same score language.'
+			},
+			{
+				href: '/docs/api/catalog',
+				label: 'Catalog API',
+				description: 'The public catalog contract that carries normalized listing data.'
+			},
+			{
+				href: '/blog/who-profits-when-coffee-data-stays-scarce',
+				label: 'Metadata scarcity thesis',
+				description: 'The public essay that frames metadata as the real sourcing asymmetry.'
+			}
+		]
+	},
 	{
 		section: 'api',
 		slug: 'overview',
@@ -370,7 +509,7 @@ const docsPages: DocsPage[] = [
 			'GET /v1/catalog is the stable public contract for normalized green coffee listings and tier-aware API access.',
 		eyebrow: 'Public endpoint',
 		intro: [
-			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, pricing, price tiers, and availability metadata.',
+			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, Purveyor Score metadata, pricing, price tiers, and availability metadata.',
 			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API Green requests share the basic public catalog query surface. Member/admin sessions and paid API tiers additionally unlock structured process facet filters. Public callers can still inspect factual process fields in full rows; the gated feature is process search leverage, not data visibility. API-key requests use plan-based limits and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`,
 			'Use include=proof when callers need compact proof-summary families for process, provenance, freshness, and pricing. Proof summaries are cautious catalog signals, not certifications, and raw supplier evidence remains withheld.'
 		],
@@ -394,7 +533,7 @@ const docsPages: DocsPage[] = [
 				title: 'Request and response',
 				body: [
 					'The canonical response includes data, pagination, and meta blocks. The meta block reports auth kind, role, plan, access scope, row-limit state, and cache metadata.',
-					'Full catalog rows include legacy structured processing fields plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
+					'Full catalog rows include legacy structured processing fields, Purveyor Score fields, plus a nested process object. Null values stay null when the supplier has not disclosed structured metadata. process.evidence_available reports whether internal provenance exists without exposing raw evidence quotes in the public response.',
 					'The example below shows an API-key response. Anonymous and session responses keep the same top-level shape. The main differences are headers and search leverage: only API-key requests emit X-RateLimit-* headers, and only member/admin sessions or paid API tiers can use structured process facet filters.',
 					`Viewer-tier API keys are capped to 25 rows per call and cannot use structured process facet filters. Member and enterprise API plans remove that lower plan cap and unlock process facet filters, while still sharing the ${MAX_CATALOG_PAGE_LIMIT}-row per-request ceiling. Anonymous and viewer-session requests are public-only unless a privileged member session explicitly enables richer first-party visibility.`,
 					'Cookies are not part of the public API contract. They only matter when they resolve to a valid first-party session, and the legacy /api/catalog-api alias does not accept session auth as a substitute for an API key.'
@@ -403,7 +542,7 @@ const docsPages: DocsPage[] = [
 					{
 						label: 'GET /v1/catalog',
 						language: 'json',
-						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "drying_method": "Raised beds",\n      "process": {\n        "base_method": "Natural",\n        "fermentation_type": "Anaerobic",\n        "additives": null,\n        "additive_detail": null,\n        "fermentation_duration_hours": 72,\n        "drying_method": "Raised beds",\n        "notes": "Anaerobic natural process disclosed by supplier notes",\n        "disclosure_level": "high_detail",\n        "confidence": 0.92,\n        "evidence_available": true\n      },\n      "price_per_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
+						code: '{\n  "data": [\n    {\n      "id": 128,\n      "name": "Ethiopia Guji",\n      "region": "Guji",\n      "processing": "Natural",\n      "drying_method": "Raised beds",\n      "purveyor_score": 82,\n      "purveyor_score_tier": "Strong",\n      "purveyor_score_confidence": 0.78,\n      "purveyor_score_version": "purveyor-score-v1",\n      "process": {\n        "base_method": "Natural",\n        "fermentation_type": "Anaerobic",\n        "additives": null,\n        "additive_detail": null,\n        "fermentation_duration_hours": 72,\n        "drying_method": "Raised beds",\n        "notes": "Anaerobic natural process disclosed by supplier notes",\n        "disclosure_level": "high_detail",\n        "confidence": 0.92,\n        "evidence_available": true\n      },\n      "price_per_lb": 7.5,\n      "price_tiers": [{ "min_lbs": 1, "price": 7.5 }],\n      "stocked": true,\n      "source": "sweet_marias",\n      "country": "Ethiopia",\n      "continent": "Africa"\n    }\n  ],\n  "pagination": {\n    "page": 1,\n    "limit": 25,\n    "total": 814,\n    "totalPages": 33,\n    "hasNext": true,\n    "hasPrev": false\n  },\n  "meta": {\n    "resource": "catalog",\n    "namespace": "/v1/catalog",\n    "version": "v1",\n    "auth": { "kind": "api-key", "role": "viewer", "apiPlan": "viewer" },\n    "access": {\n      "publicOnly": true,\n      "showWholesale": false,\n      "wholesaleOnly": false,\n      "rowLimit": 25,\n      "limited": true,\n      "totalAvailable": 814\n    },\n    "cache": { "hit": false, "timestamp": null }\n  }\n}'
 					},
 					{
 						label: 'GET /v1/catalog?fields=dropdown&page=2&limit=2',

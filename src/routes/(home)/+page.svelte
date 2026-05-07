@@ -43,7 +43,7 @@
 					{/if}
 				</div>
 
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
 					{#each data.data.slice(0, 6) as coffee}
 						<CoffeeCard {coffee} {parseTastingNotes} />
 					{/each}
