@@ -83,8 +83,8 @@ function normalizePositiveNumber(
 	issues: SourcingBriefValidationIssue[]
 ) {
 	if (value === undefined) return undefined;
-	if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-		issues.push({ field, message: `${field} must be a positive number` });
+	if (typeof value !== 'number' || !Number.isFinite(value) || value < 0.01) {
+		issues.push({ field, message: `${field} must be a number of at least 0.01` });
 		return undefined;
 	}
 	return Number(value.toFixed(2));

@@ -45,6 +45,26 @@ describe('validateSourcingBriefCriteria', () => {
 		);
 	});
 
+	it('rejects max_price_per_lb values that would round down to zero', () => {
+		expect(() => validateSourcingBriefCriteria({ max_price_per_lb: 0.004 })).toThrow(
+			SourcingBriefCriteriaValidationError
+		);
+
+		try {
+			validateSourcingBriefCriteria({ max_price_per_lb: 0.004 });
+		} catch (error) {
+			expect(error).toBeInstanceOf(SourcingBriefCriteriaValidationError);
+			expect((error as SourcingBriefCriteriaValidationError).issues).toContainEqual(
+				expect.objectContaining({ field: 'max_price_per_lb' })
+			);
+		}
+
+		expect(validateSourcingBriefCriteria({ max_price_per_lb: 0.01 })).toEqual({
+			version: 1,
+			max_price_per_lb: 0.01
+		});
+	});
+
 	it('does not count no-op boolean flags as sourcing constraints', () => {
 		expect(() => validateSourcingBriefCriteria({ stocked_only: false })).toThrow(
 			SourcingBriefCriteriaValidationError
