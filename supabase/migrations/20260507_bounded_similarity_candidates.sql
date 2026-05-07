@@ -62,7 +62,7 @@ AS $$
         AND cc.chunk_type = te.chunk_type
         AND (NOT stocked_only OR c.stocked IS true)
       ORDER BY cc.embedding <=> te.embedding
-      LIMIT s.resolved_candidate_pool
+      LIMIT (SELECT resolved_candidate_pool FROM settings)
     ) candidate
     WHERE candidate.similarity >= match_threshold
   ),
@@ -110,7 +110,7 @@ AS $$
   JOIN coffee_catalog c ON c.id = a.coffee_id
   CROSS JOIN settings s
   ORDER BY a.avg_similarity DESC
-  LIMIT s.resolved_match_count;
+  LIMIT (SELECT resolved_match_count FROM settings);
 $$;
 
 REVOKE EXECUTE ON FUNCTION find_similar_beans_aggregated_v3(INT, FLOAT, INT, BOOLEAN, INT) FROM PUBLIC, anon, authenticated;
