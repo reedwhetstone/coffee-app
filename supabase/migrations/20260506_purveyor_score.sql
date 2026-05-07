@@ -1,6 +1,11 @@
 -- Purveyor Score: deterministic listing-intelligence metadata score.
 -- This is not a coffee quality score, supplier verification, certification, or
 -- regulatory assurance. It rewards structured, comparable catalog metadata.
+-- Production run guidance: execute in an explicit transaction during a low-write
+-- window, use a short lock_timeout, and preflight that public.coffee_catalog has
+-- the referenced source columns with price_tiers represented as a JSON array or
+-- JSONB[] before applying the backfill. After the run, validate row counts, score
+-- ranges, non-null factors, and tier distribution samples.
 
 ALTER TABLE public.coffee_catalog
 	ADD COLUMN IF NOT EXISTS purveyor_score integer,
@@ -13,7 +18,9 @@ ALTER TABLE public.coffee_catalog
 DO $$
 BEGIN
 	IF NOT EXISTS (
-		SELECT 1 FROM pg_constraint WHERE conname = 'coffee_catalog_purveyor_score_range'
+		SELECT 1 FROM pg_constraint
+		WHERE conname = 'coffee_catalog_purveyor_score_range'
+			AND conrelid = 'public.coffee_catalog'::regclass
 	) THEN
 		ALTER TABLE public.coffee_catalog
 			ADD CONSTRAINT coffee_catalog_purveyor_score_range
@@ -21,7 +28,9 @@ BEGIN
 	END IF;
 
 	IF NOT EXISTS (
-		SELECT 1 FROM pg_constraint WHERE conname = 'coffee_catalog_purveyor_score_confidence_range'
+		SELECT 1 FROM pg_constraint
+		WHERE conname = 'coffee_catalog_purveyor_score_confidence_range'
+			AND conrelid = 'public.coffee_catalog'::regclass
 	) THEN
 		ALTER TABLE public.coffee_catalog
 			ADD CONSTRAINT coffee_catalog_purveyor_score_confidence_range
@@ -32,7 +41,9 @@ BEGIN
 	END IF;
 
 	IF NOT EXISTS (
-		SELECT 1 FROM pg_constraint WHERE conname = 'coffee_catalog_purveyor_score_tier_allowed'
+		SELECT 1 FROM pg_constraint
+		WHERE conname = 'coffee_catalog_purveyor_score_tier_allowed'
+			AND conrelid = 'public.coffee_catalog'::regclass
 	) THEN
 		ALTER TABLE public.coffee_catalog
 			ADD CONSTRAINT coffee_catalog_purveyor_score_tier_allowed
@@ -110,9 +121,12 @@ BEGIN
 	freshness := LEAST(freshness, 20);
 
 	-- Pricing comparability, max 15.
-	IF item.price_per_lb IS NOT NULL OR item.cost_lb IS NOT NULL THEN pricing := pricing + 6; structured_signal_count := structured_signal_count + 1; END IF;
+	IF item.price_per_lb > 0 OR item.cost_lb > 0 THEN pricing := pricing + 6; structured_signal_count := structured_signal_count + 1; END IF;
 	IF item.price_tiers IS NOT NULL THEN
-		tier_count := COALESCE(array_length(item.price_tiers, 1), 0);
+		tier_count := CASE
+			WHEN jsonb_typeof(to_jsonb(item.price_tiers)) = 'array' THEN jsonb_array_length(to_jsonb(item.price_tiers))
+			ELSE 0
+		END;
 		IF tier_count > 1 THEN
 			pricing := pricing + 6;
 		ELSIF tier_count = 1 THEN
@@ -129,7 +143,7 @@ BEGIN
 		public.purveyor_score_has_text(item.cupping_notes) OR
 		public.purveyor_score_has_text(item.ai_description);
 	IF has_tasting THEN sensory := sensory + 6; END IF;
-	IF item.score_value IS NOT NULL THEN sensory := sensory + 4; END IF;
+	IF item.score_value > 0 THEN sensory := sensory + 4; END IF;
 	IF public.purveyor_score_has_text(item.roast_recs) THEN sensory := sensory + 3; END IF;
 	IF public.purveyor_score_has_text(item.description_short) OR public.purveyor_score_has_text(item.description_long) THEN sensory := sensory + 2; END IF;
 	sensory := LEAST(sensory, 15);
@@ -228,7 +242,13 @@ BEFORE INSERT OR UPDATE OF
 	score_value,
 	roast_recs,
 	description_short,
-	description_long
+	description_long,
+	purveyor_score,
+	purveyor_score_confidence,
+	purveyor_score_tier,
+	purveyor_score_factors,
+	purveyor_score_version,
+	purveyor_score_updated_at
 ON public.coffee_catalog
 FOR EACH ROW
 EXECUTE FUNCTION public.set_purveyor_score_fields();
