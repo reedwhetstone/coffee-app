@@ -104,17 +104,15 @@ BEGIN
 
 	-- Freshness and availability, max 20.
 	IF item.stocked IS NOT NULL THEN freshness := freshness + 5; structured_signal_count := structured_signal_count + 1; END IF;
-	IF public.purveyor_score_has_text(item.stocked_date) THEN freshness := freshness + 6; recent_signal_count := recent_signal_count + 1; END IF;
+	IF public.purveyor_score_has_text(item.stocked_date::text) THEN freshness := freshness + 6; recent_signal_count := recent_signal_count + 1; END IF;
 	IF public.purveyor_score_has_text(item.arrival_date) THEN freshness := freshness + 6; recent_signal_count := recent_signal_count + 1; END IF;
-	IF public.purveyor_score_has_text(item.last_updated) THEN freshness := freshness + 3; recent_signal_count := recent_signal_count + 1; END IF;
+	IF public.purveyor_score_has_text(item.last_updated::text) THEN freshness := freshness + 3; recent_signal_count := recent_signal_count + 1; END IF;
 	freshness := LEAST(freshness, 20);
 
 	-- Pricing comparability, max 15.
 	IF item.price_per_lb IS NOT NULL OR item.cost_lb IS NOT NULL THEN pricing := pricing + 6; structured_signal_count := structured_signal_count + 1; END IF;
 	IF item.price_tiers IS NOT NULL THEN
-		IF jsonb_typeof(item.price_tiers::jsonb) = 'array' THEN
-			tier_count := jsonb_array_length(item.price_tiers::jsonb);
-		END IF;
+		tier_count := COALESCE(array_length(item.price_tiers, 1), 0);
 		IF tier_count > 1 THEN
 			pricing := pricing + 6;
 		ELSIF tier_count = 1 THEN
@@ -145,7 +143,7 @@ BEGIN
 	ELSE tier := 'Unscored';
 	END IF;
 
-	has_process_evidence := item.processing_evidence_available IS TRUE OR item.processing_evidence IS NOT NULL;
+	has_process_evidence := item.processing_evidence IS NOT NULL;
 	confidence :=
 		LEAST(
 			1,
@@ -216,7 +214,6 @@ BEFORE INSERT OR UPDATE OF
 	processing_disclosure_level,
 	processing_confidence,
 	processing_evidence,
-	processing_evidence_available,
 	stocked,
 	stocked_date,
 	arrival_date,
