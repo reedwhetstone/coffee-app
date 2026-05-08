@@ -16,8 +16,17 @@ export interface PriceTier {
  */
 export interface PriceableCoffee {
 	cost_lb: number | null;
+	price_per_lb?: number | null;
 	price_tiers: Json | null;
 	wholesale: boolean;
+}
+
+export interface CanonicalPriceInput {
+	price_per_lb?: number | null;
+	price_tiers?: Json | null;
+	cost_lb?: number | null;
+	baseline_price_per_lb?: number | null;
+	baseline_source?: 'price_per_lb' | 'price_tiers' | 'cost_lb' | null;
 }
 
 /**
@@ -130,6 +139,48 @@ export function calculatePurchaseTotal(tiers: PriceTier[], lbs: number): number 
  */
 export function formatPricePerLb(price: number): string {
 	return `$${price.toFixed(2)}/lb`;
+}
+
+/**
+ * Resolve the canonical 1 lb comparison price for premium catalog comparison surfaces.
+ * Prefer `price_per_lb`, then an eligible 1 lb tier, and only then legacy `cost_lb`.
+ */
+export function getCanonicalOneLbPrice(coffee: CanonicalPriceInput): number | null {
+	if (coffee.baseline_price_per_lb != null) return coffee.baseline_price_per_lb;
+	if (coffee.price_per_lb != null) return coffee.price_per_lb;
+
+	const tiers = parsePriceTiers(coffee.price_tiers);
+	if (tiers) {
+		const tier = getApplicableTier(tiers, 1);
+		if (tier) return tier.price;
+	}
+
+	return coffee.cost_lb ?? null;
+}
+
+export function formatCanonicalBaselinePrice(coffee: CanonicalPriceInput): string {
+	const price = getCanonicalOneLbPrice(coffee);
+	return price == null ? 'Price unavailable' : formatPricePerLb(price);
+}
+
+export function formatPriceTierSummary(priceTiers: Json | null | undefined): string | null {
+	const tiers = parsePriceTiers(priceTiers);
+	if (!tiers || tiers.length === 0) return null;
+	if (tiers.length === 1)
+		return `Single ${tiers[0].min_lbs}+ lb tier at ${formatPricePerLb(tiers[0].price)}`;
+	const first = tiers[0];
+	const last = tiers[tiers.length - 1];
+	return `${tiers.length} tiers from ${first.min_lbs}+ lb ${formatPricePerLb(first.price)} to ${last.min_lbs}+ lb ${formatPricePerLb(last.price)}`;
+}
+
+export function formatPriceDelta(amount: number | null, percent: number | null): string {
+	if (amount == null) return 'Price delta unavailable';
+	if (amount === 0) return 'Same as target at 1 lb';
+	const direction = amount > 0 ? 'higher' : 'lower';
+	const formattedAmount = `$${Math.abs(amount).toFixed(2)}/lb ${direction}`;
+	return percent == null
+		? formattedAmount
+		: `${formattedAmount} (${Math.abs(percent).toFixed(1)}%)`;
 }
 
 /**

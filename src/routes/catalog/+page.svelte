@@ -99,6 +99,8 @@
 			hasAdvancedProcessFilters
 	);
 
+	let canUseBeanMatching = $derived(data.catalogAccess?.canUseBeanMatching === true);
+
 	async function handleScroll() {
 		if (!session) {
 			return;
@@ -426,9 +428,7 @@
 		{/if}
 
 		{#if session && !hasRequiredRole('member')}
-			<div
-				class="rounded-lg border border-background-tertiary-light/20 bg-gradient-to-r from-background-tertiary-light/10 to-harvest-gold/10 p-6"
-			>
+			<div class="rounded-lg border border-background-tertiary-light/20 bg-accent-subtle/10 p-6">
 				<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
 					<div class="text-center sm:text-left">
 						<h3 class="text-lg font-semibold text-text-primary-light">
@@ -472,9 +472,14 @@
 							: ''}
 					</p>
 				{:else}
-					<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 						{#each session ? displayData() : displayData().slice(0, 15) as coffee}
-							<CoffeeCard {coffee} {parseTastingNotes} />
+							<CoffeeCard
+								{coffee}
+								{parseTastingNotes}
+								showSimilarComparisonAction={true}
+								{canUseBeanMatching}
+							/>
 						{/each}
 
 						{#if isLoadingMore}
@@ -545,13 +550,13 @@
 
 						{#if session && !$filterStore.pagination.totalPages && !isLoadingMore && displayLimit < $filteredData.length}
 							<div class="flex justify-center p-4">
-								<p class="text-primary-light text-sm">Scroll for more coffees...</p>
+								<p class="text-sm text-text-primary-light">Scroll for more coffees...</p>
 							</div>
 						{/if}
 
 						{#if session && !$filterStore.pagination.totalPages && displayLimit >= $filteredData.length && $filteredData.length > 0}
 							<div class="flex justify-center p-4">
-								<p class="text-primary-light text-sm">No more coffees to load</p>
+								<p class="text-sm text-text-primary-light">No more coffees to load</p>
 							</div>
 						{/if}
 					</div>

@@ -49,9 +49,11 @@ Purveyors ships two API layers:
 
    - `GET /v1` advertises the public namespace, resource map, and legacy migration hints
    - `GET /v1/catalog` is the stable public contract for external integrations
-   - Auth: Bearer API key, web session, or anonymous
-   - Full responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
-   - Rate-limit headers are only emitted on API-key requests
+   - `GET /v1/catalog/{id}/similar` is a beta catalog matching endpoint for member sessions or API keys with API Origin or Enterprise plus `catalog:read`
+   - `GET /v1/price-index` exposes aggregate `price_index_snapshots` for API keys with Parchment Intelligence access
+   - Auth varies by route: `/v1/catalog` supports Bearer API key, web session, or anonymous; similarity and price-index require entitlement-backed auth
+   - Full catalog responses include structured process transparency fields and `process.evidence_available`, but not raw evidence quotes
+   - API-key routes emit rate-limit headers; anonymous and session catalog reads do not
    - [See API docs](https://purveyors.io/docs/api/overview)
 
 2. **Platform app API** (`/api/*`)
@@ -62,7 +64,7 @@ Purveyors ships two API layers:
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `/docs/api/overview`
    - `/api/tools/*` routes are deprecated compatibility shims; prefer shared CLI-library integration for new work
 
-Do not document the whole `/api/*` tree as a stable public contract. The public contract is the catalog feed at `/v1/catalog`; the broader `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.
+Do not document the whole `/api/*` tree as a stable public contract. The stable public catalog feed is `/v1/catalog`; `/v1/catalog/{id}/similar` is beta and access-gated; `/v1/price-index` is aggregate-only and entitlement-gated. The broader `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.
 
 ## CLI relationship
 
@@ -70,7 +72,7 @@ This repo depends on `@purveyors/cli` and imports its domain logic in the app.
 
 CLI auth and output rules are part of the platform contract:
 
-- `purvey catalog *` requires an authenticated viewer session
+- `purvey catalog *` requires an authenticated viewer session, including `purvey catalog similar <id>`
 - `purvey inventory`, `roast`, `sales`, and `tasting` require the member role
 - `purvey config`, `purvey context`, and `purvey manifest` do not require auth
 - `purvey manifest` is the preferred stable machine-readable contract for shells and agents

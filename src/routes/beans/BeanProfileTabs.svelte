@@ -327,7 +327,7 @@
 									</span>
 								</div>
 								<span
-									class="text-primary-light absolute bottom-0 left-0 right-0 text-center text-xs"
+									class="absolute bottom-0 left-0 right-0 text-center text-xs text-text-primary-light"
 									>RATING</span
 								>
 							</div>

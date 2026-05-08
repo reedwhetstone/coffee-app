@@ -94,7 +94,7 @@
 					onclick={handleSignIn}
 					class="w-full rounded-md bg-background-tertiary-light px-4 py-2 text-left text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 				>
-					Sign In with Google
+					Sign in with Google
 				</button>
 			</div>
 		{/if}

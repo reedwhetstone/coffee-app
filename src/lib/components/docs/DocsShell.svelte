@@ -95,7 +95,7 @@
 
 	<article class="min-w-0 space-y-8">
 		<header
-			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
+			class="rounded-2xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 		>
 			<p class="text-xs font-semibold uppercase tracking-[0.18em] text-background-tertiary-light">
 				{page.eyebrow}
@@ -117,7 +117,7 @@
 		{#each page.sections as sectionBlock}
 			<section
 				id={titleToAnchor(sectionBlock.title)}
-				class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
+				class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 			>
 				<h2 class="text-2xl font-semibold text-text-primary-light">{sectionBlock.title}</h2>
 
@@ -199,7 +199,7 @@
 		{/each}
 
 		<section
-			class="rounded-3xl border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
+			class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm sm:p-8"
 		>
 			<h2 class="text-2xl font-semibold text-text-primary-light">Related links</h2>
 			<div class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
