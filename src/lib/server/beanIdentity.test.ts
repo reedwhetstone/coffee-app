@@ -162,6 +162,21 @@ describe('bean identity helpers', () => {
 		expect(store.events.map((event) => event.action)).toEqual(['create']);
 	});
 
+	it('does not leave candidate state when writing the create event fails', async () => {
+		const store = createMemoryBeanIdentityStore();
+		store.createEvent = async () => {
+			throw new Error('create audit insert failed');
+		};
+
+		await expect(
+			createBeanIdentityCandidate({ store, coffeeCatalogId: 16, snapshot })
+		).rejects.toThrow('create audit insert failed');
+
+		expect(store.identities).toEqual([]);
+		expect(store.links).toEqual([]);
+		expect(store.events).toEqual([]);
+	});
+
 	it('does not reject an identity that still has another active accepted link', async () => {
 		const store = createMemoryBeanIdentityStore();
 		const first = await createBeanIdentityCandidate({ store, coffeeCatalogId: 14, snapshot });
@@ -188,6 +203,33 @@ describe('bean identity helpers', () => {
 		).toMatchObject({
 			status: 'accepted',
 			primary_catalog_id: 15
+		});
+	});
+
+	it('recomputes identity primary catalog when superseding the current accepted link', async () => {
+		const store = createMemoryBeanIdentityStore();
+		const first = await createBeanIdentityCandidate({ store, coffeeCatalogId: 17, snapshot });
+		const second = await createBeanIdentityCandidate({
+			store,
+			coffeeCatalogId: 18,
+			identityId: first.link.identity_id,
+			snapshot: { ...snapshot, reasonCodes: ['same_identity_other_catalog_row'] }
+		});
+
+		await acceptBeanIdentityLink({ store, linkId: first.link.id });
+		await acceptBeanIdentityLink({ store, linkId: second.link.id });
+		await supersedeBeanIdentityLink({ store, linkId: first.link.id });
+
+		expect(store.links.find((link) => link.id === first.link.id)).toMatchObject({
+			status: 'superseded',
+			active: false
+		});
+		expect(
+			store.identities.find((identity) => identity.id === first.link.identity_id)
+		).toMatchObject({
+			status: 'accepted',
+			primary_catalog_id: 18,
+			superseded_by: null
 		});
 	});
 
@@ -379,6 +421,55 @@ function createMemoryBeanIdentityStore(): MemoryStore {
 				) ?? null
 			);
 		},
+		async createCandidate(input) {
+			const originalIdentitiesLength = identities.length;
+			const originalLinksLength = links.length;
+			const originalEventsLength = events.length;
+			try {
+				const identity = input.identityId
+					? null
+					: await this.createIdentity({
+							status: 'candidate',
+							canonical_name: input.canonicalName ?? null,
+							primary_catalog_id: input.coffeeCatalogId,
+							metadata: input.snapshot.metadata ?? {}
+						});
+				const resolvedIdentityId = input.identityId ?? identity?.id;
+				if (!resolvedIdentityId) throw new Error('Identity id is required to create a link');
+
+				const link = await this.createLink({
+					identity_id: resolvedIdentityId,
+					coffee_catalog_id: input.coffeeCatalogId,
+					status: 'candidate',
+					active: true,
+					classifier_version: input.snapshot.classifierVersion,
+					dimension_scores: input.snapshot.dimensionScores,
+					blockers: input.snapshot.blockers,
+					proof_summary_snapshot: input.snapshot.proofSummarySnapshot,
+					reason_codes: input.snapshot.reasonCodes,
+					metadata: input.snapshot.metadata ?? {},
+					proposed_by: input.actorId ?? null
+				});
+
+				const event = await this.createEvent({
+					identity_id: link.identity_id,
+					link_id: link.id,
+					action: 'create',
+					actor_id: input.actorId ?? null,
+					payload: {
+						coffee_catalog_id: input.coffeeCatalogId,
+						candidate_snapshot: input.snapshot
+					} as unknown as BeanIdentityEvent['payload']
+				});
+
+				return { identity, link, event };
+			} catch (error) {
+				identities.splice(originalIdentitiesLength);
+				links.splice(originalLinksLength);
+				events.splice(originalEventsLength);
+				throw error;
+			}
+		},
 		async reviewLink(input) {
 			const link = links.find((entry) => entry.id === input.linkId);
 			if (!link) throw new Error(`Missing link ${input.linkId}`);
@@ -449,12 +540,21 @@ function createMemoryBeanIdentityStore(): MemoryStore {
 						updated_at: now()
 					});
 				} else {
+					const accepted = links.find(
+						(entry) =>
+							entry.identity_id === link.identity_id && entry.status === 'accepted' && entry.active
+					);
+					const hasCandidate = links.some(
+						(entry) =>
+							entry.identity_id === link.identity_id && entry.status === 'candidate' && entry.active
+					);
 					const replacement = input.supersededByLinkId
 						? links.find((entry) => entry.id === input.supersededByLinkId)
 						: null;
 					Object.assign(identity, {
-						status: 'superseded',
-						superseded_by: replacement?.identity_id ?? null,
+						status: accepted ? 'accepted' : hasCandidate ? 'candidate' : 'superseded',
+						primary_catalog_id: accepted?.coffee_catalog_id ?? identity.primary_catalog_id,
+						superseded_by: accepted || hasCandidate ? null : (replacement?.identity_id ?? null),
 						updated_at: now()
 					});
 				}

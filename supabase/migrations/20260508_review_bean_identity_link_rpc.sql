@@ -128,15 +128,18 @@ begin
       where id = v_updated.identity_id;
     end if;
   elsif p_action = 'supersede' then
-    if exists (
-      select 1
-      from public.bean_identity_links accepted
-      where accepted.identity_id = v_updated.identity_id
-        and accepted.status = 'accepted'
-        and accepted.active = true
-    ) then
+    select accepted.status, accepted.coffee_catalog_id
+    into v_identity_status, v_primary_catalog_id
+    from public.bean_identity_links accepted
+    where accepted.identity_id = v_updated.identity_id
+      and accepted.status = 'accepted'
+      and accepted.active = true
+    order by accepted.reviewed_at desc nulls last, accepted.created_at desc
+    limit 1;
+
+    if v_identity_status = 'accepted' then
       update public.bean_identities
-      set status = 'accepted', superseded_by = null
+      set status = 'accepted', primary_catalog_id = v_primary_catalog_id, superseded_by = null
       where id = v_updated.identity_id;
     elsif exists (
       select 1

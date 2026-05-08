@@ -90,6 +90,20 @@ interface SupabaseClientLike {
 	rpc(functionName: string, args: Record<string, unknown>): SupabaseRpcLike;
 }
 
+export interface BeanIdentityCandidateMutationInput {
+	coffeeCatalogId: number;
+	identityId?: string | null;
+	canonicalName?: string | null;
+	snapshot: BeanIdentityCandidateSnapshot;
+	actorId?: string | null;
+}
+
+export interface BeanIdentityCandidateMutationResult {
+	identity: BeanIdentity | null;
+	link: BeanIdentityLink;
+	event: BeanIdentityEvent;
+}
+
 export interface BeanIdentityReviewMutationInput {
 	linkId: string;
 	action: Extract<BeanIdentityEventAction, 'accept' | 'reject' | 'supersede'>;
@@ -117,6 +131,9 @@ export interface BeanIdentityStore {
 		identityId?: string | null;
 	}): Promise<BeanIdentityLink[]>;
 	findActiveAcceptedLink(coffeeCatalogId: number): Promise<BeanIdentityLink | null>;
+	createCandidate(
+		input: BeanIdentityCandidateMutationInput
+	): Promise<BeanIdentityCandidateMutationResult>;
 	reviewLink(input: BeanIdentityReviewMutationInput): Promise<BeanIdentityReviewMutationResult>;
 	createEvent(input: Partial<BeanIdentityEvent>): Promise<BeanIdentityEvent>;
 	listEvents(input: {
@@ -288,6 +305,23 @@ export function createSupabaseBeanIdentityStore(
 					.maybeSingle()
 			);
 		},
+		async createCandidate(input) {
+			return single<{
+				identity: BeanIdentity | null;
+				link: BeanIdentityLink;
+				event: BeanIdentityEvent;
+			}>(
+				client
+					.rpc('create_bean_identity_candidate', {
+						p_coffee_catalog_id: input.coffeeCatalogId,
+						p_identity_id: input.identityId ?? null,
+						p_canonical_name: input.canonicalName ?? null,
+						p_snapshot: input.snapshot,
+						p_actor_id: input.actorId ?? null
+					})
+					.single()
+			);
+		},
 		async reviewLink(input) {
 			const result = await single<{ link: BeanIdentityLink; event: BeanIdentityEvent }>(
 				client
@@ -336,45 +370,13 @@ export async function createBeanIdentityCandidate({
 		}
 	}
 
-	const identity = identityId
-		? null
-		: await store.createIdentity({
-				status: 'candidate',
-				canonical_name: canonicalName,
-				primary_catalog_id: coffeeCatalogId,
-				metadata: snapshot.metadata ?? {}
-			});
-
-	const resolvedIdentityId = identityId ?? identity?.id;
-	if (!resolvedIdentityId) throw new BeanIdentityError('Identity id is required to create a link');
-
-	const link = await store.createLink({
-		identity_id: resolvedIdentityId,
-		coffee_catalog_id: coffeeCatalogId,
-		status: 'candidate',
-		active: true,
-		classifier_version: snapshot.classifierVersion,
-		dimension_scores: snapshot.dimensionScores,
-		blockers: snapshot.blockers,
-		proof_summary_snapshot: snapshot.proofSummarySnapshot,
-		reason_codes: snapshot.reasonCodes,
-		metadata: snapshot.metadata ?? {},
-		proposed_by: actorId
+	return store.createCandidate({
+		coffeeCatalogId,
+		identityId,
+		canonicalName,
+		snapshot,
+		actorId
 	});
-
-	const event = await writeBeanIdentityEvent({
-		store,
-		identityId: link.identity_id,
-		linkId: link.id,
-		action: 'create',
-		actorId,
-		payload: toJson({
-			coffee_catalog_id: coffeeCatalogId,
-			candidate_snapshot: snapshot
-		})
-	});
-
-	return { identity, link, event };
 }
 
 export async function acceptBeanIdentityLink({
@@ -492,10 +494,6 @@ async function requireLink(store: BeanIdentityStore, linkId: string) {
 	const link = await store.getLink(linkId);
 	if (!link) throw new BeanIdentityLinkNotFoundError(linkId);
 	return link;
-}
-
-function toJson(value: unknown): Json {
-	return value as Json;
 }
 
 function toSnakeIdentity(input: Partial<BeanIdentity>) {
