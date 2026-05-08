@@ -1,21 +1,21 @@
 # PR #347 Reverify Audit: Bounded hard-gated similar API
 
-**Date:** 2026-05-07  
-**Repo:** `coffee-app`  
-**Branch:** `feat/bounded-hard-gated-similar-api`  
-**Base:** `origin/main`  
-**Commit reviewed:** `3fd0214`  
+**Date:** 2026-05-07
+**Repo:** `coffee-app`
+**Branch:** `feat/bounded-hard-gated-similar-api`
+**Base:** `origin/main`
+**Commit reviewed:** `3fd0214`
 **Prior verify report:** `notes/pr-audits/2026-05-07-pr-347-bounded-hard-gated-similar-api.md`
 
 ## Operator summary
 
-VERDICT: ready_with_fixes  
-P0: 0  
-P1: 0  
-P2: 0  
-P3: 1  
-NEXT_ACTION: patch_same_pr  
-CONFIDENCE: high  
+VERDICT: ready_with_fixes
+P0: 0
+P1: 0
+P2: 0
+P3: 1
+NEXT_ACTION: patch_same_pr
+CONFIDENCE: high
 SCOPE_ASSESSMENT: mergeable_with_followups
 
 ## Scope and intent coverage
@@ -79,11 +79,11 @@ The only remaining issue is a small docs mismatch. Because this endpoint is an A
 
 ## Validation
 
-- `pnpm exec vitest run src/lib/server/catalogSimilarity.test.ts src/routes/v1/catalog/[id]/similar/similar.test.ts src/lib/components/catalog/SimilarCoffeePanel.svelte.test.ts`  
+- `pnpm exec vitest run src/lib/server/catalogSimilarity.test.ts src/routes/v1/catalog/[id]/similar/similar.test.ts src/lib/components/catalog/SimilarCoffeePanel.svelte.test.ts`
   **VALIDATION_PASS:** 3 files, 28 tests passed.
-- `pnpm check --fail-on-warnings`  
+- `pnpm check --fail-on-warnings`
   **VALIDATION_PASS:** 0 errors, 0 warnings.
-- `pnpm run lint`  
+- `pnpm run lint`
   **VALIDATION_PASS:** Prettier and ESLint passed.
 
 ## Final verdict

@@ -1,19 +1,19 @@
 # PR #347 Verify Audit: Bounded hard-gated similar API
 
-**Date:** 2026-05-07  
-**Repo:** `coffee-app`  
-**Branch:** `feat/bounded-hard-gated-similar-api`  
-**Base:** `origin/main`  
-**Commit:** `e533cc7`  
+**Date:** 2026-05-07
+**Repo:** `coffee-app`
+**Branch:** `feat/bounded-hard-gated-similar-api`
+**Base:** `origin/main`
+**Commit:** `e533cc7`
 **Verdict:** `ready_with_fixes`
 
 ## Operator summary
 
-VERDICT: ready_with_fixes  
-P0: 0  
-P1: 0  
-P2: 2  
-P3: 1  
+VERDICT: ready_with_fixes
+P0: 0
+P1: 0
+P2: 2
+P3: 1
 NEXT_ACTION: patch_same_pr
 
 ## Scope and intent coverage
@@ -97,11 +97,11 @@ Update tests so old score-only promotion is not preserved as the documented help
 
 ## Validation run
 
-- `pnpm exec vitest run src/lib/server/catalogSimilarity.test.ts src/routes/v1/catalog/[id]/similar/similar.test.ts src/lib/components/catalog/SimilarCoffeePanel.svelte.test.ts`  
+- `pnpm exec vitest run src/lib/server/catalogSimilarity.test.ts src/routes/v1/catalog/[id]/similar/similar.test.ts src/lib/components/catalog/SimilarCoffeePanel.svelte.test.ts`
   Result: pass, 33 tests.
-- `pnpm check --fail-on-warnings`  
+- `pnpm check --fail-on-warnings`
   Result: pass, 0 errors, 0 warnings.
-- `pnpm run lint`  
+- `pnpm run lint`
   Result: pass, Prettier and ESLint clean.
 
 ## Product alignment
