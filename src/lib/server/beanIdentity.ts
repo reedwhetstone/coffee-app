@@ -81,8 +81,28 @@ interface SupabaseQueryLike<T = unknown> extends PromiseLike<SupabaseMutationRes
 	): SupabaseQueryLike<T>;
 }
 
+interface SupabaseRpcLike<T = unknown> extends PromiseLike<SupabaseMutationResult<T>> {
+	single(): SupabaseRpcLike<T>;
+}
+
 interface SupabaseClientLike {
 	from(table: string): SupabaseQueryLike;
+	rpc(functionName: string, args: Record<string, unknown>): SupabaseRpcLike;
+}
+
+export interface BeanIdentityReviewMutationInput {
+	linkId: string;
+	action: Extract<BeanIdentityEventAction, 'accept' | 'reject' | 'supersede'>;
+	actorId?: string | null;
+	reasonCodes?: string[];
+	metadata?: Json;
+	note?: string | null;
+	supersededByLinkId?: string | null;
+}
+
+export interface BeanIdentityReviewMutationResult {
+	link: BeanIdentityLink;
+	event: BeanIdentityEvent;
 }
 
 export interface BeanIdentityStore {
@@ -97,6 +117,7 @@ export interface BeanIdentityStore {
 		identityId?: string | null;
 	}): Promise<BeanIdentityLink[]>;
 	findActiveAcceptedLink(coffeeCatalogId: number): Promise<BeanIdentityLink | null>;
+	reviewLink(input: BeanIdentityReviewMutationInput): Promise<BeanIdentityReviewMutationResult>;
 	createEvent(input: Partial<BeanIdentityEvent>): Promise<BeanIdentityEvent>;
 	listEvents(input: {
 		identityId?: string | null;
@@ -267,6 +288,22 @@ export function createSupabaseBeanIdentityStore(
 					.maybeSingle()
 			);
 		},
+		async reviewLink(input) {
+			const result = await single<{ link: BeanIdentityLink; event: BeanIdentityEvent }>(
+				client
+					.rpc('review_bean_identity_link', {
+						p_link_id: input.linkId,
+						p_action: input.action,
+						p_actor_id: input.actorId ?? null,
+						p_reason_codes: input.reasonCodes ?? [],
+						p_metadata: input.metadata ?? {},
+						p_note: input.note ?? null,
+						p_superseded_by_link_id: input.supersededByLinkId ?? null
+					})
+					.single()
+			);
+			return result;
+		},
 		createEvent(input) {
 			return single<BeanIdentityEvent>(
 				client.from('bean_identity_events').insert(toSnakeEvent(input)).select('*').single()
@@ -354,35 +391,14 @@ export async function acceptBeanIdentityLink({
 		throw new DuplicateActiveAcceptedIdentityError(link.coffee_catalog_id, conflict.id);
 	}
 
-	const previousStatus = link.status;
-	const accepted = await store.updateLink(link.id, {
-		status: 'accepted',
-		active: true,
-		reviewed_by: actorId,
-		reviewed_at: new Date().toISOString(),
-		reason_codes: mergeReasonCodes(link.reason_codes, reasonCodes),
-		metadata: mergeJsonObjects(link.metadata, metadata)
-	});
-	await store.updateIdentity(link.identity_id, {
-		status: 'accepted',
-		primary_catalog_id: link.coffee_catalog_id
-	});
-
-	const event = await writeBeanIdentityEvent({
-		store,
-		identityId: accepted.identity_id,
-		linkId: accepted.id,
+	return store.reviewLink({
+		linkId: link.id,
 		action: 'accept',
 		actorId,
-		payload: toJson({
-			previous_status: previousStatus,
-			reason_codes: reasonCodes,
-			metadata,
-			note
-		})
+		reasonCodes,
+		metadata,
+		note
 	});
-
-	return { link: accepted, event };
 }
 
 export async function rejectBeanIdentityLink({
@@ -394,32 +410,14 @@ export async function rejectBeanIdentityLink({
 	note = null
 }: ReviewBeanIdentityLinkInput) {
 	const link = await requireLink(store, linkId);
-	const previousStatus = link.status;
-	const rejected = await store.updateLink(link.id, {
-		status: 'rejected',
-		active: false,
-		reviewed_by: actorId,
-		reviewed_at: new Date().toISOString(),
-		reason_codes: mergeReasonCodes(link.reason_codes, reasonCodes),
-		metadata: mergeJsonObjects(link.metadata, metadata)
-	});
-	await store.updateIdentity(link.identity_id, { status: 'rejected' });
-
-	const event = await writeBeanIdentityEvent({
-		store,
-		identityId: rejected.identity_id,
-		linkId: rejected.id,
+	return store.reviewLink({
+		linkId: link.id,
 		action: 'reject',
 		actorId,
-		payload: toJson({
-			previous_status: previousStatus,
-			reason_codes: reasonCodes,
-			metadata,
-			note
-		})
+		reasonCodes,
+		metadata,
+		note
 	});
-
-	return { link: rejected, event };
 }
 
 export async function supersedeBeanIdentityLink({
@@ -432,38 +430,17 @@ export async function supersedeBeanIdentityLink({
 	supersededByLinkId = null
 }: SupersedeBeanIdentityLinkInput) {
 	const link = await requireLink(store, linkId);
-	const replacement = supersededByLinkId ? await requireLink(store, supersededByLinkId) : null;
-	const previousStatus = link.status;
-	const superseded = await store.updateLink(link.id, {
-		status: 'superseded',
-		active: false,
-		reviewed_by: actorId,
-		reviewed_at: new Date().toISOString(),
-		superseded_by: supersededByLinkId,
-		reason_codes: mergeReasonCodes(link.reason_codes, reasonCodes),
-		metadata: mergeJsonObjects(link.metadata, metadata)
-	});
-	await store.updateIdentity(link.identity_id, {
-		status: 'superseded',
-		superseded_by: replacement?.identity_id ?? null
-	});
+	if (supersededByLinkId) await requireLink(store, supersededByLinkId);
 
-	const event = await writeBeanIdentityEvent({
-		store,
-		identityId: superseded.identity_id,
-		linkId: superseded.id,
+	return store.reviewLink({
+		linkId: link.id,
 		action: 'supersede',
 		actorId,
-		payload: toJson({
-			previous_status: previousStatus,
-			superseded_by_link_id: supersededByLinkId,
-			reason_codes: reasonCodes,
-			metadata,
-			note
-		})
+		reasonCodes,
+		metadata,
+		note,
+		supersededByLinkId
 	});
-
-	return { link: superseded, event };
 }
 
 export async function writeBeanIdentityEvent({
@@ -515,21 +492,6 @@ async function requireLink(store: BeanIdentityStore, linkId: string) {
 	const link = await store.getLink(linkId);
 	if (!link) throw new BeanIdentityLinkNotFoundError(linkId);
 	return link;
-}
-
-function mergeReasonCodes(existing: string[], incoming: string[]) {
-	return Array.from(new Set([...existing, ...incoming]));
-}
-
-function mergeJsonObjects(existing: Json, incoming: Json): Json {
-	if (isPlainObject(existing) && isPlainObject(incoming)) {
-		return { ...existing, ...incoming };
-	}
-	return incoming ?? existing;
-}
-
-function isPlainObject(value: Json): value is { [key: string]: Json | undefined } {
-	return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
 function toJson(value: unknown): Json {

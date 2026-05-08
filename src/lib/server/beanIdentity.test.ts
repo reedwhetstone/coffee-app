@@ -135,6 +135,62 @@ describe('bean identity helpers', () => {
 		});
 	});
 
+	it('does not mutate review state when writing the review event fails', async () => {
+		const store = createMemoryBeanIdentityStore();
+		const candidate = await createBeanIdentityCandidate({ store, coffeeCatalogId: 13, snapshot });
+		const originalCreateEvent = store.createEvent.bind(store);
+		store.createEvent = async (input) => {
+			if (input.action === 'accept') throw new Error('audit insert failed');
+			return originalCreateEvent(input);
+		};
+
+		await expect(acceptBeanIdentityLink({ store, linkId: candidate.link.id })).rejects.toThrow(
+			'audit insert failed'
+		);
+
+		expect(store.links.find((link) => link.id === candidate.link.id)).toMatchObject({
+			status: 'candidate',
+			active: true,
+			reviewed_at: null
+		});
+		expect(
+			store.identities.find((identity) => identity.id === candidate.link.identity_id)
+		).toMatchObject({
+			status: 'candidate',
+			primary_catalog_id: 13
+		});
+		expect(store.events.map((event) => event.action)).toEqual(['create']);
+	});
+
+	it('does not reject an identity that still has another active accepted link', async () => {
+		const store = createMemoryBeanIdentityStore();
+		const first = await createBeanIdentityCandidate({ store, coffeeCatalogId: 14, snapshot });
+		const second = await createBeanIdentityCandidate({
+			store,
+			coffeeCatalogId: 15,
+			identityId: first.link.identity_id,
+			snapshot: { ...snapshot, reasonCodes: ['same_identity_other_catalog_row'] }
+		});
+		await acceptBeanIdentityLink({ store, linkId: second.link.id });
+
+		await rejectBeanIdentityLink({ store, linkId: first.link.id, reasonCodes: ['bad_candidate'] });
+
+		expect(store.links.find((link) => link.id === first.link.id)).toMatchObject({
+			status: 'rejected',
+			active: false
+		});
+		expect(store.links.find((link) => link.id === second.link.id)).toMatchObject({
+			status: 'accepted',
+			active: true
+		});
+		expect(
+			store.identities.find((identity) => identity.id === first.link.identity_id)
+		).toMatchObject({
+			status: 'accepted',
+			primary_catalog_id: 15
+		});
+	});
+
 	it('respects rejected records before creating another candidate for the same identity memory', async () => {
 		const store = createMemoryBeanIdentityStore();
 		const candidate = await createBeanIdentityCandidate({ store, coffeeCatalogId: 24, snapshot });
@@ -322,6 +378,94 @@ function createMemoryBeanIdentityStore(): MemoryStore {
 						link.coffee_catalog_id === coffeeCatalogId && link.status === 'accepted' && link.active
 				) ?? null
 			);
+		},
+		async reviewLink(input) {
+			const link = links.find((entry) => entry.id === input.linkId);
+			if (!link) throw new Error(`Missing link ${input.linkId}`);
+			const identity = identities.find((entry) => entry.id === link.identity_id);
+			if (!identity) throw new Error(`Missing identity ${link.identity_id}`);
+			const originalLink = { ...link };
+			const originalIdentity = { ...identity };
+			let event: BeanIdentityEvent | null = null;
+
+			try {
+				event = await this.createEvent({
+					identity_id: link.identity_id,
+					link_id: link.id,
+					action: input.action,
+					actor_id: input.actorId ?? null,
+					payload: {
+						previous_status: link.status,
+						...(input.action === 'supersede'
+							? { superseded_by_link_id: input.supersededByLinkId ?? null }
+							: {}),
+						reason_codes: input.reasonCodes ?? [],
+						metadata: input.metadata ?? {},
+						note: input.note ?? null
+					}
+				});
+
+				const reviewedAt = now();
+				Object.assign(link, {
+					status:
+						input.action === 'accept'
+							? 'accepted'
+							: input.action === 'reject'
+								? 'rejected'
+								: 'superseded',
+					active: input.action === 'accept',
+					reviewed_by: input.actorId ?? null,
+					reviewed_at: reviewedAt,
+					superseded_by:
+						input.action === 'supersede' ? (input.supersededByLinkId ?? null) : link.superseded_by,
+					reason_codes: Array.from(new Set([...link.reason_codes, ...(input.reasonCodes ?? [])])),
+					metadata: {
+						...(link.metadata as Record<string, unknown>),
+						...((input.metadata ?? {}) as Record<string, unknown>)
+					},
+					updated_at: now()
+				});
+
+				if (input.action === 'accept') {
+					Object.assign(identity, {
+						status: 'accepted',
+						primary_catalog_id: link.coffee_catalog_id,
+						superseded_by: null,
+						updated_at: now()
+					});
+				} else if (input.action === 'reject') {
+					const accepted = links.find(
+						(entry) =>
+							entry.identity_id === link.identity_id && entry.status === 'accepted' && entry.active
+					);
+					const hasCandidate = links.some(
+						(entry) =>
+							entry.identity_id === link.identity_id && entry.status === 'candidate' && entry.active
+					);
+					Object.assign(identity, {
+						status: accepted ? 'accepted' : hasCandidate ? 'candidate' : 'rejected',
+						primary_catalog_id: accepted?.coffee_catalog_id ?? identity.primary_catalog_id,
+						superseded_by: accepted ? null : identity.superseded_by,
+						updated_at: now()
+					});
+				} else {
+					const replacement = input.supersededByLinkId
+						? links.find((entry) => entry.id === input.supersededByLinkId)
+						: null;
+					Object.assign(identity, {
+						status: 'superseded',
+						superseded_by: replacement?.identity_id ?? null,
+						updated_at: now()
+					});
+				}
+
+				return { link, event };
+			} catch (error) {
+				Object.assign(link, originalLink);
+				Object.assign(identity, originalIdentity);
+				if (event) events.splice(events.indexOf(event), 1);
+				throw error;
+			}
 		},
 		async createEvent(input) {
 			if (!input.action) throw new Error('action is required');
