@@ -140,10 +140,12 @@ interface CatalogAccessContext {
 
 interface QueryCatalogDataOptions {
 	forceDefaultPagination?: boolean;
+	boundedUnpaginatedLimit?: number;
 }
 
 const ISO_DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const CATALOG_INCLUDE_VALUES = ['proof'] as const;
+const PROOF_COVERAGE_SCAN_LIMIT = MAX_CATALOG_PAGE_LIMIT;
 
 class CatalogRateLimitError extends Error {
 	constructor(
@@ -527,16 +529,27 @@ async function queryCatalogData(
 		!effectiveQuery.isPaginated &&
 		effectiveQuery.ids.length === 0 &&
 		effectiveQuery.fields !== 'dropdown';
+	const useBoundedUnpaginatedLimit =
+		!effectiveQuery.isPaginated &&
+		!useDefaultPagination &&
+		context.rowLimit === null &&
+		options.boundedUnpaginatedLimit !== undefined;
 	const requestedPage = effectiveQuery.isPaginated ? effectiveQuery.page : 1;
 	const requestedLimit = effectiveQuery.isPaginated
 		? effectiveQuery.limit
 		: useDefaultPagination
 			? DEFAULT_CATALOG_LISTING_LIMIT
-			: effectiveQuery.limit;
+			: useBoundedUnpaginatedLimit
+				? options.boundedUnpaginatedLimit!
+				: effectiveQuery.limit;
 	const requestedOffset = effectiveQuery.isPaginated ? effectiveQuery.offset : 0;
 	const useRowLimitedPagination =
 		!effectiveQuery.isPaginated && !useDefaultPagination && context.rowLimit !== null;
-	const isPaginated = effectiveQuery.isPaginated || useDefaultPagination || useRowLimitedPagination;
+	const isPaginated =
+		effectiveQuery.isPaginated ||
+		useDefaultPagination ||
+		useRowLimitedPagination ||
+		useBoundedUnpaginatedLimit;
 	const scopedLimit =
 		useRowLimitedPagination && context.rowLimit !== null ? context.rowLimit : requestedLimit;
 	const effectiveLimit = context.rowLimit
@@ -687,7 +700,10 @@ async function queryCatalogData(
 					showWholesale: context.showWholesale,
 					wholesaleOnly: context.wholesaleOnly,
 					rowLimit: context.rowLimit,
-					limited: context.rowLimit !== null && totalAvailable > context.rowLimit,
+					limited:
+						context.rowLimit !== null
+							? totalAvailable > context.rowLimit
+							: useBoundedUnpaginatedLimit && totalAvailable > dropdownResult.data.length,
 					totalAvailable
 				},
 				cache: {
@@ -776,7 +792,10 @@ async function queryCatalogData(
 				showWholesale: context.showWholesale,
 				wholesaleOnly: context.wholesaleOnly,
 				rowLimit: context.rowLimit,
-				limited: context.rowLimit !== null && totalAvailable > context.rowLimit,
+				limited:
+					context.rowLimit !== null
+						? totalAvailable > context.rowLimit
+						: useBoundedUnpaginatedLimit && totalAvailable > data.length,
 				totalAvailable
 			},
 			cache: {
@@ -820,7 +839,11 @@ function getCoverageFilters(query: ParsedCatalogQuery): Record<string, unknown> 
 // pay an extra parse/stringify pass on large unpaginated responses.
 async function resolveCatalogRouteResult(
 	event: RequestEvent,
-	options: { requestPath?: string; forceDefaultPagination?: boolean } = {}
+	options: {
+		requestPath?: string;
+		forceDefaultPagination?: boolean;
+		boundedUnpaginatedLimit?: number;
+	} = {}
 ): Promise<{
 	status: number;
 	body: CanonicalCatalogResponse | Record<string, unknown>;
@@ -857,7 +880,8 @@ async function resolveCatalogRouteResult(
 			};
 		}
 		const body = await queryCatalogData(context, query, {
-			forceDefaultPagination: options.forceDefaultPagination
+			forceDefaultPagination: options.forceDefaultPagination,
+			boundedUnpaginatedLimit: options.boundedUnpaginatedLimit
 		});
 		await logCatalogApiUsage(context, event, 200, startTime);
 
@@ -972,7 +996,8 @@ export async function buildCatalogProofCoverageResponse(
 	} as RequestEvent;
 	const result = await resolveCatalogRouteResult(coverageEvent, {
 		requestPath: options.requestPath ?? '/v1/catalog/proof-coverage',
-		forceDefaultPagination: false
+		forceDefaultPagination: false,
+		boundedUnpaginatedLimit: PROOF_COVERAGE_SCAN_LIMIT
 	});
 
 	if (result.status >= 400) {
@@ -998,7 +1023,9 @@ export async function buildCatalogProofCoverageResponse(
 				filters: getCoverageFilters(query),
 				access: catalogBody.meta.access,
 				total_rows: catalogBody.data.length,
-				total_available: catalogBody.meta.access.totalAvailable
+				total_available: catalogBody.meta.access.totalAvailable,
+				limited: catalogBody.data.length < catalogBody.meta.access.totalAvailable,
+				scan_limit: catalogBody.pagination?.limit ?? catalogBody.meta.access.rowLimit
 			},
 			...coverage
 		},

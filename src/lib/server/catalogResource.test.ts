@@ -441,12 +441,58 @@ describe('buildCanonicalCatalogResponse', () => {
 			share: 0.5
 		});
 		expect(JSON.stringify(body)).not.toContain('Washed process disclosed');
+		expect(body.scope).toMatchObject({
+			limited: false,
+			scan_limit: MAX_CATALOG_PAGE_LIMIT
+		});
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
 			{ kind: 'session-client' },
 			expect.objectContaining({
 				fields: 'resource',
-				limit: undefined,
-				offset: undefined
+				limit: MAX_CATALOG_PAGE_LIMIT,
+				offset: 0
+			})
+		);
+	});
+
+	it('caps session proof coverage scans with the server-side proof coverage limit', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			primaryAppRole: 'member',
+			apiPlan: null,
+			session: { access_token: 'cookie-token' }
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(true);
+		mockSearchCatalog.mockResolvedValue({
+			data: Array.from({ length: MAX_CATALOG_PAGE_LIMIT }, (_, index) => ({
+				...sampleCatalogItem,
+				id: index + 1,
+				name: `Coffee ${index + 1}`
+			})),
+			count: MAX_CATALOG_PAGE_LIMIT + 1,
+			filtersApplied: {}
+		});
+
+		const response = await buildCatalogProofCoverageResponse(
+			makeEvent('https://app.test/v1/catalog/proof-coverage?showWholesale=true')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.scope).toMatchObject({
+			auth: { kind: 'session', role: 'member', apiPlan: null },
+			total_rows: MAX_CATALOG_PAGE_LIMIT,
+			total_available: MAX_CATALOG_PAGE_LIMIT + 1,
+			limited: true,
+			scan_limit: MAX_CATALOG_PAGE_LIMIT
+		});
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				showWholesale: true,
+				limit: MAX_CATALOG_PAGE_LIMIT,
+				offset: 0
 			})
 		);
 	});
@@ -490,8 +536,8 @@ describe('buildCanonicalCatalogResponse', () => {
 				coffeeIds: [1, 2],
 				orderBy: 'name',
 				orderDirection: 'asc',
-				limit: undefined,
-				offset: undefined
+				limit: MAX_CATALOG_PAGE_LIMIT,
+				offset: 0
 			})
 		);
 	});
