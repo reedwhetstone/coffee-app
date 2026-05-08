@@ -96,8 +96,8 @@ Improvements to the CLI automatically improve browser and AI chat workflows. The
 - **Data:** Supabase
 - **Auth:** Supabase Auth
 - **Payments:** Stripe
-- **AI:** OpenRouter via Vercel AI SDK
-- **Charts:** LayerCake and custom analytics components
+- **AI:** OpenRouter via Vercel AI SDK; Qwen3 embeddings via OpenRouter
+- **Charts:** LayerCake, D3.js, and custom analytics components
 - **Terminal interface:** `@purveyors/cli`
 
 ## Local development
