@@ -9,6 +9,7 @@ import type {
 import {
 	acceptBeanIdentityLink,
 	createBeanIdentityCandidate,
+	createSupabaseBeanIdentityStore,
 	DuplicateActiveAcceptedIdentityError,
 	readBeanIdentityState,
 	RejectedBeanIdentityCandidateError,
@@ -171,6 +172,36 @@ describe('bean identity helpers', () => {
 		expect(state.events.map((event) => event.action)).toEqual(['create', 'merge', 'split', 'note']);
 		expect(store.events).toHaveLength(4);
 	});
+
+	it('does not load unrelated events for a catalog row with no identity links', async () => {
+		const store = createMemoryBeanIdentityStore();
+		const candidate = await createBeanIdentityCandidate({ store, coffeeCatalogId: 30, snapshot });
+		await writeBeanIdentityEvent({
+			store,
+			identityId: candidate.link.identity_id,
+			linkId: candidate.link.id,
+			action: 'note',
+			payload: { source: 'unrelated catalog row' }
+		});
+
+		const state = await readBeanIdentityState({ store, coffeeCatalogId: 31, includeEvents: true });
+
+		expect(state.links).toHaveLength(0);
+		expect(state.events).toEqual([]);
+	});
+
+	it('treats empty link id filters as no matches in the Supabase store', async () => {
+		let queryCount = 0;
+		const store = createSupabaseBeanIdentityStore({
+			from() {
+				queryCount += 1;
+				throw new Error('empty link id filters should not query Supabase');
+			}
+		} as never);
+
+		await expect(store.listEvents({ linkIds: [] })).resolves.toEqual([]);
+		expect(queryCount).toBe(0);
+	});
 });
 
 interface MemoryStore extends BeanIdentityStore {
@@ -307,10 +338,11 @@ function createMemoryBeanIdentityStore(): MemoryStore {
 			return event;
 		},
 		async listEvents({ identityId, linkIds }) {
+			if (linkIds && linkIds.length === 0) return [];
+
 			return events.filter((event) => {
 				if (identityId && event.identity_id !== identityId) return false;
-				if (linkIds && linkIds.length > 0 && (!event.link_id || !linkIds.includes(event.link_id)))
-					return false;
+				if (linkIds && (!event.link_id || !linkIds.includes(event.link_id))) return false;
 				return true;
 			});
 		}

@@ -273,9 +273,11 @@ export function createSupabaseBeanIdentityStore(
 			);
 		},
 		async listEvents({ identityId, linkIds }) {
+			if (linkIds && linkIds.length === 0) return [];
+
 			let query = client.from('bean_identity_events').select('*');
 			if (identityId) query = query.eq('identity_id', identityId);
-			if (linkIds && linkIds.length > 0) query = query.in('link_id', linkIds);
+			if (linkIds) query = query.in('link_id', linkIds);
 			return many<BeanIdentityEvent>(query.order('created_at', { ascending: true }));
 		}
 	};
@@ -494,9 +496,9 @@ export async function readBeanIdentityState(input: {
 	includeEvents?: boolean;
 }): Promise<BeanIdentityState> {
 	const links = await input.store.findLinksByCatalogId(input.coffeeCatalogId);
-	const events = input.includeEvents
-		? await input.store.listEvents({ linkIds: links.map((link) => link.id) })
-		: [];
+	const linkIds = links.map((link) => link.id);
+	const events =
+		input.includeEvents && linkIds.length > 0 ? await input.store.listEvents({ linkIds }) : [];
 
 	return {
 		coffeeCatalogId: input.coffeeCatalogId,
