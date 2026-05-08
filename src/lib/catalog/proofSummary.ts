@@ -245,10 +245,10 @@ function buildFreshnessFamily(item: CatalogProofInput): CatalogProofFamily {
 	}
 
 	return {
-		label: hasStockedDate && isCurrentlyStocked ? 'recently_stocked' : 'dated',
+		label: 'dated',
 		confidence: hasStockedDate || hasArrivalDate ? 0.75 : 0.45,
 		signals,
-		message: 'Freshness and availability signals are date-based, not quality claims.'
+		message: 'Freshness and availability signals are date-based, not recency or quality claims.'
 	};
 }
 

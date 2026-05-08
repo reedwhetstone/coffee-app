@@ -267,23 +267,25 @@ type CatalogIdentityComparable = {
 	fermentation_type: string | null;
 };
 
+interface SimilarityCatalogQuery {
+	eq(column: 'id', value: number): SimilarityCatalogQuery;
+	eq(column: 'public_coffee', value: boolean): SimilarityCatalogQuery;
+	maybeSingle(): Promise<{
+		data: CatalogSimilarityTargetRow | null;
+		error: { message: string } | null;
+	}>;
+	in(
+		column: 'id',
+		values: number[]
+	): Promise<{
+		data: CatalogSimilarityDetailRow[] | null;
+		error: { message: string } | null;
+	}>;
+}
+
 interface SimilaritySupabaseClient {
 	from(table: 'coffee_catalog'): {
-		select(columns: string): {
-			eq(
-				column: 'id',
-				value: number
-			): {
-				maybeSingle(): Promise<{
-					data: CatalogSimilarityTargetRow | null;
-					error: { message: string } | null;
-				}>;
-			};
-			in(
-				column: 'id',
-				values: number[]
-			): Promise<{ data: CatalogSimilarityDetailRow[] | null; error: { message: string } | null }>;
-		};
+		select(columns: string): SimilarityCatalogQuery;
 	};
 	rpc(
 		fn: 'find_similar_beans_aggregated_v3',
@@ -292,6 +294,7 @@ interface SimilaritySupabaseClient {
 			match_threshold: number;
 			match_count: number | null;
 			stocked_only: boolean;
+			public_only: boolean;
 			candidate_pool?: number;
 		}
 	): Promise<{
@@ -305,8 +308,12 @@ interface SimilaritySupabaseClient {
 			match_threshold: number;
 			match_count: number | null;
 			stocked_only: boolean;
+			public_only: boolean;
 		}
-	): Promise<{ data: FindSimilarBeansAggregatedV2Row[] | null; error: { message: string } | null }>;
+	): Promise<{
+		data: FindSimilarBeansAggregatedV2Row[] | null;
+		error: { message: string } | null;
+	}>;
 	rpc(
 		fn: 'find_similar_beans_aggregated',
 		args: {
@@ -948,6 +955,7 @@ async function fetchCanonicalSimilarityRows(input: {
 	coffeeId: number;
 	query: CatalogSimilarityQuery;
 	rpcMatchCount: number;
+	publicOnly: boolean;
 }): Promise<{
 	rows: FindSimilarBeansAggregatedV2Row[];
 	queryStrategy: CatalogSimilarityQueryStrategy;
@@ -958,21 +966,32 @@ async function fetchCanonicalSimilarityRows(input: {
 		match_threshold: input.query.threshold,
 		match_count: input.rpcMatchCount,
 		stocked_only: input.query.stockedOnly,
+		public_only: input.publicOnly,
 		candidate_pool: candidatePool
 	});
 
-	if (!v3.error) return { rows: v3.data ?? [], queryStrategy: 'bounded-vector-candidates-v1' };
+	if (!v3.error)
+		return {
+			rows: v3.data ?? [],
+			queryStrategy: 'bounded-vector-candidates-v1'
+		};
 	if (!isLikelyMissingCanonicalSimilarityRpc(v3.error)) throw new Error(v3.error.message);
 
 	const { data, error } = await input.supabase.rpc('find_similar_beans_aggregated_v2', {
 		target_coffee_id: input.coffeeId,
 		match_threshold: input.query.threshold,
 		match_count: input.rpcMatchCount,
-		stocked_only: input.query.stockedOnly
+		stocked_only: input.query.stockedOnly,
+		public_only: input.publicOnly
 	});
 
-	if (!error) return { rows: data ?? [], queryStrategy: 'canonical-vector-aggregated-v2' };
+	if (!error)
+		return {
+			rows: data ?? [],
+			queryStrategy: 'canonical-vector-aggregated-v2'
+		};
 	if (!isLikelyMissingCanonicalSimilarityRpc(error)) throw new Error(error.message);
+	if (input.publicOnly) throw new Error(error.message);
 
 	const legacy = await input.supabase.rpc('find_similar_beans_aggregated', {
 		target_coffee_id: input.coffeeId,
@@ -992,13 +1011,14 @@ async function fetchCanonicalSimilarityRows(input: {
 
 async function fetchTarget(
 	supabase: SimilaritySupabaseClient,
-	coffeeId: number
+	coffeeId: number,
+	publicOnly: boolean
 ): Promise<CatalogSimilarityTargetSummary> {
-	const { data, error } = await supabase
-		.from('coffee_catalog')
-		.select(TARGET_SELECT)
-		.eq('id', coffeeId)
-		.maybeSingle();
+	let query = supabase.from('coffee_catalog').select(TARGET_SELECT).eq('id', coffeeId);
+	if (publicOnly) {
+		query = query.eq('public_coffee', true);
+	}
+	const { data, error } = await query.maybeSingle();
 
 	if (error) throw new Error(error.message);
 	if (!data) throw new CatalogSimilarityNotFoundError(coffeeId);
@@ -1007,14 +1027,16 @@ async function fetchTarget(
 
 async function fetchMatchDetails(
 	supabase: SimilaritySupabaseClient,
-	coffeeIds: number[]
+	coffeeIds: number[],
+	publicOnly: boolean
 ): Promise<Map<number, CatalogSimilarityDetailRow>> {
 	if (coffeeIds.length === 0) return new Map();
 	const uniqueIds = [...new Set(coffeeIds)];
-	const { data, error } = await supabase
-		.from('coffee_catalog')
-		.select(TARGET_SELECT)
-		.in('id', uniqueIds);
+	let query = supabase.from('coffee_catalog').select(TARGET_SELECT);
+	if (publicOnly) {
+		query = query.eq('public_coffee', true);
+	}
+	const { data, error } = await query.in('id', uniqueIds);
 
 	if (error) throw new Error(error.message);
 	return new Map((data ?? []).map((row) => [row.id, row]));
@@ -1024,6 +1046,7 @@ export async function fetchCatalogSimilarityMatches(input: {
 	supabase: SupabaseClient;
 	coffeeId: number;
 	query: CatalogSimilarityQuery;
+	publicOnly: boolean;
 }): Promise<{
 	target: CatalogSimilarityTargetSummary;
 	groups: {
@@ -1034,18 +1057,20 @@ export async function fetchCatalogSimilarityMatches(input: {
 	queryStrategy: CatalogSimilarityQueryStrategy;
 }> {
 	const supabase = input.supabase as unknown as SimilaritySupabaseClient;
-	const target = await fetchTarget(supabase, input.coffeeId);
+	const target = await fetchTarget(supabase, input.coffeeId, input.publicOnly);
 	const rpcMatchCount = resolveRpcMatchCount(input.query);
 	const { rows, queryStrategy } = await fetchCanonicalSimilarityRows({
 		supabase,
 		coffeeId: input.coffeeId,
 		query: input.query,
-		rpcMatchCount
+		rpcMatchCount,
+		publicOnly: input.publicOnly
 	});
 
 	const detailById = await fetchMatchDetails(
 		supabase,
-		rows.map((row) => row.coffee_id)
+		rows.map((row) => row.coffee_id),
+		input.publicOnly
 	);
 	const matches = rows
 		.map((row) =>

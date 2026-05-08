@@ -10,7 +10,12 @@ import {
 	type CatalogSimilarityResponse
 } from '$lib/server/catalogSimilarity';
 import { jsonResponse } from '$lib/server/http';
-import { isApiKeyPrincipal, resolvePrincipal, type RequestPrincipal } from '$lib/server/principal';
+import {
+	isApiKeyPrincipal,
+	isSessionPrincipal,
+	resolvePrincipal,
+	type RequestPrincipal
+} from '$lib/server/principal';
 import { createAdminClient } from '$lib/supabase-admin';
 
 const REQUEST_PATH = '/v1/catalog/{id}/similar';
@@ -104,7 +109,12 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		if (!capabilities.canUseBeanMatching) {
-			await logSimilarApiUsage({ principal, statusCode: 403, startTime, event });
+			await logSimilarApiUsage({
+				principal,
+				statusCode: 403,
+				startTime,
+				event
+			});
 
 			return jsonResponse(
 				{
@@ -123,6 +133,7 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		const adminSupabase = createAdminClient();
+		const publicOnly = !isSessionPrincipal(principal) || !capabilities.canViewFullCatalog;
 
 		let headers = new Headers();
 		if (isApiKeyPrincipal(principal)) {
@@ -142,7 +153,8 @@ export const GET: RequestHandler = async (event) => {
 		const result = await fetchCatalogSimilarityMatches({
 			supabase: adminSupabase,
 			coffeeId,
-			query
+			query,
+			publicOnly
 		});
 		const { queryStrategy, ...data } = result;
 
@@ -200,7 +212,12 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		if (error instanceof AuthError) {
-			await logSimilarApiUsage({ principal, statusCode: error.status, startTime, event });
+			await logSimilarApiUsage({
+				principal,
+				statusCode: error.status,
+				startTime,
+				event
+			});
 			return jsonResponse(
 				{
 					error: error.status === 403 ? 'Insufficient permissions' : 'Authentication required',
@@ -212,7 +229,12 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		if (error instanceof CatalogSimilarityValidationError) {
-			await logSimilarApiUsage({ principal, statusCode: 400, startTime, event });
+			await logSimilarApiUsage({
+				principal,
+				statusCode: 400,
+				startTime,
+				event
+			});
 			return jsonResponse(
 				{
 					error: 'Invalid query parameter',
@@ -228,7 +250,12 @@ export const GET: RequestHandler = async (event) => {
 		}
 
 		if (error instanceof CatalogSimilarityNotFoundError) {
-			await logSimilarApiUsage({ principal, statusCode: 404, startTime, event });
+			await logSimilarApiUsage({
+				principal,
+				statusCode: 404,
+				startTime,
+				event
+			});
 			return jsonResponse(
 				{
 					error: 'Catalog coffee not found',
@@ -242,7 +269,10 @@ export const GET: RequestHandler = async (event) => {
 		console.error('Error querying catalog similarity:', safeError);
 		await logSimilarApiUsage({ principal, statusCode: 500, startTime, event });
 		return jsonResponse(
-			{ error: 'Failed to fetch similar coffees', message: 'Internal server error' },
+			{
+				error: 'Failed to fetch similar coffees',
+				message: 'Internal server error'
+			},
 			{ status: 500 }
 		);
 	}

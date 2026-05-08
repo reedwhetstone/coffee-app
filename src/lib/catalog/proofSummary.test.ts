@@ -52,7 +52,7 @@ describe('createCatalogProofSummary', () => {
 					signals: expect.arrayContaining(['country', 'region', 'farm_notes_present'])
 				},
 				freshness: {
-					label: 'recently_stocked',
+					label: 'dated',
 					signals: expect.arrayContaining(['stocked_date', 'arrival_date', 'currently_stocked'])
 				},
 				pricing: {
@@ -101,6 +101,20 @@ describe('createCatalogProofSummary', () => {
 		expect(summary.families.provenance.label).toBe('not_available');
 		expect(summary.families.freshness.label).toBe('not_available');
 		expect(summary.families.pricing.label).toBe('not_available');
+	});
+
+	it('does not label stocked coffees with old dates as recently stocked', () => {
+		const summary = createCatalogProofSummary({
+			stocked_date: '2024-01-15',
+			last_updated: '2024-01-20T00:00:00Z',
+			stocked: true
+		});
+
+		expect(summary.families.freshness).toMatchObject({
+			label: 'dated',
+			signals: expect.arrayContaining(['stocked_date', 'last_updated', 'currently_stocked']),
+			message: 'Freshness and availability signals are date-based, not recency or quality claims.'
+		});
 	});
 
 	it('supports legacy catalog fields when nested process summaries are absent', () => {

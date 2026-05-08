@@ -337,7 +337,7 @@ describe('buildCanonicalCatalogResponse', () => {
 					signals: expect.arrayContaining(['country', 'region', 'supplier_source'])
 				},
 				freshness: {
-					label: 'recently_stocked',
+					label: 'dated',
 					signals: expect.arrayContaining(['stocked_date', 'arrival_date'])
 				},
 				pricing: {
