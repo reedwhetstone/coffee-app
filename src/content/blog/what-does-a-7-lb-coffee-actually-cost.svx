@@ -1,14 +1,14 @@
 ---
 title: "What Does a $7/lb Coffee Actually Cost You?"
 date: "2026-05-08"
-description: "Arabica futures crashed 31% from their peak. The obvious move is to stock up. But across 1,071 catalog listings, price correlates almost zero with decision-readiness. The safest buys aren't the cheapest."
+description: "Arabica futures fell hard from their peak. The obvious move is to stock up. But across 1,071 catalog listings, price correlates almost zero with decision-readiness. The safest buys aren't the cheapest."
 tags: ["coffee", "market-intelligence", "supply-chain", "data"]
 pillar: "market-intelligence"
 draft: true
 readingTime: 12
 ---
 
-Arabica futures hit $4.41 per pound in February 2025, an all-time high. As of this week, they're at $2.73, down 31% year-over-year. Brazil's 2026/27 harvest forecast is up 12% to 71.4 million bags, according to the [Coffee Trading Academy](https://tradingeconomics.com/commodity/coffee). Weather in the producing regions is cooperating: predominantly dry conditions and high temperatures are favoring harvest progress. The supply squeeze that defined 2024 and early 2025 is easing.
+Arabica futures hit $4.41 per pound in February 2025, an all-time high. As of this week, they're at $2.73, a steep retreat from that peak. Brazil's 2026/27 harvest forecast is up 12% to 71.4 million bags, according to the [Coffee Trading Academy](https://tradingeconomics.com/commodity/coffee). Weather in the producing regions is cooperating: predominantly dry conditions and high temperatures are favoring harvest progress. The supply squeeze that defined 2024 and early 2025 is easing.
 
 If you're a roaster, the obvious move is to lock in inventory now while prices are low. Every sourcing guide, every trading desk, every LinkedIn post from a coffee broker is saying some version of the same thing: buy the dip.
 
@@ -58,7 +58,7 @@ This isn't cherry-picking. Across the catalog, I found eight listings under $10 
 
 **Immediate risks (already visible):**
 
-Price volatility masks information risk. When futures drop 31%, the instinct is to buy aggressively. But cheap inventory with no provenance data is locked-in uncertainty. You saved $2 per pound and committed to a lot you can't evaluate until it arrives. The catalog data makes this concrete: in the sub-$8 band, only 30% of listings carry two or more readiness signals. Seven out of ten cheap lots are effectively blind buys.
+Price volatility masks information risk. When futures retreat from a record high, the instinct is to buy aggressively. But cheap inventory with no provenance data is locked-in uncertainty. You saved $2 per pound and committed to a lot you can't evaluate until it arrives. The catalog data makes this concrete: in the sub-$8 band, only 30% of listings carry two or more readiness signals. Seven out of ten cheap lots are effectively blind buys.
 
 Supplier churn risk increases when you can't compare lots. If your regular supplier runs out of a given origin and you need to switch, you need comparable data across suppliers. Across the 33 suppliers in the catalog, field coverage varies wildly: arrival dates appear on 49% of listings, cupping scores on 35%, structured processing data on 45%. A supplier switch often means switching data schemas, not just beans.
 
@@ -96,7 +96,7 @@ This is where a normalized data layer earns its keep. When you pull 33 suppliers
 
 The product implication is straightforward: decision-readiness should become a first-class filter. Not just "sort by price" or "sort by score," but a composite proof signal that tells the roaster how much they can actually verify about a given lot before committing. A "proof-rich" search filter that combines arrival recency, cupping transparency, processing disclosure, and overall purveyor score would let roasters find the safest buys in any price band, not just the cheapest.
 
-In a market where futures are swinging 30% year-over-year and the obvious advice is "buy the dip," the roasters who will come out ahead are the ones buying certainty, not just coffee. The data says that certainty is available right now, mostly in the $8 to $12 range, from suppliers who invest in documentation. You just have to know where to look.
+In a market where futures can swing violently and the obvious advice is "buy the dip," the roasters who will come out ahead are the ones buying certainty, not just coffee. The data says that certainty is available right now, mostly in the $8 to $12 range, from suppliers who invest in documentation. You just have to know where to look.
 
 ---
 
