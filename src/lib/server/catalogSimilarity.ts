@@ -302,6 +302,19 @@ interface SimilaritySupabaseClient {
 		error: { message: string; code?: string } | null;
 	}>;
 	rpc(
+		fn: 'find_similar_beans_aggregated_v3',
+		args: {
+			target_coffee_id: number;
+			match_threshold: number;
+			match_count: number | null;
+			stocked_only: boolean;
+			candidate_pool?: number;
+		}
+	): Promise<{
+		data: FindSimilarBeansAggregatedV2Row[] | null;
+		error: { message: string; code?: string } | null;
+	}>;
+	rpc(
 		fn: 'find_similar_beans_aggregated_v2',
 		args: {
 			target_coffee_id: number;
@@ -977,6 +990,23 @@ async function fetchCanonicalSimilarityRows(input: {
 		};
 	if (!isLikelyMissingCanonicalSimilarityRpc(v3.error)) throw new Error(v3.error.message);
 
+	const legacyV3 = await input.supabase.rpc('find_similar_beans_aggregated_v3', {
+		target_coffee_id: input.coffeeId,
+		match_threshold: input.query.threshold,
+		match_count: input.rpcMatchCount,
+		stocked_only: input.query.stockedOnly,
+		candidate_pool: candidatePool
+	});
+
+	if (!legacyV3.error)
+		return {
+			rows: legacyV3.data ?? [],
+			queryStrategy: 'bounded-vector-candidates-v1'
+		};
+	if (!isLikelyMissingCanonicalSimilarityRpc(legacyV3.error)) {
+		throw new Error(legacyV3.error.message);
+	}
+
 	const { data, error } = await input.supabase.rpc('find_similar_beans_aggregated_v2', {
 		target_coffee_id: input.coffeeId,
 		match_threshold: input.query.threshold,
@@ -1072,7 +1102,8 @@ export async function fetchCatalogSimilarityMatches(input: {
 		rows.map((row) => row.coffee_id),
 		input.publicOnly
 	);
-	const matches = rows
+	const visibleRows = input.publicOnly ? rows.filter((row) => detailById.has(row.coffee_id)) : rows;
+	const matches = visibleRows
 		.map((row) =>
 			normalizeSimilarityRow(row, target.pricing, detailById.get(row.coffee_id), target)
 		)

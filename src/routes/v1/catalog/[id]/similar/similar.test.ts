@@ -156,6 +156,7 @@ function createSupabaseMock(
 		matches?: unknown[];
 		details?: unknown[];
 		v3Error?: { message: string; code?: string };
+		v3WithPublicOnlyError?: { message: string; code?: string };
 		v2Error?: { message: string; code?: string };
 		legacyError?: { message: string; code?: string };
 		legacyMatches?: unknown[];
@@ -181,7 +182,7 @@ function createSupabaseMock(
 	query.in = inFilter;
 	const select = vi.fn(() => query);
 	const from = vi.fn(() => ({ select }));
-	const rpc = vi.fn((fn: string, args?: { match_count?: number }) => {
+	const rpc = vi.fn((fn: string, args?: { match_count?: number; public_only?: boolean }) => {
 		if (fn === 'find_similar_beans_aggregated') {
 			if (options.legacyError) return Promise.resolve({ data: null, error: options.legacyError });
 			const matches = options.legacyMatches ?? options.matches ?? [matchRow];
@@ -190,6 +191,9 @@ function createSupabaseMock(
 			return Promise.resolve({ data: cappedMatches, error: null });
 		}
 		if (fn === 'find_similar_beans_aggregated_v3') {
+			if (args && 'public_only' in args && options.v3WithPublicOnlyError) {
+				return Promise.resolve({ data: null, error: options.v3WithPublicOnlyError });
+			}
 			const v3Error = options.v3Error ?? options.v2Error;
 			if (v3Error) return Promise.resolve({ data: null, error: v3Error });
 		}
@@ -384,6 +388,67 @@ describe('/v1/catalog/[id]/similar', () => {
 			classification_version: 'canonical-match-v1',
 			query_strategy: 'bounded-vector-candidates-v1'
 		});
+	});
+
+	it('uses the legacy bounded v3 signature when production has not deployed the public-only signature yet', async () => {
+		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
+		const { rpc } = createSupabaseMock({
+			v3WithPublicOnlyError: {
+				message:
+					'Could not find the function public.find_similar_beans_aggregated_v3(target_coffee_id, match_threshold, match_count, stocked_only, public_only, candidate_pool)',
+				code: 'PGRST202'
+			}
+		});
+
+		const response = await GET(makeEvent('https://app.test/v1/catalog/1182/similar?limit=5'));
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 5,
+			stocked_only: true,
+			public_only: false,
+			candidate_pool: 200
+		});
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 5,
+			stocked_only: true,
+			candidate_pool: 200
+		});
+		expect(rpc).not.toHaveBeenCalledWith('find_similar_beans_aggregated_v2', expect.anything());
+		expect(body.meta.query_strategy).toBe('bounded-vector-candidates-v1');
+		expect(body.data.matches).toHaveLength(1);
+	});
+
+	it('does not leak private legacy-v3 candidate rows to API-key callers', async () => {
+		mockResolvePrincipal.mockResolvedValue(apiPrincipal);
+		mockRequireApiKeyAccess.mockResolvedValue(apiPrincipal);
+		const privateRow = { ...matchRow, coffee_id: 3300, coffee_name: 'Private Candidate' };
+		createSupabaseMock({
+			v3WithPublicOnlyError: {
+				message:
+					'Could not find the function public.find_similar_beans_aggregated_v3(target_coffee_id, match_threshold, match_count, stocked_only, public_only, candidate_pool)',
+				code: 'PGRST202'
+			},
+			matches: [matchRow, privateRow],
+			details: [matchDetailRow]
+		});
+
+		const response = await GET(
+			makeEvent('https://app.test/v1/catalog/1182/similar?limit=5', {
+				headers: { Authorization: 'Bearer pk_live_test' }
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.data.matches).toHaveLength(1);
+		expect(body.data.matches[0].coffee.id).toBe(2200);
+		expect(JSON.stringify(body)).not.toContain('Private Candidate');
 	});
 
 	it('reports the v2 query strategy when bounded v3 falls back to the canonical RPC', async () => {

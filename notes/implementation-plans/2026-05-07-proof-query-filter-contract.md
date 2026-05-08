@@ -75,14 +75,14 @@ The implementer should ship only labels that are already emitted by `proof-summa
 
 Scores use the Product Leverage Index from the planner skill: vision alignment 0-5, data moat / decision quality 0-5, cross-surface leverage 0-4, public value / access ladder 0-3, foundation unlock 0-3.
 
-| Candidate | Vision | Data moat / decision quality | Cross-surface | Public / access ladder | Foundation unlock | Total | Feasibility gate | Decision |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| Capability-gated proof query filters | 5 | 5 | 4 | 3 | 3 | 20 | Medium. Depends on PR #335 merge and truthful pre-pagination filtering. | Selected |
-| Procurement Brief / saved sourcing brief follow-up | 5 | 5 | 4 | 3 | 3 | 20 | Already active in PR #354 (`feat/sourcing-brief-match-api`), so selecting it would duplicate in-flight work. | Defer |
-| Canonical similar API CLI/agent alignment | 5 | 4 | 4 | 2 | 3 | 18 | Already covered by open planning PR #356. | Defer |
-| Open Coffee Listing Standard direct-feed schema pilot | 5 | 5 | 4 | 3 | 3 | 20 | Higher upside, but supplier/direct-feed behavior is too large for today's independently shippable API slice without a claimed-supplier pilot decision. | Defer |
-| Public docs correction for CLI auth drift | 3 | 1 | 3 | 2 | 1 | 10 | Real friction: local CLI is unauthenticated despite workspace notes. But this is operational/docs hygiene, not the strongest product-leverage API move. | Defer |
-| Pure response-size/performance cleanup | 2 | 2 | 2 | 1 | 2 | 9 | Useful later. Does not beat trust/query leverage unless API latency or payload costs become acute. | Reject today |
+| Candidate                                             | Vision | Data moat / decision quality | Cross-surface | Public / access ladder | Foundation unlock | Total | Feasibility gate                                                                                                                                        | Decision     |
+| ----------------------------------------------------- | -----: | ---------------------------: | ------------: | ---------------------: | ----------------: | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| Capability-gated proof query filters                  |      5 |                            5 |             4 |                      3 |                 3 |    20 | Medium. Depends on PR #335 merge and truthful pre-pagination filtering.                                                                                 | Selected     |
+| Procurement Brief / saved sourcing brief follow-up    |      5 |                            5 |             4 |                      3 |                 3 |    20 | Already active in PR #354 (`feat/sourcing-brief-match-api`), so selecting it would duplicate in-flight work.                                            | Defer        |
+| Canonical similar API CLI/agent alignment             |      5 |                            4 |             4 |                      2 |                 3 |    18 | Already covered by open planning PR #356.                                                                                                               | Defer        |
+| Open Coffee Listing Standard direct-feed schema pilot |      5 |                            5 |             4 |                      3 |                 3 |    20 | Higher upside, but supplier/direct-feed behavior is too large for today's independently shippable API slice without a claimed-supplier pilot decision.  | Defer        |
+| Public docs correction for CLI auth drift             |      3 |                            1 |             3 |                      2 |                 1 |    10 | Real friction: local CLI is unauthenticated despite workspace notes. But this is operational/docs hygiene, not the strongest product-leverage API move. | Defer        |
+| Pure response-size/performance cleanup                |      2 |                            2 |             2 |                      1 |                 2 |     9 | Useful later. Does not beat trust/query leverage unless API latency or payload costs become acute.                                                      | Reject today |
 
 ## Strategy Alignment Audit
 
