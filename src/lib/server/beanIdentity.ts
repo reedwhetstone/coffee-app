@@ -96,6 +96,7 @@ export interface BeanIdentityCandidateMutationInput {
 	canonicalName?: string | null;
 	snapshot: BeanIdentityCandidateSnapshot;
 	actorId?: string | null;
+	allowAfterRejection?: boolean;
 }
 
 export interface BeanIdentityCandidateMutationResult {
@@ -317,7 +318,8 @@ export function createSupabaseBeanIdentityStore(
 						p_identity_id: input.identityId ?? null,
 						p_canonical_name: input.canonicalName ?? null,
 						p_snapshot: input.snapshot,
-						p_actor_id: input.actorId ?? null
+						p_actor_id: input.actorId ?? null,
+						p_allow_after_rejection: input.allowAfterRejection ?? false
 					})
 					.single()
 			);
@@ -375,7 +377,8 @@ export async function createBeanIdentityCandidate({
 		identityId,
 		canonicalName,
 		snapshot,
-		actorId
+		actorId,
+		allowAfterRejection
 	});
 }
 

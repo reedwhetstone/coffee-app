@@ -252,6 +252,67 @@ describe('bean identity helpers', () => {
 		).rejects.toBeInstanceOf(RejectedBeanIdentityCandidateError);
 	});
 
+	it('passes allowAfterRejection through to the Supabase candidate RPC', async () => {
+		let rpcCall: { functionName: string; args: Record<string, unknown> } | null = null;
+		const store = createSupabaseBeanIdentityStore({
+			rpc(functionName: string, args: Record<string, unknown>) {
+				rpcCall = { functionName, args };
+				return {
+					single() {
+						return Promise.resolve({
+							data: {
+								identity: null,
+								link: {
+									id: 'link-1',
+									identity_id: 'identity-1',
+									coffee_catalog_id: 24,
+									status: 'candidate',
+									active: true,
+									classifier_version: 'canonical-match-v1',
+									dimension_scores: {},
+									blockers: [],
+									proof_summary_snapshot: {},
+									reason_codes: [],
+									metadata: {},
+									proposed_by: null,
+									reviewed_by: null,
+									superseded_by: null,
+									proposed_at: '2026-05-08T00:00:00.000Z',
+									reviewed_at: null,
+									created_at: '2026-05-08T00:00:00.000Z',
+									updated_at: '2026-05-08T00:00:00.000Z'
+								},
+								event: {
+									id: 'event-1',
+									identity_id: 'identity-1',
+									link_id: 'link-1',
+									action: 'create',
+									actor_id: null,
+									payload: {},
+									created_at: '2026-05-08T00:00:00.000Z'
+								}
+							},
+							error: null
+						});
+					}
+				};
+			}
+		} as never);
+
+		await createBeanIdentityCandidate({
+			store,
+			coffeeCatalogId: 24,
+			identityId: '00000000-0000-0000-0000-000000000024',
+			snapshot,
+			allowAfterRejection: true
+		});
+
+		expect(rpcCall).toMatchObject({
+			functionName: 'create_bean_identity_candidate',
+			args: expect.objectContaining({ p_allow_after_rejection: true })
+		});
+	});
+
 	it('supports explicit merge, split, and note audit events without mutating prior events', async () => {
 		const store = createMemoryBeanIdentityStore();
 		const candidate = await createBeanIdentityCandidate({ store, coffeeCatalogId: 30, snapshot });

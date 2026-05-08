@@ -5,7 +5,8 @@ create or replace function public.create_bean_identity_candidate(
   p_identity_id uuid default null,
   p_canonical_name text default null,
   p_snapshot jsonb default '{}'::jsonb,
-  p_actor_id uuid default null
+  p_actor_id uuid default null,
+  p_allow_after_rejection boolean default false
 )
 returns table(identity jsonb, link jsonb, event jsonb)
 language plpgsql
@@ -21,7 +22,7 @@ begin
     raise exception 'Candidate snapshot is required';
   end if;
 
-  if exists (
+  if not p_allow_after_rejection and exists (
     select 1
     from public.bean_identity_links rejected
     where rejected.coffee_catalog_id = p_coffee_catalog_id
