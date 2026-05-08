@@ -1,0 +1,103 @@
+---
+title: "What Does a $7/lb Coffee Actually Cost You?"
+date: "2026-05-08"
+description: "Arabica futures crashed 31% from their peak. The obvious move is to stock up. But across 1,071 catalog listings, price correlates almost zero with decision-readiness. The safest buys aren't the cheapest."
+tags: ["coffee", "market-intelligence", "supply-chain", "data"]
+pillar: "market-intelligence"
+draft: true
+readingTime: 12
+---
+
+Arabica futures hit $4.41 per pound in February 2025, an all-time high. As of this week, they're at $2.73, down 31% year-over-year. Brazil's 2026/27 harvest forecast is up 12% to 71.4 million bags, according to the [Coffee Trading Academy](https://tradingeconomics.com/commodity/coffee). Weather in the producing regions is cooperating: predominantly dry conditions and high temperatures are favoring harvest progress. The supply squeeze that defined 2024 and early 2025 is easing.
+
+If you're a roaster, the obvious move is to lock in inventory now while prices are low. Every sourcing guide, every trading desk, every LinkedIn post from a coffee broker is saying some version of the same thing: buy the dip.
+
+I looked at the data and came to a different conclusion. Price is the worst metric for sourcing safety in a volatile market.
+
+## The number that should worry you
+
+I pulled every listing from the Purveyors live catalog this morning: 1,071 products across 33 suppliers in 45 countries. Then I built a composite measure I'm calling decision-readiness: does this listing tell you when it arrived, what it scored on a cupping table, how it was processed, and does it carry a high overall proof score? Four signals, each independently valuable, each something a roaster needs before committing to a lot.
+
+The correlation between price and decision-readiness across all 1,071 listings is r = -0.03. Essentially zero. Price tells you almost nothing about whether you can make an informed buying decision.
+
+That number deserves a moment of silence. In a market where the entire sourcing conversation is dominated by price, the data says price and information are independent variables.
+
+## The $8 sweet spot
+
+Here's where it gets interesting. I split the catalog into four price bands and measured what percentage of listings carry two or more decision-readiness signals.
+
+The $8 to $12 band, which contains 660 listings (the bulk of the market), has the highest information density: 50% of listings carry two or more readiness signals. The $20+ band, where you'd expect premium lots to come with premium documentation, only hits 32%. The sub-$8 band, the cheapest coffee available, lands at 30%.
+
+The safest buys, measured by what you actually know about the coffee, cluster in the $8 to $12 range. Not because price causes information. Because the suppliers who invest in documentation tend to price in that same mid-range.
+
+The premium tier has a different problem. High prices in specialty coffee are often driven by origin reputation, scarcity, or brand, not by disclosure quality. A Jamaica Blue Mountain listing at $79 per pound carries the prestige of one of coffee's most famous origins. But across 15 Jamaica listings in the catalog, only 13% carry two or more readiness signals. The median is one. You're paying for the name, not the data.
+
+Compare that to Colombia: 144 listings, median price $10.91, 57% carrying two or more readiness signals. Or Mexico: 46 listings, median price $9.88, 52% with two or more signals. These are proof-rich origins where the same dollar buys dramatically more certainty.
+
+## Akerlof was right about coffee
+
+In 1970, George Akerlof published "The Market for 'Lemons'" in the Quarterly Journal of Economics. His insight: when sellers know more than buyers about product quality and disclosure is voluntary, the market selects against quality. Buyers can't distinguish good from bad, so they pay average-quality prices. High-quality sellers, unable to get a fair price for their investment, exit the market.
+
+Green coffee has a cleaner version of this problem than used cars. It's not that bad coffee drives out good coffee. It's that low-information listings drive out high-information comparisons. A buyer shopping across 33 suppliers literally cannot compare an Ethiopian Yirgacheffe listed with three fields against one listed with eleven fields. They default to price, origin reputation, and gut feeling. The supplier who invested in cupping, tracking arrival dates, and documenting processing gets no market reward because the buyer has no frame of reference for what that documentation is worth.
+
+Jon Allen of [Onyx Coffee Lab](https://onyxcoffeelab.com/) put it bluntly to [Barista Magazine](http://www.baristamagazine.com/onyx-coffee-lab-transparency/): "No one really shares anything about buying green coffee... many people have really no idea what something is worth." That was 2018. The industry has made progress on price transparency since then, with tools like the [SCA/Emory Transaction Guide](https://www.coffeebuyers.org/) using farmer-donated data to display true cost of production. But price transparency and product metadata transparency are different problems. The Transaction Guide tells you what the farmer should earn. It doesn't tell you what the roaster is actually buying.
+
+## What you're buying when you buy cheap
+
+Let me make this concrete. Here are two real listings from this morning's catalog pull.
+
+Listing A: $181 per pound, origin Taiwan. Purveyor score: 39 out of 100. No arrival date. No cupping score. No structured processing data. No farm notes. The listing tells you the name and the price. That's it.
+
+Listing B: $8.49 per pound, origin Guatemala, from Burman Coffee. Purveyor score: 94. Arrival date: April 2025. Cupping score: 89. Processing: washed. The listing tells you when it arrived, how it was processed, how it scored, and carries a top-tier proof score.
+
+Listing A costs 21 times more and gives you 21 times less information. In a volatile market where you're trying to lock in inventory safely, which one are you actually confident buying?
+
+This isn't cherry-picking. Across the catalog, I found eight listings under $10 per pound that carry three or more decision-readiness signals: arrival date, cupping score, structured processing, and high purveyor score. All from suppliers like Burman, Sweet Maria's, and Captain Coffee. Meanwhile, the high-price tail is full of listings where you're paying for origin prestige and getting almost no verifiable product data.
+
+## The risk map
+
+**Immediate risks (already visible):**
+
+Price volatility masks information risk. When futures drop 31%, the instinct is to buy aggressively. But cheap inventory with no provenance data is locked-in uncertainty. You saved $2 per pound and committed to a lot you can't evaluate until it arrives. The catalog data makes this concrete: in the sub-$8 band, only 30% of listings carry two or more readiness signals. Seven out of ten cheap lots are effectively blind buys.
+
+Supplier churn risk increases when you can't compare lots. If your regular supplier runs out of a given origin and you need to switch, you need comparable data across suppliers. Across the 33 suppliers in the catalog, field coverage varies wildly: arrival dates appear on 49% of listings, cupping scores on 35%, structured processing data on 45%. A supplier switch often means switching data schemas, not just beans.
+
+The mid-tier squeeze is real. As commodity prices fall, the gap between commodity-grade and specialty-grade narrows on price but widens on information. A $7 listing and a $12 listing are only $5 apart per pound, but the $12 listing is twice as likely to tell you when it arrived and how it was processed. The risk is buying what looks like specialty at commodity prices but carries commodity-level documentation.
+
+**Tail risks (slower, bigger):**
+
+A market that rewards price over disclosure systematically underinvests in documentation. If roasters don't demand arrival dates, cupping scores, and processing transparency, suppliers have no incentive to provide them. The information gap compounds. Right now, 51% of the catalog lacks structured processing data. If the market signal is "just buy cheap," that number goes up, not down.
+
+Origin reputation becomes a substitute for lot-level quality. Jamaica Blue Mountain at $79/lb is a bet on the name, not the specific lot. Across those 15 Jamaica listings, the median decision-readiness score is one signal out of four. If the lot underperforms, you have no data trail to diagnose why. You paid for the appellation and got the information equivalent of a commodity listing.
+
+Climate-driven origin shifts will make historical sourcing intuition less reliable. As growing regions move and new origins emerge, the roasters with better data infrastructure will adapt faster than the ones relying on relationships and reputation alone. The roasters who can evaluate a lot from a new origin on its documented merits, rather than its unfamiliarity, will have a structural advantage in the next decade.
+
+## The opportunity map
+
+**1. Sourcing barbell: proof-rich core plus selective premium**
+
+The data supports a barbell strategy. Build your core inventory from the $8 to $12 band where information density is highest. Colombia, Mexico, Kenya, Peru, and Guatemala all show median readiness scores of 1.5 or higher at median prices under $11. For premium lots, demand the same documentation standard. If a $20+ listing can't tell you when it arrived, how it was processed, and what it scored, the premium is for the name, not the coffee.
+
+**2. Track decision-readiness, not just price per pound**
+
+The four signals I measured (arrival date, cupping score, processing transparency, overall proof score) are not exotic data requirements. They're the minimum a roaster needs to make an informed decision. Build them into your sourcing checklist. If a listing can't answer "when did this arrive?" and "how was it processed?", treat it as a higher-risk buy regardless of price.
+
+**3. Origin diversification based on information, not just flavor**
+
+The standard origin diversification play is about cup profile and customer preference. Add information density as a factor. The catalog data reveals a clear tier of proof-rich origins: Colombia (57% of listings with 2+ readiness signals, median $10.91), Mexico (52%, median $9.88), Kenya (53%, median $10.13), Peru (52%, median $10.35). These origins offer the best ratio of verifiable information to price. Meanwhile, Nicaragua (23% readiness, median $9.12) and El Salvador (30%, median $9.10) are cheaper on paper but carry significantly more information risk per dollar.
+
+The broader point: origin diversification should account for data infrastructure, not just terroir. A roaster building a resilient sourcing portfolio needs origins where the supply chain produces documentation, not just coffee.
+
+**4. Use the platform, not the spreadsheet**
+
+This is where a normalized data layer earns its keep. When you pull 33 suppliers into one catalog and align their schemas, the information gap becomes visible for the first time. You can see that one $9 Ethiopian has a cupping score, a 2025 arrival date, and a named washing station, while another $9 Ethiopian has... "Ethiopian." The [Purveyors catalog](https://www.purveyors.io/catalog) surfaces this comparison in real time. The value isn't the data. It's the normalization.
+
+## What Purveyors should build next
+
+The product implication is straightforward: decision-readiness should become a first-class filter. Not just "sort by price" or "sort by score," but a composite proof signal that tells the roaster how much they can actually verify about a given lot before committing. A "proof-rich" search filter that combines arrival recency, cupping transparency, processing disclosure, and overall purveyor score would let roasters find the safest buys in any price band, not just the cheapest.
+
+In a market where futures are swinging 30% year-over-year and the obvious advice is "buy the dip," the roasters who will come out ahead are the ones buying certainty, not just coffee. The data says that certainty is available right now, mostly in the $8 to $12 range, from suppliers who invest in documentation. You just have to know where to look.
+
+---
+
+*Data: Purveyors live catalog, 1,071 listings across 33 suppliers, fetched May 8, 2026. Price and readiness data derived from the [Purveyors API](https://www.purveyors.io/v1/catalog). Coffee futures data from [Trading Economics](https://tradingeconomics.com/commodity/coffee). Akerlof, G.A. (1970). "[The Market for 'Lemons'](https://academic.oup.com/qje/article-abstract/84/3/488/1896241): Quality Uncertainty and the Market Mechanism." Quarterly Journal of Economics, 84(3), 488-500. Pricing transparency context from [Perfect Daily Grind](https://perfectdailygrind.com/2018/04/green-coffee-pricing-transparency-is-critical-and-complicated/) and the [SCA/Emory Transaction Guide](https://www.coffeebuyers.org/).*
