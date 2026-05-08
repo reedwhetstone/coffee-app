@@ -537,11 +537,13 @@ async function queryCatalogData(
 	const useRowLimitedPagination =
 		!effectiveQuery.isPaginated && !useDefaultPagination && context.rowLimit !== null;
 	const isPaginated = effectiveQuery.isPaginated || useDefaultPagination || useRowLimitedPagination;
+	const scopedLimit =
+		useRowLimitedPagination && context.rowLimit !== null ? context.rowLimit : requestedLimit;
 	const effectiveLimit = context.rowLimit
 		? isPaginated
-			? Math.min(requestedLimit, context.rowLimit)
+			? Math.min(scopedLimit, context.rowLimit)
 			: context.rowLimit
-		: requestedLimit;
+		: scopedLimit;
 	const page = isPaginated ? requestedPage : 1;
 	const offset = isPaginated ? requestedOffset : 0;
 
@@ -791,7 +793,7 @@ function buildProofCoverageUrl(url: URL): URL {
 	// Coverage is an aggregate over the visible catalog scope. Projection and
 	// pagination controls are valid on /v1/catalog, but they must not truncate or
 	// change this aggregate contract.
-	for (const parameter of ['ids', 'fields', 'include', 'page', 'limit']) {
+	for (const parameter of ['fields', 'include', 'page', 'limit']) {
 		coverageUrl.searchParams.delete(parameter);
 	}
 
@@ -800,6 +802,10 @@ function buildProofCoverageUrl(url: URL): URL {
 
 function getCoverageFilters(query: ParsedCatalogQuery): Record<string, unknown> {
 	const filters: Record<string, unknown> = {};
+
+	if (query.ids.length > 0) {
+		filters.ids = query.ids;
+	}
 
 	for (const [key, value] of Object.entries(query.filters)) {
 		if (value === undefined) continue;

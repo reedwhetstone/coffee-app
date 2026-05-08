@@ -451,6 +451,90 @@ describe('buildCanonicalCatalogResponse', () => {
 		);
 	});
 
+	it('preserves ids as proof coverage scope filters', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: false,
+			primaryAppRole: null,
+			apiPlan: null
+		});
+		mockIsApiKeyPrincipal.mockReturnValue(false);
+		mockIsSessionPrincipal.mockReturnValue(false);
+		mockSearchCatalog.mockResolvedValue({
+			data: [
+				sampleCatalogItem,
+				{
+					...sampleCatalogItem,
+					id: 2,
+					name: 'Colombia Huila',
+					country: 'Colombia'
+				}
+			],
+			count: 2,
+			filtersApplied: {}
+		});
+
+		const response = await buildCatalogProofCoverageResponse(
+			makeEvent('https://app.test/v1/catalog/proof-coverage?ids=1&ids=2&limit=1')
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.scope.filters).toMatchObject({
+			ids: [1, 2],
+			stocked: true
+		});
+		expect(body.scope.total_rows).toBe(2);
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'session-client' },
+			expect.objectContaining({
+				coffeeIds: [1, 2],
+				orderBy: 'name',
+				orderDirection: 'asc',
+				limit: undefined,
+				offset: undefined
+			})
+		);
+	});
+
+	it('uses the API-key row cap instead of the fallback page size for unpaginated proof coverage', async () => {
+		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: true, apiKeyId: 'key-1' });
+		mockIsApiKeyPrincipal.mockReturnValue(true);
+		mockRequireApiKeyAccess.mockResolvedValue({
+			isAuthenticated: true,
+			apiKeyId: 'key-1',
+			apiPlan: 'member',
+			primaryAppRole: 'member'
+		});
+		mockGetApiRowLimit.mockReturnValue(10000);
+		mockSearchCatalog.mockResolvedValue({
+			data: Array.from({ length: 20 }, (_, index) => ({
+				...sampleCatalogItem,
+				id: index + 1,
+				name: `Coffee ${index + 1}`
+			})),
+			count: 20,
+			filtersApplied: {}
+		});
+
+		const response = await buildCatalogProofCoverageResponse(
+			makeEvent('https://app.test/v1/catalog/proof-coverage', {
+				Authorization: 'Bearer pk_test'
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(body.scope.total_rows).toBe(20);
+		expect(body.scope.total_available).toBe(20);
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			{ kind: 'admin-client' },
+			expect.objectContaining({
+				limit: 10000,
+				offset: 0
+			})
+		);
+	});
+
 	it('preserves API-key rate-limit headers for proof coverage requests', async () => {
 		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: true, apiKeyId: 'key-1' });
 		mockIsApiKeyPrincipal.mockReturnValue(true);
