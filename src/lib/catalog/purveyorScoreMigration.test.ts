@@ -62,6 +62,7 @@ describe('Purveyor Score migration SQL contract', () => {
 		expect(migrationSql).toContain('IF item.price_per_lb > 0 OR item.cost_lb > 0 THEN');
 		expect(migrationSql).toContain('IF item.score_value > 0 THEN sensory := sensory + 4; END IF;');
 		expect(migrationSql).toContain('jsonb_array_length(to_jsonb(item.price_tiers))');
+		expect(migrationSql).toContain('IF tier_count > 0 THEN\n\t\t\tstructured_signal_count := structured_signal_count + 1;');
 	});
 
 	it('updates scores through a trigger on relevant metadata columns and backfills existing rows', () => {

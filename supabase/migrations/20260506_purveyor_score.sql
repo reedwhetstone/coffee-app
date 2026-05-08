@@ -132,7 +132,9 @@ BEGIN
 		ELSIF tier_count = 1 THEN
 			pricing := pricing + 3;
 		END IF;
-		structured_signal_count := structured_signal_count + 1;
+		IF tier_count > 0 THEN
+			structured_signal_count := structured_signal_count + 1;
+		END IF;
 	END IF;
 	IF item.wholesale IS NOT NULL THEN pricing := pricing + 3; END IF;
 	pricing := LEAST(pricing, 15);
