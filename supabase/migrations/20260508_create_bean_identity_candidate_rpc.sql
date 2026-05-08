@@ -58,6 +58,12 @@ begin
       raise exception 'Bean identity % was not found', p_identity_id;
     end if;
 
+    update public.bean_identities
+    set status = 'candidate',
+        primary_catalog_id = p_coffee_catalog_id
+    where id = v_identity.id
+    returning * into v_identity;
+
     v_identity_json := null;
   end if;
 

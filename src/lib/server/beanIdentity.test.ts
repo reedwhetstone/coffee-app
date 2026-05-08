@@ -252,6 +252,31 @@ describe('bean identity helpers', () => {
 		).rejects.toBeInstanceOf(RejectedBeanIdentityCandidateError);
 	});
 
+	it('returns a rejected identity to candidate state when reusing it for a new candidate link', async () => {
+		const store = createMemoryBeanIdentityStore();
+		const first = await createBeanIdentityCandidate({ store, coffeeCatalogId: 25, snapshot });
+		await rejectBeanIdentityLink({
+			store,
+			linkId: first.link.id,
+			reasonCodes: ['country_conflict']
+		});
+
+		await createBeanIdentityCandidate({
+			store,
+			coffeeCatalogId: 26,
+			identityId: first.link.identity_id,
+			snapshot,
+			allowAfterRejection: true
+		});
+
+		expect(
+			store.identities.find((identity) => identity.id === first.link.identity_id)
+		).toMatchObject({
+			status: 'candidate',
+			primary_catalog_id: 26
+		});
+	});
+
 	it('passes allowAfterRejection through to the Supabase candidate RPC', async () => {
 		let rpcCall: { functionName: string; args: Record<string, unknown> } | null = null;
 		const store = createSupabaseBeanIdentityStore({
@@ -486,6 +511,10 @@ function createMemoryBeanIdentityStore(): MemoryStore {
 			const originalIdentitiesLength = identities.length;
 			const originalLinksLength = links.length;
 			const originalEventsLength = events.length;
+			const existingIdentity = input.identityId
+				? (identities.find((entry) => entry.id === input.identityId) ?? null)
+				: null;
+			const originalExistingIdentity = existingIdentity ? { ...existingIdentity } : null;
 			try {
 				const identity = input.identityId
 					? null
@@ -497,6 +526,13 @@ function createMemoryBeanIdentityStore(): MemoryStore {
 						});
 				const resolvedIdentityId = input.identityId ?? identity?.id;
 				if (!resolvedIdentityId) throw new Error('Identity id is required to create a link');
+
+				if (input.identityId) {
+					await this.updateIdentity(resolvedIdentityId, {
+						status: 'candidate',
+						primary_catalog_id: input.coffeeCatalogId
+					});
+				}
 
 				const link = await this.createLink({
 					identity_id: resolvedIdentityId,
@@ -525,6 +561,9 @@ function createMemoryBeanIdentityStore(): MemoryStore {
 
 				return { identity, link, event };
 			} catch (error) {
+				if (existingIdentity && originalExistingIdentity) {
+					Object.assign(existingIdentity, originalExistingIdentity);
+				}
 				identities.splice(originalIdentitiesLength);
 				links.splice(originalLinksLength);
 				events.splice(originalEventsLength);
