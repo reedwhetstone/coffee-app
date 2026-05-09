@@ -76,6 +76,22 @@ This plan should explicitly treat chat as a first-class intelligence surface. Th
 
 The implementation direction should therefore continue enhancing the CLI/chat toolset for the intelligence layer first, then allow Mallard Studio to specialize those tools for roast and production workflows. If a feature has to choose a default product home, intelligence wins; Studio can add focused workflows after the shared primitive exists.
 
+### May 9 add-on: analytics-centered UI/UX reference direction
+
+Reed provided four visual references for a UI/UX refactor that should move the core product further around analytics. Treat these as product-direction inputs, not just styling inspiration. The important shift is that analytics should become the user's working surface: the place where market context, decisions, saved investigation state, and AI-assisted next actions live together.
+
+Reference-derived design principles to fold into implementation:
+
+- **Analytics as command center, not report page.** The analytics route and logged-in home should lead with a decision cockpit: headline market read, KPI strip, active filters, key movement cards, and obvious next actions. Charts are evidence underneath the decision, not the entire page.
+- **Insight-first hierarchy.** Above-the-fold content should answer "what changed?", "why does it matter?", and "what can I do next?" before asking users to interpret raw charts. Use concise insight cards, movement summaries, supplier/origin deltas, and recommendation explanations.
+- **Persistent action/capture rail.** Analytics surfaces should expose durable verbs near the evidence: ask about this, compare suppliers, watch origin, save sourcing candidate, add to shortlist, export/API, or analyze against my inventory. In the no-backend first wave, these must route honestly or degrade as previews, but the layout should reserve space for them.
+- **Filter and scope controls are part of the product.** Origin, process, supplier, availability, price range, wholesale/retail, and time-window controls should feel like the control plane for investigation, not incidental chart settings. The IA should make filtered views shareable or promotable into later saved briefs/watchlists.
+- **AI/chat should be embedded beside analytics.** The assistant should not be a separate destination only. It should appear as a contextual ask layer tied to the visible analytics state: "explain this movement", "find comparable lots", "draft a sourcing brief", "watch this segment", or "compare against my inventory."
+- **Progressive depth.** Use summary cards and compact charts first, then expandable details, tables, supplier breakdowns, and API/CLI proof. The UX should support a 60-second scan and a deeper buyer investigation from the same surface.
+- **Mobile must preserve the decision loop.** On small screens, stack as: market read, scope/filter sheet, top insight cards, action drawer, then charts/tables. Do not bury the ask/capture affordances below long chart blocks.
+
+Design guardrail: do not let the references pull the plan into dashboard ornamentation. The strategic requirement is a tighter decision workflow around analytics: observe signal, scope/filter, ask, compare, save/watch, and act.
+
 ## Strategy Alignment Audit
 
 - **Canonical direction:** Strongly aligned with `notes/PRODUCT_VISION.md`: Purveyors is a coffee intelligence platform, not a marketplace and not a roast logger. This plan makes that hierarchy visible in the front end.
@@ -92,6 +108,7 @@ The implementation direction should therefore continue enhancing the CLI/chat to
 - Front-end information architecture and language cleanup.
 - Navigation hierarchy that makes analytics/intelligence primary and Studio/personal operations secondary.
 - Reframing `/dashboard` as an intelligence home rather than a generic app launcher.
+- Reframing `/analytics` as an analytics command center with insight hierarchy, filter/control-plane prominence, and contextual action/capture affordances.
 - Adding native capture affordances on analytics/catalog surfaces for "watch this", "compare this", "save to shortlist", or "ask about this" as UI scaffolding only where backend support already exists or can safely degrade.
 - Keeping chat, CLI-backed actions, and GenUI framed as core intelligence capabilities rather than Mallard Studio-only features.
 - Treating green coffee inventory as an intelligence-first personal catalog that can include owned, researched, tracked, and compared coffees, even before roast-log workflows are involved.
@@ -122,9 +139,19 @@ The logged-in dashboard should become an "Intelligence Home" with:
 - a primary path into market analytics;
 - a secondary path into catalog discovery;
 - a prominent intelligence chat / ask / GenUI path for catalog research, comparisons, watchlists, and sourcing briefs;
+- a preview of the analytics command-center pattern: market read, KPI/movement cards, and next-best investigation actions where existing data supports them;
 - a tertiary "Personal Studio" group for inventory, roast, and tasting/profit workflows;
 - copy that says personal data enriches recommendations rather than defining the whole product;
 - clear prompts like "watch this origin", "compare suppliers", "save a sourcing candidate", or "analyze against my inventory" where those actions can be safely stubbed or linked to existing flows.
+
+The analytics page should evolve toward a command-center layout:
+
+- **Header:** current market read, selected scope, and the primary ask/action entry point.
+- **KPI strip:** compact price, availability, supplier coverage, new-arrival, delisting, or proof-coverage signals where existing data supports them.
+- **Scope controls:** origin/process/supplier/availability/time-window filters promoted into a clear investigation control plane.
+- **Insight cards:** short explanations of movement, anomalies, or gaps before the user reaches raw charts.
+- **Charts and tables:** evidence modules that can be expanded, filtered, or used as the source for contextual actions.
+- **Contextual action rail/drawer:** ask, compare, watch, save, export/API, or analyze against inventory. In early slices, route to existing surfaces or display honest preview states instead of pretending to persist data.
 
 Navigation should stop implying all modules are peers. A rough grouping:
 
@@ -193,7 +220,7 @@ This should be a multi-stage program, not one giant PR. The work touches shared 
 
 ### PR 03: Analytics capture scaffolding
 
-**Goal:** Add front-end capture/decision CTAs to analytics without persistence: "compare suppliers", "watch origin", "save sourcing question", "ask about this trend" as routed/stubbed actions that do not pretend to save server state.
+**Goal:** Add front-end capture/decision CTAs to analytics without persistence: "compare suppliers", "watch origin", "save sourcing question", "ask about this trend" as routed/stubbed actions that do not pretend to save server state. Use the May 9 UI references as the direction for a persistent action/capture rail or mobile action drawer.
 
 **Why third:** This turns analytics from passive charts toward native decision capture while avoiding backend changes.
 
@@ -203,11 +230,23 @@ This should be a multi-stage program, not one giant PR. The work touches shared 
 
 **Stop point:** If the program stops here, analytics feels more like an intelligence workflow even before persistence exists.
 
+### PR 03.5: Analytics command-center layout pass
+
+**Goal:** Rework `/analytics` information hierarchy around the reference direction: market read, KPI/movement strip, promoted scope controls, insight cards, evidence charts/tables, and contextual ask/capture affordances.
+
+**Why separate:** This is broader than adding CTAs. It touches visual hierarchy, responsive layout, empty/loading states, and the user's mental model of analytics as the core workspace. Keeping it separate prevents PR 03 from becoming an unreviewable redesign.
+
+**In scope:** Layout-only and copy-first refactor using existing analytics data, existing gates, and existing chart components where possible. Add reusable presentational shells only if they reduce repeated truth across dashboard and analytics surfaces.
+
+**Out of scope:** New analytics queries, persisted watchlists, saved briefs, notification logic, or entitlement changes.
+
+**Stop point:** If the program stops here, `/analytics` becomes the visual and functional center of the product even before backend-backed capture ships.
+
 ### PR 04: Catalog-to-intelligence connective tissue
 
 **Goal:** Adjust catalog copy and CTAs so the catalog reads as the supply substrate behind intelligence, not a standalone shopping/browser grid.
 
-**Why fourth:** Catalog should support the analytics thesis and Personal Studio add-on story.
+**Why after analytics:** Catalog should support the analytics thesis and Personal Studio add-on story once the analytics command-center frame is visible.
 
 **In scope:** Catalog hero/empty-state/CTA copy, link paths into analytics, member prompts for shortlist/watch/analyze workflows where safely non-persistent.
 
@@ -219,7 +258,7 @@ This should be a multi-stage program, not one giant PR. The work touches shared 
 
 **Goal:** Make inventory/roast/profit labels and dashboard paths read as personalization context, not the primary product suite. Keep chat positioned as a shared intelligence layer, with Mallard Studio offering focused roast/production defaults rather than owning the assistant.
 
-**Why fifth:** This is the delicate part. It should come after the intelligence frame is visible so the change feels like clarification, not feature demotion.
+**Why after catalog alignment:** This is the delicate part. It should come after the intelligence frame is visible so the change feels like clarification, not feature demotion.
 
 **In scope:** Copy and grouping on existing personal routes, route cards, dashboard descriptions, maybe small helper text explaining how personal data improves recommendations. Reframe green coffee inventory as the user's intelligence-first operating catalog, including owned, researched, tracked, and compared coffees.
 
@@ -302,7 +341,9 @@ PR 02 should only begin after PR 01 lands or its taxonomy is accepted, because d
 - Personal workflows remain accessible but are framed as context and personalization.
 - Chat, CLI-backed actions, and GenUI are framed as core intelligence capabilities with optional Studio-specific defaults.
 - Green coffee inventory reads as an intelligence-first personal catalog, not merely a roast-log prerequisite.
-- No backend migration is required for the first three PRs.
+- `/analytics` reads as a command center with visible market read, scope controls, insight hierarchy, evidence modules, and contextual ask/capture actions.
+- The May 9 reference direction is reflected in layout priorities, not copied as decoration.
+- No backend migration is required for the front-end framing wave through PR 03.5.
 - Every PR is independently mergeable and useful if the program pauses.
 - Navigation, dashboard, analytics, and catalog copy use the same category language.
 - Tests protect the new IA enough that future feature additions do not silently flatten everything back into peer CRUD modules.
@@ -312,7 +353,7 @@ PR 02 should only begin after PR 01 lands or its taxonomy is accepted, because d
 - **Risk: overcorrecting away from roasters.** Mitigation: preserve Personal Studio as a valuable add-on, not a deprecated feature set.
 - **Risk: capture scaffolding feels fake without persistence.** Mitigation: only add CTAs that route to real existing surfaces or clearly say what will happen; do not imply saved state unless it exists.
 - **Risk: naming sprawl.** Mitigation: choose one taxonomy and reuse it everywhere. Avoid adding new brands unless necessary.
-- **Risk: backend pressure creeps in.** Mitigation: first three PRs must pass the mergeable-slice gate without DB or API changes.
+- **Risk: backend pressure creeps in.** Mitigation: the front-end framing wave through PR 03.5 must pass the mergeable-slice gate without DB or API changes.
 
 Rollback is straightforward for PR 01 and PR 02: revert copy/navigation changes. No data migrations or API changes are involved.
 
