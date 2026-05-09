@@ -451,6 +451,52 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(JSON.stringify(body)).not.toContain('Private Candidate');
 	});
 
+	it('overfetches legacy bounded v3 rows before applying public API-key filtering', async () => {
+		mockResolvePrincipal.mockResolvedValue(apiPrincipal);
+		mockRequireApiKeyAccess.mockResolvedValue(apiPrincipal);
+		const privateRows = Array.from({ length: 5 }, (_, index) => ({
+			...matchRow,
+			coffee_id: 3300 + index,
+			coffee_name: `Private Candidate ${index}`
+		}));
+		const publicRows = [
+			{ ...matchRow, coffee_id: 4400, coffee_name: 'Public Candidate A' },
+			{ ...matchRow, coffee_id: 4401, coffee_name: 'Public Candidate B' }
+		];
+		const { rpc } = createSupabaseMock({
+			v3WithPublicOnlyError: {
+				message:
+					'Could not find the function public.find_similar_beans_aggregated_v3(target_coffee_id, match_threshold, match_count, stocked_only, public_only, candidate_pool)',
+				code: 'PGRST202'
+			},
+			matches: [...privateRows, ...publicRows],
+			details: [
+				{ ...matchDetailRow, id: 4400, name: 'Public Candidate A' },
+				{ ...matchDetailRow, id: 4401, name: 'Public Candidate B' }
+			]
+		});
+
+		const response = await GET(
+			makeEvent('https://app.test/v1/catalog/1182/similar?limit=2', {
+				headers: { Authorization: 'Bearer pk_live_test' }
+			})
+		);
+		const body = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
+			target_coffee_id: 1182,
+			match_threshold: 0.7,
+			match_count: 125,
+			stocked_only: true,
+			candidate_pool: 200
+		});
+		expect(body.data.matches.map((match: { coffee: { id: number } }) => match.coffee.id)).toEqual([
+			4400, 4401
+		]);
+		expect(JSON.stringify(body)).not.toContain('Private Candidate');
+	});
+
 	it('reports the v2 query strategy when bounded v3 falls back to the canonical RPC', async () => {
 		mockResolvePrincipal.mockResolvedValue(memberPrincipal);
 		const { rpc } = createSupabaseMock({
