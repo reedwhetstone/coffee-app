@@ -489,7 +489,7 @@ describe('/v1/catalog/[id]/similar', () => {
 			match_threshold: 0.7,
 			match_count: 125,
 			stocked_only: true,
-			candidate_pool: 200
+			candidate_pool: 1000
 		});
 		expect(body.data.matches.map((match: { coffee: { id: number } }) => match.coffee.id)).toEqual([
 			4400, 4401
