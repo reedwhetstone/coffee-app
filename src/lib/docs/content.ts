@@ -480,6 +480,8 @@ const docsPages: DocsPage[] = [
 					'/api-dashboard is the Parchment Console for API keys, usage, subscriptions, and account-aware billing flows.',
 					'/catalog and /analytics are end-user product surfaces that reflect the same coffee domain model as the API.',
 					'/docs is the shared public documentation tree for both the HTTP API and @purveyors/cli.',
+					'/llms.txt, /sitemap.xml, and /blog/feed.xml are anonymous discoverability endpoints for agents, crawlers, and feed readers. They expose navigation metadata, not integration data contracts.',
+					'/auth/callback and /auth/cli-callback are OAuth handoff surfaces. They are part of login flow reliability, not REST API resources.',
 					'The web app imports @purveyors/cli modules directly for chat tooling, so CLI and product behavior should stay aligned.'
 				]
 			}
@@ -1416,6 +1418,59 @@ const docsPages: DocsPage[] = [
 					'Outside the JSON route layer, /api/docs and /api-dashboard/docs are legacy docs entry points that 307 redirect to /docs/api/overview.',
 					'Treat /docs as the canonical information architecture, /api as the product page, and /api-dashboard as the authenticated Console surface.'
 				]
+			},
+			{
+				title: 'Metadata, auth handoff, and crawler routes',
+				body: [
+					'These routes are public or browser-reachable support surfaces. They improve agent onboarding, search discovery, feed subscriptions, OAuth reliability, or browser tooling compatibility, but they are not public data APIs.'
+				],
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/llms.txt',
+							'GET',
+							'Anonymous',
+							'Agent discoverability metadata',
+							'Plain-text overview for agents with links to public pages, docs, API contracts, blog posts, and supported workflows.'
+						],
+						[
+							'/sitemap.xml',
+							'GET',
+							'Anonymous',
+							'Crawler metadata',
+							'XML sitemap covering public pages, published blog posts, and the docs navigation generated from DOCS_NAV.'
+						],
+						[
+							'/blog/feed.xml',
+							'GET',
+							'Anonymous',
+							'RSS feed',
+							'RSS 2.0 feed for published blog posts. It is content syndication, not a catalog or analytics API.'
+						],
+						[
+							'/auth/callback',
+							'GET',
+							'OAuth code',
+							'Auth handoff route',
+							'Exchanges a Supabase auth code for a session, sanitizes next to an internal path, and redirects to the target or /auth/auth-code-error.'
+						],
+						[
+							'/auth/cli-callback',
+							'GET',
+							'OAuth redirect target',
+							'CLI login helper page',
+							'Browser page that lets remote and headless CLI flows copy the full callback URL back into purvey auth login.'
+						],
+						[
+							'/.well-known/appspecific/com.chrome.devtools.json',
+							'GET',
+							'Anonymous',
+							'Browser tooling compatibility',
+							'Returns an empty JSON object for Chrome DevTools app-specific probing. It has no product data contract.'
+						]
+					]
+				}
 			},
 			{
 				title: 'Deprecated tool routes',

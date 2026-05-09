@@ -136,6 +136,8 @@ Treat the API as two layers:
    - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require the member role
    - Important for contributors, but not a broad public compatibility promise
    - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation: true`, `Link: </v1/catalog>; rel="successor-version"`, and `Sunset: Dec 31 2026` headers; migrate callers to `/v1/catalog`
+   - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are public metadata or compatibility endpoints; document them as discoverability surfaces, not product APIs
+   - `/auth/callback` and `/auth/cli-callback` are OAuth handoff surfaces; they belong in platform docs only when auth flow behavior matters
    - `/api/tools/*` routes are deprecated; prefer direct CLI-library integration
 
 Do not blur those layers in code comments, docs, or PR descriptions.
@@ -150,6 +152,7 @@ When changing docs, keep these sources aligned:
 - the `/docs` tree under `src/routes/docs`
 - the `/api-dashboard` console surface, including `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate`
 - any legacy docs redirects such as `/api/docs` and `/api-dashboard/docs`
+- metadata and handoff routes such as `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, `/.well-known/appspecific/com.chrome.devtools.json`, `/auth/callback`, and `/auth/cli-callback` when platform route coverage changes
 - `src/routes/api/+page.server.ts` and `/api` copy when plan naming, limits, or route framing changes
 
 ### Docs architecture
