@@ -67,5 +67,20 @@ describe('/v1 discovery route', () => {
 				aggregateOnly: true
 			}
 		});
+		expect(body.resources.procurementBriefs).toMatchObject({
+			href: '/v1/procurement/briefs',
+			status: 'live',
+			auth: {
+				anonymous: false,
+				session: true,
+				apiKey: true
+			},
+			access: {
+				session: 'requires member or admin role',
+				apiKey: 'requires member or enterprise API plan'
+			},
+			capabilities: ['create', 'list', 'get', 'manualMatches'],
+			matchRoute: '/v1/procurement/briefs/:id/matches'
+		});
 	});
 });
