@@ -21,6 +21,8 @@ Both are valuable, but they are not the same buyer. Treating them as one generic
 
 Reed's May 8 direction sharpens the thesis: less CRUD theater, more analysis, native capture. That means the primary product should be market intelligence. Personal roaster data should become an enhancer that makes intelligence more relevant, not the main thing the whole product claims to be.
 
+Reed's May 9 add-on sharpens the chat and inventory boundary: chat is not a Mallard Studio feature. Chat is equally valuable for intelligence users and Studio users. The product needs one shared chat/action layer with different defaults by workspace focus: intelligence users should get catalog research, saved coffees, watchlists, sourcing briefs, comparisons, alerts, CLI/API-backed actions, and GenUI research cards; Mallard Studio users should get roast plans, roast logs, tasting loops, production history, and inventory drawdown on top of the same substrate.
+
 ## Product segmentation thesis
 
 ### Segment A: supply-chain and market-intelligence buyers
@@ -43,13 +45,36 @@ Reed's May 8 direction sharpens the thesis: less CRUD theater, more analysis, na
 
 **Product promise:** Purveyors applies market intelligence to the coffees and decisions that matter to the user's own inventory and operations.
 
-**Core surfaces:** inventory, roast, tasting, profit, chat, personal recommendations, captured shortlist/coffees, future watchlists.
+**Core surfaces:** inventory, roast, tasting, profit, personal recommendations, captured shortlist/coffees, future watchlists, and Studio-specific chat defaults layered onto the shared intelligence chat substrate.
 
 **Success feeling:** "The market intelligence knows what I own, what I roast, what I sell, and what I should buy next."
 
 ### Strategic implication
 
 Mallard Studio should not be the umbrella product. It should become the personalized workspace or add-on that enriches the core intelligence product. The public and logged-in framing should center on analytics/intelligence; Studio should be a mode for applying that intelligence to a user's own coffee context.
+
+The chat, CLI, and GenUI strategy should follow that hierarchy. The shared substrate belongs to the core intelligence product. Mallard Studio gets a specialized focus pack on top of it, not ownership of the assistant. Green coffee inventory should also be modeled intelligence-first as the user's operating catalog: owned coffees, researched coffees, tracked coffees, and coffees under comparison. Roast management and roast-log updates become add-on actions that consume that catalog context.
+
+### May 9 add-on: shared chat layer, intelligence-first inventory, and GenUI
+
+This plan should explicitly treat chat as a first-class intelligence surface. The hard product problem is not deciding whether chat belongs to analytics users or Studio users; it belongs to both. The hard problem is providing the same chat/action layer with different focus defaults.
+
+**Core intelligence chat defaults:**
+
+- search the catalog and explain why coffees match a sourcing goal;
+- manage saved coffees, research notes, watchlists, comparisons, and sourcing briefs;
+- answer market questions from analytics, supplier coverage, pricing movement, and availability deltas;
+- produce GenUI cards for coffee comparisons, sourcing briefs, supplier snapshots, watchlist updates, and recommendation explanations;
+- call CLI/API-backed tools so agent workflows and web chat do not drift.
+
+**Mallard Studio chat defaults:**
+
+- plan roasts from inventory context;
+- update roast logs and tasting loops;
+- connect production history back to sourcing decisions;
+- explain inventory drawdown, usage, and likely reorder needs.
+
+The implementation direction should therefore continue enhancing the CLI/chat toolset for the intelligence layer first, then allow Mallard Studio to specialize those tools for roast and production workflows. If a feature has to choose a default product home, intelligence wins; Studio can add focused workflows after the shared primitive exists.
 
 ## Strategy Alignment Audit
 
@@ -68,6 +93,8 @@ Mallard Studio should not be the umbrella product. It should become the personal
 - Navigation hierarchy that makes analytics/intelligence primary and Studio/personal operations secondary.
 - Reframing `/dashboard` as an intelligence home rather than a generic app launcher.
 - Adding native capture affordances on analytics/catalog surfaces for "watch this", "compare this", "save to shortlist", or "ask about this" as UI scaffolding only where backend support already exists or can safely degrade.
+- Keeping chat, CLI-backed actions, and GenUI framed as core intelligence capabilities rather than Mallard Studio-only features.
+- Treating green coffee inventory as an intelligence-first personal catalog that can include owned, researched, tracked, and compared coffees, even before roast-log workflows are involved.
 - Renaming and grouping existing cards/routes without changing underlying routes or data contracts.
 - Tests that lock the new navigation/frame behavior.
 
@@ -79,6 +106,7 @@ Mallard Studio should not be the umbrella product. It should become the personal
 - Entitlement model changes beyond existing gates.
 - Removing inventory, roast, profit, or tasting routes.
 - Building the full Procurement Brief, Intent Exchange, or Proof Layer.
+- Building a complete chat persistence, tool-calling, or GenUI runtime if the current implementation slice only needs product framing and front-end scaffolding.
 - Public pricing/package changes.
 
 ## Proposed UX or behavior
@@ -86,21 +114,22 @@ Mallard Studio should not be the umbrella product. It should become the personal
 The app should communicate three layers:
 
 1. **Market Intelligence:** analytics, catalog, price movement, supplier coverage, proof, and sourcing signals. This is the product center.
-2. **Capture and Decision Workflows:** save, watch, compare, ask, shortlist, export, or start a buying investigation. These are the verbs that turn analytics into action.
-3. **Personal Studio:** inventory, roast, tasting, profit, and personal chat. This is optional context that makes recommendations and analysis more personalized.
+2. **Shared Chat, GenUI, and Decision Workflows:** ask, save, watch, compare, shortlist, export, or start a buying investigation. These are the verbs and generated surfaces that turn analytics into action. They are core intelligence capabilities, not Studio-only affordances.
+3. **Personal Studio:** inventory, roast, tasting, and profit. This is an optional add-on context layer that makes recommendations and analysis more personalized, with Studio-focused chat defaults for roast and production workflows.
 
 The logged-in dashboard should become an "Intelligence Home" with:
 
 - a primary path into market analytics;
 - a secondary path into catalog discovery;
-- a tertiary "Personal Studio" group for inventory, roast, tasting/profit, and chat;
+- a prominent intelligence chat / ask / GenUI path for catalog research, comparisons, watchlists, and sourcing briefs;
+- a tertiary "Personal Studio" group for inventory, roast, and tasting/profit workflows;
 - copy that says personal data enriches recommendations rather than defining the whole product;
 - clear prompts like "watch this origin", "compare suppliers", "save a sourcing candidate", or "analyze against my inventory" where those actions can be safely stubbed or linked to existing flows.
 
 Navigation should stop implying all modules are peers. A rough grouping:
 
-- **Intelligence:** Market, Catalog, API/CLI docs or Parchment Console.
-- **Personalization:** Inventory, Roast, Profit, Chat.
+- **Intelligence:** Market, Catalog, Intelligence Chat / Ask, API/CLI docs or Parchment Console.
+- **Personalization / Mallard Studio:** Inventory, Roast, Profit, Tasting, and Studio-focused chat entry points when the user is inside those workflows.
 - **Admin:** operational-only tools.
 
 The naming should avoid making Mallard Studio the public umbrella. If Mallard Studio remains, use it as the personal workspace label only.
@@ -114,6 +143,8 @@ The naming should avoid making Mallard Studio the public umbrella. If Mallard St
 - `src/routes/dashboard/+page.svelte`
 - `src/routes/catalog/+page.svelte`
 - `src/routes/analytics/+page.svelte`
+- Existing chat route/components if navigation or dashboard copy currently frames chat as Studio-only
+- Existing inventory route/components if copy currently frames green coffee inventory only as roast-log input
 - `src/routes/analytics/page.svelte.test.ts`
 - `src/lib/components/layout/*.test.ts`
 - Potentially a new presentational component under `src/lib/components/intelligence/` for reusable insight/capture CTAs.
@@ -142,7 +173,7 @@ This should be a multi-stage program, not one giant PR. The work touches shared 
 
 **Why first:** The navigation frame is the product frame. This gives every later UI change a coherent destination without touching data flows.
 
-**In scope:** Update navigation data, sidebar/mobile labels, grouping, route descriptions, and tests.
+**In scope:** Update navigation data, sidebar/mobile labels, grouping, route descriptions, and tests. Chat should land with Intelligence as the primary entry point, while Studio-specific chat defaults can be referenced from personal workflows without making chat a Studio-only module.
 
 **Out of scope:** Dashboard redesign, analytics page redesign, new capture actions.
 
@@ -154,7 +185,7 @@ This should be a multi-stage program, not one giant PR. The work touches shared 
 
 **Why second:** Once nav hierarchy is settled, the logged-in landing page should reinforce the same mental model.
 
-**In scope:** Dashboard copy/layout, card grouping, member/viewer states, tests.
+**In scope:** Dashboard copy/layout, card grouping, member/viewer states, tests. Add an intelligence chat / ask path that is clearly for catalog research, comparisons, watchlists, sourcing briefs, and GenUI-style intelligence surfaces, not only roast operations.
 
 **Out of scope:** New backend data, new analytics widgets, persistent saved objects.
 
@@ -186,11 +217,11 @@ This should be a multi-stage program, not one giant PR. The work touches shared 
 
 ### PR 05: Personal Studio boundary cleanup
 
-**Goal:** Make inventory/roast/profit/chat labels and dashboard paths read as personalization context, not the primary product suite.
+**Goal:** Make inventory/roast/profit labels and dashboard paths read as personalization context, not the primary product suite. Keep chat positioned as a shared intelligence layer, with Mallard Studio offering focused roast/production defaults rather than owning the assistant.
 
 **Why fifth:** This is the delicate part. It should come after the intelligence frame is visible so the change feels like clarification, not feature demotion.
 
-**In scope:** Copy and grouping on existing personal routes, route cards, dashboard descriptions, maybe small helper text explaining how personal data improves recommendations.
+**In scope:** Copy and grouping on existing personal routes, route cards, dashboard descriptions, maybe small helper text explaining how personal data improves recommendations. Reframe green coffee inventory as the user's intelligence-first operating catalog, including owned, researched, tracked, and compared coffees.
 
 **Out of scope:** Removing routes, rebuilding forms, changing CRUD behavior, backend schema.
 
@@ -216,7 +247,8 @@ This is the lowest-risk change that directly expresses the strategic pivot. It p
 
 - Update navigation labels/groups in `appNavigation.ts` or equivalent source of truth.
 - Group Analytics/Market Data and Catalog under an intelligence category.
-- Group Inventory/Roast/Profit/Chat under a personal studio or personalization category.
+- Group Inventory/Roast/Profit under a personal studio or personalization category.
+- Keep Chat/Ask in the intelligence group as the primary assistant entry, while allowing Studio workflows to deep-link into Studio-focused chat defaults later.
 - Keep Parchment Console/API in the intelligence/platform group, not buried as a generic utility.
 - Ensure left sidebar and mobile shell render the new groups consistently.
 - Update relevant tests.
@@ -241,6 +273,7 @@ This is the lowest-risk change that directly expresses the strategic pivot. It p
 
 - Authenticated desktop navigation has a clear Intelligence grouping.
 - Personal roaster workflows are grouped separately and do not appear as peer products to analytics/catalog.
+- Chat does not appear as a Mallard Studio-only or roast-only feature; the primary chat entry belongs to Intelligence.
 - Mobile navigation uses the same taxonomy.
 - Existing role/member/admin visibility behavior is preserved.
 - No route URLs or backend data loads change.
@@ -267,6 +300,8 @@ PR 02 should only begin after PR 01 lands or its taxonomy is accepted, because d
 - The product reads as coffee market intelligence first, not a generic roaster CRUD suite.
 - Analytics and catalog become the obvious primary surfaces for both logged-out and logged-in users.
 - Personal workflows remain accessible but are framed as context and personalization.
+- Chat, CLI-backed actions, and GenUI are framed as core intelligence capabilities with optional Studio-specific defaults.
+- Green coffee inventory reads as an intelligence-first personal catalog, not merely a roast-log prerequisite.
 - No backend migration is required for the first three PRs.
 - Every PR is independently mergeable and useful if the program pauses.
 - Navigation, dashboard, analytics, and catalog copy use the same category language.
@@ -285,5 +320,6 @@ Rollback is straightforward for PR 01 and PR 02: revert copy/navigation changes.
 
 1. Should the personal add-on be called **Personal Studio**, **Roaster Studio**, **My Studio**, or keep **Mallard Studio** as a sub-brand?
 2. Should the primary nav label be **Market Intelligence**, **Coffee Intelligence**, or simply **Intelligence**?
-3. For capture scaffolding, should we prefer honest disabled previews for future "watch/save" actions, or avoid nonfunctional controls entirely until persistence exists?
-4. Is Parchment Intelligence still the paid analytics package name, or should that name collapse into the broader Purveyors Intelligence positioning?
+3. What should the primary shared assistant label be: **Chat**, **Ask Purveyors**, **Intelligence Chat**, or something else?
+4. For capture scaffolding, should we prefer honest disabled previews for future "watch/save" actions, or avoid nonfunctional controls entirely until persistence exists?
+5. Is Parchment Intelligence still the paid analytics package name, or should that name collapse into the broader Purveyors Intelligence positioning?
