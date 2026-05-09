@@ -26,6 +26,12 @@ export interface PurveyorScoreSummary {
 	version: string;
 }
 
+type CoffeeWithProcessProjection = CoffeeCatalog & {
+	process?: {
+		evidence_available?: boolean | null;
+	} | null;
+};
+
 const PLACEHOLDER_VALUES = new Set([
 	'',
 	'unknown',
@@ -70,6 +76,15 @@ function getTier(score: number): PurveyorScoreTier {
 
 function roundConfidence(value: number): number {
 	return Math.round(Math.min(1, Math.max(0, value)) * 100) / 100;
+}
+
+function hasProcessingEvidenceSignal(coffee: CoffeeCatalog): boolean {
+	const projected = coffee as CoffeeWithProcessProjection;
+	return (
+		coffee.processing_evidence_available === true ||
+		coffee.processing_evidence != null ||
+		projected.process?.evidence_available === true
+	);
 }
 
 function coerceFactors(value: unknown): PurveyorScoreFactors | null {
@@ -211,7 +226,7 @@ export function calculatePurveyorScore(coffee: CoffeeCatalog): PurveyorScoreSumm
 	sensory = Math.min(sensory, 15);
 
 	const score = Math.min(100, provenance + process + freshness + pricing + sensory);
-	const processingEvidenceAvailable = coffee.processing_evidence_available === true;
+	const processingEvidenceAvailable = hasProcessingEvidenceSignal(coffee);
 	const confidence = roundConfidence(
 		0.2 +
 			Math.min(structuredSignalCount, 10) * 0.045 +
