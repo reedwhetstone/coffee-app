@@ -37,6 +37,20 @@ describe('/v1 discovery route', () => {
 				sunset: 'Thu, 31 Dec 2026 23:59:59 GMT'
 			})
 		);
+		expect(body.resources.proofCoverage).toMatchObject({
+			href: '/v1/catalog/proof-coverage',
+			status: 'live',
+			auth: {
+				anonymous: true,
+				session: true,
+				apiKey: true
+			},
+			source: {
+				resource: '/v1/catalog',
+				aggregateOnly: true,
+				rawEvidenceIncluded: false
+			}
+		});
 		expect(body.resources.priceIndex).toMatchObject({
 			href: '/v1/price-index',
 			status: 'live',
