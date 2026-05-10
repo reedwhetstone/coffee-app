@@ -82,7 +82,7 @@ New Stripe SKUs needed: `reports.monthly`, `reports.annual` (same grants as ppi_
 
 Intelligence chat access: green coffee sourcing, catalog research, market questions, sourcing briefs. Roasting chat access: all Intelligence tools plus roast planning, roast log updates, tasting loops, inventory drawdown, production history.
 
-`chat/+page.server.ts` must be updated to pass `ppiAccess` through to the page, since it currently only returns `{ session, user, role }`.
+`chat/+page.server.ts` must be updated to pass `ppiAccess` through to the page, since it currently only returns `{ session, user, role }`. This is not sufficient by itself: `/chat` also needs server-route auth in `src/hooks.server.ts`, `/api/chat` must authorize `ppiAccess || member`, and `createChatTools()` must receive tier/entitlement context so Intelligence-only users get only sourcing/catalog tools.
 
 ### Upgrade prompt philosophy
 
@@ -389,8 +389,11 @@ PR 03 must begin from a current-state map of `/analytics`. The redesign should c
 - `src/routes/dashboard/+page.svelte`
 - `src/routes/catalog/+page.svelte`
 - `src/routes/analytics/+page.svelte`
+- `src/hooks.server.ts`: allow `/chat` for authenticated users with `ppiAccess || member` while keeping other protected routes member-only
 - `src/routes/chat/+page.server.ts` — pass `ppiAccess` through
 - `src/routes/chat/+page.svelte` — update chat gate from `member` to `ppiAccess || member`
+- `src/routes/api/chat/+server.ts`: authorize `ppiAccess || member` before streaming
+- `src/lib/services/tools` / chat tool factory: gate exposed tools by entitlement so Intelligence-only users receive sourcing/catalog tools, not roast/tasting tools
 - Existing inventory route/components if copy currently frames green coffee inventory only as roast-log input
 - `src/routes/analytics/page.svelte.test.ts`
 - `src/lib/components/layout/appNavigation.test.ts` (new file — no existing nav label tests)
@@ -398,9 +401,15 @@ PR 03 must begin from a current-state map of `/analytics`. The redesign should c
 
 ## API or data impact
 
-No backend API, schema, or database impact in the first wave.
+No schema or database impact in the first wave. No new server endpoints are required.
 
-The chat gate change (`ppiAccess || member`) is a frontend-only change: `chat/+page.svelte` reads the role and ppiAccess from the page load, which `chat/+page.server.ts` already has access to via `locals.safeGetSession()`. No new server endpoints.
+The chat gate change (`ppiAccess || member`) is **not** frontend-only. A safe PR 01 implementation must update all three server-side gates that currently assume chat is member-only:
+
+1. `src/hooks.server.ts`: `/chat` is in `protectedRoutes` and currently redirects unless `requireRole(event.locals.role, 'member')` passes. Split or special-case `/chat` so authenticated users with `ppiAccess || member` can reach the route, while `/roast`, `/profit`, and `/beans` stay member-only.
+2. `src/routes/api/chat/+server.ts`: replace the unconditional `requireMemberRole(event)` streaming guard with an entitlement-aware server check for `ppiAccess || member`; users with neither entitlement still get 403.
+3. `createChatTools()`: pass entitlement/tier context into the chat tool factory, or split the tool registry, so Intelligence-only users can use sourcing/catalog tools but cannot call roast planning, tasting, inventory drawdown, or other Roasting/member-only tools.
+
+The page-level gate in `chat/+page.svelte` remains necessary for UX, but it is only the presentation layer over these server-side authorization changes.
 
 Any decision/action affordance in this program must either:
 
@@ -416,7 +425,7 @@ Any decision/action affordance in this program must either:
 
 **Why first:** The navigation frame is the product frame. This gives every later UI change a coherent destination without touching data flows.
 
-**In scope:** Update `NavSection` type (`'core' | 'secondary'` → `'intelligence' | 'roasting' | 'developer' | 'admin'`). Update navigation data, sidebar/mobile labels, grouping, route descriptions. Move Chat to Intelligence as the primary entry. Move Parchment Console and Docs to Developer. Move Subscription and Contact to the auth/user menu. Lock Roasting items as visible-but-gated for non-member users. Update chat gate in `+page.server.ts` and `+page.svelte`. Write new `appNavigation.test.ts`.
+**In scope:** Update `NavSection` type (`'core' | 'secondary'` → `'intelligence' | 'roasting' | 'developer' | 'admin'`). Update navigation data, sidebar/mobile labels, grouping, route descriptions. Move Chat to Intelligence as the primary entry. Move Parchment Console and Docs to Developer. Move Subscription and Contact to the auth/user menu. Lock Roasting items as visible-but-gated for non-member users. Update chat access across `hooks.server.ts`, `chat/+page.server.ts`, `chat/+page.svelte`, `/api/chat`, and server-side chat tool gating. Write new `appNavigation.test.ts`.
 
 **Out of scope:** Dashboard redesign, analytics page redesign, new decision/action affordances, route renames.
 
@@ -432,19 +441,23 @@ Any decision/action affordance in this program must either:
 - Existing role/member/admin visibility behavior is preserved for items that remain gated.
 - Nav item does NOT appear in the wrong section (test both presence and absence).
 - The `NavSection` id type union is updated.
+- `hooks.server.ts` lets `ppiAccess || member` users reach `/chat`; users with neither entitlement still redirect away from `/chat`.
 - `chat/+page.server.ts` passes `ppiAccess` to the page.
 - `chat/+page.svelte` gate is `ppiAccess || checkRole(role, 'member')`.
-- New `appNavigation.test.ts` covers: section IDs, item membership per section, chat placement, Roasting lock state for viewer.
+- `/api/chat` authorizes `ppiAccess || member` on the server before streaming and still rejects users with neither entitlement.
+- Chat tools are entitlement-gated server-side: Intelligence-only users get sourcing/catalog tools only; member users keep the full tool set.
+- New `appNavigation.test.ts` covers: section IDs, item membership per section, chat placement, Roasting lock state for viewer. Add focused server/chat authorization coverage for the `/chat` route, `/api/chat`, and tool allowlist.
 
 **Test plan:**
 - `pnpm test -- src/lib/components/layout`
+- Focused server/chat authorization tests for `/chat`, `/api/chat`, and chat tool allowlist behavior
 - `pnpm check --fail-on-warnings`
 - Manual inspect `/dashboard`, `/analytics`, `/catalog`, `/beans`, `/roast`, `/profit`, `/api-dashboard`, `/chat` on desktop and 375px mobile viewport.
 
 **Risks:**
 - Label churn can become bikeshedding. Mitigation: keep labels descriptive and reversible.
 - `getCurrentRouteLabel()` is used for the mobile header title — verify all routes still resolve correctly after the label changes.
-- Acknowledged inconsistency: chat workspace types (roasting, inventory) still appear inside chat for Intelligence-only users until PR 06. This is an accepted gap, not a regression.
+- Chat workspace type labels may stay visually imperfect until PR 06, but server-side tool access cannot be imperfect. Intelligence-only users must not receive Roasting/member-only tools even if some UI copy still references roasting or inventory contexts.
 
 ### PR 02: Dashboard becomes Intelligence Home
 
@@ -542,7 +555,8 @@ Any decision/action affordance in this program must either:
 - **Risk: naming sprawl.** Mitigation: use the canonical naming map. Do not add new Studio names or new intelligence product brands in this program.
 - **Risk: backend pressure creeps in.** Mitigation: the front-end framing wave through PR 04 must pass the mergeable-slice gate without DB or API changes. Anything needing persistence, alerting, exports, inventory matching, or entitlement changes becomes a separate backend-backed plan.
 - **Risk: chat gate change breaks existing member experience.** Mitigation: the change is additive (`ppiAccess || member`); existing member users are unaffected. Test both paths explicitly in PR 01.
-- **Risk: acknowledged inconsistency in chat workspace types.** Workspace types (roasting, inventory) remain visible inside chat for Intelligence-only users until PR 06. This is a known gap, documented here, not a regression.
+- **Risk: frontend-only chat access would create a broken or unsafe half-open state.** Mitigation: PR 01 must update `hooks.server.ts`, `/api/chat`, and server-side chat tool gating together with the Svelte page gate.
+- **Risk: acknowledged inconsistency in chat workspace type labels.** Workspace types (roasting, inventory) may remain visually rough until PR 06, but the tool allowlist must already enforce entitlements server-side.
 
 Rollback is straightforward for PR 01 and PR 02: revert copy/navigation changes. No data migrations or API changes are involved.
 
@@ -553,14 +567,14 @@ Rollback is straightforward for PR 01 and PR 02: revert copy/navigation changes.
 3. Treat the core product as green coffee supply-chain intelligence first.
 4. Parchment Intelligence remains the paid analytics package name unless a separate naming decision supersedes it.
 5. Navigation section IDs: `'intelligence' | 'roasting' | 'developer' | 'admin'`.
-6. Chat gate: `ppiAccess || checkRole(role, 'member')`. Intelligence users get sourcing-focused chat; Roasting users get roasting-focused chat; both use the shared substrate.
+6. Chat gate: `ppiAccess || checkRole(role, 'member')` in both presentation and server authorization. PR 01 must update `/chat` route protection, `/api/chat` authorization, and server-side chat tool gating so Intelligence users get sourcing-focused chat while Roasting users keep the full shared substrate.
 7. Green coffee inventory is an Intelligence-tier tool (sourcing research), not Roasting-tier exclusive.
 8. `ppi_access` boolean remains the intelligence gate; no new `user_roles` column needed for reports. Reports subscription sets `ppi_access = true`; feature depth differentiated by subscription lookup in `billing_subscriptions`.
 9. Viewer tier is a meaningful product floor with intentional login gating. Anonymous access is deliberately limited.
 10. Upgrade prompts: strong and persistent for viewer tier; contextual and light for paying users missing one tier.
 11. Reports content: in-app from launch (daily live dashboard, weekly brief, monthly deep dive); email delivery is a future addition.
 12. Analytics-to-chat state contract must be defined as a TypeScript interface before PR 04 is scoped.
-13. Workspace types in chat (roasting, inventory) grayed out for non-Roasting users with a short upgrade note. Not rebuilt in this program; addressed in PR 06 framing only.
+13. Workspace types in chat (roasting, inventory) grayed out for non-Roasting users with a short upgrade note. Not rebuilt in this program; addressed in PR 06 framing only. This is a UI framing deferral, not an authorization deferral; restricted server tools must ship with the PR 01 chat access change.
 
 ## Remaining open items
 
