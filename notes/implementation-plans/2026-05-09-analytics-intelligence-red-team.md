@@ -1,8 +1,8 @@
 # Red-team: Analytics Intelligence Reframe Program
 
-**Date:** 2026-05-09  
-**Target plan:** `notes/implementation-plans/2026-05-08-analytics-intelligence-reframe.md`  
-**Mode:** strategy / implementation-plan red team  
+**Date:** 2026-05-09
+**Target plan:** `notes/implementation-plans/2026-05-08-analytics-intelligence-reframe.md`
+**Mode:** strategy / implementation-plan red team
 **Verdict:** ready with fixes before execution beyond PR 01
 
 ## 1. Executive verdict
@@ -213,10 +213,10 @@ None. The plan is not fundamentally wrong. PR 01 can proceed if narrowed to taxo
 
 ## Operator summary
 
-VERDICT: ready_with_fixes  
-P0: 0  
-P1: 5  
-P2: 6  
-P3: 3  
-NEXT_ACTION: patch_plan  
+VERDICT: ready_with_fixes
+P0: 0
+P1: 5
+P2: 6
+P3: 3
+NEXT_ACTION: patch_plan
 REPORT: `notes/implementation-plans/2026-05-09-analytics-intelligence-red-team.md`
