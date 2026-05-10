@@ -2,7 +2,7 @@
 
 Maps strategy docs, code, and audit findings to extracted ideas and published posts. This is the traceability and coherence layer between what is written publicly and what exists in the repos.
 
-_Last coherence audit: 2026-05-03_
+_Last coherence audit: 2026-05-10_
 
 ## Core strategy sources
 
@@ -46,6 +46,19 @@ _Last coherence audit: 2026-05-03_
 | coffee-scraper PRs #237/#239                                  | Runtime preflight and architecture docs refresh       | Useful product-quality evidence, but not strong enough for a standalone blog idea this week                   |
 | purveyors-cli PR #103                                         | Structured process catalog filters                    | Confirms process transparency is now a cross-surface API/CLI/web story, not just a catalog UI detail          |
 | open Coffee Intelligence draft PRs #228/#267/#285             | Active draft queue                                    | Flagged as stale snapshot risk; refresh, close, or rebase before promotion                                    |
+
+
+## Recent source material checked in this audit (2026-05-04 to 2026-05-10)
+
+| Source | Audit use | Outcome |
+| --- | --- | --- |
+| coffee-app PRs #331/#347/#355 plus canonical matching plans | Similarity, member comparison, and bean identity review | Added new raw api-architecture idea: `When are two coffees the same coffee? Identity resolution as market infrastructure` |
+| coffee-app PR #354 and saved sourcing brief plans | Saved procurement intent and manual match API | Added new raw api-architecture idea: `Sourcing briefs are intent APIs, not saved searches` |
+| `notes/implementation-plans/2026-05-08-open-listing-schema-validator.md` | Open Coffee Listing Schema validator strategy | Added a narrower validator-first idea and strengthened `What If the Real Marketplace Is the Listing Schema?` |
+| coffee-app PR #335, coffee-scraper PRs #243/#246/#254, purveyors-cli PR #108, and open coffee-app PR #369 | Proof summaries, proof coverage, proof passport pilot/export, certification extraction, and proof-passport outline | Confirms proof and evidence envelopes are now the strongest api-architecture draft lane |
+| coffee-app PR #358 | Fresh Wednesday Coffee Intelligence draft with May 2026 live catalog data | Becomes the highest-leverage near-term publish candidate because it is current, complete, and mergeable |
+| purveyors-cli PR #112 and Parchment Intelligence CLI plans | Agent-facing CLI parity for similarity and price-index surfaces | Confirms CLI remains central to the product vision, but blog claims should wait for merged/released CLI features |
+| open blog PR queue | Active publication risk review | PR #358 and #369 are mergeable and strategically aligned; PR #301 and #287 are conflicting; older Coffee Intelligence drafts #228/#267/#285 should be refreshed or closed before promotion |
 
 ## Published Posts
 
