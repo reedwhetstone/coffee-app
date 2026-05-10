@@ -2,7 +2,49 @@
 
 **Date:** 2026-05-08
 **Mode:** multi-stage implementation plan
-**Status:** Proposed
+**Status:** Consolidated implementation plan; PRs not started
+
+## Consolidated source inputs
+
+This plan consolidates:
+
+- Reed's May 8 refactor thesis: Purveyors is analytics and intelligence first; Mallard Studio should not obscure the core product strategy.
+- The initial codebase red-team: preserve the data rails that make intelligence valuable, but demote CRUD theater into analysis-native ingestion and personalization context.
+- The May 8 implementation plan: sequence the work as small, mergeable frontend-first PRs instead of a risky deletion/replatforming pass.
+- Reed's May 9 chat-layer correction: chat, CLI-backed actions, and GenUI belong to the intelligence layer first; Mallard Studio is a focused add-on over the same shared substrate.
+- The May 9 analytics UI/UX references: analytics should become a command center where market read, filters, evidence, and next actions converge.
+- The May 9 red-team report: avoid fake capture theater, naming sprawl, generic AI boxes, anonymous power-tool leakage, and insight claims without provenance.
+- Reed's May 10 strategic correction: roasters remain primary users, but the core product category is green coffee supply-chain intelligence, not another roasting tool.
+
+## Executive implementation thesis
+
+Purveyors should present one clear hierarchy:
+
+1. **Core product:** green coffee supply-chain intelligence for roasters, green buyers, coffee businesses, developers, API users, and agents.
+2. **Primary surfaces:** analytics, catalog, chat/ask, CLI/API, proof, and decision workflows.
+3. **Personalization layer:** Mallard Studio, where owned inventory, roast history, tasting, and margin context make the intelligence more specific to the user's operation.
+
+The first implementation wave is intentionally frontend-first and no-backend. It should make the product thesis legible without deleting routes, changing schemas, faking persistence, or overclaiming what analytics can prove. Each PR must be independently mergeable if the rest of the program never ships.
+
+## Locked decisions
+
+- Purveyors is green coffee supply-chain intelligence first.
+- Roasters remain primary users, but the product integrates with their existing infrastructure instead of competing as a generic roasting suite.
+- Mallard Studio remains the only Studio name. Do not introduce Personal Studio, Roaster Studio, My Studio, or another Studio brand.
+- Mallard Studio is a context layer and workflow pack, not the umbrella product.
+- Chat/Ask, GenUI, CLI-backed actions, and API-backed workflows are core intelligence capabilities, not Mallard-only features.
+- Current inventory means owned-stock context. Researched, tracked, watched, compared, and shortlisted coffees require a future saved-object model.
+- No non-persistent UI may claim saved/watch/shortlist/export success. Unsupported actions must route honestly, hand off to scoped chat honestly, be disabled previews, or be omitted.
+- Public analytics proves value. Member/API surfaces deliver leverage. Do not leak power-user workflows into anonymous access.
+
+## Implementation spine
+
+1. **PR 01: Intelligence-first navigation taxonomy.** Establish the hierarchy without route changes or new behavior.
+2. **PR 02: Dashboard becomes Intelligence Home.** Replace the generic launcher with a clear intelligence landing page using only existing data or copy/layout.
+3. **PR 03: Analytics command-center layout pass.** Make analytics the working surface for market read, filters, insight hierarchy, evidence, and bounded action context.
+4. **PR 04: Analytics action CTA primitive.** Add only honest action affordances according to the capability matrix.
+5. **PR 05: Catalog-to-intelligence connective tissue.** Reframe catalog as the supply substrate behind analytics and sourcing decisions.
+6. **PR 06: Mallard Studio boundary cleanup.** Keep roaster workflows useful, but frame them as personalization context for intelligence.
 
 ## Feature or program
 
