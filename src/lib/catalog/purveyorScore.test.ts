@@ -115,6 +115,27 @@ describe('Purveyor Score', () => {
 		expect(summary.confidence).toBeLessThan(0.5);
 	});
 
+	it('preserves processing evidence confidence from resource projections', () => {
+		const withoutEvidence = calculatePurveyorScore(
+			createCoffee({
+				processing_evidence: null,
+				processing_evidence_available: false
+			})
+		);
+		const withProjectedEvidence = calculatePurveyorScore({
+			...createCoffee({
+				processing_evidence: null,
+				processing_evidence_available: false
+			}),
+			process: { evidence_available: true }
+		} as CoffeeCatalog);
+
+		expect(withProjectedEvidence.confidence).toBeGreaterThan(withoutEvidence.confidence);
+		expect(withProjectedEvidence.factors.confidence_signals.processing_evidence_available).toBe(
+			true
+		);
+	});
+
 	it('prefers stored score fields when present', () => {
 		const summary = getPurveyorScoreSummary(
 			createCoffee({

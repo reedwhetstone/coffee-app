@@ -90,6 +90,184 @@ export type Database = {
 					}
 				];
 			};
+			bean_identities: {
+				Row: {
+					canonical_name: string | null;
+					created_at: string;
+					id: string;
+					metadata: Json;
+					primary_catalog_id: number | null;
+					status: string;
+					superseded_by: string | null;
+					updated_at: string;
+				};
+				Insert: {
+					canonical_name?: string | null;
+					created_at?: string;
+					id?: string;
+					metadata?: Json;
+					primary_catalog_id?: number | null;
+					status?: string;
+					superseded_by?: string | null;
+					updated_at?: string;
+				};
+				Update: {
+					canonical_name?: string | null;
+					created_at?: string;
+					id?: string;
+					metadata?: Json;
+					primary_catalog_id?: number | null;
+					status?: string;
+					superseded_by?: string | null;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'bean_identities_primary_catalog_id_fkey';
+						columns: ['primary_catalog_id'];
+						isOneToOne: false;
+						referencedRelation: 'coffee_catalog';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'bean_identities_superseded_by_fkey';
+						columns: ['superseded_by'];
+						isOneToOne: false;
+						referencedRelation: 'bean_identities';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			bean_identity_events: {
+				Row: {
+					action: string;
+					actor_id: string | null;
+					created_at: string;
+					id: string;
+					identity_id: string | null;
+					link_id: string | null;
+					payload: Json;
+				};
+				Insert: {
+					action: string;
+					actor_id?: string | null;
+					created_at?: string;
+					id?: string;
+					identity_id?: string | null;
+					link_id?: string | null;
+					payload?: Json;
+				};
+				Update: {
+					action?: string;
+					actor_id?: string | null;
+					created_at?: string;
+					id?: string;
+					identity_id?: string | null;
+					link_id?: string | null;
+					payload?: Json;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'bean_identity_events_identity_id_fkey';
+						columns: ['identity_id'];
+						isOneToOne: false;
+						referencedRelation: 'bean_identities';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'bean_identity_events_link_id_fkey';
+						columns: ['link_id'];
+						isOneToOne: false;
+						referencedRelation: 'bean_identity_links';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			bean_identity_links: {
+				Row: {
+					active: boolean;
+					blockers: Json;
+					classifier_version: string | null;
+					coffee_catalog_id: number;
+					created_at: string;
+					dimension_scores: Json;
+					id: string;
+					identity_id: string;
+					metadata: Json;
+					proof_summary_snapshot: Json;
+					proposed_at: string;
+					proposed_by: string | null;
+					reason_codes: string[];
+					reviewed_at: string | null;
+					reviewed_by: string | null;
+					status: string;
+					superseded_by: string | null;
+					updated_at: string;
+				};
+				Insert: {
+					active?: boolean;
+					blockers?: Json;
+					classifier_version?: string | null;
+					coffee_catalog_id: number;
+					created_at?: string;
+					dimension_scores?: Json;
+					id?: string;
+					identity_id: string;
+					metadata?: Json;
+					proof_summary_snapshot?: Json;
+					proposed_at?: string;
+					proposed_by?: string | null;
+					reason_codes?: string[];
+					reviewed_at?: string | null;
+					reviewed_by?: string | null;
+					status?: string;
+					superseded_by?: string | null;
+					updated_at?: string;
+				};
+				Update: {
+					active?: boolean;
+					blockers?: Json;
+					classifier_version?: string | null;
+					coffee_catalog_id?: number;
+					created_at?: string;
+					dimension_scores?: Json;
+					id?: string;
+					identity_id?: string;
+					metadata?: Json;
+					proof_summary_snapshot?: Json;
+					proposed_at?: string;
+					proposed_by?: string | null;
+					reason_codes?: string[];
+					reviewed_at?: string | null;
+					reviewed_by?: string | null;
+					status?: string;
+					superseded_by?: string | null;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'bean_identity_links_coffee_catalog_id_fkey';
+						columns: ['coffee_catalog_id'];
+						isOneToOne: false;
+						referencedRelation: 'coffee_catalog';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'bean_identity_links_identity_id_fkey';
+						columns: ['identity_id'];
+						isOneToOne: false;
+						referencedRelation: 'bean_identities';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'bean_identity_links_superseded_by_fkey';
+						columns: ['superseded_by'];
+						isOneToOne: false;
+						referencedRelation: 'bean_identity_links';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			artisan_import_log: {
 				Row: {
 					artisan_version: string | null;
@@ -922,6 +1100,50 @@ export type Database = {
 						foreignKeyName: 'user_ai_context_user_id_fkey';
 						columns: ['user_id'];
 						isOneToOne: true;
+						referencedRelation: 'user_roles';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			sourcing_briefs: {
+				Row: {
+					cadence: string;
+					created_at: string;
+					criteria: Json;
+					id: string;
+					is_active: boolean;
+					last_run_at: string | null;
+					name: string;
+					updated_at: string;
+					user_id: string;
+				};
+				Insert: {
+					cadence?: string;
+					created_at?: string;
+					criteria: Json;
+					id?: string;
+					is_active?: boolean;
+					last_run_at?: string | null;
+					name: string;
+					updated_at?: string;
+					user_id: string;
+				};
+				Update: {
+					cadence?: string;
+					created_at?: string;
+					criteria?: Json;
+					id?: string;
+					is_active?: boolean;
+					last_run_at?: string | null;
+					name?: string;
+					updated_at?: string;
+					user_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'sourcing_briefs_user_id_fkey';
+						columns: ['user_id'];
+						isOneToOne: false;
 						referencedRelation: 'user_roles';
 						referencedColumns: ['id'];
 					}

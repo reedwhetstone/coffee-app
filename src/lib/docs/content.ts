@@ -95,6 +95,12 @@ export const DOCS_NAV: DocsNavSection[] = [
 					'The beta /v1/catalog/{id}/similar endpoint for member and paid API matching workflows.'
 			},
 			{
+				slug: 'procurement-briefs',
+				title: 'Procurement briefs',
+				summary:
+					'User-owned saved sourcing criteria and manual catalog matches for procurement workflows.'
+			},
+			{
 				slug: 'platform',
 				title: 'Internal app routes',
 				summary:
@@ -474,6 +480,8 @@ const docsPages: DocsPage[] = [
 					'/api-dashboard is the Parchment Console for API keys, usage, subscriptions, and account-aware billing flows.',
 					'/catalog and /analytics are end-user product surfaces that reflect the same coffee domain model as the API.',
 					'/docs is the shared public documentation tree for both the HTTP API and @purveyors/cli.',
+					'/llms.txt, /sitemap.xml, and /blog/feed.xml are anonymous discoverability endpoints for agents, crawlers, and feed readers. They expose navigation metadata, not integration data contracts.',
+					'/auth/callback and /auth/cli-callback are OAuth handoff surfaces. They are part of login flow reliability, not REST API resources.',
 					'The web app imports @purveyors/cli modules directly for chat tooling, so CLI and product behavior should stay aligned.'
 				]
 			}
@@ -511,7 +519,7 @@ const docsPages: DocsPage[] = [
 		intro: [
 			'GET /v1/catalog is the canonical external endpoint. It returns normalized coffee listings with origin, legacy processing labels, structured process transparency fields, Purveyor Score metadata, pricing, price tiers, and availability metadata.',
 			`The endpoint supports three canonical auth contexts: anonymous, first-party session, and API key. Anonymous, viewer-session, and API Green requests share the basic public catalog query surface. Member/admin sessions and paid API tiers additionally unlock structured process facet filters. Public callers can still inspect factual process fields in full rows; the gated feature is process search leverage, not data visibility. API-key requests use plan-based limits and are the intended production integration path because they emit X-RateLimit-* headers and durable quota metadata. When page and limit are both omitted, the canonical listing path defaults to page 1 and up to ${DEFAULT_CATALOG_LISTING_LIMIT} rows before any plan-based cap is applied. Explicit limit values above ${MAX_CATALOG_PAGE_LIMIT} are rejected with HTTP 400 so pagination metadata stays truthful.`,
-			'Use include=proof when callers need compact proof-summary families for process, provenance, freshness, and pricing. Proof summaries are cautious catalog signals, not certifications, and raw supplier evidence remains withheld.'
+			'Use include=proof when callers need compact proof-summary families for process, provenance, freshness, and pricing. Proof summaries are cautious catalog signals, not certifications, and raw supplier evidence remains withheld. Use GET /v1/catalog/proof-coverage when callers need aggregate proof label distributions and gap counts for the same visible catalog scope.'
 		],
 		sections: [
 			{
@@ -519,6 +527,7 @@ const docsPages: DocsPage[] = [
 				bullets: [
 					'GET /v1 returns the public namespace descriptor and links callers to /v1/catalog and /v1/price-index.',
 					'GET /v1/catalog is the source-of-truth public contract for integrations.',
+					'GET /v1/catalog/proof-coverage returns aggregate proof-summary coverage for the visible catalog scope without raw evidence, supplier quotes, certification language, or row-level proof search leverage.',
 					'GET /v1/catalog/{id}/similar is the beta matching endpoint in the catalog family. It is not anonymous, and it should be presented as candidate discovery rather than accepted identity resolution.',
 					'GET /api/catalog-api is a deprecated API-key-only alias to the canonical handler. Responses include Deprecation: true, Link: </v1/catalog>; rel="successor-version", and Sunset: Thu, 31 Dec 2026 23:59:59 GMT.',
 					'GET /api/catalog also delegates to the same catalog resource, but it is an internal adapter with legacy response-shape behavior and should not be treated as a long-term external contract.'
@@ -710,6 +719,27 @@ const docsPages: DocsPage[] = [
 						label: 'Paginated dropdown projection',
 						language: 'bash',
 						code: 'curl "https://purveyors.io/v1/catalog?fields=dropdown&page=2&limit=15"'
+					}
+				]
+			},
+			{
+				title: 'Proof coverage aggregate',
+				body: [
+					'GET /v1/catalog/proof-coverage summarizes the same proof-summary vocabulary exposed by include=proof. It reports overall labels, family label distributions, signal counts, top missing families, and explicit limitations for the visible catalog scope.',
+					'The endpoint is aggregate-only. It is safe as a public proof-of-value surface because it does not expose raw processing_evidence, raw supplier quotes, row-level evidence, certification claims, supplier rankings, or paid proof-query filters.',
+					'API-key requests preserve X-RateLimit-* headers and plan-scoped visibility. Anonymous and session requests follow the same catalog visibility and process-facet capability rules as /v1/catalog.'
+				],
+				codeBlocks: [
+					{
+						label: 'GET /v1/catalog/proof-coverage',
+						language: 'json',
+						code: '{\n  "resource": "catalog-proof-coverage",\n  "namespace": "/v1/catalog/proof-coverage",\n  "version": "v1",\n  "scope": { "total_rows": 814 },\n  "overall": [{ "label": "strong", "count": 488, "share": 0.6 }],\n  "families": {\n    "process": [{ "label": "disclosed", "count": 260, "share": 0.319 }]\n  },\n  "signals": { "process.base_method": 260 },\n  "top_gaps": [{ "family": "process", "label": "not_available", "count": 320, "share": 0.393 }],\n  "limitations": ["not_certification", "raw_evidence_not_included"]\n}'
+					},
+					{
+						label: 'Proof coverage smoke test',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/catalog/proof-coverage?stocked=true" \\\
+  -H "Authorization: Bearer $PURVEYORS_API_KEY"'
 					}
 				]
 			},
@@ -1019,6 +1049,111 @@ const docsPages: DocsPage[] = [
 			}
 		]
 	},
+
+	{
+		section: 'api',
+		slug: 'procurement-briefs',
+		title: 'Procurement briefs API',
+		summary:
+			'Create saved sourcing criteria and run deterministic catalog matches for procurement workflows.',
+		eyebrow: 'Procurement seed',
+		intro: [
+			'Procurement briefs save a narrow, versioned sourcing intent for one account. They are the durable contract for agents, CLI workflows, and later web surfaces that need to ask: what currently matches this buying brief?',
+			'The first version deliberately supports only pre-pagination-safe catalog constraints. Unsupported filters are rejected instead of stored as no-ops, and manual matches explain why each returned listing satisfies the saved criteria without ranking the coffee as objectively better.'
+		],
+		sections: [
+			{
+				title: 'Endpoint and access',
+				table: {
+					headers: ['Route', 'Method', 'Auth', 'Contract'],
+					rows: [
+						[
+							'/v1/procurement/briefs',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Lists active saved briefs owned by the caller.'
+						],
+						[
+							'/v1/procurement/briefs',
+							'POST',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Creates one active manual brief after validating the versioned criteria contract.'
+						],
+						[
+							'/v1/procurement/briefs/{id}',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Returns one active caller-owned brief.'
+						],
+						[
+							'/v1/procurement/briefs/{id}/matches',
+							'GET',
+							'Member/admin session or API key with API Origin or Enterprise plus catalog:read',
+							'Applies saved criteria to current catalog rows before pagination and returns match reasons plus limitations.'
+						]
+					]
+				},
+				bullets: [
+					'Anonymous callers receive 401 Authentication required.',
+					'Signed-in viewers and API Green keys receive a structured 403 entitlement error before brief data is read or written.',
+					'API-key requests use the same X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, and Retry-After conventions as other paid API routes.',
+					'Brief records are user-owned; one caller cannot fetch or run another account’s brief.'
+				]
+			},
+			{
+				title: 'Criteria contract',
+				body: [
+					'Every stored criteria object is normalized to version: 1. The supported fields are country, region, processing, processing_base_method, max_price_per_lb, stocked_only, wholesale_only, and stocked_days.',
+					'At least one supported sourcing constraint is required. Unknown fields, wrong value types, empty strings, invalid versions, and out-of-range stocked_days values return 400 with an issues array and allowedFields.'
+				],
+				codeBlocks: [
+					{
+						label: 'Create a washed Colombia brief',
+						language: 'bash',
+						code: 'curl -X POST "https://purveyors.io/v1/procurement/briefs" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key" \\\n  -H "Content-Type: application/json" \\\n  --data \'{\n    "name": "Washed Colombia under 6.50",\n    "criteria": {\n      "country": "Colombia",\n      "processing_base_method": "Washed",\n      "max_price_per_lb": 6.5,\n      "stocked_only": true\n    }\n  }\''
+					}
+				]
+			},
+			{
+				title: 'Manual matches',
+				body: [
+					'GET /v1/procurement/briefs/{id}/matches accepts page and limit query parameters. limit defaults to 25 and is capped at 100.',
+					'The response includes data rows in the catalog resource shape with matchReasons, truthful pagination, generatedAt, the saved brief, the criteria used, and limitations explaining that deterministic matches are not quality rankings.'
+				],
+				codeBlocks: [
+					{
+						label: 'Run one brief manually',
+						language: 'bash',
+						code: 'curl "https://purveyors.io/v1/procurement/briefs/00000000-0000-4000-8000-000000000000/matches?limit=10" \\\n  -H "Authorization: Bearer pk_live_origin_or_enterprise_key"'
+					},
+					{
+						label: 'Invalid criteria response',
+						language: 'json',
+						code: '{\n  "error": "Invalid criteria",\n  "message": "Sourcing brief criteria contains unsupported or invalid fields",\n  "details": {\n    "issues": [\n      {\n        "field": "unsupported_filter",\n        "message": "unsupported_filter is not supported by sourcing brief criteria"\n      }\n    ],\n    "allowedFields": ["country", "region", "processing", "processing_base_method", "max_price_per_lb", "stocked_only", "wholesale_only", "stocked_days"]\n  }\n}'
+					}
+				]
+			}
+		],
+		related: [
+			{
+				href: '/docs/api/catalog',
+				label: 'Catalog API',
+				description: 'The current catalog rows matched by saved procurement criteria.'
+			},
+			{
+				href: '/docs/api/catalog-similarity',
+				label: 'Catalog similarity',
+				description:
+					'Beta matching primitives that remain separate from deterministic sourcing-brief matches.'
+			},
+			{
+				href: '/docs/api/errors',
+				label: 'Errors and auth',
+				description: 'Shared auth, entitlement, validation, and rate-limit conventions.'
+			}
+		]
+	},
+
 	{
 		section: 'api',
 		slug: 'platform',
@@ -1056,6 +1191,13 @@ const docsPages: DocsPage[] = [
 							'Member session or API key with API Origin or Enterprise plus catalog:read',
 							'Beta external contract',
 							'Catalog similarity candidates with target, grouped canonical candidates vs similar recommendations, score dimensions, identity blocker reasons, price deltas, and cautious beta copy.'
+						],
+						[
+							'/v1/procurement/briefs',
+							'GET, POST',
+							'Member session or API key with API Origin or Enterprise plus catalog:read',
+							'Stable external procurement seed',
+							'Creates and lists user-owned saved sourcing criteria. /v1/procurement/briefs/{id} gets one brief, and /v1/procurement/briefs/{id}/matches runs deterministic catalog matches.'
 						],
 						[
 							'/v1/price-index',
@@ -1276,6 +1418,59 @@ const docsPages: DocsPage[] = [
 					'Outside the JSON route layer, /api/docs and /api-dashboard/docs are legacy docs entry points that 307 redirect to /docs/api/overview.',
 					'Treat /docs as the canonical information architecture, /api as the product page, and /api-dashboard as the authenticated Console surface.'
 				]
+			},
+			{
+				title: 'Metadata, auth handoff, and crawler routes',
+				body: [
+					'These routes are public or browser-reachable support surfaces. They improve agent onboarding, search discovery, feed subscriptions, OAuth reliability, or browser tooling compatibility, but they are not public data APIs.'
+				],
+				table: {
+					headers: ['Route', 'Methods', 'Auth', 'Stability', 'Notes'],
+					rows: [
+						[
+							'/llms.txt',
+							'GET',
+							'Anonymous',
+							'Agent discoverability metadata',
+							'Plain-text overview for agents with links to public pages, docs, API contracts, blog posts, and supported workflows.'
+						],
+						[
+							'/sitemap.xml',
+							'GET',
+							'Anonymous',
+							'Crawler metadata',
+							'XML sitemap covering public pages, published blog posts, and the docs navigation generated from DOCS_NAV.'
+						],
+						[
+							'/blog/feed.xml',
+							'GET',
+							'Anonymous',
+							'RSS feed',
+							'RSS 2.0 feed for published blog posts. It is content syndication, not a catalog or analytics API.'
+						],
+						[
+							'/auth/callback',
+							'GET',
+							'OAuth code',
+							'Auth handoff route',
+							'Exchanges a Supabase auth code for a session, sanitizes next to an internal path, and redirects to the target or /auth/auth-code-error.'
+						],
+						[
+							'/auth/cli-callback',
+							'GET',
+							'OAuth redirect target',
+							'CLI login helper page',
+							'Browser page that lets remote and headless CLI flows copy the full callback URL back into purvey auth login.'
+						],
+						[
+							'/.well-known/appspecific/com.chrome.devtools.json',
+							'GET',
+							'Anonymous',
+							'Browser tooling compatibility',
+							'Returns an empty JSON object for Chrome DevTools app-specific probing. It has no product data contract.'
+						]
+					]
+				}
 			},
 			{
 				title: 'Deprecated tool routes',

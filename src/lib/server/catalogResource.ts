@@ -1,8 +1,10 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { getCatalogDropdown, searchCatalog, searchCatalogDropdown } from '$lib/data/catalog';
+import { createCatalogProofCoverage } from '$lib/catalog/proofCoverage';
 import {
 	toCatalogResourceItem,
 	withCatalogProofSummary,
+	type CatalogResourceItem,
 	type CatalogResponseItem
 } from '$lib/catalog/catalogResourceItem';
 import {
@@ -138,10 +140,12 @@ interface CatalogAccessContext {
 
 interface QueryCatalogDataOptions {
 	forceDefaultPagination?: boolean;
+	boundedUnpaginatedLimit?: number;
 }
 
 const ISO_DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const CATALOG_INCLUDE_VALUES = ['proof'] as const;
+const PROOF_COVERAGE_SCAN_LIMIT = MAX_CATALOG_PAGE_LIMIT;
 
 class CatalogRateLimitError extends Error {
 	constructor(
@@ -525,21 +529,34 @@ async function queryCatalogData(
 		!effectiveQuery.isPaginated &&
 		effectiveQuery.ids.length === 0 &&
 		effectiveQuery.fields !== 'dropdown';
+	const useBoundedUnpaginatedLimit =
+		!effectiveQuery.isPaginated &&
+		!useDefaultPagination &&
+		context.rowLimit === null &&
+		options.boundedUnpaginatedLimit !== undefined;
 	const requestedPage = effectiveQuery.isPaginated ? effectiveQuery.page : 1;
 	const requestedLimit = effectiveQuery.isPaginated
 		? effectiveQuery.limit
 		: useDefaultPagination
 			? DEFAULT_CATALOG_LISTING_LIMIT
-			: effectiveQuery.limit;
+			: useBoundedUnpaginatedLimit
+				? options.boundedUnpaginatedLimit!
+				: effectiveQuery.limit;
 	const requestedOffset = effectiveQuery.isPaginated ? effectiveQuery.offset : 0;
 	const useRowLimitedPagination =
 		!effectiveQuery.isPaginated && !useDefaultPagination && context.rowLimit !== null;
-	const isPaginated = effectiveQuery.isPaginated || useDefaultPagination || useRowLimitedPagination;
+	const isPaginated =
+		effectiveQuery.isPaginated ||
+		useDefaultPagination ||
+		useRowLimitedPagination ||
+		useBoundedUnpaginatedLimit;
+	const scopedLimit =
+		useRowLimitedPagination && context.rowLimit !== null ? context.rowLimit : requestedLimit;
 	const effectiveLimit = context.rowLimit
 		? isPaginated
-			? Math.min(requestedLimit, context.rowLimit)
+			? Math.min(scopedLimit, context.rowLimit)
 			: context.rowLimit
-		: requestedLimit;
+		: scopedLimit;
 	const page = isPaginated ? requestedPage : 1;
 	const offset = isPaginated ? requestedOffset : 0;
 
@@ -683,7 +700,10 @@ async function queryCatalogData(
 					showWholesale: context.showWholesale,
 					wholesaleOnly: context.wholesaleOnly,
 					rowLimit: context.rowLimit,
-					limited: context.rowLimit !== null && totalAvailable > context.rowLimit,
+					limited:
+						context.rowLimit !== null
+							? totalAvailable > context.rowLimit
+							: useBoundedUnpaginatedLimit && totalAvailable > dropdownResult.data.length,
 					totalAvailable
 				},
 				cache: {
@@ -772,7 +792,10 @@ async function queryCatalogData(
 				showWholesale: context.showWholesale,
 				wholesaleOnly: context.wholesaleOnly,
 				rowLimit: context.rowLimit,
-				limited: context.rowLimit !== null && totalAvailable > context.rowLimit,
+				limited:
+					context.rowLimit !== null
+						? totalAvailable > context.rowLimit
+						: useBoundedUnpaginatedLimit && totalAvailable > data.length,
 				totalAvailable
 			},
 			cache: {
@@ -783,11 +806,44 @@ async function queryCatalogData(
 	};
 }
 
+function buildProofCoverageUrl(url: URL): URL {
+	const coverageUrl = new URL(url);
+
+	// Coverage is an aggregate over the visible catalog scope. Projection and
+	// pagination controls are valid on /v1/catalog, but they must not truncate or
+	// change this aggregate contract.
+	for (const parameter of ['fields', 'include', 'page', 'limit']) {
+		coverageUrl.searchParams.delete(parameter);
+	}
+
+	return coverageUrl;
+}
+
+function getCoverageFilters(query: ParsedCatalogQuery): Record<string, unknown> {
+	const filters: Record<string, unknown> = {};
+
+	if (query.ids.length > 0) {
+		filters.ids = query.ids;
+	}
+
+	for (const [key, value] of Object.entries(query.filters)) {
+		if (value === undefined) continue;
+		if (Array.isArray(value) && value.length === 0) continue;
+		filters[key] = value;
+	}
+
+	return filters;
+}
+
 // Share the resolved catalog payload across route adapters so legacy shims do not
 // pay an extra parse/stringify pass on large unpaginated responses.
 async function resolveCatalogRouteResult(
 	event: RequestEvent,
-	options: { requestPath?: string; forceDefaultPagination?: boolean } = {}
+	options: {
+		requestPath?: string;
+		forceDefaultPagination?: boolean;
+		boundedUnpaginatedLimit?: number;
+	} = {}
 ): Promise<{
 	status: number;
 	body: CanonicalCatalogResponse | Record<string, unknown>;
@@ -824,7 +880,8 @@ async function resolveCatalogRouteResult(
 			};
 		}
 		const body = await queryCatalogData(context, query, {
-			forceDefaultPagination: options.forceDefaultPagination
+			forceDefaultPagination: options.forceDefaultPagination,
+			boundedUnpaginatedLimit: options.boundedUnpaginatedLimit
 		});
 		await logCatalogApiUsage(context, event, 200, startTime);
 
@@ -926,6 +983,57 @@ async function resolveCatalogRouteResult(
 			headers: new Headers()
 		};
 	}
+}
+
+export async function buildCatalogProofCoverageResponse(
+	event: RequestEvent,
+	options: { requestPath?: string } = {}
+): Promise<Response> {
+	const coverageUrl = buildProofCoverageUrl(event.url);
+	const coverageEvent = {
+		...event,
+		url: coverageUrl
+	} as RequestEvent;
+	const result = await resolveCatalogRouteResult(coverageEvent, {
+		requestPath: options.requestPath ?? '/v1/catalog/proof-coverage',
+		forceDefaultPagination: false,
+		boundedUnpaginatedLimit: PROOF_COVERAGE_SCAN_LIMIT
+	});
+
+	if (result.status >= 400) {
+		return jsonResponse(result.body, {
+			status: result.status,
+			headers: result.headers
+		});
+	}
+
+	const catalogBody = result.body as CanonicalCatalogResponse<CatalogResourceItem>;
+	const query = parseCatalogQuery(coverageUrl);
+	const coverage = createCatalogProofCoverage(catalogBody.data);
+	const generatedAt = new Date().toISOString();
+
+	return jsonResponse(
+		{
+			resource: 'catalog-proof-coverage',
+			namespace: '/v1/catalog/proof-coverage',
+			version: 'v1',
+			generated_at: generatedAt,
+			scope: {
+				auth: catalogBody.meta.auth,
+				filters: getCoverageFilters(query),
+				access: catalogBody.meta.access,
+				total_rows: catalogBody.data.length,
+				total_available: catalogBody.meta.access.totalAvailable,
+				limited: catalogBody.data.length < catalogBody.meta.access.totalAvailable,
+				scan_limit: catalogBody.pagination?.limit ?? catalogBody.meta.access.rowLimit
+			},
+			...coverage
+		},
+		{
+			status: result.status,
+			headers: result.headers
+		}
+	);
 }
 
 export async function buildCanonicalCatalogResponse(

@@ -62,6 +62,8 @@ Purveyors ships two API layers:
    - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation`, `Link`, and `Sunset: Dec 31 2026` headers
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `/docs/api/overview`
+   - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are metadata or compatibility endpoints, not catalog or analytics APIs
+   - `/auth/callback` and `/auth/cli-callback` are OAuth handoff surfaces, not REST resources
    - `/api/tools/*` routes are deprecated compatibility shims; prefer shared CLI-library integration for new work
 
 Do not document the whole `/api/*` tree as a stable public contract. The stable public catalog feed is `/v1/catalog`; `/v1/catalog/{id}/similar` is beta and access-gated; `/v1/price-index` is aggregate-only and entitlement-gated. The broader `/api/*` tree should be described as platform/internal routes with explicit auth and stability labels.

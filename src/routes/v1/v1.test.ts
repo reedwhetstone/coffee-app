@@ -37,6 +37,20 @@ describe('/v1 discovery route', () => {
 				sunset: 'Thu, 31 Dec 2026 23:59:59 GMT'
 			})
 		);
+		expect(body.resources.proofCoverage).toMatchObject({
+			href: '/v1/catalog/proof-coverage',
+			status: 'live',
+			auth: {
+				anonymous: true,
+				session: true,
+				apiKey: true
+			},
+			source: {
+				resource: '/v1/catalog',
+				aggregateOnly: true,
+				rawEvidenceIncluded: false
+			}
+		});
 		expect(body.resources.priceIndex).toMatchObject({
 			href: '/v1/price-index',
 			status: 'live',
@@ -52,6 +66,21 @@ describe('/v1 discovery route', () => {
 				table: 'price_index_snapshots',
 				aggregateOnly: true
 			}
+		});
+		expect(body.resources.procurementBriefs).toMatchObject({
+			href: '/v1/procurement/briefs',
+			status: 'live',
+			auth: {
+				anonymous: false,
+				session: true,
+				apiKey: true
+			},
+			access: {
+				session: 'requires member or admin role',
+				apiKey: 'requires member or enterprise API plan'
+			},
+			capabilities: ['create', 'list', 'get', 'manualMatches'],
+			matchRoute: '/v1/procurement/briefs/:id/matches'
 		});
 	});
 });
