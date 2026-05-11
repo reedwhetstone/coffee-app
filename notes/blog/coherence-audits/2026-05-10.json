@@ -1,0 +1,159 @@
+{
+	"auditDate": "2026-05-10",
+	"mode": "strategy-alignment",
+	"canonicalSourcesChecked": [
+		"notes/PRODUCT_VISION.md",
+		"notes/BLOG_STRATEGY.md",
+		"notes/decisions/002-api-first-external-internal-split.md",
+		"notes/decisions/003-public-analytics-three-chart-free-gate.md",
+		"notes/decisions/004-processing-transparency-schema-api.md",
+		"notes/decisions/005-catalog-access-level-positioning.md",
+		"notes/blog/ideas.md",
+		"notes/blog/source-map.md",
+		"notes/blog/outlines/*.md",
+		"open coffee-app blog/docs PRs",
+		"recent coffee-app, coffee-scraper, and purveyors-cli changes since 2026-04-27"
+	],
+	"activeAlignmentRisks": [
+		{
+			"risk": "api-architecture still has no published post even though the product vision now centers API, CLI, and agent-readable coffee intelligence",
+			"evidence": [
+				"Published pillar balance on origin/main remains agentic-stack 7, supply-chain 3, coffee-data-pipeline 2, ai-first-product 1, market-intelligence 1, api-architecture 0.",
+				"The strongest recent work is API-shaped: proof summaries and coverage, canonical similarity and bean identity review, saved sourcing briefs, Open Coffee listing schema validation, price-index API activation, and CLI parity."
+			],
+			"recommendedAction": "Draft an api-architecture post after resolving the current mergeable Coffee Intelligence draft. The proof-passports outline in PR #369 is the freshest route."
+		},
+		{
+			"risk": "publication cadence is blocked more by open-PR queue management than by lack of ideas",
+			"evidence": [
+				"Latest published frontmatter date on origin/main is 2026-04-07.",
+				"Open complete blog drafts include #358, #301, #287, #285, #267, and #228. PR #358 is mergeable and current; #301 and #287 are conflicting; older Coffee Intelligence drafts carry stale snapshot risk."
+			],
+			"recommendedAction": "Review and merge, revise, or close existing draft PRs before opening another full draft. Prefer #358 first because it uses fresh May 2026 catalog data."
+		},
+		{
+			"risk": "the backlog is tilting toward outlined theory while product evidence is moving faster than draft conversion",
+			"evidence": [
+				"There are many active api-architecture outlines, but none have become published posts.",
+				"Recent platform work now provides concrete implementation evidence for identity resolution, sourcing intent, proof passports, and listing validation."
+			],
+			"recommendedAction": "Pick one implementation-backed API post and draft it tightly instead of adding more broad B2CC or GenUI outlines."
+		},
+		{
+			"risk": "BLOG_STRATEGY metadata is stale even though the strategic content remains useful",
+			"evidence": [
+				"BLOG_STRATEGY still says Active (10 posts live) and Updated 2026-03-20 while origin/main has 14 published posts and the product vision was updated 2026-05-10.",
+				"The cadence and quality rules still hold, so this is not a blocker."
+			],
+			"recommendedAction": "Refresh BLOG_STRATEGY metadata in a later lightweight docs PR if it starts confusing planning. No immediate content rewrite needed."
+		}
+	],
+	"newIdeas": [
+		{
+			"title": "When are two coffees the same coffee? Identity resolution as market infrastructure",
+			"pillar": "api-architecture",
+			"status": "raw",
+			"source": "notes/implementation-plans/2026-05-04-canonical-green-coffee-matching.md; coffee-app PRs #331/#347/#355; purveyors-cli PR #112",
+			"whyNow": "Similarity, member comparison, and bean identity review have moved from plan to implementation. The counterintuitive angle is that entity resolution is not cleanup; it is the trust layer that lets a market compare price, availability, and substitutes."
+		},
+		{
+			"title": "Sourcing briefs are intent APIs, not saved searches",
+			"pillar": "api-architecture",
+			"status": "raw",
+			"source": "notes/implementation-plans/2026-05-05-saved-sourcing-briefs-procurement-seed.md; coffee-app PR #354",
+			"whyNow": "Saved sourcing briefs turn filter state into durable buyer intent that web, API, CLI, and agents can rerun. This is the bridge from catalog browsing to procurement workflows without overclaiming autonomous purchasing."
+		},
+		{
+			"title": "A marketplace standard should start as a validator, not a supplier portal",
+			"pillar": "api-architecture",
+			"status": "raw",
+			"source": "notes/implementation-plans/2026-05-08-open-listing-schema-validator.md; notes/blog/outlines/what-if-the-real-marketplace-is-the-listing-schema.md",
+			"whyNow": "The Open Coffee Listing Schema validator plan gives the listing-standard thesis a safe proving slice: a public schema and no-write validator before supplier accounts, feed ingestion, or direct publishing."
+		}
+	],
+	"openBlogPrs": [
+		{
+			"number": 369,
+			"title": "Blog outline: proof passports for coffee claims",
+			"status": "mergeable outline-only PR, strategically aligned, strongest api-architecture draft source"
+		},
+		{
+			"number": 358,
+			"title": "What Does a $7/lb Coffee Actually Cost You?",
+			"status": "mergeable complete Coffee Intelligence draft with fresh May 2026 live catalog data"
+		},
+		{
+			"number": 301,
+			"title": "Which Moats Survive When AI Makes Software Cheap?",
+			"status": "complete draft with hero but conflicting and less directly tied to the current green coffee API/product vision than #358 or #369"
+		},
+		{
+			"number": 287,
+			"title": "The Friction We Can't Afford to Lose",
+			"status": "complete draft with hero but conflicting and mostly agentic-stack rather than Purveyors product strategy"
+		},
+		{
+			"number": 285,
+			"title": "Is Coffee Supply More Concentrated Than the Catalog Suggests?",
+			"status": "older Coffee Intelligence draft; refresh data before promotion"
+		},
+		{
+			"number": 267,
+			"title": "Wednesday Coffee Intelligence on co-fermentation taxonomy",
+			"status": "older draft that overlaps with the published co-fermentation post and newer processing transparency schema work"
+		},
+		{
+			"number": 228,
+			"title": "Coffee Intelligence on market depth vs price",
+			"status": "older draft with stale snapshot risk; refresh or close before promotion"
+		}
+	],
+	"publicationCadence": {
+		"minimum": "1 post/week",
+		"publishedPostCountOnOriginMain": 14,
+		"latestPublishedFrontmatterDate": "2026-04-07",
+		"freshestMergeableDraft": "PR #358",
+		"status": "cadence risk on the live blog, but not idea scarcity",
+		"notes": "The queue needs editorial decision and conflict cleanup more than another draft."
+	},
+	"backlogHealth": {
+		"publishedPillars": {
+			"agentic-stack": 7,
+			"supply-chain": 3,
+			"coffee-data-pipeline": 2,
+			"ai-first-product": 1,
+			"market-intelligence": 1,
+			"api-architecture": 0
+		},
+		"status": "strong volume, weak published pillar balance, unusually strong API evidence this week",
+		"notes": [
+			"API architecture is now the clearest product-vision gap.",
+			"Market intelligence has a current complete draft in PR #358 and should not rely on older stale snapshots.",
+			"Coffee-data-pipeline has fresh certification and proof-readiness material, but the next published post should probably close API architecture first."
+		]
+	},
+	"nextPriorityPosts": [
+		{
+			"rank": 1,
+			"title": "What Does a $7/lb Coffee Actually Cost You?",
+			"source": "open PR #358",
+			"whyNow": "It is complete, mergeable, data-forward, and based on fresh May 2026 catalog evidence. It is the cleanest way to restart visible cadence without creating more queue sprawl."
+		},
+		{
+			"rank": 2,
+			"title": "Proof passports for coffee claims: why the next marketplace unit is evidence, not listings",
+			"source": "open PR #369 outline plus proof/provenance work across coffee-app, coffee-scraper, and purveyors-cli",
+			"whyNow": "It directly closes the api-architecture publication gap and ties together proof summaries, proof coverage, certification extraction, and the product vision's trust layer."
+		},
+		{
+			"rank": 3,
+			"title": "Sourcing briefs are intent APIs, not saved searches",
+			"source": "new idea from saved sourcing brief plan and coffee-app PR #354",
+			"whyNow": "It turns the access-ladder thesis into a buyer workflow story: paid leverage is durable intent and repeatable decision support, not more filters. Draft after the API PR lands or frame clearly as an implementation-in-progress piece."
+		}
+	],
+	"publishedPostMaintenanceDecision": {
+		"action": "no retroactive published-post cleanup opened",
+		"reason": "No new broken links, materially false product claims, or misleading current-tense strategic claims were found beyond older known drift notes. This run focused on active planning rather than treating published posts as living product docs."
+	}
+}
