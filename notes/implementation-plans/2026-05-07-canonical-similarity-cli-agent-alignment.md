@@ -34,14 +34,14 @@ This program closes the loop. The canonical similarity contract should be the sh
 
 ### Candidate scoring: Product Leverage Index
 
-| Candidate | Vision | Data moat / decision quality | Cross-surface | Public value / access ladder | Foundation unlock | Total | Notes |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| Canonical similarity CLI and agent alignment | 5 | 5 | 4 | 2 | 3 | 19 | Highest immediate leverage because the API contract just shipped and downstream surfaces are now stale. |
-| Supplier claim and direct-feed pilot | 5 | 4 | 4 | 3 | 3 | 19 | Moonshot-upside from the Open Coffee Listing Standard, but not a cheap independent slice yet; needs supplier workflow/product decisions. |
-| Saved sourcing briefs and procurement recommendation seed | 5 | 4 | 4 | 2 | 3 | 18 | Strong, already planned on 2026-05-05; should follow once the recommendation substrate is trustworthy across CLI/API/agent surfaces. |
-| Parchment Intelligence API + CLI bridge | 5 | 4 | 4 | 2 | 2 | 17 | High-value API product, but prior plan exists and it is less urgent than preventing current similarity contract drift. |
-| Capability-gated proof query filters | 4 | 5 | 3 | 2 | 2 | 16 | Strong Proof Layer path, but CLI proof output and proof coverage just shipped; similarity alignment is the sharper next cross-surface fix. |
-| V1 catalog summary projection | 4 | 3 | 4 | 3 | 2 | 16 | Useful API ergonomics, but less strategically decisive than aligning the new identity/recommendation boundary. |
+| Candidate                                                 | Vision | Data moat / decision quality | Cross-surface | Public value / access ladder | Foundation unlock | Total | Notes                                                                                                                                      |
+| --------------------------------------------------------- | -----: | ---------------------------: | ------------: | ---------------------------: | ----------------: | ----: | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Canonical similarity CLI and agent alignment              |      5 |                            5 |             4 |                            2 |                 3 |    19 | Highest immediate leverage because the API contract just shipped and downstream surfaces are now stale.                                    |
+| Supplier claim and direct-feed pilot                      |      5 |                            4 |             4 |                            3 |                 3 |    19 | Moonshot-upside from the Open Coffee Listing Standard, but not a cheap independent slice yet; needs supplier workflow/product decisions.   |
+| Saved sourcing briefs and procurement recommendation seed |      5 |                            4 |             4 |                            2 |                 3 |    18 | Strong, already planned on 2026-05-05; should follow once the recommendation substrate is trustworthy across CLI/API/agent surfaces.       |
+| Parchment Intelligence API + CLI bridge                   |      5 |                            4 |             4 |                            2 |                 2 |    17 | High-value API product, but prior plan exists and it is less urgent than preventing current similarity contract drift.                     |
+| Capability-gated proof query filters                      |      4 |                            5 |             3 |                            2 |                 2 |    16 | Strong Proof Layer path, but CLI proof output and proof coverage just shipped; similarity alignment is the sharper next cross-surface fix. |
+| V1 catalog summary projection                             |      4 |                            3 |             4 |                            3 |                 2 |    16 | Useful API ergonomics, but less strategically decisive than aligning the new identity/recommendation boundary.                             |
 
 **Selection:** canonical similarity CLI and agent alignment. It scores at the top, has a concrete first PR, consumes a contract that already exists, and directly protects agent trust.
 
@@ -82,28 +82,31 @@ This program closes the loop. The canonical similarity contract should be the sh
 
 ```json
 {
-  "target": { "id": 1182, "name": "..." },
-  "data": {
-    "canonical_candidates": [],
-    "similar_recommendations": [
-      {
-        "coffee": { "id": 1204, "name": "..." },
-        "score": { "average": 0.83, "dimensions": { "origin": 0.91, "processing": 0.62, "tasting": 0.88 } },
-        "match": {
-          "category": "similar_profile",
-          "classification": {
-            "kind": "similar_recommendation",
-            "identity_eligibility": "blocked",
-            "blockers": ["processing_method_conflict"]
-          }
-        }
-      }
-    ]
-  },
-  "meta": {
-    "classification_version": "canonical-match-v1",
-    "query_strategy": "bounded-vector-candidates-v1"
-  }
+	"target": { "id": 1182, "name": "..." },
+	"data": {
+		"canonical_candidates": [],
+		"similar_recommendations": [
+			{
+				"coffee": { "id": 1204, "name": "..." },
+				"score": {
+					"average": 0.83,
+					"dimensions": { "origin": 0.91, "processing": 0.62, "tasting": 0.88 }
+				},
+				"match": {
+					"category": "similar_profile",
+					"classification": {
+						"kind": "similar_recommendation",
+						"identity_eligibility": "blocked",
+						"blockers": ["processing_method_conflict"]
+					}
+				}
+			}
+		]
+	},
+	"meta": {
+		"classification_version": "canonical-match-v1",
+		"query_strategy": "bounded-vector-candidates-v1"
+	}
 }
 ```
 
