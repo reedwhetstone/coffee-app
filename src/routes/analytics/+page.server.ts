@@ -100,6 +100,12 @@ const SNAPSHOT_ORDER_COLUMNS = [
 	'id'
 ] as const;
 
+function relativeDateString(referenceDate: string | null, daysAgo: number): string {
+	const reference = referenceDate ? new Date(`${referenceDate}T00:00:00`) : new Date();
+	reference.setDate(reference.getDate() - daysAgo);
+	return reference.toISOString().split('T')[0];
+}
+
 function normalizeProcess(raw: string | null | undefined): string {
 	if (!raw) return 'Unknown';
 	const s = raw.toLowerCase().trim();
@@ -169,14 +175,31 @@ export const load: PageServerLoad = async (event) => {
 	// bounded server-rendered slice, but direct anon/auth table access is revoked.
 	const priceIndexSupabase = createAdminClient();
 
-	// ─── PUBLIC QUERIES (run for all visitors, in parallel) ─────────────────────
-	const thirtyDaysAgo = new Date();
-	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-	const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+	const { data: marketSummaryRaw } = await sb
+		.from('market_daily_summary')
+		.select('*')
+		.lte('snapshot_date', today)
+		.order('snapshot_date', { ascending: false })
+		.limit(1)
+		.maybeSingle();
 
-	const ninetyDaysAgo = new Date();
-	ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-	const fromDate = ninetyDaysAgo.toISOString().split('T')[0];
+	const marketSummary = marketSummaryRaw as {
+		snapshot_date: string;
+		total_stocked: number;
+		total_suppliers: number;
+		total_origins: number;
+		retail_median: number | null;
+		retail_median_7d_change: number | null;
+		retail_median_30d_change: number | null;
+		supply_7d_change?: number | null;
+		supply_30d_change?: number | null;
+	} | null;
+
+	const lastUpdated = marketSummary?.snapshot_date ?? null;
+
+	// ─── PUBLIC QUERIES (run for all visitors, in parallel) ─────────────────────
+	const thirtyDaysAgoStr = relativeDateString(lastUpdated, 30);
+	const fromDate = relativeDateString(null, 90);
 
 	// Parchment Intelligence users get up to 365 days of snapshot data for extended trend views.
 	const snapshotFromDate = isParchmentIntelligence
@@ -188,7 +211,6 @@ export const load: PageServerLoad = async (event) => {
 		: fromDate;
 
 	const [
-		{ data: marketSummaryRaw },
 		{ count: totalBeansTracked },
 		{ count: stockedRetailBeans },
 		{ count: stockedWholesaleBeans },
@@ -198,14 +220,6 @@ export const load: PageServerLoad = async (event) => {
 		{ data: recentDelistings30 },
 		snapshotsRaw
 	] = await Promise.all([
-		// Market summary (pre-computed)
-		sb
-			.from('market_daily_summary')
-			.select('*')
-			.lte('snapshot_date', today)
-			.order('snapshot_date', { ascending: false })
-			.limit(1)
-			.maybeSingle(),
 		// Total beans tracked
 		supabase.from('coffee_catalog').select('*', { count: 'exact', head: true }),
 		// Stocked retail count
@@ -258,20 +272,6 @@ export const load: PageServerLoad = async (event) => {
 			fromDate: snapshotFromDate
 		})
 	]);
-
-	const marketSummary = marketSummaryRaw as {
-		snapshot_date: string;
-		total_stocked: number;
-		total_suppliers: number;
-		total_origins: number;
-		retail_median: number | null;
-		retail_median_7d_change: number | null;
-		retail_median_30d_change: number | null;
-		supply_7d_change?: number | null;
-		supply_30d_change?: number | null;
-	} | null;
-
-	const lastUpdated = marketSummary?.snapshot_date ?? null;
 
 	// Process distribution
 	const processDistribution: ProcessBucket[] = (() => {
