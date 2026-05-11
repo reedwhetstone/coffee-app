@@ -7,11 +7,12 @@ P2: 1
 P3: 1
 NEXT_ACTION: merge
 TOP_FIXES:
+
 - Before any UI, scraper, or automation caller uses these helpers for production review actions, wrap link/identity/event transitions in a single database transaction or RPC so audit events cannot drift from state transitions.
 - Replace the manual `database.types.ts` additions with generated Supabase types when typegen is available.
-CONFIDENCE: medium
-SCOPE_ASSESSMENT: mergeable_with_followups
-VALIDATION_STATUS:
+  CONFIDENCE: medium
+  SCOPE_ASSESSMENT: mergeable_with_followups
+  VALIDATION_STATUS:
 - CI Code Quality run 25492544291: VALIDATION_PASS
 - CI Playwright run 25492544249: VALIDATION_PASS
 - pnpm exec vitest run src/lib/server/beanIdentity.test.ts in verify worktree: VALIDATION_BLOCKED_ENV, temp worktree has no local node_modules and cross-worktree Vite/PostCSS resolution cannot find tailwindcss

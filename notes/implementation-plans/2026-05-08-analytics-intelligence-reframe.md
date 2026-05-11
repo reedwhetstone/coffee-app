@@ -49,12 +49,12 @@ No schema changes required for the core tier model. All three product tiers map 
 
 ### Tier mapping
 
-| Product tier | Maps to | Existing gate | What changes |
-|---|---|---|---|
-| **Viewer** (free base) | `role: viewer` | default | nothing — this is the free floor |
+| Product tier                           | Maps to            | Existing gate           | What changes                              |
+| -------------------------------------- | ------------------ | ----------------------- | ----------------------------------------- |
+| **Viewer** (free base)                 | `role: viewer`     | default                 | nothing — this is the free floor          |
 | **Intelligence** (analytics + reports) | `ppi_access: true` | already in `user_roles` | rebrand, reprice, add reports feature set |
-| **Roasting** (roasting tools) | `role: member` | already in `user_roles` | rebrand, reprice |
-| **Dev / API** | `api_plan` field | unchanged | nothing |
+| **Roasting** (roasting tools)          | `role: member`     | already in `user_roles` | rebrand, reprice                          |
+| **Dev / API**                          | `api_plan` field   | unchanged               | nothing                                   |
 
 Intelligence and Roasting are fully independent addons. A user can have either, both, or neither.
 
@@ -72,13 +72,13 @@ New Stripe SKUs needed: `reports.monthly`, `reports.annual` (same grants as ppi_
 
 ### Chat tool access by tier
 
-| Tool | Viewer | Intelligence (`ppiAccess`) | Roasting (`member`) |
-|---|---|---|---|
-| `coffee-catalog` | limited | ✓ | ✓ |
-| `coffee-chunks` | — | ✓ | ✓ |
-| `green-coffee-inv` | — | ✓ (add/search/track green coffees) | ✓ |
-| `roast-profiles` | — | — | ✓ |
-| `bean-tasting` | — | — | ✓ |
+| Tool               | Viewer  | Intelligence (`ppiAccess`)         | Roasting (`member`) |
+| ------------------ | ------- | ---------------------------------- | ------------------- |
+| `coffee-catalog`   | limited | ✓                                  | ✓                   |
+| `coffee-chunks`    | —       | ✓                                  | ✓                   |
+| `green-coffee-inv` | —       | ✓ (add/search/track green coffees) | ✓                   |
+| `roast-profiles`   | —       | —                                  | ✓                   |
+| `bean-tasting`     | —       | —                                  | ✓                   |
 
 Intelligence chat access: green coffee sourcing, catalog research, market questions, sourcing briefs. Roasting chat access: all Intelligence tools plus roast planning, roast log updates, tasting loops, inventory drawdown, production history.
 
@@ -101,6 +101,7 @@ Intelligence chat access: green coffee sourcing, catalog research, market questi
 The meaningful product floor. Viewer tier is intentionally gated behind login — anonymous access is deliberately limited to prevent scraping and preserve the value of catalog data.
 
 **Viewer gets:**
+
 - Full catalog browsing with comprehensive filters (significantly more than anonymous)
 - Public analytics proof surface (basic pricing, availability, origin overview)
 - Intelligence reports: read access to published reports in-app (daily/weekly/monthly)
@@ -108,6 +109,7 @@ The meaningful product floor. Viewer tier is intentionally gated behind login �
 - No individual saved data, no custom filtering preferences, no personalized surfaces
 
 **Anonymous gets (much less):**
+
 - ~20 coffees, 1–2 filters max
 - Basic analytics overview only
 - Blog/public content
@@ -119,6 +121,7 @@ The meaningful product floor. Viewer tier is intentionally gated behind login �
 The core paid product. Includes the reports tier feature set and the full analytics command center.
 
 **Intelligence adds:**
+
 - Full analytics command center (all current PPI features: supplier comparison, health scoring, arrivals, delistings, origin benchmarks, price spread, extended trend depth)
 - Sourcing-focused chat with `coffee-catalog`, `coffee-chunks`, and `green-coffee-inv` tools
 - Green coffee inventory: add, search, and track sourcing candidates
@@ -126,6 +129,7 @@ The core paid product. Includes the reports tier feature set and the full analyt
 - Intelligence reports: full access — daily dashboard, weekly briefs, monthly deep dives
 
 **Reports feature set within Intelligence:**
+
 - **Daily:** live intelligence dashboard — CPI, new arrivals, delistings, price movement for the current day; structured like the existing PPI dashboard with streaming/refreshed data
 - **Weekly:** curated sourcing brief — market read, top lots, supplier highlights; structured blog-style with interactive charts
 - **Monthly:** deep intelligence report — origin trends, market thesis, longer-term analysis; fully structured with charts and narrative
@@ -137,6 +141,7 @@ The core paid product. Includes the reports tier feature set and the full analyt
 Independent addon. Can be purchased without Intelligence.
 
 **Roasting adds:**
+
 - Roast upload and logging
 - Roast profile management and analysis
 - Tasting notes and tasting loops
@@ -181,10 +186,10 @@ Current workspace types (general, sourcing, roasting, inventory, analysis) are h
 
 ```typescript
 // Before
-id: 'core' | 'secondary' | 'admin'
+id: 'core' | 'secondary' | 'admin';
 
-// After  
-id: 'intelligence' | 'roasting' | 'developer' | 'admin'
+// After
+id: 'intelligence' | 'roasting' | 'developer' | 'admin';
 ```
 
 ## Analytics command center — product direction
@@ -281,15 +286,15 @@ Mallard Studio should not be the umbrella product. It should remain the named pe
 
 ### Access and action capability matrix
 
-| Verb | Current support | Access level | No-backend behavior | Future backend plan |
-| --- | --- | --- | --- | --- |
-| Ask about this | Possible only if routed to existing chat with honest scoped context | Intelligence or Roasting (ppiAccess or member) | Route to chat with visible scope in the prompt | Define analytics-to-chat state contract and tool mapping |
-| Compare suppliers | Existing analytics modules support member-visible supplier comparison | Intelligence (ppiAccess) | Link to existing gated module or preview entitlement honestly | Expand comparison workflows only with server-side entitlement checks |
-| Watch origin / segment | Not supported as persistent state | Future member workflow | Disabled preview or omit; never show watched/saved state | Saved watchlist or alert model |
-| Save / shortlist sourcing candidate | Not generally supported | Future workflow | Disabled preview or route to an existing supported save action only | Saved sourcing object model |
-| Export / API | API/docs/CLI surfaces exist | API tier / Intelligence depending on feature | Link to API docs, Parchment Console, or CLI instructions | Align export semantics with API tier and CLI contract |
-| Analyze against my inventory | Requires signed-in inventory context | Roasting (member) | Route only where existing inventory-backed analysis exists | Shared tool contract combining catalog analytics with owned inventory |
-| Draft sourcing brief | Future workflow | Intelligence / API / agent | Use clear future-language or route to chat as draft request | Backend-backed saved brief or agent workflow |
+| Verb                                | Current support                                                       | Access level                                   | No-backend behavior                                                 | Future backend plan                                                   |
+| ----------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Ask about this                      | Possible only if routed to existing chat with honest scoped context   | Intelligence or Roasting (ppiAccess or member) | Route to chat with visible scope in the prompt                      | Define analytics-to-chat state contract and tool mapping              |
+| Compare suppliers                   | Existing analytics modules support member-visible supplier comparison | Intelligence (ppiAccess)                       | Link to existing gated module or preview entitlement honestly       | Expand comparison workflows only with server-side entitlement checks  |
+| Watch origin / segment              | Not supported as persistent state                                     | Future member workflow                         | Disabled preview or omit; never show watched/saved state            | Saved watchlist or alert model                                        |
+| Save / shortlist sourcing candidate | Not generally supported                                               | Future workflow                                | Disabled preview or route to an existing supported save action only | Saved sourcing object model                                           |
+| Export / API                        | API/docs/CLI surfaces exist                                           | API tier / Intelligence depending on feature   | Link to API docs, Parchment Console, or CLI instructions            | Align export semantics with API tier and CLI contract                 |
+| Analyze against my inventory        | Requires signed-in inventory context                                  | Roasting (member)                              | Route only where existing inventory-backed analysis exists          | Shared tool contract combining catalog analytics with owned inventory |
+| Draft sourcing brief                | Future workflow                                                       | Intelligence / API / agent                     | Use clear future-language or route to chat as draft request         | Backend-backed saved brief or agent workflow                          |
 
 **Hard rule:** non-persistent CTAs must never claim saved state. They must route to an existing surface, open chat with explicit scoped context, or appear as disabled previews with future-language.
 
@@ -299,14 +304,14 @@ Before PR 04 is scoped, define this TypeScript interface:
 
 ```typescript
 interface AnalyticsChatContext {
-  origin: string | null;
-  process: string | null;
-  supplier: string | null;
-  viewMode: 'retail' | 'wholesale' | 'all';
-  timeWindow: string;
-  activeFilters: Record<string, unknown>;
-  visibleModules: string[];
-  entitlement: 'viewer' | 'intelligence' | 'roasting' | 'both';
+	origin: string | null;
+	process: string | null;
+	supplier: string | null;
+	viewMode: 'retail' | 'wholesale' | 'all';
+	timeWindow: string;
+	activeFilters: Record<string, unknown>;
+	visibleModules: string[];
+	entitlement: 'viewer' | 'intelligence' | 'roasting' | 'both';
 }
 ```
 
@@ -434,6 +439,7 @@ Any decision/action affordance in this program must either:
 **Stop point:** If only this PR ships, the app already communicates a clearer product hierarchy.
 
 **Acceptance criteria:**
+
 - Authenticated desktop navigation has Intelligence, Roasting, Developer sections.
 - Roasting items are visible but locked/grayed for non-member users with a single upgrade note.
 - Chat appears in Intelligence, not Roasting. Non-member viewers without ppiAccess see chat as locked.
@@ -449,12 +455,14 @@ Any decision/action affordance in this program must either:
 - New `appNavigation.test.ts` covers: section IDs, item membership per section, chat placement, Roasting lock state for viewer. Add focused server/chat authorization coverage for the `/chat` route, `/api/chat`, and tool allowlist.
 
 **Test plan:**
+
 - `pnpm test -- src/lib/components/layout`
 - Focused server/chat authorization tests for `/chat`, `/api/chat`, and chat tool allowlist behavior
 - `pnpm check --fail-on-warnings`
 - Manual inspect `/dashboard`, `/analytics`, `/catalog`, `/beans`, `/roast`, `/profit`, `/api-dashboard`, `/chat` on desktop and 375px mobile viewport.
 
 **Risks:**
+
 - Label churn can become bikeshedding. Mitigation: keep labels descriptive and reversible.
 - `getCurrentRouteLabel()` is used for the mobile header title — verify all routes still resolve correctly after the label changes.
 - Chat workspace type labels may stay visually imperfect until PR 06, but server-side tool access cannot be imperfect. Intelligence-only users must not receive Roasting/member-only tools even if some UI copy still references roasting or inventory contexts.
@@ -468,6 +476,7 @@ Any decision/action affordance in this program must either:
 **In scope:** Dashboard copy/layout, card grouping, member/viewer states, upgrade CTAs specific to Intelligence and Roasting (replacing the current "Unlock the full roastery workspace" language), tests. The `recentArrivals` data is already available server-side — use it in the Intelligence Home preview. Add an intelligence chat / ask path clearly for catalog research and sourcing questions, not roast operations.
 
 **Copy targets (before → after):**
+
 - Tagline: "your logged-in home for jumping into sourcing, roasting, and the rest of the app" → "your intelligence home for green coffee supply-chain research, market analytics, and sourcing decisions"
 - Upgrade CTA headline: "Unlock the full roastery workspace" → tier-specific: "Unlock the Intelligence layer" / "Unlock roasting tools"
 - Dashboard label: "Quick start" → "Get started" or remove the section label entirely in favor of grouped cards

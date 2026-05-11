@@ -323,7 +323,8 @@ describe('analytics premium boundary copy', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
 		});
 
-		expect(screen.queryByText('Fresh Ethiopia')).toBeNull();
+		expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
+		expect(screen.getByText('Recently Gone')).toBeTruthy();
 		expect(screen.queryByText('Older Arrival')).toBeNull();
 		expect(screen.queryByText('Older Gone')).toBeNull();
 
@@ -331,7 +332,8 @@ describe('analytics premium boundary copy', () => {
 		await thirtyDayButtons[0].click();
 
 		await waitFor(() => {
-			expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
+			expect(screen.getByText('Older Arrival')).toBeTruthy();
+			expect(screen.getByText('Older Gone')).toBeTruthy();
 		});
 	});
 });

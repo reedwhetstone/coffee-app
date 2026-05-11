@@ -56,19 +56,26 @@ Response shape:
 
 ```json
 {
-  "data": {
-    "schema_version": "open-coffee-listing-v0.1",
-    "json_schema": {},
-    "required_fields": ["name", "country"],
-    "recommended_fields": ["producer", "region", "processing", "price_tiers", "stocked", "arrival_date"],
-    "field_groups": ["identity", "origin", "process", "pricing", "availability", "proof"]
-  },
-  "meta": {
-    "resource": "listing-schema",
-    "namespace": "/v1/listing-schema",
-    "version": "v1",
-    "status": "beta"
-  }
+	"data": {
+		"schema_version": "open-coffee-listing-v0.1",
+		"json_schema": {},
+		"required_fields": ["name", "country"],
+		"recommended_fields": [
+			"producer",
+			"region",
+			"processing",
+			"price_tiers",
+			"stocked",
+			"arrival_date"
+		],
+		"field_groups": ["identity", "origin", "process", "pricing", "availability", "proof"]
+	},
+	"meta": {
+		"resource": "listing-schema",
+		"namespace": "/v1/listing-schema",
+		"version": "v1",
+		"status": "beta"
+	}
 }
 ```
 
@@ -99,14 +106,14 @@ The initial schema should be deliberately narrow and truthful. Prefer a small v0
 
 Scores use the Product Leverage Index from the planner skill: vision alignment 0-5, data moat / decision quality 0-5, cross-surface leverage 0-4, public value / access ladder 0-3, foundation unlock 0-3.
 
-| Candidate | Vision | Data moat / decision quality | Cross-surface | Public / access ladder | Foundation unlock | Total | Feasibility gate | Decision |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| Open Coffee Listing Schema validator | 5 | 5 | 4 | 3 | 3 | 20 | Medium. Requires schema discipline, request caps, docs, and no-write guarantees, but no supplier account or ingestion flow. | Selected |
-| Coffee Intent Exchange demand graph endpoint | 5 | 5 | 4 | 3 | 3 | 20 | Too dependent on PR #354 and real saved-brief usage. Aggregate demand before capture would be platform theater. | Defer |
-| Sourcing brief member UI | 5 | 4 | 3 | 3 | 2 | 17 | Already covered by the 2026-05-05 saved-brief program once PR #354 lands. | Defer |
-| Parchment Intelligence CLI activation | 5 | 4 | 4 | 3 | 3 | 19 | Already has open PR #361 with a plan. | Defer |
-| Proof query filters | 5 | 5 | 4 | 3 | 3 | 20 | Already planned on 2026-05-07 and depends on proof coverage PR #335. | Defer |
-| Pure docs correction for listing-standard copy | 3 | 2 | 2 | 2 | 1 | 10 | Useful only if paired with an actual machine-readable contract. | Reject today |
+| Candidate                                      | Vision | Data moat / decision quality | Cross-surface | Public / access ladder | Foundation unlock | Total | Feasibility gate                                                                                                            | Decision     |
+| ---------------------------------------------- | -----: | ---------------------------: | ------------: | ---------------------: | ----------------: | ----: | --------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| Open Coffee Listing Schema validator           |      5 |                            5 |             4 |                      3 |                 3 |    20 | Medium. Requires schema discipline, request caps, docs, and no-write guarantees, but no supplier account or ingestion flow. | Selected     |
+| Coffee Intent Exchange demand graph endpoint   |      5 |                            5 |             4 |                      3 |                 3 |    20 | Too dependent on PR #354 and real saved-brief usage. Aggregate demand before capture would be platform theater.             | Defer        |
+| Sourcing brief member UI                       |      5 |                            4 |             3 |                      3 |                 2 |    17 | Already covered by the 2026-05-05 saved-brief program once PR #354 lands.                                                   | Defer        |
+| Parchment Intelligence CLI activation          |      5 |                            4 |             4 |                      3 |                 3 |    19 | Already has open PR #361 with a plan.                                                                                       | Defer        |
+| Proof query filters                            |      5 |                            5 |             4 |                      3 |                 3 |    20 | Already planned on 2026-05-07 and depends on proof coverage PR #335.                                                        | Defer        |
+| Pure docs correction for listing-standard copy |      3 |                            2 |             2 |                      2 |                 1 |    10 | Useful only if paired with an actual machine-readable contract.                                                             | Reject today |
 
 The selected candidate ties the newest platform work back to the supply side. Buyer-intent work is now in flight through PR #354; the bigger unclaimed strategic gap is upstream supplier/developer compatibility.
 
