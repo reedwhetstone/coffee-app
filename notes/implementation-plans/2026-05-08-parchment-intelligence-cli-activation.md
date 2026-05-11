@@ -75,14 +75,14 @@ No new moonshot cleared the bar better than this slice today because the cheap, 
 
 Scores use the Product Leverage Index from the planner skill: vision alignment 0-5, data moat / decision quality 0-5, cross-surface leverage 0-4, public value / access ladder 0-3, foundation unlock 0-3.
 
-| Candidate | Vision | Data moat / decision quality | Cross-surface | Public/access | Foundation | Total | Feasibility gate | Decision |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| Parchment Intelligence CLI activation | 5 | 4 | 4 | 3 | 3 | 19 | Endpoint exists; no open CLI PR; clean cross-repo release path. | Selected |
-| Proof query filters | 5 | 5 | 4 | 3 | 3 | 20 | Already planned on 2026-05-07 and depends on PR #335 merge. | Defer |
-| Sourcing brief web workflow | 5 | 5 | 4 | 3 | 3 | 20 | Depends on PR #354 merge; API slice is still open. | Defer |
-| Canonical similarity chat alignment | 5 | 5 | 4 | 2 | 3 | 19 | Depends on purveyors-cli PR #112 release and coffee-app PR #360 API fix. | Defer |
-| Open Coffee Listing Standard supplier feed pilot | 5 | 5 | 4 | 3 | 3 | 20 | Higher upside but not ready as one independent implementation slice without supplier-claim decisions. | Defer |
-| V1 catalog summary projection | 4 | 3 | 4 | 2 | 2 | 15 | Useful agent ergonomics, but less urgent than activating a paid endpoint already shipped. | Defer |
+| Candidate                                        | Vision | Data moat / decision quality | Cross-surface | Public/access | Foundation | Total | Feasibility gate                                                                                      | Decision |
+| ------------------------------------------------ | -----: | ---------------------------: | ------------: | ------------: | ---------: | ----: | ----------------------------------------------------------------------------------------------------- | -------- |
+| Parchment Intelligence CLI activation            |      5 |                            4 |             4 |             3 |          3 |    19 | Endpoint exists; no open CLI PR; clean cross-repo release path.                                       | Selected |
+| Proof query filters                              |      5 |                            5 |             4 |             3 |          3 |    20 | Already planned on 2026-05-07 and depends on PR #335 merge.                                           | Defer    |
+| Sourcing brief web workflow                      |      5 |                            5 |             4 |             3 |          3 |    20 | Depends on PR #354 merge; API slice is still open.                                                    | Defer    |
+| Canonical similarity chat alignment              |      5 |                            5 |             4 |             2 |          3 |    19 | Depends on purveyors-cli PR #112 release and coffee-app PR #360 API fix.                              | Defer    |
+| Open Coffee Listing Standard supplier feed pilot |      5 |                            5 |             4 |             3 |          3 |    20 | Higher upside but not ready as one independent implementation slice without supplier-claim decisions. | Defer    |
+| V1 catalog summary projection                    |      4 |                            3 |             4 |             2 |          2 |    15 | Useful agent ergonomics, but less urgent than activating a paid endpoint already shipped.             | Defer    |
 
 ## Strategy Alignment Audit
 

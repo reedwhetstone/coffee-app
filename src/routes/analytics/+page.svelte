@@ -183,10 +183,14 @@
 	let hasSnapshots = $derived(filteredSnapshots.length > 0);
 	let stockedBeans = $derived(stats.stockedRetailBeans + stats.stockedWholesaleBeans);
 
+	function movementWindowCutoff(cutoffDays: number) {
+		const reference = stats.lastUpdated ? new Date(stats.lastUpdated + 'T00:00:00') : new Date();
+		reference.setDate(reference.getDate() - cutoffDays);
+		return reference;
+	}
+
 	let filteredArrivals = $derived.by(() => {
-		const cutoffDays = windowMode === '7d' ? 7 : 30;
-		const cutoff = new Date();
-		cutoff.setDate(cutoff.getDate() - cutoffDays);
+		const cutoff = movementWindowCutoff(windowMode === '7d' ? 7 : 30);
 		return recentArrivals.filter((bean) => {
 			if (!bean.stocked_date) return false;
 			return new Date(bean.stocked_date + 'T00:00:00') >= cutoff;
@@ -194,9 +198,7 @@
 	});
 
 	let filteredDelistings = $derived.by(() => {
-		const cutoffDays = windowMode === '7d' ? 7 : 30;
-		const cutoff = new Date();
-		cutoff.setDate(cutoff.getDate() - cutoffDays);
+		const cutoff = movementWindowCutoff(windowMode === '7d' ? 7 : 30);
 		return recentDelistings.filter((bean) => {
 			if (!bean.unstocked_date) return false;
 			return new Date(bean.unstocked_date + 'T00:00:00') >= cutoff;

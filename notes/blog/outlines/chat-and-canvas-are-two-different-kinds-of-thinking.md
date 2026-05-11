@@ -31,6 +31,7 @@ Chat is temporal; canvas is spatial. They are not two UI panels; they are two fu
 
 1. **Andy Clark & David Chalmers, "The Extended Mind" (1998).**
    Foundational argument that the mind extends into the physical world through external objects that store and manipulate information. Key criterion: "If a part of the world functions as a process which, were it done in the head, we would have no hesitation in recognizing as part of the cognitive process, then that part of the world is part of the cognitive process." Directly supports the thesis that the canvas is not a UI convenience but a cognitive extension.
+
    - https://en.wikipedia.org/wiki/Extended_mind_thesis
    - Original paper: Analysis, 58(1), 7-19.
 

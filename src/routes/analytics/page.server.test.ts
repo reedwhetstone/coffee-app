@@ -147,9 +147,13 @@ function createSnapshotClient(
 	};
 }
 
-function createAnalyticsClient(snapshotPages: SnapshotPageResult[]) {
+function createAnalyticsClient(
+	snapshotPages: SnapshotPageResult[],
+	options: { marketSummaryDate?: string | null } = {}
+) {
 	const snapshotFromDates: string[] = [];
 	const snapshotRangeCalls: SnapshotQueryCall[] = [];
+	const movementCutoffs = { arrivals: [] as string[], delistings: [] as string[] };
 
 	function resolveTableResult(
 		table: string,
@@ -160,9 +164,13 @@ function createAnalyticsClient(snapshotPages: SnapshotPageResult[]) {
 		}
 	) {
 		if (table === 'market_daily_summary') {
+			if (options.marketSummaryDate === null) {
+				return { data: null, error: null };
+			}
+
 			return {
 				data: {
-					snapshot_date: '2026-04-08',
+					snapshot_date: options.marketSummaryDate ?? '2026-04-08',
 					total_stocked: 120,
 					total_suppliers: 39,
 					total_origins: 18,
@@ -199,8 +207,20 @@ function createAnalyticsClient(snapshotPages: SnapshotPageResult[]) {
 
 		if (state.columns === 'processing, wholesale') return { data: [], error: null };
 		if (state.columns === 'country, price_per_lb') return { data: [], error: null };
-		if (state.columns?.includes('stocked_date')) return { data: [], error: null };
-		if (state.columns?.includes('unstocked_date')) return { data: [], error: null };
+		if (state.columns?.includes('unstocked_date')) {
+			const cutoff = state.filters.find(
+				(filter) => filter.method === 'gte' && filter.column === 'unstocked_date'
+			)?.value;
+			if (cutoff) movementCutoffs.delistings.push(String(cutoff));
+			return { data: [], error: null };
+		}
+		if (state.columns?.includes('stocked_date')) {
+			const cutoff = state.filters.find(
+				(filter) => filter.method === 'gte' && filter.column === 'stocked_date'
+			)?.value;
+			if (cutoff) movementCutoffs.arrivals.push(String(cutoff));
+			return { data: [], error: null };
+		}
 		if (state.columns?.includes('bag_size')) return { data: [], error: null };
 
 		throw new Error(`Unhandled coffee_catalog select in analytics test client: ${state.columns}`);
@@ -209,6 +229,7 @@ function createAnalyticsClient(snapshotPages: SnapshotPageResult[]) {
 	return {
 		snapshotFromDates,
 		snapshotRangeCalls,
+		movementCutoffs,
 		from(table: string) {
 			const state: {
 				columns?: string;
@@ -374,6 +395,41 @@ describe('analytics load', () => {
 
 		await load(createLoadEvent(memberClient));
 		expect(memberClient.snapshotFromDates).toEqual(['2025-04-08']);
+	});
+
+	it('anchors arrival and delisting query cutoffs to the latest market summary date', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			marketSummaryDate: '2026-03-31'
+		});
+		currentPriceIndexClient = client;
+
+		await load(createLoadEvent(client));
+
+		expect(client.movementCutoffs).toEqual({
+			arrivals: ['2026-03-01'],
+			delistings: ['2026-03-01']
+		});
+	});
+
+	it('keeps date-only movement cutoffs stable in east-of-UTC server timezones', async () => {
+		const originalTimeZone = process.env.TZ;
+		process.env.TZ = 'Asia/Tokyo';
+
+		try {
+			const client = createAnalyticsClient([{ data: [], error: null }], {
+				marketSummaryDate: '2026-03-31'
+			});
+			currentPriceIndexClient = client;
+
+			await load(createLoadEvent(client));
+
+			expect(client.movementCutoffs).toEqual({
+				arrivals: ['2026-03-01'],
+				delistings: ['2026-03-01']
+			});
+		} finally {
+			process.env.TZ = originalTimeZone;
+		}
 	});
 
 	it('fails the route load when a later snapshot page errors', async () => {

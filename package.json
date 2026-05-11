@@ -22,7 +22,7 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
-		"test": "pnpm run test:unit -- --run",
+		"test": "vitest run",
 		"test:e2e": "pnpm exec playwright test",
 		"test:e2e:ui": "pnpm exec playwright test --ui",
 		"test:e2e:report": "pnpm exec playwright show-report",
