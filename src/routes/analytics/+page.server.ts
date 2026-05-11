@@ -101,8 +101,8 @@ const SNAPSHOT_ORDER_COLUMNS = [
 ] as const;
 
 function relativeDateString(referenceDate: string | null, daysAgo: number): string {
-	const reference = referenceDate ? new Date(`${referenceDate}T00:00:00`) : new Date();
-	reference.setDate(reference.getDate() - daysAgo);
+	const reference = referenceDate ? new Date(`${referenceDate}T00:00:00.000Z`) : new Date();
+	reference.setUTCDate(reference.getUTCDate() - daysAgo);
 	return reference.toISOString().split('T')[0];
 }
 

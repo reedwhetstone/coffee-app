@@ -411,6 +411,27 @@ describe('analytics load', () => {
 		});
 	});
 
+	it('keeps date-only movement cutoffs stable in east-of-UTC server timezones', async () => {
+		const originalTimeZone = process.env.TZ;
+		process.env.TZ = 'Asia/Tokyo';
+
+		try {
+			const client = createAnalyticsClient([{ data: [], error: null }], {
+				marketSummaryDate: '2026-03-31'
+			});
+			currentPriceIndexClient = client;
+
+			await load(createLoadEvent(client));
+
+			expect(client.movementCutoffs).toEqual({
+				arrivals: ['2026-03-01'],
+				delistings: ['2026-03-01']
+			});
+		} finally {
+			process.env.TZ = originalTimeZone;
+		}
+	});
+
 	it('fails the route load when a later snapshot page errors', async () => {
 		const client = createAnalyticsClient([
 			{ data: Array.from({ length: 1000 }, (_, index) => makeSnapshotRow(index)), error: null },
