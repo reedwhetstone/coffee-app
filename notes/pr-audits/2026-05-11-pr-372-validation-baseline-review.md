@@ -9,9 +9,11 @@ NEXT_ACTION: patch_same_pr
 TOP_FIXES:
 
 - Restore the top-level verify contract structure in `notes/pr-audits/2026-05-07-pr-355-bean-identity-review.md` by inserting a blank line after the second `TOP_FIXES` bullet so `CONFIDENCE`, `SCOPE_ASSESSMENT`, and `VALIDATION_STATUS` are not parsed as part of that bullet.
-  CONFIDENCE: high
-  SCOPE_ASSESSMENT: mergeable
-  VALIDATION_STATUS:
+
+CONFIDENCE: high
+SCOPE_ASSESSMENT: mergeable
+VALIDATION_STATUS:
+
 - `pnpm exec prettier --check package.json src/routes/analytics/+page.svelte src/routes/analytics/page.svelte.test.ts notes/blog/source-map.md notes/implementation-plans/2026-05-08-analytics-intelligence-reframe.md notes/implementation-plans/2026-05-08-open-listing-schema-validator.md notes/implementation-plans/2026-05-08-parchment-intelligence-cli-activation.md notes/pr-audits/2026-05-07-pr-355-bean-identity-review.md notes/blog/outlines/chat-and-canvas-are-two-different-kinds-of-thinking.md`: VALIDATION_PASS
 - `pnpm test`: VALIDATION_PASS
 - `pnpm check`: VALIDATION_PASS
