@@ -123,40 +123,34 @@ This means the current prompt's canvas lifecycle guidance should be softened. Th
 
 ## What `workspace_messages.parts` means
 
-`workspace_messages.parts` is the durable structured representation of a chat message, not just the plain text.
+`workspace_messages.parts` is the structured AI SDK representation of a chat message. It can include text, tool calls, tool results, and UI/data fragments. `content` is the plain-text transcript fallback.
 
-In the Vercel AI SDK / AI SDK UI message model, a message can contain multiple parts. Examples:
+Important distinction: `parts` is not the memory system and should not become long-term agent memory. It is an operational replay/debug record for recent chat turns. The future memory system should distill useful direction into markdown and deliberately discard fleeting process.
 
-- A text part: what the assistant actually says.
-- A tool-call part: the assistant asked to run `coffee_catalog_search` with specific arguments.
-- A tool-result part: the result returned by that tool.
-- A reasoning/status/data part, depending on SDK features and app usage.
-- UI-relevant structured data that lets the client reconstruct what happened.
+`parts` can matter for canvas only because some current canvas cards are derived from tool results or presentation tool parts. That is an implementation coupling, not the desired architecture. Canvas persistence should not depend on replaying every old message part.
 
-The current table stores both:
+Plain English:
 
-- `content`: plain text fallback for easy display/search.
-- `parts`: structured message payload for accurate replay, tool rendering, and canvas extraction.
-
-Why this matters:
-
-- If only `content` is persisted, the chat can show words but loses the tool history.
-- If `parts` is persisted, the app can reload the conversation with tool calls/results intact.
-- Canvas cards often come from tool parts, not from the final assistant prose.
-- Future compaction can inspect tool calls and results instead of relying only on the assistant's narrative.
-
-Plain English: `content` is the transcript. `parts` is the event record that explains how the assistant got there.
+- `content` = what the user/assistant said.
+- `parts` = structured event payload for recent UI replay, tool rendering, and debugging.
+- `canvas_state` = the durable source of truth for what is on the canvas.
+- `memory.md` = the durable source of truth for what the agent should remember.
 
 ## Canonical message recommendation
 
-Treat `parts` as canonical for durable chat replay, with `content` as a convenience fallback.
+Do not treat `parts` as canonical long-term memory. Treat it as short-term operational data.
 
-Implementation implications:
+Recommended persistence policy:
 
-- Preserve the full AI SDK `UIMessage.parts` array when saving messages.
-- Do not flatten tool interactions into text before persistence.
-- Keep canvas mutations separately when they represent explicit canvas state changes.
-- For memory compaction, include enough recent `parts` to understand tool-backed decisions, but summarize into markdown memory rather than storing all old parts in the prompt forever.
+- Persist `content` for visible chat history.
+- Persist `canvas_state` as first-class state, independent of chat replay.
+- Persist explicit `canvas_mutations` only when useful for debugging or short-term recovery.
+- Persist `parts` only for recent messages where it is needed for UI replay, tool-result rendering, or compaction input.
+- Exclude reasoning/process/status fragments from durable memory.
+- Let compaction read recent content, selected tool results, and canvas state, then write distilled markdown memory.
+- Add retention/compaction later so old `parts` can be pruned or archived after their useful window closes.
+
+Final position: process is useful as a short-term event log, not as long-term memory. The product should remember outcomes, preferences, decisions, constraints, active context, and durable ideals, not the agent's internal path to get there.
 
 ## First implementation slice
 
