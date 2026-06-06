@@ -111,6 +111,126 @@ Rules:
 - Dreaming should be a slower reflection pass that finds patterns across recent chats and updates memory only when the pattern is useful.
 - Clearing chat should not clear memory by default. Memory is the relationship layer, not the transcript layer.
 
+## Memory and compaction MVP
+
+Memory and compaction should be part of the MVP direction, but the first implementation should stay intentionally small: one editable markdown file per member user, one deterministic compaction endpoint, and no vector database or multi-layer retrieval stack.
+
+Recent OpenAI memory direction validates the broad shape: useful assistant memory needs to carry forward user preferences and relevant context, and newer background synthesis work points toward asynchronous consolidation rather than storing raw chat forever. OpenClaw's own long-running memory/dreaming pattern points the same way: persistent editable files plus periodic distillation beat a giant transcript.
+
+### Source of truth
+
+Add one user-editable markdown document, stored in user settings or a dedicated profile table field:
+
+- `agent_memory_md text not null default <template>`
+- `agent_memory_updated_at timestamptz`
+- `agent_memory_compacted_through_message_id uuid null`
+- optional later: `agent_memory_revision integer` for optimistic locking
+
+This markdown file is the canonical durable memory. It is passed into the chat system prompt every turn. It is not a transcript and not a process log.
+
+### Recommended template
+
+```markdown
+# Purveyors Chat Memory
+
+## Operating instructions
+- Stable user instructions, response preferences, and constraints.
+
+## User and business context
+- Durable facts about the user's coffee work, business, inventory habits, and goals.
+
+## Coffee preferences
+- Origins, processes, flavor profiles, price ranges, suppliers, and quality markers the user prefers or avoids.
+
+## Current working context
+- Short-term active threads that should survive chat clearing: open decisions, active sourcing hunts, beans under consideration, roast experiments, follow-ups.
+
+## Long-term ideals and strategy
+- Durable strategic direction, product/business philosophy, recurring evaluation criteria.
+
+## Decisions and constraints
+- Explicit decisions, hard constraints, and defaults that should guide future answers.
+
+## Ignore / do not remember
+- User-corrected false memories, stale facts, and topics the user does not want personalized.
+```
+
+### Compaction trigger
+
+Start with one simple trigger:
+
+- After every assistant response, if there are at least 8 new messages since `agent_memory_compacted_through_message_id`, call `/api/chat/memory/compact` in the background.
+- Also expose a manual `Update memory now` button in settings.
+
+Do not compact every turn. Do not run a cron at first. Do not block the chat response on compaction.
+
+### Compaction input
+
+Pass only:
+
+- Current `agent_memory_md`
+- New user and assistant `content` since the last compacted message
+- Selected tool-result summaries when they directly affected a decision
+- Current `canvas_state` summary, because the canvas may contain active working context
+
+Do not pass old reasoning/status/process parts. Do not ask the model to preserve tool traces.
+
+### Compaction output
+
+Ask the model for a full replacement markdown file in the same template, plus a tiny change summary for logging. The instruction should be conservative:
+
+- preserve user-written instructions unless clearly superseded
+- add only durable or currently useful facts
+- move active but temporary details to `Current working context`
+- remove stale short-term details when they are resolved
+- record corrections in `Ignore / do not remember` when relevant
+- never preserve private/sensitive details unless the user explicitly asked to remember them
+- never preserve agent chain-of-thought, tool traces, or process chatter
+
+### Dreaming MVP
+
+For MVP, dreaming should be a slower reflection pass over the same markdown memory, not a separate architecture.
+
+Recommended first version:
+
+- Run only when the user opens settings and clicks `Reflect on memory`, or after a large threshold such as 50 compacted messages.
+- Input: current memory file, compacted change summaries, and recent active context headings.
+- Output: proposed markdown diff or full replacement memory.
+- UI: show a preview and let the user accept/reject.
+
+This captures the value of dreaming: pattern detection, staleness cleanup, and promotion of repeated themes, without building a hidden autonomous memory engine on day one.
+
+### Prompt integration
+
+Every chat request should include:
+
+```text
+USER MEMORY
+The following is the user's editable Purveyors Chat Memory. Treat it as durable context. If it conflicts with the current user message, obey the current message and consider whether memory needs correction.
+
+<agent_memory_md>
+```
+
+Keep the system prompt simple. The memory markdown should carry personalization.
+
+### User controls
+
+Settings should include:
+
+- Markdown editor for the memory file.
+- `Save memory` button.
+- `Update memory now` button.
+- `Reflect on memory` button, optional for the first PR if time is tight.
+- `Clear memory` danger action, separate from `Clear chat`.
+
+Clearing chat should not clear memory. Clearing canvas should not clear memory.
+
+### Red-team conclusion
+
+The main risk is over-engineering. A vector store, multiple memory tables, automatic hidden edits, and elaborate provenance tracking would recreate the same clunkiness as workspaces. The MVP should make the memory legible and user-editable first. If a single markdown file starts to strain, that is useful evidence for the next layer.
+
+The second risk is treating memory as a dumping ground. The compactor must be ruthless: preserve canonical direction, useful short-term context, long-term ideals, preferences, decisions, and constraints; delete fleeting details.
+
 ## Canvas direction
 
 The canvas should be persistent and shared between user and bot.
@@ -158,38 +278,39 @@ Final position: process is useful as a short-term event log, not as long-term me
 
 ## First implementation slice
 
-The first code PR should be boring and independently mergeable:
+The first code PR should still be boring and independently mergeable, but it should include the memory foundation because memory is central to the single-dialog product direction:
 
 1. Replace the workspace sidebar/list UX with a single persistent chat shell.
 2. Add the deterministic hidden-default marker or chat-state mapping, backfill it safely, enforce one default per member user, then auto-create/fetch that marked default hidden workspace/conversation after the existing member entitlement check passes.
 3. Load and save messages against that default conversation.
 4. Keep the existing canvas persistence path, but remove workspace switching behavior.
 5. Add a visible `Clear chat` action that clears the dialog history for the default conversation.
-6. Keep backend model selection unchanged.
-7. Update copy/docs so the surface is “Chat”, not “workspace”.
+6. Add one editable `agent_memory_md` field in settings and inject it into the chat prompt.
+7. Add a simple background compaction endpoint triggered after a small threshold of new messages.
+8. Keep backend model selection unchanged.
+9. Update copy/docs so the surface is “Chat”, not “workspace”.
 
-This PR should not implement dreaming, markdown memory, schema renames, or model selection changes. Those are follow-up slices.
+This PR should not implement schema renames, vector retrieval, hidden autonomous memory writes, or public model selection changes. Dreaming can start as a manual or thresholded reflection action after the markdown memory foundation exists.
 
 ## Follow-up implementation slices
 
-### PR 2: memory markdown foundation
+### PR 2: memory UX hardening
 
-- Add a user settings field or table for editable markdown memory.
-- Load the memory file into the chat system prompt.
-- Add a settings editor for the memory file.
-- Keep writes manual or explicitly confirmed at first.
+- Add diff preview for compaction updates.
+- Add `Reflect on memory` for dreaming-style cleanup and pattern promotion.
+- Add conflict protection for manual user edits while compaction is running.
+- Add clear separation between `Clear chat`, `Clear canvas`, and `Clear memory`.
 
-### PR 3: compaction
+### PR 3: retention and pruning
 
-- Trigger compaction after message count or token thresholds.
-- Summarize recent chat into the memory markdown structure.
-- Preserve user edits and avoid overwriting manually curated sections blindly.
-- Record compaction metadata so the same turns are not compacted repeatedly.
+- Prune or archive old `parts` after compaction.
+- Keep message `content` history according to product retention choices.
+- Store compacted-through metadata so the same turns are not compacted repeatedly.
 
-### PR 4: dreaming/reflection
+### PR 4: dreaming/reflection automation
 
-- Run a slower reflection pass over recent compacted history.
-- Promote durable preferences, repeated goals, and unresolved questions.
+- Run a slower reflection pass after larger thresholds.
+- Promote durable preferences, repeated goals, long-term ideals, and unresolved questions.
 - Keep it transparent: show proposed memory edits before automatic mutation unless confidence and safety are very high.
 
 ### PR 5: deeper canvas persistence
