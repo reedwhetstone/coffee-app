@@ -52,15 +52,19 @@ For the MVP, the cleanest path is to keep the database substrate mostly intact w
 
 ### Phase 1: one implicit default conversation
 
-Use one server-owned default chat container per member user. This can initially reuse the existing `workspaces` table as an implementation detail:
+Use one server-owned default chat container per member user. This can initially reuse the existing `workspaces` table as an implementation detail, but only after the row is deterministic:
 
-- Create or fetch one default row per member user only after the existing member entitlement check passes.
-- Stop surfacing the row as a workspace in the UI.
+- Create or fetch the marked deterministic default row per member user only after the existing member entitlement check passes.
+- Add a durable server-owned discriminator before removing workspace switching. Acceptable shapes are either a `workspaces` marker such as `purpose = 'default_chat'` / `is_default_chat = true`, or a dedicated per-user chat-state row with a `default_workspace_id` foreign key.
+- Back the marker with a uniqueness guarantee, for example a partial unique index that permits at most one default chat workspace per member user, or a unique `user_chat_state.user_id` row. Fetch by this marker/key, never by `last_accessed_at`, title, workspace type, or “first row” ordering.
+- Migration/backfill must be explicit. For existing members, create a new hidden default chat row when no marked row exists, or mark exactly one row only if a deliberate import rule chooses it. Do not silently promote an arbitrary legacy workspace. If multiple marked defaults are detected, fail closed and require repair rather than guessing.
+- Keep legacy workspace rows recoverable during the transition. They may be hidden from the simplified chat UI, but the implementation must not strand prior conversations behind an unmarked default row.
+- Stop surfacing the default row as a workspace in the UI.
 - Treat `workspace_messages` as the current `chat_messages` table in practice.
 - Store persistent canvas state on the same default row for now.
 - `Clear chat` should delete or archive visible messages for the default conversation, not delete the user's memory file or persistent canvas unless the UI explicitly says so.
 
-This avoids a migration-heavy first PR while still moving the product direction decisively away from workspaces.
+This avoids a full schema rename in the first PR while still moving the product direction decisively away from workspaces. It does not avoid the small migration/index needed to identify the hidden default conversation safely.
 
 ### Phase 2: rename the data model when stable
 
@@ -157,7 +161,7 @@ Final position: process is useful as a short-term event log, not as long-term me
 The first code PR should be boring and independently mergeable:
 
 1. Replace the workspace sidebar/list UX with a single persistent chat shell.
-2. Auto-create/fetch one default hidden workspace/conversation per member user after the existing member entitlement check passes.
+2. Add the deterministic hidden-default marker or chat-state mapping, backfill it safely, enforce one default per member user, then auto-create/fetch that marked default hidden workspace/conversation after the existing member entitlement check passes.
 3. Load and save messages against that default conversation.
 4. Keep the existing canvas persistence path, but remove workspace switching behavior.
 5. Add a visible `Clear chat` action that clears the dialog history for the default conversation.
@@ -198,5 +202,5 @@ This PR should not implement dreaming, markdown memory, schema renames, or model
 
 - Should `Clear chat` preserve canvas by default? Recommendation: yes, with a separate `Clear canvas` action.
 - Should memory edits be automatic or propose/confirm in MVP? Recommendation: manual editor first, proposed edits second, automatic edits later.
-- Should old workspace rows be migrated, archived, or left as hidden legacy data? Recommendation: leave hidden initially, then migrate/archive once the new single-dialog flow is stable.
+- Should old workspace rows be migrated, archived, or left as hidden legacy data? Recommendation: leave legacy rows recoverable and hidden from the simplified chat UI initially; create or mark the deterministic default conversation separately, then migrate/archive legacy rows once the new single-dialog flow is stable.
 - Should the default hidden conversation be created at account creation or first eligible member chat visit? Recommendation: first eligible member chat visit.
