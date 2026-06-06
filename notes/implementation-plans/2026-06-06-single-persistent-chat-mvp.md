@@ -62,7 +62,7 @@ Use one server-owned default chat container per member user. This can initially 
 - Stop surfacing the default row as a workspace in the UI.
 - Treat `workspace_messages` as the current `chat_messages` table in practice.
 - Store persistent canvas state on the same default row for now.
-- `Clear chat` should delete or archive visible messages for the default conversation, not delete the user's memory file or persistent canvas unless the UI explicitly says so.
+- `Clear chat` should archive or soft-hide visible messages for the default conversation, not physically delete rows that may be referenced by memory compaction metadata. The first slice should prefer a `hidden_after_clear_at` / `clear_epoch` style boundary over hard deletes. If the implementation truly must hard-delete message rows, it must also reset `agent_memory_compacted_through_message_id` to `null` and store a clear epoch so future compaction starts from the post-clear transcript instead of following a deleted boundary row. Clearing chat must not delete the user's memory file or persistent canvas unless the UI explicitly says so.
 
 This avoids a full schema rename in the first PR while still moving the product direction decisively away from workspaces. It does not avoid the small migration/index needed to identify the hidden default conversation safely.
 
@@ -124,9 +124,11 @@ Add one user-editable markdown document, stored in user settings or a dedicated 
 - `agent_memory_md text not null default <template>`
 - `agent_memory_updated_at timestamptz`
 - `agent_memory_compacted_through_message_id uuid null`
-- optional later: `agent_memory_revision integer` for optimistic locking
+- `agent_memory_revision integer not null default 0` for optimistic locking across manual saves and background compaction
 
 This markdown file is the canonical durable memory. It is passed into the chat system prompt every turn. It is not a transcript and not a process log.
+
+All writes to this file must be compare-and-swap writes in the first writable-memory slice: manual `Save memory`, manual `Update memory now`, and background compaction all read the current revision and update only when that revision still matches. On conflict, the server should not last-write-wins overwrite the markdown. Manual saves should return a conflict state that lets the user review the newer memory. Background compaction should either retry from the newest memory plus the same uncompacted messages, or degrade to a proposed update for user review.
 
 ### Recommended template
 
@@ -164,6 +166,8 @@ Start with one simple trigger:
 
 Do not compact every turn. Do not run a cron at first. Do not block the chat response on compaction.
 
+The compaction boundary must remain valid across `Clear chat`. If clear chat archives/soft-hides rows, compaction can continue from `agent_memory_compacted_through_message_id` while filtering by the current clear epoch for visible history. If clear chat hard-deletes rows, reset the compacted-through marker during the same transaction and compact only messages created after the clear epoch. Do not leave `agent_memory_compacted_through_message_id` pointing at a deleted `workspace_messages` row.
+
 ### Compaction input
 
 Pass only:
@@ -186,6 +190,8 @@ Ask the model for a full replacement markdown file in the same template, plus a 
 - record corrections in `Ignore / do not remember` when relevant
 - never preserve private/sensitive details unless the user explicitly asked to remember them
 - never preserve agent chain-of-thought, tool traces, or process chatter
+
+Apply the replacement only through the `agent_memory_revision` compare-and-swap path. If the revision changed while the compactor was running, do not overwrite the newer memory. Re-run compaction against the latest memory or surface the replacement as a proposed diff.
 
 ### Dreaming MVP
 
@@ -285,10 +291,11 @@ The first code PR should still be boring and independently mergeable, but it sho
 3. Load and save messages against that default conversation.
 4. Keep the existing canvas persistence path, but remove workspace switching behavior.
 5. Add a visible `Clear chat` action that clears the dialog history for the default conversation.
-6. Add one editable `agent_memory_md` field in settings and inject it into the chat prompt.
-7. Add a simple background compaction endpoint triggered after a small threshold of new messages.
-8. Keep backend model selection unchanged.
-9. Update copy/docs so the surface is “Chat”, not “workspace”.
+6. Implement clear-chat as archive/soft-hide with a durable clear epoch, or reset the compaction marker transactionally if hard deletes are retained.
+7. Add one editable `agent_memory_md` field in settings, include required `agent_memory_revision` conflict protection, and inject the memory into the chat prompt.
+8. Add a simple background compaction endpoint triggered after a small threshold of new messages, with the same conflict-safe write path as manual memory saves.
+9. Keep backend model selection unchanged.
+10. Update copy/docs so the surface is “Chat”, not “workspace”.
 
 This PR should not implement schema renames, vector retrieval, hidden autonomous memory writes, or public model selection changes. Dreaming can start as a manual or thresholded reflection action after the markdown memory foundation exists.
 
@@ -298,7 +305,7 @@ This PR should not implement schema renames, vector retrieval, hidden autonomous
 
 - Add diff preview for compaction updates.
 - Add `Reflect on memory` for dreaming-style cleanup and pattern promotion.
-- Add conflict protection for manual user edits while compaction is running.
+- Improve conflict UX for manual user edits while compaction is running, for example a merge view or proposed diff recovery. The core revision check belongs in PR 1.
 - Add clear separation between `Clear chat`, `Clear canvas`, and `Clear memory`.
 
 ### PR 3: retention and pruning
