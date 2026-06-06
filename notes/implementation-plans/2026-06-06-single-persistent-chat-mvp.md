@@ -6,9 +6,9 @@
 
 ## Decision
 
-Replace the current multi-workspace chat model with one persistent ongoing dialog per user.
+Replace the current multi-workspace chat model with one persistent ongoing dialog per member user.
 
-The MVP should remove user-facing workspaces entirely. The product should feel like a single durable agent relationship, not a set of manually managed chat folders. A user can keep talking in one ongoing chat, clear the visible dialog when they want a fresh start, and rely on the system to preserve useful long-term context through a manually editable memory file.
+The MVP should remove member-facing workspaces entirely. The product should feel like a single durable agent relationship, not a set of manually managed chat folders. A member user can keep talking in one ongoing chat, clear the visible dialog when they want a fresh start, and rely on the system to preserve useful long-term context through a manually editable memory file.
 
 ## Why this changes the direction
 
@@ -26,7 +26,7 @@ Workspaces are an application taxonomy. Agent memory is a continuity system. For
 ### Keep
 
 - One `/chat` surface.
-- Persistent chat history for the signed-in user.
+- Persistent chat history for the active member session.
 - Persistent canvas state.
 - Backend-owned model selection. Do not expose model selection in the UI yet.
 - Existing tool/action-card safety model: write tools propose changes; user confirms execution.
@@ -52,9 +52,9 @@ For the MVP, the cleanest path is to keep the database substrate mostly intact w
 
 ### Phase 1: one implicit default conversation
 
-Use one server-owned default chat container per user. This can initially reuse the existing `workspaces` table as an implementation detail:
+Use one server-owned default chat container per member user. This can initially reuse the existing `workspaces` table as an implementation detail:
 
-- Create or fetch one default row per user.
+- Create or fetch one default row per member user only after the existing member entitlement check passes.
 - Stop surfacing the row as a workspace in the UI.
 - Treat `workspace_messages` as the current `chat_messages` table in practice.
 - Store persistent canvas state on the same default row for now.
@@ -75,7 +75,7 @@ Do not burn time on a schema rename before the MVP proves the simpler UX.
 
 ## Memory file direction
 
-The future memory system should be a markdown file per user, saved as part of user settings. Conceptually:
+The future memory system should be a markdown file per member user, saved as part of user settings. Conceptually:
 
 ```markdown
 # Purveyors Chat Memory
@@ -157,7 +157,7 @@ Final position: process is useful as a short-term event log, not as long-term me
 The first code PR should be boring and independently mergeable:
 
 1. Replace the workspace sidebar/list UX with a single persistent chat shell.
-2. Auto-create/fetch one default hidden workspace/conversation per user.
+2. Auto-create/fetch one default hidden workspace/conversation per member user after the existing member entitlement check passes.
 3. Load and save messages against that default conversation.
 4. Keep the existing canvas persistence path, but remove workspace switching behavior.
 5. Add a visible `Clear chat` action that clears the dialog history for the default conversation.
@@ -199,4 +199,4 @@ This PR should not implement dreaming, markdown memory, schema renames, or model
 - Should `Clear chat` preserve canvas by default? Recommendation: yes, with a separate `Clear canvas` action.
 - Should memory edits be automatic or propose/confirm in MVP? Recommendation: manual editor first, proposed edits second, automatic edits later.
 - Should old workspace rows be migrated, archived, or left as hidden legacy data? Recommendation: leave hidden initially, then migrate/archive once the new single-dialog flow is stable.
-- Should the default hidden conversation be created at account creation or first chat visit? Recommendation: first chat visit.
+- Should the default hidden conversation be created at account creation or first eligible member chat visit? Recommendation: first eligible member chat visit.
