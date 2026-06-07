@@ -2,7 +2,11 @@ import { json } from '@sveltejs/kit';
 import { AuthError, requireParchmentAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import type { Database } from '$lib/types/database.types';
-import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
+import {
+	buildGreenCoffeeQuery,
+	processGreenCoffeeData,
+	stripRoastProfileData
+} from '$lib/server/greenCoffeeUtils.js';
 import { addToInventory, updateInventory, deleteInventoryItem } from '$lib/data/inventory.js';
 import { GREEN_COFFEE_INV_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 
@@ -13,6 +17,7 @@ export const GET: RequestHandler = async (event) => {
 		const shareToken = url.searchParams.get('share');
 
 		let query = buildGreenCoffeeQuery(locals.supabase);
+		let includeRoastProfiles = true;
 
 		// If share token is provided, verify it and show shared data
 		if (shareToken) {
@@ -36,7 +41,8 @@ export const GET: RequestHandler = async (event) => {
 			}
 		} else {
 			// Standard Portfolio access: Parchment Intelligence or Mallard Studio users see their own data.
-			const { user } = await requireParchmentAccess(event);
+			const { user, memberAccess } = await requireParchmentAccess(event);
+			includeRoastProfiles = memberAccess;
 
 			query = query.eq('user', user.id);
 
@@ -48,11 +54,15 @@ export const GET: RequestHandler = async (event) => {
 		const { data: rows, error } = await query;
 		if (error) throw error;
 
-		// Process data consistently
+		// Process data consistently. Parchment Intelligence-only users can manage Portfolio
+		// rows, but Mallard roast history remains member-only.
 		const processedData = processGreenCoffeeData(rows || []);
+		const responseData = includeRoastProfiles
+			? processedData
+			: stripRoastProfileData(processedData);
 
 		return json({
-			data: processedData,
+			data: responseData,
 			searchState: Object.fromEntries(url.searchParams.entries())
 		});
 	} catch (error) {

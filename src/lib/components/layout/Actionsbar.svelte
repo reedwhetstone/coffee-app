@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { checkRole } from '$lib/types/auth.types';
+	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 
 	// Props declaration
 	let { data, onClose = () => {} } = $props<{
@@ -11,17 +12,18 @@
 	}>();
 
 	// Destructure with default values
-	let { role = 'viewer' } = $derived(data as { role?: string });
+	let { role = 'viewer', ppiAccess = false } = $derived(
+		data as { role?: string; ppiAccess?: boolean }
+	);
 
 	// Import global UserRole type
 	import type { UserRole } from '$lib/types/auth.types';
 	let userRole: UserRole = $derived(role as UserRole);
+	let canManagePortfolioRows = $derived(canManagePortfolio(userRole, ppiAccess === true));
 
 	// Use the imported checkRole function
 	function hasRequiredRole(requiredRole: UserRole): boolean {
-		const hasRole = checkRole(userRole, requiredRole);
-		console.log(`Role check: ${userRole} >= ${requiredRole} = ${hasRole}`);
-		return hasRole;
+		return checkRole(userRole, requiredRole);
 	}
 
 	// Update routeId to use the store value directly
@@ -116,33 +118,35 @@
 	</header>
 
 	<main class="flex-grow overflow-y-auto p-4">
-		{#if hasRequiredRole('member')}
+		{#if canManagePortfolioRows}
 			<div class="space-y-2">
-				<!-- Always show all functions regardless of current page -->
+				<!-- Always show Portfolio functions regardless of current page -->
 				<button
 					class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 					onclick={handleNewBean}
 				>
 					New Bean
 				</button>
-				<button
-					class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-					onclick={handleNewRoast}
-				>
-					New Roast
-				</button>
-				<button
-					class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-					onclick={handleNewSale}
-				>
-					New Sale
-				</button>
-				<button
-					class="block w-full rounded-md border border-background-tertiary-light px-3 py-2 text-left text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-					onclick={handleShareAllBeans}
-				>
-					Share All Beans
-				</button>
+				{#if hasRequiredRole('member')}
+					<button
+						class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						onclick={handleNewRoast}
+					>
+						New Roast
+					</button>
+					<button
+						class="block w-full rounded-md bg-background-secondary-light px-3 py-2 text-left text-sm font-medium text-text-primary-light ring-1 ring-border-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						onclick={handleNewSale}
+					>
+						New Sale
+					</button>
+					<button
+						class="block w-full rounded-md border border-background-tertiary-light px-3 py-2 text-left text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						onclick={handleShareAllBeans}
+					>
+						Share All Beans
+					</button>
+				{/if}
 			</div>
 		{/if}
 	</main>

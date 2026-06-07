@@ -6,13 +6,13 @@ function sectionById(role: 'viewer' | 'member' | 'admin', id: string, ppiAccess 
 }
 
 describe('authenticated app navigation taxonomy', () => {
-	it('uses the Parchment, Portfolio, Maillard Studio, and Developer product groups', () => {
+	it('uses the Parchment, Portfolio, Mallard Studio, and Developer product groups', () => {
 		const ids = getAuthenticatedNavSections('member').map((section) => section.id);
 
 		expect(ids).toEqual(['parchment', 'portfolio', 'maillard', 'developer']);
 	});
 
-	it('places chat in Parchment instead of Maillard Studio', () => {
+	it('places chat in Parchment instead of Mallard Studio', () => {
 		const parchmentItems = sectionById('member', 'parchment')?.items.map((item) => item.href);
 		const maillardItems = sectionById('member', 'maillard')?.items.map((item) => item.href);
 
@@ -32,7 +32,7 @@ describe('authenticated app navigation taxonomy', () => {
 		expect(getCurrentRouteLabel('/analytics', 'member')).toBe('Parchment Market Index');
 	});
 
-	it('keeps Portfolio and Maillard Studio items visible but locked for viewers', () => {
+	it('keeps Portfolio and Mallard Studio items visible but locked for viewers', () => {
 		const portfolioItem = sectionById('viewer', 'portfolio')?.items[0];
 		const roastItem = sectionById('viewer', 'maillard')?.items.find(
 			(item) => item.href === '/roast'

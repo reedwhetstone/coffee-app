@@ -169,7 +169,7 @@ Replace current `'core' | 'secondary'` section IDs with:
 ```
 Parchment       — Dashboard (/dashboard), Parchment Market Index (/analytics), Catalog (/catalog), Chat/Ask (/chat)
 Portfolio       — Portfolio (/beans)
-Maillard Studio — Roast (/roast), Profit (/profit)
+Mallard Studio — Roast (/roast), Profit (/profit)
 Developer       — Parchment Console (/api-dashboard), Docs (/docs)
 Admin           — Admin Dashboard (/admin) [admin-only, unchanged]
 ```
@@ -180,7 +180,7 @@ Account-level items (Subscription, Contact) move to the user/auth menu in the si
 
 - **Parchment section:** visible to all authenticated users; Parchment Market Index and Catalog become the primary proof surfaces. Chat is unlocked for `ppiAccess || member` and locked for viewers.
 - **Portfolio section:** visible to all authenticated users; `/beans` is unlocked for `ppiAccess || member` and locked for viewers without either entitlement. The route still represents owned-stock inventory under the hood; broader saved/watched/shortlisted Portfolio objects remain future work.
-- **Maillard Studio section:** visible to all authenticated users; items are locked/grayed for non-`member` users with a single upgrade note.
+- **Mallard Studio section:** visible to all authenticated users; items are locked/grayed for non-`member` users with a single upgrade note.
 - **Developer section:** visible to all authenticated users.
 - **Chat:** primary entry in Parchment; both Parchment Intelligence and Roasting users get access; tool depth differs by tier.
 
@@ -400,7 +400,7 @@ Navigation grouping:
 
 - **Parchment:** Dashboard, Parchment Market Index, Catalog, Chat/Ask
 - **Portfolio:** Portfolio (/beans), unlocked for `ppiAccess || member` and visible-but-locked for viewers without either entitlement
-- **Maillard Studio:** Roast, Profit (locked/grayed for non-member users with upgrade note)
+- **Mallard Studio:** Roast, Profit (locked/grayed for non-member users with upgrade note)
 - **Developer:** Parchment Console, Docs
 - **Account:** moved to user/auth sidebar menu, not a main nav section
 
@@ -461,7 +461,7 @@ Any decision/action affordance in this program must either:
 
 **Why first:** The navigation frame is the product frame. This gives every later UI change a coherent destination without touching data flows.
 
-**In scope:** Update `NavSection` type (`'core' | 'secondary'` → `'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin'`). Update navigation data, sidebar/mobile labels, grouping, route descriptions. Move Chat to Parchment as the primary entry. Move `/beans` under Portfolio copy while preserving the existing route/functionality. Move Parchment Console and Docs to Developer. Move Subscription and Contact to the auth/user menu. Lock Portfolio and Maillard items as visible-but-gated for viewers without the required entitlement: Portfolio unlocks for `ppiAccess || member`; Maillard unlocks for member. Update chat and Portfolio access across `hooks.server.ts`, `chat/+page.server.ts`, `chat/+page.svelte`, `/api/chat`, `/api/chat/execute-action`, `/api/beans`, and server-side chat tool gating. Write new `appNavigation.test.ts`.
+**In scope:** Update `NavSection` type (`'core' | 'secondary'` → `'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin'`). Update navigation data, sidebar/mobile labels, grouping, route descriptions. Move Chat to Parchment as the primary entry. Move `/beans` under Portfolio copy while preserving the existing route/functionality. Move Parchment Console and Docs to Developer. Move Subscription and Contact to the auth/user menu. Lock Portfolio and Mallard items as visible-but-gated for viewers without the required entitlement: Portfolio unlocks for `ppiAccess || member`; Mallard unlocks for member. Update chat and Portfolio access across `hooks.server.ts`, `chat/+page.server.ts`, `chat/+page.svelte`, `/api/chat`, `/api/chat/execute-action`, `/api/beans`, and server-side chat tool gating. Write new `appNavigation.test.ts`.
 
 **Out of scope:** Dashboard redesign, analytics page redesign, new decision/action affordances, route renames.
 
@@ -471,9 +471,9 @@ Any decision/action affordance in this program must either:
 
 **Acceptance criteria:**
 
-- Authenticated desktop navigation has Parchment, Portfolio, Maillard Studio, Developer sections.
-- Portfolio and Maillard Studio items are visible but locked/grayed for users missing the relevant entitlement: Portfolio requires `ppiAccess || member`; Maillard Studio requires member.
-- Chat appears in Parchment, not Maillard Studio. Non-member viewers without ppiAccess see chat as locked.
+- Authenticated desktop navigation has Parchment, Portfolio, Mallard Studio, Developer sections.
+- Portfolio and Mallard Studio items are visible but locked/grayed for users missing the relevant entitlement: Portfolio requires `ppiAccess || member`; Mallard Studio requires member.
+- Chat appears in Parchment, not Mallard Studio. Non-member viewers without ppiAccess see chat as locked.
 - Mobile navigation uses the same taxonomy.
 - Existing role/member/admin visibility behavior is preserved for items that remain gated.
 - Nav item does NOT appear in the wrong section (test both presence and absence).
@@ -483,7 +483,7 @@ Any decision/action affordance in this program must either:
 - `chat/+page.svelte` gate is `ppiAccess || checkRole(role, 'member')`.
 - `/api/chat` authorizes `ppiAccess || member` on the server before streaming and still rejects users with neither entitlement.
 - Chat tools and Portfolio action execution are entitlement-gated server-side: Parchment Intelligence-only users get sourcing/catalog/Portfolio tools only; member users keep the full tool set.
-- New `appNavigation.test.ts` covers: section IDs, item membership per section, chat placement, Portfolio/Maillard lock state for viewer. Add focused server/chat authorization coverage for the `/chat` route, `/api/chat`, and tool allowlist.
+- New `appNavigation.test.ts` covers: section IDs, item membership per section, chat placement, Portfolio/Mallard lock state for viewer. Add focused server/chat authorization coverage for the `/chat` route, `/api/chat`, and tool allowlist.
 
 **Test plan:**
 

@@ -95,7 +95,7 @@ const authenticatedSections: NavSection[] = [
 	},
 	{
 		id: 'maillard',
-		label: 'Maillard Studio',
+		label: 'Mallard Studio',
 		items: [
 			{
 				label: 'Roast',

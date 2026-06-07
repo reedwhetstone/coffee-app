@@ -15,22 +15,7 @@ TODAY'S DATE: {{TODAY_DATE}}
 Use this for any date-relative references (e.g., "recent arrivals", "this month", date fields on action cards).
 
 TOOL USAGE
-You have access to 11 tools in two categories:
-
-READ TOOLS (query data):
-1. coffee_catalog_search - Query supplier inventories of green coffee
-2. green_coffee_inventory - Query the user's personal green coffee inventory & notes
-3. roast_profiles - Analyze user's roasting data
-4. bean_tasting_notes - Retrieve or analyze detailed flavor profiles (user vs supplier)
-5. find_similar_beans - Find beans similar to a specific coffee using embedding similarity across all suppliers
-6. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
-
-WRITE TOOLS (propose changes — user must confirm before execution):
-7. add_bean_to_inventory - Propose adding a bean to the user's inventory
-8. update_bean - Propose updating an existing inventory bean
-9. create_roast_session - Propose creating a new roast session/profile
-10. update_roast_notes - Propose updating roast notes
-11. record_sale - Propose recording a sale
+{{TOOL_ACCESS_CONTEXT}}
 
 SIMILARITY GUIDANCE
 When a user asks about alternatives, similar coffees, or "what else is like this", use find_similar_beans with their bean's catalog ID.
@@ -59,8 +44,7 @@ STRATEGIC APPROACH
 5. If tools fail or return no results → acknowledge it, explain, and give general guidance
 
 PRESENTING RESULTS
-After calling a search tool (coffee_catalog_search, green_coffee_inventory, roast_profiles),
-you MUST call present_results to control what the user sees:
+After calling a search/read tool, you MUST call present_results to control what the user sees:
 
 1. SELECT 2-5 most relevant items from the search results (don't show all 10+)
 2. ANNOTATE each with a natural language note explaining WHY it's relevant
@@ -89,7 +73,7 @@ POST-PRESENTATION WRITING
 After present_results, your text should:
 - Focus on WHY, COMPARE, and RECOMMEND — don't repeat what the cards already show
 - Reference coffees by NAME, never by number
-- Add insight the cards can't: roasting tips, pairing suggestions, trade-off analysis
+- Add insight the cards can't: sourcing context, pairing suggestions, workflow guidance, and trade-off analysis
 - Keep it concise — the cards carry the details, your text adds the narrative
 
 CANVAS LIFECYCLE MANAGEMENT
@@ -110,7 +94,7 @@ const WORKSPACE_TYPE_CONTEXT: Record<string, string> = {
 	general: '',
 	sourcing: `\nWORKSPACE FOCUS: Sourcing
 You are in the user's Sourcing workspace. Focus on green coffee discovery, supplier comparisons,
-origin analysis, and purchasing decisions. Prioritize coffee_catalog_search and bean_tasting_notes tools.`,
+origin analysis, and purchasing decisions. Prioritize coffee_catalog_search and find_similar_beans tools.`,
 	roasting: `\nWORKSPACE FOCUS: Roasting
 You are in the user's Roasting workspace. Focus on roast profile analysis, development strategies,
 temperature curve optimization, and batch consistency. Prioritize roast_profiles tool.
@@ -129,14 +113,63 @@ interface WorkspaceContext {
 	canvasDescription?: string;
 }
 
-function buildSystemPrompt(
+const PARCHMENT_TOOL_ACCESS_PROMPT = `You have access to Parchment Intelligence tools:
+
+READ TOOLS (query data):
+1. coffee_catalog_search - Query supplier inventories of green coffee
+2. green_coffee_inventory - Query the user's green coffee Portfolio and notes
+3. find_similar_beans - Find beans similar to a specific coffee using embedding similarity across all suppliers
+4. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
+
+WRITE TOOLS (propose changes — user must confirm before execution):
+5. add_bean_to_inventory - Propose adding a bean to the user's Portfolio
+6. update_bean - Propose updating an existing Portfolio bean
+
+Mallard-only roast, tasting, and sales tools are unavailable in this access tier.`;
+
+const MALLARD_TOOL_ACCESS_PROMPT = `You have access to 11 tools in two categories:
+
+READ TOOLS (query data):
+1. coffee_catalog_search - Query supplier inventories of green coffee
+2. green_coffee_inventory - Query the user's personal green coffee inventory & notes
+3. roast_profiles - Analyze user's roasting data
+4. bean_tasting_notes - Retrieve or analyze detailed flavor profiles (user vs supplier)
+5. find_similar_beans - Find beans similar to a specific coffee using embedding similarity across all suppliers
+6. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
+
+WRITE TOOLS (propose changes — user must confirm before execution):
+7. add_bean_to_inventory - Propose adding a bean to the user's inventory
+8. update_bean - Propose updating an existing inventory bean
+9. create_roast_session - Propose creating a new roast session/profile
+10. update_roast_notes - Propose updating roast notes
+11. record_sale - Propose recording a sale`;
+
+const PARCHMENT_WORKSPACE_TYPES = new Set(['general', 'sourcing', 'inventory']);
+
+function toolAccessPrompt(access?: { ppiAccess: boolean; memberAccess: boolean }): string {
+	return access?.memberAccess ? MALLARD_TOOL_ACCESS_PROMPT : PARCHMENT_TOOL_ACCESS_PROMPT;
+}
+
+function resolveWorkspaceType(
+	workspaceType: string | undefined,
+	access?: { ppiAccess: boolean; memberAccess: boolean }
+): string | undefined {
+	if (!workspaceType) return undefined;
+	if (access?.memberAccess) return workspaceType;
+	return PARCHMENT_WORKSPACE_TYPES.has(workspaceType) ? workspaceType : undefined;
+}
+
+export function _buildSystemPrompt(
 	workspaceContext?: WorkspaceContext,
 	userName?: string,
 	access?: { ppiAccess: boolean; memberAccess: boolean }
 ): string {
 	// Inject today's date so the model has temporal awareness
 	const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-	let prompt = BASE_SYSTEM_PROMPT.replace('{{TODAY_DATE}}', today);
+	let prompt = BASE_SYSTEM_PROMPT.replace('{{TODAY_DATE}}', today).replace(
+		'{{TOOL_ACCESS_CONTEXT}}',
+		toolAccessPrompt(access)
+	);
 
 	if (userName) {
 		prompt += `\n\nUSER: ${userName}`;
@@ -148,8 +181,9 @@ function buildSystemPrompt(
 		prompt += `\n\nACCESS CONTEXT:\nThis user has Mallard Studio chat access, including sourcing/catalog tools and roasting-context tools.`;
 	}
 
-	if (workspaceContext?.type && WORKSPACE_TYPE_CONTEXT[workspaceContext.type]) {
-		prompt += WORKSPACE_TYPE_CONTEXT[workspaceContext.type];
+	const workspaceType = resolveWorkspaceType(workspaceContext?.type, access);
+	if (workspaceType && WORKSPACE_TYPE_CONTEXT[workspaceType]) {
+		prompt += WORKSPACE_TYPE_CONTEXT[workspaceType];
 	}
 
 	if (workspaceContext?.summary) {
@@ -206,7 +240,10 @@ export const POST: RequestHandler = async (event) => {
 			user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0];
 
 		// Build dynamic system prompt with workspace context and user identity
-		const systemPrompt = buildSystemPrompt(workspaceContext, userName, { ppiAccess, memberAccess });
+		const systemPrompt = _buildSystemPrompt(workspaceContext, userName, {
+			ppiAccess,
+			memberAccess
+		});
 
 		// Stream the response using Vercel AI SDK via OpenRouter preset
 		const result = streamText({

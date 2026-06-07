@@ -4,6 +4,7 @@
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
@@ -69,9 +70,10 @@
 		}>;
 		catalogData?: CoffeeCatalog[];
 		role?: 'viewer' | 'member' | 'admin';
+		ppiAccess?: boolean;
 	};
 
-	let { data = { data: [], role: 'viewer', catalogData: [] } } = $props<{
+	let { data = { data: [], role: 'viewer', ppiAccess: false, catalogData: [] } } = $props<{
 		data?: Partial<PageData>;
 	}>();
 
@@ -82,6 +84,9 @@
 	let isLoading = $state(true);
 	let clientData = $state<PageData['data']>([]);
 	let catalogData = $state<CoffeeCatalog[]>([]);
+	let canManagePortfolioRows = $derived(
+		canManagePortfolio(data?.role || 'viewer', data?.ppiAccess === true)
+	);
 	let error = $state<string | null>(null);
 	let isSaving = $state<string | null>(null);
 	let catalogLoadPromise: Promise<void> | null = null;
@@ -506,6 +511,7 @@
 				<BeanProfileTabs
 					{selectedBean}
 					role={data?.role || 'viewer'}
+					canManagePortfolio={canManagePortfolioRows}
 					onUpdate={(updatedBean) => {
 						// Update selectedBean immediately for instant UI feedback
 						selectedBean = updatedBean;

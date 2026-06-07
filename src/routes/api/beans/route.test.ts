@@ -20,6 +20,9 @@ const authMocks = vi.hoisted(() => {
 const dataMocks = vi.hoisted(() => ({
 	buildGreenCoffeeQuery: vi.fn(),
 	processGreenCoffeeData: vi.fn((rows: unknown[]) => rows),
+	stripRoastProfileData: vi.fn((rows: Array<Record<string, unknown>>) =>
+		rows.map((row) => ({ ...row, roast_profiles: [] }))
+	),
 	addToInventory: vi.fn(),
 	updateInventory: vi.fn(),
 	deleteInventoryItem: vi.fn()
@@ -32,7 +35,8 @@ vi.mock('$lib/server/auth', () => ({
 
 vi.mock('$lib/server/greenCoffeeUtils.js', () => ({
 	buildGreenCoffeeQuery: dataMocks.buildGreenCoffeeQuery,
-	processGreenCoffeeData: dataMocks.processGreenCoffeeData
+	processGreenCoffeeData: dataMocks.processGreenCoffeeData,
+	stripRoastProfileData: dataMocks.stripRoastProfileData
 }));
 
 vi.mock('$lib/data/inventory.js', () => ({
@@ -79,7 +83,11 @@ describe('/api/beans Portfolio entitlement gating', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		dataMocks.buildGreenCoffeeQuery.mockReturnValue(makeQuery([]));
-		authMocks.requireParchmentAccess.mockResolvedValue({ user: { id: 'ppi-user' } });
+		authMocks.requireParchmentAccess.mockResolvedValue({
+			user: { id: 'ppi-user' },
+			ppiAccess: true,
+			memberAccess: false
+		});
 		dataMocks.addToInventory.mockResolvedValue({ id: 1 });
 		dataMocks.updateInventory.mockResolvedValue({ id: 1 });
 		dataMocks.deleteInventoryItem.mockResolvedValue(undefined);
@@ -110,16 +118,42 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(authMocks.requireParchmentAccess).not.toHaveBeenCalled();
 	});
 
-	it('allows Parchment Intelligence users to read only their own Portfolio rows', async () => {
-		const query = makeQuery([{ id: 1 }]);
+	it('allows Parchment Intelligence users to read only their own Portfolio rows without roast history', async () => {
+		const query = makeQuery([{ id: 1, roast_profiles: [{ roast_id: 10 }] }]);
 		dataMocks.buildGreenCoffeeQuery.mockReturnValue(query);
-		authMocks.requireParchmentAccess.mockResolvedValue({ user: { id: 'ppi-user' } });
+		authMocks.requireParchmentAccess.mockResolvedValue({
+			user: { id: 'ppi-user' },
+			ppiAccess: true,
+			memberAccess: false
+		});
 
 		const response = await GET(makeEvent() as never);
 
 		expect(response.status).toBe(200);
 		expect(query.eq).toHaveBeenCalledWith('user', 'ppi-user');
-		expect(await response.json()).toMatchObject({ data: [{ id: 1 }] });
+		expect(dataMocks.stripRoastProfileData).toHaveBeenCalledWith([
+			{ id: 1, roast_profiles: [{ roast_id: 10 }] }
+		]);
+		expect(await response.json()).toMatchObject({ data: [{ id: 1, roast_profiles: [] }] });
+	});
+
+	it('keeps roast history in Portfolio reads for Mallard Studio members', async () => {
+		const roastProfiles = [{ roast_id: 10 }];
+		const query = makeQuery([{ id: 1, roast_profiles: roastProfiles }]);
+		dataMocks.buildGreenCoffeeQuery.mockReturnValue(query);
+		authMocks.requireParchmentAccess.mockResolvedValue({
+			user: { id: 'member-user' },
+			ppiAccess: false,
+			memberAccess: true
+		});
+
+		const response = await GET(makeEvent() as never);
+
+		expect(response.status).toBe(200);
+		expect(dataMocks.stripRoastProfileData).not.toHaveBeenCalled();
+		expect(await response.json()).toMatchObject({
+			data: [{ id: 1, roast_profiles: roastProfiles }]
+		});
 	});
 
 	it('requires Portfolio entitlement for create, update, and delete writes', async () => {

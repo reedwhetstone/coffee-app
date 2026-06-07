@@ -15,9 +15,16 @@
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { InventoryWithCatalog, RoastProfile } from '$lib/types/component.types';
 
-	let { selectedBean, role, onUpdate, onDelete } = $props<{
+	let {
+		selectedBean,
+		role,
+		canManagePortfolio = false,
+		onUpdate,
+		onDelete
+	} = $props<{
 		selectedBean: InventoryWithCatalog;
 		role?: 'viewer' | 'member' | 'admin';
+		canManagePortfolio?: boolean;
 		onUpdate: (bean: InventoryWithCatalog) => void;
 		onDelete: (id: number) => void;
 	}>();
@@ -813,7 +820,7 @@
 						<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 							<div class="mb-4 flex items-center justify-between">
 								<h3 class="font-semibold text-text-primary-light">Tasting Profile</h3>
-								{#if role === 'admin' || role === 'member'}
+								{#if canManagePortfolio}
 									<button
 										onclick={() => (showCuppingForm = true)}
 										class="rounded-md bg-background-tertiary-light px-3 py-1 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
@@ -900,7 +907,7 @@
 								<div class="rounded-lg bg-background-primary-light p-4 ring-1 ring-border-light">
 									<h4 class="mb-2 font-medium text-text-primary-light">Your Cupping Notes</h4>
 									<p class="text-sm text-text-secondary-light">No cupping notes yet</p>
-									{#if role === 'admin' || role === 'member'}
+									{#if canManagePortfolio}
 										<button
 											onclick={() => (showCuppingForm = true)}
 											class="mt-2 rounded-md bg-background-tertiary-light px-3 py-1 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-background-tertiary-light focus:ring-offset-2"
@@ -1137,7 +1144,7 @@
 	</div>
 
 	<!-- Action Buttons -->
-	{#if role === 'admin' || role === 'member'}
+	{#if canManagePortfolio}
 		<div class="mt-6 flex flex-wrap justify-end gap-2 border-t border-border-light pt-4">
 			{#if currentTab === 'overview'}
 				<button
