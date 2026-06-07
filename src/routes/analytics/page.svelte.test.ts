@@ -280,6 +280,53 @@ describe('analytics page loading experience', () => {
 	});
 });
 
+describe('analytics command center hierarchy', () => {
+	it('places market read, controls, KPI strip, and insight cards before chart evidence', async () => {
+		const { container } = render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(screen.getByRole('heading', { name: 'Parchment Market Index' })).toBeTruthy();
+		expect(screen.getByText('Market read')).toBeTruthy();
+		expect(screen.getByText('Scope controls')).toBeTruthy();
+		expect(screen.getByText('Price movement')).toBeTruthy();
+		expect(screen.getByText('Availability read')).toBeTruthy();
+		expect(screen.getByText('Next investigation')).toBeTruthy();
+
+		const marketRead = container.querySelector('[aria-labelledby="market-read-heading"]');
+		const scopeControls = container.querySelector('[aria-label="Scope controls"]');
+		const kpiStrip = container.querySelector('[aria-label="Market KPI strip"]');
+		const insightCards = container.querySelector('[aria-label="Market insight cards"]');
+		const evidenceCharts = container.querySelector('[aria-label="Evidence charts"]');
+		const actionRail = container.querySelector('[aria-label="Action rail"]');
+
+		expect(marketRead).toBeTruthy();
+		expect(scopeControls).toBeTruthy();
+		expect(kpiStrip).toBeTruthy();
+		expect(insightCards).toBeTruthy();
+		expect(evidenceCharts).toBeTruthy();
+		expect(actionRail).toBeTruthy();
+
+		expect(
+			marketRead!.compareDocumentPosition(scopeControls!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			scopeControls!.compareDocumentPosition(kpiStrip!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			kpiStrip!.compareDocumentPosition(insightCards!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			insightCards!.compareDocumentPosition(evidenceCharts!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			evidenceCharts!.compareDocumentPosition(actionRail!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+	});
+});
+
 describe('analytics premium boundary copy', () => {
 	it('keeps arrivals and delistings behind the Parchment Intelligence boundary on the baseline surface', async () => {
 		render(AnalyticsPage, { data: createData() });
