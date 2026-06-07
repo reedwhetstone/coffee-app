@@ -233,6 +233,17 @@
 		});
 	});
 
+	let arrivalExpandLabel = $derived(
+		filteredArrivals.length < scopedArrivalCount
+			? `View latest ${filteredArrivals.length} of ${scopedArrivalCount} →`
+			: undefined
+	);
+	let delistingExpandLabel = $derived(
+		filteredDelistings.length < scopedDelistingCount
+			? `View latest ${filteredDelistings.length} of ${scopedDelistingCount} →`
+			: undefined
+	);
+
 	function formatDate(dateStr: string | null) {
 		if (!dateStr) return 'N/A';
 		return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
@@ -1117,6 +1128,7 @@
 					badge={`+${scopedArrivalCount}`}
 					badgeColor="amber"
 					totalItems={scopedArrivalCount}
+					expandLabel={arrivalExpandLabel}
 				>
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-4 flex items-center justify-between gap-3">
@@ -1183,6 +1195,7 @@
 					badge={`-${scopedDelistingCount}`}
 					badgeColor="red"
 					totalItems={scopedDelistingCount}
+					expandLabel={delistingExpandLabel}
 				>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-4 flex items-center justify-between gap-3">
