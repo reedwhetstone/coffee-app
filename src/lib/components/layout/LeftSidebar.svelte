@@ -6,6 +6,7 @@
 	import { quintOut } from 'svelte/easing';
 	import { onMount } from 'svelte';
 	import { checkRole } from '$lib/types/auth.types';
+	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 	import { workspaceStore, type Workspace } from '$lib/stores/workspaceStore.svelte';
 
 	// Props for the sidebar
@@ -36,7 +37,8 @@
 
 	// Role checking logic
 	let userRole = $derived((data?.role as UserRole) || 'viewer');
-	let isMember = $derived(checkRole(userRole, 'member'));
+	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
+	let canUseActions = $derived(canManagePortfolio(userRole, ppiAccess));
 	let isAdmin = $derived(checkRole(userRole, 'admin'));
 
 	// Pages where settings (filters) should be shown
@@ -294,8 +296,8 @@
 				</button>
 			</div>
 
-			<!-- Actions Menu - Only for member users -->
-			{#if isMember}
+			<!-- Actions Menu - Portfolio managers only; PPI users get PPI-safe actions inside -->
+			{#if canUseActions}
 				<div class="relative">
 					<button
 						onclick={toggleActionsMenu}
