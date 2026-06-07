@@ -86,7 +86,7 @@ export interface ChatToolAccess {
 export function createChatTools(
 	supabase: SupabaseClient,
 	userId: string,
-	access: ChatToolAccess = { memberAccess: true }
+	access: ChatToolAccess = { memberAccess: false, ppiAccess: false }
 ): ToolSet {
 	const tools = {
 		// ─── Read Tools (CLI imports) ───────────────────────────────────────────

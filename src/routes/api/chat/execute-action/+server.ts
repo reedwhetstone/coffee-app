@@ -137,6 +137,8 @@ export const POST: RequestHandler = async (event) => {
 			}
 
 			case 'create_roast_session': {
+				if (!memberAccess)
+					return json({ error: 'Mallard Studio access required for this action' }, { status: 403 });
 				const coffeeId = Number(params.coffee_id);
 				if (!coffeeId) return json({ error: 'coffee_id is required' }, { status: 400 });
 
@@ -174,6 +176,8 @@ export const POST: RequestHandler = async (event) => {
 			}
 
 			case 'update_roast_notes': {
+				if (!memberAccess)
+					return json({ error: 'Mallard Studio access required for this action' }, { status: 403 });
 				const roastId = Number(params.roast_id);
 				if (!roastId) return json({ error: 'roast_id is required' }, { status: 400 });
 
@@ -203,6 +207,8 @@ export const POST: RequestHandler = async (event) => {
 			}
 
 			case 'record_sale': {
+				if (!memberAccess)
+					return json({ error: 'Mallard Studio access required for this action' }, { status: 403 });
 				const invId = Number(params.green_coffee_inv_id);
 				if (!invId) return json({ error: 'green_coffee_inv_id is required' }, { status: 400 });
 

@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, stepCountIs, type UIMessage, convertToModelMessages } from 'ai';
+import { z } from 'zod';
 import { createChatTools } from '$lib/services/tools';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
@@ -107,6 +108,20 @@ You are in the user's Analysis workspace. Focus on cross-cutting insights: cost 
 roast-to-cup correlations, profit optimization, and trend analysis. Use multiple tools together.`
 };
 
+const workspaceContextSchema = z.object({
+	type: z.string().max(50).optional(),
+	summary: z
+		.string()
+		.max(2000)
+		.transform((s) => s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ').trim())
+		.optional(),
+	canvasDescription: z
+		.string()
+		.max(500)
+		.transform((s) => s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ').trim())
+		.optional()
+});
+
 interface WorkspaceContext {
 	type?: string;
 	summary?: string;
@@ -172,7 +187,9 @@ export function _buildSystemPrompt(
 	);
 
 	if (userName) {
-		prompt += `\n\nUSER: ${userName}`;
+		// Strip control characters to prevent prompt injection via user-controlled display name.
+		const safeName = userName.replace(/[\x00-\x1F\x7F]/g, ' ').trim().slice(0, 100);
+		if (safeName) prompt += `\n\nUSER: ${safeName}`;
 	}
 
 	if (access?.ppiAccess && !access.memberAccess) {
@@ -211,10 +228,12 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'OpenRouter API key not configured' }, { status: 500 });
 		}
 
-		const {
-			messages,
-			workspaceContext
-		}: { messages: UIMessage[]; workspaceContext?: WorkspaceContext } = await event.request.json();
+		const body: { messages: UIMessage[]; workspaceContext?: unknown } = await event.request.json();
+		const { messages } = body;
+		const workspaceContextParsed = workspaceContextSchema.safeParse(body.workspaceContext);
+		const workspaceContext: WorkspaceContext | undefined = workspaceContextParsed.success
+			? workspaceContextParsed.data
+			: undefined;
 
 		// Validate input
 		if (!messages || !Array.isArray(messages) || messages.length === 0) {
