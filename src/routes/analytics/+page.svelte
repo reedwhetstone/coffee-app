@@ -794,10 +794,12 @@
 					{#if scopedOriginRangeData.length > 0}
 						<div class="w-full">
 							{#if OriginBarChartComponent}
-								<OriginBarChartComponent
-									data={scopedOriginRangeData}
-									expanded={originChartExpanded}
-								/>
+								{#key viewMode}
+									<OriginBarChartComponent
+										data={scopedOriginRangeData}
+										expanded={originChartExpanded}
+									/>
+								{/key}
 							{/if}
 						</div>
 					{:else}

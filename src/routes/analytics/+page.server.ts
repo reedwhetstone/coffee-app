@@ -260,8 +260,10 @@ export const load: PageServerLoad = async (event) => {
 		{ count: stockedWholesaleBeans },
 		{ data: processingRows },
 		{ data: catalogPriceRows },
-		{ data: recentArrivals30 },
-		{ data: recentDelistings30 },
+		{ data: recentRetailArrivals30 },
+		{ data: recentWholesaleArrivals30 },
+		{ data: recentRetailDelistings30 },
+		{ data: recentWholesaleDelistings30 },
 		{ count: arrivals7dRetail },
 		{ count: arrivals7dWholesale },
 		{ count: arrivals30dRetail },
@@ -302,19 +304,40 @@ export const load: PageServerLoad = async (event) => {
 			.not('price_per_lb', 'is', null)
 			.gt('price_per_lb', 0)
 			.limit(5000),
-		// Recent arrivals (30 days)
+		// Recent retail arrivals (30 days). Load each market separately before the row cap so
+		// scoped movement tables do not lose named lots to the other market's newest rows.
 		supabase
 			.from('coffee_catalog')
 			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
 			.eq('stocked', true)
+			.eq('wholesale', false)
 			.gte('stocked_date', thirtyDaysAgoStr)
 			.order('stocked_date', { ascending: false })
 			.limit(50),
-		// Recent delistings (30 days)
+		// Recent wholesale arrivals (30 days)
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
+			.eq('stocked', true)
+			.eq('wholesale', true)
+			.gte('stocked_date', thirtyDaysAgoStr)
+			.order('stocked_date', { ascending: false })
+			.limit(50),
+		// Recent retail delistings (30 days)
 		supabase
 			.from('coffee_catalog')
 			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
 			.eq('stocked', false)
+			.eq('wholesale', false)
+			.gte('unstocked_date', thirtyDaysAgoStr)
+			.order('unstocked_date', { ascending: false })
+			.limit(50),
+		// Recent wholesale delistings (30 days)
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
+			.eq('stocked', false)
+			.eq('wholesale', true)
 			.gte('unstocked_date', thirtyDaysAgoStr)
 			.order('unstocked_date', { ascending: false })
 			.limit(50),
@@ -465,6 +488,19 @@ export const load: PageServerLoad = async (event) => {
 		}
 	};
 
+	const recentArrivals = [
+		...((recentRetailArrivals30 ?? []) as ArrivalBean[]),
+		...((recentWholesaleArrivals30 ?? []) as ArrivalBean[])
+	]
+		.sort((a, b) => (b.stocked_date ?? '').localeCompare(a.stocked_date ?? ''))
+		.slice(0, 100);
+	const recentDelistings = [
+		...((recentRetailDelistings30 ?? []) as DelistingBean[]),
+		...((recentWholesaleDelistings30 ?? []) as DelistingBean[])
+	]
+		.sort((a, b) => (b.unstocked_date ?? '').localeCompare(a.unstocked_date ?? ''))
+		.slice(0, 100);
+
 	// ─── PARCHMENT INTELLIGENCE QUERIES (only run for entitled users) ───────────
 	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
 	let comparisonBeans: ComparisonBean[] = [];
@@ -576,8 +612,8 @@ export const load: PageServerLoad = async (event) => {
 		processDistribution,
 		originRangeData,
 		movementCounts,
-		recentArrivals: (recentArrivals30 ?? []) as ArrivalBean[],
-		recentDelistings: (recentDelistings30 ?? []) as DelistingBean[],
+		recentArrivals,
+		recentDelistings,
 		comparisonBeans,
 		supplierHealth,
 		meta: buildPublicMeta({

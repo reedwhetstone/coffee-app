@@ -453,8 +453,8 @@ describe('analytics load', () => {
 		await load(createLoadEvent(client));
 
 		expect(client.movementCutoffs).toEqual({
-			arrivals: ['2026-03-01'],
-			delistings: ['2026-03-01']
+			arrivals: ['2026-03-01', '2026-03-01'],
+			delistings: ['2026-03-01', '2026-03-01']
 		});
 	});
 
@@ -520,8 +520,8 @@ describe('analytics load', () => {
 			await load(createLoadEvent(client));
 
 			expect(client.movementCutoffs).toEqual({
-				arrivals: ['2026-03-01'],
-				delistings: ['2026-03-01']
+				arrivals: ['2026-03-01', '2026-03-01'],
+				delistings: ['2026-03-01', '2026-03-01']
 			});
 		} finally {
 			process.env.TZ = originalTimeZone;
