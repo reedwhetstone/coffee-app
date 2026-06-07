@@ -420,4 +420,33 @@ describe('analytics premium boundary copy', () => {
 			expect(screen.getByText('Older Gone')).toBeTruthy();
 		});
 	});
+
+	it('uses loaded movement rows instead of exact zero counts when movement counts are unavailable', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				movementCounts: {
+					available: false,
+					arrivals: {
+						sevenDay: { retail: 0, wholesale: 0 },
+						thirtyDay: { retail: 0, wholesale: 0 }
+					},
+					delistings: {
+						sevenDay: { retail: 0, wholesale: 0 },
+						thirtyDay: { retail: 0, wholesale: 0 }
+					}
+				}
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+		});
+
+		expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
+		expect(screen.getByText('Recently Gone')).toBeTruthy();
+		expect(screen.getAllByRole('button', { name: /Open 1 loaded row/ })).toHaveLength(2);
+		expect(screen.queryByRole('button', { name: /View all 0/ })).toBeNull();
+	});
 });

@@ -233,15 +233,40 @@
 		});
 	});
 
+	let isMovementDataAvailable = $derived.by(() => {
+		if (!movementCounts.available || !stats.lastUpdated) return false;
+		const updatedAt = new Date(`${stats.lastUpdated}T00:00:00.000Z`).getTime();
+		const staleAfterMs = 90 * 24 * 60 * 60 * 1000;
+		return Number.isFinite(updatedAt) && Date.now() - updatedAt <= staleAfterMs;
+	});
+
+	function loadedRowsLabel(count: number): string {
+		return `Open ${count.toLocaleString()} loaded ${count === 1 ? 'row' : 'rows'} ↗`;
+	}
+
+	let arrivalPanelBadge = $derived(isMovementDataAvailable ? `+${scopedArrivalCount}` : undefined);
+	let delistingPanelBadge = $derived(
+		isMovementDataAvailable ? `-${scopedDelistingCount}` : undefined
+	);
+	let arrivalPanelTotalItems = $derived(
+		isMovementDataAvailable ? scopedArrivalCount : filteredArrivals.length
+	);
+	let delistingPanelTotalItems = $derived(
+		isMovementDataAvailable ? scopedDelistingCount : filteredDelistings.length
+	);
 	let arrivalExpandLabel = $derived(
-		filteredArrivals.length < scopedArrivalCount
-			? `Open latest ${filteredArrivals.length} shown (${scopedArrivalCount} total in window) ↗`
-			: undefined
+		isMovementDataAvailable
+			? filteredArrivals.length < scopedArrivalCount
+				? `Open latest ${filteredArrivals.length} shown (${scopedArrivalCount} total in window) ↗`
+				: undefined
+			: loadedRowsLabel(filteredArrivals.length)
 	);
 	let delistingExpandLabel = $derived(
-		filteredDelistings.length < scopedDelistingCount
-			? `Open latest ${filteredDelistings.length} shown (${scopedDelistingCount} total in window) ↗`
-			: undefined
+		isMovementDataAvailable
+			? filteredDelistings.length < scopedDelistingCount
+				? `Open latest ${filteredDelistings.length} shown (${scopedDelistingCount} total in window) ↗`
+				: undefined
+			: loadedRowsLabel(filteredDelistings.length)
 	);
 
 	function formatDate(dateStr: string | null) {
@@ -453,12 +478,6 @@
 
 	let movementWindowLabel = $derived(windowMode === '7d' ? '7-day' : '30-day');
 	let viewModeLabel = $derived(viewMode === 'all' ? 'combined retail + wholesale' : viewMode);
-	let isMovementDataAvailable = $derived.by(() => {
-		if (!movementCounts.available || !stats.lastUpdated) return false;
-		const updatedAt = new Date(`${stats.lastUpdated}T00:00:00.000Z`).getTime();
-		const staleAfterMs = 90 * 24 * 60 * 60 * 1000;
-		return Number.isFinite(updatedAt) && Date.now() - updatedAt <= staleAfterMs;
-	});
 
 	let marketReadHeadline = $derived.by(() => {
 		if (!isMovementDataAvailable) {
@@ -1147,9 +1166,9 @@
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 				<ExpandablePanel
 					title="New arrivals"
-					badge={`+${scopedArrivalCount}`}
+					badge={arrivalPanelBadge}
 					badgeColor="amber"
-					totalItems={scopedArrivalCount}
+					totalItems={arrivalPanelTotalItems}
 					expandLabel={arrivalExpandLabel}
 				>
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
@@ -1214,9 +1233,9 @@
 
 				<ExpandablePanel
 					title="Recent Delistings"
-					badge={`-${scopedDelistingCount}`}
+					badge={delistingPanelBadge}
 					badgeColor="red"
-					totalItems={scopedDelistingCount}
+					totalItems={delistingPanelTotalItems}
 					expandLabel={delistingExpandLabel}
 				>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
