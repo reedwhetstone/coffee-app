@@ -324,6 +324,10 @@ describe('analytics command center hierarchy', () => {
 		expect(
 			evidenceCharts!.compareDocumentPosition(actionRail!) & Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
+		expect(
+			actionRail!.compareDocumentPosition(screen.getByText('Supplier Price Comparison')) &
+				Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
 	});
 });
 

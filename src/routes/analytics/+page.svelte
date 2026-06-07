@@ -784,6 +784,42 @@
 	</div>
 </section>
 
+<section
+	class="mb-6 rounded-xl border border-background-tertiary-light/20 bg-background-secondary-light p-5"
+	aria-label="Action rail"
+>
+	<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+		<div>
+			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+				Next investigation
+			</p>
+			<h2 class="mt-1 text-lg font-semibold text-text-primary-light">
+				Turn the read into a sourcing path.
+			</h2>
+			<p class="mt-1 text-sm text-text-secondary-light">
+				This rail only links to existing surfaces. Watchlists, alerts, saved briefs, and persistent
+				actions stay out of this PR.
+			</p>
+		</div>
+		<div class="flex flex-col gap-2 sm:flex-row lg:flex-col">
+			<button
+				type="button"
+				onclick={() => goto('/catalog')}
+				class="rounded-md bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
+			>
+				Open catalog evidence
+			</button>
+			<button
+				type="button"
+				onclick={() => goto('/api')}
+				class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+			>
+				Review API access
+			</button>
+		</div>
+	</div>
+</section>
+
 <div class="relative mb-8">
 	{#if !isParchmentIntelligence}
 		<div class="pointer-events-none select-none">
@@ -1315,42 +1351,6 @@
 		</div>
 	{/if}
 </div>
-
-<section
-	class="mb-6 rounded-xl border border-background-tertiary-light/20 bg-background-secondary-light p-5"
-	aria-label="Action rail"
->
-	<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-		<div>
-			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
-				Next investigation
-			</p>
-			<h2 class="mt-1 text-lg font-semibold text-text-primary-light">
-				Turn the read into a sourcing path.
-			</h2>
-			<p class="mt-1 text-sm text-text-secondary-light">
-				This rail only links to existing surfaces. Watchlists, alerts, saved briefs, and persistent
-				actions stay out of this PR.
-			</p>
-		</div>
-		<div class="flex flex-col gap-2 sm:flex-row lg:flex-col">
-			<button
-				type="button"
-				onclick={() => goto('/catalog')}
-				class="rounded-md bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
-			>
-				Open catalog evidence
-			</button>
-			<button
-				type="button"
-				onclick={() => goto('/api')}
-				class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-			>
-				Review API access
-			</button>
-		</div>
-	</div>
-</section>
 
 <div class="mt-4 rounded-lg bg-background-secondary-light p-4 text-xs text-text-secondary-light">
 	<strong class="text-text-primary-light">Data source:</strong> Daily prices aggregated from

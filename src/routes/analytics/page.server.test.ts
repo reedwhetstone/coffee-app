@@ -373,6 +373,17 @@ describe('loadPriceSnapshotsPaginated', () => {
 });
 
 describe('analytics load', () => {
+	it('uses Parchment Market Index naming in public route metadata', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }]);
+		currentPriceIndexClient = client;
+
+		const result = (await load(createLoadEvent(client))) as { meta: Record<string, unknown> };
+
+		expect(result.meta.title).toBe('Green Coffee Market Visibility | Parchment Market Index');
+		expect(result.meta.ogTitle).toBe('Green Coffee Market Visibility — Parchment Market Index');
+		expect(JSON.stringify(result.meta)).not.toContain('Purveyors Price Index');
+	});
+
 	it('preserves the 90-day baseline window and 365-day Parchment Intelligence window', async () => {
 		const anonymousClient = createAnalyticsClient([{ data: [], error: null }]);
 		currentPriceIndexClient = anonymousClient;

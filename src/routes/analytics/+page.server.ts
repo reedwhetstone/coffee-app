@@ -399,7 +399,7 @@ export const load: PageServerLoad = async (event) => {
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),
 		schemaService.generateDatasetSchema({
-			name: 'Purveyors Price Index — Green Coffee Market Data',
+			name: 'Parchment Market Index — Green Coffee Market Data',
 			description:
 				'Daily green coffee pricing from 39+ US importers and roasters, including origin trends, processing mix, and supplier coverage.',
 			url: `${baseUrl}/analytics`,
@@ -453,7 +453,7 @@ export const load: PageServerLoad = async (event) => {
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/analytics',
-			title: 'Green Coffee Market Visibility | Purveyors Price Index',
+			title: 'Green Coffee Market Visibility | Parchment Market Index',
 			description:
 				'Daily green coffee pricing, supplier movement, and origin trends from 39+ US importers. Free market visibility for coffee teams.',
 			keywords: [
@@ -464,7 +464,7 @@ export const load: PageServerLoad = async (event) => {
 				'coffee origin prices',
 				'coffee supplier comparison'
 			],
-			ogTitle: 'Green Coffee Market Visibility — Purveyors Price Index',
+			ogTitle: 'Green Coffee Market Visibility — Parchment Market Index',
 			ogDescription:
 				'Daily green coffee price trends, processing mix, and supplier movement from 39+ US importers.',
 			twitterTitle: 'Green Coffee Market Visibility — Purveyors',
