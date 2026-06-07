@@ -130,12 +130,12 @@ test.describe('Protected pages load with auth', () => {
 	test('/dashboard renders as the signed-in intelligence home', async ({ page }) => {
 		await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
 		await expect(page).toHaveURL(/dashboard/);
-		await expect(page.getByText('Intelligence Home')).toBeVisible();
-		await expect(page.getByText('Parchment Intelligence')).toBeVisible();
+		await expect(page.getByText('Intelligence Home', { exact: true })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Parchment Intelligence' })).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'Parchment Market Index' })).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'Ask Parchment' })).toBeVisible();
-		await expect(page.getByText('Mallard Studio')).toBeVisible();
-		await expect(page.getByText('Latest supply signals')).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Mallard Studio' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Latest supply signals' })).toBeVisible();
 		await expect(page.locator('[aria-label="Toggle authentication menu"]')).toHaveCount(1);
 	});
 
