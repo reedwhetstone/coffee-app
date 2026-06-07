@@ -4,6 +4,7 @@
 	import BeanProfileTabs from './BeanProfileTabs.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { canManagePortfolio } from '$lib/services/portfolioAccess';
 
 	import { filteredData, filterStore } from '$lib/stores/filterStore';
 
@@ -69,9 +70,10 @@
 		}>;
 		catalogData?: CoffeeCatalog[];
 		role?: 'viewer' | 'member' | 'admin';
+		ppiAccess?: boolean;
 	};
 
-	let { data = { data: [], role: 'viewer', catalogData: [] } } = $props<{
+	let { data = { data: [], role: 'viewer', ppiAccess: false, catalogData: [] } } = $props<{
 		data?: Partial<PageData>;
 	}>();
 
@@ -82,6 +84,9 @@
 	let isLoading = $state(true);
 	let clientData = $state<PageData['data']>([]);
 	let catalogData = $state<CoffeeCatalog[]>([]);
+	let canManagePortfolioRows = $derived(
+		canManagePortfolio(data?.role || 'viewer', data?.ppiAccess === true)
+	);
 	let error = $state<string | null>(null);
 	let isSaving = $state<string | null>(null);
 	let catalogLoadPromise: Promise<void> | null = null;
@@ -367,7 +372,7 @@
 	<div class="">
 		<!-- Header Section -->
 		<div class="mb-6">
-			<h1 class="mb-2 text-2xl font-bold text-text-primary-light">Coffee Inventory</h1>
+			<h1 class="mb-2 text-2xl font-bold text-text-primary-light">Coffee Portfolio</h1>
 			<p class="text-text-secondary-light">
 				Manage your green coffee bean inventory and track purchases
 			</p>
@@ -378,7 +383,7 @@
 			<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
 				<!-- Total Inventory Value -->
 				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-					<h3 class="text-sm font-medium text-text-primary-light">Total Inventory Value</h3>
+					<h3 class="text-sm font-medium text-text-primary-light">Total Portfolio Value</h3>
 					<p class="mt-1 text-2xl font-bold text-green-500">
 						${typedFilteredData
 							.reduce((sum, bean) => sum + ((bean.bean_cost || 0) + (bean.tax_ship_cost || 0)), 0)
@@ -407,7 +412,7 @@
 
 				<!-- Stocked Inventory -->
 				<div class="rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-					<h3 class="text-sm font-medium text-text-primary-light">Raw Inventory</h3>
+					<h3 class="text-sm font-medium text-text-primary-light">Owned Green Coffee</h3>
 					<p class="mt-1 text-2xl font-bold text-indigo-500">
 						{(() => {
 							const totalStockedLbs = typedFilteredData.reduce(
@@ -468,7 +473,7 @@
 
 			<!-- Source Distribution Chart -->
 			<div class="mb-6 rounded-lg bg-background-secondary-light p-4 ring-1 ring-border-light">
-				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Inventory by Source</h3>
+				<h3 class="mb-4 text-lg font-semibold text-text-primary-light">Portfolio by Source</h3>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{#each Object.entries(typedFilteredData.reduce((acc, bean) => {
 								const source = bean.coffee_catalog?.source || 'Unknown';
@@ -506,6 +511,7 @@
 				<BeanProfileTabs
 					{selectedBean}
 					role={data?.role || 'viewer'}
+					canManagePortfolio={canManagePortfolioRows}
 					onUpdate={(updatedBean) => {
 						// Update selectedBean immediately for instant UI feedback
 						selectedBean = updatedBean;

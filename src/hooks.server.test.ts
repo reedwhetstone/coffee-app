@@ -177,7 +177,11 @@ describe('hooks auth guard integration', () => {
 	});
 
 	it('allows cookie-backed member page requests through with normalized locals', async () => {
-		mockResolvePrincipal.mockResolvedValue({ isAuthenticated: true, authKind: 'session' });
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			authKind: 'session',
+			ppiAccess: false
+		});
 		mockGetLegacyAuthState.mockReturnValue({
 			session: { access_token: 'cookie-token' },
 			user: { id: 'cookie-user' },
@@ -202,5 +206,97 @@ describe('hooks auth guard integration', () => {
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ hasSession: true, role: 'member' });
 		expect(mockGetSession).not.toHaveBeenCalled();
+	});
+
+	it('allows Parchment Intelligence users through /chat without member role', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			authKind: 'session',
+			ppiAccess: true
+		});
+		mockGetLegacyAuthState.mockReturnValue({
+			session: { access_token: 'cookie-token' },
+			user: { id: 'ppi-user' },
+			role: 'viewer',
+			roles: ['viewer']
+		});
+
+		const response = await handle({
+			event: makeEvent('/chat'),
+			resolve: vi.fn(
+				(event) =>
+					new Response(
+						JSON.stringify({
+							hasSession: Boolean(event.locals.session),
+							role: event.locals.role,
+							ppiAccess: event.locals.data.ppiAccess
+						}),
+						{ status: 200, headers: { 'Content-Type': 'application/json' } }
+					)
+			)
+		});
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ hasSession: true, role: 'viewer', ppiAccess: true });
+	});
+
+	it('allows Parchment Intelligence users through /beans portfolio without member role', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			authKind: 'session',
+			ppiAccess: true
+		});
+		mockGetLegacyAuthState.mockReturnValue({
+			session: { access_token: 'cookie-token' },
+			user: { id: 'ppi-user' },
+			role: 'viewer',
+			roles: ['viewer']
+		});
+
+		const response = await handle({
+			event: makeEvent('/beans'),
+			resolve: vi.fn(
+				(event) =>
+					new Response(
+						JSON.stringify({
+							hasSession: Boolean(event.locals.session),
+							role: event.locals.role,
+							ppiAccess: event.locals.data.ppiAccess
+						}),
+						{ status: 200, headers: { 'Content-Type': 'application/json' } }
+					)
+			)
+		});
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ hasSession: true, role: 'viewer', ppiAccess: true });
+	});
+
+	it('still blocks viewer accounts without Parchment Intelligence from /chat and /beans', async () => {
+		mockResolvePrincipal.mockResolvedValue({
+			isAuthenticated: true,
+			authKind: 'session',
+			ppiAccess: false
+		});
+		mockGetLegacyAuthState.mockReturnValue({
+			session: { access_token: 'cookie-token' },
+			user: { id: 'viewer-user' },
+			role: 'viewer',
+			roles: ['viewer']
+		});
+
+		await expect(
+			handle({
+				event: makeEvent('/chat'),
+				resolve: vi.fn()
+			})
+		).rejects.toMatchObject({ status: 303, location: '/dashboard' });
+
+		await expect(
+			handle({
+				event: makeEvent('/beans'),
+				resolve: vi.fn()
+			})
+		).rejects.toMatchObject({ status: 303, location: '/dashboard' });
 	});
 });

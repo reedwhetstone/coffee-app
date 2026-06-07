@@ -6,6 +6,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		role,
+		ppiAccess:
+			locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false,
 		user: user ? { id: user.id } : null
 	};
 };

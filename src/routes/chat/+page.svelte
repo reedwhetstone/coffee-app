@@ -27,14 +27,12 @@
 	let { data } = $props<{ data: PageData }>();
 
 	// Destructure with default values to prevent undefined errors
-	let { session, role = 'viewer' } = $derived(data);
+	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
 
 	// User role management
 	let userRole: UserRole = $derived(role as UserRole);
-
-	function hasRequiredRole(requiredRole: UserRole): boolean {
-		return checkRole(userRole, requiredRole);
-	}
+	let canUseChat = $derived(Boolean(ppiAccess) || checkRole(userRole, 'member'));
+	let canUseMallardWorkspaces = $derived(checkRole(userRole, 'member'));
 
 	// Build workspace context for the AI system prompt
 	function getWorkspaceContext() {
@@ -109,7 +107,7 @@
 
 	// ─── Workspace lifecycle ──────────────────────────────────────────────────
 	onMount(() => {
-		if (!hasRequiredRole('member')) return;
+		if (!canUseMallardWorkspaces) return;
 
 		// Capture workspace ID locally to ensure it's available in cleanup
 		// even if store state hasn't synchronized yet
@@ -460,7 +458,8 @@
 		getSuggestions(
 			workspaceStore.currentWorkspace?.type || 'general',
 			canvasStore.blocks,
-			chat.messages.length > 0
+			chat.messages.length > 0,
+			{ canUseMallardWorkspaces }
 		)
 	);
 
@@ -670,7 +669,7 @@
 	}
 
 	// ─── Slash command completions ────────────────────────────────────────────
-	let slashCompletions = $derived(getSlashCompletions(inputMessage));
+	let slashCompletions = $derived(getSlashCompletions(inputMessage, canUseMallardWorkspaces));
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
@@ -679,7 +678,7 @@
 		const text = inputMessage.trim();
 
 		// Intercept slash commands
-		const cmd = matchSlashCommand(text);
+		const cmd = matchSlashCommand(text, canUseMallardWorkspaces);
 		if (cmd) {
 			inputMessage = '';
 			if (cmd.action === 'clear-canvas') {
@@ -750,25 +749,23 @@
 	async function clearConversation() {
 		if (confirm('Are you sure you want to clear the conversation?')) {
 			chat.messages = [];
-			canvasStore.clearAll();
 			dispatchedParts = new Set();
 			lastPersistedMessageCount = 0;
 
-			// Clear persisted messages for current workspace
+			// Clear persisted messages for current workspace. Canvas is intentionally preserved.
 			const wsId = workspaceStore.currentWorkspaceId;
 			if (wsId) {
 				await fetch(`/api/workspaces/${wsId}/messages`, { method: 'DELETE' });
-				await workspaceStore.saveCanvasState(wsId, {});
 			}
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>Coffee Chat - AI Assistant</title>
+	<title>Parchment Intelligence Chat | Purveyors</title>
 	<meta
 		name="description"
-		content="Chat with our AI coffee expert for personalized recommendations and roasting advice."
+		content="Chat with Parchment Intelligence for sourcing, catalog, portfolio, and coffee market guidance."
 	/>
 </svelte:head>
 
@@ -778,9 +775,10 @@
 		<div
 			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
 		>
-			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Coffee Chat</h1>
+			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Parchment Intelligence Chat</h1>
 			<p class="mb-6 text-text-secondary-light">
-				Sign in to access our AI coffee expert for personalized recommendations and roasting advice.
+				Sign in to access Parchment Intelligence for sourcing, catalog, portfolio, and coffee market
+				guidance.
 			</p>
 			<a
 				href="/auth"
@@ -790,23 +788,23 @@
 			</a>
 		</div>
 	</div>
-{:else if !hasRequiredRole('member')}
-	<!-- Member role required -->
+{:else if !canUseChat}
+	<!-- Parchment Intelligence or Mallard Studio access required -->
 	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
 		<div
 			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
 		>
-			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Premium Feature</h1>
+			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Parchment Intelligence Chat</h1>
 			<p class="mb-6 text-text-secondary-light">
-				The Coffee Chat AI assistant is available for premium members. Upgrade to access
-				personalized recommendations and expert roasting advice.
+				Chat is available with Parchment Intelligence or Mallard Studio. Upgrade to ask market,
+				catalog, portfolio, and roasting questions with the right tool depth.
 			</p>
 			<div class="space-y-3">
 				<a
 					href="/subscription"
 					class="block rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 				>
-					Upgrade to Premium
+					View plans
 				</a>
 				<a
 					href="/"
@@ -871,21 +869,23 @@
 						<div class="mx-auto max-w-2xl text-center">
 							<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
 								<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
-									Welcome to Coffee Chat!
+									Welcome to Parchment Intelligence Chat!
 								</h2>
 								<p class="mb-4 text-text-secondary-light">
-									I'm your AI coffee expert, here to help with personalized recommendations,
-									roasting advice, and coffee knowledge. Ask me anything about:
+									I'm your coffee supply-chain intelligence assistant, here to help with sourcing,
+									catalog, portfolio, and market questions. Ask me anything about:
 								</p>
 								<div
 									class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2"
 								>
-									<div>- Coffee recommendations</div>
-									<div>- Roasting techniques</div>
+									<div>- Green coffee recommendations</div>
+									<div>- Market and supplier signals</div>
 									<div>- Flavor profiles</div>
 									<div>- Processing methods</div>
-									<div>- Your inventory analysis</div>
-									<div>- Brewing guidance</div>
+									<div>- Portfolio analysis</div>
+									{#if canUseMallardWorkspaces}
+										<div>- Roasting techniques</div>
+									{/if}
 								</div>
 							</div>
 
@@ -904,19 +904,23 @@
 									</button>
 									<button
 										onclick={() =>
-											(inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
-										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
-									>
-										"What's the best way to roast a washed Costa Rican coffee?"
-									</button>
-									<button
-										onclick={() =>
 											(inputMessage =
-												'Analyze my recent roasting sessions and suggest improvements')}
+												'Review my current portfolio and call out gaps by origin, process, and flavor profile.')}
 										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 									>
-										"Analyze my recent roasting sessions and suggest improvements"
+										"Review my current portfolio and call out gaps by origin, process, and flavor
+										profile."
 									</button>
+									{#if canUseMallardWorkspaces}
+										<button
+											onclick={() =>
+												(inputMessage =
+													"What's the best way to roast a washed Costa Rican coffee?")}
+											class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+										>
+											"What's the best way to roast a washed Costa Rican coffee?"
+										</button>
+									{/if}
 								</div>
 							</div>
 						</div>
@@ -1154,7 +1158,9 @@
 						<div class="flex space-x-2">
 							<textarea
 								bind:value={inputMessage}
-								placeholder="Ask me about coffee recommendations, roasting advice, or anything coffee-related..."
+								placeholder={canUseMallardWorkspaces
+									? 'Ask me about sourcing, portfolio, roasting, or coffee market decisions...'
+									: 'Ask me about sourcing, portfolio, catalog, or coffee market decisions...'}
 								class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
 								rows="1"
 								disabled={isActive}

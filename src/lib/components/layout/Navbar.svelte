@@ -18,8 +18,8 @@
 	let userRole = $derived(
 		(((data as { role?: string }).role as UserRole | undefined) ?? 'viewer') as UserRole
 	);
-	let navSections = $derived(getAuthenticatedNavSections(userRole));
-	let canAccessMemberRoutes = $derived(checkRole(userRole, 'member'));
+	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
+	let navSections = $derived(getAuthenticatedNavSections(userRole, { ppiAccess }));
 	let canAccessAdminRoutes = $derived(checkRole(userRole, 'admin'));
 
 	afterNavigate(() => {
@@ -56,10 +56,14 @@
 
 	function sectionIntro(section: NavSection): string {
 		switch (section.id) {
-			case 'core':
-				return 'Primary destinations';
-			case 'secondary':
-				return 'Supporting tools and account links';
+			case 'parchment':
+				return 'Market intelligence and sourcing decisions';
+			case 'portfolio':
+				return 'Saved, purchased, and owned coffees';
+			case 'maillard':
+				return 'Roasting add-on workflows';
+			case 'developer':
+				return 'API, docs, and machine access';
 			case 'admin':
 				return 'Administration';
 		}
@@ -116,7 +120,7 @@
 						{#each section.items as item (item.href)}
 							<li>
 								<a
-									href={item.href}
+									href={item.locked ? (item.upgradeHref ?? '/subscription') : item.href}
 									onclick={handleNavClick}
 									onmouseenter={() => handleMouseEnter(item)}
 									class="block rounded-md px-3 py-2 text-left text-sm ring-1 ring-border-light transition-all duration-200 {isNavItemActive(
@@ -124,11 +128,19 @@
 										currentPath
 									)
 										? 'bg-background-tertiary-light text-white'
-										: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
+										: item.locked
+											? 'bg-background-secondary-light text-text-secondary-light opacity-70 hover:bg-background-secondary-light'
+											: 'bg-background-secondary-light text-text-primary-light hover:bg-background-tertiary-light hover:text-white'}"
 								>
-									<div class="font-medium">{item.label}</div>
+									<div class="flex items-center gap-2 font-medium">
+										<span>{item.label}</span>
+										{#if item.locked}<span aria-label="Locked">🔒</span>{/if}
+									</div>
 									{#if item.description}
 										<p class="mt-1 text-xs opacity-80">{item.description}</p>
+									{/if}
+									{#if item.locked && item.lockedReason}
+										<p class="mt-1 text-[11px] opacity-75">{item.lockedReason}</p>
 									{/if}
 								</a>
 							</li>
@@ -136,12 +148,6 @@
 					</ul>
 				</section>
 			{/each}
-
-			{#if canAccessMemberRoutes && !navSections.some( (section) => section.items.some((item) => item.href === '/chat') )}
-				<p class="text-xs text-text-secondary-light">
-					Chat is currently unavailable for this account.
-				</p>
-			{/if}
 
 			{#if canAccessAdminRoutes}
 				<p

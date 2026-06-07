@@ -102,7 +102,8 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	event.locals.data = {
 		session: event.locals.session,
 		user: event.locals.user,
-		role: event.locals.role
+		role: event.locals.role,
+		ppiAccess: principal.isAuthenticated ? principal.ppiAccess === true : false
 	};
 
 	return resolve(event, {
@@ -138,7 +139,17 @@ const authGuard: Handle = async ({ event, resolve }) => {
 			throw redirect(303, '/catalog');
 		}
 
-		if (!requireRole(event.locals.role, 'member')) {
+		const isChatRoute = currentPath.startsWith('/chat');
+		const isPortfolioRoute = currentPath.startsWith('/beans');
+		const hasParchmentAccess =
+			(event.locals.principal?.isAuthenticated === true && event.locals.principal.ppiAccess) ||
+			requireRole(event.locals.role, 'member');
+
+		if (isChatRoute || isPortfolioRoute) {
+			if (!hasParchmentAccess) {
+				throw redirect(303, '/dashboard');
+			}
+		} else if (!requireRole(event.locals.role, 'member')) {
 			throw redirect(303, '/dashboard');
 		}
 	}

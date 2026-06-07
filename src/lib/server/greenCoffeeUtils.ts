@@ -156,3 +156,12 @@ export function processGreenCoffeeData(rawData: unknown[]): GreenCoffeeRow[] {
 			})) || []
 	})) as unknown as GreenCoffeeRow[];
 }
+
+export function stripRoastProfileData<T extends object>(
+	rows: T[]
+): Array<T & { roast_profiles: [] }> {
+	return rows.map((row) => ({
+		...row,
+		roast_profiles: []
+	}));
+}

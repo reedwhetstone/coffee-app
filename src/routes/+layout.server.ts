@@ -3,6 +3,8 @@ import { getPageAuthState } from '$lib/server/pageAuth';
 
 export const load: LayoutServerLoad = async ({ locals, cookies }) => {
 	const { session, user, role } = getPageAuthState(locals);
+	const ppiAccess =
+		locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false;
 
 	return {
 		session:
@@ -27,6 +29,7 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
 				}
 			: null,
 		role,
+		ppiAccess,
 		cookies: cookies.getAll().map((cookie: { name: string; value: string }) => ({
 			name: cookie.name,
 			value: cookie.value

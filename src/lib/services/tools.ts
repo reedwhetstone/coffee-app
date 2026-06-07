@@ -1,4 +1,4 @@
-import { tool } from 'ai';
+import { tool, type ToolSet } from 'ai';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -25,6 +25,14 @@ import { recordSale as _recordSale } from '@purveyors/cli/sales';
  */
 function positiveOrUndef(val: number | undefined | null): number | undefined {
 	return typeof val === 'number' && val > 0 ? val : undefined;
+}
+
+type InventoryResult = Awaited<ReturnType<typeof listInventory>>[number];
+
+function stripInventoryRoastProfileData<T extends InventoryResult>(
+	rows: T[]
+): Array<T & { roast_profiles: [] }> {
+	return rows.map((row) => ({ ...row, roast_profiles: [] }));
 }
 
 /**
@@ -70,8 +78,17 @@ function positiveOrUndef(val: number | undefined | null): number | undefined {
  *
  * Write tools always keep manual schemas (action_card shape is chat-specific).
  */
-export function createChatTools(supabase: SupabaseClient, userId: string) {
-	return {
+export interface ChatToolAccess {
+	ppiAccess?: boolean;
+	memberAccess?: boolean;
+}
+
+export function createChatTools(
+	supabase: SupabaseClient,
+	userId: string,
+	access: ChatToolAccess = { memberAccess: false, ppiAccess: false }
+): ToolSet {
+	const tools = {
 		// ─── Read Tools (CLI imports) ───────────────────────────────────────────
 
 		coffee_catalog_search: tool({
@@ -165,8 +182,9 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 		}),
 
 		green_coffee_inventory: tool({
-			description:
-				"Get the user's personal coffee inventory with purchase history and roast summaries",
+			description: access.memberAccess
+				? "Get the user's personal coffee inventory with purchase history and roast summaries"
+				: "Get the user's personal coffee inventory with purchase history",
 			inputSchema: z.object({
 				stocked_only: z
 					.boolean()
@@ -184,14 +202,18 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 			}),
 			execute: async (input) => {
 				// CLI listInventory supports stocked filter directly; limit applied as cap.
-				// include_catalog_details and include_roast_summary are not CLI params —
-				// the CLI always returns joined catalog data; roast summaries are not included.
+				// include_catalog_details and include_roast_summary are not CLI params.
+				// Parchment Intelligence-only users receive portfolio data without Mallard roast details.
 				const finalLimit = Math.min(input.limit ?? 15, 15);
+				const includeRoastProfiles = access.memberAccess === true;
 
-				const inventory = await listInventory(supabase, userId, {
+				const rawInventory = await listInventory(supabase, userId, {
 					stocked_only: input.stocked_only ?? true,
 					limit: finalLimit
 				});
+				const inventory = includeRoastProfiles
+					? rawInventory
+					: stripInventoryRoastProfileData(rawInventory);
 
 				const summary = {
 					total_beans: inventory.length,
@@ -209,7 +231,7 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 					filters_applied: {
 						stocked_only: input.stocked_only ?? true,
 						include_catalog_details: input.include_catalog_details ?? true,
-						include_roast_summary: input.include_roast_summary ?? true,
+						include_roast_summary: includeRoastProfiles && (input.include_roast_summary ?? true),
 						limit: finalLimit
 					}
 				};
@@ -955,4 +977,24 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 			execute: async (input) => ({ presentation: input })
 		})
 	};
+
+	if (access.memberAccess) return tools;
+
+	if (access.ppiAccess) {
+		const ppiTools: ToolSet = {
+			coffee_catalog_search: tools.coffee_catalog_search,
+			green_coffee_inventory: tools.green_coffee_inventory,
+			find_similar_beans: tools.find_similar_beans,
+			add_bean_to_inventory: tools.add_bean_to_inventory,
+			update_bean: tools.update_bean,
+			present_results: tools.present_results
+		};
+		return ppiTools;
+	}
+
+	const minimalTools: ToolSet = {
+		coffee_catalog_search: tools.coffee_catalog_search,
+		present_results: tools.present_results
+	};
+	return minimalTools;
 }
