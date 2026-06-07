@@ -1,0 +1,107 @@
+---
+title: 'What If the Real Coffee Shortage Is Choice, Not Price?'
+date: '2026-04-08'
+description: "This week's coffee-market data suggests roasters should watch supplier depth and access spread before they watch the next headline price move."
+tags: ['coffee', 'market-intelligence', 'pricing', 'supply-chain']
+pillar: 'market-intelligence'
+draft: true
+readingTime: 4
+---
+
+Most coffee buyers watch the wrong gauge first.
+
+The familiar dashboard is useful: the [ICE Coffee C benchmark](https://www.theice.com/products/15/Coffee-C-Futures), the latest [USDA world market outlook](https://www.fas.usda.gov/data/coffee-world-markets-and-trade), maybe a price-transparency tool like the [Coffee Buyers Guide](https://www.coffeebuyers.org/). Those surfaces tell you what the macro market is doing.
+
+They do not tell you the first thing a roaster usually feels when the market tightens.
+
+The first signal is not price. It is choice.
+
+It shows up as fewer comparable lots in the origin you need, fewer suppliers carrying the process you want, a wider gap between retail-visible and wholesale-accessible inventory, and more of the remaining inventory concentrated in a handful of channels. By the time the median sticker price makes scarcity obvious, the good substitutes are already gone.
+
+That is the weekly signal I care about.
+
+As of **April 23, 2026**, Purveyors is tracking **3,945 total beans**, with **1,073 stocked retail listings** and **820 stocked wholesale listings** across **38 suppliers**. The market summary shows **retail median price up just 0.5% week over week**, while **supply is down 2.5%** over the same window.
+
+That is not a screaming price shock. It is a thinning shelf.
+
+## Price Visibility Is Not Market-Depth Visibility
+
+Benchmark visibility asks: what is the reference price doing?
+
+Market-depth visibility asks: how many workable options are actually in front of me right now at the quality, process, quantity, and access level I can buy?
+
+Those are different questions.
+
+A market can look calm from the top down and feel bad from the shelf. Airlines are the clean analogy. The first sign a route is tightening is often not the average fare. It is that the nonstop disappears, the good departure window vanishes, and every remaining itinerary gets worse. The headline price follows later.
+
+Coffee behaves the same way. The option set degrades before the dashboard admits anything dramatic happened.
+
+If you only watch price, you find out late.
+
+## The Spread Is an Access Signal
+
+Retail-versus-wholesale spreads look like discount math. That is too shallow.
+
+In the latest Purveyors paired snapshot, **Guatemala** shows a **retail median of $10.63/lb** and a **wholesale median of $5.59/lb**. That is a **90.2% spread**. The more important fact is supplier coverage: **24 retail suppliers** versus **5 wholesale suppliers**.
+
+**Ethiopia** is similar. Retail median is **$10.00/lb** versus **$5.63/lb** wholesale, a **77.6% spread**, with **25 retail suppliers** and **5 wholesale suppliers**.
+
+A cheaper wholesale median does not automatically mean broad relief. It can mean a small number of wholesale channels are carrying the effective market-clearing price while everyone else is buying from a different surface.
+
+That is not just a pricing issue. It is a capability issue.
+
+Volume flexibility, warehouse logistics, importer relationships, and willingness to buy in awkward quantities decide which market a buyer actually sees. Two roasters can look at the same origin and face two different realities.
+
+## Headline Prices Still Lie
+
+Averages and maxima are especially bad guides in specialty coffee.
+
+The current cross-section has **Ethiopia** around a **$9.75/lb median**, with a visible max of **$230/lb**. **Indonesia** sits around a **$10.25/lb median**, with a max near **$433.64/lb**.
+
+If you talk only about the high end, the market sounds insane. If you talk only about the median, the market sounds stable. Both miss the operational question: how many good substitutes remain near the spec a buyer actually needs?
+
+That is why a useful weekly dashboard needs at least four things:
+
+1. median price by origin
+2. supplier count by origin
+3. retail-versus-wholesale spread
+4. listing churn velocity
+
+Without the last three, price gets over-interpreted.
+
+## Process Choice Is Part of the Shortage
+
+Choice compression is not only about country names.
+
+In the current process-labeled catalog, washed coffees make up **66.8%** of retail listings and **65.2%** of wholesale listings. Naturals are **19.8%** of retail and **25.5%** of wholesale. Honeys and anaerobics are much thinner.
+
+That matters if a roaster's blend, seasonal release calendar, or customer base depends on process diversity. A flat price signal can create false confidence while the process mix quietly narrows.
+
+The market can be available and strategically less flexible at the same time.
+
+## What Buyers Should Do
+
+None of this requires prediction. It requires watching the right layer.
+
+**Track supplier count with price.** If the median is stable but supplier count is falling, treat that as tightening, not reassurance.
+
+**Read wide spreads as access risk.** Guatemala's 90.2% retail-wholesale spread is interesting, but the operational question is whether you can actually buy the cheaper side before it tightens.
+
+**Pre-plan substitution bands.** Do not wait for the preferred origin or process to disappear. Decide the acceptable alternates while the choice still exists.
+
+**Compare at working volume.** A retail median and wholesale median are useful abstractions. The real question is price at 5 lb, 25 lb, or 65 lb for the window you can absorb.
+
+The product implication is just as clear. A coffee intelligence platform should not stop at price charts. It should measure daily supplier count, spread by origin, churn velocity, process diversity, and effective price at real quantity bands.
+
+Price tells you what the market is charging. Depth tells you what the market is becoming.
+
+Right now, the more useful signal is not that coffee got dramatically more expensive.
+
+It is that the shelf got thinner before most buyers were looking for thinness.
+
+## Sources
+
+- Internal market data: [Purveyors Analytics](https://www.purveyors.io/analytics), pulled April 23, 2026
+- USDA Foreign Agricultural Service: [Coffee: World Markets and Trade](https://www.fas.usda.gov/data/coffee-world-markets-and-trade)
+- ICE: [Coffee C Futures](https://www.theice.com/products/15/Coffee-C-Futures)
+- Sustainable Coffee Buyer's Guide: [Coffee Buyers Guide](https://www.coffeebuyers.org/)
