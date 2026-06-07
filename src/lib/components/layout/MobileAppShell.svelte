@@ -17,8 +17,9 @@
 
 	let userRole = $derived(((data?.role as UserRole | undefined) ?? 'viewer') as UserRole);
 	let canUseActions = $derived(checkRole(userRole, 'member'));
+	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
 	let showSettings = $derived(['/catalog', '/beans', '/roast', '/profit'].includes(currentPath));
-	let routeLabel = $derived(getCurrentRouteLabel(currentPath, userRole));
+	let routeLabel = $derived(getCurrentRouteLabel(currentPath, userRole, { ppiAccess }));
 
 	$effect(() => {
 		const nextPath = page.url.pathname;

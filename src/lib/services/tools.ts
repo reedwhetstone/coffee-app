@@ -1,4 +1,4 @@
-import { tool } from 'ai';
+import { tool, type ToolSet } from 'ai';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -70,8 +70,17 @@ function positiveOrUndef(val: number | undefined | null): number | undefined {
  *
  * Write tools always keep manual schemas (action_card shape is chat-specific).
  */
-export function createChatTools(supabase: SupabaseClient, userId: string) {
-	return {
+export interface ChatToolAccess {
+	ppiAccess?: boolean;
+	memberAccess?: boolean;
+}
+
+export function createChatTools(
+	supabase: SupabaseClient,
+	userId: string,
+	access: ChatToolAccess = { memberAccess: true }
+): ToolSet {
+	const tools = {
 		// ─── Read Tools (CLI imports) ───────────────────────────────────────────
 
 		coffee_catalog_search: tool({
@@ -955,4 +964,24 @@ export function createChatTools(supabase: SupabaseClient, userId: string) {
 			execute: async (input) => ({ presentation: input })
 		})
 	};
+
+	if (access.memberAccess) return tools;
+
+	if (access.ppiAccess) {
+		const ppiTools: ToolSet = {
+			coffee_catalog_search: tools.coffee_catalog_search,
+			green_coffee_inventory: tools.green_coffee_inventory,
+			find_similar_beans: tools.find_similar_beans,
+			add_bean_to_inventory: tools.add_bean_to_inventory,
+			update_bean: tools.update_bean,
+			present_results: tools.present_results
+		};
+		return ppiTools;
+	}
+
+	const minimalTools: ToolSet = {
+		coffee_catalog_search: tools.coffee_catalog_search,
+		present_results: tools.present_results
+	};
+	return minimalTools;
 }

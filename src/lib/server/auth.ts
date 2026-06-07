@@ -100,6 +100,24 @@ export async function requireMemberRole(
 	return { user, role, principal };
 }
 
+export async function requireChatAccess(event: RequestEvent): Promise<{
+	user: User;
+	role: UserRole;
+	principal: SessionPrincipal;
+	ppiAccess: boolean;
+	memberAccess: boolean;
+}> {
+	const { user, role, principal } = await requireUserAuth(event);
+	const memberAccess = principalHasRole(principal, 'member');
+	const ppiAccess = principal.ppiAccess === true;
+
+	if (!memberAccess && !ppiAccess) {
+		throw new AuthError('Parchment Intelligence or Mallard Studio access required', 403);
+	}
+
+	return { user, role, principal, ppiAccess, memberAccess };
+}
+
 export async function requireAdminRole(
 	event: RequestEvent
 ): Promise<{ user: User; role: UserRole; principal: SessionPrincipal }> {

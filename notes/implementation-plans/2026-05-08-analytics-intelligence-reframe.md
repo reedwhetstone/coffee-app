@@ -1,8 +1,8 @@
 # Analytics Intelligence Reframe Program
 
-**Date:** 2026-05-08  
-**Updated:** 2026-05-10  
-**Mode:** multi-stage implementation plan  
+**Date:** 2026-05-08
+**Updated:** 2026-06-07
+**Mode:** multi-stage implementation plan
 **Status:** Consolidated implementation plan; PRs not started
 
 ## Consolidated source inputs
@@ -17,31 +17,37 @@ This plan consolidates:
 - The May 9 red-team report: avoid fake capture theater, naming sprawl, generic AI boxes, anonymous power-tool leakage, and insight claims without provenance.
 - Reed's May 10 strategic correction: roasters remain primary users, but the core product category is green coffee supply-chain intelligence, not another roasting tool.
 - Reed's May 10 product tier and entitlement model: three independent access tiers (viewer base, intelligence, roasting) mapped to existing infrastructure; reports as in-app intelligence content.
+- Reed's June 6 approval updates: use Portfolio for tracked/saved coffees, lock Parchment Intelligence / Parchment Market Index naming, keep anonymous analytics limited but polished, make analytics action-first like coffee Yahoo Finance, integrate chat/GenUI onboarding, preserve canvas on clear-chat, and treat Mallard Studio as a useful roasting add-on rather than the core offering.
 
 ## Executive implementation thesis
 
 Purveyors should present one clear hierarchy:
 
-1. **Core product:** green coffee supply-chain intelligence for roasters, green buyers, coffee businesses, developers, API users, and agents.
-2. **Primary surfaces:** analytics, catalog, chat/ask, CLI/API, reports, and decision workflows.
-3. **Roasting complement:** Mallard Studio roasting tools, where roast history, tasting, inventory, and margin context layer onto the intelligence substrate for roasting-focused users.
+1. **Core product:** Parchment Intelligence, the paid green coffee supply-chain intelligence platform for roasters, green buyers, suppliers, developers, API users, and agents.
+2. **Public/index surface:** Parchment Market Index, the charts/data/index surface that proves market visibility without exposing power tools to anonymous users.
+3. **Primary working surfaces:** analytics, catalog, Portfolio, chat/ask, CLI/API, reports, and decision workflows.
+4. **Roasting complement:** Mallard Studio roasting tools, where roast history, tasting, inventory, and margin context layer onto the intelligence substrate for roasting-focused users. It is an add-on, not the core product offering.
 
 The first implementation wave is intentionally frontend-first and no-backend. It should make the product thesis legible without deleting routes, changing schemas, faking persistence, or overclaiming what analytics can prove. Each PR must be independently mergeable if the rest of the program never ships.
 
 ## Locked decisions
 
-- Purveyors is green coffee supply-chain intelligence first.
+- Purveyors is green coffee supply-chain intelligence first. The paid UI/platform brand is **Parchment Intelligence**; the charts/data/index surface is **Parchment Market Index**; the API remains **Parchment API**.
 - Roasters remain primary users, but the product integrates with their existing infrastructure instead of competing as a generic roasting suite.
-- Mallard Studio remains the only Studio name. Do not introduce Personal Studio, Roaster Studio, My Studio, or another Studio brand.
+- Mallard Studio remains the only Studio name. Do not introduce Personal Studio, Roaster Studio, My Studio, or another Studio brand. Do not use generic `Intelligence` where the visible product needs the proper Parchment Intelligence brand.
 - Mallard Studio is a roasting context layer and workflow pack, not the umbrella product.
 - Chat/Ask, GenUI, CLI-backed actions, and API-backed workflows are core intelligence capabilities, not Mallard-only features.
-- Green coffee inventory (adding, searching, tracking sourcing candidates) is an Intelligence-tier feature, not a Roasting-tier exclusive. Roasting tables (roast logs, profiles, tasting in roasting context) are Roasting-tier only.
-- Current inventory means owned-stock context. Researched, tracked, watched, compared, and shortlisted coffees require a future saved-object model.
+- **Portfolio** is the user-facing concept for tracked, saved, purchased, owned, and watched coffees. The current `/beans` implementation remains owned-stock inventory under the hood, but the product frame becomes Portfolio.
+- Green coffee Portfolio workflows (adding, searching, tracking sourcing candidates, and owned-stock context) belong to both Parchment Intelligence and Roasting over time, not a Roasting-tier exclusive. Roasting tables (roast logs, profiles, tasting in roasting context) are Roasting-tier only.
+- Current inventory means owned-stock context. Researched, tracked, watched, compared, and shortlisted Portfolio coffees require a future saved-object model.
 - No non-persistent UI may claim saved/watch/shortlist/export success. Unsupported actions must route honestly, hand off to scoped chat honestly, be disabled previews, or be omitted.
-- Viewer tier is a meaningful product floor, not a placeholder. It gates catalog and analytics access behind login intentionally. Anonymous access is deliberately limited.
-- Do not leak power-user workflows into anonymous access. Viewer tier gets a comprehensive product taste; anonymous gets a minimal proof surface only.
-- Navigation section IDs: `'intelligence' | 'roasting' | 'developer' | 'admin'`. The current `'core' | 'secondary'` grouping is replaced by this taxonomy in PR 01.
-- Chat gate changes from `checkRole(role, 'member')` to `ppiAccess || checkRole(role, 'member')`. Intelligence and Roasting users both get chat; tool access within chat differs by tier.
+- Viewer tier is a meaningful product floor, not a placeholder. It gates catalog and analytics access behind login intentionally. Anonymous `/analytics` remains a limited but polished marketing proof surface with three or four high-signal charts, a wow factor, and tasteful CTAs.
+- Do not leak power-user workflows into anonymous access. Viewer tier gets general catalog search/filters capped to one page of results; premium comparison, similarity matching, search/filter power tools, and personalized analytics remain locked. Anonymous gets a minimal proof surface only.
+- Navigation section IDs: `'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin'`. The current `'core' | 'secondary'` grouping is replaced by this taxonomy in PR 01.
+- Chat gate changes from `checkRole(role, 'member')` to `ppiAccess || checkRole(role, 'member')`. Parchment Intelligence and Roasting users both get chat; tool access within chat differs by tier. Onboarding should make chat/GenUI immediately useful from analytics and catalog contexts.
+- Analytics must be alpha-first and action-first: buy opportunities, market trends, big movers, price-change deltas by variety/region/process, outlier lots, popular coffees from listing trends, availability shifts, buy windows, and supplier coverage changes before provenance/explanation. Provenance remains available after the recommendation.
+- Reports are important but later-stage: daily insights likely live on analytics; weekly/monthly reports should integrate with the existing blog site and in-app report surfaces. Document now, implement later.
+- Clear-chat must preserve canvas by default. Canvas needs a later flexibility/usability overhaul, but chat clearing must not wipe the working surface.
 
 ## Entitlement model — mapping to existing infrastructure
 
@@ -102,8 +108,8 @@ The meaningful product floor. Viewer tier is intentionally gated behind login �
 
 **Viewer gets:**
 
-- Full catalog browsing with comprehensive filters (significantly more than anonymous)
-- Public analytics proof surface (basic pricing, availability, origin overview)
+- Catalog browsing with general search and filters, capped to one page of results until paid access
+- Taste of Parchment Market Index charts, with no analytics search/filter/power tools
 - Intelligence reports: read access to published reports in-app (daily/weekly/monthly)
 - Basic API access (existing viewer `apiPlan`: 200 req/min, 25 rows/call)
 - No individual saved data, no custom filtering preferences, no personalized surfaces
@@ -122,9 +128,9 @@ The core paid product. Includes the reports tier feature set and the full analyt
 
 **Intelligence adds:**
 
-- Full analytics command center (all current PPI features: supplier comparison, health scoring, arrivals, delistings, origin benchmarks, price spread, extended trend depth)
+- Full action-first analytics command center: buy opportunities, market trends, big movers, price-change deltas by variety/region/process, outlier lots, popular coffees from listing trends, availability shifts, buy windows, supplier coverage changes, and existing PPI modules
 - Sourcing-focused chat with `coffee-catalog`, `coffee-chunks`, and `green-coffee-inv` tools
-- Green coffee inventory: add, search, and track sourcing candidates
+- Portfolio: add, search, track, and contextualize sourcing candidates, purchased coffees, owned stock, and watched coffees
 - Catalog research tools, saved filtering preferences (future), personalized surfaces (future)
 - Intelligence reports: full access — daily dashboard, weekly briefs, monthly deep dives
 
@@ -142,7 +148,7 @@ Independent addon. Can be purchased without Intelligence.
 
 **Roasting adds:**
 
-- Roast upload and logging
+- Roast upload and logging. Mallard Studio remains useful, but it is an add-on and should not compete with full roast-production software.
 - Roast profile management and analysis
 - Tasting notes and tasting loops
 - Inventory tracking and drawdown
@@ -161,8 +167,9 @@ Unchanged from current model. API plan pricing and rate limits remain as-is. No 
 Replace current `'core' | 'secondary'` section IDs with:
 
 ```
-Intelligence    — Analytics (/analytics), Catalog (/catalog), Chat/Ask (/chat)
-Roasting        — Roast (/roast), Inventory (/beans), Profit (/profit)
+Parchment       — Dashboard (/dashboard), Parchment Market Index (/analytics), Catalog (/catalog), Chat/Ask (/chat)
+Portfolio       — Portfolio (/beans)
+Maillard Studio — Roast (/roast), Profit (/profit)
 Developer       — Parchment Console (/api-dashboard), Docs (/docs)
 Admin           — Admin Dashboard (/admin) [admin-only, unchanged]
 ```
@@ -171,10 +178,11 @@ Account-level items (Subscription, Contact) move to the user/auth menu in the si
 
 ### Visibility rules
 
-- **Intelligence section:** visible to all authenticated users; items within it expand significantly for `ppiAccess` users vs. viewers
-- **Roasting section:** visible to all authenticated users; items are locked/grayed for non-`member` users with a single upgrade note
-- **Developer section:** visible to all authenticated users
-- **Chat:** primary entry in Intelligence; both Intelligence and Roasting users get access; tool depth differs by tier
+- **Parchment section:** visible to all authenticated users; Parchment Market Index and Catalog become the primary proof surfaces. Chat is unlocked for `ppiAccess || member` and locked for viewers.
+- **Portfolio section:** visible to all authenticated users; current `/beans` access remains member-backed in PR 01, with Parchment Intelligence Portfolio expansion documented for later.
+- **Maillard Studio section:** visible to all authenticated users; items are locked/grayed for non-`member` users with a single upgrade note.
+- **Developer section:** visible to all authenticated users.
+- **Chat:** primary entry in Parchment; both Parchment Intelligence and Roasting users get access; tool depth differs by tier.
 
 ### Workspace types in chat
 
@@ -189,7 +197,7 @@ Current workspace types (general, sourcing, roasting, inventory, analysis) are h
 id: 'core' | 'secondary' | 'admin';
 
 // After
-id: 'intelligence' | 'roasting' | 'developer' | 'admin';
+id: 'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin';
 ```
 
 ## Analytics command center — product direction
@@ -221,7 +229,7 @@ Stack order on small screens: market read → scope/filter sheet → KPI strip �
 
 ## Implementation spine
 
-1. **PR 01: Intelligence-first navigation taxonomy.** Establish the hierarchy without route changes or new behavior.
+1. **PR 01: Parchment-first navigation taxonomy.** Establish the hierarchy without route changes or new schema behavior.
 2. **PR 02: Dashboard becomes Intelligence Home.** Replace the generic launcher with a clear intelligence landing page using only existing data or copy/layout.
 3. **PR 03: Analytics command-center layout pass.** Make analytics the working surface for market read, filters, insight hierarchy, evidence, and bounded action context.
 4. **PR 04: Analytics action CTA primitive.** Add only honest action affordances according to the capability matrix.
@@ -243,7 +251,7 @@ The current product surface has two partially competing centers of gravity:
 1. **Market intelligence / supply-chain buyer value:** catalog breadth, price movement, supplier coverage, analytics, proof, API, CLI, and agent-readable data.
 2. **Roaster workspace value:** personal inventory, roast logging, tasting, profit, and chat over private operational data.
 
-Both are valuable, but they are not the same product category. Treating them as one generic roasting application causes strategy blur. The navigation makes authenticated users bounce between Catalog, Market Data, Parchment Console, Inventory, Roast, Profit, and Chat as if each were an equal CRUD module. That makes the product look broader and less decisive than the underlying data moat actually is.
+Both are valuable, but they are not the same product category. Treating them as one generic roasting application causes strategy blur. The navigation has historically made authenticated users bounce between Catalog, Market Data, Parchment Console, Inventory, Roast, Profit, and Chat as if each were an equal CRUD module. That makes the product look broader and less decisive than the underlying data moat actually is.
 
 ## Product segmentation thesis
 
@@ -271,6 +279,25 @@ Both are valuable, but they are not the same product category. Treating them as 
 
 **Success feeling:** "The market intelligence knows what I roast, what I've been buying, and what I should source next."
 
+### Guiding user stories
+
+#### Roasters and green buyers
+
+- As a roaster evaluating buys, see the strongest current opportunities first: price deltas, new arrivals, outlier lots, availability shifts, and buy windows.
+- As a roasting business, connect catalog and market signals to Portfolio context so owned stock, tracked coffees, and roast history inform sourcing decisions without replacing existing roast software.
+- As a serious home roaster, ask Parchment Intelligence to compare similar coffees, supplier coverage, and likely substitutions without manually checking a dozen supplier sites.
+
+#### Suppliers and sellers
+
+- As a green coffee supplier, understand how listings compare against broader market pricing, origin/process trends, and visible demand signals.
+- As a seller planning inventory, identify popular coffees, listing momentum, coverage gaps, and where pricing appears misaligned with market context.
+
+#### Supply-chain, API, and agent users
+
+- As a procurement operator, monitor market movement, supplier coverage changes, and delistings in a repeatable decision workflow.
+- As an API or agent user, access the same normalized catalog and index substrate through Parchment API/CLI without relying on browser-only workflows.
+- As a supply-chain analyst, start from alpha, then inspect provenance, sample counts, date ranges, and supplier coverage when a recommendation needs trust-building.
+
 ### Strategic implication
 
 Mallard Studio should not be the umbrella product. It should remain the named personal roaster workspace that enriches the core intelligence product. The public and logged-in framing should center on green coffee supply-chain intelligence; Mallard Studio should be the mode for applying that intelligence to a user's own roasting context.
@@ -279,9 +306,11 @@ Mallard Studio should not be the umbrella product. It should remain the named pe
 
 - **Purveyors:** the platform and company surface.
 - **Coffee intelligence / green coffee supply-chain intelligence:** broad product promise and marketing language.
-- **Parchment Intelligence:** paid analytics and market-intelligence package where the product already uses that name.
+- **Parchment Intelligence:** paid UI and intelligence platform counterpart for analytics, market decisions, sourcing chat, reports, and Portfolio workflows.
+- **Parchment Market Index:** charts/data/index surface for market proof, public analytics taste, and logged-in index exploration.
 - **Parchment API / Parchment CLI / Parchment Console:** developer, machine, and API-management surfaces.
-- **Mallard Studio:** the personal roaster workspace only.
+- **Portfolio:** tracked, saved, purchased, owned, watched, and shortlisted coffees.
+- **Mallard Studio:** the personal roaster add-on only.
 - **Chat / Ask:** route or entry labels for the shared assistant surface.
 
 ### Access and action capability matrix
@@ -322,8 +351,8 @@ If this contract is not finalized before PR 04, the "ask about this" CTA will ei
 ### In scope
 
 - Front-end information architecture and language cleanup.
-- Navigation hierarchy that makes analytics/intelligence primary and Mallard Studio/roasting secondary.
-- `NavSection` type update: `'core' | 'secondary'` → `'intelligence' | 'roasting' | 'developer' | 'admin'`.
+- Navigation hierarchy that makes Parchment Intelligence and Parchment Market Index primary, Portfolio distinct, and Mallard Studio/roasting secondary.
+- `NavSection` type update: `'core' | 'secondary'` → `'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin'`.
 - Chat gate update: `checkRole(role, 'member')` → `ppiAccess || checkRole(role, 'member')`.
 - `chat/+page.server.ts` updated to pass `ppiAccess` through to the page.
 - Reframing `/dashboard` as an intelligence home rather than a generic app launcher, including replacing the "Unlock the full roastery workspace" upgrade CTA.
@@ -351,9 +380,9 @@ If this contract is not finalized before PR 04, the "ask about this" CTA will ei
 
 The app should communicate three layers:
 
-1. **Market Intelligence:** analytics, catalog, price movement, supplier coverage, proof, reports, and sourcing signals. This is the product center.
-2. **Shared Chat, GenUI, and Decision Workflows:** ask, save, watch, compare, shortlist, export, or start a buying investigation. Core intelligence capabilities, not Studio-only affordances. Available to Intelligence and Roasting users with different tool depth.
-3. **Mallard Studio / Roasting:** roast, tasting, inventory, and profit. The personal roaster context layer with roasting-focused chat defaults.
+1. **Parchment Intelligence / Parchment Market Index:** analytics, catalog, price movement, supplier coverage, proof, reports, and sourcing signals. This is the product center.
+2. **Shared Chat, GenUI, Portfolio, and Decision Workflows:** ask, save, watch, compare, shortlist, export, or start a buying investigation. Core intelligence capabilities, not Studio-only affordances. Available to Parchment Intelligence and Roasting users with different tool depth.
+3. **Mallard Studio / Roasting:** roast, tasting, inventory drawdown, and profit. The personal roaster context layer with roasting-focused chat defaults.
 
 The logged-in dashboard should become an "Intelligence Home" with:
 
@@ -369,8 +398,9 @@ The analytics page should evolve toward a command-center layout (see above-the-f
 
 Navigation grouping:
 
-- **Intelligence:** Analytics, Catalog, Chat/Ask
-- **Roasting:** Roast, Inventory, Profit (locked/grayed for non-member users with upgrade note)
+- **Parchment:** Dashboard, Parchment Market Index, Catalog, Chat/Ask
+- **Portfolio:** Portfolio (/beans), visible but locked where the current route still requires member access
+- **Maillard Studio:** Roast, Profit (locked/grayed for non-member users with upgrade note)
 - **Developer:** Parchment Console, Docs
 - **Account:** moved to user/auth sidebar menu, not a main nav section
 
@@ -388,7 +418,7 @@ PR 03 must begin from a current-state map of `/analytics`. The redesign should c
 ## Files or systems likely to change
 
 - `src/lib/components/layout/appNavigation.ts` — NavSection type + section restructure
-- `src/lib/components/layout/LeftSidebar.svelte`
+- `src/lib/components/layout/Navbar.svelte`
 - `src/lib/components/layout/MobileAppMenu.svelte`
 - `src/lib/components/layout/MobileAppShell.svelte`
 - `src/routes/dashboard/+page.svelte`
@@ -424,25 +454,25 @@ Any decision/action affordance in this program must either:
 
 ## PR sequence
 
-### PR 01: Intelligence-first navigation taxonomy
+### PR 01: Parchment-first navigation taxonomy
 
-**Goal:** Change the authenticated navigation model so market intelligence is the primary category and Mallard Studio roaster workflows are grouped as personalization context.
+**Goal:** Change the authenticated navigation model so Parchment Intelligence and Parchment Market Index are primary, Portfolio is the joint tracked/owned coffee panel, and Mallard Studio roaster workflows are grouped as add-on personalization context.
 
 **Why first:** The navigation frame is the product frame. This gives every later UI change a coherent destination without touching data flows.
 
-**In scope:** Update `NavSection` type (`'core' | 'secondary'` → `'intelligence' | 'roasting' | 'developer' | 'admin'`). Update navigation data, sidebar/mobile labels, grouping, route descriptions. Move Chat to Intelligence as the primary entry. Move Parchment Console and Docs to Developer. Move Subscription and Contact to the auth/user menu. Lock Roasting items as visible-but-gated for non-member users. Update chat access across `hooks.server.ts`, `chat/+page.server.ts`, `chat/+page.svelte`, `/api/chat`, and server-side chat tool gating. Write new `appNavigation.test.ts`.
+**In scope:** Update `NavSection` type (`'core' | 'secondary'` → `'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin'`). Update navigation data, sidebar/mobile labels, grouping, route descriptions. Move Chat to Parchment as the primary entry. Move `/beans` under Portfolio copy while preserving the existing route/functionality. Move Parchment Console and Docs to Developer. Move Subscription and Contact to the auth/user menu. Lock Portfolio/Maillard items as visible-but-gated for non-member users where the current route remains member-backed. Update chat access across `hooks.server.ts`, `chat/+page.server.ts`, `chat/+page.svelte`, `/api/chat`, and server-side chat tool gating. Write new `appNavigation.test.ts`.
 
 **Out of scope:** Dashboard redesign, analytics page redesign, new decision/action affordances, route renames.
 
-**Label decision:** The `/analytics` nav item label changes from "Market Data" to "Analytics" within the Intelligence group. `getCurrentRouteLabel()` updates accordingly; this affects the mobile page title.
+**Label decision:** The `/analytics` nav item label changes from "Market Data" to "Parchment Market Index" within the Parchment group. `getCurrentRouteLabel()` updates accordingly; this affects the mobile page title.
 
 **Stop point:** If only this PR ships, the app already communicates a clearer product hierarchy.
 
 **Acceptance criteria:**
 
-- Authenticated desktop navigation has Intelligence, Roasting, Developer sections.
-- Roasting items are visible but locked/grayed for non-member users with a single upgrade note.
-- Chat appears in Intelligence, not Roasting. Non-member viewers without ppiAccess see chat as locked.
+- Authenticated desktop navigation has Parchment, Portfolio, Maillard Studio, Developer sections.
+- Portfolio and Maillard Studio items are visible but locked/grayed for non-member users with a single upgrade note where existing routes remain member-backed.
+- Chat appears in Parchment, not Maillard Studio. Non-member viewers without ppiAccess see chat as locked.
 - Mobile navigation uses the same taxonomy.
 - Existing role/member/admin visibility behavior is preserved for items that remain gated.
 - Nav item does NOT appear in the wrong section (test both presence and absence).
@@ -451,8 +481,8 @@ Any decision/action affordance in this program must either:
 - `chat/+page.server.ts` passes `ppiAccess` to the page.
 - `chat/+page.svelte` gate is `ppiAccess || checkRole(role, 'member')`.
 - `/api/chat` authorizes `ppiAccess || member` on the server before streaming and still rejects users with neither entitlement.
-- Chat tools are entitlement-gated server-side: Intelligence-only users get sourcing/catalog tools only; member users keep the full tool set.
-- New `appNavigation.test.ts` covers: section IDs, item membership per section, chat placement, Roasting lock state for viewer. Add focused server/chat authorization coverage for the `/chat` route, `/api/chat`, and tool allowlist.
+- Chat tools are entitlement-gated server-side: Parchment Intelligence-only users get sourcing/catalog/Portfolio tools only; member users keep the full tool set.
+- New `appNavigation.test.ts` covers: section IDs, item membership per section, chat placement, Portfolio/Maillard lock state for viewer. Add focused server/chat authorization coverage for the `/chat` route, `/api/chat`, and tool allowlist.
 
 **Test plan:**
 
@@ -572,18 +602,19 @@ Rollback is straightforward for PR 01 and PR 02: revert copy/navigation changes.
 ## Resolved decisions
 
 1. Keep **Mallard Studio** as the only Studio name.
-2. Keep existing core product names and categories. Work "intelligence" into IA and product copy without inventing a new formal brand.
+2. Use **Parchment Intelligence** as the paid UI/intelligence platform brand, **Parchment Market Index** as the charts/data/index surface, and **Parchment API** as the API name. Avoid generic `Intelligence` when the visible product needs a proper brand.
 3. Treat the core product as green coffee supply-chain intelligence first.
-4. Parchment Intelligence remains the paid analytics package name unless a separate naming decision supersedes it.
-5. Navigation section IDs: `'intelligence' | 'roasting' | 'developer' | 'admin'`.
-6. Chat gate: `ppiAccess || checkRole(role, 'member')` in both presentation and server authorization. PR 01 must update `/chat` route protection, `/api/chat` authorization, and server-side chat tool gating so Intelligence users get sourcing-focused chat while Roasting users keep the full shared substrate.
-7. Green coffee inventory is an Intelligence-tier tool (sourcing research), not Roasting-tier exclusive.
+4. Use **Portfolio** for tracked, saved, purchased, owned, watched, and shortlisted coffees.
+5. Navigation section IDs: `'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin'`.
+6. Chat gate: `ppiAccess || checkRole(role, 'member')` in both presentation and server authorization. PR 01 must update `/chat` route protection, `/api/chat` authorization, and server-side chat tool gating so Parchment Intelligence users get sourcing/Portfolio-focused chat while Roasting users keep the full shared substrate.
+7. Green coffee Portfolio workflows are shared Parchment/Roasting context over time, not Roasting-tier exclusive; current `/beans` route functionality remains member-backed until the Portfolio model is widened.
 8. `ppi_access` boolean remains the intelligence gate; no new `user_roles` column needed for reports. Reports subscription sets `ppi_access = true`; feature depth differentiated by subscription lookup in `billing_subscriptions`.
-9. Viewer tier is a meaningful product floor with intentional login gating. Anonymous access is deliberately limited.
-10. Upgrade prompts: strong and persistent for viewer tier; contextual and light for paying users missing one tier.
-11. Reports content: in-app from launch (daily live dashboard, weekly brief, monthly deep dive); email delivery is a future addition.
+9. Viewer tier is a meaningful product floor with intentional login gating. Anonymous access is deliberately limited but polished.
+10. Upgrade prompts: strong and persistent for viewer tier; contextual and light for paying users missing one tier; anonymous CTAs tastefully convert to login first.
+11. Reports content is important but later-stage: daily insights likely live on analytics; weekly/monthly reports should integrate with the blog/in-app report surface; email delivery is future.
 12. Analytics-to-chat state contract must be defined as a TypeScript interface before PR 04 is scoped.
 13. Workspace types in chat (roasting, inventory) grayed out for non-Roasting users with a short upgrade note. Not rebuilt in this program; addressed in PR 06 framing only. This is a UI framing deferral, not an authorization deferral; restricted server tools must ship with the PR 01 chat access change.
+14. Clear-chat preserves canvas by default; canvas flexibility/usability overhaul is deferred.
 
 ## Remaining open items
 

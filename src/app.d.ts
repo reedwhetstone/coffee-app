@@ -20,6 +20,7 @@ declare global {
 				session: Session | null;
 				user: User | null;
 				role: UserRole;
+				ppiAccess: boolean;
 			};
 			safeGetSession(): Promise<{
 				session: Session | null;
@@ -46,6 +47,7 @@ declare global {
 				role: string | undefined;
 			} | null;
 			role: UserRole;
+			ppiAccess: boolean;
 		}
 		// interface PageState {}
 		// interface Platform {}

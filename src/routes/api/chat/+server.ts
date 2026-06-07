@@ -3,7 +3,7 @@ import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, stepCountIs, type UIMessage, convertToModelMessages } from 'ai';
 import { createChatTools } from '$lib/services/tools';
-import { requireMemberRole } from '$lib/server/auth';
+import { AuthError, requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 
 const BASE_SYSTEM_PROMPT = `You are an expert coffee consultant who combines deep knowledge of coffee varieties,
@@ -129,13 +129,23 @@ interface WorkspaceContext {
 	canvasDescription?: string;
 }
 
-function buildSystemPrompt(workspaceContext?: WorkspaceContext, userName?: string): string {
+function buildSystemPrompt(
+	workspaceContext?: WorkspaceContext,
+	userName?: string,
+	access?: { ppiAccess: boolean; memberAccess: boolean }
+): string {
 	// Inject today's date so the model has temporal awareness
 	const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 	let prompt = BASE_SYSTEM_PROMPT.replace('{{TODAY_DATE}}', today);
 
 	if (userName) {
 		prompt += `\n\nUSER: ${userName}`;
+	}
+
+	if (access?.ppiAccess && !access.memberAccess) {
+		prompt += `\n\nACCESS CONTEXT:\nThis user has Parchment Intelligence access, not Mallard Studio. Use sourcing, catalog, market, and portfolio tools only. Do not claim access to roasting, tasting, sales, or production-management tools.`;
+	} else if (access?.memberAccess) {
+		prompt += `\n\nACCESS CONTEXT:\nThis user has Mallard Studio chat access, including sourcing/catalog tools and roasting-context tools.`;
 	}
 
 	if (workspaceContext?.type && WORKSPACE_TYPE_CONTEXT[workspaceContext.type]) {
@@ -158,8 +168,8 @@ You can reference these items naturally (e.g., "that first one", "the Ethiopian"
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		// Require member role for chat features
-		const { user } = await requireMemberRole(event);
+		// Chat is available to Parchment Intelligence users and Mallard Studio members.
+		const { user, ppiAccess, memberAccess } = await requireChatAccess(event);
 
 		// Validate OpenRouter API key
 		if (!OPENROUTER_API_KEY) {
@@ -189,14 +199,14 @@ export const POST: RequestHandler = async (event) => {
 				'X-Title': 'Purveyors Coffee Chat'
 			}
 		});
-		const tools = createChatTools(supabase, user.id);
+		const tools = createChatTools(supabase, user.id, { ppiAccess, memberAccess });
 
 		// Resolve user display name for system prompt personalization
 		const userName =
 			user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0];
 
 		// Build dynamic system prompt with workspace context and user identity
-		const systemPrompt = buildSystemPrompt(workspaceContext, userName);
+		const systemPrompt = buildSystemPrompt(workspaceContext, userName, { ppiAccess, memberAccess });
 
 		// Stream the response using Vercel AI SDK via OpenRouter preset
 		const result = streamText({
@@ -219,6 +229,10 @@ export const POST: RequestHandler = async (event) => {
 			(error.message.includes('aborted') || error.message.includes('abort'))
 		) {
 			return json({ error: 'Request was cancelled' }, { status: 499 });
+		}
+
+		if (error instanceof AuthError) {
+			return json({ error: error.message }, { status: error.status });
 		}
 
 		return json(

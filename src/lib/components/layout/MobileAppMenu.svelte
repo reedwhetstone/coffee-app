@@ -29,7 +29,8 @@
 		).supabase
 	);
 	let isMember = $derived(checkRole(userRole, 'member'));
-	let navSections = $derived(getAuthenticatedNavSections(userRole));
+	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
+	let navSections = $derived(getAuthenticatedNavSections(userRole, { ppiAccess }));
 
 	let showCreateForm = $state(false);
 	let newWorkspaceName = $state('');
@@ -312,19 +313,28 @@
 						{#each section.items as item (item.href)}
 							<button
 								type="button"
-								onclick={() => navigateTo(item.href)}
+								onclick={() =>
+									navigateTo(item.locked ? (item.upgradeHref ?? '/subscription') : item.href)}
 								class="block w-full rounded-2xl border px-4 py-3 text-left transition-colors {isNavItemActive(
 									item,
 									pathname
 								)
 									? 'border-background-tertiary-light bg-background-tertiary-light/10 text-text-primary-light'
-									: 'border-border-light bg-background-secondary-light/50 text-text-primary-light hover:bg-background-secondary-light'}"
+									: item.locked
+										? 'border-border-light bg-background-secondary-light/40 text-text-secondary-light opacity-75'
+										: 'border-border-light bg-background-secondary-light/50 text-text-primary-light hover:bg-background-secondary-light'}"
 							>
 								<div class="flex items-start justify-between gap-3">
 									<div>
-										<div class="text-sm font-medium">{item.label}</div>
+										<div class="flex items-center gap-2 text-sm font-medium">
+											<span>{item.label}</span>
+											{#if item.locked}<span aria-label="Locked">🔒</span>{/if}
+										</div>
 										{#if item.description}
 											<p class="mt-1 text-xs text-text-secondary-light">{item.description}</p>
+										{/if}
+										{#if item.locked && item.lockedReason}
+											<p class="mt-1 text-[11px] text-text-secondary-light">{item.lockedReason}</p>
 										{/if}
 									</div>
 									<svg

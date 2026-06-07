@@ -27,14 +27,12 @@
 	let { data } = $props<{ data: PageData }>();
 
 	// Destructure with default values to prevent undefined errors
-	let { session, role = 'viewer' } = $derived(data);
+	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
 
 	// User role management
 	let userRole: UserRole = $derived(role as UserRole);
-
-	function hasRequiredRole(requiredRole: UserRole): boolean {
-		return checkRole(userRole, requiredRole);
-	}
+	let canUseChat = $derived(Boolean(ppiAccess) || checkRole(userRole, 'member'));
+	let canUseMallardWorkspaces = $derived(checkRole(userRole, 'member'));
 
 	// Build workspace context for the AI system prompt
 	function getWorkspaceContext() {
@@ -109,7 +107,7 @@
 
 	// ─── Workspace lifecycle ──────────────────────────────────────────────────
 	onMount(() => {
-		if (!hasRequiredRole('member')) return;
+		if (!canUseMallardWorkspaces) return;
 
 		// Capture workspace ID locally to ensure it's available in cleanup
 		// even if store state hasn't synchronized yet
@@ -750,15 +748,13 @@
 	async function clearConversation() {
 		if (confirm('Are you sure you want to clear the conversation?')) {
 			chat.messages = [];
-			canvasStore.clearAll();
 			dispatchedParts = new Set();
 			lastPersistedMessageCount = 0;
 
-			// Clear persisted messages for current workspace
+			// Clear persisted messages for current workspace. Canvas is intentionally preserved.
 			const wsId = workspaceStore.currentWorkspaceId;
 			if (wsId) {
 				await fetch(`/api/workspaces/${wsId}/messages`, { method: 'DELETE' });
-				await workspaceStore.saveCanvasState(wsId, {});
 			}
 		}
 	}
@@ -790,23 +786,23 @@
 			</a>
 		</div>
 	</div>
-{:else if !hasRequiredRole('member')}
-	<!-- Member role required -->
+{:else if !canUseChat}
+	<!-- Parchment Intelligence or Mallard Studio access required -->
 	<div class="flex min-h-screen items-center justify-center bg-background-primary-light">
 		<div
 			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
 		>
-			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Premium Feature</h1>
+			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Parchment Intelligence Chat</h1>
 			<p class="mb-6 text-text-secondary-light">
-				The Coffee Chat AI assistant is available for premium members. Upgrade to access
-				personalized recommendations and expert roasting advice.
+				Chat is available with Parchment Intelligence or Mallard Studio. Upgrade to ask market,
+				catalog, portfolio, and roasting questions with the right tool depth.
 			</p>
 			<div class="space-y-3">
 				<a
 					href="/subscription"
 					class="block rounded-md bg-background-tertiary-light px-6 py-3 font-medium text-white transition-all duration-200 hover:bg-opacity-90"
 				>
-					Upgrade to Premium
+					View plans
 				</a>
 				<a
 					href="/"

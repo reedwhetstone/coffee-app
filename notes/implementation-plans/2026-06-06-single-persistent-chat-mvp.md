@@ -6,9 +6,9 @@
 
 ## Decision
 
-Replace the current multi-workspace chat model with one persistent ongoing dialog per member user.
+Replace the current multi-workspace chat model with one persistent ongoing dialog for each eligible chat user: Parchment Intelligence (`ppiAccess`) users and Mallard Studio (`member`) users.
 
-The MVP should remove member-facing workspaces entirely. The product should feel like a single durable agent relationship, not a set of manually managed chat folders. A member user can keep talking in one ongoing chat, clear the visible dialog when they want a fresh start, and rely on the system to preserve useful long-term context through a manually editable memory file.
+The MVP should remove member-facing workspaces entirely. The product should feel like a single durable agent relationship, not a set of manually managed chat folders. An eligible user can keep talking in one ongoing chat, clear the visible dialog when they want a fresh start, and rely on the system to preserve useful long-term context through a manually editable memory file. Clear-chat must preserve canvas by default; canvas is the working surface, not disposable transcript chrome.
 
 ## Why this changes the direction
 
@@ -25,17 +25,17 @@ Workspaces are an application taxonomy. Agent memory is a continuity system. For
 
 ### Keep
 
-- One `/chat` surface.
+- One `/chat` surface, reached from the Parchment Intelligence experience rather than framed as a Mallard-only feature.
 - Persistent chat history for the active member session.
 - Persistent canvas state.
 - Backend-owned model selection. Do not expose model selection in the UI yet.
-- Existing tool/action-card safety model: write tools propose changes; user confirms execution.
+- Existing tool/action-card safety model: write tools propose changes; user confirms execution. Tool depth depends on entitlement: Parchment Intelligence gets sourcing/catalog/Portfolio tools, while Mallard Studio members also get roasting, tasting, sales, and production-context tools.
 
 ### Remove or hide
 
 - Workspace creation.
 - Workspace switching.
-- Workspace types as a visible user concept.
+- Workspace types as a visible user concept. Chat onboarding should instead start from obvious Parchment Intelligence prompts: market movement, buy opportunities, catalog research, Portfolio review, and sourcing comparisons.
 - Workspace title/rename/delete UI.
 - Any UX that asks the user to decide whether they are in a sourcing, roasting, inventory, analysis, or general workspace before chatting.
 
@@ -52,9 +52,9 @@ For the MVP, the cleanest path is to keep the database substrate mostly intact w
 
 ### Phase 1: one implicit default conversation
 
-Use one server-owned default chat container per member user. This can initially reuse the existing `workspaces` table as an implementation detail, but only after the row is deterministic:
+Use one server-owned default chat container per eligible chat user. This can initially reuse the existing `workspaces` table as an implementation detail, but only after the row is deterministic:
 
-- Create or fetch the marked deterministic default row per member user only after the existing member entitlement check passes.
+- Create or fetch the marked deterministic default row only after the entitlement check passes for `ppiAccess || member`.
 - Add a durable server-owned discriminator before removing workspace switching. Acceptable shapes are either a `workspaces` marker such as `purpose = 'default_chat'` / `is_default_chat = true`, or a dedicated per-user chat-state row with a `default_workspace_id` foreign key.
 - Back the marker with a uniqueness guarantee, for example a partial unique index that permits at most one default chat workspace per member user, or a unique `user_chat_state.user_id` row. Fetch by this marker/key, never by `last_accessed_at`, title, workspace type, or “first row” ordering.
 - Migration/backfill must be explicit. For existing members, create a new hidden default chat row when no marked row exists, or mark exactly one row only if a deliberate import rule chooses it. Do not silently promote an arbitrary legacy workspace. If multiple marked defaults are detected, fail closed and require repair rather than guessing.
@@ -62,7 +62,7 @@ Use one server-owned default chat container per member user. This can initially 
 - Stop surfacing the default row as a workspace in the UI.
 - Treat `workspace_messages` as the current `chat_messages` table in practice.
 - Store persistent canvas state on the same default row for now.
-- `Clear chat` should archive or soft-hide visible messages for the default conversation, not physically delete rows that may be referenced by memory compaction metadata. The first slice should prefer a `hidden_after_clear_at` / `clear_epoch` style boundary over hard deletes. If the implementation truly must hard-delete message rows, it must also reset `agent_memory_compacted_through_message_id` to `null` and store a clear epoch so future compaction starts from the post-clear transcript instead of following a deleted boundary row. Clearing chat must not delete the user's memory file or persistent canvas unless the UI explicitly says so.
+- `Clear chat` should archive or soft-hide visible messages for the default conversation, not physically delete rows that may be referenced by memory compaction metadata. The first slice should prefer a `hidden_after_clear_at` / `clear_epoch` style boundary over hard deletes. If the implementation truly must hard-delete message rows, it must also reset `agent_memory_compacted_through_message_id` to `null` and store a clear epoch so future compaction starts from the post-clear transcript instead of following a deleted boundary row. Clearing chat must not delete the user's memory file or persistent canvas unless the UI explicitly says so. The current PR 01 navigation/chat-gate slice may only preserve canvas in the existing clear action; the full archive/epoch semantics belong to the single-dialog implementation PR.
 
 This avoids a full schema rename in the first PR while still moving the product direction decisively away from workspaces. It does not avoid the small migration/index needed to identify the hidden default conversation safely.
 
@@ -85,21 +85,27 @@ The future memory system should be a markdown file per member user, saved as par
 # Purveyors Chat Memory
 
 ## User preferences
+
 - ...
 
 ## Coffee sourcing preferences
+
 - ...
 
 ## Roasting context
+
 - ...
 
 ## Inventory and business facts
+
 - ...
 
 ## Open questions
+
 - ...
 
 ## Recent durable decisions
+
 - ...
 ```
 
@@ -136,24 +142,31 @@ All writes to this file must be compare-and-swap writes in the first writable-me
 # Purveyors Chat Memory
 
 ## Operating instructions
+
 - Stable user instructions, response preferences, and constraints.
 
 ## User and business context
+
 - Durable facts about the user's coffee work, business, inventory habits, and goals.
 
 ## Coffee preferences
+
 - Origins, processes, flavor profiles, price ranges, suppliers, and quality markers the user prefers or avoids.
 
 ## Current working context
+
 - Short-term active threads that should survive chat clearing: open decisions, active sourcing hunts, beans under consideration, roast experiments, follow-ups.
 
 ## Long-term ideals and strategy
+
 - Durable strategic direction, product/business philosophy, recurring evaluation criteria.
 
 ## Decisions and constraints
+
 - Explicit decisions, hard constraints, and defaults that should guide future answers.
 
 ## Ignore / do not remember
+
 - User-corrected false memories, stale facts, and topics the user does not want personalized.
 ```
 
@@ -286,16 +299,16 @@ Final position: process is useful as a short-term event log, not as long-term me
 
 The first code PR should still be boring and independently mergeable, but it should include the memory foundation because memory is central to the single-dialog product direction:
 
-1. Replace the workspace sidebar/list UX with a single persistent chat shell.
-2. Add the deterministic hidden-default marker or chat-state mapping, backfill it safely, enforce one default per member user, then auto-create/fetch that marked default hidden workspace/conversation after the existing member entitlement check passes.
+1. Replace the workspace sidebar/list UX with a single persistent chat shell that works for `ppiAccess || member` users.
+2. Add the deterministic hidden-default marker or chat-state mapping, backfill it safely, enforce one default per eligible chat user, then auto-create/fetch that marked default hidden workspace/conversation after the `ppiAccess || member` entitlement check passes.
 3. Load and save messages against that default conversation.
-4. Keep the existing canvas persistence path, but remove workspace switching behavior.
+4. Keep the existing canvas persistence path, preserve canvas across clear-chat, but remove workspace switching behavior.
 5. Add a visible `Clear chat` action that clears the dialog history for the default conversation.
 6. Implement clear-chat as archive/soft-hide with a durable clear epoch, or reset the compaction marker transactionally if hard deletes are retained.
 7. Add one editable `agent_memory_md` field in settings, include required `agent_memory_revision` conflict protection, and inject the memory into the chat prompt.
 8. Add a simple background compaction endpoint triggered after a small threshold of new messages, with the same conflict-safe write path as manual memory saves.
 9. Keep backend model selection unchanged.
-10. Update copy/docs so the surface is “Chat”, not “workspace”.
+10. Update copy/docs so the surface is “Chat” or “Ask Parchment Intelligence”, not “workspace”.
 
 This PR should not implement schema renames, vector retrieval, hidden autonomous memory writes, or public model selection changes. Dreaming can start as a manual or thresholded reflection action after the markdown memory foundation exists.
 
@@ -328,7 +341,7 @@ This PR should not implement schema renames, vector retrieval, hidden autonomous
 
 ## Open questions
 
-- Should `Clear chat` preserve canvas by default? Recommendation: yes, with a separate `Clear canvas` action.
+- Should `Clear chat` preserve canvas by default? Resolved: yes, with a separate `Clear canvas` action.
 - Should memory edits be automatic or propose/confirm in MVP? Recommendation: manual editor first, proposed edits second, automatic edits later.
 - Should old workspace rows be migrated, archived, or left as hidden legacy data? Recommendation: leave legacy rows recoverable and hidden from the simplified chat UI initially; create or mark the deterministic default conversation separately, then migrate/archive legacy rows once the new single-dialog flow is stable.
-- Should the default hidden conversation be created at account creation or first eligible member chat visit? Recommendation: first eligible member chat visit.
+- Should the default hidden conversation be created at account creation or first eligible chat visit? Recommendation: first eligible chat visit.
