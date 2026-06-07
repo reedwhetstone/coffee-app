@@ -668,7 +668,7 @@
 	}
 
 	// ─── Slash command completions ────────────────────────────────────────────
-	let slashCompletions = $derived(getSlashCompletions(inputMessage));
+	let slashCompletions = $derived(getSlashCompletions(inputMessage, canUseMallardWorkspaces));
 
 	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
@@ -677,7 +677,7 @@
 		const text = inputMessage.trim();
 
 		// Intercept slash commands
-		const cmd = matchSlashCommand(text);
+		const cmd = matchSlashCommand(text, canUseMallardWorkspaces);
 		if (cmd) {
 			inputMessage = '';
 			if (cmd.action === 'clear-canvas') {
@@ -761,10 +761,10 @@
 </script>
 
 <svelte:head>
-	<title>Coffee Chat - AI Assistant</title>
+	<title>Parchment Intelligence Chat | Purveyors</title>
 	<meta
 		name="description"
-		content="Chat with our AI coffee expert for personalized recommendations and roasting advice."
+		content="Chat with Parchment Intelligence for sourcing, catalog, portfolio, and coffee market guidance."
 	/>
 </svelte:head>
 
@@ -774,9 +774,10 @@
 		<div
 			class="mx-auto max-w-md rounded-lg bg-background-secondary-light p-8 text-center shadow-lg"
 		>
-			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Coffee Chat</h1>
+			<h1 class="mb-4 text-2xl font-bold text-text-primary-light">Parchment Intelligence Chat</h1>
 			<p class="mb-6 text-text-secondary-light">
-				Sign in to access our AI coffee expert for personalized recommendations and roasting advice.
+				Sign in to access Parchment Intelligence for sourcing, catalog, portfolio, and coffee market
+				guidance.
 			</p>
 			<a
 				href="/auth"
@@ -867,21 +868,23 @@
 						<div class="mx-auto max-w-2xl text-center">
 							<div class="mb-8 rounded-lg bg-background-secondary-light p-6">
 								<h2 class="mb-3 text-lg font-semibold text-text-primary-light">
-									Welcome to Coffee Chat!
+									Welcome to Parchment Intelligence Chat!
 								</h2>
 								<p class="mb-4 text-text-secondary-light">
-									I'm your AI coffee expert, here to help with personalized recommendations,
-									roasting advice, and coffee knowledge. Ask me anything about:
+									I'm your coffee supply-chain intelligence assistant, here to help with sourcing,
+									catalog, portfolio, and market questions. Ask me anything about:
 								</p>
 								<div
 									class="grid grid-cols-1 gap-2 text-sm text-text-secondary-light md:grid-cols-2"
 								>
-									<div>- Coffee recommendations</div>
-									<div>- Roasting techniques</div>
+									<div>- Green coffee recommendations</div>
+									<div>- Market and supplier signals</div>
 									<div>- Flavor profiles</div>
 									<div>- Processing methods</div>
-									<div>- Your inventory analysis</div>
-									<div>- Brewing guidance</div>
+									<div>- Portfolio analysis</div>
+									{#if canUseMallardWorkspaces}
+										<div>- Roasting techniques</div>
+									{/if}
 								</div>
 							</div>
 
@@ -900,19 +903,22 @@
 									</button>
 									<button
 										onclick={() =>
-											(inputMessage = "What's the best way to roast a washed Costa Rican coffee?")}
-										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
-									>
-										"What's the best way to roast a washed Costa Rican coffee?"
-									</button>
-									<button
-										onclick={() =>
 											(inputMessage =
-												'Analyze my recent roasting sessions and suggest improvements')}
+												'Compare my portfolio against current Parchment Market Index trends.')}
 										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 									>
-										"Analyze my recent roasting sessions and suggest improvements"
+										"Compare my portfolio against current Parchment Market Index trends."
 									</button>
+									{#if canUseMallardWorkspaces}
+										<button
+											onclick={() =>
+												(inputMessage =
+													"What's the best way to roast a washed Costa Rican coffee?")}
+											class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
+										>
+											"What's the best way to roast a washed Costa Rican coffee?"
+										</button>
+									{/if}
 								</div>
 							</div>
 						</div>
@@ -1150,7 +1156,9 @@
 						<div class="flex space-x-2">
 							<textarea
 								bind:value={inputMessage}
-								placeholder="Ask me about coffee recommendations, roasting advice, or anything coffee-related..."
+								placeholder={canUseMallardWorkspaces
+									? 'Ask me about sourcing, portfolio, roasting, or coffee market decisions...'
+									: 'Ask me about sourcing, portfolio, catalog, or coffee market decisions...'}
 								class="flex-1 resize-none rounded-lg border border-border-light bg-background-primary-light px-4 py-3 text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none focus:ring-1 focus:ring-background-tertiary-light"
 								rows="1"
 								disabled={isActive}

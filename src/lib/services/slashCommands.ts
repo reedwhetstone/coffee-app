@@ -5,6 +5,8 @@ export interface SlashCommand {
 	chatText?: string;
 	/** If set, this action type is dispatched directly (no AI call) */
 	action?: 'clear-canvas' | 'pin-focused' | 'unpin-focused';
+	/** Mallard Studio-only command for roasting, sales, or production workflows. */
+	requiresMemberAccess?: boolean;
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
@@ -16,7 +18,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
 	{
 		name: '/roast',
 		description: 'Show recent roast profiles',
-		chatText: 'Show me my most recent roast profiles.'
+		chatText: 'Show me my most recent roast profiles.',
+		requiresMemberAccess: true
 	},
 	{
 		name: '/find',
@@ -31,7 +34,8 @@ export const SLASH_COMMANDS: SlashCommand[] = [
 	{
 		name: '/profit',
 		description: 'Show profit and sales summary',
-		chatText: 'Give me a summary of my recent sales and profit margins.'
+		chatText: 'Give me a summary of my recent sales and profit margins.',
+		requiresMemberAccess: true
 	},
 	{
 		name: '/clear',
@@ -54,18 +58,22 @@ export const SLASH_COMMANDS: SlashCommand[] = [
  * Given raw input text, check if it starts with a slash command.
  * Returns the matching command or null.
  */
-export function matchSlashCommand(input: string): SlashCommand | null {
+export function matchSlashCommand(input: string, memberAccess = true): SlashCommand | null {
 	const trimmed = input.trim().toLowerCase();
 	return (
-		SLASH_COMMANDS.find((cmd) => trimmed === cmd.name || trimmed.startsWith(cmd.name + ' ')) ?? null
+		SLASH_COMMANDS.filter((cmd) => memberAccess || !cmd.requiresMemberAccess).find(
+			(cmd) => trimmed === cmd.name || trimmed.startsWith(cmd.name + ' ')
+		) ?? null
 	);
 }
 
 /**
  * Returns matching commands for autocomplete (partial match).
  */
-export function getSlashCompletions(input: string): SlashCommand[] {
+export function getSlashCompletions(input: string, memberAccess = true): SlashCommand[] {
 	const trimmed = input.trim().toLowerCase();
 	if (!trimmed.startsWith('/')) return [];
-	return SLASH_COMMANDS.filter((cmd) => cmd.name.startsWith(trimmed));
+	return SLASH_COMMANDS.filter(
+		(cmd) => cmd.name.startsWith(trimmed) && (memberAccess || !cmd.requiresMemberAccess)
+	);
 }

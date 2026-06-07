@@ -1,25 +1,27 @@
 import { json } from '@sveltejs/kit';
-import { requireMemberRole } from '$lib/server/auth';
+import { requireChatAccess } from '$lib/server/auth';
 import { updateStockedStatus } from '$lib/server/stockedStatusUtils';
 import type { RequestHandler } from './$types';
 import type { Database } from '$lib/types/database.types';
 
-const ALLOWED_ACTIONS = new Set([
-	'add_bean_to_inventory',
-	'update_bean',
-	'create_roast_session',
-	'update_roast_notes',
-	'record_sale'
-]);
+const PARCHMENT_ACTIONS = new Set(['add_bean_to_inventory', 'update_bean']);
+
+const MALLARD_ACTIONS = new Set(['create_roast_session', 'update_roast_notes', 'record_sale']);
+
+const ALLOWED_ACTIONS = new Set([...PARCHMENT_ACTIONS, ...MALLARD_ACTIONS]);
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireMemberRole(event);
+		const { user, memberAccess } = await requireChatAccess(event);
 		const { supabase } = event.locals;
 		const { actionType, fields } = await event.request.json();
 
 		if (!ALLOWED_ACTIONS.has(actionType)) {
 			return json({ error: `Unknown action type: ${actionType}` }, { status: 400 });
+		}
+
+		if (!memberAccess && !PARCHMENT_ACTIONS.has(actionType)) {
+			return json({ error: 'Mallard Studio access required for this action' }, { status: 403 });
 		}
 
 		// Convert fields array/object to a flat params map
