@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { AuthError, requireParchmentAccess } from '$lib/server/auth';
+import { AuthError, getUserRoles, requireParchmentAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import type { Database } from '$lib/types/database.types';
 import {
@@ -29,7 +29,10 @@ export const GET: RequestHandler = async (event) => {
 				.gte('expires_at', new Date().toISOString())
 				.single();
 
-			if (shareData) {
+			if (shareData?.user_id) {
+				const ownerRoles = await getUserRoles(locals.supabase, shareData.user_id);
+				includeRoastProfiles = ownerRoles.includes('member');
+
 				// Show only the shared bean or all beans from the user
 				if (shareData.resource_id === 'all') {
 					query = query.eq('user', shareData.user_id);

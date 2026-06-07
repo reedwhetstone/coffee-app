@@ -108,17 +108,26 @@ You are in the user's Analysis workspace. Focus on cross-cutting insights: cost 
 roast-to-cup correlations, profit optimization, and trend analysis. Use multiple tools together.`
 };
 
+function sanitizePromptText(value: string, maxLength?: number): string {
+	const normalized = Array.from(value, (char) => {
+		const code = char.charCodeAt(0);
+		return (code >= 0 && code <= 31) || code === 127 ? ' ' : char;
+	}).join('');
+
+	return (maxLength ? normalized.slice(0, maxLength) : normalized).trim();
+}
+
 const workspaceContextSchema = z.object({
 	type: z.string().max(50).optional(),
 	summary: z
 		.string()
 		.max(2000)
-		.transform((s) => s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ').trim())
+		.transform((value) => sanitizePromptText(value))
 		.optional(),
 	canvasDescription: z
 		.string()
 		.max(500)
-		.transform((s) => s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ').trim())
+		.transform((value) => sanitizePromptText(value))
 		.optional()
 });
 
@@ -188,7 +197,7 @@ export function _buildSystemPrompt(
 
 	if (userName) {
 		// Strip control characters to prevent prompt injection via user-controlled display name.
-		const safeName = userName.replace(/[\x00-\x1F\x7F]/g, ' ').trim().slice(0, 100);
+		const safeName = sanitizePromptText(userName, 100);
 		if (safeName) prompt += `\n\nUSER: ${safeName}`;
 	}
 

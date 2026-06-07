@@ -13,6 +13,7 @@ const authMocks = vi.hoisted(() => {
 
 	return {
 		AuthError: MockAuthError,
+		getUserRoles: vi.fn(),
 		requireParchmentAccess: vi.fn()
 	};
 });
@@ -30,6 +31,7 @@ const dataMocks = vi.hoisted(() => ({
 
 vi.mock('$lib/server/auth', () => ({
 	AuthError: authMocks.AuthError,
+	getUserRoles: authMocks.getUserRoles,
 	requireParchmentAccess: authMocks.requireParchmentAccess
 }));
 
@@ -88,6 +90,7 @@ describe('/api/beans Portfolio entitlement gating', () => {
 			ppiAccess: true,
 			memberAccess: false
 		});
+		authMocks.getUserRoles.mockResolvedValue(['viewer']);
 		dataMocks.addToInventory.mockResolvedValue({ id: 1 });
 		dataMocks.updateInventory.mockResolvedValue({ id: 1 });
 		dataMocks.deleteInventoryItem.mockResolvedValue(undefined);
@@ -116,6 +119,48 @@ describe('/api/beans Portfolio entitlement gating', () => {
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ data: [] });
 		expect(authMocks.requireParchmentAccess).not.toHaveBeenCalled();
+		expect(authMocks.getUserRoles).not.toHaveBeenCalled();
+	});
+
+	it('strips roast history from share reads when the owner is not a Mallard Studio member', async () => {
+		const query = makeQuery([{ id: 1, roast_profiles: [{ roast_id: 10 }] }]);
+		const sharedLinksQuery = makeSharedLinksQuery({ user_id: 'ppi-owner', resource_id: 'all' });
+		dataMocks.buildGreenCoffeeQuery.mockReturnValue(query);
+		authMocks.getUserRoles.mockResolvedValue(['viewer']);
+
+		const event = makeEvent('/api/beans?share=token') as ReturnType<typeof makeEvent>;
+		event.locals.supabase.from = vi.fn(() => sharedLinksQuery);
+
+		const response = await GET(event as never);
+
+		expect(response.status).toBe(200);
+		expect(authMocks.requireParchmentAccess).not.toHaveBeenCalled();
+		expect(authMocks.getUserRoles).toHaveBeenCalledWith(event.locals.supabase, 'ppi-owner');
+		expect(query.eq).toHaveBeenCalledWith('user', 'ppi-owner');
+		expect(dataMocks.stripRoastProfileData).toHaveBeenCalledWith([
+			{ id: 1, roast_profiles: [{ roast_id: 10 }] }
+		]);
+		expect(await response.json()).toMatchObject({ data: [{ id: 1, roast_profiles: [] }] });
+	});
+
+	it('keeps roast history in share reads when the owner is a Mallard Studio member', async () => {
+		const roastProfiles = [{ roast_id: 10 }];
+		const query = makeQuery([{ id: 1, roast_profiles: roastProfiles }]);
+		const sharedLinksQuery = makeSharedLinksQuery({ user_id: 'member-owner', resource_id: 1 });
+		dataMocks.buildGreenCoffeeQuery.mockReturnValue(query);
+		authMocks.getUserRoles.mockResolvedValue(['member']);
+
+		const event = makeEvent('/api/beans?share=token') as ReturnType<typeof makeEvent>;
+		event.locals.supabase.from = vi.fn(() => sharedLinksQuery);
+
+		const response = await GET(event as never);
+
+		expect(response.status).toBe(200);
+		expect(query.eq).toHaveBeenCalledWith('id', 1);
+		expect(dataMocks.stripRoastProfileData).not.toHaveBeenCalled();
+		expect(await response.json()).toMatchObject({
+			data: [{ id: 1, roast_profiles: roastProfiles }]
+		});
 	});
 
 	it('allows Parchment Intelligence users to read only their own Portfolio rows without roast history', async () => {
