@@ -1,12 +1,13 @@
 import { json } from '@sveltejs/kit';
-import { requireUserAuth } from '$lib/server/auth';
+import { AuthError, requireParchmentAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import type { Database } from '$lib/types/database.types';
 import { buildGreenCoffeeQuery, processGreenCoffeeData } from '$lib/server/greenCoffeeUtils.js';
 import { addToInventory, updateInventory, deleteInventoryItem } from '$lib/data/inventory.js';
 import { GREEN_COFFEE_INV_COLUMNS, pickColumns } from '$lib/utils/dbColumns.js';
 
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET: RequestHandler = async (event) => {
+	const { url, locals } = event;
 	try {
 		const id = url.searchParams.get('id');
 		const shareToken = url.searchParams.get('share');
@@ -34,13 +35,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				return json({ data: [] });
 			}
 		} else {
-			// Standard user authentication - all users (including admins) see only their own data
-			const sessionData = await locals.safeGetSession();
-			const { session, user } = sessionData;
-
-			if (!session || !user) {
-				return json({ data: [] });
-			}
+			// Standard Portfolio access: Parchment Intelligence or Mallard Studio users see their own data.
+			const { user } = await requireParchmentAccess(event);
 
 			query = query.eq('user', user.id);
 
@@ -60,6 +56,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			searchState: Object.fromEntries(url.searchParams.entries())
 		});
 	} catch (error) {
+		if (error instanceof AuthError) {
+			return json({ data: [], error: error.message }, { status: error.status });
+		}
+
 		console.error('Error querying beans:', error);
 		return json({ data: [], error: 'Failed to fetch beans' });
 	}
@@ -67,7 +67,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 export const POST: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireUserAuth(event);
+		const { user } = await requireParchmentAccess(event);
 		const { supabase } = event.locals;
 
 		const bean = await event.request.json();
@@ -156,6 +156,10 @@ export const POST: RequestHandler = async (event) => {
 
 		return json(created);
 	} catch (error) {
+		if (error instanceof AuthError) {
+			return json({ error: error.message }, { status: error.status });
+		}
+
 		console.error('Error creating bean:', error);
 		return json({ error: 'Failed to create bean' }, { status: 500 });
 	}
@@ -163,7 +167,7 @@ export const POST: RequestHandler = async (event) => {
 
 export const PUT: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireUserAuth(event);
+		const { user } = await requireParchmentAccess(event);
 		const { supabase } = event.locals;
 		const { url, request } = event;
 
@@ -192,6 +196,10 @@ export const PUT: RequestHandler = async (event) => {
 		// when purchased_qty_lbs changes, so the returned data is always fresh.
 		return json(updated);
 	} catch (error) {
+		if (error instanceof AuthError) {
+			return json({ success: false, error: error.message }, { status: error.status });
+		}
+
 		console.error('Error updating bean:', error);
 		return json({ success: false, error: 'Failed to update bean' }, { status: 500 });
 	}
@@ -199,7 +207,7 @@ export const PUT: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireUserAuth(event);
+		const { user } = await requireParchmentAccess(event);
 		const { supabase } = event.locals;
 		const { url } = event;
 
@@ -219,6 +227,10 @@ export const DELETE: RequestHandler = async (event) => {
 
 		return json({ success: true });
 	} catch (error) {
+		if (error instanceof AuthError) {
+			return json({ success: false, error: error.message }, { status: error.status });
+		}
+
 		console.error('Error deleting bean and associated data:', error);
 		return json({ success: false, error: 'Failed to delete bean' }, { status: 500 });
 	}

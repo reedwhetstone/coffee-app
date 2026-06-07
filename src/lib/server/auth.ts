@@ -100,7 +100,7 @@ export async function requireMemberRole(
 	return { user, role, principal };
 }
 
-export async function requireChatAccess(event: RequestEvent): Promise<{
+export async function requireParchmentAccess(event: RequestEvent): Promise<{
 	user: User;
 	role: UserRole;
 	principal: SessionPrincipal;
@@ -117,6 +117,8 @@ export async function requireChatAccess(event: RequestEvent): Promise<{
 
 	return { user, role, principal, ppiAccess, memberAccess };
 }
+
+export const requireChatAccess = requireParchmentAccess;
 
 export async function requireAdminRole(
 	event: RequestEvent

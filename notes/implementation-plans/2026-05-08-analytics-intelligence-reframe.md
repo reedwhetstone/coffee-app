@@ -179,7 +179,7 @@ Account-level items (Subscription, Contact) move to the user/auth menu in the si
 ### Visibility rules
 
 - **Parchment section:** visible to all authenticated users; Parchment Market Index and Catalog become the primary proof surfaces. Chat is unlocked for `ppiAccess || member` and locked for viewers.
-- **Portfolio section:** visible to all authenticated users; current `/beans` access remains member-backed in PR 01, with Parchment Intelligence Portfolio expansion documented for later.
+- **Portfolio section:** visible to all authenticated users; `/beans` is unlocked for `ppiAccess || member` and locked for viewers without either entitlement. The route still represents owned-stock inventory under the hood; broader saved/watched/shortlisted Portfolio objects remain future work.
 - **Maillard Studio section:** visible to all authenticated users; items are locked/grayed for non-`member` users with a single upgrade note.
 - **Developer section:** visible to all authenticated users.
 - **Chat:** primary entry in Parchment; both Parchment Intelligence and Roasting users get access; tool depth differs by tier.
@@ -399,7 +399,7 @@ The analytics page should evolve toward a command-center layout (see above-the-f
 Navigation grouping:
 
 - **Parchment:** Dashboard, Parchment Market Index, Catalog, Chat/Ask
-- **Portfolio:** Portfolio (/beans), visible but locked where the current route still requires member access
+- **Portfolio:** Portfolio (/beans), unlocked for `ppiAccess || member` and visible-but-locked for viewers without either entitlement
 - **Maillard Studio:** Roast, Profit (locked/grayed for non-member users with upgrade note)
 - **Developer:** Parchment Console, Docs
 - **Account:** moved to user/auth sidebar menu, not a main nav section
@@ -424,7 +424,7 @@ PR 03 must begin from a current-state map of `/analytics`. The redesign should c
 - `src/routes/dashboard/+page.svelte`
 - `src/routes/catalog/+page.svelte`
 - `src/routes/analytics/+page.svelte`
-- `src/hooks.server.ts`: allow `/chat` for authenticated users with `ppiAccess || member` while keeping other protected routes member-only
+- `src/hooks.server.ts`: allow `/chat` and `/beans` for authenticated users with `ppiAccess || member` while keeping Roasting and Profit routes member-only
 - `src/routes/chat/+page.server.ts` — pass `ppiAccess` through
 - `src/routes/chat/+page.svelte` — update chat gate from `member` to `ppiAccess || member`
 - `src/routes/api/chat/+server.ts`: authorize `ppiAccess || member` before streaming
@@ -440,9 +440,10 @@ No schema or database impact in the first wave. No new server endpoints are requ
 
 The chat gate change (`ppiAccess || member`) is **not** frontend-only. A safe PR 01 implementation must update all three server-side gates that currently assume chat is member-only:
 
-1. `src/hooks.server.ts`: `/chat` is in `protectedRoutes` and currently redirects unless `requireRole(event.locals.role, 'member')` passes. Split or special-case `/chat` so authenticated users with `ppiAccess || member` can reach the route, while `/roast`, `/profit`, and `/beans` stay member-only.
+1. `src/hooks.server.ts`: `/chat` and `/beans` are in `protectedRoutes` and must allow authenticated users with `ppiAccess || member`, while `/roast` and `/profit` stay member-only.
 2. `src/routes/api/chat/+server.ts`: replace the unconditional `requireMemberRole(event)` streaming guard with an entitlement-aware server check for `ppiAccess || member`; users with neither entitlement still get 403.
-3. `createChatTools()`: pass entitlement/tier context into the chat tool factory, or split the tool registry, so Intelligence-only users can use sourcing/catalog tools but cannot call roast planning, tasting, inventory drawdown, or other Roasting/member-only tools.
+3. `src/routes/api/chat/execute-action/+server.ts` and `src/routes/api/beans/+server.ts`: allow Portfolio actions/data for `ppiAccess || member`; keep roast/profit actions member-only.
+4. `createChatTools()`: pass entitlement/tier context into the chat tool factory, or split the tool registry, so Intelligence-only users can use sourcing/catalog/Portfolio tools but cannot call roast planning, tasting, sales, or other Roasting/member-only tools.
 
 The page-level gate in `chat/+page.svelte` remains necessary for UX, but it is only the presentation layer over these server-side authorization changes.
 
@@ -460,7 +461,7 @@ Any decision/action affordance in this program must either:
 
 **Why first:** The navigation frame is the product frame. This gives every later UI change a coherent destination without touching data flows.
 
-**In scope:** Update `NavSection` type (`'core' | 'secondary'` → `'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin'`). Update navigation data, sidebar/mobile labels, grouping, route descriptions. Move Chat to Parchment as the primary entry. Move `/beans` under Portfolio copy while preserving the existing route/functionality. Move Parchment Console and Docs to Developer. Move Subscription and Contact to the auth/user menu. Lock Portfolio/Maillard items as visible-but-gated for non-member users where the current route remains member-backed. Update chat access across `hooks.server.ts`, `chat/+page.server.ts`, `chat/+page.svelte`, `/api/chat`, and server-side chat tool gating. Write new `appNavigation.test.ts`.
+**In scope:** Update `NavSection` type (`'core' | 'secondary'` → `'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin'`). Update navigation data, sidebar/mobile labels, grouping, route descriptions. Move Chat to Parchment as the primary entry. Move `/beans` under Portfolio copy while preserving the existing route/functionality. Move Parchment Console and Docs to Developer. Move Subscription and Contact to the auth/user menu. Lock Portfolio and Maillard items as visible-but-gated for viewers without the required entitlement: Portfolio unlocks for `ppiAccess || member`; Maillard unlocks for member. Update chat and Portfolio access across `hooks.server.ts`, `chat/+page.server.ts`, `chat/+page.svelte`, `/api/chat`, `/api/chat/execute-action`, `/api/beans`, and server-side chat tool gating. Write new `appNavigation.test.ts`.
 
 **Out of scope:** Dashboard redesign, analytics page redesign, new decision/action affordances, route renames.
 
@@ -471,17 +472,17 @@ Any decision/action affordance in this program must either:
 **Acceptance criteria:**
 
 - Authenticated desktop navigation has Parchment, Portfolio, Maillard Studio, Developer sections.
-- Portfolio and Maillard Studio items are visible but locked/grayed for non-member users with a single upgrade note where existing routes remain member-backed.
+- Portfolio and Maillard Studio items are visible but locked/grayed for users missing the relevant entitlement: Portfolio requires `ppiAccess || member`; Maillard Studio requires member.
 - Chat appears in Parchment, not Maillard Studio. Non-member viewers without ppiAccess see chat as locked.
 - Mobile navigation uses the same taxonomy.
 - Existing role/member/admin visibility behavior is preserved for items that remain gated.
 - Nav item does NOT appear in the wrong section (test both presence and absence).
 - The `NavSection` id type union is updated.
-- `hooks.server.ts` lets `ppiAccess || member` users reach `/chat`; users with neither entitlement still redirect away from `/chat`.
+- `hooks.server.ts` lets `ppiAccess || member` users reach `/chat` and `/beans`; users with neither entitlement still redirect away from both routes.
 - `chat/+page.server.ts` passes `ppiAccess` to the page.
 - `chat/+page.svelte` gate is `ppiAccess || checkRole(role, 'member')`.
 - `/api/chat` authorizes `ppiAccess || member` on the server before streaming and still rejects users with neither entitlement.
-- Chat tools are entitlement-gated server-side: Parchment Intelligence-only users get sourcing/catalog/Portfolio tools only; member users keep the full tool set.
+- Chat tools and Portfolio action execution are entitlement-gated server-side: Parchment Intelligence-only users get sourcing/catalog/Portfolio tools only; member users keep the full tool set.
 - New `appNavigation.test.ts` covers: section IDs, item membership per section, chat placement, Portfolio/Maillard lock state for viewer. Add focused server/chat authorization coverage for the `/chat` route, `/api/chat`, and tool allowlist.
 
 **Test plan:**
@@ -607,7 +608,7 @@ Rollback is straightforward for PR 01 and PR 02: revert copy/navigation changes.
 4. Use **Portfolio** for tracked, saved, purchased, owned, watched, and shortlisted coffees.
 5. Navigation section IDs: `'parchment' | 'portfolio' | 'maillard' | 'developer' | 'admin'`.
 6. Chat gate: `ppiAccess || checkRole(role, 'member')` in both presentation and server authorization. PR 01 must update `/chat` route protection, `/api/chat` authorization, and server-side chat tool gating so Parchment Intelligence users get sourcing/Portfolio-focused chat while Roasting users keep the full shared substrate.
-7. Green coffee Portfolio workflows are shared Parchment/Roasting context over time, not Roasting-tier exclusive; current `/beans` route functionality remains member-backed until the Portfolio model is widened.
+7. Green coffee Portfolio workflows are shared Parchment/Roasting context, not Roasting-tier exclusive; current `/beans` route functionality is unlocked for `ppiAccess || member`, while future saved/watched/shortlisted Portfolio objects remain a later model expansion.
 8. `ppi_access` boolean remains the intelligence gate; no new `user_roles` column needed for reports. Reports subscription sets `ppi_access = true`; feature depth differentiated by subscription lookup in `billing_subscriptions`.
 9. Viewer tier is a meaningful product floor with intentional login gating. Anonymous access is deliberately limited but polished.
 10. Upgrade prompts: strong and persistent for viewer tier; contextual and light for paying users missing one tier; anonymous CTAs tastefully convert to login first.
