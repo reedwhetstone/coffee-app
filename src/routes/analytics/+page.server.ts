@@ -87,6 +87,7 @@ export interface MovementWindowCounts {
 }
 
 export interface MovementCounts {
+	available: boolean;
 	arrivals: {
 		sevenDay: MovementWindowCounts;
 		thirtyDay: MovementWindowCounts;
@@ -271,14 +272,14 @@ export const load: PageServerLoad = async (event) => {
 		{ data: recentWholesaleArrivals30 },
 		{ data: recentRetailDelistings30 },
 		{ data: recentWholesaleDelistings30 },
-		{ count: arrivals7dRetail },
-		{ count: arrivals7dWholesale },
-		{ count: arrivals30dRetail },
-		{ count: arrivals30dWholesale },
-		{ count: delistings7dRetail },
-		{ count: delistings7dWholesale },
-		{ count: delistings30dRetail },
-		{ count: delistings30dWholesale },
+		{ count: arrivals7dRetail, error: arrivals7dRetailError },
+		{ count: arrivals7dWholesale, error: arrivals7dWholesaleError },
+		{ count: arrivals30dRetail, error: arrivals30dRetailError },
+		{ count: arrivals30dWholesale, error: arrivals30dWholesaleError },
+		{ count: delistings7dRetail, error: delistings7dRetailError },
+		{ count: delistings7dWholesale, error: delistings7dWholesaleError },
+		{ count: delistings30dRetail, error: delistings30dRetailError },
+		{ count: delistings30dWholesale, error: delistings30dWholesaleError },
 		snapshotsRaw
 	] = await Promise.all([
 		// Total beans tracked
@@ -360,6 +361,8 @@ export const load: PageServerLoad = async (event) => {
 			.gte('unstocked_date', thirtyDaysAgoStr)
 			.order('unstocked_date', { ascending: false })
 			.limit(50),
+		// Public movement velocity intentionally exposes only aggregate retail/wholesale counts
+		// for the KPI strip. Named per-lot movement rows stay Parchment Intelligence-only below.
 		movementCountQuery({
 			supabase,
 			dateColumn: 'stocked_date',
@@ -503,7 +506,19 @@ export const load: PageServerLoad = async (event) => {
 		...buildOriginRangeRows('wholesale', wholesaleOriginPriceRows)
 	];
 
+	const movementCountsAvailable = ![
+		arrivals7dRetailError,
+		arrivals7dWholesaleError,
+		arrivals30dRetailError,
+		arrivals30dWholesaleError,
+		delistings7dRetailError,
+		delistings7dWholesaleError,
+		delistings30dRetailError,
+		delistings30dWholesaleError
+	].some(Boolean);
+
 	const movementCounts: MovementCounts = {
+		available: movementCountsAvailable,
 		arrivals: {
 			sevenDay: { retail: arrivals7dRetail ?? 0, wholesale: arrivals7dWholesale ?? 0 },
 			thirtyDay: { retail: arrivals30dRetail ?? 0, wholesale: arrivals30dWholesale ?? 0 }
@@ -514,18 +529,22 @@ export const load: PageServerLoad = async (event) => {
 		}
 	};
 
-	const recentArrivals = [
-		...((recentRetailArrivals30 ?? []) as ArrivalBean[]),
-		...((recentWholesaleArrivals30 ?? []) as ArrivalBean[])
-	]
-		.sort((a, b) => (b.stocked_date ?? '').localeCompare(a.stocked_date ?? ''))
-		.slice(0, 100);
-	const recentDelistings = [
-		...((recentRetailDelistings30 ?? []) as DelistingBean[]),
-		...((recentWholesaleDelistings30 ?? []) as DelistingBean[])
-	]
-		.sort((a, b) => (b.unstocked_date ?? '').localeCompare(a.unstocked_date ?? ''))
-		.slice(0, 100);
+	const recentArrivals = isParchmentIntelligence
+		? [
+				...((recentRetailArrivals30 ?? []) as ArrivalBean[]),
+				...((recentWholesaleArrivals30 ?? []) as ArrivalBean[])
+			]
+				.sort((a, b) => (b.stocked_date ?? '').localeCompare(a.stocked_date ?? ''))
+				.slice(0, 100)
+		: [];
+	const recentDelistings = isParchmentIntelligence
+		? [
+				...((recentRetailDelistings30 ?? []) as DelistingBean[]),
+				...((recentWholesaleDelistings30 ?? []) as DelistingBean[])
+			]
+				.sort((a, b) => (b.unstocked_date ?? '').localeCompare(a.unstocked_date ?? ''))
+				.slice(0, 100)
+		: [];
 
 	// ─── PARCHMENT INTELLIGENCE QUERIES (only run for entitled users) ───────────
 	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
@@ -659,12 +678,12 @@ export const load: PageServerLoad = async (event) => {
 			ogTitle: 'Green Coffee Market Visibility — Parchment Market Index',
 			ogDescription:
 				'Daily green coffee price trends, processing mix, and supplier movement from 39+ US importers.',
-			twitterTitle: 'Green Coffee Market Visibility — Purveyors',
+			twitterTitle: 'Green Coffee Market Visibility — Parchment Market Index',
 			twitterDescription: 'Daily green coffee pricing and supplier movement from 39+ US importers.',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/analytics.jpg',
-				alt: 'Purveyors analytics social preview card'
+				alt: 'Parchment Market Index analytics social preview card'
 			}),
 			schemaData
 		})

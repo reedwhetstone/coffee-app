@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/svelte';
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import AnalyticsPage from './+page.svelte';
 import type { PageData } from './$types';
@@ -127,6 +127,7 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			}
 		],
 		movementCounts: {
+			available: true,
 			arrivals: {
 				sevenDay: { retail: 1, wholesale: 0 },
 				thirtyDay: { retail: 2, wholesale: 0 }
@@ -209,9 +210,14 @@ function createSession() {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-09T12:00:00.000Z').getTime());
 	loadPublicAnalyticsModules.mockImplementation(buildPublicModules);
 	loadMemberAnalyticsModules.mockImplementation(buildMemberModules);
 	loadSupplierAnalyticsModules.mockImplementation(buildSupplierModules);
+});
+
+afterEach(() => {
+	vi.restoreAllMocks();
 });
 
 describe('analytics page loading experience', () => {
@@ -343,6 +349,18 @@ describe('analytics command center hierarchy', () => {
 			actionRail!.compareDocumentPosition(screen.getByText('Supplier Price Comparison')) &
 				Node.DOCUMENT_POSITION_FOLLOWING
 		).toBeTruthy();
+	});
+
+	it('labels all-scope price posture as combined retail and wholesale', async () => {
+		render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		await screen.getByRole('button', { name: 'All' }).click();
+
+		expect(screen.getByText(/The latest combined retail \+ wholesale average is/i)).toBeTruthy();
 	});
 });
 

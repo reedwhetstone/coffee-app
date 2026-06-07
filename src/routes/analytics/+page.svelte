@@ -235,12 +235,12 @@
 
 	let arrivalExpandLabel = $derived(
 		filteredArrivals.length < scopedArrivalCount
-			? `View latest ${filteredArrivals.length} of ${scopedArrivalCount} →`
+			? `Open latest ${filteredArrivals.length} shown (${scopedArrivalCount} total in window) ↗`
 			: undefined
 	);
 	let delistingExpandLabel = $derived(
 		filteredDelistings.length < scopedDelistingCount
-			? `View latest ${filteredDelistings.length} of ${scopedDelistingCount} →`
+			? `Open latest ${filteredDelistings.length} shown (${scopedDelistingCount} total in window) ↗`
 			: undefined
 	);
 
@@ -451,12 +451,24 @@
 		return `${sign}${Math.abs(value).toFixed(precision)}`;
 	}
 
+	let movementWindowLabel = $derived(windowMode === '7d' ? '7-day' : '30-day');
+	let viewModeLabel = $derived(viewMode === 'all' ? 'combined retail + wholesale' : viewMode);
+	let isMovementDataAvailable = $derived.by(() => {
+		if (!movementCounts.available || !stats.lastUpdated) return false;
+		const updatedAt = new Date(`${stats.lastUpdated}T00:00:00.000Z`).getTime();
+		const staleAfterMs = 90 * 24 * 60 * 60 * 1000;
+		return Number.isFinite(updatedAt) && Date.now() - updatedAt <= staleAfterMs;
+	});
+
 	let marketReadHeadline = $derived.by(() => {
+		if (!isMovementDataAvailable) {
+			return `${movementWindowLabel} movement data is unavailable; use price and coverage evidence until the index refreshes.`;
+		}
 		if (scopedArrivalCount > scopedDelistingCount) {
-			return 'Supply is expanding faster than it is leaving the visible market.';
+			return `Supply is expanding faster than it is leaving the visible market in the ${movementWindowLabel} window.`;
 		}
 		if (scopedDelistingCount > scopedArrivalCount) {
-			return 'Availability is tightening in the current movement window.';
+			return `Availability is tightening in the ${movementWindowLabel} movement window.`;
 		}
 		if (marketPriceDelta != null && Math.abs(marketPriceDelta) >= 0.05) {
 			return marketPriceDelta > 0
@@ -467,12 +479,14 @@
 	});
 
 	let marketReadDetail = $derived.by(() => {
-		const movementWindow = windowMode === '7d' ? '7-day' : '30-day';
 		const pricePhrase =
 			marketPriceDelta == null
 				? 'price movement needs another comparable snapshot'
 				: `${formatSigned(marketPriceDelta, 2)}/lb (${formatSigned(marketPriceDeltaPercent, 1)}%) versus the prior comparable snapshot`;
-		return `${movementWindow} movement: ${scopedArrivalCount} arrivals and ${scopedDelistingCount} delistings. ${displayStockedCount.toLocaleString()} active ${viewMode} listings are in scope; ${pricePhrase}.`;
+		if (!isMovementDataAvailable) {
+			return `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope; ${pricePhrase}. Movement counts are withheld because the latest movement query is unavailable or stale.`;
+		}
+		return `${movementWindowLabel} movement: ${scopedArrivalCount} arrivals and ${scopedDelistingCount} delistings. ${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope; ${pricePhrase}.`;
 	});
 
 	let kpiCards = $derived.by(() => [
@@ -495,15 +509,20 @@
 		},
 		{
 			label: 'New arrivals',
-			value: scopedArrivalCount.toLocaleString(),
-			detail: `${windowMode === '7d' ? '7' : '30'}-day stocked movement`,
+			value: isMovementDataAvailable ? scopedArrivalCount.toLocaleString() : 'N/A',
+			detail: isMovementDataAvailable
+				? `${movementWindowLabel} stocked movement`
+				: 'Movement data unavailable',
 			tone: 'up'
 		},
 		{
 			label: 'Delistings',
-			value: scopedDelistingCount.toLocaleString(),
-			detail: `${windowMode === '7d' ? '7' : '30'}-day catalog removals`,
-			tone: scopedDelistingCount > scopedArrivalCount ? 'alert' : 'neutral'
+			value: isMovementDataAvailable ? scopedDelistingCount.toLocaleString() : 'N/A',
+			detail: isMovementDataAvailable
+				? `${movementWindowLabel} catalog removals`
+				: 'Movement data unavailable',
+			tone:
+				isMovementDataAvailable && scopedDelistingCount > scopedArrivalCount ? 'alert' : 'neutral'
 		},
 		{
 			label: 'Supplier coverage',
@@ -519,11 +538,14 @@
 	let insightCards = $derived.by(() => [
 		{
 			label: 'Availability read',
-			title:
-				scopedArrivalCount >= scopedDelistingCount
+			title: !isMovementDataAvailable
+				? 'Movement counts need a fresh index read.'
+				: scopedArrivalCount >= scopedDelistingCount
 					? 'Fresh supply is leading current movement.'
 					: 'Catalog exits deserve attention before the next buy window.',
-			body: `${scopedArrivalCount} arrivals versus ${scopedDelistingCount} delistings in the selected ${windowMode === '7d' ? '7-day' : '30-day'} ${viewMode} scope. Use the gated movement tables for named lots and suppliers.`,
+			body: isMovementDataAvailable
+				? `${scopedArrivalCount} arrivals versus ${scopedDelistingCount} delistings in the selected ${movementWindowLabel} ${viewModeLabel} scope. Use the gated movement tables for named lots and suppliers.`
+				: `The selected ${movementWindowLabel} ${viewModeLabel} movement counts are unavailable or stale, so the read does not treat zeros as market stability.`,
 			evidence: `Evidence: ${stats.totalSuppliers} suppliers, latest index ${formatDate(stats.lastUpdated)}`
 		},
 		{
@@ -534,7 +556,7 @@
 					: marketPriceDelta > 0
 						? 'Latest indexed prices are pressing higher.'
 						: 'Latest indexed prices are creating selective value pockets.',
-			body: `The latest ${viewMode} average is ${formatMoney(latestMarketAverage)}/lb. Origin ranges below show whether that movement is broad or concentrated.`,
+			body: `The latest ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb. Origin ranges below show whether that movement is broad or concentrated.`,
 			evidence: `Evidence: ${latestSnapshotRows.length || scopedOriginRangeData.length} origin rows in current scope`
 		},
 		{
