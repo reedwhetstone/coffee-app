@@ -75,6 +75,12 @@ export interface ProcessBucket {
 	wholesale: boolean;
 }
 
+interface CatalogPriceRow {
+	country: string | null;
+	price_per_lb: number | null;
+	wholesale: boolean;
+}
+
 export interface MovementWindowCounts {
 	retail: number;
 	wholesale: number;
@@ -259,7 +265,8 @@ export const load: PageServerLoad = async (event) => {
 		{ count: stockedRetailBeans },
 		{ count: stockedWholesaleBeans },
 		{ data: processingRows },
-		{ data: catalogPriceRows },
+		{ data: retailCatalogPriceRows },
+		{ data: wholesaleCatalogPriceRows },
 		{ data: recentRetailArrivals30 },
 		{ data: recentWholesaleArrivals30 },
 		{ data: recentRetailDelistings30 },
@@ -295,11 +302,23 @@ export const load: PageServerLoad = async (event) => {
 			.eq('stocked', true)
 			.not('processing', 'is', null)
 			.limit(5000),
-		// Origin range data (live cross-section)
+		// Retail origin range data (live cross-section). Load each market separately before
+		// the row cap so scoped origin evidence is not biased by the other market's rows.
 		supabase
 			.from('coffee_catalog')
 			.select('country, price_per_lb, wholesale')
 			.eq('stocked', true)
+			.eq('wholesale', false)
+			.not('country', 'is', null)
+			.not('price_per_lb', 'is', null)
+			.gt('price_per_lb', 0)
+			.limit(5000),
+		// Wholesale origin range data (live cross-section)
+		supabase
+			.from('coffee_catalog')
+			.select('country, price_per_lb, wholesale')
+			.eq('stocked', true)
+			.eq('wholesale', true)
 			.not('country', 'is', null)
 			.not('price_per_lb', 'is', null)
 			.gt('price_per_lb', 0)
@@ -425,8 +444,15 @@ export const load: PageServerLoad = async (event) => {
 		return entries.sort((a, b) => b.count - a.count);
 	})();
 
-	const buildOriginRangeRows = (scope: OriginRangeScope): OriginRangeRow[] => {
-		if (!catalogPriceRows || catalogPriceRows.length === 0) return [];
+	const retailOriginPriceRows = (retailCatalogPriceRows ?? []) as CatalogPriceRow[];
+	const wholesaleOriginPriceRows = (wholesaleCatalogPriceRows ?? []) as CatalogPriceRow[];
+	const allOriginPriceRows = [...retailOriginPriceRows, ...wholesaleOriginPriceRows];
+
+	const buildOriginRangeRows = (
+		scope: OriginRangeScope,
+		catalogPriceRows: CatalogPriceRow[]
+	): OriginRangeRow[] => {
+		if (catalogPriceRows.length === 0) return [];
 
 		const byCountry = new Map<string, number[]>();
 		for (const row of catalogPriceRows) {
@@ -472,9 +498,9 @@ export const load: PageServerLoad = async (event) => {
 	// Origin range data includes all, retail, and wholesale scopes so the command-center
 	// read never explains a scoped price average with all-market range evidence.
 	const originRangeData: OriginRangeRow[] = [
-		...buildOriginRangeRows('all'),
-		...buildOriginRangeRows('retail'),
-		...buildOriginRangeRows('wholesale')
+		...buildOriginRangeRows('all', allOriginPriceRows),
+		...buildOriginRangeRows('retail', retailOriginPriceRows),
+		...buildOriginRangeRows('wholesale', wholesaleOriginPriceRows)
 	];
 
 	const movementCounts: MovementCounts = {

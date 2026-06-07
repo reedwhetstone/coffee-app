@@ -241,7 +241,13 @@ function createAnalyticsClient(
 
 		if (state.columns === 'processing, wholesale') return { data: [], error: null };
 		if (state.columns === 'country, price_per_lb, wholesale') {
-			return { data: options.catalogPriceRows ?? [], error: null };
+			const wholesale = state.filters.find(
+				(filter) => filter.method === 'eq' && filter.column === 'wholesale'
+			)?.value;
+			return {
+				data: (options.catalogPriceRows ?? []).filter((row) => row.wholesale === wholesale),
+				error: null
+			};
 		}
 		if (state.columns?.includes('unstocked_date')) {
 			const cutoff = state.filters.find(
