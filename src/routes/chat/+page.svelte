@@ -458,7 +458,8 @@
 		getSuggestions(
 			workspaceStore.currentWorkspace?.type || 'general',
 			canvasStore.blocks,
-			chat.messages.length > 0
+			chat.messages.length > 0,
+			{ canUseMallardWorkspaces }
 		)
 	);
 
@@ -904,10 +905,11 @@
 									<button
 										onclick={() =>
 											(inputMessage =
-												'Compare my portfolio against current Parchment Market Index trends.')}
+												'Review my current portfolio and call out gaps by origin, process, and flavor profile.')}
 										class="block w-full rounded-md border border-border-light bg-background-secondary-light p-2 text-left text-text-secondary-light transition-all hover:bg-background-tertiary-light hover:text-white"
 									>
-										"Compare my portfolio against current Parchment Market Index trends."
+										"Review my current portfolio and call out gaps by origin, process, and flavor
+										profile."
 									</button>
 									{#if canUseMallardWorkspaces}
 										<button
