@@ -11,6 +11,7 @@ export interface ArrivalBean {
 	price_per_lb: number | null;
 	source: string | null;
 	stocked_date: string | null;
+	wholesale: boolean;
 }
 
 export interface DelistingBean {
@@ -20,6 +21,7 @@ export interface DelistingBean {
 	price_per_lb: number | null;
 	source: string | null;
 	unstocked_date: string | null;
+	wholesale: boolean;
 }
 
 export interface ComparisonBean {
@@ -73,8 +75,27 @@ export interface ProcessBucket {
 	wholesale: boolean;
 }
 
+export interface MovementWindowCounts {
+	retail: number;
+	wholesale: number;
+}
+
+export interface MovementCounts {
+	arrivals: {
+		sevenDay: MovementWindowCounts;
+		thirtyDay: MovementWindowCounts;
+	};
+	delistings: {
+		sevenDay: MovementWindowCounts;
+		thirtyDay: MovementWindowCounts;
+	};
+}
+
+type OriginRangeScope = 'all' | 'retail' | 'wholesale';
+
 export interface OriginRangeRow {
 	origin: string;
+	market_scope: OriginRangeScope;
 	price_min: number;
 	price_max: number;
 	price_avg: number;
@@ -104,6 +125,28 @@ function relativeDateString(referenceDate: string | null, daysAgo: number): stri
 	const reference = referenceDate ? new Date(`${referenceDate}T00:00:00.000Z`) : new Date();
 	reference.setUTCDate(reference.getUTCDate() - daysAgo);
 	return reference.toISOString().split('T')[0];
+}
+
+function movementCountQuery({
+	supabase,
+	dateColumn,
+	stocked,
+	wholesale,
+	fromDate
+}: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	supabase: any;
+	dateColumn: 'stocked_date' | 'unstocked_date';
+	stocked: boolean;
+	wholesale: boolean;
+	fromDate: string;
+}) {
+	return supabase
+		.from('coffee_catalog')
+		.select('*', { count: 'exact', head: true })
+		.eq('stocked', stocked)
+		.eq('wholesale', wholesale)
+		.gte(dateColumn, fromDate);
 }
 
 function normalizeProcess(raw: string | null | undefined): string {
@@ -198,6 +241,7 @@ export const load: PageServerLoad = async (event) => {
 	const lastUpdated = marketSummary?.snapshot_date ?? null;
 
 	// ─── PUBLIC QUERIES (run for all visitors, in parallel) ─────────────────────
+	const sevenDaysAgoStr = relativeDateString(lastUpdated, 7);
 	const thirtyDaysAgoStr = relativeDateString(lastUpdated, 30);
 	const fromDate = relativeDateString(null, 90);
 
@@ -218,6 +262,14 @@ export const load: PageServerLoad = async (event) => {
 		{ data: catalogPriceRows },
 		{ data: recentArrivals30 },
 		{ data: recentDelistings30 },
+		{ count: arrivals7dRetail },
+		{ count: arrivals7dWholesale },
+		{ count: arrivals30dRetail },
+		{ count: arrivals30dWholesale },
+		{ count: delistings7dRetail },
+		{ count: delistings7dWholesale },
+		{ count: delistings30dRetail },
+		{ count: delistings30dWholesale },
 		snapshotsRaw
 	] = await Promise.all([
 		// Total beans tracked
@@ -244,7 +296,7 @@ export const load: PageServerLoad = async (event) => {
 		// Origin range data (live cross-section)
 		supabase
 			.from('coffee_catalog')
-			.select('country, price_per_lb')
+			.select('country, price_per_lb, wholesale')
 			.eq('stocked', true)
 			.not('country', 'is', null)
 			.not('price_per_lb', 'is', null)
@@ -253,7 +305,7 @@ export const load: PageServerLoad = async (event) => {
 		// Recent arrivals (30 days)
 		supabase
 			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, stocked_date')
+			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
 			.eq('stocked', true)
 			.gte('stocked_date', thirtyDaysAgoStr)
 			.order('stocked_date', { ascending: false })
@@ -261,11 +313,67 @@ export const load: PageServerLoad = async (event) => {
 		// Recent delistings (30 days)
 		supabase
 			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, unstocked_date')
+			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
 			.eq('stocked', false)
 			.gte('unstocked_date', thirtyDaysAgoStr)
 			.order('unstocked_date', { ascending: false })
 			.limit(50),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'stocked_date',
+			stocked: true,
+			wholesale: false,
+			fromDate: sevenDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'stocked_date',
+			stocked: true,
+			wholesale: true,
+			fromDate: sevenDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'stocked_date',
+			stocked: true,
+			wholesale: false,
+			fromDate: thirtyDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'stocked_date',
+			stocked: true,
+			wholesale: true,
+			fromDate: thirtyDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'unstocked_date',
+			stocked: false,
+			wholesale: false,
+			fromDate: sevenDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'unstocked_date',
+			stocked: false,
+			wholesale: true,
+			fromDate: sevenDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'unstocked_date',
+			stocked: false,
+			wholesale: false,
+			fromDate: thirtyDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'unstocked_date',
+			stocked: false,
+			wholesale: true,
+			fromDate: thirtyDaysAgoStr
+		}),
 		// Price index snapshots — 90 days public, 365 days for Parchment Intelligence users
 		_loadPriceSnapshotsPaginated({
 			supabase: priceIndexSupabase,
@@ -294,12 +402,13 @@ export const load: PageServerLoad = async (event) => {
 		return entries.sort((a, b) => b.count - a.count);
 	})();
 
-	// Origin range data
-	const originRangeData: OriginRangeRow[] = (() => {
+	const buildOriginRangeRows = (scope: OriginRangeScope): OriginRangeRow[] => {
 		if (!catalogPriceRows || catalogPriceRows.length === 0) return [];
 
 		const byCountry = new Map<string, number[]>();
 		for (const row of catalogPriceRows) {
+			if (scope === 'retail' && row.wholesale) continue;
+			if (scope === 'wholesale' && !row.wholesale) continue;
 			const price = getPerLbPrice(row);
 			if (!row.country || price == null) continue;
 			const prices = byCountry.get(row.country) ?? [];
@@ -320,9 +429,10 @@ export const load: PageServerLoad = async (event) => {
 		for (const [origin, prices] of byCountry) {
 			if (prices.length < 3) continue;
 			const sorted = [...prices].sort((a, b) => a - b);
-			const avg = sorted.reduce((s, v) => s + v, 0) / sorted.length;
+			const avg = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
 			result.push({
 				origin,
+				market_scope: scope,
 				price_min: sorted[0],
 				price_max: sorted[sorted.length - 1],
 				price_avg: avg,
@@ -334,7 +444,26 @@ export const load: PageServerLoad = async (event) => {
 		}
 
 		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 50);
-	})();
+	};
+
+	// Origin range data includes all, retail, and wholesale scopes so the command-center
+	// read never explains a scoped price average with all-market range evidence.
+	const originRangeData: OriginRangeRow[] = [
+		...buildOriginRangeRows('all'),
+		...buildOriginRangeRows('retail'),
+		...buildOriginRangeRows('wholesale')
+	];
+
+	const movementCounts: MovementCounts = {
+		arrivals: {
+			sevenDay: { retail: arrivals7dRetail ?? 0, wholesale: arrivals7dWholesale ?? 0 },
+			thirtyDay: { retail: arrivals30dRetail ?? 0, wholesale: arrivals30dWholesale ?? 0 }
+		},
+		delistings: {
+			sevenDay: { retail: delistings7dRetail ?? 0, wholesale: delistings7dWholesale ?? 0 },
+			thirtyDay: { retail: delistings30dRetail ?? 0, wholesale: delistings30dWholesale ?? 0 }
+		}
+	};
 
 	// ─── PARCHMENT INTELLIGENCE QUERIES (only run for entitled users) ───────────
 	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
@@ -446,6 +575,7 @@ export const load: PageServerLoad = async (event) => {
 		snapshots,
 		processDistribution,
 		originRangeData,
+		movementCounts,
 		recentArrivals: (recentArrivals30 ?? []) as ArrivalBean[],
 		recentDelistings: (recentDelistings30 ?? []) as DelistingBean[],
 		comparisonBeans,

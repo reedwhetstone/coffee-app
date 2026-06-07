@@ -149,7 +149,10 @@ function createSnapshotClient(
 
 function createAnalyticsClient(
 	snapshotPages: SnapshotPageResult[],
-	options: { marketSummaryDate?: string | null } = {}
+	options: {
+		marketSummaryDate?: string | null;
+		catalogPriceRows?: Array<{ country: string; price_per_lb: number; wholesale: boolean }>;
+	} = {}
 ) {
 	const snapshotFromDates: string[] = [];
 	const snapshotRangeCalls: SnapshotQueryCall[] = [];
@@ -199,6 +202,37 @@ function createAnalyticsClient(
 			const wholesale = state.filters.find(
 				(filter) => filter.method === 'eq' && filter.column === 'wholesale'
 			)?.value;
+			const stockedDate = state.filters.find(
+				(filter) => filter.method === 'gte' && filter.column === 'stocked_date'
+			)?.value;
+			const unstockedDate = state.filters.find(
+				(filter) => filter.method === 'gte' && filter.column === 'unstocked_date'
+			)?.value;
+
+			if (stockedDate) {
+				return {
+					count: wholesale
+						? stockedDate === '2026-04-01'
+							? 2
+							: 7
+						: stockedDate === '2026-04-01'
+							? 5
+							: 14,
+					error: null
+				};
+			}
+			if (unstockedDate) {
+				return {
+					count: wholesale
+						? unstockedDate === '2026-04-01'
+							? 1
+							: 4
+						: unstockedDate === '2026-04-01'
+							? 3
+							: 10,
+					error: null
+				};
+			}
 
 			if (stocked === true && wholesale === false) return { count: 42, error: null };
 			if (stocked === true && wholesale === true) return { count: 11, error: null };
@@ -206,7 +240,9 @@ function createAnalyticsClient(
 		}
 
 		if (state.columns === 'processing, wholesale') return { data: [], error: null };
-		if (state.columns === 'country, price_per_lb') return { data: [], error: null };
+		if (state.columns === 'country, price_per_lb, wholesale') {
+			return { data: options.catalogPriceRows ?? [], error: null };
+		}
 		if (state.columns?.includes('unstocked_date')) {
 			const cutoff = state.filters.find(
 				(filter) => filter.method === 'gte' && filter.column === 'unstocked_date'
@@ -419,6 +455,55 @@ describe('analytics load', () => {
 		expect(client.movementCutoffs).toEqual({
 			arrivals: ['2026-03-01'],
 			delistings: ['2026-03-01']
+		});
+	});
+
+	it('returns uncapped scoped movement counts for market scope reads', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }]);
+		currentPriceIndexClient = client;
+
+		const result = (await load(createLoadEvent(client))) as {
+			movementCounts: import('./+page.server').MovementCounts;
+		};
+
+		expect(result.movementCounts).toEqual({
+			arrivals: { sevenDay: { retail: 5, wholesale: 2 }, thirtyDay: { retail: 14, wholesale: 7 } },
+			delistings: { sevenDay: { retail: 3, wholesale: 1 }, thirtyDay: { retail: 10, wholesale: 4 } }
+		});
+	});
+
+	it('returns origin price ranges for all, retail, and wholesale scopes', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			catalogPriceRows: [
+				{ country: 'Colombia', price_per_lb: 4, wholesale: false },
+				{ country: 'Colombia', price_per_lb: 5, wholesale: false },
+				{ country: 'Colombia', price_per_lb: 6, wholesale: false },
+				{ country: 'Colombia', price_per_lb: 2, wholesale: true },
+				{ country: 'Colombia', price_per_lb: 3, wholesale: true },
+				{ country: 'Colombia', price_per_lb: 4, wholesale: true }
+			]
+		});
+		currentPriceIndexClient = client;
+
+		const result = (await load(createLoadEvent(client))) as {
+			originRangeData: import('./+page.server').OriginRangeRow[];
+		};
+		const colombiaRanges = result.originRangeData.filter((row) => row.origin === 'Colombia');
+
+		expect(colombiaRanges.map((row) => row.market_scope).sort()).toEqual([
+			'all',
+			'retail',
+			'wholesale'
+		]);
+		expect(colombiaRanges.find((row) => row.market_scope === 'retail')).toMatchObject({
+			price_min: 4,
+			price_max: 6,
+			sample_size: 3
+		});
+		expect(colombiaRanges.find((row) => row.market_scope === 'wholesale')).toMatchObject({
+			price_min: 2,
+			price_max: 4,
+			sample_size: 3
 		});
 	});
 

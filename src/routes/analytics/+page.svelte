@@ -4,6 +4,8 @@
 		PriceSnapshot,
 		ProcessBucket,
 		OriginRangeRow,
+		MovementCounts,
+		MovementWindowCounts,
 		ArrivalBean,
 		DelistingBean,
 		ComparisonBean,
@@ -49,6 +51,7 @@
 		snapshots,
 		processDistribution,
 		originRangeData,
+		movementCounts,
 		recentArrivals,
 		recentDelistings,
 		comparisonBeans,
@@ -68,6 +71,7 @@
 			snapshots: PriceSnapshot[];
 			processDistribution: ProcessBucket[];
 			originRangeData: OriginRangeRow[];
+			movementCounts: MovementCounts;
 			recentArrivals: ArrivalBean[];
 			recentDelistings: DelistingBean[];
 			comparisonBeans: ComparisonBean[];
@@ -152,6 +156,27 @@
 		return stats.stockedRetailBeans + stats.stockedWholesaleBeans;
 	});
 
+	function scopeMovementCount(counts: MovementWindowCounts): number {
+		if (viewMode === 'retail') return counts.retail;
+		if (viewMode === 'wholesale') return counts.wholesale;
+		return counts.retail + counts.wholesale;
+	}
+
+	let scopedArrivalCount = $derived.by(() =>
+		scopeMovementCount(
+			windowMode === '7d' ? movementCounts.arrivals.sevenDay : movementCounts.arrivals.thirtyDay
+		)
+	);
+	let scopedDelistingCount = $derived.by(() =>
+		scopeMovementCount(
+			windowMode === '7d' ? movementCounts.delistings.sevenDay : movementCounts.delistings.thirtyDay
+		)
+	);
+
+	let scopedOriginRangeData = $derived.by(() =>
+		originRangeData.filter((row) => row.market_scope === viewMode)
+	);
+
 	let originBarData = $derived.by(() => {
 		if (!filteredSnapshots || filteredSnapshots.length === 0) return [];
 		const latestDate = filteredSnapshots.reduce(
@@ -191,6 +216,8 @@
 	let filteredArrivals = $derived.by(() => {
 		const cutoff = movementWindowCutoff(windowMode === '7d' ? 7 : 30);
 		return recentArrivals.filter((bean) => {
+			if (viewMode === 'retail' && bean.wholesale) return false;
+			if (viewMode === 'wholesale' && !bean.wholesale) return false;
 			if (!bean.stocked_date) return false;
 			return new Date(bean.stocked_date + 'T00:00:00') >= cutoff;
 		});
@@ -199,6 +226,8 @@
 	let filteredDelistings = $derived.by(() => {
 		const cutoff = movementWindowCutoff(windowMode === '7d' ? 7 : 30);
 		return recentDelistings.filter((bean) => {
+			if (viewMode === 'retail' && bean.wholesale) return false;
+			if (viewMode === 'wholesale' && !bean.wholesale) return false;
 			if (!bean.unstocked_date) return false;
 			return new Date(bean.unstocked_date + 'T00:00:00') >= cutoff;
 		});
@@ -412,10 +441,10 @@
 	}
 
 	let marketReadHeadline = $derived.by(() => {
-		if (filteredArrivals.length > filteredDelistings.length) {
+		if (scopedArrivalCount > scopedDelistingCount) {
 			return 'Supply is expanding faster than it is leaving the visible market.';
 		}
-		if (filteredDelistings.length > filteredArrivals.length) {
+		if (scopedDelistingCount > scopedArrivalCount) {
 			return 'Availability is tightening in the current movement window.';
 		}
 		if (marketPriceDelta != null && Math.abs(marketPriceDelta) >= 0.05) {
@@ -432,7 +461,7 @@
 			marketPriceDelta == null
 				? 'price movement needs another comparable snapshot'
 				: `${formatSigned(marketPriceDelta, 2)}/lb (${formatSigned(marketPriceDeltaPercent, 1)}%) versus the prior comparable snapshot`;
-		return `${movementWindow} movement: ${filteredArrivals.length} arrivals and ${filteredDelistings.length} delistings. ${displayStockedCount.toLocaleString()} active ${viewMode} listings are in scope; ${pricePhrase}.`;
+		return `${movementWindow} movement: ${scopedArrivalCount} arrivals and ${scopedDelistingCount} delistings. ${displayStockedCount.toLocaleString()} active ${viewMode} listings are in scope; ${pricePhrase}.`;
 	});
 
 	let kpiCards = $derived.by(() => [
@@ -455,15 +484,15 @@
 		},
 		{
 			label: 'New arrivals',
-			value: filteredArrivals.length.toLocaleString(),
+			value: scopedArrivalCount.toLocaleString(),
 			detail: `${windowMode === '7d' ? '7' : '30'}-day stocked movement`,
 			tone: 'up'
 		},
 		{
 			label: 'Delistings',
-			value: filteredDelistings.length.toLocaleString(),
+			value: scopedDelistingCount.toLocaleString(),
 			detail: `${windowMode === '7d' ? '7' : '30'}-day catalog removals`,
-			tone: filteredDelistings.length > filteredArrivals.length ? 'alert' : 'neutral'
+			tone: scopedDelistingCount > scopedArrivalCount ? 'alert' : 'neutral'
 		},
 		{
 			label: 'Supplier coverage',
@@ -480,10 +509,10 @@
 		{
 			label: 'Availability read',
 			title:
-				filteredArrivals.length >= filteredDelistings.length
+				scopedArrivalCount >= scopedDelistingCount
 					? 'Fresh supply is leading current movement.'
 					: 'Catalog exits deserve attention before the next buy window.',
-			body: `${filteredArrivals.length} arrivals versus ${filteredDelistings.length} delistings in the selected ${windowMode === '7d' ? '7-day' : '30-day'} window. Use the gated movement tables for named lots and suppliers.`,
+			body: `${scopedArrivalCount} arrivals versus ${scopedDelistingCount} delistings in the selected ${windowMode === '7d' ? '7-day' : '30-day'} ${viewMode} scope. Use the gated movement tables for named lots and suppliers.`,
 			evidence: `Evidence: ${stats.totalSuppliers} suppliers, latest index ${formatDate(stats.lastUpdated)}`
 		},
 		{
@@ -495,7 +524,7 @@
 						? 'Latest indexed prices are pressing higher.'
 						: 'Latest indexed prices are creating selective value pockets.',
 			body: `The latest ${viewMode} average is ${formatMoney(latestMarketAverage)}/lb. Origin ranges below show whether that movement is broad or concentrated.`,
-			evidence: `Evidence: ${latestSnapshotRows.length || originRangeData.length} origin rows in current scope`
+			evidence: `Evidence: ${latestSnapshotRows.length || scopedOriginRangeData.length} origin rows in current scope`
 		},
 		{
 			label: 'Coverage signal',
@@ -762,10 +791,13 @@
 						highlights the busiest origins, and the expanded view lets you choose your comparison
 						set.
 					</p>
-					{#if originRangeData.length > 0}
+					{#if scopedOriginRangeData.length > 0}
 						<div class="w-full">
 							{#if OriginBarChartComponent}
-								<OriginBarChartComponent data={originRangeData} expanded={originChartExpanded} />
+								<OriginBarChartComponent
+									data={scopedOriginRangeData}
+									expanded={originChartExpanded}
+								/>
 							{/if}
 						</div>
 					{:else}
@@ -1080,9 +1112,9 @@
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 				<ExpandablePanel
 					title="New arrivals"
-					badge={`+${filteredArrivals.length}`}
+					badge={`+${scopedArrivalCount}`}
 					badgeColor="amber"
-					totalItems={filteredArrivals.length}
+					totalItems={scopedArrivalCount}
 				>
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-4 flex items-center justify-between gap-3">
@@ -1146,9 +1178,9 @@
 
 				<ExpandablePanel
 					title="Recent Delistings"
-					badge={`-${filteredDelistings.length}`}
+					badge={`-${scopedDelistingCount}`}
 					badgeColor="red"
-					totalItems={filteredDelistings.length}
+					totalItems={scopedDelistingCount}
 				>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-4 flex items-center justify-between gap-3">

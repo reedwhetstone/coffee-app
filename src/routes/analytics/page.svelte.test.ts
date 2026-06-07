@@ -116,6 +116,7 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 		originRangeData: [
 			{
 				origin: 'Colombia',
+				market_scope: 'retail',
 				price_min: 3.8,
 				price_max: 4.5,
 				price_avg: 4.2,
@@ -125,6 +126,16 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				sample_size: 9
 			}
 		],
+		movementCounts: {
+			arrivals: {
+				sevenDay: { retail: 1, wholesale: 0 },
+				thirtyDay: { retail: 2, wholesale: 0 }
+			},
+			delistings: {
+				sevenDay: { retail: 1, wholesale: 0 },
+				thirtyDay: { retail: 2, wholesale: 0 }
+			}
+		},
 		recentArrivals: [
 			{
 				name: 'Fresh Ethiopia',
@@ -132,7 +143,8 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				processing: 'Natural',
 				price_per_lb: 4.8,
 				source: 'Cafe Imports',
-				stocked_date: '2026-04-07'
+				stocked_date: '2026-04-07',
+				wholesale: false
 			},
 			{
 				name: 'Older Arrival',
@@ -140,7 +152,8 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				processing: 'Washed',
 				price_per_lb: 5.1,
 				source: 'Royal Coffee',
-				stocked_date: '2026-03-15'
+				stocked_date: '2026-03-15',
+				wholesale: false
 			}
 		],
 		recentDelistings: [
@@ -150,7 +163,8 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				processing: 'Washed',
 				price_per_lb: 4.2,
 				source: 'Atlas',
-				unstocked_date: '2026-04-06'
+				unstocked_date: '2026-04-06',
+				wholesale: false
 			},
 			{
 				name: 'Older Gone',
@@ -158,7 +172,8 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				processing: 'Natural',
 				price_per_lb: 3.9,
 				source: 'Red Fox',
-				unstocked_date: '2026-03-12'
+				unstocked_date: '2026-03-12',
+				wholesale: false
 			}
 		],
 		comparisonBeans: [
