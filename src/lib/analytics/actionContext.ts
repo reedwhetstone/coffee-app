@@ -47,31 +47,8 @@ export function canUseAnalyticsChat(entitlement: AnalyticsEntitlement): boolean 
 	return entitlement === 'intelligence' || entitlement === 'roasting' || entitlement === 'both';
 }
 
-export function buildAnalyticsChatPrompt(
-	context: AnalyticsChatContext,
-	marketReadHeadline: string
-): string {
-	const scopeLabel =
-		context.viewMode === 'all' ? 'combined retail and wholesale' : context.viewMode;
-	const modules = context.visibleModules.join(', ');
-	const accessLabel = formatAnalyticsAccessLevel(context.entitlement);
-	const filters = context.activeFilters;
-
-	return [
-		'Review this market analytics context and suggest the next sourcing investigation.',
-		'',
-		`Market read: ${marketReadHeadline}`,
-		`Scope: ${scopeLabel}`,
-		`Movement window: ${context.timeWindow}`,
-		`Latest index date: ${filters.latestIndexDate ?? 'not available'}`,
-		`Stocked listings: ${filters.stockedListings}`,
-		`Suppliers: ${filters.suppliers}`,
-		`Origins: ${filters.origins}`,
-		`Visible evidence: ${modules}`,
-		`Access level: ${accessLabel}`,
-		'',
-		'Do not claim that anything has been saved or watched. If a persistent action would be useful, describe it as a future workflow and use catalog or API evidence that exists today.'
-	].join('\n');
+function formatNullableFilter(value: string | null): string {
+	return value ?? 'not selected';
 }
 
 function formatAnalyticsAccessLevel(entitlement: AnalyticsEntitlement): string {
@@ -87,6 +64,36 @@ function formatAnalyticsAccessLevel(entitlement: AnalyticsEntitlement): string {
 		case 'both':
 			return 'Parchment Intelligence and Mallard Studio';
 	}
+}
+
+export function buildAnalyticsChatPrompt(
+	context: AnalyticsChatContext,
+	marketReadHeadline: string
+): string {
+	const scopeLabel =
+		context.viewMode === 'all' ? 'combined retail and wholesale' : context.viewMode;
+	const modules = context.visibleModules.join(', ');
+	const filters = context.activeFilters;
+	const accessLabel = formatAnalyticsAccessLevel(context.entitlement);
+
+	return [
+		'Review this market analytics context and suggest the next sourcing investigation.',
+		'',
+		`Market read: ${marketReadHeadline}`,
+		`Scope: ${scopeLabel}`,
+		`Movement window: ${context.timeWindow}`,
+		`Origin: ${formatNullableFilter(context.origin)}`,
+		`Process: ${formatNullableFilter(context.process)}`,
+		`Supplier: ${formatNullableFilter(context.supplier)}`,
+		`Latest index date: ${filters.latestIndexDate ?? 'not available'}`,
+		`Stocked listings: ${filters.stockedListings}`,
+		`Suppliers in scope: ${filters.suppliers}`,
+		`Origins in scope: ${filters.origins}`,
+		`Visible evidence: ${modules}`,
+		`Access level: ${accessLabel}`,
+		'',
+		'Do not claim that anything has been saved or watched. If a persistent action would be useful, describe it as a future workflow and use catalog or API evidence that exists today.'
+	].join('\n');
 }
 
 export function buildAnalyticsChatHref(

@@ -1005,7 +1005,7 @@
 		<AnalyticsActionCta
 			eyebrow="Compare"
 			title="Compare supplier evidence"
-			description="Compare supplier pricing, availability, and quality signals for a selected origin, available with Parchment Intelligence."
+			description="Compare supplier pricing, availability, and quality signals for a selected origin. Available with Parchment Intelligence."
 			ctaLabel={compareActionLabel}
 			href={compareActionHref}
 			statusLabel={isParchmentIntelligence ? 'Parchment Intelligence' : 'Upgrade needed'}
@@ -1013,7 +1013,7 @@
 		<AnalyticsActionCta
 			eyebrow="API"
 			title="Review machine access"
-			description="Jump to the Parchment API surface that already exists: public API plans for visitors, or the authenticated Parchment Console for signed-in users."
+			description="Open Parchment API access for the market data behind this page, including public plans or the authenticated Parchment Console."
 			ctaLabel={session ? 'Open Parchment Console' : 'Review API plans'}
 			href={apiActionHref}
 			statusLabel="Available"

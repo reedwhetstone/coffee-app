@@ -456,10 +456,13 @@ describe('analytics action CTA rail', () => {
 		expect(prompt).toContain('Do not claim that anything has been saved');
 		expectPromptLine(prompt, 'Scope: retail');
 		expectPromptLine(prompt, 'Movement window: 7d');
+		expectPromptLine(prompt, 'Origin: not selected');
+		expectPromptLine(prompt, 'Process: not selected');
+		expectPromptLine(prompt, 'Supplier: not selected');
 		expectPromptLine(prompt, 'Latest index date: 2026-04-08');
 		expectPromptLine(prompt, 'Stocked listings: 84');
-		expectPromptLine(prompt, 'Suppliers: 3');
-		expectPromptLine(prompt, 'Origins: 5');
+		expectPromptLine(prompt, 'Suppliers in scope: 3');
+		expectPromptLine(prompt, 'Origins in scope: 5');
 		expectPromptLine(prompt, 'Access level: Parchment Intelligence');
 		expectPromptLine(prompt, 'Visible evidence:');
 		expect(prompt).toContain('supplier-comparison');

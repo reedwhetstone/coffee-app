@@ -109,7 +109,6 @@
 
 	// Input state (not managed by Chat class - we control the textarea)
 	let inputMessage = $state('');
-
 	let lastAnalyticsSeed = $state<string | null>(null);
 
 	$effect(() => {

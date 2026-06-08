@@ -34,8 +34,8 @@ describe('analytics action context', () => {
 		expect(prompt).toContain('Movement window: 7d');
 		expect(prompt).toContain('Latest index date: 2026-04-08');
 		expect(prompt).toContain('Stocked listings: 84');
-		expect(prompt).toContain('Suppliers: 3');
-		expect(prompt).toContain('Origins: 5');
+		expect(prompt).toContain('Suppliers in scope: 3');
+		expect(prompt).toContain('Origins in scope: 5');
 		expect(prompt).toContain('Access level: Parchment Intelligence');
 		expect(prompt).not.toContain('Context JSON');
 		expect(prompt).not.toContain('Entitlement: intelligence');
