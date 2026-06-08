@@ -7,11 +7,12 @@ P2: 2
 P3: 1
 NEXT_ACTION: patch_same_pr
 TOP_FIXES:
+
 - Make the analytics chat context contract actually reach the chat seed, or remove the dead `analyticsContext` URL parameter and include the bounded context payload in the prompt.
 - Add explicit Roasting-only and `both` entitlement coverage for the analytics CTA rail.
 - Neutralize the ask CTA copy so Roasting-only members are not told they are opening “Parchment Intelligence Chat.”
-CONFIDENCE: high
-SCOPE_ASSESSMENT: mergeable_with_followups
+  CONFIDENCE: high
+  SCOPE_ASSESSMENT: mergeable_with_followups
 
 ## Scope reviewed
 
