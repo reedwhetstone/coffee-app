@@ -152,6 +152,7 @@ function createAnalyticsClient(
 	options: {
 		marketSummaryDate?: string | null;
 		catalogPriceRows?: Array<{ country: string; price_per_lb: number; wholesale: boolean }>;
+		originCoverageRows?: Array<{ country: string | null; wholesale: boolean }>;
 		movementCountError?: boolean;
 		recentRetailArrivals?: unknown[];
 		recentWholesaleArrivals?: unknown[];
@@ -264,6 +265,15 @@ function createAnalyticsClient(
 		}
 
 		if (state.columns === 'processing, wholesale') return { data: [], error: null };
+		if (state.columns === 'country, wholesale') {
+			const wholesale = state.filters.find(
+				(filter) => filter.method === 'eq' && filter.column === 'wholesale'
+			)?.value;
+			return {
+				data: (options.originCoverageRows ?? []).filter((row) => row.wholesale === wholesale),
+				error: null
+			};
+		}
 		if (state.columns === 'country, price_per_lb, wholesale') {
 			const wholesale = state.filters.find(
 				(filter) => filter.method === 'eq' && filter.column === 'wholesale'
@@ -643,6 +653,33 @@ describe('analytics load', () => {
 			price_max: 6,
 			sample_size: 6
 		});
+	});
+
+	it('returns scoped active origin coverage counts independently from unscoped summary origins', async () => {
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			originCoverageRows: [
+				{ country: 'Colombia', wholesale: false },
+				{ country: 'Colombia', wholesale: false },
+				{ country: 'Ethiopia', wholesale: false },
+				{ country: 'Brazil', wholesale: true },
+				{ country: 'Colombia', wholesale: true }
+			]
+		});
+		currentPriceIndexClient = client;
+
+		const result = (await load(createLoadEvent(client))) as {
+			stats: {
+				stockedRetailOrigins: number;
+				stockedWholesaleOrigins: number;
+				stockedOrigins: number;
+				originsCount: number;
+			};
+		};
+
+		expect(result.stats.originsCount).toBe(18);
+		expect(result.stats.stockedRetailOrigins).toBe(2);
+		expect(result.stats.stockedWholesaleOrigins).toBe(2);
+		expect(result.stats.stockedOrigins).toBe(3);
 	});
 
 	it('keeps date-only movement cutoffs stable in east-of-UTC server timezones', async () => {

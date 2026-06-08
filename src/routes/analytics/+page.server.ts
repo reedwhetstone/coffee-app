@@ -81,6 +81,11 @@ interface CatalogPriceRow {
 	wholesale: boolean;
 }
 
+interface CatalogOriginRow {
+	country: string | null;
+	wholesale: boolean;
+}
+
 export interface MovementWindowCounts {
 	retail: number;
 	wholesale: number;
@@ -265,6 +270,8 @@ export const load: PageServerLoad = async (event) => {
 		{ count: totalBeansTracked },
 		{ count: stockedRetailBeans },
 		{ count: stockedWholesaleBeans },
+		{ data: retailOriginCoverageRows },
+		{ data: wholesaleOriginCoverageRows },
 		{ data: processingRows },
 		{ data: retailCatalogPriceRows },
 		{ data: wholesaleCatalogPriceRows },
@@ -296,6 +303,22 @@ export const load: PageServerLoad = async (event) => {
 			.select('*', { count: 'exact', head: true })
 			.eq('stocked', true)
 			.eq('wholesale', true),
+		// Active retail origin coverage
+		supabase
+			.from('coffee_catalog')
+			.select('country, wholesale')
+			.eq('stocked', true)
+			.eq('wholesale', false)
+			.not('country', 'is', null)
+			.limit(5000),
+		// Active wholesale origin coverage
+		supabase
+			.from('coffee_catalog')
+			.select('country, wholesale')
+			.eq('stocked', true)
+			.eq('wholesale', true)
+			.not('country', 'is', null)
+			.limit(5000),
 		// Processing method distribution
 		supabase
 			.from('coffee_catalog')
@@ -450,6 +473,17 @@ export const load: PageServerLoad = async (event) => {
 	const retailOriginPriceRows = (retailCatalogPriceRows ?? []) as CatalogPriceRow[];
 	const wholesaleOriginPriceRows = (wholesaleCatalogPriceRows ?? []) as CatalogPriceRow[];
 	const allOriginPriceRows = [...retailOriginPriceRows, ...wholesaleOriginPriceRows];
+	const retailActiveOriginSet = new Set(
+		((retailOriginCoverageRows ?? []) as CatalogOriginRow[])
+			.map((row) => row.country)
+			.filter((country): country is string => Boolean(country))
+	);
+	const wholesaleActiveOriginSet = new Set(
+		((wholesaleOriginCoverageRows ?? []) as CatalogOriginRow[])
+			.map((row) => row.country)
+			.filter((country): country is string => Boolean(country))
+	);
+	const activeOriginSet = new Set([...retailActiveOriginSet, ...wholesaleActiveOriginSet]);
 
 	const buildOriginRangeRows = (
 		scope: OriginRangeScope,
@@ -643,6 +677,9 @@ export const load: PageServerLoad = async (event) => {
 			totalBeansTracked: totalBeansTracked ?? 0,
 			stockedRetailBeans: stockedRetailBeans ?? 0,
 			stockedWholesaleBeans: stockedWholesaleBeans ?? 0,
+			stockedRetailOrigins: retailActiveOriginSet.size,
+			stockedWholesaleOrigins: wholesaleActiveOriginSet.size,
+			stockedOrigins: activeOriginSet.size || (marketSummary?.total_origins ?? 0),
 			totalSuppliers: marketSummary?.total_suppliers ?? 0,
 			originsCount: marketSummary?.total_origins ?? 0,
 			lastUpdated

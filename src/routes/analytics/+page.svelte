@@ -64,6 +64,9 @@
 				totalBeansTracked: number;
 				stockedRetailBeans: number;
 				stockedWholesaleBeans: number;
+				stockedRetailOrigins: number;
+				stockedWholesaleOrigins: number;
+				stockedOrigins: number;
 				totalSuppliers: number;
 				originsCount: number;
 				lastUpdated: string | null;
@@ -154,6 +157,12 @@
 		if (viewMode === 'retail') return stats.stockedRetailBeans;
 		if (viewMode === 'wholesale') return stats.stockedWholesaleBeans;
 		return stats.stockedRetailBeans + stats.stockedWholesaleBeans;
+	});
+
+	let displayOriginsCount = $derived.by(() => {
+		if (viewMode === 'retail') return stats.stockedRetailOrigins;
+		if (viewMode === 'wholesale') return stats.stockedWholesaleOrigins;
+		return stats.stockedOrigins || stats.originsCount;
 	});
 
 	function scopeMovementCount(counts: MovementWindowCounts): number {
@@ -548,7 +557,7 @@
 			value: stats.totalSuppliers.toLocaleString(),
 			detail:
 				supplierCoverageDelta == null
-					? `${stats.originsCount} origins indexed`
+					? `${displayOriginsCount} ${viewModeLabel} origins indexed`
 					: `${formatSigned(supplierCoverageDelta)} supplier-origin positions`,
 			tone: supplierCoverageDelta != null && supplierCoverageDelta < 0 ? 'alert' : 'neutral'
 		}
@@ -581,7 +590,7 @@
 		{
 			label: 'Coverage signal',
 			title: 'Supplier breadth is the trust layer for every recommendation.',
-			body: `${displayStockedCount.toLocaleString()} active listings span ${stats.originsCount} origins. Supplier comparison and health modules stay gated because that is where buyer leverage compounds.`,
+			body: `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings span ${displayOriginsCount} origins. Supplier comparison and health modules stay gated because that is where buyer leverage compounds.`,
 			evidence: `Evidence: ${stats.totalBeansTracked.toLocaleString()} total tracked catalog records`
 		}
 	]);

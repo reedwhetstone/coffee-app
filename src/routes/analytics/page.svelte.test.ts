@@ -74,6 +74,9 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			totalBeansTracked: 120,
 			stockedRetailBeans: 84,
 			stockedWholesaleBeans: 18,
+			stockedRetailOrigins: 5,
+			stockedWholesaleOrigins: 2,
+			stockedOrigins: 6,
 			totalSuppliers: 12,
 			originsCount: 7,
 			lastUpdated: '2026-04-08'
@@ -361,6 +364,36 @@ describe('analytics command center hierarchy', () => {
 		await screen.getByRole('button', { name: 'All' }).click();
 
 		expect(screen.getByText(/The latest combined retail \+ wholesale average is/i)).toBeTruthy();
+	});
+
+	it('scopes coverage origin counts with the selected market', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				stats: {
+					totalBeansTracked: 120,
+					stockedRetailBeans: 84,
+					stockedWholesaleBeans: 18,
+					stockedRetailOrigins: 5,
+					stockedWholesaleOrigins: 2,
+					stockedOrigins: 6,
+					totalSuppliers: 12,
+					originsCount: 99,
+					lastUpdated: '2026-04-08'
+				}
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(screen.getByText(/84 active retail listings span 5 origins/i)).toBeTruthy();
+		expect(screen.queryByText(/span 99 origins/i)).toBeNull();
+
+		await screen.getByRole('button', { name: 'Wholesale' }).click();
+
+		expect(screen.getByText(/18 active wholesale listings span 2 origins/i)).toBeTruthy();
+		expect(screen.queryByText(/span 99 origins/i)).toBeNull();
 	});
 });
 
