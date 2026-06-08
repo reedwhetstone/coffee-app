@@ -215,9 +215,8 @@ function createSession() {
 	return { user: { id: 'user-1' } } as NonNullable<PageData['session']>;
 }
 
-function extractContextJson(prompt: string | null): Record<string, unknown> {
-	const match = prompt?.match(/Context JSON:\n(?<json>\{.*\})\n\nDo not claim/s);
-	return JSON.parse(match?.groups?.json ?? '{}');
+function expectPromptLine(prompt: string | null, line: string) {
+	expect(prompt).toContain(line);
 }
 
 beforeEach(() => {
@@ -427,13 +426,16 @@ describe('analytics action CTA rail', () => {
 		);
 		expect(screen.getByRole('link', { name: 'Open catalog' })).toHaveAttribute('href', '/catalog');
 		expect(screen.getByRole('link', { name: 'Review API plans' })).toHaveAttribute('href', '/api');
-		expect(screen.getByRole('button', { name: 'Watchlists not live' })).toBeDisabled();
-		expect(
-			screen.getByText('Preview only. No saved state, alerts, or watch confirmations are created.')
-		).toBeTruthy();
+		const watchButton = screen.getByRole('button', { name: 'Watchlists not live' });
+		const disabledReason = screen.getByText(
+			'Preview only. No saved state, alerts, or watch confirmations are created.'
+		);
+		expect(watchButton).toBeDisabled();
+		expect(watchButton).toHaveAttribute('aria-describedby', disabledReason.id);
+		expect(disabledReason.id).toBe('analytics-action-cta-reason-watch');
 	});
 
-	it('serializes bounded analytics context into the chat CTA for entitled users', async () => {
+	it('includes bounded analytics context in the chat CTA prompt for entitled users', async () => {
 		render(AnalyticsPage, {
 			data: createData({ session: createSession(), role: 'viewer', isParchmentIntelligence: true })
 		});
@@ -445,28 +447,22 @@ describe('analytics action CTA rail', () => {
 		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
 		const url = new URL(chatLink.getAttribute('href') ?? '', 'https://example.com');
 		const prompt = url.searchParams.get('prompt');
-		const context = extractContextJson(prompt);
 
 		expect(url.pathname).toBe('/chat');
 		expect(url.searchParams.get('source')).toBe('analytics');
 		expect(url.searchParams.has('analyticsContext')).toBe(false);
+		expect(prompt).not.toContain('Context JSON:');
+		expect(prompt).not.toContain('Entitlement:');
 		expect(prompt).toContain('Do not claim that anything has been saved');
-		expect(context).toMatchObject({
-			origin: null,
-			process: null,
-			supplier: null,
-			viewMode: 'retail',
-			timeWindow: '7d',
-			entitlement: 'intelligence',
-			activeFilters: {
-				marketScope: 'retail',
-				movementWindow: '7d',
-				stockedListings: 84,
-				suppliers: 3,
-				origins: 5
-			}
-		});
-		expect(context.visibleModules).toContain('supplier-comparison');
+		expectPromptLine(prompt, 'Scope: retail');
+		expectPromptLine(prompt, 'Movement window: 7d');
+		expectPromptLine(prompt, 'Latest index date: 2026-04-08');
+		expectPromptLine(prompt, 'Stocked listings: 84');
+		expectPromptLine(prompt, 'Suppliers: 3');
+		expectPromptLine(prompt, 'Origins: 5');
+		expectPromptLine(prompt, 'Access level: Parchment Intelligence');
+		expectPromptLine(prompt, 'Visible evidence:');
+		expect(prompt).toContain('supplier-comparison');
 		expect(screen.getByRole('link', { name: 'Jump to supplier comparison' })).toHaveAttribute(
 			'href',
 			'#supplier-comparison'
@@ -484,10 +480,10 @@ describe('analytics action CTA rail', () => {
 
 		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
 		const url = new URL(chatLink.getAttribute('href') ?? '', 'https://example.com');
-		const context = extractContextJson(url.searchParams.get('prompt'));
+		const prompt = url.searchParams.get('prompt');
 
 		expect(url.pathname).toBe('/chat');
-		expect(context.entitlement).toBe('roasting');
+		expectPromptLine(prompt, 'Access level: Mallard Studio');
 		expect(screen.getByRole('link', { name: 'Upgrade to compare' })).toHaveAttribute(
 			'href',
 			'/subscription?plan=intelligence-monthly&intent=checkout'
@@ -506,10 +502,10 @@ describe('analytics action CTA rail', () => {
 
 		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
 		const url = new URL(chatLink.getAttribute('href') ?? '', 'https://example.com');
-		const context = extractContextJson(url.searchParams.get('prompt'));
+		const prompt = url.searchParams.get('prompt');
 
-		expect(context.entitlement).toBe('both');
-		expect(context.visibleModules).toContain('supplier-comparison');
+		expectPromptLine(prompt, 'Access level: Parchment Intelligence and Mallard Studio');
+		expect(prompt).toContain('supplier-comparison');
 	});
 
 	it('uses upgrade language instead of chat context for signed-in viewers without intelligence access', async () => {
@@ -523,7 +519,7 @@ describe('analytics action CTA rail', () => {
 			'href',
 			'/subscription?plan=intelligence-monthly&intent=checkout'
 		);
-		expect(screen.getByText('Intelligence required')).toBeTruthy();
+		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThanOrEqual(1);
 		expect(screen.queryByRole('link', { name: 'Ask with this context' })).toBeNull();
 	});
 });

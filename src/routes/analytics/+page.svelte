@@ -668,9 +668,9 @@
 		return 'Upgrade to ask';
 	});
 	let askActionStatus = $derived.by(() => {
-		if (canAskWithAnalyticsContext) return 'Existing chat';
+		if (canAskWithAnalyticsContext) return 'Available';
 		if (!session) return 'Login required';
-		return 'Intelligence required';
+		return 'Parchment Intelligence';
 	});
 	let compareActionHref = $derived.by(() => {
 		if (isParchmentIntelligence) return '#supplier-comparison';
@@ -980,16 +980,15 @@
 			Turn the read into a sourcing path.
 		</h2>
 		<p class="mt-1 text-sm text-text-secondary-light">
-			Every action below either routes to an existing surface with the current analytics context,
-			links to a real evidence surface, or stays disabled with future-language. Nothing here claims
-			saved, watched, exported, or alerted state.
+			Use the live sourcing surfaces below: catalog, chat, supplier comparison, and API access,
+			exactly as they exist today.
 		</p>
 	</div>
 	<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
 		<AnalyticsActionCta
 			eyebrow="Ask"
 			title="Ask about this market read"
-			description="Open chat with the selected market scope, movement window, visible modules, and entitlement context already written into the prompt."
+			description="Open chat with the current scope, movement window, and market evidence already framed in the prompt."
 			ctaLabel={askActionLabel}
 			href={askActionHref}
 			statusLabel={askActionStatus}
@@ -998,18 +997,18 @@
 		<AnalyticsActionCta
 			eyebrow="Catalog"
 			title="Open catalog evidence"
-			description="Move from the market read to the live coffee catalog. This is navigation to existing rows and filters, not a saved sourcing list."
+			description="Browse the live green coffee catalog: the same supplier, origin, and pricing data behind this market read."
 			ctaLabel="Open catalog"
 			href="/catalog"
-			statusLabel="Existing surface"
+			statusLabel="Available"
 		/>
 		<AnalyticsActionCta
 			eyebrow="Compare"
 			title="Compare supplier evidence"
-			description="Use the existing gated supplier comparison module when Parchment Intelligence is active. Viewers see the honest login or upgrade path instead."
+			description="Compare supplier pricing, availability, and quality signals for a selected origin, available with Parchment Intelligence."
 			ctaLabel={compareActionLabel}
 			href={compareActionHref}
-			statusLabel={isParchmentIntelligence ? 'Existing module' : 'Gated'}
+			statusLabel={isParchmentIntelligence ? 'Parchment Intelligence' : 'Upgrade needed'}
 		/>
 		<AnalyticsActionCta
 			eyebrow="API"
@@ -1017,17 +1016,16 @@
 			description="Jump to the Parchment API surface that already exists: public API plans for visitors, or the authenticated Parchment Console for signed-in users."
 			ctaLabel={session ? 'Open Parchment Console' : 'Review API plans'}
 			href={apiActionHref}
-			statusLabel="Existing surface"
+			statusLabel="Available"
 		/>
 		<AnalyticsActionCta
 			eyebrow="Watch"
 			title="Watch this scope"
-			description="A future watchlist or alert model could track this market scope, but the current app has no persistent analytics watch state."
+			description="Track price movements, supplier availability, or supply changes for this origin and scope. Watchlists are coming; nothing is saved yet."
 			ctaLabel="Watchlists not live"
 			disabled={true}
 			disabledReason="Preview only. No saved state, alerts, or watch confirmations are created."
-			statusLabel="Future workflow"
-			tone="disabled"
+			statusLabel="Coming soon"
 		/>
 	</div>
 </section>

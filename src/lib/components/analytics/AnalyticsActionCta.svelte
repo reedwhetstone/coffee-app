@@ -1,5 +1,5 @@
 <script lang="ts">
-	type ActionTone = 'primary' | 'secondary' | 'disabled';
+	type ActionTone = 'primary' | 'secondary';
 
 	let {
 		eyebrow,
@@ -24,6 +24,11 @@
 	} = $props();
 
 	let isDisabled = $derived(disabled || !href);
+	let disabledReasonId = $derived(
+		disabledReason
+			? `analytics-action-cta-reason-${eyebrow.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+			: undefined
+	);
 	let linkClass = $derived(
 		isDisabled
 			? 'cursor-not-allowed border-border-light bg-background-secondary-light text-text-secondary-light opacity-70'
@@ -55,13 +60,16 @@
 	<p class="mt-2 flex-1 text-sm leading-6 text-text-secondary-light">{description}</p>
 
 	{#if disabledReason}
-		<p class="mt-3 text-xs font-medium text-text-secondary-light">{disabledReason}</p>
+		<p id={disabledReasonId} class="mt-3 text-xs font-medium text-text-secondary-light">
+			{disabledReason}
+		</p>
 	{/if}
 
 	{#if isDisabled}
 		<button
 			type="button"
 			disabled
+			aria-describedby={disabledReasonId}
 			class="mt-4 rounded-md border px-4 py-2 text-sm font-semibold transition-all duration-200 {linkClass}"
 		>
 			{ctaLabel}

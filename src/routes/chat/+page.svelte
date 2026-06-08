@@ -21,9 +21,13 @@
 	import { getSuggestions } from '$lib/services/suggestionEngine';
 	import { matchSlashCommand, getSlashCompletions } from '$lib/services/slashCommands';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { workspaceStore, type WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
-	import { readAnalyticsSeedFromSearchParams } from '$lib/analytics/actionContext';
+	import {
+		applyAnalyticsSeedToInput,
+		readAnalyticsSeedFromSearchParams
+	} from '$lib/analytics/actionContext';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -106,15 +110,24 @@
 	// Input state (not managed by Chat class - we control the textarea)
 	let inputMessage = $state('');
 
+	let lastAnalyticsSeed = $state<string | null>(null);
+
+	$effect(() => {
+		const analyticsSeed = readAnalyticsSeedFromSearchParams(page.url.searchParams);
+		const seedState = applyAnalyticsSeedToInput({
+			canUseChat,
+			incomingSeed: analyticsSeed,
+			inputMessage,
+			lastAnalyticsSeed
+		});
+		if (seedState.inputMessage !== inputMessage) inputMessage = seedState.inputMessage;
+		if (seedState.lastAnalyticsSeed !== lastAnalyticsSeed) {
+			lastAnalyticsSeed = seedState.lastAnalyticsSeed;
+		}
+	});
+
 	// ─── Workspace lifecycle ──────────────────────────────────────────────────
 	onMount(() => {
-		const analyticsSeed = readAnalyticsSeedFromSearchParams(
-			new URLSearchParams(window.location.search)
-		);
-		if (canUseChat && analyticsSeed) {
-			inputMessage = analyticsSeed;
-		}
-
 		if (!canUseMallardWorkspaces) return;
 
 		// Capture workspace ID locally to ensure it's available in cleanup

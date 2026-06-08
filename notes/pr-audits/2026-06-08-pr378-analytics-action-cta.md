@@ -1,18 +1,18 @@
 # PR 378 Verify Audit: Analytics Action CTA Primitive
 
-VERDICT: ready_with_fixes
+VERDICT: ready
 P0: 0
 P1: 0
-P2: 2
-P3: 1
-NEXT_ACTION: patch_same_pr
+P2: 0
+P3: 0
+NEXT_ACTION: merge
 TOP_FIXES:
 
-- Make the analytics chat context contract actually reach the chat seed, or remove the dead `analyticsContext` URL parameter and include the bounded context payload in the prompt.
-- Add explicit Roasting-only and `both` entitlement coverage for the analytics CTA rail.
-- Neutralize the ask CTA copy so Roasting-only members are not told they are opening “Parchment Intelligence Chat.”
+- Resolved: the chat prompt now carries a compact bounded analytics context and no separate `analyticsContext` URL parameter is emitted.
+- Resolved: explicit Roasting-only and `both` entitlement coverage was added for the analytics CTA rail.
+- Resolved: ask CTA copy now uses neutral chat wording instead of overbranding Roasting-only access as Parchment Intelligence Chat.
   CONFIDENCE: high
-  SCOPE_ASSESSMENT: mergeable_with_followups
+  SCOPE_ASSESSMENT: mergeable
 
 ## Scope reviewed
 
@@ -36,75 +36,43 @@ Changed files:
 
 ## Executive assessment
 
-The PR is directionally aligned with the analytics reframe. It adds a small reusable CTA component, keeps placements limited to `/analytics`, routes to existing surfaces, gates chat and supplier comparison honestly, and keeps watchlists disabled with explicit future-language. It does not add persistence, backend schemas, notification logic, saved-state claims, or unsupported success states.
+The PR is directionally aligned with the analytics reframe. It adds a small reusable CTA component, keeps placements limited to `/analytics`, routes to existing surfaces, gates chat and supplier comparison honestly, and keeps watchlists disabled with explicit future-facing language. It does not add persistence, backend schemas, notification logic, saved-state claims, or unsupported success states.
 
 The slice is independently mergeable in product terms: if the next PR never ships, analytics still gains an honest action rail that points to chat, catalog, supplier comparison, API/console, and a disabled watch preview.
 
-The main weakness is that the new `AnalyticsChatContext` is partly ceremonial. The PR serializes it into `analyticsContext` in the URL, but the chat page ignores that parameter and only preloads the separate `prompt`. The prompt includes some context, but not the full bounded context object or `activeFilters`. That is not a blocker, because the user-visible chat seed still carries market read, scope, window, visible modules, entitlement, and the no-fake-persistence instruction. But it undermines the stated contract and should be tightened in the same PR.
+Resolution note: the original audit findings below were patched in this PR. The final implementation no longer emits a separate structured analytics URL parameter; instead it embeds compact, user-legible context fields in the chat prompt, including scope, movement window, freshness, counts, visible evidence, and access level. The chat route uses a tested seed-update helper for analytics prompt prefill.
 
 ## Findings
 
-### P2: `AnalyticsChatContext` is serialized but not consumed by chat
+### Resolved P2: Analytics context is now consumed through the chat prompt
 
-Confirmed in `src/lib/analytics/actionContext.ts:62-79` and `src/routes/chat/+page.svelte:110-116`.
+Original concern: the early draft treated `AnalyticsChatContext` as ceremonial by carrying structured context separately from the prompt.
 
-`buildAnalyticsChatHref()` emits both:
+Resolution: `buildAnalyticsChatHref()` now emits only `source=analytics` and `prompt`. `buildAnalyticsChatPrompt()` includes the bounded analytics context as compact labeled lines: scope, movement window, latest index date, stocked listings, suppliers, origins, visible evidence, and user-legible access level. `/chat` reads the analytics prompt seed and assigns it to the chat input for users who can use chat.
 
-- `prompt`: a human-readable chat seed
-- `analyticsContext`: `JSON.stringify(context)`
+Coverage: analytics tests assert there is no separate `analyticsContext` parameter, the prompt does not contain raw JSON or internal entitlement vocabulary, and the compact context lines are present. `src/lib/analytics/actionContext.test.ts` covers `/chat?source=analytics&prompt=...` extraction plus the seed-update path used by the chat page, including chat entitlement, same-seed replay avoidance, CSR re-navigation to a new analytics seed, and protection for actively typed input. A page-level chat test would require broad mocks for the AI SDK chat instance, workspace store, canvas store, and markdown/GenUI renderers; the extracted helper keeps the behavior covered at the smallest practical seam.
 
-`readAnalyticsSeedFromSearchParams()` only reads `prompt`, and `/chat` only assigns that prompt to `inputMessage`. The structured `analyticsContext` parameter is never parsed, validated, or passed into the chat request. Meanwhile, `src/routes/analytics/+page.svelte:624-652` populates `activeFilters` with specific scoped counts and freshness, but `buildAnalyticsChatPrompt()` omits those details.
+### Resolved P2: Roasting-only and `both` entitlement states now have focused tests
 
-Why it matters: the implementation technically defines the interface before placing the ask CTA, but the live chat route does not use the interface as a contract. This makes the URL parameter dead data and leaves future developers thinking structured analytics context is wired when it is not.
+Original concern: the first test pass covered anonymous, Parchment Intelligence, and signed-in viewer states, but not the explicit Roasting-only and combined entitlement paths.
 
-Recommended fix:
+Resolution: `src/routes/analytics/page.svelte.test.ts` now covers Roasting-only members, asserts that they can ask with analytics context without unlocking supplier comparison, and covers users with both Parchment Intelligence and Mallard Studio access. The prompt uses user-facing access labels rather than raw internal entitlement values.
 
-- Either include a compact, bounded context block in the prompt, including `activeFilters`, and drop the unused `analyticsContext` parameter; or
-- Parse and validate `analyticsContext` in `src/routes/chat/+page.svelte`, append it into the input seed, and add a focused test for the chat prefill behavior.
+### Resolved P3: Ask CTA copy is neutral across chat-entitled users
 
-Merge impact: not a correctness blocker, but it is exactly the layer this PR is supposed to make honest.
+Original concern: the first draft overbranded the chat path for Roasting-only members.
 
-### P2: Roasting-only and `both` entitlement states are not covered by focused tests
-
-Confirmed in `src/routes/analytics/page.svelte.test.ts:406-475`.
-
-The tests cover:
-
-- anonymous/login state
-- Parchment Intelligence viewer with chat context
-- signed-in viewer without Intelligence access
-
-They do not cover the explicit intent clause that Roasting users may access chat-style sourcing actions if existing route auth permits. The implementation appears to handle this through `canUseAnalyticsChat()` and `resolveAnalyticsEntitlement()`, but this is a product entitlement edge worth locking down.
-
-Recommended fix:
-
-- Add a test where `session` exists, `role: 'member'`, and `isParchmentIntelligence: false`.
-- Assert the ask CTA links to `/chat`, serialized context has `entitlement: 'roasting'`, supplier comparison remains upgrade-gated, and watch remains disabled.
-- Optionally add a `role: 'member'` plus `isParchmentIntelligence: true` test asserting `entitlement: 'both'`.
-
-Merge impact: not blocking because the implementation path is straightforward and existing route auth supports it, but it is under-tested relative to the acceptance criteria.
-
-### P3: Ask CTA copy overbrands the chat path for Roasting-only members
-
-Confirmed in `src/routes/analytics/+page.svelte:989-997`.
-
-The description always says “Open Parchment Intelligence Chat...” even when the user is a Roasting-only member with chat access but no Parchment Intelligence entitlement. The prompt itself serializes `entitlement: 'roasting'`, so the logic is honest; the copy is the mismatch.
-
-Recommended fix:
-
-- Use neutral copy such as “Open chat with the selected market scope...” or conditional copy for Intelligence vs Roasting.
-
-Merge impact: low. This is a clarity polish, not a functional blocker.
+Resolution: the CTA now says “Open chat with the current scope, movement window, and market evidence already framed in the prompt.” The prompt also uses a user-facing `Access level` line instead of raw entitlement vocabulary.
 
 ## Positive coverage
 
 - `src/lib/components/analytics/AnalyticsActionCta.svelte` is a small presentational primitive, not a new workflow system.
 - `src/routes/analytics/+page.svelte:660-685` keeps unsupported users on login or upgrade paths rather than opening inaccessible chat.
 - Supplier comparison links only to the existing gated module when `isParchmentIntelligence` is active.
-- Watch is disabled, labeled as a future workflow, and explicitly says no saved state, alerts, or watch confirmations are created.
+- Watch is disabled, labeled as coming soon, and explicitly says no saved state, alerts, or watch confirmations are created.
 - API action routes to existing API surfaces: `/api` for public visitors and `/api-dashboard` for signed-in users.
 - No backend writes, migrations, alert logic, or persistence claims were introduced.
-- Tests assert no fake watch persistence and validate the Parchment Intelligence chat URL context.
+- Tests assert no fake watch persistence, validate compact chat prompt context, and cover chat prompt prefill.
 
 ## Product alignment
 
