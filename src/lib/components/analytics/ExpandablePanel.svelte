@@ -8,6 +8,7 @@
 		badge,
 		badgeColor = 'amber',
 		totalItems,
+		expandLabel,
 		collapsedMaxHeight = '280px',
 		showGradient = true,
 		onExpandChange,
@@ -18,6 +19,7 @@
 		badge?: string;
 		badgeColor?: string;
 		totalItems?: number;
+		expandLabel?: string;
 		collapsedMaxHeight?: string;
 		showGradient?: boolean;
 		onExpandChange?: (expanded: boolean) => void;
@@ -54,7 +56,9 @@
 	};
 
 	let badgeClass = $derived(BADGE_STYLES[badgeColor] ?? BADGE_STYLES.amber);
-	let expandLabel = $derived(totalItems != null ? `View all ${totalItems} →` : `Expand ↗`);
+	let computedExpandLabel = $derived(
+		expandLabel ?? (totalItems != null ? `View all ${totalItems} →` : `Expand ↗`)
+	);
 </script>
 
 <svelte:window
@@ -79,7 +83,7 @@
 			onclick={open}
 			class="rounded-full border border-border-light bg-background-secondary-light px-4 py-1.5 text-sm font-medium text-text-secondary-light shadow-sm transition-colors duration-150 hover:border-background-tertiary-light hover:text-background-tertiary-light"
 		>
-			{expandLabel}
+			{computedExpandLabel}
 		</button>
 	</div>
 </div>

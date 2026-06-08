@@ -11,6 +11,7 @@ export interface ArrivalBean {
 	price_per_lb: number | null;
 	source: string | null;
 	stocked_date: string | null;
+	wholesale: boolean;
 }
 
 export interface DelistingBean {
@@ -20,6 +21,7 @@ export interface DelistingBean {
 	price_per_lb: number | null;
 	source: string | null;
 	unstocked_date: string | null;
+	wholesale: boolean;
 }
 
 export interface ComparisonBean {
@@ -73,8 +75,40 @@ export interface ProcessBucket {
 	wholesale: boolean;
 }
 
+interface CatalogPriceRow {
+	country: string | null;
+	price_per_lb: number | null;
+	wholesale: boolean;
+}
+
+interface CatalogCoverageRow {
+	country: string | null;
+	source: string | null;
+	wholesale: boolean;
+}
+
+export interface MovementWindowCounts {
+	retail: number;
+	wholesale: number;
+}
+
+export interface MovementCounts {
+	available: boolean;
+	arrivals: {
+		sevenDay: MovementWindowCounts;
+		thirtyDay: MovementWindowCounts;
+	};
+	delistings: {
+		sevenDay: MovementWindowCounts;
+		thirtyDay: MovementWindowCounts;
+	};
+}
+
+type OriginRangeScope = 'all' | 'retail' | 'wholesale';
+
 export interface OriginRangeRow {
 	origin: string;
+	market_scope: OriginRangeScope;
 	price_min: number;
 	price_max: number;
 	price_avg: number;
@@ -85,6 +119,7 @@ export interface OriginRangeRow {
 }
 
 const SNAPSHOT_PAGE_SIZE = 1000;
+const CATALOG_COVERAGE_PAGE_SIZE = 1000;
 const SNAPSHOT_SELECT =
 	'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier';
 // Keep synthetic backfill rows in the analytics history for now. Because real and
@@ -104,6 +139,64 @@ function relativeDateString(referenceDate: string | null, daysAgo: number): stri
 	const reference = referenceDate ? new Date(`${referenceDate}T00:00:00.000Z`) : new Date();
 	reference.setUTCDate(reference.getUTCDate() - daysAgo);
 	return reference.toISOString().split('T')[0];
+}
+
+function movementCountQuery({
+	supabase,
+	dateColumn,
+	stocked,
+	wholesale,
+	fromDate
+}: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	supabase: any;
+	dateColumn: 'stocked_date' | 'unstocked_date';
+	stocked: boolean;
+	wholesale: boolean;
+	fromDate: string;
+}) {
+	return supabase
+		.from('coffee_catalog')
+		.select('*', { count: 'exact', head: true })
+		.eq('stocked', stocked)
+		.eq('wholesale', wholesale)
+		.gte(dateColumn, fromDate);
+}
+
+async function loadActiveCatalogCoverageRowsPaginated({
+	supabase,
+	wholesale
+}: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	supabase: any;
+	wholesale: boolean;
+}): Promise<CatalogCoverageRow[]> {
+	const rows: CatalogCoverageRow[] = [];
+
+	for (let page = 0; ; page += 1) {
+		const start = page * CATALOG_COVERAGE_PAGE_SIZE;
+		const end = start + CATALOG_COVERAGE_PAGE_SIZE - 1;
+		const { data, error } = await supabase
+			.from('coffee_catalog')
+			.select('country, source, wholesale')
+			.eq('stocked', true)
+			.eq('wholesale', wholesale)
+			.order('id', { ascending: true })
+			.range(start, end);
+
+		if (error) {
+			throw new Error(
+				`Failed to load active ${wholesale ? 'wholesale' : 'retail'} catalog coverage page ${page + 1}: ${error.message}`
+			);
+		}
+
+		const pageRows = (data ?? []) as CatalogCoverageRow[];
+		rows.push(...pageRows);
+
+		if (pageRows.length < CATALOG_COVERAGE_PAGE_SIZE) break;
+	}
+
+	return rows;
 }
 
 function normalizeProcess(raw: string | null | undefined): string {
@@ -198,6 +291,7 @@ export const load: PageServerLoad = async (event) => {
 	const lastUpdated = marketSummary?.snapshot_date ?? null;
 
 	// ─── PUBLIC QUERIES (run for all visitors, in parallel) ─────────────────────
+	const sevenDaysAgoStr = relativeDateString(lastUpdated, 7);
 	const thirtyDaysAgoStr = relativeDateString(lastUpdated, 30);
 	const fromDate = relativeDateString(null, 90);
 
@@ -214,10 +308,23 @@ export const load: PageServerLoad = async (event) => {
 		{ count: totalBeansTracked },
 		{ count: stockedRetailBeans },
 		{ count: stockedWholesaleBeans },
+		retailCoverageRows,
+		wholesaleCoverageRows,
 		{ data: processingRows },
-		{ data: catalogPriceRows },
-		{ data: recentArrivals30 },
-		{ data: recentDelistings30 },
+		{ data: retailCatalogPriceRows },
+		{ data: wholesaleCatalogPriceRows },
+		{ data: recentRetailArrivals30 },
+		{ data: recentWholesaleArrivals30 },
+		{ data: recentRetailDelistings30 },
+		{ data: recentWholesaleDelistings30 },
+		{ count: arrivals7dRetail, error: arrivals7dRetailError },
+		{ count: arrivals7dWholesale, error: arrivals7dWholesaleError },
+		{ count: arrivals30dRetail, error: arrivals30dRetailError },
+		{ count: arrivals30dWholesale, error: arrivals30dWholesaleError },
+		{ count: delistings7dRetail, error: delistings7dRetailError },
+		{ count: delistings7dWholesale, error: delistings7dWholesaleError },
+		{ count: delistings30dRetail, error: delistings30dRetailError },
+		{ count: delistings30dWholesale, error: delistings30dWholesaleError },
 		snapshotsRaw
 	] = await Promise.all([
 		// Total beans tracked
@@ -234,6 +341,11 @@ export const load: PageServerLoad = async (event) => {
 			.select('*', { count: 'exact', head: true })
 			.eq('stocked', true)
 			.eq('wholesale', true),
+		// Active retail coverage. Paginate before counting origins/suppliers so scoped
+		// coverage KPIs are not derived from an arbitrary capped row sample.
+		loadActiveCatalogCoverageRowsPaginated({ supabase, wholesale: false }),
+		// Active wholesale coverage
+		loadActiveCatalogCoverageRowsPaginated({ supabase, wholesale: true }),
 		// Processing method distribution
 		supabase
 			.from('coffee_catalog')
@@ -241,31 +353,122 @@ export const load: PageServerLoad = async (event) => {
 			.eq('stocked', true)
 			.not('processing', 'is', null)
 			.limit(5000),
-		// Origin range data (live cross-section)
+		// Retail origin range data (live cross-section). Load each market separately before
+		// the row cap so scoped origin evidence is not biased by the other market's rows.
 		supabase
 			.from('coffee_catalog')
-			.select('country, price_per_lb')
+			.select('country, price_per_lb, wholesale')
 			.eq('stocked', true)
+			.eq('wholesale', false)
 			.not('country', 'is', null)
 			.not('price_per_lb', 'is', null)
 			.gt('price_per_lb', 0)
 			.limit(5000),
-		// Recent arrivals (30 days)
+		// Wholesale origin range data (live cross-section)
 		supabase
 			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, stocked_date')
+			.select('country, price_per_lb, wholesale')
 			.eq('stocked', true)
+			.eq('wholesale', true)
+			.not('country', 'is', null)
+			.not('price_per_lb', 'is', null)
+			.gt('price_per_lb', 0)
+			.limit(5000),
+		// Recent retail arrivals (30 days). Load each market separately before the row cap so
+		// scoped movement tables do not lose named lots to the other market's newest rows.
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
+			.eq('stocked', true)
+			.eq('wholesale', false)
 			.gte('stocked_date', thirtyDaysAgoStr)
 			.order('stocked_date', { ascending: false })
 			.limit(50),
-		// Recent delistings (30 days)
+		// Recent wholesale arrivals (30 days)
 		supabase
 			.from('coffee_catalog')
-			.select('name, country, processing, price_per_lb, source, unstocked_date')
+			.select('name, country, processing, price_per_lb, source, stocked_date, wholesale')
+			.eq('stocked', true)
+			.eq('wholesale', true)
+			.gte('stocked_date', thirtyDaysAgoStr)
+			.order('stocked_date', { ascending: false })
+			.limit(50),
+		// Recent retail delistings (30 days)
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
 			.eq('stocked', false)
+			.eq('wholesale', false)
 			.gte('unstocked_date', thirtyDaysAgoStr)
 			.order('unstocked_date', { ascending: false })
 			.limit(50),
+		// Recent wholesale delistings (30 days)
+		supabase
+			.from('coffee_catalog')
+			.select('name, country, processing, price_per_lb, source, unstocked_date, wholesale')
+			.eq('stocked', false)
+			.eq('wholesale', true)
+			.gte('unstocked_date', thirtyDaysAgoStr)
+			.order('unstocked_date', { ascending: false })
+			.limit(50),
+		// Public movement velocity intentionally exposes only aggregate retail/wholesale counts
+		// for the KPI strip. Named per-lot movement rows stay Parchment Intelligence-only below.
+		movementCountQuery({
+			supabase,
+			dateColumn: 'stocked_date',
+			stocked: true,
+			wholesale: false,
+			fromDate: sevenDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'stocked_date',
+			stocked: true,
+			wholesale: true,
+			fromDate: sevenDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'stocked_date',
+			stocked: true,
+			wholesale: false,
+			fromDate: thirtyDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'stocked_date',
+			stocked: true,
+			wholesale: true,
+			fromDate: thirtyDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'unstocked_date',
+			stocked: false,
+			wholesale: false,
+			fromDate: sevenDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'unstocked_date',
+			stocked: false,
+			wholesale: true,
+			fromDate: sevenDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'unstocked_date',
+			stocked: false,
+			wholesale: false,
+			fromDate: thirtyDaysAgoStr
+		}),
+		movementCountQuery({
+			supabase,
+			dateColumn: 'unstocked_date',
+			stocked: false,
+			wholesale: true,
+			fromDate: thirtyDaysAgoStr
+		}),
 		// Price index snapshots — 90 days public, 365 days for Parchment Intelligence users
 		_loadPriceSnapshotsPaginated({
 			supabase: priceIndexSupabase,
@@ -294,12 +497,44 @@ export const load: PageServerLoad = async (event) => {
 		return entries.sort((a, b) => b.count - a.count);
 	})();
 
-	// Origin range data
-	const originRangeData: OriginRangeRow[] = (() => {
-		if (!catalogPriceRows || catalogPriceRows.length === 0) return [];
+	const retailOriginPriceRows = (retailCatalogPriceRows ?? []) as CatalogPriceRow[];
+	const wholesaleOriginPriceRows = (wholesaleCatalogPriceRows ?? []) as CatalogPriceRow[];
+	const allOriginPriceRows = [...retailOriginPriceRows, ...wholesaleOriginPriceRows];
+	const retailActiveCoverageRows = retailCoverageRows ?? [];
+	const wholesaleActiveCoverageRows = wholesaleCoverageRows ?? [];
+	const retailActiveOriginSet = new Set(
+		retailActiveCoverageRows
+			.map((row) => row.country)
+			.filter((country): country is string => Boolean(country))
+	);
+	const wholesaleActiveOriginSet = new Set(
+		wholesaleActiveCoverageRows
+			.map((row) => row.country)
+			.filter((country): country is string => Boolean(country))
+	);
+	const retailActiveSupplierSet = new Set(
+		retailActiveCoverageRows
+			.map((row) => row.source)
+			.filter((source): source is string => Boolean(source))
+	);
+	const wholesaleActiveSupplierSet = new Set(
+		wholesaleActiveCoverageRows
+			.map((row) => row.source)
+			.filter((source): source is string => Boolean(source))
+	);
+	const activeOriginSet = new Set([...retailActiveOriginSet, ...wholesaleActiveOriginSet]);
+	const activeSupplierSet = new Set([...retailActiveSupplierSet, ...wholesaleActiveSupplierSet]);
+
+	const buildOriginRangeRows = (
+		scope: OriginRangeScope,
+		catalogPriceRows: CatalogPriceRow[]
+	): OriginRangeRow[] => {
+		if (catalogPriceRows.length === 0) return [];
 
 		const byCountry = new Map<string, number[]>();
 		for (const row of catalogPriceRows) {
+			if (scope === 'retail' && row.wholesale) continue;
+			if (scope === 'wholesale' && !row.wholesale) continue;
 			const price = getPerLbPrice(row);
 			if (!row.country || price == null) continue;
 			const prices = byCountry.get(row.country) ?? [];
@@ -320,9 +555,10 @@ export const load: PageServerLoad = async (event) => {
 		for (const [origin, prices] of byCountry) {
 			if (prices.length < 3) continue;
 			const sorted = [...prices].sort((a, b) => a - b);
-			const avg = sorted.reduce((s, v) => s + v, 0) / sorted.length;
+			const avg = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
 			result.push({
 				origin,
+				market_scope: scope,
 				price_min: sorted[0],
 				price_max: sorted[sorted.length - 1],
 				price_avg: avg,
@@ -334,7 +570,55 @@ export const load: PageServerLoad = async (event) => {
 		}
 
 		return result.sort((a, b) => b.sample_size - a.sample_size).slice(0, 50);
-	})();
+	};
+
+	// Origin range data includes all, retail, and wholesale scopes so the command-center
+	// read never explains a scoped price average with all-market range evidence.
+	const originRangeData: OriginRangeRow[] = [
+		...buildOriginRangeRows('all', allOriginPriceRows),
+		...buildOriginRangeRows('retail', retailOriginPriceRows),
+		...buildOriginRangeRows('wholesale', wholesaleOriginPriceRows)
+	];
+
+	const movementCountsAvailable = ![
+		arrivals7dRetailError,
+		arrivals7dWholesaleError,
+		arrivals30dRetailError,
+		arrivals30dWholesaleError,
+		delistings7dRetailError,
+		delistings7dWholesaleError,
+		delistings30dRetailError,
+		delistings30dWholesaleError
+	].some(Boolean);
+
+	const movementCounts: MovementCounts = {
+		available: movementCountsAvailable,
+		arrivals: {
+			sevenDay: { retail: arrivals7dRetail ?? 0, wholesale: arrivals7dWholesale ?? 0 },
+			thirtyDay: { retail: arrivals30dRetail ?? 0, wholesale: arrivals30dWholesale ?? 0 }
+		},
+		delistings: {
+			sevenDay: { retail: delistings7dRetail ?? 0, wholesale: delistings7dWholesale ?? 0 },
+			thirtyDay: { retail: delistings30dRetail ?? 0, wholesale: delistings30dWholesale ?? 0 }
+		}
+	};
+
+	const recentArrivals = isParchmentIntelligence
+		? [
+				...((recentRetailArrivals30 ?? []) as ArrivalBean[]),
+				...((recentWholesaleArrivals30 ?? []) as ArrivalBean[])
+			]
+				.sort((a, b) => (b.stocked_date ?? '').localeCompare(a.stocked_date ?? ''))
+				.slice(0, 100)
+		: [];
+	const recentDelistings = isParchmentIntelligence
+		? [
+				...((recentRetailDelistings30 ?? []) as DelistingBean[]),
+				...((recentWholesaleDelistings30 ?? []) as DelistingBean[])
+			]
+				.sort((a, b) => (b.unstocked_date ?? '').localeCompare(a.unstocked_date ?? ''))
+				.slice(0, 100)
+		: [];
 
 	// ─── PARCHMENT INTELLIGENCE QUERIES (only run for entitled users) ───────────
 	const snapshots: PriceSnapshot[] = snapshotsRaw ?? [];
@@ -399,7 +683,7 @@ export const load: PageServerLoad = async (event) => {
 	const schemaData = schemaService.generateSchemaGraph([
 		schemaService.generateOrganizationSchema(),
 		schemaService.generateDatasetSchema({
-			name: 'Purveyors Price Index — Green Coffee Market Data',
+			name: 'Parchment Market Index — Green Coffee Market Data',
 			description:
 				'Daily green coffee pricing from 39+ US importers and roasters, including origin trends, processing mix, and supplier coverage.',
 			url: `${baseUrl}/analytics`,
@@ -433,6 +717,12 @@ export const load: PageServerLoad = async (event) => {
 			totalBeansTracked: totalBeansTracked ?? 0,
 			stockedRetailBeans: stockedRetailBeans ?? 0,
 			stockedWholesaleBeans: stockedWholesaleBeans ?? 0,
+			stockedRetailOrigins: retailActiveOriginSet.size,
+			stockedWholesaleOrigins: wholesaleActiveOriginSet.size,
+			stockedOrigins: activeOriginSet.size || (marketSummary?.total_origins ?? 0),
+			stockedRetailSuppliers: retailActiveSupplierSet.size,
+			stockedWholesaleSuppliers: wholesaleActiveSupplierSet.size,
+			stockedSuppliers: activeSupplierSet.size || (marketSummary?.total_suppliers ?? 0),
 			totalSuppliers: marketSummary?.total_suppliers ?? 0,
 			originsCount: marketSummary?.total_origins ?? 0,
 			lastUpdated
@@ -446,14 +736,15 @@ export const load: PageServerLoad = async (event) => {
 		snapshots,
 		processDistribution,
 		originRangeData,
-		recentArrivals: (recentArrivals30 ?? []) as ArrivalBean[],
-		recentDelistings: (recentDelistings30 ?? []) as DelistingBean[],
+		movementCounts,
+		recentArrivals,
+		recentDelistings,
 		comparisonBeans,
 		supplierHealth,
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/analytics',
-			title: 'Green Coffee Market Visibility | Purveyors Price Index',
+			title: 'Green Coffee Market Visibility | Parchment Market Index',
 			description:
 				'Daily green coffee pricing, supplier movement, and origin trends from 39+ US importers. Free market visibility for coffee teams.',
 			keywords: [
@@ -464,15 +755,15 @@ export const load: PageServerLoad = async (event) => {
 				'coffee origin prices',
 				'coffee supplier comparison'
 			],
-			ogTitle: 'Green Coffee Market Visibility — Purveyors Price Index',
+			ogTitle: 'Green Coffee Market Visibility — Parchment Market Index',
 			ogDescription:
 				'Daily green coffee price trends, processing mix, and supplier movement from 39+ US importers.',
-			twitterTitle: 'Green Coffee Market Visibility — Purveyors',
+			twitterTitle: 'Green Coffee Market Visibility — Parchment Market Index',
 			twitterDescription: 'Daily green coffee pricing and supplier movement from 39+ US importers.',
 			image: resolvePublicPageSocialImage({
 				baseUrl,
 				preferredPath: '/og/analytics.jpg',
-				alt: 'Purveyors analytics social preview card'
+				alt: 'Parchment Market Index analytics social preview card'
 			}),
 			schemaData
 		})

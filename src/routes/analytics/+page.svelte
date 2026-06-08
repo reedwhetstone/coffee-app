@@ -4,6 +4,8 @@
 		PriceSnapshot,
 		ProcessBucket,
 		OriginRangeRow,
+		MovementCounts,
+		MovementWindowCounts,
 		ArrivalBean,
 		DelistingBean,
 		ComparisonBean,
@@ -49,6 +51,7 @@
 		snapshots,
 		processDistribution,
 		originRangeData,
+		movementCounts,
 		recentArrivals,
 		recentDelistings,
 		comparisonBeans,
@@ -61,6 +64,12 @@
 				totalBeansTracked: number;
 				stockedRetailBeans: number;
 				stockedWholesaleBeans: number;
+				stockedRetailOrigins: number;
+				stockedWholesaleOrigins: number;
+				stockedOrigins: number;
+				stockedRetailSuppliers: number;
+				stockedWholesaleSuppliers: number;
+				stockedSuppliers: number;
 				totalSuppliers: number;
 				originsCount: number;
 				lastUpdated: string | null;
@@ -68,6 +77,7 @@
 			snapshots: PriceSnapshot[];
 			processDistribution: ProcessBucket[];
 			originRangeData: OriginRangeRow[];
+			movementCounts: MovementCounts;
 			recentArrivals: ArrivalBean[];
 			recentDelistings: DelistingBean[];
 			comparisonBeans: ComparisonBean[];
@@ -152,6 +162,39 @@
 		return stats.stockedRetailBeans + stats.stockedWholesaleBeans;
 	});
 
+	let displayOriginsCount = $derived.by(() => {
+		if (viewMode === 'retail') return stats.stockedRetailOrigins;
+		if (viewMode === 'wholesale') return stats.stockedWholesaleOrigins;
+		return stats.stockedOrigins || stats.originsCount;
+	});
+
+	let displaySuppliersCount = $derived.by(() => {
+		if (viewMode === 'retail') return stats.stockedRetailSuppliers;
+		if (viewMode === 'wholesale') return stats.stockedWholesaleSuppliers;
+		return stats.stockedSuppliers || stats.totalSuppliers;
+	});
+
+	function scopeMovementCount(counts: MovementWindowCounts): number {
+		if (viewMode === 'retail') return counts.retail;
+		if (viewMode === 'wholesale') return counts.wholesale;
+		return counts.retail + counts.wholesale;
+	}
+
+	let scopedArrivalCount = $derived.by(() =>
+		scopeMovementCount(
+			windowMode === '7d' ? movementCounts.arrivals.sevenDay : movementCounts.arrivals.thirtyDay
+		)
+	);
+	let scopedDelistingCount = $derived.by(() =>
+		scopeMovementCount(
+			windowMode === '7d' ? movementCounts.delistings.sevenDay : movementCounts.delistings.thirtyDay
+		)
+	);
+
+	let scopedOriginRangeData = $derived.by(() =>
+		originRangeData.filter((row) => row.market_scope === viewMode)
+	);
+
 	let originBarData = $derived.by(() => {
 		if (!filteredSnapshots || filteredSnapshots.length === 0) return [];
 		const latestDate = filteredSnapshots.reduce(
@@ -181,7 +224,6 @@
 
 	let lineSnapshots = $derived(filteredSnapshots.filter((s) => s.price_avg != null));
 	let hasSnapshots = $derived(filteredSnapshots.length > 0);
-	let stockedBeans = $derived(stats.stockedRetailBeans + stats.stockedWholesaleBeans);
 
 	function movementWindowCutoff(cutoffDays: number) {
 		const reference = stats.lastUpdated ? new Date(stats.lastUpdated + 'T00:00:00') : new Date();
@@ -192,6 +234,8 @@
 	let filteredArrivals = $derived.by(() => {
 		const cutoff = movementWindowCutoff(windowMode === '7d' ? 7 : 30);
 		return recentArrivals.filter((bean) => {
+			if (viewMode === 'retail' && bean.wholesale) return false;
+			if (viewMode === 'wholesale' && !bean.wholesale) return false;
 			if (!bean.stocked_date) return false;
 			return new Date(bean.stocked_date + 'T00:00:00') >= cutoff;
 		});
@@ -200,10 +244,48 @@
 	let filteredDelistings = $derived.by(() => {
 		const cutoff = movementWindowCutoff(windowMode === '7d' ? 7 : 30);
 		return recentDelistings.filter((bean) => {
+			if (viewMode === 'retail' && bean.wholesale) return false;
+			if (viewMode === 'wholesale' && !bean.wholesale) return false;
 			if (!bean.unstocked_date) return false;
 			return new Date(bean.unstocked_date + 'T00:00:00') >= cutoff;
 		});
 	});
+
+	let isMovementDataAvailable = $derived.by(() => {
+		if (!movementCounts.available || !stats.lastUpdated) return false;
+		const updatedAt = new Date(`${stats.lastUpdated}T00:00:00.000Z`).getTime();
+		const staleAfterMs = 90 * 24 * 60 * 60 * 1000;
+		return Number.isFinite(updatedAt) && Date.now() - updatedAt <= staleAfterMs;
+	});
+
+	function loadedRowsLabel(count: number): string {
+		return `Open ${count.toLocaleString()} loaded ${count === 1 ? 'row' : 'rows'} ↗`;
+	}
+
+	let arrivalPanelBadge = $derived(isMovementDataAvailable ? `+${scopedArrivalCount}` : undefined);
+	let delistingPanelBadge = $derived(
+		isMovementDataAvailable ? `-${scopedDelistingCount}` : undefined
+	);
+	let arrivalPanelTotalItems = $derived(
+		isMovementDataAvailable ? scopedArrivalCount : filteredArrivals.length
+	);
+	let delistingPanelTotalItems = $derived(
+		isMovementDataAvailable ? scopedDelistingCount : filteredDelistings.length
+	);
+	let arrivalExpandLabel = $derived(
+		isMovementDataAvailable
+			? filteredArrivals.length < scopedArrivalCount
+				? `Open latest ${filteredArrivals.length} shown (${scopedArrivalCount} total in window) ↗`
+				: undefined
+			: loadedRowsLabel(filteredArrivals.length)
+	);
+	let delistingExpandLabel = $derived(
+		isMovementDataAvailable
+			? filteredDelistings.length < scopedDelistingCount
+				? `Open latest ${filteredDelistings.length} shown (${scopedDelistingCount} total in window) ↗`
+				: undefined
+			: loadedRowsLabel(filteredDelistings.length)
+	);
 
 	function formatDate(dateStr: string | null) {
 		if (!dateStr) return 'N/A';
@@ -212,25 +294,6 @@
 			day: 'numeric',
 			year: 'numeric'
 		});
-	}
-
-	function formatRelativeTime(dateStr: string | null): string {
-		if (!dateStr) return 'Daily';
-		const now = new Date();
-		const todayStr = now.toISOString().split('T')[0];
-		const yesterdayDate = new Date(now);
-		yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-		const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
-
-		if (dateStr === todayStr) {
-			const updated = new Date(dateStr + 'T00:00:00');
-			const hoursAgo = Math.floor((now.getTime() - updated.getTime()) / 3600000);
-			if (hoursAgo < 1) return 'Just now';
-			if (hoursAgo === 1) return '1h ago';
-			return `${hoursAgo}h ago`;
-		}
-		if (dateStr === yesterdayStr) return 'Yesterday';
-		return formatDate(dateStr);
 	}
 
 	const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
@@ -355,98 +418,332 @@
 		if (pending.length === 1) return pending[0];
 		return `${pending.slice(0, -1).join(', ')} and ${pending.at(-1)}`;
 	});
+
+	let latestSnapshotDate = $derived.by(() =>
+		filteredSnapshots.reduce(
+			(max, snapshot) => (snapshot.snapshot_date > max ? snapshot.snapshot_date : max),
+			''
+		)
+	);
+
+	let previousSnapshotDate = $derived.by(() => {
+		const dates = Array.from(
+			new Set(filteredSnapshots.map((snapshot) => snapshot.snapshot_date))
+		).sort();
+		return dates.length > 1 ? dates[dates.length - 2] : '';
+	});
+
+	let latestSnapshotRows = $derived.by(() =>
+		latestSnapshotDate
+			? filteredSnapshots.filter((snapshot) => snapshot.snapshot_date === latestSnapshotDate)
+			: []
+	);
+
+	let previousSnapshotRows = $derived.by(() =>
+		previousSnapshotDate
+			? filteredSnapshots.filter((snapshot) => snapshot.snapshot_date === previousSnapshotDate)
+			: []
+	);
+
+	function averageSnapshotPrice(rows: PriceSnapshot[]): number | null {
+		const pricedRows = rows.filter((snapshot) => snapshot.price_avg != null);
+		if (pricedRows.length === 0) return null;
+		const weighted = pricedRows.reduce(
+			(acc, snapshot) => {
+				const weight = snapshot.sample_size || 1;
+				return {
+					sum: acc.sum + (snapshot.price_avg ?? 0) * weight,
+					weight: acc.weight + weight
+				};
+			},
+			{ sum: 0, weight: 0 }
+		);
+		return weighted.weight > 0 ? weighted.sum / weighted.weight : null;
+	}
+
+	let latestMarketAverage = $derived(averageSnapshotPrice(latestSnapshotRows));
+	let previousMarketAverage = $derived(averageSnapshotPrice(previousSnapshotRows));
+	let marketPriceDelta = $derived(
+		latestMarketAverage != null && previousMarketAverage != null
+			? latestMarketAverage - previousMarketAverage
+			: null
+	);
+	let marketPriceDeltaPercent = $derived(
+		marketPriceDelta != null && previousMarketAverage
+			? (marketPriceDelta / previousMarketAverage) * 100
+			: null
+	);
+	let latestCoverageCount = $derived(
+		latestSnapshotRows.reduce((sum, snapshot) => sum + (snapshot.supplier_count ?? 0), 0)
+	);
+	let previousCoverageCount = $derived(
+		previousSnapshotRows.reduce((sum, snapshot) => sum + (snapshot.supplier_count ?? 0), 0)
+	);
+	let supplierCoverageDelta = $derived(
+		previousCoverageCount > 0 ? latestCoverageCount - previousCoverageCount : null
+	);
+
+	function formatMoney(value: number | null): string {
+		return value == null ? 'N/A' : `$${value.toFixed(2)}`;
+	}
+
+	function formatSigned(value: number | null, precision = 0): string {
+		if (value == null) return 'Baseline';
+		if (Math.abs(value) < 0.01) return 'Flat';
+		const sign = value > 0 ? '+' : '−';
+		return `${sign}${Math.abs(value).toFixed(precision)}`;
+	}
+
+	let movementWindowLabel = $derived(windowMode === '7d' ? '7-day' : '30-day');
+	let viewModeLabel = $derived(viewMode === 'all' ? 'combined retail + wholesale' : viewMode);
+
+	let marketReadHeadline = $derived.by(() => {
+		if (!isMovementDataAvailable) {
+			return `${movementWindowLabel} movement data is unavailable; use price and coverage evidence until the index refreshes.`;
+		}
+		if (scopedArrivalCount > scopedDelistingCount) {
+			return `Supply is expanding faster than it is leaving the visible market in the ${movementWindowLabel} window.`;
+		}
+		if (scopedDelistingCount > scopedArrivalCount) {
+			return `Availability is tightening in the ${movementWindowLabel} movement window.`;
+		}
+		if (marketPriceDelta != null && Math.abs(marketPriceDelta) >= 0.05) {
+			return marketPriceDelta > 0
+				? 'Average visible prices are firming in the latest indexed snapshot.'
+				: 'Average visible prices are easing in the latest indexed snapshot.';
+		}
+		return 'The current market read is stable, with breadth still visible across origins and suppliers.';
+	});
+
+	let marketReadDetail = $derived.by(() => {
+		const pricePhrase =
+			marketPriceDelta == null
+				? 'price movement needs another comparable snapshot'
+				: `${formatSigned(marketPriceDelta, 2)}/lb (${formatSigned(marketPriceDeltaPercent, 1)}%) versus the prior comparable snapshot`;
+		if (!isMovementDataAvailable) {
+			return `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope; ${pricePhrase}. Movement counts are withheld because the latest movement query is unavailable or stale.`;
+		}
+		return `${movementWindowLabel} movement: ${scopedArrivalCount} arrivals and ${scopedDelistingCount} delistings. ${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings are in scope; ${pricePhrase}.`;
+	});
+
+	let kpiCards = $derived.by(() => [
+		{
+			label: 'Price movement',
+			value:
+				marketPriceDelta == null
+					? formatMoney(latestMarketAverage)
+					: `${formatSigned(marketPriceDelta, 2)}/lb`,
+			detail:
+				marketPriceDeltaPercent == null
+					? 'Latest indexed average'
+					: `${formatSigned(marketPriceDeltaPercent, 1)}% from prior snapshot`,
+			tone:
+				marketPriceDelta == null || Math.abs(marketPriceDelta) < 0.01
+					? 'neutral'
+					: marketPriceDelta > 0
+						? 'up'
+						: 'down'
+		},
+		{
+			label: 'New arrivals',
+			value: isMovementDataAvailable ? scopedArrivalCount.toLocaleString() : 'N/A',
+			detail: isMovementDataAvailable
+				? `${movementWindowLabel} stocked movement`
+				: 'Movement data unavailable',
+			tone: 'up'
+		},
+		{
+			label: 'Delistings',
+			value: isMovementDataAvailable ? scopedDelistingCount.toLocaleString() : 'N/A',
+			detail: isMovementDataAvailable
+				? `${movementWindowLabel} catalog removals`
+				: 'Movement data unavailable',
+			tone:
+				isMovementDataAvailable && scopedDelistingCount > scopedArrivalCount ? 'alert' : 'neutral'
+		},
+		{
+			label: 'Supplier coverage',
+			value: displaySuppliersCount.toLocaleString(),
+			detail:
+				supplierCoverageDelta == null
+					? `${displayOriginsCount} ${viewModeLabel} origins indexed`
+					: `${formatSigned(supplierCoverageDelta)} supplier-origin positions`,
+			tone: supplierCoverageDelta != null && supplierCoverageDelta < 0 ? 'alert' : 'neutral'
+		}
+	]);
+
+	let insightCards = $derived.by(() => [
+		{
+			label: 'Availability read',
+			title: !isMovementDataAvailable
+				? 'Movement counts need a fresh index read.'
+				: scopedArrivalCount >= scopedDelistingCount
+					? 'Fresh supply is leading current movement.'
+					: 'Catalog exits deserve attention before the next buy window.',
+			body: isMovementDataAvailable
+				? `${scopedArrivalCount} arrivals versus ${scopedDelistingCount} delistings in the selected ${movementWindowLabel} ${viewModeLabel} scope. Use the gated movement tables for named lots and suppliers.`
+				: `The selected ${movementWindowLabel} ${viewModeLabel} movement counts are unavailable or stale, so the read does not treat zeros as market stability.`,
+			evidence: `Evidence: ${displaySuppliersCount} ${viewModeLabel} suppliers, latest index ${formatDate(stats.lastUpdated)}`
+		},
+		{
+			label: 'Price posture',
+			title:
+				marketPriceDelta == null || Math.abs(marketPriceDelta) < 0.05
+					? 'Treat price as range evidence, not a single market answer.'
+					: marketPriceDelta > 0
+						? 'Latest indexed prices are pressing higher.'
+						: 'Latest indexed prices are creating selective value pockets.',
+			body: `The latest ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb. Origin ranges below show whether that movement is broad or concentrated.`,
+			evidence: `Evidence: ${latestSnapshotRows.length || scopedOriginRangeData.length} origin rows in current scope`
+		},
+		{
+			label: 'Coverage signal',
+			title: 'Supplier breadth is the trust layer for every recommendation.',
+			body: `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings span ${displayOriginsCount} origins. Supplier comparison and health modules stay gated because that is where buyer leverage compounds.`,
+			evidence: `Evidence: ${stats.totalBeansTracked.toLocaleString()} total tracked catalog records`
+		}
+	]);
 </script>
 
-<div class="mb-8 border-l-4 border-background-tertiary-light pl-6">
-	<h1 class="mb-2 text-4xl font-bold text-text-primary-light">Green coffee market intelligence</h1>
-	<p class="text-lg text-text-secondary-light">
-		Daily-normalized pricing, arrivals, and supplier movement across {stats.totalSuppliers} US importers
-		and {stats.originsCount} origins.
-		{#if stats.lastUpdated}
-			Last updated {formatDate(stats.lastUpdated)}.
-		{:else}
-			Data collection started March 21, 2026.
-		{/if}
-	</p>
-</div>
-
-<div class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-	<div
-		class="rounded-lg border border-border-light bg-background-primary-light p-4 text-center shadow-sm"
-	>
-		<div class="text-3xl font-bold text-background-tertiary-light">{stats.totalSuppliers}</div>
-		<div class="mt-1 text-sm text-text-secondary-light">Suppliers tracked</div>
-	</div>
-	<div
-		class="rounded-lg border border-border-light bg-background-primary-light p-4 text-center shadow-sm"
-	>
-		<div class="text-3xl font-bold text-background-tertiary-light">
-			{displayStockedCount.toLocaleString()}
-		</div>
-		<div class="mt-1 text-sm text-text-secondary-light">
-			{#if viewMode === 'retail'}
-				Stocked retail
-			{:else if viewMode === 'wholesale'}
-				Stocked wholesale
-			{:else}
-				Stocked beans
-			{/if}
-		</div>
-		{#if viewMode === 'all'}
-			<div class="mt-0.5 text-xs text-text-secondary-light/60">
-				{stats.stockedRetailBeans.toLocaleString()} retail · {stats.stockedWholesaleBeans.toLocaleString()}
-				wholesale
-			</div>
-		{:else}
-			<div class="mt-0.5 text-xs text-text-secondary-light/60">
-				{stats.totalBeansTracked.toLocaleString()} total tracked
-			</div>
-		{/if}
-	</div>
-	<div
-		class="rounded-lg border border-border-light bg-background-primary-light p-4 text-center shadow-sm"
-	>
-		<div class="text-3xl font-bold text-background-tertiary-light">{stats.originsCount}</div>
-		<div class="mt-1 text-sm text-text-secondary-light">Origins covered</div>
-	</div>
-	<div
-		class="rounded-lg border border-border-light bg-background-primary-light p-4 text-center shadow-sm"
-	>
-		<div class="text-xl font-bold text-background-tertiary-light">
-			{formatRelativeTime(stats.lastUpdated)}
-		</div>
-		<div class="mt-1 text-sm text-text-secondary-light">Last updated</div>
-	</div>
-</div>
-
-<div class="mb-6 flex items-center gap-3">
-	<span class="text-sm font-medium text-text-secondary-light">View:</span>
-	<div
-		class="flex rounded-full border border-border-light bg-background-secondary-light p-1 shadow-sm"
-	>
-		{#each VIEW_OPTIONS as opt}
-			<button
-				onclick={() => (viewMode = opt.value)}
-				class="rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150
-				{viewMode === opt.value
-					? 'bg-background-tertiary-light text-white shadow-sm'
-					: 'text-text-secondary-light hover:text-text-primary-light'}"
+<section
+	class="mb-6 rounded-2xl border border-background-tertiary-light/20 bg-gradient-to-br from-background-primary-light via-background-primary-light to-background-secondary-light p-5 shadow-sm sm:p-6"
+	aria-labelledby="market-read-heading"
+>
+	<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+		<div>
+			<p class="text-xs font-semibold uppercase tracking-[0.2em] text-background-tertiary-light">
+				Market read
+			</p>
+			<h1
+				id="market-read-heading"
+				class="mt-2 text-3xl font-bold text-text-primary-light sm:text-4xl"
 			>
-				{opt.label}
-			</button>
-		{/each}
-	</div>
-</div>
+				Parchment Market Index
+			</h1>
+			<h2
+				class="mt-3 max-w-3xl text-xl font-semibold leading-7 text-text-primary-light sm:text-2xl"
+			>
+				{marketReadHeadline}
+			</h2>
+			<p class="mt-3 max-w-3xl text-base leading-7 text-text-secondary-light sm:text-lg">
+				{marketReadDetail}
+			</p>
+			<p class="mt-3 text-sm text-text-secondary-light">
+				{#if stats.lastUpdated}
+					Last updated {formatDate(stats.lastUpdated)}.
+				{:else}
+					Data collection started March 21, 2026.
+				{/if}
+				Daily-normalized pricing, arrivals, and supplier movement across {stats.totalSuppliers}
+				US importers.
+			</p>
+		</div>
 
-<div class="mb-6 rounded-lg border border-border-light bg-background-secondary-light px-5 py-3">
-	<p class="text-sm font-medium text-text-primary-light">
-		See daily market movement across <span class="text-background-tertiary-light"
-			>{stats.totalSuppliers}</span
+		<aside
+			class="rounded-xl border border-border-light bg-background-primary-light/90 p-4 shadow-sm"
+			aria-label="Scope controls"
 		>
-		suppliers. <span class="text-background-tertiary-light">{stockedBeans.toLocaleString()}</span>
-		active listings from <span class="text-background-tertiary-light">{stats.originsCount}</span> origins.
-	</p>
-</div>
+			<div class="flex items-center justify-between gap-3">
+				<div>
+					<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
+						Scope controls
+					</p>
+					<p class="mt-1 text-sm text-text-secondary-light">
+						Set the investigation lens before reading charts.
+					</p>
+				</div>
+				<span
+					class="rounded-full bg-background-tertiary-light/10 px-3 py-1 text-xs font-semibold text-background-tertiary-light"
+				>
+					{viewMode}
+				</span>
+			</div>
+
+			<div class="mt-4 space-y-4">
+				<div>
+					<p class="mb-2 text-xs font-medium uppercase tracking-wide text-text-secondary-light">
+						Market scope
+					</p>
+					<div
+						class="flex flex-wrap rounded-full border border-border-light bg-background-secondary-light p-1 shadow-sm"
+					>
+						{#each VIEW_OPTIONS as opt}
+							<button
+								type="button"
+								onclick={() => (viewMode = opt.value)}
+								class="flex-1 rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-150
+								{viewMode === opt.value
+									? 'bg-background-tertiary-light text-white shadow-sm'
+									: 'text-text-secondary-light hover:text-text-primary-light'}"
+							>
+								{opt.label}
+							</button>
+						{/each}
+					</div>
+				</div>
+
+				<div>
+					<p class="mb-2 text-xs font-medium uppercase tracking-wide text-text-secondary-light">
+						Movement window
+					</p>
+					<div
+						class="flex rounded-full border border-border-light bg-background-secondary-light p-1 shadow-sm"
+					>
+						{#each [{ value: '7d', label: '7d' }, { value: '30d', label: '30d' }] as opt}
+							<button
+								type="button"
+								onclick={() => (windowMode = opt.value as WindowMode)}
+								class="flex-1 rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-150 {windowMode ===
+								opt.value
+									? 'bg-background-tertiary-light text-white shadow-sm'
+									: 'text-text-secondary-light hover:text-text-primary-light'}"
+							>
+								{opt.label}
+							</button>
+						{/each}
+					</div>
+				</div>
+			</div>
+		</aside>
+	</div>
+</section>
+
+<section class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Market KPI strip">
+	{#each kpiCards as card}
+		<div class="rounded-xl border border-border-light bg-background-primary-light p-4 shadow-sm">
+			<p class="text-xs font-semibold uppercase tracking-wide text-text-secondary-light">
+				{card.label}
+			</p>
+			<div
+				class="mt-2 text-2xl font-bold {card.tone === 'up'
+					? 'text-emerald-700'
+					: card.tone === 'down'
+						? 'text-background-tertiary-light'
+						: card.tone === 'alert'
+							? 'text-red-700'
+							: 'text-text-primary-light'}"
+			>
+				{card.value}
+			</div>
+			<p class="mt-1 text-xs text-text-secondary-light">{card.detail}</p>
+		</div>
+	{/each}
+</section>
+
+<section class="mb-6 grid gap-4 lg:grid-cols-3" aria-label="Market insight cards">
+	{#each insightCards as insight}
+		<article
+			class="rounded-xl border border-border-light bg-background-primary-light p-5 shadow-sm"
+		>
+			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+				{insight.label}
+			</p>
+			<h2 class="mt-2 text-lg font-semibold text-text-primary-light">{insight.title}</h2>
+			<p class="mt-2 text-sm leading-6 text-text-secondary-light">{insight.body}</p>
+			<p class="mt-4 text-xs font-medium text-text-secondary-light">{insight.evidence}</p>
+		</article>
+	{/each}
+</section>
 
 {#if analyticsShellMessage}
 	<div
@@ -465,7 +762,7 @@
 	</div>
 {/if}
 
-<div class="mb-8 space-y-6">
+<section class="mb-8 space-y-6" aria-label="Evidence charts">
 	<ExpandablePanel
 		title="Origin price trends"
 		subtitle="Average $/lb by top origins over the last 30 days, ranked by market activity"
@@ -564,10 +861,15 @@
 						highlights the busiest origins, and the expanded view lets you choose your comparison
 						set.
 					</p>
-					{#if originRangeData.length > 0}
+					{#if scopedOriginRangeData.length > 0}
 						<div class="w-full">
 							{#if OriginBarChartComponent}
-								<OriginBarChartComponent data={originRangeData} expanded={originChartExpanded} />
+								{#key viewMode}
+									<OriginBarChartComponent
+										data={scopedOriginRangeData}
+										expanded={originChartExpanded}
+									/>
+								{/key}
 							{/if}
 						</div>
 					{:else}
@@ -584,7 +886,43 @@
 			</AnalyticsLoadingPanel>
 		</ExpandablePanel>
 	</div>
-</div>
+</section>
+
+<section
+	class="mb-6 rounded-xl border border-background-tertiary-light/20 bg-background-secondary-light p-5"
+	aria-label="Action rail"
+>
+	<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+		<div>
+			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+				Next investigation
+			</p>
+			<h2 class="mt-1 text-lg font-semibold text-text-primary-light">
+				Turn the read into a sourcing path.
+			</h2>
+			<p class="mt-1 text-sm text-text-secondary-light">
+				This rail only links to existing surfaces. Watchlists, alerts, saved briefs, and persistent
+				actions stay out of this PR.
+			</p>
+		</div>
+		<div class="flex flex-col gap-2 sm:flex-row lg:flex-col">
+			<button
+				type="button"
+				onclick={() => goto('/catalog')}
+				class="rounded-md bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
+			>
+				Open catalog evidence
+			</button>
+			<button
+				type="button"
+				onclick={() => goto('/api')}
+				class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+			>
+				Review API access
+			</button>
+		</div>
+	</div>
+</section>
 
 <div class="relative mb-8">
 	{#if !isParchmentIntelligence}
@@ -846,9 +1184,10 @@
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 				<ExpandablePanel
 					title="New arrivals"
-					badge={`+${filteredArrivals.length}`}
+					badge={arrivalPanelBadge}
 					badgeColor="amber"
-					totalItems={filteredArrivals.length}
+					totalItems={arrivalPanelTotalItems}
+					expandLabel={arrivalExpandLabel}
 				>
 					<div class="rounded-lg border border-amber-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-4 flex items-center justify-between gap-3">
@@ -912,9 +1251,10 @@
 
 				<ExpandablePanel
 					title="Recent Delistings"
-					badge={`-${filteredDelistings.length}`}
+					badge={delistingPanelBadge}
 					badgeColor="red"
-					totalItems={filteredDelistings.length}
+					totalItems={delistingPanelTotalItems}
+					expandLabel={delistingExpandLabel}
 				>
 					<div class="rounded-lg border border-red-200 bg-background-primary-light p-6 shadow-sm">
 						<div class="mb-4 flex items-center justify-between gap-3">
@@ -1120,6 +1460,6 @@
 
 <div class="mt-4 rounded-lg bg-background-secondary-light p-4 text-xs text-text-secondary-light">
 	<strong class="text-text-primary-light">Data source:</strong> Daily prices aggregated from
-	{stats.totalSuppliers} US green coffee importers and roasters. The Purveyors Price Index updates each
+	{stats.totalSuppliers} US green coffee importers and roasters. The Parchment Market Index updates each
 	morning, and origin plus processing details come directly from supplier listings.
 </div>

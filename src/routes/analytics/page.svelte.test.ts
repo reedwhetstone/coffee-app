@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/svelte';
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import AnalyticsPage from './+page.svelte';
 import type { PageData } from './$types';
@@ -74,6 +74,12 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			totalBeansTracked: 120,
 			stockedRetailBeans: 84,
 			stockedWholesaleBeans: 18,
+			stockedRetailOrigins: 5,
+			stockedWholesaleOrigins: 2,
+			stockedOrigins: 6,
+			stockedRetailSuppliers: 3,
+			stockedWholesaleSuppliers: 1,
+			stockedSuppliers: 4,
 			totalSuppliers: 12,
 			originsCount: 7,
 			lastUpdated: '2026-04-08'
@@ -116,6 +122,7 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 		originRangeData: [
 			{
 				origin: 'Colombia',
+				market_scope: 'retail',
 				price_min: 3.8,
 				price_max: 4.5,
 				price_avg: 4.2,
@@ -125,6 +132,17 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				sample_size: 9
 			}
 		],
+		movementCounts: {
+			available: true,
+			arrivals: {
+				sevenDay: { retail: 1, wholesale: 0 },
+				thirtyDay: { retail: 2, wholesale: 0 }
+			},
+			delistings: {
+				sevenDay: { retail: 1, wholesale: 0 },
+				thirtyDay: { retail: 2, wholesale: 0 }
+			}
+		},
 		recentArrivals: [
 			{
 				name: 'Fresh Ethiopia',
@@ -132,7 +150,8 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				processing: 'Natural',
 				price_per_lb: 4.8,
 				source: 'Cafe Imports',
-				stocked_date: '2026-04-07'
+				stocked_date: '2026-04-07',
+				wholesale: false
 			},
 			{
 				name: 'Older Arrival',
@@ -140,7 +159,8 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				processing: 'Washed',
 				price_per_lb: 5.1,
 				source: 'Royal Coffee',
-				stocked_date: '2026-03-15'
+				stocked_date: '2026-03-15',
+				wholesale: false
 			}
 		],
 		recentDelistings: [
@@ -150,7 +170,8 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				processing: 'Washed',
 				price_per_lb: 4.2,
 				source: 'Atlas',
-				unstocked_date: '2026-04-06'
+				unstocked_date: '2026-04-06',
+				wholesale: false
 			},
 			{
 				name: 'Older Gone',
@@ -158,7 +179,8 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				processing: 'Natural',
 				price_per_lb: 3.9,
 				source: 'Red Fox',
-				unstocked_date: '2026-03-12'
+				unstocked_date: '2026-03-12',
+				wholesale: false
 			}
 		],
 		comparisonBeans: [
@@ -194,9 +216,14 @@ function createSession() {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-04-09T12:00:00.000Z').getTime());
 	loadPublicAnalyticsModules.mockImplementation(buildPublicModules);
 	loadMemberAnalyticsModules.mockImplementation(buildMemberModules);
 	loadSupplierAnalyticsModules.mockImplementation(buildSupplierModules);
+});
+
+afterEach(() => {
+	vi.restoreAllMocks();
 });
 
 describe('analytics page loading experience', () => {
@@ -280,6 +307,104 @@ describe('analytics page loading experience', () => {
 	});
 });
 
+describe('analytics command center hierarchy', () => {
+	it('places market read, controls, KPI strip, and insight cards before chart evidence', async () => {
+		const { container } = render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(screen.getByRole('heading', { name: 'Parchment Market Index' })).toBeTruthy();
+		expect(screen.getByText('Market read')).toBeTruthy();
+		expect(screen.getByText('Scope controls')).toBeTruthy();
+		expect(screen.getByText('Price movement')).toBeTruthy();
+		expect(screen.getByText('Availability read')).toBeTruthy();
+		expect(screen.getByText('Next investigation')).toBeTruthy();
+
+		const marketRead = container.querySelector('[aria-labelledby="market-read-heading"]');
+		const scopeControls = container.querySelector('[aria-label="Scope controls"]');
+		const kpiStrip = container.querySelector('[aria-label="Market KPI strip"]');
+		const insightCards = container.querySelector('[aria-label="Market insight cards"]');
+		const evidenceCharts = container.querySelector('[aria-label="Evidence charts"]');
+		const actionRail = container.querySelector('[aria-label="Action rail"]');
+
+		expect(marketRead).toBeTruthy();
+		expect(scopeControls).toBeTruthy();
+		expect(kpiStrip).toBeTruthy();
+		expect(insightCards).toBeTruthy();
+		expect(evidenceCharts).toBeTruthy();
+		expect(actionRail).toBeTruthy();
+
+		expect(
+			marketRead!.compareDocumentPosition(scopeControls!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			scopeControls!.compareDocumentPosition(kpiStrip!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			kpiStrip!.compareDocumentPosition(insightCards!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			insightCards!.compareDocumentPosition(evidenceCharts!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			evidenceCharts!.compareDocumentPosition(actionRail!) & Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+		expect(
+			actionRail!.compareDocumentPosition(screen.getByText('Supplier Price Comparison')) &
+				Node.DOCUMENT_POSITION_FOLLOWING
+		).toBeTruthy();
+	});
+
+	it('labels all-scope price posture as combined retail and wholesale', async () => {
+		render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		await screen.getByRole('button', { name: 'All' }).click();
+
+		expect(screen.getByText(/The latest combined retail \+ wholesale average is/i)).toBeTruthy();
+	});
+
+	it('scopes coverage origin counts with the selected market', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				stats: {
+					totalBeansTracked: 120,
+					stockedRetailBeans: 84,
+					stockedWholesaleBeans: 18,
+					stockedRetailOrigins: 5,
+					stockedWholesaleOrigins: 2,
+					stockedOrigins: 6,
+					stockedRetailSuppliers: 3,
+					stockedWholesaleSuppliers: 1,
+					stockedSuppliers: 4,
+					totalSuppliers: 12,
+					originsCount: 99,
+					lastUpdated: '2026-04-08'
+				}
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(screen.getByText(/84 active retail listings span 5 origins/i)).toBeTruthy();
+		expect(screen.getByText(/Evidence: 3 retail suppliers/i)).toBeTruthy();
+		expect(screen.queryByText(/span 99 origins/i)).toBeNull();
+
+		await screen.getByRole('button', { name: 'Wholesale' }).click();
+
+		expect(screen.getByText(/18 active wholesale listings span 2 origins/i)).toBeTruthy();
+		expect(screen.getByText(/Evidence: 1 wholesale suppliers/i)).toBeTruthy();
+		expect(screen.queryByText(/span 99 origins/i)).toBeNull();
+	});
+});
+
 describe('analytics premium boundary copy', () => {
 	it('keeps arrivals and delistings behind the Parchment Intelligence boundary on the baseline surface', async () => {
 		render(AnalyticsPage, { data: createData() });
@@ -335,5 +460,34 @@ describe('analytics premium boundary copy', () => {
 			expect(screen.getByText('Older Arrival')).toBeTruthy();
 			expect(screen.getByText('Older Gone')).toBeTruthy();
 		});
+	});
+
+	it('uses loaded movement rows instead of exact zero counts when movement counts are unavailable', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				session: createSession(),
+				isParchmentIntelligence: true,
+				movementCounts: {
+					available: false,
+					arrivals: {
+						sevenDay: { retail: 0, wholesale: 0 },
+						thirtyDay: { retail: 0, wholesale: 0 }
+					},
+					delistings: {
+						sevenDay: { retail: 0, wholesale: 0 },
+						thirtyDay: { retail: 0, wholesale: 0 }
+					}
+				}
+			})
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+		});
+
+		expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
+		expect(screen.getByText('Recently Gone')).toBeTruthy();
+		expect(screen.getAllByRole('button', { name: /Open 1 loaded row/ })).toHaveLength(2);
+		expect(screen.queryByRole('button', { name: /View all 0/ })).toBeNull();
 	});
 });
