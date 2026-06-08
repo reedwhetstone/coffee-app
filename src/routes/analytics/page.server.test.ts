@@ -152,7 +152,11 @@ function createAnalyticsClient(
 	options: {
 		marketSummaryDate?: string | null;
 		catalogPriceRows?: Array<{ country: string; price_per_lb: number; wholesale: boolean }>;
-		originCoverageRows?: Array<{ country: string | null; wholesale: boolean }>;
+		originCoverageRows?: Array<{
+			country: string | null;
+			source?: string | null;
+			wholesale: boolean;
+		}>;
 		movementCountError?: boolean;
 		recentRetailArrivals?: unknown[];
 		recentWholesaleArrivals?: unknown[];
@@ -265,15 +269,6 @@ function createAnalyticsClient(
 		}
 
 		if (state.columns === 'processing, wholesale') return { data: [], error: null };
-		if (state.columns === 'country, wholesale') {
-			const wholesale = state.filters.find(
-				(filter) => filter.method === 'eq' && filter.column === 'wholesale'
-			)?.value;
-			return {
-				data: (options.originCoverageRows ?? []).filter((row) => row.wholesale === wholesale),
-				error: null
-			};
-		}
 		if (state.columns === 'country, price_per_lb, wholesale') {
 			const wholesale = state.filters.find(
 				(filter) => filter.method === 'eq' && filter.column === 'wholesale'
@@ -373,6 +368,18 @@ function createAnalyticsClient(
 					return Promise.resolve(resolveTableResult(table, state));
 				},
 				range(start: number, end: number) {
+					if (table === 'coffee_catalog' && state.columns === 'country, source, wholesale') {
+						const wholesale = state.filters.find(
+							(filter) => filter.method === 'eq' && filter.column === 'wholesale'
+						)?.value;
+						return Promise.resolve({
+							data: (options.originCoverageRows ?? [])
+								.filter((row) => row.wholesale === wholesale)
+								.slice(start, end + 1),
+							error: null
+						});
+					}
+
 					if (table !== 'price_index_snapshots') {
 						throw new Error(`Unexpected range() on ${table}`);
 					}
@@ -655,14 +662,15 @@ describe('analytics load', () => {
 		});
 	});
 
-	it('returns scoped active origin coverage counts independently from unscoped summary origins', async () => {
+	it('returns scoped active origin and supplier coverage counts independently from unscoped summary totals', async () => {
 		const client = createAnalyticsClient([{ data: [], error: null }], {
 			originCoverageRows: [
-				{ country: 'Colombia', wholesale: false },
-				{ country: 'Colombia', wholesale: false },
-				{ country: 'Ethiopia', wholesale: false },
-				{ country: 'Brazil', wholesale: true },
-				{ country: 'Colombia', wholesale: true }
+				{ country: 'Colombia', source: 'Atlas', wholesale: false },
+				{ country: 'Colombia', source: 'Atlas', wholesale: false },
+				{ country: 'Ethiopia', source: 'Cafe Imports', wholesale: false },
+				{ country: 'Brazil', source: 'Royal', wholesale: true },
+				{ country: 'Colombia', source: 'Royal', wholesale: true },
+				{ country: null, source: 'Wholesale Only Supplier', wholesale: true }
 			]
 		});
 		currentPriceIndexClient = client;
@@ -672,14 +680,41 @@ describe('analytics load', () => {
 				stockedRetailOrigins: number;
 				stockedWholesaleOrigins: number;
 				stockedOrigins: number;
+				stockedRetailSuppliers: number;
+				stockedWholesaleSuppliers: number;
+				stockedSuppliers: number;
+				totalSuppliers: number;
 				originsCount: number;
 			};
 		};
 
 		expect(result.stats.originsCount).toBe(18);
+		expect(result.stats.totalSuppliers).toBe(39);
 		expect(result.stats.stockedRetailOrigins).toBe(2);
 		expect(result.stats.stockedWholesaleOrigins).toBe(2);
 		expect(result.stats.stockedOrigins).toBe(3);
+		expect(result.stats.stockedRetailSuppliers).toBe(2);
+		expect(result.stats.stockedWholesaleSuppliers).toBe(2);
+		expect(result.stats.stockedSuppliers).toBe(4);
+	});
+
+	it('paginates active coverage rows before computing scoped origin and supplier totals', async () => {
+		const retailCoverageRows = Array.from({ length: 1001 }, (_, index) => ({
+			country: `Origin ${index}`,
+			source: `Supplier ${index}`,
+			wholesale: false
+		}));
+		const client = createAnalyticsClient([{ data: [], error: null }], {
+			originCoverageRows: retailCoverageRows
+		});
+		currentPriceIndexClient = client;
+
+		const result = (await load(createLoadEvent(client))) as {
+			stats: { stockedRetailOrigins: number; stockedRetailSuppliers: number };
+		};
+
+		expect(result.stats.stockedRetailOrigins).toBe(1001);
+		expect(result.stats.stockedRetailSuppliers).toBe(1001);
 	});
 
 	it('keeps date-only movement cutoffs stable in east-of-UTC server timezones', async () => {

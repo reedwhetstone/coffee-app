@@ -67,6 +67,9 @@
 				stockedRetailOrigins: number;
 				stockedWholesaleOrigins: number;
 				stockedOrigins: number;
+				stockedRetailSuppliers: number;
+				stockedWholesaleSuppliers: number;
+				stockedSuppliers: number;
 				totalSuppliers: number;
 				originsCount: number;
 				lastUpdated: string | null;
@@ -163,6 +166,12 @@
 		if (viewMode === 'retail') return stats.stockedRetailOrigins;
 		if (viewMode === 'wholesale') return stats.stockedWholesaleOrigins;
 		return stats.stockedOrigins || stats.originsCount;
+	});
+
+	let displaySuppliersCount = $derived.by(() => {
+		if (viewMode === 'retail') return stats.stockedRetailSuppliers;
+		if (viewMode === 'wholesale') return stats.stockedWholesaleSuppliers;
+		return stats.stockedSuppliers || stats.totalSuppliers;
 	});
 
 	function scopeMovementCount(counts: MovementWindowCounts): number {
@@ -554,7 +563,7 @@
 		},
 		{
 			label: 'Supplier coverage',
-			value: stats.totalSuppliers.toLocaleString(),
+			value: displaySuppliersCount.toLocaleString(),
 			detail:
 				supplierCoverageDelta == null
 					? `${displayOriginsCount} ${viewModeLabel} origins indexed`
@@ -574,7 +583,7 @@
 			body: isMovementDataAvailable
 				? `${scopedArrivalCount} arrivals versus ${scopedDelistingCount} delistings in the selected ${movementWindowLabel} ${viewModeLabel} scope. Use the gated movement tables for named lots and suppliers.`
 				: `The selected ${movementWindowLabel} ${viewModeLabel} movement counts are unavailable or stale, so the read does not treat zeros as market stability.`,
-			evidence: `Evidence: ${stats.totalSuppliers} suppliers, latest index ${formatDate(stats.lastUpdated)}`
+			evidence: `Evidence: ${displaySuppliersCount} ${viewModeLabel} suppliers, latest index ${formatDate(stats.lastUpdated)}`
 		},
 		{
 			label: 'Price posture',

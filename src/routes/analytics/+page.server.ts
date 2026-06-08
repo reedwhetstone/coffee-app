@@ -81,8 +81,9 @@ interface CatalogPriceRow {
 	wholesale: boolean;
 }
 
-interface CatalogOriginRow {
+interface CatalogCoverageRow {
 	country: string | null;
+	source: string | null;
 	wholesale: boolean;
 }
 
@@ -118,6 +119,7 @@ export interface OriginRangeRow {
 }
 
 const SNAPSHOT_PAGE_SIZE = 1000;
+const CATALOG_COVERAGE_PAGE_SIZE = 1000;
 const SNAPSHOT_SELECT =
 	'snapshot_date, origin, process, price_avg, price_median, price_min, price_max, price_p25, price_p75, price_stdev, supplier_count, sample_size, wholesale_only, aggregation_tier';
 // Keep synthetic backfill rows in the analytics history for now. Because real and
@@ -159,6 +161,42 @@ function movementCountQuery({
 		.eq('stocked', stocked)
 		.eq('wholesale', wholesale)
 		.gte(dateColumn, fromDate);
+}
+
+async function loadActiveCatalogCoverageRowsPaginated({
+	supabase,
+	wholesale
+}: {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	supabase: any;
+	wholesale: boolean;
+}): Promise<CatalogCoverageRow[]> {
+	const rows: CatalogCoverageRow[] = [];
+
+	for (let page = 0; ; page += 1) {
+		const start = page * CATALOG_COVERAGE_PAGE_SIZE;
+		const end = start + CATALOG_COVERAGE_PAGE_SIZE - 1;
+		const { data, error } = await supabase
+			.from('coffee_catalog')
+			.select('country, source, wholesale')
+			.eq('stocked', true)
+			.eq('wholesale', wholesale)
+			.order('id', { ascending: true })
+			.range(start, end);
+
+		if (error) {
+			throw new Error(
+				`Failed to load active ${wholesale ? 'wholesale' : 'retail'} catalog coverage page ${page + 1}: ${error.message}`
+			);
+		}
+
+		const pageRows = (data ?? []) as CatalogCoverageRow[];
+		rows.push(...pageRows);
+
+		if (pageRows.length < CATALOG_COVERAGE_PAGE_SIZE) break;
+	}
+
+	return rows;
 }
 
 function normalizeProcess(raw: string | null | undefined): string {
@@ -270,8 +308,8 @@ export const load: PageServerLoad = async (event) => {
 		{ count: totalBeansTracked },
 		{ count: stockedRetailBeans },
 		{ count: stockedWholesaleBeans },
-		{ data: retailOriginCoverageRows },
-		{ data: wholesaleOriginCoverageRows },
+		retailCoverageRows,
+		wholesaleCoverageRows,
 		{ data: processingRows },
 		{ data: retailCatalogPriceRows },
 		{ data: wholesaleCatalogPriceRows },
@@ -303,22 +341,11 @@ export const load: PageServerLoad = async (event) => {
 			.select('*', { count: 'exact', head: true })
 			.eq('stocked', true)
 			.eq('wholesale', true),
-		// Active retail origin coverage
-		supabase
-			.from('coffee_catalog')
-			.select('country, wholesale')
-			.eq('stocked', true)
-			.eq('wholesale', false)
-			.not('country', 'is', null)
-			.limit(5000),
-		// Active wholesale origin coverage
-		supabase
-			.from('coffee_catalog')
-			.select('country, wholesale')
-			.eq('stocked', true)
-			.eq('wholesale', true)
-			.not('country', 'is', null)
-			.limit(5000),
+		// Active retail coverage. Paginate before counting origins/suppliers so scoped
+		// coverage KPIs are not derived from an arbitrary capped row sample.
+		loadActiveCatalogCoverageRowsPaginated({ supabase, wholesale: false }),
+		// Active wholesale coverage
+		loadActiveCatalogCoverageRowsPaginated({ supabase, wholesale: true }),
 		// Processing method distribution
 		supabase
 			.from('coffee_catalog')
@@ -473,17 +500,30 @@ export const load: PageServerLoad = async (event) => {
 	const retailOriginPriceRows = (retailCatalogPriceRows ?? []) as CatalogPriceRow[];
 	const wholesaleOriginPriceRows = (wholesaleCatalogPriceRows ?? []) as CatalogPriceRow[];
 	const allOriginPriceRows = [...retailOriginPriceRows, ...wholesaleOriginPriceRows];
+	const retailActiveCoverageRows = retailCoverageRows ?? [];
+	const wholesaleActiveCoverageRows = wholesaleCoverageRows ?? [];
 	const retailActiveOriginSet = new Set(
-		((retailOriginCoverageRows ?? []) as CatalogOriginRow[])
+		retailActiveCoverageRows
 			.map((row) => row.country)
 			.filter((country): country is string => Boolean(country))
 	);
 	const wholesaleActiveOriginSet = new Set(
-		((wholesaleOriginCoverageRows ?? []) as CatalogOriginRow[])
+		wholesaleActiveCoverageRows
 			.map((row) => row.country)
 			.filter((country): country is string => Boolean(country))
 	);
+	const retailActiveSupplierSet = new Set(
+		retailActiveCoverageRows
+			.map((row) => row.source)
+			.filter((source): source is string => Boolean(source))
+	);
+	const wholesaleActiveSupplierSet = new Set(
+		wholesaleActiveCoverageRows
+			.map((row) => row.source)
+			.filter((source): source is string => Boolean(source))
+	);
 	const activeOriginSet = new Set([...retailActiveOriginSet, ...wholesaleActiveOriginSet]);
+	const activeSupplierSet = new Set([...retailActiveSupplierSet, ...wholesaleActiveSupplierSet]);
 
 	const buildOriginRangeRows = (
 		scope: OriginRangeScope,
@@ -680,6 +720,9 @@ export const load: PageServerLoad = async (event) => {
 			stockedRetailOrigins: retailActiveOriginSet.size,
 			stockedWholesaleOrigins: wholesaleActiveOriginSet.size,
 			stockedOrigins: activeOriginSet.size || (marketSummary?.total_origins ?? 0),
+			stockedRetailSuppliers: retailActiveSupplierSet.size,
+			stockedWholesaleSuppliers: wholesaleActiveSupplierSet.size,
+			stockedSuppliers: activeSupplierSet.size || (marketSummary?.total_suppliers ?? 0),
 			totalSuppliers: marketSummary?.total_suppliers ?? 0,
 			originsCount: marketSummary?.total_origins ?? 0,
 			lastUpdated
