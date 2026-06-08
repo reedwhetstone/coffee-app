@@ -21,14 +21,16 @@ Reviewed artifacts in `.verify-pr/20260608T035826Z-feat-analytics-action-cta-pri
 Changed files:
 
 - `src/lib/analytics/actionContext.ts`
+- `src/lib/analytics/actionContext.test.ts`
 - `src/lib/components/analytics/AnalyticsActionCta.svelte`
 - `src/routes/analytics/+page.svelte`
 - `src/routes/analytics/page.svelte.test.ts`
 - `src/routes/chat/+page.svelte`
+- `src/routes/chat/page.svelte.test.ts`
 
 ## Validation
 
-- `pnpm test -- src/routes/analytics/page.svelte.test.ts`: VALIDATION_PASS. Note: this command ran the full Vitest suite in this repo; all 70 test files and 641 tests passed.
+- `pnpm test -- src/lib/analytics/actionContext.test.ts src/routes/analytics/page.svelte.test.ts`: VALIDATION_PASS. Note: this command ran the full Vitest suite in this repo; all 72 test files and 650 tests passed.
 - `pnpm check`: VALIDATION_BLOCKED_ENV on first run because `$env/static/*` keys were not exported in the clean worktree. Missing: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 - `PUBLIC_SUPABASE_URL=https://example.supabase.co PUBLIC_SUPABASE_ANON_KEY=dummy SUPABASE_SERVICE_ROLE_KEY=dummy STRIPE_SECRET_KEY=sk_test_dummy STRIPE_WEBHOOK_SECRET=whsec_dummy OPENROUTER_API_KEY=dummy pnpm check`: VALIDATION_PASS.
 - `PUBLIC_SUPABASE_URL=https://example.supabase.co PUBLIC_SUPABASE_ANON_KEY=dummy SUPABASE_SERVICE_ROLE_KEY=dummy STRIPE_SECRET_KEY=sk_test_dummy STRIPE_WEBHOOK_SECRET=whsec_dummy OPENROUTER_API_KEY=dummy pnpm lint`: VALIDATION_PASS.
@@ -50,7 +52,7 @@ Original concern: the early draft treated `AnalyticsChatContext` as ceremonial b
 
 Resolution: `buildAnalyticsChatHref()` now emits only `source=analytics` and `prompt`. `buildAnalyticsChatPrompt()` includes the bounded analytics context as compact labeled lines: scope, movement window, latest index date, stocked listings, suppliers, origins, visible evidence, and user-legible access level. `/chat` reads the analytics prompt seed and assigns it to the chat input for users who can use chat.
 
-Coverage: analytics tests assert there is no separate `analyticsContext` parameter, the prompt does not contain raw JSON or internal entitlement vocabulary, and the compact context lines are present. `src/lib/analytics/actionContext.test.ts` covers `/chat?source=analytics&prompt=...` extraction plus the seed-update path used by the chat page, including chat entitlement, same-seed replay avoidance, CSR re-navigation to a new analytics seed, and protection for actively typed input. A page-level chat test would require broad mocks for the AI SDK chat instance, workspace store, canvas store, and markdown/GenUI renderers; the extracted helper keeps the behavior covered at the smallest practical seam.
+Coverage: analytics tests assert there is no separate `analyticsContext` parameter, the prompt does not contain raw JSON or internal entitlement vocabulary, and the compact context lines are present. `src/lib/analytics/actionContext.test.ts` covers `/chat?source=analytics&prompt=...` extraction plus the seed-update path used by the chat page, including chat entitlement, same-seed replay avoidance, CSR re-navigation to a new analytics seed, and protection for actively typed input. `src/routes/chat/page.svelte.test.ts` adds page-level coverage that chat-entitled users see the analytics prompt prefilled and signed-in users without chat access do not see the input.
 
 ### Resolved P2: Roasting-only and `both` entitlement states now have focused tests
 
