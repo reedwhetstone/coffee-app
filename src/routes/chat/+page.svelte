@@ -23,6 +23,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { workspaceStore, type WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
+	import { readAnalyticsSeedFromSearchParams } from '$lib/analytics/actionContext';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -107,6 +108,13 @@
 
 	// ─── Workspace lifecycle ──────────────────────────────────────────────────
 	onMount(() => {
+		const analyticsSeed = readAnalyticsSeedFromSearchParams(
+			new URLSearchParams(window.location.search)
+		);
+		if (canUseChat && analyticsSeed) {
+			inputMessage = analyticsSeed;
+		}
+
 		if (!canUseMallardWorkspaces) return;
 
 		// Capture workspace ID locally to ensure it's available in cleanup

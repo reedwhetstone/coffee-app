@@ -206,6 +206,7 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				retailCount: 11
 			}
 		],
+		role: 'viewer',
 		...overrides
 	} as unknown as PageData;
 }
@@ -402,6 +403,75 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getByText(/18 active wholesale listings span 2 origins/i)).toBeTruthy();
 		expect(screen.getByText(/Evidence: 1 wholesale suppliers/i)).toBeTruthy();
 		expect(screen.queryByText(/span 99 origins/i)).toBeNull();
+	});
+});
+
+describe('analytics action CTA rail', () => {
+	it('keeps anonymous actions on existing login/API surfaces and disables future watch state', async () => {
+		render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(screen.getByText('Ask about this market read')).toBeTruthy();
+		expect(screen.getByRole('link', { name: 'Sign in to ask' })).toHaveAttribute('href', '/auth');
+		expect(screen.getByRole('link', { name: 'Sign in to compare' })).toHaveAttribute(
+			'href',
+			'/auth'
+		);
+		expect(screen.getByRole('link', { name: 'Open catalog' })).toHaveAttribute('href', '/catalog');
+		expect(screen.getByRole('link', { name: 'Review API plans' })).toHaveAttribute('href', '/api');
+		expect(screen.getByRole('button', { name: 'Watchlists not live' })).toBeDisabled();
+		expect(
+			screen.getByText('Preview only. No saved state, alerts, or watch confirmations are created.')
+		).toBeTruthy();
+	});
+
+	it('serializes bounded analytics context into the chat CTA for entitled users', async () => {
+		render(AnalyticsPage, {
+			data: createData({ session: createSession(), role: 'viewer', isParchmentIntelligence: true })
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+		});
+
+		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
+		const url = new URL(chatLink.getAttribute('href') ?? '', 'https://example.com');
+		const context = JSON.parse(url.searchParams.get('analyticsContext') ?? '{}');
+
+		expect(url.pathname).toBe('/chat');
+		expect(url.searchParams.get('source')).toBe('analytics');
+		expect(url.searchParams.get('prompt')).toContain('Do not claim that anything has been saved');
+		expect(context).toMatchObject({
+			origin: null,
+			process: null,
+			supplier: null,
+			viewMode: 'retail',
+			timeWindow: '7d',
+			entitlement: 'intelligence'
+		});
+		expect(context.visibleModules).toContain('supplier-comparison');
+		expect(screen.getByRole('link', { name: 'Jump to supplier comparison' })).toHaveAttribute(
+			'href',
+			'#supplier-comparison'
+		);
+	});
+
+	it('uses upgrade language instead of chat context for signed-in viewers without intelligence access', async () => {
+		render(AnalyticsPage, { data: createData({ session: createSession(), role: 'viewer' }) });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(screen.getByRole('link', { name: 'Upgrade to ask' })).toHaveAttribute(
+			'href',
+			'/subscription?plan=intelligence-monthly&intent=checkout'
+		);
+		expect(screen.getByText('Intelligence required')).toBeTruthy();
+		expect(screen.queryByRole('link', { name: 'Ask with this context' })).toBeNull();
 	});
 });
 
