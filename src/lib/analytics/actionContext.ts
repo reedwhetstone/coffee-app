@@ -55,6 +55,9 @@ export function buildAnalyticsChatPrompt(
 		`Visible evidence modules: ${modules}`,
 		`Entitlement: ${context.entitlement}`,
 		'',
+		'Context JSON:',
+		JSON.stringify(context),
+		'',
 		'Do not claim that anything has been saved or watched. If a persistent action would be useful, describe it as a future workflow and use catalog or API evidence that exists today.'
 	].join('\n');
 }
@@ -65,8 +68,7 @@ export function buildAnalyticsChatHref(
 ): string {
 	const params = new URLSearchParams({
 		source: 'analytics',
-		prompt: buildAnalyticsChatPrompt(context, marketReadHeadline),
-		analyticsContext: JSON.stringify(context)
+		prompt: buildAnalyticsChatPrompt(context, marketReadHeadline)
 	});
 	return `/chat?${params.toString()}`;
 }

@@ -989,7 +989,7 @@
 		<AnalyticsActionCta
 			eyebrow="Ask"
 			title="Ask about this market read"
-			description="Open Parchment Intelligence Chat with the selected market scope, movement window, visible modules, and entitlement context already written into the prompt."
+			description="Open chat with the selected market scope, movement window, visible modules, and entitlement context already written into the prompt."
 			ctaLabel={askActionLabel}
 			href={askActionHref}
 			statusLabel={askActionStatus}
