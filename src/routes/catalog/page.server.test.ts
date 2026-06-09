@@ -138,7 +138,7 @@ function makeLoadInputWithPrincipal(
 ) {
 	return {
 		locals: {
-			supabase: { kind: 'session-client' },
+			supabase: makeMockSupabase(),
 			role,
 			session,
 			principal
