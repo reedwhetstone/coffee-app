@@ -206,12 +206,17 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				retailCount: 11
 			}
 		],
+		role: 'viewer',
 		...overrides
 	} as unknown as PageData;
 }
 
 function createSession() {
 	return { user: { id: 'user-1' } } as NonNullable<PageData['session']>;
+}
+
+function expectPromptLine(prompt: string | null, line: string) {
+	expect(prompt).toContain(line);
 }
 
 beforeEach(() => {
@@ -402,6 +407,123 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getByText(/18 active wholesale listings span 2 origins/i)).toBeTruthy();
 		expect(screen.getByText(/Evidence: 1 wholesale suppliers/i)).toBeTruthy();
 		expect(screen.queryByText(/span 99 origins/i)).toBeNull();
+	});
+});
+
+describe('analytics action CTA rail', () => {
+	it('keeps anonymous actions on existing login/API surfaces and disables future watch state', async () => {
+		render(AnalyticsPage, { data: createData() });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(screen.getByText('Ask about this market read')).toBeTruthy();
+		expect(screen.getByRole('link', { name: 'Sign in to ask' })).toHaveAttribute('href', '/auth');
+		expect(screen.getByRole('link', { name: 'Sign in to compare' })).toHaveAttribute(
+			'href',
+			'/auth'
+		);
+		expect(screen.getByRole('link', { name: 'Open catalog' })).toHaveAttribute('href', '/catalog');
+		expect(screen.getByRole('link', { name: 'Review API plans' })).toHaveAttribute('href', '/api');
+		const watchButton = screen.getByRole('button', { name: 'Watchlists not live' });
+		const disabledReason = screen.getByText(
+			'Preview only. No saved state, alerts, or watch confirmations are created.'
+		);
+		expect(watchButton).toBeDisabled();
+		expect(watchButton).toHaveAttribute('aria-describedby', disabledReason.id);
+		expect(disabledReason.id).toBe('analytics-action-cta-reason-watch');
+	});
+
+	it('includes bounded analytics context in the chat CTA prompt for entitled users', async () => {
+		render(AnalyticsPage, {
+			data: createData({ session: createSession(), role: 'viewer', isParchmentIntelligence: true })
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+		});
+
+		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
+		const url = new URL(chatLink.getAttribute('href') ?? '', 'https://example.com');
+		const prompt = url.searchParams.get('prompt');
+
+		expect(url.pathname).toBe('/chat');
+		expect(url.searchParams.get('source')).toBe('analytics');
+		expect(url.searchParams.has('analyticsContext')).toBe(false);
+		expect(prompt).not.toContain('Context JSON:');
+		expect(prompt).not.toContain('Entitlement:');
+		expect(prompt).toContain('Do not claim that anything has been saved');
+		expectPromptLine(prompt, 'Scope: retail');
+		expectPromptLine(prompt, 'Movement window: 7d');
+		expectPromptLine(prompt, 'Origin: not selected');
+		expectPromptLine(prompt, 'Process: not selected');
+		expectPromptLine(prompt, 'Supplier: not selected');
+		expectPromptLine(prompt, 'Latest index date: 2026-04-08');
+		expectPromptLine(prompt, 'Stocked listings: 84');
+		expectPromptLine(prompt, 'Suppliers in scope: 3');
+		expectPromptLine(prompt, 'Origins in scope: 5');
+		expectPromptLine(prompt, 'Access level: Parchment Intelligence');
+		expectPromptLine(prompt, 'Visible evidence:');
+		expect(prompt).toContain('supplier-comparison');
+		expect(screen.getByRole('link', { name: 'Jump to supplier comparison' })).toHaveAttribute(
+			'href',
+			'#supplier-comparison'
+		);
+	});
+
+	it('allows roasting-only members to ask with analytics context without unlocking supplier comparison', async () => {
+		render(AnalyticsPage, {
+			data: createData({ session: createSession(), role: 'member', isParchmentIntelligence: false })
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
+		const url = new URL(chatLink.getAttribute('href') ?? '', 'https://example.com');
+		const prompt = url.searchParams.get('prompt');
+
+		expect(url.pathname).toBe('/chat');
+		expectPromptLine(prompt, 'Access level: Mallard Studio');
+		expect(screen.getByRole('link', { name: 'Upgrade to compare' })).toHaveAttribute(
+			'href',
+			'/subscription?plan=intelligence-monthly&intent=checkout'
+		);
+		expect(screen.getByRole('button', { name: 'Watchlists not live' })).toBeDisabled();
+	});
+
+	it('marks users with both Intelligence and Roasting access as both in chat context', async () => {
+		render(AnalyticsPage, {
+			data: createData({ session: createSession(), role: 'member', isParchmentIntelligence: true })
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+		});
+
+		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
+		const url = new URL(chatLink.getAttribute('href') ?? '', 'https://example.com');
+		const prompt = url.searchParams.get('prompt');
+
+		expectPromptLine(prompt, 'Access level: Parchment Intelligence and Mallard Studio');
+		expect(prompt).toContain('supplier-comparison');
+	});
+
+	it('uses upgrade language instead of chat context for signed-in viewers without intelligence access', async () => {
+		render(AnalyticsPage, { data: createData({ session: createSession(), role: 'viewer' }) });
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		expect(screen.getByRole('link', { name: 'Upgrade to ask' })).toHaveAttribute(
+			'href',
+			'/subscription?plan=intelligence-monthly&intent=checkout'
+		);
+		expect(screen.getAllByText('Parchment Intelligence').length).toBeGreaterThanOrEqual(1);
+		expect(screen.queryByRole('link', { name: 'Ask with this context' })).toBeNull();
 	});
 });
 

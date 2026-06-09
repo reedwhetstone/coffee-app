@@ -13,7 +13,14 @@
 	} from './+page.server';
 	import { goto } from '$app/navigation';
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
+	import AnalyticsActionCta from '$lib/components/analytics/AnalyticsActionCta.svelte';
 	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
+	import {
+		buildAnalyticsChatHref,
+		canUseAnalyticsChat,
+		resolveAnalyticsEntitlement,
+		type AnalyticsChatContext
+	} from '$lib/analytics/actionContext';
 	import type { DeferredAnalyticsComponent } from './deferredModules';
 	import {
 		loadMemberAnalyticsModules,
@@ -46,6 +53,7 @@
 
 	let {
 		session,
+		role,
 		isParchmentIntelligence,
 		stats,
 		snapshots,
@@ -59,6 +67,7 @@
 	} = $derived(
 		data as {
 			session: PageData['session'];
+			role: PageData['role'];
 			isParchmentIntelligence: boolean;
 			stats: {
 				totalBeansTracked: number;
@@ -603,6 +612,77 @@
 			evidence: `Evidence: ${stats.totalBeansTracked.toLocaleString()} total tracked catalog records`
 		}
 	]);
+
+	let analyticsEntitlement = $derived(
+		resolveAnalyticsEntitlement({
+			session,
+			role,
+			ppiAccess: isParchmentIntelligence
+		})
+	);
+	let canAskWithAnalyticsContext = $derived(canUseAnalyticsChat(analyticsEntitlement));
+	let analyticsChatContext = $derived.by(
+		(): AnalyticsChatContext => ({
+			origin: null,
+			process: null,
+			supplier: null,
+			viewMode,
+			timeWindow: windowMode,
+			activeFilters: {
+				marketScope: viewMode,
+				movementWindow: windowMode,
+				latestIndexDate: stats.lastUpdated,
+				stockedListings: displayStockedCount,
+				suppliers: displaySuppliersCount,
+				origins: displayOriginsCount
+			},
+			visibleModules: [
+				'market-read',
+				'scope-controls',
+				'kpi-strip',
+				'insight-cards',
+				'origin-price-trends',
+				'processing-mix',
+				'origin-price-ranges',
+				...(isParchmentIntelligence
+					? ['supplier-comparison', 'supplier-health', 'arrivals-delistings']
+					: ['premium-preview'])
+			],
+			entitlement: analyticsEntitlement
+		})
+	);
+	let analyticsChatHref = $derived.by(() =>
+		canAskWithAnalyticsContext
+			? buildAnalyticsChatHref(analyticsChatContext, marketReadHeadline)
+			: undefined
+	);
+
+	let askActionHref = $derived.by(() => {
+		if (analyticsChatHref) return analyticsChatHref;
+		if (!session) return '/auth';
+		return '/subscription?plan=intelligence-monthly&intent=checkout';
+	});
+	let askActionLabel = $derived.by(() => {
+		if (canAskWithAnalyticsContext) return 'Ask with this context';
+		if (!session) return 'Sign in to ask';
+		return 'Upgrade to ask';
+	});
+	let askActionStatus = $derived.by(() => {
+		if (canAskWithAnalyticsContext) return 'Available';
+		if (!session) return 'Login required';
+		return 'Parchment Intelligence';
+	});
+	let compareActionHref = $derived.by(() => {
+		if (isParchmentIntelligence) return '#supplier-comparison';
+		if (!session) return '/auth';
+		return '/subscription?plan=intelligence-monthly&intent=checkout';
+	});
+	let compareActionLabel = $derived.by(() => {
+		if (isParchmentIntelligence) return 'Jump to supplier comparison';
+		if (!session) return 'Sign in to compare';
+		return 'Upgrade to compare';
+	});
+	let apiActionHref = $derived(session ? '/api-dashboard' : '/api');
 </script>
 
 <section
@@ -892,35 +972,61 @@
 	class="mb-6 rounded-xl border border-background-tertiary-light/20 bg-background-secondary-light p-5"
 	aria-label="Action rail"
 >
-	<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-		<div>
-			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
-				Next investigation
-			</p>
-			<h2 class="mt-1 text-lg font-semibold text-text-primary-light">
-				Turn the read into a sourcing path.
-			</h2>
-			<p class="mt-1 text-sm text-text-secondary-light">
-				This rail only links to existing surfaces. Watchlists, alerts, saved briefs, and persistent
-				actions stay out of this PR.
-			</p>
-		</div>
-		<div class="flex flex-col gap-2 sm:flex-row lg:flex-col">
-			<button
-				type="button"
-				onclick={() => goto('/catalog')}
-				class="rounded-md bg-background-tertiary-light px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-opacity-90"
-			>
-				Open catalog evidence
-			</button>
-			<button
-				type="button"
-				onclick={() => goto('/api')}
-				class="rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-semibold text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
-			>
-				Review API access
-			</button>
-		</div>
+	<div class="mb-4 max-w-3xl">
+		<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+			Next investigation
+		</p>
+		<h2 class="mt-1 text-lg font-semibold text-text-primary-light">
+			Turn the read into a sourcing path.
+		</h2>
+		<p class="mt-1 text-sm text-text-secondary-light">
+			Use the live sourcing surfaces below: catalog, chat, supplier comparison, and API access,
+			exactly as they exist today.
+		</p>
+	</div>
+	<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+		<AnalyticsActionCta
+			eyebrow="Ask"
+			title="Ask about this market read"
+			description="Open chat with the current scope, movement window, and market evidence already framed in the prompt."
+			ctaLabel={askActionLabel}
+			href={askActionHref}
+			statusLabel={askActionStatus}
+			tone={canAskWithAnalyticsContext ? 'primary' : 'secondary'}
+		/>
+		<AnalyticsActionCta
+			eyebrow="Catalog"
+			title="Open catalog evidence"
+			description="Browse the live green coffee catalog: the same supplier, origin, and pricing data behind this market read."
+			ctaLabel="Open catalog"
+			href="/catalog"
+			statusLabel="Available"
+		/>
+		<AnalyticsActionCta
+			eyebrow="Compare"
+			title="Compare supplier evidence"
+			description="Compare supplier pricing, availability, and quality signals for a selected origin. Available with Parchment Intelligence."
+			ctaLabel={compareActionLabel}
+			href={compareActionHref}
+			statusLabel={isParchmentIntelligence ? 'Parchment Intelligence' : 'Upgrade needed'}
+		/>
+		<AnalyticsActionCta
+			eyebrow="API"
+			title="Review machine access"
+			description="Open Parchment API access for the market data behind this page, including public plans or the authenticated Parchment Console."
+			ctaLabel={session ? 'Open Parchment Console' : 'Review API plans'}
+			href={apiActionHref}
+			statusLabel="Available"
+		/>
+		<AnalyticsActionCta
+			eyebrow="Watch"
+			title="Watch this scope"
+			description="Track price movements, supplier availability, or supply changes for this origin and scope. Watchlists are coming; nothing is saved yet."
+			ctaLabel="Watchlists not live"
+			disabled={true}
+			disabledReason="Preview only. No saved state, alerts, or watch confirmations are created."
+			statusLabel="Coming soon"
+		/>
 	</div>
 </section>
 
@@ -1136,7 +1242,7 @@
 			</div>
 		</div>
 	{:else}
-		<div class="space-y-6">
+		<div id="supplier-comparison" class="space-y-6">
 			<ExpandablePanel
 				title="Supplier price comparison"
 				subtitle="Compare current supplier pricing for a selected origin."
