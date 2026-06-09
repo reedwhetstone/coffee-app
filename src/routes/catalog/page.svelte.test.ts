@@ -258,6 +258,9 @@ describe('/catalog intelligence connective tissue', () => {
 		expect(
 			screen.getByRole('link', { name: 'Review supplier comparison evidence' })
 		).toHaveAttribute('href', '/analytics#supplier-comparison');
+		expect(
+			screen.queryByText('Need workflow leverage from this supply layer?')
+		).not.toBeInTheDocument();
 	});
 
 	it('routes empty catalog queries back to the broader market read instead of pretending a saved workflow exists', () => {

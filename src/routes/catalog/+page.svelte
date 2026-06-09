@@ -509,7 +509,7 @@
 			</div>
 		{/if}
 
-		{#if session && !hasRequiredRole('member')}
+		{#if session && !hasRequiredRole('member') && !canUseParchmentIntelligence}
 			<div class="rounded-lg border border-background-tertiary-light/20 bg-accent-subtle/10 p-6">
 				<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
 					<div class="text-center sm:text-left">
