@@ -672,17 +672,6 @@
 		if (!session) return 'Login required';
 		return 'Parchment Intelligence';
 	});
-	let compareActionHref = $derived.by(() => {
-		if (isParchmentIntelligence) return '#supplier-comparison';
-		if (!session) return '/auth';
-		return '/subscription?plan=intelligence-monthly&intent=checkout';
-	});
-	let compareActionLabel = $derived.by(() => {
-		if (isParchmentIntelligence) return 'Jump to supplier comparison';
-		if (!session) return 'Sign in to compare';
-		return 'Upgrade to compare';
-	});
-	let apiActionHref = $derived(session ? '/api-dashboard' : '/api');
 </script>
 
 <section
@@ -972,19 +961,21 @@
 	class="mb-6 rounded-xl border border-background-tertiary-light/20 bg-background-secondary-light p-5"
 	aria-label="Action rail"
 >
-	<div class="mb-4 max-w-3xl">
-		<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
-			Next investigation
-		</p>
-		<h2 class="mt-1 text-lg font-semibold text-text-primary-light">
-			Turn the read into a sourcing path.
-		</h2>
-		<p class="mt-1 text-sm text-text-secondary-light">
-			Use the live sourcing surfaces below: catalog, chat, supplier comparison, and API access,
-			exactly as they exist today.
-		</p>
-	</div>
-	<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+	<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-center">
+		<div>
+			<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+				Next investigation
+			</p>
+			<h2 class="mt-1 text-lg font-semibold text-text-primary-light">
+				Ask the chat agent with this market context.
+			</h2>
+			<p class="mt-1 text-sm text-text-secondary-light">
+				This is the only live handoff here that preserves the current market read, scope, movement
+				window, and visible evidence. Catalog, supplier comparison, API access, and watch actions
+				stay out of this rail until they create real investigation leverage instead of another click
+				target.
+			</p>
+		</div>
 		<AnalyticsActionCta
 			eyebrow="Ask"
 			title="Ask about this market read"
@@ -993,39 +984,6 @@
 			href={askActionHref}
 			statusLabel={askActionStatus}
 			tone={canAskWithAnalyticsContext ? 'primary' : 'secondary'}
-		/>
-		<AnalyticsActionCta
-			eyebrow="Catalog"
-			title="Open catalog evidence"
-			description="Browse the live green coffee catalog: the same supplier, origin, and pricing data behind this market read."
-			ctaLabel="Open catalog"
-			href="/catalog"
-			statusLabel="Available"
-		/>
-		<AnalyticsActionCta
-			eyebrow="Compare"
-			title="Compare supplier evidence"
-			description="Compare supplier pricing, availability, and quality signals for a selected origin. Available with Parchment Intelligence."
-			ctaLabel={compareActionLabel}
-			href={compareActionHref}
-			statusLabel={isParchmentIntelligence ? 'Parchment Intelligence' : 'Upgrade needed'}
-		/>
-		<AnalyticsActionCta
-			eyebrow="API"
-			title="Review machine access"
-			description="Open Parchment API access for the market data behind this page, including public plans or the authenticated Parchment Console."
-			ctaLabel={session ? 'Open Parchment Console' : 'Review API plans'}
-			href={apiActionHref}
-			statusLabel="Available"
-		/>
-		<AnalyticsActionCta
-			eyebrow="Watch"
-			title="Watch this scope"
-			description="Track price movements, supplier availability, or supply changes for this origin and scope. Watchlists are coming; nothing is saved yet."
-			ctaLabel="Watchlists not live"
-			disabled={true}
-			disabledReason="Preview only. No saved state, alerts, or watch confirmations are created."
-			statusLabel="Coming soon"
 		/>
 	</div>
 </section>
