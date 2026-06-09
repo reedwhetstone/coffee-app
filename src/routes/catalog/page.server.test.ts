@@ -89,14 +89,28 @@ beforeEach(async () => {
 	({ load } = await import('./+page.server'));
 });
 
+function makeMockSupabase(pricingRows: Array<Record<string, unknown>> = []) {
+	const queryChain = {
+		select: vi.fn().mockReturnThis(),
+		eq: vi.fn().mockReturnThis(),
+		limit: vi.fn().mockResolvedValue({ data: pricingRows, error: null })
+	};
+	return {
+		kind: 'session-client',
+		from: vi.fn().mockReturnValue(queryChain),
+		queryChain
+	};
+}
+
 function makeLoadInput(
 	role: App.Locals['role'],
 	session: App.Locals['session'],
-	url = 'https://app.test/catalog'
+	url = 'https://app.test/catalog',
+	pricingRows: Array<Record<string, unknown>> = []
 ) {
 	return {
 		locals: {
-			supabase: { kind: 'session-client' },
+			supabase: makeMockSupabase(pricingRows),
 			role,
 			session
 		},
@@ -127,7 +141,7 @@ describe('/catalog page load', () => {
 		};
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.objectContaining({
 				stockedOnly: true,
 				publicOnly: true,
@@ -178,7 +192,7 @@ describe('/catalog page load', () => {
 		);
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.objectContaining({
 				country: 'Ethiopia',
 				processing: 'Washed',
@@ -205,7 +219,7 @@ describe('/catalog page load', () => {
 		};
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.not.objectContaining({
 				processingBaseMethod: 'natural',
 				fermentationType: 'anaerobic',
@@ -243,7 +257,7 @@ describe('/catalog page load', () => {
 		};
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.not.objectContaining({
 				processingBaseMethod: expect.anything(),
 				fermentationType: expect.anything(),
@@ -272,7 +286,7 @@ describe('/catalog page load', () => {
 		};
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.not.objectContaining({ processingBaseMethod: 'natural' })
 		);
 		expect(result.initialCatalogState.filters).not.toHaveProperty('processing_base_method');
@@ -301,7 +315,7 @@ describe('/catalog page load', () => {
 			)) as { catalogAccess: { canUseProcessFacets: boolean }; catalogAccessNotice: null };
 
 			expect(mockSearchCatalog).toHaveBeenCalledWith(
-				{ kind: 'session-client' },
+				expect.objectContaining({ kind: 'session-client' }),
 				expect.objectContaining({
 					processingBaseMethod: 'natural',
 					fermentationType: 'anaerobic',
@@ -352,7 +366,7 @@ describe('/catalog page load', () => {
 		);
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.objectContaining({
 				stockedOnly: true,
 				publicOnly: false,
@@ -361,5 +375,175 @@ describe('/catalog page load', () => {
 				fields: 'resource'
 			})
 		);
+	});
+
+	it('builds member origin price stats from the full member-visible catalog scope', async () => {
+		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const input = makeLoadInput('member', memberSession, 'https://app.test/catalog', [
+			{
+				country: 'Colombia',
+				price_per_lb: 8,
+				cost_lb: 8,
+				price_tiers: null,
+				wholesale: false,
+				source: 'Private A'
+			},
+			{
+				country: 'Colombia',
+				price_per_lb: 9,
+				cost_lb: 9,
+				price_tiers: null,
+				wholesale: false,
+				source: 'Private B'
+			},
+			{
+				country: 'Colombia',
+				price_per_lb: 10,
+				cost_lb: 10,
+				price_tiers: null,
+				wholesale: false,
+				source: 'Private C'
+			}
+		]);
+
+		const result = (await load(input)) as {
+			originPriceStats: Array<{ origin: string; median: number; sample_size: number }>;
+		};
+		const supabase = input.locals.supabase as unknown as ReturnType<typeof makeMockSupabase>;
+
+		expect(supabase.queryChain.eq).toHaveBeenCalledWith('stocked', true);
+		expect(supabase.queryChain.eq).not.toHaveBeenCalledWith('public_coffee', true);
+		expect(result.originPriceStats).toEqual([
+			expect.objectContaining({ origin: 'Colombia', median: 9, sample_size: 3 })
+		]);
+	});
+
+	it('builds origin price stats from the displayed-row scope when wholesale rows are visible', async () => {
+		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const result = (await load(
+			makeLoadInput('member', memberSession, 'https://app.test/catalog?showWholesale=true', [
+				{
+					country: 'Honduras',
+					price_per_lb: 10,
+					cost_lb: 10,
+					price_tiers: null,
+					wholesale: false,
+					source: 'Retail A'
+				},
+				{
+					country: 'Honduras',
+					price_per_lb: 12,
+					cost_lb: 12,
+					price_tiers: null,
+					wholesale: false,
+					source: 'Retail B'
+				},
+				{
+					country: 'Honduras',
+					price_per_lb: 14,
+					cost_lb: 14,
+					price_tiers: null,
+					wholesale: false,
+					source: 'Retail C'
+				},
+				{
+					country: 'Honduras',
+					price_per_lb: 4,
+					cost_lb: 4,
+					price_tiers: null,
+					wholesale: true,
+					source: 'Wholesale A'
+				},
+				{
+					country: 'Honduras',
+					price_per_lb: 5,
+					cost_lb: 5,
+					price_tiers: null,
+					wholesale: true,
+					source: 'Wholesale B'
+				},
+				{
+					country: 'Honduras',
+					price_per_lb: 6,
+					cost_lb: 6,
+					price_tiers: null,
+					wholesale: true,
+					source: 'Wholesale C'
+				}
+			])
+		)) as { originPriceStats: Array<{ origin: string; median: number; sample_size: number }> };
+
+		expect(result.originPriceStats).toEqual([
+			expect.objectContaining({ origin: 'Honduras', median: 8, sample_size: 6 })
+		]);
+	});
+
+	it('parses wholesaleOnly on member catalog loads so wholesale-only views use wholesale medians', async () => {
+		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const result = (await load(
+			makeLoadInput(
+				'member',
+				memberSession,
+				'https://app.test/catalog?showWholesale=true&wholesaleOnly=true',
+				[
+					{
+						country: 'Honduras',
+						price_per_lb: 10,
+						cost_lb: 10,
+						price_tiers: null,
+						wholesale: false,
+						source: 'Retail A'
+					},
+					{
+						country: 'Honduras',
+						price_per_lb: 12,
+						cost_lb: 12,
+						price_tiers: null,
+						wholesale: false,
+						source: 'Retail B'
+					},
+					{
+						country: 'Honduras',
+						price_per_lb: 14,
+						cost_lb: 14,
+						price_tiers: null,
+						wholesale: false,
+						source: 'Retail C'
+					},
+					{
+						country: 'Honduras',
+						price_per_lb: 4,
+						cost_lb: 4,
+						price_tiers: null,
+						wholesale: true,
+						source: 'Wholesale A'
+					},
+					{
+						country: 'Honduras',
+						price_per_lb: 5,
+						cost_lb: 5,
+						price_tiers: null,
+						wholesale: true,
+						source: 'Wholesale B'
+					},
+					{
+						country: 'Honduras',
+						price_per_lb: 6,
+						cost_lb: 6,
+						price_tiers: null,
+						wholesale: true,
+						source: 'Wholesale C'
+					}
+				]
+			)
+		)) as { originPriceStats: Array<{ origin: string; median: number; sample_size: number }> };
+
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: 'session-client' }),
+			expect.objectContaining({ showWholesale: true, wholesaleOnly: true })
+		);
+		expect(result.originPriceStats).toEqual([
+			expect.objectContaining({ origin: 'Honduras', median: 5, sample_size: 3 })
+		]);
 	});
 });

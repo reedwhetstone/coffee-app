@@ -11,6 +11,7 @@ export interface CatalogUrlState {
 	sortField: string | null;
 	sortDirection: 'asc' | 'desc' | null;
 	showWholesale: boolean;
+	wholesaleOnly: boolean;
 	pagination: {
 		page: number;
 		limit: number;
@@ -233,6 +234,7 @@ export function parseCatalogUrlState(url: URL, routeId = '/catalog'): CatalogUrl
 		sortField,
 		sortDirection,
 		showWholesale: url.searchParams.get('showWholesale') === 'true',
+		wholesaleOnly: url.searchParams.get('wholesaleOnly') === 'true',
 		pagination: {
 			page: parsePositiveInteger(url.searchParams.get('page'), DEFAULT_PAGE),
 			limit: parsePositiveInteger(url.searchParams.get('limit'), DEFAULT_LIMIT)
@@ -326,6 +328,9 @@ function buildCatalogQueryParams(
 	if (state.showWholesale) {
 		params.append('showWholesale', 'true');
 	}
+	if (state.wholesaleOnly) {
+		params.append('wholesaleOnly', 'true');
+	}
 
 	for (const filterKey of FILTER_SERIALIZATION_ORDER) {
 		if (filterKey in state.filters) {
@@ -350,6 +355,7 @@ export function createDefaultCatalogUrlState(routeId = '/catalog'): CatalogUrlSt
 		sortField: defaultSort.field,
 		sortDirection: defaultSort.direction,
 		showWholesale: false,
+		wholesaleOnly: false,
 		pagination: {
 			page: DEFAULT_PAGE,
 			limit: DEFAULT_LIMIT

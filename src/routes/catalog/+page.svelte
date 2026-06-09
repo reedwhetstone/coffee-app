@@ -16,6 +16,9 @@
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
+	import { getLotPriceContext } from '$lib/catalog/priceContext';
+	import type { OriginPriceStats, LotPriceContext } from '$lib/catalog/priceContext';
+	import { getDisplayPrice } from '$lib/utils/pricing';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -126,6 +129,106 @@
 			? 'Review supplier comparison evidence'
 			: 'Preview supplier comparison gate'
 	);
+
+	type OriginPriceStatsResponse = {
+		originPriceStats?: OriginPriceStats[];
+	};
+
+	function getOriginStatsScopeKey(showWholesale: boolean, wholesaleOnly: boolean): string {
+		return `${showWholesale ? 'wholesale-visible' : 'retail'}:${wholesaleOnly ? 'only' : 'mixed'}`;
+	}
+
+	function buildOriginStatsParams(showWholesale: boolean, wholesaleOnly: boolean): URLSearchParams {
+		const params = new URLSearchParams();
+		if (showWholesale) params.set('showWholesale', 'true');
+		if (wholesaleOnly) params.set('wholesaleOnly', 'true');
+		return params;
+	}
+
+	let serverOriginPriceStats = $derived((data.originPriceStats ?? []) as OriginPriceStats[]);
+	let serverOriginStatsKey = $derived(
+		getOriginStatsScopeKey(
+			data.initialCatalogState.showWholesale,
+			data.initialCatalogState.wholesaleOnly ?? false
+		)
+	);
+	let originStatsCache = $state<Record<string, OriginPriceStats[]>>({});
+	let originStatsAbortController: AbortController | null = null;
+
+	$effect(() => {
+		originStatsCache = { [serverOriginStatsKey]: serverOriginPriceStats };
+	});
+
+	let activeStatsShowWholesale = $derived(
+		hydratedCatalogState ? $filterStore.showWholesale : data.initialCatalogState.showWholesale
+	);
+	let activeStatsWholesaleOnly = $derived(
+		hydratedCatalogState
+			? $filterStore.wholesaleOnly
+			: (data.initialCatalogState.wholesaleOnly ?? false)
+	);
+
+	let activeOriginStatsKey = $derived(
+		getOriginStatsScopeKey(activeStatsShowWholesale, activeStatsWholesaleOnly)
+	);
+	let currentOriginPriceStats = $derived(
+		originStatsCache[activeOriginStatsKey] ?? serverOriginPriceStats
+	);
+
+	$effect(() => {
+		const key = activeOriginStatsKey;
+		if (originStatsCache[key]) return;
+		if (typeof window === 'undefined') return;
+
+		originStatsAbortController?.abort();
+		const controller = new AbortController();
+		originStatsAbortController = controller;
+		const params = buildOriginStatsParams(activeStatsShowWholesale, activeStatsWholesaleOnly);
+		const queryString = params.toString();
+
+		void fetch(`/api/catalog/origin-price-stats${queryString ? `?${queryString}` : ''}`, {
+			signal: controller.signal
+		})
+			.then(async (response) => {
+				if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+				return (await response.json()) as OriginPriceStatsResponse;
+			})
+			.then((result) => {
+				if (controller.signal.aborted) return;
+				originStatsCache = {
+					...originStatsCache,
+					[key]: result.originPriceStats ?? []
+				};
+			})
+			.catch((error) => {
+				if (error instanceof DOMException && error.name === 'AbortError') return;
+				console.error('Error fetching origin price stats:', error);
+			});
+
+		return () => {
+			controller.abort();
+		};
+	});
+
+	let originPriceMap = $derived(
+		new Map<string, OriginPriceStats>(
+			currentOriginPriceStats.map((s) => [s.origin, s] as [string, OriginPriceStats])
+		)
+	);
+
+	function getCardPriceContext(coffee: CoffeeCatalog): LotPriceContext | null {
+		const price = getDisplayPrice(coffee);
+		return getLotPriceContext(price, originPriceMap.get(coffee.country ?? ''));
+	}
+
+	let activeOriginStats = $derived((): OriginPriceStats | null => {
+		const country = $filterStore.filters.country;
+		let origin: string | null = null;
+		if (Array.isArray(country) && country.length === 1) origin = country[0] as string;
+		else if (typeof country === 'string' && country.length > 0) origin = country;
+		if (!origin) return null;
+		return (originPriceMap.get(origin) as OriginPriceStats | undefined) ?? null;
+	});
 
 	async function handleScroll() {
 		if (!session) {
@@ -576,6 +679,41 @@
 						</div>
 					</div>
 				{:else}
+					{#if activeOriginStats()}
+						{@const stats = activeOriginStats()!}
+						<div
+							class="rounded-lg border border-border-light bg-background-secondary-light px-4 py-3"
+							aria-label="Origin price context"
+						>
+							<p
+								class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light"
+							>
+								{stats.origin} supply context
+							</p>
+							<div class="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+								<span class="text-text-secondary-light">
+									Median
+									<span class="font-semibold text-text-primary-light"
+										>${stats.median.toFixed(2)}/lb</span
+									>
+								</span>
+								<span class="text-text-secondary-light">
+									Range
+									<span class="font-medium text-text-primary-light"
+										>${stats.min.toFixed(2)} – ${stats.max.toFixed(2)}</span
+									>
+								</span>
+								<span class="text-text-secondary-light">
+									<span class="font-medium text-text-primary-light">{stats.supplier_count}</span>
+									{stats.supplier_count === 1 ? 'supplier' : 'suppliers'}
+								</span>
+								<span class="text-text-secondary-light">
+									<span class="font-medium text-text-primary-light">{stats.sample_size}</span> priced
+									lots across all suppliers
+								</span>
+							</div>
+						</div>
+					{/if}
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 						{#each session ? displayData() : displayData().slice(0, 15) as coffee}
 							<CoffeeCard
@@ -583,6 +721,7 @@
 								{parseTastingNotes}
 								showSimilarComparisonAction={true}
 								{canUseBeanMatching}
+								priceContext={getCardPriceContext(coffee)}
 							/>
 						{/each}
 

@@ -53,6 +53,7 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			sortField: null,
 			sortDirection: null,
 			showWholesale: false,
+			wholesaleOnly: false,
 			pagination: { page: 1, limit: 15 }
 		},
 		catalogAccess: {
@@ -121,6 +122,26 @@ beforeEach(() => {
 						countries: ['Colombia'],
 						processing: ['Washed'],
 						processing_base_method: ['Natural']
+					}),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				);
+			}
+
+			if (url.startsWith('/api/catalog/origin-price-stats')) {
+				return new Response(
+					JSON.stringify({
+						originPriceStats: [
+							{
+								origin: 'Colombia',
+								median: 4,
+								q1: 3,
+								q3: 5,
+								min: 2,
+								max: 6,
+								sample_size: 12,
+								supplier_count: 4
+							}
+						]
 					}),
 					{ status: 200, headers: { 'Content-Type': 'application/json' } }
 				);
@@ -287,6 +308,142 @@ describe('/catalog intelligence connective tissue', () => {
 			'href',
 			'/analytics'
 		);
+	});
+});
+
+describe('/catalog price intelligence', () => {
+	const colombiaStats = {
+		origin: 'Colombia',
+		median: 6.0,
+		q1: 4.5,
+		q3: 8.0,
+		min: 3.0,
+		max: 14.0,
+		sample_size: 24,
+		supplier_count: 6
+	};
+
+	it('renders a price context badge on each card when origin stats are available', async () => {
+		renderCatalog(createData({ originPriceStats: [colombiaStats] } as Partial<PageData>));
+
+		// Process Lot is Colombia at $8.50, median is $6.00 → ~42% above → well_above
+		await waitFor(() => {
+			expect(screen.getByText(/above median/i)).toBeInTheDocument();
+		});
+	});
+
+	it('bases card price context on the displayed price instead of price_per_lb', async () => {
+		renderCatalog(
+			createData({
+				data: [
+					{
+						...createData().data[0],
+						price_per_lb: 6,
+						cost_lb: 9,
+						price_tiers: [{ min_lbs: 1, price: 9 }]
+					}
+				],
+				originPriceStats: [{ ...colombiaStats, median: 9 }]
+			} as Partial<PageData>)
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText('Near median')).toBeInTheDocument();
+		});
+		expect(screen.queryByText(/below median/i)).not.toBeInTheDocument();
+	});
+
+	it('does not render price context badges when no origin stats are provided', () => {
+		renderCatalog(createData({ originPriceStats: [] } as Partial<PageData>));
+
+		expect(screen.queryByText(/above median/i)).not.toBeInTheDocument();
+		expect(screen.queryByText(/below median/i)).not.toBeInTheDocument();
+		expect(screen.queryByText('Near median')).not.toBeInTheDocument();
+	});
+
+	it('refreshes origin price stats when the wholesale scope changes after hydration', async () => {
+		const pageData = createData({
+			session: { access_token: 'member-token' } as PageData['session'],
+			role: 'member',
+			catalogAccess: {
+				canViewPublicCatalog: true,
+				canViewFullCatalog: true,
+				canViewWholesale: true,
+				canUseBasicFilters: true,
+				canUseAdvancedFilters: true,
+				canUseProcessFacets: true,
+				canUsePriceScoreRanges: true,
+				canUseAdvancedSorts: true,
+				canViewPremiumFilterMetadata: true,
+				canUseSemanticSearch: true,
+				canUseBeanMatching: true,
+				canUseSavedSearches: true,
+				canExport: true
+			},
+			originPriceStats: [{ ...colombiaStats, median: 8.5 }]
+		} as Partial<PageData>);
+
+		renderCatalog(pageData);
+
+		await waitFor(() => {
+			expect(screen.getByText('Near median')).toBeInTheDocument();
+		});
+
+		filterStore.initializeForRoute(
+			'/catalog',
+			pageData.data as unknown as Record<string, unknown>[],
+			{
+				catalogUrlState: {
+					filters: {},
+					sortField: null,
+					sortDirection: null,
+					showWholesale: true,
+					wholesaleOnly: false,
+					pagination: { page: 1, limit: 15 }
+				},
+				serverData: pageData.data as unknown as Record<string, unknown>[],
+				pagination: pageData.pagination
+			}
+		);
+
+		await waitFor(() => {
+			expect(fetch).toHaveBeenCalledWith(
+				'/api/catalog/origin-price-stats?showWholesale=true',
+				expect.objectContaining({ signal: expect.any(AbortSignal) })
+			);
+			expect(screen.getByText(/above median/i)).toBeInTheDocument();
+		});
+	});
+
+	it('shows origin supply context panel when filtering to a single origin with stats', async () => {
+		renderCatalog(
+			createData({
+				originPriceStats: [colombiaStats],
+				initialCatalogState: {
+					filters: { country: ['Colombia'] },
+					sortField: null,
+					sortDirection: null,
+					showWholesale: false,
+					wholesaleOnly: false,
+					pagination: { page: 1, limit: 15 }
+				}
+			} as Partial<PageData>)
+		);
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Origin price context')).toBeInTheDocument();
+		});
+
+		expect(screen.getByText(/Colombia supply context/i)).toBeInTheDocument();
+		expect(screen.getByText(/\$6\.00\/lb/)).toBeInTheDocument();
+		expect(screen.getByText('24')).toBeInTheDocument();
+		expect(screen.getByText('6')).toBeInTheDocument();
+	});
+
+	it('does not show origin supply context panel when no single origin is filtered', () => {
+		renderCatalog(createData({ originPriceStats: [colombiaStats] } as Partial<PageData>));
+
+		expect(screen.queryByLabelText('Origin price context')).not.toBeInTheDocument();
 	});
 });
 

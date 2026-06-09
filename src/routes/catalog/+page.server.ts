@@ -16,6 +16,7 @@ import {
 	parseCatalogUrlState,
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
+import { loadCatalogOriginPriceStats } from '$lib/server/catalogOriginPriceStats';
 
 function buildPagination(state: CatalogUrlState, total: number) {
 	const totalPages = total > 0 ? Math.ceil(total / state.pagination.limit) : 0;
@@ -61,11 +62,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const visibility = resolveCatalogVisibility({
 		session: locals.session,
 		role: locals.role,
-		showWholesaleRequested: authorizedCatalogState.showWholesale
+		showWholesaleRequested: authorizedCatalogState.showWholesale,
+		wholesaleOnlyRequested: url.searchParams.get('wholesaleOnly') === 'true'
 	});
 	const initialCatalogState: CatalogUrlState = {
 		...authorizedCatalogState,
-		showWholesale: visibility.showWholesale
+		showWholesale: visibility.showWholesale,
+		wholesaleOnly: visibility.wholesaleOnly
 	};
 	const searchState = catalogUrlStateToSearchState(initialCatalogState);
 	let catalogData: Awaited<ReturnType<typeof searchCatalog>>['data'] = [];
@@ -93,6 +96,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const catalogResources = (catalogData ?? []).map(toCatalogResourceItem);
 
+	const originPriceStats = await loadCatalogOriginPriceStats(locals.supabase, visibility);
+
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const schemaService = createSchemaService(baseUrl);
 	const schemaData = schemaService.generateSchemaGraph([
@@ -107,6 +112,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		data: catalogResources,
 		trainingData: catalogResources,
 		initialCatalogState,
+		originPriceStats,
 		ppiAccess:
 			locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false,
 		catalogAccess,

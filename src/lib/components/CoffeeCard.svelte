@@ -21,6 +21,7 @@
 		type CatalogProofSummary
 	} from '$lib/catalog/proofSummary';
 	import { getPurveyorScoreSummary } from '$lib/catalog/purveyorScore';
+	import type { LotPriceContext, LotPriceTier } from '$lib/catalog/priceContext';
 
 	let {
 		coffee,
@@ -30,7 +31,8 @@
 		annotation = '',
 		showSimilarComparisonAction = false,
 		canUseBeanMatching = false,
-		enableDetails = true
+		enableDetails = true,
+		priceContext = null
 	} = $props<{
 		coffee: CoffeeCatalog;
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
@@ -42,7 +44,23 @@
 		similarComparisonActive?: boolean;
 		onCompareSimilar?: (coffee: CoffeeCatalog) => void;
 		enableDetails?: boolean;
+		priceContext?: LotPriceContext | null;
 	}>();
+
+	function priceContextColorClass(tier: LotPriceTier): string {
+		switch (tier) {
+			case 'well_below':
+				return 'text-emerald-600';
+			case 'below':
+				return 'text-emerald-500';
+			case 'at':
+				return 'text-text-secondary-light';
+			case 'above':
+				return 'text-amber-600';
+			case 'well_above':
+				return 'text-red-500';
+		}
+	}
 
 	type ProcessSummary = {
 		base_method?: string | null;
@@ -314,6 +332,14 @@
 				<div class="{compact ? 'text-sm' : 'text-lg'} font-bold text-ink">{priceText}</div>
 				{#if hasMultiplePriceTiers}
 					<div class="text-[11px] text-muted">{priceTiers?.length} tiers</div>
+				{/if}
+				{#if priceContext}
+					<div
+						class="mt-0.5 text-[11px] font-medium {priceContextColorClass(priceContext.tier)}"
+						title="Price relative to {coffee.country ?? 'origin'} median across all stocked lots"
+					>
+						{priceContext.label}
+					</div>
 				{/if}
 			</div>
 		</div>
