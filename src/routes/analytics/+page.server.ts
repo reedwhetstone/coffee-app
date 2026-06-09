@@ -628,6 +628,18 @@ export const load: PageServerLoad = async (event) => {
 	let comparisonBeans: ComparisonBean[] = [];
 	let supplierHealth: SupplierHealthRow[] = [];
 
+	// Watchlist context: members and Parchment Intelligence users see their tracked
+	// lots read against the live index scope. Kicked off here so it runs alongside
+	// the entitled-user queries below.
+	const isSourcingMember = event.locals.role === 'member' || event.locals.role === 'admin';
+	const trackedLotsPromise: Promise<TrackedLotSummary[]> =
+		principal.isAuthenticated && (isParchmentIntelligence || isSourcingMember)
+			? getTrackedLotSummaries(supabase, principal.userId, 25).catch((error) => {
+					console.error('Error loading analytics watchlist context:', error);
+					return [] as TrackedLotSummary[];
+				})
+			: Promise.resolve([]);
+
 	if (isParchmentIntelligence) {
 		const [{ data: comparisonBeansRaw }, { data: supplierStatsRaw }] = await Promise.all([
 			// Supplier comparison beans
@@ -681,17 +693,7 @@ export const load: PageServerLoad = async (event) => {
 			}));
 	}
 
-	// Watchlist context: members and Parchment Intelligence users see their tracked
-	// lots read against the live index scope.
-	const isSourcingMember = event.locals.role === 'member' || event.locals.role === 'admin';
-	let trackedLots: TrackedLotSummary[] = [];
-	if (principal.isAuthenticated && (isParchmentIntelligence || isSourcingMember)) {
-		try {
-			trackedLots = await getTrackedLotSummaries(supabase, principal.userId, 25);
-		} catch (error) {
-			console.error('Error loading analytics watchlist context:', error);
-		}
-	}
+	const trackedLots = await trackedLotsPromise;
 
 	const baseUrl = `${event.url.protocol}//${event.url.host}`;
 	const schemaService = createSchemaService(baseUrl);

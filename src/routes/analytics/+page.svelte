@@ -216,22 +216,43 @@
 		);
 		const byOrigin = new Map<
 			string,
-			{ sum: number; count: number; suppliers: number; sample_size: number }
+			{
+				sum: number;
+				count: number;
+				suppliers: number;
+				sample_size: number;
+				min: number | null;
+				max: number | null;
+			}
 		>();
 		for (const s of filteredSnapshots) {
 			if (s.snapshot_date !== latestDate || s.price_avg == null) continue;
-			const cur = byOrigin.get(s.origin) ?? { sum: 0, count: 0, suppliers: 0, sample_size: 0 };
+			const cur = byOrigin.get(s.origin) ?? {
+				sum: 0,
+				count: 0,
+				suppliers: 0,
+				sample_size: 0,
+				min: null,
+				max: null
+			};
 			cur.sum += s.price_avg;
 			cur.count += 1;
 			cur.suppliers = Math.max(cur.suppliers, s.supplier_count);
 			cur.sample_size += s.sample_size ?? 0;
+			// Snapshots are per origin+process; the table reports the origin-wide range.
+			if (s.price_min != null)
+				cur.min = cur.min == null ? s.price_min : Math.min(cur.min, s.price_min);
+			if (s.price_max != null)
+				cur.max = cur.max == null ? s.price_max : Math.max(cur.max, s.price_max);
 			byOrigin.set(s.origin, cur);
 		}
 		return Array.from(byOrigin.entries()).map(([origin, v]) => ({
 			origin,
 			price_avg: Math.round((v.sum / v.count) * 100) / 100,
 			supplier_count: v.suppliers,
-			sample_size: v.sample_size
+			sample_size: v.sample_size,
+			price_min: v.min,
+			price_max: v.max
 		}));
 	});
 
@@ -316,22 +337,27 @@
 				? weekAgoCandidates[weekAgoCandidates.length - 1]
 				: dates[0];
 
-			const averageByOrigin = (date: string) => {
-				const byOrigin = new Map<string, { sum: number; count: number }>();
-				for (const s of filteredSnapshots) {
-					if (s.snapshot_date !== date || s.price_avg == null) continue;
-					const cur = byOrigin.get(s.origin) ?? { sum: 0, count: 0 };
-					cur.sum += s.price_avg;
-					cur.count += 1;
-					byOrigin.set(s.origin, cur);
-				}
-				return new Map(
-					Array.from(byOrigin.entries()).map(([origin, v]) => [origin, v.sum / v.count])
-				);
-			};
+			const latestAcc = new Map<string, { sum: number; count: number }>();
+			const baselineAcc = new Map<string, { sum: number; count: number }>();
+			for (const s of filteredSnapshots) {
+				if (s.price_avg == null) continue;
+				const acc =
+					s.snapshot_date === latestDate
+						? latestAcc
+						: s.snapshot_date === baselineDate
+							? baselineAcc
+							: null;
+				if (!acc) continue;
+				const cur = acc.get(s.origin) ?? { sum: 0, count: 0 };
+				cur.sum += s.price_avg;
+				cur.count += 1;
+				acc.set(s.origin, cur);
+			}
+			const toAverages = (acc: Map<string, { sum: number; count: number }>) =>
+				new Map(Array.from(acc.entries()).map(([origin, v]) => [origin, v.sum / v.count]));
 
-			const latestByOrigin = averageByOrigin(latestDate);
-			const baselineByOrigin = averageByOrigin(baselineDate);
+			const latestByOrigin = toAverages(latestAcc);
+			const baselineByOrigin = toAverages(baselineAcc);
 			const movers: OriginMover[] = [];
 			for (const [origin, latest] of latestByOrigin) {
 				const baseline = baselineByOrigin.get(origin);
@@ -730,7 +756,7 @@
 				title:
 					baselineDate === null
 						? 'Week-over-week price movement needs a second comparable snapshot.'
-						: `Origin medians are flat week-over-week (within ±$0.05/lb) in the ${viewModeLabel} scope.`,
+						: `Origin averages are flat week-over-week (within ±$0.05/lb) in the ${viewModeLabel} scope.`,
 				body: `The latest ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb across ${latestSnapshotRows.length} origin rows. Origin ranges below show how that average distributes.`,
 				evidence:
 					baselineDate === null
@@ -1660,14 +1686,10 @@
 												>${row.price_avg.toFixed(2)}</td
 											>
 											<td class="py-2 pr-4 text-right text-text-secondary-light"
-												>{latestSnapshotRows
-													.find((s) => s.origin === row.origin)
-													?.price_min?.toFixed(2) ?? '—'}</td
+												>{row.price_min?.toFixed(2) ?? '—'}</td
 											>
 											<td class="py-2 pr-4 text-right text-text-secondary-light"
-												>{latestSnapshotRows
-													.find((s) => s.origin === row.origin)
-													?.price_max?.toFixed(2) ?? '—'}</td
+												>{row.price_max?.toFixed(2) ?? '—'}</td
 											>
 											<td class="py-2 text-right text-text-secondary-light">{row.supplier_count}</td
 											>
