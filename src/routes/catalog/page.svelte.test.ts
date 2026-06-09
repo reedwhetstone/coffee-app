@@ -242,12 +242,12 @@ describe('/catalog intelligence connective tissue', () => {
 		);
 		expect(screen.getByRole('link', { name: 'Preview supplier comparison gate' })).toHaveAttribute(
 			'href',
-			'/analytics#supplier-comparison'
+			'/analytics'
 		);
 		expect(screen.queryByText(/save sourcing research/i)).not.toBeInTheDocument();
 	});
 
-	it('uses entitled supplier comparison copy when Parchment Intelligence access is available', () => {
+	it('deep-links to supplier comparison only when Parchment Intelligence access makes the anchor concrete', () => {
 		renderCatalog(
 			createData({
 				session: { access_token: 'ppi-token' } as PageData['session'],

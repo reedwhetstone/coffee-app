@@ -118,7 +118,9 @@
 	let visibleOriginCount = $derived(countDistinctCatalogValues(displayData(), 'country'));
 	let visibleSupplierCount = $derived(countDistinctCatalogValues(displayData(), 'source'));
 	let visiblePricedCount = $derived(displayData().filter(hasCatalogPriceEvidence).length);
-	let supplierComparisonHref = $derived('/analytics#supplier-comparison');
+	let supplierComparisonHref = $derived(
+		canUseParchmentIntelligence ? '/analytics#supplier-comparison' : '/analytics'
+	);
 	let supplierComparisonLabel = $derived(
 		canUseParchmentIntelligence
 			? 'Review supplier comparison evidence'
