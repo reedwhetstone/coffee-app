@@ -1030,7 +1030,7 @@
 	</div>
 </section>
 
-<div class="relative mb-8">
+<div id="supplier-comparison" class="relative mb-8">
 	{#if !isParchmentIntelligence}
 		<div class="pointer-events-none select-none">
 			<div class="mb-8 blur-sm filter">
@@ -1242,7 +1242,7 @@
 			</div>
 		</div>
 	{:else}
-		<div id="supplier-comparison" class="space-y-6">
+		<div class="space-y-6">
 			<ExpandablePanel
 				title="Supplier price comparison"
 				subtitle="Compare current supplier pricing for a selected origin."

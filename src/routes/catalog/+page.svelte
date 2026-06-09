@@ -118,9 +118,7 @@
 	let visibleOriginCount = $derived(countDistinctCatalogValues(displayData(), 'country'));
 	let visibleSupplierCount = $derived(countDistinctCatalogValues(displayData(), 'source'));
 	let visiblePricedCount = $derived(displayData().filter(hasCatalogPriceEvidence).length);
-	let supplierComparisonHref = $derived(
-		canUseParchmentIntelligence ? '/analytics#supplier-comparison' : '/analytics'
-	);
+	let supplierComparisonHref = $derived('/analytics#supplier-comparison');
 	let supplierComparisonLabel = $derived(
 		canUseParchmentIntelligence
 			? 'Review supplier comparison evidence'
@@ -509,7 +507,7 @@
 			</div>
 		{/if}
 
-		{#if session && !hasRequiredRole('member') && !canUseParchmentIntelligence}
+		{#if session && !hasRequiredRole('member')}
 			<div class="rounded-lg border border-background-tertiary-light/20 bg-accent-subtle/10 p-6">
 				<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
 					<div class="text-center sm:text-left">
