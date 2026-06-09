@@ -421,8 +421,19 @@
 						onToggleTrack(coffee.id as unknown as number);
 					}}
 				>
-					<svg class="h-4 w-4" fill={tracked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+					<svg
+						class="h-4 w-4"
+						fill={tracked ? 'currentColor' : 'none'}
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+						/>
 					</svg>
 				</button>
 			{/if}

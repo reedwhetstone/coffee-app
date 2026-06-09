@@ -96,8 +96,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const catalogResources = (catalogData ?? []).map(toCatalogResourceItem);
 
 	const userId = locals.principal?.isAuthenticated ? locals.principal.userId : null;
-	const isMember =
-		locals.role === 'member' || locals.role === 'admin';
+	const isMember = locals.role === 'member' || locals.role === 'admin';
 	const hasParchmentAccess =
 		isMember || (locals.principal?.isAuthenticated === true && locals.principal.ppiAccess === true);
 

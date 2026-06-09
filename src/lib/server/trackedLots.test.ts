@@ -1,53 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { getTrackedLotIds, toggleTrackedLot } from './trackedLots';
-
-function makeClient(rows: unknown[] = [], existingRow: unknown = null) {
-	const chainWithRows = {
-		select: vi.fn().mockReturnThis(),
-		eq: vi.fn().mockReturnThis(),
-		order: vi.fn().mockResolvedValue({ data: rows, error: null }),
-		maybeSingle: vi.fn().mockResolvedValue({ data: existingRow, error: null }),
-		single: vi.fn().mockResolvedValue({
-			data: { tracked_at: '2026-06-09T00:00:00Z' },
-			error: null
-		})
-	};
-	const deleteChain = {
-		eq: vi.fn().mockReturnThis()
-		// second eq resolves
-		// We chain two .eq() calls
-	};
-	// Make delete chain return resolved value on second .eq()
-	let deleteEqCount = 0;
-	deleteChain.eq.mockImplementation(() => {
-		deleteEqCount++;
-		if (deleteEqCount >= 2) return Promise.resolve({ error: null });
-		return deleteChain;
-	});
-
-	const insertChain = {
-		select: vi.fn().mockReturnThis(),
-		single: vi.fn().mockResolvedValue({ data: { tracked_at: '2026-06-09T00:00:00Z' }, error: null })
-	};
-	const insertBase = {
-		insert: vi.fn().mockReturnValue(insertChain)
-	};
-
-	return {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		from: vi.fn((table: string) => {
-			if (table === 'tracked_lots') {
-				return {
-					select: vi.fn().mockReturnValue(chainWithRows),
-					delete: vi.fn().mockReturnValue(deleteChain),
-					insert: vi.fn().mockReturnValue(insertChain),
-					eq: vi.fn().mockReturnThis()
-				};
-			}
-			return {};
-		})
-	};
-}
 
 describe('getTrackedLotIds', () => {
 	it('returns empty array when user has no tracked lots', async () => {
