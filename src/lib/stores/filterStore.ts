@@ -25,6 +25,7 @@ type FilterState = {
 	sortField: string | null;
 	sortDirection: 'asc' | 'desc' | null;
 	showWholesale: boolean;
+	wholesaleOnly: boolean;
 	filters: Record<string, FilterValue>;
 	uniqueValues: Record<string, unknown[]>;
 	originalData: DataItem[]; // Keep for backward compatibility
@@ -69,6 +70,7 @@ const initialState: FilterState = {
 	sortField: null,
 	sortDirection: null,
 	showWholesale: false,
+	wholesaleOnly: false,
 	filters: {},
 	uniqueValues: {},
 	originalData: [],
@@ -97,6 +99,7 @@ function createFilterStore() {
 			sortField: state.sortField,
 			sortDirection: state.sortDirection,
 			showWholesale: state.showWholesale,
+			wholesaleOnly: state.wholesaleOnly,
 			pagination: {
 				page: state.pagination.page,
 				limit: state.pagination.limit
@@ -188,6 +191,9 @@ function createFilterStore() {
 			if (state.showWholesale) {
 				params.append('showWholesale', 'true');
 			}
+			if (state.wholesaleOnly) {
+				params.append('wholesaleOnly', 'true');
+			}
 
 			const response = await fetch(`/api/catalog/filters?${params.toString()}`);
 
@@ -238,6 +244,7 @@ function createFilterStore() {
 			const { field, direction } = getDefaultSortSettings(routeId);
 			state.filters = isServerSideRoute ? { ...catalogUrlState.filters } : {};
 			state.showWholesale = isServerSideRoute ? catalogUrlState.showWholesale : false;
+			state.wholesaleOnly = isServerSideRoute ? catalogUrlState.wholesaleOnly : false;
 			state.sortField = isServerSideRoute ? catalogUrlState.sortField : field;
 			state.sortDirection = isServerSideRoute ? catalogUrlState.sortDirection : direction;
 
@@ -452,6 +459,9 @@ function createFilterStore() {
 	function setShowWholesale(showWholesale: boolean) {
 		update((state) => {
 			state.showWholesale = showWholesale;
+			if (!showWholesale) {
+				state.wholesaleOnly = false;
+			}
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
 			}
@@ -506,6 +516,7 @@ function createFilterStore() {
 		update((state) => {
 			state.filters = {};
 			state.showWholesale = false;
+			state.wholesaleOnly = false;
 			// Reset to first page for server-side routes
 			if (isCatalogRoute(state.routeId)) {
 				state.pagination.page = 1;
@@ -935,7 +946,7 @@ function createFilterStore() {
 					}
 
 					// Optimized processing - avoid unnecessary work
-					const cacheKey = `${state.sortField}-${state.sortDirection}-${state.showWholesale}-${JSON.stringify(state.filters)}`;
+					const cacheKey = `${state.sortField}-${state.sortDirection}-${state.showWholesale}-${state.wholesaleOnly}-${JSON.stringify(state.filters)}`;
 					if (cacheKey === state.lastProcessedString && state.filteredData.length > 0) {
 						state.processing = false;
 						return state;

@@ -69,6 +69,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 					sortField: 'score_value',
 					sortDirection: 'asc',
 					showWholesale: true,
+					wholesaleOnly: false,
 					pagination: { page: 2, limit: 15 }
 				},
 				serverData: [{ id: 1, stocked_date: '2026-04-05', wholesale: false }],
@@ -92,6 +93,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 		const state = get(filterStore);
 		expect(state.filters).toEqual({});
 		expect(state.showWholesale).toBe(false);
+		expect(state.wholesaleOnly).toBe(false);
 		expect(state.sortField).toBe('score_value');
 		expect(state.sortDirection).toBe('asc');
 		expect(state.pagination.page).toBe(1);
@@ -184,6 +186,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 				sortField: null,
 				sortDirection: null,
 				showWholesale: false,
+				wholesaleOnly: false,
 				pagination: { page: 2, limit: 15 }
 			},
 			serverData: [],
@@ -256,6 +259,7 @@ describe('filterStore catalog URL and filter clearing behavior', () => {
 					sortField: null,
 					sortDirection: null,
 					showWholesale: false,
+					wholesaleOnly: false,
 					pagination: { page: 2, limit: 15 }
 				},
 				serverData: [{ id: 1, stocked_date: '2026-04-05', wholesale: false }]

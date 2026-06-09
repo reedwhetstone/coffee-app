@@ -16,8 +16,7 @@ import {
 	parseCatalogUrlState,
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
-import { buildOriginPriceMap, type OriginPriceStats } from '$lib/catalog/priceContext';
-import type { Json } from '$lib/types/database.types';
+import { loadCatalogOriginPriceStats } from '$lib/server/catalogOriginPriceStats';
 
 function buildPagination(state: CatalogUrlState, total: number) {
 	const totalPages = total > 0 ? Math.ceil(total / state.pagination.limit) : 0;
@@ -68,7 +67,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	});
 	const initialCatalogState: CatalogUrlState = {
 		...authorizedCatalogState,
-		showWholesale: visibility.showWholesale
+		showWholesale: visibility.showWholesale,
+		wholesaleOnly: visibility.wholesaleOnly
 	};
 	const searchState = catalogUrlStateToSearchState(initialCatalogState);
 	let catalogData: Awaited<ReturnType<typeof searchCatalog>>['data'] = [];
@@ -96,30 +96,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const catalogResources = (catalogData ?? []).map(toCatalogResourceItem);
 
-	const priceScope = visibility.wholesaleOnly
-		? 'wholesale'
-		: visibility.showWholesale
-			? 'all'
-			: 'retail';
-	const { data: pricingRows } = await locals.supabase
-		.from('coffee_catalog')
-		.select('country, price_per_lb, cost_lb, price_tiers, wholesale, source')
-		.eq('stocked', true)
-		.eq('public_coffee', true)
-		.limit(5000);
-	const originPriceStats: OriginPriceStats[] = Array.from(
-		buildOriginPriceMap(
-			(pricingRows ?? []) as {
-				country: string | null;
-				price_per_lb: number | null;
-				cost_lb: number | null;
-				price_tiers: Json | null;
-				wholesale: boolean;
-				source: string | null;
-			}[],
-			priceScope
-		).values()
-	);
+	const originPriceStats = await loadCatalogOriginPriceStats(locals.supabase, visibility);
 
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const schemaService = createSchemaService(baseUrl);

@@ -97,7 +97,8 @@ function makeMockSupabase(pricingRows: Array<Record<string, unknown>> = []) {
 	};
 	return {
 		kind: 'session-client',
-		from: vi.fn().mockReturnValue(queryChain)
+		from: vi.fn().mockReturnValue(queryChain),
+		queryChain
 	};
 }
 
@@ -374,6 +375,47 @@ describe('/catalog page load', () => {
 				fields: 'resource'
 			})
 		);
+	});
+
+	it('builds member origin price stats from the full member-visible catalog scope', async () => {
+		const memberSession = { access_token: 'cookie-token' } as App.Locals['session'];
+		const input = makeLoadInput('member', memberSession, 'https://app.test/catalog', [
+			{
+				country: 'Colombia',
+				price_per_lb: 8,
+				cost_lb: 8,
+				price_tiers: null,
+				wholesale: false,
+				source: 'Private A'
+			},
+			{
+				country: 'Colombia',
+				price_per_lb: 9,
+				cost_lb: 9,
+				price_tiers: null,
+				wholesale: false,
+				source: 'Private B'
+			},
+			{
+				country: 'Colombia',
+				price_per_lb: 10,
+				cost_lb: 10,
+				price_tiers: null,
+				wholesale: false,
+				source: 'Private C'
+			}
+		]);
+
+		const result = (await load(input)) as {
+			originPriceStats: Array<{ origin: string; median: number; sample_size: number }>;
+		};
+		const supabase = input.locals.supabase as unknown as ReturnType<typeof makeMockSupabase>;
+
+		expect(supabase.queryChain.eq).toHaveBeenCalledWith('stocked', true);
+		expect(supabase.queryChain.eq).not.toHaveBeenCalledWith('public_coffee', true);
+		expect(result.originPriceStats).toEqual([
+			expect.objectContaining({ origin: 'Colombia', median: 9, sample_size: 3 })
+		]);
 	});
 
 	it('builds origin price stats from the displayed-row scope when wholesale rows are visible', async () => {

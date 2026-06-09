@@ -130,11 +130,89 @@
 			: 'Preview supplier comparison gate'
 	);
 
+	type OriginPriceStatsResponse = {
+		originPriceStats?: OriginPriceStats[];
+	};
+
+	function getOriginStatsScopeKey(showWholesale: boolean, wholesaleOnly: boolean): string {
+		return `${showWholesale ? 'wholesale-visible' : 'retail'}:${wholesaleOnly ? 'only' : 'mixed'}`;
+	}
+
+	function buildOriginStatsParams(showWholesale: boolean, wholesaleOnly: boolean): URLSearchParams {
+		const params = new URLSearchParams();
+		if (showWholesale) params.set('showWholesale', 'true');
+		if (wholesaleOnly) params.set('wholesaleOnly', 'true');
+		return params;
+	}
+
+	let serverOriginPriceStats = $derived((data.originPriceStats ?? []) as OriginPriceStats[]);
+	let serverOriginStatsKey = $derived(
+		getOriginStatsScopeKey(
+			data.initialCatalogState.showWholesale,
+			data.initialCatalogState.wholesaleOnly ?? false
+		)
+	);
+	let originStatsCache = $state<Record<string, OriginPriceStats[]>>({});
+	let originStatsAbortController: AbortController | null = null;
+
+	$effect(() => {
+		originStatsCache = { [serverOriginStatsKey]: serverOriginPriceStats };
+	});
+
+	let activeStatsShowWholesale = $derived(
+		hydratedCatalogState ? $filterStore.showWholesale : data.initialCatalogState.showWholesale
+	);
+	let activeStatsWholesaleOnly = $derived(
+		hydratedCatalogState
+			? $filterStore.wholesaleOnly
+			: (data.initialCatalogState.wholesaleOnly ?? false)
+	);
+
+	let activeOriginStatsKey = $derived(
+		getOriginStatsScopeKey(activeStatsShowWholesale, activeStatsWholesaleOnly)
+	);
+	let currentOriginPriceStats = $derived(
+		originStatsCache[activeOriginStatsKey] ?? serverOriginPriceStats
+	);
+
+	$effect(() => {
+		const key = activeOriginStatsKey;
+		if (originStatsCache[key]) return;
+		if (typeof window === 'undefined') return;
+
+		originStatsAbortController?.abort();
+		const controller = new AbortController();
+		originStatsAbortController = controller;
+		const params = buildOriginStatsParams(activeStatsShowWholesale, activeStatsWholesaleOnly);
+		const queryString = params.toString();
+
+		void fetch(`/api/catalog/origin-price-stats${queryString ? `?${queryString}` : ''}`, {
+			signal: controller.signal
+		})
+			.then(async (response) => {
+				if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+				return (await response.json()) as OriginPriceStatsResponse;
+			})
+			.then((result) => {
+				if (controller.signal.aborted) return;
+				originStatsCache = {
+					...originStatsCache,
+					[key]: result.originPriceStats ?? []
+				};
+			})
+			.catch((error) => {
+				if (error instanceof DOMException && error.name === 'AbortError') return;
+				console.error('Error fetching origin price stats:', error);
+			});
+
+		return () => {
+			controller.abort();
+		};
+	});
+
 	let originPriceMap = $derived(
 		new Map<string, OriginPriceStats>(
-			((data.originPriceStats ?? []) as OriginPriceStats[]).map(
-				(s) => [s.origin, s] as [string, OriginPriceStats]
-			)
+			currentOriginPriceStats.map((s) => [s.origin, s] as [string, OriginPriceStats])
 		)
 	);
 

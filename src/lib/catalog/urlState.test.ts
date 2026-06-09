@@ -10,7 +10,7 @@ import {
 describe('catalog URL state helpers', () => {
 	it('parses canonical catalog query params into route state', () => {
 		const url = new URL(
-			'https://app.test/catalog?country=Ethiopia&country=Colombia&processing=Washed&processing_base_method=washed&fermentation_type=anaerobic&process_additive=fruit&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8&name=guji&price_per_lb_min=7.5&price_per_lb_max=9&page=2&showWholesale=true'
+			'https://app.test/catalog?country=Ethiopia&country=Colombia&processing=Washed&processing_base_method=washed&fermentation_type=anaerobic&process_additive=fruit&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8&name=guji&price_per_lb_min=7.5&price_per_lb_max=9&page=2&showWholesale=true&wholesaleOnly=true'
 		);
 
 		const state = parseCatalogUrlState(url, '/catalog');
@@ -34,6 +34,7 @@ describe('catalog URL state helpers', () => {
 			sortField: null,
 			sortDirection: null,
 			showWholesale: true,
+			wholesaleOnly: true,
 			pagination: {
 				page: 2,
 				limit: 15
@@ -59,6 +60,19 @@ describe('catalog URL state helpers', () => {
 
 		expect(params.toString()).toBe(
 			'country=Ethiopia&processing=Washed&processing_base_method=washed&fermentation_type=anaerobic&process_additive=fruit&has_additives=true&processing_disclosure_level=high_detail&processing_confidence_min=0.8&price_per_lb_min=7.5'
+		);
+	});
+
+	it('preserves wholesale-only catalog URLs for member-scoped views', () => {
+		const state = createDefaultCatalogUrlState('/catalog');
+		state.showWholesale = true;
+		state.wholesaleOnly = true;
+
+		expect(buildCatalogRequestParams(state, '/catalog').toString()).toBe(
+			'page=1&limit=15&showWholesale=true&wholesaleOnly=true'
+		);
+		expect(buildCatalogShareParams(state, '/catalog').toString()).toBe(
+			'showWholesale=true&wholesaleOnly=true'
 		);
 	});
 
