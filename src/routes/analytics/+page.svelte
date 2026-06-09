@@ -50,6 +50,11 @@
 	type TrendRange = '90d' | '6m' | '1y';
 	type WindowMode = '7d' | '30d';
 	let trendRange = $state<TrendRange>('90d');
+	const TREND_RANGE_OPTIONS: { value: TrendRange; label: string }[] = [
+		{ value: '90d', label: '90 days' },
+		{ value: '6m', label: '6 months' },
+		{ value: '1y', label: '1 year' }
+	];
 	let windowMode = $state<WindowMode>('7d');
 
 	let {
@@ -256,7 +261,7 @@
 		}));
 	});
 
-	let lineSnapshots = $derived(filteredSnapshots.filter((s) => s.price_avg != null));
+	let lineSnapshots = $derived(trendSnapshots.filter((s) => s.price_avg != null));
 	let hasSnapshots = $derived(filteredSnapshots.length > 0);
 
 	function movementWindowCutoff(cutoffDays: number) {
@@ -1035,7 +1040,7 @@
 				</h2>
 			</div>
 			<a
-				href="/catalog"
+				href="/catalog?tracked=only"
 				class="text-sm font-medium text-background-tertiary-light hover:text-text-primary-light"
 			>
 				Manage watchlist
@@ -1103,7 +1108,7 @@
 <section class="mb-8 space-y-6" aria-label="Evidence charts">
 	<ExpandablePanel
 		title="Origin price trends"
-		subtitle="Average $/lb by top origins over the last 30 days, ranked by market activity"
+		subtitle="Average $/lb by top origins, ranked by market activity"
 		collapsedMaxHeight="420px"
 		showGradient={false}
 		onExpandChange={(v) => (lineChartExpanded = v)}
@@ -1111,17 +1116,42 @@
 		<AnalyticsLoadingPanel
 			ready={Boolean(OriginLineChartComponent)}
 			title="Origin price trends"
-			description="Loading 30-day origin price history."
+			description="Loading origin price history."
 			height={lineChartExpanded ? 'h-[60vh]' : 'h-64'}
 			errorMessage={publicChartsError}
 			onRetry={retryPublicCharts}
 		>
 			<div class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm">
 				<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Origin price trends</h2>
-				<p class="mb-4 text-sm text-text-secondary-light">
-					Average $/lb by top origins over the last 30 days, ranked by market activity
+				<p class="mb-3 text-sm text-text-secondary-light">
+					Average $/lb by top origins, ranked by market activity
 					{#if viewMode === 'retail'}(retail){:else if viewMode === 'wholesale'}(wholesale){:else}(all){/if}
 				</p>
+				<div class="mb-4 flex items-center gap-2">
+					<span class="text-xs font-medium text-text-secondary-light">Range:</span>
+					<div
+						class="flex rounded-full border border-border-light bg-background-secondary-light p-0.5 shadow-sm"
+					>
+						{#each TREND_RANGE_OPTIONS as opt}
+							{@const locked = opt.value !== '90d' && !isParchmentIntelligence}
+							<button
+								onclick={() => {
+									if (!locked) trendRange = opt.value;
+								}}
+								disabled={locked}
+								title={locked ? 'Longer horizons require Parchment Intelligence' : undefined}
+								class="rounded-full px-3 py-1 text-xs font-medium transition-all duration-150
+									{trendRange === opt.value
+									? 'bg-background-tertiary-light text-white shadow-sm'
+									: locked
+										? 'cursor-not-allowed text-text-secondary-light/50'
+										: 'text-text-secondary-light hover:text-text-primary-light'}"
+							>
+								{opt.label}{locked ? ' 🔒' : ''}
+							</button>
+						{/each}
+					</div>
+				</div>
 				<div class={lineChartExpanded ? 'h-[60vh] w-full' : 'h-64 w-full'}>
 					{#if OriginLineChartComponent}
 						<OriginLineChartComponent
@@ -1710,38 +1740,15 @@
 				</div>
 			</ExpandablePanel>
 
-			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-				<AnalyticsLoadingPanel
-					ready={Boolean(PriceTierChartComponent)}
-					title="Price spread analysis"
-					description="Loading the latest origin price spread analysis."
-					height="h-64"
-					panelClass="border-background-tertiary-light/20"
-					errorMessage={memberVisualsError}
-					onRetry={retryMemberVisuals}
-				>
-					<div
-						class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
-					>
-						<div class="mb-2 flex items-center gap-2">
-							<span
-								class="text-sm font-semibold uppercase tracking-wide text-background-tertiary-light"
-								>Parchment Intelligence</span
-							>
-						</div>
-						<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
-							Price spread analysis
-						</h2>
-						<p class="mb-4 text-sm text-text-secondary-light">
-							Retail versus wholesale median price by origin in the latest snapshot. This chart
-							always shows both scopes so the spread stays comparable.
-						</p>
-						{#if PriceTierChartComponent}
-							<PriceTierChartComponent {snapshots} />
-						{/if}
-					</div>
-				</AnalyticsLoadingPanel>
-
+			<AnalyticsLoadingPanel
+				ready={Boolean(PriceTierChartComponent)}
+				title="Price spread analysis"
+				description="Loading the latest origin price spread analysis."
+				height="h-64"
+				panelClass="border-background-tertiary-light/20"
+				errorMessage={memberVisualsError}
+				onRetry={retryMemberVisuals}
+			>
 				<div
 					class="rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-6 shadow-sm"
 				>
@@ -1751,39 +1758,16 @@
 							>Parchment Intelligence</span
 						>
 					</div>
-					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">
-						Longer-term trend detail
-					</h2>
+					<h2 class="mb-1 text-xl font-semibold text-text-primary-light">Price spread analysis</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
-						Price trends across longer time horizons for {viewModeLabel} origins
+						Retail versus wholesale median price by origin in the latest snapshot. This chart always
+						shows both scopes so the spread stays comparable.
 					</p>
-					<div class="mb-3 flex items-center gap-2">
-						<span class="text-xs font-medium text-text-secondary-light">Range:</span>
-						<div
-							class="flex rounded-full border border-border-light bg-background-secondary-light p-0.5 shadow-sm"
-						>
-							{#each [{ value: '90d', label: '90 days' }, { value: '6m', label: '6 months' }, { value: '1y', label: '1 year' }] as opt}
-								<button
-									onclick={() => (trendRange = opt.value as TrendRange)}
-									class="rounded-full px-3 py-1 text-xs font-medium transition-all duration-150
-										{trendRange === opt.value
-										? 'bg-background-tertiary-light text-white shadow-sm'
-										: 'text-text-secondary-light hover:text-text-primary-light'}"
-								>
-									{opt.label}
-								</button>
-							{/each}
-						</div>
-					</div>
-					<div class="h-64">
-						{#if OriginLineChartComponent}
-							<OriginLineChartComponent snapshots={trendSnapshots} mode="price" />
-						{:else}
-							<div class="h-full animate-pulse rounded-xl bg-background-secondary-light/80"></div>
-						{/if}
-					</div>
+					{#if PriceTierChartComponent}
+						<PriceTierChartComponent {snapshots} />
+					{/if}
 				</div>
-			</div>
+			</AnalyticsLoadingPanel>
 		</div>
 	{/if}
 </div>

@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { searchCatalog } from '$lib/data/catalog';
+import { getCatalogItemsByIds, searchCatalog } from '$lib/data/catalog';
 import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
 import {
 	describeSourcingBriefCriteria,
@@ -43,13 +43,26 @@ export const load: PageServerLoad = async ({ locals }) => {
 		return { data: [] };
 	});
 
-	const trackedPromise =
+	// Summaries carry tracking context (status/delta); the full catalog rows let the
+	// dashboard render CoffeeCards whose detail panels open in place.
+	const trackedPromise: Promise<{
+		summaries: TrackedLotSummary[];
+		catalog: Record<string, unknown>[];
+	}> =
 		userId && hasSourcingAccess
-			? getTrackedLotSummaries(locals.supabase, userId, 12).catch((error) => {
-					console.error('Error loading dashboard watchlist:', error);
-					return [] as TrackedLotSummary[];
-				})
-			: Promise.resolve([] as TrackedLotSummary[]);
+			? getTrackedLotSummaries(locals.supabase, userId, 12)
+					.then(async (summaries) => ({
+						summaries,
+						catalog: (await getCatalogItemsByIds(
+							locals.supabase,
+							summaries.map((lot) => lot.catalogId)
+						)) as unknown as Record<string, unknown>[]
+					}))
+					.catch((error) => {
+						console.error('Error loading dashboard watchlist:', error);
+						return { summaries: [] as TrackedLotSummary[], catalog: [] };
+					})
+			: Promise.resolve({ summaries: [] as TrackedLotSummary[], catalog: [] });
 
 	const briefsPromise =
 		userId && isMember
@@ -67,7 +80,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				})
 			: Promise.resolve({ data: null });
 
-	const [arrivalsResult, trackedLots, briefRows] = await Promise.all([
+	const [arrivalsResult, trackedResult, briefRows] = await Promise.all([
 		arrivalsPromise,
 		trackedPromise,
 		briefsPromise
@@ -94,7 +107,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		recentArrivals,
-		trackedLots,
+		trackedLots: trackedResult.summaries,
+		trackedCatalog: trackedResult.catalog,
 		activeBriefs
 	};
 };

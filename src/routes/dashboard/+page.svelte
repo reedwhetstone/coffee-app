@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import { goto } from '$app/navigation';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
 	import {
@@ -21,15 +22,62 @@
 	let delistedTrackedCount = $derived(
 		trackedLots.filter((lot: { stocked: boolean | null }) => lot.stocked === false).length
 	);
+	let trackedCatalogById = $derived(
+		new Map(
+			((data.trackedCatalog ?? []) as CoffeeCatalog[]).map((coffee) => [
+				coffee.id as unknown as number,
+				coffee
+			])
+		)
+	);
 
-	function formatTrackedPrice(value: number | null): string {
-		return value === null ? '—' : `$${value.toFixed(2)}/lb`;
+	let trackedIds = $state<Set<number>>(new Set());
+	$effect(() => {
+		trackedIds = new Set(
+			(data.trackedLots ?? []).map((lot: { catalogId: number }) => lot.catalogId)
+		);
+	});
+
+	function setTracked(catalogId: number, tracked: boolean) {
+		const next = new Set(trackedIds);
+		if (tracked) next.add(catalogId);
+		else next.delete(catalogId);
+		trackedIds = next;
 	}
 
-	function formatTrackedDelta(delta: number | null): string | null {
-		if (delta === null || Math.abs(delta) < 0.005) return null;
-		const sign = delta > 0 ? '+' : '−';
-		return `${sign}$${Math.abs(delta).toFixed(2)}/lb since tracked`;
+	async function handleToggleTrack(catalogId: number) {
+		const wasTracked = trackedIds.has(catalogId);
+		setTracked(catalogId, !wasTracked);
+		// Optimistic update, reverted on failure.
+		try {
+			const res = await fetch(`/api/catalog/${catalogId}/track`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' }
+			});
+			if (!res.ok) throw new Error('track failed');
+			const body = (await res.json()) as { tracked: boolean };
+			if (body.tracked !== !wasTracked) {
+				setTracked(catalogId, body.tracked);
+			}
+		} catch {
+			setTracked(catalogId, wasTracked);
+		}
+	}
+
+	function watchlistAnnotation(lot: {
+		stocked: boolean | null;
+		unstockedDate: string | null;
+		priceDelta: number | null;
+	}): string {
+		const parts: string[] = [];
+		if (lot.stocked === false) {
+			parts.push(`Delisted${lot.unstockedDate ? ` ${lot.unstockedDate}` : ''}`);
+		}
+		if (lot.priceDelta !== null && Math.abs(lot.priceDelta) >= 0.005) {
+			const sign = lot.priceDelta > 0 ? '+' : '−';
+			parts.push(`${sign}$${Math.abs(lot.priceDelta).toFixed(2)}/lb since tracked`);
+		}
+		return parts.join(' · ');
 	}
 	let displayName = $derived(data.session?.user?.email?.split('@')[0] ?? 'there');
 	let dashboardContext = $derived({ role, ppiAccess: data.ppiAccess === true });
@@ -163,49 +211,23 @@
 							Find lots to track
 						</button>
 					{:else}
-						<ul class="mt-3 divide-y divide-border-light">
+						<div class="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-2">
 							{#each trackedLots as lot (lot.catalogId)}
-								<li class="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
-									<div class="min-w-0">
-										<p class="truncate text-sm font-semibold text-text-primary-light">
-											{lot.name}
-										</p>
-										<p class="text-xs text-text-secondary-light">
-											{[lot.source, lot.country].filter(Boolean).join(' · ') || 'Supplier unknown'}
-										</p>
-									</div>
-									<div class="flex flex-shrink-0 items-center gap-3 text-sm">
-										{#if lot.stocked === false}
-											<span
-												class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-100"
-											>
-												Delisted{lot.unstockedDate ? ` ${lot.unstockedDate}` : ''}
-											</span>
-										{:else}
-											<span
-												class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100"
-											>
-												Stocked
-											</span>
-										{/if}
-										<span class="font-semibold text-text-primary-light">
-											{formatTrackedPrice(lot.currentPrice)}
-										</span>
-										{#if formatTrackedDelta(lot.priceDelta)}
-											<span
-												class="text-xs font-medium {lot.priceDelta && lot.priceDelta > 0
-													? 'text-amber-700'
-													: 'text-emerald-700'}"
-											>
-												{formatTrackedDelta(lot.priceDelta)}
-											</span>
-										{/if}
-									</div>
-								</li>
+								{@const coffee = trackedCatalogById.get(lot.catalogId)}
+								{#if coffee}
+									<CoffeeCard
+										{coffee}
+										{parseTastingNotes}
+										compact={true}
+										annotation={watchlistAnnotation(lot)}
+										tracked={trackedIds.has(lot.catalogId)}
+										onToggleTrack={handleToggleTrack}
+									/>
+								{/if}
 							{/each}
-						</ul>
+						</div>
 						<button
-							onclick={() => goto('/catalog')}
+							onclick={() => goto('/catalog?tracked=only')}
 							class="mt-3 text-sm font-medium text-background-tertiary-light transition-colors duration-200 hover:text-text-primary-light"
 						>
 							Manage watchlist in catalog

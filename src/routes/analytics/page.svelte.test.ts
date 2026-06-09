@@ -290,7 +290,7 @@ describe('analytics page loading experience', () => {
 		await waitFor(() => {
 			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
 			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 	});
 
@@ -488,7 +488,7 @@ describe('analytics action CTA rail', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
 		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
@@ -541,7 +541,7 @@ describe('analytics action CTA rail', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
 		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
@@ -598,7 +598,7 @@ describe('analytics premium boundary copy', () => {
 		await waitFor(() => {
 			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
 			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 	});
 
@@ -608,7 +608,7 @@ describe('analytics premium boundary copy', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
 		expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
@@ -645,7 +645,7 @@ describe('analytics premium boundary copy', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
 		expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();

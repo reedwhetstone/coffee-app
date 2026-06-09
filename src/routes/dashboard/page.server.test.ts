@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockSearchCatalog = vi.fn();
+const mockGetCatalogItemsByIds = vi.fn();
 const mockGetTrackedLotSummaries = vi.fn();
 
 vi.mock('$lib/data/catalog', () => ({
-	searchCatalog: (...args: unknown[]) => mockSearchCatalog(...args)
+	searchCatalog: (...args: unknown[]) => mockSearchCatalog(...args),
+	getCatalogItemsByIds: (...args: unknown[]) => mockGetCatalogItemsByIds(...args)
 }));
 
 vi.mock('$lib/server/trackedLots', () => ({
@@ -16,6 +18,7 @@ let load: typeof import('./+page.server').load;
 beforeEach(async () => {
 	vi.clearAllMocks();
 	mockSearchCatalog.mockResolvedValue({ data: [], count: 0 });
+	mockGetCatalogItemsByIds.mockResolvedValue([]);
 	mockGetTrackedLotSummaries.mockResolvedValue([]);
 	({ load } = await import('./+page.server'));
 });
@@ -58,20 +61,27 @@ describe('/dashboard sourcing workspace load', () => {
 		expect(mockGetTrackedLotSummaries).not.toHaveBeenCalled();
 	});
 
-	it('loads tracked lot summaries for ppiAccess users without member briefs', async () => {
+	it('loads tracked lot summaries and their catalog cards for ppiAccess users', async () => {
 		mockGetTrackedLotSummaries.mockResolvedValue([
 			{ catalogId: 7, name: 'Tracked Lot', stocked: true }
 		]);
+		mockGetCatalogItemsByIds.mockResolvedValue([{ id: 7, name: 'Tracked Lot' }]);
 
 		const result = (await load(
 			makeLoadInput({
 				role: 'viewer',
 				principal: { isAuthenticated: true, userId: 'ppi-1', ppiAccess: true }
 			})
-		)) as { trackedLots: Array<{ catalogId: number }>; activeBriefs: unknown[] };
+		)) as {
+			trackedLots: Array<{ catalogId: number }>;
+			trackedCatalog: Array<{ id: number }>;
+			activeBriefs: unknown[];
+		};
 
 		expect(mockGetTrackedLotSummaries).toHaveBeenCalledWith(expect.anything(), 'ppi-1', 12);
+		expect(mockGetCatalogItemsByIds).toHaveBeenCalledWith(expect.anything(), [7]);
 		expect(result.trackedLots).toHaveLength(1);
+		expect(result.trackedCatalog).toHaveLength(1);
 		expect(result.activeBriefs).toEqual([]);
 	});
 
