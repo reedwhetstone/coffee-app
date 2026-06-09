@@ -80,6 +80,7 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 			hasPrev: false
 		},
 		meta: {},
+		ppiAccess: false,
 		...overrides
 	} as unknown as PageData;
 }
@@ -239,6 +240,21 @@ describe('/catalog intelligence connective tissue', () => {
 			'href',
 			'/analytics'
 		);
+		expect(screen.getByRole('link', { name: 'Preview supplier comparison gate' })).toHaveAttribute(
+			'href',
+			'/analytics'
+		);
+		expect(screen.queryByText(/save sourcing research/i)).not.toBeInTheDocument();
+	});
+
+	it('deep-links to supplier comparison only when Parchment Intelligence access makes the anchor concrete', () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'ppi-token' } as PageData['session'],
+				ppiAccess: true
+			} as Partial<PageData>)
+		);
+
 		expect(
 			screen.getByRole('link', { name: 'Review supplier comparison evidence' })
 		).toHaveAttribute('href', '/analytics#supplier-comparison');

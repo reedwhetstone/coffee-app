@@ -19,7 +19,7 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	let { session, role = 'viewer' } = $derived(data);
+	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
 
 	import type { UserRole } from '$lib/types/auth.types';
 	let userRole: UserRole = $derived(role as UserRole);
@@ -100,6 +100,7 @@
 	);
 
 	let canUseBeanMatching = $derived(data.catalogAccess?.canUseBeanMatching === true);
+	let canUseParchmentIntelligence = $derived(ppiAccess === true);
 
 	function countDistinctCatalogValues(rows: CoffeeCatalog[], key: 'country' | 'source'): number {
 		return new Set(
@@ -117,6 +118,14 @@
 	let visibleOriginCount = $derived(countDistinctCatalogValues(displayData(), 'country'));
 	let visibleSupplierCount = $derived(countDistinctCatalogValues(displayData(), 'source'));
 	let visiblePricedCount = $derived(displayData().filter(hasCatalogPriceEvidence).length);
+	let supplierComparisonHref = $derived(
+		canUseParchmentIntelligence ? '/analytics#supplier-comparison' : '/analytics'
+	);
+	let supplierComparisonLabel = $derived(
+		canUseParchmentIntelligence
+			? 'Review supplier comparison evidence'
+			: 'Preview supplier comparison gate'
+	);
 
 	async function handleScroll() {
 		if (!session) {
@@ -283,10 +292,10 @@
 							Open Parchment Market Index
 						</a>
 						<a
-							href="/analytics#supplier-comparison"
+							href={supplierComparisonHref}
 							class="rounded-md border border-background-tertiary-light px-3 py-2 text-center text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						>
-							Review supplier comparison evidence
+							{supplierComparisonLabel}
 						</a>
 					</div>
 					<div class="mt-3 border-t border-border-light pt-3">
@@ -597,8 +606,8 @@
 										Keep going with a free account
 									</h3>
 									<p class="mb-6 text-sm text-text-secondary-light">
-										Create a free account to browse the full catalog, save sourcing research, and
-										unlock the next step after public market discovery.
+										Create a free account to browse the full catalog, inspect more supply evidence,
+										and continue from public market discovery.
 									</p>
 									<div class="flex flex-col items-center justify-center gap-3 sm:flex-row">
 										<button
