@@ -130,6 +130,7 @@ export interface CatalogSimilarityMatch {
 		confidence: CatalogMatchConfidenceLabel;
 		beta: true;
 		language: string;
+		same_supplier: boolean;
 	};
 	explanation: {
 		summary: string;
@@ -362,6 +363,14 @@ export const CATALOG_SIMILARITY_THRESHOLDS = {
 } as const;
 const MODE_FILTER_OVERFETCH_MULTIPLIER = 5;
 const MODE_FILTER_RPC_MATCH_LIMIT = MAX_CATALOG_SIMILARITY_LIMIT * MODE_FILTER_OVERFETCH_MULTIPLIER;
+// Same-supplier lots share near-identical listing text, so raw embedding rank is dominated by the
+// anchor's own supplier. Over-fetch and re-rank so cross-supplier comparisons surface first.
+const SUPPLIER_DIVERSITY_OVERFETCH_MIN = 24;
+const SUPPLIER_DIVERSITY_OVERFETCH_MULTIPLIER = 3;
+export const CATALOG_SIMILARITY_SUPPLIER_DIVERSITY = {
+	rankPenalty: 0.06,
+	maxSameSupplierShare: 0.25
+} as const;
 export const MIN_CATALOG_SIMILARITY_THRESHOLD = 0.5;
 export const MAX_CATALOG_SIMILARITY_THRESHOLD = 0.99;
 
@@ -856,7 +865,8 @@ export function normalizeSimilarityRow(
 			classification,
 			confidence,
 			beta: true,
-			language: confidenceLanguage(category, confidence)
+			language: confidenceLanguage(category, confidence),
+			same_supplier: isSameSupplierSource(target?.source ?? null, detail?.source ?? row.source)
 		},
 		explanation: {
 			summary:
@@ -888,8 +898,80 @@ function matchesMode(match: CatalogSimilarityMatch, mode: CatalogSimilarityMode)
 	return match.match.category === mode;
 }
 
+function normalizeSupplierKey(source: string | null | undefined): string | null {
+	const trimmed = source?.trim().toLowerCase();
+	return trimmed ? trimmed : null;
+}
+
+export function isSameSupplierSource(
+	targetSource: string | null | undefined,
+	matchSource: string | null | undefined
+): boolean {
+	const targetKey = normalizeSupplierKey(targetSource);
+	return targetKey !== null && normalizeSupplierKey(matchSource) === targetKey;
+}
+
+/**
+ * Re-ranks matches so competing suppliers lead the results: same-supplier matches take a scoring
+ * penalty and are capped to a small share of the returned list, only backfilling when there are
+ * not enough cross-supplier matches to satisfy the limit.
+ */
+export function applyCatalogSupplierDiversity(
+	matches: CatalogSimilarityMatch[],
+	targetSource: string | null | undefined,
+	limit: number
+): CatalogSimilarityMatch[] {
+	if (normalizeSupplierKey(targetSource) === null) return matches.slice(0, limit);
+
+	const ranked = matches
+		.map((match, index) => ({
+			match,
+			index,
+			sameSupplier: match.match.same_supplier,
+			adjusted:
+				match.score.average -
+				(match.match.same_supplier ? CATALOG_SIMILARITY_SUPPLIER_DIVERSITY.rankPenalty : 0)
+		}))
+		.sort((a, b) => b.adjusted - a.adjusted || a.index - b.index);
+
+	const maxSameSupplier = Math.max(
+		1,
+		Math.floor(limit * CATALOG_SIMILARITY_SUPPLIER_DIVERSITY.maxSameSupplierShare)
+	);
+	const selected: typeof ranked = [];
+	const deferredSameSupplier: typeof ranked = [];
+	let sameSupplierCount = 0;
+
+	for (const entry of ranked) {
+		if (selected.length >= limit) break;
+		if (entry.sameSupplier && sameSupplierCount >= maxSameSupplier) {
+			deferredSameSupplier.push(entry);
+			continue;
+		}
+		selected.push(entry);
+		if (entry.sameSupplier) sameSupplierCount += 1;
+	}
+
+	for (const entry of deferredSameSupplier) {
+		if (selected.length >= limit) break;
+		selected.push(entry);
+	}
+
+	return selected
+		.sort((a, b) => b.adjusted - a.adjusted || a.index - b.index)
+		.map((entry) => entry.match);
+}
+
 function resolveRpcMatchCount(query: CatalogSimilarityQuery): number {
-	if (query.mode === 'all') return query.limit;
+	if (query.mode === 'all') {
+		return Math.min(
+			Math.max(
+				query.limit * SUPPLIER_DIVERSITY_OVERFETCH_MULTIPLIER,
+				SUPPLIER_DIVERSITY_OVERFETCH_MIN
+			),
+			MODE_FILTER_RPC_MATCH_LIMIT
+		);
+	}
 	return MODE_FILTER_RPC_MATCH_LIMIT;
 }
 
@@ -1113,12 +1195,12 @@ export async function fetchCatalogSimilarityMatches(input: {
 		input.publicOnly
 	);
 	const visibleRows = input.publicOnly ? rows.filter((row) => detailById.has(row.coffee_id)) : rows;
-	const matches = visibleRows
+	const modeMatches = visibleRows
 		.map((row) =>
 			normalizeSimilarityRow(row, target.pricing, detailById.get(row.coffee_id), target)
 		)
-		.filter((match) => matchesMode(match, input.query.mode))
-		.slice(0, input.query.limit);
+		.filter((match) => matchesMode(match, input.query.mode));
+	const matches = applyCatalogSupplierDiversity(modeMatches, target.source, input.query.limit);
 	const groups = groupCatalogSimilarityMatches(matches);
 
 	return { target, groups, matches, queryStrategy };

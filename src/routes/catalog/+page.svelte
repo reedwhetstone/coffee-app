@@ -73,10 +73,18 @@
 	let copyLinkStatus = $state<'idle' | 'copied' | 'error'>('idle');
 	let copyLinkResetTimeout: ReturnType<typeof setTimeout> | null = null;
 
+	// Watchlist-only view renders straight from server data and bypasses the
+	// client filter store so its pagination/fetch flows can't replace the tracked set.
+	let trackedOnlyView = $derived(data.trackedOnly === true);
+
 	$effect(() => {
 		const currentRoute = page.url.pathname;
 
-		if (data?.data && (!$filterStore.initialized || $filterStore.routeId !== currentRoute)) {
+		if (
+			!trackedOnlyView &&
+			data?.data &&
+			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
+		) {
 			filterStore.initializeForRoute(currentRoute, data.data, {
 				catalogUrlState: data.initialCatalogState,
 				pagination: data.pagination,
@@ -86,12 +94,16 @@
 	});
 
 	let hydratedCatalogState = $derived(
-		$filterStore.initialized && $filterStore.routeId === page.url.pathname
+		!trackedOnlyView && $filterStore.initialized && $filterStore.routeId === page.url.pathname
 	);
 
 	let activePagination = $derived(hydratedCatalogState ? $filterStore.pagination : data.pagination);
 
 	let displayData = $derived((): CoffeeCatalog[] => {
+		if (trackedOnlyView) {
+			return (data?.data ?? []) as unknown as CoffeeCatalog[];
+		}
+
 		if (hydratedCatalogState) {
 			return $filterStore.serverData as unknown as CoffeeCatalog[];
 		}
@@ -429,7 +441,22 @@
 						<p class="mt-2 text-xs text-text-secondary-light">
 							<span class="font-semibold text-background-tertiary-light">{trackedIds.size}</span>
 							{trackedIds.size === 1 ? 'lot' : 'lots'} tracked ·
-							{trackedCountOnPage} on this page
+							{trackedCountOnPage} on this page ·
+							{#if trackedOnlyView}
+								<a
+									href="/catalog"
+									class="font-semibold text-background-tertiary-light hover:text-text-primary-light"
+								>
+									Show full catalog
+								</a>
+							{:else}
+								<a
+									href="/catalog?tracked=only"
+									class="font-semibold text-background-tertiary-light hover:text-text-primary-light"
+								>
+									View all tracked
+								</a>
+							{/if}
 						</p>
 					{/if}
 				</div>
@@ -696,6 +723,25 @@
 						</button>
 					</div>
 				</div>
+			</div>
+		{/if}
+
+		{#if trackedOnlyView}
+			<div
+				class="mb-4 flex flex-col gap-2 rounded-lg border border-background-tertiary-light/25 bg-accent-subtle/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+				aria-label="Tracked lots filter"
+			>
+				<p class="text-sm text-text-primary-light">
+					<span class="font-semibold">Watchlist view:</span>
+					showing only your {displayData().length} tracked
+					{displayData().length === 1 ? 'lot' : 'lots'}, including delisted ones.
+				</p>
+				<button
+					onclick={() => goto('/catalog')}
+					class="rounded-md border border-background-tertiary-light px-4 py-1.5 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+				>
+					Show full catalog
+				</button>
 			</div>
 		{/if}
 

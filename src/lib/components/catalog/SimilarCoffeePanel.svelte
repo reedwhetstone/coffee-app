@@ -90,6 +90,7 @@
 			confidence: 'high_beta' | 'medium_beta' | 'low_beta';
 			beta: true;
 			language: string;
+			same_supplier?: boolean;
 		};
 		explanation: {
 			summary: string;
@@ -371,6 +372,14 @@
 									>
 										{confidenceLabel(match.match.confidence)}
 									</span>
+									{#if match.match.same_supplier}
+										<span
+											class="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-amber-100"
+											title="Listed by the same supplier as this coffee — deprioritized so competing suppliers surface first"
+										>
+											Same supplier
+										</span>
+									{/if}
 								</div>
 								<h5 class="mt-2 font-semibold text-text-primary-light">{match.coffee.name}</h5>
 								<p class="mt-1 text-sm text-text-secondary-light">

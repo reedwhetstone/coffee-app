@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { catalogSimilarityCalibrationExamples } from './__fixtures__/catalogSimilarityCalibration';
 import {
+	applyCatalogSupplierDiversity,
 	classifyCatalogMatch,
 	deriveCalibrationBand,
 	getPriceFromTiersAtQuantity,
 	normalizeCanonicalPricing,
+	isSameSupplierSource,
 	normalizeSimilarityRow,
 	parseCatalogSimilarityQuery
 } from './catalogSimilarity';
@@ -310,5 +312,85 @@ describe('catalog similarity helpers', () => {
 		expect(() =>
 			parseCatalogSimilarityQuery(new URL('https://app.test/v1/catalog/1/similar?mode=canonical'))
 		).toThrow('mode');
+	});
+});
+
+describe('catalog similarity supplier diversity', () => {
+	function makeMatch(input: {
+		id: number;
+		source: string | null;
+		average: number;
+		sameSupplier: boolean;
+	}) {
+		return {
+			coffee: { id: input.id, source: input.source },
+			score: { average: input.average },
+			match: { same_supplier: input.sameSupplier }
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any;
+	}
+
+	it('flags same-supplier matches case-insensitively and ignores blank sources', () => {
+		expect(isSameSupplierSource('Sweet Maria’s', 'sweet maria’s ')).toBe(true);
+		expect(isSameSupplierSource('Supplier A', 'Supplier B')).toBe(false);
+		expect(isSameSupplierSource(null, 'Supplier B')).toBe(false);
+		expect(isSameSupplierSource('Supplier A', null)).toBe(false);
+		expect(isSameSupplierSource('  ', '  ')).toBe(false);
+	});
+
+	it('caps same-supplier matches so competing suppliers fill the results', () => {
+		const matches = [
+			makeMatch({ id: 1, source: 'Anchor Supplier', average: 0.95, sameSupplier: true }),
+			makeMatch({ id: 2, source: 'Anchor Supplier', average: 0.94, sameSupplier: true }),
+			makeMatch({ id: 3, source: 'Anchor Supplier', average: 0.93, sameSupplier: true }),
+			makeMatch({ id: 4, source: 'Rival One', average: 0.9, sameSupplier: false }),
+			makeMatch({ id: 5, source: 'Rival Two', average: 0.88, sameSupplier: false }),
+			makeMatch({ id: 6, source: 'Rival Three', average: 0.86, sameSupplier: false }),
+			makeMatch({ id: 7, source: 'Rival Four', average: 0.85, sameSupplier: false })
+		];
+
+		const result = applyCatalogSupplierDiversity(matches, 'Anchor Supplier', 4);
+		const ids = result.map((match) => match.coffee.id);
+
+		expect(ids).toHaveLength(4);
+		// Only one same-supplier slot at limit 4 (25% share); the rest are competing suppliers.
+		expect(ids.filter((id) => [1, 2, 3].includes(id))).toHaveLength(1);
+		expect(ids).toContain(4);
+		expect(ids).toContain(5);
+		expect(ids).toContain(6);
+	});
+
+	it('deprioritizes same-supplier matches with a rank penalty even under the cap', () => {
+		const matches = [
+			makeMatch({ id: 1, source: 'Anchor Supplier', average: 0.9, sameSupplier: true }),
+			makeMatch({ id: 2, source: 'Rival One', average: 0.88, sameSupplier: false })
+		];
+
+		const result = applyCatalogSupplierDiversity(matches, 'Anchor Supplier', 2);
+
+		// 0.9 - 0.06 penalty ranks below the 0.88 cross-supplier match.
+		expect(result.map((match) => match.coffee.id)).toEqual([2, 1]);
+	});
+
+	it('backfills with same-supplier matches when cross-supplier supply runs out', () => {
+		const matches = [
+			makeMatch({ id: 1, source: 'Anchor Supplier', average: 0.95, sameSupplier: true }),
+			makeMatch({ id: 2, source: 'Anchor Supplier', average: 0.94, sameSupplier: true }),
+			makeMatch({ id: 3, source: 'Anchor Supplier', average: 0.93, sameSupplier: true }),
+			makeMatch({ id: 4, source: 'Rival One', average: 0.9, sameSupplier: false })
+		];
+
+		const result = applyCatalogSupplierDiversity(matches, 'Anchor Supplier', 4);
+
+		expect(result.map((match) => match.coffee.id).sort()).toEqual([1, 2, 3, 4]);
+	});
+
+	it('returns matches unchanged when the target has no supplier evidence', () => {
+		const matches = [
+			makeMatch({ id: 1, source: 'Supplier A', average: 0.9, sameSupplier: false }),
+			makeMatch({ id: 2, source: 'Supplier B', average: 0.8, sameSupplier: false })
+		];
+
+		expect(applyCatalogSupplierDiversity(matches, null, 1).map((m) => m.coffee.id)).toEqual([1]);
 	});
 });

@@ -637,3 +637,74 @@ describe('/catalog tracked lots and brief matches', () => {
 		expect(result.briefMatchSummaries[0].briefName).toBe('Ethiopia brief');
 	});
 });
+
+describe('/catalog tracked-only watchlist view', () => {
+	it('restricts results to tracked lots including delisted ones for entitled users', async () => {
+		const session = { access_token: 'ppi-token' } as App.Locals['session'];
+		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
+		mockGetTrackedLotIds.mockResolvedValue([5, 9]);
+
+		const result = (await load(
+			makeLoadInputWithPrincipal(
+				'viewer',
+				session,
+				principal,
+				'https://app.test/catalog?tracked=only'
+			)
+		)) as { trackedOnly: boolean; trackedLotIds: number[] };
+
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: 'session-client' }),
+			expect.objectContaining({
+				coffeeIds: [5, 9],
+				stockedOnly: false,
+				showWholesale: true
+			})
+		);
+		expect(result.trackedOnly).toBe(true);
+		expect(result.trackedLotIds).toEqual([5, 9]);
+	});
+
+	it('skips the catalog query entirely when the watchlist is empty', async () => {
+		const session = { access_token: 'ppi-token' } as App.Locals['session'];
+		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
+		mockGetTrackedLotIds.mockResolvedValue([]);
+
+		const result = (await load(
+			makeLoadInputWithPrincipal(
+				'viewer',
+				session,
+				principal,
+				'https://app.test/catalog?tracked=only'
+			)
+		)) as { trackedOnly: boolean; data: unknown[] };
+
+		expect(mockSearchCatalog).not.toHaveBeenCalled();
+		expect(result.trackedOnly).toBe(true);
+		expect(result.data).toEqual([]);
+	});
+
+	it('ignores the tracked-only param for users without sourcing access', async () => {
+		const session = { access_token: 'viewer-token' } as App.Locals['session'];
+		const principal = {
+			isAuthenticated: true as const,
+			userId: 'viewer-1',
+			ppiAccess: false
+		};
+
+		const result = (await load(
+			makeLoadInputWithPrincipal(
+				'viewer',
+				session,
+				principal,
+				'https://app.test/catalog?tracked=only'
+			)
+		)) as { trackedOnly: boolean };
+
+		expect(result.trackedOnly).toBe(false);
+		expect(mockSearchCatalog).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: 'session-client' }),
+			expect.objectContaining({ stockedOnly: true })
+		);
+	});
+});

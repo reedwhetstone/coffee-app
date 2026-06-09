@@ -206,6 +206,7 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 				retailCount: 11
 			}
 		],
+		trackedLots: [],
 		role: 'viewer',
 		...overrides
 	} as unknown as PageData;
@@ -289,7 +290,7 @@ describe('analytics page loading experience', () => {
 		await waitFor(() => {
 			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
 			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 	});
 
@@ -374,23 +375,20 @@ describe('analytics command center hierarchy', () => {
 		expect(screen.getByText(/The latest combined retail \+ wholesale average is/i)).toBeTruthy();
 	});
 
-	it('scopes coverage origin counts with the selected market', async () => {
+	it('scopes coverage supplier-evidence reads with the selected market', async () => {
+		const baseSnapshot = createData().snapshots[0];
 		render(AnalyticsPage, {
 			data: createData({
-				stats: {
-					totalBeansTracked: 120,
-					stockedRetailBeans: 84,
-					stockedWholesaleBeans: 18,
-					stockedRetailOrigins: 5,
-					stockedWholesaleOrigins: 2,
-					stockedOrigins: 6,
-					stockedRetailSuppliers: 3,
-					stockedWholesaleSuppliers: 1,
-					stockedSuppliers: 4,
-					totalSuppliers: 12,
-					originsCount: 99,
-					lastUpdated: '2026-04-08'
-				}
+				snapshots: [
+					baseSnapshot,
+					{
+						...baseSnapshot,
+						origin: 'Ethiopia',
+						supplier_count: 2,
+						sample_size: 3
+					},
+					{ ...createData().snapshots[1] }
+				]
 			})
 		});
 
@@ -398,15 +396,69 @@ describe('analytics command center hierarchy', () => {
 			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
 		});
 
-		expect(screen.getByText(/84 active retail listings span 5 origins/i)).toBeTruthy();
-		expect(screen.getByText(/Evidence: 3 retail suppliers/i)).toBeTruthy();
-		expect(screen.queryByText(/span 99 origins/i)).toBeNull();
+		// Retail scope: Ethiopia rests on 2 suppliers, so coverage flags it as thin evidence.
+		expect(screen.getByText(/1 of 2 retail origins rest on fewer than 3 suppliers/i)).toBeTruthy();
+		expect(screen.getByText(/Treat medians for Ethiopia/i)).toBeTruthy();
 
 		await screen.getByRole('button', { name: 'Wholesale' }).click();
 
-		expect(screen.getByText(/18 active wholesale listings span 2 origins/i)).toBeTruthy();
-		expect(screen.getByText(/Evidence: 1 wholesale suppliers/i)).toBeTruthy();
-		expect(screen.queryByText(/span 99 origins/i)).toBeNull();
+		// Wholesale scope: only Colombia (3 suppliers) is indexed, so coverage is comparison-grade.
+		expect(screen.getByText(/All 1 wholesale origins have 3\+ supplier coverage/i)).toBeTruthy();
+		expect(screen.queryByText(/Treat medians for Ethiopia/i)).toBeNull();
+	});
+
+	it('surfaces watchlist signals scoped to the selected market', async () => {
+		render(AnalyticsPage, {
+			data: createData({
+				trackedLots: [
+					{
+						catalogId: 1,
+						trackedAt: '2026-04-01T00:00:00Z',
+						priceAtTracking: 4.0,
+						name: 'Tracked Retail Lot',
+						source: 'Cafe Imports',
+						country: 'Colombia',
+						region: null,
+						processing: 'Washed',
+						stocked: false,
+						wholesale: false,
+						unstockedDate: '2026-04-05',
+						currentPrice: 4.5,
+						priceDelta: 0.5
+					},
+					{
+						catalogId: 2,
+						trackedAt: '2026-04-02T00:00:00Z',
+						priceAtTracking: null,
+						name: 'Tracked Wholesale Lot',
+						source: 'Crown Jewels',
+						country: 'Ethiopia',
+						region: null,
+						processing: 'Natural',
+						stocked: true,
+						wholesale: true,
+						unstockedDate: null,
+						currentPrice: 3.9,
+						priceDelta: null
+					}
+				]
+			} as Partial<PageData>)
+		});
+
+		await waitFor(() => {
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(3);
+		});
+
+		// Retail scope shows only the retail tracked lot, including its delisting alert.
+		expect(screen.getByLabelText('Watchlist signals')).toBeTruthy();
+		expect(screen.getByText(/1 tracked retail lot · 1 delisted since tracking/i)).toBeTruthy();
+		expect(screen.getByText('Tracked Retail Lot')).toBeTruthy();
+		expect(screen.queryByText('Tracked Wholesale Lot')).toBeNull();
+
+		await screen.getByRole('button', { name: 'Wholesale' }).click();
+
+		expect(screen.getByText('Tracked Wholesale Lot')).toBeTruthy();
+		expect(screen.queryByText('Tracked Retail Lot')).toBeNull();
 	});
 });
 
@@ -436,7 +488,7 @@ describe('analytics action CTA rail', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
 		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
@@ -489,7 +541,7 @@ describe('analytics action CTA rail', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
 		const chatLink = screen.getByRole('link', { name: 'Ask with this context' });
@@ -546,7 +598,7 @@ describe('analytics premium boundary copy', () => {
 		await waitFor(() => {
 			expect(loadMemberAnalyticsModules).toHaveBeenCalledTimes(1);
 			expect(loadSupplierAnalyticsModules).toHaveBeenCalledTimes(1);
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 	});
 
@@ -556,7 +608,7 @@ describe('analytics premium boundary copy', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
 		expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();
@@ -593,7 +645,7 @@ describe('analytics premium boundary copy', () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(7);
+			expect(screen.getAllByTestId('analytics-stub')).toHaveLength(6);
 		});
 
 		expect(screen.getByText('Fresh Ethiopia')).toBeTruthy();

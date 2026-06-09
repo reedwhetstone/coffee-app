@@ -20,6 +20,9 @@ import { loadCatalogOriginPriceStats } from '$lib/server/catalogOriginPriceStats
 import { getTrackedLotIds } from '$lib/server/trackedLots';
 import { getBriefMatchSummaries, type BriefMatchSummary } from '$lib/server/briefMatchSummary';
 
+// Watchlist-only view is served as a single page; tracked lists are small.
+const TRACKED_VIEW_LIMIT = 200;
+
 function buildPagination(state: CatalogUrlState, total: number) {
 	const totalPages = total > 0 ? Math.ceil(total / state.pagination.limit) : 0;
 	return {
@@ -77,17 +80,34 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	let count: number | null = 0;
 	let catalogSchemaUnavailable: { message: string } | null = null;
 
+	const userId = locals.principal?.isAuthenticated ? locals.principal.userId : null;
+	const isMember = locals.role === 'member' || locals.role === 'admin';
+	const hasParchmentAccess =
+		isMember || (locals.principal?.isAuthenticated === true && locals.principal.ppiAccess === true);
+	// Watchlist-only view: restrict results to the user's tracked lots, including
+	// delisted ones, so the whole watchlist is reviewable in one place.
+	const trackedOnly =
+		url.searchParams.get('tracked') === 'only' && Boolean(userId && hasParchmentAccess);
+
+	let trackedLotIds: number[] = [];
+	if (trackedOnly && userId) {
+		trackedLotIds = await getTrackedLotIds(locals.supabase, userId);
+	}
+
 	try {
-		const catalogResult = await searchCatalog(locals.supabase, {
-			stockedOnly: true,
-			publicOnly: visibility.publicOnly,
-			showWholesale: visibility.showWholesale,
-			wholesaleOnly: visibility.wholesaleOnly,
-			fields: 'resource',
-			...searchState
-		});
-		catalogData = catalogResult.data;
-		count = catalogResult.count;
+		if (!trackedOnly || trackedLotIds.length > 0) {
+			const catalogResult = await searchCatalog(locals.supabase, {
+				stockedOnly: !trackedOnly,
+				publicOnly: visibility.publicOnly,
+				showWholesale: trackedOnly ? true : visibility.showWholesale,
+				wholesaleOnly: trackedOnly ? false : visibility.wholesaleOnly,
+				fields: 'resource',
+				...searchState,
+				...(trackedOnly ? { coffeeIds: trackedLotIds, limit: TRACKED_VIEW_LIMIT, offset: 0 } : {})
+			});
+			catalogData = catalogResult.data;
+			count = catalogResult.count;
+		}
 	} catch (error) {
 		if (!(error instanceof CatalogSchemaUnavailableError)) {
 			throw error;
@@ -100,17 +120,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const originPriceStats = await loadCatalogOriginPriceStats(locals.supabase, visibility);
 
-	const userId = locals.principal?.isAuthenticated ? locals.principal.userId : null;
-	const isMember = locals.role === 'member' || locals.role === 'admin';
-	const hasParchmentAccess =
-		isMember || (locals.principal?.isAuthenticated === true && locals.principal.ppiAccess === true);
-
-	let trackedLotIds: number[] = [];
 	let briefMatchSummaries: BriefMatchSummary[] = [];
 
 	if (userId && hasParchmentAccess) {
 		const [tracked, briefs] = await Promise.all([
-			getTrackedLotIds(locals.supabase, userId),
+			trackedOnly ? Promise.resolve(trackedLotIds) : getTrackedLotIds(locals.supabase, userId),
 			isMember
 				? getBriefMatchSummaries(
 						locals.supabase,
@@ -141,11 +155,20 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		ppiAccess:
 			locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false,
 		trackedLotIds,
+		trackedOnly,
 		briefMatchSummaries,
 		catalogAccess,
 		catalogAccessNotice,
 		catalogSchemaUnavailable,
-		pagination: buildPagination(initialCatalogState, count ?? catalogResources.length),
+		pagination: trackedOnly
+			? buildPagination(
+					{
+						...initialCatalogState,
+						pagination: { page: 1, limit: TRACKED_VIEW_LIMIT }
+					},
+					count ?? catalogResources.length
+				)
+			: buildPagination(initialCatalogState, count ?? catalogResources.length),
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/catalog',

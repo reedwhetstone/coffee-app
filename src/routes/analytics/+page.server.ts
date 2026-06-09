@@ -3,6 +3,9 @@ import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { resolvePrincipal } from '$lib/server/principal';
 import { createAdminClient } from '$lib/supabase-admin';
 import { createSchemaService } from '$lib/services/schemaService';
+import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
+
+export type { TrackedLotSummary } from '$lib/server/trackedLots';
 
 export interface ArrivalBean {
 	name: string;
@@ -625,6 +628,18 @@ export const load: PageServerLoad = async (event) => {
 	let comparisonBeans: ComparisonBean[] = [];
 	let supplierHealth: SupplierHealthRow[] = [];
 
+	// Watchlist context: members and Parchment Intelligence users see their tracked
+	// lots read against the live index scope. Kicked off here so it runs alongside
+	// the entitled-user queries below.
+	const isSourcingMember = event.locals.role === 'member' || event.locals.role === 'admin';
+	const trackedLotsPromise: Promise<TrackedLotSummary[]> =
+		principal.isAuthenticated && (isParchmentIntelligence || isSourcingMember)
+			? getTrackedLotSummaries(supabase, principal.userId, 25).catch((error) => {
+					console.error('Error loading analytics watchlist context:', error);
+					return [] as TrackedLotSummary[];
+				})
+			: Promise.resolve([]);
+
 	if (isParchmentIntelligence) {
 		const [{ data: comparisonBeansRaw }, { data: supplierStatsRaw }] = await Promise.all([
 			// Supplier comparison beans
@@ -677,6 +692,8 @@ export const load: PageServerLoad = async (event) => {
 				retailCount: row.retail_count ?? 0
 			}));
 	}
+
+	const trackedLots = await trackedLotsPromise;
 
 	const baseUrl = `${event.url.protocol}//${event.url.host}`;
 	const schemaService = createSchemaService(baseUrl);
@@ -741,6 +758,7 @@ export const load: PageServerLoad = async (event) => {
 		recentDelistings,
 		comparisonBeans,
 		supplierHealth,
+		trackedLots,
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/analytics',

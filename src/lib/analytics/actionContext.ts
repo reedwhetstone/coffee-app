@@ -11,6 +11,7 @@ export interface AnalyticsActiveFilters {
 	stockedListings: number;
 	suppliers: number;
 	origins: number;
+	trackedLots?: number;
 }
 
 export interface AnalyticsChatContext {

@@ -605,6 +605,29 @@
 						</div>
 
 						<aside class="space-y-4">
+							{#if onToggleTrack}
+								<div class="rounded-lg border border-line bg-surface-panel p-4">
+									<p class="text-xs font-semibold uppercase tracking-wide text-muted">Watchlist</p>
+									<p class="mt-2 text-sm font-semibold text-ink">
+										{tracked ? 'Tracking this lot' : 'Not on your watchlist'}
+									</p>
+									<p class="mt-1 text-xs leading-relaxed text-muted">
+										Tracked lots report price moves and delistings on your dashboard, feed the
+										Market Index watchlist panel, and give chat the context to reference them by
+										name.
+									</p>
+									<button
+										type="button"
+										class="mt-3 rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 {tracked
+											? 'border border-line text-muted hover:border-red-300 hover:text-red-600'
+											: 'bg-accent text-white hover:bg-opacity-90'}"
+										aria-pressed={tracked}
+										onclick={() => onToggleTrack(coffee.id as unknown as number)}
+									>
+										{tracked ? 'Stop tracking' : 'Track this lot'}
+									</button>
+								</div>
+							{/if}
 							<div class="rounded-lg border border-line bg-surface-panel p-4">
 								<p class="text-xs font-semibold uppercase tracking-wide text-muted">
 									Purveyor Score

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import { goto } from '$app/navigation';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
 	import {
@@ -16,6 +17,68 @@
 	let role = $derived((data.role ?? 'viewer') as UserRole);
 	let canAccessMallard = $derived(checkRole(role, 'member'));
 	let canUseParchmentWorkflows = $derived(data.ppiAccess === true || canAccessMallard);
+	let trackedLots = $derived(data.trackedLots ?? []);
+	let activeBriefs = $derived(data.activeBriefs ?? []);
+	let delistedTrackedCount = $derived(
+		trackedLots.filter((lot: { stocked: boolean | null }) => lot.stocked === false).length
+	);
+	let trackedCatalogById = $derived(
+		new Map(
+			((data.trackedCatalog ?? []) as CoffeeCatalog[]).map((coffee) => [
+				coffee.id as unknown as number,
+				coffee
+			])
+		)
+	);
+
+	let trackedIds = $state<Set<number>>(new Set());
+	$effect(() => {
+		trackedIds = new Set(
+			(data.trackedLots ?? []).map((lot: { catalogId: number }) => lot.catalogId)
+		);
+	});
+
+	function setTracked(catalogId: number, tracked: boolean) {
+		const next = new Set(trackedIds);
+		if (tracked) next.add(catalogId);
+		else next.delete(catalogId);
+		trackedIds = next;
+	}
+
+	async function handleToggleTrack(catalogId: number) {
+		const wasTracked = trackedIds.has(catalogId);
+		setTracked(catalogId, !wasTracked);
+		// Optimistic update, reverted on failure.
+		try {
+			const res = await fetch(`/api/catalog/${catalogId}/track`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' }
+			});
+			if (!res.ok) throw new Error('track failed');
+			const body = (await res.json()) as { tracked: boolean };
+			if (body.tracked !== !wasTracked) {
+				setTracked(catalogId, body.tracked);
+			}
+		} catch {
+			setTracked(catalogId, wasTracked);
+		}
+	}
+
+	function watchlistAnnotation(lot: {
+		stocked: boolean | null;
+		unstockedDate: string | null;
+		priceDelta: number | null;
+	}): string {
+		const parts: string[] = [];
+		if (lot.stocked === false) {
+			parts.push(`Delisted${lot.unstockedDate ? ` ${lot.unstockedDate}` : ''}`);
+		}
+		if (lot.priceDelta !== null && Math.abs(lot.priceDelta) >= 0.005) {
+			const sign = lot.priceDelta > 0 ? '+' : '−';
+			parts.push(`${sign}$${Math.abs(lot.priceDelta).toFixed(2)}/lb since tracked`);
+		}
+		return parts.join(' · ');
+	}
 	let displayName = $derived(data.session?.user?.email?.split('@')[0] ?? 'there');
 	let dashboardContext = $derived({ role, ppiAccess: data.ppiAccess === true });
 	let dashboardSections = $derived(getDashboardSections(dashboardContext));
@@ -101,6 +164,110 @@
 				>
 					{upgradePrompt.cta}
 				</button>
+			</div>
+		</section>
+	{/if}
+
+	{#if canUseParchmentWorkflows}
+		<section class="space-y-4" aria-label="Your sourcing workspace">
+			<div>
+				<h2 class="text-xl font-semibold text-text-primary-light sm:text-2xl">
+					Your sourcing workspace
+				</h2>
+				<p class="mt-1 text-sm leading-relaxed text-text-secondary-light">
+					Lots you watchlist and briefs you save evolve here: price and availability changes since
+					tracking, and live links into the catalog views that match your saved criteria.
+				</p>
+			</div>
+
+			<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+				<div
+					class="rounded-xl border border-border-light bg-background-secondary-light p-5 shadow-sm lg:col-span-2"
+				>
+					<div class="flex items-center justify-between gap-3">
+						<h3
+							class="text-sm font-semibold uppercase tracking-[0.16em] text-background-tertiary-light"
+						>
+							Watchlist
+						</h3>
+						{#if trackedLots.length > 0}
+							<p class="text-xs font-medium text-text-secondary-light">
+								{trackedLots.length} tracked{delistedTrackedCount > 0
+									? ` · ${delistedTrackedCount} delisted since tracking`
+									: ''}
+							</p>
+						{/if}
+					</div>
+
+					{#if trackedLots.length === 0}
+						<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
+							Nothing tracked yet. Bookmark lots in the catalog and this panel reports price moves
+							and delistings since you started watching them.
+						</p>
+						<button
+							onclick={() => goto('/catalog')}
+							class="mt-4 rounded-md border border-background-tertiary-light px-4 py-2 text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						>
+							Find lots to track
+						</button>
+					{:else}
+						<div class="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-2">
+							{#each trackedLots as lot (lot.catalogId)}
+								{@const coffee = trackedCatalogById.get(lot.catalogId)}
+								{#if coffee}
+									<CoffeeCard
+										{coffee}
+										{parseTastingNotes}
+										compact={true}
+										annotation={watchlistAnnotation(lot)}
+										tracked={trackedIds.has(lot.catalogId)}
+										onToggleTrack={handleToggleTrack}
+									/>
+								{/if}
+							{/each}
+						</div>
+						<button
+							onclick={() => goto('/catalog?tracked=only')}
+							class="mt-3 text-sm font-medium text-background-tertiary-light transition-colors duration-200 hover:text-text-primary-light"
+						>
+							Manage watchlist in catalog
+						</button>
+					{/if}
+				</div>
+
+				<div
+					class="rounded-xl border border-border-light bg-background-secondary-light p-5 shadow-sm"
+				>
+					<h3
+						class="text-sm font-semibold uppercase tracking-[0.16em] text-background-tertiary-light"
+					>
+						Active briefs
+					</h3>
+					{#if activeBriefs.length === 0}
+						<p class="mt-3 text-sm leading-relaxed text-text-secondary-light">
+							{canAccessMallard
+								? 'No active sourcing briefs. Save brief criteria in chat or the catalog and matches surface here and in the catalog banner.'
+								: 'Sourcing briefs are a Mallard Studio workflow. Your watchlist still tracks price and availability changes.'}
+						</p>
+					{:else}
+						<ul class="mt-3 space-y-3">
+							{#each activeBriefs as brief (brief.id)}
+								<li class="rounded-lg border border-border-light bg-background-primary-light p-3">
+									<p class="text-sm font-semibold text-text-primary-light">{brief.name}</p>
+									<p class="mt-1 text-xs leading-relaxed text-text-secondary-light">
+										{brief.criteriaDescription}
+									</p>
+									<a
+										href={brief.catalogHref}
+										class="mt-2 inline-block text-xs font-semibold text-background-tertiary-light hover:text-text-primary-light"
+									>
+										View matching lots
+									</a>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
 			</div>
 		</section>
 	{/if}
