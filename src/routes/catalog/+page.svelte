@@ -21,6 +21,32 @@
 
 	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
 
+	let trackedIds = $state<Set<number>>(new Set(data.trackedLotIds ?? []));
+
+	async function handleToggleTrack(catalogId: number) {
+		const wasTracked = trackedIds.has(catalogId);
+		if (wasTracked) {
+			trackedIds.delete(catalogId);
+		} else {
+			trackedIds.add(catalogId);
+		}
+		// Optimistic update — fire and forget; revert on failure
+		try {
+			const res = await fetch(`/api/catalog/${catalogId}/track`, { method: 'PUT', headers: { 'Content-Type': 'application/json' } });
+			if (!res.ok) throw new Error('track failed');
+			const body = await res.json() as { tracked: boolean };
+			if (body.tracked !== !wasTracked) {
+				// Sync server state
+				if (body.tracked) trackedIds.add(catalogId);
+				else trackedIds.delete(catalogId);
+			}
+		} catch {
+			// Revert optimistic update
+			if (wasTracked) trackedIds.add(catalogId);
+			else trackedIds.delete(catalogId);
+		}
+	}
+
 	import type { UserRole } from '$lib/types/auth.types';
 	let userRole: UserRole = $derived(role as UserRole);
 
@@ -101,6 +127,11 @@
 
 	let canUseBeanMatching = $derived(data.catalogAccess?.canUseBeanMatching === true);
 	let canUseParchmentIntelligence = $derived(ppiAccess === true);
+	let briefMatchSummaries = $derived(data.briefMatchSummaries ?? []);
+	let hasBriefMatches = $derived(briefMatchSummaries.length > 0);
+	let trackedCountOnPage = $derived(
+		displayData().filter((c) => trackedIds.has((c as unknown as { id: number }).id)).length
+	);
 
 	function countDistinctCatalogValues(rows: CoffeeCatalog[], key: 'country' | 'source'): number {
 		return new Set(
@@ -273,6 +304,13 @@
 							<p class="text-xs text-text-secondary-light">Priced rows shown</p>
 						</div>
 					</div>
+					{#if canUseParchmentIntelligence && trackedIds.size > 0}
+						<p class="mt-2 text-xs text-text-secondary-light">
+							<span class="font-semibold text-background-tertiary-light">{trackedIds.size}</span>
+							{trackedIds.size === 1 ? 'lot' : 'lots'} tracked ·
+							{trackedCountOnPage} on this page
+						</p>
+					{/if}
 				</div>
 				<div
 					class="w-full rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-4 lg:max-w-sm"
@@ -540,6 +578,30 @@
 			</div>
 		{/if}
 
+		{#if hasBriefMatches}
+			<div
+				class="rounded-lg border border-background-tertiary-light/30 bg-background-secondary-light px-4 py-3"
+				aria-label="Sourcing brief matches"
+			>
+				<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+					Active sourcing briefs
+				</p>
+				<div class="mt-2 flex flex-col gap-2">
+					{#each briefMatchSummaries as summary}
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<span class="font-medium text-text-primary-light">{summary.briefName}</span>
+							<span class="shrink-0 text-xs text-text-secondary-light">
+								<span class="font-semibold text-background-tertiary-light"
+									>{summary.matchCount}</span
+								>
+								{summary.matchCount === 1 ? 'lot matches' : 'lots match'} criteria on this page
+							</span>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
 		<div class="space-y-4">
 			<div class="flex-1">
 				{#if $filterStore.isLoading}
@@ -583,6 +645,8 @@
 								{parseTastingNotes}
 								showSimilarComparisonAction={true}
 								{canUseBeanMatching}
+								tracked={trackedIds.has((coffee as unknown as { id: number }).id)}
+								onToggleTrack={canUseParchmentIntelligence ? handleToggleTrack : undefined}
 							/>
 						{/each}
 
