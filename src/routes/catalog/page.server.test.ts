@@ -7,6 +7,8 @@ const mockGenerateOrganizationSchema = vi.fn();
 const mockGenerateCoffeeCollectionSchema = vi.fn();
 const mockGenerateSchemaGraph = vi.fn();
 const mockCreateSchemaService = vi.fn();
+const mockGetTrackedLotIds = vi.fn();
+const mockGetBriefMatchSummaries = vi.fn();
 
 class MockCatalogSchemaUnavailableError extends Error {
 	constructor(message: string) {
@@ -47,6 +49,14 @@ vi.mock('$lib/services/schemaService', () => ({
 	createSchemaService: mockCreateSchemaService
 }));
 
+vi.mock('$lib/server/trackedLots', () => ({
+	getTrackedLotIds: mockGetTrackedLotIds
+}));
+
+vi.mock('$lib/server/briefMatchSummary', () => ({
+	getBriefMatchSummaries: mockGetBriefMatchSummaries
+}));
+
 let load: typeof import('./+page.server').load;
 
 const catalogRows = [
@@ -85,6 +95,8 @@ beforeEach(async () => {
 		generateCoffeeCollectionSchema: mockGenerateCoffeeCollectionSchema,
 		generateSchemaGraph: mockGenerateSchemaGraph
 	});
+	mockGetTrackedLotIds.mockResolvedValue([]);
+	mockGetBriefMatchSummaries.mockResolvedValue([]);
 
 	({ load } = await import('./+page.server'));
 });
@@ -113,6 +125,23 @@ function makeLoadInput(
 			supabase: makeMockSupabase(pricingRows),
 			role,
 			session
+		},
+		url: new URL(url)
+	} as unknown as Parameters<typeof load>[0];
+}
+
+function makeLoadInputWithPrincipal(
+	role: App.Locals['role'],
+	session: App.Locals['session'],
+	principal: { isAuthenticated: true; userId: string; ppiAccess: boolean },
+	url = 'https://app.test/catalog'
+) {
+	return {
+		locals: {
+			supabase: makeMockSupabase(),
+			role,
+			session,
+			principal
 		},
 		url: new URL(url)
 	} as unknown as Parameters<typeof load>[0];
@@ -545,5 +574,66 @@ describe('/catalog page load', () => {
 		expect(result.originPriceStats).toEqual([
 			expect.objectContaining({ origin: 'Honduras', median: 5, sample_size: 3 })
 		]);
+	});
+});
+
+describe('/catalog tracked lots and brief matches', () => {
+	it('returns empty trackedLotIds and briefMatchSummaries for unauthenticated load', async () => {
+		const result = (await load(makeLoadInput('viewer', null))) as {
+			trackedLotIds: number[];
+			briefMatchSummaries: unknown[];
+		};
+
+		expect(result.trackedLotIds).toEqual([]);
+		expect(result.briefMatchSummaries).toEqual([]);
+		expect(mockGetTrackedLotIds).not.toHaveBeenCalled();
+		expect(mockGetBriefMatchSummaries).not.toHaveBeenCalled();
+	});
+
+	it('fetches tracked lot IDs for a ppiAccess user', async () => {
+		const session = { access_token: 'ppi-token' } as App.Locals['session'];
+		const principal = { isAuthenticated: true as const, userId: 'ppi-user-1', ppiAccess: true };
+		mockGetTrackedLotIds.mockResolvedValue([10, 42]);
+
+		const result = (await load(makeLoadInputWithPrincipal('viewer', session, principal))) as {
+			trackedLotIds: number[];
+			briefMatchSummaries: unknown[];
+		};
+
+		expect(mockGetTrackedLotIds).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: 'session-client' }),
+			'ppi-user-1'
+		);
+		expect(result.trackedLotIds).toEqual([10, 42]);
+		// ppiAccess non-member: briefs not fetched
+		expect(mockGetBriefMatchSummaries).not.toHaveBeenCalled();
+		expect(result.briefMatchSummaries).toEqual([]);
+	});
+
+	it('fetches tracked lot IDs and brief match summaries for a member', async () => {
+		const session = { access_token: 'member-token' } as App.Locals['session'];
+		const principal = {
+			isAuthenticated: true as const,
+			userId: 'member-user-1',
+			ppiAccess: false
+		};
+		mockGetTrackedLotIds.mockResolvedValue([7]);
+		mockGetBriefMatchSummaries.mockResolvedValue([
+			{ briefId: 'b1', briefName: 'Ethiopia brief', matchCount: 1, matchingIds: [1] }
+		]);
+
+		const result = (await load(makeLoadInputWithPrincipal('member', session, principal))) as {
+			trackedLotIds: number[];
+			briefMatchSummaries: Array<{ briefId: string; briefName: string }>;
+		};
+
+		expect(mockGetTrackedLotIds).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: 'session-client' }),
+			'member-user-1'
+		);
+		expect(mockGetBriefMatchSummaries).toHaveBeenCalled();
+		expect(result.trackedLotIds).toEqual([7]);
+		expect(result.briefMatchSummaries).toHaveLength(1);
+		expect(result.briefMatchSummaries[0].briefName).toBe('Ethiopia brief');
 	});
 });

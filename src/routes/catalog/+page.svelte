@@ -13,6 +13,10 @@
 	} from '$lib/catalog/processDisplay';
 	import { PROCESSING_CONFIDENCE_OPTIONS } from '$lib/catalog/urlState';
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
+	import {
+		summarizeSourcingBriefMatches,
+		type MatchableSourcingLot
+	} from '$lib/procurement/sourcingBriefMatching';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
@@ -23,6 +27,38 @@
 	let { data } = $props<{ data: PageData }>();
 
 	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
+
+	let trackedIds = $state<Set<number>>(new Set());
+
+	$effect(() => {
+		trackedIds = new Set(data.trackedLotIds ?? []);
+	});
+
+	function setTracked(catalogId: number, tracked: boolean) {
+		const next = new Set(trackedIds);
+		if (tracked) next.add(catalogId);
+		else next.delete(catalogId);
+		trackedIds = next;
+	}
+
+	async function handleToggleTrack(catalogId: number) {
+		const wasTracked = trackedIds.has(catalogId);
+		setTracked(catalogId, !wasTracked);
+		// Optimistic update, reverted on failure.
+		try {
+			const res = await fetch(`/api/catalog/${catalogId}/track`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' }
+			});
+			if (!res.ok) throw new Error('track failed');
+			const body = (await res.json()) as { tracked: boolean };
+			if (body.tracked !== !wasTracked) {
+				setTracked(catalogId, body.tracked);
+			}
+		} catch {
+			setTracked(catalogId, wasTracked);
+		}
+	}
 
 	import type { UserRole } from '$lib/types/auth.types';
 	let userRole: UserRole = $derived(role as UserRole);
@@ -104,6 +140,19 @@
 
 	let canUseBeanMatching = $derived(data.catalogAccess?.canUseBeanMatching === true);
 	let canUseParchmentIntelligence = $derived(ppiAccess === true);
+	let canUseSourcingIntelligence = $derived(
+		canUseParchmentIntelligence || hasRequiredRole('member')
+	);
+	let briefMatchSummaries = $derived(
+		summarizeSourcingBriefMatches(
+			data.briefMatchSummaries ?? [],
+			displayData() as unknown as MatchableSourcingLot[]
+		)
+	);
+	let hasBriefMatches = $derived(briefMatchSummaries.length > 0);
+	let trackedCountOnPage = $derived(
+		displayData().filter((c) => trackedIds.has((c as unknown as { id: number }).id)).length
+	);
 
 	function countDistinctCatalogValues(rows: CoffeeCatalog[], key: 'country' | 'source'): number {
 		return new Set(
@@ -376,6 +425,13 @@
 							<p class="text-xs text-text-secondary-light">Priced rows shown</p>
 						</div>
 					</div>
+					{#if canUseSourcingIntelligence && trackedIds.size > 0}
+						<p class="mt-2 text-xs text-text-secondary-light">
+							<span class="font-semibold text-background-tertiary-light">{trackedIds.size}</span>
+							{trackedIds.size === 1 ? 'lot' : 'lots'} tracked ·
+							{trackedCountOnPage} on this page
+						</p>
+					{/if}
 				</div>
 				<div
 					class="w-full rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-4 lg:max-w-sm"
@@ -643,6 +699,30 @@
 			</div>
 		{/if}
 
+		{#if hasBriefMatches}
+			<div
+				class="rounded-lg border border-background-tertiary-light/30 bg-background-secondary-light px-4 py-3"
+				aria-label="Sourcing brief matches"
+			>
+				<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+					Active sourcing briefs
+				</p>
+				<div class="mt-2 flex flex-col gap-2">
+					{#each briefMatchSummaries as summary}
+						<div class="flex items-center justify-between gap-3 text-sm">
+							<span class="font-medium text-text-primary-light">{summary.briefName}</span>
+							<span class="shrink-0 text-xs text-text-secondary-light">
+								<span class="font-semibold text-background-tertiary-light"
+									>{summary.matchCount}</span
+								>
+								{summary.matchCount === 1 ? 'lot matches' : 'lots match'} criteria on this page
+							</span>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
 		<div class="space-y-4">
 			<div class="flex-1">
 				{#if $filterStore.isLoading}
@@ -722,6 +802,8 @@
 								showSimilarComparisonAction={true}
 								{canUseBeanMatching}
 								priceContext={getCardPriceContext(coffee)}
+								tracked={trackedIds.has((coffee as unknown as { id: number }).id)}
+								onToggleTrack={canUseSourcingIntelligence ? handleToggleTrack : undefined}
 							/>
 						{/each}
 

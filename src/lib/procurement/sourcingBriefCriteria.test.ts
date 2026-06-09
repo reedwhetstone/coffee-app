@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	SourcingBriefCriteriaValidationError,
+	describeSourcingBriefCriteria,
 	sourcingBriefCriteriaToCatalogSearchOptions,
 	validateSourcingBriefCriteria
 } from './sourcingBriefCriteria';
@@ -113,5 +114,22 @@ describe('validateSourcingBriefCriteria', () => {
 			stockedFilter: null,
 			wholesaleOnly: false
 		});
+	});
+
+	it('describes every saved brief constraint for chat context', () => {
+		const criteria = validateSourcingBriefCriteria({
+			country: 'Colombia',
+			region: 'Huila',
+			processing: 'Washed',
+			processing_base_method: 'washed',
+			max_price_per_lb: 6.5,
+			stocked_only: true,
+			wholesale_only: true,
+			stocked_days: 14
+		});
+
+		expect(describeSourcingBriefCriteria(criteria)).toBe(
+			'origin Colombia, region Huila, process Washed, base process washed, max $6.5/lb, stocked only, wholesale only, stocked in the last 14 days'
+		);
 	});
 });
