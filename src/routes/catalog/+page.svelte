@@ -18,6 +18,7 @@
 	import type { CoffeeCatalog } from '$lib/types/component.types';
 	import { getLotPriceContext } from '$lib/catalog/priceContext';
 	import type { OriginPriceStats, LotPriceContext } from '$lib/catalog/priceContext';
+	import { getDisplayPrice } from '$lib/utils/pricing';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -138,7 +139,7 @@
 	);
 
 	function getCardPriceContext(coffee: CoffeeCatalog): LotPriceContext | null {
-		const price = coffee.price_per_lb ?? coffee.cost_lb;
+		const price = getDisplayPrice(coffee);
 		return getLotPriceContext(price, originPriceMap.get(coffee.country ?? ''));
 	}
 
@@ -606,7 +607,9 @@
 							class="rounded-lg border border-border-light bg-background-secondary-light px-4 py-3"
 							aria-label="Origin price context"
 						>
-							<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+							<p
+								class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light"
+							>
 								{stats.origin} supply context
 							</p>
 							<div class="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">

@@ -1,15 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { buildOriginPriceMap, getLotPriceContext } from './priceContext';
 
-const makeRow = (
-	country: string,
-	price: number,
-	wholesale = false,
-	source = 'Supplier A'
-) => ({
+const makeRow = (country: string, price: number, wholesale = false, source = 'Supplier A') => ({
 	country,
 	price_per_lb: price,
-	cost_lb: null,
+	cost_lb: price,
 	wholesale,
 	source
 });
@@ -43,9 +38,9 @@ describe('buildOriginPriceMap', () => {
 
 	it('counts distinct suppliers correctly', () => {
 		const rows = [
-			{ country: 'Kenya', price_per_lb: 5.0, cost_lb: null, wholesale: false, source: 'Sup A' },
-			{ country: 'Kenya', price_per_lb: 6.0, cost_lb: null, wholesale: false, source: 'Sup B' },
-			{ country: 'Kenya', price_per_lb: 7.0, cost_lb: null, wholesale: false, source: 'Sup A' }
+			{ country: 'Kenya', price_per_lb: 5.0, cost_lb: 5.0, wholesale: false, source: 'Sup A' },
+			{ country: 'Kenya', price_per_lb: 6.0, cost_lb: 6.0, wholesale: false, source: 'Sup B' },
+			{ country: 'Kenya', price_per_lb: 7.0, cost_lb: 7.0, wholesale: false, source: 'Sup A' }
 		];
 		const map = buildOriginPriceMap(rows);
 		expect(map.get('Kenya')!.supplier_count).toBe(2);
@@ -90,9 +85,50 @@ describe('buildOriginPriceMap', () => {
 		expect(map.get('Peru')!.median).toBeCloseTo(5.0);
 	});
 
+	it('uses the displayed card price by preferring cost_lb over price_per_lb', () => {
+		const rows = [
+			{ country: 'Peru', price_per_lb: 9.5, cost_lb: 4.5, wholesale: false, source: 'A' },
+			{ country: 'Peru', price_per_lb: 10.0, cost_lb: 5.0, wholesale: false, source: 'B' },
+			{ country: 'Peru', price_per_lb: 10.5, cost_lb: 5.5, wholesale: false, source: 'C' }
+		];
+		const map = buildOriginPriceMap(rows);
+		expect(map.get('Peru')!.median).toBeCloseTo(5.0);
+	});
+
+	it('uses the first display tier when scalar prices are absent', () => {
+		const rows = [
+			{
+				country: 'Mexico',
+				price_per_lb: null,
+				cost_lb: null,
+				price_tiers: [{ min_lbs: 5, price: 4.25 }],
+				wholesale: false,
+				source: 'A'
+			},
+			{
+				country: 'Mexico',
+				price_per_lb: null,
+				cost_lb: null,
+				price_tiers: [{ min_lbs: 5, price: 4.75 }],
+				wholesale: false,
+				source: 'B'
+			},
+			{
+				country: 'Mexico',
+				price_per_lb: null,
+				cost_lb: null,
+				price_tiers: [{ min_lbs: 5, price: 5.25 }],
+				wholesale: false,
+				source: 'C'
+			}
+		];
+		const map = buildOriginPriceMap(rows);
+		expect(map.get('Mexico')!.median).toBeCloseTo(4.75);
+	});
+
 	it('skips rows with no country or no price', () => {
 		const rows = [
-			{ country: null, price_per_lb: 5.0, cost_lb: null, wholesale: false, source: 'A' },
+			{ country: null, price_per_lb: 5.0, cost_lb: 5.0, wholesale: false, source: 'A' },
 			{ country: 'Ethiopia', price_per_lb: null, cost_lb: null, wholesale: false, source: 'B' },
 			makeRow('Ethiopia', 5.0),
 			makeRow('Ethiopia', 6.0),

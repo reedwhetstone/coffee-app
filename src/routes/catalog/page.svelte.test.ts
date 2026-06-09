@@ -311,6 +311,27 @@ describe('/catalog price intelligence', () => {
 		});
 	});
 
+	it('bases card price context on the displayed price instead of price_per_lb', async () => {
+		renderCatalog(
+			createData({
+				data: [
+					{
+						...createData().data[0],
+						price_per_lb: 6,
+						cost_lb: 9,
+						price_tiers: [{ min_lbs: 1, price: 9 }]
+					}
+				],
+				originPriceStats: [{ ...colombiaStats, median: 9 }]
+			} as Partial<PageData>)
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText('Near median')).toBeInTheDocument();
+		});
+		expect(screen.queryByText(/below median/i)).not.toBeInTheDocument();
+	});
+
 	it('does not render price context badges when no origin stats are provided', () => {
 		renderCatalog(createData({ originPriceStats: [] } as Partial<PageData>));
 

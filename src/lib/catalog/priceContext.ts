@@ -1,3 +1,6 @@
+import type { Json } from '$lib/types/database.types';
+import { getDisplayPrice } from '$lib/utils/pricing';
+
 export interface OriginPriceStats {
 	origin: string;
 	median: number;
@@ -21,14 +24,18 @@ interface PriceableRow {
 	country: string | null;
 	price_per_lb: number | null;
 	cost_lb?: number | null;
+	price_tiers?: Json | null;
 	wholesale: boolean;
 	source?: string | null;
 }
 
 function getRowPrice(row: PriceableRow): number | null {
-	if (row.price_per_lb != null) return row.price_per_lb;
-	if (row.cost_lb != null) return row.cost_lb;
-	return null;
+	return getDisplayPrice({
+		cost_lb: row.cost_lb ?? null,
+		price_per_lb: row.price_per_lb,
+		price_tiers: row.price_tiers ?? null,
+		wholesale: row.wholesale
+	});
 }
 
 function computePercentile(sorted: number[], p: number): number {
@@ -42,7 +49,7 @@ function computePercentile(sorted: number[], p: number): number {
 
 export function buildOriginPriceMap(
 	rows: PriceableRow[],
-	scope: 'retail' | 'wholesale' = 'retail'
+	scope: 'retail' | 'wholesale' | 'all' = 'retail'
 ): Map<string, OriginPriceStats> {
 	const byCountry = new Map<string, { prices: number[]; suppliers: Set<string> }>();
 
