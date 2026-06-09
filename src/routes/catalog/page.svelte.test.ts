@@ -4,6 +4,7 @@ import '@testing-library/jest-dom/vitest';
 import CatalogPage from './+page.svelte';
 import type { PageData } from './$types';
 import { createCatalogProofSummary } from '$lib/catalog/proofSummary';
+import { filterStore } from '$lib/stores/filterStore';
 
 const { goto, pageState } = vi.hoisted(() => ({
 	goto: vi.fn(),
@@ -109,6 +110,7 @@ function proof(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
 	vi.clearAllMocks();
 	pageState.url = new URL('https://app.test/catalog');
+	filterStore.initializeForRoute('__test-reset__', []);
 	vi.stubGlobal(
 		'fetch',
 		vi.fn(async (url: string) => {
@@ -216,6 +218,57 @@ beforeEach(() => {
 			});
 		})
 	);
+});
+
+describe('/catalog intelligence connective tissue', () => {
+	it('frames the catalog as supply evidence behind market intelligence with analytics links', () => {
+		renderCatalog(createData());
+
+		expect(screen.getByText('Supply evidence layer')).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				/Inspect the row-level supply substrate behind Parchment Market Index reads/i
+			)
+		).toBeInTheDocument();
+		expect(screen.getByText('Active rows in this query')).toBeInTheDocument();
+		expect(screen.getByText('Origins shown on this page')).toBeInTheDocument();
+		expect(screen.getByText('Suppliers shown on this page')).toBeInTheDocument();
+		expect(screen.getByText('Priced rows shown')).toBeInTheDocument();
+
+		expect(screen.getByRole('link', { name: 'Open Parchment Market Index' })).toHaveAttribute(
+			'href',
+			'/analytics'
+		);
+		expect(
+			screen.getByRole('link', { name: 'Review supplier comparison evidence' })
+		).toHaveAttribute('href', '/analytics#supplier-comparison');
+	});
+
+	it('routes empty catalog queries back to the broader market read instead of pretending a saved workflow exists', () => {
+		renderCatalog(
+			createData({
+				data: [],
+				trainingData: [],
+				pagination: {
+					page: 1,
+					limit: 15,
+					total: 0,
+					totalPages: 0,
+					hasNext: false,
+					hasPrev: false
+				}
+			} as Partial<PageData>)
+		);
+
+		expect(screen.getByText('No catalog rows match this supply query')).toBeInTheDocument();
+		expect(
+			screen.getByText(/review broader origin, supplier, and pricing evidence/i)
+		).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Review broader Market Index' })).toHaveAttribute(
+			'href',
+			'/analytics'
+		);
+	});
 });
 
 describe('/catalog similar comparison controls', () => {
