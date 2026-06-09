@@ -3,6 +3,9 @@ import { buildPublicMeta, resolvePublicPageSocialImage } from '$lib/seo/meta';
 import { resolvePrincipal } from '$lib/server/principal';
 import { createAdminClient } from '$lib/supabase-admin';
 import { createSchemaService } from '$lib/services/schemaService';
+import { getTrackedLotSummaries, type TrackedLotSummary } from '$lib/server/trackedLots';
+
+export type { TrackedLotSummary } from '$lib/server/trackedLots';
 
 export interface ArrivalBean {
 	name: string;
@@ -678,6 +681,18 @@ export const load: PageServerLoad = async (event) => {
 			}));
 	}
 
+	// Watchlist context: members and Parchment Intelligence users see their tracked
+	// lots read against the live index scope.
+	const isSourcingMember = event.locals.role === 'member' || event.locals.role === 'admin';
+	let trackedLots: TrackedLotSummary[] = [];
+	if (principal.isAuthenticated && (isParchmentIntelligence || isSourcingMember)) {
+		try {
+			trackedLots = await getTrackedLotSummaries(supabase, principal.userId, 25);
+		} catch (error) {
+			console.error('Error loading analytics watchlist context:', error);
+		}
+	}
+
 	const baseUrl = `${event.url.protocol}//${event.url.host}`;
 	const schemaService = createSchemaService(baseUrl);
 	const schemaData = schemaService.generateSchemaGraph([
@@ -741,6 +756,7 @@ export const load: PageServerLoad = async (event) => {
 		recentDelistings,
 		comparisonBeans,
 		supplierHealth,
+		trackedLots,
 		meta: buildPublicMeta({
 			baseUrl,
 			path: '/analytics',

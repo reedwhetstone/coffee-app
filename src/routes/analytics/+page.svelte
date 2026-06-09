@@ -9,7 +9,8 @@
 		ArrivalBean,
 		DelistingBean,
 		ComparisonBean,
-		SupplierHealthRow
+		SupplierHealthRow,
+		TrackedLotSummary
 	} from './+page.server';
 	import { goto } from '$app/navigation';
 	import ExpandablePanel from '$lib/components/analytics/ExpandablePanel.svelte';
@@ -63,7 +64,8 @@
 		recentArrivals,
 		recentDelistings,
 		comparisonBeans,
-		supplierHealth
+		supplierHealth,
+		trackedLots
 	} = $derived(
 		data as {
 			session: PageData['session'];
@@ -91,6 +93,7 @@
 			recentDelistings: DelistingBean[];
 			comparisonBeans: ComparisonBean[];
 			supplierHealth: SupplierHealthRow[];
+			trackedLots: TrackedLotSummary[];
 		}
 	);
 
@@ -150,7 +153,8 @@
 		const cutoff = new Date(now);
 		cutoff.setDate(cutoff.getDate() - daysBack);
 		const cutoffStr = cutoff.toISOString().split('T')[0];
-		return snapshots.filter((s) => s.snapshot_date >= cutoffStr && !s.wholesale_only);
+		// Follows the page-level market scope so the master controls flip this view too.
+		return filteredSnapshots.filter((s) => s.snapshot_date >= cutoffStr);
 	});
 
 	let filteredProcessDist = $derived.by((): ProcessBucket[] => {
@@ -266,6 +270,92 @@
 		const staleAfterMs = 90 * 24 * 60 * 60 * 1000;
 		return Number.isFinite(updatedAt) && Date.now() - updatedAt <= staleAfterMs;
 	});
+
+	// Gated modules follow the page-level market scope so the top controls act as a master lens.
+	let scopedComparisonBeans = $derived.by(() => {
+		if (viewMode === 'retail') return comparisonBeans.filter((bean) => !bean.wholesale);
+		if (viewMode === 'wholesale') return comparisonBeans.filter((bean) => bean.wholesale);
+		return comparisonBeans;
+	});
+
+	let scopedSupplierHealth = $derived.by(() => {
+		if (viewMode === 'retail') return supplierHealth.filter((row) => row.retailCount > 0);
+		if (viewMode === 'wholesale') return supplierHealth.filter((row) => row.wholesaleCount > 0);
+		return supplierHealth;
+	});
+
+	// Watchlist context scoped to the active market lens.
+	let scopedTrackedLots = $derived.by(() => {
+		const lots = trackedLots ?? [];
+		if (viewMode === 'retail') return lots.filter((lot) => lot.wholesale !== true);
+		if (viewMode === 'wholesale') return lots.filter((lot) => lot.wholesale === true);
+		return lots;
+	});
+	let trackedDelistedCount = $derived(
+		scopedTrackedLots.filter((lot) => lot.stocked === false).length
+	);
+	let trackedPriceMovers = $derived.by(() =>
+		scopedTrackedLots
+			.filter((lot) => lot.priceDelta !== null && Math.abs(lot.priceDelta) >= 0.05)
+			.sort((a, b) => Math.abs(b.priceDelta ?? 0) - Math.abs(a.priceDelta ?? 0))
+	);
+
+	// Week-over-week per-origin price movement from the scoped index snapshots. Compares the
+	// latest snapshot against the closest snapshot at least six days earlier.
+	type OriginMover = { origin: string; latest: number; delta: number };
+	let weeklyOriginMovement = $derived.by(
+		(): { movers: OriginMover[]; baselineDate: string | null } => {
+			const dates = Array.from(new Set(filteredSnapshots.map((s) => s.snapshot_date))).sort();
+			if (dates.length < 2) return { movers: [], baselineDate: null };
+			const latestDate = dates[dates.length - 1];
+			const latestTime = new Date(`${latestDate}T00:00:00Z`).getTime();
+			const weekAgoCandidates = dates.filter(
+				(date) => latestTime - new Date(`${date}T00:00:00Z`).getTime() >= 6 * 24 * 60 * 60 * 1000
+			);
+			const baselineDate = weekAgoCandidates.length
+				? weekAgoCandidates[weekAgoCandidates.length - 1]
+				: dates[0];
+
+			const averageByOrigin = (date: string) => {
+				const byOrigin = new Map<string, { sum: number; count: number }>();
+				for (const s of filteredSnapshots) {
+					if (s.snapshot_date !== date || s.price_avg == null) continue;
+					const cur = byOrigin.get(s.origin) ?? { sum: 0, count: 0 };
+					cur.sum += s.price_avg;
+					cur.count += 1;
+					byOrigin.set(s.origin, cur);
+				}
+				return new Map(
+					Array.from(byOrigin.entries()).map(([origin, v]) => [origin, v.sum / v.count])
+				);
+			};
+
+			const latestByOrigin = averageByOrigin(latestDate);
+			const baselineByOrigin = averageByOrigin(baselineDate);
+			const movers: OriginMover[] = [];
+			for (const [origin, latest] of latestByOrigin) {
+				const baseline = baselineByOrigin.get(origin);
+				if (baseline == null) continue;
+				const delta = latest - baseline;
+				if (Math.abs(delta) >= 0.05) movers.push({ origin, latest, delta });
+			}
+			movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+			return { movers, baselineDate };
+		}
+	);
+
+	function topOriginCounts(beans: Array<{ country: string | null }>, max = 2): string {
+		const counts = new Map<string, number>();
+		for (const bean of beans) {
+			if (!bean.country) continue;
+			counts.set(bean.country, (counts.get(bean.country) ?? 0) + 1);
+		}
+		return Array.from(counts.entries())
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, max)
+			.map(([country, count]) => `${country} (${count})`)
+			.join(', ');
+	}
 
 	function loadedRowsLabel(count: number): string {
 		return `Open ${count.toLocaleString()} loaded ${count === 1 ? 'row' : 'rows'} ↗`;
@@ -581,37 +671,122 @@
 		}
 	]);
 
-	let insightCards = $derived.by(() => [
-		{
-			label: 'Availability read',
-			title: !isMovementDataAvailable
-				? 'Movement counts need a fresh index read.'
-				: scopedArrivalCount >= scopedDelistingCount
-					? 'Fresh supply is leading current movement.'
-					: 'Catalog exits deserve attention before the next buy window.',
-			body: isMovementDataAvailable
-				? `${scopedArrivalCount} arrivals versus ${scopedDelistingCount} delistings in the selected ${movementWindowLabel} ${viewModeLabel} scope. Use the gated movement tables for named lots and suppliers.`
-				: `The selected ${movementWindowLabel} ${viewModeLabel} movement counts are unavailable or stale, so the read does not treat zeros as market stability.`,
-			evidence: `Evidence: ${displaySuppliersCount} ${viewModeLabel} suppliers, latest index ${formatDate(stats.lastUpdated)}`
-		},
-		{
-			label: 'Price posture',
-			title:
-				marketPriceDelta == null || Math.abs(marketPriceDelta) < 0.05
-					? 'Treat price as range evidence, not a single market answer.'
-					: marketPriceDelta > 0
-						? 'Latest indexed prices are pressing higher.'
-						: 'Latest indexed prices are creating selective value pockets.',
-			body: `The latest ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb. Origin ranges below show whether that movement is broad or concentrated.`,
-			evidence: `Evidence: ${latestSnapshotRows.length || scopedOriginRangeData.length} origin rows in current scope`
-		},
-		{
-			label: 'Coverage signal',
-			title: 'Supplier breadth is the trust layer for every recommendation.',
-			body: `${displayStockedCount.toLocaleString()} active ${viewModeLabel} listings span ${displayOriginsCount} origins. Supplier comparison and health modules stay gated because that is where buyer leverage compounds.`,
-			evidence: `Evidence: ${stats.totalBeansTracked.toLocaleString()} total tracked catalog records`
+	// Origins whose latest snapshot rests on fewer than three suppliers — their medians
+	// are thin evidence and the coverage card calls that out.
+	let thinCoverageOrigins = $derived.by(() => {
+		const byOrigin = new Map<string, number>();
+		for (const s of latestSnapshotRows) {
+			byOrigin.set(s.origin, Math.max(byOrigin.get(s.origin) ?? 0, s.supplier_count ?? 0));
 		}
-	]);
+		const origins = Array.from(byOrigin.entries());
+		return {
+			total: origins.length,
+			thin: origins.filter(([, suppliers]) => suppliers < 3).map(([origin]) => origin)
+		};
+	});
+
+	function formatMoverPhrase(mover: { origin: string; delta: number }): string {
+		return `${mover.origin} ${formatSigned(mover.delta, 2)}/lb`;
+	}
+
+	let availabilityInsight = $derived.by(() => {
+		if (!isMovementDataAvailable) {
+			return {
+				label: 'Availability read',
+				title: 'Movement counts need a fresh index read.',
+				body: `The selected ${movementWindowLabel} ${viewModeLabel} movement counts are unavailable or stale, so the read does not treat zeros as market stability.`,
+				evidence: `Evidence: latest index ${formatDate(stats.lastUpdated)}`
+			};
+		}
+		const net = scopedArrivalCount - scopedDelistingCount;
+		const title =
+			net === 0
+				? `Arrivals and delistings are balanced in the ${movementWindowLabel} ${viewModeLabel} window.`
+				: net > 0
+					? `Net +${net} ${viewModeLabel} lots in the ${movementWindowLabel} window.`
+					: `Net ${net} ${viewModeLabel} lots — exits are outpacing arrivals in the ${movementWindowLabel} window.`;
+		const arrivalOrigins = topOriginCounts(filteredArrivals);
+		const delistingOrigins = topOriginCounts(filteredDelistings);
+		const detailParts = [`${scopedArrivalCount} arrivals vs ${scopedDelistingCount} delistings.`];
+		if (arrivalOrigins) detailParts.push(`Arrivals led by ${arrivalOrigins}.`);
+		if (delistingOrigins) detailParts.push(`Exits led by ${delistingOrigins}.`);
+		if (!arrivalOrigins && !delistingOrigins && isParchmentIntelligence === false) {
+			detailParts.push('Named lots and origin-level movement are in the gated movement tables.');
+		}
+		return {
+			label: 'Availability read',
+			title,
+			body: detailParts.join(' '),
+			evidence: `Evidence: ${movementWindowLabel} window ending ${formatDate(stats.lastUpdated)}, ${displaySuppliersCount} ${viewModeLabel} suppliers`
+		};
+	});
+
+	let pricePostureInsight = $derived.by(() => {
+		const movers = weeklyOriginMovement.movers;
+		const baselineDate = weeklyOriginMovement.baselineDate;
+		if (!movers.length || !baselineDate) {
+			return {
+				label: 'Price posture',
+				title:
+					baselineDate === null
+						? 'Week-over-week price movement needs a second comparable snapshot.'
+						: `Origin medians are flat week-over-week (within ±$0.05/lb) in the ${viewModeLabel} scope.`,
+				body: `The latest ${viewModeLabel} average is ${formatMoney(latestMarketAverage)}/lb across ${latestSnapshotRows.length} origin rows. Origin ranges below show how that average distributes.`,
+				evidence:
+					baselineDate === null
+						? `Evidence: single snapshot ${formatDate(latestSnapshotDate || stats.lastUpdated)}`
+						: `Evidence: ${formatDate(baselineDate)} vs ${formatDate(latestSnapshotDate)}`
+			};
+		}
+		const lead = movers[0];
+		const up = movers.filter((m) => m.delta > 0);
+		const down = movers.filter((m) => m.delta < 0);
+		const title = `${lead.origin} leads ${viewModeLabel} movement, ${formatSigned(lead.delta, 2)}/lb week-over-week.`;
+		const bodyParts: string[] = [];
+		if (up.length) {
+			bodyParts.push(`Rising: ${up.slice(0, 3).map(formatMoverPhrase).join(', ')}.`);
+		}
+		if (down.length) {
+			bodyParts.push(`Easing: ${down.slice(0, 3).map(formatMoverPhrase).join(', ')}.`);
+		}
+		bodyParts.push(`Scope average is ${formatMoney(latestMarketAverage)}/lb.`);
+		return {
+			label: 'Price posture',
+			title,
+			body: bodyParts.join(' '),
+			evidence: `Evidence: per-origin averages, ${formatDate(baselineDate)} vs ${formatDate(latestSnapshotDate)}`
+		};
+	});
+
+	let coverageInsight = $derived.by(() => {
+		const { total, thin } = thinCoverageOrigins;
+		if (total === 0) {
+			return {
+				label: 'Coverage signal',
+				title: 'No indexed origins in this scope yet.',
+				body: `No ${viewModeLabel} origin rows are present in the latest snapshot, so price reads in this scope have no supplier evidence behind them.`,
+				evidence: `Evidence: latest index ${formatDate(stats.lastUpdated)}`
+			};
+		}
+		const broad = total - thin.length;
+		const title =
+			thin.length === 0
+				? `All ${total} ${viewModeLabel} origins have 3+ supplier coverage.`
+				: `${thin.length} of ${total} ${viewModeLabel} origins rest on fewer than 3 suppliers.`;
+		const thinList = thin.slice(0, 4).join(', ');
+		const body =
+			thin.length === 0
+				? `Every origin median in this scope is backed by at least three suppliers, so range evidence is comparison-grade across the board.`
+				: `Treat medians for ${thinList}${thin.length > 4 ? ` and ${thin.length - 4} more` : ''} as thin evidence — fewer than three suppliers price them. The remaining ${broad} origins have comparison-grade coverage.`;
+		return {
+			label: 'Coverage signal',
+			title,
+			body,
+			evidence: `Evidence: supplier counts per origin, snapshot ${formatDate(latestSnapshotDate || stats.lastUpdated)}`
+		};
+	});
+
+	let insightCards = $derived.by(() => [availabilityInsight, pricePostureInsight, coverageInsight]);
 
 	let analyticsEntitlement = $derived(
 		resolveAnalyticsEntitlement({
@@ -634,13 +809,15 @@
 				latestIndexDate: stats.lastUpdated,
 				stockedListings: displayStockedCount,
 				suppliers: displaySuppliersCount,
-				origins: displayOriginsCount
+				origins: displayOriginsCount,
+				trackedLots: scopedTrackedLots.length
 			},
 			visibleModules: [
 				'market-read',
 				'scope-controls',
 				'kpi-strip',
 				'insight-cards',
+				...(scopedTrackedLots.length > 0 ? ['watchlist-signals'] : []),
 				'origin-price-trends',
 				'processing-mix',
 				'origin-price-ranges',
@@ -718,7 +895,7 @@
 						Scope controls
 					</p>
 					<p class="mt-1 text-sm text-text-secondary-light">
-						Set the investigation lens before reading charts.
+						A master lens: every module on this page follows the selected scope.
 					</p>
 				</div>
 				<span
@@ -813,6 +990,72 @@
 		</article>
 	{/each}
 </section>
+
+{#if scopedTrackedLots.length > 0}
+	<section
+		class="mb-6 rounded-xl border border-border-light bg-background-primary-light p-5 shadow-sm"
+		aria-label="Watchlist signals"
+	>
+		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+			<div>
+				<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+					Watchlist signals
+				</p>
+				<h2 class="mt-1 text-lg font-semibold text-text-primary-light">
+					{scopedTrackedLots.length} tracked {viewModeLabel}
+					{scopedTrackedLots.length === 1 ? 'lot' : 'lots'}{trackedDelistedCount > 0
+						? ` · ${trackedDelistedCount} delisted since tracking`
+						: ''}
+				</h2>
+			</div>
+			<a
+				href="/catalog"
+				class="text-sm font-medium text-background-tertiary-light hover:text-text-primary-light"
+			>
+				Manage watchlist
+			</a>
+		</div>
+		<div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+			{#each scopedTrackedLots.slice(0, 6) as lot (lot.catalogId)}
+				<div class="rounded-lg border border-border-light bg-background-secondary-light p-3">
+					<p class="truncate text-sm font-semibold text-text-primary-light">{lot.name}</p>
+					<p class="mt-0.5 text-xs text-text-secondary-light">
+						{[lot.source, lot.country].filter(Boolean).join(' · ') || 'Supplier unknown'}
+					</p>
+					<div class="mt-2 flex items-center gap-2 text-xs">
+						{#if lot.stocked === false}
+							<span class="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">
+								Delisted
+							</span>
+						{:else}
+							<span class="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700">
+								Stocked
+							</span>
+						{/if}
+						{#if lot.currentPrice !== null}
+							<span class="font-semibold text-text-primary-light">
+								${lot.currentPrice.toFixed(2)}/lb
+							</span>
+						{/if}
+						{#if lot.priceDelta !== null && Math.abs(lot.priceDelta) >= 0.05}
+							<span
+								class="font-medium {lot.priceDelta > 0 ? 'text-amber-700' : 'text-emerald-700'}"
+							>
+								{formatSigned(lot.priceDelta, 2)} since tracked
+							</span>
+						{/if}
+					</div>
+				</div>
+			{/each}
+		</div>
+		{#if trackedPriceMovers.length > 0}
+			<p class="mt-3 text-xs text-text-secondary-light">
+				Biggest move since tracking: {trackedPriceMovers[0].name}
+				({formatSigned(trackedPriceMovers[0].priceDelta, 2)}/lb).
+			</p>
+		{/if}
+	</section>
+{/if}
 
 {#if analyticsShellMessage}
 	<div
@@ -1203,8 +1446,8 @@
 		<div id="supplier-comparison" class="space-y-6">
 			<ExpandablePanel
 				title="Supplier price comparison"
-				subtitle="Compare current supplier pricing for a selected origin."
-				totalItems={comparisonBeans.length}
+				subtitle="Compare current supplier pricing for a selected origin in the {viewModeLabel} scope."
+				totalItems={scopedComparisonBeans.length}
 			>
 				<AnalyticsLoadingPanel
 					ready={Boolean(SupplierComparisonTableComponent)}
@@ -1216,15 +1459,15 @@
 					onRetry={retryMemberVisuals}
 				>
 					{#if SupplierComparisonTableComponent}
-						<SupplierComparisonTableComponent beans={comparisonBeans} />
+						<SupplierComparisonTableComponent beans={scopedComparisonBeans} />
 					{/if}
 				</AnalyticsLoadingPanel>
 			</ExpandablePanel>
 
 			<ExpandablePanel
 				title="Supplier catalog health"
-				subtitle="Review catalog breadth, coverage, and pricing by supplier."
-				totalItems={supplierHealth.length}
+				subtitle="Review catalog breadth, coverage, and pricing for suppliers active in the {viewModeLabel} scope."
+				totalItems={scopedSupplierHealth.length}
 			>
 				<AnalyticsLoadingPanel
 					ready={Boolean(SupplierHealthTableComponent)}
@@ -1239,7 +1482,7 @@
 						<div
 							class="rounded-lg border border-border-light bg-background-primary-light p-6 shadow-sm"
 						>
-							<SupplierHealthTableComponent rows={supplierHealth} />
+							<SupplierHealthTableComponent rows={scopedSupplierHealth} />
 						</div>
 					{/if}
 				</AnalyticsLoadingPanel>
@@ -1417,12 +1660,12 @@
 												>${row.price_avg.toFixed(2)}</td
 											>
 											<td class="py-2 pr-4 text-right text-text-secondary-light"
-												>{filteredSnapshots
+												>{latestSnapshotRows
 													.find((s) => s.origin === row.origin)
 													?.price_min?.toFixed(2) ?? '—'}</td
 											>
 											<td class="py-2 pr-4 text-right text-text-secondary-light"
-												>{filteredSnapshots
+												>{latestSnapshotRows
 													.find((s) => s.origin === row.origin)
 													?.price_max?.toFixed(2) ?? '—'}</td
 											>
@@ -1468,7 +1711,8 @@
 							Price spread analysis
 						</h2>
 						<p class="mb-4 text-sm text-text-secondary-light">
-							Retail versus wholesale median price by origin in the latest snapshot
+							Retail versus wholesale median price by origin in the latest snapshot. This chart
+							always shows both scopes so the spread stays comparable.
 						</p>
 						{#if PriceTierChartComponent}
 							<PriceTierChartComponent {snapshots} />
@@ -1489,7 +1733,7 @@
 						Longer-term trend detail
 					</h2>
 					<p class="mb-4 text-sm text-text-secondary-light">
-						Price trends across longer time horizons for retail origins
+						Price trends across longer time horizons for {viewModeLabel} origins
 					</p>
 					<div class="mb-3 flex items-center gap-2">
 						<span class="text-xs font-medium text-text-secondary-light">Range:</span>

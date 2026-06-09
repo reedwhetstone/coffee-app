@@ -407,17 +407,17 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 5,
+			match_count: 24,
 			stocked_only: true,
 			public_only: false,
-			candidate_pool: 200
+			candidate_pool: 960
 		});
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 5,
+			match_count: 24,
 			stocked_only: true,
-			candidate_pool: 200
+			candidate_pool: 960
 		});
 		expect(rpc).not.toHaveBeenCalledWith('find_similar_beans_aggregated_v2', expect.anything());
 		expect(body.meta.query_strategy).toBe('bounded-vector-candidates-v1');
@@ -513,15 +513,15 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 5,
+			match_count: 24,
 			stocked_only: true,
 			public_only: false,
-			candidate_pool: 200
+			candidate_pool: 960
 		});
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 5,
+			match_count: 24,
 			stocked_only: true,
 			public_only: false
 		});
@@ -552,15 +552,15 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 5,
+			match_count: 24,
 			stocked_only: true,
 			public_only: false,
-			candidate_pool: 200
+			candidate_pool: 960
 		});
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v2', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 5,
+			match_count: 24,
 			stocked_only: true,
 			public_only: false
 		});
@@ -757,10 +757,10 @@ describe('/v1/catalog/[id]/similar', () => {
 		expect(rpc).toHaveBeenCalledWith('find_similar_beans_aggregated_v3', {
 			target_coffee_id: 1182,
 			match_threshold: 0.7,
-			match_count: 10,
+			match_count: 30,
 			stocked_only: true,
 			public_only: true,
-			candidate_pool: 400
+			candidate_pool: 1000
 		});
 		expect(eq).toHaveBeenCalledWith('public_coffee', true);
 		expect(body.meta.auth).toMatchObject({
