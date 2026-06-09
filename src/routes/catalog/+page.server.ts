@@ -107,6 +107,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		data: catalogResources,
 		trainingData: catalogResources,
 		initialCatalogState,
+		ppiAccess:
+			locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false,
 		catalogAccess,
 		catalogAccessNotice,
 		catalogSchemaUnavailable,

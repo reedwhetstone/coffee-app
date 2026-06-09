@@ -411,7 +411,7 @@ describe('analytics command center hierarchy', () => {
 });
 
 describe('analytics action CTA rail', () => {
-	it('keeps anonymous actions on existing login/API surfaces and disables future watch state', async () => {
+	it('keeps the investigation rail focused on the chat passthrough only', async () => {
 		render(AnalyticsPage, { data: createData() });
 
 		await waitFor(() => {
@@ -420,19 +420,14 @@ describe('analytics action CTA rail', () => {
 
 		expect(screen.getByText('Ask about this market read')).toBeTruthy();
 		expect(screen.getByRole('link', { name: 'Sign in to ask' })).toHaveAttribute('href', '/auth');
-		expect(screen.getByRole('link', { name: 'Sign in to compare' })).toHaveAttribute(
-			'href',
-			'/auth'
-		);
-		expect(screen.getByRole('link', { name: 'Open catalog' })).toHaveAttribute('href', '/catalog');
-		expect(screen.getByRole('link', { name: 'Review API plans' })).toHaveAttribute('href', '/api');
-		const watchButton = screen.getByRole('button', { name: 'Watchlists not live' });
-		const disabledReason = screen.getByText(
-			'Preview only. No saved state, alerts, or watch confirmations are created.'
-		);
-		expect(watchButton).toBeDisabled();
-		expect(watchButton).toHaveAttribute('aria-describedby', disabledReason.id);
-		expect(disabledReason.id).toBe('analytics-action-cta-reason-watch');
+		expect(screen.getByText(/This is the only live handoff here/i)).toBeTruthy();
+		expect(screen.queryByText('Open catalog evidence')).toBeNull();
+		expect(screen.queryByText('Compare supplier evidence')).toBeNull();
+		expect(screen.queryByText('Review machine access')).toBeNull();
+		expect(screen.queryByText('Watch this scope')).toBeNull();
+		expect(screen.queryByRole('link', { name: 'Open catalog' })).toBeNull();
+		expect(screen.queryByRole('link', { name: 'Review API plans' })).toBeNull();
+		expect(screen.queryByRole('button', { name: 'Watchlists not live' })).toBeNull();
 	});
 
 	it('includes bounded analytics context in the chat CTA prompt for entitled users', async () => {
@@ -466,10 +461,7 @@ describe('analytics action CTA rail', () => {
 		expectPromptLine(prompt, 'Access level: Parchment Intelligence');
 		expectPromptLine(prompt, 'Visible evidence:');
 		expect(prompt).toContain('supplier-comparison');
-		expect(screen.getByRole('link', { name: 'Jump to supplier comparison' })).toHaveAttribute(
-			'href',
-			'#supplier-comparison'
-		);
+		expect(screen.queryByRole('link', { name: 'Jump to supplier comparison' })).toBeNull();
 	});
 
 	it('allows roasting-only members to ask with analytics context without unlocking supplier comparison', async () => {
@@ -487,11 +479,8 @@ describe('analytics action CTA rail', () => {
 
 		expect(url.pathname).toBe('/chat');
 		expectPromptLine(prompt, 'Access level: Mallard Studio');
-		expect(screen.getByRole('link', { name: 'Upgrade to compare' })).toHaveAttribute(
-			'href',
-			'/subscription?plan=intelligence-monthly&intent=checkout'
-		);
-		expect(screen.getByRole('button', { name: 'Watchlists not live' })).toBeDisabled();
+		expect(screen.queryByRole('link', { name: 'Upgrade to compare' })).toBeNull();
+		expect(screen.queryByRole('button', { name: 'Watchlists not live' })).toBeNull();
 	});
 
 	it('marks users with both Intelligence and Roasting access as both in chat context', async () => {

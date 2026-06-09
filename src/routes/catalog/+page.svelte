@@ -19,7 +19,7 @@
 
 	let { data } = $props<{ data: PageData }>();
 
-	let { session, role = 'viewer' } = $derived(data);
+	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
 
 	import type { UserRole } from '$lib/types/auth.types';
 	let userRole: UserRole = $derived(role as UserRole);
@@ -100,6 +100,32 @@
 	);
 
 	let canUseBeanMatching = $derived(data.catalogAccess?.canUseBeanMatching === true);
+	let canUseParchmentIntelligence = $derived(ppiAccess === true);
+
+	function countDistinctCatalogValues(rows: CoffeeCatalog[], key: 'country' | 'source'): number {
+		return new Set(
+			rows
+				.map((row) => row[key])
+				.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+		).size;
+	}
+
+	function hasCatalogPriceEvidence(row: CoffeeCatalog): boolean {
+		return row.price_per_lb != null || row.cost_lb != null;
+	}
+
+	let catalogResultCount = $derived(activePagination.total || displayData().length);
+	let visibleOriginCount = $derived(countDistinctCatalogValues(displayData(), 'country'));
+	let visibleSupplierCount = $derived(countDistinctCatalogValues(displayData(), 'source'));
+	let visiblePricedCount = $derived(displayData().filter(hasCatalogPriceEvidence).length);
+	let supplierComparisonHref = $derived(
+		canUseParchmentIntelligence ? '/analytics#supplier-comparison' : '/analytics'
+	);
+	let supplierComparisonLabel = $derived(
+		canUseParchmentIntelligence
+			? 'Review supplier comparison evidence'
+			: 'Preview supplier comparison gate'
+	);
 
 	async function handleScroll() {
 		if (!session) {
@@ -206,31 +232,87 @@
 {:else}
 	<div class="space-y-4">
 		<div class="rounded-lg border border-border-light bg-background-secondary-light px-5 py-4">
-			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-				<div>
-					<h1 class="text-2xl font-bold text-text-primary-light sm:text-3xl">
+			<div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+				<div class="max-w-3xl">
+					<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+						Supply evidence layer
+					</p>
+					<h1 class="mt-1 text-2xl font-bold text-text-primary-light sm:text-3xl">
 						Green Coffee Catalog
 					</h1>
-					<p class="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary-light sm:text-base">
-						Browse stocked green coffees from Purveyors supplier integrations with origin,
-						processing, tasting context, and live pricing. Filter by origin, process, and name to
-						explore what is currently available.
+					<p class="mt-2 text-sm leading-relaxed text-text-secondary-light sm:text-base">
+						Inspect the row-level supply substrate behind Parchment Market Index reads: stocked
+						coffees, supplier coverage, origin and process signals, and pricing evidence that turn
+						market movement into named lots to investigate.
 					</p>
+					<div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+						<div
+							class="rounded-md border border-border-light bg-background-primary-light px-3 py-2"
+						>
+							<p class="text-lg font-semibold text-text-primary-light">
+								{catalogResultCount.toLocaleString()}
+							</p>
+							<p class="text-xs text-text-secondary-light">Active rows in this query</p>
+						</div>
+						<div
+							class="rounded-md border border-border-light bg-background-primary-light px-3 py-2"
+						>
+							<p class="text-lg font-semibold text-text-primary-light">{visibleOriginCount}</p>
+							<p class="text-xs text-text-secondary-light">Origins shown on this page</p>
+						</div>
+						<div
+							class="rounded-md border border-border-light bg-background-primary-light px-3 py-2"
+						>
+							<p class="text-lg font-semibold text-text-primary-light">{visibleSupplierCount}</p>
+							<p class="text-xs text-text-secondary-light">Suppliers shown on this page</p>
+						</div>
+						<div
+							class="rounded-md border border-border-light bg-background-primary-light px-3 py-2"
+						>
+							<p class="text-lg font-semibold text-text-primary-light">{visiblePricedCount}</p>
+							<p class="text-xs text-text-secondary-light">Priced rows shown</p>
+						</div>
+					</div>
 				</div>
-				<div class="flex flex-col items-start gap-2 sm:items-end">
-					<button
-						onclick={copyFilteredCatalogLink}
-						class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm font-medium text-text-primary-light shadow-sm transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
-					>
-						{copyLinkStatus === 'copied'
-							? 'Copied filtered link'
-							: copyLinkStatus === 'error'
-								? 'Copy failed'
-								: 'Copy filtered link'}
-					</button>
-					<p class="text-xs text-text-secondary-light">
-						Share the current catalog filters, sort, and page with one link.
+				<div
+					class="w-full rounded-lg border border-background-tertiary-light/20 bg-background-primary-light p-4 lg:max-w-sm"
+				>
+					<p class="text-sm font-semibold text-text-primary-light">
+						Trace catalog evidence into market intelligence
 					</p>
+					<p class="mt-1 text-sm text-text-secondary-light">
+						Use the index for aggregate price and coverage reads, then return here for the named
+						coffees and suppliers behind the signal.
+					</p>
+					<div class="mt-3 flex flex-col gap-2 sm:flex-row lg:flex-col">
+						<a
+							href="/analytics"
+							class="rounded-md bg-background-tertiary-light px-3 py-2 text-center text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+						>
+							Open Parchment Market Index
+						</a>
+						<a
+							href={supplierComparisonHref}
+							class="rounded-md border border-background-tertiary-light px-3 py-2 text-center text-sm font-medium text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
+						>
+							{supplierComparisonLabel}
+						</a>
+					</div>
+					<div class="mt-3 border-t border-border-light pt-3">
+						<button
+							onclick={copyFilteredCatalogLink}
+							class="rounded-md border border-border-light bg-background-primary-light px-3 py-1.5 text-sm font-medium text-text-primary-light shadow-sm transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
+						>
+							{copyLinkStatus === 'copied'
+								? 'Copied filtered link'
+								: copyLinkStatus === 'error'
+									? 'Copy failed'
+									: 'Copy filtered link'}
+						</button>
+						<p class="mt-1 text-xs text-text-secondary-light">
+							Share the current catalog filters, sort, and page with one link.
+						</p>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -427,16 +509,17 @@
 			</div>
 		{/if}
 
-		{#if session && !hasRequiredRole('member')}
+		{#if session && !hasRequiredRole('member') && !canUseParchmentIntelligence}
 			<div class="rounded-lg border border-background-tertiary-light/20 bg-accent-subtle/10 p-6">
 				<div class="flex flex-col items-center justify-between gap-4 sm:flex-row">
 					<div class="text-center sm:text-left">
 						<h3 class="text-lg font-semibold text-text-primary-light">
-							Need more than sourcing snapshots?
+							Need workflow leverage from this supply layer?
 						</h3>
 						<p class="text-sm text-text-secondary-light">
-							Stay in the buyer path here, or step into Mallard Studio when you want saved research,
-							inventory, roasting, tasting, and team workflows around the coffees you shortlist.
+							Parchment Intelligence adds supplier comparison and market movement reads. Mallard
+							Studio adds owned-stock and roasting context. Watchlists and saved shortlists are
+							still future workflows, so this catalog only routes to evidence that exists today.
 						</p>
 					</div>
 					<div class="flex flex-col gap-3 sm:flex-row">
@@ -447,10 +530,10 @@
 							Compare paid products
 						</button>
 						<button
-							onclick={() => goto('/')}
+							onclick={() => goto('/analytics')}
 							class="rounded-md border border-background-tertiary-light px-6 py-2 text-background-tertiary-light transition-all duration-200 hover:bg-background-tertiary-light hover:text-white"
 						>
-							See the product overview
+							Open Market Index
 						</button>
 					</div>
 				</div>
@@ -466,11 +549,32 @@
 						></div>
 					</div>
 				{:else if !displayData() || displayData().length === 0}
-					<p class="p-4 text-text-primary-light">
-						No coffee data available {activePagination.total > 0
-							? `(${activePagination.total} total items)`
-							: ''}
-					</p>
+					<div
+						class="rounded-lg border border-border-light bg-background-secondary-light p-6 text-center"
+					>
+						<h2 class="text-lg font-semibold text-text-primary-light">
+							No catalog rows match this supply query
+						</h2>
+						<p class="mx-auto mt-2 max-w-2xl text-sm text-text-secondary-light">
+							Clear or broaden the filters to inspect named coffees, or use the Parchment Market
+							Index to review broader origin, supplier, and pricing evidence before returning to
+							row-level catalog inspection.
+						</p>
+						<div class="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
+							<button
+								onclick={filterStore.clearFilters}
+								class="rounded-md border border-border-light px-4 py-2 text-sm font-medium text-text-primary-light transition-colors hover:border-background-tertiary-light hover:text-background-tertiary-light"
+							>
+								Clear catalog filters
+							</button>
+							<a
+								href="/analytics"
+								class="rounded-md bg-background-tertiary-light px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-opacity-90"
+							>
+								Review broader Market Index
+							</a>
+						</div>
+					</div>
 				{:else}
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 						{#each session ? displayData() : displayData().slice(0, 15) as coffee}
@@ -502,8 +606,8 @@
 										Keep going with a free account
 									</h3>
 									<p class="mb-6 text-sm text-text-secondary-light">
-										Create a free account to browse the full catalog, save sourcing research, and
-										unlock the next step after public market discovery.
+										Create a free account to browse the full catalog, inspect more supply evidence,
+										and continue from public market discovery.
 									</p>
 									<div class="flex flex-col items-center justify-center gap-3 sm:flex-row">
 										<button

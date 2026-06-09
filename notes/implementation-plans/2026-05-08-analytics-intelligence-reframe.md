@@ -1,9 +1,9 @@
 # Analytics Intelligence Reframe Program
 
 **Date:** 2026-05-08
-**Updated:** 2026-06-07
+**Updated:** 2026-06-09
 **Mode:** multi-stage implementation plan
-**Status:** Consolidated implementation plan; PRs not started
+**Status:** PRs 01-04 merged; PR 05 in progress; PR 06 not started
 
 ## Consolidated source inputs
 
@@ -229,12 +229,16 @@ Stack order on small screens: market read → scope/filter sheet → KPI strip �
 
 ## Implementation spine
 
-1. **PR 01: Parchment-first navigation taxonomy.** Establish the hierarchy without route changes or new schema behavior.
-2. **PR 02: Dashboard becomes Intelligence Home.** Replace the generic launcher with a clear intelligence landing page using only existing data or copy/layout.
-3. **PR 03: Analytics command-center layout pass.** Make analytics the working surface for market read, filters, insight hierarchy, evidence, and bounded action context.
-4. **PR 04: Analytics action CTA primitive.** Add only honest action affordances according to the capability matrix.
+1. **PR 01: Parchment-first navigation taxonomy.** Establish the hierarchy without route changes or new schema behavior. Merged in PR #375.
+2. **PR 02: Dashboard becomes Intelligence Home.** Replace the generic launcher with a clear intelligence landing page using only existing data or copy/layout. Merged in PR #376.
+3. **PR 03: Analytics command-center layout pass.** Make analytics the working surface for market read, filters, insight hierarchy, evidence, and bounded action context. Merged in PR #377.
+4. **PR 04: Analytics action CTA primitive.** Add only honest action affordances according to the capability matrix. Merged in PR #378.
 5. **PR 05: Catalog-to-intelligence connective tissue.** Reframe catalog as the supply substrate behind analytics and sourcing decisions.
 6. **PR 06: Mallard Studio boundary cleanup.** Keep roaster workflows useful, but frame them as personalization context for intelligence.
+
+### Post-PR 04 product-quality caution
+
+PR #378 was merged, but it raised a product-quality caution for the remaining program: action affordances must generate evidence, preserve context, or unlock an actual workflow. Pure navigation cards do not count as leverage. PR 05 should therefore connect catalog and analytics through concrete evidence paths, scoped copy, and honest links into existing market reads rather than generic cards that merely tell the user to click elsewhere.
 
 ## Feature or program
 
