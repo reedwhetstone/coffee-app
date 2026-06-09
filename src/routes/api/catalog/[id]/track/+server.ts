@@ -1,11 +1,11 @@
 import { json } from '@sveltejs/kit';
-import { AuthError, requireUserAuth } from '$lib/server/auth';
+import { AuthError, requireParchmentAccess } from '$lib/server/auth';
 import { toggleTrackedLot } from '$lib/server/trackedLots';
 import type { RequestEvent } from '@sveltejs/kit';
 
 export const PUT = async (event: RequestEvent) => {
 	try {
-		const { user } = await requireUserAuth(event);
+		const { user } = await requireParchmentAccess(event);
 		const catalogId = parseInt(event.params.id, 10);
 
 		if (!Number.isFinite(catalogId) || catalogId <= 0) {

@@ -1,11 +1,51 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { getBriefMatchSummaries, type MatchableLot } from './briefMatchSummary';
 
 const lots: MatchableLot[] = [
-	{ id: 1, country: 'Ethiopia', region: 'Yirgacheffe', processing: 'Washed', price_per_lb: 5.5, stocked: true, wholesale: false },
-	{ id: 2, country: 'Colombia', region: 'Huila', processing: 'Natural', price_per_lb: 6.0, stocked: true, wholesale: false },
-	{ id: 3, country: 'Ethiopia', region: 'Sidamo', processing: 'Natural', price_per_lb: 7.0, stocked: true, wholesale: false },
-	{ id: 4, country: 'Peru', region: null, processing: 'Washed', price_per_lb: null, stocked: true, wholesale: false }
+	{
+		id: 1,
+		country: 'Ethiopia',
+		region: 'Yirgacheffe',
+		processing: 'Washed',
+		processing_base_method: 'washed',
+		price_per_lb: 5.5,
+		stocked: true,
+		stocked_date: '2026-06-05',
+		wholesale: false
+	},
+	{
+		id: 2,
+		country: 'Colombia',
+		region: 'Huila',
+		processing: 'Natural',
+		processing_base_method: 'natural',
+		price_per_lb: 6.0,
+		stocked: true,
+		stocked_date: '2026-05-01',
+		wholesale: false
+	},
+	{
+		id: 3,
+		country: 'Ethiopia',
+		region: 'Sidamo',
+		processing: 'Natural',
+		processing_base_method: 'natural',
+		price_per_lb: 7.0,
+		stocked: true,
+		stocked_date: '2026-06-08',
+		wholesale: false
+	},
+	{
+		id: 4,
+		country: 'Peru',
+		region: null,
+		processing: 'Washed',
+		processing_base_method: 'washed',
+		price_per_lb: null,
+		stocked: true,
+		stocked_date: null,
+		wholesale: false
+	}
 ];
 
 function makeSupabase(briefs: unknown[]) {
@@ -19,6 +59,10 @@ function makeSupabase(briefs: unknown[]) {
 	};
 }
 
+afterEach(() => {
+	vi.useRealTimers();
+});
+
 describe('getBriefMatchSummaries', () => {
 	it('returns empty array when user has no active briefs', async () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,14 +71,18 @@ describe('getBriefMatchSummaries', () => {
 	});
 
 	it('returns empty array when catalog is empty', async () => {
-		const briefs = [{ id: 'b1', name: 'Ethiopia brief', criteria: { version: 1, country: 'Ethiopia' } }];
+		const briefs = [
+			{ id: 'b1', name: 'Ethiopia brief', criteria: { version: 1, country: 'Ethiopia' } }
+		];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', []);
 		expect(result).toEqual([]);
 	});
 
 	it('matches lots by country criteria', async () => {
-		const briefs = [{ id: 'b1', name: 'Ethiopia brief', criteria: { version: 1, country: 'Ethiopia' } }];
+		const briefs = [
+			{ id: 'b1', name: 'Ethiopia brief', criteria: { version: 1, country: 'Ethiopia' } }
+		];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', lots);
 		expect(result).toHaveLength(1);
@@ -45,7 +93,9 @@ describe('getBriefMatchSummaries', () => {
 	});
 
 	it('filters by max_price_per_lb, excluding null-priced lots', async () => {
-		const briefs = [{ id: 'b2', name: 'Budget brief', criteria: { version: 1, max_price_per_lb: 6.0 } }];
+		const briefs = [
+			{ id: 'b2', name: 'Budget brief', criteria: { version: 1, max_price_per_lb: 6.0 } }
+		];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', lots);
 		expect(result[0].matchingIds).toContain(1); // $5.50
@@ -77,9 +127,21 @@ describe('getBriefMatchSummaries', () => {
 	});
 
 	it('returns criteria object on each match summary', async () => {
-		const briefs = [{ id: 'b1', name: 'Washed brief', criteria: { version: 1, processing: 'Washed' } }];
+		const briefs = [
+			{ id: 'b1', name: 'Washed brief', criteria: { version: 1, processing: 'Washed' } }
+		];
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', lots);
 		expect(result[0].criteria).toMatchObject({ processing: 'Washed' });
+	});
+
+	it('honors stocked_days freshness criteria', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-06-09T12:00:00Z'));
+		const briefs = [{ id: 'b1', name: 'Fresh brief', criteria: { version: 1, stocked_days: 7 } }];
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const result = await getBriefMatchSummaries(makeSupabase(briefs) as any, 'user-1', lots);
+		expect(result[0].matchingIds).toEqual([1, 3]);
 	});
 });

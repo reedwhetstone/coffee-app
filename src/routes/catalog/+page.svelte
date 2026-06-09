@@ -13,6 +13,10 @@
 	} from '$lib/catalog/processDisplay';
 	import { PROCESSING_CONFIDENCE_OPTIONS } from '$lib/catalog/urlState';
 	import CatalogPageSkeleton from '$lib/components/CatalogPageSkeleton.svelte';
+	import {
+		summarizeSourcingBriefMatches,
+		type MatchableSourcingLot
+	} from '$lib/procurement/sourcingBriefMatching';
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
@@ -21,29 +25,35 @@
 
 	let { session, role = 'viewer', ppiAccess = false } = $derived(data);
 
-	let trackedIds = $state<Set<number>>(new Set(data.trackedLotIds ?? []));
+	let trackedIds = $state<Set<number>>(new Set());
+
+	$effect(() => {
+		trackedIds = new Set(data.trackedLotIds ?? []);
+	});
+
+	function setTracked(catalogId: number, tracked: boolean) {
+		const next = new Set(trackedIds);
+		if (tracked) next.add(catalogId);
+		else next.delete(catalogId);
+		trackedIds = next;
+	}
 
 	async function handleToggleTrack(catalogId: number) {
 		const wasTracked = trackedIds.has(catalogId);
-		if (wasTracked) {
-			trackedIds.delete(catalogId);
-		} else {
-			trackedIds.add(catalogId);
-		}
-		// Optimistic update — fire and forget; revert on failure
+		setTracked(catalogId, !wasTracked);
+		// Optimistic update, reverted on failure.
 		try {
-			const res = await fetch(`/api/catalog/${catalogId}/track`, { method: 'PUT', headers: { 'Content-Type': 'application/json' } });
+			const res = await fetch(`/api/catalog/${catalogId}/track`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' }
+			});
 			if (!res.ok) throw new Error('track failed');
-			const body = await res.json() as { tracked: boolean };
+			const body = (await res.json()) as { tracked: boolean };
 			if (body.tracked !== !wasTracked) {
-				// Sync server state
-				if (body.tracked) trackedIds.add(catalogId);
-				else trackedIds.delete(catalogId);
+				setTracked(catalogId, body.tracked);
 			}
 		} catch {
-			// Revert optimistic update
-			if (wasTracked) trackedIds.add(catalogId);
-			else trackedIds.delete(catalogId);
+			setTracked(catalogId, wasTracked);
 		}
 	}
 
@@ -127,7 +137,15 @@
 
 	let canUseBeanMatching = $derived(data.catalogAccess?.canUseBeanMatching === true);
 	let canUseParchmentIntelligence = $derived(ppiAccess === true);
-	let briefMatchSummaries = $derived(data.briefMatchSummaries ?? []);
+	let canUseSourcingIntelligence = $derived(
+		canUseParchmentIntelligence || hasRequiredRole('member')
+	);
+	let briefMatchSummaries = $derived(
+		summarizeSourcingBriefMatches(
+			data.briefMatchSummaries ?? [],
+			displayData() as unknown as MatchableSourcingLot[]
+		)
+	);
 	let hasBriefMatches = $derived(briefMatchSummaries.length > 0);
 	let trackedCountOnPage = $derived(
 		displayData().filter((c) => trackedIds.has((c as unknown as { id: number }).id)).length
@@ -304,7 +322,7 @@
 							<p class="text-xs text-text-secondary-light">Priced rows shown</p>
 						</div>
 					</div>
-					{#if canUseParchmentIntelligence && trackedIds.size > 0}
+					{#if canUseSourcingIntelligence && trackedIds.size > 0}
 						<p class="mt-2 text-xs text-text-secondary-light">
 							<span class="font-semibold text-background-tertiary-light">{trackedIds.size}</span>
 							{trackedIds.size === 1 ? 'lot' : 'lots'} tracked ·
@@ -646,7 +664,7 @@
 								showSimilarComparisonAction={true}
 								{canUseBeanMatching}
 								tracked={trackedIds.has((coffee as unknown as { id: number }).id)}
-								onToggleTrack={canUseParchmentIntelligence ? handleToggleTrack : undefined}
+								onToggleTrack={canUseSourcingIntelligence ? handleToggleTrack : undefined}
 							/>
 						{/each}
 

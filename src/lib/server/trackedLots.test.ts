@@ -13,7 +13,7 @@ function makeClient(rows: unknown[] = [], existingRow: unknown = null) {
 		})
 	};
 	const deleteChain = {
-		eq: vi.fn().mockReturnThis(),
+		eq: vi.fn().mockReturnThis()
 		// second eq resolves
 		// We chain two .eq() calls
 	};
@@ -27,9 +27,7 @@ function makeClient(rows: unknown[] = [], existingRow: unknown = null) {
 
 	const insertChain = {
 		select: vi.fn().mockReturnThis(),
-		single: vi
-			.fn()
-			.mockResolvedValue({ data: { tracked_at: '2026-06-09T00:00:00Z' }, error: null })
+		single: vi.fn().mockResolvedValue({ data: { tracked_at: '2026-06-09T00:00:00Z' }, error: null })
 	};
 	const insertBase = {
 		insert: vi.fn().mockReturnValue(insertChain)
@@ -125,5 +123,48 @@ describe('toggleTrackedLot', () => {
 		const result = await toggleTrackedLot(supabase as any, 'user-123', 99);
 		expect(result.tracked).toBe(false);
 		expect(result.trackedAt).toBeUndefined();
+	});
+
+	it('throws when insert fails instead of falsely returning tracked: true', async () => {
+		const insertError = new Error('rls denied');
+		const supabase = {
+			from: vi.fn().mockReturnValue({
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+				insert: vi.fn().mockReturnValue({
+					select: vi.fn().mockReturnThis(),
+					single: vi.fn().mockResolvedValue({ data: null, error: insertError })
+				})
+			})
+		};
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		await expect(toggleTrackedLot(supabase as any, 'user-123', 99)).rejects.toThrow('rls denied');
+	});
+
+	it('throws when delete fails instead of falsely returning tracked: false', async () => {
+		const deleteError = new Error('delete failed');
+		let deleteEqCount = 0;
+		const deleteChain = {
+			eq: vi.fn().mockImplementation(() => {
+				deleteEqCount++;
+				if (deleteEqCount >= 2) return Promise.resolve({ error: deleteError });
+				return deleteChain;
+			})
+		};
+		const supabase = {
+			from: vi.fn().mockReturnValue({
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'row-id' }, error: null }),
+				delete: vi.fn().mockReturnValue(deleteChain)
+			})
+		};
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		await expect(toggleTrackedLot(supabase as any, 'user-123', 99)).rejects.toThrow(
+			'delete failed'
+		);
 	});
 });

@@ -7,6 +7,10 @@ import { createChatTools } from '$lib/services/tools';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
 import { getCatalogItemsByIds } from '$lib/data/catalog';
+import {
+	describeSourcingBriefCriteria,
+	validateSourcingBriefCriteria
+} from '$lib/procurement/sourcingBriefCriteria';
 import type { RequestHandler } from './$types';
 
 const BASE_SYSTEM_PROMPT = `You are an expert coffee consultant who combines deep knowledge of coffee varieties,
@@ -235,9 +239,7 @@ You can reference these items naturally (e.g., "that first one", "the Ethiopian"
 		const lines: string[] = [];
 
 		if (sourcingContext.trackedLots.length > 0) {
-			lines.push(
-				`TRACKED LOTS (${sourcingContext.trackedLots.length} watchlisted by this user):`
-			);
+			lines.push(`TRACKED LOTS (${sourcingContext.trackedLots.length} watchlisted by this user):`);
 			for (const lot of sourcingContext.trackedLots.slice(0, 10)) {
 				const origin = lot.country ? ` · ${lot.country}` : '';
 				const supplier = lot.source ? ` from ${lot.source}` : '';
@@ -249,7 +251,9 @@ You can reference these items naturally (e.g., "that first one", "the Ethiopian"
 		}
 
 		if (sourcingContext.activeBriefs.length > 0) {
-			lines.push(`\nACTIVE SOURCING BRIEFS (${sourcingContext.activeBriefs.length} saved criteria):`);
+			lines.push(
+				`\nACTIVE SOURCING BRIEFS (${sourcingContext.activeBriefs.length} saved criteria):`
+			);
 			for (const brief of sourcingContext.activeBriefs.slice(0, 5)) {
 				lines.push(`  - "${brief.name}": ${brief.criteriaDescription}`);
 			}
@@ -328,16 +332,16 @@ export const POST: RequestHandler = async (event) => {
 					}))
 				: [];
 
-			const activeBriefs = ((briefRows.data ?? []) as Array<{ name: string; criteria: unknown }>)
-				.map((b) => {
-					const c = b.criteria as Record<string, unknown>;
-					const parts: string[] = [];
-					if (c.country) parts.push(`origin ${c.country}`);
-					if (c.processing) parts.push(`process ${c.processing}`);
-					if (c.max_price_per_lb) parts.push(`max $${c.max_price_per_lb}/lb`);
-					if (c.stocked_only) parts.push('stocked only');
-					return { name: b.name, criteriaDescription: parts.join(', ') || 'open criteria' };
-				});
+			const activeBriefs = (
+				(briefRows.data ?? []) as Array<{ name: string; criteria: unknown }>
+			).flatMap((b) => {
+				try {
+					const criteria = validateSourcingBriefCriteria(b.criteria);
+					return [{ name: b.name, criteriaDescription: describeSourcingBriefCriteria(criteria) }];
+				} catch {
+					return [];
+				}
+			});
 
 			if (trackedLots.length || activeBriefs.length) {
 				sourcingContext = { trackedLots, activeBriefs };
@@ -347,10 +351,15 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Build dynamic system prompt with workspace context and user identity
-		const systemPrompt = _buildSystemPrompt(workspaceContext, userName, {
-			ppiAccess,
-			memberAccess
-		}, sourcingContext);
+		const systemPrompt = _buildSystemPrompt(
+			workspaceContext,
+			userName,
+			{
+				ppiAccess,
+				memberAccess
+			},
+			sourcingContext
+		);
 
 		// Stream the response using Vercel AI SDK via OpenRouter preset
 		const result = streamText({

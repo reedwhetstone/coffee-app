@@ -23,23 +23,32 @@ export async function toggleTrackedLot(
 ): Promise<{ tracked: boolean; trackedAt?: string }> {
 	const client = supabase as unknown as AnyClient;
 
-	const { data: existing } = await client
+	const { data: existing, error: lookupError } = await client
 		.from('tracked_lots')
 		.select('id')
 		.eq('user_id', userId)
 		.eq('catalog_id', catalogId)
 		.maybeSingle();
 
+	if (lookupError) throw lookupError;
+
 	if (existing) {
-		await client.from('tracked_lots').delete().eq('user_id', userId).eq('catalog_id', catalogId);
+		const { error: deleteError } = await client
+			.from('tracked_lots')
+			.delete()
+			.eq('user_id', userId)
+			.eq('catalog_id', catalogId);
+		if (deleteError) throw deleteError;
 		return { tracked: false };
 	}
 
-	const { data: inserted } = await client
+	const { data: inserted, error: insertError } = await client
 		.from('tracked_lots')
 		.insert({ user_id: userId, catalog_id: catalogId })
 		.select('tracked_at')
 		.single();
+
+	if (insertError) throw insertError;
 
 	return {
 		tracked: true,

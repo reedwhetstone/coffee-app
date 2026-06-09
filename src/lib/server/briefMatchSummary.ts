@@ -1,58 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database.types';
+import { validateSourcingBriefCriteria } from '$lib/procurement/sourcingBriefCriteria';
 import {
-	validateSourcingBriefCriteria,
-	type SourcingBriefCriteria
-} from '$lib/procurement/sourcingBriefCriteria';
+	summarizeSourcingBriefMatches,
+	type MatchableSourcingLot,
+	type SourcingBriefMatchSummary
+} from '$lib/procurement/sourcingBriefMatching';
 
 type SessionClient = SupabaseClient<Database>;
 
-export interface BriefMatchSummary {
-	briefId: string;
-	briefName: string;
-	criteria: SourcingBriefCriteria;
-	matchCount: number;
-	matchingIds: number[];
-}
-
-export type MatchableLot = {
-	id: number;
-	country?: string | null;
-	region?: string | null;
-	processing?: string | null;
-	processing_base_method?: string | null;
-	price_per_lb?: number | null;
-	stocked?: boolean | null;
-	stocked_date?: string | null;
-	wholesale?: boolean | null;
-};
-
-function lotMatchesCriteria(criteria: SourcingBriefCriteria, lot: MatchableLot): boolean {
-	if (criteria.country && lot.country !== criteria.country) return false;
-	if (
-		criteria.region &&
-		!lot.region?.toLowerCase().includes(criteria.region.toLowerCase())
-	)
-		return false;
-	if (
-		criteria.processing &&
-		!lot.processing?.toLowerCase().includes(criteria.processing.toLowerCase())
-	)
-		return false;
-	if (
-		criteria.processing_base_method &&
-		lot.processing_base_method !== criteria.processing_base_method
-	)
-		return false;
-	if (
-		criteria.max_price_per_lb !== undefined &&
-		(lot.price_per_lb == null || lot.price_per_lb > criteria.max_price_per_lb)
-	)
-		return false;
-	if (criteria.stocked_only && !lot.stocked) return false;
-	if (criteria.wholesale_only && !lot.wholesale) return false;
-	return true;
-}
+export type BriefMatchSummary = SourcingBriefMatchSummary;
+export type MatchableLot = MatchableSourcingLot;
 
 export async function getBriefMatchSummaries(
 	supabase: SessionClient,
@@ -71,28 +29,21 @@ export async function getBriefMatchSummaries(
 
 	if (!briefs?.length) return [];
 
-	return (briefs as Array<{ id: string; name: string; criteria: unknown }>).flatMap((brief) => {
-		let criteria: SourcingBriefCriteria;
-		try {
-			criteria = validateSourcingBriefCriteria(brief.criteria);
-		} catch {
-			return [];
-		}
-
-		const matchingIds = catalogLots
-			.filter((lot) => lotMatchesCriteria(criteria, lot))
-			.map((lot) => lot.id);
-
-		if (!matchingIds.length) return [];
-
-		return [
-			{
-				briefId: brief.id,
-				briefName: brief.name,
-				criteria,
-				matchCount: matchingIds.length,
-				matchingIds
+	const validBriefs = (briefs as Array<{ id: string; name: string; criteria: unknown }>).flatMap(
+		(brief) => {
+			try {
+				return [
+					{
+						briefId: brief.id,
+						briefName: brief.name,
+						criteria: validateSourcingBriefCriteria(brief.criteria)
+					}
+				];
+			} catch {
+				return [];
 			}
-		];
-	});
+		}
+	);
+
+	return summarizeSourcingBriefMatches(validBriefs, catalogLots);
 }
