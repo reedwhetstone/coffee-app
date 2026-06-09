@@ -89,6 +89,18 @@ beforeEach(async () => {
 	({ load } = await import('./+page.server'));
 });
 
+function makeMockSupabase() {
+	const queryChain = {
+		select: vi.fn().mockReturnThis(),
+		eq: vi.fn().mockReturnThis(),
+		limit: vi.fn().mockResolvedValue({ data: [], error: null })
+	};
+	return {
+		kind: 'session-client',
+		from: vi.fn().mockReturnValue(queryChain)
+	};
+}
+
 function makeLoadInput(
 	role: App.Locals['role'],
 	session: App.Locals['session'],
@@ -96,7 +108,7 @@ function makeLoadInput(
 ) {
 	return {
 		locals: {
-			supabase: { kind: 'session-client' },
+			supabase: makeMockSupabase(),
 			role,
 			session
 		},
@@ -127,7 +139,7 @@ describe('/catalog page load', () => {
 		};
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.objectContaining({
 				stockedOnly: true,
 				publicOnly: true,
@@ -178,7 +190,7 @@ describe('/catalog page load', () => {
 		);
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.objectContaining({
 				country: 'Ethiopia',
 				processing: 'Washed',
@@ -205,7 +217,7 @@ describe('/catalog page load', () => {
 		};
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.not.objectContaining({
 				processingBaseMethod: 'natural',
 				fermentationType: 'anaerobic',
@@ -243,7 +255,7 @@ describe('/catalog page load', () => {
 		};
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.not.objectContaining({
 				processingBaseMethod: expect.anything(),
 				fermentationType: expect.anything(),
@@ -272,7 +284,7 @@ describe('/catalog page load', () => {
 		};
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.not.objectContaining({ processingBaseMethod: 'natural' })
 		);
 		expect(result.initialCatalogState.filters).not.toHaveProperty('processing_base_method');
@@ -301,7 +313,7 @@ describe('/catalog page load', () => {
 			)) as { catalogAccess: { canUseProcessFacets: boolean }; catalogAccessNotice: null };
 
 			expect(mockSearchCatalog).toHaveBeenCalledWith(
-				{ kind: 'session-client' },
+				expect.objectContaining({ kind: 'session-client' }),
 				expect.objectContaining({
 					processingBaseMethod: 'natural',
 					fermentationType: 'anaerobic',
@@ -352,7 +364,7 @@ describe('/catalog page load', () => {
 		);
 
 		expect(mockSearchCatalog).toHaveBeenCalledWith(
-			{ kind: 'session-client' },
+			expect.objectContaining({ kind: 'session-client' }),
 			expect.objectContaining({
 				stockedOnly: true,
 				publicOnly: false,

@@ -16,6 +16,8 @@
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
+	import { getLotPriceContext } from '$lib/catalog/priceContext';
+	import type { OriginPriceStats, LotPriceContext } from '$lib/catalog/priceContext';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -126,6 +128,28 @@
 			? 'Review supplier comparison evidence'
 			: 'Preview supplier comparison gate'
 	);
+
+	let originPriceMap = $derived(
+		new Map<string, OriginPriceStats>(
+			((data.originPriceStats ?? []) as OriginPriceStats[]).map(
+				(s) => [s.origin, s] as [string, OriginPriceStats]
+			)
+		)
+	);
+
+	function getCardPriceContext(coffee: CoffeeCatalog): LotPriceContext | null {
+		const price = coffee.price_per_lb ?? coffee.cost_lb;
+		return getLotPriceContext(price, originPriceMap.get(coffee.country ?? ''));
+	}
+
+	let activeOriginStats = $derived((): OriginPriceStats | null => {
+		const country = $filterStore.filters.country;
+		let origin: string | null = null;
+		if (Array.isArray(country) && country.length === 1) origin = country[0] as string;
+		else if (typeof country === 'string' && country.length > 0) origin = country;
+		if (!origin) return null;
+		return (originPriceMap.get(origin) as OriginPriceStats | undefined) ?? null;
+	});
 
 	async function handleScroll() {
 		if (!session) {
@@ -576,6 +600,39 @@
 						</div>
 					</div>
 				{:else}
+					{#if activeOriginStats()}
+						{@const stats = activeOriginStats()!}
+						<div
+							class="rounded-lg border border-border-light bg-background-secondary-light px-4 py-3"
+							aria-label="Origin price context"
+						>
+							<p class="text-xs font-semibold uppercase tracking-wide text-background-tertiary-light">
+								{stats.origin} supply context
+							</p>
+							<div class="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+								<span class="text-text-secondary-light">
+									Median
+									<span class="font-semibold text-text-primary-light"
+										>${stats.median.toFixed(2)}/lb</span
+									>
+								</span>
+								<span class="text-text-secondary-light">
+									Range
+									<span class="font-medium text-text-primary-light"
+										>${stats.min.toFixed(2)} – ${stats.max.toFixed(2)}</span
+									>
+								</span>
+								<span class="text-text-secondary-light">
+									<span class="font-medium text-text-primary-light">{stats.supplier_count}</span>
+									{stats.supplier_count === 1 ? 'supplier' : 'suppliers'}
+								</span>
+								<span class="text-text-secondary-light">
+									<span class="font-medium text-text-primary-light">{stats.sample_size}</span> priced
+									lots across all suppliers
+								</span>
+							</div>
+						</div>
+					{/if}
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 						{#each session ? displayData() : displayData().slice(0, 15) as coffee}
 							<CoffeeCard
@@ -583,6 +640,7 @@
 								{parseTastingNotes}
 								showSimilarComparisonAction={true}
 								{canUseBeanMatching}
+								priceContext={getCardPriceContext(coffee)}
 							/>
 						{/each}
 

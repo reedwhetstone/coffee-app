@@ -290,6 +290,66 @@ describe('/catalog intelligence connective tissue', () => {
 	});
 });
 
+describe('/catalog price intelligence', () => {
+	const colombiaStats = {
+		origin: 'Colombia',
+		median: 6.0,
+		q1: 4.5,
+		q3: 8.0,
+		min: 3.0,
+		max: 14.0,
+		sample_size: 24,
+		supplier_count: 6
+	};
+
+	it('renders a price context badge on each card when origin stats are available', async () => {
+		renderCatalog(createData({ originPriceStats: [colombiaStats] } as Partial<PageData>));
+
+		// Process Lot is Colombia at $8.50, median is $6.00 → ~42% above → well_above
+		await waitFor(() => {
+			expect(screen.getByText(/above median/i)).toBeInTheDocument();
+		});
+	});
+
+	it('does not render price context badges when no origin stats are provided', () => {
+		renderCatalog(createData({ originPriceStats: [] } as Partial<PageData>));
+
+		expect(screen.queryByText(/above median/i)).not.toBeInTheDocument();
+		expect(screen.queryByText(/below median/i)).not.toBeInTheDocument();
+		expect(screen.queryByText('Near median')).not.toBeInTheDocument();
+	});
+
+	it('shows origin supply context panel when filtering to a single origin with stats', async () => {
+		renderCatalog(
+			createData({
+				originPriceStats: [colombiaStats],
+				initialCatalogState: {
+					filters: { country: ['Colombia'] },
+					sortField: null,
+					sortDirection: null,
+					showWholesale: false,
+					pagination: { page: 1, limit: 15 }
+				}
+			} as Partial<PageData>)
+		);
+
+		await waitFor(() => {
+			expect(screen.getByLabelText('Origin price context')).toBeInTheDocument();
+		});
+
+		expect(screen.getByText(/Colombia supply context/i)).toBeInTheDocument();
+		expect(screen.getByText(/\$6\.00\/lb/)).toBeInTheDocument();
+		expect(screen.getByText('24')).toBeInTheDocument();
+		expect(screen.getByText('6')).toBeInTheDocument();
+	});
+
+	it('does not show origin supply context panel when no single origin is filtered', () => {
+		renderCatalog(createData({ originPriceStats: [colombiaStats] } as Partial<PageData>));
+
+		expect(screen.queryByLabelText('Origin price context')).not.toBeInTheDocument();
+	});
+});
+
 describe('/catalog similar comparison controls', () => {
 	it('shows a locked member comparison CTA without leaking match data for non-members', () => {
 		renderCatalog(createData());
