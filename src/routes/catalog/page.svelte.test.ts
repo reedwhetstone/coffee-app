@@ -82,6 +82,8 @@ function createData(overrides: Partial<PageData> = {}): PageData {
 		},
 		meta: {},
 		ppiAccess: false,
+		trackedLotIds: [],
+		briefMatchSummaries: [],
 		...overrides
 	} as unknown as PageData;
 }
@@ -115,7 +117,14 @@ beforeEach(() => {
 	filterStore.initializeForRoute('__test-reset__', []);
 	vi.stubGlobal(
 		'fetch',
-		vi.fn(async (url: string) => {
+		vi.fn(async (url: string, init?: RequestInit) => {
+			if (url.startsWith('/api/catalog/1/track') && init?.method === 'PUT') {
+				return new Response(JSON.stringify({ tracked: true }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+
 			if (url.startsWith('/api/catalog/filters')) {
 				return new Response(
 					JSON.stringify({
@@ -444,6 +453,103 @@ describe('/catalog price intelligence', () => {
 		renderCatalog(createData({ originPriceStats: [colombiaStats] } as Partial<PageData>));
 
 		expect(screen.queryByLabelText('Origin price context')).not.toBeInTheDocument();
+	});
+});
+
+describe('/catalog watchlist and sourcing briefs', () => {
+	it('lets Mallard members use watchlist controls without Parchment Intelligence entitlement', async () => {
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' } as PageData['session'],
+				role: 'member',
+				ppiAccess: false,
+				trackedLotIds: []
+			} as Partial<PageData>)
+		);
+
+		const button = screen.getByRole('button', { name: 'Track Process Lot' });
+		expect(button).toHaveAttribute('aria-pressed', 'false');
+
+		await fireEvent.click(button);
+
+		await waitFor(() => expect(button).toHaveAttribute('aria-pressed', 'true'));
+		expect(fetch).toHaveBeenCalledWith('/api/catalog/1/track', {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' }
+		});
+	});
+
+	it('recomputes active brief counts when catalog pagination changes client-side', async () => {
+		vi.mocked(fetch).mockImplementation(async (input: URL | RequestInfo) => {
+			const url =
+				typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+			if (url.startsWith('/api/catalog/filters')) {
+				return new Response(JSON.stringify({ countries: [], processing: [] }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}
+			if (url.startsWith('/v1/catalog')) {
+				return new Response(
+					JSON.stringify({
+						data: [
+							{
+								...createData().data[0],
+								id: 2,
+								name: 'Ethiopia Page Two Lot',
+								country: 'Ethiopia'
+							}
+						],
+						pagination: {
+							page: 2,
+							limit: 1,
+							total: 2,
+							totalPages: 2,
+							hasNext: false,
+							hasPrev: true
+						}
+					}),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				);
+			}
+			return new Response(JSON.stringify({ data: [], pagination: null }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			});
+		});
+
+		renderCatalog(
+			createData({
+				session: { access_token: 'member-token' } as PageData['session'],
+				role: 'member',
+				pagination: {
+					page: 1,
+					limit: 1,
+					total: 2,
+					totalPages: 2,
+					hasNext: true,
+					hasPrev: false
+				},
+				briefMatchSummaries: [
+					{
+						briefId: 'brief-1',
+						briefName: 'Colombia brief',
+						criteria: { version: 1, country: 'Colombia' },
+						matchCount: 1,
+						matchingIds: [1]
+					}
+				]
+			} as Partial<PageData>)
+		);
+
+		expect(screen.getByLabelText('Sourcing brief matches')).toBeInTheDocument();
+		expect(screen.getByText('Colombia brief')).toBeInTheDocument();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+		await waitFor(() => {
+			expect(screen.queryByLabelText('Sourcing brief matches')).not.toBeInTheDocument();
+		});
 	});
 });
 

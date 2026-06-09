@@ -5,6 +5,12 @@ import { streamText, stepCountIs, type UIMessage, convertToModelMessages } from 
 import { z } from 'zod';
 import { createChatTools } from '$lib/services/tools';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
+import { getTrackedLotIds } from '$lib/server/trackedLots';
+import { getCatalogItemsByIds } from '$lib/data/catalog';
+import {
+	describeSourcingBriefCriteria,
+	validateSourcingBriefCriteria
+} from '$lib/procurement/sourcingBriefCriteria';
 import type { RequestHandler } from './$types';
 
 const BASE_SYSTEM_PROMPT = `You are an expert coffee consultant who combines deep knowledge of coffee varieties,
@@ -183,10 +189,16 @@ function resolveWorkspaceType(
 	return PARCHMENT_WORKSPACE_TYPES.has(workspaceType) ? workspaceType : undefined;
 }
 
+export interface SourcingIntelligenceContext {
+	trackedLots: Array<{ id: number; name: string; country?: string | null; source?: string | null }>;
+	activeBriefs: Array<{ name: string; criteriaDescription: string }>;
+}
+
 export function _buildSystemPrompt(
 	workspaceContext?: WorkspaceContext,
 	userName?: string,
-	access?: { ppiAccess: boolean; memberAccess: boolean }
+	access?: { ppiAccess: boolean; memberAccess: boolean },
+	sourcingContext?: SourcingIntelligenceContext
 ): string {
 	// Inject today's date so the model has temporal awareness
 	const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -221,6 +233,36 @@ ${workspaceContext.summary}`;
 		prompt += `\n\nCANVAS STATE:
 The canvas currently shows: ${workspaceContext.canvasDescription}
 You can reference these items naturally (e.g., "that first one", "the Ethiopian").`;
+	}
+
+	if (sourcingContext) {
+		const lines: string[] = [];
+
+		if (sourcingContext.trackedLots.length > 0) {
+			lines.push(`TRACKED LOTS (${sourcingContext.trackedLots.length} watchlisted by this user):`);
+			for (const lot of sourcingContext.trackedLots.slice(0, 10)) {
+				const origin = lot.country ? ` · ${lot.country}` : '';
+				const supplier = lot.source ? ` from ${lot.source}` : '';
+				lines.push(`  - ${lot.name}${origin}${supplier} (catalog ID ${lot.id})`);
+			}
+			if (sourcingContext.trackedLots.length > 10) {
+				lines.push(`  ... and ${sourcingContext.trackedLots.length - 10} more tracked lots`);
+			}
+		}
+
+		if (sourcingContext.activeBriefs.length > 0) {
+			lines.push(
+				`\nACTIVE SOURCING BRIEFS (${sourcingContext.activeBriefs.length} saved criteria):`
+			);
+			for (const brief of sourcingContext.activeBriefs.slice(0, 5)) {
+				lines.push(`  - "${brief.name}": ${brief.criteriaDescription}`);
+			}
+		}
+
+		if (lines.length > 0) {
+			prompt += `\n\nSOURCING INTELLIGENCE CONTEXT:\n${lines.join('\n')}
+Use this to make responses more specific — reference tracked lots by name when relevant, and connect brief criteria to search results. Do not fabricate match scores or availability details not returned by tools.`;
+		}
 	}
 
 	return prompt;
@@ -267,11 +309,57 @@ export const POST: RequestHandler = async (event) => {
 		const userName =
 			user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0];
 
+		// Build sourcing intelligence context from live DB state
+		let sourcingContext: SourcingIntelligenceContext | undefined;
+		try {
+			const [trackedIds, briefRows] = await Promise.all([
+				getTrackedLotIds(supabase, user.id),
+				supabase
+					.from('sourcing_briefs')
+					.select('name, criteria')
+					.eq('user_id', user.id)
+					.eq('is_active', true)
+					.order('created_at', { ascending: false })
+					.limit(5)
+			]);
+
+			const trackedLots = trackedIds.length
+				? (await getCatalogItemsByIds(supabase, trackedIds.slice(0, 10))).map((lot) => ({
+						id: lot.id,
+						name: lot.name ?? `Lot #${lot.id}`,
+						country: lot.country,
+						source: lot.source
+					}))
+				: [];
+
+			const activeBriefs = (
+				(briefRows.data ?? []) as Array<{ name: string; criteria: unknown }>
+			).flatMap((b) => {
+				try {
+					const criteria = validateSourcingBriefCriteria(b.criteria);
+					return [{ name: b.name, criteriaDescription: describeSourcingBriefCriteria(criteria) }];
+				} catch {
+					return [];
+				}
+			});
+
+			if (trackedLots.length || activeBriefs.length) {
+				sourcingContext = { trackedLots, activeBriefs };
+			}
+		} catch {
+			// Non-fatal: sourcing context is enrichment, not required
+		}
+
 		// Build dynamic system prompt with workspace context and user identity
-		const systemPrompt = _buildSystemPrompt(workspaceContext, userName, {
-			ppiAccess,
-			memberAccess
-		});
+		const systemPrompt = _buildSystemPrompt(
+			workspaceContext,
+			userName,
+			{
+				ppiAccess,
+				memberAccess
+			},
+			sourcingContext
+		);
 
 		// Stream the response using Vercel AI SDK via OpenRouter preset
 		const result = streamText({

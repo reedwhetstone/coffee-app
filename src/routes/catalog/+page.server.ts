@@ -17,6 +17,8 @@ import {
 	type CatalogUrlState
 } from '$lib/catalog/urlState';
 import { loadCatalogOriginPriceStats } from '$lib/server/catalogOriginPriceStats';
+import { getTrackedLotIds } from '$lib/server/trackedLots';
+import { getBriefMatchSummaries, type BriefMatchSummary } from '$lib/server/briefMatchSummary';
 
 function buildPagination(state: CatalogUrlState, total: number) {
 	const totalPages = total > 0 ? Math.ceil(total / state.pagination.limit) : 0;
@@ -98,6 +100,29 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	const originPriceStats = await loadCatalogOriginPriceStats(locals.supabase, visibility);
 
+	const userId = locals.principal?.isAuthenticated ? locals.principal.userId : null;
+	const isMember = locals.role === 'member' || locals.role === 'admin';
+	const hasParchmentAccess =
+		isMember || (locals.principal?.isAuthenticated === true && locals.principal.ppiAccess === true);
+
+	let trackedLotIds: number[] = [];
+	let briefMatchSummaries: BriefMatchSummary[] = [];
+
+	if (userId && hasParchmentAccess) {
+		const [tracked, briefs] = await Promise.all([
+			getTrackedLotIds(locals.supabase, userId),
+			isMember
+				? getBriefMatchSummaries(
+						locals.supabase,
+						userId,
+						catalogData as Parameters<typeof getBriefMatchSummaries>[2]
+					)
+				: Promise.resolve([])
+		]);
+		trackedLotIds = tracked;
+		briefMatchSummaries = briefs;
+	}
+
 	const baseUrl = `${url.protocol}//${url.host}`;
 	const schemaService = createSchemaService(baseUrl);
 	const schemaData = schemaService.generateSchemaGraph([
@@ -115,6 +140,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		originPriceStats,
 		ppiAccess:
 			locals.principal?.isAuthenticated === true ? locals.principal.ppiAccess === true : false,
+		trackedLotIds,
+		briefMatchSummaries,
 		catalogAccess,
 		catalogAccessNotice,
 		catalogSchemaUnavailable,

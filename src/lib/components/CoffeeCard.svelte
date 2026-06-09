@@ -32,7 +32,9 @@
 		showSimilarComparisonAction = false,
 		canUseBeanMatching = false,
 		enableDetails = true,
-		priceContext = null
+		priceContext = null,
+		tracked = false,
+		onToggleTrack = undefined
 	} = $props<{
 		coffee: CoffeeCatalog;
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
@@ -45,6 +47,8 @@
 		onCompareSimilar?: (coffee: CoffeeCatalog) => void;
 		enableDetails?: boolean;
 		priceContext?: LotPriceContext | null;
+		tracked?: boolean;
+		onToggleTrack?: (id: number) => void;
 	}>();
 
 	function priceContextColorClass(tier: LotPriceTier): string {
@@ -427,6 +431,37 @@
 				</button>
 			{:else}
 				<span></span>
+			{/if}
+
+			{#if onToggleTrack}
+				<button
+					type="button"
+					class="pointer-events-auto inline-flex size-8 items-center justify-center rounded-md transition-colors hover:bg-background-tertiary-light/10 {tracked
+						? 'text-background-tertiary-light'
+						: 'text-muted hover:text-accent'}"
+					aria-label={tracked ? `Untrack ${coffee.name}` : `Track ${coffee.name}`}
+					aria-pressed={tracked}
+					title={tracked ? 'Remove from watchlist' : 'Add to watchlist'}
+					onclick={(event) => {
+						event.stopPropagation();
+						onToggleTrack(coffee.id as unknown as number);
+					}}
+				>
+					<svg
+						class="h-4 w-4"
+						fill={tracked ? 'currentColor' : 'none'}
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+						/>
+					</svg>
+				</button>
 			{/if}
 			<div class="flex items-center gap-2">
 				{#if coffee.link}
