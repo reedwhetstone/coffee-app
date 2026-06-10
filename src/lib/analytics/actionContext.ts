@@ -97,6 +97,25 @@ export function buildAnalyticsChatPrompt(
 	].join('\n');
 }
 
+/**
+ * Compact live summary of the analytics view for the page chat context
+ * (attached to chat messages, unlike the longer seeded prompt below).
+ */
+export function buildAnalyticsPageContextSummary(
+	context: AnalyticsChatContext,
+	marketReadHeadline: string
+): string {
+	const scopeLabel =
+		context.viewMode === 'all' ? 'combined retail and wholesale' : context.viewMode;
+	const filters = context.activeFilters;
+	const trackedSuffix = filters.trackedLots ? `, ${filters.trackedLots} tracked lots in scope` : '';
+
+	return [
+		`Parchment Market Index — ${marketReadHeadline}`,
+		`Scope: ${scopeLabel}, ${context.timeWindow} movement window. ${filters.stockedListings} stocked listings from ${filters.suppliers} suppliers across ${filters.origins} origins${trackedSuffix}.`
+	].join('\n');
+}
+
 export function buildAnalyticsChatHref(
 	context: AnalyticsChatContext,
 	marketReadHeadline: string

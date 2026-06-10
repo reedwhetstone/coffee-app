@@ -20,6 +20,7 @@
 
 	import type { TastingNotes } from '$lib/types/coffee.types';
 	import type { CoffeeCatalog } from '$lib/types/component.types';
+	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import { getLotPriceContext } from '$lib/catalog/priceContext';
 	import type { OriginPriceStats, LotPriceContext } from '$lib/catalog/priceContext';
 	import { getDisplayPrice } from '$lib/utils/pricing';
@@ -142,6 +143,32 @@
 	let hasAdvancedProcessFilters = $derived(
 		PROCESS_TRANSPARENCY_FILTER_KEYS.some((key) => isActiveFilterValue($filterStore.filters[key]))
 	);
+
+	// Publish what this view shows so chat can ground answers in it.
+	$effect(() => {
+		const items = displayData();
+		const activeFilters = Object.entries($filterStore.filters)
+			.filter(
+				([, value]) =>
+					isActiveFilterValue(value) && (typeof value !== 'object' || Array.isArray(value))
+			)
+			.map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`);
+		const scope = trackedOnlyView
+			? 'tracked lots only'
+			: activeFilters.length > 0
+				? `filtered by ${activeFilters.join('; ')}`
+				: 'no filters applied';
+		pageChatContext.set({
+			surface: 'catalog',
+			summary: `Green coffee catalog (${scope}) — ${items.length} coffees in view.`,
+			entities: items.slice(0, 5).map((coffee) => ({
+				type: 'coffee',
+				id: coffee.id,
+				label: [coffee.name, coffee.source].filter(Boolean).join(' — ') || `Coffee #${coffee.id}`
+			}))
+		});
+		return () => pageChatContext.clear();
+	});
 
 	let hasInlineFilters = $derived(
 		(Array.isArray($filterStore.filters.country) && $filterStore.filters.country.length > 0) ||

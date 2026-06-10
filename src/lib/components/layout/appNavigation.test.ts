@@ -20,16 +20,16 @@ describe('authenticated app navigation taxonomy', () => {
 		expect(maillardItems).not.toContain('/chat');
 	});
 
-	it('labels analytics as Parchment Market Index in the Parchment group', () => {
+	it('labels analytics as Market Index in the Parchment group', () => {
 		const analyticsItem = sectionById('member', 'parchment')?.items.find(
 			(item) => item.href === '/analytics'
 		);
 
 		expect(analyticsItem).toMatchObject({
-			label: 'Parchment Market Index',
+			label: 'Market Index',
 			description: expect.stringContaining('Market trends')
 		});
-		expect(getCurrentRouteLabel('/analytics', 'member')).toBe('Parchment Market Index');
+		expect(getCurrentRouteLabel('/analytics', 'member')).toBe('Market Index');
 	});
 
 	it('keeps Portfolio and Mallard Studio items visible but locked for viewers', () => {

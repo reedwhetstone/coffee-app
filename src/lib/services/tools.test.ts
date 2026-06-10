@@ -25,6 +25,8 @@ describe('createChatTools entitlement allowlist', () => {
 		expect(toolNames({ memberAccess: true, ppiAccess: false })).toEqual([
 			'add_bean_to_inventory',
 			'bean_tasting_notes',
+			'catalog_facets',
+			'catalog_rank',
 			'coffee_catalog_search',
 			'create_roast_session',
 			'find_similar_beans',
@@ -32,20 +34,124 @@ describe('createChatTools entitlement allowlist', () => {
 			'present_results',
 			'record_sale',
 			'roast_profiles',
+			'supplier_list',
 			'update_bean',
 			'update_roast_notes'
 		]);
 	});
 
-	it('limits Parchment Intelligence-only users to sourcing, catalog, and portfolio tools', () => {
+	it('limits Parchment Intelligence-only users to sourcing, catalog, market, and portfolio tools', () => {
 		expect(toolNames({ memberAccess: false, ppiAccess: true })).toEqual([
 			'add_bean_to_inventory',
+			'catalog_facets',
+			'catalog_rank',
 			'coffee_catalog_search',
 			'find_similar_beans',
 			'green_coffee_inventory',
 			'present_results',
+			'supplier_list',
 			'update_bean'
 		]);
+	});
+
+	it('registers price_index_read only when the server injects a reader', () => {
+		const readPriceIndex = vi.fn();
+
+		const memberNames = Object.keys(
+			createChatTools(
+				supabase,
+				'user-123',
+				{ memberAccess: true, ppiAccess: false },
+				{ readPriceIndex }
+			)
+		);
+		const ppiNames = Object.keys(
+			createChatTools(
+				supabase,
+				'user-123',
+				{ memberAccess: false, ppiAccess: true },
+				{ readPriceIndex }
+			)
+		);
+		const viewerNames = Object.keys(
+			createChatTools(
+				supabase,
+				'user-123',
+				{ memberAccess: false, ppiAccess: false },
+				{ readPriceIndex }
+			)
+		);
+
+		expect(memberNames).toContain('price_index_read');
+		expect(ppiNames).toContain('price_index_read');
+		expect(viewerNames).not.toContain('price_index_read');
+		expect(toolNames({ memberAccess: true, ppiAccess: false })).not.toContain('price_index_read');
+	});
+
+	it('gives viewers only catalog search, facets, and presentation', () => {
+		expect(toolNames({ memberAccess: false, ppiAccess: false })).toEqual([
+			'catalog_facets',
+			'coffee_catalog_search',
+			'present_results'
+		]);
+	});
+
+	it('sends the model a compact catalog search view via toModelOutput', () => {
+		const tools = createChatTools(supabase, 'user-123', { memberAccess: true, ppiAccess: false });
+		const toModelOutput = tools.coffee_catalog_search.toModelOutput as (options: {
+			toolCallId: string;
+			input: unknown;
+			output: unknown;
+		}) => { type: string; value: Record<string, unknown> };
+
+		const result = toModelOutput({
+			toolCallId: 'call-1',
+			input: {},
+			output: {
+				coffees: [{ id: 1, name: 'Hambela', description_long: 'x'.repeat(2000) }],
+				total: 1
+			}
+		});
+
+		expect(result.type).toBe('json');
+		const coffees = result.value.coffees as Array<Record<string, unknown>>;
+		expect(coffees[0].name).toBe('Hambela');
+		expect(coffees[0].description_long).toBeUndefined();
+	});
+
+	it('sends the model a compact action card view via toModelOutput', () => {
+		const tools = createChatTools(supabase, 'user-123', { memberAccess: true, ppiAccess: false });
+		const toModelOutput = tools.add_bean_to_inventory.toModelOutput as (options: {
+			toolCallId: string;
+			input: unknown;
+			output: unknown;
+		}) => { type: string; value: Record<string, unknown> };
+
+		const result = toModelOutput({
+			toolCallId: 'call-2',
+			input: {},
+			output: {
+				action_card: {
+					actionType: 'add_bean_to_inventory',
+					summary: 'Add Hambela',
+					status: 'proposed',
+					fields: [
+						{
+							key: 'coffee_bean',
+							label: 'Coffee Bean',
+							value: '1',
+							type: 'select',
+							editable: true,
+							selectOptions: [{ label: 'Hambela', value: '1' }]
+						}
+					]
+				}
+			}
+		});
+
+		const card = result.value.action_card as Record<string, unknown>;
+		const fields = card.fields as Array<Record<string, unknown>>;
+		expect(fields[0].selectOptions).toBeUndefined();
 	});
 
 	it('does not expose roasting-only tools to Parchment Intelligence-only users', () => {

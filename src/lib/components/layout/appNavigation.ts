@@ -65,7 +65,7 @@ const authenticatedSections: NavSection[] = [
 		items: [
 			{ label: 'Dashboard', href: '/dashboard', description: 'Parchment Intelligence home' },
 			{
-				label: 'Parchment Market Index',
+				label: 'Market Index',
 				href: '/analytics',
 				description: 'Market trends, price movement, and sourcing signals',
 				matches: ['/analytics']

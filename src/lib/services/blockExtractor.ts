@@ -27,9 +27,13 @@ export interface BlockExtractorOptions {
 /** Tool names whose raw output should be suppressed when present_results is used */
 const PRESENTABLE_TOOLS = new Set([
 	'coffee_catalog_search',
+	'catalog_rank',
 	'green_coffee_inventory',
 	'roast_profiles'
 ]);
+
+/** Tools whose output is a `coffees` array renderable as coffee cards */
+const COFFEE_RESULT_TOOLS = new Set(['coffee_catalog_search', 'catalog_rank']);
 
 /**
  * Extracts a single UIBlock from a single message part (tool output).
@@ -68,7 +72,7 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 	}
 
 	if (
-		toolName === 'coffee_catalog_search' &&
+		COFFEE_RESULT_TOOLS.has(toolName) &&
 		'coffees' in output &&
 		Array.isArray(output.coffees) &&
 		output.coffees.length > 0
@@ -183,7 +187,7 @@ function buildPresentedBlock(
 
 	const cache = searchDataCache?.get(sourceTool);
 
-	if (sourceTool === 'coffee_catalog_search') {
+	if (sourceTool === 'coffee_catalog_search' || sourceTool === 'catalog_rank') {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const coffees: any[] = [];
 		const annotations: CoffeeCardAnnotation[] = [];
@@ -309,11 +313,7 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 
 		const toolName = part.toolName ?? part.type.replace('tool-', '');
 
-		if (
-			toolName === 'coffee_catalog_search' &&
-			'coffees' in output &&
-			Array.isArray(output.coffees)
-		) {
+		if (COFFEE_RESULT_TOOLS.has(toolName) && 'coffees' in output && Array.isArray(output.coffees)) {
 			const itemMap = new Map<number, unknown>();
 			for (const coffee of output.coffees) {
 				if (coffee.id != null) itemMap.set(coffee.id, coffee);

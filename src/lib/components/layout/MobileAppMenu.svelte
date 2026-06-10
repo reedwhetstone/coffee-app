@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
 	import { checkRole, type UserRole } from '$lib/types/auth.types';
-	import { workspaceStore, type Workspace } from '$lib/stores/workspaceStore.svelte';
 	import {
 		getAuthenticatedNavSections,
 		isNavItemActive
@@ -32,61 +30,9 @@
 	let ppiAccess = $derived(Boolean((data as { ppiAccess?: boolean }).ppiAccess));
 	let navSections = $derived(getAuthenticatedNavSections(userRole, { ppiAccess }));
 
-	let showCreateForm = $state(false);
-	let newWorkspaceName = $state('');
-	let newWorkspaceType = $state<Workspace['type']>('general');
-	let workspacesBootstrapped = $state(false);
-
-	onMount(async () => {
-		if (!isMember) return;
-
-		if (!workspaceStore.workspaces.length && !workspaceStore.loading) {
-			await workspaceStore.loadWorkspaces();
-		}
-
-		if (!workspaceStore.currentWorkspaceId && workspaceStore.workspaces.length > 0) {
-			const persistedId = workspaceStore.getPersistedWorkspaceId();
-			const targetId =
-				persistedId && workspaceStore.workspaces.some((workspace) => workspace.id === persistedId)
-					? persistedId
-					: workspaceStore.workspaces[0].id;
-			await workspaceStore.activateWorkspace(targetId);
-		}
-
-		workspacesBootstrapped = true;
-	});
-
 	async function navigateTo(href: string) {
 		onClose();
 		await goto(href);
-	}
-
-	async function handleWorkspaceSelect(workspaceId: string) {
-		const switched = await workspaceStore.activateWorkspace(workspaceId);
-		if (!switched) return;
-
-		onClose();
-
-		if (pathname !== '/chat') {
-			await goto('/chat');
-		}
-	}
-
-	async function handleCreateWorkspace() {
-		const createdWorkspace = await workspaceStore.createAndActivateWorkspace(
-			newWorkspaceName,
-			newWorkspaceType
-		);
-		if (!createdWorkspace) return;
-
-		newWorkspaceName = '';
-		newWorkspaceType = 'general';
-		showCreateForm = false;
-		onClose();
-
-		if (pathname !== '/chat') {
-			await goto('/chat');
-		}
 	}
 
 	async function handleSignOut() {
@@ -103,22 +49,6 @@
 			console.error('Error signing out:', error);
 		}
 	}
-
-	const workspaceTypeOptions: Array<{ value: Workspace['type']; label: string }> = [
-		{ value: 'general', label: 'General' },
-		{ value: 'sourcing', label: 'Sourcing' },
-		{ value: 'roasting', label: 'Roasting' },
-		{ value: 'inventory', label: 'Inventory' },
-		{ value: 'analysis', label: 'Analysis' }
-	];
-
-	const workspaceToneClasses: Record<Workspace['type'], string> = {
-		general: 'bg-slate-400',
-		sourcing: 'bg-emerald-500',
-		roasting: 'bg-amber-500',
-		inventory: 'bg-sky-500',
-		analysis: 'bg-violet-500'
-	};
 </script>
 
 <div class="flex h-full flex-col">
@@ -193,9 +123,9 @@
 				>
 					<div class="flex items-center justify-between gap-3">
 						<div>
-							<h3 class="text-sm font-semibold text-text-primary-light">Workspaces</h3>
+							<h3 class="text-sm font-semibold text-text-primary-light">Coffee Chat</h3>
 							<p class="mt-1 text-xs text-text-secondary-light">
-								Switch chat context without a dedicated sidebar button.
+								One continuous conversation that remembers your context.
 							</p>
 						</div>
 						<button
@@ -206,99 +136,6 @@
 							Open Chat
 						</button>
 					</div>
-
-					{#if workspaceStore.loading && !workspacesBootstrapped}
-						<div
-							class="rounded-xl border border-dashed border-border-light px-4 py-6 text-center text-sm text-text-secondary-light"
-						>
-							Loading workspaces...
-						</div>
-					{:else if workspaceStore.workspaces.length > 0}
-						<div class="space-y-2">
-							{#each workspaceStore.workspaces as workspace (workspace.id)}
-								{@const isActive = workspace.id === workspaceStore.currentWorkspaceId}
-								<button
-									type="button"
-									onclick={() => handleWorkspaceSelect(workspace.id)}
-									class="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left ring-1 ring-border-light transition-colors {isActive
-										? 'bg-background-primary-light text-text-primary-light'
-										: 'bg-background-primary-light/70 text-text-secondary-light hover:text-text-primary-light'}"
-								>
-									<span
-										class="h-2.5 w-2.5 shrink-0 rounded-full {workspaceToneClasses[workspace.type]}"
-									></span>
-									<span class="min-w-0 flex-1">
-										<span class="block truncate text-sm font-medium">{workspace.title}</span>
-										<span class="mt-1 block text-xs text-text-secondary-light">
-											{workspace.type}
-										</span>
-									</span>
-									{#if isActive}
-										<span
-											class="rounded-full bg-background-tertiary-light/15 px-2 py-1 text-[11px] font-semibold text-background-tertiary-light"
-										>
-											Active
-										</span>
-									{/if}
-								</button>
-							{/each}
-						</div>
-					{:else}
-						<div
-							class="rounded-xl border border-dashed border-border-light px-4 py-5 text-sm text-text-secondary-light"
-						>
-							No workspaces yet. Create one to start a focused Coffee Chat session.
-						</div>
-					{/if}
-
-					{#if showCreateForm}
-						<div
-							class="space-y-2 rounded-xl border border-border-light bg-background-primary-light p-3"
-						>
-							<input
-								type="text"
-								bind:value={newWorkspaceName}
-								placeholder="Workspace name"
-								class="w-full rounded-lg border border-border-light bg-background-secondary-light px-3 py-2 text-sm text-text-primary-light placeholder-text-secondary-light focus:border-background-tertiary-light focus:outline-none"
-								onkeydown={(event) => {
-									if (event.key === 'Enter') handleCreateWorkspace();
-									if (event.key === 'Escape') showCreateForm = false;
-								}}
-							/>
-							<select
-								bind:value={newWorkspaceType}
-								class="w-full rounded-lg border border-border-light bg-background-secondary-light px-3 py-2 text-sm text-text-primary-light focus:border-background-tertiary-light focus:outline-none"
-							>
-								{#each workspaceTypeOptions as option}
-									<option value={option.value}>{option.label}</option>
-								{/each}
-							</select>
-							<div class="flex gap-2">
-								<button
-									type="button"
-									onclick={handleCreateWorkspace}
-									class="flex-1 rounded-lg bg-background-tertiary-light px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-								>
-									Create workspace
-								</button>
-								<button
-									type="button"
-									onclick={() => (showCreateForm = false)}
-									class="rounded-lg border border-border-light px-3 py-2 text-sm font-medium text-text-secondary-light transition-colors hover:text-text-primary-light"
-								>
-									Cancel
-								</button>
-							</div>
-						</div>
-					{:else}
-						<button
-							type="button"
-							onclick={() => (showCreateForm = true)}
-							class="w-full rounded-xl border border-dashed border-border-light px-4 py-3 text-left text-sm font-medium text-text-secondary-light transition-colors hover:border-background-tertiary-light hover:text-text-primary-light"
-						>
-							+ Create workspace
-						</button>
-					{/if}
 				</section>
 			{/if}
 

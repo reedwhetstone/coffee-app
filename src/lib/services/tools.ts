@@ -1,4 +1,5 @@
 import { tool, type ToolSet } from 'ai';
+import type { JSONValue } from 'ai';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -17,6 +18,18 @@ import {
 import { listRoasts, createRoast as _createRoast, type RoastProfile } from '@purveyors/cli/roast';
 import { getTastingNotes, getTastingNotesSchema } from '@purveyors/cli/tasting';
 import { recordSale as _recordSale } from '@purveyors/cli/sales';
+import {
+	CATALOG_FACET_FIELDS,
+	RANK_OBJECTIVES,
+	getCatalogFacets,
+	getSupplierList,
+	rankCatalog,
+	type MarketToolsClient
+} from '$lib/services/marketTools';
+import {
+	compactActionCardOutputForModel,
+	compactCatalogSearchOutputForModel
+} from '$lib/services/toolModelOutput';
 
 /**
  * Coerce falsy or non-positive numeric IDs to undefined.
@@ -48,6 +61,10 @@ function stripInventoryRoastProfileData<T extends InventoryResult>(
  *   roast_profiles         → listRoasts()
  *   bean_tasting_notes     → getTastingNotes()
  *   find_similar_beans     → findSimilarBeans()
+ *   catalog_facets         → getCatalogFacets()  (valid filter values, cached)
+ *   supplier_list          → getSupplierList()   (supplier universe, cached)
+ *   catalog_rank           → rankCatalog()       (deterministic objective ranking)
+ *   price_index_read       → deps.readPriceIndex (aggregate market index, admin client)
  *
  * WRITE TOOLS — proposal pattern, return action_card for user confirmation:
  *   add_bean_to_inventory  → execute-action calls addInventory()
@@ -83,11 +100,29 @@ export interface ChatToolAccess {
 	memberAccess?: boolean;
 }
 
+/**
+ * Server-injected dependencies for tools that cannot run on the user-scoped
+ * client (e.g. price_index_read needs the admin client because
+ * price_index_snapshots revokes SELECT from authenticated users).
+ */
+export interface ChatToolDeps {
+	readPriceIndex?: (input: {
+		origin?: string;
+		process?: string;
+		days?: number;
+		wholesale?: boolean;
+		limit?: number;
+	}) => Promise<unknown>;
+}
+
 export function createChatTools(
 	supabase: SupabaseClient,
 	userId: string,
-	access: ChatToolAccess = { memberAccess: false, ppiAccess: false }
+	access: ChatToolAccess = { memberAccess: false, ppiAccess: false },
+	deps: ChatToolDeps = {}
 ): ToolSet {
+	const marketClient = supabase as unknown as MarketToolsClient;
+
 	const tools = {
 		// ─── Read Tools (CLI imports) ───────────────────────────────────────────
 
@@ -178,7 +213,13 @@ export function createChatTools(
 					filters_applied: input,
 					search_strategy: 'structured' as const
 				};
-			}
+			},
+			// Full rows stream to the client for cards; the model sees a compact
+			// view (long prose dropped/truncated) to keep token cost flat.
+			toModelOutput: ({ output }) => ({
+				type: 'json',
+				value: compactCatalogSearchOutputForModel(output) as JSONValue
+			})
 		}),
 
 		green_coffee_inventory: tool({
@@ -384,6 +425,63 @@ export function createChatTools(
 			}
 		}),
 
+		catalog_facets: tool({
+			description:
+				'List the valid values (with listing counts) for one catalog field: supplier, country, processing_base_method, fermentation_type, drying_method, grade, or wholesale. Call this BEFORE filtering by a supplier/origin/process name you have not verified — never guess filter values. Results are cached, so reuse them within a conversation.',
+			inputSchema: z.object({
+				field: z.enum(CATALOG_FACET_FIELDS).describe('Which catalog field to enumerate'),
+				stocked_only: z
+					.boolean()
+					.optional()
+					.default(true)
+					.describe('Count only currently stocked listings (default: true)')
+			}),
+			execute: async (input) => getCatalogFacets(marketClient, input)
+		}),
+
+		supplier_list: tool({
+			description:
+				'List the supplier universe with aggregate signals per supplier: listing counts, price range, average Purveyor Score, average supplier cup score, and top origin countries. Use this to ground any supplier question ("who carries X", "best supplier for Y") before deeper queries.',
+			inputSchema: z.object({
+				stocked_only: z
+					.boolean()
+					.optional()
+					.default(true)
+					.describe('Aggregate only currently stocked listings (default: true)'),
+				non_wholesale_only: z
+					.boolean()
+					.optional()
+					.describe('Exclude wholesale-only listings from supplier aggregates'),
+				country: z.string().optional().describe('Limit aggregates to one origin country'),
+				limit: z.number().optional().default(15).describe('Number of suppliers (max 25)')
+			}),
+			execute: async (input) => getSupplierList(marketClient, input)
+		}),
+
+		catalog_rank: tool({
+			description:
+				'Deterministically rank catalog coffees by an objective: premium (highest Purveyor Score), value (Purveyor Score per dollar), fresh_arrival (newest stocked), rare_origin (scarcest origins). Use this for "best / top / premium / value / just landed / unusual" questions instead of plain search. Narrate from each result\'s rank_basis and purveyor_score_factors — never invent your own ordering.',
+			inputSchema: z.object({
+				objective: z.enum(RANK_OBJECTIVES).describe('Ranking objective'),
+				stocked_only: z
+					.boolean()
+					.optional()
+					.default(true)
+					.describe('Rank only currently stocked coffees (default: true)'),
+				supplier: z
+					.string()
+					.optional()
+					.describe('Filter to one supplier (verify via supplier_list)'),
+				country: z.string().optional().describe('Filter to one origin country'),
+				process: z.string().optional().describe('Filter by processing method'),
+				max_price: z.number().optional().describe('Maximum price per lb'),
+				min_purveyor_score: z.number().optional().describe('Minimum Purveyor Score'),
+				non_wholesale_only: z.boolean().optional().describe('Exclude wholesale-only listings'),
+				limit: z.number().optional().default(8).describe('Number of results (max 15)')
+			}),
+			execute: async (input) => rankCatalog(marketClient, input)
+		}),
+
 		// ─── Write Tools (propose-only, no execution) ──────────────────────────
 
 		add_bean_to_inventory: tool({
@@ -587,7 +685,13 @@ export function createChatTools(
 						status: 'proposed'
 					}
 				};
-			}
+			},
+			// The card carries hundreds of dropdown options for the UI; the model
+			// only needs the proposed values.
+			toModelOutput: ({ output }) => ({
+				type: 'json',
+				value: compactActionCardOutputForModel(output) as JSONValue
+			})
 		}),
 
 		update_bean: tool({
@@ -948,7 +1052,12 @@ export function createChatTools(
 			description:
 				'Present curated results with annotations and layout control. Call AFTER a search tool to control what the user sees.',
 			inputSchema: z.object({
-				source_tool: z.enum(['coffee_catalog_search', 'green_coffee_inventory', 'roast_profiles']),
+				source_tool: z.enum([
+					'coffee_catalog_search',
+					'catalog_rank',
+					'green_coffee_inventory',
+					'roast_profiles'
+				]),
 				layout: z
 					.enum(['inline', 'grid', 'focused'])
 					.describe(
@@ -978,22 +1087,50 @@ export function createChatTools(
 		})
 	};
 
-	if (access.memberAccess) return tools;
+	// price_index_read requires a server-injected reader (admin client); it is
+	// only registered when the chat route provides one.
+	const readPriceIndex = deps.readPriceIndex;
+	const priceIndexTools: ToolSet = readPriceIndex
+		? {
+				price_index_read: tool({
+					description:
+						'Read the Parchment Market Index: aggregate green coffee price snapshots (min/p25/median/avg/p75/max per lb, supplier and listing counts) by origin and process over a time window. Use for market pricing questions like "is this priced well?" or "what are Ethiopia naturals going for?". Aggregate data only — never per-supplier prices.',
+					inputSchema: z.object({
+						origin: z.string().optional().describe('Origin country to filter snapshots'),
+						process: z.string().optional().describe('Processing method to filter snapshots'),
+						days: z.number().optional().default(90).describe('Lookback window in days (max 365)'),
+						wholesale: z
+							.boolean()
+							.optional()
+							.describe('Filter to wholesale-only (true) or retail (false) segments'),
+						limit: z.number().optional().default(30).describe('Number of snapshots (max 60)')
+					}),
+					execute: async (input) => readPriceIndex(input)
+				})
+			}
+		: {};
+
+	if (access.memberAccess) return { ...tools, ...priceIndexTools };
 
 	if (access.ppiAccess) {
 		const ppiTools: ToolSet = {
 			coffee_catalog_search: tools.coffee_catalog_search,
 			green_coffee_inventory: tools.green_coffee_inventory,
 			find_similar_beans: tools.find_similar_beans,
+			catalog_facets: tools.catalog_facets,
+			supplier_list: tools.supplier_list,
+			catalog_rank: tools.catalog_rank,
 			add_bean_to_inventory: tools.add_bean_to_inventory,
 			update_bean: tools.update_bean,
-			present_results: tools.present_results
+			present_results: tools.present_results,
+			...priceIndexTools
 		};
 		return ppiTools;
 	}
 
 	const minimalTools: ToolSet = {
 		coffee_catalog_search: tools.coffee_catalog_search,
+		catalog_facets: tools.catalog_facets,
 		present_results: tools.present_results
 	};
 	return minimalTools;

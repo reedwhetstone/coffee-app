@@ -9,6 +9,7 @@
 		type DashboardCard
 	} from '$lib/dashboard/intelligenceHome';
 	import { parseTastingNotes } from '$lib/utils/parseTastingNotes';
+	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 
 	import CoffeeCard from '$lib/components/CoffeeCard.svelte';
 
@@ -36,6 +37,23 @@
 		trackedIds = new Set(
 			(data.trackedLots ?? []).map((lot: { catalogId: number }) => lot.catalogId)
 		);
+	});
+
+	// Publish the dashboard state so chat can ground answers in it.
+	$effect(() => {
+		const arrivals = (data.recentArrivals ?? []) as CoffeeCatalog[];
+		const delistedSuffix =
+			delistedTrackedCount > 0 ? ` (${delistedTrackedCount} recently delisted)` : '';
+		pageChatContext.set({
+			surface: 'dashboard',
+			summary: `Parchment Intelligence home — ${trackedLots.length} tracked lots${delistedSuffix}, ${activeBriefs.length} active sourcing briefs, ${arrivals.length} recent arrivals shown.`,
+			entities: arrivals.slice(0, 5).map((coffee) => ({
+				type: 'coffee',
+				id: coffee.id,
+				label: [coffee.name, coffee.source].filter(Boolean).join(' — ') || `Coffee #${coffee.id}`
+			}))
+		});
+		return () => pageChatContext.clear();
 	});
 
 	function setTracked(catalogId: number, tracked: boolean) {
