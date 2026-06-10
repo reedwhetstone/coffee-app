@@ -209,8 +209,18 @@
 	let chatError = $state<string | null>(null);
 
 	// ─── Vercel AI SDK Chat Instance ───────────────────────────────────────────
+	// Single continuous conversation: only the most recent messages are sent to
+	// the model; older context is carried by the conversation summary and the
+	// persistent memory document.
+	const CONTEXT_WINDOW_MESSAGES = 24;
+
 	const chat = new Chat({
-		transport: new DefaultChatTransport({ api: '/api/chat' }),
+		transport: new DefaultChatTransport({
+			api: '/api/chat',
+			prepareSendMessagesRequest: ({ messages, body }) => ({
+				body: { ...(body ?? {}), messages: messages.slice(-CONTEXT_WINDOW_MESSAGES) }
+			})
+		}),
 		onError: (error) => {
 			console.error('Chat error:', error);
 			chatError = error instanceof Error ? error.message : 'An error occurred. Please try again.';
@@ -298,34 +308,20 @@
 		};
 		window.addEventListener('beforeunload', handleBeforeUnload);
 
-		// Register workspace UI callbacks for LeftSidebar
-		workspaceStore.registerUICallbacks({
-			onSwitch: handleSwitchWorkspace,
-			onCreate: (name, type) => handleCreateWorkspace(name, type),
-			onDelete: handleDeleteWorkspace,
-			onRename: (id, title) => workspaceStore.updateTitle(id, title)
-		});
-
-		// Load workspaces then restore last active
+		// Load (or create) the single continuous conversation. Older multi-
+		// workspace data stays intact; everything funnels into the first one.
 		(async () => {
 			await workspaceStore.loadWorkspaces();
 
 			if (workspaceStore.workspaces.length === 0) {
-				const ws = await workspaceStore.createWorkspace('General', 'general');
+				const ws = await workspaceStore.createWorkspace('Coffee', 'general');
 				if (ws) await loadWorkspace(ws.id);
 			} else {
-				// Restore persisted workspace if it still exists
-				const persistedId = workspaceStore.getPersistedWorkspaceId();
-				const targetId =
-					persistedId && workspaceStore.workspaces.some((w) => w.id === persistedId)
-						? persistedId
-						: workspaceStore.workspaces[0].id;
-				await loadWorkspace(targetId);
+				await loadWorkspace(workspaceStore.workspaces[0].id);
 			}
 		})();
 
 		return () => {
-			workspaceStore.unregisterUICallbacks();
 			window.removeEventListener('beforeunload', handleBeforeUnload);
 			handleBeforeUnload(); // Also fires on SvelteKit client-side navigation
 			unsubscribeWorkspace(); // Clean up the workspace ID tracker
@@ -419,37 +415,6 @@
 					canvasStore.dispatch({ type: 'focus', blockId: targetBlock.id });
 				}
 			}
-		}
-	}
-
-	async function handleCreateWorkspace(
-		name?: string,
-		type?: 'general' | 'sourcing' | 'roasting' | 'inventory' | 'analysis'
-	) {
-		await persistCurrentState();
-		const ws = await workspaceStore.createWorkspace(name, type);
-		if (ws) {
-			await loadWorkspace(ws.id);
-		}
-	}
-
-	async function handleSwitchWorkspace(workspaceId: string) {
-		if (workspaceId === workspaceStore.currentWorkspaceId) return;
-		// Save current workspace state before switching
-		await persistCurrentState();
-		await loadWorkspace(workspaceId);
-	}
-
-	async function handleDeleteWorkspace(workspaceId: string) {
-		if (!confirm('Delete this workspace and all its messages?')) return;
-		await workspaceStore.deleteWorkspace(workspaceId);
-		if (workspaceStore.workspaces.length === 0) {
-			const ws = await workspaceStore.createWorkspace('General', 'general');
-			if (ws) await loadWorkspace(ws.id);
-		} else if (workspaceStore.currentWorkspaceId !== workspaceId) {
-			// Already on a different workspace
-		} else {
-			await loadWorkspace(workspaceStore.workspaces[0].id);
 		}
 	}
 
