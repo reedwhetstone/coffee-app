@@ -52,3 +52,33 @@ describe('chat system prompt entitlement context', () => {
 		expect(prompt).toContain('WORKSPACE FOCUS: Roasting');
 	});
 });
+
+describe('chat system prompt page context', () => {
+	it('injects the current view summary and entity IDs', () => {
+		const prompt = _buildSystemPrompt(
+			undefined,
+			'PPI User',
+			{ ppiAccess: true, memberAccess: false },
+			undefined,
+			{
+				surface: 'catalog',
+				summary: 'Green coffee catalog filtered by country: Ethiopia — 12 coffees in view.',
+				entities: [{ type: 'coffee', id: 42, label: 'Hambela Natural — Sweet Maria' }]
+			}
+		);
+
+		expect(prompt).toContain("USER'S CURRENT VIEW (catalog page):");
+		expect(prompt).toContain('filtered by country: Ethiopia');
+		expect(prompt).toContain('coffee "Hambela Natural — Sweet Maria" (ID 42)');
+		expect(prompt).toContain('descriptive context only');
+	});
+
+	it('omits the view block when no page context is provided', () => {
+		const prompt = _buildSystemPrompt(undefined, 'PPI User', {
+			ppiAccess: true,
+			memberAccess: false
+		});
+
+		expect(prompt).not.toContain("USER'S CURRENT VIEW");
+	});
+});

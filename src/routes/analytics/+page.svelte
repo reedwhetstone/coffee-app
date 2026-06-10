@@ -18,10 +18,12 @@
 	import AnalyticsLoadingPanel from '$lib/components/analytics/AnalyticsLoadingPanel.svelte';
 	import {
 		buildAnalyticsChatHref,
+		buildAnalyticsPageContextSummary,
 		canUseAnalyticsChat,
 		resolveAnalyticsEntitlement,
 		type AnalyticsChatContext
 	} from '$lib/analytics/actionContext';
+	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import type { DeferredAnalyticsComponent } from './deferredModules';
 	import {
 		loadMemberAnalyticsModules,
@@ -864,6 +866,15 @@
 			? buildAnalyticsChatHref(analyticsChatContext, marketReadHeadline)
 			: undefined
 	);
+
+	// Publish the live market view so chat can ground answers in it.
+	$effect(() => {
+		pageChatContext.set({
+			surface: 'analytics',
+			summary: buildAnalyticsPageContextSummary(analyticsChatContext, marketReadHeadline)
+		});
+		return () => pageChatContext.clear();
+	});
 
 	let askActionHref = $derived.by(() => {
 		if (analyticsChatHref) return analyticsChatHref;

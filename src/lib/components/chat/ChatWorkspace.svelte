@@ -19,6 +19,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { workspaceStore, type WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
+	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import {
 		applyAnalyticsSeedToInput,
 		readAnalyticsSeedFromSearchParams
@@ -217,6 +218,7 @@
 		chat.messages = [];
 		canvasStore.clearAll();
 		dispatchedParts = new Set();
+		lastSentPageContext = null;
 
 		// Restore messages from persisted workspace
 		if (result.messages.length > 0) {
@@ -598,6 +600,24 @@
 	// ─── Slash command completions ────────────────────────────────────────────
 	let slashCompletions = $derived(getSlashCompletions(inputMessage, canUseMallardWorkspaces));
 
+	// ─── Page context (what the user is looking at elsewhere in the app) ──────
+	// Snapshotted at send time and only attached when changed since the last
+	// message, so the token cost stays bounded.
+	let lastSentPageContext: string | null = null;
+
+	function buildSendBody(): Record<string, unknown> {
+		const body: Record<string, unknown> = { workspaceContext: getWorkspaceContext() };
+		const context = pageChatContext.current;
+		if (context) {
+			const serialized = JSON.stringify(context);
+			if (serialized !== lastSentPageContext) {
+				lastSentPageContext = serialized;
+				body.pageContext = context;
+			}
+		}
+		return body;
+	}
+
 	// ─── Send Message ──────────────────────────────────────────────────────────
 	async function sendMessage() {
 		if (!inputMessage.trim() || isActive) return;
@@ -625,10 +645,7 @@
 			if (cmd.chatText) {
 				inputMessage = '';
 				shouldScrollToBottom = true;
-				await chat.sendMessage(
-					{ text: cmd.chatText },
-					{ body: { workspaceContext: getWorkspaceContext() } }
-				);
+				await chat.sendMessage({ text: cmd.chatText }, { body: buildSendBody() });
 				return;
 			}
 		}
@@ -636,7 +653,7 @@
 		inputMessage = '';
 		shouldScrollToBottom = true;
 
-		await chat.sendMessage({ text }, { body: { workspaceContext: getWorkspaceContext() } });
+		await chat.sendMessage({ text }, { body: buildSendBody() });
 	}
 
 	// ─── Export / Clear ────────────────────────────────────────────────────────

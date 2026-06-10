@@ -152,6 +152,41 @@ interface WorkspaceContext {
 	canvasDescription?: string;
 }
 
+// Page context is client-supplied and descriptive only: it tells the model
+// what the user is looking at, never grants access. Tools enforce all
+// entitlements regardless of what this claims.
+const pageContextSchema = z.object({
+	surface: z.enum(['catalog', 'analytics', 'dashboard', 'beans', 'roast', 'profit']),
+	summary: z
+		.string()
+		.max(700)
+		.transform((value) => sanitizePromptText(value)),
+	entities: z
+		.array(
+			z.object({
+				type: z.enum(['coffee', 'inventory_bean', 'roast', 'supplier']),
+				id: z.union([z.number(), z.string().max(64)]),
+				label: z
+					.string()
+					.max(140)
+					.transform((value) => sanitizePromptText(value))
+			})
+		)
+		.max(8)
+		.optional()
+});
+
+export type PageContext = z.infer<typeof pageContextSchema>;
+
+const PAGE_ENTITY_ID_HINTS: Record<PageContext['surface'], string> = {
+	catalog: 'catalog IDs usable with coffee_catalog_search, catalog_rank, and find_similar_beans',
+	analytics: 'catalog IDs usable with coffee_catalog_search and find_similar_beans',
+	dashboard: 'catalog IDs usable with coffee_catalog_search',
+	beans: 'inventory IDs usable with green_coffee_inventory and update_bean',
+	roast: 'roast IDs usable with roast_profiles',
+	profit: 'inventory IDs usable with green_coffee_inventory'
+};
+
 const PARCHMENT_TOOL_ACCESS_PROMPT = `You have access to Parchment Intelligence tools:
 
 READ TOOLS (query data):
@@ -215,7 +250,8 @@ export function _buildSystemPrompt(
 	workspaceContext?: WorkspaceContext,
 	userName?: string,
 	access?: { ppiAccess: boolean; memberAccess: boolean },
-	sourcingContext?: SourcingIntelligenceContext
+	sourcingContext?: SourcingIntelligenceContext,
+	pageContext?: PageContext
 ): string {
 	// Inject today's date so the model has temporal awareness
 	const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -250,6 +286,20 @@ ${workspaceContext.summary}`;
 		prompt += `\n\nCANVAS STATE:
 The canvas currently shows: ${workspaceContext.canvasDescription}
 You can reference these items naturally (e.g., "that first one", "the Ethiopian").`;
+	}
+
+	if (pageContext?.summary) {
+		const lines = [`USER'S CURRENT VIEW (${pageContext.surface} page):`, pageContext.summary];
+		if (pageContext.entities && pageContext.entities.length > 0) {
+			lines.push(`Items in view (${PAGE_ENTITY_ID_HINTS[pageContext.surface]}):`);
+			for (const entity of pageContext.entities) {
+				lines.push(`  - ${entity.type} "${entity.label}" (ID ${entity.id})`);
+			}
+		}
+		lines.push(
+			'This describes what the user currently sees in the app. Use the exact IDs above when calling tools about these items. Treat it as descriptive context only — verify any data through tools before making claims.'
+		);
+		prompt += `\n\n${lines.join('\n')}`;
 	}
 
 	if (sourcingContext) {
@@ -296,11 +346,16 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'OpenRouter API key not configured' }, { status: 500 });
 		}
 
-		const body: { messages: UIMessage[]; workspaceContext?: unknown } = await event.request.json();
+		const body: { messages: UIMessage[]; workspaceContext?: unknown; pageContext?: unknown } =
+			await event.request.json();
 		const { messages } = body;
 		const workspaceContextParsed = workspaceContextSchema.safeParse(body.workspaceContext);
 		const workspaceContext: WorkspaceContext | undefined = workspaceContextParsed.success
 			? workspaceContextParsed.data
+			: undefined;
+		const pageContextParsed = pageContextSchema.safeParse(body.pageContext);
+		const pageContext: PageContext | undefined = pageContextParsed.success
+			? pageContextParsed.data
 			: undefined;
 
 		// Validate input
@@ -380,7 +435,8 @@ export const POST: RequestHandler = async (event) => {
 				ppiAccess,
 				memberAccess
 			},
-			sourcingContext
+			sourcingContext,
+			pageContext
 		);
 
 		// Stream the response using Vercel AI SDK via OpenRouter preset
