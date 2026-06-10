@@ -25,9 +25,19 @@
 		readAnalyticsSeedFromSearchParams
 	} from '$lib/analytics/actionContext';
 
-	let { canUseChat, canUseMallardWorkspaces } = $props<{
+	let {
+		canUseChat,
+		canUseMallardWorkspaces,
+		variant = 'page'
+	} = $props<{
 		canUseChat: boolean;
 		canUseMallardWorkspaces: boolean;
+		/**
+		 * page: full /chat workbench with the resizable canvas split.
+		 * drawer: chat-only pane (canvas reachable via overlay) for the
+		 * app-wide Ask drawer.
+		 */
+		variant?: 'page' | 'drawer';
 	}>();
 
 	// Build workspace context for the AI system prompt
@@ -457,9 +467,10 @@
 	let chatWidthPercent = $state(60); // Chat takes 60% by default
 	let mobileCanvasOpen = $state(false);
 
-	// Auto-open canvas when blocks arrive, but respect user's explicit close
+	// Auto-open canvas when blocks arrive, but respect user's explicit close.
+	// The drawer variant has no inline canvas pane, so it never auto-opens.
 	$effect(() => {
-		if (!canvasStore.isEmpty && !canvasOpen && !hasUserClosedCanvas) {
+		if (variant === 'page' && !canvasStore.isEmpty && !canvasOpen && !hasUserClosedCanvas) {
 			canvasOpen = true;
 		}
 		// Reset the user-closed flag when canvas is cleared
@@ -701,13 +712,15 @@
 </script>
 
 <!-- Main chat + canvas interface -->
-<div class="flex h-screen flex-col bg-background-primary-light">
+<div class="flex flex-col bg-background-primary-light {variant === 'page' ? 'h-screen' : 'h-full'}">
 	<!-- Chat + Canvas split container -->
 	<div class="chat-canvas-container flex flex-1 overflow-hidden">
 		<!-- Chat pane -->
 		<div
 			class="flex flex-col overflow-hidden"
-			style="width: {canvasOpen ? chatWidthPercent : 100}%; transition: width 0.2s ease;"
+			style="width: {variant === 'page' && canvasOpen
+				? chatWidthPercent
+				: 100}%; transition: width 0.2s ease;"
 		>
 			<!-- Chat toolbar -->
 			<div class="flex items-center justify-end border-b border-border-light px-3 py-1.5">
@@ -715,20 +728,25 @@
 					{#if !canvasStore.isEmpty}
 						<button
 							onclick={() => (mobileCanvasOpen = !mobileCanvasOpen)}
-							class="rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light md:hidden"
+							class="rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light {variant ===
+							'page'
+								? 'md:hidden'
+								: ''}"
 						>
 							Canvas ({canvasStore.blockCount})
 						</button>
-						<button
-							onclick={() => {
-								canvasOpen = !canvasOpen;
-								if (!canvasOpen) hasUserClosedCanvas = true;
-								else hasUserClosedCanvas = false;
-							}}
-							class="hidden rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light md:block"
-						>
-							{canvasOpen ? 'Hide' : 'Show'} Canvas ({canvasStore.blockCount})
-						</button>
+						{#if variant === 'page'}
+							<button
+								onclick={() => {
+									canvasOpen = !canvasOpen;
+									if (!canvasOpen) hasUserClosedCanvas = true;
+									else hasUserClosedCanvas = false;
+								}}
+								class="hidden rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light md:block"
+							>
+								{canvasOpen ? 'Hide' : 'Show'} Canvas ({canvasStore.blockCount})
+							</button>
+						{/if}
 					{/if}
 					{#if chat.messages.length > 0}
 						<button
@@ -770,7 +788,7 @@
 		</div>
 
 		<!-- Resizable divider (desktop only) -->
-		{#if canvasOpen}
+		{#if variant === 'page' && canvasOpen}
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 			<div
@@ -793,9 +811,13 @@
 	</div>
 </div>
 
-<!-- Mobile canvas overlay -->
+<!-- Canvas overlay (mobile always; desktop too in drawer variant) -->
 {#if mobileCanvasOpen}
-	<div class="fixed inset-0 z-50 flex flex-col bg-background-primary-light md:hidden">
+	<div
+		class="fixed inset-0 z-50 flex flex-col bg-background-primary-light {variant === 'page'
+			? 'md:hidden'
+			: ''}"
+	>
 		<div class="flex items-center justify-between border-b border-border-light px-4 py-3">
 			<span class="text-sm font-medium text-text-primary-light">
 				Canvas ({canvasStore.blockCount})
@@ -821,7 +843,7 @@
 {/if}
 
 <!-- Mobile floating indicator -->
-{#if !canvasStore.isEmpty && !mobileCanvasOpen}
+{#if variant === 'page' && !canvasStore.isEmpty && !mobileCanvasOpen}
 	<button
 		onclick={() => (mobileCanvasOpen = true)}
 		class="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 rounded-full bg-background-tertiary-light px-3 py-2 text-sm text-white shadow-lg transition-transform hover:scale-105 md:hidden"
