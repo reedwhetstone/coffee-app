@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/svelte';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import ChatDrawer from './ChatDrawer.svelte';
+import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 
 const { goto, pageState, sendMessage } = vi.hoisted(() => ({
 	goto: vi.fn(),
@@ -48,5 +49,26 @@ describe('ChatDrawer', () => {
 		render(ChatDrawer, { open: true, role: 'viewer', ppiAccess: false });
 
 		expect(screen.queryByRole('complementary', { name: 'Ask Parchment' })).toBeNull();
+	});
+});
+
+describe('ChatDrawer context chips', () => {
+	afterEach(() => {
+		pageChatContext.clear();
+	});
+
+	it('shows a toggleable chip for the published page context', async () => {
+		pageChatContext.set({
+			surface: 'catalog',
+			summary: 'Green coffee catalog filtered by country: Ethiopia — 12 coffees in view.'
+		});
+
+		render(ChatDrawer, { open: true, role: 'viewer', ppiAccess: true });
+
+		const chip = screen.getByRole('button', { name: /Viewing: catalog/ });
+		expect(chip).toHaveAttribute('aria-pressed', 'true');
+
+		await fireEvent.click(chip);
+		expect(chip).toHaveAttribute('aria-pressed', 'false');
 	});
 });

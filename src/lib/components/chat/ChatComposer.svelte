@@ -3,6 +3,13 @@
 	import type { Suggestion } from '$lib/services/suggestionEngine';
 	import type { SlashCommand } from '$lib/services/slashCommands';
 
+	interface ContextChip {
+		id: 'memory' | 'canvas' | 'page';
+		label: string;
+		detail: string;
+		active: boolean;
+	}
+
 	let {
 		inputMessage = $bindable(''),
 		isActive,
@@ -10,6 +17,8 @@
 		suggestions,
 		slashCompletions,
 		chatError,
+		contextChips = [],
+		onToggleChip,
 		onSend,
 		onDismissError
 	} = $props<{
@@ -19,6 +28,8 @@
 		suggestions: Suggestion[];
 		slashCompletions: SlashCommand[];
 		chatError: string | null;
+		contextChips?: ContextChip[];
+		onToggleChip?: (id: ContextChip['id']) => void;
 		onSend: () => void;
 		onDismissError: () => void;
 	}>();
@@ -92,6 +103,34 @@
 					inputMessage = text;
 				}}
 			/>
+		</div>
+	{/if}
+	{#if contextChips.length > 0}
+		<div class="mx-auto mb-2 flex max-w-4xl flex-wrap items-center gap-1.5">
+			<span class="text-[11px] uppercase tracking-wide text-text-secondary-light">Context:</span>
+			{#each contextChips as chip (chip.id)}
+				<button
+					type="button"
+					onclick={() => onToggleChip?.(chip.id)}
+					title={chip.active ? chip.detail : `${chip.label} — excluded from your next message`}
+					aria-pressed={chip.active}
+					class="flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors {chip.active
+						? 'border-background-tertiary-light bg-background-tertiary-light/10 text-text-primary-light'
+						: 'border-border-light text-text-secondary-light line-through opacity-60'}"
+				>
+					{#if chip.active}
+						<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2.5"
+								d="M5 13l4 4L19 7"
+							/>
+						</svg>
+					{/if}
+					{chip.label}
+				</button>
+			{/each}
 		</div>
 	{/if}
 	<form onsubmit={handleSubmit} class="mx-auto max-w-4xl">

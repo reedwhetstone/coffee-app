@@ -40,6 +40,55 @@
 		variant?: 'page' | 'drawer';
 	}>();
 
+	// ─── Context visibility toggles (chips above the composer) ────────────────
+	let includeWorkspaceMemory = $state(true);
+	let includeCanvasContext = $state(true);
+	let includePageContext = $state(true);
+
+	interface ContextChip {
+		id: 'memory' | 'canvas' | 'page';
+		label: string;
+		detail: string;
+		active: boolean;
+	}
+
+	let contextChips = $derived.by((): ContextChip[] => {
+		const chips: ContextChip[] = [];
+		const ws = workspaceStore.currentWorkspace;
+		if (ws?.context_summary) {
+			chips.push({
+				id: 'memory',
+				label: 'Workspace memory',
+				detail: ws.context_summary,
+				active: includeWorkspaceMemory
+			});
+		}
+		if (!canvasStore.isEmpty) {
+			chips.push({
+				id: 'canvas',
+				label: `Canvas (${canvasStore.blockCount})`,
+				detail: 'The assistant can see what is on your canvas',
+				active: includeCanvasContext
+			});
+		}
+		const pageContext = pageChatContext.current;
+		if (pageContext) {
+			chips.push({
+				id: 'page',
+				label: `Viewing: ${pageContext.surface}`,
+				detail: pageContext.summary,
+				active: includePageContext
+			});
+		}
+		return chips;
+	});
+
+	function toggleContextChip(id: ContextChip['id']) {
+		if (id === 'memory') includeWorkspaceMemory = !includeWorkspaceMemory;
+		else if (id === 'canvas') includeCanvasContext = !includeCanvasContext;
+		else includePageContext = !includePageContext;
+	}
+
 	// Build workspace context for the AI system prompt
 	function getWorkspaceContext() {
 		const ws = workspaceStore.currentWorkspace;
@@ -88,8 +137,8 @@
 
 		return {
 			type: ws.type,
-			summary: ws.context_summary || undefined,
-			canvasDescription: canvasDescription || undefined
+			summary: includeWorkspaceMemory ? ws.context_summary || undefined : undefined,
+			canvasDescription: includeCanvasContext ? canvasDescription || undefined : undefined
 		};
 	}
 
@@ -618,7 +667,7 @@
 
 	function buildSendBody(): Record<string, unknown> {
 		const body: Record<string, unknown> = { workspaceContext: getWorkspaceContext() };
-		const context = pageChatContext.current;
+		const context = includePageContext ? pageChatContext.current : null;
 		if (context) {
 			const serialized = JSON.stringify(context);
 			if (serialized !== lastSentPageContext) {
@@ -782,6 +831,8 @@
 				{suggestions}
 				{slashCompletions}
 				{chatError}
+				{contextChips}
+				onToggleChip={toggleContextChip}
 				onSend={sendMessage}
 				onDismissError={() => (chatError = null)}
 			/>
