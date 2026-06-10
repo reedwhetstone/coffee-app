@@ -1,4 +1,5 @@
 import { tool, type ToolSet } from 'ai';
+import type { JSONValue } from 'ai';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -25,6 +26,10 @@ import {
 	rankCatalog,
 	type MarketToolsClient
 } from '$lib/services/marketTools';
+import {
+	compactActionCardOutputForModel,
+	compactCatalogSearchOutputForModel
+} from '$lib/services/toolModelOutput';
 
 /**
  * Coerce falsy or non-positive numeric IDs to undefined.
@@ -208,7 +213,13 @@ export function createChatTools(
 					filters_applied: input,
 					search_strategy: 'structured' as const
 				};
-			}
+			},
+			// Full rows stream to the client for cards; the model sees a compact
+			// view (long prose dropped/truncated) to keep token cost flat.
+			toModelOutput: ({ output }) => ({
+				type: 'json',
+				value: compactCatalogSearchOutputForModel(output) as JSONValue
+			})
 		}),
 
 		green_coffee_inventory: tool({
@@ -674,7 +685,13 @@ export function createChatTools(
 						status: 'proposed'
 					}
 				};
-			}
+			},
+			// The card carries hundreds of dropdown options for the UI; the model
+			// only needs the proposed values.
+			toModelOutput: ({ output }) => ({
+				type: 'json',
+				value: compactActionCardOutputForModel(output) as JSONValue
+			})
 		}),
 
 		update_bean: tool({

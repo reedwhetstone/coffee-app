@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText, stepCountIs, type UIMessage, convertToModelMessages } from 'ai';
+import { streamText, stepCountIs, pruneMessages, type UIMessage, convertToModelMessages } from 'ai';
 import { z } from 'zod';
 import { createChatTools } from '$lib/services/tools';
 import { readPriceIndexForAgent } from '$lib/server/agentPriceIndex';
@@ -458,11 +458,23 @@ export const POST: RequestHandler = async (event) => {
 			userMemory
 		);
 
+		// Tool distillation: older turns keep only their narrative text — stale
+		// tool calls/results are stripped from the model's view. 12 model
+		// messages covers the current user message plus the previous assistant
+		// turn (each tool round is an assistant/tool message pair), so
+		// follow-ups like "tell me more about the second one" still see the
+		// last results. The UI and persistence keep the full parts regardless.
+		const modelMessages = pruneMessages({
+			messages: await convertToModelMessages(messages),
+			toolCalls: `before-last-${12}-messages`,
+			emptyMessages: 'remove'
+		});
+
 		// Stream the response using Vercel AI SDK via OpenRouter preset
 		const result = streamText({
 			model: openrouter.chat('@preset/test-workhorse-agent'),
 			system: systemPrompt,
-			messages: await convertToModelMessages(messages),
+			messages: modelMessages,
 			tools,
 			maxOutputTokens: 4096,
 			temperature: 0.4,
