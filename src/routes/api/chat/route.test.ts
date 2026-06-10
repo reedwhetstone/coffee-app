@@ -82,3 +82,32 @@ describe('chat system prompt page context', () => {
 		expect(prompt).not.toContain("USER'S CURRENT VIEW");
 	});
 });
+
+describe('chat system prompt user memory', () => {
+	it('injects the persistent memory document when present', () => {
+		const prompt = _buildSystemPrompt(
+			undefined,
+			'PPI User',
+			{ ppiAccess: true, memberAccess: false },
+			undefined,
+			undefined,
+			'## Preferences\n- Prefers washed Ethiopians under $8/lb'
+		);
+
+		expect(prompt).toContain('PERSISTENT USER MEMORY');
+		expect(prompt).toContain('Prefers washed Ethiopians under $8/lb');
+	});
+
+	it('omits the memory block when empty', () => {
+		const prompt = _buildSystemPrompt(
+			undefined,
+			'PPI User',
+			{ ppiAccess: true, memberAccess: false },
+			undefined,
+			undefined,
+			'   '
+		);
+
+		expect(prompt).not.toContain('PERSISTENT USER MEMORY');
+	});
+});

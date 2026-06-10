@@ -4,7 +4,7 @@
 	import type { SlashCommand } from '$lib/services/slashCommands';
 
 	interface ContextChip {
-		id: 'memory' | 'canvas' | 'page';
+		id: 'memory' | 'canvas' | 'page' | 'usermemory';
 		label: string;
 		detail: string;
 		active: boolean;

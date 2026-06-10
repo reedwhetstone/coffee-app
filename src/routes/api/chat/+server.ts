@@ -5,6 +5,7 @@ import { streamText, stepCountIs, type UIMessage, convertToModelMessages } from 
 import { z } from 'zod';
 import { createChatTools } from '$lib/services/tools';
 import { readPriceIndexForAgent } from '$lib/server/agentPriceIndex';
+import { getUserMemory } from '$lib/server/userMemory';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
 import { getCatalogItemsByIds } from '$lib/data/catalog';
@@ -251,7 +252,8 @@ export function _buildSystemPrompt(
 	userName?: string,
 	access?: { ppiAccess: boolean; memberAccess: boolean },
 	sourcingContext?: SourcingIntelligenceContext,
-	pageContext?: PageContext
+	pageContext?: PageContext,
+	userMemory?: string
 ): string {
 	// Inject today's date so the model has temporal awareness
 	const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -270,6 +272,14 @@ export function _buildSystemPrompt(
 		prompt += `\n\nACCESS CONTEXT:\nThis user has Parchment Intelligence access, not Mallard Studio. Use sourcing, catalog, market, and portfolio tools only. Do not claim access to roasting, tasting, sales, or production-management tools.`;
 	} else if (access?.memberAccess) {
 		prompt += `\n\nACCESS CONTEXT:\nThis user has Mallard Studio chat access, including sourcing/catalog tools and roasting-context tools.`;
+	}
+
+	if (userMemory?.trim()) {
+		prompt += `\n\nPERSISTENT USER MEMORY:
+This document is maintained across all of this user's conversations — partly by you, partly edited by the user directly. Treat it as trusted background about who they are and what they care about. Reference it naturally; never recite it back.
+---
+${userMemory.trim().slice(0, 4000)}
+---`;
 	}
 
 	const workspaceType = resolveWorkspaceType(workspaceContext?.type, access);
@@ -357,6 +367,7 @@ export const POST: RequestHandler = async (event) => {
 		const pageContext: PageContext | undefined = pageContextParsed.success
 			? pageContextParsed.data
 			: undefined;
+		const includeUserMemory = (body as { includeUserMemory?: unknown }).includeUserMemory !== false;
 
 		// Validate input
 		if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -385,6 +396,11 @@ export const POST: RequestHandler = async (event) => {
 		// Resolve user display name for system prompt personalization
 		const userName =
 			user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0];
+
+		// Persistent user memory document (non-fatal if unavailable)
+		const userMemoryPromise = includeUserMemory
+			? getUserMemory(supabase, user.id).catch(() => null)
+			: Promise.resolve(null);
 
 		// Build sourcing intelligence context from live DB state
 		let sourcingContext: SourcingIntelligenceContext | undefined;
@@ -428,6 +444,8 @@ export const POST: RequestHandler = async (event) => {
 		}
 
 		// Build dynamic system prompt with workspace context and user identity
+		const userMemory = (await userMemoryPromise)?.content;
+
 		const systemPrompt = _buildSystemPrompt(
 			workspaceContext,
 			userName,
@@ -436,7 +454,8 @@ export const POST: RequestHandler = async (event) => {
 				memberAccess
 			},
 			sourcingContext,
-			pageContext
+			pageContext,
+			userMemory
 		);
 
 		// Stream the response using Vercel AI SDK via OpenRouter preset

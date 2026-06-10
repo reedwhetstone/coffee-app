@@ -115,8 +115,8 @@
 		<LeftSidebar {data} onMenuChange={handleMenuChange} />
 		<MobileAppShell {data} />
 
-		<main class="{contentMargin} flex-1 transition-all duration-300 ease-out">
-			<div class="h-full px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4">
+		<main class="{contentMargin} min-w-0 flex-1 transition-all duration-300 ease-out">
+			<div class="h-full overflow-x-clip px-4 pb-6 pt-20 sm:px-6 md:px-0 md:pb-0 md:pr-12 md:pt-4">
 				{@render children()}
 			</div>
 		</main>
@@ -144,7 +144,7 @@
 		{/if}
 	</div>
 {:else}
-	<div class="min-h-screen">
+	<div class="min-h-screen overflow-x-clip">
 		<main class="flex-1">
 			<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 				{@render children()}

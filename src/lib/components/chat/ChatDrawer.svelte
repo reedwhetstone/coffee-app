@@ -15,6 +15,13 @@
 	let canUseMallardWorkspaces = $derived(checkRole(role, 'member'));
 	let canUseChat = $derived(ppiAccess || canUseMallardWorkspaces);
 
+	// Mount the chat on first open and keep it mounted (hidden) afterwards so
+	// the conversation survives closing and reopening the drawer.
+	let hasOpened = $state(false);
+	$effect(() => {
+		if (open) hasOpened = true;
+	});
+
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape' && open) {
 			open = false;
@@ -24,9 +31,11 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-{#if open && canUseChat}
+{#if hasOpened && canUseChat}
 	<aside
-		class="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-border-light bg-background-primary-light shadow-xl md:w-[32rem]"
+		class="fixed inset-y-0 right-0 z-40 flex-col border-l border-border-light bg-background-primary-light shadow-xl md:w-[32rem] {open
+			? 'flex w-full'
+			: 'hidden'}"
 		aria-label="Ask Parchment"
 	>
 		<div class="flex items-center justify-between border-b border-border-light px-4 py-2.5">

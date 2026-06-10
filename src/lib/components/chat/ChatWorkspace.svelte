@@ -4,6 +4,7 @@
 	import Canvas from '$lib/components/canvas/Canvas.svelte';
 	import ChatMessageList from '$lib/components/chat/ChatMessageList.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
+	import MemoryPanel from '$lib/components/chat/MemoryPanel.svelte';
 	import { canvasStore } from '$lib/stores/canvasStore.svelte';
 	import {
 		extractBlockFromPart,
@@ -44,9 +45,62 @@
 	let includeWorkspaceMemory = $state(true);
 	let includeCanvasContext = $state(true);
 	let includePageContext = $state(true);
+	let includeUserMemoryDoc = $state(true);
+
+	// ─── Persistent user memory document ───────────────────────────────────────
+	let memoryPanelOpen = $state(false);
+	let memoryDocExists = $state(false);
+	let lastDreamedCount = 0;
+
+	onMount(() => {
+		fetch('/api/memory')
+			.then((res) => (res.ok ? res.json() : null))
+			.then((data) => {
+				if (data && typeof data.content === 'string' && data.content.trim().length > 0) {
+					memoryDocExists = true;
+				}
+			})
+			.catch(() => {});
+	});
+
+	// Dreaming: every ~16 messages, ask the server to fold durable facts from
+	// the recent conversation into the persistent memory document. One model
+	// call per pass; the endpoint enforces a cooldown.
+	$effect(() => {
+		const msgCount = chat.messages.length;
+		if (isActive || msgCount < 8 || msgCount % 16 !== 0 || msgCount === lastDreamedCount) return;
+		lastDreamedCount = msgCount;
+
+		const recent = chat.messages
+			.slice(-16)
+			.map((msg) => ({
+				role: msg.role,
+				content: msg.parts
+					.filter((p) => p.type === 'text')
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					.map((p: any) => p.text || '')
+					.join('\n')
+					.slice(0, 4000)
+			}))
+			.filter(
+				(msg): msg is { role: 'user' | 'assistant'; content: string } =>
+					(msg.role === 'user' || msg.role === 'assistant') && msg.content.trim().length > 0
+			);
+		if (recent.length < 4) return;
+
+		fetch('/api/memory/dream', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ messages: recent })
+		})
+			.then((res) => {
+				if (res.ok) memoryDocExists = true;
+			})
+			.catch(() => {});
+	});
 
 	interface ContextChip {
-		id: 'memory' | 'canvas' | 'page';
+		id: 'memory' | 'canvas' | 'page' | 'usermemory';
 		label: string;
 		detail: string;
 		active: boolean;
@@ -54,6 +108,14 @@
 
 	let contextChips = $derived.by((): ContextChip[] => {
 		const chips: ContextChip[] = [];
+		if (memoryDocExists) {
+			chips.push({
+				id: 'usermemory',
+				label: 'Memory',
+				detail: 'Your persistent memory document, maintained across all conversations',
+				active: includeUserMemoryDoc
+			});
+		}
 		const ws = workspaceStore.currentWorkspace;
 		if (ws?.context_summary) {
 			chips.push({
@@ -86,6 +148,7 @@
 	function toggleContextChip(id: ContextChip['id']) {
 		if (id === 'memory') includeWorkspaceMemory = !includeWorkspaceMemory;
 		else if (id === 'canvas') includeCanvasContext = !includeCanvasContext;
+		else if (id === 'usermemory') includeUserMemoryDoc = !includeUserMemoryDoc;
 		else includePageContext = !includePageContext;
 	}
 
@@ -667,6 +730,7 @@
 
 	function buildSendBody(): Record<string, unknown> {
 		const body: Record<string, unknown> = { workspaceContext: getWorkspaceContext() };
+		if (!includeUserMemoryDoc) body.includeUserMemory = false;
 		const context = includePageContext ? pageChatContext.current : null;
 		if (context) {
 			const serialized = JSON.stringify(context);
@@ -774,6 +838,13 @@
 			<!-- Chat toolbar -->
 			<div class="flex items-center justify-end border-b border-border-light px-3 py-1.5">
 				<div class="flex items-center gap-2">
+					<button
+						onclick={() => (memoryPanelOpen = true)}
+						class="rounded-md border border-border-light px-2 py-0.5 text-xs text-text-secondary-light transition-all hover:text-text-primary-light"
+						title="View and edit the persistent memory document"
+					>
+						Memory
+					</button>
 					{#if !canvasStore.isEmpty}
 						<button
 							onclick={() => (mobileCanvasOpen = !mobileCanvasOpen)}
@@ -861,6 +932,8 @@
 		{/if}
 	</div>
 </div>
+
+<MemoryPanel bind:open={memoryPanelOpen} />
 
 <!-- Canvas overlay (mobile always; desktop too in drawer variant) -->
 {#if mobileCanvasOpen}
