@@ -4,6 +4,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, stepCountIs, type UIMessage, convertToModelMessages } from 'ai';
 import { z } from 'zod';
 import { createChatTools } from '$lib/services/tools';
+import { readPriceIndexForAgent } from '$lib/server/agentPriceIndex';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
 import { getCatalogItemsByIds } from '$lib/data/catalog';
@@ -28,6 +29,14 @@ SIMILARITY GUIDANCE
 When a user asks about alternatives, similar coffees, or "what else is like this", use find_similar_beans with their bean's catalog ID.
 Combine with present_results to surface and annotate the top matches.
 
+MARKET INTELLIGENCE GUIDANCE
+- For "best / top / premium / value / just landed / unusual" questions, use catalog_rank with the matching objective — do not approximate with coffee_catalog_search and your own ordering
+- Rankings are deterministic and grounded in Purveyor Score; explain them via rank_basis and purveyor_score_factors, and always carry the returned caveats into your answer
+- Before filtering by a supplier, origin, or process value you have not seen in this conversation, verify it with catalog_facets or supplier_list — never guess names
+- For market pricing questions ("is this priced well?", "what are naturals going for?"), use price_index_read and compare a lot's price to the matching segment's median/p25/p75
+- catalog_facets and supplier_list results are cached and stable — reuse them within a conversation instead of calling them again
+- Quality signals are evidence, not verdicts: cite scores, sample sizes, and factors; avoid absolute claims like "objectively the best"
+
 WRITE TOOL RULES
 - Write tools produce an **action card** on the canvas for user review
 - The user can edit fields and click Execute — you NEVER execute writes directly
@@ -38,7 +47,7 @@ WRITE TOOL RULES
 - Always include a "reasoning" field explaining WHY you're proposing this action — e.g., "Adding this Ethiopian natural based on your interest in fruity, low-acid coffees and its competitive $6.50/lb price"
 
 CONSTRAINTS
-- You must not exceed: **4 tool execution rounds** and **7 total tool calls per user request**
+- You must not exceed: **5 tool execution rounds** and **8 total tool calls per user request**
 - Always use stocked_only=true unless the user explicitly asks for historical or sold-out coffees
 - Each search tool returns at most 15 results
 - Use tools only when they add real value. General knowledge questions may not require tools.
@@ -149,15 +158,19 @@ READ TOOLS (query data):
 1. coffee_catalog_search - Query supplier inventories of green coffee
 2. green_coffee_inventory - Query the user's green coffee Portfolio and notes
 3. find_similar_beans - Find beans similar to a specific coffee using embedding similarity across all suppliers
-4. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
+4. catalog_facets - List valid values (with counts) for supplier/origin/process/grade fields — use before filtering by unverified names
+5. supplier_list - The supplier universe with aggregate quality and price signals per supplier
+6. catalog_rank - Deterministic ranking by objective: premium, value, fresh_arrival, rare_origin
+7. price_index_read - Parchment Market Index aggregate price snapshots by origin/process over time
+8. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
 
 WRITE TOOLS (propose changes — user must confirm before execution):
-5. add_bean_to_inventory - Propose adding a bean to the user's Portfolio
-6. update_bean - Propose updating an existing Portfolio bean
+9. add_bean_to_inventory - Propose adding a bean to the user's Portfolio
+10. update_bean - Propose updating an existing Portfolio bean
 
 Mallard-only roast, tasting, and sales tools are unavailable in this access tier.`;
 
-const MALLARD_TOOL_ACCESS_PROMPT = `You have access to 11 tools in two categories:
+const MALLARD_TOOL_ACCESS_PROMPT = `You have access to these tools in two categories:
 
 READ TOOLS (query data):
 1. coffee_catalog_search - Query supplier inventories of green coffee
@@ -165,14 +178,18 @@ READ TOOLS (query data):
 3. roast_profiles - Analyze user's roasting data
 4. bean_tasting_notes - Retrieve or analyze detailed flavor profiles (user vs supplier)
 5. find_similar_beans - Find beans similar to a specific coffee using embedding similarity across all suppliers
-6. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
+6. catalog_facets - List valid values (with counts) for supplier/origin/process/grade fields — use before filtering by unverified names
+7. supplier_list - The supplier universe with aggregate quality and price signals per supplier
+8. catalog_rank - Deterministic ranking by objective: premium, value, fresh_arrival, rare_origin
+9. price_index_read - Parchment Market Index aggregate price snapshots by origin/process over time
+10. present_results - CURATE and ANNOTATE search results for display (call AFTER a search tool)
 
 WRITE TOOLS (propose changes — user must confirm before execution):
-7. add_bean_to_inventory - Propose adding a bean to the user's inventory
-8. update_bean - Propose updating an existing inventory bean
-9. create_roast_session - Propose creating a new roast session/profile
-10. update_roast_notes - Propose updating roast notes
-11. record_sale - Propose recording a sale`;
+11. add_bean_to_inventory - Propose adding a bean to the user's inventory
+12. update_bean - Propose updating an existing inventory bean
+13. create_roast_session - Propose creating a new roast session/profile
+14. update_roast_notes - Propose updating roast notes
+15. record_sale - Propose recording a sale`;
 
 const PARCHMENT_WORKSPACE_TYPES = new Set(['general', 'sourcing', 'inventory']);
 
@@ -303,7 +320,12 @@ export const POST: RequestHandler = async (event) => {
 				'X-Title': 'Purveyors Coffee Chat'
 			}
 		});
-		const tools = createChatTools(supabase, user.id, { ppiAccess, memberAccess });
+		const tools = createChatTools(
+			supabase,
+			user.id,
+			{ ppiAccess, memberAccess },
+			{ readPriceIndex: (input) => readPriceIndexForAgent(input) }
+		);
 
 		// Resolve user display name for system prompt personalization
 		const userName =
@@ -369,7 +391,7 @@ export const POST: RequestHandler = async (event) => {
 			tools,
 			maxOutputTokens: 4096,
 			temperature: 0.4,
-			stopWhen: stepCountIs(4),
+			stopWhen: stepCountIs(5),
 			abortSignal: event.request.signal
 		});
 
