@@ -374,6 +374,12 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Messages array is required' }, { status: 400 });
 		}
 
+		// Enforce the context window server-side: the client sends a 24-message
+		// window, but never trust the client with token cost. Slightly above the
+		// client cap to tolerate version skew.
+		const MAX_REQUEST_MESSAGES = 30;
+		const windowedMessages = messages.slice(-MAX_REQUEST_MESSAGES);
+
 		// Get supabase client for CLI-based tool calls
 		const { supabase } = event.locals;
 
@@ -465,7 +471,7 @@ export const POST: RequestHandler = async (event) => {
 		// follow-ups like "tell me more about the second one" still see the
 		// last results. The UI and persistence keep the full parts regardless.
 		const modelMessages = pruneMessages({
-			messages: await convertToModelMessages(messages),
+			messages: await convertToModelMessages(windowedMessages),
 			toolCalls: `before-last-${12}-messages`,
 			emptyMessages: 'remove'
 		});
