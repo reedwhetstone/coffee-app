@@ -4,6 +4,8 @@ import type { RequestHandler } from './$types';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 
 const WORKSPACE_SUMMARY_MAX_LENGTH = 2000;
+const WORKSPACE_SUMMARY_COOLDOWN_MS = 5 * 60 * 1000;
+const workspaceSummaryAttempts = new Map<string, number>();
 
 type MessagePart = {
 	type?: unknown;
@@ -37,6 +39,22 @@ export function _clampWorkspaceContextSummary(summary: string): string {
 		: summary;
 }
 
+export function _workspaceSummaryCooldownRemainingMs(
+	workspaceId: string,
+	now = Date.now()
+): number {
+	const lastAttemptAt = workspaceSummaryAttempts.get(workspaceId);
+	if (!lastAttemptAt) return 0;
+	return Math.max(0, WORKSPACE_SUMMARY_COOLDOWN_MS - (now - lastAttemptAt));
+}
+
+function reserveWorkspaceSummaryAttempt(workspaceId: string, now = Date.now()): number {
+	const remainingMs = _workspaceSummaryCooldownRemainingMs(workspaceId, now);
+	if (remainingMs > 0) return remainingMs;
+	workspaceSummaryAttempts.set(workspaceId, now);
+	return 0;
+}
+
 // POST /api/workspaces/[id]/summarize - Trigger context compaction
 export const POST: RequestHandler = async (event) => {
 	try {
@@ -55,6 +73,15 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Workspace not found' }, { status: 404 });
 		}
 
+		const cooldownRemainingMs = reserveWorkspaceSummaryAttempt(workspaceId);
+		if (cooldownRemainingMs > 0) {
+			return json({
+				summary: workspace.context_summary,
+				skipped: true,
+				retry_after_ms: cooldownRemainingMs
+			});
+		}
+
 		// Fetch the most recent messages, then summarize them chronologically.
 		const { data: messages, error: msgError } = await event.locals.supabase
 			.from('workspace_messages')
@@ -64,10 +91,12 @@ export const POST: RequestHandler = async (event) => {
 			.limit(30);
 
 		if (msgError) {
+			workspaceSummaryAttempts.delete(workspaceId);
 			return json({ error: msgError.message }, { status: 500 });
 		}
 
 		if (!messages || messages.length < 4) {
+			workspaceSummaryAttempts.delete(workspaceId);
 			return json({ summary: workspace.context_summary, skipped: true });
 		}
 
@@ -107,6 +136,7 @@ Keep only what's relevant for continuing the conversation. Drop pleasantries and
 		});
 
 		if (!response.ok) {
+			workspaceSummaryAttempts.delete(workspaceId);
 			const err = await response.text();
 			return json({ error: `OpenRouter error: ${err}` }, { status: 502 });
 		}
@@ -121,6 +151,7 @@ Keep only what's relevant for continuing the conversation. Drop pleasantries and
 			.eq('id', workspaceId);
 
 		if (updateError) {
+			workspaceSummaryAttempts.delete(workspaceId);
 			return json({ error: updateError.message }, { status: 500 });
 		}
 

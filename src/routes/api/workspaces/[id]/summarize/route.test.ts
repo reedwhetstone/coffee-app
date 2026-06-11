@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('$env/static/private', () => ({ OPENROUTER_API_KEY: 'test-key' }));
 vi.mock('$lib/server/auth', () => ({ requireChatAccess: vi.fn() }));
 
-import { _clampWorkspaceContextSummary, _workspaceSummaryMessageText } from './+server';
+import {
+	_clampWorkspaceContextSummary,
+	_workspaceSummaryCooldownRemainingMs,
+	_workspaceSummaryMessageText
+} from './+server';
 
 describe('workspace summary message text', () => {
 	it('prefers full text parts over truncated duplicate content', () => {
@@ -36,5 +40,11 @@ describe('workspace context summary clamping', () => {
 		const summary = 'short summary';
 
 		expect(_clampWorkspaceContextSummary(summary)).toBe(summary);
+	});
+});
+
+describe('workspace summary cooldown', () => {
+	it('reports no remaining cooldown for an unreserved workspace', () => {
+		expect(_workspaceSummaryCooldownRemainingMs('workspace-without-attempt', 1_000)).toBe(0);
 	});
 });
