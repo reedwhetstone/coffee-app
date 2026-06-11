@@ -76,23 +76,6 @@ function sanitizeFilterValue(value: string): string {
 }
 
 const MAX_ROWS = 5000;
-const PAGE_SIZE = 1000;
-
-async function fetchAllRows(
-	buildQuery: () => CatalogQueryBuilder
-): Promise<Array<Record<string, unknown>>> {
-	const rows: Array<Record<string, unknown>> = [];
-
-	for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
-		const { data, error } = await buildQuery().range(offset, offset + PAGE_SIZE - 1);
-		if (error) throw new Error(`coffee_catalog query failed: ${error.message}`);
-		const page = data ?? [];
-		rows.push(...page);
-		if (page.length < PAGE_SIZE) break;
-	}
-
-	return rows;
-}
 
 // ─── catalog_facets ──────────────────────────────────────────────────────────
 
@@ -153,7 +136,6 @@ export async function getCatalogFacets(
 
 const DEFAULT_SUPPLIER_LIMIT = 15;
 const MAX_SUPPLIER_LIMIT = 25;
-const SUPPLIER_COUNT_COLUMNS = 'source, stocked, wholesale, country';
 
 export interface SupplierListInput {
 	stocked_only?: boolean;
@@ -173,33 +155,11 @@ export interface SupplierSummary extends SupplierAggregate {
 
 export interface SupplierListResult {
 	suppliers: SupplierSummary[];
-	total_suppliers: number;
 	returned_suppliers: number;
 	scope: { stocked_only: boolean; non_wholesale_only: boolean; country: string | null };
 	rows_examined: number;
 	caveats: string[];
 	truncated: boolean;
-}
-
-async function countMatchingSuppliers(
-	client: MarketToolsClient,
-	input: { stockedOnly: boolean; nonWholesaleOnly: boolean; country: string | null }
-): Promise<number> {
-	const rows = await fetchAllRows(() => {
-		let query = client.from('coffee_catalog').select(SUPPLIER_COUNT_COLUMNS);
-		if (input.stockedOnly) query = query.eq('stocked', true);
-		if (input.country) query = query.ilike('country', `%${input.country}%`);
-		if (input.nonWholesaleOnly) query = query.or('wholesale.is.null,wholesale.eq.false');
-		return query;
-	});
-
-	const suppliers = new Set<string>();
-	for (const row of rows) {
-		const supplier = typeof row.source === 'string' ? row.source.trim() : '';
-		if (supplier) suppliers.add(supplier);
-	}
-
-	return suppliers.size;
 }
 
 function toSupplierSummary(
@@ -237,16 +197,8 @@ export async function getSupplierList(
 		limit,
 		sampleSize: MAX_ROWS
 	});
-	const totalSuppliers = await countMatchingSuppliers(client, {
-		stockedOnly,
-		nonWholesaleOnly,
-		country
-	});
-
-	const reachedRequestedLimit = totalSuppliers > response.data.length;
 	const result: SupplierListResult = {
 		suppliers: response.data.map((supplier) => toSupplierSummary(supplier, { nonWholesaleOnly })),
-		total_suppliers: totalSuppliers,
 		returned_suppliers: response.meta.returned,
 		scope: {
 			stocked_only: stockedOnly,
@@ -254,13 +206,8 @@ export async function getSupplierList(
 			country
 		},
 		rows_examined: response.meta.rows_examined,
-		caveats: reachedRequestedLimit
-			? [
-					...response.meta.caveats,
-					'Supplier aggregate results reached the requested limit; more matching suppliers may exist.'
-				]
-			: response.meta.caveats,
-		truncated: response.meta.truncated || reachedRequestedLimit
+		caveats: response.meta.caveats,
+		truncated: response.meta.truncated
 	};
 
 	setCached(cacheKey, result);

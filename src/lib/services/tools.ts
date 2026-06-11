@@ -502,7 +502,7 @@ export function createChatTools(
 
 		supplier_list: tool({
 			description:
-				'List suppliers with CLI-owned aggregate signals per returned supplier: listing counts, price range, average Purveyor Score, and top origin countries. Use total_suppliers, returned_suppliers, truncation, and caveats to describe coverage for broad supplier questions.',
+				'List suppliers with CLI-owned aggregate signals per returned supplier: listing counts, price range, average Purveyor Score, and top origin countries. Use returned_suppliers, rows_examined, truncation, and caveats to describe the returned supplier slice for broad supplier questions.',
 			inputSchema: z.object({
 				stocked_only: z
 					.boolean()

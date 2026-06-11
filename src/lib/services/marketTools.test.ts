@@ -153,7 +153,6 @@ describe('getSupplierList', () => {
 
 		const result = await getSupplierList(client, {});
 
-		expect(result.total_suppliers).toBe(2);
 		expect(result.returned_suppliers).toBe(2);
 		expect(result.suppliers[0]).toEqual(
 			expect.objectContaining({
@@ -202,12 +201,8 @@ describe('getSupplierList', () => {
 		const result = await getSupplierList(client, { limit: 100 });
 
 		expect(result.suppliers.length).toBe(25);
-		expect(result.total_suppliers).toBe(30);
 		expect(result.returned_suppliers).toBe(25);
-		expect(result.truncated).toBe(true);
-		expect(result.caveats).toContain(
-			'Supplier aggregate results reached the requested limit; more matching suppliers may exist.'
-		);
+		expect(result.truncated).toBe(false);
 	});
 });
 
