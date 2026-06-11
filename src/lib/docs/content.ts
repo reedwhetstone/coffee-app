@@ -1339,49 +1339,49 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/chat',
 							'POST',
-							'Member session',
+							'Chat access session',
 							'Internal product route',
 							'Streams AI chat responses with workspace context and tool execution.'
 						],
 						[
 							'/api/chat/execute-action',
 							'POST',
-							'Member session',
+							'Chat access session',
 							'Internal product route',
-							'Executes a constrained set of proposal-card actions: add_bean_to_inventory, update_bean, create_roast_session, update_roast_notes, and record_sale.'
+							'Executes a constrained set of proposal-card actions. Parchment users can add/update beans; Mallard-only roast, tasting, and sales actions require Mallard Studio membership.'
 						],
 						[
 							'/api/workspaces',
 							'GET POST',
-							'Member session',
+							'Chat access session',
 							'Internal product route',
-							'Lists or creates workspaces. New workspaces default to title "New Workspace" and type "general" when omitted.'
+							'Returns the user\'s single chat workspace or creates one if none exists. New workspaces default to title "Coffee" and type "general" when omitted.'
 						],
 						[
 							'/api/workspaces/[id]',
-							'GET PUT DELETE',
-							'Member session + ownership',
+							'GET PUT',
+							'Chat access session + ownership',
 							'Internal product route',
-							'GET returns workspace details plus up to 50 messages and updates last_accessed_at.'
+							'GET returns workspace details plus up to 50 messages and updates last_accessed_at. PUT updates title/type metadata. DELETE is disabled and returns 405 in the single-chat model.'
 						],
 						[
 							'/api/workspaces/[id]/messages',
 							'POST DELETE',
-							'Member session + ownership',
+							'Chat access session + ownership',
 							'Internal product route',
 							'POST accepts one message or an array and persists parts plus canvas mutations.'
 						],
 						[
 							'/api/workspaces/[id]/canvas',
 							'POST PUT',
-							'Member session + ownership',
+							'Chat access session + ownership',
 							'Internal product route',
 							'Persists canvas_state; POST exists for sendBeacon compatibility.'
 						],
 						[
 							'/api/workspaces/[id]/summarize',
 							'POST',
-							'Member session + ownership',
+							'Chat access session + ownership',
 							'Internal product route',
 							'Compacts recent conversation history into context_summary using the model backend. Returns skipped: true when there are fewer than four saved messages.'
 						]
