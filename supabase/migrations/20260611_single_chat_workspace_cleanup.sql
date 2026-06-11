@@ -61,6 +61,12 @@ REVOKE ALL ON TABLE public.archived_chat_workspaces FROM PUBLIC, anon, authentic
 REVOKE ALL ON TABLE public.archived_chat_workspace_messages FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.archived_chat_workspaces, public.archived_chat_workspace_messages TO service_role;
 
+-- The single-chat API no longer exposes workspace deletion, and the database
+-- should enforce the same invariant for direct PostgREST access. Without this,
+-- the legacy policy from 001_full_schema.sql still lets authenticated users
+-- delete their workspace row directly, cascading the active chat messages.
+DROP POLICY IF EXISTS "Users can delete own workspaces" ON public.workspaces;
+
 WITH workspace_activity AS (
   SELECT
     w.id,
