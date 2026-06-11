@@ -2101,7 +2101,7 @@ const docsPages: DocsPage[] = [
 					'/api-dashboard/keys/generate returns the plaintext apiKey only at creation time. Plan Console UX and support docs around that one-time reveal.',
 					'Cookies only matter when they resolve to a valid first-party session. A stray Cookie header is not part of the public API contract.',
 					'/api/catalog-api is a deprecated API-key-only alias. It should not be treated as an anonymous or session-friendly discovery route.',
-					'Workspace and chat routes mostly use member-role enforcement, so 403 is often the expected failure for logged-in non-members.',
+					'Workspace and chat routes require chat access, which can come from Mallard Studio membership or Parchment Intelligence entitlement; logged-in users with neither should expect a 403.',
 					'AI-backed helpers can return upstream rate-limit or provider errors that are operational rather than domain-model failures.'
 				]
 			},

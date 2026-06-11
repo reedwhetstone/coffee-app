@@ -3,6 +3,32 @@ import { requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 
+type MessagePart = {
+	type?: unknown;
+	text?: unknown;
+};
+
+function textFromParts(parts: unknown): string {
+	if (!Array.isArray(parts)) return '';
+
+	return parts
+		.map((part) => {
+			const messagePart = part as MessagePart;
+			return messagePart.type === 'text' && typeof messagePart.text === 'string'
+				? messagePart.text
+				: '';
+		})
+		.filter(Boolean)
+		.join('\n');
+}
+
+export function _workspaceSummaryMessageText(message: {
+	content: string | null;
+	parts?: unknown;
+}): string {
+	return textFromParts(message.parts) || message.content || '';
+}
+
 // POST /api/workspaces/[id]/summarize - Trigger context compaction
 export const POST: RequestHandler = async (event) => {
 	try {
@@ -24,7 +50,7 @@ export const POST: RequestHandler = async (event) => {
 		// Fetch the most recent messages, then summarize them chronologically.
 		const { data: messages, error: msgError } = await event.locals.supabase
 			.from('workspace_messages')
-			.select('role, content, created_at')
+			.select('role, content, parts, created_at')
 			.eq('workspace_id', workspaceId)
 			.order('created_at', { ascending: false })
 			.limit(30);
@@ -39,7 +65,9 @@ export const POST: RequestHandler = async (event) => {
 
 		// Build conversation text for summarization
 		const recentMessages = [...messages].reverse();
-		const conversationText = recentMessages.map((m) => `${m.role}: ${m.content}`).join('\n');
+		const conversationText = recentMessages
+			.map((m) => `${m.role}: ${_workspaceSummaryMessageText(m)}`)
+			.join('\n');
 
 		const existingSummary = workspace.context_summary || '';
 
