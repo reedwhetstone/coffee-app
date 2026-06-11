@@ -590,17 +590,19 @@
 	$effect(() => {
 		if (isActive) return; // Wait until streaming stops
 
-		// Conversation-wide cache: present_results may reference items from a
-		// search in any earlier message, not just its own.
-		const conversationCache = buildSearchDataCache(
-			chat.messages.flatMap((m) => m.parts as unknown[])
-		);
-
-		for (const message of chat.messages) {
+		for (const [messageIndex, message] of chat.messages.entries()) {
 			if (message.role !== 'assistant') continue;
 
 			const hasPR = messageHasPresentResults(message.parts);
-			const extractorOptions = { searchDataCache: conversationCache, hasPresentResults: hasPR };
+			// present_results may reference earlier search output, but never future turns.
+			// Building the cache only through this message prevents an old cache-miss
+			// presentation from resolving after a later search happens to reuse the ID.
+			const searchDataCache = hasPR
+				? buildSearchDataCache(
+						chat.messages.slice(0, messageIndex + 1).flatMap((m) => m.parts as unknown[])
+					)
+				: undefined;
+			const extractorOptions = { searchDataCache, hasPresentResults: hasPR };
 
 			for (const part of message.parts) {
 				if (!part.type.startsWith('tool-')) continue;
@@ -616,6 +618,13 @@
 				const mutations = extractCanvasMutationsFromPart(p, block, message.id);
 				if (mutations) {
 					for (const m of mutations) canvasStore.dispatch(m);
+					dispatchedParts.add(partKey);
+				} else if (
+					p.state === 'output-available' &&
+					(p.toolName === 'present_results' || p.type === 'tool-present_results')
+				) {
+					// Cache-miss/error presentations intentionally render inline only. Mark them
+					// handled so a later completed turn cannot revisit this old part.
 					dispatchedParts.add(partKey);
 				} else if (block && block.type !== 'error') {
 					// Non-present_results tools: auto-add to canvas
