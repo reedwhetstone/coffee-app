@@ -5,14 +5,15 @@ import type { RequestHandler } from './$types';
 import type { Json } from '$lib/types/database.types';
 
 const MAX_BATCH_MESSAGES = 50;
-const MAX_CONTENT_CHARS = 12000;
+const MAX_DUPLICATE_CONTENT_CHARS = 12000;
+const MAX_MESSAGE_TEXT_CHARS = 200000;
 const MAX_PARTS_JSON_CHARS = 200000;
 
 const boundedJsonArraySchema = z.array(z.unknown()).max(100);
 
 const persistedMessageSchema = z.object({
 	role: z.enum(['user', 'assistant']),
-	content: z.string().max(MAX_CONTENT_CHARS),
+	content: z.string().max(MAX_MESSAGE_TEXT_CHARS),
 	parts: boundedJsonArraySchema.optional(),
 	canvas_mutations: boundedJsonArraySchema.optional()
 });
@@ -30,6 +31,24 @@ function validateJsonSize(label: string, value: unknown) {
 	if (jsonSize(value) > MAX_PARTS_JSON_CHARS) {
 		throw new Error(`${label} exceeds ${MAX_PARTS_JSON_CHARS} serialized characters`);
 	}
+}
+
+function truncateDuplicatedContent(content: string): string {
+	return content.length > MAX_DUPLICATE_CONTENT_CHARS
+		? content.slice(0, MAX_DUPLICATE_CONTENT_CHARS)
+		: content;
+}
+
+function persistedPartsFor(msg: z.infer<typeof persistedMessageSchema>): unknown[] {
+	if (msg.parts && msg.parts.length > 0) return msg.parts;
+
+	// If an older caller posts an oversized text-only message, keep the full
+	// text in structured parts and truncate only the duplicate content column.
+	if (msg.content.length > MAX_DUPLICATE_CONTENT_CHARS) {
+		return [{ type: 'text', text: msg.content }];
+	}
+
+	return msg.parts ?? [];
 }
 
 // POST /api/workspaces/[id]/messages - Save messages for a workspace
@@ -65,7 +84,7 @@ export const POST: RequestHandler = async (event) => {
 
 		try {
 			for (const msg of messages) {
-				validateJsonSize('parts', msg.parts ?? []);
+				validateJsonSize('parts', persistedPartsFor(msg));
 				validateJsonSize('canvas_mutations', msg.canvas_mutations ?? []);
 			}
 		} catch (err) {
@@ -75,8 +94,8 @@ export const POST: RequestHandler = async (event) => {
 		const rows = messages.map((msg) => ({
 			workspace_id: workspaceId,
 			role: msg.role,
-			content: msg.content,
-			parts: (msg.parts ?? []) as Json,
+			content: truncateDuplicatedContent(msg.content),
+			parts: persistedPartsFor(msg) as Json,
 			canvas_mutations: (msg.canvas_mutations ?? []) as Json
 		}));
 
