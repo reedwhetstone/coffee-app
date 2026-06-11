@@ -41,6 +41,9 @@ export async function selectCanonicalWorkspace<T extends WorkspaceRow>(
 	if (error) return { workspace: null, workspaces: [], error };
 	const workspaceList = (workspaces ?? []) as unknown as T[];
 	if (workspaceList.length === 0) return { workspace: null, workspaces: [], error: null };
+	if (workspaceList.length === 1) {
+		return { workspace: workspaceList[0], workspaces: workspaceList, error: null };
+	}
 
 	const workspaceIds = workspaceList.map((workspace) => workspace.id);
 	const { data: messages, error: messageError } = await supabase
