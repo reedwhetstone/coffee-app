@@ -67,6 +67,72 @@ GRANT ALL ON public.archived_chat_workspaces, public.archived_chat_workspace_mes
 -- delete their workspace row directly, cascading the active chat messages.
 DROP POLICY IF EXISTS "Users can delete own workspaces" ON public.workspaces;
 
+-- Mirror API payload limits at the database layer so direct PostgREST writes
+-- cannot bypass chat storage invariants. Constraints are NOT VALID so legacy
+-- rows do not block this cleanup migration, but new writes are enforced.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'workspace_messages_role_valid_check'
+      AND conrelid = 'public.workspace_messages'::regclass
+  ) THEN
+    ALTER TABLE public.workspace_messages
+      ADD CONSTRAINT workspace_messages_role_valid_check
+      CHECK (role IN ('user', 'assistant')) NOT VALID;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'workspace_messages_content_len_check'
+      AND conrelid = 'public.workspace_messages'::regclass
+  ) THEN
+    ALTER TABLE public.workspace_messages
+      ADD CONSTRAINT workspace_messages_content_len_check
+      CHECK (length(content) <= 12000) NOT VALID;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'workspace_messages_parts_size_check'
+      AND conrelid = 'public.workspace_messages'::regclass
+  ) THEN
+    ALTER TABLE public.workspace_messages
+      ADD CONSTRAINT workspace_messages_parts_size_check
+      CHECK (pg_column_size(coalesce(parts, '[]'::jsonb)) <= 250000) NOT VALID;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'workspace_messages_canvas_mutations_size_check'
+      AND conrelid = 'public.workspace_messages'::regclass
+  ) THEN
+    ALTER TABLE public.workspace_messages
+      ADD CONSTRAINT workspace_messages_canvas_mutations_size_check
+      CHECK (pg_column_size(coalesce(canvas_mutations, '[]'::jsonb)) <= 250000) NOT VALID;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'workspaces_canvas_state_size_check'
+      AND conrelid = 'public.workspaces'::regclass
+  ) THEN
+    ALTER TABLE public.workspaces
+      ADD CONSTRAINT workspaces_canvas_state_size_check
+      CHECK (pg_column_size(coalesce(canvas_state, '{}'::jsonb)) <= 250000) NOT VALID;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'workspaces_context_summary_len_check'
+      AND conrelid = 'public.workspaces'::regclass
+  ) THEN
+    ALTER TABLE public.workspaces
+      ADD CONSTRAINT workspaces_context_summary_len_check
+      CHECK (context_summary IS NULL OR length(context_summary) <= 2000) NOT VALID;
+  END IF;
+END $$;
+
 WITH workspace_activity AS (
   SELECT
     w.id,
