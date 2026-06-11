@@ -88,6 +88,40 @@ describe('createChatTools entitlement allowlist', () => {
 		expect(toolNames({ memberAccess: true, ppiAccess: false })).not.toContain('price_index_read');
 	});
 
+	it('keeps similarity reads public-only for Parchment Intelligence-only users', async () => {
+		const findSimilarBeans = vi.fn().mockResolvedValue({ matches: [] });
+		const tools = createChatTools(
+			supabase,
+			'user-123',
+			{ memberAccess: false, ppiAccess: true },
+			{ findSimilarBeans }
+		);
+		const executeSimilarity = tools.find_similar_beans.execute as unknown as (input: {
+			coffee_id: number;
+		}) => Promise<unknown>;
+
+		await executeSimilarity({ coffee_id: 42 });
+
+		expect(findSimilarBeans).toHaveBeenCalledWith({ coffee_id: 42 }, { publicOnly: true });
+	});
+
+	it('allows full-catalog similarity reads for Mallard Studio members', async () => {
+		const findSimilarBeans = vi.fn().mockResolvedValue({ matches: [] });
+		const tools = createChatTools(
+			supabase,
+			'user-123',
+			{ memberAccess: true, ppiAccess: false },
+			{ findSimilarBeans }
+		);
+		const executeSimilarity = tools.find_similar_beans.execute as unknown as (input: {
+			coffee_id: number;
+		}) => Promise<unknown>;
+
+		await executeSimilarity({ coffee_id: 42 });
+
+		expect(findSimilarBeans).toHaveBeenCalledWith({ coffee_id: 42 }, { publicOnly: false });
+	});
+
 	it('gives viewers only catalog search, facets, and presentation', () => {
 		expect(toolNames({ memberAccess: false, ppiAccess: false })).toEqual([
 			'catalog_facets',
@@ -194,7 +228,7 @@ describe('createChatTools entitlement allowlist', () => {
 		expect(result?.filters_applied.include_roast_summary).toBe(false);
 	});
 
-	it('keeps roast profiles in Mallard Studio inventory tool results', async () => {
+	it('keeps roast profiles and attaches roast summaries in Mallard Studio inventory tool results', async () => {
 		const roastProfiles = [{ roast_id: 10, batch_name: 'Visible roast' }];
 		inventoryMocks.listInventory.mockResolvedValue([
 			{
@@ -207,21 +241,42 @@ describe('createChatTools entitlement allowlist', () => {
 			}
 		]);
 
-		const tools = createChatTools(supabase, 'user-123', { memberAccess: true, ppiAccess: false });
+		const roastRows = [
+			{ coffee_id: 1, roast_date: '2026-06-01', oz_in: 16 },
+			{ coffee_id: 1, roast_date: '2026-05-20', oz_in: 12 }
+		];
+		const inMock = vi.fn().mockResolvedValue({ data: roastRows, error: null });
+		const supabaseWithRoasts = {
+			from: vi.fn(() => ({
+				select: vi.fn(() => ({
+					eq: vi.fn(() => ({ in: inMock }))
+				}))
+			}))
+		} as unknown as Parameters<typeof createChatTools>[0];
+
+		const tools = createChatTools(supabaseWithRoasts, 'user-123', {
+			memberAccess: true,
+			ppiAccess: false
+		});
 		const executeInventory = tools.green_coffee_inventory.execute as unknown as (input: {
 			stocked_only: boolean;
 			limit: number;
 		}) => Promise<{
-			inventory: Array<{ roast_profiles?: unknown[] }>;
+			inventory: Array<{ roast_profiles?: unknown[]; roast_summary?: unknown }>;
 			filters_applied: { include_roast_summary: boolean };
 		}>;
 		const result = await executeInventory({ stocked_only: true, limit: 5 });
 
-		expect(inventoryMocks.listInventory).toHaveBeenCalledWith(supabase, 'user-123', {
+		expect(inventoryMocks.listInventory).toHaveBeenCalledWith(supabaseWithRoasts, 'user-123', {
 			stocked_only: true,
 			limit: 5
 		});
 		expect(result?.inventory[0].roast_profiles).toBe(roastProfiles);
+		expect(result?.inventory[0].roast_summary).toEqual({
+			total_roasts: 2,
+			last_roast_date: '2026-06-01',
+			total_oz_in: 28
+		});
 		expect(result?.filters_applied.include_roast_summary).toBe(true);
 	});
 });

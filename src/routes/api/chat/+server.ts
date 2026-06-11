@@ -5,6 +5,7 @@ import { streamText, stepCountIs, pruneMessages, type UIMessage, convertToModelM
 import { z } from 'zod';
 import { createChatTools } from '$lib/services/tools';
 import { readPriceIndexForAgent } from '$lib/server/agentPriceIndex';
+import { findSimilarBeansForAgent } from '$lib/server/agentSimilarity';
 import { getUserMemory } from '$lib/server/userMemory';
 import { AuthError, requireChatAccess } from '$lib/server/auth';
 import { getTrackedLotIds } from '$lib/server/trackedLots';
@@ -396,7 +397,10 @@ export const POST: RequestHandler = async (event) => {
 			supabase,
 			user.id,
 			{ ppiAccess, memberAccess },
-			{ readPriceIndex: (input) => readPriceIndexForAgent(input) }
+			{
+				readPriceIndex: (input) => readPriceIndexForAgent(input),
+				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options)
+			}
 		);
 
 		// Resolve user display name for system prompt personalization

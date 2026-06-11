@@ -19,7 +19,11 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { workspaceStore, type WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
+	import {
+		workspaceStore,
+		type Workspace,
+		type WorkspaceMessage
+	} from '$lib/stores/workspaceStore.svelte';
 	import { pageChatContext } from '$lib/stores/pageContextStore.svelte';
 	import {
 		applyAnalyticsSeedToInput,
@@ -29,7 +33,8 @@
 	let {
 		canUseChat,
 		canUseMallardWorkspaces,
-		variant = 'page'
+		variant = 'page',
+		initialWorkspaceData = null
 	} = $props<{
 		canUseChat: boolean;
 		canUseMallardWorkspaces: boolean;
@@ -39,6 +44,15 @@
 		 * app-wide Ask drawer.
 		 */
 		variant?: 'page' | 'drawer';
+		/**
+		 * Server-prefetched workspace list + active conversation (chat page
+		 * load). When present, mount skips the client fetch waterfall.
+		 */
+		initialWorkspaceData?: {
+			workspaces: Workspace[];
+			workspace: Workspace | null;
+			messages: WorkspaceMessage[];
+		} | null;
 	}>();
 
 	// ─── Context visibility toggles (chips above the composer) ────────────────
@@ -310,8 +324,18 @@
 
 		// Load (or create) the single continuous conversation. Older multi-
 		// workspace data stays intact; everything funnels into the first one.
+		// Server-prefetched data (page variant) skips the fetch waterfall.
 		(async () => {
-			await workspaceStore.loadWorkspaces();
+			if (initialWorkspaceData) {
+				const { workspaces: list, workspace, messages } = initialWorkspaceData;
+				workspaceStore.hydrate(list, workspace ? { workspace, messages } : null);
+				if (workspace) {
+					applyWorkspaceResult({ workspace, messages });
+					return;
+				}
+			} else {
+				await workspaceStore.loadWorkspaces();
+			}
 
 			if (workspaceStore.workspaces.length === 0) {
 				const ws = await workspaceStore.createWorkspace('Coffee', 'general');
@@ -331,7 +355,10 @@
 	async function loadWorkspace(workspaceId: string) {
 		const result = await workspaceStore.switchWorkspace(workspaceId);
 		if (!result) return;
+		applyWorkspaceResult(result);
+	}
 
+	function applyWorkspaceResult(result: { workspace: Workspace; messages: WorkspaceMessage[] }) {
 		// Clear current chat and canvas
 		chat.messages = [];
 		canvasStore.clearAll();
@@ -793,12 +820,11 @@
 <div class="flex flex-col bg-background-primary-light {variant === 'page' ? 'h-screen' : 'h-full'}">
 	<!-- Chat + Canvas split container -->
 	<div class="chat-canvas-container flex flex-1 overflow-hidden">
-		<!-- Chat pane -->
+		<!-- Chat pane: full width on mobile (the inline canvas pane is md+ only,
+		     so a narrower chat would just leave dead space); split width on md+. -->
 		<div
-			class="flex flex-col overflow-hidden"
-			style="width: {variant === 'page' && canvasOpen
-				? chatWidthPercent
-				: 100}%; transition: width 0.2s ease;"
+			class="chat-pane flex flex-col overflow-hidden"
+			style="--chat-width: {variant === 'page' && canvasOpen ? chatWidthPercent : 100}%;"
 		>
 			<!-- Chat toolbar -->
 			<div class="flex items-center justify-end border-b border-border-light px-3 py-1.5">
@@ -948,3 +974,15 @@
 		{canvasStore.blockCount}
 	</button>
 {/if}
+
+<style>
+	.chat-pane {
+		width: 100%;
+		transition: width 0.2s ease;
+	}
+	@media (min-width: 768px) {
+		.chat-pane {
+			width: var(--chat-width, 100%);
+		}
+	}
+</style>

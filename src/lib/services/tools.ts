@@ -48,6 +48,59 @@ function stripInventoryRoastProfileData<T extends InventoryResult>(
 	return rows.map((row) => ({ ...row, roast_profiles: [] }));
 }
 
+export interface InventoryRoastSummary {
+	total_roasts: number;
+	last_roast_date: string | null;
+	total_oz_in: number;
+}
+
+/**
+ * Attach per-item roast summaries to inventory rows. The CLI's listInventory
+ * selects no roast data (roast_profiles.coffee_id → green_coffee_inv.id), so
+ * without this every canvas inventory table shows 0 roasts.
+ */
+async function attachRoastSummaries<T extends InventoryResult>(
+	supabase: SupabaseClient,
+	userId: string,
+	rows: T[]
+): Promise<Array<T & { roast_summary: InventoryRoastSummary }>> {
+	const summaries = new Map<number, InventoryRoastSummary>();
+
+	const ids = rows.map((row) => row.id).filter((id): id is number => typeof id === 'number');
+	if (ids.length > 0) {
+		const { data, error } = await supabase
+			.from('roast_profiles')
+			.select('coffee_id, roast_date, oz_in')
+			.eq('user', userId)
+			.in('coffee_id', ids);
+		if (error) throw new Error(`roast_profiles query failed: ${error.message}`);
+
+		for (const roast of data ?? []) {
+			const existing = summaries.get(roast.coffee_id) ?? {
+				total_roasts: 0,
+				last_roast_date: null,
+				total_oz_in: 0
+			};
+			existing.total_roasts += 1;
+			existing.total_oz_in += typeof roast.oz_in === 'number' ? roast.oz_in : 0;
+			const roastDate = typeof roast.roast_date === 'string' ? roast.roast_date : null;
+			if (roastDate && (!existing.last_roast_date || roastDate > existing.last_roast_date)) {
+				existing.last_roast_date = roastDate;
+			}
+			summaries.set(roast.coffee_id, existing);
+		}
+	}
+
+	return rows.map((row) => ({
+		...row,
+		roast_summary: summaries.get(row.id as number) ?? {
+			total_roasts: 0,
+			last_roast_date: null,
+			total_oz_in: 0
+		}
+	}));
+}
+
 /**
  * Creates the set of AI tools for the chat service.
  *
@@ -113,6 +166,14 @@ export interface ChatToolDeps {
 		wholesale?: boolean;
 		limit?: number;
 	}) => Promise<unknown>;
+	findSimilarBeans?: (
+		input: {
+			coffee_id: number;
+			threshold?: number;
+			limit?: number;
+		},
+		options: { publicOnly: boolean }
+	) => Promise<unknown>;
 }
 
 export function createChatTools(
@@ -253,7 +314,7 @@ export function createChatTools(
 					limit: finalLimit
 				});
 				const inventory = includeRoastProfiles
-					? rawInventory
+					? await attachRoastSummaries(supabase, userId, rawInventory)
 					: stripInventoryRoastProfileData(rawInventory);
 
 				const summary = {
@@ -413,12 +474,17 @@ export function createChatTools(
 			inputSchema: findSimilarBeansSchema,
 			execute: async (input) => {
 				// CLI schema field names match execute params (coffee_id, threshold, limit).
-				// The CLI function maps these internally to RPC parameter names.
 				if (!input.coffee_id || input.coffee_id <= 0) {
 					return {
 						error:
 							'coffee_id is required and must be a positive integer. Please specify which coffee to find similar beans for.'
 					};
+				}
+				// The bounded v3 similarity RPC is service_role-only, so the server
+				// injects a reader backed by the admin client. The CLI path is a
+				// fallback for callers that construct tools without deps.
+				if (deps.findSimilarBeans) {
+					return await deps.findSimilarBeans(input, { publicOnly: !access.memberAccess });
 				}
 				const results: SimilarBean[] = await findSimilarBeans(supabase, input);
 				return results;
@@ -479,7 +545,15 @@ export function createChatTools(
 				non_wholesale_only: z.boolean().optional().describe('Exclude wholesale-only listings'),
 				limit: z.number().optional().default(8).describe('Number of results (max 15)')
 			}),
-			execute: async (input) => rankCatalog(marketClient, input)
+			execute: async (input) => rankCatalog(marketClient, input),
+			// Full rows stream to the client for canvas cards; the model sees the
+			// same compact catalog view as coffee_catalog_search.
+			toModelOutput: ({ output }) => ({
+				type: 'json',
+				value: compactCatalogSearchOutputForModel(
+					output as unknown as Record<string, unknown>
+				) as JSONValue
+			})
 		}),
 
 		// ─── Write Tools (propose-only, no execution) ──────────────────────────

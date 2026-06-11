@@ -65,6 +65,25 @@ const sortedWorkspaces = $derived(
 	)
 );
 
+/**
+ * Seed the store from server-prefetched data (chat page load) so the initial
+ * render doesn't need the list-then-load fetch waterfall.
+ */
+function hydrate(
+	list: Workspace[],
+	current: { workspace: Workspace; messages: WorkspaceMessage[] } | null
+): void {
+	workspaces = current
+		? [...list.filter((w: Workspace) => w.id !== current.workspace.id), current.workspace]
+		: list;
+	if (current) {
+		currentWorkspaceId = current.workspace.id;
+		persistWorkspaceId(current.workspace.id);
+		savedMessageCounts = new Map(savedMessageCounts);
+		savedMessageCounts.set(current.workspace.id, current.messages.length);
+	}
+}
+
 async function loadWorkspaces(): Promise<void> {
 	loading = true;
 	error = null;
@@ -299,6 +318,7 @@ export const workspaceStore = {
 	get workspacesReady() {
 		return workspacesReady;
 	},
+	hydrate,
 	loadWorkspaces,
 	createWorkspace,
 	switchWorkspace,

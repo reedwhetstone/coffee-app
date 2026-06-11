@@ -234,6 +234,76 @@ describe('/catalog page load', () => {
 		);
 	});
 
+	it('hydrates catalog coffee deep links even when the target is outside current filters or unstocked', async () => {
+		mockSearchCatalog
+			.mockResolvedValueOnce({
+				data: catalogRows,
+				count: 42,
+				filtersApplied: {}
+			})
+			.mockResolvedValueOnce({
+				data: [
+					{
+						id: 99,
+						name: 'Deep Link Coffee',
+						country: 'Colombia',
+						public_coffee: true,
+						wholesale: false,
+						stocked: false
+					}
+				],
+				count: 1,
+				filtersApplied: {}
+			});
+
+		const result = (await load(
+			makeLoadInput('viewer', null, 'https://app.test/catalog?coffee=99&country=Ethiopia&page=2')
+		)) as { data: Array<{ id: number; name: string }>; pagination: { total: number } };
+
+		expect(mockSearchCatalog).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ kind: 'session-client' }),
+			expect.objectContaining({
+				country: 'Ethiopia',
+				stockedOnly: true,
+				publicOnly: true,
+				showWholesale: false,
+				wholesaleOnly: false,
+				fields: 'resource',
+				limit: 15,
+				offset: 15
+			})
+		);
+		expect(mockSearchCatalog).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ kind: 'session-client' }),
+			expect.objectContaining({
+				coffeeIds: [99],
+				stockedOnly: false,
+				publicOnly: true,
+				showWholesale: false,
+				wholesaleOnly: false,
+				fields: 'resource',
+				limit: 1,
+				offset: 0
+			})
+		);
+		expect(mockSearchCatalog.mock.calls[1][1]).not.toMatchObject({ country: 'Ethiopia' });
+		expect(result.data.map((coffee) => coffee.id)).toEqual([99, 1]);
+		expect(result.pagination.total).toBe(42);
+	});
+
+	it('does not refetch a catalog coffee deep link that is already in the rendered result set', async () => {
+		const result = (await load(
+			makeLoadInput('viewer', null, 'https://app.test/catalog?coffee=1')
+		)) as {
+			data: Array<{ id: number }>;
+		};
+
+		expect(mockSearchCatalog).toHaveBeenCalledTimes(1);
+		expect(result.data.map((coffee) => coffee.id)).toEqual([1]);
+	});
+
 	it('strips anonymous process transparency query params before catalog search', async () => {
 		const result = (await load(
 			makeLoadInput(

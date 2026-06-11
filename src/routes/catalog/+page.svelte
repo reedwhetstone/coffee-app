@@ -78,19 +78,52 @@
 	// client filter store so its pagination/fetch flows can't replace the tracked set.
 	let trackedOnlyView = $derived(data.trackedOnly === true);
 
+	// /catalog?coffee=<id> deep link (e.g. from chat canvas cards): auto-open
+	// that coffee's detail panel when the card is in the rendered set.
+	let deepLinkCoffeeId = $derived.by(() => {
+		const raw = page.url.searchParams.get('coffee');
+		if (!raw || !/^\d+$/.test(raw)) return null;
+		const parsed = Number.parseInt(raw, 10);
+		return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+	});
+
+	function catalogCoffeeId(coffee: unknown): number | null {
+		const id = (coffee as { id?: unknown }).id;
+		return typeof id === 'number' && Number.isSafeInteger(id) ? id : null;
+	}
+
+	function catalogCoffeeCardKey(coffee: CoffeeCatalog): string {
+		const id = catalogCoffeeId(coffee);
+		return `${id ?? 'unknown'}:${deepLinkCoffeeId === id ? 'open' : 'closed'}`;
+	}
+
+	let hydratedCatalogDataKey = $state<string | null>(null);
+	let incomingCatalogDataKey = $derived.by(() =>
+		JSON.stringify({
+			route: page.url.pathname,
+			deepLinkCoffeeId,
+			rowIds: (data.data ?? []).map((coffee: unknown) => catalogCoffeeId(coffee)),
+			initialCatalogState: data.initialCatalogState,
+			pagination: data.pagination
+		})
+	);
+
 	$effect(() => {
 		const currentRoute = page.url.pathname;
 
 		if (
 			!trackedOnlyView &&
 			data?.data &&
-			(!$filterStore.initialized || $filterStore.routeId !== currentRoute)
+			(!$filterStore.initialized ||
+				$filterStore.routeId !== currentRoute ||
+				hydratedCatalogDataKey !== incomingCatalogDataKey)
 		) {
 			filterStore.initializeForRoute(currentRoute, data.data, {
 				catalogUrlState: data.initialCatalogState,
 				pagination: data.pagination,
 				serverData: data.data
 			});
+			hydratedCatalogDataKey = incomingCatalogDataKey;
 		}
 	});
 
@@ -868,7 +901,7 @@
 						</div>
 					{/if}
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-						{#each session ? displayData() : displayData().slice(0, 15) as coffee}
+						{#each session ? displayData() : displayData().slice(0, 15) as coffee (catalogCoffeeCardKey(coffee))}
 							<CoffeeCard
 								{coffee}
 								{parseTastingNotes}
@@ -877,6 +910,7 @@
 								priceContext={getCardPriceContext(coffee)}
 								tracked={trackedIds.has((coffee as unknown as { id: number }).id)}
 								onToggleTrack={canUseSourcingIntelligence ? handleToggleTrack : undefined}
+								initialDetailsOpen={deepLinkCoffeeId === catalogCoffeeId(coffee)}
 							/>
 						{/each}
 

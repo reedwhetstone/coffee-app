@@ -34,7 +34,9 @@
 		enableDetails = true,
 		priceContext = null,
 		tracked = false,
-		onToggleTrack = undefined
+		onToggleTrack = undefined,
+		showCatalogLink = false,
+		initialDetailsOpen = false
 	} = $props<{
 		coffee: CoffeeCatalog;
 		parseTastingNotes: (tastingNotesJson: string | null | object) => TastingNotes | null;
@@ -49,6 +51,10 @@
 		priceContext?: LotPriceContext | null;
 		tracked?: boolean;
 		onToggleTrack?: (id: number) => void;
+		/** Show a "View in catalog" link in the detail panel (for surfaces outside /catalog, e.g. chat canvas). */
+		showCatalogLink?: boolean;
+		/** Open the detail panel on mount (used by /catalog?coffee=<id> deep links). */
+		initialDetailsOpen?: boolean;
 	}>();
 
 	function priceContextColorClass(tier: LotPriceTier): string {
@@ -103,7 +109,9 @@
 
 	let TastingNotesRadar = $state<Component | null>(null);
 	let radarComponentLoading = $state(true);
-	let detailsOpen = $state(false);
+	// Deliberate initial-value capture: the prop seeds the open state only.
+	// svelte-ignore state_referenced_locally
+	let detailsOpen = $state(initialDetailsOpen);
 	let activeTab = $state<DetailTab>('overview');
 
 	$effect(() => {
@@ -180,6 +188,15 @@
 	let availableDetailTabs = $derived(
 		detailTabs.filter((tab) => tab.id !== 'matches' || showSimilarComparisonAction)
 	);
+	let catalogLinkHref = $derived.by(() => {
+		const params = new URLSearchParams({ coffee: String(coffee.id) });
+
+		if (coffee.wholesale) {
+			params.set('showWholesale', 'true');
+		}
+
+		return `/catalog?${params.toString()}`;
+	});
 
 	function formatAdditives(additives: string[] | null | undefined): string | null {
 		if (!additives?.length) return null;
@@ -321,8 +338,10 @@
 				<h3 class="{compact ? 'text-sm' : 'text-base'} font-semibold leading-snug text-ink">
 					{coffee.name}
 				</h3>
-				<div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
-					<span class="font-medium text-accent">{coffee.source ?? 'Unknown supplier'}</span>
+				<div class="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-sm">
+					<span class="break-words font-medium text-accent"
+						>{coffee.source ?? 'Unknown supplier'}</span
+					>
 					{#if coffee.wholesale}
 						<span
 							class="rounded-full bg-intelligence-subtle px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-intelligence"
@@ -349,7 +368,7 @@
 		</div>
 
 		<div class="flex items-center justify-between gap-3 border-y border-border-light py-2">
-			<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+			<div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
 				<span>
 					<span class="font-medium text-ink">Origin</span>
 					{locationSummary}
@@ -523,6 +542,36 @@
 							{coffee.name}
 						</h2>
 						<p class="mt-1 text-sm text-muted">{longLocationSummary}</p>
+						{#if coffee.link || showCatalogLink}
+							<div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+								{#if coffee.link}
+									<a
+										href={coffee.link}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="inline-flex items-center gap-1 font-semibold text-accent transition-colors hover:underline"
+									>
+										Buy from {coffee.source ?? 'supplier'}
+										<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+											/>
+										</svg>
+									</a>
+								{/if}
+								{#if showCatalogLink}
+									<a
+										href={catalogLinkHref}
+										class="font-semibold text-muted transition-colors hover:text-accent hover:underline"
+									>
+										View in catalog
+									</a>
+								{/if}
+							</div>
+						{/if}
 					</div>
 					<button
 						type="button"

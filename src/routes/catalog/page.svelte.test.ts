@@ -318,6 +318,48 @@ describe('/catalog intelligence connective tissue', () => {
 			'/analytics'
 		);
 	});
+
+	it('rehydrates and opens a catalog coffee deep link after prior catalog navigation', async () => {
+		const initialData = createData();
+		const deepLinkedLot = {
+			...initialData.data[0],
+			id: 99,
+			name: 'Deep Link Lot',
+			source: 'Canvas Importer',
+			country: 'Kenya',
+			region: 'Nyeri'
+		};
+
+		filterStore.initializeForRoute(
+			'/catalog',
+			initialData.data as unknown as Record<string, unknown>[],
+			{
+				catalogUrlState: initialData.initialCatalogState,
+				serverData: initialData.data as unknown as Record<string, unknown>[],
+				pagination: initialData.pagination
+			}
+		);
+		pageState.url = new URL('https://app.test/catalog?coffee=99');
+
+		renderCatalog(
+			createData({
+				data: [deepLinkedLot, initialData.data[0]],
+				pagination: {
+					page: 1,
+					limit: 15,
+					total: 2,
+					totalPages: 1,
+					hasNext: false,
+					hasPrev: false
+				}
+			} as Partial<PageData>)
+		);
+
+		await waitFor(() => {
+			expect(screen.getAllByText('Deep Link Lot').length).toBeGreaterThanOrEqual(2);
+		});
+		expect(screen.getByRole('tablist', { name: 'Coffee detail tabs' })).toBeInTheDocument();
+	});
 });
 
 describe('/catalog price intelligence', () => {

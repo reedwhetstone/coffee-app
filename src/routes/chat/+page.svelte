@@ -70,5 +70,9 @@
 		</div>
 	</div>
 {:else}
-	<ChatWorkspace {canUseChat} {canUseMallardWorkspaces} />
+	<ChatWorkspace
+		{canUseChat}
+		{canUseMallardWorkspaces}
+		initialWorkspaceData={data.initialWorkspaceData ?? null}
+	/>
 {/if}
