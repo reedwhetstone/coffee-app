@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { selectCanonicalWorkspace } from '$lib/server/workspaces/canonicalWorkspace';
 import { checkRole, type UserRole } from '$lib/types/auth.types';
 import type { Workspace, WorkspaceMessage } from '$lib/stores/workspaceStore.svelte';
 import type { PageServerLoad } from './$types';
@@ -19,17 +20,21 @@ async function loadInitialWorkspaceData(
 	userId: string
 ): Promise<InitialWorkspaceData | null> {
 	try {
-		const { data: workspaces, error } = await supabase
-			.from('workspaces')
-			.select('id, title, type, context_summary, last_accessed_at, created_at')
-			.eq('user_id', userId)
-			.order('last_accessed_at', { ascending: false });
+		const {
+			workspace: canonicalWorkspace,
+			workspaces,
+			error
+		} = await selectCanonicalWorkspace<Workspace>(
+			supabase,
+			userId,
+			'id, title, type, context_summary, last_accessed_at, created_at'
+		);
 
 		if (error) return null;
-		const list = (workspaces ?? []) as Workspace[];
-		if (list.length === 0) return { workspaces: [], workspace: null, messages: [] };
+		const list = workspaces;
+		if (!canonicalWorkspace) return { workspaces: [], workspace: null, messages: [] };
 
-		const activeId = list[0].id;
+		const activeId = canonicalWorkspace.id;
 		const [workspaceResult, messagesResult] = await Promise.all([
 			supabase.from('workspaces').select('*').eq('id', activeId).eq('user_id', userId).single(),
 			supabase
