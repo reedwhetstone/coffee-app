@@ -169,6 +169,22 @@ export function extractBlockFromPart(part: any, options?: BlockExtractorOptions)
 }
 
 /**
+ * Visible fallback when present_results references items that are not in the
+ * search data cache (e.g. the source search never ran in this conversation, or
+ * the model invented IDs). Without this the presentation fails silently.
+ */
+function presentationCacheMissBlock(sourceTool: string): ErrorBlock {
+	return {
+		type: 'error',
+		version: 1,
+		data: {
+			message: `Couldn't render this presentation — the referenced ${sourceTool.replace(/_/g, ' ')} results weren't found in this conversation. Ask me to re-run the search.`,
+			retryable: false
+		}
+	};
+}
+
+/**
  * Build a UIBlock from a present_results tool output.
  * Merges AI-provided annotations with cached search data.
  */
@@ -204,7 +220,7 @@ function buildPresentedBlock(
 			});
 		}
 
-		if (coffees.length === 0) return null;
+		if (coffees.length === 0) return presentationCacheMissBlock(sourceTool);
 
 		return {
 			type: 'coffee-cards',
@@ -247,7 +263,7 @@ function buildPresentedBlock(
 			});
 		}
 
-		if (profiles.length === 0) return null;
+		if (profiles.length === 0) return presentationCacheMissBlock(sourceTool);
 
 		return {
 			type: 'roast-profiles',
@@ -268,7 +284,7 @@ function buildPresentedBlock(
 			}
 		}
 
-		if (inventory.length === 0) return null;
+		if (inventory.length === 0) return presentationCacheMissBlock(sourceTool);
 
 		return {
 			type: 'inventory-table',
@@ -440,6 +456,10 @@ export function extractCanvasMutationsFromPart(
 		mutations.push({ type: 'clear' });
 		return mutations;
 	}
+
+	// Error blocks (e.g. presentation cache misses) render inline in the
+	// message only — don't touch the canvas, including layout hints.
+	if (block?.type === 'error') return null;
 
 	// If we have a block, dispatch it to canvas
 	if (block) {

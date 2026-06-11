@@ -391,7 +391,7 @@
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const p = part as any;
 				if (p?.type?.startsWith('tool-')) {
-					const partKey = `${msg.id}-${p.toolInvocationId ?? p.toolName ?? p.type}`;
+					const partKey = `${msg.id}-${p.toolCallId ?? p.toolName ?? p.type}`;
 					dispatchedParts.add(partKey);
 					// Also mark companion blocks
 					const companions = extractCompanionBlocks(p);
@@ -590,19 +590,24 @@
 	$effect(() => {
 		if (isActive) return; // Wait until streaming stops
 
+		// Conversation-wide cache: present_results may reference items from a
+		// search in any earlier message, not just its own.
+		const conversationCache = buildSearchDataCache(
+			chat.messages.flatMap((m) => m.parts as unknown[])
+		);
+
 		for (const message of chat.messages) {
 			if (message.role !== 'assistant') continue;
 
 			const hasPR = messageHasPresentResults(message.parts);
-			const searchCache = hasPR ? buildSearchDataCache(message.parts) : undefined;
-			const extractorOptions = { searchDataCache: searchCache, hasPresentResults: hasPR };
+			const extractorOptions = { searchDataCache: conversationCache, hasPresentResults: hasPR };
 
 			for (const part of message.parts) {
 				if (!part.type.startsWith('tool-')) continue;
 
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const p = part as any;
-				const partKey = `${message.id}-${p.toolInvocationId ?? p.toolName ?? part.type}`;
+				const partKey = `${message.id}-${p.toolCallId ?? p.toolName ?? part.type}`;
 				if (dispatchedParts.has(partKey)) continue;
 
 				const block = extractBlockFromPart(p, extractorOptions);
@@ -876,15 +881,36 @@
 				</div>
 			</div>
 
-			<ChatMessageList
-				{chat}
-				{isActive}
-				{canUseMallardWorkspaces}
-				bind:containerEl={chatContainer}
-				onScroll={handleScroll}
-				onBlockAction={handleBlockAction}
-				onExampleSelect={(text) => (inputMessage = text)}
-			/>
+			<div class="relative flex min-h-0 flex-1 flex-col">
+				<ChatMessageList
+					{chat}
+					{isActive}
+					{canUseMallardWorkspaces}
+					bind:containerEl={chatContainer}
+					onScroll={handleScroll}
+					onBlockAction={handleBlockAction}
+					onExampleSelect={(text) => (inputMessage = text)}
+				/>
+
+				<!-- Mobile floating canvas indicator: anchored inside the message
+				     area (above the composer) so it can't overlap the send button. -->
+				{#if variant === 'page' && !canvasStore.isEmpty && !mobileCanvasOpen}
+					<button
+						onclick={() => (mobileCanvasOpen = true)}
+						class="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-background-tertiary-light px-3 py-2 text-sm text-white shadow-lg transition-transform hover:scale-105 md:hidden"
+					>
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+							/>
+						</svg>
+						{canvasStore.blockCount}
+					</button>
+				{/if}
+			</div>
 
 			<ChatComposer
 				bind:inputMessage
@@ -955,24 +981,6 @@
 			/>
 		</div>
 	</div>
-{/if}
-
-<!-- Mobile floating indicator -->
-{#if variant === 'page' && !canvasStore.isEmpty && !mobileCanvasOpen}
-	<button
-		onclick={() => (mobileCanvasOpen = true)}
-		class="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 rounded-full bg-background-tertiary-light px-3 py-2 text-sm text-white shadow-lg transition-transform hover:scale-105 md:hidden"
-	>
-		<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				stroke-width="2"
-				d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-			/>
-		</svg>
-		{canvasStore.blockCount}
-	</button>
 {/if}
 
 <style>

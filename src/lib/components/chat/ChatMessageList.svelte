@@ -55,6 +55,12 @@
 		return `${blockCount} tool result${blockCount > 1 ? 's' : ''}${types.length > 0 ? `: ${types.join(', ')}` : ''}`;
 	}
 
+	// Conversation-wide search data cache: present_results may reference items
+	// from a search in any earlier message, not just its own.
+	let conversationSearchCache = $derived(
+		buildSearchDataCache(chat.messages.flatMap((m: { parts: unknown[] }) => m.parts))
+	);
+
 	// Build a lookup: messageId → canvasBlockId[] (supports multiple blocks per message)
 	let canvasBlockLookup = $derived(() => {
 		const map = new Map<string, string[]>();
@@ -80,7 +86,24 @@
 			if (!part?.type?.startsWith('tool-')) continue;
 
 			const rawName = part.toolName ?? part.type.replace('tool-', '');
-			if (rawName === 'present_results') continue;
+
+			// present_results gets its own step so canvas pushes are never invisible
+			if (rawName === 'present_results') {
+				if (part.state === 'output-available') {
+					const items = part.output?.presentation?.items;
+					const count = Array.isArray(items) ? items.length : 0;
+					steps.push({
+						message: `presenting ${count} item${count === 1 ? '' : 's'} to the canvas`,
+						timestamp: new Date()
+					});
+				} else if (part.state === 'output-error') {
+					steps.push({
+						message: `Error presenting results: ${part.errorText || 'unknown error'}`,
+						timestamp: new Date()
+					});
+				}
+				continue;
+			}
 
 			const toolName = rawName.replace(/_/g, ' ');
 
@@ -195,9 +218,8 @@
 				{:else}
 					<!-- Assistant message -->
 					{@const hasPR = messageHasPresentResults(message.parts)}
-					{@const searchCache = hasPR ? buildSearchDataCache(message.parts) : undefined}
 					{@const extractorOptions = {
-						searchDataCache: searchCache,
+						searchDataCache: conversationSearchCache,
 						hasPresentResults: hasPR
 					}}
 					{@const toolSteps = getMessageToolSteps(message.parts)}
