@@ -502,7 +502,7 @@ export function createChatTools(
 
 		supplier_list: tool({
 			description:
-				'List the supplier universe with aggregate signals per supplier: listing counts, price range, average Purveyor Score, average supplier cup score, and top origin countries. Use this to ground any supplier question ("who carries X", "best supplier for Y") before deeper queries.',
+				'List suppliers with CLI-owned aggregate signals per returned supplier: listing counts, price range, average Purveyor Score, and top origin countries. Use total_suppliers, returned_suppliers, truncation, and caveats to describe coverage for broad supplier questions.',
 			inputSchema: z.object({
 				stocked_only: z
 					.boolean()

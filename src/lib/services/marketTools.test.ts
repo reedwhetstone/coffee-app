@@ -154,19 +154,19 @@ describe('getSupplierList', () => {
 		const result = await getSupplierList(client, {});
 
 		expect(result.total_suppliers).toBe(2);
+		expect(result.returned_suppliers).toBe(2);
 		expect(result.suppliers[0]).toEqual(
 			expect.objectContaining({
 				supplier: 'Sweet Maria',
 				listings: 2,
-				non_wholesale_listings: 1,
 				price_min: 6,
 				price_max: 8,
 				avg_purveyor_score: 85,
-				avg_cup_score: 88,
 				top_countries: ['Colombia', 'Ethiopia']
 			})
 		);
 		expect(result.suppliers[0].score.average).toBe(85);
+		expect(result.suppliers[0].non_wholesale_listings).toBeUndefined();
 		expect(result.suppliers[1].supplier).toBe('Bodhi Leaf');
 		expect(result.suppliers[1].avg_purveyor_score).toBeNull();
 	});
@@ -174,9 +174,10 @@ describe('getSupplierList', () => {
 	it('passes non_wholesale_only through to the CLI supplier aggregate query', async () => {
 		const { client, calls } = createMockClient([rows]);
 
-		await getSupplierList(client, { non_wholesale_only: true });
+		const result = await getSupplierList(client, { non_wholesale_only: true });
 
 		expect(calls).toContainEqual(['or', 'wholesale.is.null,wholesale.eq.false']);
+		expect(result.suppliers[0].non_wholesale_listings).toBe(result.suppliers[0].listings);
 	});
 
 	it('passes country through to the CLI supplier aggregate query', async () => {
@@ -201,8 +202,12 @@ describe('getSupplierList', () => {
 		const result = await getSupplierList(client, { limit: 100 });
 
 		expect(result.suppliers.length).toBe(25);
-		expect(result.total_suppliers).toBe(25);
-		expect(result.truncated).toBe(false);
+		expect(result.total_suppliers).toBe(30);
+		expect(result.returned_suppliers).toBe(25);
+		expect(result.truncated).toBe(true);
+		expect(result.caveats).toContain(
+			'Supplier aggregate results reached the requested limit; more matching suppliers may exist.'
+		);
 	});
 });
 
