@@ -41,6 +41,10 @@ function createMockClient(pages: Row[][], calls: Call[] = []) {
 							calls.push(['ilike', column, pattern]);
 							return builder;
 						},
+						or(filter: string) {
+							calls.push(['or', filter]);
+							return builder;
+						},
 						order(column: string) {
 							calls.push(['order', column]);
 							return builder;
@@ -88,7 +92,7 @@ describe('getCatalogFacets', () => {
 			{ value: 'Sweet Maria', count: 2 },
 			{ value: 'Bodhi Leaf', count: 1 }
 		]);
-		expect(result.total_listings).toBe(4);
+		expect(result.rows_examined).toBe(4);
 		expect(result.distinct_values).toBe(2);
 		expect(calls).toContainEqual(['eq', 'stocked', true]);
 	});
@@ -110,7 +114,7 @@ describe('getCatalogFacets', () => {
 
 		const result = await getCatalogFacets(client, { field: 'grade' });
 
-		expect(result.total_listings).toBe(1002);
+		expect(result.rows_examined).toBe(1002);
 		expect(result.values[0]).toEqual({ value: 'AA', count: 1001 });
 	});
 });
@@ -258,7 +262,7 @@ describe('rankCatalog', () => {
 
 		// ratios: id2 80/5=16, id1 92/8=11.5, id4 88/14≈6.3; id3 excluded (no score)
 		expect(result.coffees.map((c) => c.id)).toEqual([2, 1, 4]);
-		expect(result.caveats.join(' ')).toContain('score-per-dollar');
+		expect(result.caveats.join(' ')).toContain('Purveyor Score per dollar');
 	});
 
 	it('ranks fresh_arrival by stocked_date descending', async () => {
@@ -295,5 +299,6 @@ describe('rankCatalog', () => {
 		expect(result.coffees.every((c) => c.wholesale !== true)).toBe(true);
 		expect(calls).toContainEqual(['lte', 'price_per_lb', 10]);
 		expect(calls).toContainEqual(['ilike', 'country', '%Colombia%']);
+		expect(calls).toContainEqual(['or', 'wholesale.is.null,wholesale.eq.false']);
 	});
 });

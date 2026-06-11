@@ -11,6 +11,15 @@
  * objectives change the sort, not the score.
  */
 
+import {
+	catalogFacetFields,
+	catalogRankObjectives,
+	listCatalogFacets as cliListCatalogFacets,
+	rankCatalog as cliRankCatalog,
+	type CatalogFacetField,
+	type CatalogRankObjective
+} from '@purveyors/cli/catalog';
+
 interface CatalogRowsResult {
 	data: Array<Record<string, unknown>> | null;
 	error: { message: string } | null;
@@ -21,6 +30,7 @@ interface CatalogQueryBuilder extends PromiseLike<CatalogRowsResult> {
 	gte(column: string, value: string | number): CatalogQueryBuilder;
 	lte(column: string, value: string | number): CatalogQueryBuilder;
 	ilike(column: string, pattern: string): CatalogQueryBuilder;
+	or(filter: string): CatalogQueryBuilder;
 	order(column: string, options: { ascending: boolean; nullsFirst?: boolean }): CatalogQueryBuilder;
 	range(from: number, to: number): CatalogQueryBuilder;
 	limit(count: number): CatalogQueryBuilder;
@@ -102,27 +112,8 @@ function round(value: number, decimals = 2): number {
 
 // ─── catalog_facets ──────────────────────────────────────────────────────────
 
-export const CATALOG_FACET_FIELDS = [
-	'supplier',
-	'country',
-	'processing_base_method',
-	'fermentation_type',
-	'drying_method',
-	'grade',
-	'wholesale'
-] as const;
-
-export type CatalogFacetField = (typeof CATALOG_FACET_FIELDS)[number];
-
-const FACET_COLUMNS: Record<CatalogFacetField, string> = {
-	supplier: 'source',
-	country: 'country',
-	processing_base_method: 'processing_base_method',
-	fermentation_type: 'fermentation_type',
-	drying_method: 'drying_method',
-	grade: 'grade',
-	wholesale: 'wholesale'
-};
+export const CATALOG_FACET_FIELDS = catalogFacetFields;
+export type { CatalogFacetField };
 
 const MAX_FACET_VALUES = 60;
 
@@ -134,7 +125,8 @@ export interface CatalogFacetsInput {
 export interface CatalogFacetsResult {
 	field: CatalogFacetField;
 	stocked_only: boolean;
-	total_listings: number;
+	scope: 'stocked_only' | 'all_visible';
+	rows_examined: number;
 	distinct_values: number;
 	values: Array<{ value: string; count: number }>;
 	truncated: boolean;
@@ -145,38 +137,26 @@ export async function getCatalogFacets(
 	input: CatalogFacetsInput
 ): Promise<CatalogFacetsResult> {
 	const stockedOnly = input.stocked_only ?? true;
-	const column = FACET_COLUMNS[input.field];
 	const cacheKey = `facets:${input.field}:${stockedOnly}`;
 
 	const cached = getCached<CatalogFacetsResult>(cacheKey);
 	if (cached) return cached;
 
-	const rows = await fetchAllRows(() => {
-		let query = client.from('coffee_catalog').select(column);
-		if (stockedOnly) query = query.eq('stocked', true);
-		return query;
+	const response = await cliListCatalogFacets(client as never, {
+		field: input.field,
+		stockedOnly,
+		limit: MAX_FACET_VALUES,
+		sampleSize: MAX_ROWS
 	});
 
-	const counts = new Map<string, number>();
-	for (const row of rows) {
-		const raw = row[column];
-		const value =
-			typeof raw === 'boolean' ? String(raw) : typeof raw === 'string' ? raw.trim() : null;
-		if (!value) continue;
-		counts.set(value, (counts.get(value) ?? 0) + 1);
-	}
-
-	const sorted = [...counts.entries()]
-		.map(([value, count]) => ({ value, count }))
-		.sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
-
 	const result: CatalogFacetsResult = {
-		field: input.field,
-		stocked_only: stockedOnly,
-		total_listings: rows.length,
-		distinct_values: sorted.length,
-		values: sorted.slice(0, MAX_FACET_VALUES),
-		truncated: sorted.length > MAX_FACET_VALUES
+		field: response.meta.field,
+		stocked_only: response.meta.stocked_only,
+		scope: response.meta.scope,
+		rows_examined: response.meta.rows_examined,
+		distinct_values: response.meta.distinct_values,
+		values: response.data,
+		truncated: response.meta.truncated
 	};
 
 	setCached(cacheKey, result);
@@ -312,16 +292,9 @@ export async function getSupplierList(
 
 // ─── catalog_rank ────────────────────────────────────────────────────────────
 
-export const RANK_OBJECTIVES = ['premium', 'value', 'fresh_arrival', 'rare_origin'] as const;
-export type RankObjective = (typeof RANK_OBJECTIVES)[number];
+export const RANK_OBJECTIVES = catalogRankObjectives;
+export type RankObjective = CatalogRankObjective;
 
-// Includes the full card-rendering fields (cost_lb, price_tiers, link,
-// ai_description, ai_tasting_notes, …) because ranked rows stream to the
-// client as CoffeeCard canvas blocks; the model sees a compacted view via
-// the tool's toModelOutput.
-const RANK_COLUMNS =
-	'id, name, source, country, region, continent, processing, processing_base_method, fermentation_type, drying_method, grade, cultivar_detail, type, description_short, ai_description, ai_tasting_notes, link, price_per_lb, cost_lb, price_tiers, score_value, stocked, stocked_date, arrival_date, wholesale, purveyor_score, purveyor_score_tier, purveyor_score_confidence, purveyor_score_factors, purveyor_score_version';
-const RANK_CANDIDATE_POOL = 500;
 const DEFAULT_RANK_LIMIT = 8;
 const MAX_RANK_LIMIT = 15;
 
@@ -350,130 +323,29 @@ export interface RankCatalogResult {
 	filters_applied: RankCatalogInput;
 }
 
-function scoreLabel(row: Record<string, unknown>): string {
-	const score = asNumber(row.purveyor_score);
-	if (score === null) return 'no Purveyor Score yet';
-	const tier = typeof row.purveyor_score_tier === 'string' ? `, ${row.purveyor_score_tier}` : '';
-	return `Purveyor Score ${score}${tier}`;
-}
-
 export async function rankCatalog(
 	client: MarketToolsClient,
 	input: RankCatalogInput
 ): Promise<RankCatalogResult> {
-	const stockedOnly = input.stocked_only ?? true;
 	const limit = Math.min(Math.max(input.limit ?? DEFAULT_RANK_LIMIT, 1), MAX_RANK_LIMIT);
-
-	let query = client.from('coffee_catalog').select(RANK_COLUMNS);
-	if (stockedOnly) query = query.eq('stocked', true);
-	if (input.supplier) query = query.ilike('source', `%${sanitizeFilterValue(input.supplier)}%`);
-	if (input.country) query = query.ilike('country', `%${sanitizeFilterValue(input.country)}%`);
-	if (input.process) query = query.ilike('processing', `%${sanitizeFilterValue(input.process)}%`);
-	if (input.max_price != null && input.max_price > 0) {
-		query = query.lte('price_per_lb', input.max_price);
-	}
-	if (input.min_purveyor_score != null && input.min_purveyor_score > 0) {
-		query = query.gte('purveyor_score', input.min_purveyor_score);
-	}
-
-	const { data, error } = await query.limit(RANK_CANDIDATE_POOL);
-	if (error) throw new Error(`coffee_catalog query failed: ${error.message}`);
-
-	let pool = data ?? [];
-	if (input.non_wholesale_only) {
-		pool = pool.filter((row) => row.wholesale !== true);
-	}
-
-	const caveats: string[] = [
-		'Ranking is deterministic and based on quality signals (Purveyor Score and its factor breakdown), not a guarantee of cup quality. Reference the factors, not absolute claims.'
-	];
-	if (pool.length >= RANK_CANDIDATE_POOL) {
-		caveats.push(
-			`Candidate pool capped at ${RANK_CANDIDATE_POOL} listings; add filters for exhaustive coverage.`
-		);
-	}
-
-	const byScoreDesc = (a: Record<string, unknown>, b: Record<string, unknown>) =>
-		(asNumber(b.purveyor_score) ?? -1) - (asNumber(a.purveyor_score) ?? -1) ||
-		(asNumber(b.score_value) ?? -1) - (asNumber(a.score_value) ?? -1) ||
-		String(b.stocked_date ?? '').localeCompare(String(a.stocked_date ?? ''));
-
-	let ranked: Array<{ row: Record<string, unknown>; basis: string }>;
-
-	switch (input.objective) {
-		case 'premium': {
-			ranked = [...pool].sort(byScoreDesc).map((row) => ({ row, basis: scoreLabel(row) }));
-			break;
-		}
-		case 'value': {
-			const scored = pool
-				.map((row) => {
-					const score = asNumber(row.purveyor_score);
-					const price = asNumber(row.price_per_lb);
-					if (score === null || price === null || price <= 0) return null;
-					return { row, ratio: score / price };
-				})
-				.filter((entry): entry is { row: Record<string, unknown>; ratio: number } => entry !== null)
-				.sort((a, b) => b.ratio - a.ratio || byScoreDesc(a.row, b.row));
-			ranked = scored.map(({ row, ratio }) => ({
-				row,
-				basis: `${scoreLabel(row)} at $${asNumber(row.price_per_lb)}/lb (${round(ratio, 1)} score points per dollar)`
-			}));
-			caveats.push(
-				'Value objective is score-per-dollar: a simple deterministic ratio of Purveyor Score to price per pound. Lots without a score or price are excluded.'
-			);
-			break;
-		}
-		case 'fresh_arrival': {
-			ranked = [...pool]
-				.sort(
-					(a, b) =>
-						String(b.stocked_date ?? '').localeCompare(String(a.stocked_date ?? '')) ||
-						byScoreDesc(a, b)
-				)
-				.map((row) => ({
-					row,
-					basis: `stocked ${row.stocked_date ?? 'date unknown'} — ${scoreLabel(row)}`
-				}));
-			break;
-		}
-		case 'rare_origin': {
-			const originCounts = new Map<string, number>();
-			for (const row of pool) {
-				const rowCountry = typeof row.country === 'string' ? row.country.trim() : '';
-				if (rowCountry) originCounts.set(rowCountry, (originCounts.get(rowCountry) ?? 0) + 1);
-			}
-			const rarity = (row: Record<string, unknown>) => {
-				const rowCountry = typeof row.country === 'string' ? row.country.trim() : '';
-				return rowCountry
-					? (originCounts.get(rowCountry) ?? Number.MAX_SAFE_INTEGER)
-					: Number.MAX_SAFE_INTEGER;
-			};
-			ranked = [...pool]
-				.filter((row) => typeof row.country === 'string' && row.country.trim().length > 0)
-				.sort((a, b) => rarity(a) - rarity(b) || byScoreDesc(a, b))
-				.map((row) => ({
-					row,
-					basis: `${row.country} has only ${rarity(row)} matching listing(s) — ${scoreLabel(row)}`
-				}));
-			if (input.country) {
-				caveats.push(
-					'rare_origin combined with a country filter measures rarity only within that filter — consider dropping the country filter for true origin scarcity.'
-				);
-			}
-			break;
-		}
-	}
+	const response = await cliRankCatalog(client as never, {
+		objective: input.objective,
+		stockedOnly: input.stocked_only ?? true,
+		supplier: input.supplier,
+		country: input.country,
+		process: input.process,
+		priceMax: input.max_price,
+		minScore: input.min_purveyor_score,
+		nonWholesaleOnly: input.non_wholesale_only,
+		limit,
+		sampleSize: MAX_ROWS
+	});
 
 	return {
-		objective: input.objective,
-		coffees: ranked.slice(0, limit).map(({ row, basis }, index) => ({
-			...row,
-			rank: index + 1,
-			rank_basis: basis
-		})),
-		candidates_considered: pool.length,
-		caveats,
+		objective: response.meta.objective,
+		coffees: response.data as unknown as RankedCoffee[],
+		candidates_considered: response.meta.candidates_considered,
+		caveats: response.meta.caveats,
 		filters_applied: input
 	};
 }

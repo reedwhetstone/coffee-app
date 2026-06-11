@@ -10,14 +10,9 @@ import {
 	type CatalogItem,
 	type SimilarBean
 } from '@purveyors/cli/catalog';
-import {
-	listInventory,
-	addInventory as _addInventory,
-	updateInventory as _updateInventory
-} from '@purveyors/cli/inventory';
-import { listRoasts, createRoast as _createRoast, type RoastProfile } from '@purveyors/cli/roast';
+import { listInventory } from '@purveyors/cli/inventory';
+import { listRoasts, type RoastProfile } from '@purveyors/cli/roast';
 import { getTastingNotes, getTastingNotesSchema } from '@purveyors/cli/tasting';
-import { recordSale as _recordSale } from '@purveyors/cli/sales';
 import {
 	CATALOG_FACET_FIELDS,
 	RANK_OBJECTIVES,
