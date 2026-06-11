@@ -133,7 +133,7 @@ Treat the API as two layers:
 
 2. **Platform app API**
    - `/api/catalog`, `/api/catalog/filters`, `/api/beans`, `/api/roast-profiles`, `/api/profit`, `/api/chat`, `/api/workspaces`, `/api/stripe/*`, `/api/admin/*`, and related helpers
-   - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require the member role
+   - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
    - Important for contributors, but not a broad public compatibility promise
    - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation: true`, `Link: </v1/catalog>; rel="successor-version"`, and `Sunset: Dec 31 2026` headers; migrate callers to `/v1/catalog`
    - `/llms.txt`, `/sitemap.xml`, `/blog/feed.xml`, and `/.well-known/appspecific/com.chrome.devtools.json` are public metadata or compatibility endpoints; document them as discoverability surfaces, not product APIs
