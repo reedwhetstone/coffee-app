@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	buildSearchDataCache,
+	buildSearchDataCacheThroughPart,
 	extractBlockFromPart,
 	extractCanvasMutationsFromPart
 } from './blockExtractor';
@@ -84,6 +85,46 @@ describe('blockExtractor catalog_rank support', () => {
 
 		expect(cache.get('catalog_rank')?.get(99)).toMatchObject({ name: 'Older Search Result' });
 		expect(cache.get('catalog_rank')?.get(11)).toMatchObject({ name: 'Ethiopia Hambela' });
+	});
+
+	it('builds causal per-part caches without seeing later results in the same message', () => {
+		const priorPart = {
+			...rankPart(),
+			output: {
+				coffees: [{ id: 99, name: 'Prior Search Result' }],
+				objective: 'value',
+				caveats: []
+			}
+		};
+		const presentPart = {
+			type: 'tool-present_results',
+			toolName: 'present_results',
+			state: 'output-available',
+			output: {
+				presentation: {
+					source_tool: 'catalog_rank',
+					layout: 'grid',
+					items: [{ id: 11, annotation: 'This ID only appears later in the same message' }]
+				}
+			}
+		};
+		const laterPart = rankPart();
+		const messages = [{ parts: [priorPart] }, { parts: [presentPart, laterPart] }];
+
+		const presentCache = buildSearchDataCacheThroughPart(messages, 1, 0);
+		expect(presentCache.get('catalog_rank')?.get(99)).toMatchObject({
+			name: 'Prior Search Result'
+		});
+		expect(presentCache.get('catalog_rank')?.has(11)).toBe(false);
+
+		const block = extractBlockFromPart(presentPart, {
+			searchDataCache: presentCache,
+			hasPresentResults: true
+		});
+		expect(block).toMatchObject({ type: 'error', data: { retryable: false } });
+
+		const laterCache = buildSearchDataCacheThroughPart(messages, 1, 1);
+		expect(laterCache.get('catalog_rank')?.get(11)).toMatchObject({ name: 'Ethiopia Hambela' });
 	});
 });
 

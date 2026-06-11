@@ -10,7 +10,7 @@
 		extractBlockFromPart,
 		extractCanvasMutationsFromPart,
 		extractCompanionBlocks,
-		buildSearchDataCache,
+		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
 	import type { BlockAction, CanvasBlock } from '$lib/types/genui';
@@ -594,17 +594,8 @@
 			if (message.role !== 'assistant') continue;
 
 			const hasPR = messageHasPresentResults(message.parts);
-			// present_results may reference earlier search output, but never future turns.
-			// Building the cache only through this message prevents an old cache-miss
-			// presentation from resolving after a later search happens to reuse the ID.
-			const searchDataCache = hasPR
-				? buildSearchDataCache(
-						chat.messages.slice(0, messageIndex + 1).flatMap((m) => m.parts as unknown[])
-					)
-				: undefined;
-			const extractorOptions = { searchDataCache, hasPresentResults: hasPR };
 
-			for (const part of message.parts) {
+			for (const [partIndex, part] of message.parts.entries()) {
 				if (!part.type.startsWith('tool-')) continue;
 
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -612,6 +603,13 @@
 				const partKey = `${message.id}-${p.toolCallId ?? p.toolName ?? part.type}`;
 				if (dispatchedParts.has(partKey)) continue;
 
+				// present_results may reference earlier search output, but never later parts.
+				// Building the cache through this part prevents a presentation from resolving
+				// against a search that appears later in the same assistant message.
+				const searchDataCache = hasPR
+					? buildSearchDataCacheThroughPart(chat.messages, messageIndex, partIndex)
+					: undefined;
+				const extractorOptions = { searchDataCache, hasPresentResults: hasPR };
 				const block = extractBlockFromPart(p, extractorOptions);
 
 				// If this is a present_results part, use explicit canvas mutations

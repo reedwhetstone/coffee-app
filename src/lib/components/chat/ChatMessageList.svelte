@@ -7,7 +7,7 @@
 	import {
 		extractBlockFromPart,
 		extractCompanionBlocks,
-		buildSearchDataCache,
+		buildSearchDataCacheThroughPart,
 		messageHasPresentResults
 	} from '$lib/services/blockExtractor';
 	import type { BlockAction } from '$lib/types/genui';
@@ -55,10 +55,17 @@
 		return `${blockCount} tool result${blockCount > 1 ? 's' : ''}${types.length > 0 ? `: ${types.join(', ')}` : ''}`;
 	}
 
-	function buildSearchCacheThroughMessage(messageIndex: number) {
-		return buildSearchDataCache(
-			chat.messages.slice(0, messageIndex + 1).flatMap((m: { parts: unknown[] }) => m.parts)
-		);
+	function buildExtractorOptionsThroughPart(
+		messageIndex: number,
+		partIndex: number,
+		hasPresentResults: boolean
+	) {
+		return {
+			searchDataCache: hasPresentResults
+				? buildSearchDataCacheThroughPart(chat.messages, messageIndex, partIndex)
+				: undefined,
+			hasPresentResults
+		};
 	}
 
 	// Build a lookup: messageId → canvasBlockId[] (supports multiple blocks per message)
@@ -218,10 +225,6 @@
 				{:else}
 					<!-- Assistant message -->
 					{@const hasPR = messageHasPresentResults(message.parts)}
-					{@const extractorOptions = {
-						searchDataCache: hasPR ? buildSearchCacheThroughMessage(msgIndex) : undefined,
-						hasPresentResults: hasPR
-					}}
 					{@const toolSteps = getMessageToolSteps(message.parts)}
 					{@const hasToolParts = message.parts.some((p: { type: string }) =>
 						p.type.startsWith('tool-')
@@ -279,7 +282,7 @@
 										if (p.type.startsWith('tool-')) {
 											const b = extractBlockFromPart(
 												p as Record<string, unknown>,
-												extractorOptions
+												buildExtractorOptionsThroughPart(msgIndex, i, hasPR)
 											);
 											if (b) {
 												map.set(i, _canvasIds[blockIdx] ?? '');
@@ -292,6 +295,11 @@
 								{#each message.parts as part, partIndex}
 									{#if part.type.startsWith('tool-')}
 										{@const toolPart = part as Record<string, unknown>}
+										{@const extractorOptions = buildExtractorOptionsThroughPart(
+											msgIndex,
+											partIndex,
+											hasPR
+										)}
 										{@const block = extractBlockFromPart(toolPart, extractorOptions)}
 										{#if block}
 											{@const canvasId = _partCanvasMap.get(partIndex) ?? ''}

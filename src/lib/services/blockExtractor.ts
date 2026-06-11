@@ -24,6 +24,10 @@ export interface BlockExtractorOptions {
 	hasPresentResults?: boolean;
 }
 
+export interface MessagePartsLike {
+	parts?: unknown[];
+}
+
 /** Tool names whose raw output should be suppressed when present_results is used */
 const PRESENTABLE_TOOLS = new Set([
 	'coffee_catalog_search',
@@ -376,6 +380,26 @@ export function buildSearchDataCache(parts: any[]): Map<string, Map<number, unkn
 	}
 
 	return cache;
+}
+
+/**
+ * Builds the present_results lookup cache for one tool part.
+ *
+ * The cache must reflect only causally prior data: all earlier messages and the
+ * current message's parts up through the part being extracted. Later tool parts
+ * in the same assistant message may not satisfy an earlier presentation.
+ */
+export function buildSearchDataCacheThroughPart(
+	messages: MessagePartsLike[],
+	messageIndex: number,
+	partIndex: number
+): Map<string, Map<number, unknown>> {
+	const priorMessageParts = messages
+		.slice(0, Math.max(0, messageIndex))
+		.flatMap((message) => message.parts ?? []);
+	const currentMessageParts = messages[messageIndex]?.parts?.slice(0, partIndex + 1) ?? [];
+
+	return buildSearchDataCache([...priorMessageParts, ...currentMessageParts]);
 }
 
 /**
