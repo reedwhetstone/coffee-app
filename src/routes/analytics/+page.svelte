@@ -1059,12 +1059,14 @@
 		</div>
 		<div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 			{#each scopedTrackedLots.slice(0, 6) as lot (lot.catalogId)}
-				<div class="rounded-lg border border-border-light bg-background-secondary-light p-3">
+				<div
+					class="min-w-0 rounded-lg border border-border-light bg-background-secondary-light p-3"
+				>
 					<p class="truncate text-sm font-semibold text-text-primary-light">{lot.name}</p>
-					<p class="mt-0.5 text-xs text-text-secondary-light">
+					<p class="mt-0.5 truncate text-xs text-text-secondary-light">
 						{[lot.source, lot.country].filter(Boolean).join(' · ') || 'Supplier unknown'}
 					</p>
-					<div class="mt-2 flex items-center gap-2 text-xs">
+					<div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
 						{#if lot.stocked === false}
 							<span class="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">
 								Delisted

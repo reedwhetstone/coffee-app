@@ -78,6 +78,15 @@
 	// client filter store so its pagination/fetch flows can't replace the tracked set.
 	let trackedOnlyView = $derived(data.trackedOnly === true);
 
+	// /catalog?coffee=<id> deep link (e.g. from chat canvas cards): auto-open
+	// that coffee's detail panel when the card is in the rendered set.
+	let deepLinkCoffeeId = $derived.by(() => {
+		const raw = page.url.searchParams.get('coffee');
+		if (!raw || !/^\d+$/.test(raw)) return null;
+		const parsed = Number.parseInt(raw, 10);
+		return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+	});
+
 	$effect(() => {
 		const currentRoute = page.url.pathname;
 
@@ -877,6 +886,7 @@
 								priceContext={getCardPriceContext(coffee)}
 								tracked={trackedIds.has((coffee as unknown as { id: number }).id)}
 								onToggleTrack={canUseSourcingIntelligence ? handleToggleTrack : undefined}
+								initialDetailsOpen={deepLinkCoffeeId === (coffee as unknown as { id: number }).id}
 							/>
 						{/each}
 

@@ -28,6 +28,7 @@
 				{coffee}
 				{parseTastingNotes}
 				compact={true}
+				showCatalogLink={true}
 				highlighted={meta?.highlight}
 				annotation={meta?.annotation ?? ''}
 			/>
@@ -42,6 +43,7 @@
 				{coffee}
 				{parseTastingNotes}
 				compact={true}
+				showCatalogLink={true}
 				highlighted={true}
 				annotation={meta?.annotation ?? ''}
 			/>
@@ -56,6 +58,7 @@
 				{coffee}
 				{parseTastingNotes}
 				compact={true}
+				showCatalogLink={true}
 				highlighted={meta?.highlight}
 				annotation={meta?.annotation ?? ''}
 			/>

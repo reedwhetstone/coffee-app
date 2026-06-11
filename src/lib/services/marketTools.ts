@@ -315,8 +315,12 @@ export async function getSupplierList(
 export const RANK_OBJECTIVES = ['premium', 'value', 'fresh_arrival', 'rare_origin'] as const;
 export type RankObjective = (typeof RANK_OBJECTIVES)[number];
 
+// Includes the full card-rendering fields (cost_lb, price_tiers, link,
+// ai_description, ai_tasting_notes, …) because ranked rows stream to the
+// client as CoffeeCard canvas blocks; the model sees a compacted view via
+// the tool's toModelOutput.
 const RANK_COLUMNS =
-	'id, name, source, country, region, processing, processing_base_method, grade, cultivar_detail, description_short, price_per_lb, score_value, stocked, stocked_date, arrival_date, wholesale, purveyor_score, purveyor_score_tier, purveyor_score_confidence, purveyor_score_factors, purveyor_score_version';
+	'id, name, source, country, region, continent, processing, processing_base_method, fermentation_type, drying_method, grade, cultivar_detail, type, description_short, ai_description, ai_tasting_notes, link, price_per_lb, cost_lb, price_tiers, score_value, stocked, stocked_date, arrival_date, wholesale, purveyor_score, purveyor_score_tier, purveyor_score_confidence, purveyor_score_factors, purveyor_score_version';
 const RANK_CANDIDATE_POOL = 500;
 const DEFAULT_RANK_LIMIT = 8;
 const MAX_RANK_LIMIT = 15;

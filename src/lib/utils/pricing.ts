@@ -80,7 +80,9 @@ export function parsePriceTiers(raw: Json | null | undefined): PriceTier[] | nul
  * Get the display price for a coffee (the base $/lb shown on cards).
  * Uses `cost_lb` as the canonical display value. This is always populated
  * with the lowest-tier $/lb by the scraper.
- * Falls back to the first tier's price if `cost_lb` is null but tiers exist.
+ * Falls back to the first tier's price if `cost_lb` is null but tiers exist,
+ * then to the canonical `price_per_lb` so partial rows (e.g. tool outputs)
+ * still show a price instead of "Price unavailable".
  */
 export function getDisplayPrice(coffee: PriceableCoffee): number | null {
 	if (coffee.cost_lb != null) return coffee.cost_lb;
@@ -88,7 +90,7 @@ export function getDisplayPrice(coffee: PriceableCoffee): number | null {
 	const tiers = parsePriceTiers(coffee.price_tiers);
 	if (tiers && tiers.length > 0) return tiers[0].price;
 
-	return null;
+	return coffee.price_per_lb ?? null;
 }
 
 /**
