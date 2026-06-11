@@ -10,14 +10,9 @@ import {
 	type CatalogItem,
 	type SimilarBean
 } from '@purveyors/cli/catalog';
-import {
-	listInventory,
-	addInventory as _addInventory,
-	updateInventory as _updateInventory
-} from '@purveyors/cli/inventory';
-import { listRoasts, createRoast as _createRoast, type RoastProfile } from '@purveyors/cli/roast';
+import { listInventory } from '@purveyors/cli/inventory';
+import { listRoasts, type RoastProfile } from '@purveyors/cli/roast';
 import { getTastingNotes, getTastingNotesSchema } from '@purveyors/cli/tasting';
-import { recordSale as _recordSale } from '@purveyors/cli/sales';
 import {
 	CATALOG_FACET_FIELDS,
 	RANK_OBJECTIVES,
@@ -507,7 +502,7 @@ export function createChatTools(
 
 		supplier_list: tool({
 			description:
-				'List the supplier universe with aggregate signals per supplier: listing counts, price range, average Purveyor Score, average supplier cup score, and top origin countries. Use this to ground any supplier question ("who carries X", "best supplier for Y") before deeper queries.',
+				'List suppliers with CLI-owned aggregate signals per returned supplier: listing counts, price range, average Purveyor Score, and top origin countries. Use returned_suppliers, rows_examined, truncation, and caveats to describe the returned supplier slice for broad supplier questions.',
 			inputSchema: z.object({
 				stocked_only: z
 					.boolean()
