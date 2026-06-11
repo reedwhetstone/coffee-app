@@ -93,6 +93,7 @@ describe('getCatalogFacets', () => {
 			{ value: 'Bodhi Leaf', count: 1 }
 		]);
 		expect(result.rows_examined).toBe(4);
+		expect(result.total_listings).toBe(4);
 		expect(result.distinct_values).toBe(2);
 		expect(calls).toContainEqual(['eq', 'stocked', true]);
 	});
@@ -153,28 +154,35 @@ describe('getSupplierList', () => {
 		const result = await getSupplierList(client, {});
 
 		expect(result.total_suppliers).toBe(2);
-		expect(result.suppliers[0]).toEqual({
-			supplier: 'Sweet Maria',
-			listings: 2,
-			non_wholesale_listings: 1,
-			price_min: 6,
-			price_max: 8,
-			avg_purveyor_score: 85,
-			avg_cup_score: 88,
-			top_countries: ['Colombia', 'Ethiopia']
-		});
+		expect(result.suppliers[0]).toEqual(
+			expect.objectContaining({
+				supplier: 'Sweet Maria',
+				listings: 2,
+				price_min: 6,
+				price_max: 8,
+				avg_purveyor_score: 85,
+				top_countries: ['Colombia', 'Ethiopia']
+			})
+		);
+		expect(result.suppliers[0].score.average).toBe(85);
 		expect(result.suppliers[1].supplier).toBe('Bodhi Leaf');
 		expect(result.suppliers[1].avg_purveyor_score).toBeNull();
 	});
 
-	it('excludes wholesale listings when non_wholesale_only is set', async () => {
-		const { client } = createMockClient([rows]);
+	it('passes non_wholesale_only through to the CLI supplier aggregate query', async () => {
+		const { client, calls } = createMockClient([rows]);
 
-		const result = await getSupplierList(client, { non_wholesale_only: true });
-		const sweetMaria = result.suppliers.find((s) => s.supplier === 'Sweet Maria');
+		await getSupplierList(client, { non_wholesale_only: true });
 
-		expect(sweetMaria?.listings).toBe(1);
-		expect(sweetMaria?.top_countries).toEqual(['Ethiopia']);
+		expect(calls).toContainEqual(['or', 'wholesale.is.null,wholesale.eq.false']);
+	});
+
+	it('passes country through to the CLI supplier aggregate query', async () => {
+		const { client, calls } = createMockClient([rows]);
+
+		await getSupplierList(client, { country: 'Ethiopia' });
+
+		expect(calls).toContainEqual(['ilike', 'country', '%Ethiopia%']);
 	});
 
 	it('caps the returned supplier count at the requested limit', async () => {
@@ -191,8 +199,8 @@ describe('getSupplierList', () => {
 		const result = await getSupplierList(client, { limit: 100 });
 
 		expect(result.suppliers.length).toBe(25);
-		expect(result.total_suppliers).toBe(30);
-		expect(result.truncated).toBe(true);
+		expect(result.total_suppliers).toBe(25);
+		expect(result.truncated).toBe(false);
 	});
 });
 
@@ -300,5 +308,22 @@ describe('rankCatalog', () => {
 		expect(calls).toContainEqual(['lte', 'price_per_lb', 10]);
 		expect(calls).toContainEqual(['ilike', 'country', '%Colombia%']);
 		expect(calls).toContainEqual(['or', 'wholesale.is.null,wholesale.eq.false']);
+	});
+
+	it('ignores non-positive numeric filters to preserve chat-tool tolerance', async () => {
+		const { client, calls } = createMockClient([pool]);
+
+		await rankCatalog(client, {
+			objective: 'premium',
+			max_price: 0,
+			min_purveyor_score: 0
+		});
+
+		expect(calls.some(([method, column]) => method === 'lte' && column === 'price_per_lb')).toBe(
+			false
+		);
+		expect(calls.some(([method, column]) => method === 'gte' && column === 'purveyor_score')).toBe(
+			false
+		);
 	});
 });

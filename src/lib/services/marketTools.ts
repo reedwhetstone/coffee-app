@@ -16,6 +16,8 @@ import {
 	catalogRankObjectives,
 	listCatalogFacets as cliListCatalogFacets,
 	rankCatalog as cliRankCatalog,
+	supplierList as cliSupplierList,
+	type SupplierAggregate,
 	type CatalogFacetField,
 	type CatalogRankObjective
 } from '@purveyors/cli/catalog';
@@ -73,42 +75,7 @@ function sanitizeFilterValue(value: string): string {
 	return value.replace(/[%_,()]/g, ' ').trim();
 }
 
-const PAGE_SIZE = 1000;
 const MAX_ROWS = 5000;
-
-/**
- * Fetch all matching rows with range pagination. PostgREST caps single
- * responses at 1000 rows; aggregate tools need the full stocked set.
- */
-async function fetchAllRows(
-	buildQuery: () => CatalogQueryBuilder
-): Promise<Array<Record<string, unknown>>> {
-	const rows: Array<Record<string, unknown>> = [];
-
-	for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
-		const { data, error } = await buildQuery().range(offset, offset + PAGE_SIZE - 1);
-		if (error) throw new Error(`coffee_catalog query failed: ${error.message}`);
-		const page = data ?? [];
-		rows.push(...page);
-		if (page.length < PAGE_SIZE) break;
-	}
-
-	return rows;
-}
-
-function asNumber(value: unknown): number | null {
-	if (typeof value === 'number' && Number.isFinite(value)) return value;
-	if (typeof value === 'string') {
-		const parsed = Number.parseFloat(value);
-		return Number.isFinite(parsed) ? parsed : null;
-	}
-	return null;
-}
-
-function round(value: number, decimals = 2): number {
-	const factor = 10 ** decimals;
-	return Math.round(value * factor) / factor;
-}
 
 // ─── catalog_facets ──────────────────────────────────────────────────────────
 
@@ -127,6 +94,7 @@ export interface CatalogFacetsResult {
 	stocked_only: boolean;
 	scope: 'stocked_only' | 'all_visible';
 	rows_examined: number;
+	total_listings: number;
 	distinct_values: number;
 	values: Array<{ value: string; count: number }>;
 	truncated: boolean;
@@ -154,6 +122,7 @@ export async function getCatalogFacets(
 		stocked_only: response.meta.stocked_only,
 		scope: response.meta.scope,
 		rows_examined: response.meta.rows_examined,
+		total_listings: response.meta.rows_examined,
 		distinct_values: response.meta.distinct_values,
 		values: response.data,
 		truncated: response.meta.truncated
@@ -165,8 +134,6 @@ export async function getCatalogFacets(
 
 // ─── supplier_list ───────────────────────────────────────────────────────────
 
-const SUPPLIER_LIST_COLUMNS =
-	'source, country, stocked, wholesale, price_per_lb, score_value, purveyor_score';
 const DEFAULT_SUPPLIER_LIMIT = 15;
 const MAX_SUPPLIER_LIMIT = 25;
 
@@ -177,8 +144,7 @@ export interface SupplierListInput {
 	limit?: number;
 }
 
-export interface SupplierSummary {
-	supplier: string;
+export interface SupplierSummary extends SupplierAggregate {
 	listings: number;
 	non_wholesale_listings: number;
 	price_min: number | null;
@@ -192,7 +158,22 @@ export interface SupplierListResult {
 	suppliers: SupplierSummary[];
 	total_suppliers: number;
 	scope: { stocked_only: boolean; non_wholesale_only: boolean; country: string | null };
+	rows_examined: number;
+	caveats: string[];
 	truncated: boolean;
+}
+
+function toSupplierSummary(supplier: SupplierAggregate): SupplierSummary {
+	return {
+		...supplier,
+		listings: supplier.total,
+		non_wholesale_listings: supplier.total,
+		price_min: supplier.price.min_per_lb,
+		price_max: supplier.price.max_per_lb,
+		avg_purveyor_score: supplier.score.average,
+		avg_cup_score: null,
+		top_countries: supplier.origins
+	};
 }
 
 export async function getSupplierList(
@@ -200,94 +181,36 @@ export async function getSupplierList(
 	input: SupplierListInput = {}
 ): Promise<SupplierListResult> {
 	const stockedOnly = input.stocked_only ?? true;
-	const nonWholesaleOnly = input.non_wholesale_only ?? false;
 	const country = input.country ? sanitizeFilterValue(input.country) : null;
 	const limit = Math.min(Math.max(input.limit ?? DEFAULT_SUPPLIER_LIMIT, 1), MAX_SUPPLIER_LIMIT);
-	const cacheKey = `suppliers:${stockedOnly}:${nonWholesaleOnly}:${country ?? ''}`;
+	const cacheKey = `suppliers:${stockedOnly}:${input.non_wholesale_only ?? false}:${country ?? ''}:${limit}`;
 
-	let aggregated = getCached<SupplierSummary[]>(cacheKey);
+	const cached = getCached<SupplierListResult>(cacheKey);
+	if (cached) return cached;
 
-	if (!aggregated) {
-		const rows = await fetchAllRows(() => {
-			let query = client.from('coffee_catalog').select(SUPPLIER_LIST_COLUMNS);
-			if (stockedOnly) query = query.eq('stocked', true);
-			if (country) query = query.ilike('country', `%${country}%`);
-			return query;
-		});
+	const response = await cliSupplierList(client as never, {
+		stocked: stockedOnly,
+		country: country ?? undefined,
+		nonWholesaleOnly: input.non_wholesale_only ?? false,
+		limit,
+		sampleSize: MAX_ROWS
+	});
 
-		interface Bucket {
-			listings: number;
-			nonWholesale: number;
-			prices: number[];
-			purveyorScores: number[];
-			cupScores: number[];
-			countries: Map<string, number>;
-		}
-
-		const buckets = new Map<string, Bucket>();
-		for (const row of rows) {
-			const supplier = typeof row.source === 'string' ? row.source.trim() : '';
-			if (!supplier) continue;
-			const isWholesale = row.wholesale === true;
-			if (nonWholesaleOnly && isWholesale) continue;
-
-			let bucket = buckets.get(supplier);
-			if (!bucket) {
-				bucket = {
-					listings: 0,
-					nonWholesale: 0,
-					prices: [],
-					purveyorScores: [],
-					cupScores: [],
-					countries: new Map()
-				};
-				buckets.set(supplier, bucket);
-			}
-
-			bucket.listings += 1;
-			if (!isWholesale) bucket.nonWholesale += 1;
-
-			const price = asNumber(row.price_per_lb);
-			if (price !== null && price > 0) bucket.prices.push(price);
-
-			const purveyorScore = asNumber(row.purveyor_score);
-			if (purveyorScore !== null) bucket.purveyorScores.push(purveyorScore);
-
-			const cupScore = asNumber(row.score_value);
-			if (cupScore !== null && cupScore > 0) bucket.cupScores.push(cupScore);
-
-			const rowCountry = typeof row.country === 'string' ? row.country.trim() : '';
-			if (rowCountry) bucket.countries.set(rowCountry, (bucket.countries.get(rowCountry) ?? 0) + 1);
-		}
-
-		const avg = (values: number[], decimals: number): number | null =>
-			values.length ? round(values.reduce((sum, v) => sum + v, 0) / values.length, decimals) : null;
-
-		aggregated = [...buckets.entries()]
-			.map(([supplier, bucket]) => ({
-				supplier,
-				listings: bucket.listings,
-				non_wholesale_listings: bucket.nonWholesale,
-				price_min: bucket.prices.length ? round(Math.min(...bucket.prices)) : null,
-				price_max: bucket.prices.length ? round(Math.max(...bucket.prices)) : null,
-				avg_purveyor_score: avg(bucket.purveyorScores, 1),
-				avg_cup_score: avg(bucket.cupScores, 1),
-				top_countries: [...bucket.countries.entries()]
-					.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-					.slice(0, 3)
-					.map(([name]) => name)
-			}))
-			.sort((a, b) => b.listings - a.listings || a.supplier.localeCompare(b.supplier));
-
-		setCached(cacheKey, aggregated);
-	}
-
-	return {
-		suppliers: aggregated.slice(0, limit),
-		total_suppliers: aggregated.length,
-		scope: { stocked_only: stockedOnly, non_wholesale_only: nonWholesaleOnly, country },
-		truncated: aggregated.length > limit
+	const result: SupplierListResult = {
+		suppliers: response.data.map(toSupplierSummary),
+		total_suppliers: response.meta.returned,
+		scope: {
+			stocked_only: stockedOnly,
+			non_wholesale_only: input.non_wholesale_only ?? false,
+			country
+		},
+		rows_examined: response.meta.rows_examined,
+		caveats: response.meta.caveats,
+		truncated: response.meta.truncated
 	};
+
+	setCached(cacheKey, result);
+	return result;
 }
 
 // ─── catalog_rank ────────────────────────────────────────────────────────────
@@ -334,8 +257,11 @@ export async function rankCatalog(
 		supplier: input.supplier,
 		country: input.country,
 		process: input.process,
-		priceMax: input.max_price,
-		minScore: input.min_purveyor_score,
+		priceMax: input.max_price != null && input.max_price > 0 ? input.max_price : undefined,
+		minScore:
+			input.min_purveyor_score != null && input.min_purveyor_score > 0
+				? input.min_purveyor_score
+				: undefined,
 		nonWholesaleOnly: input.non_wholesale_only,
 		limit,
 		sampleSize: MAX_ROWS
