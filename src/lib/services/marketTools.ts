@@ -76,6 +76,42 @@ function sanitizeFilterValue(value: string): string {
 }
 
 const MAX_ROWS = 5000;
+const PAGE_SIZE = 1000;
+
+/**
+ * Fetch all matching rows with range pagination. PostgREST caps single
+ * responses at 1000 rows; legacy compatibility fields still need the sampled
+ * row-level values that are not exposed by the CLI supplier aggregate yet.
+ */
+async function fetchAllRows(
+	buildQuery: () => CatalogQueryBuilder
+): Promise<Array<Record<string, unknown>>> {
+	const rows: Array<Record<string, unknown>> = [];
+
+	for (let offset = 0; offset < MAX_ROWS; offset += PAGE_SIZE) {
+		const { data, error } = await buildQuery().range(offset, offset + PAGE_SIZE - 1);
+		if (error) throw new Error(`coffee_catalog query failed: ${error.message}`);
+		const page = data ?? [];
+		rows.push(...page);
+		if (page.length < PAGE_SIZE) break;
+	}
+
+	return rows;
+}
+
+function asNumber(value: unknown): number | null {
+	if (typeof value === 'number' && Number.isFinite(value)) return value;
+	if (typeof value === 'string') {
+		const parsed = Number.parseFloat(value);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+}
+
+function round(value: number, decimals = 2): number {
+	const factor = 10 ** decimals;
+	return Math.round(value * factor) / factor;
+}
 
 // ─── catalog_facets ──────────────────────────────────────────────────────────
 
@@ -136,6 +172,7 @@ export async function getCatalogFacets(
 
 const DEFAULT_SUPPLIER_LIMIT = 15;
 const MAX_SUPPLIER_LIMIT = 25;
+const SUPPLIER_LEGACY_COLUMNS = 'source, country, stocked, wholesale, score_value';
 
 export interface SupplierListInput {
 	stocked_only?: boolean;
@@ -163,16 +200,80 @@ export interface SupplierListResult {
 	truncated: boolean;
 }
 
-function toSupplierSummary(supplier: SupplierAggregate): SupplierSummary {
+type SupplierLegacySummary = Pick<
+	SupplierSummary,
+	'non_wholesale_listings' | 'avg_cup_score' | 'top_countries'
+>;
+
+async function getSupplierLegacySummaries(
+	client: MarketToolsClient,
+	input: { stockedOnly: boolean; nonWholesaleOnly: boolean; country: string | null }
+): Promise<Map<string, SupplierLegacySummary>> {
+	const rows = await fetchAllRows(() => {
+		let query = client.from('coffee_catalog').select(SUPPLIER_LEGACY_COLUMNS);
+		if (input.stockedOnly) query = query.eq('stocked', true);
+		if (input.country) query = query.ilike('country', `%${input.country}%`);
+		if (input.nonWholesaleOnly) query = query.or('wholesale.is.null,wholesale.eq.false');
+		return query;
+	});
+
+	interface Bucket {
+		nonWholesale: number;
+		cupScores: number[];
+		countries: Map<string, number>;
+	}
+
+	const buckets = new Map<string, Bucket>();
+	for (const row of rows) {
+		const supplier = typeof row.source === 'string' ? row.source.trim() : '';
+		if (!supplier) continue;
+
+		let bucket = buckets.get(supplier);
+		if (!bucket) {
+			bucket = { nonWholesale: 0, cupScores: [], countries: new Map() };
+			buckets.set(supplier, bucket);
+		}
+
+		if (row.wholesale !== true) bucket.nonWholesale += 1;
+
+		const cupScore = asNumber(row.score_value);
+		if (cupScore !== null && cupScore > 0) bucket.cupScores.push(cupScore);
+
+		const rowCountry = typeof row.country === 'string' ? row.country.trim() : '';
+		if (rowCountry) bucket.countries.set(rowCountry, (bucket.countries.get(rowCountry) ?? 0) + 1);
+	}
+
+	const avg = (values: number[], decimals: number): number | null =>
+		values.length ? round(values.reduce((sum, v) => sum + v, 0) / values.length, decimals) : null;
+
+	return new Map(
+		[...buckets.entries()].map(([supplier, bucket]) => [
+			supplier,
+			{
+				non_wholesale_listings: bucket.nonWholesale,
+				avg_cup_score: avg(bucket.cupScores, 1),
+				top_countries: [...bucket.countries.entries()]
+					.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+					.slice(0, 3)
+					.map(([name]) => name)
+			}
+		])
+	);
+}
+
+function toSupplierSummary(
+	supplier: SupplierAggregate,
+	legacy?: SupplierLegacySummary
+): SupplierSummary {
 	return {
 		...supplier,
 		listings: supplier.total,
-		non_wholesale_listings: supplier.total,
+		non_wholesale_listings: legacy?.non_wholesale_listings ?? supplier.total,
 		price_min: supplier.price.min_per_lb,
 		price_max: supplier.price.max_per_lb,
 		avg_purveyor_score: supplier.score.average,
-		avg_cup_score: null,
-		top_countries: supplier.origins
+		avg_cup_score: legacy?.avg_cup_score ?? null,
+		top_countries: legacy?.top_countries.length ? legacy.top_countries : supplier.origins
 	};
 }
 
@@ -195,9 +296,16 @@ export async function getSupplierList(
 		limit,
 		sampleSize: MAX_ROWS
 	});
+	const legacySummaries = await getSupplierLegacySummaries(client, {
+		stockedOnly,
+		nonWholesaleOnly: input.non_wholesale_only ?? false,
+		country
+	});
 
 	const result: SupplierListResult = {
-		suppliers: response.data.map(toSupplierSummary),
+		suppliers: response.data.map((supplier) =>
+			toSupplierSummary(supplier, legacySummaries.get(supplier.supplier))
+		),
 		total_suppliers: response.meta.returned,
 		scope: {
 			stocked_only: stockedOnly,

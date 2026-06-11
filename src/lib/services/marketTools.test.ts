@@ -158,9 +158,11 @@ describe('getSupplierList', () => {
 			expect.objectContaining({
 				supplier: 'Sweet Maria',
 				listings: 2,
+				non_wholesale_listings: 1,
 				price_min: 6,
 				price_max: 8,
 				avg_purveyor_score: 85,
+				avg_cup_score: 88,
 				top_countries: ['Colombia', 'Ethiopia']
 			})
 		);
