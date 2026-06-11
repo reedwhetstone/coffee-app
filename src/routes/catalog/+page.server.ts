@@ -23,6 +23,13 @@ import { getBriefMatchSummaries, type BriefMatchSummary } from '$lib/server/brie
 // Watchlist-only view is served as a single page; tracked lists are small.
 const TRACKED_VIEW_LIMIT = 200;
 
+function parseCatalogDeepLinkCoffeeId(value: string | null): number | null {
+	if (!value || !/^\d+$/.test(value)) return null;
+
+	const parsed = Number.parseInt(value, 10);
+	return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 function buildPagination(state: CatalogUrlState, total: number) {
 	const totalPages = total > 0 ? Math.ceil(total / state.pagination.limit) : 0;
 	return {
@@ -76,6 +83,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		wholesaleOnly: visibility.wholesaleOnly
 	};
 	const searchState = catalogUrlStateToSearchState(initialCatalogState);
+	const deepLinkCoffeeId = parseCatalogDeepLinkCoffeeId(url.searchParams.get('coffee'));
 	let catalogData: Awaited<ReturnType<typeof searchCatalog>>['data'] = [];
 	let count: number | null = 0;
 	let catalogSchemaUnavailable: { message: string } | null = null;
@@ -96,17 +104,38 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	try {
 		if (!trackedOnly || trackedLotIds.length > 0) {
-			const catalogResult = await searchCatalog(locals.supabase, {
+			const baseCatalogSearchOptions = {
 				stockedOnly: !trackedOnly,
 				publicOnly: visibility.publicOnly,
 				showWholesale: trackedOnly ? true : visibility.showWholesale,
 				wholesaleOnly: trackedOnly ? false : visibility.wholesaleOnly,
-				fields: 'resource',
+				fields: 'resource' as const
+			};
+			const catalogResult = await searchCatalog(locals.supabase, {
+				...baseCatalogSearchOptions,
 				...searchState,
 				...(trackedOnly ? { coffeeIds: trackedLotIds, limit: TRACKED_VIEW_LIMIT, offset: 0 } : {})
 			});
 			catalogData = catalogResult.data;
 			count = catalogResult.count;
+
+			const shouldFetchDeepLinkCoffee =
+				deepLinkCoffeeId !== null &&
+				!catalogData.some((coffee) => coffee.id === deepLinkCoffeeId) &&
+				(!trackedOnly || trackedLotIds.includes(deepLinkCoffeeId));
+
+			if (shouldFetchDeepLinkCoffee) {
+				const deepLinkResult = await searchCatalog(locals.supabase, {
+					...baseCatalogSearchOptions,
+					coffeeIds: [deepLinkCoffeeId],
+					limit: 1,
+					offset: 0
+				});
+
+				if (deepLinkResult.data.length > 0) {
+					catalogData = [...deepLinkResult.data, ...catalogData];
+				}
+			}
 		}
 	} catch (error) {
 		if (!(error instanceof CatalogSchemaUnavailableError)) {
