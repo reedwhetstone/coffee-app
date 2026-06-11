@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('$env/static/private', () => ({ OPENROUTER_API_KEY: 'test-key' }));
 vi.mock('$lib/server/auth', () => ({ requireChatAccess: vi.fn() }));
 
-import { _workspaceSummaryMessageText } from './+server';
+import { _clampWorkspaceContextSummary, _workspaceSummaryMessageText } from './+server';
 
 describe('workspace summary message text', () => {
 	it('prefers full text parts over truncated duplicate content', () => {
@@ -24,5 +24,17 @@ describe('workspace summary message text', () => {
 				parts: [{ type: 'tool-call', text: 'ignore me' }]
 			})
 		).toBe('fallback content');
+	});
+});
+
+describe('workspace context summary clamping', () => {
+	it('caps provider output at the database context_summary limit', () => {
+		expect(_clampWorkspaceContextSummary('x'.repeat(2_001))).toHaveLength(2_000);
+	});
+
+	it('leaves summaries within the limit unchanged', () => {
+		const summary = 'short summary';
+
+		expect(_clampWorkspaceContextSummary(summary)).toBe(summary);
 	});
 });

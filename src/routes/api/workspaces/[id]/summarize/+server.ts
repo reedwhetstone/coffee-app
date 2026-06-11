@@ -3,6 +3,8 @@ import { requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import { OPENROUTER_API_KEY } from '$env/static/private';
 
+const WORKSPACE_SUMMARY_MAX_LENGTH = 2000;
+
 type MessagePart = {
 	type?: unknown;
 	text?: unknown;
@@ -27,6 +29,12 @@ export function _workspaceSummaryMessageText(message: {
 	parts?: unknown;
 }): string {
 	return textFromParts(message.parts) || message.content || '';
+}
+
+export function _clampWorkspaceContextSummary(summary: string): string {
+	return summary.length > WORKSPACE_SUMMARY_MAX_LENGTH
+		? summary.slice(0, WORKSPACE_SUMMARY_MAX_LENGTH)
+		: summary;
 }
 
 // POST /api/workspaces/[id]/summarize - Trigger context compaction
@@ -104,7 +112,7 @@ Keep only what's relevant for continuing the conversation. Drop pleasantries and
 		}
 
 		const result = await response.json();
-		const summary = result.choices?.[0]?.message?.content || '';
+		const summary = _clampWorkspaceContextSummary(result.choices?.[0]?.message?.content || '');
 
 		// Save summary to workspace
 		const { error: updateError } = await event.locals.supabase
