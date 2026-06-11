@@ -1,12 +1,64 @@
 import { json } from '@sveltejs/kit';
-import { requireMemberRole } from '$lib/server/auth';
+import { requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
 import { OPENROUTER_API_KEY } from '$env/static/private';
+
+const WORKSPACE_SUMMARY_MAX_LENGTH = 2000;
+const WORKSPACE_SUMMARY_COOLDOWN_MS = 5 * 60 * 1000;
+const workspaceSummaryAttempts = new Map<string, number>();
+
+type MessagePart = {
+	type?: unknown;
+	text?: unknown;
+};
+
+function textFromParts(parts: unknown): string {
+	if (!Array.isArray(parts)) return '';
+
+	return parts
+		.map((part) => {
+			const messagePart = part as MessagePart;
+			return messagePart.type === 'text' && typeof messagePart.text === 'string'
+				? messagePart.text
+				: '';
+		})
+		.filter(Boolean)
+		.join('\n');
+}
+
+export function _workspaceSummaryMessageText(message: {
+	content: string | null;
+	parts?: unknown;
+}): string {
+	return textFromParts(message.parts) || message.content || '';
+}
+
+export function _clampWorkspaceContextSummary(summary: string): string {
+	return summary.length > WORKSPACE_SUMMARY_MAX_LENGTH
+		? summary.slice(0, WORKSPACE_SUMMARY_MAX_LENGTH)
+		: summary;
+}
+
+export function _workspaceSummaryCooldownRemainingMs(
+	workspaceId: string,
+	now = Date.now()
+): number {
+	const lastAttemptAt = workspaceSummaryAttempts.get(workspaceId);
+	if (!lastAttemptAt) return 0;
+	return Math.max(0, WORKSPACE_SUMMARY_COOLDOWN_MS - (now - lastAttemptAt));
+}
+
+function reserveWorkspaceSummaryAttempt(workspaceId: string, now = Date.now()): number {
+	const remainingMs = _workspaceSummaryCooldownRemainingMs(workspaceId, now);
+	if (remainingMs > 0) return remainingMs;
+	workspaceSummaryAttempts.set(workspaceId, now);
+	return 0;
+}
 
 // POST /api/workspaces/[id]/summarize - Trigger context compaction
 export const POST: RequestHandler = async (event) => {
 	try {
-		const { user } = await requireMemberRole(event);
+		const { user } = await requireChatAccess(event);
 		const workspaceId = event.params.id;
 
 		// Verify workspace ownership and get current summary
@@ -21,24 +73,38 @@ export const POST: RequestHandler = async (event) => {
 			return json({ error: 'Workspace not found' }, { status: 404 });
 		}
 
-		// Fetch recent messages
+		const cooldownRemainingMs = reserveWorkspaceSummaryAttempt(workspaceId);
+		if (cooldownRemainingMs > 0) {
+			return json({
+				summary: workspace.context_summary,
+				skipped: true,
+				retry_after_ms: cooldownRemainingMs
+			});
+		}
+
+		// Fetch the most recent messages, then summarize them chronologically.
 		const { data: messages, error: msgError } = await event.locals.supabase
 			.from('workspace_messages')
-			.select('role, content, created_at')
+			.select('role, content, parts, created_at')
 			.eq('workspace_id', workspaceId)
-			.order('created_at', { ascending: true })
+			.order('created_at', { ascending: false })
 			.limit(30);
 
 		if (msgError) {
+			workspaceSummaryAttempts.delete(workspaceId);
 			return json({ error: msgError.message }, { status: 500 });
 		}
 
 		if (!messages || messages.length < 4) {
+			workspaceSummaryAttempts.delete(workspaceId);
 			return json({ summary: workspace.context_summary, skipped: true });
 		}
 
 		// Build conversation text for summarization
-		const conversationText = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
+		const recentMessages = [...messages].reverse();
+		const conversationText = recentMessages
+			.map((m) => `${m.role}: ${_workspaceSummaryMessageText(m)}`)
+			.join('\n');
 
 		const existingSummary = workspace.context_summary || '';
 
@@ -70,12 +136,13 @@ Keep only what's relevant for continuing the conversation. Drop pleasantries and
 		});
 
 		if (!response.ok) {
+			workspaceSummaryAttempts.delete(workspaceId);
 			const err = await response.text();
 			return json({ error: `OpenRouter error: ${err}` }, { status: 502 });
 		}
 
 		const result = await response.json();
-		const summary = result.choices?.[0]?.message?.content || '';
+		const summary = _clampWorkspaceContextSummary(result.choices?.[0]?.message?.content || '');
 
 		// Save summary to workspace
 		const { error: updateError } = await event.locals.supabase
@@ -84,6 +151,7 @@ Keep only what's relevant for continuing the conversation. Drop pleasantries and
 			.eq('id', workspaceId);
 
 		if (updateError) {
+			workspaceSummaryAttempts.delete(workspaceId);
 			return json({ error: updateError.message }, { status: 500 });
 		}
 

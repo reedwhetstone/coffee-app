@@ -1339,49 +1339,49 @@ const docsPages: DocsPage[] = [
 						[
 							'/api/chat',
 							'POST',
-							'Member session',
+							'Chat access session',
 							'Internal product route',
 							'Streams AI chat responses with workspace context and tool execution.'
 						],
 						[
 							'/api/chat/execute-action',
 							'POST',
-							'Member session',
+							'Chat access session',
 							'Internal product route',
-							'Executes a constrained set of proposal-card actions: add_bean_to_inventory, update_bean, create_roast_session, update_roast_notes, and record_sale.'
+							'Executes a constrained set of proposal-card actions. Parchment users can add/update beans; Mallard-only roast, tasting, and sales actions require Mallard Studio membership.'
 						],
 						[
 							'/api/workspaces',
 							'GET POST',
-							'Member session',
+							'Chat access session',
 							'Internal product route',
-							'Lists or creates workspaces. New workspaces default to title "New Workspace" and type "general" when omitted.'
+							'Returns the user\'s single chat workspace or creates one if none exists. New workspaces default to title "Coffee" and type "general" when omitted.'
 						],
 						[
 							'/api/workspaces/[id]',
-							'GET PUT DELETE',
-							'Member session + ownership',
+							'GET PUT',
+							'Chat access session + ownership',
 							'Internal product route',
-							'GET returns workspace details plus up to 50 messages and updates last_accessed_at.'
+							'GET returns workspace details plus up to 50 messages and updates last_accessed_at. PUT updates title/type metadata. DELETE is disabled and returns 405 in the single-chat model.'
 						],
 						[
 							'/api/workspaces/[id]/messages',
 							'POST DELETE',
-							'Member session + ownership',
+							'Chat access session + ownership',
 							'Internal product route',
 							'POST accepts one message or an array and persists parts plus canvas mutations.'
 						],
 						[
 							'/api/workspaces/[id]/canvas',
 							'POST PUT',
-							'Member session + ownership',
+							'Chat access session + ownership',
 							'Internal product route',
 							'Persists canvas_state; POST exists for sendBeacon compatibility.'
 						],
 						[
 							'/api/workspaces/[id]/summarize',
 							'POST',
-							'Member session + ownership',
+							'Chat access session + ownership',
 							'Internal product route',
 							'Compacts recent conversation history into context_summary using the model backend. Returns skipped: true when there are fewer than four saved messages.'
 						]
@@ -2101,7 +2101,7 @@ const docsPages: DocsPage[] = [
 					'/api-dashboard/keys/generate returns the plaintext apiKey only at creation time. Plan Console UX and support docs around that one-time reveal.',
 					'Cookies only matter when they resolve to a valid first-party session. A stray Cookie header is not part of the public API contract.',
 					'/api/catalog-api is a deprecated API-key-only alias. It should not be treated as an anonymous or session-friendly discovery route.',
-					'Workspace and chat routes mostly use member-role enforcement, so 403 is often the expected failure for logged-in non-members.',
+					'Workspace and chat routes require chat access, which can come from Mallard Studio membership or Parchment Intelligence entitlement; logged-in users with neither should expect a 403.',
 					'AI-backed helpers can return upstream rate-limit or provider errors that are operational rather than domain-model failures.'
 				]
 			},

@@ -58,7 +58,7 @@ Purveyors ships two API layers:
 
 2. **Platform app API** (`/api/*`)
    - Powers the first-party web app, Console, billing, chat, and admin workflows
-   - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require the member role
+   - Mixed auth model depending on route: some catalog adapters allow anonymous or API-key access, most product routes require session auth, and chat/workspace routes require either Mallard Studio membership or Parchment Intelligence access
    - `/api/catalog-api` is a deprecated API-key-only alias to `/v1/catalog` with `Deprecation`, `Link`, and `Sunset: Dec 31 2026` headers
    - `/api-dashboard/keys/generate` and `/api-dashboard/keys/deactivate` are session-authenticated Console control-plane routes, not public API contracts
    - `/api/docs` and `/api-dashboard/docs` are legacy docs entry points that redirect to `/docs/api/overview`
@@ -160,7 +160,7 @@ Many `/api/*` routes are important, but they are platform routes, not broad publ
 - `/api/catalog` is a legacy app adapter, not the canonical public contract
 - `/api/catalog/filters` is a public-facing UI helper, not an integration endpoint
 - `/api/beans` GET supports share-token reads, while writes require session auth
-- `/api/chat` and `/api/workspaces` require a member session
+- `/api/chat` and `/api/workspaces` require a session with Mallard Studio membership or Parchment Intelligence access
 - `/api/stripe/*` and `/api/admin/*` are operational routes, not external product APIs
 
 ### Prefer shared domain logic over duplicate behavior

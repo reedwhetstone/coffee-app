@@ -213,8 +213,9 @@
 		}
 
 		return {
+			id: ws.id,
 			type: ws.type,
-			summary: includeWorkspaceMemory ? ws.context_summary || undefined : undefined,
+			includeMemory: includeWorkspaceMemory,
 			canvasDescription: includeCanvasContext ? canvasDescription || undefined : undefined
 		};
 	}
@@ -264,7 +265,7 @@
 
 	// ─── Workspace lifecycle ──────────────────────────────────────────────────
 	onMount(() => {
-		if (!canUseMallardWorkspaces) return;
+		if (!canUseChat) return;
 
 		// Capture workspace ID locally to ensure it's available in cleanup
 		// even if store state hasn't synchronized yet
