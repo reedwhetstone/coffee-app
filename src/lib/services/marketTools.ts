@@ -237,7 +237,11 @@ export async function getSupplierList(
 		limit,
 		sampleSize: MAX_ROWS
 	});
-	const totalSuppliers = await countMatchingSuppliers(client, { stockedOnly, nonWholesaleOnly, country });
+	const totalSuppliers = await countMatchingSuppliers(client, {
+		stockedOnly,
+		nonWholesaleOnly,
+		country
+	});
 
 	const reachedRequestedLimit = totalSuppliers > response.data.length;
 	const result: SupplierListResult = {
