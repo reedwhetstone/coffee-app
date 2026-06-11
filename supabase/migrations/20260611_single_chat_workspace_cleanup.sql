@@ -10,6 +10,13 @@
 --   2. Most recent activity across last_accessed_at, latest message, created_at.
 --   3. Newest created_at / id as deterministic final tie-breakers.
 --
+-- Deploy order: ship the application code that reads a single workspace before
+-- applying this migration. New code remains compatible with the old multi-row
+-- state, while old code can surface raw unique-constraint errors after this
+-- migration adds workspaces_one_per_user_key. If a duplicate workspace is
+-- inserted mid-migration, the constraint add fails and the transaction rolls
+-- back cleanly; resolve the duplicate and re-run.
+--
 -- Manual preflight, if desired before running migration:
 -- SELECT user_id, count(*) AS workspace_count
 -- FROM public.workspaces
