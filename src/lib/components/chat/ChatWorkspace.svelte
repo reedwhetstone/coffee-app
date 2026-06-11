@@ -213,8 +213,9 @@
 		}
 
 		return {
+			id: ws.id,
 			type: ws.type,
-			summary: includeWorkspaceMemory ? ws.context_summary || undefined : undefined,
+			includeMemory: includeWorkspaceMemory,
 			canvasDescription: includeCanvasContext ? canvasDescription || undefined : undefined
 		};
 	}

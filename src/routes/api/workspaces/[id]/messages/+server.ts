@@ -8,11 +8,13 @@ const MAX_BATCH_MESSAGES = 50;
 const MAX_CONTENT_CHARS = 12000;
 const MAX_PARTS_JSON_CHARS = 200000;
 
+const boundedJsonArraySchema = z.array(z.unknown()).max(100);
+
 const persistedMessageSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	content: z.string().max(MAX_CONTENT_CHARS),
-	parts: z.unknown().optional(),
-	canvas_mutations: z.unknown().optional()
+	parts: boundedJsonArraySchema.optional(),
+	canvas_mutations: boundedJsonArraySchema.optional()
 });
 
 const messageBodySchema = z.union([
@@ -35,7 +37,12 @@ export const POST: RequestHandler = async (event) => {
 	try {
 		const { user } = await requireChatAccess(event);
 		const workspaceId = event.params.id;
-		const body = await event.request.json();
+		const body = await event.request.json().catch(() => null);
+
+		if (!body) {
+			return json({ error: 'Invalid JSON payload' }, { status: 400 });
+		}
+
 		const parsed = messageBodySchema.safeParse(body);
 
 		if (!parsed.success) {

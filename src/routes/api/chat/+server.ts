@@ -140,12 +140,9 @@ function sanitizePromptText(value: string, maxLength?: number): string {
 }
 
 const workspaceContextSchema = z.object({
+	id: z.string().uuid().optional(),
 	type: z.string().max(50).optional(),
-	summary: z
-		.string()
-		.max(2000)
-		.transform((value) => sanitizePromptText(value))
-		.optional(),
+	includeMemory: z.boolean().optional(),
 	canvasDescription: z
 		.string()
 		.max(500)
@@ -154,10 +151,13 @@ const workspaceContextSchema = z.object({
 });
 
 interface WorkspaceContext {
+	id?: string;
 	type?: string;
 	summary?: string;
 	canvasDescription?: string;
 }
+
+type ClientWorkspaceContext = z.infer<typeof workspaceContextSchema>;
 
 // Page context is client-supplied and descriptive only: it tells the model
 // what the user is looking at, never grants access. Tools enforce all
@@ -366,9 +366,8 @@ export const POST: RequestHandler = async (event) => {
 			await event.request.json();
 		const { messages } = body;
 		const workspaceContextParsed = workspaceContextSchema.safeParse(body.workspaceContext);
-		const workspaceContext: WorkspaceContext | undefined = workspaceContextParsed.success
-			? workspaceContextParsed.data
-			: undefined;
+		const clientWorkspaceContext: ClientWorkspaceContext | undefined =
+			workspaceContextParsed.success ? workspaceContextParsed.data : undefined;
 		const pageContextParsed = pageContextSchema.safeParse(body.pageContext);
 		const pageContext: PageContext | undefined = pageContextParsed.success
 			? pageContextParsed.data
@@ -458,7 +457,36 @@ export const POST: RequestHandler = async (event) => {
 			// Non-fatal: sourcing context is enrichment, not required
 		}
 
-		// Build dynamic system prompt with workspace context and user identity
+		let workspaceContext: WorkspaceContext | undefined = clientWorkspaceContext
+			? {
+					id: clientWorkspaceContext.id,
+					type: clientWorkspaceContext.type,
+					canvasDescription: clientWorkspaceContext.canvasDescription
+				}
+			: undefined;
+
+		if (clientWorkspaceContext?.id) {
+			const { data: workspaceRow } = await supabase
+				.from('workspaces')
+				.select('id, type, context_summary')
+				.eq('id', clientWorkspaceContext.id)
+				.eq('user_id', user.id)
+				.maybeSingle();
+
+			if (workspaceRow) {
+				workspaceContext = {
+					id: workspaceRow.id,
+					type: workspaceRow.type ?? clientWorkspaceContext.type,
+					summary:
+						clientWorkspaceContext.includeMemory !== false && workspaceRow.context_summary
+							? sanitizePromptText(workspaceRow.context_summary, 2000)
+							: undefined,
+					canvasDescription: clientWorkspaceContext.canvasDescription
+				};
+			}
+		}
+
+		// Build dynamic system prompt with server-resolved workspace context and user identity
 		const userMemory = (await userMemoryPromise)?.content;
 
 		const systemPrompt = _buildSystemPrompt(
