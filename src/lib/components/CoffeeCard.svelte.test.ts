@@ -145,4 +145,30 @@ describe('CoffeeCard Purveyor Score hierarchy', () => {
 		expect(screen.getByText('71')).toBeTruthy();
 		expect(screen.getByText(/Strong/)).toBeTruthy();
 	});
+
+	it('preserves wholesale visibility on catalog links for wholesale lots', () => {
+		render(CoffeeCard, {
+			coffee: createCoffee({ id: 42, wholesale: true }),
+			parseTastingNotes,
+			showCatalogLink: true,
+			initialDetailsOpen: true
+		});
+
+		expect(screen.getByRole('link', { name: /view in catalog/i }).getAttribute('href')).toBe(
+			'/catalog?coffee=42&showWholesale=true'
+		);
+	});
+
+	it('keeps standard catalog links unchanged for non-wholesale lots', () => {
+		render(CoffeeCard, {
+			coffee: createCoffee({ id: 43, wholesale: false }),
+			parseTastingNotes,
+			showCatalogLink: true,
+			initialDetailsOpen: true
+		});
+
+		expect(screen.getByRole('link', { name: /view in catalog/i }).getAttribute('href')).toBe(
+			'/catalog?coffee=43'
+		);
+	});
 });

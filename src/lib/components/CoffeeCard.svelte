@@ -188,6 +188,15 @@
 	let availableDetailTabs = $derived(
 		detailTabs.filter((tab) => tab.id !== 'matches' || showSimilarComparisonAction)
 	);
+	let catalogLinkHref = $derived.by(() => {
+		const params = new URLSearchParams({ coffee: String(coffee.id) });
+
+		if (coffee.wholesale) {
+			params.set('showWholesale', 'true');
+		}
+
+		return `/catalog?${params.toString()}`;
+	});
 
 	function formatAdditives(additives: string[] | null | undefined): string | null {
 		if (!additives?.length) return null;
@@ -555,7 +564,7 @@
 								{/if}
 								{#if showCatalogLink}
 									<a
-										href="/catalog?coffee={coffee.id}"
+										href={catalogLinkHref}
 										class="font-semibold text-muted transition-colors hover:text-accent hover:underline"
 									>
 										View in catalog
