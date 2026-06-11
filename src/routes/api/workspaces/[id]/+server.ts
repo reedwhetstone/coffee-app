@@ -1,6 +1,17 @@
 import { json } from '@sveltejs/kit';
+import { z } from 'zod';
 import { requireChatAccess } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
+
+const workspaceTypeSchema = z.enum(['general', 'sourcing', 'roasting', 'inventory', 'analysis']);
+const workspaceUpdateSchema = z
+	.object({
+		title: z.string().max(120).optional(),
+		type: workspaceTypeSchema.optional()
+	})
+	.refine((body) => body.title !== undefined || body.type !== undefined, {
+		message: 'Provide title or type to update'
+	});
 
 // GET /api/workspaces/[id] - Get workspace details with recent messages and canvas state
 export const GET: RequestHandler = async (event) => {
@@ -53,15 +64,16 @@ export const PUT: RequestHandler = async (event) => {
 	try {
 		const { user } = await requireChatAccess(event);
 		const workspaceId = event.params.id;
-		const body = await event.request.json();
+		const body = await event.request.json().catch(() => null);
+		const parsed = workspaceUpdateSchema.safeParse(body);
 
-		const updateData: Record<string, unknown> = {};
-		if (body.title !== undefined) updateData.title = body.title;
-		if (body.type !== undefined) updateData.type = body.type;
+		if (!parsed.success) {
+			return json({ error: 'Invalid workspace update payload' }, { status: 400 });
+		}
 
 		const { data, error } = await event.locals.supabase
 			.from('workspaces')
-			.update(updateData)
+			.update(parsed.data)
 			.eq('id', workspaceId)
 			.eq('user_id', user.id)
 			.select()
