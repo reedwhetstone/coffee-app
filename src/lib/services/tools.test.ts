@@ -88,6 +88,40 @@ describe('createChatTools entitlement allowlist', () => {
 		expect(toolNames({ memberAccess: true, ppiAccess: false })).not.toContain('price_index_read');
 	});
 
+	it('keeps similarity reads public-only for Parchment Intelligence-only users', async () => {
+		const findSimilarBeans = vi.fn().mockResolvedValue({ matches: [] });
+		const tools = createChatTools(
+			supabase,
+			'user-123',
+			{ memberAccess: false, ppiAccess: true },
+			{ findSimilarBeans }
+		);
+		const executeSimilarity = tools.find_similar_beans.execute as unknown as (input: {
+			coffee_id: number;
+		}) => Promise<unknown>;
+
+		await executeSimilarity({ coffee_id: 42 });
+
+		expect(findSimilarBeans).toHaveBeenCalledWith({ coffee_id: 42 }, { publicOnly: true });
+	});
+
+	it('allows full-catalog similarity reads for Mallard Studio members', async () => {
+		const findSimilarBeans = vi.fn().mockResolvedValue({ matches: [] });
+		const tools = createChatTools(
+			supabase,
+			'user-123',
+			{ memberAccess: true, ppiAccess: false },
+			{ findSimilarBeans }
+		);
+		const executeSimilarity = tools.find_similar_beans.execute as unknown as (input: {
+			coffee_id: number;
+		}) => Promise<unknown>;
+
+		await executeSimilarity({ coffee_id: 42 });
+
+		expect(findSimilarBeans).toHaveBeenCalledWith({ coffee_id: 42 }, { publicOnly: false });
+	});
+
 	it('gives viewers only catalog search, facets, and presentation', () => {
 		expect(toolNames({ memberAccess: false, ppiAccess: false })).toEqual([
 			'catalog_facets',

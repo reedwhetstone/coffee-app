@@ -166,11 +166,14 @@ export interface ChatToolDeps {
 		wholesale?: boolean;
 		limit?: number;
 	}) => Promise<unknown>;
-	findSimilarBeans?: (input: {
-		coffee_id: number;
-		threshold?: number;
-		limit?: number;
-	}) => Promise<unknown>;
+	findSimilarBeans?: (
+		input: {
+			coffee_id: number;
+			threshold?: number;
+			limit?: number;
+		},
+		options: { publicOnly: boolean }
+	) => Promise<unknown>;
 }
 
 export function createChatTools(
@@ -481,7 +484,7 @@ export function createChatTools(
 				// injects a reader backed by the admin client. The CLI path is a
 				// fallback for callers that construct tools without deps.
 				if (deps.findSimilarBeans) {
-					return await deps.findSimilarBeans(input);
+					return await deps.findSimilarBeans(input, { publicOnly: !access.memberAccess });
 				}
 				const results: SimilarBean[] = await findSimilarBeans(supabase, input);
 				return results;

@@ -27,6 +27,11 @@ export interface AgentSimilarityInput {
 	limit?: number;
 }
 
+export interface AgentSimilarityOptions {
+	client?: SupabaseClient;
+	publicOnly?: boolean;
+}
+
 export interface AgentSimilarBean {
 	coffee_id: number;
 	coffee_name: string;
@@ -85,8 +90,10 @@ function toAgentSimilarBean(match: CatalogSimilarityMatch): AgentSimilarBean {
 
 export async function findSimilarBeansForAgent(
 	input: AgentSimilarityInput,
-	client: SupabaseClient = createAdminClient()
+	options: AgentSimilarityOptions = {}
 ): Promise<AgentSimilarityResult> {
+	const client = options.client ?? createAdminClient();
+	const publicOnly = options.publicOnly ?? true;
 	const threshold = Math.min(
 		Math.max(
 			input.threshold ?? DEFAULT_CATALOG_SIMILARITY_THRESHOLD,
@@ -103,7 +110,7 @@ export async function findSimilarBeansForAgent(
 		supabase: client,
 		coffeeId: input.coffee_id,
 		query: { threshold, limit, stockedOnly: true, mode: 'all' },
-		publicOnly: false
+		publicOnly
 	});
 
 	return {

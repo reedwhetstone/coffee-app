@@ -399,7 +399,7 @@ export const POST: RequestHandler = async (event) => {
 			{ ppiAccess, memberAccess },
 			{
 				readPriceIndex: (input) => readPriceIndexForAgent(input),
-				findSimilarBeans: (input) => findSimilarBeansForAgent(input)
+				findSimilarBeans: (input, options) => findSimilarBeansForAgent(input, options)
 			}
 		);
 
