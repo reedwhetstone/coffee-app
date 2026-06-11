@@ -55,11 +55,11 @@
 		return `${blockCount} tool result${blockCount > 1 ? 's' : ''}${types.length > 0 ? `: ${types.join(', ')}` : ''}`;
 	}
 
-	// Conversation-wide search data cache: present_results may reference items
-	// from a search in any earlier message, not just its own.
-	let conversationSearchCache = $derived(
-		buildSearchDataCache(chat.messages.flatMap((m: { parts: unknown[] }) => m.parts))
-	);
+	function buildSearchCacheThroughMessage(messageIndex: number) {
+		return buildSearchDataCache(
+			chat.messages.slice(0, messageIndex + 1).flatMap((m: { parts: unknown[] }) => m.parts)
+		);
+	}
 
 	// Build a lookup: messageId → canvasBlockId[] (supports multiple blocks per message)
 	let canvasBlockLookup = $derived(() => {
@@ -219,7 +219,7 @@
 					<!-- Assistant message -->
 					{@const hasPR = messageHasPresentResults(message.parts)}
 					{@const extractorOptions = {
-						searchDataCache: conversationSearchCache,
+						searchDataCache: hasPR ? buildSearchCacheThroughMessage(msgIndex) : undefined,
 						hasPresentResults: hasPR
 					}}
 					{@const toolSteps = getMessageToolSteps(message.parts)}
